@@ -187,4 +187,26 @@ describe('architecture', () => {
       }
     }
   });
+
+  it('callLlm and attemptLlm are imported only by src/llm/envelope.ts (P14)', () => {
+    for (const file of tsFiles('src')) {
+      if (file.endsWith(`${sep}llm${sep}envelope.ts`) || file.endsWith(`${sep}llm${sep}orchestrator.ts`)) continue;
+      const text = readFileSync(file, 'utf8');
+      // value imports only: `import type { … }` is fine
+      for (const m of text.matchAll(/^import\s+(?!type\b)([^;]*?)from\s+['"]([^'"]*orchestrator)['"]/gm)) {
+        expect(m[1], `${file} imports ${m[1].trim()} from ${m[2]}`).not.toMatch(/\b(callLlm|attemptLlm)\b/);
+      }
+      expect(text, `${file} calls the model directly`).not.toMatch(/\b(callLlm|attemptLlm)\s*[<(]/);
+    }
+  });
+
+  it('src/llm/calls holds call types, inputs and sanitizers only: no function there calls the model (P14)', () => {
+    const files = tsFiles('src/llm/calls');
+    expect(files.length).toBeGreaterThan(10);
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      expect(text, `${file} exports an async wrapper`).not.toMatch(/export\s+async\s+function/);
+      expect(text, `${file} imports the orchestrator for a value`).not.toMatch(/^import\s+(?!type\b)[^;]*from\s+['"]\.\.\/orchestrator['"]/m);
+    }
+  });
 });

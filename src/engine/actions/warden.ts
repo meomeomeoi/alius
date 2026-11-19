@@ -42,11 +42,13 @@ registerAction('warden/no_snapshot', (draft, payload, ctx) => {
 
 const EPILOGUE_MAX = 2400;
 
-/** The epilogue of a closed campaign, stored once (written by the model, or the chronicle lines under a fixed heading). */
+/** The epilogue of a closed campaign (written by the model, or the chronicle lines under a fixed heading); stored once unless `replace: true` (P14). */
 registerAction('campaign/epilogue', (draft, payload) => {
   if (!draft.ended) throw new Error('campaign/epilogue: the campaign is not closed.');
-  if (draft.ended.epilogue !== undefined) throw new Error('campaign/epilogue: the epilogue is already written.');
-  const text = (payload as { text?: unknown } | null | undefined)?.text;
+  const p = (payload ?? {}) as { text?: unknown; replace?: unknown };
+  // P14: `replace: true` writes a new epilogue over the one written (RETRY of the joined lines, REROLL)
+  if (draft.ended.epilogue !== undefined && p.replace !== true) throw new Error('campaign/epilogue: the epilogue is already written.');
+  const text = p.text;
   if (typeof text !== 'string' || text.trim() === '') throw new Error('campaign/epilogue: the text is empty.');
   if (text.length > EPILOGUE_MAX) throw new Error(`campaign/epilogue: at most ${EPILOGUE_MAX} characters.`);
   draft.ended.epilogue = text.trim();

@@ -2,6 +2,8 @@ import '../../src/llm/calls/all'; // registers every call type, as the app does
 import { readEmotion, type EmotionPickInput } from '../../src/llm/calls/emotionPick';
 import { readDigest, readSceneSummary, type SceneDigest, type SceneSummary, type SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
 import { callLlm, type LlmDeps } from '../../src/llm/orchestrator';
+import { readJudgement, type WardenJudged, type WardenJudgeInput } from '../../src/llm/calls/wardenJudge';
+import type { WardenAgendaInput, WardenAgendaShape } from '../../src/llm/calls/wardenAgenda';
 import { readCompaction, type ChronicleCompactInput } from '../../src/llm/calls/chronicleCompact';
 import { readFold, type FoldInput, type FoldRaw } from '../../src/llm/calls/memoryFold';
 import { readRumor, type RumorInput } from '../../src/llm/calls/rumorRetell';
@@ -115,4 +117,14 @@ export async function generateDmEdit(input: DmEditFlavorInput, deps: LlmDeps): P
 export async function generateFragment(input: { name: string; kind: string; gist: string; partial: boolean }, deps: LlmDeps): Promise<string | null> {
   const r = await generateFlavor({ kind: 'frequency_fragment' as const, name: input.name, candidate: input.kind, gist: input.gist, partial: input.partial }, deps);
   return sanitizeFragment(r?.text);
+}
+
+export async function judgeOrder(input: WardenJudgeInput, deps: LlmDeps): Promise<WardenJudged | null> {
+  const r = await callLlm<WardenJudged>('warden_judge', input, deps);
+  return r.ok ? readJudgement(r.value, input) : null;
+}
+
+export async function generateAgenda(input: WardenAgendaInput, deps: LlmDeps): Promise<unknown | null> {
+  const r = await callLlm<WardenAgendaShape>('warden_agenda', input, deps);
+  return r.ok ? r.value : null;
 }

@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 export interface WardenAgendaInput {
   /** The warden's display name. */
@@ -58,9 +55,3 @@ registerCallType<WardenAgendaShape>({
   },
   schema: WardenAgendaSchema as unknown as z.ZodType<WardenAgendaShape>,
 });
-
-/** One mechanic call. Returns the loosely shaped answer for the engine to validate, or `null` on any failure. */
-export async function generateAgenda(input: WardenAgendaInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<unknown | null> {
-  const r = await callLlm<WardenAgendaShape>('warden_agenda', input, deps);
-  return r.ok ? r.value : null;
-}

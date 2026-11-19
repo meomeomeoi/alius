@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { standaloneEnvelope } from '../helpers/envelopeHost';
 import { loadPacks } from '../../src/content/loader';
 import type { Registries } from '../../src/content/types';
 import { validateCommanderSetup } from '../../src/engine/commander/profile';
@@ -25,7 +26,7 @@ function setup(over: Partial<AliusSettings> = {}, persona = 'A scarred officer w
   st.personaName = 'Vale';
   st.personaDescription = persona;
   const settings: AliusSettings = { ...getSettings(st), mechanicProfileId: 'mech', ...over };
-  return { st, deps: { settings, registries: reg } };
+  return { st, deps: { settings, registries: reg, generations: standaloneEnvelope(st, reg, () => settings) } };
 }
 const calls = (st: FakeStAdapter) => st.calls.filter((c) => c.kind === 'profile');
 
@@ -120,7 +121,7 @@ describe('importCommander', () => {
   it('a failing call is manual and never throws', async () => {
     const { st, deps } = setup();
     st.profileReplies = [new Error('network down'), new Error('network down')];
-    expect(await importCommander(st, deps)).toEqual({ kind: 'manual', reason: 'network down' });
+    expect(await importCommander(st, deps)).toEqual({ kind: 'manual', reason: 'Commander import: the connection failed.' }); // P14: worded by describeFailure
   });
 
   it('the persona text reaches the model wrapped as data', async () => {

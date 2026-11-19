@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { generateAgenda, type WardenAgendaInput } from '../../src/llm/calls/wardenAgenda';
+import type { WardenAgendaInput } from '../../src/llm/calls/wardenAgenda';
+import { generateAgenda } from '../helpers/calls';
 import { CALL_TYPE_IDS } from '../../src/llm/callTypes';
 import { llmLog } from '../../src/llm/log';
 import { DEFAULT_SETTINGS, getSettings } from '../../src/settings';

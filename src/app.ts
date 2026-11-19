@@ -87,7 +87,7 @@ import { clearSceneDirectives, registerSceneContext } from './scene/context';
 import { createMemoryController } from './scene/memoryController';
 import { registerMemoryContext } from './scene/memoryContext';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
-import { callLlm, type LlmResult } from './llm/orchestrator';
+import type { FailReason } from './llm/orchestrator';
 import { createEnvelope, type Envelope } from './llm/envelope';
 import './llm/sites'; // P14: declares every generation site
 import { getSettings } from './settings';
@@ -158,7 +158,7 @@ export interface AliusApp {
    */
   dispatch(action: Action, opts?: { expectChatId?: string }): EngineEvent[];
   initCampaign(): Promise<void>;
-  pingMechanic(): Promise<LlmResult<{ pong: true; echo: string }>>;
+  pingMechanic(): Promise<PingResult>;
   /** Replaces the whole campaign (state editor, import). Refused for read-only campaigns. */
   replaceState(state: CampaignState): void;
   /** Later packages register context providers and directives here. */
@@ -235,6 +235,9 @@ export interface AliusApp {
    */
   fileLeash(kind: LeashKind, unitId: string): Promise<boolean>;
 }
+
+/** The answer of the connection test (SYS › PING): the echo, or why the call failed (`describeFailure` words it). */
+export type PingResult = { ok: true; echo: string } | { ok: false; reason: FailReason; detail: string };
 
 export interface AppDeps {
   loadContent: () => Promise<{ registries: Registries; errors: ContentError[]; lorebook?: Lorebook | null; art?: { hub: string[] } }>;
@@ -413,6 +416,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return 'ok';
     },
   });
+
+  // the connection test of SYS (no record: the toast says what happened)
+  generations.bind<string, { pong: true; echo: string }>('sys.ping', { build: (key) => key, apply: () => 'ok' });
 
   generations.bind<GruntFlavorInput, { name: string; bio: string }>('flavor.grunt', {
     build(unitId) {
@@ -1270,7 +1276,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         registries,
         desireBondDefects: desireBond,
         importer: async () => ({ kind: 'manual', reason: 'not used here' }),
-        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations }),
         onChange: () => {},
       },
       { personaName: state.commander.name, canBindCurrent: false },
@@ -1579,7 +1585,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         // the first call imports every re-sync section, a "regenerate" asks for one
         importer: (avatar, wanted) =>
           importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
-            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world, bond: unit.bond ?? null,
+            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world, bond: unit.bond ?? null,
           }),
         onChange: () => {},
       },
@@ -1696,7 +1702,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         registries,
         desireBondDefects: desireBond,
         importer: (avatar, sections) =>
-          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world: s.world.options ?? defaultWorldOptions(registries) }),
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world: s.world.options ?? defaultWorldOptions(registries) }),
         onChange: () => {},
       },
       { personaName: '', canBindCurrent: false },
@@ -1761,8 +1767,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         desireBondDefects: desireBond,
         explicitContent: getSettings(st).explicitContent, // P9d: carried into CONTENT as `explicit_scenes`
         importer: (avatar, sections, world) =>
-          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world }),
-        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world }),
+        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations }),
         onChange: () => {},
       },
       { personaName: st.getPersonaName(), canBindCurrent: !!chat?.isGroup && load.kind === 'none' },
@@ -2459,10 +2465,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     },
 
     async pingMechanic() {
-      const r = await callLlm<{ pong: true; echo: string }>('ping', 'alius', { st, settings: getSettings(st) });
-      if (r.ok) toast('info', `pong: ${r.value.echo}`);
-      else toast('error', `Ping failed: ${r.reason} — ${r.detail}`);
-      return r;
+      const out = await generations.generate<{ pong: true; echo: string }>('sys.ping', 'alius', { noRecord: true });
+      if (out.kind === 'applied') {
+        toast('info', `pong: ${out.value.echo}`);
+        return { ok: true as const, echo: out.value.echo };
+      }
+      const failed = out.kind === 'failed' ? out : { reason: 'invalid_output' as const, detail: 'the test was dropped' };
+      toast('error', `Ping failed: ${failed.reason} — ${failed.detail}`);
+      return { ok: false as const, reason: failed.reason, detail: failed.detail };
     },
   };
   return api;

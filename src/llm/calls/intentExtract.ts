@@ -4,10 +4,7 @@ import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { SceneRecord } from '../../engine/state/types';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 /** The 28 labels of SillyTavern's Expressions classifier. */
 export const EXPRESSION_LABELS = [

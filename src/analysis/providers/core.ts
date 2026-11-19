@@ -304,6 +304,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'special_trait', 'commander_stress', 'contingency', 'premonition', 'false_alarm', 'bloom_nightmare', 'handler', 'intel_exchange', 'handler_pressure', 'oversight_suspicion', 'defector_arc', 'frequency_intercept', 'frequency_suspicion', 'knowledge_leak', 'burn_implant',
   // P13 (the MODE section, the warden pick and the reveal card address these; the rest come with their screens)
   'leashswap', 'warden', 'death_rule', 'warden_expectation', 'commander_punishment', 'commander_leash', 'leash_cosign', 'warden_defiance', 'lethal_escalation', 'warden_override', 'warden_satisfaction', 'intrigue', 'kompromat', 'implant_hack', 'investigation', 'remote_control', 'verdict',
+  // P14 (the failure chip, REROLL, the hub line and SYS › GENERATIONS address these)
+  'generation_failed', 'generation_reroll', 'generation_record', 'generation_reasons',
 ];
 
 let registered = false;

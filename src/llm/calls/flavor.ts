@@ -18,6 +18,8 @@ export function registerFlavorKind(kind: string, impl: FlavorKind): void {
 
 /** Is a flavor kind registered? (A site's input always names a registered kind.) */
 export const hasFlavorKind = (kind: string): boolean => kinds.has(kind);
+/** Every registered flavor kind (P14's registry test checks each has a `flavor.<kind>` site). */
+export const listFlavorKinds = (): string[] => [...kinds.keys()];
 
 const kindOf = (input: unknown): FlavorKind | undefined => kinds.get(String((input as { kind?: unknown })?.kind));
 

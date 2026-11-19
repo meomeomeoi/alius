@@ -12,6 +12,7 @@ import {
   CARD_INPUT_TOKENS, buildImportInput, importProfile, sanitizeProfile, truncateCard,
 } from '../../src/setup/profile';
 import { ALL_SECTIONS, type ImportSection } from '../../src/llm/calls/profileImport';
+import { standaloneEnvelope } from '../helpers/envelopeHost';
 import type { Bond } from '../../src/engine/state/types';
 
 let reg: Registries;
@@ -31,7 +32,7 @@ function setup(over: Partial<AliusSettings> = {}, cardName = 'detailed') {
   const settings: AliusSettings = { ...getSettings(st), mechanicProfileId: 'mech', ...over };
   const c = card(cardName);
   st.cards.set(c.avatar, c);
-  return { st, settings, avatar: c.avatar, deps: { st, settings, registries: reg } };
+  return { st, settings, avatar: c.avatar, deps: { st, settings, registries: reg, generations: standaloneEnvelope(st, reg, () => settings) } };
 }
 const profileCalls = (st: FakeStAdapter) => st.calls.filter((c) => c.kind === 'profile');
 const ctx = (over: Partial<{ desireBondDefects: boolean; sections: ImportSection[] }> = {}) => ({
@@ -150,7 +151,7 @@ describe('importProfile', () => {
     const { st, avatar, deps } = setup();
     st.profileReplies = [new Error('network down'), new Error('network down')]; // a lost connection is retried once (P14)
     const r = await importProfile(avatar, [...ALL_SECTIONS], deps);
-    expect(r).toEqual({ kind: 'manual', reason: 'network down' });
+    expect(r).toEqual({ kind: 'manual', reason: 'Profile import: the connection failed.' }); // P14: the reason is worded by describeFailure
   });
 
   it('retry that fails gives manual', async () => {

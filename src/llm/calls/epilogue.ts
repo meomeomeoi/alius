@@ -1,5 +1,4 @@
 import { registerCallType } from '../callTypes';
-import { callLlm, type LlmDeps } from '../orchestrator';
 
 export const EPILOGUE_MAX = 2400;
 
@@ -60,9 +59,3 @@ registerCallType<string>({
     ].join('\n');
   },
 });
-
-/** One main-model call; any failure or an empty answer gives null (the app then uses `fallbackEpilogue`). */
-export async function generateEpilogue(input: EpilogueInput, deps: LlmDeps): Promise<string | null> {
-  const r = await callLlm<string>('epilogue', input, deps);
-  return r.ok ? sanitizeEpilogue(r.value) : null;
-}

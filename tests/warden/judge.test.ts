@@ -3,7 +3,7 @@ import type { Registries } from '../../src/content/types';
 import { buildCampaign } from '../../src/engine/setup';
 import type { CampaignState } from '../../src/engine/state/types';
 import { orderOfAction, wardenOf, type Expectation } from '../../src/engine/warden';
-import { judgeOrder } from '../../src/llm/calls/wardenJudge';
+import { judgeOrder } from '../helpers/calls';
 import { CALL_TYPE_IDS } from '../../src/llm/callTypes';
 import { llmLog } from '../../src/llm/log';
 import { DEFAULT_SETTINGS, getSettings } from '../../src/settings';

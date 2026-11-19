@@ -1,10 +1,10 @@
 import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { EXPECTATION_KINDS, argueAvailable, describeOrder, normalizeAgenda, orderOfAction, overrideOpen, wardenOf } from '../engine/warden';
-import { judgeOrder } from '../llm/calls/wardenJudge';
+import { readJudgement, type WardenJudged, type WardenJudgeInput } from '../llm/calls/wardenJudge';
 import { worldDossier } from '../engine/memory/inputs';
-import { generateEpilogue, fallbackEpilogue } from '../llm/calls/epilogue';
-import { generateAgenda, type WardenAgendaInput } from '../llm/calls/wardenAgenda';
+import { fallbackEpilogue, sanitizeEpilogue, type EpilogueInput } from '../llm/calls/epilogue';
+import type { WardenAgendaInput } from '../llm/calls/wardenAgenda';
 import { isLeashswap } from '../engine/warden';
 import { readDayStart, writeDayStart } from '../st/persistence';
 import { whereabouts } from '../engine/hub';
@@ -28,6 +28,9 @@ export interface WardenController {
   answer(answer: 'comply' | 'argue' | 'defy'): Promise<boolean>;
   /** Would the judge be asked about this action? Only with the setting on, a personal expectation of hers, and an out-of-combat overridable action. */
   needsJudge(action: Action): boolean;
+  /** P14: REROLL of the epilogue (the END screen, `warden.epilogue`, free) and the second try at her agenda while it is still the fallback (`warden.agenda`). */
+  rerollEpilogue(): Promise<void>;
+  rerollAgenda(): Promise<void>;
   /**
    * Asks the judge (when `needsJudge`) which of her personal expectations the order touches, attaches the answer as `wardenJudged` and dispatches.
    * A failed call dispatches without it; a chat that changed meanwhile drops the action.
@@ -57,6 +60,48 @@ export function createWarden(deps: WardenDeps): WardenController {
     deps.refreshContext();
   }
 
+  const agendaKey = (w: { unitId: string; sinceDay: number }): string => `${w.unitId}:${w.sinceDay}`;
+  const CLOSED = 'The campaign is closed.';
+
+  /** The agenda request of a warden: her card, values and the corporation (rebuilt from the state, never stored). */
+  function agendaInput(s: CampaignState, unitId: string): WardenAgendaInput | null {
+    const unit = s.squad.find((u) => u.id === unitId);
+    if (!unit) return null;
+    const reg = deps.registries();
+    const card = unit.cardRef === undefined ? null : deps.st.getCharacterCard(unit.cardRef);
+    const corpId = s.commander.corporationId;
+    const corp = corpId === null ? undefined : reg.corporations.get(corpId);
+    return {
+      name: unit.displayName,
+      card: [card?.description, card?.personality].filter((x): x is string => typeof x === 'string' && x.trim() !== '').join(' ').slice(0, CARD_MAX),
+      values: { ...unit.values },
+      corporation: corp ? `${String(corp.name)}: ${String(corp.summary)}` : 'The corporation.',
+      kinds: [...EXPECTATION_KINDS],
+    };
+  }
+
+  // the `warden.agenda` site (key `<unitId>:<sinceDay>`): her expectations, asked once while the agenda is the fallback. A failure is a quiet
+  // record and the fallback agenda stands; a second try is allowed until an override has fired or the agenda is set
+  deps.generations.bind<WardenAgendaInput, unknown[]>('warden.agenda', {
+    build(key) {
+      const s = state();
+      const w = s ? wardenOf(s) : null;
+      if (!s || s.ended || !w || agendaKey(w) !== key || w.agenda !== 'fallback' || w.overrideFired === true) return { expired: 'Her agenda is no longer the fallback.' };
+      return agendaInput(s, w.unitId) ?? { expired: 'She is not here.' };
+    },
+    parse: (raw) => normalizeAgenda((raw as { expectations?: unknown } | null)?.expectations, deps.registries()),
+    apply(_key, list) {
+      const events = deps.app.dispatch({ type: 'warden/agenda', payload: { expectations: list } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';
+    },
+    fallback: () => true, // the fallback agenda is already in the state
+    committed(key) {
+      const s = state();
+      const w = s ? wardenOf(s) : null;
+      return s && w && agendaKey(w) === key && w.agenda === 'fallback' && w.overrideFired !== true && !s.ended ? null : 'Her agenda is set.';
+    },
+  });
+
   async function ask(): Promise<void> {
     const s = state();
     const w = s ? wardenOf(s) : null;
@@ -65,29 +110,7 @@ export function createWarden(deps: WardenDeps): WardenController {
     const key = `${expect ?? ''}:${w.unitId}:${w.sinceDay}`;
     if (asked.has(key)) return;
     asked.add(key);
-    const unit = s.squad.find((u) => u.id === w.unitId);
-    if (!unit) return;
-    const reg = deps.registries();
-    const card = unit.cardRef === undefined ? null : deps.st.getCharacterCard(unit.cardRef);
-    const corpId = s.commander.corporationId;
-    const corp = corpId === null ? undefined : reg.corporations.get(corpId);
-    const input: WardenAgendaInput = {
-      name: unit.displayName,
-      card: [card?.description, card?.personality].filter((x): x is string => typeof x === 'string' && x.trim() !== '').join(' ').slice(0, CARD_MAX),
-      values: { ...unit.values },
-      corporation: corp ? `${String(corp.name)}: ${String(corp.summary)}` : 'The corporation.',
-      kinds: [...EXPECTATION_KINDS],
-    };
-    let shape: unknown;
-    try {
-      shape = await generateAgenda(input, { st: deps.st, settings: deps.settings() });
-    } catch {
-      return; // fail soft: the fallback stands
-    }
-    if (chatId() !== expect) return; // a late answer for another chat
-    const list = normalizeAgenda((shape as { expectations?: unknown } | null)?.expectations, reg);
-    if (list === null) return;
-    deps.app.dispatch({ type: 'warden/agenda', payload: { expectations: list } }, { expectChatId: expect });
+    await deps.generations.generate('warden.agenda', agendaKey(w));
   }
 
   /** The state at the start of this day, with where the ST chat stood (written only in the mode). */
@@ -117,6 +140,34 @@ export function createWarden(deps: WardenDeps): WardenController {
     deps.app.dispatch({ type: 'memory/hidden', payload: { add: runs } }, { expectChatId: expect });
   }
 
+  const epilogueInput = (s: CampaignState): EpilogueInput | null => {
+    if (!s.ended) return null;
+    const lines = s.memory.chronicle.filter((c) => c.audience === '*').slice(-EPILOGUE_LINES).map((c) => c.text);
+    return { cause: s.ended.cause, day: s.ended.day, lines, dossier: worldDossier(s) };
+  };
+
+  // the `warden.epilogue` site (key `epilogue`): the closed campaign's epilogue, written by the model or (fallback) the public lines under a
+  // heading, with a record; RETRY or REROLL write a new one over it
+  deps.generations.bind<EpilogueInput, string>('warden.epilogue', {
+    build() {
+      const s = state();
+      const input = s ? epilogueInput(s) : null;
+      return input ?? { expired: 'The campaign is open again.' };
+    },
+    parse: (raw) => sanitizeEpilogue(String(raw)),
+    apply(_key, text) {
+      const written = state()?.ended?.epilogue !== undefined;
+      const events = deps.app.dispatch({ type: 'campaign/epilogue', payload: { text, ...(written ? { replace: true } : {}) } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';
+    },
+    fallback(_key, input) {
+      if (!input || state()?.ended?.epilogue !== undefined) return false;
+      const events = deps.app.dispatch({ type: 'campaign/epilogue', payload: { text: fallbackEpilogue(input) } }, { expectChatId: chatId() });
+      return !events.some((e) => e.type === 'error');
+    },
+    committed: () => (state()?.ended ? null : 'The campaign is open again.'),
+  });
+
   /** The epilogue of a closed campaign: the model's, or the public lines under a heading. Once per chat. */
   async function epilogue(): Promise<void> {
     const s = state();
@@ -125,16 +176,7 @@ export function createWarden(deps: WardenDeps): WardenController {
     const key = `${expect ?? ''}:epilogue`;
     if (asked.has(key)) return;
     asked.add(key);
-    const lines = s.memory.chronicle.filter((c) => c.audience === '*').slice(-EPILOGUE_LINES).map((c) => c.text);
-    const input = { cause: s.ended.cause, day: s.ended.day, lines, dossier: worldDossier(s) };
-    let text: string | null = null;
-    try {
-      text = await generateEpilogue(input, { st: deps.st, settings: deps.settings(), ...(deps.contentLine ? { contentLine: deps.contentLine } : {}) });
-    } catch {
-      // fail soft: the fallback text is dispatched
-    }
-    if (chatId() !== expect) return;
-    deps.app.dispatch({ type: 'campaign/epilogue', payload: { text: text ?? fallbackEpilogue(input) } }, { expectChatId: expect });
+    await deps.generations.generate('warden.epilogue', 'epilogue');
   }
 
   /** The scene of the argument: her room's location when it is open this slot, else the first location that is. */
@@ -163,21 +205,37 @@ export function createWarden(deps: WardenDeps): WardenController {
     return s !== null && deps.settings().wardenJudge === true && orderOfAction(action) !== null && personalOf(s).length > 0 && s.combat === undefined;
   }
 
+  /** The orders being judged, by action type (the site's key): `build` rebuilds the input from the order and the state. */
+  const judging = new Map<string, Action>();
+
+  // the `warden.judge` site (key: the action's type): which of her personal expectations an order touches; a failure dispatches without it (no record)
+  deps.generations.bind<WardenJudgeInput, WardenJudged>('warden.judge', {
+    build(actionType) {
+      const s = state();
+      const action = judging.get(actionType);
+      const order = action ? orderOfAction(action) : null;
+      if (!s || !action || !order || !needsJudge(action)) return { expired: 'There is nothing to judge.' };
+      return { order: describeOrder(s, deps.registries(), order), expectations: personalOf(s).map((x) => ({ id: x.id, text: x.text! })) };
+    },
+    parse: (raw, input) => readJudgement(raw as WardenJudged, input),
+    apply: () => 'ok', // the judgement is the outcome's value
+  });
+
   async function judgeThen(action: Action): Promise<EngineEvent[]> {
     const expect = chatId();
     const send = (a: Action): EngineEvent[] => (deps.act ? deps.act(a) : deps.app.dispatch(a, { expectChatId: expect }));
     const s = state();
     const order = orderOfAction(action);
     if (!s || !order || !needsJudge(action)) return send(action);
-    let judged: Awaited<ReturnType<typeof judgeOrder>> = null;
+    judging.set(action.type, action);
+    let judged: WardenJudged | null = null;
+    let out: Awaited<ReturnType<typeof deps.generations.generate<WardenJudged>>>;
     try {
-      judged = await judgeOrder(
-        { order: describeOrder(s, deps.registries(), order), expectations: personalOf(s).map((x) => ({ id: x.id, text: x.text! })) },
-        { st: deps.st, settings: deps.settings() },
-      );
-    } catch {
-      // fail soft: the engine judges by its rules alone
+      out = await deps.generations.generate<WardenJudged>('warden.judge', action.type);
+    } finally {
+      judging.delete(action.type);
     }
+    if (out.kind === 'applied') judged = out.value;
     if (chatId() !== expect) return [];
     const payload = typeof action.payload === 'object' && action.payload !== null ? action.payload : {};
     return send(judged !== null && judged.conflict !== 'none' ? { ...action, payload: { ...payload, wardenJudged: judged } } : action);
@@ -198,6 +256,11 @@ export function createWarden(deps: WardenDeps): WardenController {
 
   return {
     argue, answer, needsJudge, judgeThen,
+    rerollEpilogue: async () => { await deps.generations.reroll('warden.epilogue', 'epilogue'); },
+    rerollAgenda: async () => {
+      const w = state() ? wardenOf(state()!) : null;
+      if (w) await deps.generations.reroll('warden.agenda', agendaKey(w));
+    },
     onEvents(events) {
       if (events.some((e) => e.type === 'warden_assigned')) void ask().catch(() => {});
       if (events.some((e) => e.type === 'day_started')) snapshot();

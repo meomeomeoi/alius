@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 export interface WardenJudgeInput {
   /** The commander's order in words. */
@@ -12,6 +9,11 @@ export interface WardenJudgeInput {
 }
 
 export interface WardenJudged { expectationId: string; conflict: 'none' | 'minor' | 'major' }
+
+/** The judgement of a model answer (`warden_judge`): null when it names an expectation that was not listed (the rules then judge alone). */
+export function readJudgement(raw: WardenJudged, input: WardenJudgeInput): WardenJudged | null {
+  return input.expectations.some((x) => x.id === raw.expectationId) ? raw : null;
+}
 
 /** The shape only: the conflict is a word, never a number, so a digit makes the whole answer invalid. */
 export const WardenJudgeSchema = z.object({ expectationId: z.string(), conflict: z.enum(['none', 'minor', 'major']) }).strip();
@@ -33,9 +35,3 @@ registerCallType<WardenJudged>({
   },
   schema: WardenJudgeSchema as unknown as z.ZodType<WardenJudged>,
 });
-
-/** One mechanic call. Null on any failure, or when the id is not in the list (the engine then judges by its rules alone). */
-export async function judgeOrder(input: WardenJudgeInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<WardenJudged | null> {
-  const r = await callLlm<WardenJudged>('warden_judge', input, deps);
-  return r.ok && input.expectations.some((x) => x.id === r.value.expectationId) ? r.value : null;
-}

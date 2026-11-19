@@ -30,3 +30,8 @@ export function testEnvelope(w: {
     toast: w.toast ?? (() => {}),
   });
 }
+
+/** An envelope with no campaign behind it (the setup wizard imports before one exists): failures are never recorded, only returned. */
+export function standaloneEnvelope(st: StAdapter, reg: Registries, settings: () => AliusSettings): Envelope {
+  return testEnvelope({ st, reg, settings, state: () => null, dispatch: () => [], restore: () => false });
+}

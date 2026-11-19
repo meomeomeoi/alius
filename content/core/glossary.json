@@ -1702,6 +1702,45 @@
     ]
   },
   {
+    "id": "generation_failed",
+    "term": "Failed generation",
+    "short": "A model call gave nothing usable. The chip says why; RETRY runs it again, the menu offers a bigger budget or the other model, DROP gives it up.",
+    "long": "AUTHOR TO WRITE: Every place that asks a model for something (a reading of a conversation, a summary, a decision's wording, an answer by message) can fail. The game never hides it: a chip appears where the answer was due, with the reason in plain words. Where a fallback exists (a plain line for a scene, the authored text of a decision) it already stands, and a later answer replaces it where that is allowed.",
+    "see": [
+      "generation_reasons",
+      "generation_reroll",
+      "generation_record"
+    ]
+  },
+  {
+    "id": "generation_reroll",
+    "term": "Reroll",
+    "short": "Ask the model again for what it already gave. It works while nothing depends on the old answer; otherwise the button stays off and says why.",
+    "long": "AUTHOR TO WRITE: A text can simply be replaced. A decision's wording can be replaced until it is answered. A reading of a conversation or a summary changed the world, so the world is first put back as it was, and only while nothing else has happened since. A reroll costs a call like any other and can fail like any other.",
+    "see": [
+      "generation_failed"
+    ]
+  },
+  {
+    "id": "generation_record",
+    "term": "Generation record",
+    "short": "What the game keeps of a failed call: who asked, why it failed, the tries and when. Never the prompt, the chat or the model's words. At most 20.",
+    "long": "AUTHOR TO WRITE: A record closes when its call finally works, when it is dropped or when the fallback is kept. One whose moment has passed (the scene is over, the decision was made) stays listed for the rest of that day and the next, saying why, and then goes. Background work that nobody is waiting for shows in SYS only and does not count on the badge.",
+    "see": [
+      "generation_failed"
+    ]
+  },
+  {
+    "id": "generation_reasons",
+    "term": "Why a call fails",
+    "short": "Refused, cut off, timed out, the connection failed, the answer did not fit the form, nothing came back, or no mechanic profile is selected.",
+    "long": "AUTHOR TO WRITE: A refusal is never retried on its own (the model would refuse again): pick another model or change what is asked. A cut-off or malformed answer is retried with a bigger budget, a lost connection, a timeout or an empty answer with the same one; how many automatic tries there are is a setting.",
+    "see": [
+      "setting_auto_retry",
+      "setting_llm_timeout_ms"
+    ]
+  },
+  {
     "id": "setting_llm_timeout_ms",
     "term": "Model timeout",
     "short": "Seconds a model call may run before it counts as failed, 10 to 600. The default is 120.",

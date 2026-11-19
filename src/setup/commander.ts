@@ -3,7 +3,8 @@ import { BODY_STATS, DESCRIPTORS, defaultCommanderSetup, poolSpent, traitBlockRe
 import { TUNING } from '../engine/tuning';
 import '../llm/calls/commanderImport'; // registers the call type
 import type { CommanderImportInput } from '../llm/calls/commanderImport';
-import { callLlm } from '../llm/orchestrator';
+import { describeFailure } from '../llm/describe';
+import type { Envelope } from '../llm/envelope';
 import type { AliusSettings } from '../settings';
 import type { StAdapter } from '../st/adapter';
 
@@ -74,7 +75,7 @@ const usable = (raw: unknown, result: ImportedCommander): boolean =>
 
 /** Persona → candidate commander. Any failure becomes `manual` (the wizard then offers the form); never throws. */
 export async function importCommander(
-  st: StAdapter, deps: { settings: AliusSettings; registries: Registries },
+  st: StAdapter, deps: { settings: AliusSettings; registries: Registries; /** P14: the envelope the call runs through (no record: the wizard shows the reason). */ generations: Envelope },
 ): Promise<CommanderImportOutcome> {
   const { settings, registries } = deps;
   try {
@@ -86,11 +87,20 @@ export async function importCommander(
         .filter((t) => t.kind === 'regular')
         .map((t) => ({ id: String(t.id), upside: String(t.upside), downside: String(t.downside) })),
     };
-    const r = await callLlm<unknown>('commander_import', input, { st, settings });
-    if (!r.ok) return { kind: 'manual', reason: r.detail || r.reason };
-    const result = { ...sanitizeCommanderImport(r.value, registries, { desireBondDefects: settings.desireBondDefects }), personaName: input.persona.name };
-    if (!usable(r.value, result)) return { kind: 'manual', reason: "no usable commander profile in the model's answer" };
-    return { kind: 'ok', result };
+    // the `setup.commander_import` site: the sanitized candidate (a failure goes to the manual form)
+    deps.generations.bind<CommanderImportInput, { result: ImportedCommander; usable: boolean }>('setup.commander_import', {
+      build: () => input,
+      parse: (raw) => {
+        const result = { ...sanitizeCommanderImport(raw, registries, { desireBondDefects: settings.desireBondDefects }), personaName: input.persona.name };
+        return { result, usable: usable(raw, result) };
+      },
+      apply: () => 'ok',
+    });
+    const out = await deps.generations.generate<{ result: ImportedCommander; usable: boolean }>('setup.commander_import', 'commander', { noRecord: true });
+    if (out.kind === 'failed') return { kind: 'manual', reason: describeFailure({ label: 'Commander import', reason: out.reason, timeoutMs: settings.llmTimeoutMs }) };
+    if (out.kind !== 'applied') return { kind: 'manual', reason: 'The import was dropped.' };
+    if (!out.value.usable) return { kind: 'manual', reason: "no usable commander profile in the model's answer" };
+    return { kind: 'ok', result: out.value.result };
   } catch (e) {
     return { kind: 'manual', reason: e instanceof Error ? e.message : String(e) };
   }

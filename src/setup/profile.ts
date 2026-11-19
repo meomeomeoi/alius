@@ -5,7 +5,8 @@ import { defectAllowedFor, validateBond } from '../engine/bonds';
 import type { Bond, Unit, WorldStance } from '../engine/state/types';
 import { isNeutralChoice, worldChoices, worldDispositionLevel } from '../engine/worldOptions';
 import type { ImportSection, ProfileImportInput } from '../llm/calls/profileImport';
-import { callLlm } from '../llm/orchestrator';
+import { describeFailure } from '../llm/describe';
+import type { Envelope } from '../llm/envelope';
 import { estTokens } from '../llm/text';
 import type { AliusSettings } from '../settings';
 import type { CardInfo, StAdapter } from '../st/adapter';
@@ -283,12 +284,19 @@ export type ImportOutcome =
   | { kind: 'ok'; profile: ImportedProfile; dropped: string[]; missing: ImportSection[] }
   | { kind: 'manual'; reason: string };
 
+type Sanitized = ReturnType<typeof sanitizeProfile>;
+/** The imports in flight, by site key (`<avatar>:<sections>`): the site's `build` rebuilds nothing, it reads what `importProfile` prepared. */
+const inFlight = new Map<string, { input: ReturnType<typeof buildImportInput>; ctx: Parameters<typeof sanitizeProfile>[1] }>();
+const CRITICAL: ImportSection[] = ['role', 'defects'];
+const criticalOf = (m: ImportSection[]): ImportSection[] => m.filter((s) => CRITICAL.includes(s));
+const noUsable = (m: ImportSection[]): string => `no usable ${criticalOf(m).join(' / ')} in the model's answer`;
+
 /** Card → candidates. Any failure becomes `manual`; never throws. */
 export async function importProfile(
   avatar: string,
   sections: ImportSection[],
   deps: {
-    st: StAdapter; settings: AliusSettings; registries: Registries; /** P8: the world's choices; absent = the world sections are not asked for. */ world?: Record<string, string>;
+    st: StAdapter; settings: AliusSettings; registries: Registries; /** P14: the envelope the call runs through (no record: there is no campaign yet, the wizard shows the reason). */ generations: Envelope; /** P8: the world's choices; absent = the world sections are not asked for. */ world?: Record<string, string>;
     /** P9d: her current bond, for a defects-only re-sync. */
     bond?: Bond | null;
   },
@@ -300,22 +308,27 @@ export async function importProfile(
     const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
     const ctx = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
 
-    type Attempt = { ok: true; value: ReturnType<typeof sanitizeProfile> } | { ok: false; reason: string };
-    const attempt = async (): Promise<Attempt> => {
-      const r = await callLlm<unknown>('profile_import', input, { st, settings });
-      if (!r.ok) return { ok: false, reason: r.detail || r.reason };
-      return { ok: true, value: sanitizeProfile(r.value, ctx) };
-    };
-    const critical = (m: ImportSection[]) => m.filter((s) => s === 'role' || s === 'defects');
-
-    let res = await attempt();
-    if (res.ok && critical(res.value.missing).length > 0) res = await attempt();
-    if (!res.ok) return { kind: 'manual', reason: res.reason };
-    const stillMissing = critical(res.value.missing);
-    if (stillMissing.length > 0) {
-      return { kind: 'manual', reason: `no usable ${stillMissing.join(' / ')} in the model's answer` };
+    // the `setup.profile_import` site: the sanitized candidates. A critical section the answer lacks is a rejected answer: it is asked
+    // again within the automatic retries (the second try the wizard always made), then the import goes to the manual form
+    const key = `${avatar}:${input.sections.join(',')}`;
+    inFlight.set(key, { input, ctx });
+    deps.generations.bind<ReturnType<typeof buildImportInput>, Sanitized>('setup.profile_import', {
+      build: (k) => inFlight.get(k)?.input ?? { expired: 'The import was dropped.' },
+      parse: (raw, _input) => sanitizeProfile(raw, inFlight.get(key)?.ctx ?? ctx),
+      apply: (_k, value) => (criticalOf(value.missing).length > 0 ? { rejected: noUsable(value.missing) } : 'ok'),
+    });
+    let out: Awaited<ReturnType<Envelope['generate']>>;
+    try {
+      out = await deps.generations.generate<Sanitized>('setup.profile_import', key, { noRecord: true });
+    } finally {
+      inFlight.delete(key);
     }
-    return { kind: 'ok', ...res.value };
+    if (out.kind === 'applied') return { kind: 'ok', ...(out.value as Sanitized) };
+    if (out.kind === 'failed') {
+      // a critical section the answer lacked keeps its own words; every other failure says what happened to the call
+      return { kind: 'manual', reason: out.detail.startsWith('no usable ') ? out.detail : describeFailure({ label: 'Profile import', reason: out.reason, budget: undefined, timeoutMs: settings.llmTimeoutMs }) };
+    }
+    return { kind: 'manual', reason: 'The import was dropped.' };
   } catch (e) {
     return { kind: 'manual', reason: e instanceof Error ? e.message : String(e) };
   }
