@@ -30,6 +30,12 @@ describe('the head start reading', () => {
     expect(reading(build({ days: 30, newArrivals: [] }))).toEqual(['The squad has known the commander for 30 days.']);
   });
 
+  it('does not name a deserted new arrival', () => {
+    const s = build({ days: 14, newArrivals: ['rhea.png'] });
+    s.squad.find((u) => u.id === 'unit_rhea')!.status = 'deserted' as never;
+    expect(reading(s)).toEqual(['The squad has known the commander for 14 days.']);
+  });
+
   it('says there is none without a head start, and reads nothing of it without a campaign', () => {
     expect(reading(build())).toEqual(['No head start.']);
     expect(reading(null).join(' ')).not.toMatch(/known the commander|New arrivals/);

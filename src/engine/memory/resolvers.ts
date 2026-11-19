@@ -5,6 +5,7 @@ import { voteSubjectLabel } from '../power/ballot';
 import { scapegoatOptionId } from '../power/scapegoat';
 import { wardenOf } from '../warden/state';
 import { isLiving } from '../economy';
+import { momentTag } from '../headStart/tag';
 import type { CampaignState, VoteKind } from '../state/types';
 
 /**
@@ -15,6 +16,8 @@ import type { CampaignState, VoteKind } from '../state/types';
 export interface MemoryResolution {
   ids: Record<string, string[]>;
   vars: Record<string, string>;
+  /** P11b: tags the fact carries besides its rule's (a head start moment's own kind); none by default. */
+  tags?: string[];
 }
 export type MemoryResolver = (draft: CampaignState, event: EngineEvent, reg: Registries) => MemoryResolution | null;
 /** The id groups and vars a resolver can return: what a rule's `about`, `audience`, `when` and `{text}` may name. */
@@ -282,5 +285,6 @@ registerMemoryResolver('head_start_moment', (draft, event) => {
   return {
     ids: { unit: [subject.id] },
     vars: { text, kind: str(event.kind) ?? '', importance: String(event.importance ?? '') },
+    ...(str(event.kind) !== undefined ? { tags: [momentTag(str(event.kind)!)] } : {}),
   };
 }, { ids: ['unit'], vars: ['text', 'kind', 'importance'] });

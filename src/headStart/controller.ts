@@ -1,3 +1,4 @@
+import { isLiving } from '../engine/economy';
 import { commanderLine } from '../engine/commander/profile';
 import { recapCommitted } from '../engine/headStart/recap';
 import { factTextMax } from '../engine/memory/config';
@@ -33,7 +34,7 @@ export function headStartOpening(state: CampaignState): string {
   const hs = state.headStart;
   if (!hs) return '';
   const known = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === 'named' && !known.has(u.id) && u.status !== 'dead').map((u) => u.displayName);
+  const arrivals = state.squad.filter((u) => u.kind === 'named' && !known.has(u.id) && isLiving(u)).map((u) => u.displayName);
   const first = `The squad has known the commander for ${hs.days} days: no introductions, no first meeting.`;
   if (arrivals.length === 0) return first;
   return `${first} ${joinNames(arrivals)} arrived today and ${arrivals.length === 1 ? 'meets' : 'meet'} the commander for the first time.`;

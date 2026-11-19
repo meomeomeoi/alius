@@ -49,6 +49,21 @@ describe('the fact text size is a setting of the campaign memory', () => {
     expect(fact(narrow, long).text).toHaveLength(120);
   });
 
+  it('a retold rumor is asked for and cut at the same length', async () => {
+    const { readRumor } = await import('../../../src/llm/calls/rumorRetell');
+    expect(readRumor('x'.repeat(500))).toHaveLength(200);
+    expect(readRumor('x'.repeat(500), 350)).toHaveLength(350);
+    expect(readRumor('x'.repeat(500), 120)).toHaveLength(120);
+    await import('../../../src/llm/calls/all');
+    const { callLlm } = await import('../../../src/llm/orchestrator');
+    const { FakeStAdapter } = await import('../../../src/st/fake');
+    const { getSettings } = await import('../../../src/settings');
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    st.mainReplies = ['They say it.'];
+    await callLlm('rumor_retell', { teller: 'Ann', bands: 'trust steady', text: 'x', factTextMax: 120 }, { st, settings: getSettings(st) });
+    expect((st.calls[0] as { system?: string }).system).toMatch(/at most 120 characters/);
+  });
+
   it('the intent validator keeps what the setting allows', () => {
     const raw = { facts: [{ about: ['unit_ann'], text: long, importance: 3, tags: [] }], promises: [{ kind: 'made', by: 'commander', to: 'unit_ann', text: long }] };
     const base = { participants: ['unit_ann'], squad: [{ id: 'unit_ann' }] };

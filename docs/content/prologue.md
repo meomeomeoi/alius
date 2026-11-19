@@ -202,7 +202,7 @@ _DRAFT — author will rewrite._ Texts of a campaign that begins as if the comma
   - title: `RECOLLECTION`.
   - You sit down at the table and let the past come back: the charge, the article, the day the transport brought you here.
   - One night you lie awake and work out what your place is in this outpost: a convicted officer over soldiers who were built to be written off.
-  - The weeks since have gone by with the squad. You put them in order, one by one, before the first operation begins.
+  - The days since have gone by with the squad. You put them in order, one by one, before the first operation begins.
 - **Intake with a head start** (`intake.headStartTitle` / `headStartLines`; the start keeps its own flavour; the lines the form does not replace stay):
   - title: `FILE REVIEW`.
   - skeleton: `ask_crime` For the file: the article under which you were convicted. `ask_name` Name on the file? `confirm_owner` Your sentence is still held by {CORPORATION}. Confirm that the record is correct.

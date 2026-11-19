@@ -76,7 +76,7 @@ export function rememberEvents(draft: CampaignState, events: EngineEvent[], reg:
       const knownBy = audienceOf(draft, parts, res, aboutIds);
       const names = res.vars.names ?? (rule.about === 'world' ? '' : joinNames(aboutIds.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id)));
       addFact(draft, {
-        about: aboutIds, text: fill(rule.text, { ...res.vars, names }), tags: rule.tags, importance: rule.importance as 1 | 2 | 3 | 4 | 5, day: draft.day, knownBy,
+        about: aboutIds, text: fill(rule.text, { ...res.vars, names }), tags: [...rule.tags, ...(res.tags ?? [])], importance: rule.importance as 1 | 2 | 3 | 4 | 5, day: draft.day, knownBy,
         ...(rule.spread !== 'none' && !knownBy.includes('*') ? { spread: rule.spread } : {}),
         ...(rule.hiddenFromCommander === true ? { hiddenFromCommander: true as const } : {}),
       }, { remembered: true });

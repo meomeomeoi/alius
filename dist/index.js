@@ -22388,6 +22388,9 @@ function retrieveFacts(state, q, k = memoryConfig(state).retrievalK) {
   return factsVisibleTo(state, q.participants).map((f) => ({ f, s: score(f) })).sort((a, b) => b.s - a.s || b.f.day - a.f.day || order(b.f) - order(a.f)).slice(0, k).map((x) => x.f);
 }
 
+// src/engine/headStart/tag.ts
+var momentTag = (kind) => `hs_${kind}`.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").slice(0, 32);
+
 // src/engine/memory/resolvers.ts
 var resolvers = /* @__PURE__ */ new Map();
 var RESOLVER_SHAPES = {};
@@ -22587,7 +22590,8 @@ registerMemoryResolver("head_start_moment", (draft, event) => {
   if (!subject || text2 === void 0 || !draft.squad.some((u) => u.id === subject.id)) return null;
   return {
     ids: { unit: [subject.id] },
-    vars: { text: text2, kind: str2(event.kind) ?? "", importance: String(event.importance ?? "") }
+    vars: { text: text2, kind: str2(event.kind) ?? "", importance: String(event.importance ?? "") },
+    ...str2(event.kind) !== void 0 ? { tags: [momentTag(str2(event.kind))] } : {}
   };
 }, { ids: ["unit"], vars: ["text", "kind", "importance"] });
 
@@ -22651,7 +22655,7 @@ function rememberEvents(draft, events, reg) {
       addFact(draft, {
         about: aboutIds,
         text: fill3(rule.text, { ...res.vars, names }),
-        tags: rule.tags,
+        tags: [...rule.tags, ...res.tags ?? []],
         importance: rule.importance,
         day: draft.day,
         knownBy,
@@ -25833,11 +25837,10 @@ function applyRecap(draft, reg, payload) {
   if (entry) entry.text = chronicle;
   hs.recap.source = source;
   for (const u of hs.units) {
-    const facts = draft.memory.facts.filter((f) => f.tags.includes("head_start") && f.about.length === 1 && f.about[0] === u.unitId);
-    u.moments.forEach((kind, i) => {
-      const fact = facts[i];
+    for (const kind of u.moments) {
+      const fact = draft.memory.facts.find((f) => f.about.length === 1 && f.about[0] === u.unitId && f.tags.includes("head_start") && f.tags.includes(momentTag(kind)));
       if (fact && fact.edited !== true) fact.text = texts.get(`${u.unitId}|${kind}`).slice(0, factMax).trim();
-    });
+    }
   }
   return [];
 }
@@ -28399,7 +28402,7 @@ function headStartOpening(state) {
   const hs = state.headStart;
   if (!hs) return "";
   const known = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id) && u.status !== "dead").map((u) => u.displayName);
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id) && isLiving(u)).map((u) => u.displayName);
   const first2 = `The squad has known the commander for ${hs.days} days: no introductions, no first meeting.`;
   if (arrivals.length === 0) return first2;
   return `${first2} ${joinNames(arrivals)} arrived today and ${arrivals.length === 1 ? "meets" : "meet"} the commander for the first time.`;
@@ -30073,7 +30076,7 @@ var OPERATIONS_LABEL = "DAY 1 OF OPERATIONS";
 var SITE3 = "setup.head_start_recap";
 function renderRecapCard(host, ctx2) {
   host.replaceChildren();
-  const { state, registries: reg } = ctx2;
+  const { state } = ctx2;
   const hs = state.headStart;
   if (!hs || recapCommitted(state) !== null) return;
   const title = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
@@ -30086,7 +30089,7 @@ function renderRecapCard(host, ctx2) {
     const facts = buildKnowledge(state, DEFAULT_SETTINGS).facts().filter((f) => f.tags.includes("head_start"));
     for (const u of hs.units) {
       const mine = facts.filter((f) => f.about.length === 1 && f.about[0] === u.unitId);
-      const lines = u.moments.map((kind, i) => ({ kind, text: mine[i]?.text })).filter((m) => m.text !== void 0);
+      const lines = u.moments.map((kind) => ({ kind, text: mine.find((f) => f.tags.includes(momentTag(kind)))?.text })).filter((m) => m.text !== void 0);
       if (lines.length === 0) continue;
       body.append(h(
         "div",
@@ -32247,9 +32250,9 @@ registerCallType({
   id: "rumor_retell",
   profile: "mechanic",
   json: false,
-  system: () => [
+  system: (raw) => [
     "You retell a rumor of a squad-command roleplay in the voice of the soldier who passes it on.",
-    `Write ONE line of at most ${TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; colour it by how she feels.`,
+    `Write ONE line of at most ${raw?.factTextMax ?? TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; colour it by how she feels.`,
     'No numbers, no headings, no markdown, no quotation marks. Give the commander no pronoun (write "the commander").'
   ].join("\n"),
   prompt: (raw) => {
@@ -32257,8 +32260,8 @@ registerCallType({
     return [`Teller: ${i.teller}`, `How she is: ${i.bands}`, `The rumor: ${i.text}`, "", "Write the retelling."].join("\n");
   }
 });
-function readRumor(raw) {
-  const text2 = raw.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.memory.factTextMax).trim();
+function readRumor(raw, max = TUNING.memory.factTextMax) {
+  const text2 = raw.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, max).trim();
   return text2 === "" || /\d/.test(text2) ? null : text2;
 }
 
@@ -32442,9 +32445,9 @@ function createMemoryController(deps) {
       const teller = s.squad.find((u) => u.kind === "named" && fact.knownBy.includes(u.id) && s.relations[u.id] !== void 0);
       if (!teller) return { expired: "Nobody is left to tell it." };
       const rel = s.relations[teller.id];
-      return { teller: teller.displayName, text: fact.text, bands: `trust ${trustBand(rel.trust)}, affinity ${affinityBand(rel.affinity)}, stress ${stressBand(teller.stress)}` };
+      return { teller: teller.displayName, text: fact.text, factTextMax: factTextMax(s), bands: `trust ${trustBand(rel.trust)}, affinity ${affinityBand(rel.affinity)}, stress ${stressBand(teller.stress)}` };
     },
-    parse: (raw) => readRumor(String(raw)),
+    parse: (raw, input) => readRumor(String(raw), input.factTextMax),
     apply(factId, text2) {
       const events = app.dispatch({ type: "memory/rumor_text", payload: { factId, text: text2 } }, { expectChatId: chatId() });
       return events.some((e) => e.type === "error") ? { stale: true } : "ok";
@@ -35150,7 +35153,8 @@ var Wizard = class {
       stanceName: String(stanceEntry(this.deps.registries, stance)?.name ?? stance),
       trust: built.state.relations[id].trust,
       impunity: impunity.value,
-      band: impunityBand(impunity.value)
+      band: impunityBand(impunity.value),
+      headStartDays: this.s.headStart.newArrivals.includes(u.avatar) ? 0 : this.s.headStart.days
     };
   }
   /** The finished setup, or null unless `validateSetup` passes. */
@@ -35644,6 +35648,9 @@ function renderCalibration(host, ctx2) {
         `STARTING STANCE: ${p.stanceName.toUpperCase()} \u2014 TRUST ${p.trust}, IMPUNITY ${p.impunity} (${p.band.toUpperCase()})`
       )
     ));
+    if (p.headStartDays > 0) {
+      host.append(h("p", { class: "alius-dim alius-start-head-start" }, `With a head start of ${p.headStartDays} days these numbers will have moved by day 1: her first impression develops and she may know the crime.`));
+    }
   }
   if (cand?.notes) host.append(h("p", { class: "alius-notes" }, `NOTES: ${cand.notes}`));
 }
@@ -35768,7 +35775,7 @@ function unitLines(wizard, reg, u, n) {
     `    DEFECTS   : ${c.defects.map((d) => nameOf11(reg, "defects", d.id)).join(", ") || "\u2014"}`,
     `    VALUES    : ${values}`,
     `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
-    ...preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity})`] : []
+    ...preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity}${preview.headStartDays > 0 ? ", BEFORE THE HEAD START" : ""})`] : []
   ];
 }
 function reviewLines(wizard, reg) {
@@ -42322,7 +42329,7 @@ function headStartProvider(_s, env, _k) {
   const hs = state.headStart;
   if (!hs) return { lines: ["No head start."] };
   const known = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id)).map((u) => u.displayName);
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id) && isLiving(u)).map((u) => u.displayName);
   return { lines: [`The squad has known the commander for ${hs.days} days.`, ...arrivals.length > 0 ? [`New arrivals: ${arrivals.join(", ")}.`] : []] };
 }
 function registerHeadStartProviders() {

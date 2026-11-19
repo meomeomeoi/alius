@@ -2,8 +2,11 @@ import type { Registries } from '../../content/types';
 import { addChronicle } from '../memory/chronicle';
 import { factTextMax } from '../memory/config';
 import type { CampaignState } from '../state/types';
+import { momentTag } from './tag';
 import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
+
+export { momentTag };
 
 export const FIRST_SCENE_STARTED = 'The first scene has started.';
 
@@ -53,8 +56,8 @@ function parse(draft: CampaignState, payload: unknown): { texts: Map<string, str
 /**
  * The recap of the first weeks (P11b §4). The first application writes one chronicle entry (audience: the known soldiers) and emits
  * `head_start_applied` plus one `head_start_moment` per moment, which the memory rules turn into facts. A later one (a reroll, or a retry
- * after the fallback) replaces the texts in place while `recapCommitted` is null: the chronicle entry by id, and each soldier's facts
- * tagged `head_start` in creation order (a fact the player edited keeps its text). It draws nothing.
+ * after the fallback) replaces the texts in place while `recapCommitted` is null: the chronicle entry by id, and each moment's fact by the
+ * moment's own tag (a fact the player edited keeps its text; one the player forgot is skipped). It draws nothing.
  */
 export function applyRecap(draft: CampaignState, reg: Registries, payload: unknown): EngineEvent[] {
   const hs = draft.headStart;
@@ -79,11 +82,11 @@ export function applyRecap(draft: CampaignState, reg: Registries, payload: unkno
   if (entry) entry.text = chronicle;
   hs.recap.source = source;
   for (const u of hs.units) {
-    const facts = draft.memory.facts.filter((f) => f.tags.includes('head_start') && f.about.length === 1 && f.about[0] === u.unitId);
-    u.moments.forEach((kind, i) => {
-      const fact = facts[i];
+    for (const kind of u.moments) {
+      // by the moment's own tag: a fact the player forgot is skipped, and one that was merged into another is not mistaken for it
+      const fact = draft.memory.facts.find((f) => f.about.length === 1 && f.about[0] === u.unitId && f.tags.includes('head_start') && f.tags.includes(momentTag(kind)));
       if (fact && fact.edited !== true) fact.text = texts.get(`${u.unitId}|${kind}`)!.slice(0, factMax).trim();
-    });
+    }
   }
   return [];
 }

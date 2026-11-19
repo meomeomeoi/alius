@@ -104,9 +104,9 @@ export function createMemoryController(deps: MemoryDeps): MemoryController {
       const teller = s.squad.find((u) => u.kind === 'named' && fact.knownBy.includes(u.id) && s.relations[u.id] !== undefined);
       if (!teller) return { expired: 'Nobody is left to tell it.' };
       const rel = s.relations[teller.id];
-      return { teller: teller.displayName, text: fact.text, bands: `trust ${trustBand(rel.trust)}, affinity ${affinityBand(rel.affinity)}, stress ${stressBand(teller.stress)}` };
+      return { teller: teller.displayName, text: fact.text, factTextMax: factTextMax(s), bands: `trust ${trustBand(rel.trust)}, affinity ${affinityBand(rel.affinity)}, stress ${stressBand(teller.stress)}` };
     },
-    parse: (raw) => readRumor(String(raw)),
+    parse: (raw, input) => readRumor(String(raw), input.factTextMax),
     apply(factId, text) {
       const events = app.dispatch({ type: 'memory/rumor_text', payload: { factId, text } }, { expectChatId: chatId() });
       return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';

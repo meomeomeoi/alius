@@ -80,7 +80,7 @@ describe('remembered moments (P11b)', () => {
     expect(f.about).toEqual([ANN]);
     expect(f.knownBy).toEqual([ANN]);
     expect(f.importance).toBe(3);
-    expect(f.tags).toEqual(['head_start']);
+    expect(f.tags).toEqual(['head_start', 'hs_shared_meal']); // the rule's tag and the moment's own
     expect(f.text).toBe('Soup at 0200.');
     expect(f.spread).toBeUndefined();
     expect(f.hiddenFromCommander).toBeUndefined();

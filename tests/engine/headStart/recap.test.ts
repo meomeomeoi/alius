@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/headStart';
 import '../../../src/engine/actions/memory';
-import { recapCommitted, recapPairs } from '../../../src/engine/headStart/recap';
+import { momentTag, recapCommitted, recapPairs } from '../../../src/engine/headStart/recap';
 import { buildCampaign, type SetupResult } from '../../../src/engine/setup';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { TUNING } from '../../../src/engine/tuning';
@@ -43,7 +43,7 @@ describe('head_start/recap: the first application', () => {
       expect(f.id).toMatch(/^fr/);
       expect(f.about).toEqual([pairs[i].unitId]);
       expect(f.knownBy).toEqual([pairs[i].unitId]);
-      expect(f.tags).toEqual(['head_start']);
+      expect(f.tags).toEqual(['head_start', momentTag(pairs[i].kind)]);
       expect(f.text).toBe(`a: ${pairs[i].unitId} remembers ${pairs[i].kind}.`);
       expect(f.importance).toBe(reg.headStartMoments.get(pairs[i].kind)!.importance);
       expect(f.hiddenFromCommander).toBeUndefined();
@@ -142,6 +142,53 @@ describe('head_start/recap: replacing', () => {
     const r = send(first, answer(first, 'b'));
     expect(errors(r.events)[0]).toMatchObject({ message: 'The first scene has started.' });
     expect(r.state).toBe(first);
+  });
+});
+
+describe('head_start/recap: facts are found by their moment, not by position', () => {
+  const two = (): CampaignState => {
+    // N = 30 gives every known soldier two moments
+    const s = build(30, ['cat.png']);
+    expect(s.headStart!.units.every((u) => u.moments.length === 2)).toBe(true);
+    return s;
+  };
+
+  it('every fact carries the tag of its moment', () => {
+    const s = two();
+    const r = send(s, answer(s)).state;
+    for (const u of s.headStart!.units) {
+      for (const kind of u.moments) {
+        const f = headFacts(r).find((x) => x.about[0] === u.unitId && x.tags.includes(momentTag(kind)));
+        expect(f?.text, `${u.unitId} ${kind}`).toBe(`a: ${u.unitId} remembers ${kind}.`);
+      }
+    }
+    expect(momentTag('shared_meal')).toBe('hs_shared_meal');
+  });
+
+  it('a forgotten fact is skipped on a reroll; the others get their own text', () => {
+    const s = two();
+    const first = send(s, answer(s, 'a')).state;
+    const unit = s.headStart!.units[0];
+    const [k0, k1] = unit.moments;
+    const gone = headFacts(first).find((f) => f.about[0] === unit.unitId && f.tags.includes(momentTag(k0)))!;
+    const forgotten = run(first, reg, { type: 'memory/forget', payload: { factId: gone.id } }).state;
+    const r = send(forgotten, answer(forgotten, 'b')).state;
+    expect(errors(send(forgotten, answer(forgotten, 'b')).events)).toEqual([]);
+    const mine = headFacts(r).filter((f) => f.about[0] === unit.unitId);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].tags).toContain(momentTag(k1));
+    expect(mine[0].text).toBe(`b: ${unit.unitId} remembers ${k1}.`); // not the text of the moment that was forgotten
+  });
+
+  it('an edited fact is found and keeps its text', () => {
+    const s = two();
+    const first = send(s, answer(s, 'a')).state;
+    const unit = s.headStart!.units[0];
+    const second = headFacts(first).find((f) => f.about[0] === unit.unitId && f.tags.includes(momentTag(unit.moments[1])))!;
+    const edited = run(first, reg, { type: 'memory/edit', payload: { factId: second.id, text: 'Mine.' } }).state;
+    const r = send(edited, answer(edited, 'b')).state;
+    expect(headFacts(r).find((f) => f.id === second.id)!.text).toBe('Mine.');
+    expect(headFacts(r).find((f) => f.about[0] === unit.unitId && f.tags.includes(momentTag(unit.moments[0])))!.text).toMatch(/^b: /);
   });
 });
 

@@ -9,6 +9,7 @@ import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
 import { h } from '../../../src/ui/dom';
 import type { GenerationUi } from '../../../src/ui/generation/surface';
+import { momentTag } from '../../../src/engine/headStart/recap';
 import { renderRecapCard } from '../../../src/ui/headStart/recapCard';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
 import { loadCore, unitSetup } from '../../helpers/world';
@@ -54,6 +55,21 @@ describe('THE FIRST WEEKS card', () => {
       for (const kind of u.moments) expect(text).toContain(`${u.unitId} remembers ${kind}.`);
     }
     expect(text).not.toContain('Rhea'); // a new arrival has no part in it
+  });
+
+  it('a forgotten fact leaves its line out, and the others keep their own kind', () => {
+    const s = withRecap(build(30));
+    const unit = s.headStart!.units[0];
+    const [k0, k1] = unit.moments;
+    const gone = s.memory.facts.find((f) => f.about[0] === unit.unitId && f.tags.includes(momentTag(k0)))!;
+    const forgotten = structuredClone(s);
+    forgotten.memory.facts = forgotten.memory.facts.filter((f) => f.id !== gone.id);
+    const { host } = draw(forgotten, { generation: ui() });
+    const block = [...host.querySelectorAll('.alius-head-start-unit')].find((b) => b.querySelector('h3')!.textContent === forgotten.squad.find((x) => x.id === unit.unitId)!.displayName)!;
+    const addresses = [...block.querySelectorAll('.alius-head-start-moment')].map((l) => l.getAttribute('data-analyze'));
+    expect(addresses).toEqual([`headStartMoments:${k1}`]); // her other line stays, the forgotten one is gone
+    const mine = [...block.querySelectorAll('.alius-head-start-moment')].find((l) => l.getAttribute('data-analyze') === `headStartMoments:${k1}`);
+    expect(mine?.textContent).toBe(`${unit.unitId} remembers ${k1}.`);
   });
 
   it('while the recap is pending the card says so', () => {

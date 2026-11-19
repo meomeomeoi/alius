@@ -236,6 +236,15 @@ describe('the opening directive', () => {
     expect(headStartOpening(build(7, []))).toBe('The squad has known the commander for 7 days: no introductions, no first meeting.');
   });
 
+  it('a deserted or terminated new arrival is not named', () => {
+    const s = build(14, ['bea.png', 'rhea.png']);
+    s.squad.find((u) => u.id === 'unit_rhea')!.status = 'deserted' as never;
+    expect(headStartOpening(s)).toContain('Bea arrived today and meets');
+    expect(headStartOpening(s)).not.toContain('Rhea');
+    s.squad.find((u) => u.id === 'unit_bea')!.status = 'terminated' as never;
+    expect(headStartOpening(s)).toBe('The squad has known the commander for 14 days: no introductions, no first meeting.');
+  });
+
   it('gives the commander no pronoun', () => {
     for (const s of [build(), build(30, []), build(7, ['bea.png', 'rhea.png'])]) expect(headStartOpening(s)).not.toMatch(COMMANDER_PRONOUN);
   });

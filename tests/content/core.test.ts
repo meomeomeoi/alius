@@ -901,6 +901,7 @@ describe('core content pack: P11 prologues and unlocks', () => {
       expect(forms.exam.headStartLines!.dictate, String(p.id)).toMatch(/\{FIELD\}.*\{VALUE\}/);
       expect(forms.intake.headStartTitle && forms.exam.headStartTitle, String(p.id)).toBeTruthy();
       const own = s.cold_open as { headStartText?: string[]; headStartTitle?: string };
+      expect(own.headStartText?.join(' '), String(p.id)).not.toMatch(/\bweeks\b/i); // a head start may be only seven days
       expect(own.headStartText?.length, String(p.id)).toBeGreaterThanOrEqual(2);
       expect(own.headStartTitle, String(p.id)).toBeTruthy();
       expect(Object.keys(s.intake.lines!).sort()).toEqual(['ask_crime', 'ask_name', 'confirm_owner']);

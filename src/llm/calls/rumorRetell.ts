@@ -8,15 +8,17 @@ export interface RumorInput {
   bands: string;
   /** The fact as it was. */
   text: string;
+  /** P11b: the campaign's fact length (a memory setting); absent = the default. */
+  factTextMax?: number;
 }
 
 registerCallType<string>({
   id: 'rumor_retell',
   profile: 'mechanic',
   json: false,
-  system: () => [
+  system: (raw) => [
     'You retell a rumor of a squad-command roleplay in the voice of the soldier who passes it on.',
-    `Write ONE line of at most ${TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; colour it by how she feels.`,
+    `Write ONE line of at most ${(raw as RumorInput | undefined)?.factTextMax ?? TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; colour it by how she feels.`,
     'No numbers, no headings, no markdown, no quotation marks. Give the commander no pronoun (write "the commander").',
   ].join('\n'),
   prompt: (raw) => {
@@ -26,7 +28,7 @@ registerCallType<string>({
 });
 
 /** The retelling of a model answer (`rumor_retell`); null when it is empty or wrote a digit (the rumor is then told as it was). */
-export function readRumor(raw: string): string | null {
-  const text = raw.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, TUNING.memory.factTextMax).trim();
+export function readRumor(raw: string, max: number = TUNING.memory.factTextMax): string | null {
+  const text = raw.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, max).trim();
   return text === '' || /\d/.test(text) ? null : text;
 }

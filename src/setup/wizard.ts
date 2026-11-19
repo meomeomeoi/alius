@@ -142,6 +142,8 @@ export interface StartPreview {
   trust: number;
   impunity: number;
   band: string;
+  /** P11b: the head start's days when it will still move these numbers (0 without one, or for a new arrival). */
+  headStartDays: number;
 }
 
 export class Wizard {
@@ -863,6 +865,7 @@ export class Wizard {
     return {
       stance, stanceName: String(stanceEntry(this.deps.registries, stance)?.name ?? stance), trust: built.state.relations[id].trust,
       impunity: impunity.value, band: impunityBand(impunity.value),
+      headStartDays: this.s.headStart.newArrivals.includes(u.avatar) ? 0 : this.s.headStart.days,
     };
   }
 

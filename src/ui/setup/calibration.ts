@@ -382,6 +382,10 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
     host.append(h('p', { class: 'alius-start-stance' },
       h('span', { class: 'alius-chip', 'data-start-stance': p.stance, ...analyzeAttrs(`commandStances:${p.stance}`) },
         `STARTING STANCE: ${p.stanceName.toUpperCase()} — TRUST ${p.trust}, IMPUNITY ${p.impunity} (${p.band.toUpperCase()})`)));
+    // P11b: the numbers are those of a first meeting; the days of a head start move them (first impressions develop, she may learn the crime)
+    if (p.headStartDays > 0) {
+      host.append(h('p', { class: 'alius-dim alius-start-head-start' }, `With a head start of ${p.headStartDays} days these numbers will have moved by day 1: her first impression develops and she may know the crime.`));
+    }
   }
 
   if (cand?.notes) host.append(h('p', { class: 'alius-notes' }, `NOTES: ${cand.notes}`));

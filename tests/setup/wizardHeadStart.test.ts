@@ -105,6 +105,15 @@ describe('the wizard: head start', () => {
     expect(w.result()).toBeNull();
   });
 
+  it('the day-1 preview says a head start will move it, and not for a new arrival', () => {
+    const w = ready('ann', 'bea');
+    expect(w.previewStart(0)!.headStartDays).toBe(0);
+    w.setHeadStart(14);
+    w.toggleNewArrival('bea.png');
+    expect(w.previewStart(0)!.headStartDays).toBe(14);
+    expect(w.previewStart(1)!.headStartDays).toBe(0);
+  });
+
   it('the world step is in both wizard modes', () => {
     for (const mode of ['prologue', 'veteran'] as const) {
       const w = ready('ann');
