@@ -324,6 +324,59 @@ Contacts with busy hands or a covered face (`effects: device { lock: 'tabs' }`) 
 
 SYS › Scene: moment frequency (rare / normal / often), moment frequency at `explicit`, moments as chips / immersive (no chips), interaction types on/off per type, real-time physics (off). WORLD PARAMETERS › CONTENT: the four new categories (`watersports` requires `bodily_fluids`).
 
+## TUNING draft (design session 2026-11-19)
+
+Draft balance values agreed with the author; the plan copies them into `TUNING` (`moments`, `physics`, `scent`, `remoteToy`). Scales 0–100; a day is 4 slots (P2); an **exchange** is a player line plus her reply; a **beat** is one interaction step of a physics (≈ 1.5 s in the real-time variant).
+
+**`TUNING.moments`**
+
+| | rare | normal | often |
+|---|---|---|---|
+| chance per exchange while a source is live | 0.10 | 0.20 | 0.35 |
+| minimum exchanges between moments | 6 | 4 | 2 |
+| maximum moments per scene | 2 | 4 | 6 |
+
+- At `intimacy: explicit` the chance is ×0.5 (its own setting). One source at most once per 8 exchanges.
+- Extractor confidence: `blocking_change` 0.6, `moment_answer` 0.55. Option labels ≤ 40 chars.
+- Her reaction to the gap (expectation strength 1–3): matched → favour +2; partial → 0; opposite → favour −3 and an escalation chance of 0.5 × strength.
+
+**`TUNING.physics`**
+
+| physics | gauge | per beat | her move |
+|---|---|---|---|
+| `breath` | air 100 | −14 | a window every 2–4 beats: caught +30, missed +8 (`cruel` +4) |
+| `weight` | strength 100 | −8 | shifts weight every 3–5 beats: −15…−25 when the hold is uneven |
+| `saturation` | 0 → 100 | +10 × scent band (0.5 / 1 / 1.5 / 2) | "breathe through the mouth" −20, she notices with 0.6 |
+| `tongue_work` | dirt 100 after a run | right order −15, wrong −8 | her check at dirt ≤ 10 |
+| `jaw` | 0 → 100 | +8 | from 70 the input degrades further; rest by style |
+| `gulp` | 4–8 swallows | a window per swallow | a miss = a spill → `tongue_work` with dirt 60 |
+
+- **Breath window width by style** (real time, ms; author ruling: narrow on purpose, a cruel window is meant to be hard to catch): `affectionate` 700, `cold` 550 (even, predictable), `ritual` 500 (strictly counted), `clinical` 500 (every 3rd–4th window "measures": half width), `possessive` 450, `playful` 450 (35 % of windows are false: open and shut at once), `cruel` 250, `obsessive` random 200–1000 → **200–700**. Blend of the style pair 0.65 / 0.35, reversed in the phase the secondary leads.
+- **Turn-based mode:** a window lasts one beat and is given away only by a faint sensory line; for `cruel`, 40 % of windows come with no cue.
+- `holdsUntil`: `signal` releases at a tap or at air ≤ 15; `limit` ignores the first tap and releases at ≤ 5; `blackout` ignores taps and at 0 the blackout happens (without `breath_play` it acts as `limit`).
+- Blackout: time moves 1 slot; status `dizzy` for the rest of the day (commander checks −1, stress +5).
+- She falls asleep during a hold: 0.08 per beat, only at night or when her activity was rest; sleeps 1–3 exchanges.
+- She "forgets" to let go: 0.10, `cruel` +0.15, +0.002 per Impunity point above 50.
+- **Endurance skill** per physics, levels 0–5, each +10 % capacity; it **never widens the windows** (her rhythm stays hers). XP: a hold endured +10; each caught window after three in a row +2; training in a slot +15 (once a day). Thresholds 30 / 80 / 150 / 250 / 400.
+
+**`TUNING.scent`** (read by P17d; listed here because the physics uses it)
+
+- Base per body part (0–3, profile overrides): feet and soles 2, armpits 1.5, the rest 0.5–1.
+- Hygiene: fastidious ×0.6, normal ×1, careless ×1.4.
+- Situation: after a run ×2 for 1 slot then ×1.5; after training ×1.5; +0.15 per slot since the last wash (cap +1); a shower resets.
+- Intention (did not wash on purpose): ×1.5 for 1–3 days.
+- Bands: `faint` < 1, `noticeable` 1–2, `strong` 2–3.5, `overwhelming` ≥ 3.5.
+- Clinging on the commander: `close` 1 slot, `intimate` 2, smothering or `explicit` 3; `wearing_her_scent` until washed.
+- Noticing roll: 0.15 × band (0.3 / 1 / 1.8 / 2.5) × closeness (passing 0.5, talking 1, close 1.8) × her perceptiveness (0.7–1.3), cap 0.9. A room's scent drops a band after 1 slot and is gone after 3.
+- A scent is **learned** after 3 close scenes or once she names it herself.
+
+**Other**
+
+| what | value |
+|---|---|
+| `her_marks` | 2 slots; under a no-washing rule until she allows, at most 3 days |
+| remote toy (P17c) | pulse chance per exchange: `playful` 0.4, `cruel` 0.35, `cold` 0.2, others 0.25; 2–4 characters jolted; others notice: 0.2 per jolted message |
+
 ## Acceptance criteria
 
 1. With none of the new or gated categories enabled and no close relation present, nothing here runs and every seeded test stays byte-identical (no new RNG draw unless a moment or physics is live).
@@ -340,7 +393,7 @@ SYS › Scene: moment frequency (rare / normal / often), moment frequency at `ex
 
 ## Open decisions (author)
 
-- Every `description`, `promptHint` and fallback frame word; the gauge and rhythm numbers (`TUNING.physics`), moment cooldowns (`TUNING.moments`), extractor confidence.
+- Every `description`, `promptHint` and fallback frame word. Numbers: drafts agreed in the **TUNING draft** section above; they are balance values, refit after play.
 - Which sprites and pose shots to generate for the contacts (to be discussed after the docs; ST's 28 knee-length emotions exist now).
 
 ## Interfaces to be provided to P15–P17e

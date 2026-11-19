@@ -335,6 +335,30 @@ Track xp per worship target per pair: the commander becomes good **at her**. Mas
 - Actions: `dynamic/offer { unitId, composition }`, `dynamic/set_may_hold`, `profile/set_expectation`, `profile/lock_expectation`.
 - **Memory check:** `probe_answered` is bookkeeping (not remembered); `offer_answered` with `mock` or `correct`, `zone_revealed` and `position_shifted` across a region boundary get `memoryRules` entries (audience: the pair; a mocked offer before others: those present, spread by P15 §8 only); `zone_revealed` writes a fact the body map reads through `Knowledge`.
 
+### 15.12 TUNING draft (design session 2026-11-19)
+
+Draft balance values agreed with the author for `TUNING.dynamic`, `TUNING.probes`, `TUNING.position`, `TUNING.practice` (P15–P17e numbers that this revision introduced). Physics, moments and scent numbers are in P15a.
+
+**Hold core** (the open decision of this spec):
+- Bands: *interest* 0–19, *testing* 20–39, *keeping* 40–59, *owning* 60–79, *possessing* 80–100.
+- Gains: task kept +3, punishment accepted +4, service verdict `pleased` +2, staging held +5, followed her lead +1.
+- Losses: refusal −4, task broken −5, overrode her −6, the commander's enforcement against her −10.
+- Decay after 3 idle days: 1 / day at `play`, 0.5 at `role`, 0.3 at `rule`.
+- Pace: slow ×0.7, normal ×1, fast ×1.4. Seeded holder head start: 25.
+- With these, an eager holder reaches `play` in about 10 days, `role` in 4–6 weeks, `rule` from 2–3 months (§4 targets).
+
+**Probes:** daily chance per woman on *interest* / *testing*: `curious` 0.15, `eager` 0.30, `latent` 0.05 and only with a cause; × the practice-frequency setting; at most one a day and one a scene. Strength: tier 1 on *interest*, tier 2 on *testing*. Answer → hold: yielded +4, returned +3 (`playful` / `cruel` +5), deflected −1, resisted −3; × sensitivity (sluggish 0.5, normal 1, lively 1.6). `probe_observed` weighs 0.5. Back-off: 3 deflections or resistances among the last 5 → she backs off for 14 days.
+
+**Position:** moving averages: probe 0.10, moment 0.15, practice 0.20. Hysteresis: a region change counts only after its condition holds for 3 updates in a row. A declaration starts at weight 0.5 and fades 0.05 a day. Compatibility with her style point: hold gain ×1.2 (close) … ×0.8 (far).
+
+**Mastery per target:** +5 per act, +3 when the "how" matched; thresholds 20 / 60 / 120 / 200 / 320; the service verdict gains one step per 2 levels.
+
+**Offering:** craves → hold +6, favour +3; enjoys → +3 / +1; indifferent → 0; dislikes → −3 / −2; unknown → the zone is revealed. Good timing ×1.5, her irritation ×0.5. An accepted offer of something a domain covers becomes a claim with chance 0.4 (frame ≥ `role`).
+
+**Exchange with combat and the squad:** content holder → +5 % hit and defence for her, frustrated → −5 %. Protection: other units' Impunity gain against the commander −(her standing × 0.3) %, cap −30 %. Cover: oversight suspicion gain −20 % at `role`, −35 % at `rule`; `cruel` gives half. Squad: content → −1 stress every 2 days to units with Trust ≥ 50 toward her; frustrated → +1.
+
+**Practices (P16, P17e):** named postures: 8 s timer (one exchange in turn-based mode), a new posture per track level, at most 8. Speech as a choice: 4 options, one trap. Habits: 5 repetitions within 14 days with a good verdict; breaking one: favour −2; unused, it fades in 10 days. Litany: 1 line at the start, +1 per milestone, at most 8; more than 2 character errors = a slip.
+
 ## Acceptance criteria
 
 1. With no practice category enabled, or holders `0`, nothing in this package runs, and every seeded test stays byte-identical (no new draw unless someone is eligible).
@@ -353,7 +377,7 @@ Track xp per worship target per pair: the commander becomes good **at her**. Mas
 ## Open decisions (author)
 
 - Names of the hold bands, frames and domains in the UI; milestone texts; aftermath texts; style descriptions.
-- Every number in `TUNING.dynamic` (gains, decay, band thresholds, seed head start, discovery chances).
+- Every number in `TUNING.dynamic`: drafts agreed in §15.12 (gains, decay, bands, head start); squad-discovery chances (§8) still open.
 - Whether `rule` without the command domain is possible (draft: yes; `rule` over the private domains only).
 
 ## Interfaces already provided by P9d (implemented — use, do not rebuild)
