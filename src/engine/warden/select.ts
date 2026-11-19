@@ -1,0 +1,53 @@
+import type { Registries } from '../../content/types';
+import { impunityOf } from '../discipline/impunity';
+import type { EngineCtx, EngineEvent } from '../dispatch';
+import { addFact } from '../memory';
+import type { CampaignState } from '../state/types';
+import { TUNING } from '../tuning';
+import { leashswapOf, type WardenState } from './state';
+
+/**
+ * Corporate assignment (P13 §1): among the named units whose status is `active`, the one with the highest `values.corporate`, then
+ * the lowest `autonomy`, then the lowest Impunity (0 when it cannot be read), then the earliest in the squad. A total order, so
+ * no draw. `exclude` keeps a unit out (the removed warden, a deserter). Null when nobody is eligible.
+ */
+export function corporateWardenPick(state: CampaignState, reg: Registries, exclude: readonly string[] = []): string | null {
+  const pool = state.squad
+    .map((unit, order) => ({ unit, order }))
+    .filter(({ unit }) => unit.kind === 'named' && unit.status === 'active' && !exclude.includes(unit.id));
+  if (pool.length === 0) return null;
+  const impunity = (id: string): number => impunityOf(state, reg, id)?.value ?? 0;
+  pool.sort((a, b) =>
+    b.unit.values.corporate - a.unit.values.corporate
+    || a.unit.values.autonomy - b.unit.values.autonomy
+    || impunity(a.unit.id) - impunity(b.unit.id)
+    || a.order - b.order);
+  return pool[0].unit.id;
+}
+
+/**
+ * Puts a unit in charge of the leash: satisfaction at its start, defiance 0, a full week of Leash authorizations and an empty
+ * agenda (Task 3 fills it at once with the fallback, so the campaign is playable without a model). Writes the site's own public
+ * pinned fact and emits `warden_assigned`. Draws nothing. The mode block must exist.
+ */
+export function seedWarden(draft: CampaignState, ctx: EngineCtx, p: { unitId: string; assignedBy: WardenState['assignedBy'] }): EngineEvent[] {
+  const ls = leashswapOf(draft);
+  const unit = draft.squad.find((u) => u.id === p.unitId);
+  if (!ls) throw new Error('The campaign is not in the LEASHSWAP mode.');
+  if (!unit) throw new Error(`Unknown unit "${p.unitId}".`);
+  ls.status = 'held';
+  ls.warden = {
+    unitId: unit.id, assignedBy: p.assignedBy, sinceDay: draft.day,
+    expectations: [], agenda: 'fallback',
+    satisfaction: p.assignedBy === 'oversight' ? TUNING.warden.verdict.newWardenSatisfaction : TUNING.warden.satisfaction.start,
+    defiance: TUNING.warden.defiance.start,
+    warnings: [], leashLeft: TUNING.warden.leash.weekly, leashRefreshDay: draft.day + TUNING.leash.refreshDays,
+    restrictions: [], punishLog: [],
+  };
+  void ctx;
+  addFact(draft, {
+    about: [unit.id], text: `${unit.displayName} holds the commander's controller.`, tags: ['warden'], importance: 4,
+    day: draft.day, knownBy: ['*'], pinned: true,
+  });
+  return [{ type: 'warden_assigned', unitId: unit.id, assignedBy: p.assignedBy }];
+}

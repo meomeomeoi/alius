@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { forgetSpecial } from '../special/state';
+import { forgetWarden } from '../warden/state';
 import { clearSmother } from '../bonds/smother';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -211,7 +212,7 @@ export function suppress(draft: CampaignState, ctx: EngineCtx, p: { unitId: stri
  * Takes a unit out of the campaign for good (deserted or terminated) and cleans everything that pointed at her.
  * Refused while a scene, a fight or an expedition with her is open. Her items stay in the stash.
  */
-export function removeFromService(draft: CampaignState, unitId: string, status: 'deserted' | 'terminated'): void {
+export function removeFromService(draft: CampaignState, unitId: string, status: 'deserted' | 'terminated' | 'reassigned'): void {
   const unit = unitOf(draft, unitId);
   if (!unit) throw new Error(`Unknown unit "${unitId}".`);
   if (draft.scene?.participants.includes(unitId)) throw new Error(`${unit.displayName} is in the open scene: end it first.`);
@@ -234,6 +235,7 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   forgetPersonal(draft, unitId); // P9c: her booking, offer, wager, obedience, decor and the secrets she knew
   forgetNotes(draft, unitId); // P10b: the notes she left
   forgetSpecial(draft, unitId); // P12: what the frequency caught about her and the suspicion she held
+  forgetWarden(draft, unitId); // P13: an open override that names her and her ally mark
 }
 
 /** P9d: what a unit who leaves the service no longer carries (her rules, the smother hold, Want and publicity). */

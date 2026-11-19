@@ -2,12 +2,13 @@ import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
 import type { RngState } from '../rng';
 import type { SpecialState } from '../special/state';
+import type { EndedState, LeashswapState } from '../warden/state';
 import type { Clock, DirectorRequest, ExpeditionReport, ExpeditionState, Mission, RegionState, Rumor, Thread } from '../world/types';
 
 export type Slot = 'morning' | 'afternoon' | 'evening' | 'night';
 export type Difficulty = 'story' | 'normal' | 'hard';
 export type UnitKind = 'named' | 'grunt';
-export type UnitStatus = 'active' | 'reserve' | 'injured' | 'deserted' | 'dead' | 'terminated';
+export type UnitStatus = 'active' | 'reserve' | 'injured' | 'deserted' | 'dead' | 'terminated' | 'reassigned';
 export type LoyaltyBand = 'steady' | 'wavering' | 'breaking';
 
 /** Reserved in v1: `Relation.marks` is always empty (overview §10). */
@@ -906,6 +907,10 @@ export interface CampaignState {
   personal?: PersonalState;
   /** P12: the special-trait systems (Secret Frequency, Bloom-induced Paranoia, Web of Debts). Created by the seed; absent without a special trait. */
   special?: SpecialState;
+  /** P13: the LEASHSWAP mode (the warden, her agenda, the intrigue, the removal). Absent = the default mode: no warden, no override, no co-sign, and the commander cannot die. */
+  leashswap?: LeashswapState;
+  /** P13: the campaign is over (the commander died under `campaign_end`, or was executed). Absent = running. Every action but `debug/*` and `campaign/epilogue` is refused. */
+  ended?: EndedState;
   /** P9d: the content categories the player switched on (absent = none). Read through `enabledCategories`. */
   content?: { enabled: string[] };
   /** P9d: relationship rules and the smother hold (absent = none). */

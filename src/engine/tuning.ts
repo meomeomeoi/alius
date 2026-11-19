@@ -503,4 +503,37 @@ export const TUNING = Object.freeze({
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),
   }),
+  /** P13: LEASHSWAP. Every number is a DRAFT (the plan's rulings), the author's to change. */
+  warden: Object.freeze({
+    satisfaction: Object.freeze({ start: 60, comply: 4 }),
+    defiance: Object.freeze({ start: 0, decayPerDay: 2, comply: 3 }),
+    override: Object.freeze({ scale: 2.0, cap: 0.9, defyDefiance: 30, defySatisfaction: 20, majorAt: 0.4 }),
+    cosign: Object.freeze({ base: 0.5, perSatisfaction: 0.004, corporate: 0.1, mercy: 0.1, perAffinity: 0.001, min: 0.1, max: 0.95 }),
+    punish: Object.freeze({ base: 0.5, perWeight: 0.3, perAffinity: 0.2, bands: Object.freeze([25, 50, 75]) }),
+    /** The Leash on the commander: authorizations a week, and the stress a suppression leaves. */
+    leash: Object.freeze({ weekly: 2, suppressStress: 10 }),
+    escalation: Object.freeze({ warning1: 50, warning2: 75, terminate: 100, logMax: 20 }),
+    intrigue: Object.freeze({
+      decayPerDay: 3, discoveryDivisor: 200, digNoise: 15, allyHit: 10, allyMiss: 20,
+      ally: Object.freeze({ base: 0.2, perTrust: 0.006, autonomy: 0.1, corporate: 0.1, min: 0.05, max: 0.9 }),
+      discovered: Object.freeze({ satisfaction: -40, defiance: 25, suspicionAfter: 40 }),
+    }),
+    hack: Object.freeze({ steps: 3, noise: 20, plyx: 5, workshop: 3, medbay: 3 }),
+    kompromat: Object.freeze({
+      needed: 3,
+      lines: Object.freeze([
+        'AUTHOR TO WRITE: She keeps a second set of orders in a drawer, and they are not the corporation\'s.',
+        'AUTHOR TO WRITE: She has been seen at the comms room after lights-out, reading messages she was told to delete.',
+        'AUTHOR TO WRITE: She signed off on a report she knew to be false.',
+      ]),
+    }),
+    removal: Object.freeze({ clock: Object.freeze({ hack: 10, report: 6, death: 4 }), perDay: 1 }),
+    verdict: Object.freeze({
+      base: Object.freeze({ hack: 0.6, report: 0.75, death: 0.4 }),
+      perCunning: 0.05, discovered: 0.15, perAlly: 0.05, min: 0.1, max: 0.9,
+      report: Object.freeze({ base: 0.4, perKompromat: 0.1, perCunning: 0.05, min: 0.1, max: 0.85 }),
+      newWardenSatisfaction: 40,
+    }),
+    remote: Object.freeze({ quota: 0.6, obey: 0.4, missionDays: 7 }),
+  }),
 });

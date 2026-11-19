@@ -630,6 +630,47 @@ var TUNING = Object.freeze({
       framing: "A visitor at the gate."
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 })
+  }),
+  /** P13: LEASHSWAP. Every number is a DRAFT (the plan's rulings), the author's to change. */
+  warden: Object.freeze({
+    satisfaction: Object.freeze({ start: 60, comply: 4 }),
+    defiance: Object.freeze({ start: 0, decayPerDay: 2, comply: 3 }),
+    override: Object.freeze({ scale: 2, cap: 0.9, defyDefiance: 30, defySatisfaction: 20, majorAt: 0.4 }),
+    cosign: Object.freeze({ base: 0.5, perSatisfaction: 4e-3, corporate: 0.1, mercy: 0.1, perAffinity: 1e-3, min: 0.1, max: 0.95 }),
+    punish: Object.freeze({ base: 0.5, perWeight: 0.3, perAffinity: 0.2, bands: Object.freeze([25, 50, 75]) }),
+    /** The Leash on the commander: authorizations a week, and the stress a suppression leaves. */
+    leash: Object.freeze({ weekly: 2, suppressStress: 10 }),
+    escalation: Object.freeze({ warning1: 50, warning2: 75, terminate: 100, logMax: 20 }),
+    intrigue: Object.freeze({
+      decayPerDay: 3,
+      discoveryDivisor: 200,
+      digNoise: 15,
+      allyHit: 10,
+      allyMiss: 20,
+      ally: Object.freeze({ base: 0.2, perTrust: 6e-3, autonomy: 0.1, corporate: 0.1, min: 0.05, max: 0.9 }),
+      discovered: Object.freeze({ satisfaction: -40, defiance: 25, suspicionAfter: 40 })
+    }),
+    hack: Object.freeze({ steps: 3, noise: 20, plyx: 5, workshop: 3, medbay: 3 }),
+    kompromat: Object.freeze({
+      needed: 3,
+      lines: Object.freeze([
+        "AUTHOR TO WRITE: She keeps a second set of orders in a drawer, and they are not the corporation's.",
+        "AUTHOR TO WRITE: She has been seen at the comms room after lights-out, reading messages she was told to delete.",
+        "AUTHOR TO WRITE: She signed off on a report she knew to be false."
+      ])
+    }),
+    removal: Object.freeze({ clock: Object.freeze({ hack: 10, report: 6, death: 4 }), perDay: 1 }),
+    verdict: Object.freeze({
+      base: Object.freeze({ hack: 0.6, report: 0.75, death: 0.4 }),
+      perCunning: 0.05,
+      discovered: 0.15,
+      perAlly: 0.05,
+      min: 0.1,
+      max: 0.9,
+      report: Object.freeze({ base: 0.4, perKompromat: 0.1, perCunning: 0.05, min: 0.1, max: 0.85 }),
+      newWardenSatisfaction: 40
+    }),
+    remote: Object.freeze({ quota: 0.6, obey: 0.4, missionDays: 7 })
   })
 });
 
@@ -1579,7 +1620,7 @@ function rosterCapacityFor(reg, barracksLevel) {
   if (levels.length === 0) return TUNING.rosterBaseCapacity;
   return levels[Math.min(barracksLevel, levels.length) - 1].effects.rosterCapacity ?? TUNING.rosterBaseCapacity;
 }
-var isLiving = (u) => u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated";
+var isLiving = (u) => u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && u.status !== "reassigned";
 function activeRosterUnits(state) {
   return state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
 }
@@ -6718,7 +6759,36 @@ var RESERVED_EVENT_TYPES = [
   "hand_set",
   "note_left",
   "note_read",
-  "notes_expired"
+  "notes_expired",
+  // P13
+  "leashswap_started",
+  "warden_assigned",
+  "warden_agenda_set",
+  "expectation_learned",
+  "warden_override",
+  "override_answered",
+  "override_compromise",
+  "override_argue_roll",
+  "commander_punished",
+  "commander_restricted",
+  "commander_leashed",
+  "leash_cosigned",
+  "leash_cosign_denied",
+  "warden_warning",
+  "commander_terminated",
+  "commander_died",
+  "campaign_ended",
+  "intrigue_action",
+  "ally_won",
+  "ally_refused",
+  "kompromat_found",
+  "hack_step",
+  "controller_dark",
+  "intrigue_discovered",
+  "warden_removed",
+  "investigation_opened",
+  "remote_control_started",
+  "verdict"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -14699,6 +14769,24 @@ function wagerDayStep(draft, ctx2) {
   return events;
 }
 
+// src/engine/warden/state.ts
+var DEATH_RULES = ["rewind_day", "campaign_end"];
+var newIntrigue = () => ({ suspicion: 0, seq: 0, lastAllyDay: {}, hack: { step: 0 }, discovered: 0 });
+var newLeashswap = (deathRule) => ({ deathRule, status: "held", intrigue: newIntrigue() });
+var leashswapOf = (state) => state.leashswap ?? null;
+function wardenOf(state) {
+  const ls = state.leashswap;
+  return ls !== void 0 && ls.status === "held" && ls.warden !== void 0 ? ls.warden : null;
+}
+var wardenUnitId = (state) => wardenOf(state)?.unitId ?? null;
+function forgetWarden(draft, unitId) {
+  const ls = draft.leashswap;
+  if (!ls) return;
+  delete ls.intrigue.lastAllyDay[unitId];
+  const w = ls.warden;
+  if (w && w.unitId === unitId) delete w.override;
+}
+
 // src/engine/special/state.ts
 var newFrequency = () => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 var PREMONITION_ABOUT = ["doubt", "desertion", "mutiny", "defiance"];
@@ -15005,6 +15093,7 @@ function removeFromService(draft, unitId, status) {
   forgetPersonal(draft, unitId);
   forgetNotes(draft, unitId);
   forgetSpecial(draft, unitId);
+  forgetWarden(draft, unitId);
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -15292,9 +15381,10 @@ function askFirstHolds(state, unitId) {
 }
 function herCallCandidates(state, reg, spec, partyIds) {
   const t = spec.trigger;
+  const warden = wardenUnitId(state);
   return partyIds.filter((id) => {
     const unit2 = unitOf6(state, id);
-    if (!unit2 || unit2.kind !== "named" || !isLiving(unit2) || unit2.status !== "active" || askFirstHolds(state, id)) return false;
+    if (id === warden || !unit2 || unit2.kind !== "named" || !isLiving(unit2) || unit2.status !== "active" || askFirstHolds(state, id)) return false;
     const bond = bondOf(unit2);
     if (t.minLeadRank !== void 0 && bond !== null && leadRank(bond.leadStyle) >= t.minLeadRank) return true;
     if (!t.stances || t.stances.length === 0) return false;
@@ -15977,7 +16067,10 @@ function addCommanderStress(draft, amount, source) {
 }
 
 // src/engine/power/standing.ts
-var namedLiving3 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
+var namedLiving3 = (state) => {
+  const warden = wardenUnitId(state);
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== warden);
+};
 var round2 = (n) => Math.round(n * 100) / 100;
 function recordMerit(draft, cs) {
   const M = TUNING.power.merit;
@@ -16025,7 +16118,7 @@ function respectOf(state, unitId) {
 function standingOf(state, reg, unitId) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   const bond = unit2 ? bondOf(unit2) : null;
-  if (!unit2 || !bond || !isLiving(unit2)) return null;
+  if (!unit2 || !bond || !isLiving(unit2) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
   const S = TUNING.power.standing;
@@ -19592,6 +19685,46 @@ function seedSpecialTraits(draft, ctx2) {
   return [];
 }
 
+// src/engine/warden/select.ts
+function corporateWardenPick(state, reg, exclude = []) {
+  const pool = state.squad.map((unit2, order) => ({ unit: unit2, order })).filter(({ unit: unit2 }) => unit2.kind === "named" && unit2.status === "active" && !exclude.includes(unit2.id));
+  if (pool.length === 0) return null;
+  const impunity = (id) => impunityOf(state, reg, id)?.value ?? 0;
+  pool.sort((a, b) => b.unit.values.corporate - a.unit.values.corporate || a.unit.values.autonomy - b.unit.values.autonomy || impunity(a.unit.id) - impunity(b.unit.id) || a.order - b.order);
+  return pool[0].unit.id;
+}
+function seedWarden(draft, ctx2, p) {
+  const ls = leashswapOf(draft);
+  const unit2 = draft.squad.find((u) => u.id === p.unitId);
+  if (!ls) throw new Error("The campaign is not in the LEASHSWAP mode.");
+  if (!unit2) throw new Error(`Unknown unit "${p.unitId}".`);
+  ls.status = "held";
+  ls.warden = {
+    unitId: unit2.id,
+    assignedBy: p.assignedBy,
+    sinceDay: draft.day,
+    expectations: [],
+    agenda: "fallback",
+    satisfaction: p.assignedBy === "oversight" ? TUNING.warden.verdict.newWardenSatisfaction : TUNING.warden.satisfaction.start,
+    defiance: TUNING.warden.defiance.start,
+    warnings: [],
+    leashLeft: TUNING.warden.leash.weekly,
+    leashRefreshDay: draft.day + TUNING.leash.refreshDays,
+    restrictions: [],
+    punishLog: []
+  };
+  addFact(draft, {
+    about: [unit2.id],
+    text: `${unit2.displayName} holds the commander's controller.`,
+    tags: ["warden"],
+    importance: 4,
+    day: draft.day,
+    knownBy: ["*"],
+    pinned: true
+  });
+  return [{ type: "warden_assigned", unitId: unit2.id, assignedBy: p.assignedBy }];
+}
+
 // src/engine/setup.ts
 var SETUP_LIMITS = {
   maxUnits: 4,
@@ -19728,6 +19861,17 @@ function validateSetup(r, reg, opts) {
     else if (p.startId !== r.startId) out.push(`Prologue "${p.id}" belongs to start "${String(p.startId)}", not "${r.startId}"`);
   }
   const units = r.units ?? [];
+  if (r.mode !== void 0) {
+    const m = r.mode;
+    if (m.kind !== "leashswap") out.push(`Unknown campaign mode "${String(m.kind)}"`);
+    else {
+      if (!DEATH_RULES.includes(m.deathRule)) out.push(`Unknown death rule "${String(m.deathRule)}"`);
+      if (units.length === 0) out.push("LEASHSWAP needs at least one named unit to hold the leash");
+      else if (m.warden?.by === "player") {
+        if (!Number.isInteger(m.warden.index) || m.warden.index < 0 || m.warden.index >= units.length) out.push("The warden must be one of the chosen units");
+      } else if (m.warden?.by !== "corporation") out.push("The warden must be picked by the player or assigned by the corporation");
+    }
+  }
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = /* @__PURE__ */ new Set();
   units.forEach((u, i) => {
@@ -19865,6 +20009,12 @@ function buildCampaign(r, reg, opts) {
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg);
   seedSpecialTraits(state, { registries: reg, rng: new Rng(state.rng) });
+  if (r.mode !== void 0) {
+    state.leashswap = newLeashswap(r.mode.deathRule);
+    const unitId = r.mode.warden.by === "player" ? state.squad[r.mode.warden.index].id : corporateWardenPick(state, reg);
+    if (unitId === null) throw new Error("LEASHSWAP found no unit to hold the leash.");
+    seedWarden(state, { registries: reg, rng: new Rng(state.rng) }, { unitId, assignedBy: r.mode.warden.by === "player" ? "player" : "corporation" });
+  }
   applyWorldStartEffects(state, reg);
   ensureLeash(state, reg);
   if (r.onboarding !== void 0) {

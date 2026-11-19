@@ -15,6 +15,7 @@ import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
 import { applyWorldEffects } from '../world/effects';
 import type { Mission } from '../world/types';
+import { wardenUnitId } from '../warden/state';
 import { assertiveness } from './options';
 import { leaderOf, powerOf } from './state';
 import { againstHerValues } from './votes';
@@ -45,9 +46,10 @@ export function askFirstHolds(state: Pick<CampaignState, 'power'>, unitId: strin
  */
 export function herCallCandidates(state: CampaignState, reg: Registries, spec: HerCallSpec, partyIds: string[]): string[] {
   const t = spec.trigger;
+  const warden = wardenUnitId(state); // P13: her own calls are overrides
   return partyIds.filter((id) => {
     const unit = unitOf(state, id);
-    if (!unit || unit.kind !== 'named' || !isLiving(unit) || unit.status !== 'active' || askFirstHolds(state, id)) return false;
+    if (id === warden || !unit || unit.kind !== 'named' || !isLiving(unit) || unit.status !== 'active' || askFirstHolds(state, id)) return false;
     const bond = bondOf(unit);
     if (t.minLeadRank !== undefined && bond !== null && leadRank(bond.leadStyle) >= t.minLeadRank) return true;
     if (!t.stances || t.stances.length === 0) return false;

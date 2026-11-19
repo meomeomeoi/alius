@@ -482,6 +482,13 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit', 'intel_answered', 'handler_threat', 'handler_leak', 'debts_consequence', 'debts_discovered', 'defector_arc',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
+  // P13
+  'leashswap_started', 'warden_assigned', 'warden_agenda_set', 'expectation_learned',
+  'warden_override', 'override_answered', 'override_compromise', 'override_argue_roll',
+  'commander_punished', 'commander_restricted', 'commander_leashed', 'leash_cosigned', 'leash_cosign_denied',
+  'warden_warning', 'commander_terminated', 'commander_died', 'campaign_ended',
+  'intrigue_action', 'ally_won', 'ally_refused', 'kompromat_found', 'hack_step', 'controller_dark', 'intrigue_discovered',
+  'warden_removed', 'investigation_opened', 'remote_control_started', 'verdict',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

@@ -11,6 +11,8 @@ import { applyDispositionStart, applyWorldStartEffects, defaultWorldOptions, val
 import { applyFirstImpression } from './commander/presence';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { seedSpecialTraits } from './special/traits';
+import { corporateWardenPick, seedWarden } from './warden/select';
+import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type Bond, type CampaignState, type Relation, type SignatureInstance, type Unit, type WorldStance,
@@ -73,6 +75,11 @@ export interface SetupResult {
   content?: { enabled: string[] };
   /** P11: start the campaign inside this prologue (`veteran`: the wizard steps count as skipped). Absent = no prologue. */
   onboarding?: { prologueId: string; veteran: boolean };
+  /**
+   * P13: the campaign mode. Absent = the default mode. `index` is the position in `units`; `corporation` lets oversight pick
+   * (`corporateWardenPick`).
+   */
+  mode?: { kind: 'leashswap'; deathRule: DeathRule; warden: { by: 'player'; index: number } | { by: 'corporation' } };
 }
 
 interface Effect { type?: unknown; [k: string]: unknown }
@@ -222,6 +229,17 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
   }
 
   const units = r.units ?? [];
+  if (r.mode !== undefined) {
+    const m = r.mode;
+    if (m.kind !== 'leashswap') out.push(`Unknown campaign mode "${String((m as { kind?: unknown }).kind)}"`);
+    else {
+      if (!DEATH_RULES.includes(m.deathRule)) out.push(`Unknown death rule "${String(m.deathRule)}"`);
+      if (units.length === 0) out.push('LEASHSWAP needs at least one named unit to hold the leash');
+      else if (m.warden?.by === 'player') {
+        if (!Number.isInteger(m.warden.index) || m.warden.index < 0 || m.warden.index >= units.length) out.push('The warden must be one of the chosen units');
+      } else if (m.warden?.by !== 'corporation') out.push('The warden must be picked by the player or assigned by the corporation');
+    }
+  }
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = new Set<string>();
   units.forEach((u, i) => {
@@ -388,6 +406,13 @@ export function buildCampaign(
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set
   seedSpecialTraits(state, { registries: reg, rng: new Rng(state.rng) }); // P12: no draw, the rng stays as it is
+  if (r.mode !== undefined) {
+    // P13: the mode block and the warden, after the special traits and before the Leash; nothing here draws
+    state.leashswap = newLeashswap(r.mode.deathRule);
+    const unitId = r.mode.warden.by === 'player' ? state.squad[r.mode.warden.index].id : corporateWardenPick(state, reg);
+    if (unitId === null) throw new Error('LEASHSWAP found no unit to hold the leash.');
+    seedWarden(state, { registries: reg, rng: new Rng(state.rng) }, { unitId, assignedBy: r.mode.warden.by === 'player' ? 'player' : 'corporation' });
+  }
   applyWorldStartEffects(state, reg); // P8: the world's norm costs the own corporation's standing
   ensureLeash(state, reg);
   if (r.onboarding !== undefined) {

@@ -8,6 +8,7 @@ import { addFact } from '../memory';
 import type { CampaignState, Hierarchy, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { compatibility } from './ballot';
+import { wardenUnitId } from '../warden/state';
 import { CO_COMMAND, dropCoCommand, leaderOf, powerOf } from './state';
 
 export { leaderOf };
@@ -18,7 +19,11 @@ export { leaderOf };
  * from state and recomputed weekly by the power day step; nothing here draws rng.
  */
 
-const namedLiving = (state: CampaignState): Unit[] => state.squad.filter((u) => u.kind === 'named' && isLiving(u));
+/** Named living units, the LEASHSWAP warden excluded (P13: she sits above the hierarchy, not in it). */
+const namedLiving = (state: CampaignState): Unit[] => {
+  const warden = wardenUnitId(state);
+  return state.squad.filter((u) => u.kind === 'named' && isLiving(u) && u.id !== warden);
+};
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
@@ -79,7 +84,7 @@ export function respectOf(state: CampaignState, unitId: string): number {
 export function standingOf(state: CampaignState, reg: Registries, unitId: string): number | null {
   const unit = state.squad.find((u) => u.id === unitId);
   const bond = unit ? bondOf(unit) : null;
-  if (!unit || !bond || !isLiving(unit)) return null;
+  if (!unit || !bond || !isLiving(unit) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
   const S = TUNING.power.standing;

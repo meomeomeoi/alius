@@ -482,7 +482,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `SetupResult.mode?: { kind: 'leashswap'; deathRule: DeathRule; warden: { by: 'player'; index: number } | { by: 'corporation' } }`
 - Consumes: `impunityOf` (P9), `computeHierarchy` (P9b), `addFact` (P3b), `fallbackAgenda` (Task 3; until then `seedWarden` writes `expectations: []`, and Task 3 fills it in)
 
-- [ ] **Step 1: Write the failing tests** (`tests/warden/select.test.ts`)
+- [x] **Step 1: Write the failing tests** (`tests/warden/select.test.ts`)
   - `corporate assignment follows the ordering`: three units with corporate 2/2/1, autonomy 1/−1/−3 → the second; equal corporate and autonomy, records 10 vs −5 → the lower Impunity; a full tie → squad order.
   - `buildCampaign with a player pick seeds that unit`: `mode: { kind: 'leashswap', deathRule: 'rewind_day', warden: { by: 'player', index: 1 } }` → `leashswap.warden.unitId === squad[1].id`, `assignedBy 'player'`, satisfaction 60, defiance 0, `leashLeft 2`, `status 'held'`; a public pinned fact about her exists.
   - `corporate assignment at build`: `{ by: 'corporation' }` → the unit `corporateWardenPick` names, `assignedBy 'corporation'`.
@@ -491,10 +491,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `herCallCandidates never lists the warden`.
   - `no mode: nothing changes`: `buildCampaign` without `mode` → no `leashswap`, rng state equal to a build on the old code path (compare to a fixture built before the change: same `rng`).
   - `reassigned is not living`: `isLiving({ status: 'reassigned' })` false; `removeFromService(…, 'reassigned')` works.
-- [ ] **Step 2: Run** `npx vitest run tests/warden/select.test.ts` → FAIL (module not found).
-- [ ] **Step 3: Implement** per the Rulings. `buildCampaign` calls `seedWarden` after `seedSpecialTraits`. The `TUNING.warden` block holds every draft number of the Rulings, grouped `satisfaction`, `defiance`, `override`, `cosign`, `punish`, `leash`, `escalation`, `intrigue`, `hack`, `kompromat`, `removal`, `verdict`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS; no seeded test moved.
-- [ ] **Step 5: Commit** `feat(P13): LEASHSWAP state, the warden leaf, corporate assignment and seeding`
+- [x] **Step 2: Run** `npx vitest run tests/warden/select.test.ts` → FAIL (module not found).
+- [x] **Step 3: Implement** per the Rulings. `buildCampaign` calls `seedWarden` after `seedSpecialTraits`. The `TUNING.warden` block holds every draft number of the Rulings, grouped `satisfaction`, `defiance`, `override`, `cosign`, `punish`, `leash`, `escalation`, `intrigue`, `hack`, `kompromat`, `removal`, `verdict`.
+- [x] **Step 4: Run** the file, then `npm test` → PASS; no seeded test moved.
+- [x] **Step 5: Commit** `feat(P13): LEASHSWAP state, the warden leaf, corporate assignment and seeding`
 
 ---
 

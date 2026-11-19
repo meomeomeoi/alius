@@ -186,5 +186,54 @@
     "setBy": [
       "event"
     ]
+  },
+  {
+    "id": "warden_ally",
+    "scope": "relation",
+    "description": "The unit has joined the commander's quiet effort against the warden.",
+    "setBy": [
+      "event"
+    ],
+    "leverage": false
+  },
+  {
+    "id": "warden_knows_ally",
+    "scope": "relation",
+    "description": "The warden knows this unit stood with the commander against her.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "commander_implant_dark",
+    "scope": "commander",
+    "description": "The commander's controller implant has been silenced.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "commander_watched",
+    "scope": "commander",
+    "description": "Oversight cleared the commander and keeps a watch.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "commander_convicted",
+    "scope": "commander",
+    "description": "An investigation convicted the commander.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "warden_reassigned",
+    "scope": "world",
+    "description": "Oversight reassigned the warden.",
+    "setBy": [
+      "event"
+    ]
   }
 ]

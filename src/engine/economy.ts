@@ -28,7 +28,7 @@ export function rosterCapacityFor(reg: Registries, barracksLevel: number): numbe
   return levels[Math.min(barracksLevel, levels.length) - 1].effects.rosterCapacity ?? TUNING.rosterBaseCapacity;
 }
 
-export const isLiving = (u: Unit): boolean => u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated';
+export const isLiving = (u: Unit): boolean => u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated' && u.status !== 'reassigned';
 
 /** Living units on the active expedition roster. */
 export function activeRosterUnits(state: CampaignState): Unit[] {
