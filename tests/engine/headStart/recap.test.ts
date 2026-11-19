@@ -33,7 +33,7 @@ describe('head_start/recap: the first application', () => {
     const s = build();
     const pairs = recapPairs(s);
     expect(pairs.length).toBeGreaterThanOrEqual(2);
-    const nextId = s.memory.nextId;
+    const nextId = s.memory.nextId ?? 0;
     const chronicle = s.memory.chronicle.length;
     const r = send(s, answer(s));
     expect(errors(r.events)).toEqual([]);
