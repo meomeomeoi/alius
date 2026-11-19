@@ -1,5 +1,4 @@
 import { registerCallType } from '../callTypes';
-import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface VignetteInput {
   activityName: string;
@@ -59,11 +58,3 @@ registerCallType<string>({
     ].filter(Boolean).join('\n');
   },
 });
-
-/** One optional main-model call; any failure gives null. It only returns text, never numbers. */
-export async function generateVignette(
-  input: VignetteInput, deps: LlmDeps,
-): Promise<string | null> {
-  const r = await callLlm<string>('activity_vignette', input, deps);
-  return r.ok ? sanitizeVignette(r.value) : null;
-}

@@ -15,7 +15,7 @@ const withLines = (s: import('../../src/engine/state/types').CampaignState) => {
 const runReal = (h: ReturnType<typeof harness>) => runCompaction({ st: h.st, app: { dispatch: (a: { type: string }, o?: { expectChatId?: string }) => {
   if (o?.expectChatId !== undefined && h.st.getActiveChat()?.chatId !== o.expectChatId) return [{ type: 'error', code: 'chat_changed' }];
   return h.dispatch(a);
-}, current: () => ({ load: { kind: 'none' }, state: h.state() }) } as never, settings: () => h.settings });
+}, current: () => ({ load: { kind: 'none' }, state: h.state() }) } as never, settings: () => h.settings, generations: h.generations });
 
 describe('chronicle compaction', () => {
   it('compacts yesterday with the model', async () => {

@@ -2,6 +2,11 @@ import '../../src/llm/calls/all'; // registers every call type, as the app does
 import { readEmotion, type EmotionPickInput } from '../../src/llm/calls/emotionPick';
 import { readDigest, readSceneSummary, type SceneDigest, type SceneSummary, type SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
 import { callLlm, type LlmDeps } from '../../src/llm/orchestrator';
+import { readCompaction, type ChronicleCompactInput } from '../../src/llm/calls/chronicleCompact';
+import { readFold, type FoldInput, type FoldRaw } from '../../src/llm/calls/memoryFold';
+import { readRumor, type RumorInput } from '../../src/llm/calls/rumorRetell';
+import { sanitizeVignette, type VignetteInput } from '../../src/llm/calls/activityVignette';
+import { sanitizeEnemyFlavor, sanitizeGruntFlavor, generateFlavor, type EnemyFlavorInput, type GruntFlavorInput } from '../../src/llm/calls/flavor';
 import { sanitizeRecap, type RecapInput } from '../../src/llm/calls/expeditionRecap';
 import type { DilemmaGenerateInput } from '../../src/llm/calls/dilemmaGenerate';
 import type { DirectorTickInput } from '../../src/llm/calls/directorTick';
@@ -49,4 +54,34 @@ export async function runDilemmaGenerate(input: DilemmaGenerateInput, deps: LlmD
 export async function runDirectorTick(input: DirectorTickInput, deps: LlmDeps): Promise<unknown | null> {
   const r = await callLlm<unknown>('director_tick', input, deps);
   return r.ok ? r.value : null;
+}
+
+export async function compactChronicle(input: ChronicleCompactInput, deps: LlmDeps): Promise<string | null> {
+  if (input.lines.length === 0) return null; // no lines, no call
+  const r = await callLlm<string>('chronicle_compact', input, deps);
+  return r.ok ? readCompaction(r.value) : null;
+}
+
+export async function foldMemory(input: FoldInput, deps: LlmDeps): Promise<{ own: string; shared: string } | null> {
+  if (input.ownFacts.length === 0 && input.sharedFacts.length === 0) return null; // no facts, no call
+  const r = await callLlm<FoldRaw>('memory_fold', input, deps);
+  return r.ok ? readFold(r.value, input) : null;
+}
+
+export async function retellRumor(input: RumorInput, deps: LlmDeps): Promise<string | null> {
+  const r = await callLlm<string>('rumor_retell', input, deps);
+  return r.ok ? readRumor(r.value) : null;
+}
+
+export async function generateVignette(input: VignetteInput, deps: LlmDeps): Promise<string | null> {
+  const r = await callLlm<string>('activity_vignette', input, deps);
+  return r.ok ? sanitizeVignette(r.value) : null;
+}
+
+export async function generateGruntFlavor(input: GruntFlavorInput, deps: LlmDeps): Promise<{ name: string; bio: string } | null> {
+  return sanitizeGruntFlavor(await generateFlavor(input, deps));
+}
+
+export async function generateEnemyFlavor(input: EnemyFlavorInput, deps: LlmDeps): Promise<{ name: string } | null> {
+  return sanitizeEnemyFlavor(await generateFlavor(input, deps));
 }

@@ -70,12 +70,6 @@ export function sanitizeGruntFlavor(raw: unknown): { name: string; bio: string }
   return { name, bio };
 }
 
-export async function generateGruntFlavor(
-  input: GruntFlavorInput, deps: LlmDeps,
-): Promise<{ name: string; bio: string } | null> {
-  return sanitizeGruntFlavor(await generateFlavor(input, deps));
-}
-
 // --- enemy kind (P4) ---------------------------------------------------------------------------
 
 export interface EnemyFlavorInput {
@@ -105,12 +99,6 @@ export function sanitizeEnemyFlavor(raw: unknown): { name: string } | null {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
   const name = typeof (raw as Record<string, unknown>).name === 'string' ? ((raw as Record<string, unknown>).name as string).trim() : '';
   return isEnemyName(name) ? { name } : null;
-}
-
-export async function generateEnemyFlavor(
-  input: EnemyFlavorInput, deps: LlmDeps,
-): Promise<{ name: string } | null> {
-  return sanitizeEnemyFlavor(await generateFlavor(input, deps));
 }
 
 // --- demand kind (P9) -----------------------------------------------------------------------

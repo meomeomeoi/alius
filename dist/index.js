@@ -25001,6 +25001,41 @@ registerCallType({
   schema: CommanderImportRawSchema
 });
 
+// src/llm/calls/activityVignette.ts
+var MAX_LINES = 2;
+var MAX_CHARS = 240;
+function sanitizeVignette(text2) {
+  const lines = text2.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map(
+    (l) => l.trim().replace(/^(vignette|scene|response|reply)\s*:\s*/i, "").replace(/[*_`#>]+/g, "").trim().replace(/^["“”]+|["“”]+$/g, "").trim()
+  ).filter((l) => l !== "");
+  if (lines.length === 0) return null;
+  const out = lines.slice(0, MAX_LINES).join("\n").slice(0, MAX_CHARS).trimEnd();
+  return out === "" ? null : out;
+}
+registerCallType({
+  id: "activity_vignette",
+  prose: true,
+  profile: "main",
+  json: false,
+  system: () => [
+    "You write a tiny moment for a squad-command roleplay: the commander spends a slot of the day with one soldier.",
+    "Write exactly two lines of plain prose, at most one sentence each, in the present tense, in English.",
+    "No dialogue tags, no markdown, no headings, no game numbers. Do not decide anything for the commander beyond the shared activity."
+  ].join("\n"),
+  prompt: (raw) => {
+    const i = raw;
+    return [
+      `Activity: ${i.activityName}`,
+      `Commander: ${i.commanderName}`,
+      `Soldier: ${i.unitName} (${i.unitRole})`,
+      i.likes.length > 0 ? `She likes: ${i.likes.join(", ")}` : "",
+      i.defectNames.length > 0 ? `Her defects: ${i.defectNames.join(", ")}` : "",
+      ...i.memory && i.memory.length > 0 ? ["She remembers:", ...i.memory.map((m) => `- ${m}`)] : [],
+      "Write the moment."
+    ].filter(Boolean).join("\n");
+  }
+});
+
 // src/llm/log.ts
 var CAPACITY = 50;
 var LlmLog = class {
@@ -25265,45 +25300,6 @@ async function callLlm(id, input, deps, opts = {}) {
   return last;
 }
 
-// src/llm/calls/activityVignette.ts
-var MAX_LINES = 2;
-var MAX_CHARS = 240;
-function sanitizeVignette(text2) {
-  const lines = text2.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map(
-    (l) => l.trim().replace(/^(vignette|scene|response|reply)\s*:\s*/i, "").replace(/[*_`#>]+/g, "").trim().replace(/^["“”]+|["“”]+$/g, "").trim()
-  ).filter((l) => l !== "");
-  if (lines.length === 0) return null;
-  const out = lines.slice(0, MAX_LINES).join("\n").slice(0, MAX_CHARS).trimEnd();
-  return out === "" ? null : out;
-}
-registerCallType({
-  id: "activity_vignette",
-  prose: true,
-  profile: "main",
-  json: false,
-  system: () => [
-    "You write a tiny moment for a squad-command roleplay: the commander spends a slot of the day with one soldier.",
-    "Write exactly two lines of plain prose, at most one sentence each, in the present tense, in English.",
-    "No dialogue tags, no markdown, no headings, no game numbers. Do not decide anything for the commander beyond the shared activity."
-  ].join("\n"),
-  prompt: (raw) => {
-    const i = raw;
-    return [
-      `Activity: ${i.activityName}`,
-      `Commander: ${i.commanderName}`,
-      `Soldier: ${i.unitName} (${i.unitRole})`,
-      i.likes.length > 0 ? `She likes: ${i.likes.join(", ")}` : "",
-      i.defectNames.length > 0 ? `Her defects: ${i.defectNames.join(", ")}` : "",
-      ...i.memory && i.memory.length > 0 ? ["She remembers:", ...i.memory.map((m) => `- ${m}`)] : [],
-      "Write the moment."
-    ].filter(Boolean).join("\n");
-  }
-});
-async function generateVignette(input, deps) {
-  const r = await callLlm("activity_vignette", input, deps);
-  return r.ok ? sanitizeVignette(r.value) : null;
-}
-
 // src/llm/calls/flavor.ts
 var kinds = /* @__PURE__ */ new Map();
 function registerFlavorKind(kind, impl) {
@@ -25347,9 +25343,6 @@ function sanitizeGruntFlavor(raw) {
   const bio = typeof r.bio === "string" ? r.bio.replace(/\s+/g, " ").trim().slice(0, GRUNT_BIO_MAX).trim() : "";
   return { name, bio };
 }
-async function generateGruntFlavor(input, deps) {
-  return sanitizeGruntFlavor(await generateFlavor(input, deps));
-}
 registerFlavorKind("enemy", {
   system: () => [
     "You name an enemy for a dark, near-future squad-command RPG.",
@@ -25368,9 +25361,6 @@ function sanitizeEnemyFlavor(raw) {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
   return isEnemyName(name) ? { name } : null;
-}
-async function generateEnemyFlavor(input, deps) {
-  return sanitizeEnemyFlavor(await generateFlavor(input, deps));
 }
 var DEMAND_TEXT_MAX = 240;
 registerFlavorKind("demand", {
@@ -29476,11 +29466,8 @@ registerCallType({
     return [`Lines to compact (${i.kind}):`, ...i.lines.map((l) => `- ${l}`), "", "Write the compacted entry."].join("\n");
   }
 });
-async function compactChronicle(input, deps) {
-  if (input.lines.length === 0) return null;
-  const r = await callLlm("chronicle_compact", input, deps);
-  if (!r.ok) return null;
-  const text2 = r.value.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, COMPACT_MAX2).trim();
+function readCompaction(raw) {
+  const text2 = raw.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, COMPACT_MAX2).trim();
   return text2 === "" ? null : text2;
 }
 
@@ -29488,19 +29475,42 @@ async function compactChronicle(input, deps) {
 var MAX_STEPS = 60;
 async function runCompaction(deps) {
   const expect = deps.st.getActiveChat()?.chatId;
-  for (let step = 0; step < MAX_STEPS; step++) {
-    const s = deps.app.current().state;
-    const due = s ? compactionDue(s) : null;
-    if (!s || !due) return;
-    const lines = due.entries.map((e) => e.text);
-    const modelText = deps.settings().chronicleCompaction ? await compactChronicle({ kind: due.kind, lines }, { st: deps.st, settings: deps.settings() }) : null;
-    const text2 = modelText ?? fallbackCompaction(due.entries);
-    if (text2 === "") return;
+  const dispatchDue = (text2) => {
+    const due = deps.app.current().state ? compactionDue(deps.app.current().state) : null;
+    if (!due || text2 === "") return false;
     const events = deps.app.dispatch(
       { type: "memory/compact", payload: { kind: due.kind, day: due.day, ...due.toDay !== void 0 ? { toDay: due.toDay } : {}, ...due.audience !== void 0 ? { audience: due.audience } : {}, text: text2 } },
       { expectChatId: expect }
     );
-    if (events.some((e) => e.type === "error")) return;
+    return !events.some((e) => e.type === "error");
+  };
+  const keyOf = (due) => `${due.kind}:${due.day}`;
+  deps.generations.bind("chronicle.compact", {
+    build(key) {
+      const s = deps.app.current().state;
+      const due = s ? compactionDue(s) : null;
+      if (!due || keyOf(due) !== key) return { expired: "Nothing is waiting to be compacted." };
+      return { kind: due.kind, lines: due.entries.map((e) => e.text) };
+    },
+    parse: (raw) => readCompaction(String(raw)),
+    apply: (_key, text2) => dispatchDue(text2) ? "ok" : { stale: true },
+    fallback() {
+      const s = deps.app.current().state;
+      const due = s ? compactionDue(s) : null;
+      return due !== null && dispatchDue(fallbackCompaction(due.entries));
+    }
+  });
+  for (let step = 0; step < MAX_STEPS; step++) {
+    const s = deps.app.current().state;
+    const due = s ? compactionDue(s) : null;
+    if (!s || !due) return;
+    if (!deps.settings().chronicleCompaction || due.entries.length === 0) {
+      if (!dispatchDue(fallbackCompaction(due.entries))) return;
+      continue;
+    }
+    const out = await deps.generations.generate("chronicle.compact", keyOf(due));
+    if (out.kind === "applied" || out.kind === "failed" && out.fallbackApplied) continue;
+    return;
   }
 }
 
@@ -30161,12 +30171,9 @@ registerCallType({
   },
   schema: FoldSchema
 });
-async function foldMemory(input, deps) {
-  if (input.ownFacts.length === 0 && input.sharedFacts.length === 0) return null;
-  const r = await callLlm("memory_fold", input, deps);
-  if (!r.ok) return null;
-  const own = flat(r.value.own, TUNING.memory.dossierOwnMax);
-  const shared = flat(r.value.shared, TUNING.memory.dossierSharedMax);
+function readFold(raw, input) {
+  const own = flat(raw.own, TUNING.memory.dossierOwnMax);
+  const shared = flat(raw.shared, TUNING.memory.dossierSharedMax);
   if (input.ownFacts.length > 0 && own === "" || input.sharedFacts.length > 0 && shared === "") return null;
   return { own, shared };
 }
@@ -30186,10 +30193,8 @@ registerCallType({
     return [`Teller: ${i.teller}`, `How she is: ${i.bands}`, `The rumor: ${i.text}`, "", "Write the retelling."].join("\n");
   }
 });
-async function retellRumor(input, deps) {
-  const r = await callLlm("rumor_retell", input, deps);
-  if (!r.ok) return null;
-  const text2 = r.value.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.memory.factTextMax).trim();
+function readRumor(raw) {
+  const text2 = raw.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.memory.factTextMax).trim();
   return text2 === "" || /\d/.test(text2) ? null : text2;
 }
 
@@ -30323,26 +30328,64 @@ function createMemoryController(deps) {
   };
   const nameOf15 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? id;
   const texts = (facts) => facts.map((f) => f.text);
-  async function foldOnce(expect) {
+  function dispatchFold(target, answer) {
     const s = state();
     const due = s ? foldDue(s) : null;
-    if (!s || !due) return;
+    if (!s || !due || due.target !== target) return false;
     const prev = s.memory.dossiers?.[due.target];
     const own = prev?.own ?? "";
     const shared = prev?.shared ?? "";
-    const answer = await foldMemory({
-      name: due.target === WORLD ? "the squad as a whole" : nameOf15(s, due.target),
-      own,
-      shared,
-      ownFacts: texts(due.own),
-      sharedFacts: texts(due.shared)
-    }, { st, settings: deps.settings() });
     const next = {
       own: due.own.length === 0 ? own : answer?.own ?? fallbackFold(own, due.own, TUNING.memory.dossierOwnMax),
       shared: due.shared.length === 0 ? shared : answer?.shared ?? fallbackFold(shared, due.shared, TUNING.memory.dossierSharedMax)
     };
-    app.dispatch({ type: "memory/fold", payload: { target: due.target, ...next, factIds: [...due.own, ...due.shared].map((f) => f.id) } }, { expectChatId: expect });
+    const events = app.dispatch({ type: "memory/fold", payload: { target: due.target, ...next, factIds: [...due.own, ...due.shared].map((f) => f.id) } }, { expectChatId: chatId() });
+    return !events.some((e) => e.type === "error");
   }
+  deps.generations.bind("memory.fold", {
+    build(target) {
+      const s = state();
+      const due = s ? foldDue(s) : null;
+      if (!s || !due || due.target !== target) return { expired: "Nothing is waiting to be folded." };
+      const prev = s.memory.dossiers?.[due.target];
+      return {
+        name: due.target === WORLD ? "the squad as a whole" : nameOf15(s, due.target),
+        own: prev?.own ?? "",
+        shared: prev?.shared ?? "",
+        ownFacts: texts(due.own),
+        sharedFacts: texts(due.shared)
+      };
+    },
+    parse: (raw, input) => readFold(raw, input),
+    apply: (target, answer) => dispatchFold(target, answer) ? "ok" : { stale: true },
+    fallback: (target) => dispatchFold(target, null)
+  });
+  async function foldOnce() {
+    const s = state();
+    const due = s ? foldDue(s) : null;
+    if (!s || !due) return;
+    if (due.own.length === 0 && due.shared.length === 0) {
+      dispatchFold(due.target, null);
+      return;
+    }
+    await deps.generations.generate("memory.fold", due.target);
+  }
+  deps.generations.bind("memory.rumor", {
+    build(factId) {
+      const s = state();
+      const fact = s?.memory.facts.find((f) => f.id === factId);
+      if (!s || !fact || fact.spread === void 0 || fact.rumor !== void 0) return { expired: "It is told as it was already." };
+      const teller = s.squad.find((u) => u.kind === "named" && fact.knownBy.includes(u.id) && s.relations[u.id] !== void 0);
+      if (!teller) return { expired: "Nobody is left to tell it." };
+      const rel = s.relations[teller.id];
+      return { teller: teller.displayName, text: fact.text, bands: `trust ${trustBand(rel.trust)}, affinity ${affinityBand(rel.affinity)}, stress ${stressBand(teller.stress)}` };
+    },
+    parse: (raw) => readRumor(String(raw)),
+    apply(factId, text2) {
+      const events = app.dispatch({ type: "memory/rumor_text", payload: { factId, text: text2 } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === "error") ? { stale: true } : "ok";
+    }
+  });
   async function retell(expect) {
     if (triedChat !== expect) {
       tried2 = /* @__PURE__ */ new Set();
@@ -30354,15 +30397,7 @@ function createMemoryController(deps) {
       const fact = s.memory.facts.find((f) => f.spread !== void 0 && f.rumor === void 0 && !tried2.has(f.id));
       if (!fact) return;
       tried2.add(fact.id);
-      const teller = s.squad.find((u) => u.kind === "named" && fact.knownBy.includes(u.id) && s.relations[u.id] !== void 0);
-      if (!teller) continue;
-      const rel = s.relations[teller.id];
-      const text2 = await retellRumor({
-        teller: teller.displayName,
-        text: fact.text,
-        bands: `trust ${trustBand(rel.trust)}, affinity ${affinityBand(rel.affinity)}, stress ${stressBand(teller.stress)}`
-      }, { st, settings: deps.settings() });
-      if (text2 !== null) app.dispatch({ type: "memory/rumor_text", payload: { factId: fact.id, text: text2 } }, { expectChatId: expect });
+      await deps.generations.generate("memory.rumor", fact.id);
     }
   }
   async function hideStep(expect) {
@@ -30419,7 +30454,7 @@ function createMemoryController(deps) {
         try {
           const expect = chatId();
           if (state()?.combat || state()?.expedition) return;
-          await foldOnce(expect);
+          await foldOnce();
           await retell(expect);
           await hideStep(expect);
         } catch (e) {
@@ -41945,6 +41980,71 @@ function createApp(st, deps) {
     contentLine: () => contentLine(state, registries),
     toast: (kind, text2) => toast(kind, text2)
   });
+  generations.bind("activity.vignette", {
+    build(key) {
+      const [activityId, unitId, day, slot2] = key.split(":");
+      const s = state;
+      const unit2 = s?.squad.find((u) => u.id === unitId);
+      const activity = registries.activities.get(activityId);
+      if (!s || !unit2 || !activity) return { expired: "She is not here." };
+      if (slotIndex(s.day, s.slot) - slotIndex(Number(day), slot2) > 1) return { expired: "That moment has passed." };
+      return {
+        activityName: String(activity.name),
+        commanderName: s.commander.name,
+        unitName: unit2.displayName,
+        unitRole: SHORT_NAME(registries, "roles", unit2.roleId),
+        likes: unit2.likes,
+        defectNames: unit2.defects.map((d) => SHORT_NAME(registries, "defects", d.id)),
+        memory: vignetteMemory(s, registries, unit2.id, [...unit2.likes, ...unit2.dislikes])
+        // P3b: two facts about her and her journal
+      };
+    },
+    parse: (raw) => sanitizeVignette(String(raw)),
+    apply(_key, text2) {
+      toast("story", text2);
+      return "ok";
+    }
+  });
+  generations.bind("flavor.grunt", {
+    build(unitId) {
+      const unit2 = state?.squad.find((u) => u.id === unitId);
+      if (!state || !unit2 || unit2.kind !== "grunt" || unit2.status === "dead") return { expired: "She left service." };
+      return {
+        kind: "grunt",
+        designation: unit2.designation ?? unit2.displayName,
+        roleName: SHORT_NAME(registries, "roles", unit2.roleId),
+        defectName: SHORT_NAME(registries, "defects", unit2.defects[0]?.id ?? "")
+      };
+    },
+    parse: (raw) => sanitizeGruntFlavor(raw),
+    apply(unitId, flavor) {
+      const unit2 = state?.squad.find((u) => u.id === unitId);
+      const r = api.dispatch({ type: "squad/set_flavor", payload: { unitId, ...flavor } }, { expectChatId: st.getActiveChat()?.chatId });
+      if (r.some((e) => e.type === "error")) return { stale: true };
+      toast("info", `${unit2?.designation ?? unitId} goes by ${flavor.name}.`);
+      return "ok";
+    },
+    committed: (unitId) => state?.squad.some((u) => u.id === unitId && u.kind === "grunt" && u.status !== "dead") ? null : "She left service."
+  });
+  generations.bind("flavor.enemy", {
+    build(nameKey) {
+      const c = state?.combat?.combatants.find((x) => x.side === "enemy" && x.enemyId && x.nameKey === nameKey);
+      if (!state || !c || !c.enemyId || state.enemyNames?.[nameKey]) return { expired: "It is named already." };
+      const affixes = (nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
+      const tpl = registries.enemies.get(c.enemyId);
+      return {
+        kind: "enemy",
+        archetypeName: String(tpl?.name ?? c.enemyId),
+        categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ""),
+        affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a))
+      };
+    },
+    parse: (raw) => sanitizeEnemyFlavor(raw),
+    apply(key, r) {
+      const events = api.dispatch({ type: "combat/set_enemy_name", payload: { key, name: r.name } }, { expectChatId: st.getActiveChat()?.chatId });
+      return events.some((e) => e.type === "error") ? { stale: true } : "ok";
+    }
+  });
   const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries, generations });
   const sceneDeps = {
     st,
@@ -42291,7 +42391,7 @@ function createApp(st, deps) {
         shell.open();
         startRecap();
       }
-      if (has2("day_started")) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st) }).catch(warn("chronicle compaction"));
+      if (has2("day_started")) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st), generations }).catch(warn("chronicle compaction"));
       if (events.length > 0 && !has2("error")) void memory.run().catch(warn("memory"));
       if (has2("memory_folded")) setTimeout(() => void memory.run().catch(warn("memory")), 0);
     });
@@ -42710,25 +42810,13 @@ function createApp(st, deps) {
     const cs = s?.combat;
     const settings = getSettings(st);
     if (!s || !cs || !settings.enemyFlavor) return;
-    const chatId = st.getActiveChat()?.chatId;
     for (const c of cs.combatants) {
       if (c.side !== "enemy" || !c.enemyId) continue;
       const key = c.nameKey;
       const affixes = (key.split("|")[1] ?? "").split(",").filter((a) => a !== "");
       if (affixes.length === 0 || s.enemyNames?.[key] || namesInFlight.has(key)) continue;
       namesInFlight.add(key);
-      const tpl = registries.enemies.get(c.enemyId);
-      void generateEnemyFlavor(
-        {
-          kind: "enemy",
-          archetypeName: String(tpl?.name ?? c.enemyId),
-          categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ""),
-          affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a))
-        },
-        { st, settings, contentLine: () => contentLine(state, registries) }
-      ).then((r) => {
-        if (r) api.dispatch({ type: "combat/set_enemy_name", payload: { key, name: r.name } }, { expectChatId: chatId });
-      }).catch(() => {
+      void generations.generate("flavor.enemy", key).catch(() => {
       }).finally(() => namesInFlight.delete(key));
     }
   }
@@ -43715,6 +43803,8 @@ function createApp(st, deps) {
         if (answer !== "yes" || st.getActiveChat()?.chatId !== chatId) return [];
       }
       const action = { type: "activity/do", payload: req };
+      const doneDay = state?.day ?? 0;
+      const doneSlot = state?.slot ?? "morning";
       const events = warden.needsJudge(action) ? await warden.judgeThen(action) : act(action);
       if (events.some((e) => e.type === "workshop_opened")) {
         shell.showTab("inv");
@@ -43727,22 +43817,8 @@ function createApp(st, deps) {
       const settings = getSettings(st);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;
       const unit2 = state.squad.find((u) => u.id === done.companionId);
-      const activity = registries.activities.get(String(done.activityId));
-      if (!unit2 || !activity) return events;
-      const text2 = await generateVignette(
-        {
-          activityName: String(activity.name),
-          commanderName: state.commander.name,
-          unitName: unit2.displayName,
-          unitRole: SHORT_NAME(registries, "roles", unit2.roleId),
-          likes: unit2.likes,
-          defectNames: unit2.defects.map((d) => SHORT_NAME(registries, "defects", d.id)),
-          memory: vignetteMemory(state, registries, unit2.id, [...unit2.likes, ...unit2.dislikes])
-          // P3b: two facts about her and her journal
-        },
-        { st, settings, contentLine: () => contentLine(state, registries) }
-      );
-      if (text2 && st.getActiveChat()?.chatId === chatId) toast("story", text2);
+      if (!unit2 || !registries.activities.has(String(done.activityId))) return events;
+      await generations.generate("activity.vignette", `${String(done.activityId)}:${unit2.id}:${doneDay}:${doneSlot}`);
       return events;
     },
     async talkAt(unitId, locationId) {
@@ -43790,20 +43866,11 @@ function createApp(st, deps) {
       if (!recruited || !settings.gruntFlavor || !state) return events;
       const unit2 = state.squad.find((u) => u.id === recruited.unitId);
       if (!unit2) return events;
-      const flavor = await generateGruntFlavor(
-        {
-          kind: "grunt",
-          designation: unit2.designation ?? unit2.displayName,
-          roleName: SHORT_NAME(registries, "roles", unit2.roleId),
-          defectName: SHORT_NAME(registries, "defects", unit2.defects[0]?.id ?? "")
-        },
-        { st, settings, contentLine: () => contentLine(state, registries) }
-      );
-      if (flavor) {
-        const r = api.dispatch({ type: "squad/set_flavor", payload: { unitId: unit2.id, ...flavor } }, { expectChatId: chatId });
-        if (!r.some((e) => e.type === "error")) toast("info", `${unit2.designation ?? unit2.id} goes by ${flavor.name}.`);
-      }
+      await generations.generate("flavor.grunt", unit2.id);
       return events;
+    },
+    async rerollGrunt(unitId) {
+      await generations.reroll("flavor.grunt", unitId);
     },
     upgradeFacility(facilityId) {
       const action = { type: "base/upgrade", payload: { facilityId } };

@@ -1,8 +1,5 @@
 import { TUNING } from '../../engine/tuning';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 export interface RumorInput {
   /** The soldier who passes it on. */
@@ -28,10 +25,8 @@ registerCallType<string>({
   },
 });
 
-/** One mechanic call; null when it failed, gave nothing or wrote a digit (the rumor is then told as it was). */
-export async function retellRumor(input: RumorInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<string | null> {
-  const r = await callLlm<string>('rumor_retell', input, deps);
-  if (!r.ok) return null;
-  const text = r.value.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, TUNING.memory.factTextMax).trim();
+/** The retelling of a model answer (`rumor_retell`); null when it is empty or wrote a digit (the rumor is then told as it was). */
+export function readRumor(raw: string): string | null {
+  const text = raw.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, TUNING.memory.factTextMax).trim();
   return text === '' || /\d/.test(text) ? null : text;
 }

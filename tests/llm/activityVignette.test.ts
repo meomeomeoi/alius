@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { llmLog } from '../../src/llm/log';
-import { generateVignette, sanitizeVignette, type VignetteInput } from '../../src/llm/calls/activityVignette';
+import { sanitizeVignette, type VignetteInput } from '../../src/llm/calls/activityVignette';
+import { generateVignette } from '../helpers/calls';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 

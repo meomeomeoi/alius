@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { TUNING } from '../../engine/tuning';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 export interface FoldInput {
   /** A soldier's name, or the whole squad (`the squad as a whole`) for the world dossier. */
@@ -17,7 +14,7 @@ export interface FoldInput {
 }
 
 const FoldSchema = z.object({ own: z.string(), shared: z.string() }).strip();
-type FoldRaw = z.output<typeof FoldSchema>;
+export type FoldRaw = z.output<typeof FoldSchema>;
 
 const flat = (t: string, max: number): string => t.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, max).trim();
 
@@ -55,15 +52,12 @@ registerCallType<FoldRaw>({
 });
 
 /**
- * One mechanic call: the new `own` and `shared` paragraphs, each cut to its cap; null when it failed or a part that has facts came back
- * empty (the caller then folds without a model). No facts, no call.
+ * The new `own` and `shared` paragraphs of a model answer (`memory_fold`), each cut to its cap; null when a part that has facts came
+ * back empty (the caller then folds without a model).
  */
-export async function foldMemory(input: FoldInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<{ own: string; shared: string } | null> {
-  if (input.ownFacts.length === 0 && input.sharedFacts.length === 0) return null;
-  const r = await callLlm<FoldRaw>('memory_fold', input, deps);
-  if (!r.ok) return null;
-  const own = flat(r.value.own, TUNING.memory.dossierOwnMax);
-  const shared = flat(r.value.shared, TUNING.memory.dossierSharedMax);
+export function readFold(raw: FoldRaw, input: FoldInput): { own: string; shared: string } | null {
+  const own = flat(raw.own, TUNING.memory.dossierOwnMax);
+  const shared = flat(raw.shared, TUNING.memory.dossierSharedMax);
   if ((input.ownFacts.length > 0 && own === '') || (input.sharedFacts.length > 0 && shared === '')) return null;
   return { own, shared };
 }

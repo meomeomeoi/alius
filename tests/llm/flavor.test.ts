@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { llmLog } from '../../src/llm/log';
 import {
-  generateDemandFlavor, generateFlavor, generateGruntFlavor, registerFlavorKind, sanitizeDemandFlavor, sanitizeGruntFlavor, type GruntFlavorInput,
+  generateDemandFlavor, generateFlavor, registerFlavorKind, sanitizeDemandFlavor, sanitizeGruntFlavor, type GruntFlavorInput,
 } from '../../src/llm/calls/flavor';
+import { generateGruntFlavor } from '../helpers/calls';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 
@@ -85,7 +86,8 @@ describe('flavor kinds', () => {
   });
 });
 
-import { enemyNameKey, generateEnemyFlavor, sanitizeEnemyFlavor, type EnemyFlavorInput } from '../../src/llm/calls/flavor';
+import { enemyNameKey, sanitizeEnemyFlavor, type EnemyFlavorInput } from '../../src/llm/calls/flavor';
+import { generateEnemyFlavor } from '../helpers/calls';
 
 describe('enemy flavor', () => {
   const enemy: EnemyFlavorInput = { kind: 'enemy', archetypeName: 'Husk', categoryName: 'Bio-mutants (human)', affixNames: ['Armored', 'Swift'] };

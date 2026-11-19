@@ -27,8 +27,8 @@ import './engine/actions/warden'; // registers the P13 LEASHSWAP actions, after 
 import './engine/actions/generations'; // registers generation/* (failure records of model calls) and their day-end sweep (P14)
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
-import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
-import { generateEnemyFlavor, generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
+import { sanitizeVignette, type VignetteInput } from './llm/calls/activityVignette'; // registers the activity_vignette call type
+import { sanitizeEnemyFlavor, sanitizeGruntFlavor, type EnemyFlavorInput, type GruntFlavorInput } from './llm/calls/flavor'; // registers the flavor call type
 import type { ContentError, Registries } from './content/types';
 import { emptyRegistries } from './content/types';
 import { dispatch as engineDispatch, type Action, type EngineEvent } from './engine/dispatch';
@@ -71,7 +71,7 @@ import { renderEndScreen } from './ui/warden/endScreen';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
 import { overrideOpen } from './engine/warden';
-import { isQuietNight } from './engine/calendar';
+import { isQuietNight, slotIndex } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
 import { fileLeashRequest } from './ui/leash/requestForm';
@@ -183,6 +183,8 @@ export interface AliusApp {
   endSlot(): Promise<void>;
   /** Recruits a grunt (BASE tab) and, if enabled, asks for a generated name and bio. */
   recruitGrunt(): Promise<EngineEvent[]>;
+  /** P14: REROLL of a grunt's generated name (`flavor.grunt`, free). */
+  rerollGrunt(unitId: string): Promise<void>;
   upgradeFacility(facilityId: string): EngineEvent[];
   /** Credits → supplies. */
   requisition(supplies: number): EngineEvent[];
@@ -386,6 +388,75 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     contentLine: () => contentLine(state, registries),
     toast: (kind, text) => toast(kind, text),
   });
+  // the sites the app itself owns (no controller): the vignette after a companion activity, a grunt's name, an enemy's name
+  generations.bind<VignetteInput, string>('activity.vignette', {
+    build(key) {
+      const [activityId, unitId, day, slot] = key.split(':');
+      const s = state;
+      const unit = s?.squad.find((u) => u.id === unitId);
+      const activity = registries.activities.get(activityId);
+      if (!s || !unit || !activity) return { expired: 'She is not here.' };
+      if (slotIndex(s.day, s.slot) - slotIndex(Number(day), slot as CampaignState['slot']) > 1) return { expired: 'That moment has passed.' }; // the activity itself spent a slot
+      return {
+        activityName: String(activity.name),
+        commanderName: s.commander.name,
+        unitName: unit.displayName,
+        unitRole: SHORT_NAME(registries, 'roles', unit.roleId),
+        likes: unit.likes,
+        defectNames: unit.defects.map((d) => SHORT_NAME(registries, 'defects', d.id)),
+        memory: vignetteMemory(s, registries, unit.id, [...unit.likes, ...unit.dislikes]), // P3b: two facts about her and her journal
+      };
+    },
+    parse: (raw) => sanitizeVignette(String(raw)),
+    apply(_key, text) {
+      toast('story', text);
+      return 'ok';
+    },
+  });
+
+  generations.bind<GruntFlavorInput, { name: string; bio: string }>('flavor.grunt', {
+    build(unitId) {
+      const unit = state?.squad.find((u) => u.id === unitId);
+      if (!state || !unit || unit.kind !== 'grunt' || unit.status === 'dead') return { expired: 'She left service.' };
+      return {
+        kind: 'grunt',
+        designation: unit.designation ?? unit.displayName,
+        roleName: SHORT_NAME(registries, 'roles', unit.roleId),
+        defectName: SHORT_NAME(registries, 'defects', unit.defects[0]?.id ?? ''),
+      };
+    },
+    parse: (raw) => sanitizeGruntFlavor(raw),
+    apply(unitId, flavor) {
+      // cosmetic: if the chat changed or the engine refuses, the grunt simply keeps her name
+      const unit = state?.squad.find((u) => u.id === unitId);
+      const r = api.dispatch({ type: 'squad/set_flavor', payload: { unitId, ...flavor } }, { expectChatId: st.getActiveChat()?.chatId });
+      if (r.some((e) => e.type === 'error')) return { stale: true };
+      toast('info', `${unit?.designation ?? unitId} goes by ${flavor.name}.`);
+      return 'ok';
+    },
+    committed: (unitId) => (state?.squad.some((u) => u.id === unitId && u.kind === 'grunt' && u.status !== 'dead') ? null : 'She left service.'),
+  });
+
+  generations.bind<EnemyFlavorInput, { name: string }>('flavor.enemy', {
+    build(nameKey) {
+      const c = state?.combat?.combatants.find((x) => x.side === 'enemy' && x.enemyId && x.nameKey === nameKey);
+      if (!state || !c || !c.enemyId || state.enemyNames?.[nameKey]) return { expired: 'It is named already.' };
+      const affixes = (nameKey.split('|')[1] ?? '').split(',').filter((a) => a !== '');
+      const tpl = registries.enemies.get(c.enemyId);
+      return {
+        kind: 'enemy',
+        archetypeName: String(tpl?.name ?? c.enemyId),
+        categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ''),
+        affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a)),
+      };
+    },
+    parse: (raw) => sanitizeEnemyFlavor(raw),
+    apply(key, r) {
+      const events = api.dispatch({ type: 'combat/set_enemy_name', payload: { key, name: r.name } }, { expectChatId: st.getActiveChat()?.chatId });
+      return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';
+    },
+  });
+
   /** P3b: folds old facts into dossiers, retells rumors, digests long scenes. */
   const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries, generations });
   const sceneDeps = {
@@ -702,7 +773,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         shell.open();
         startRecap();
       }
-      if (has('day_started')) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st) }).catch(warn('chronicle compaction'));
+      if (has('day_started')) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st), generations }).catch(warn('chronicle compaction'));
       // P3b: what the memory owes after any change (a fold is due, a rumor waits for its retelling); one fold per run, so a fold asks again
       if (events.length > 0 && !has('error')) void memory.run().catch(warn('memory'));
       if (has('memory_folded')) setTimeout(() => void memory.run().catch(warn('memory')), 0);
@@ -1142,26 +1213,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const cs = s?.combat;
     const settings = getSettings(st);
     if (!s || !cs || !settings.enemyFlavor) return;
-    const chatId = st.getActiveChat()?.chatId;
     for (const c of cs.combatants) {
       if (c.side !== 'enemy' || !c.enemyId) continue;
       const key = c.nameKey;
       const affixes = (key.split('|')[1] ?? '').split(',').filter((a) => a !== '');
       if (affixes.length === 0 || s.enemyNames?.[key] || namesInFlight.has(key)) continue;
       namesInFlight.add(key);
-      const tpl = registries.enemies.get(c.enemyId);
-      void generateEnemyFlavor(
-        {
-          kind: 'enemy',
-          archetypeName: String(tpl?.name ?? c.enemyId),
-          categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ''),
-          affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a)),
-        },
-        { st, settings, contentLine: () => contentLine(state, registries) },
-      )
-        .then((r) => {
-          if (r) api.dispatch({ type: 'combat/set_enemy_name', payload: { key, name: r.name } }, { expectChatId: chatId });
-        })
+      void generations.generate('flavor.enemy', key)
         .catch(() => {})
         .finally(() => namesInFlight.delete(key));
     }
@@ -2184,6 +2242,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (answer !== 'yes' || st.getActiveChat()?.chatId !== chatId) return [];
       }
       const action: Action = { type: 'activity/do', payload: req };
+      const doneDay = state?.day ?? 0;
+      const doneSlot = state?.slot ?? 'morning';
       const events = warden.needsJudge(action) ? await warden.judgeThen(action) : act(action); // P13: the warden's optional judge
       if (events.some((e) => e.type === 'workshop_opened')) {
         shell.showTab('inv');
@@ -2196,22 +2256,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const settings = getSettings(st);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;
       const unit = state.squad.find((u) => u.id === done.companionId);
-      const activity = registries.activities.get(String(done.activityId));
-      if (!unit || !activity) return events;
-      const text = await generateVignette(
-        {
-          activityName: String(activity.name),
-          commanderName: state.commander.name,
-          unitName: unit.displayName,
-          unitRole: SHORT_NAME(registries, 'roles', unit.roleId),
-          likes: unit.likes,
-          defectNames: unit.defects.map((d) => SHORT_NAME(registries, 'defects', d.id)),
-          memory: vignetteMemory(state, registries, unit.id, [...unit.likes, ...unit.dislikes]), // P3b: two facts about her and her journal
-        },
-        { st, settings, contentLine: () => contentLine(state, registries) },
-      );
-      // the commander may have switched chats while the model was writing
-      if (text && st.getActiveChat()?.chatId === chatId) toast('story', text);
+      if (!unit || !registries.activities.has(String(done.activityId))) return events;
+      // the vignette belongs to the slot the activity was done in (it expires when that slot has passed)
+      await generations.generate('activity.vignette', `${String(done.activityId)}:${unit.id}:${doneDay}:${doneSlot}`);
       return events;
     },
 
@@ -2264,21 +2311,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (!recruited || !settings.gruntFlavor || !state) return events;
       const unit = state.squad.find((u) => u.id === recruited.unitId);
       if (!unit) return events;
-      const flavor = await generateGruntFlavor(
-        {
-          kind: 'grunt',
-          designation: unit.designation ?? unit.displayName,
-          roleName: SHORT_NAME(registries, 'roles', unit.roleId),
-          defectName: SHORT_NAME(registries, 'defects', unit.defects[0]?.id ?? ''),
-        },
-        { st, settings, contentLine: () => contentLine(state, registries) },
-      );
-      if (flavor) {
-        // cosmetic: if the chat changed or the engine refuses, the grunt simply keeps its designation
-        const r = api.dispatch({ type: 'squad/set_flavor', payload: { unitId: unit.id, ...flavor } }, { expectChatId: chatId });
-        if (!r.some((e) => e.type === 'error')) toast('info', `${unit.designation ?? unit.id} goes by ${flavor.name}.`);
-      }
+      await generations.generate('flavor.grunt', unit.id);
       return events;
+    },
+
+    async rerollGrunt(unitId) {
+      await generations.reroll('flavor.grunt', unitId);
     },
 
     upgradeFacility(facilityId) {

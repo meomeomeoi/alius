@@ -289,6 +289,7 @@ describe('enemy flavor names', () => {
     expect(t.state().enemyNames).toBeUndefined();
     expect(t.state().combat).toBeDefined();
     expect(t.toasts.filter((x) => x.kind === 'error')).toEqual([]);
+    expect(t.state().generations).toBeUndefined(); // P14: `flavor.enemy` writes no record and shows no chip
   });
 
   it('are off by default and ignored for plain enemies', async () => {

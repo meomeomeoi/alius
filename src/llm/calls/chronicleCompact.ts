@@ -1,7 +1,4 @@
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 export interface ChronicleCompactInput {
   kind: 'day' | 'week';
@@ -25,11 +22,8 @@ registerCallType<string>({
   },
 });
 
-/** One mechanic call; null when it failed or gave nothing (the caller falls back to joining the lines). */
-export async function compactChronicle(input: ChronicleCompactInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<string | null> {
-  if (input.lines.length === 0) return null;
-  const r = await callLlm<string>('chronicle_compact', input, deps);
-  if (!r.ok) return null;
-  const text = r.value.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, COMPACT_MAX).trim();
+/** The compacted entry of a model answer (`chronicle_compact`): plain text cut to the cap; nothing usable gives null (the caller joins the lines). */
+export function readCompaction(raw: string): string | null {
+  const text = raw.replace(/```[a-z]*/gi, ' ').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim().slice(0, COMPACT_MAX).trim();
   return text === '' ? null : text;
 }
