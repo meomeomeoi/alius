@@ -376,7 +376,7 @@ After every unit:
   - `crimeChance(state: CampaignState, reg: Registries, unit: Unit, days: 7 | 14 | 30): number`;
   - `rollCrime(draft: CampaignState, reg: Registries, unit: Unit, days: 7 | 14 | 30, seed: number): boolean`. It returns whether she learned it now, and calls `revealCrime` on a hit.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the hash is stable`: `headStartHash(7, 'unit_ann', 'crime')` gives the same value twice and a different one for `'unit_bea'`.
   - `development follows the impression`:
     - `d = { trust: 6, affinity: 4, attraction: 0 }`, N = 14 → trust grows by `round(6 × 0.8) + spread` with spread in −3…3;
@@ -392,10 +392,10 @@ After every unit:
     - pick a seed where `h(crime) < chance` (search seeds 1…200 in the test, the first hit);
     - expect `knows_crime` and `crime_reaction_done`, and Trust lowered by the reaction (as `revealCrime` does).
   - `a unit who already knows is not rolled`: `knows_crime` set → `rollCrime` returns false and nothing changes.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/headStart/develop.test.ts` → FAIL.
-- [ ] **Step 3: Implement** per "What the build does" steps 1–2. `reacts` reads `crime.valueReactions` with the same sign test as `revealCrime`. Factor it as `reactsToCrime(unit, crime): boolean` in `src/engine/memory/crime.ts` and use it in both places.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): development of the first impression and crime knowledge`
+- [x] **Step 2: Run** `npx vitest run tests/engine/headStart/develop.test.ts` → FAIL.
+- [x] **Step 3: Implement** per "What the build does" steps 1–2. `reacts` reads `crime.valueReactions` with the same sign test as `revealCrime`. Factor it as `reactsToCrime(unit, crime): boolean` in `src/engine/memory/crime.ts` and use it in both places.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): development of the first impression and crime knowledge`
 
 ---
 

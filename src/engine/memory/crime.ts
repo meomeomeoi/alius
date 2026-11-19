@@ -6,6 +6,11 @@ import { TUNING } from '../tuning';
 
 type Reaction = { axis: keyof CampaignState['squad'][number]['values']; sign: '+' | '-'; weight: number };
 
+/** Whether one of the crime's value reactions matches the unit's values (sign `+` needs a value above 0, `−` below 0). */
+export function reactsToCrime(unit: Pick<CampaignState['squad'][number], 'values'>, crime: Entry | undefined): boolean {
+  return ((crime?.valueReactions as Reaction[] | undefined) ?? []).some((r) => (r.sign === '+' ? unit.values[r.axis] > 0 : unit.values[r.axis] < 0));
+}
+
 /**
  * Units that do not yet know the commander's crime learn it and, once, react to it according to their values:
  * Trust += weight·trustPerWeight and Affinity += weight·affinityPerWeight for every matching value reaction.
