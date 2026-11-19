@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import type { CampaignState, Unit } from '../state/types';
 import type { AxisKind, DevelopmentAxisEntry } from './types';
 
 /** The kind of an axis key (`value:mercy`, `like:tech`, `like:*`, `like:{tag}`), or null for anything else. */
@@ -30,4 +31,26 @@ export function axisEntry(reg: Pick<Registries, 'developmentAxes'>, key: string)
   const kind = axisKind(key);
   const wild = kind ? reg.developmentAxes.get(`${kind}:${WILDCARD}`) : undefined;
   return (wild as unknown as DevelopmentAxisEntry | undefined) ?? null;
+}
+
+/** An axis the unit's card states strongly (from the import): it moves slower and stays closer to the base. */
+export function isAnchored(unit: Pick<Unit, 'development'>, key: string): boolean {
+  return unit.development?.anchors.includes(key) === true;
+}
+
+/**
+ * Why an axis can take no push, shift or step for this unit, or null. Never drifts: a grunt's anything (counters and habits aside),
+ * the bond fields of a unit without an imported bond, an axis the player froze, and anything no entry words (her own limits and
+ * her publicity preference have no entry). Disabled content categories are the callers' business (they gate rules, habits and tags).
+ */
+export function axisForbidden(
+  _state: Pick<CampaignState, 'settings'>, reg: Pick<Registries, 'developmentAxes' | 'tastes'>, unit: Pick<Unit, 'kind' | 'bond' | 'development'>, key: string,
+): string | null {
+  const kind = axisKind(key);
+  if (kind === null || axisEntry(reg, key) === null) return `"${key}" is not an axis`;
+  if (unit.kind !== 'named') return 'a grunt does not develop';
+  if (kind === 'bond' && (bondField(key) === null || unit.bond === undefined)) return 'bond axes need an imported bond'; // P14b: raw profile
+  if (kind === 'taste' && !reg.tastes.has(key.slice('taste:'.length))) return `"${key}" names no taste`;
+  if (unit.development?.held?.includes(key) === true) return 'held by the player';
+  return null;
 }

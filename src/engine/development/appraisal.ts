@@ -4,6 +4,7 @@ import { isLiving } from '../economy';
 import type { EventIntent } from '../relations/intents';
 import type { Appraisal, AppraisalRole, CampaignState, Reading, Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { matchRules, accumulate } from './rules';
 import { developmentMode, ensureDevelopment, nextDevId } from './state';
 
 /**
@@ -38,6 +39,8 @@ export interface Seen {
   severity: Severity;
   evidence?: string;
   sceneId?: string;
+  /** The event's own tags (a `like:{tag}` push takes these). */
+  tags?: string[];
 }
 
 /**
@@ -55,7 +58,7 @@ export function pushAppraisal(draft: CampaignState, reg: Registries, unitId: str
     summary: '',
   };
   a.summary = summaryOf(draft, a, seen.evidence);
-  void reg;
+  a.pushes = accumulate(unit, matchRules(draft, reg, unit, a, seen.tags ?? []));
   dev.pending.push(a);
   if (dev.pending.length > TUNING.development.pendingMax) dev.pending.splice(0, dev.pending.length - TUNING.development.pendingMax);
   return [{ type: 'appraisal_recorded', unitId, appraisalId: a.id, role: a.role }];
@@ -74,7 +77,7 @@ export function recordAppraisal(
   const sceneId = opts.sceneId ?? draft.scene?.id;
   return pushAppraisal(draft, reg, unitId, {
     kind: event.type, target: role === 'actor' ? 'commander' : 'her', role, subject: role === 'actor' ? 'commander' : unitId,
-    reading, severity: event.severity, evidence: event.evidence, ...(sceneId !== undefined ? { sceneId } : {}),
+    reading, severity: event.severity, evidence: event.evidence, tags: event.tags ?? [], ...(sceneId !== undefined ? { sceneId } : {}),
   });
 }
 
@@ -94,7 +97,7 @@ export function recordWitnesses(
     if (id === event.actor || believed.includes(id)) continue;
     events.push(...pushAppraisal(draft, reg, id, {
       kind: event.type, target: event.actor === 'commander' ? `unit:${believed[0]}` : 'commander', role: 'witness', subject,
-      reading, severity: event.severity, evidence: event.evidence, ...(sceneId !== undefined ? { sceneId } : {}),
+      reading, severity: event.severity, evidence: event.evidence, tags: event.tags ?? [], ...(sceneId !== undefined ? { sceneId } : {}),
     }));
   }
   return events;
@@ -105,7 +108,7 @@ export function recordActivity(draft: CampaignState, reg: Registries, unitId: st
   if (developmentMode(draft) === 'off') return [];
   const reading = reg.activities.get(activityId)?.appraisal as Reading | undefined;
   if (!reading) return [];
-  return pushAppraisal(draft, reg, unitId, { kind: `activity:${activityId}`, target: 'her', role: 'subject', subject: unitId, reading, severity: 'minor' });
+  return pushAppraisal(draft, reg, unitId, { kind: `activity:${activityId}`, target: 'her', role: 'subject', subject: unitId, reading, severity: 'minor', tags: (reg.activities.get(activityId)?.appraisalTags as string[] | undefined) ?? [] });
 }
 
 /**

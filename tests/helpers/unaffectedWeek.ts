@@ -14,8 +14,9 @@ import.meta.glob('../../src/engine/actions/*.ts', { eager: true });
  * throws: the point is that the run is the same with the P13 modules loaded as it was before they existed (a golden file made on the
  * commit before P13). Returns the event types of every step, the final state and the rng.
  */
-export function runWeek(reg: Registries): { log: string[]; rng: unknown; state: CampaignState } {
+export function runWeek(reg: Registries, opts: { /** P14b: changes the campaign before the first step (the golden callers pass nothing). */ tweak?: (s: CampaignState) => void } = {}): { log: string[]; rng: unknown; state: CampaignState } {
   let s = campaign(reg, 4);
+  opts.tweak?.(s);
   s.rng = seedRng(21);
   const [ANN, BEA, CAT] = s.squad.map((u) => u.id);
   for (const u of s.squad) setRelation(s, u.id, { trust: 50, affinity: 20, stateId: 'comrade' });

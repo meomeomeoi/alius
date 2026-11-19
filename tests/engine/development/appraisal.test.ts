@@ -141,6 +141,8 @@ describe('recording appraisals', () => {
     const u = run(p.state, reg, { type: 'discipline/undo', payload: { id } });
     expect(errors(u.events)).toEqual([]);
     expect(pending(u.state, ANN)).toEqual([]);
+    expect(developmentOf(p.state.squad.find((x) => x.id === ANN)!).acc).toEqual({ 'value:autonomy': 0.25, 'value:ingroup': 0.25 }); // what it pushed (a verbal punishment is minor: half) ...
+    expect(developmentOf(u.state.squad.find((x) => x.id === ANN)!).acc).toEqual({}); // ... UNDO takes back out
     // the others only watched; what they saw stays seen
     expect(pending(u.state, BEA)).toHaveLength(1);
   });

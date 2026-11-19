@@ -549,7 +549,7 @@ interface DevMoment {
   - `matchRules(state, reg, unit, a: Appraisal, tags: string[]): Array<{ axis, amount }>` (mode, severity and caps applied; forbidden and held dropped; `like:{tag}` expanded);
   - `accumulate(unit, pushes)` (clamp ±`accCap`).
 
-- [ ] **Step 1: Write the failing tests** (fixture units from the draft rules; acceptance 3):
+- [x] **Step 1: Write the failing tests** (fixture units from the draft rules; acceptance 3):
   - `the same event moves different women differently`: one `coerced` on ANN witnessed by:
     - a caretaker reading `wanted no` → `value:mercy +` and `value:autonomy +`;
     - a `mercy −` unit → `value:mercy −`;
@@ -566,10 +566,10 @@ interface DevMoment {
     - the event log minus the seven new event types is equal;
     - every relation's axes are equal;
     - some unit has non-empty `pending`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** `recordAppraisal` stores `pushes` on the appraisal and calls `accumulate`.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): rule accumulators with inertia, caps and holds`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** `recordAppraisal` stores `pushes` on the appraisal and calls `accumulate`.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): rule accumulators with inertia, caps and holds`
 
 ---
 
