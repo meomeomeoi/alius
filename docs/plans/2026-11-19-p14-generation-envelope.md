@@ -679,7 +679,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
 **Interfaces:**
 - Produces: `renderGenerationsSection(host, ctx: { state; settings; generations: Envelope; modal; debugLog?: LlmLogEntry[] })`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `lists open and expired records newest first with RETRY, menu and DROP`;
   - `quiet records are listed but not counted`;
   - `the badge counts open full records`;
@@ -688,10 +688,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `the settings clamp 10–600 s and 0–2`;
   - `tonightItems ends with "2 generations failed." and keeps it within six` (the line takes the last place when the list is full);
   - `no records, no line`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): SYS generations list, badge, hub line and settings`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): SYS generations list, badge, hub line and settings`
 
 ---
 

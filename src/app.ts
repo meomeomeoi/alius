@@ -69,6 +69,7 @@ import { renderOnboardingCard } from './ui/onboarding/card';
 import { renderRevealCard } from './ui/warden/revealCard';
 import { renderEndScreen } from './ui/warden/endScreen';
 import type { GenerationUi } from './ui/generation/surface';
+import { generationBadge } from './ui/shell/generationsSection';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
 import { overrideOpen } from './engine/warden';
@@ -319,6 +320,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     // new story and command offers since the OPS tab was last shown
     const fresh = state ? state.missions.offered.filter((m) => (m.source === 'command' || m.source === 'story') && !seenOffers.has(m.id)).length : 0;
     shell.setTabBadge('ops', fresh);
+    shell.setTabBadge('sys', generationBadge(state)); // P14: failed generations that wait for a retry
   }
   const seenOffers = new Set<string>();
 
@@ -1976,6 +1978,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const sound = createSound({ settings: () => getSettings(st), registries: () => registries, assetUrl: deps.assetUrl });
   const shell = (deps.shellFactory ?? createShell)({
     sound,
+    generation: genUi,
     st,
     getState: () => state,
     getLoad: () => load,

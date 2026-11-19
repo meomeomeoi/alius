@@ -1,3 +1,4 @@
+import { fullOpenRecords } from '../../llm/sites';
 import type { Registries } from '../../content/types';
 import { HANDLER_VISIT_KIND } from '../../engine/special/state';
 import { isLiving } from '../../engine/economy';
@@ -65,7 +66,7 @@ export function currentObjective(state: CampaignState, reg: Registries): Objecti
 }
 
 export interface TonightItem {
-  kind: 'knock' | 'dm' | 'note' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking';
+  kind: 'knock' | 'dm' | 'note' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking' | 'generation';
   text: string;
   unitId?: string;
   tone: MarkerTone;
@@ -127,7 +128,12 @@ export function tonightItems(state: CampaignState, _reg: Registries): TonightIte
       tone: booked.day === state.day ? 'warn' : 'neutral', analyze: 'glossary:booking',
     });
   }
-  return out.slice(0, TONIGHT_MAX);
+  // P14: failed generations that wait for a retry, always the last line (the cut keeps room for it, so a full list never drops it)
+  const failed = fullOpenRecords(state).length;
+  const line: TonightItem | null = failed > 0
+    ? { kind: 'generation', text: `${failed} generation${failed === 1 ? '' : 's'} failed.`, tone: 'warn', analyze: 'glossary:generation_record' }
+    : null;
+  return line ? [...out.slice(0, TONIGHT_MAX - 1), line] : out.slice(0, TONIGHT_MAX);
 }
 
 /** Why `END {SLOT}` cannot be pressed right now, or `null`. Read-only campaigns are the caller's business. */

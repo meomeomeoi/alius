@@ -19,6 +19,8 @@ export interface ChipHandlers {
   onDrop?(): void;
   /** A retry is running: every button waits. */
   pending?: boolean;
+  /** An open chip shows `[DROP]` too (the SYS list; elsewhere DROP is in the menu). */
+  showDrop?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export function drawGenerationChip(host: HTMLElement, rec: GenerationRecord, hd:
     chip.append(' ', button('retry', '[RETRY]', `Retry ${hd.label}`, hd.onRetry));
     if (hd.onUseFallback) chip.append(' ', button('fallback', '[USE FALLBACK]', `Use the plain version of ${hd.label}`, hd.onUseFallback));
     chip.append(' ', button('menu', '[⋯]', `More ways to retry ${hd.label}`, hd.onMenu));
+    if (hd.showDrop && hd.onDrop) chip.append(' ', button('drop', '[DROP]', `Give up ${hd.label}`, hd.onDrop));
   }
   host.append(chip);
   return chip;

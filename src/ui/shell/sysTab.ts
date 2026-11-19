@@ -12,6 +12,8 @@ import { renderContentSection } from '../bonds/content';
 import type { BuildStats } from '../../llm/context';
 import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderMemorySection } from '../memory/memorySection';
+import type { GenerationUi } from '../generation/surface';
+import { renderGenerationsSection } from './generationsSection';
 import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
 import { h } from '../dom';
@@ -35,6 +37,8 @@ export interface SysCtx {
   modal: (opts: ModalOpts) => Promise<string | null>;
   /** Called after a setting changed so the shell can restyle itself. */
   onSettingsChanged: () => void;
+  /** P14: the GENERATIONS list; absent = the section is not drawn. */
+  generation?: GenerationUi;
 }
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -437,5 +441,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
   }
 
   renderDebug();
-  host.append(form, memoryHost, backup, debugHost);
+  // --- P14: failed generations (a refresh of the shell redraws the tab, so the list follows the state)
+  const generationsHost = h('div', { class: 'alius-generations-host' });
+  if (ctx.generation) renderGenerationsSection(generationsHost, { state: ctx.getState(), ui: ctx.generation, debugLog: llmLog.entries() });
+  host.append(form, generationsHost, memoryHost, backup, debugHost);
 }

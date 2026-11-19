@@ -1,4 +1,4 @@
-import type { CampaignState } from '../engine/state/types';
+import type { CampaignState, GenerationRecord } from '../engine/state/types';
 import type { CallTypeId } from './callTypes';
 
 // P14: a site is one place that asks for a generation and applies its result. This module is data only: the declarations of every
@@ -39,6 +39,11 @@ export function registerGenerationSite(decl: SiteDecl): void {
 
 export const generationSite = (id: string): SiteDecl | undefined => sites.get(id);
 export const generationSites = (): SiteDecl[] => [...sites.values()];
+
+/** The open records of sites that record `full`: what the SYS badge and the hub line count (a `quiet` site never counts). */
+export function fullOpenRecords(state: CampaignState): GenerationRecord[] {
+  return (state.generations?.records ?? []).filter((r) => r.status === 'open' && sites.get(r.siteId)?.record === 'full');
+}
 
 const GLOSSARY = 'generation_failed';
 

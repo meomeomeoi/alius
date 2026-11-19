@@ -38,7 +38,7 @@ export function runPending(ui: GenerationUi, id: string, fn: () => Promise<unkno
 const rerollId = (siteId: string, key: string): string => `reroll:${siteId}:${key}`;
 
 /** The chip of one record, with its handlers bound to the envelope. Appends to `host`. */
-export function drawRecordChip(host: HTMLElement, ui: GenerationUi, state: CampaignState, rec: GenerationRecord): HTMLElement {
+export function drawRecordChip(host: HTMLElement, ui: GenerationUi, state: CampaignState, rec: GenerationRecord, opts: { showDrop?: boolean } = {}): HTMLElement {
   const site = generationSite(rec.siteId);
   const label = site ? site.label(state, rec.key) : rec.siteId;
   const set = ui.settings();
@@ -48,7 +48,7 @@ export function drawRecordChip(host: HTMLElement, ui: GenerationUi, state: Campa
   const held = site?.held === true;
   const retry = (opts?: { budgetMult?: number; profile?: 'main' | 'mechanic' }) => runPending(ui, rec.id, async () => { await ui.generations.retry(rec.id, opts); });
   return drawGenerationChip(host, rec, {
-    label, text, pending: isPending(rec.id),
+    label, text, pending: isPending(rec.id), showDrop: opts.showDrop,
     onRetry: () => retry(),
     onMenu: () => void retryMenuFor(ui, held).then((choice) => {
       if (choice === null) return;

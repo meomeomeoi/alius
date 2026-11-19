@@ -18,6 +18,7 @@ import { createRouter, type ScreenId } from './router';
 import { renderStatusHeader } from './status';
 import type { BuildStats } from '../../llm/context';
 import { renderSysTab } from './sysTab';
+import type { GenerationUi } from '../generation/surface';
 import { KEY_TABS, TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
 import { createToasts, type ToastKind, type ToastOpts } from './toast';
 
@@ -86,6 +87,8 @@ export interface ShellDeps {
   sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void; /** P10b: night halves the gain. */ setNight?(on: boolean): void };
   /** Called when the device goes up or down. */
   onDevice?(up: boolean): void;
+  /** P14: what SYS › GENERATIONS needs (the envelope, the settings, the redraw); absent = no list. */
+  generation?: GenerationUi;
 }
 
 const PANEL_ID = 'alius-panel';
@@ -211,6 +214,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         dispatch: deps.dispatch,
         lastBuild: deps.lastBuild,
         debugTools: deps.debugTools,
+        generation: deps.generation,
         toast,
         modal: (o) => api.modal(o),
         onSettingsChanged: () => {

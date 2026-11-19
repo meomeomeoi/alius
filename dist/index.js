@@ -27884,6 +27884,9 @@ function registerGenerationSite(decl) {
   sites.set(decl.id, decl);
 }
 var generationSite = (id) => sites.get(id);
+function fullOpenRecords(state) {
+  return (state.generations?.records ?? []).filter((r) => r.status === "open" && sites.get(r.siteId)?.record === "full");
+}
 var GLOSSARY = "generation_failed";
 function declare(id, callType, surface, reroll, record, label2, held2) {
   registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label2, ...held2 ? { held: held2 } : {} });
@@ -27942,6 +27945,7 @@ function drawGenerationChip(host, rec, hd) {
     chip2.append(" ", button2("retry", "[RETRY]", `Retry ${hd.label}`, hd.onRetry));
     if (hd.onUseFallback) chip2.append(" ", button2("fallback", "[USE FALLBACK]", `Use the plain version of ${hd.label}`, hd.onUseFallback));
     chip2.append(" ", button2("menu", "[\u22EF]", `More ways to retry ${hd.label}`, hd.onMenu));
+    if (hd.showDrop && hd.onDrop) chip2.append(" ", button2("drop", "[DROP]", `Give up ${hd.label}`, hd.onDrop));
   }
   host.append(chip2);
   return chip2;
@@ -28017,20 +28021,21 @@ function runPending(ui, id, fn) {
   });
 }
 var rerollId = (siteId, key) => `reroll:${siteId}:${key}`;
-function drawRecordChip(host, ui, state, rec) {
+function drawRecordChip(host, ui, state, rec, opts = {}) {
   const site = generationSite(rec.siteId);
   const label2 = site ? site.label(state, rec.key) : rec.siteId;
   const set = ui.settings();
   const base = site ? Math.ceil((set.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
   const text2 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set.llmTimeoutMs, expiredWhy: rec.expiredWhy });
   const held2 = site?.held === true;
-  const retry = (opts) => runPending(ui, rec.id, async () => {
-    await ui.generations.retry(rec.id, opts);
+  const retry = (opts2) => runPending(ui, rec.id, async () => {
+    await ui.generations.retry(rec.id, opts2);
   });
   return drawGenerationChip(host, rec, {
     label: label2,
     text: text2,
     pending: isPending(rec.id),
+    showDrop: opts.showDrop,
     onRetry: () => retry(),
     onMenu: () => void retryMenuFor(ui, held2).then((choice) => {
       if (choice === null) return;
@@ -28093,6 +28098,43 @@ function renderEndScreen(host, state, deps) {
   card2.classList.add("alius-end", "alius-stat");
   card2.setAttribute("data-analyze", "glossary:death_rule");
   host.append(h("div", { class: "alius-end-screen" }, card2));
+}
+
+// src/ui/shell/generationsSection.ts
+var generationBadge = (state) => state ? fullOpenRecords(state).length : 0;
+function renderGenerationsSection(host, ctx2) {
+  const { ui, state } = ctx2;
+  const settings = ui.settings();
+  host.replaceChildren();
+  const section = h(
+    "div",
+    { class: "alius-generations" },
+    h("h3", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:generation_record") }, "Generations"))
+  );
+  if (settings.mechanicProfileId === "" && !settings.mechanicFallbackToMain) {
+    section.append(h(
+      "p",
+      { class: "alius-chip alius-generations-standing", ...analyzeAttrs("glossary:generation_reasons") },
+      "No mechanic profile is selected: model calls for the mechanics are not made."
+    ));
+  }
+  const records = [...state?.generations?.records ?? []].reverse();
+  if (!state || records.length === 0) {
+    section.append(h("p", { class: "alius-dim" }, "No failed generations."));
+  } else {
+    const list5 = h("ul", { class: "alius-generations-list" });
+    for (const rec of records) {
+      const site = generationSite(rec.siteId);
+      const row2 = h("li", { class: "alius-generations-row", "data-record": rec.id });
+      drawRecordChip(row2, ui, state, rec, { showDrop: true });
+      row2.append(h("span", { class: "alius-dim" }, ` Day ${rec.day}, ${rec.slot} \xB7 ${rec.attempts} ${rec.attempts === 1 ? "try" : "tries"}${site?.record === "quiet" ? " \xB7 background" : ""}`));
+      const entry = settings.debug ? ctx2.debugLog?.find((e) => e.at === rec.at && e.callType === site?.callType) : void 0;
+      if (entry) row2.append(h("pre", { class: "alius-generations-raw", "data-raw": "" }, entry.raw === "" ? "(no text)" : entry.raw));
+      list5.append(row2);
+    }
+    section.append(list5);
+  }
+  host.append(section);
 }
 
 // src/ui/warden/overrideChip.ts
@@ -36109,7 +36151,9 @@ function tonightItems(state, _reg) {
       analyze: "glossary:booking"
     });
   }
-  return out.slice(0, TONIGHT_MAX);
+  const failed = fullOpenRecords(state).length;
+  const line2 = failed > 0 ? { kind: "generation", text: `${failed} generation${failed === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
+  return line2 ? [...out.slice(0, TONIGHT_MAX - 1), line2] : out.slice(0, TONIGHT_MAX);
 }
 function endSlotBlock(state) {
   if (state.scene) return "A conversation is open.";
@@ -41787,7 +41831,9 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
     );
   }
   renderDebug();
-  host.append(form, memoryHost, backup, debugHost);
+  const generationsHost = h("div", { class: "alius-generations-host" });
+  if (ctx2.generation) renderGenerationsSection(generationsHost, { state: ctx2.getState(), ui: ctx2.generation, debugLog: llmLog.entries() });
+  host.append(form, generationsHost, memoryHost, backup, debugHost);
 }
 
 // src/ui/shell/toast.ts
@@ -41913,6 +41959,7 @@ function createShell(deps) {
         dispatch: deps.dispatch,
         lastBuild: deps.lastBuild,
         debugTools: deps.debugTools,
+        generation: deps.generation,
         toast,
         modal: (o) => api.modal(o),
         onSettingsChanged: () => {
@@ -42325,6 +42372,7 @@ function createApp(st, deps) {
     shell.setTabBadge("home", state ? unreadNotes(state) : 0);
     const fresh = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
     shell.setTabBadge("ops", fresh);
+    shell.setTabBadge("sys", generationBadge(state));
   }
   const seenOffers = /* @__PURE__ */ new Set();
   function syncIntimacy() {
@@ -43921,6 +43969,7 @@ function createApp(st, deps) {
   const sound = createSound({ settings: () => getSettings(st), registries: () => registries, assetUrl: deps.assetUrl });
   const shell = (deps.shellFactory ?? createShell)({
     sound,
+    generation: genUi,
     st,
     getState: () => state,
     getLoad: () => load,

@@ -345,3 +345,39 @@ describe('latestOversight', () => {
     expect(latestOversight(s)).toBeNull();
   });
 });
+
+describe('tonightItems: failed generations (P14)', () => {
+  const rec = (id: string, siteId: string, over: Record<string, unknown> = {}) => ({
+    id, siteId, key: id, reason: 'refused', detail: '', attempts: 1, day: 1, slot: 'morning', at: 1, budgetMult: 1, status: 'open', ...over,
+  }) as NonNullable<CampaignState['generations']>['records'][number];
+  const failed = (...records: ReturnType<typeof rec>[]): CampaignState => {
+    const s = campaign(reg, 4);
+    s.generations = { seq: records.length, records };
+    return s;
+  };
+
+  it('no records, no line', () => {
+    expect(tonightItems(campaign(reg, 4), reg).some((i) => i.kind === 'generation')).toBe(false);
+    expect(tonightItems(failed(rec('g1', 'scene.digest'), rec('g2', 'scene.summary', { status: 'expired', reason: 'expired' })), reg).some((i) => i.kind === 'generation')).toBe(false);
+  });
+
+  it('ends with "2 generations failed." and counts only open full records', () => {
+    const s = failed(rec('g1', 'scene.summary'), rec('g2', 'director.tick'), rec('g3', 'flavor.grunt'));
+    const items = tonightItems(s, reg);
+    expect(items.at(-1)).toEqual({ kind: 'generation', text: '2 generations failed.', tone: 'warn', analyze: 'glossary:generation_record' });
+    expect(tonightItems(failed(rec('g1', 'scene.summary')), reg).at(-1)!.text).toBe('1 generation failed.');
+  });
+
+  it('keeps the line within six: it takes the last place when the list is full', () => {
+    const s = failed(rec('g1', 'scene.summary'), rec('g2', 'director.tick'));
+    const names = ['unit_ann', 'unit_bea', 'unit_cat', 'unit_dee'];
+    for (const id of names) s.dms[id] = [{ id: `m_${id}`, from: id, text: 'hey', day: 1, slot: 'morning', read: false }];
+    s.world.incomingUnits = 1;
+    s.calendar.shortageStreak = 2;
+    s.commander.injuredUntilDay = s.day + 3;
+    const items = tonightItems(s, reg);
+    expect(items).toHaveLength(6);
+    expect(items.at(-1)!.kind).toBe('generation');
+    expect(items.filter((i) => i.kind === 'generation')).toHaveLength(1);
+  });
+});
