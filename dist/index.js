@@ -9194,17 +9194,17 @@ function waitingDemands(state) {
 var roomsOf = (reg) => [...reg.hubRooms.values()];
 var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
 var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function routineWeight(state, reg, room, unit2) {
-  const base = (room.weights ?? {})[state.slot] ?? 0;
+function routineWeight(state, reg, room2, unit2) {
+  const base = (room2.weights ?? {})[state.slot] ?? 0;
   if (base <= 0) return 0;
-  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
+  const open3 = (reg.locations.get(room2.sceneLocationId)?.slots ?? []).includes(state.slot);
   if (!open3) return 0;
-  if (typeof room.facilityId === "string" && facilityLevel2(state, room.facilityId) < 1) return 0;
-  const liked = (room.likeTags ?? []).some((t) => likesOf(unit2).some((l) => l.toLowerCase() === t.toLowerCase()));
+  if (typeof room2.facilityId === "string" && facilityLevel2(state, room2.facilityId) < 1) return 0;
+  const liked = (room2.likeTags ?? []).some((t) => likesOf(unit2).some((l) => l.toLowerCase() === t.toLowerCase()));
   return base + (liked ? 2 : 0);
 }
 function place(state, reg, rooms, unit2) {
-  const here = (room, reason) => room ? { unitId: unit2.id, roomId: room.id, reason } : null;
+  const here = (room2, reason) => room2 ? { unitId: unit2.id, roomId: room2.id, reason } : null;
   if (state.expedition?.party.includes(unit2.id)) return { unitId: unit2.id, roomId: null, reason: "expedition" };
   const held2 = activeRestrictions(state, unit2.id);
   const found2 = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
@@ -9212,7 +9212,7 @@ function place(state, reg, rooms, unit2) {
   const booked = state.personal?.bookings?.find((b) => b.unitId === unit2.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
   const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
   if (bookedRoom) return { unitId: unit2.id, roomId: bookedRoom.id, reason: "routine" };
-  const weights = rooms.map((room) => routineWeight(state, reg, room, unit2));
+  const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit2));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit2.id, roomId: null, reason: "nowhere" };
   let pick2 = fnv1a(`${state.day}|${state.slot}|${unit2.id}`) % total2;
@@ -10698,13 +10698,26 @@ function axisEntry(reg, key) {
   const wild = kind ? reg.developmentAxes.get(`${kind}:${WILDCARD}`) : void 0;
   return wild ?? null;
 }
-function axisForbidden(_state, reg, unit2, key) {
+function isAnchored(unit2, key) {
+  return unit2.development?.anchors.includes(key) === true;
+}
+function axisForbidden(state, reg, unit2, key) {
   const kind = axisKind(key);
   if (kind === null || axisEntry(reg, key) === null) return `"${key}" is not an axis`;
   if (unit2.kind !== "named") return "a grunt does not develop";
   if (kind === "bond" && (bondField(key) === null || unit2.bond === void 0)) return "bond axes need an imported bond";
   if (kind === "taste" && !reg.tastes.has(key.slice("taste:".length))) return `"${key}" names no taste`;
   if (unit2.development?.held?.includes(key) === true) return "held by the player";
+  if (kind === "like" || kind === "dislike") {
+    const tag2 = key.slice(kind.length + 1);
+    const on = state.content?.enabled ?? [];
+    const limits = unit2.bond?.ownLimits.categories ?? [];
+    for (const c of reg.contentCategories.values()) {
+      const id = String(c.id);
+      if (tag2 !== id.replace(/_/g, " ") && tag2 !== id && tag2 !== String(c.label).toLowerCase()) continue;
+      if (!on.includes(id) || limits.includes(id)) return "a disabled or limited content category";
+    }
+  }
   return null;
 }
 var isTag = (s) => s.length > 0 && s.length <= 32 && /^[a-z0-9'_-]+( [a-z0-9'_-]+)*$/.test(s);
@@ -10770,9 +10783,9 @@ function ruleFits(rule, unit2, a) {
   if (!by) return true;
   if (by.values) {
     const v = valuesOf(unit2);
-    for (const [axis, sign] of Object.entries(by.values)) {
+    for (const [axis, sign2] of Object.entries(by.values)) {
       const n = v[axis];
-      if (sign === "+" ? !(n > 0) : !(n < 0)) return false;
+      if (sign2 === "+" ? !(n > 0) : !(n < 0)) return false;
     }
   }
   const bond = bondOf(unit2);
@@ -12702,9 +12715,9 @@ function eligible(reg, unit2, ctx2) {
     const req = m.requires ?? {};
     if (req.minDays !== void 0 && req.minDays > ctx2.days) return false;
     if (req.knowsCrime !== void 0 && req.knowsCrime !== ctx2.knowsCrime) return false;
-    for (const [axis, sign] of Object.entries(req.values ?? {})) {
+    for (const [axis, sign2] of Object.entries(req.values ?? {})) {
       const v = unit2.values[axis];
-      if (sign === "+" ? !(v > 0) : !(v < 0)) return false;
+      if (sign2 === "+" ? !(v > 0) : !(v < 0)) return false;
     }
     return m.sign === "any" || ctx2.impression === "neutral" || m.sign === ctx2.impression;
   });
@@ -15077,17 +15090,17 @@ function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   const w = wardenOf(draft);
   if (!ls || !w) return [];
-  const D = TUNING.warden.intrigue.discovered;
+  const D2 = TUNING.warden.intrigue.discovered;
   const events = [{ type: "intrigue_discovered", cause }];
-  w.satisfaction = clamp15(w.satisfaction + D.satisfaction, 0, 100);
-  const rose = addDefiance(draft, ctx2, D.defiance);
+  w.satisfaction = clamp15(w.satisfaction + D2.satisfaction, 0, 100);
+  const rose = addDefiance(draft, ctx2, D2.defiance);
   events.push(...rose);
   events.push({ type: "warden_betrayed", unitId: w.unitId, severity: "extreme" });
   events.push(...applyEventToUnit(draft, ctx2.registries, w.unitId, { type: "warden_betrayed", actor: "commander", targets: [w.unitId], severity: "extreme", evidence: "plotted against the warden", confidence: 1 }));
   events.push(...evaluateAutomatic(draft, ctx2.registries, w.unitId));
   for (const id of allies(draft)) if (!hasFlag3(draft, id, "warden_knows_ally")) draft.relations[id].flags.push("warden_knows_ally");
   ls.intrigue.hack.step = 0;
-  ls.intrigue.suspicion = D.suspicionAfter;
+  ls.intrigue.suspicion = D2.suspicionAfter;
   ls.intrigue.discovered += 1;
   if (!rose.some((e) => e.type === "commander_terminated")) {
     const id = opts.punishmentId ?? pickPunishment(draft, ctx2.registries, 4);
@@ -16967,8 +16980,8 @@ function candidateTruths(state, reg, unitId) {
   for (const d of state.discipline?.demands ?? []) {
     if (d.unitId === unitId && d.status === "undelivered") out.push({ kind: "demand", value: d.templateId, refId: d.id });
   }
-  const sign = [...state.disloyalty?.units[unitId]?.signs ?? []].reverse().find((x) => x.about === "desertion" || x.about === "mutiny");
-  if (sign) out.push({ kind: "loyalty", value: sign.about });
+  const sign2 = [...state.disloyalty?.units[unitId]?.signs ?? []].reverse().find((x) => x.about === "desertion" || x.about === "mutiny");
+  if (sign2) out.push({ kind: "loyalty", value: sign2.about });
   const facts = state.memory.facts.filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*") && !f.tags.includes("frequency")).sort((a, b) => b.day - a.day);
   for (const f of facts) out.push({ kind: "fact", value: f.id, refId: f.id });
   if (rel) out.push({ kind: "attraction", value: attractionBand(rel.attraction) });
@@ -19568,14 +19581,14 @@ function validateDirectorOutput(state, reg, raw, opts) {
       output.missionOffers.push(offer);
     });
   }
-  let room = rumorRoom(state, reg);
+  let room2 = rumorRoom(state, reg);
   list5("rumors").forEach((r, i) => {
     const part = `rumors[${i}]`;
     if (i >= TUNING.director.maxRumors) return reject(part, `more than ${TUNING.director.maxRumors} rumors`);
     if (!isObj5(r)) return reject(part, "not a rumor");
     const text2 = words2(plain(r.text, 600), TUNING.director.rumorWords);
     if (text2 === "") return reject(part, "the rumor has no text");
-    if (room <= 0) return reject(part, "no room for more rumors today");
+    if (room2 <= 0) return reject(part, "no room for more rumors today");
     const tags = [];
     for (const t of Array.isArray(r.tags) ? r.tags : []) {
       const n = normalizeTag(t);
@@ -19590,7 +19603,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
       if (problem) return reject(part, `bad lead: ${problem}`);
       rumor.lead = { templateId: lead.templateId, regionId: lead.regionId };
     }
-    room--;
+    room2--;
     output.rumors.push(rumor);
   });
   if (only) return { output, rejected };
@@ -23160,8 +23173,8 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
 function storeSceneFacts(draft, reg, scene, raw) {
   const events = [];
   const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad, factTextMax: factTextMax(draft) }).facts;
-  const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
-  for (const f of facts.slice(0, room)) {
+  const room2 = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
+  for (const f of facts.slice(0, room2)) {
     addFact(draft, {
       about: Array.isArray(f.about) ? f.about : [f.about],
       text: f.text,
@@ -25634,6 +25647,200 @@ function applyRecap(draft, reg, payload) {
 // src/engine/actions/headStart.ts
 registerAction("head_start/recap", (draft, payload, ctx2) => applyRecap(draft, ctx2.registries, payload));
 
+// src/engine/development/review.ts
+var FACT_KINDS = ["attitude", "value", "habit", "skill", "memory"];
+var D = TUNING.development;
+var round4 = (n) => Math.round(n * 1e6) / 1e6;
+function room(unit2, key) {
+  const kind = axisKind(key);
+  const anchored = isAnchored(unit2, key);
+  if (kind === "value") {
+    const axis = key.slice("value:".length);
+    const d = developmentOf(unit2).drift[axis] ?? 0;
+    const cap7 = anchored ? D.anchoredValueCap : D.valueCap;
+    return { up: d < cap7, down: d > -cap7 };
+  }
+  if (kind === "bond") {
+    const field2 = bondField(key);
+    if (field2 === null || unit2.bond === void 0) return { up: false, down: false };
+    const scale = D.scales[field2];
+    const eff = developmentOf(unit2).bond?.[field2] ?? unit2.bond[field2];
+    const cur = scale.indexOf(eff);
+    const imp = scale.indexOf(unit2.bond[field2]);
+    const cap7 = anchored ? D.anchoredDiscreteCap : D.discreteCap;
+    return { up: cur + 1 < scale.length && cur + 1 - imp <= cap7, down: cur - 1 >= 0 && imp - (cur - 1) <= cap7 };
+  }
+  const name = key.slice((kind ?? "").length + 1);
+  const list5 = kind === "like" ? likesOf(unit2) : kind === "dislike" ? dislikesOf(unit2) : tastesOf(unit2);
+  const max = kind === "like" ? SETUP_LIMITS.likes : kind === "dislike" ? SETUP_LIMITS.dislikes : TUNING.commander.maxTastes;
+  return { up: !list5.includes(name) && list5.length < max, down: list5.includes(name) };
+}
+var stepNeed = (unit2, key) => D.stepThreshold * (isAnchored(unit2, key) ? D.anchorMult : 1);
+var cut3 = (s, n) => s.replace(/\s+/g, " ").trim().slice(0, n).trim();
+function validateReview(state, reg, unitId, v) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  const dropped = [];
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return { shifts: [], facts: [], dropped: (v.shifts ?? []).map((s) => ({ axis: s.axis, why: "not a named living unit" })) };
+  const shifts = [];
+  for (const s of v.shifts ?? []) {
+    const no = (why) => void dropped.push({ axis: s.axis, why });
+    const forbidden = axisForbidden(state, reg, unit2, s.axis);
+    const acc = developmentOf(unit2).acc[s.axis] ?? 0;
+    if (forbidden !== null) no(forbidden);
+    else if (s.direction !== "up" && s.direction !== "down") no("no direction");
+    else if (s.size !== "nudge" && s.size !== "step") no("no size");
+    else if (shifts.some((x) => x.axis === s.axis)) no("named twice");
+    else if (Math.abs(acc) < D.nudgeMin) no("no support");
+    else if (acc > 0 !== (s.direction === "up")) no("against the accumulator");
+    else if (s.size === "nudge" && axisKind(s.axis) !== "value") no("only a value nudges");
+    else if (s.size === "step" && Math.abs(acc) < stepNeed(unit2, s.axis)) no("not enough support for a step");
+    else if (!room(unit2, s.axis)[s.direction]) no("at its cap");
+    else shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: cut3(String(s.reason ?? ""), D.reasonMax) });
+  }
+  const facts = [];
+  for (const f of v.facts ?? []) {
+    const text2 = cut3(String(f.text ?? ""), D.factTextMax);
+    if (text2 !== "" && FACT_KINDS.includes(f.kind)) facts.push({ text: text2, kind: f.kind });
+  }
+  return { shifts: shifts.slice(0, D.maxShifts), facts: facts.slice(0, D.maxFacts), dropped };
+}
+var sign = (n) => n > 0 ? 1 : -1;
+function consume(dev, taken, axis, amount) {
+  const cur = dev.acc[axis] ?? 0;
+  const take = Math.min(Math.abs(cur), amount) * sign(cur);
+  const next = round4(cur - take);
+  if (next === 0) delete dev.acc[axis];
+  else dev.acc[axis] = next;
+  taken[axis] = round4((taken[axis] ?? 0) + take);
+}
+var listField = { like: "likes", dislike: "dislikes", taste: "tastes" };
+function changeList(dev, field2, name, gain) {
+  const [onto, off] = gain ? ["gained", "lost"] : ["lost", "gained"];
+  const offList = dev[off]?.[field2];
+  if (offList?.includes(name)) {
+    dev[off][field2] = offList.filter((t) => t !== name);
+  } else {
+    const o = dev[onto] ??= {};
+    (o[field2] ??= []).push(name);
+  }
+  for (const k of ["gained", "lost"]) {
+    const bag = dev[k];
+    if (!bag) continue;
+    for (const f of Object.keys(bag)) if (bag[f]?.length === 0) delete bag[f];
+    if (Object.keys(bag).length === 0) delete dev[k];
+  }
+}
+function applyShift(unit2, dev, s) {
+  const kind = axisKind(s.axis);
+  const up = s.direction === "up";
+  if (kind === "value") {
+    const axis = s.axis.slice("value:".length);
+    const before = valuesOf(unit2)[axis];
+    const old = dev.drift[axis] ?? 0;
+    const cap7 = isAnchored(unit2, s.axis) ? D.anchoredValueCap : D.valueCap;
+    const delta = D.nudge * (isAnchored(unit2, s.axis) ? D.anchorInertia : 1);
+    const next = s.size === "nudge" ? old + (up ? delta : -delta) : up ? Math.floor(old) + 1 : Math.ceil(old) - 1;
+    dev.drift[axis] = round4(Math.min(cap7, Math.max(-cap7, next)));
+    const after = valuesOf(unit2)[axis];
+    return after === before ? null : { from: String(before), to: String(after) };
+  }
+  if (kind === "bond") {
+    const field2 = bondField(s.axis);
+    const scale = D.scales[field2];
+    const eff = dev.bond?.[field2] ?? unit2.bond[field2];
+    const to = scale[scale.indexOf(eff) + (up ? 1 : -1)];
+    const bag = dev.bond ??= {};
+    if (to === unit2.bond[field2]) delete bag[field2];
+    else bag[field2] = to;
+    if (Object.keys(bag).length === 0) delete dev.bond;
+    return { from: String(eff), to: String(to) };
+  }
+  const name = s.axis.slice((kind ?? "").length + 1);
+  changeList(dev, listField[kind], name, up);
+  if (kind === "like" && up && dislikesOf(unit2).includes(name)) changeList(dev, "dislikes", name, false);
+  if (kind === "dislike" && up && likesOf(unit2).includes(name)) changeList(dev, "likes", name, false);
+  return { from: up ? "no" : "yes", to: up ? "yes" : "no" };
+}
+function applyReview(draft, reg, unitId, v, source) {
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (!unit2) return [];
+  const ok = validateReview(draft, reg, unitId, v);
+  const dev = ensureDevelopment(unit2);
+  const inverse = {
+    drift: structuredClone(dev.drift),
+    bond: structuredClone(dev.bond),
+    gained: structuredClone(dev.gained),
+    lost: structuredClone(dev.lost),
+    acc: {},
+    nextId: dev.nextId,
+    factIds: [],
+    momentIds: [],
+    ...dev.lastReview !== void 0 ? { lastReview: dev.lastReview } : {},
+    pending: structuredClone(dev.pending)
+  };
+  const events = [];
+  for (const s of ok.shifts) {
+    const change = applyShift(unit2, dev, s);
+    consume(dev, inverse.acc, s.axis, s.size === "step" ? D.stepThreshold : D.nudgeCost);
+    events.push({ type: "development_shift", unitId, axis: s.axis, size: s.size });
+    if (change !== null) {
+      const m = { id: nextDevId(dev, "dm"), axis: s.axis, from: change.from, to: change.to, reason: s.reason, day: draft.day };
+      dev.moments.push(m);
+      inverse.momentIds.push(m.id);
+      events.push({ type: "development_moment", unitId, momentId: m.id, axis: s.axis });
+    }
+  }
+  for (const f of ok.facts) {
+    const fact = { id: nextDevId(dev, "df"), text: f.text, kind: f.kind, day: draft.day, source: "review" };
+    dev.facts.push(fact);
+    inverse.factIds.push(fact.id);
+    events.push({ type: "development_fact", unitId, factId: fact.id });
+  }
+  while (dev.facts.length > D.factsMax) {
+    const i = dev.facts.findIndex((f) => f.edited !== true && !inverse.factIds.includes(f.id));
+    if (i < 0) break;
+    (inverse.droppedFacts ??= []).push(...dev.facts.splice(i, 1));
+  }
+  dev.pending = [];
+  dev.lastReview = draft.day;
+  dev.lastApplied = inverse;
+  events.push({ type: "development_review", unitId, source, shifts: ok.shifts.length, facts: ok.facts.length });
+  return events;
+}
+function undoReview(draft, unitId) {
+  const dev = draft.squad.find((u) => u.id === unitId)?.development;
+  const inv = dev?.lastApplied;
+  if (!dev || !inv) return false;
+  dev.drift = structuredClone(inv.drift);
+  if (inv.bond) dev.bond = structuredClone(inv.bond);
+  else delete dev.bond;
+  if (inv.gained) dev.gained = structuredClone(inv.gained);
+  else delete dev.gained;
+  if (inv.lost) dev.lost = structuredClone(inv.lost);
+  else delete dev.lost;
+  for (const [axis, taken] of Object.entries(inv.acc)) {
+    const next = round4((dev.acc[axis] ?? 0) + taken);
+    if (next === 0) delete dev.acc[axis];
+    else dev.acc[axis] = next;
+  }
+  dev.facts = dev.facts.filter((f) => !inv.factIds.includes(f.id));
+  if (inv.droppedFacts) dev.facts.unshift(...structuredClone(inv.droppedFacts));
+  dev.moments = dev.moments.filter((m) => !inv.momentIds.includes(m.id));
+  if (inv.lastReview !== void 0) dev.lastReview = inv.lastReview;
+  else delete dev.lastReview;
+  dev.pending = [...structuredClone(inv.pending), ...dev.pending];
+  dev.nextId = inv.nextId;
+  delete dev.lastApplied;
+  return true;
+}
+function reviewCommitted(state, unitId) {
+  const dev = state.squad.find((u) => u.id === unitId)?.development;
+  const inv = dev?.lastApplied;
+  if (!dev || !inv) return null;
+  const shown = dev.moments.some((m) => inv.momentIds.includes(m.id) && (m.sceneId !== void 0 || m.shownDay !== void 0)) || dev.facts.some((f) => inv.factIds.includes(f.id) && (f.sceneId !== void 0 || f.shownDay !== void 0));
+  return shown ? "She has already shown it." : null;
+}
+
 // src/engine/actions/development.ts
 registerAction("development/set_mode", (draft, payload) => {
   const mode = payload?.mode;
@@ -25643,6 +25850,21 @@ registerAction("development/set_mode", (draft, payload) => {
 });
 registerActivityHook((draft, ctx2, done) => done.companionId ? recordActivity(draft, ctx2.registries, done.companionId, done.activityId) : []);
 registerDayEndStep("dm_rumors", developmentDayStep);
+registerAction("development/review", (draft, payload, ctx2) => {
+  const p = payload;
+  if (developmentMode(draft) === "off") throw new Error("Character development is off.");
+  const unit2 = typeof p?.unitId === "string" ? draft.squad.find((u) => u.id === p.unitId) : void 0;
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) throw new Error("development/review needs a named living unit.");
+  if (p?.source !== "model" && p?.source !== "fallback") throw new Error("development/review: the source is model or fallback.");
+  const r = p.review;
+  if (typeof r !== "object" || r === null || !Array.isArray(r.shifts) || !Array.isArray(r.facts)) throw new Error("development/review needs { review: { shifts, facts } }.");
+  if (p.replace === true) {
+    const why = reviewCommitted(draft, unit2.id);
+    if (why !== null) throw new Error(why);
+    undoReview(draft, unit2.id);
+  }
+  return applyReview(draft, ctx2.registries, unit2.id, r, p.source);
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -27079,8 +27301,8 @@ function sanitizeEpilogue(text2) {
 function fallbackEpilogue(input) {
   const heading2 = "AUTHOR TO WRITE: THE RECORD";
   let body = input.lines.join("\n");
-  const room = EPILOGUE_MAX2 - heading2.length - 2;
-  if (body.length > room) body = body.slice(body.length - room).replace(/^[^\n]*\n/, "");
+  const room2 = EPILOGUE_MAX2 - heading2.length - 2;
+  if (body.length > room2) body = body.slice(body.length - room2).replace(/^[^\n]*\n/, "");
   return body === "" ? heading2 : `${heading2}
 
 ${body}`;
@@ -27409,8 +27631,8 @@ function createOnboarding(deps) {
       const s = state();
       const id = s?.onboarding?.guideUnitId;
       if (!s || id === void 0 || !livingNamed(s).some((u) => u.id === id)) return false;
-      const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
-      const location = sceneLocation(s, reg(), { locationId: room ? String(reg().hubRooms.get(room)?.sceneLocationId ?? "") : void 0 });
+      const room2 = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
+      const location = sceneLocation(s, reg(), { locationId: room2 ? String(reg().hubRooms.get(room2)?.sceneLocationId ?? "") : void 0 });
       return deps.talkAt(id, location);
     },
     launchTutorial() {
@@ -27679,8 +27901,8 @@ function createWarden(deps) {
     const w = s ? wardenOf(s) : null;
     if (!s || !w || !argueAvailable(s)) return false;
     const reg = deps.registries();
-    const room = whereabouts(s, reg).find((x) => x.unitId === w.unitId)?.roomId;
-    const locationId = sceneLocation(s, reg, { locationId: room ? String(reg.hubRooms.get(room)?.sceneLocationId ?? "") : void 0 });
+    const room2 = whereabouts(s, reg).find((x) => x.unitId === w.unitId)?.roomId;
+    const locationId = sceneLocation(s, reg, { locationId: room2 ? String(reg.hubRooms.get(room2)?.sceneLocationId ?? "") : void 0 });
     if (!await deps.startScene({ locationId, participants: [w.unitId], origin: "event", consumesSlot: false }) || chatId() !== expect) return false;
     const sceneId = state()?.scene?.id;
     if (sceneId === void 0) return false;
@@ -30739,8 +30961,8 @@ function fitTo(text2, fits, tokens) {
   while (lines.length > 1 && !fits(lines.join("\n"))) lines.pop();
   const first2 = lines.join("\n");
   if (fits(first2)) return first2;
-  const cut4 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
-  return cut4 !== "" && fits(cut4) ? cut4 : null;
+  const cut5 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
+  return cut5 !== "" && fits(cut5) ? cut5 : null;
 }
 
 // src/llm/calls/chronicleCompact.ts
@@ -31815,8 +32037,8 @@ function fitItems(header, items, budget) {
       continue;
     }
     if (kept.length === 0) {
-      const room = Math.floor(limit * 3.6) - header.length - 1;
-      if (room >= 12) kept.push(item.slice(0, room).trimEnd());
+      const room2 = Math.floor(limit * 3.6) - header.length - 1;
+      if (room2 >= 12) kept.push(item.slice(0, room2).trimEnd());
     }
     break;
   }
@@ -32139,7 +32361,7 @@ function compileRefusals(reg) {
   }
   return out;
 }
-var cut3 = (s) => s.length > DETAIL_MAX2 ? s.slice(0, DETAIL_MAX2) : s;
+var cut4 = (s) => s.length > DETAIL_MAX2 ? s.slice(0, DETAIL_MAX2) : s;
 var isAbort = (e) => typeof e === "object" && e !== null && (e.name === "AbortError" || e.name === "TimeoutError");
 function refuses(patterns, text2, scopes) {
   return patterns.some((p) => scopes.includes(p.scope) && p.re.test(text2));
@@ -32167,7 +32389,7 @@ function classify(ct, answer, patterns) {
   if (checked.success) return { ok: true, value: checked.data };
   const empty = Array.isArray(json) ? json.length === 0 : typeof json === "object" && Object.keys(json).length === 0;
   if (empty) return { ok: false, reason: "refused", detail: "an empty answer where the form needs content" };
-  const detail = cut3(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
+  const detail = cut4(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
   if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail };
   return { ok: false, reason: "invalid_output", detail };
 }
@@ -32193,7 +32415,7 @@ ${line2}`;
   const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
   const fail = (reason, detail, raw) => {
     llmLog.push({ ...entry, raw, ok: false, ms: Date.now() - started, reason });
-    return { ok: false, reason, detail: cut3(detail), attempts: 1, at: started, budget: maxTokens };
+    return { ok: false, reason, detail: cut4(detail), attempts: 1, at: started, budget: maxTokens };
   };
   const ctrl = new AbortController();
   let timer;
@@ -33226,15 +33448,15 @@ function renderCommanderFile(host, ctx2) {
   const left = TUNING.commander.pool - spent;
   const row2 = (stat3) => {
     const v = c.body[stat3];
-    const step = (sign, next, disabled) => h("button", {
+    const step = (sign2, next, disabled) => h("button", {
       type: "button",
       class: "alius-btn alius-step-btn",
       "data-body": stat3,
-      "data-step": sign,
+      "data-step": sign2,
       disabled,
-      "aria-label": `${sign === "+" ? "Raise" : "Lower"} ${stat3}`,
+      "aria-label": `${sign2 === "+" ? "Raise" : "Lower"} ${stat3}`,
       onclick: () => onChange({ kind: "body", stat: stat3, value: next })
-    }, sign === "+" ? "+" : "\u2212");
+    }, sign2 === "+" ? "+" : "\u2212");
     return h(
       "div",
       { class: "alius-cmdr-row" },
@@ -35348,7 +35570,7 @@ function renderSetupScreen(host, ctx2) {
       case "exam":
         return inWorld(renderExam);
       case "file":
-        return inWorld((body, c) => renderFile(body, { ...c, filed: filing.get(wizard) === true, onSign: () => void sign() }));
+        return inWorld((body, c) => renderFile(body, { ...c, filed: filing.get(wizard) === true, onSign: () => void sign2() }));
     }
   }
   function inWorld(draw2) {
@@ -35498,7 +35720,7 @@ function renderSetupScreen(host, ctx2) {
       wizard.refresh();
     }
   }
-  const sign = () => deploy(true);
+  const sign2 = () => deploy(true);
   function footer(s) {
     const adv = wizard.canAdvance();
     const btn = (action, label2, onclick, disabled = false) => h("button", { type: "button", class: "alius-btn", "data-action": action, disabled, onclick }, label2);
@@ -37385,22 +37607,22 @@ function renderMarker(state, reg, unit2) {
 function talkActivity(reg) {
   return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === "required");
 }
-function talkBlock(state, reg, unit2, room) {
+function talkBlock(state, reg, unit2, room2) {
   const open3 = endSlotBlock(state);
   if (open3) return open3;
   const restricted = restrictionReason(state, unit2.id, "scene");
   if (restricted) return restricted;
-  const slots = reg.locations.get(room.sceneLocationId)?.slots;
+  const slots = reg.locations.get(room2.sceneLocationId)?.slots;
   if (slots && !slots.includes(state.slot)) return `Closed this ${state.slot}.`;
   const talk = talkActivity(reg);
   return talk ? checkActivity(state, reg, { activityId: String(talk.id), companionId: unit2.id }) : "Nobody can be talked to here.";
 }
-function renderRoomPanel(room, state, ctx2, here, opts) {
+function renderRoomPanel(room2, state, ctx2, here, opts) {
   const reg = ctx2.registries;
-  const people = here.filter((w) => w.roomId === room.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
+  const people = here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
   const talk = talkActivity(reg);
   const rows = people.map((unit2) => {
-    const reason = opts.readOnly || unit2.kind !== "named" || !talk ? null : talkBlock(state, reg, unit2, room);
+    const reason = opts.readOnly || unit2.kind !== "named" || !talk ? null : talkBlock(state, reg, unit2, room2);
     const canTalk = !opts.readOnly && unit2.kind === "named" && talk !== void 0;
     const avatar = ctx2.avatar(unit2);
     const button2 = canTalk ? h("button", {
@@ -37410,7 +37632,7 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
       "aria-disabled": reason !== null ? "true" : null,
       ...analyzeNative(`activities:${String(talk.id)}`),
       onclick: () => {
-        if (reason === null) ctx2.onTalk(unit2.id, String(room.sceneLocationId));
+        if (reason === null) ctx2.onTalk(unit2.id, String(room2.sceneLocationId));
       }
     }, "[ TALK ]") : null;
     return h(
@@ -37423,18 +37645,18 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
       reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
     );
   });
-  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") ? [] : (room.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
-  const noteCards = room.commanderCell === true ? quartersNotes(state, reg, ctx2) : [];
+  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  const noteCards = room2.commanderCell === true ? quartersNotes(state, reg, ctx2) : [];
   return h(
     "section",
-    { class: "alius-room-panel", "data-room": String(room.id), role: "region", "aria-label": `${String(room.label)} room` },
+    { class: "alius-room-panel", "data-room": String(room2.id), role: "region", "aria-label": `${String(room2.label)} room` },
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`hubRooms:${String(room.id)}`) }, String(room.label))),
-      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${String(room.label)}`, onclick: opts.onClose }, "[X]")
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`hubRooms:${String(room2.id)}`) }, String(room2.label))),
+      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${String(room2.label)}`, onclick: opts.onClose }, "[X]")
     ),
-    h("p", { class: "alius-dim" }, String(room.description)),
+    h("p", { class: "alius-dim" }, String(room2.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
     ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
@@ -37502,18 +37724,18 @@ function crossSection(ctx2, state, here, onRoom) {
     });
   }
   const unitOf11 = (id) => state.squad.find((u) => u.id === id);
-  const rooms = [...reg.hubRooms.values()].map((room) => {
-    const r = room.rect;
-    const inside = here.filter((w) => w.roomId === room.id).map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
+  const rooms = [...reg.hubRooms.values()].map((room2) => {
+    const r = room2.rect;
+    const inside = here.filter((w) => w.roomId === room2.id).map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
     const el = h(
       "div",
       {
         class: "alius-room",
-        "data-room": String(room.id),
+        "data-room": String(room2.id),
         role: "group",
-        "aria-label": String(room.label),
+        "aria-label": String(room2.label),
         style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%`,
-        onclick: () => onRoom(String(room.id))
+        onclick: () => onRoom(String(room2.id))
       },
       h(
         "div",
@@ -37521,9 +37743,9 @@ function crossSection(ctx2, state, here, onRoom) {
         h("button", {
           type: "button",
           class: "alius-room-label alius-chip",
-          "aria-label": inside.length > 0 ? `${String(room.label)}, ${inside.length} here` : String(room.label),
-          ...analyzeNative(`hubRooms:${String(room.id)}`)
-        }, String(room.label)),
+          "aria-label": inside.length > 0 ? `${String(room2.label)}, ${inside.length} here` : String(room2.label),
+          ...analyzeNative(`hubRooms:${String(room2.id)}`)
+        }, String(room2.label)),
         // a small room can hold more markers than fit: it scrolls, and the count keeps the number in view
         inside.length > 0 ? h("span", { class: "alius-room-count", "aria-hidden": "true" }, String(inside.length)) : null
       ),
@@ -37661,10 +37883,10 @@ function renderHub(host, device, ctx2) {
   const showPanel = () => {
     panelHost.replaceChildren();
     const id = openRoom.get(host);
-    const room = id !== void 0 ? ctx2.registries.hubRooms.get(id) : void 0;
-    if (!room) return;
-    const r = room.rect;
-    const panel = renderRoomPanel(room, state, ctx2, here, { readOnly, onClose: close });
+    const room2 = id !== void 0 ? ctx2.registries.hubRooms.get(id) : void 0;
+    if (!room2) return;
+    const r = room2.rect;
+    const panel = renderRoomPanel(room2, state, ctx2, here, { readOnly, onClose: close });
     panel.style.setProperty("--panel-x", `${r.x}%`);
     panel.style.setProperty("--panel-y", `${Math.min(r.y + r.h * 0.25, 60)}%`);
     panelHost.append(panel);

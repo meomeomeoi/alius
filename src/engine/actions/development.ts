@@ -4,7 +4,9 @@ import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { recordActivity } from '../development/appraisal';
 import { developmentDayStep } from '../development/misread';
-import { DEVELOPMENT_MODES } from '../development/state';
+import { applyReview, reviewCommitted, undoReview, type ReviewValue } from '../development/review';
+import { DEVELOPMENT_MODES, developmentMode } from '../development/state';
+import { isLiving } from '../economy';
 import type { DevelopmentMode } from '../state/types';
 
 // Importing this module registers the character development actions (P14b).
@@ -25,3 +27,23 @@ registerActivityHook((draft, ctx, done) => (done.companionId ? recordActivity(dr
 
 // Revises the misread appraisals whose truth reached her, and drops the old ones (P14b); after `spreadRumors` (actions/memory, imported above).
 registerDayEndStep('dm_rumors', developmentDayStep);
+
+/**
+ * `development/review { unitId, review, source, replace? }`: applies a review (the model's, or the engine's fallback) after
+ * validating every shift again. `replace` takes the last review back first (a REROLL) and is refused once she has shown it.
+ */
+registerAction('development/review', (draft, payload, ctx) => {
+  const p = payload as { unitId?: unknown; review?: unknown; source?: unknown; replace?: unknown } | undefined;
+  if (developmentMode(draft) === 'off') throw new Error('Character development is off.');
+  const unit = typeof p?.unitId === 'string' ? draft.squad.find((u) => u.id === p.unitId) : undefined;
+  if (!unit || unit.kind !== 'named' || !isLiving(unit)) throw new Error('development/review needs a named living unit.');
+  if (p?.source !== 'model' && p?.source !== 'fallback') throw new Error('development/review: the source is model or fallback.');
+  const r = p.review as { shifts?: unknown; facts?: unknown } | undefined;
+  if (typeof r !== 'object' || r === null || !Array.isArray(r.shifts) || !Array.isArray(r.facts)) throw new Error('development/review needs { review: { shifts, facts } }.');
+  if (p.replace === true) {
+    const why = reviewCommitted(draft, unit.id);
+    if (why !== null) throw new Error(why);
+    undoReview(draft, unit.id);
+  }
+  return applyReview(draft, ctx.registries, unit.id, r as ReviewValue, p.source);
+});

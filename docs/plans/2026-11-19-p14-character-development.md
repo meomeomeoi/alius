@@ -657,7 +657,7 @@ interface DevMoment {
   - Action `development/review { unitId, review, source, replace?: true }`: `replace` runs `undoReview` first and refuses (`"She has already shown it."`) when `reviewCommitted(state, unitId)` is non-null;
   - `reviewCommitted(state, unitId): string | null`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `due`: 3 pending and day 8 with `lastReview` absent → her id; 2 pending → null; `acc` 5 on day 3 with 3 pending → due; mode off → null; slow cadence 14.
   - Validation drops (Review Focus 3), one test each:
     - a step on an anchored value with acc 3.5 (needs 4.5);
@@ -678,10 +678,10 @@ interface DevMoment {
   - `undo restores exactly`: deep-equal of the unit before and after apply + `undoReview`.
   - `replace is refused after a scene stamped the moment`.
   - `draws nothing`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the rulings ("Review" and "Moments").
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): review validation and application, with undo`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the rulings ("Review" and "Moments").
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): review validation and application, with undo`
 
 ---
 

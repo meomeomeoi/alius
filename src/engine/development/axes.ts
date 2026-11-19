@@ -44,7 +44,7 @@ export function isAnchored(unit: Pick<Unit, 'development'>, key: string): boolea
  * her publicity preference have no entry). Disabled content categories are the callers' business (they gate rules, habits and tags).
  */
 export function axisForbidden(
-  _state: Pick<CampaignState, 'settings'>, reg: Pick<Registries, 'developmentAxes' | 'tastes'>, unit: Pick<Unit, 'kind' | 'bond' | 'development'>, key: string,
+  state: Pick<CampaignState, 'settings' | 'content'>, reg: Pick<Registries, 'developmentAxes' | 'tastes' | 'contentCategories'>, unit: Pick<Unit, 'kind' | 'bond' | 'development'>, key: string,
 ): string | null {
   const kind = axisKind(key);
   if (kind === null || axisEntry(reg, key) === null) return `"${key}" is not an axis`;
@@ -52,6 +52,17 @@ export function axisForbidden(
   if (kind === 'bond' && (bondField(key) === null || unit.bond === undefined)) return 'bond axes need an imported bond'; // P14b: raw profile
   if (kind === 'taste' && !reg.tastes.has(key.slice('taste:'.length))) return `"${key}" names no taste`;
   if (unit.development?.held?.includes(key) === true) return 'held by the player';
+  if (kind === 'like' || kind === 'dislike') {
+    // a tag that is a content category (its id or its label) never develops while the category is off, or when it is among HER limits
+    const tag = key.slice(kind.length + 1);
+    const on = state.content?.enabled ?? [];
+    const limits = unit.bond?.ownLimits.categories ?? [];
+    for (const c of reg.contentCategories.values()) {
+      const id = String(c.id);
+      if (tag !== id.replace(/_/g, ' ') && tag !== id && tag !== String(c.label).toLowerCase()) continue;
+      if (!on.includes(id) || limits.includes(id)) return 'a disabled or limited content category';
+    }
+  }
   return null;
 }
 
