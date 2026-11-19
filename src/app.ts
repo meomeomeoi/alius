@@ -93,6 +93,7 @@ import { bondsDirectives, contentLine, EXPLICIT_CATEGORY } from './bonds/directi
 import { clearSceneDirectives, registerSceneContext } from './scene/context';
 import { createMemoryController } from './scene/memoryController';
 import { registerMemoryContext } from './scene/memoryContext';
+import { registerDevelopmentContext } from './scene/developmentContext';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
 import { createEnvelope, type Envelope } from './llm/envelope';
@@ -305,6 +306,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerDevelopmentContext(context, { registries: () => registries }); // P14b: the since-joining block (memory group, priority 68)
   registerMemoryContext(context, { registries: () => registries, settings: () => getSettings(st) }); // P3b: dossier, journal, facts, promises, recent, DM recap
   registerWorldOptionsContext(context, { registries: () => registries });
 

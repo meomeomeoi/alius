@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, DevMoment } from '../state/types';
-import { axisEntry, axisKind, bondField } from './axes';
+import { axisKind, bondField } from './axes';
+import { axisWords } from './words';
 import { developmentOf } from './state';
 import { TUNING } from '../tuning';
 
@@ -43,8 +44,6 @@ export function stampedMoments(state: CampaignState, unitId: string): DevMoment[
   return developmentOf(state.squad.find((u) => u.id === unitId) ?? {}).moments.filter((m) => m.sceneId === id && m.shownDay === undefined);
 }
 
-const DRAFT_MARK = /^\s*AUTHOR TO WRITE:\s*/i;
-
 /** Did the moment move the axis up? Values compare numbers, bond fields their place on the scale, the lists their yes. */
 function wentUp(m: DevMoment): boolean {
   const kind = axisKind(m.axis);
@@ -57,14 +56,8 @@ function wentUp(m: DevMoment): boolean {
   return m.to === 'yes';
 }
 
-/** The words of one moment: the axis entry's `up` or `down` (the `{tag}` of a wildcard filled in), without the draft marker. */
-function wordsOf(reg: Registries, m: DevMoment): string | null {
-  const entry = axisEntry(reg, m.axis);
-  if (!entry) return null;
-  const tag = m.axis.slice(m.axis.indexOf(':') + 1);
-  const name = axisKind(m.axis) === 'taste' ? String(reg.tastes.get(tag)?.name ?? tag) : tag.replace(/_/g, ' ');
-  return (wentUp(m) ? entry.up : entry.down).replace(DRAFT_MARK, '').replace(/\{tag\}/g, name).trim();
-}
+/** The words of one moment: the axis entry's `up` or `down`. */
+const wordsOf = (reg: Registries, m: DevMoment): string | null => axisWords(reg, m.axis, wentUp(m));
 
 export interface MomentDirective { id: string; text: string; expiresAfter: 'scene' }
 

@@ -822,16 +822,16 @@ interface DevMoment {
     under the title `Since joining the unit:`. It is trimmed with `fitItems`.
   - A fact or moment that is not shown **is** included (behaviour first). Nothing about another unit's private development reaches a group scene beyond her own line: every line is about the present unit herself.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `renders shifted axes and facts in words, no numbers` (no digit in the output).
   - `out of a scene renders nothing`.
   - `stays inside the memory budget`: with `memoryTokens` 120 and four developed units, `ContextBuilder.build` keeps the whole block ≤ the share and trims line by line (acceptance 7).
   - `off or no development renders nothing`.
   - `no pronoun for the commander`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): the since-joining block in the memory share`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): the since-joining block in the memory share`
 
 ---
 

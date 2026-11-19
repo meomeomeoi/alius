@@ -23140,6 +23140,41 @@ function recentLines(state, viewers, cfg) {
   ];
 }
 
+// src/engine/development/words.ts
+var DRAFT_MARK = /^\s*AUTHOR TO WRITE:\s*/i;
+function axisWords(reg, axis, up) {
+  const entry = axisEntry(reg, axis);
+  if (!entry) return null;
+  const tag2 = axis.slice(axis.indexOf(":") + 1);
+  const name = axisKind(axis) === "taste" ? String(reg.tastes.get(tag2)?.name ?? tag2) : tag2.replace(/_/g, " ");
+  const words3 = (up ? entry.up : entry.down).replace(DRAFT_MARK, "").replace(/\{tag\}/g, name).trim();
+  return words3 === "" ? null : words3;
+}
+function changedAxes(unit2, reg) {
+  const dev = developmentOf(unit2);
+  const out = [];
+  const add = (axis, up) => {
+    const words3 = axisWords(reg, axis, up);
+    if (words3 !== null) out.push({ axis, up, words: words3 });
+  };
+  const eff = valuesOf(unit2);
+  for (const a of Object.keys(unit2.values)) if (eff[a] !== unit2.values[a]) add(`value:${a}`, eff[a] > unit2.values[a]);
+  if (unit2.bond !== void 0 && dev.bond) {
+    for (const key of ["bond:attachment", "bond:desire", "bond:caretaker", "bond:lead_style"]) {
+      const field2 = bondField(key);
+      const now = dev.bond[field2];
+      if (now === void 0 || now === unit2.bond[field2]) continue;
+      const scale = TUNING.development.scales[field2];
+      add(key, scale.indexOf(now) > scale.indexOf(unit2.bond[field2]));
+    }
+  }
+  for (const [kind, field2] of [["like", "likes"], ["dislike", "dislikes"], ["taste", "tastes"]]) {
+    for (const t of dev.gained?.[field2] ?? []) add(`${kind}:${t}`, true);
+    for (const t of dev.lost?.[field2] ?? []) add(`${kind}:${t}`, false);
+  }
+  return out;
+}
+
 // src/engine/development/moments.ts
 function stampMoments(draft, participants, sceneId) {
   for (const id of participants) {
@@ -23167,7 +23202,6 @@ function stampedMoments(state, unitId) {
   if (id === void 0) return [];
   return developmentOf(state.squad.find((u) => u.id === unitId) ?? {}).moments.filter((m) => m.sceneId === id && m.shownDay === void 0);
 }
-var DRAFT_MARK = /^\s*AUTHOR TO WRITE:\s*/i;
 function wentUp(m) {
   const kind = axisKind(m.axis);
   if (kind === "value") return Number(m.to) > Number(m.from);
@@ -23178,13 +23212,7 @@ function wentUp(m) {
   }
   return m.to === "yes";
 }
-function wordsOf(reg, m) {
-  const entry = axisEntry(reg, m.axis);
-  if (!entry) return null;
-  const tag2 = m.axis.slice(m.axis.indexOf(":") + 1);
-  const name = axisKind(m.axis) === "taste" ? String(reg.tastes.get(tag2)?.name ?? tag2) : tag2.replace(/_/g, " ");
-  return (wentUp(m) ? entry.up : entry.down).replace(DRAFT_MARK, "").replace(/\{tag\}/g, name).trim();
-}
+var wordsOf = (reg, m) => axisWords(reg, m.axis, wentUp(m));
 function momentDirective(state, reg, unitId) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   const words3 = stampedMoments(state, unitId).map((m) => wordsOf(reg, m)).filter((w) => w !== null && w !== "");
@@ -32549,6 +32577,49 @@ function registerMemoryContext(builder, deps) {
       if (messages.length === 0) return null;
       const out = text2(messages);
       return estTokens(out) <= limit ? out : out.slice(0, Math.max(0, Math.floor(limit * 3.6))).trimEnd() || null;
+    }
+  });
+}
+
+// src/scene/developmentContext.ts
+var MAX_AXES = 3;
+var MAX_FACTS = 2;
+function presentUnits4(s) {
+  return (s.scene?.participants ?? []).map((id) => s.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
+}
+var topFacts = (facts) => facts.map((f, i) => ({ f, i })).sort((a, b) => Number(b.f.edited === true) - Number(a.f.edited === true) || b.i - a.i).slice(0, MAX_FACTS).map((x) => x.f);
+function fitItems2(header, items, budget) {
+  if (items.length === 0) return null;
+  const limit = budget ?? Infinity;
+  const kept = [];
+  for (const item of items) {
+    if (estTokens([header, ...kept, item].join("\n")) <= limit) {
+      kept.push(item);
+      continue;
+    }
+    if (kept.length === 0) {
+      const room2 = Math.floor(limit * 3.6) - header.length - 1;
+      if (room2 >= 12) kept.push(item.slice(0, room2).trimEnd());
+    }
+    break;
+  }
+  return kept.length === 0 ? null : [header, ...kept].join("\n");
+}
+function registerDevelopmentContext(builder, deps) {
+  builder.register({
+    id: "since_joining",
+    priority: 68,
+    group: "memory",
+    render: (s, budget) => {
+      if (!s.scene) return null;
+      const items = presentUnits4(s).flatMap((u) => {
+        if (u.kind !== "named" || u.development === void 0) return [];
+        const axes = changedAxes(u, deps.registries()).slice(0, MAX_AXES).map((a) => a.words);
+        const facts = topFacts(developmentOf(u).facts).map((f) => f.text);
+        const parts = [...axes, ...facts];
+        return parts.length > 0 ? [`- ${u.displayName}: ${parts.join("; ")}`] : [];
+      });
+      return fitItems2("Since joining the unit:", items, budget);
     }
   });
 }
@@ -44217,6 +44288,7 @@ function createApp(st, deps) {
   }
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerDevelopmentContext(context, { registries: () => registries });
   registerMemoryContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldOptionsContext(context, { registries: () => registries });
   function syncLocks() {
