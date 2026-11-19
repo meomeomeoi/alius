@@ -895,7 +895,7 @@ The warden's content. Every text is a draft (`AUTHOR TO WRITE`) and gives the co
 - **`eventDelta.type`** must be an `eventDeltas` id (checked at load); the row runs through the full modifier chain and writes only the three axis deltas and a history line (no stress, no transition).
 - **`probe`** is a reserved tag: an entry tagged `probe` is never picked by P11b (P15 §15.14 lifts that for a dynamic already underway).
 - **`fallback`** is the template line when no model writes one: a sentence with `{name}` (her name) as its subject, never a label; the `AUTHOR TO WRITE:` marker is stripped when it is stored (facts and the chronicle reach prompts and the player), as is the one on `description` before the model is told it; **`description`** is what the model is told the moment is.
-- Memory: `head_start_moment_1…5` in `memoryRules` (one per importance) turn the moment's text into a fact (`audience: unit`). The glossary has `head_start`, `new_arrival`, `head_start_recap` and `fact_length`.
+- Memory: `head_start_moment_1…5` in `memoryRules` (one per importance) turn the moment's text into a fact (`audience: unit`); the resolver adds the tag `hs_<kind>` so the fact of a moment is found by what it is. The glossary has `head_start`, `new_arrival`, `head_start_recap` and `fact_length`.
 
 ## Character development (P14b)
 

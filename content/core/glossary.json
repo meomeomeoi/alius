@@ -2153,7 +2153,7 @@
     "id": "fact_length",
     "term": "Fact length",
     "short": "The longest text one remembered fact keeps, in characters. A longer text is cut; the setting is yours and survives a change of preset.",
-    "long": "AUTHOR TO WRITE: A fact is one short line the squad remembers. A higher number keeps more of what a model wrote (the first weeks, a scene summary, your own edits) and takes more of the memory share of the prompt; a lower one keeps lines terse. It applies to facts written from now on and to every edit.",
+    "long": "AUTHOR TO WRITE: A fact is one short line the squad remembers. A higher number keeps more of what a model wrote (the first weeks, a scene summary, your own edits) and takes more of the memory share of the prompt; a lower one keeps lines terse. It applies to facts written from now on and to every edit. The short template facts of character development keep their own shorter cap.",
     "see": [
       "memory",
       "memory_budget"
