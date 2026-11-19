@@ -1,0 +1,60 @@
+[
+  {
+    "id": "drills_daily",
+    "counter": {
+      "kind": "activity",
+      "id": "train"
+    },
+    "threshold": 8,
+    "fallback": "AUTHOR TO WRITE: {name} drills every day now, and it shows in how she stands.",
+    "effect": {
+      "type": "unit_xp",
+      "amount": 5,
+      "activityId": "train"
+    },
+    "description": "AUTHOR TO WRITE: She has trained so often that it is part of her day."
+  },
+  {
+    "id": "medbay_regular",
+    "counter": {
+      "kind": "activity",
+      "id": "medbay"
+    },
+    "threshold": 6,
+    "fallback": "AUTHOR TO WRITE: {name} is a regular at the medbay and knows every drawer in it.",
+    "description": "AUTHOR TO WRITE: She has spent so many hours in the medbay that she belongs there."
+  },
+  {
+    "id": "rests_easy",
+    "counter": {
+      "kind": "activity",
+      "id": "rest"
+    },
+    "threshold": 8,
+    "fallback": "AUTHOR TO WRITE: {name} has learned to let go of the day, and sleeps when she can.",
+    "effect": {
+      "type": "unit_stress",
+      "amount": -3,
+      "activityId": "rest"
+    },
+    "description": "AUTHOR TO WRITE: She has rested often enough to rest well."
+  },
+  {
+    "id": "close_with",
+    "counter": {
+      "kind": "companion"
+    },
+    "threshold": 10,
+    "fallback": "AUTHOR TO WRITE: {name} picked up a habit from {other}.",
+    "description": "AUTHOR TO WRITE: She has spent so much time with one person that it has rubbed off."
+  },
+  {
+    "id": "knows_region",
+    "counter": {
+      "kind": "region"
+    },
+    "threshold": 4,
+    "fallback": "AUTHOR TO WRITE: {name} knows the ground out there now, and walks it without looking.",
+    "description": "AUTHOR TO WRITE: She has been out to the same ground so often that she knows it."
+  }
+]

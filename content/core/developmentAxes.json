@@ -1,0 +1,93 @@
+[
+  {
+    "id": "value:pragmatism",
+    "kind": "value",
+    "up": "AUTHOR TO WRITE: more practical than her file says",
+    "down": "AUTHOR TO WRITE: more idealistic than her file says",
+    "description": "AUTHOR TO WRITE: How far her pragmatism has moved from her file, one whole step at a time."
+  },
+  {
+    "id": "value:autonomy",
+    "kind": "value",
+    "up": "AUTHOR TO WRITE: more her own woman than her file says",
+    "down": "AUTHOR TO WRITE: more willing to follow than her file says",
+    "description": "AUTHOR TO WRITE: How far her autonomy has moved from her file, one whole step at a time."
+  },
+  {
+    "id": "value:ingroup",
+    "kind": "value",
+    "up": "AUTHOR TO WRITE: closer to the squad than her file says",
+    "down": "AUTHOR TO WRITE: more distant from the squad than her file says",
+    "description": "AUTHOR TO WRITE: How far her ingroup has moved from her file, one whole step at a time."
+  },
+  {
+    "id": "value:mercy",
+    "kind": "value",
+    "up": "AUTHOR TO WRITE: more merciful than her file says",
+    "down": "AUTHOR TO WRITE: harder than her file says",
+    "description": "AUTHOR TO WRITE: How far her mercy has moved from her file, one whole step at a time."
+  },
+  {
+    "id": "value:corporate",
+    "kind": "value",
+    "up": "AUTHOR TO WRITE: more taken with the corporation than her file says",
+    "down": "AUTHOR TO WRITE: less taken with the corporation than her file says",
+    "description": "AUTHOR TO WRITE: How far her corporate has moved from her file, one whole step at a time."
+  },
+  {
+    "id": "value:sacrifice",
+    "kind": "value",
+    "up": "AUTHOR TO WRITE: readier to give herself up than her file says",
+    "down": "AUTHOR TO WRITE: less ready to give herself up than her file says",
+    "description": "AUTHOR TO WRITE: How far her sacrifice has moved from her file, one whole step at a time."
+  },
+  {
+    "id": "bond:attachment",
+    "kind": "bond",
+    "up": "AUTHOR TO WRITE: attaches more deeply",
+    "down": "AUTHOR TO WRITE: keeps more distance",
+    "description": "AUTHOR TO WRITE: A step of her attachment in a bond, away from what her file says."
+  },
+  {
+    "id": "bond:desire",
+    "kind": "bond",
+    "up": "AUTHOR TO WRITE: wants more",
+    "down": "AUTHOR TO WRITE: wants less",
+    "description": "AUTHOR TO WRITE: A step of her desire in a bond, away from what her file says."
+  },
+  {
+    "id": "bond:caretaker",
+    "kind": "bond",
+    "up": "AUTHOR TO WRITE: has taken to looking after others",
+    "down": "AUTHOR TO WRITE: has stopped looking after others",
+    "description": "AUTHOR TO WRITE: A step of her caretaker in a bond, away from what her file says."
+  },
+  {
+    "id": "bond:lead_style",
+    "kind": "bond",
+    "up": "AUTHOR TO WRITE: leads harder in a bond",
+    "down": "AUTHOR TO WRITE: gives way more in a bond",
+    "description": "AUTHOR TO WRITE: A step of her leadStyle in a bond, away from what her file says."
+  },
+  {
+    "id": "taste:.any",
+    "kind": "taste",
+    "up": "AUTHOR TO WRITE: has come to read the commander differently ({tag})",
+    "down": "AUTHOR TO WRITE: no longer reads the commander that way ({tag})",
+    "description": "AUTHOR TO WRITE: A taste she gained or lost about how she reads the commander."
+  },
+  {
+    "id": "like:.any",
+    "kind": "like",
+    "up": "AUTHOR TO WRITE: has come to like {tag}",
+    "down": "AUTHOR TO WRITE: no longer likes {tag}",
+    "description": "AUTHOR TO WRITE: Something she came to like or stopped liking."
+  },
+  {
+    "id": "dislike:.any",
+    "kind": "dislike",
+    "up": "AUTHOR TO WRITE: has come to dislike {tag}",
+    "down": "AUTHOR TO WRITE: no longer dislikes {tag}",
+    "description": "AUTHOR TO WRITE: Something she came to dislike or stopped disliking."
+  }
+]

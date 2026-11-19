@@ -78,6 +78,18 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 
+  it('character development content (P14b): axes, rules, habits and the glossary', () => {
+    const texts = [
+      ...fields('developmentAxes', ['up', 'down', 'description']),
+      ...fields('developmentRules', ['description']),
+      ...fields('habits', ['description', 'fallback']),
+      ...['character_development', 'development_moment', 'development_fact', 'habit', 'development_hold', 'appraisal'].flatMap((id) =>
+        ['short', 'long'].map((k): [string, string] => [`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')])),
+    ];
+    expect(texts).toHaveLength(13 * 3 + 16 + 5 * 2 + 12);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('head start glossary entries (P11b)', () => {
     const texts = ['head_start', 'new_arrival', 'head_start_recap'].map((id): [string, string] => [`glossary:${id}`, String(reg.glossary.get(id)?.short ?? '')]);
     expect(texts.every(([, t]) => t.length > 0)).toBe(true);

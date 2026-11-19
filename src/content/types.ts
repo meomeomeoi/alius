@@ -42,6 +42,8 @@ export const REGISTRY_NAMES = [
   'llmRefusals',
   // P11b
   'headStartMoments',
+  // P14b
+  'developmentAxes', 'developmentRules', 'habits',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

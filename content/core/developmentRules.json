@@ -1,0 +1,400 @@
+[
+  {
+    "id": "caretaker_sees_force",
+    "match": {
+      "kind": [
+        "commander_enforced",
+        "coerced"
+      ],
+      "role": [
+        "witness"
+      ],
+      "wanted": [
+        "no"
+      ]
+    },
+    "by": {
+      "caretaker": true
+    },
+    "push": [
+      {
+        "axis": "value:mercy",
+        "amount": 1
+      },
+      {
+        "axis": "value:autonomy",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: A caretaker watching force used on a unit that was not wanted turns more protective."
+  },
+  {
+    "id": "cold_sees_force",
+    "match": {
+      "kind": [
+        "commander_enforced",
+        "coerced"
+      ],
+      "role": [
+        "witness"
+      ],
+      "wanted": [
+        "no"
+      ]
+    },
+    "by": {
+      "values": {
+        "mercy": "-"
+      }
+    },
+    "push": [
+      {
+        "axis": "value:mercy",
+        "amount": -0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: A cold reader watching force used on a unit takes it as the way things are."
+  },
+  {
+    "id": "caretaker_sees_welcome",
+    "match": {
+      "kind": [
+        "commander_enforced",
+        "coerced"
+      ],
+      "role": [
+        "witness"
+      ],
+      "wanted": [
+        "yes"
+      ],
+      "initiator": [
+        "target"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "by": {
+      "caretaker": true
+    },
+    "push": [
+      {
+        "axis": "value:autonomy",
+        "amount": -0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: A caretaker who read the same scene as welcome grows easier with being led."
+  },
+  {
+    "id": "dominant_sees_welcome",
+    "match": {
+      "kind": [
+        "commander_enforced",
+        "coerced"
+      ],
+      "role": [
+        "witness"
+      ],
+      "wanted": [
+        "yes"
+      ],
+      "initiator": [
+        "target"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "by": {
+      "leadStyle": [
+        "dominant"
+      ],
+      "values": {
+        "autonomy": "+"
+      }
+    },
+    "push": [
+      {
+        "axis": "bond:lead_style",
+        "amount": 1
+      }
+    ],
+    "description": "AUTHOR TO WRITE: A dominant, self-willed reader who read the scene as welcome grows keener to lead."
+  },
+  {
+    "id": "kindness_received",
+    "match": {
+      "kind": [
+        "comforted",
+        "praised",
+        "protected"
+      ],
+      "role": [
+        "subject"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "push": [
+      {
+        "axis": "value:mercy",
+        "amount": 0.5
+      },
+      {
+        "axis": "value:ingroup",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Kindness received makes her a little kinder and a little closer to the others."
+  },
+  {
+    "id": "harm_received",
+    "match": {
+      "kind": [
+        "endangered",
+        "insulted"
+      ],
+      "role": [
+        "subject"
+      ],
+      "harm": [
+        "minor",
+        "serious"
+      ]
+    },
+    "push": [
+      {
+        "axis": "value:ingroup",
+        "amount": -0.5
+      },
+      {
+        "axis": "bond:attachment",
+        "amount": -0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Harm received pulls her away from the others and from attachment."
+  },
+  {
+    "id": "activity_with_commander",
+    "match": {
+      "kind": [
+        "activity:*"
+      ],
+      "role": [
+        "subject"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "push": [
+      {
+        "axis": "like:{tag}",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Time spent with the commander makes what they did together something she likes."
+  },
+  {
+    "id": "wanted_closeness",
+    "match": {
+      "kind": [
+        "physical_affection",
+        "accepted_advance"
+      ],
+      "role": [
+        "subject"
+      ],
+      "wanted": [
+        "yes"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "push": [
+      {
+        "axis": "bond:desire",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Closeness she wanted raises her appetite for it."
+  },
+  {
+    "id": "turned_away",
+    "match": {
+      "kind": [
+        "rejected_advance"
+      ],
+      "role": [
+        "subject"
+      ],
+      "wanted": [
+        "no"
+      ]
+    },
+    "push": [
+      {
+        "axis": "bond:desire",
+        "amount": -0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: An advance she turned away lowers her appetite for it."
+  },
+  {
+    "id": "looked_after_others",
+    "match": {
+      "kind": [
+        "protected"
+      ],
+      "role": [
+        "actor"
+      ]
+    },
+    "push": [
+      {
+        "axis": "bond:caretaker",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Protecting someone makes looking after others a habit of hers."
+  },
+  {
+    "id": "comfort_received",
+    "match": {
+      "kind": [
+        "comforted"
+      ],
+      "role": [
+        "subject"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "push": [
+      {
+        "axis": "bond:attachment",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Comfort received deepens her attachment."
+  },
+  {
+    "id": "pressed_by_force",
+    "match": {
+      "kind": [
+        "commander_enforced",
+        "coerced"
+      ],
+      "role": [
+        "subject"
+      ],
+      "wanted": [
+        "no"
+      ]
+    },
+    "push": [
+      {
+        "axis": "value:autonomy",
+        "amount": 0.5
+      },
+      {
+        "axis": "value:ingroup",
+        "amount": 0.5
+      },
+      {
+        "axis": "bond:attachment",
+        "amount": -0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Force used on her makes her guard her own will and lean on the squad."
+  },
+  {
+    "id": "demand_granted",
+    "match": {
+      "kind": [
+        "granted_demand"
+      ],
+      "role": [
+        "subject"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "push": [
+      {
+        "axis": "bond:attachment",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: A demand granted makes her trust that asking works."
+  },
+  {
+    "id": "demand_refused",
+    "match": {
+      "kind": [
+        "refused_demand"
+      ],
+      "role": [
+        "subject"
+      ],
+      "wanted": [
+        "no"
+      ]
+    },
+    "push": [
+      {
+        "axis": "value:autonomy",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: A demand refused teaches her to rely on herself."
+  },
+  {
+    "id": "shielded_or_shielding",
+    "match": {
+      "kind": [
+        "shielded"
+      ],
+      "role": [
+        "subject",
+        "actor"
+      ],
+      "outcome": [
+        "good"
+      ]
+    },
+    "push": [
+      {
+        "axis": "value:sacrifice",
+        "amount": 0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Being shielded, or shielding someone, makes giving herself up easier to imagine."
+  },
+  {
+    "id": "overridden",
+    "match": {
+      "kind": [
+        "overrode_her"
+      ],
+      "role": [
+        "subject"
+      ],
+      "wanted": [
+        "no"
+      ]
+    },
+    "push": [
+      {
+        "axis": "bond:lead_style",
+        "amount": -0.5
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Being overridden makes her yield more in a bond."
+  }
+]

@@ -1,0 +1,1 @@
+[{ "id": "gate_dev_rule", "match": { "kind": ["praised"], "role": ["subject"] }, "push": [{ "axis": "value:mercy", "amount": 1 }], "contentTags": ["restraint"], "description": "AUTHOR TO WRITE: gate fixture rule." }]

@@ -41,6 +41,15 @@ registrySchemas.flags = FlagSchema;
 
 const str = z.string().min(1);
 const int = z.number().int();
+
+/** P14b: how a soldier reads an event (the registry's own reading for an engine-made event, or for an activity or a dilemma). */
+export const ReadingSchema = z.object({
+  wanted: z.enum(['yes', 'no', 'unclear']),
+  initiator: z.enum(['target', 'actor', 'mutual']),
+  harm: z.enum(['none', 'minor', 'serious']),
+  outcome: z.enum(['good', 'mixed', 'bad']),
+}).strict();
+
 const valueAxis = z.enum(VALUE_AXES);
 /** P9b: how a decision leans on each value axis, −2…2 (absent axis = 0). A ballot adds `Σ value × lean`. */
 export const VoteLeanSchema = z.object(
@@ -483,6 +492,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
   'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit', 'intel_answered', 'handler_threat', 'handler_leak', 'debts_consequence', 'debts_discovered', 'defector_arc',
+  // P14b
+  'appraisal_recorded', 'appraisal_revised', 'development_review', 'development_shift', 'development_moment', 'development_fact', 'habit_formed',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
   // P13
@@ -567,6 +578,10 @@ export const ActivitySchema = BaseEntrySchema.extend({
   idle: z.boolean().optional(),
   /** P13: an activity that serves the quota (the warden's alternative to an idle one). */
   quota: z.boolean().optional(),
+  /** P14b: how the companion reads the activity (character development); absent = nothing is recorded. */
+  appraisal: ReadingSchema.optional(),
+  /** P14b: the tags a rule may turn into a like (`like:{tag}`), normalized like imported likes. */
+  appraisalTags: z.array(str.max(32)).max(3).optional(),
 }).superRefine((a, ctx) => {
   const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (a.companion === 'none' && a.companionEffects.length > 0) issue(['companionEffects'], 'companion "none" cannot have companionEffects');
@@ -735,6 +750,8 @@ export const EventDeltaSchema = BaseEntrySchema.extend({
   valueAligned: z.boolean().optional(),
   /** Attraction gains are scaled by the unit's receptivity (romance on, Affinity ≥ 0, Trust ≥ 20). */
   attractionUsesReceptivity: z.boolean().optional(),
+  /** P14b: how a soldier reads this event when no model read it (character development). Absent = nothing is recorded. */
+  appraisal: ReadingSchema.optional(),
 });
 
 export const LocationSchema = BaseEntrySchema.extend({
@@ -1128,6 +1145,8 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
   family: str.optional(),
   /** P9e: the node may resolve itself when a soldier acts on her own. */
   herCall: HerCallSchema.optional(),
+  /** P14b: how the units named in the resolved dilemma read it (character development); absent = nothing is recorded. */
+  appraisal: ReadingSchema.optional(),
   contentTags,
 }).superRefine((d, ctx) => {
   if (d.herCall !== undefined) {
@@ -2213,6 +2232,8 @@ export const DESCRIBED_REGISTRIES = [
   'wardenExpectations', 'commanderPunishments',
   // P11b
   'headStartMoments',
+  // P14b
+  'developmentAxes', 'developmentRules', 'habits',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -2238,6 +2259,67 @@ export const HeadStartMomentSchema = BaseEntrySchema.extend({
 }).strict();
 export type HeadStartMomentEntry = z.infer<typeof HeadStartMomentSchema>;
 registrySchemas.headStartMoments = HeadStartMomentSchema;
+
+// ---------------------------------------------------------------------------------------------
+// P14b: character development
+
+/**
+ * `id` is an axis key (`value:mercy`, `bond:lead_style`) or the kind's wildcard (`taste:.any`, `like:.any`, `dislike:.any`; a dot cannot
+ * be part of a normalized tag). Registry ids are lowercase snake case (`ID_PATTERN`), so the bond field `leadStyle` is `lead_style` here.
+ * `ownLimits` and `publicity` never drift, so no axis names them.
+ */
+export const DevelopmentAxisSchema = BaseEntrySchema.extend({
+  id: z.string().regex(/^(value|bond|taste|like|dislike):[a-z0-9_.-]+$/, 'an axis id is <kind>:<name> or <kind>:.any'),
+  kind: z.enum(['value', 'bond', 'taste', 'like', 'dislike']),
+  up: str.max(120),
+  down: str.max(120),
+  description: str,
+}).strict().superRefine((a, ctx) => {
+  const [kind, name] = a.id.split(':');
+  if (kind !== a.kind) ctx.addIssue({ code: 'custom', path: ['kind'], message: `the id "${a.id}" is a ${kind} axis but kind is "${a.kind}"` });
+  if (name === '.any' && !['taste', 'like', 'dislike'].includes(a.kind)) ctx.addIssue({ code: 'custom', path: ['id'], message: 'only taste, like and dislike axes may be wildcards' });
+  if (a.kind === 'bond' && !['attachment', 'desire', 'caretaker', 'lead_style'].includes(name)) ctx.addIssue({ code: 'custom', path: ['id'], message: `"${a.id}" cannot drift (her own limits and her publicity preference never do)` });
+  if (a.kind === 'value' && !(VALUE_AXES as readonly string[]).includes(name)) ctx.addIssue({ code: 'custom', path: ['id'], message: `"${name}" is not a value axis` });
+});
+export type DevelopmentAxisEntryT = z.infer<typeof DevelopmentAxisSchema>;
+registrySchemas.developmentAxes = DevelopmentAxisSchema;
+
+const readingWords = <T extends [string, ...string[]]>(values: T) => z.array(z.enum(values)).min(1);
+
+/** What an appraised event adds to which accumulators. The engine reads `match` and `by` only, never the id. `contentTags` gate it like any gated entry. */
+export const DevelopmentRuleSchema = BaseEntrySchema.extend({
+  match: z.object({
+    kind: z.array(str).min(1).optional(),
+    role: readingWords(['subject', 'actor', 'witness']).optional(),
+    target: readingWords(['her', 'commander', 'unit', 'squad']).optional(),
+    wanted: readingWords(['yes', 'no', 'unclear']).optional(),
+    initiator: readingWords(['target', 'actor', 'mutual']).optional(),
+    harm: readingWords(['none', 'minor', 'serious']).optional(),
+    outcome: readingWords(['good', 'mixed', 'bad']).optional(),
+  }).strict(),
+  by: z.object({
+    values: z.record(z.enum(['+', '-'])).optional(),
+    caretaker: z.boolean().optional(),
+    leadStyle: readingWords(['dominant', 'assertive', 'balanced', 'yielding']).optional(),
+    attachment: readingWords(['slow', 'steady', 'intense', 'avoidant']).optional(),
+    insight: readingWords(['low', 'mid', 'high']).optional(),
+  }).strict().optional(),
+  push: z.array(z.object({ axis: str, amount: z.number().refine((n) => n !== 0 && Math.abs(n) <= 3, 'an amount is not 0 and at most 3 either way') }).strict()).min(1).max(4),
+  contentTags: z.array(str).optional(),
+  description: str,
+}).strict();
+registrySchemas.developmentRules = DevelopmentRuleSchema;
+
+/** A counter that reaches `threshold` forms the habit. `fallback` is the fact text (`{name}`, and `{other}` for a companion habit). */
+export const HabitSchema = BaseEntrySchema.extend({
+  counter: z.object({ kind: z.enum(['activity', 'companion', 'region']), id: str.optional() }).strict(),
+  threshold: int.min(2).max(60),
+  fallback: str.max(140),
+  effect: z.object({ type: z.enum(['unit_stress', 'unit_xp']), amount: int.min(-20).max(20).refine((n) => n !== 0, 'an effect amount is not 0'), activityId: str }).strict().optional(),
+  contentTags: z.array(str).optional(),
+  description: str,
+}).strict();
+registrySchemas.habits = HabitSchema;
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

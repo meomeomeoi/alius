@@ -12,6 +12,8 @@ import { buildDigest } from '../../src/engine/world';
 import { checkOffer } from '../../src/engine/world/missions';
 import { eventPool } from '../../src/engine/world/expedition';
 import { seedWorld } from '../../src/engine/world/state';
+import { allowedHabits } from '../../src/engine/development/habits';
+import { allowedRules } from '../../src/engine/development/rules';
 
 // Importing this registers the P9d actions under test.
 import '../../src/engine/actions/bonds';
@@ -34,6 +36,8 @@ export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> =
   missionTemplates: { ids: ['gate_mission'], category: 'pain_rough' },
   clocks: { ids: ['gate_clock'], category: 'jealousy_games' },
   wagerStakes: { ids: ['gate_stake'], category: 'restraint' },
+  developmentRules: { ids: ['gate_dev_rule'], category: 'restraint' },
+  habits: { ids: ['gate_habit'], category: 'restraint' },
 };
 
 /** Turns categories on in place (and returns the state). */
@@ -97,6 +101,9 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
     }
     return s.squad.filter((u) => u.kind === 'named').flatMap((u) => offeredStakes(s, reg, u.id).map((x) => String(x.id)));
   },
+  // P14b: the rules and habits the development code would use (matchRules and checkHabits start from these)
+  developmentRules: (state, reg) => allowedRules(state, reg).map((r) => r.id),
+  habits: (state, reg) => allowedHabits(state, reg).map((h) => h.id),
   clocks: (state, reg) => {
     const s = structuredClone(state);
     s.world.seeded = false;

@@ -2158,5 +2158,64 @@
       "memory",
       "memory_budget"
     ]
+  },
+  {
+    "id": "character_development",
+    "term": "Character development",
+    "short": "Soldiers change slowly from what they live through. Nothing announces it: it shows in how she acts, and her file records it afterwards.",
+    "long": "What she lives through and what she sees done around her is weighed from her side: was it wanted, who began it, how it ended. Small amounts add up, and now and then a review turns them into a nudge or a step of a value, a taste or a bond field. Her card never changes, and her own limits never move.",
+    "see": [
+      "development_moment",
+      "development_fact",
+      "habit",
+      "development_hold",
+      "appraisal"
+    ]
+  },
+  {
+    "id": "development_moment",
+    "term": "Development moment",
+    "short": "A step that has already shown in how she acts, written into her file after the scene where it showed.",
+    "long": "Nothing is announced when it happens: the next scene she is in carries a quiet cue, and the line appears here afterwards.",
+    "see": [
+      "character_development"
+    ]
+  },
+  {
+    "id": "development_fact",
+    "term": "Development fact",
+    "short": "A line about who she has become, in words: an attitude, a habit, a skill, a memory.",
+    "long": "Reviews and habits write them. The main model reads them as who she is now. With the edit lock off they can be edited or removed.",
+    "see": [
+      "character_development",
+      "habit"
+    ]
+  },
+  {
+    "id": "habit",
+    "term": "Habit",
+    "short": "Something she has done often enough to be hers: a drill she keeps, a person she keeps near, ground she knows.",
+    "long": "Most habits are only words in her file. A few carry a small effect on the activity they come from.",
+    "see": [
+      "development_fact"
+    ]
+  },
+  {
+    "id": "development_hold",
+    "term": "Hold",
+    "short": "Freezes one line of her development: it keeps what it has and takes no more pushes or steps.",
+    "long": "Only with the edit lock off.",
+    "see": [
+      "character_development"
+    ]
+  },
+  {
+    "id": "appraisal",
+    "term": "Appraisal",
+    "short": "How she read an event: was it wanted, who began it, whether it caused harm, how it ended.",
+    "long": "She may be wrong about what she only saw from the side. When the truth reaches her, her reading is revised. Which events she misread is never shown.",
+    "see": [
+      "character_development"
+    ]
   }
 ]

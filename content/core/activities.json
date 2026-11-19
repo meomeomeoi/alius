@@ -95,7 +95,16 @@
     ],
     "flavor": "short",
     "wantRelief": 15,
-    "countermandable": true
+    "countermandable": true,
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
+    },
+    "appraisalTags": [
+      "training"
+    ]
   },
   {
     "id": "workshop",
@@ -245,7 +254,13 @@
         "amount": 2
       }
     ],
-    "flavor": "short"
+    "flavor": "short",
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
+    }
   },
   {
     "id": "work",
@@ -345,7 +360,13 @@
     ],
     "flavor": "short",
     "countermandable": true,
-    "idle": true
+    "idle": true,
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
+    }
   },
   {
     "id": "mess",
@@ -445,6 +466,15 @@
         "event": "scene_requested"
       }
     ],
-    "flavor": "none"
+    "flavor": "none",
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
+    },
+    "appraisalTags": [
+      "talk"
+    ]
   }
 ]

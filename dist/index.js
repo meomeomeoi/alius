@@ -6250,7 +6250,11 @@ var REGISTRY_NAMES = [
   // P14
   "llmRefusals",
   // P11b
-  "headStartMoments"
+  "headStartMoments",
+  // P14b
+  "developmentAxes",
+  "developmentRules",
+  "habits"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6322,6 +6326,12 @@ var registrySchemas = Object.fromEntries(
 registrySchemas.flags = FlagSchema;
 var str = external_exports.string().min(1);
 var int = external_exports.number().int();
+var ReadingSchema = external_exports.object({
+  wanted: external_exports.enum(["yes", "no", "unclear"]),
+  initiator: external_exports.enum(["target", "actor", "mutual"]),
+  harm: external_exports.enum(["none", "minor", "serious"]),
+  outcome: external_exports.enum(["good", "mixed", "bad"])
+}).strict();
 var valueAxis = external_exports.enum(VALUE_AXES);
 var VoteLeanSchema = external_exports.object(
   Object.fromEntries(VALUE_AXES.map((a) => [a, external_exports.number().min(-2).max(2).optional()]))
@@ -6898,6 +6908,14 @@ var RESERVED_EVENT_TYPES = [
   "debts_consequence",
   "debts_discovered",
   "defector_arc",
+  // P14b
+  "appraisal_recorded",
+  "appraisal_revised",
+  "development_review",
+  "development_shift",
+  "development_moment",
+  "development_fact",
+  "habit_formed",
   // P10b
   "door_said",
   "door_replied",
@@ -7012,7 +7030,11 @@ var ActivitySchema = BaseEntrySchema.extend({
   /** P13: an idle activity (the warden's `meet_quota` expectation frowns on it while a mission is due). Read by this field, never by id. */
   idle: external_exports.boolean().optional(),
   /** P13: an activity that serves the quota (the warden's alternative to an idle one). */
-  quota: external_exports.boolean().optional()
+  quota: external_exports.boolean().optional(),
+  /** P14b: how the companion reads the activity (character development); absent = nothing is recorded. */
+  appraisal: ReadingSchema.optional(),
+  /** P14b: the tags a rule may turn into a like (`like:{tag}`), normalized like imported likes. */
+  appraisalTags: external_exports.array(str.max(32)).max(3).optional()
 }).superRefine((a, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
@@ -7155,7 +7177,9 @@ var EventDeltaSchema = BaseEntrySchema.extend({
   /** The row holds magnitudes; the sign comes from value alignment (decision events). */
   valueAligned: external_exports.boolean().optional(),
   /** Attraction gains are scaled by the unit's receptivity (romance on, Affinity ≥ 0, Trust ≥ 20). */
-  attractionUsesReceptivity: external_exports.boolean().optional()
+  attractionUsesReceptivity: external_exports.boolean().optional(),
+  /** P14b: how a soldier reads this event when no model read it (character development). Absent = nothing is recorded. */
+  appraisal: ReadingSchema.optional()
 });
 var LocationSchema = BaseEntrySchema.extend({
   name: str,
@@ -7507,6 +7531,8 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
   family: str.optional(),
   /** P9e: the node may resolve itself when a soldier acts on her own. */
   herCall: HerCallSchema.optional(),
+  /** P14b: how the units named in the resolved dilemma read it (character development); absent = nothing is recorded. */
+  appraisal: ReadingSchema.optional(),
   contentTags
 }).superRefine((d, ctx2) => {
   if (d.herCall !== void 0) {
@@ -8402,7 +8428,11 @@ var DESCRIBED_REGISTRIES = [
   "wardenExpectations",
   "commanderPunishments",
   // P11b
-  "headStartMoments"
+  "headStartMoments",
+  // P14b
+  "developmentAxes",
+  "developmentRules",
+  "habits"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -8418,6 +8448,52 @@ var HeadStartMomentSchema = BaseEntrySchema.extend({
   description: str
 }).strict();
 registrySchemas.headStartMoments = HeadStartMomentSchema;
+var DevelopmentAxisSchema = BaseEntrySchema.extend({
+  id: external_exports.string().regex(/^(value|bond|taste|like|dislike):[a-z0-9_.-]+$/, "an axis id is <kind>:<name> or <kind>:.any"),
+  kind: external_exports.enum(["value", "bond", "taste", "like", "dislike"]),
+  up: str.max(120),
+  down: str.max(120),
+  description: str
+}).strict().superRefine((a, ctx2) => {
+  const [kind, name] = a.id.split(":");
+  if (kind !== a.kind) ctx2.addIssue({ code: "custom", path: ["kind"], message: `the id "${a.id}" is a ${kind} axis but kind is "${a.kind}"` });
+  if (name === ".any" && !["taste", "like", "dislike"].includes(a.kind)) ctx2.addIssue({ code: "custom", path: ["id"], message: "only taste, like and dislike axes may be wildcards" });
+  if (a.kind === "bond" && !["attachment", "desire", "caretaker", "lead_style"].includes(name)) ctx2.addIssue({ code: "custom", path: ["id"], message: `"${a.id}" cannot drift (her own limits and her publicity preference never do)` });
+  if (a.kind === "value" && !VALUE_AXES.includes(name)) ctx2.addIssue({ code: "custom", path: ["id"], message: `"${name}" is not a value axis` });
+});
+registrySchemas.developmentAxes = DevelopmentAxisSchema;
+var readingWords = (values) => external_exports.array(external_exports.enum(values)).min(1);
+var DevelopmentRuleSchema = BaseEntrySchema.extend({
+  match: external_exports.object({
+    kind: external_exports.array(str).min(1).optional(),
+    role: readingWords(["subject", "actor", "witness"]).optional(),
+    target: readingWords(["her", "commander", "unit", "squad"]).optional(),
+    wanted: readingWords(["yes", "no", "unclear"]).optional(),
+    initiator: readingWords(["target", "actor", "mutual"]).optional(),
+    harm: readingWords(["none", "minor", "serious"]).optional(),
+    outcome: readingWords(["good", "mixed", "bad"]).optional()
+  }).strict(),
+  by: external_exports.object({
+    values: external_exports.record(external_exports.enum(["+", "-"])).optional(),
+    caretaker: external_exports.boolean().optional(),
+    leadStyle: readingWords(["dominant", "assertive", "balanced", "yielding"]).optional(),
+    attachment: readingWords(["slow", "steady", "intense", "avoidant"]).optional(),
+    insight: readingWords(["low", "mid", "high"]).optional()
+  }).strict().optional(),
+  push: external_exports.array(external_exports.object({ axis: str, amount: external_exports.number().refine((n) => n !== 0 && Math.abs(n) <= 3, "an amount is not 0 and at most 3 either way") }).strict()).min(1).max(4),
+  contentTags: external_exports.array(str).optional(),
+  description: str
+}).strict();
+registrySchemas.developmentRules = DevelopmentRuleSchema;
+var HabitSchema = BaseEntrySchema.extend({
+  counter: external_exports.object({ kind: external_exports.enum(["activity", "companion", "region"]), id: str.optional() }).strict(),
+  threshold: int.min(2).max(60),
+  fallback: str.max(140),
+  effect: external_exports.object({ type: external_exports.enum(["unit_stress", "unit_xp"]), amount: int.min(-20).max(20).refine((n) => n !== 0, "an effect amount is not 0"), activityId: str }).strict().optional(),
+  contentTags: external_exports.array(str).optional(),
+  description: str
+}).strict();
+registrySchemas.habits = HabitSchema;
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -10183,7 +10259,7 @@ function syncRulesWithContent(draft, reg) {
 }
 
 // src/engine/bonds/content.ts
-var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks", "wagerStakes"];
+var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks", "wagerStakes", "developmentRules", "habits"];
 var enabledCategories = (state) => state.content?.enabled ?? [];
 var tagsOf = (entry) => {
   const tags = entry.contentTags;
@@ -45848,6 +45924,45 @@ registerRefs("headStartMoments", (entry) => {
 registerChecks("headStartMoments", (entry) => {
   const values = entry.requires?.values ?? {};
   return Object.keys(values).filter((axis) => !VALUE_AXES.includes(axis)).map((axis) => ({ path: `requires.values.${axis}`, message: `head start moment "${entry.id}": "${axis}" is not a value axis (${VALUE_AXES.join(", ")})` }));
+});
+var axisKeyKinds = ["value", "bond", "taste", "like", "dislike"];
+function axisKeyProblem(key, regs, allowTag) {
+  if (allowTag && (key === "like:{tag}" || key === "dislike:{tag}")) return regs.developmentAxes.has(`${key.split(":")[0]}:.any`) ? null : `no axis entry words "${key}"`;
+  const i = key.indexOf(":");
+  const kind = i > 0 ? key.slice(0, i) : "";
+  if (!axisKeyKinds.includes(kind)) return `"${key}" is not an axis key (value:\u2026, bond:\u2026, taste:\u2026, like:\u2026, dislike:\u2026)`;
+  if (kind === "taste" && !regs.tastes.has(key.slice(i + 1))) return `"${key}" names no taste`;
+  if (!regs.developmentAxes.has(key) && !regs.developmentAxes.has(`${kind}:.any`)) return `no axis entry words "${key}"`;
+  return null;
+}
+registerChecks("developmentRules", (entry, regs) => {
+  const out = [];
+  const push = entry.push ?? [];
+  push.forEach((p, i) => {
+    const problem = typeof p.axis === "string" ? axisKeyProblem(p.axis, regs, true) : "the axis must be a string";
+    if (problem) out.push({ path: `push[${i}].axis`, message: problem });
+  });
+  const kinds2 = entry.match?.kind ?? [];
+  kinds2.forEach((k, i) => {
+    let ok;
+    if (k.startsWith("activity:")) ok = k === "activity:*" || regs.activities.has(k.slice("activity:".length));
+    else if (k.startsWith("dilemma:")) ok = DILEMMA_CONTEXTS.includes(k.slice("dilemma:".length));
+    else ok = ALL_EVENT_TYPES.includes(k);
+    if (!ok) out.push({ path: `match.kind[${i}]`, message: `"${k}" is neither an event type, an activity (activity:<id> or activity:*) nor a dilemma context (dilemma:<context>)` });
+  });
+  return out;
+});
+registerChecks("habits", (entry, regs) => {
+  const out = [];
+  const counter = entry.counter;
+  if (counter?.id !== void 0) {
+    if (counter.kind === "activity" && !regs.activities.has(counter.id)) out.push({ path: "counter.id", message: `unknown activity "${counter.id}"` });
+    else if (counter.kind === "region" && !regs.regions.has(counter.id)) out.push({ path: "counter.id", message: `unknown region "${counter.id}"` });
+    else if (counter.kind === "companion") out.push({ path: "counter.id", message: "a companion habit counts every companion; it names none" });
+  }
+  const fx2 = entry.effect;
+  if (fx2 && !regs.activities.has(String(fx2.activityId))) out.push({ path: "effect.activityId", message: `unknown activity "${String(fx2.activityId)}"` });
+  return out;
 });
 
 // src/content/loader.ts

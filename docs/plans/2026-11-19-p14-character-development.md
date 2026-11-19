@@ -410,7 +410,7 @@ interface DevMoment {
 **Interfaces:**
 - Produces the registry entry shapes from the rulings (`DevelopmentAxisEntry`, `DevelopmentRuleEntry`, `HabitEntry`, `Reading`), exported from `src/engine/development/types.ts` as plain TS types matching the zod schemas.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the core pack loads the three registries` with 13 / 16 / 5 entries and no load errors.
   - `every value axis and every bond field has an axis entry`; the wildcards `taste:*`, `like:*`, `dislike:*` exist.
   - `an unknown push axis is a content error` (fixture pack: `"axis": "value:greed"`).
@@ -420,13 +420,13 @@ interface DevMoment {
   - `eventDeltas appraisal rows are valid`: `commander_enforced.appraisal` is `{ wanted: 'no', initiator: 'actor', harm: 'minor', outcome: 'bad' }`.
   - `developmentRules is content-gated` (`CONTENT_GATED_REGISTRIES` includes it).
   - The pronoun test covers the new files (it globs `content/core`; if it lists files, add them).
-- [ ] **Step 2: Run** `npx vitest run tests/content/developmentSchemas.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/content/developmentSchemas.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - Every `description`, `up`, `down` and `fallback` starts `AUTHOR TO WRITE:` and never gives the commander a pronoun.
   - The 16 rules cover the six groups in the rulings, plus one row per bond field (`bond:desire` from `physical_affection` / `accepted_advance` received, wanted yes, outcome good; `bond:caretaker` from `protected` with `role: actor`; `bond:attachment` from `comforted` received, outcome good). P14b ships no taste rule (open item: the author ties tastes to presence events); a review can still step a taste only if some rule gave it support, so tastes stay put until then.
   - Glossary texts (draft): `character_development`: "Soldiers change slowly from what they live through. Nothing announces it: it shows in how she acts, and her file records it afterwards."
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): development axes, rules and habits registries, appraisal fields`
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): development axes, rules and habits registries, appraisal fields`
 
 ---
 

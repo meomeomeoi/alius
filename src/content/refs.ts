@@ -1,6 +1,7 @@
 import { CONTENT_GATED_REGISTRIES } from '../engine/bonds/content';
 import { RESOLVER_SHAPES } from '../engine/memory/resolvers';
-import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
+import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
+import { ALL_EVENT_TYPES, INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
 import { VALUE_AXES } from '../engine/state/types';
 import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, type Conditions } from './schemas';
@@ -828,4 +829,51 @@ registerChecks('headStartMoments', (entry) => {
   return Object.keys(values)
     .filter((axis) => !(VALUE_AXES as readonly string[]).includes(axis))
     .map((axis) => ({ path: `requires.values.${axis}`, message: `head start moment "${entry.id}": "${axis}" is not a value axis (${VALUE_AXES.join(', ')})` }));
+});
+
+// ---------------------------------------------------------------------------------------------
+// P14b: character development. A rule's push names an axis the `developmentAxes` registry words (exact, or the kind's wildcard `<kind>:.any`;
+// `like:{tag}` takes the event's tags); `match.kind` names event types, activities or dilemma contexts; a habit's counter and
+// effect name activities and regions.
+
+const axisKeyKinds = ['value', 'bond', 'taste', 'like', 'dislike'];
+function axisKeyProblem(key: string, regs: Record<RegistryName, Map<string, Entry>>, allowTag: boolean): string | null {
+  if (allowTag && (key === 'like:{tag}' || key === 'dislike:{tag}')) return regs.developmentAxes.has(`${key.split(':')[0]}:.any`) ? null : `no axis entry words "${key}"`;
+  const i = key.indexOf(':');
+  const kind = i > 0 ? key.slice(0, i) : '';
+  if (!axisKeyKinds.includes(kind)) return `"${key}" is not an axis key (value:…, bond:…, taste:…, like:…, dislike:…)`;
+  if (kind === 'taste' && !regs.tastes.has(key.slice(i + 1))) return `"${key}" names no taste`;
+  if (!regs.developmentAxes.has(key) && !regs.developmentAxes.has(`${kind}:.any`)) return `no axis entry words "${key}"`;
+  return null;
+}
+
+registerChecks('developmentRules', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const push = (entry.push as Array<{ axis?: unknown }> | undefined) ?? [];
+  push.forEach((p, i) => {
+    const problem = typeof p.axis === 'string' ? axisKeyProblem(p.axis, regs, true) : 'the axis must be a string';
+    if (problem) out.push({ path: `push[${i}].axis`, message: problem });
+  });
+  const kinds = (entry.match as { kind?: string[] } | undefined)?.kind ?? [];
+  kinds.forEach((k, i) => {
+    let ok: boolean;
+    if (k.startsWith('activity:')) ok = k === 'activity:*' || regs.activities.has(k.slice('activity:'.length));
+    else if (k.startsWith('dilemma:')) ok = (DILEMMA_CONTEXTS as readonly string[]).includes(k.slice('dilemma:'.length));
+    else ok = (ALL_EVENT_TYPES as readonly string[]).includes(k);
+    if (!ok) out.push({ path: `match.kind[${i}]`, message: `"${k}" is neither an event type, an activity (activity:<id> or activity:*) nor a dilemma context (dilemma:<context>)` });
+  });
+  return out;
+});
+
+registerChecks('habits', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const counter = entry.counter as { kind?: string; id?: string } | undefined;
+  if (counter?.id !== undefined) {
+    if (counter.kind === 'activity' && !regs.activities.has(counter.id)) out.push({ path: 'counter.id', message: `unknown activity "${counter.id}"` });
+    else if (counter.kind === 'region' && !regs.regions.has(counter.id)) out.push({ path: 'counter.id', message: `unknown region "${counter.id}"` });
+    else if (counter.kind === 'companion') out.push({ path: 'counter.id', message: 'a companion habit counts every companion; it names none' });
+  }
+  const fx = entry.effect as { activityId?: string } | undefined;
+  if (fx && !regs.activities.has(String(fx.activityId))) out.push({ path: 'effect.activityId', message: `unknown activity "${String(fx.activityId)}"` });
+  return out;
 });

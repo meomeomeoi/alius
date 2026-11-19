@@ -73,6 +73,9 @@
     "wardenExpectations": "wardenExpectations.json",
     "commanderPunishments": "commanderPunishments.json",
     "llmRefusals": "llmRefusals.json",
-    "headStartMoments": "headStartMoments.json"
+    "headStartMoments": "headStartMoments.json",
+    "developmentAxes": "developmentAxes.json",
+    "developmentRules": "developmentRules.json",
+    "habits": "habits.json"
   }
 }

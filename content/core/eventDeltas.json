@@ -19,6 +19,12 @@
         "trust": 3,
         "affinity": 6
       }
+    },
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
     }
   },
   {
@@ -45,6 +51,12 @@
         "affinity": -18,
         "stress": 14
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "minor",
+      "outcome": "bad"
     }
   },
   {
@@ -72,6 +84,12 @@
         "affinity": 8,
         "stress": -15
       }
+    },
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
     }
   },
   {
@@ -244,6 +262,12 @@
         "attraction": -15,
         "stress": 14
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "mixed"
     }
   },
   {
@@ -270,7 +294,13 @@
         "attraction": 12
       }
     },
-    "attractionUsesReceptivity": true
+    "attractionUsesReceptivity": true,
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "mutual",
+      "harm": "none",
+      "outcome": "good"
+    }
   },
   {
     "id": "physical_affection",
@@ -298,7 +328,13 @@
         "stress": -8
       }
     },
-    "attractionUsesReceptivity": true
+    "attractionUsesReceptivity": true,
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "mutual",
+      "harm": "none",
+      "outcome": "good"
+    }
   },
   {
     "id": "sided_with",
@@ -418,6 +454,12 @@
         "affinity": 10,
         "stress": -5
       }
+    },
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
     }
   },
   {
@@ -444,6 +486,12 @@
         "affinity": -10,
         "stress": 16
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "serious",
+      "outcome": "bad"
     }
   },
   {
@@ -471,6 +519,12 @@
         "affinity": -16,
         "stress": 16
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "serious",
+      "outcome": "bad"
     }
   },
   {
@@ -674,6 +728,12 @@
         "affinity": -8,
         "stress": 12
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "minor",
+      "outcome": "bad"
     }
   },
   {
@@ -724,6 +784,12 @@
         "affinity": -6,
         "stress": 8
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "minor",
+      "outcome": "bad"
     }
   },
   {
@@ -735,6 +801,12 @@
       "moderate": {},
       "major": {},
       "extreme": {}
+    },
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "target",
+      "harm": "none",
+      "outcome": "good"
     }
   },
   {
@@ -762,6 +834,12 @@
         "affinity": -8,
         "stress": 8
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "target",
+      "harm": "minor",
+      "outcome": "bad"
     }
   },
   {
@@ -949,6 +1027,12 @@
         "trust": 8,
         "affinity": 4
       }
+    },
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
     }
   },
   {
@@ -976,6 +1060,12 @@
         "affinity": -8,
         "stress": 8
       }
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "minor",
+      "outcome": "bad"
     }
   },
   {
