@@ -358,6 +358,8 @@ export const RoleSchema = BaseEntrySchema.extend({
   identity: str,
   /** One line, used in prompts. */
   summary: str,
+  /** P13: a role with the know-how to work on the controller implant (read by this field, never by id). */
+  tech: z.boolean().optional(),
   branches: z.array(z.object({ name: str, summary: str })),
   // P4
   growth: GrowthSchema,
@@ -784,6 +786,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
   /** P12: she is awake at night, so she may notice the handler's visit (read by this field, never by defect id). */
   nightAware: z.boolean().optional(),
+  /** P13: a defect that gives the know-how to work on the controller implant (read by this field, never by id). */
+  tech: z.boolean().optional(),
   /** P12: how readily she notices a leak of the commander's secret frequency (the suspicion gain is multiplied by it, and above 50 she senses static). Read by this field, never by defect id. */
   frequencySense: z.number().min(1).max(2).optional(),
   /** P10b: `flat` draws her VITALS as a flat line (rare flickers break it). Read by this field, never by defect id. */

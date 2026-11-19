@@ -2011,5 +2011,36 @@
       "leash_cosign",
       "warden"
     ]
+  },
+  {
+    "id": "intrigue",
+    "term": "Intrigue",
+    "short": "Quiet moves against the warden: win allies, dig for kompromat, open the implant. Each one is noise, and noise gets noticed.",
+    "long": "Allies are won in conversation, away from the warden. Digging and the implant hack are slot actions. Every move makes noise, and the more noise there is the likelier she finds out. When she does, her trust in the commander crashes, defiance rises, and she punishes at once. The size of the danger is not shown: the panel says only that a threat is unseen.",
+    "see": [
+      "kompromat",
+      "implant_hack",
+      "warden_defiance"
+    ]
+  },
+  {
+    "id": "kompromat",
+    "term": "Kompromat",
+    "short": "Facts about the warden that the commander holds against her. Three of them are enough to hand her to oversight.",
+    "long": "A dig turns up something she hid, or something the squad knows. Each fact is kept, tagged and pinned. Digging needs an ally to help or a sharp enough Cunning, takes one slot, and adds noise.",
+    "see": [
+      "intrigue",
+      "implant_hack"
+    ]
+  },
+  {
+    "id": "implant_hack",
+    "term": "Implant hack",
+    "short": "A project in three steps to silence the controller. It needs a workshop, a medbay, plyx and an ally who knows implants.",
+    "long": "Each step pays plyx, takes a slot and adds noise. A step that is noticed fails: the progress starts over, the commander takes a pain burst, and the warden learns what is going on. The third clean step makes the controller dark. That removes the warden, and oversight opens an investigation.",
+    "see": [
+      "intrigue",
+      "kompromat"
+    ]
   }
 ]

@@ -2,6 +2,7 @@ import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { wardenDayStep } from '../warden/dayStep';
 import { setAgenda } from '../warden/agenda';
+import { dig, hackStep } from '../warden/intrigue';
 import { leashCommander } from '../warden/leash';
 import { answerOverride, argueStarted } from '../warden/override';
 import { setLeashEffect } from '../warden/punish';
@@ -68,6 +69,21 @@ registerAction('warden/answer', (draft, payload, ctx) => {
 
 /** The ARGUE scene with her alone has opened: the override remembers it (`{ sceneId }`). Refused while compelled or after she has heard the commander out. */
 registerAction('warden/argue_started', (draft, payload) => argueStarted(draft, (payload as { sceneId?: unknown } | null | undefined)?.sceneId));
+
+/**
+ * A slot action of the intrigue: `{ action: 'dig' | 'hack_step', unitId? }` (the ally who helps; the hack needs one). Each spends one slot, and each
+ * is refused in a scene, a fight or a run, and while nobody holds the leash.
+ */
+registerAction('intrigue/act', (draft, payload, ctx) => {
+  const p = (typeof payload === 'object' && payload !== null ? payload : {}) as { action?: unknown; unitId?: unknown };
+  const unitId = typeof p.unitId === 'string' ? p.unitId : undefined;
+  if (p.action === 'dig') return dig(draft, ctx, unitId);
+  if (p.action === 'hack_step') {
+    if (unitId === undefined) throw new Error('intrigue/act: the hack needs an ally (`unitId`).');
+    return hackStep(draft, ctx, unitId);
+  }
+  throw new Error('intrigue/act: the action is dig or hack_step.');
+});
 
 // the warden's day step runs inside `director_tick`, after the hooks registered before it
 registerDayEndStep('director_tick', wardenDayStep);

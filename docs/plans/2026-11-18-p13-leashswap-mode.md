@@ -891,14 +891,14 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - action `intrigue/act { action: 'dig' | 'hack_step', unitId? }`
 - Consumes: `addFact` (P3b), `facilityLevel` (P2), `consumeSlots`, `startRemoval` (Task 15: until then `controller_dark` only sets the flag)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `dig reveals a hidden fact first`; `then an authored line, pinned and tagged`; `dig needs an ally or Cunning 3`; `dig spends one slot and is refused in a scene, a run or a combat`.
   - `hackProblem names every missing gate` (facilities, plyx, a tech ally read by field).
   - `three clean steps make the controller dark`; `a discovered step costs a pain_burst and resets progress`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): kompromat and the implant hack`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): kompromat and the implant hack`
 
 ---
 

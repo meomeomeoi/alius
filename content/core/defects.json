@@ -629,6 +629,7 @@
   },
   {
     "id": "sensor_ghosting",
+    "tech": true,
     "name": "Sensor Ghosting",
     "category": "cybernetic",
     "lore": "Optics register false targets.",

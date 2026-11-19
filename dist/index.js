@@ -653,6 +653,7 @@ var TUNING = Object.freeze({
     hack: Object.freeze({ steps: 3, noise: 20, plyx: 5, workshop: 3, medbay: 3 }),
     kompromat: Object.freeze({
       needed: 3,
+      digCunning: 3,
       lines: Object.freeze([
         "AUTHOR TO WRITE: She keeps a second set of orders in a drawer, and they are not the corporation's.",
         "AUTHOR TO WRITE: She has been seen at the comms room after lights-out, reading messages she was told to delete.",
@@ -6556,6 +6557,8 @@ var RoleSchema = BaseEntrySchema.extend({
   identity: str,
   /** One line, used in prompts. */
   summary: str,
+  /** P13: a role with the know-how to work on the controller implant (read by this field, never by id). */
+  tech: external_exports.boolean().optional(),
   branches: external_exports.array(external_exports.object({ name: str, summary: str })),
   // P4
   growth: GrowthSchema,
@@ -7127,6 +7130,8 @@ var DefectSchema = BaseEntrySchema.extend({
   wantBreakdown: external_exports.object({ kind: external_exports.enum(["withdrawal", "binge", "smother", "seize"]), days: int.min(1).max(3) }).strict().optional(),
   /** P12: she is awake at night, so she may notice the handler's visit (read by this field, never by defect id). */
   nightAware: external_exports.boolean().optional(),
+  /** P13: a defect that gives the know-how to work on the controller implant (read by this field, never by id). */
+  tech: external_exports.boolean().optional(),
   /** P12: how readily she notices a leak of the commander's secret frequency (the suspicion gain is multiplied by it, and above 50 she senses static). Read by this field, never by defect id. */
   frequencySense: external_exports.number().min(1).max(2).optional(),
   /** P10b: `flat` draws her VITALS as a flat line (rare flickers break it). Read by this field, never by defect id. */
@@ -14250,13 +14255,13 @@ var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ??
 function allies(state) {
   return state.squad.filter((u) => u.kind === "named" && isLiving(u) && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
 }
-function addSuspicion(draft, ctx2, noise2, cause) {
+function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
   ls.intrigue.suspicion = clamp14(ls.intrigue.suspicion + noise2, 0, 100);
   const s = ls.intrigue.suspicion;
   const found2 = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
-  return found2 ? intrigueDiscovered(draft, ctx2, cause) : [];
+  return found2 ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
   const A = TUNING.warden.intrigue.ally;
@@ -14289,7 +14294,7 @@ function conspireInput(state, _reg, participants) {
   });
   return ids.length > 0 ? { conspire: ids } : {};
 }
-function intrigueDiscovered(draft, ctx2, cause) {
+function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   const w = wardenOf(draft);
   if (!ls || !w) return [];
@@ -14306,10 +14311,95 @@ function intrigueDiscovered(draft, ctx2, cause) {
   ls.intrigue.suspicion = D.suspicionAfter;
   ls.intrigue.discovered += 1;
   if (!rose.some((e) => e.type === "commander_terminated")) {
-    const id = pickPunishment(draft, ctx2.registries, 4);
+    const id = opts.punishmentId ?? pickPunishment(draft, ctx2.registries, 4);
     if (id !== null) events.push(...applyCommanderPunishment(draft, ctx2, id));
   }
   return events;
+}
+function intrigueBusy(state) {
+  if (!wardenOf(state)) return "Nobody holds the leash.";
+  if (state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0) return "Not while a scene, a fight or a run is open.";
+  return null;
+}
+var isAlly = (state, id) => id !== void 0 && allies(state).includes(id);
+function digProblem(state, _reg, allyId) {
+  const busy = intrigueBusy(state);
+  if (busy) return busy;
+  if (allyId !== void 0 && !isAlly(state, allyId)) return "That unit does not stand with the commander.";
+  if (allyId === void 0 && socialRank(state, "cunning") < TUNING.warden.kompromat.digCunning) return `Digging needs an ally or Cunning ${TUNING.warden.kompromat.digCunning}.`;
+  return null;
+}
+function dig(draft, ctx2, allyId) {
+  const problem = digProblem(draft, ctx2.registries, allyId);
+  if (problem) throw new Error(problem);
+  const ls = leashswapOf(draft);
+  const w = wardenOf(draft);
+  ls.intrigue.seq += 1;
+  const events = [{ type: "intrigue_action", action: "dig" }, ...consumeSlots(draft, 1, ctx2)];
+  const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*"));
+  const newest = hidden.reduce((best, f) => best === void 0 || f.day >= best.day ? f : best, void 0);
+  if (newest) {
+    delete newest.hiddenFromCommander;
+    if (!newest.tags.includes("kompromat")) newest.tags.push("kompromat");
+    events.push({ type: "kompromat_found", factId: newest.id });
+  } else {
+    const key = fnv1a(`${draft.day}|${ls.intrigue.seq}`);
+    const unknown2 = w.expectations.filter((x) => !x.known);
+    const left = TUNING.warden.kompromat.lines.filter((line2) => !draft.memory.facts.some((f) => f.about.includes(w.unitId) && f.text === line2));
+    if (unknown2.length > 0 && (key % 2 === 0 || left.length === 0)) events.push(...learnExpectation(draft, unknown2[0].id));
+    else if (left.length > 0) {
+      const fact = addFact(draft, {
+        about: [w.unitId],
+        text: left[key % left.length],
+        tags: ["kompromat"],
+        importance: 3,
+        day: draft.day,
+        knownBy: ["commander", ...allyId !== void 0 ? [allyId] : []],
+        pinned: true
+      });
+      events.push({ type: "kompromat_found", factId: fact.id });
+    }
+  }
+  return [...events, ...addSuspicion(draft, ctx2, TUNING.warden.intrigue.digNoise, "dig")];
+}
+function isTech(state, reg, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  if (!u) return false;
+  return reg.roles.get(u.roleId)?.tech === true || u.defects.some((d) => reg.defects.get(d.id)?.tech === true);
+}
+function hackProblem(state, reg, allyId) {
+  const busy = intrigueBusy(state);
+  if (busy) return busy;
+  const H = TUNING.warden.hack;
+  const missing2 = [];
+  for (const [id, need] of [["workshop", H.workshop], ["medbay", H.medbay]]) {
+    if (facilityLevel2(state, id) < need) missing2.push(`${String(reg.facilities.get(id)?.name ?? id)} level ${need} (now ${facilityLevel2(state, id)})`);
+  }
+  if (state.resources.plyx < H.plyx) missing2.push(`${H.plyx} plyx (have ${state.resources.plyx})`);
+  if (!isAlly(state, allyId) || !isTech(state, reg, allyId)) missing2.push("an ally with the know-how to open an implant");
+  return missing2.length > 0 ? `The hack needs ${missing2.join(", ")}.` : null;
+}
+function painBurstId(reg) {
+  return [...reg.commanderPunishments.values()].find((e) => (e.effects ?? []).some((x) => x.type === "injury"))?.id;
+}
+var removalStarter = () => [];
+function hackStep(draft, ctx2, allyId) {
+  const problem = hackProblem(draft, ctx2.registries, allyId);
+  if (problem) throw new Error(problem);
+  const ls = leashswapOf(draft);
+  const H = TUNING.warden.hack;
+  draft.resources.plyx -= H.plyx;
+  const events = [...consumeSlots(draft, 1, ctx2)];
+  ls.intrigue.hack.step += 1;
+  const pain = painBurstId(ctx2.registries);
+  const found2 = addSuspicion(draft, ctx2, H.noise, "hack", pain !== void 0 ? { punishmentId: pain } : {});
+  if (found2.some((e) => e.type === "intrigue_discovered")) return [{ type: "hack_step", step: 0, failed: true }, ...events, ...found2];
+  events.unshift({ type: "hack_step", step: ls.intrigue.hack.step, failed: false });
+  if (ls.intrigue.hack.step >= H.steps) {
+    if (!draft.commander.flags.includes("commander_implant_dark")) draft.commander.flags.push("commander_implant_dark");
+    events.push({ type: "controller_dark" }, ...removalStarter(draft, ctx2, "hack"));
+  }
+  return [...events, ...found2];
 }
 
 // src/engine/special/frequency/fragments.ts
@@ -21608,7 +21698,7 @@ var ONBOARDING_HINT = "onboarding/hint_seen";
 var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand"];
 var ENDED_OK_PREFIXES = ["debug/", "campaign/epilogue"];
 var ALWAYS_OPEN = ["warden/no_snapshot", "campaign/epilogue", "warden/answer"];
-var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start"];
+var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start", "intrigue/act"];
 function runHandler(type, draft, payload, ctx2) {
   const handler2 = handlers.get(type);
   if (!handler2) throw new Error(`Unknown action ${type}`);
@@ -24269,6 +24359,16 @@ registerAction("warden/answer", (draft, payload, ctx2) => {
   return answerOverride(draft, ctx2, p.overrideId, p.answer);
 });
 registerAction("warden/argue_started", (draft, payload) => argueStarted(draft, payload?.sceneId));
+registerAction("intrigue/act", (draft, payload, ctx2) => {
+  const p = typeof payload === "object" && payload !== null ? payload : {};
+  const unitId = typeof p.unitId === "string" ? p.unitId : void 0;
+  if (p.action === "dig") return dig(draft, ctx2, unitId);
+  if (p.action === "hack_step") {
+    if (unitId === void 0) throw new Error("intrigue/act: the hack needs an ally (`unitId`).");
+    return hackStep(draft, ctx2, unitId);
+  }
+  throw new Error("intrigue/act: the action is dig or hack_step.");
+});
 registerDayEndStep("director_tick", wardenDayStep);
 setLeashEffect((draft, ctx2, kind) => leashCommander(draft, ctx2, kind));
 

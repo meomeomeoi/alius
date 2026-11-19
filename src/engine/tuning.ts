@@ -520,7 +520,7 @@ export const TUNING = Object.freeze({
     }),
     hack: Object.freeze({ steps: 3, noise: 20, plyx: 5, workshop: 3, medbay: 3 }),
     kompromat: Object.freeze({
-      needed: 3,
+      needed: 3, digCunning: 3,
       lines: Object.freeze([
         'AUTHOR TO WRITE: She keeps a second set of orders in a drawer, and they are not the corporation\'s.',
         'AUTHOR TO WRITE: She has been seen at the comms room after lights-out, reading messages she was told to delete.',
