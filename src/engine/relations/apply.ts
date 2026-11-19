@@ -11,6 +11,7 @@ import { validateIntents } from './intents';
 import { commanderProposal, offerProposal } from './proposals';
 import { applyRuleEvent, RULE_EVENT_TYPES, rulesOf } from '../bonds/rules';
 import { expectationEvent } from '../warden/agenda';
+import { conspireInput, tryAlly } from '../warden/intrigue';
 import { resolveCompromise } from '../warden/override';
 import { overrideOpen, wardenOf } from '../warden/state';
 import { frequencyLeak, leakCandidates } from '../special/frequency/leaks';
@@ -59,7 +60,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id), // P12: only items the frequency really caught
     warned: warnedUnits(draft, p.participants), // P12: only units there is an open warning about
     overrides: openOverrideIds(draft, p.participants), // P13: the warden's override a compromise may settle
-    expectations: expectationIds(draft, p.participants) }); // P13: her expectations, while she is present // P13: the warden's override a compromise may settle
+    expectations: expectationIds(draft, p.participants), // P13: her expectations, while she is present
+    ...conspireInput(draft, reg, p.participants) }); // P13: the units the commander may enlist against her
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -82,6 +84,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
         : applyEventToUnit(draft, reg, id, e)));
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
+      if (e.type === 'conspired') events.push(...tryAlly(draft, ctx, id)); // P13: the ally check
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)

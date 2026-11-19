@@ -4,10 +4,12 @@ import { TUNING } from '../tuning';
 import { wardenOf } from './state';
 
 /**
- * The warden's day step (a hook inside `director_tick`, after the others): defiance decays by 2 a day, and restrictions that have run
+ * The warden's day step (a hook inside `director_tick`, after the others): the intrigue suspicion fades by 3 a day, defiance decays by 2 a day, and restrictions that have run
  * their days expire (the same rule as P9's `no_leave`: gone once the day end reaches their last day).
  */
 export function wardenDayStep(draft: CampaignState, _ctx: EngineCtx): EngineEvent[] {
+  const ls = draft.leashswap;
+  if (ls) ls.intrigue.suspicion = Math.max(0, ls.intrigue.suspicion - TUNING.warden.intrigue.decayPerDay); // the suspicion fades, even while nobody holds the leash
   const w = wardenOf(draft);
   if (!w) return [];
   w.defiance = Math.max(0, w.defiance - TUNING.warden.defiance.decayPerDay); // open defiance fades; a fall never warns

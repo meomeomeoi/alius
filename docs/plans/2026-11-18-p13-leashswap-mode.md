@@ -860,7 +860,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `allies(state): string[]`
 - Consumes: `applyCommanderPunishment` / `pickPunishment` (Task 9), `addDefiance` (Task 11)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the ally rate matches the formula over seeds`;
   - `a corporate refuser reports at once`;
   - `one conspired per unit per day`;
@@ -869,10 +869,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `discovery draw at suspicion/200 and certain at 100`;
   - `decay −3 a day`;
   - `no event, toast or reading carries suspicion`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): intrigue clock, allies and discovery`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): intrigue clock, allies and discovery`
 
 ---
 

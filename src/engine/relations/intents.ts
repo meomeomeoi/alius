@@ -127,6 +127,8 @@ export function validateIntents(
     overrides?: string[];
     /** P13: the ids of the warden's expectations the model was shown. Without them an expectation event is dropped. */
     expectations?: string[];
+    /** P13: the units a `conspired` may name (present, not the warden, not yet an ally). Without them the event is dropped. */
+    conspire?: string[];
   },
 ): Intents {
   const out = emptyIntents();
@@ -165,6 +167,12 @@ export function validateIntents(
       // the commander kept or broke something of hers: it names an expectation it was shown, and the warden is the target
       if (actor !== 'commander' || typeof e.expectationId !== 'string' || !(ctx.expectations ?? []).includes(e.expectationId)) continue;
       intent.expectationId = e.expectationId;
+    }
+    if (type === 'conspired') {
+      // the commander enlists a unit against the warden: only a unit it was offered (she is never one), and only the commander does it
+      const aimed = intent.targets.filter((t) => (ctx.conspire ?? []).includes(t));
+      if (actor !== 'commander' || aimed.length === 0) continue;
+      intent.targets = aimed;
     }
     if (type === 'accused') {
       // the commander accuses a unit she was warned about; an accusation of anyone else is not offered and is dropped

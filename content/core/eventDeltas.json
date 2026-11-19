@@ -1311,5 +1311,41 @@
         "stress": 6
       }
     }
+  },
+  {
+    "id": "conspired",
+    "cause": "The commander asked for help against the warden",
+    "journal": "the commander asked her to stand with them",
+    "rows": {
+      "minor": {
+        "trust": 1
+      },
+      "moderate": {
+        "trust": 2
+      },
+      "major": {
+        "trust": 2,
+        "affinity": 1
+      },
+      "extreme": {
+        "trust": 3,
+        "affinity": 1
+      }
+    }
+  },
+  {
+    "id": "warden_betrayed",
+    "cause": "The commander was found plotting against the warden",
+    "journal": "the commander was caught plotting against her",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {
+        "trust": -15,
+        "affinity": -10,
+        "stress": 8
+      }
+    }
   }
 ]

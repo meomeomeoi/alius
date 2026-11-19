@@ -19,7 +19,7 @@ const events = (e: unknown[]) => run({ events: e }).events;
 
 describe('vocabulary', () => {
   it('has 37 event types and 10 proposal kinds', () => {
-    expect(EVENT_TYPES).toHaveLength(37); // P9d: + rule_kept, rule_broken, compromise_reached; P12: + knowledge_leak, accused; P13: + expectation_kept, expectation_broken
+    expect(EVENT_TYPES).toHaveLength(38); // P9d: + rule_kept, rule_broken, compromise_reached; P12: + knowledge_leak, accused; P13: + expectation_kept, expectation_broken; P13: + conspired
     expect(PROPOSAL_KINDS).toHaveLength(10);
   });
 });
