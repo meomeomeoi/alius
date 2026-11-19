@@ -1,6 +1,6 @@
 # P15a — Scene Blocking, Moments and Contact Physics
 
-**Status: spec.** Release 0.2 (post-release), **first package of 0.2** (before P15). **Depends on:** P3 (scenes, participants, intents, the scene controller), P3b (memory rules), P7 (commander body, quiet night, non-body routes), P9c (sparring, device access, bookings), P9d (bond profile, content categories, `contentAllowed`, lead), P10 (hub, whereabouts, voices, portraits, `visualFlags`, sound), P10b (VITALS, handwriting, device marks), P14 (generation envelope), P7a. **Read:** overview; this file; P15–P17e (the packages built on it); the **Implemented as** of P3, P3b, P9c, P9d, P10 and P10b; `docs/content/lore.md` (§0).
+**Status: spec.** Release 0.2 (post-release), **first package of 0.2** (before P15). **Depends on:** P3 (scenes, participants, intents, the scene controller), P3b (memory rules), P7 (commander body, quiet night, non-body routes), P9c (sparring, device access, bookings), P9d (bond profile, content categories, `contentAllowed`, lead), P10 (hub, whereabouts, voices, portraits, `visualFlags`, sound), P10b (VITALS, handwriting, device marks), P14 (generation envelope), P7a. **Read:** overview; this file; P15–P17e (the packages built on it); the **Implemented as** of P3, P3b, P9c, P9d, P10 and P10b; `docs/content/lore.md` (§0); `docs/content/blocking.md` (the vocabulary).
 
 **Analysis tool (P7a):** every new stat, chip, option and card carries `data-analyze`, has a glossary entry or registry `description`, and live values get a provider that reads through `Knowledge`. **P14:** every generation registers a site. **Lore §0:** no pronoun for the commander in any registry text, `promptHint`, directive or label (`tests/content/pronouns.test.ts`).
 
@@ -122,6 +122,8 @@ Registries `blockingPostures`, `blockingAnchors`, `blockingContacts`, `blockingI
 Code reads entries by field and effect type, never by id (P10 rule).
 
 ## 4. Starter content (`content/core`, texts `AUTHOR TO WRITE` where not given)
+
+**The full content — essence and effects of every worship target, item, contact and activity — is `docs/content/blocking.md`. Read it before writing the plan; the JSON mirrors it, and nothing there is a placeholder to invent.** The lists below are the index.
 
 All of it lives in `content/core` (author ruling): descriptions are neutral and clinical, scene prose is written by the model. Tags gate everything; with the categories off, none of it exists.
 

@@ -1,0 +1,251 @@
+# Blocking vocabulary — starter content for P15a
+
+Source: the 0.2 depth review (2026-11-19). This file is the **content** of P15a §4: every item, contact and activity with its essence and its effects. The JSON in `content/core` mirrors it; where a field is missing here the planner asks the author instead of inventing it. `label`, `description` and `promptHint` texts are `AUTHOR TO WRITE` unless given; the **essence** line says what the entry is and is the basis for them. No pronoun for the commander in any text that ships (lore §0).
+
+Notation:
+- `scope`: `any` (every close relation) or `dyn` (only at P15 frame ≥ `play`).
+- Effects use P15a §3's vocabulary: `camera`, `backdrop`, `pose_shot`, `filter`, `perception`, `input`, `gestures`, `device`, `sensory`, `sound`, `visibility`, `mobility`, `strain`, `escalation`, `physics`, `rule`, `notice`, `status_after`. `—` = none beyond the prompt.
+- `implies`: H = her (the holder or partner), C = the commander.
+- In contacts, **→** means the commander acts toward her; **←** means she acts on the commander; **↔** means `direction` is set per use.
+
+## 1. Worship targets
+
+| id | tags | side | Essence |
+|---|---|---|---|
+| `feet` | worship | front | her feet as a whole: top, ankles |
+| `toes` | worship | front | toes; kissing, sucking, between them |
+| `soles` | worship | back | soles; the strongest scent after a run |
+| `armpits` | worship | front | armpits; scent, shaved or not (her trait) |
+| `legs` | worship | both | legs as a whole, stockings / bare |
+| `thighs` | worship | front | inner and outer thighs |
+| `calves` | worship | back | calves; sore after a march |
+| `boots` | worship | both | her boots on or off; dirty after a run |
+| `hands` | worship | front | hands and fingers; kissing a hand |
+| `neck` | worship | front | throat and neck |
+| `nape` | worship | back | nape; under the hair |
+| `hair` | worship | both | hair; brushing, burying the face, scent |
+| `back` | worship | back | back and shoulder blades |
+| `scent` | worship | both | her scent itself, any part, her clothes |
+| `bottom` | worship, explicit_scenes | back | bottom |
+| `breasts` | worship, explicit_scenes | front | breasts |
+| `genitalia` | worship, explicit_scenes | front | genitalia |
+
+Meanings per target (her profile): `reward | duty | humiliation | intimacy | play | comfort`.
+
+## 2. Items (`worn`)
+
+| id | slot | tags | Essence | Effects |
+|---|---|---|---|---|
+| `blindfold` | eyes | restraint | eyes covered | `filter sensory_dark`; `perception others obscured`; her lines may arrive nameless (P17d); more `touch` / `sound` sensory lines |
+| `collar` | neck | — | a plain collar, a sign | `notice` when seen by others (only inside a dynamic) |
+| `leash` | neck | pet_play | a leash on the collar | `escalation tug_leash`; `mobility` follows her; `visibility exposing` (the exposing element of `third_party`: "hide the leash") |
+| `ring_gag` | mouth | restraint, humiliation | the mouth held open | `input garbled 3`; `camera face_close`; her smirk (expression); `physics jaw` |
+| `muzzle` | mouth | pet_play | a muzzle; speech gone | `input no_speech` (sounds only); `gestures pet` |
+| `scent_gag` | mouth | worship, humiliation | her worn item as the gag | `input garbled 2`; `sensory scent overwhelming`; `physics saturation`; after removal her scent clings longer (P17d) |
+| `hood` | eyes + ears | restraint | full hood | `filter sensory_dark`; `perception others obscured`; `sound muffle`; touch lines dominate |
+| `posture_collar` | neck | restraint | stiff collar, chin up | options "look down / lower the eyes" removed; `strain posture` |
+| `shock_collar` | neck | pain_rough | a discipline module (P17b §4) | `escalation shock` (stress, a short status, screen glitch and sound, P17c) |
+| `paw_mitts` | hands | pet_play | mitts; no fingers | `gestures pet` (paw, nuzzle, lie down); `input no_hands`; `device lock tabs` (the PDA only with her help) |
+| `spreader_bar` | feet | restraint | ankles held apart | `mobility limited`; options "stand up / step away" removed |
+| `chastity_device` | groin | denial | a chastity device (neutral: the commander's body is not assumed) | `rule ask_permission` standing; the key is an `object_at_hand` when she leaves it near; a mark on the device casing (P10b) |
+| `property_tag` | body | objectification, public_humiliation | a tag "property of {her name}" | `visibility exposing` ("hide" unavailable; only "as is" / "cover with hands"); `notice knows_dynamic` for anyone who sees it |
+| `bell_collar` | neck | pet_play | a bell on the collar | `sound` on every move; under `silence` or a `third_party` any action raises Strain |
+| `scarf_blindfold` | eyes | restraint, worship | her scarf over the eyes | as `blindfold` + `sensory scent overwhelming` (her scent) |
+| `cuffs_to_collar` | hands + neck | restraint | wrists cuffed to the collar | nothing can be held; `gestures` head only; `input no_hands` |
+| `remote_toy` | groin | explicit_scenes, denial | a toy she drives from **her** PDA | `escalation remote_pulse` (works when she is not in the scene); input jolts at each pulse (P17c); `physics` endurance-like (`strain endurance`) in meetings and in the field |
+| `nose_hook` | face | humiliation | a nose hook | face distorted; under `third_party` "hide" is impossible; `camera face_close`, her laugh |
+| `her_marks` | body | humiliation | writing on the skin in her lipstick or marker | lasts N slots; with a no-washing rule until she allows; others notice (P17d noticing rule) |
+| `wearing_her_scent` | body | worship | her perfume on the commander | "you smell of her" is noticed almost surely (noticing roll strongly up) |
+| `earpiece` | ears | exposure_risk | an earpiece on her line | her whispers (P17d §3) in any scene she is not in; tasks through whispers |
+| `tail` | body | pet_play, explicit_scenes | a tail | under `third_party` "show yourself" is unavoidable in any posture but `lying` |
+| `food_bowl` | prop | pet_play, deprivation | a bowl at her feet | food only from it (P17b §5); with `watersports`, drink only from her (the hardest step) |
+| `plug` | body | explicit_scenes, restraint | a plug | `strain endurance`, worse when `sitting` or moving; removal is her privilege (P17a); a vibrating variant shares `remote_toy`'s remote channel |
+
+## 3. Contacts
+
+### 3.1 Worship and smothering (`dyn`)
+
+| id | dir | tags | target | implies | Essence | Effects |
+|---|---|---|---|---|---|---|
+| `smothered_armpit` | ← | worship, restraint | armpits | H standing / sitting / lying; C close, `on_person`-like | she presses the commander's face into her armpit | `physics breath` + `saturation`; `input muffled`; `perception self obscured`; `sensory scent high`; `camera pov_dark`; `escalation tighten_hold`; `device lock tabs` |
+| `smothered_breasts` | ← | worship, explicit_scenes, restraint | breasts | as above | face pressed between her breasts | `physics breath`; `input muffled`; `camera pov_dark`; `escalation tighten_hold`; `device lock tabs` |
+| `under_her_seat` | ← | objectification, restraint | bottom | H `sitting`, `on_person`; C `lying` | she sits on the commander's face as on a cushion, busy with her own thing | `physics breath` (+ `her_activity`); no speech, no sight; `camera pov_dark`; `escalation shift_weight`; `device lock tabs`; she may fall asleep (P15a §9.2) |
+| `face_to_bottom` | → | worship, explicit_scenes, humiliation | bottom | C kneeling / lying behind her | the commander's face to her bottom | `physics breath` + `saturation`; `input no_speech`; `camera pov_dark` |
+| `feet_on_face` | ← | worship, humiliation | soles | H `lying` on her bunk; C `lying` / `kneeling` at the bunk's end | she lies on the bunk, her feet resting on the commander's face, reading or on the PDA | `physics saturation` (+ `her_activity`); `camera pov_dark` + `pose_shot feet_overhead`; she may fall asleep |
+| `foot_on_head` | ← | humiliation | feet | C `kneeling` / `lying`, head to the floor | her foot pressing the commander's head down | `camera pov_floor` / `pose_shot feet_overhead`; `escalation press`; raising the head = resistance |
+| `sole_to_mouth` | ← | worship, humiliation | soles, toes | C `kneeling`; H `sitting` | her sole at the commander's lips | `input no_speech` (muffled sounds); `pose_shot feet_dangling` / `feet_overhead`; `physics jaw`; her expected option: kiss unasked or wait for the order |
+| `foot_worship` | → | worship | feet, toes | C `kneeling` / `lying`; H `sitting` | kissing and worshipping her feet | `pose_shot feet_dangling` / `feet_floor`; mouth busy; `physics tongue_work` after a run |
+| `boot_worship` | → | worship, humiliation | boots | C `kneeling`; H `standing` / `sitting` | lips to her boots; dirty after a run | `pose_shot legs_standing`; `physics tongue_work` (cleanliness); her expected option: thoroughness or speed |
+| `oral_service` | → | worship, explicit_scenes, service | genitalia | C `kneeling`; H `sitting` / `lying` | service with the mouth, she leads | mouth busy; `physics jaw`; service verdict (P16) reads her profile for this target |
+| `kneeling_between_legs` | → | service | — | H `sitting` `at_desk`; C `kneeling` `under_desk` | the author's reference case: under her desk, between her knees | `backdrop frame_under_desk`; `visibility hiddenFromDoor`; `escalation nudge_with_foot`; combines with `foot_worship`, `oral_service` |
+
+### 3.2 Weight and holding (`dyn`)
+
+| id | dir | tags | implies | Essence | Effects |
+|---|---|---|---|---|---|
+| `footrest` | ← | objectification | C `all_fours`; H `sitting` | her feet resting on the commander's back | `physics weight`; `strain stillness`; `camera ignored`; visitors address her, not the commander (P17b step 2) |
+| `human_chair` | ← | objectification | C `all_fours`; H `sitting` `on_person` | she sits on the commander | `physics weight`; `strain stillness`; she speaks to a visitor as if sitting on furniture |
+| `standing_on` | ← | pain_rough, objectification | C `lying` face down; H `standing` `on_person` | she stands on the commander's back | `physics weight`; `escalation shift_weight` |
+| `straddled` | ← | restraint | C `lying` on the back; H astride the chest, `on_person` | she sits astride the chest pinning the arms | `mobility none`; `camera from_below`; `escalation shift_weight` |
+| `boot_on_chest` | ← | humiliation, pain_rough | C `lying` on the back; H `standing` | her boot on the commander's chest | `camera from_below` (ceiling surface + `pose_shot from_below`); `physics weight`; rising only with her leave |
+| `between_thighs` | ← | restraint, pain_rough | C head between her thighs; H `sitting` | head locked between her thighs | `mobility none`; `input muffled`; `physics breath` (light) / `weight`; `escalation squeeze`; `pose_shot legs_seated` |
+| `held_by_hair` | ← | pain_rough | C `kneeling`; H `standing` | she holds the commander by the hair, face up to hers | `camera face_close` / `from_below`; `escalation tug_hair`; "look away" options cost more |
+| `pinned_to_wall` | ← | restraint | both `standing`, C `by_wall` | she pins the commander to the wall | `mobility none`; `camera face_close`; `escalation press_harder` |
+| `knee_on_back` | ← | restraint, pain_rough | C `lying` face down; H kneeling on the back | her knee on the commander's back | `camera pov_floor`; `mobility none`; `physics weight` |
+| `over_her_knee` | ← | physical_discipline_shown | C across her lap; H `sitting` | the position for a punishment | tied to her discipline ladder (P16 §4); `camera ignored` |
+| `tied_to_bedpost` | ← | restraint | C at her bunk; requires `bunk` | tied to her bunk | `mobility none`; sources `her_absence`, `time` live |
+| `tethered` | ← | restraint, pet_play | C anywhere, leash tied to furniture | left tethered, she is not there | `mobility none`; `time` + `third_party` (another woman walks in) |
+| `crawling_on_leash` | ← | pet_play | C `all_fours`, following her | led on the leash | `mobility crawl`; in a corridor `third_party` / `encounter` is likely; `escalation tug_leash` |
+
+### 3.3 Soft power (`dyn`)
+
+| id | dir | tags | Essence | Effects |
+|---|---|---|---|---|
+| `chin_lifted` | ← | — | her finger under the chin | "look away" options cost more; `camera face_close` |
+| `head_pushed_down` | ← | — | her hand on the head pushing down | a transition into `kneeling`; resisting is visible |
+| `cheek_on_her_thigh` | → | — | at her feet, cheek on her thigh | `pose_shot legs_seated`; a reward or rest |
+| `step_behind` | — (no touch, `relTo`) | service | one step behind her before everyone | public protocol; the squad notices (P15 §8 roll up) |
+| `kneeling_at_door` | — (no touch) | service | waiting at her door | source `time`; passers-by see it (`third_party`) |
+
+### 3.4 Any relation (`any`)
+
+| id | dir | tags | Essence | Effects / notes |
+|---|---|---|---|---|
+| `holding_hands` | ↔ | — | hands held | in a secret romance "hide" = let go |
+| `spooning` | ↔ | — | lying together, who is behind set by direction | night contact for P17a nights and P7's quiet night |
+| `on_lap` | ↔ | — | one on the other's lap | inside a dynamic a sign of power, between equals tenderness |
+| `forehead_to_forehead` | — | — | foreheads together | `close`; whisper; `her_question` hits harder |
+| `back_to_back` | — | — | back to back, guarding | in the field or on the roof; works in runs |
+| `carrying` | ↔ | — | she carries the wounded commander, or the reverse | P4 wounds, P7 (a weak commander really is weaker) |
+| `tending_wounds` | ↔ | — | bandaging | can turn into `her_weakness` or closeness |
+| `foot_rub` | → | — | rubbing her feet | the everyday version; after a run she asks herself |
+| `hair_brushing` | ↔ | — | brushing hair | service inside a dynamic, tenderness between equals |
+| `hand_feeding` | ↔ | deprivation (dyn only) | feeding by hand | a game between equals, control of food in a dynamic; with `bodily_fluids` from her mouth |
+| `reading_to_her` | → | — | reading aloud while she lies | the voice as contact; she may fall asleep |
+| `hand_over_mouth` | ← | — | she covers the commander's mouth when someone enters | her "cautious" tactic in a secret romance and in a dynamic |
+| `face_in_her_neck` | → | worship (dyn only) | face at her neck, her scent | tenderness between equals, a granted reward from a holder |
+
+### 3.5 Service with touch (`dyn`, tags `service`)
+
+| id | Essence | Effects / notes |
+|---|---|---|
+| `dressing_her` | fastening her armour, lacing her boots before a sortie | a morning ritual candidate (P17e) |
+| `undressing_her` | taking off her boots and uniform | after a run; opens worship of `feet` / `boots` |
+| `bathing_her` | washing her | requires a `water` place (future); worship; her profile decides what pleases her |
+| `painting_her_nails` | painting her nails, hands or feet | the colour is hers or trusted to the commander; a mistake is seen by everyone |
+| `massaging_shoulders` | shoulders while she reads or writes | pressure is part of her profile; pairs with her `focused` activities |
+
+## 4. Her activities (`actor: her`)
+
+Fields per entry: `attention` (`on_commander` / `divided` / `elsewhere` / `none`), `interruptible`, `impliedPosture`, `sources` (moment sources made more likely), `body` (scent / fatigue), `tags` for pairing (`focused`, `relaxed`, `body`, `asleep`).
+
+| id | attention | tags | Essence and what it gives |
+|---|---|---|---|
+| `attending` | on_commander | — | fully on the commander; the default in a two-person scene without an outside reason |
+| `idle` | divided | relaxed | nothing in particular |
+| `reading_reports` | elsewhere | focused | the best point for "while she works"; `her_silence`, `endurance` |
+| `writing_report` | elsewhere | focused | can be distracted, she dislikes it; maybe she writes about the commander (`object_at_hand`) |
+| `on_comms` | elsewhere | focused | with oversight or another unit; `silence` required, every sound is heard on the line; `remote` |
+| `leading_briefing` | elsewhere (the crowd) | focused | before everyone; the commander beside her or under the table |
+| `cleaning_weapon` | divided | relaxed | calm; hands busy, talks readily |
+| `repairing_gear` | divided | focused | the commander can help (handing tools = soft service) |
+| `planning_map` | divided | focused | asks the commander's opinion, or pointedly does not |
+| `on_watch` | elsewhere | focused | night, roof; no distraction allowed, only quiet |
+| `showering` | none | body | the commander waits, hands a towel, or comes in on order; later with `water` |
+| `changing_clothes` | divided | body | her things, her scent; an opening for worship |
+| `taking_off_boots` | divided | body | after a run; a natural entry into `foot_rub` / `boot_worship` |
+| `stretching` | divided | body | after training the scent is stronger |
+| `working_out` | elsewhere | body | sweat; the mirror (future) |
+| `cooling_down` | divided | body | right after a run; tired, irritated or elated by the outcome |
+| `tending_own_wound` | divided | body | a real P4 wound; the commander offers help, she refuses proudly or accepts |
+| `doing_hair` | divided | relaxed | a bridge to `hair_brushing` |
+| `reading_book` | elsewhere | relaxed | what she reads is part of her; "don't disturb" or "read to me" |
+| `playing_cards` | elsewhere (her friend) | relaxed | a friend present (`aware`); P9c wagers; `footrest` / `human_chair` |
+| `music` | divided | relaxed | headphones: does not hear the commander come in |
+| `eating` | divided | relaxed | mess or her quarters; hand feeding, tasting first (P17b) |
+| `drinking` | divided | relaxed | lowers her restraint: `her_weakness`, `her_affection` more likely |
+| `smoking` | divided | relaxed | roof, night; quiet talks |
+| `chatting_on_pda` | elsewhere | relaxed | smiles at the screen: `her_jealousy` the other way between equals |
+| `writing_journal` | elsewhere | focused | closes it when the commander enters |
+| `sketching` | elsewhere | relaxed | what she draws (maybe the commander) |
+| `mending_clothes` | divided | relaxed | needle and thread; hands busy |
+| `tinkering` | divided | focused | building something of her own; a secret until done |
+| `caring_for_plant` | divided | relaxed | a Bloom-free plant in a dead world; vulnerable softness |
+| `playing_instrument` | elsewhere | relaxed | shy if walked in on at the wrong moment (also singing) |
+| `sleeping` | none | asleep | the commander tethered or at her bunk; source `time`; her waking is a moment |
+| `dozing` | none | asleep | `on_shoulder`, `head_in_lap`; wake her or not |
+| `restless` | divided | — | cannot sleep, a nightmare (P12); comfort |
+| `sick` | divided | body | fever, Bloom; roles soften |
+| `firmware_flash` | none | — | being flashed; an hour motionless and offline; vulnerable; the commander there or not |
+| `implant_calibration` | divided | body | Leash implant calibration; unpleasant; who holds her hand |
+| `suppressant_dose` | divided | body | a Bloom suppressant shot; irritable and nauseous after |
+| `med_scan` | elsewhere (the medic) | body | a corporate check-up; the commander outside or present as the commander |
+| `diagnostics_glitch` | divided | — | a defect glitch (P4/P12); her behaviour is odd, it is not mood |
+| `mourning` | divided | — | for a fallen squadmate (a real P4 death); the commander is to blame or not |
+| `celebrating` | elsewhere (others) | relaxed | after a won mission; loud, she allows herself more |
+| `pacing_angry` | divided | — | after a breakdown, a quarrel, an order; touching her is risky |
+| `crying_alone` | divided | — | found by chance; `her_weakness`, pride against comfort |
+| `rereading_messages` | elsewhere | — | old messages of a vat sister or a former commander; closes the screen |
+| `training_rookie` | elsewhere (the rookie) | focused | strict with another; the commander sees her style from outside |
+| `gossiping` | elsewhere (friends) | relaxed | the mess; what she says about the commander |
+| `arguing_with_unit` | elsewhere | — | a squad conflict; step in as the commander or as her person |
+| `comforting_friend` | elsewhere | — | the commander is extra here; leave or stay |
+| `pre_mission_nerves` | divided | — | before a sortie; each fears in her own way |
+| `in_transit` | divided | — | in a vehicle cab, cramped, the radio (`remote`) |
+| `camp_night` | divided | — | a tent, thin walls, others asleep (0.3 and the P5 field) |
+| `waiting_for_commander` | on_commander (the door) | — | the commander is late? `time` the other way |
+| `inspecting` | elsewhere (the commander's things) | focused | P17a inspection in progress |
+| `writing_task` | elsewhere | focused | writing a task by hand (P10b); the commander waits |
+| `choosing_equipment` | elsewhere | focused | choosing what to put on the commander; the commander waits and sees the choice |
+| `ignoring` | elsewhere (deliberately) | — | P17b object time; busy with anything, pointedly |
+
+## 5. The commander's activities (`actor: commander`, no touch)
+
+Service entries carry `fits` (her activity tags), `presence` (`unnoticed` ↔ `felt`; her preference in her profile) and `judged` (P16 service verdict).
+
+| id | fits | Essence |
+|---|---|---|
+| `polishing_her_boots` | any | at her feet, boots off (on her feet it is `boot_worship`) |
+| `tidying_her_quarters` | any | while she watches or pointedly does not (`ignoring`); an inspection in reverse |
+| `doing_her_laundry` | — | her things, her scent (`worship` when enabled) |
+| `taking_dictation` | focused | she dictates a report, the commander types: the secretary of one's own subordinate; typos are slips |
+| `refilling` | focused, relaxed | standing by and guessing when to refill; `her_silence` in pure form |
+| `holding_for_her` | focused | holding papers, a lamp, a tablet; the "function" step of P17b (as furniture it is a contact) |
+| `reading_aloud` | relaxed, asleep | the voice as presence; she may fall asleep |
+| `fanning_cooling` | body | she cools down after a fight; fanning her, handing water |
+| `preparing_her_gear` | focused | packing her kit for a mission; a mistake shows in combat |
+| `cleaning_her_weapon` | any | weapons are personal in the lore: being trusted with it is a **privilege**, not a duty |
+| `warming_her_bed` | asleep (before) | lying in her bunk beforehand, leaving or staying at her word; her scent stays (P17d) |
+| `tasting_first` | eating | tasting her food first (P17b) |
+| `standing_by` | any | by the wall until called; doing nothing is service too; `strain stillness` |
+| `waiting` | any | waiting where she said |
+| `facing_wall` | any | facing the wall (a corner punishment when the origin is her discipline) |
+| `writing_report` | — | the commander's own work |
+| `on_comms` | — | the commander's own comms session (`duty_call`, `remote`) |
+| `eating` | — | eating |
+| `idle` | — | nothing in particular |
+
+## 6. Snapshots (examples from the session)
+
+```
+Corner as a punishment
+she:       posture sitting · anchor desk · activity reading_reports
+commander: posture standing · anchor corner · activity facing_wall
+condition: stillness · origin: her discipline (P16 §4, slot_held)
+
+The reference case
+she:       posture sitting · anchor desk · activity on_comms
+commander: posture kneeling · anchor under_desk
+contact:   foot_worship (commander → her, target feet)
+condition: task + silence · source on trigger: third_party / remote
+
+Heart-to-heart as equals
+she:       posture lying · anchor her_bunk · activity attending
+commander: posture lying · anchor her_bunk
+contact:   spooning
+
+Sitting on the commander
+commander: posture all_fours · anchor center
+she:       posture sitting · anchor on_person (relTo commander)
+contact:   human_chair (she → commander)
+```
