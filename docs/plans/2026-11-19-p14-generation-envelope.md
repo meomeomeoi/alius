@@ -430,7 +430,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - action `scene/late_summary { sceneId, summary }`. It needs a mark with `summarized: false` and `participants`. It replaces the scene's chronicle line (`kind: 'scene'`, same `sceneId`) when present, stores facts with `storeSceneFacts` using a `SceneRecord` built from the mark, and sets `summarized: true`. It draws no rng.
   - `SceneController.rerollLast(): Promise<void>`, the `scene.intents` reroll: the `onSwipe` undo, then `extract`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `a failed chunk records scene.intents and the next pass closes it`;
   - `ten failed chunks leave one record per chunk, and a later pass closes them` (Review Focus 3);
   - `scene.intents reroll undoes and re-reads the last exchange`;
@@ -443,10 +443,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `a failed digest is quiet and the next exchange tries again`;
   - `emotion.pick failure writes nothing`;
   - `a seeded scene with all calls answering is identical to before` (compare to `tests/helpers/sceneHarness.ts` runs).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the table. The summary snapshot is `takeSnapshot('scene.summary', sceneId, before, after)`, taken around the `scene/end` dispatch. The `revert` `undo` restores `before`; the new `apply` then dispatches `scene/end` with the same `endIndex`.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS; goldens unchanged.
-- [ ] **Step 5: Commit** `feat(P14): scene sites through the envelope`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the table. The summary snapshot is `takeSnapshot('scene.summary', sceneId, before, after)`, taken around the `scene/end` dispatch. The `revert` `undo` restores `before`; the new `apply` then dispatches `scene/end` with the same `endIndex`.
+- [x] **Step 4: Run** the files, then `npm test` → PASS; goldens unchanged.
+- [x] **Step 5: Commit** `feat(P14): scene sites through the envelope`
 
 ---
 

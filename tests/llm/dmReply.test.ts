@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { generateDm, sanitizeDm, type DmReplyInput } from '../../src/llm/calls/dmReply';
+import { sanitizeDm, type DmReplyInput } from '../../src/llm/calls/dmReply';
+import { generateDm } from '../helpers/calls';
 import { llmLog } from '../../src/llm/log';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';

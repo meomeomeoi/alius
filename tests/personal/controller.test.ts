@@ -154,7 +154,7 @@ describe('the edit of an outgoing DM', () => {
     const ui: Array<{ type: string; [k: string]: unknown }> = [];
     const deps = {
       st: h.st, app: { dispatch: h.dispatch, current: () => ({ state: h.state() }), context: h.context, refreshContext: () => {} },
-      restore: () => false, registries: () => reg, settings: () => h.settings, toast: () => {}, onUi: (e: { type: string }) => ui.push(e), scene: h.controller,
+      restore: () => false, registries: () => reg, settings: () => h.settings, toast: () => {}, onUi: (e: { type: string }) => ui.push(e), scene: h.controller, generations: h.generations,
     };
     const personal = createPersonal({ ...deps, context: h.context, refreshContext: () => {} } as never);
     const comms = createComms({ ...deps, personal } as never);
@@ -178,7 +178,7 @@ describe('the edit of an outgoing DM', () => {
     h.st.mainReplies = ['{"text":"Edited by Ann."}', 'Understood.', intentJson([])];
     const deps = {
       st: h.st, app: { dispatch: h.dispatch, current: () => ({ state: h.state() }), context: h.context, refreshContext: () => {} },
-      restore: () => false, registries: () => reg, settings: () => h.settings, toast: () => {}, onUi: () => {}, scene: h.controller,
+      restore: () => false, registries: () => reg, settings: () => h.settings, toast: () => {}, onUi: () => {}, scene: h.controller, generations: h.generations,
     };
     const personal = createPersonal({ ...deps, context: h.context, refreshContext: () => {} } as never);
     const comms = createComms({ ...deps, personal } as never);

@@ -29557,10 +29557,6 @@ registerCallType({
     return out.join("\n");
   }
 });
-async function generateDm(input, deps) {
-  const r = await callLlm("dm_reply", input, deps);
-  return r.ok ? sanitizeDm(r.value) : null;
-}
 
 // src/llm/calls/intentExtract.ts
 var EXPRESSION_LABELS = [
@@ -29758,25 +29754,6 @@ function readIntentOutput(raw, input, opts) {
     conspire: input.conspire ?? []
   });
 }
-async function extractIntents(input, deps, opts = {}) {
-  const r = await callLlm("intent_extract", input, deps);
-  if (!r.ok) return null;
-  const ids = input.units.map((u) => u.id);
-  return sanitizeIntentOutput(r.value, {
-    participants: ids,
-    squad: ids.map((id) => ({ id })),
-    minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence,
-    romance: input.romance,
-    measures: input.measures,
-    excluded: (input.excluded ?? []).map((e) => e.id),
-    rules: (input.rules ?? []).map((r2) => ({ id: r2.id, unitId: r2.unitId })),
-    intercepted: (input.intercepted ?? []).map((i) => i.id),
-    warned: input.warned ?? [],
-    overrides: (input.overrides ?? []).map((o) => o.id),
-    expectations: (input.expectations ?? []).map((x) => x.id),
-    conspire: input.conspire ?? []
-  });
-}
 
 // src/scene/comms.ts
 var HISTORY = 6;
@@ -29806,15 +29783,20 @@ function createComms(deps) {
     if (e && e.code !== "chat_changed") deps.toast("error", String(e.message ?? e.code));
     return e !== void 0;
   };
-  async function readExchange(expect, unitId, commanderText, reply, opts = {}) {
-    const s = state();
-    const unit2 = s?.squad.find((u) => u.id === unitId);
-    const rel = s?.relations[unitId];
-    if (!s || !unit2 || !rel || chatId() !== expect) return;
+  const reads = /* @__PURE__ */ new Map();
+  const splitKey = (key) => {
+    const at = key.indexOf(":");
+    return [key.slice(0, at), key.slice(at + 1)];
+  };
+  const doorRef = (entryId) => `door:${entryId}`;
+  function readInput(s, unit2, commanderText, reply) {
+    const unitId = unit2.id;
+    const rel = s.relations[unitId];
+    if (!rel) return null;
     const excluded = disabledCategories(s, deps.registries());
     const limitLabels = ownLimitLabels(unit2, deps.registries());
     const ruleList = rulesOf(s).filter((r) => (r.status === "active" || r.status === "negotiating") && r.unitId === unitId).map((r) => ({ id: r.id, unitId: r.unitId, text: r.text, status: r.status }));
-    const result = await extractIntents({
+    return {
       commanderName: s.commander.name,
       channel: "dm",
       exchange: [{ speaker: s.commander.name, text: commanderText }, { speaker: unit2.displayName, text: reply }],
@@ -29830,36 +29812,150 @@ function createComms(deps) {
       // P12: what the frequency caught about her (nothing without the trait)
       ...warnedInput(s, [unitId])
       // P12: the units the commander has an open warning about
-    }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
-    if (!result || chatId() !== expect) return;
-    const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
-    const lastId = opts.door === true ? void 0 : threadOf(s, unitId).at(-1)?.id;
-    const flagged = result.contentViolations.map((v) => v.category);
-    const events = app.dispatch({
-      type: "intents/apply",
-      payload: { channel: "dm", unitId, intents, ...lastId ? { messageRef: `dm:${lastId}` } : {}, ...flagged.length > 0 ? { violations: { categories: flagged } } : {} }
-    }, { expectChatId: expect });
-    for (const e of events) {
-      if (e.type === "proposal_offered") {
-        const p = state()?.proposals?.find((x) => x.id === e.proposalId);
-        if (p) deps.onUi({ type: "chips", proposal: p });
-      } else if (e.type === "discipline_applied" || e.type === "threat_registered") {
-        deps.onUi({ type: "discipline" });
-      } else if (e.type === "relation_changed") {
-        deps.onUi({ type: "pulse", unitId, axis: e.axis, up: Number(e.delta) > 0, delta: Number(e.delta) });
-      }
-    }
-    deps.onUi({ type: "transcript" });
+    };
   }
+  async function readExchange(unitId, ref) {
+    await deps.generations.generate("dm.intents", `${unitId}:${ref}`);
+  }
+  deps.generations.bind("dm.intents", {
+    build(key) {
+      const [unitId, ref] = splitKey(key);
+      const s = state();
+      const unit2 = s?.squad.find((u) => u.id === unitId);
+      if (!s || !unit2) return { expired: "She is not here." };
+      let commanderText;
+      let reply;
+      if (ref.startsWith("door:")) {
+        const entry = s.calendar.nightEvent;
+        if (!entry || entry.id !== ref.slice("door:".length) || entry.door?.reply === void 0) return { expired: "The knock is over." };
+        commanderText = entry.door.said;
+        reply = entry.door.reply;
+      } else {
+        const thread = threadOf(s, unitId);
+        const at = thread.findIndex((m) => m.id === ref);
+        if (at < 0) return { expired: "That message is gone." };
+        if (at !== thread.length - 1) return { expired: "A newer message came after it." };
+        const before = thread[at - 1];
+        if (!before || before.from !== "commander") return { expired: "No message of the commander came before it." };
+        commanderText = before.text;
+        reply = thread[at].text;
+      }
+      return readInput(s, unit2, commanderText, reply) ?? { expired: "She is not here." };
+    },
+    // P8: the engine judges per unit
+    parse: (raw, input) => readIntentOutput(raw, input, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }),
+    apply(key, result) {
+      const [unitId, ref] = splitKey(key);
+      const expect = chatId();
+      const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
+      const lastId = ref.startsWith("door:") ? void 0 : ref;
+      const flagged = result.contentViolations.map((v) => v.category);
+      const events = app.dispatch({
+        type: "intents/apply",
+        payload: { channel: "dm", unitId, intents, ...lastId ? { messageRef: `dm:${lastId}` } : {}, ...flagged.length > 0 ? { violations: { categories: flagged } } : {} }
+      }, { expectChatId: expect });
+      if (events.some((e) => e.type === "error")) return { stale: true };
+      for (const e of events) {
+        if (e.type === "proposal_offered") {
+          const p = state()?.proposals?.find((x) => x.id === e.proposalId);
+          if (p) deps.onUi({ type: "chips", proposal: p });
+        } else if (e.type === "discipline_applied" || e.type === "threat_registered") {
+          deps.onUi({ type: "discipline" });
+        } else if (e.type === "relation_changed") {
+          deps.onUi({ type: "pulse", unitId, axis: e.axis, up: Number(e.delta) > 0, delta: Number(e.delta) });
+        }
+      }
+      deps.onUi({ type: "transcript" });
+      return "ok";
+    }
+  });
+  deps.generations.bind("dm.reply", {
+    build(key) {
+      const [unitId, msgId] = splitKey(key);
+      const s = state();
+      const unit2 = s?.squad.find((u) => u.id === unitId);
+      if (!s || !unit2) return { expired: "She is not here." };
+      const thread = threadOf(s, unitId);
+      const at = thread.findIndex((m) => m.id === msgId && m.from === "commander");
+      if (at < 0) return { expired: "That message is gone." };
+      if (at !== thread.length - 1) return { expired: "Her thread moved on." };
+      const mode = dmMode(s, unitId);
+      if (mode === "ignore") return { expired: "She left it on read." };
+      return replyInput(s, deps, unit2, replyModeFor(s, deps.registries(), unitId, mode === "snap" ? "snap" : "reply"));
+    },
+    parse: (raw) => sanitizeDm(String(raw)),
+    apply(key, reply, input) {
+      const [unitId, msgId] = splitKey(key);
+      const expect = chatId();
+      const before = state();
+      const commanderText = before ? threadOf(before, unitId).find((m) => m.id === msgId)?.text : void 0;
+      if (!before || commanderText === void 0) return { stale: true };
+      const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...input.mode === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
+      if (failed(received)) return { stale: true };
+      deps.personal?.onReply?.(unitId, reply);
+      deps.onUi({ type: "transcript" });
+      const herId = threadOf(state(), unitId).at(-1)?.id;
+      if (herId === void 0) return "ok";
+      const run = readExchange(unitId, herId).then(() => {
+        const after = state();
+        if (after && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before, after);
+      }).finally(() => reads.delete(key));
+      reads.set(key, run);
+      return "ok";
+    }
+  });
+  deps.generations.bind("dm.initiate", {
+    build(key) {
+      const [unitId, when] = splitKey(key);
+      const s = state();
+      const unit2 = s?.squad.find((u) => u.id === unitId);
+      if (!s || !unit2) return { expired: "She is not here." };
+      if (when !== `${s.day}:${s.slot}`) return { expired: "That moment has passed." };
+      return replyInput(s, deps, unit2, "initiate");
+    },
+    parse: (raw) => sanitizeDm(String(raw)),
+    apply(key, text2) {
+      const [unitId] = splitKey(key);
+      const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text2, initiated: true } }, { expectChatId: chatId() });
+      if (failed(r)) return { stale: true };
+      deps.onUi({ type: "transcript" });
+      return "ok";
+    }
+  });
+  deps.generations.bind("dm.door", {
+    build(entryId) {
+      const s = state();
+      const entry = s?.calendar.nightEvent;
+      const unit2 = s?.squad.find((u) => u.id === entry?.unitId);
+      if (!s || !entry || !unit2 || entry.id !== entryId) return { expired: "The knock is over." };
+      if (entry.door === void 0) return { expired: "Nothing was said through the door." };
+      if (entry.door.reply !== void 0) return { expired: "She answered already." };
+      const input = replyInput(s, deps, unit2, "door");
+      input.history = [...input.history, { from: "commander", text: entry.door.said }];
+      return input;
+    },
+    parse: (raw) => sanitizeDm(String(raw)),
+    apply(entryId, reply) {
+      const expect = chatId();
+      const unitId = state()?.calendar.nightEvent?.unitId;
+      const stored = app.dispatch({ type: "night/door_reply", payload: { text: reply } }, { expectChatId: expect });
+      if (failed(stored) || unitId === void 0) return { stale: true };
+      const key = `${unitId}:${doorRef(entryId)}`;
+      reads.set(key, readExchange(unitId, doorRef(entryId)).finally(() => reads.delete(key)));
+      return "ok";
+    }
+  });
   async function initiateOne(unitId, expect) {
     const s = state();
-    const unit2 = s?.squad.find((u) => u.id === unitId);
-    if (!s || !unit2 || chatId() !== expect) return;
-    const text2 = await generateDm(replyInput(s, deps, unit2, "initiate"), { st, settings: deps.settings(), contentLine: deps.contentLine });
-    if (text2 === null || chatId() !== expect) return;
-    const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text2, initiated: true } }, { expectChatId: expect });
-    if (!failed(r)) deps.onUi({ type: "transcript" });
+    if (!s || chatId() !== expect || !s.squad.some((u) => u.id === unitId)) return;
+    await deps.generations.generate("dm.initiate", `${unitId}:${s.day}:${s.slot}`);
   }
+  const replyKeyOf = (s, unitId) => {
+    const thread = threadOf(s, unitId);
+    const last = thread.at(-1);
+    const prev = thread.at(-2);
+    return last && prev && last.from === unitId && last.initiated !== true && prev.from === "commander" ? `${unitId}:${prev.id}` : null;
+  };
   const controller = {
     async send(unitId, text2, opts) {
       const expect = chatId();
@@ -29876,17 +29972,12 @@ function createComms(deps) {
       const mode = events.find((e) => e.type === "dm_sent")?.mode;
       deps.onUi({ type: "transcript" });
       if (mode === "ignore") return;
-      const s = state();
-      const unit2 = s?.squad.find((u) => u.id === unitId);
-      if (!s || !unit2) return;
-      const asked = replyModeFor(s, deps.registries(), unitId, mode === "snap" ? "snap" : "reply");
-      const reply = await generateDm(replyInput(s, deps, unit2, asked), { st, settings: deps.settings(), contentLine: deps.contentLine });
-      if (reply === null || chatId() !== expect) return;
-      const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...asked === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
-      if (failed(received)) return;
-      deps.personal?.onReply?.(unitId, reply);
-      deps.onUi({ type: "transcript" });
-      await readExchange(expect, unitId, text2.trim(), reply);
+      const sent = state();
+      const sentId = sent ? threadOf(sent, unitId).at(-1)?.id : void 0;
+      if (!sent || sentId === void 0 || !sent.squad.some((u) => u.id === unitId)) return;
+      const key = `${unitId}:${sentId}`;
+      await deps.generations.generate("dm.reply", key);
+      await reads.get(key);
     },
     async answerEdit(keep) {
       const r = await deps.personal?.answerEdit(keep);
@@ -29912,18 +30003,22 @@ function createComms(deps) {
       const expect = chatId();
       const said = app.dispatch({ type: "night/door_say", payload: { text: text2 } }, { expectChatId: expect });
       if (failed(said)) return;
+      const entry = state()?.calendar.nightEvent;
+      if (!entry || entry.door?.said === void 0) return;
+      await deps.generations.generate("dm.door", entry.id);
+      await reads.get(`${entry.unitId}:${doorRef(entry.id)}`);
+    },
+    async rerollLast(unitId) {
       const s = state();
-      const entry = s?.calendar.nightEvent;
-      const unit2 = s?.squad.find((u) => u.id === entry?.unitId);
-      const line2 = entry?.door?.said;
-      if (!s || !entry || !unit2 || line2 === void 0) return;
-      const input = replyInput(s, deps, unit2, "door");
-      input.history = [...input.history, { from: "commander", text: line2 }];
-      const reply = await generateDm(input, { st, settings: deps.settings(), contentLine: deps.contentLine });
-      if (reply === null || chatId() !== expect) return;
-      const stored = app.dispatch({ type: "night/door_reply", payload: { text: reply } }, { expectChatId: expect });
-      if (failed(stored)) return;
-      await readExchange(expect, unit2.id, line2, reply, { door: true });
+      const key = s ? replyKeyOf(s, unitId) : null;
+      if (key === null) return;
+      await deps.generations.reroll("dm.reply", key);
+      await reads.get(key);
+    },
+    replyState(unitId) {
+      const s = state();
+      const key = s ? replyKeyOf(s, unitId) : null;
+      return key === null ? null : { siteKey: key, reroll: deps.generations.rerollState("dm.reply", key) };
     },
     async openNight() {
       const events = app.dispatch({ type: "night/open", payload: {} }, { expectChatId: chatId() });

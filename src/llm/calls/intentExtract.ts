@@ -239,19 +239,3 @@ export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: 
     overrides: (input.overrides ?? []).map((o) => o.id), expectations: (input.expectations ?? []).map((x) => x.id), conspire: input.conspire ?? [],
   });
 }
-
-/** One mechanic call; any failure gives null and changes nothing. */
-export async function extractIntents(
-  input: IntentExtractInput, deps: { st: StAdapter; settings: AliusSettings }, opts: { minConfidence?: number } = {},
-): Promise<IntentOutput | null> {
-  const r = await callLlm<unknown>('intent_extract', input, deps);
-  if (!r.ok) return null;
-  const ids = input.units.map((u) => u.id);
-  return sanitizeIntentOutput(r.value, {
-    participants: ids, squad: ids.map((id) => ({ id })),
-    minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence, romance: input.romance, measures: input.measures,
-    excluded: (input.excluded ?? []).map((e) => e.id), rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
-    intercepted: (input.intercepted ?? []).map((i) => i.id), warned: input.warned ?? [],
-    overrides: (input.overrides ?? []).map((o) => o.id), expectations: (input.expectations ?? []).map((x) => x.id), conspire: input.conspire ?? [],
-  });
-}

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { extractIntents, sanitizeIntentOutput, type IntentExtractInput } from '../../src/llm/calls/intentExtract';
+import { sanitizeIntentOutput, type IntentExtractInput } from '../../src/llm/calls/intentExtract';
+import { extractIntents } from '../helpers/calls';
 import { getCallType } from '../../src/llm/callTypes';
 import { llmLog } from '../../src/llm/log';
 import { getSettings } from '../../src/settings';

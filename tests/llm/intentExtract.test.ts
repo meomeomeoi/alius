@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { TUNING } from '../../src/engine/tuning';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  EXPRESSION_LABELS, extractIntents, sanitizeIntentOutput, type IntentExtractInput,
+  EXPRESSION_LABELS, sanitizeIntentOutput, type IntentExtractInput,
 } from '../../src/llm/calls/intentExtract';
+import { extractIntents } from '../helpers/calls';
 import { llmLog } from '../../src/llm/log';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';

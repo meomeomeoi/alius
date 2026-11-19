@@ -1,6 +1,5 @@
 import type { AffinityBand, AttractionBand, StressBand, TrustBand } from '../../engine/relations/bands';
 import { registerCallType } from '../callTypes';
-import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface DmReplyInput {
   unitName: string;
@@ -82,9 +81,3 @@ registerCallType<string>({
     return out.join('\n');
   },
 });
-
-/** One main-model call; any failure or an empty answer gives null (she simply does not answer). */
-export async function generateDm(input: DmReplyInput, deps: LlmDeps): Promise<string | null> {
-  const r = await callLlm<string>('dm_reply', input, deps);
-  return r.ok ? sanitizeDm(r.value) : null;
-}

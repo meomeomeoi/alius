@@ -9,7 +9,8 @@ import { openPremonition, warnedInput } from '../../src/engine/special/paranoia/
 import { commanderStress } from '../../src/engine/special/commanderStress';
 import type { PremonitionAbout } from '../../src/engine/special/state';
 import type { CampaignState } from '../../src/engine/state/types';
-import { extractIntents, type IntentExtractInput } from '../../src/llm/calls/intentExtract';
+import type { IntentExtractInput } from '../../src/llm/calls/intentExtract';
+import { extractIntents } from '../helpers/calls';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import { loadCore, run } from '../helpers/world';
