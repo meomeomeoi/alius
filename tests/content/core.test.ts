@@ -50,7 +50,7 @@ describe('core content pack', () => {
     for (const e of lorebook!.entries) {
       expect(e.content.split(/\s+/).length, e.comment).toBeLessThanOrEqual(120);
     }
-    expect(lorebook!.entries).toHaveLength(22); // P12: + debts_handler
+    expect(lorebook!.entries).toHaveLength(23); // P12: + debts_handler, P13: + controller_implant
   });
 
   it('assault base stats are 110/24/12/14/10', async () => {
@@ -859,13 +859,15 @@ describe('core content pack: P11 prologues and unlocks', () => {
     const { registries: r } = await load();
     const raw = JSON.parse(await readFile('content/core/prologues.json', 'utf8')) as Array<{ id: string; extends?: string; startId?: string }>;
     for (const start of r.starts.keys()) {
-      expect([...r.prologues.values()].filter((p) => p.startId === start), start).toHaveLength(1);
+      expect([...r.prologues.values()].filter((p) => p.startId === start && p.mode === undefined), start).toHaveLength(1);
+      // P13: and one entry for the LEASHSWAP mode, built on the start's own
+      expect([...r.prologues.values()].filter((p) => p.startId === start && p.mode === 'leashswap'), start).toHaveLength(1);
     }
     const skeleton = r.prologues.get('prologue_skeleton')!;
     expect(skeleton.startId).toBeUndefined();
     expect(raw.filter((e) => e.startId !== undefined)).toHaveLength(2);
     for (const e of raw.filter((x) => x.startId !== undefined)) expect(e.extends, e.id).toBe('prologue_skeleton');
-    expect(r.prologues.size).toBe(3);
+    expect(r.prologues.size).toBe(5); // the skeleton, a prologue per start and (P13) a LEASHSWAP entry per start
   });
 
   it('the skeleton follows the planned order, kinds and completions', async () => {

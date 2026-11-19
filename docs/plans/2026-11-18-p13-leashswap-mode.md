@@ -515,7 +515,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - action `warden/revealed` (sets `leashswap.revealed = true`; refused when already set)
 - Consumes: `SetupResult.mode` (Task 1)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `tests/ui/wardenSetup.test.ts`:
     - `MODE section switches to LEASHSWAP and shows the death rule with data-analyze`;
     - `the death rule default follows difficulty` (story → REWIND DAY, hard → CAMPAIGN END);
@@ -527,10 +527,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
     - `without a mode the old entry is returned`;
     - `the reveal step starts a scene with only the warden`;
     - `a veteran campaign shows the reveal card once` (after `warden/revealed`, not again).
-- [ ] **Step 2: Run** both files → FAIL.
-- [ ] **Step 3: Implement.** All text is AUTHOR TO WRITE with no commander pronoun. The reveal card uses the `corporate` voice (`VOICE_OF.warden_reveal = 'corporate'`).
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): MODE section, warden pick and the reveal`
+- [x] **Step 2: Run** both files → FAIL.
+- [x] **Step 3: Implement.** All text is AUTHOR TO WRITE with no commander pronoun. The reveal card uses the `corporate` voice (`VOICE_OF.warden_reveal = 'corporate'`).
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): MODE section, warden pick and the reveal`
 
 ---
 

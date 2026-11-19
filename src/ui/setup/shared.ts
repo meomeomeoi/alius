@@ -68,6 +68,7 @@ export function reviewLines(wizard: Wizard, reg: Registries): string[] {
     `CORPORATION : ${nameOf(reg, 'corporations', corpId)} — ${nameOf(reg, 'starts', s.startId)}`,
     `CRIME       : ${nameOf(reg, 'crimes', s.crimeId)} (Plea: GUILTY)`,
     ...commanderLines(s, reg),
+    ...(s.campaign.kind === 'leashswap' ? [`MODE        : LEASHSWAP — ${s.campaign.deathRule === 'rewind_day' ? 'REWIND DAY' : 'CAMPAIGN END'} — WARDEN: ${s.campaign.warden.by === 'player' ? (s.units[s.campaign.warden.index]?.displayName ?? 'CORPORATE ASSIGNMENT') : 'CORPORATE ASSIGNMENT'}`] : []),
     `SQUAD       : ${s.units.length}/4 — ${difficultyHint(s.units.length)}`,
     ...s.units.flatMap((u, n) => unitLines(wizard, reg, u, n)),
   ];

@@ -11,6 +11,7 @@ import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
 import type { CharacterSummary } from '../st/adapter';
 import type { BodyStat } from '../engine/state/types';
 import { defaultWorldOptions } from '../engine/worldOptions';
+import { DEATH_RULES, defaultDeathRule, type DeathRule } from '../engine/warden/state';
 import type { CommanderImportOutcome } from './commander';
 import type { ImportedProfile, ImportOutcome } from './profile';
 
@@ -61,6 +62,13 @@ export interface CommanderImportState {
   source?: string;
 }
 
+/** P13: the campaign mode the player picked at the MODE section. `warden.index` is the position in `units`. */
+export interface CampaignModeDraft {
+  kind: 'default' | 'leashswap';
+  deathRule: DeathRule;
+  warden: { by: 'player'; index: number } | { by: 'corporation' };
+}
+
 export interface WizardState {
   step: WizardStep;
   /** P11: `prologue` while the chosen start has one (the default), else `veteran`. */
@@ -75,6 +83,8 @@ export interface WizardState {
   world: { options: Record<string, string>; preset: string | null };
   /** P9d: the content categories switched on (all off unless the old explicit-scenes switch carried `explicit_scenes` over). */
   content: { enabled: string[] };
+  /** P13: LEASHSWAP or the default mode, its death rule and who holds the leash. */
+  campaign: CampaignModeDraft;
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -92,6 +102,8 @@ export interface WizardDeps {
   commanderImporter?: () => Promise<CommanderImportOutcome>;
   /** P7: a number in [0, 1) for the random commander (default `Math.random`). */
   random?: () => number;
+  /** P13: the combat difficulty a new campaign starts at (`story`, `normal` or `hard`; default `normal`): it sets the LEASHSWAP death rule's default. */
+  difficulty?: string;
   onChange: (s: WizardState) => void;
 }
 
@@ -148,6 +160,7 @@ export class Wizard {
       commanderImport: { status: 'idle', reasons: {} },
       world: this.startingWorld(),
       content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
+      campaign: { kind: 'default', deathRule: defaultDeathRule(this.deps.difficulty ?? 'normal'), warden: { by: 'corporation' } },
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
@@ -167,6 +180,29 @@ export class Wizard {
   setContent(enabled: string[]): void {
     const known = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
     this.s.content = { enabled: known.filter((id) => enabled.includes(id)) };
+    this.emit();
+  }
+
+  /** P13: the campaign mode (the default mode writes no `mode` into the setup). */
+  setCampaignMode(kind: 'default' | 'leashswap'): void {
+    if (kind !== 'default' && kind !== 'leashswap') return;
+    this.s.campaign.kind = kind;
+    this.emit();
+  }
+
+  /** P13: what happens when the commander dies; stored in the campaign and fixed from then on. */
+  setDeathRule(rule: DeathRule): void {
+    if (!DEATH_RULES.includes(rule)) return;
+    this.s.campaign.deathRule = rule;
+    this.emit();
+  }
+
+  /** P13: who holds the leash: a chosen unit (by her position in the squad) or the corporation's pick. An index outside the squad is ignored. */
+  setWardenPick(pick: CampaignModeDraft['warden']): void {
+    if (pick.by === 'player') {
+      if (!Number.isInteger(pick.index) || pick.index < 0 || pick.index >= this.s.units.length) return;
+      this.s.campaign.warden = { by: 'player', index: pick.index };
+    } else this.s.campaign.warden = { by: 'corporation' };
     this.emit();
   }
 
@@ -217,13 +253,18 @@ export class Wizard {
     if (!this.deps.registries.starts.has(id)) return;
     this.s.startId = id;
     // a start with no prologue has nothing to play in fiction: the classic wizard it is
-    if (prologueFor(this.deps.registries, id) === null) this.s.mode = 'veteran';
+    if (prologueFor(this.deps.registries, id, this.promptMode()) === null) this.s.mode = 'veteran';
     this.emit();
   }
 
   /** The prologue entry of the chosen start, or null (no start yet, or the start has none). */
   private prologue() {
-    return this.s.startId ? prologueFor(this.deps.registries, this.s.startId) : null;
+    return this.s.startId ? prologueFor(this.deps.registries, this.s.startId, this.promptMode()) : null;
+  }
+
+  /** P13: the prologue entry's mode follows the campaign mode. */
+  private promptMode(): 'leashswap' | undefined {
+    return this.s.campaign.kind === 'leashswap' ? 'leashswap' : undefined;
   }
 
   /**
@@ -454,6 +495,8 @@ export class Wizard {
     const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
     if (i >= 0) {
       this.s.units.splice(i, 1);
+      const w = this.s.campaign.warden;
+      if (w.by === 'player') this.s.campaign.warden = w.index === i ? { by: 'corporation' } : w.index > i ? { by: 'player', index: w.index - 1 } : w;
       this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
     } else if (this.s.units.length < SETUP_LIMITS.maxUnits) {
       this.s.units.push({
@@ -745,7 +788,12 @@ export class Wizard {
     }
     const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } }, content: { enabled: [...this.s.content.enabled] } };
     // P11: a start with a prologue always starts inside it; the veteran intake only marks the wizard steps as skipped
-    const prologue = prologueFor(this.deps.registries, startId);
+    const prologue = prologueFor(this.deps.registries, startId, this.promptMode());
+    if (this.s.campaign.kind === 'leashswap') {
+      const w = this.s.campaign.warden;
+      // a pick that no longer points at a chosen unit falls back to the corporation (toggleUnit keeps it in step, this is the net)
+      result.mode = { kind: 'leashswap', deathRule: this.s.campaign.deathRule, warden: w.by === 'player' && w.index < units.length ? { by: 'player', index: w.index } : { by: 'corporation' } };
+    }
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };

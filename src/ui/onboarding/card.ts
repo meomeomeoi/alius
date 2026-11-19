@@ -28,7 +28,7 @@ export interface OnboardingCardCtx {
 
 /** The glossary entry the buttons of a step explain: read from what the step is (a per-unit scene, a scene, a run), not from its id. */
 function glossaryOf(step: StepWithId): string {
-  if (step.kind === 'scene') return step.perUnit === true ? 'glossary:first_words' : 'glossary:lineup';
+  if (step.kind === 'scene') return step.perUnit === true ? 'glossary:first_words' : step.participants === 'warden' ? 'glossary:warden' : 'glossary:lineup';
   if (step.kind === 'expedition') return 'glossary:tutorial_expedition';
   return 'glossary:prologue';
 }
@@ -71,7 +71,9 @@ export function renderOnboardingCard(host: HTMLElement, ctx: OnboardingCardCtx):
     })));
     body.append(h('div', { class: 'alius-row' }, skip()));
   } else if (step.kind === 'scene') {
-    body.append(h('div', { class: 'alius-row' }, button('[ BEGIN LINE-UP ]', 'begin', address, () => void controller.startLineup(), scene !== undefined), skip()));
+    // P13: a scene held with the warden alone reads from the step's field, never its id
+    const label = step.participants === 'warden' ? '[ MEET THE WARDEN ]' : '[ BEGIN LINE-UP ]';
+    body.append(h('div', { class: 'alius-row' }, button(label, 'begin', address, () => void controller.startLineup(), scene !== undefined), skip()));
   } else if (step.kind === 'expedition') {
     const out = state.expedition !== undefined;
     body.append(h('div', { class: 'alius-row' },

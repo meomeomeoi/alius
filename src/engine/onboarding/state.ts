@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState, OnboardingState, Unit } from '../state/types';
+import { wardenUnitId } from '../warden/state';
 import { isWizardStep, stepsOf, type StepWithId } from './prologue';
 
 /** Absent `onboarding` means there is no prologue: old campaigns and starts without one count as done. */
@@ -96,7 +97,8 @@ export function enterStep(draft: CampaignState, ctx: EngineCtx, index: number, a
       events.push({ type: 'onboarding_done' });
       return events;
     }
-    const noOne = (step.kind === 'scene' || step.kind === 'expedition') && livingNamed(draft).length === 0;
+    const noOne = ((step.kind === 'scene' || step.kind === 'expedition') && livingNamed(draft).length === 0)
+      || (step.participants === 'warden' && wardenUnitId(draft) === null); // P13: nobody holds the leash, so there is no one to meet
     if (noOne || (skipDebrief && step.completion === 'debriefed')) {
       o.skipped.push(step.id);
       events.push({ type: 'onboarding_step_skipped', stepId: step.id });

@@ -13,6 +13,7 @@ import { renderCalibration } from './calibration';
 import { renderColdOpen, renderExam, renderFile, renderIntake, type PrologueStepCtx } from './prologueSteps';
 import { card, crimeCards, nameOf, reviewLines, targetChooser } from './shared';
 import { renderWorldParams } from './worldParams';
+import { renderWardenPick } from '../warden/modeSection';
 
 export interface SetupScreenCtx {
   wizard: Wizard;
@@ -151,6 +152,8 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
     const input = h('input', { type: 'search', class: 'alius-input', 'data-key': 'search', 'aria-label': 'Search characters' }) as HTMLInputElement;
     input.value = search;
     input.addEventListener('input', () => { search = input.value; render(); });
+    const wardenHost = h('div', { class: 'alius-warden-host' });
+    renderWardenPick(wardenHost, wizard); // P13: only in LEASHSWAP
     return h('div', { class: 'alius-setup-body' },
       h('p', { class: 'alius-hint' }, `Squad size ${s.units.length}/4 — ${difficultyHint(s.units.length)}. No automatic compensation.`),
       h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Search'), input),
@@ -160,7 +163,8 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
         box.addEventListener('change', () => wizard.toggleUnit(c));
         return h('label', { class: 'alius-tile' }, box, h('img', { src: st.getAvatarUrl(c.avatar), alt: '', width: '48', height: '48' }), h('span', {}, c.name));
       })),
-      chars.length === 0 ? h('p', { class: 'alius-dim' }, 'No characters found.') : null);
+      chars.length === 0 ? h('p', { class: 'alius-dim' }, 'No characters found.') : null,
+      wardenHost.childElementCount > 0 ? wardenHost : null);
   }
 
   function calibration(s: WizardState): HTMLElement {

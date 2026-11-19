@@ -3254,6 +3254,14 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 .alius-report-line, .alius-recap { margin: 0.2em 0; }
 .alius-recap { border-left: 2px solid currentColor; padding-left: 0.6em; }
 
+/* P13: LEASHSWAP. The MODE section, the warden pick and the WARDEN ASSIGNED notice. Everything draws from the shared variables. */
+.alius-mode .alius-cards { margin-block: 0.5rem; }
+.alius-death-rule[aria-pressed="true"],
+.alius-mode-choice[aria-pressed="true"] { outline: 2px solid var(--alius-fg); }
+.alius-warden-pick { display: block; margin-top: 0.75rem; }
+.alius-warden-reveal { margin-bottom: 0.5rem; }
+.alius-warden-reveal-body p { margin: 0 0 0.4rem; }
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

@@ -483,7 +483,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
   // P13
-  'leashswap_started', 'warden_assigned', 'warden_agenda_set', 'expectation_learned',
+  'leashswap_started', 'warden_assigned', 'warden_revealed', 'warden_agenda_set', 'expectation_learned',
   'warden_override', 'override_answered', 'override_compromise', 'override_argue_roll',
   'commander_punished', 'commander_restricted', 'commander_leashed', 'leash_cosigned', 'leash_cosign_denied',
   'warden_warning', 'commander_terminated', 'commander_died', 'campaign_ended',
@@ -1730,6 +1730,8 @@ export const PrologueStepSchema = z.object({
   exchangeCap: int.min(1).max(12).optional(),
   /** One scene per living named unit instead of one scene for all. */
   perUnit: z.boolean().optional(),
+  /** P13: the scene is held with the warden alone (the step is skipped while nobody holds the leash). */
+  participants: z.literal('warden').optional(),
   objective: str.max(100).optional(),
   hints: z.array(z.object({
     id: str, screen: z.enum(['combat', 'expedition']), glossaryId: str, text: str.max(200),
@@ -1750,6 +1752,8 @@ export type PrologueStep = z.infer<typeof PrologueStepSchema>;
  */
 export const PrologueSchema = BaseEntrySchema.extend({
   startId: str.optional(),
+  /** P13: the entry a start uses when the campaign is in this mode (`prologueFor` falls back to the one without a mode). */
+  mode: z.literal('leashswap').optional(),
   order: z.array(str).min(2),
   steps: z.record(z.string().regex(ID_PATTERN), PrologueStepSchema),
 }).superRefine((p, ctx) => {

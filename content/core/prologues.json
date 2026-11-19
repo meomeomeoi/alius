@@ -214,5 +214,75 @@
         "objective": "Walk the corridor mouth and bring the patrol back."
       }
     }
+  },
+  {
+    "id": "prologue_vesper_leashswap",
+    "extends": "prologue_vesper",
+    "mode": "leashswap",
+    "order": [
+      "cold_open",
+      "intake",
+      "exam",
+      "dossier",
+      "lineup",
+      "warden_reveal",
+      "first_words",
+      "tutorial",
+      "debrief",
+      "first_evening",
+      "free"
+    ],
+    "steps": {
+      "warden_reveal": {
+        "kind": "scene",
+        "voice": "corporate",
+        "title": "WARDEN BRIEFING",
+        "participants": "warden",
+        "locationId": "comms_room",
+        "exchangeCap": 4,
+        "objective": "Meet the soldier who holds the controller.",
+        "directive": "AUTHOR TO WRITE: This is the first meeting between the commander and the warden. The corporation has put the controller of the commander's implant in her hands. She is a soldier of the squad, and she is neither cruel nor kind by default: she is under orders too. Show how she carries the controller and let the commander find out where they stand with each other.",
+        "authoredText": [
+          "AUTHOR TO WRITE: By order of oversight, one soldier of the unit holds the controller of the commander's implant. Her orders are on file."
+        ],
+        "completion": "no_open_scene",
+        "skippable": true
+      }
+    }
+  },
+  {
+    "id": "prologue_kestrel_leashswap",
+    "extends": "prologue_kestrel",
+    "mode": "leashswap",
+    "order": [
+      "cold_open",
+      "intake",
+      "exam",
+      "dossier",
+      "lineup",
+      "warden_reveal",
+      "first_words",
+      "tutorial",
+      "debrief",
+      "first_evening",
+      "free"
+    ],
+    "steps": {
+      "warden_reveal": {
+        "kind": "scene",
+        "voice": "corporate",
+        "title": "WARDEN BRIEFING",
+        "participants": "warden",
+        "locationId": "comms_room",
+        "exchangeCap": 4,
+        "objective": "Meet the soldier who holds the controller.",
+        "directive": "AUTHOR TO WRITE: This is the first meeting between the commander and the warden. The corporation has put the controller of the commander's implant in her hands. She is a soldier of the squad, and she is neither cruel nor kind by default: she is under orders too. Show how she carries the controller and let the commander find out where they stand with each other.",
+        "authoredText": [
+          "AUTHOR TO WRITE: By order of oversight, one soldier of the unit holds the controller of the commander's implant. Her orders are on file."
+        ],
+        "completion": "no_open_scene",
+        "skippable": true
+      }
+    }
   }
 ]

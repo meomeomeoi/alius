@@ -4,3 +4,4 @@ export {
   type PunishRecord, type RemovalState, type WardenAlternative, type WardenOrder, type WardenState,
 } from './state';
 export { corporateWardenPick, seedWarden } from './select';
+export { revealPending } from './reveal';

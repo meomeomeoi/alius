@@ -4,6 +4,7 @@ import type { EngineEvent } from '../engine/dispatch';
 import { whereabouts } from '../engine/hub';
 import { completionReason, currentStep, livingNamed, type StepWithId } from '../engine/onboarding';
 import type { CampaignState } from '../engine/state/types';
+import { wardenUnitId } from '../engine/warden';
 import { TUNING } from '../engine/tuning';
 import type { OnboardingDeps } from './deps';
 
@@ -135,9 +136,11 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== 'scene' || step.perUnit === true || s.scene) return false;
-      const who = candidates(s);
+      // P13: a step with `participants: 'warden'` is held with her alone
+      const warden = step.participants === 'warden' ? wardenUnitId(s) : null;
+      const who = step.participants === 'warden' ? candidates(s).filter((id) => id === warden) : candidates(s);
       if (who.length === 0) {
-        deps.toast('warn', 'Nobody is free for the line-up right now.');
+        deps.toast('warn', step.participants === 'warden' ? 'The warden is not free right now.' : 'Nobody is free for the line-up right now.');
         return false;
       }
       return open(step, who);

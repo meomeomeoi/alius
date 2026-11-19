@@ -1009,8 +1009,8 @@
   {
     "id": "marker_tone",
     "term": "Marker ring",
-    "short": "The ring and symbol on a soldier's marker: ! danger, ♥ bond, + trust, * affinity, ~ warning, · nothing notable.",
-    "long": "The ring colour is always paired with a symbol, so it never has to be read by colour alone. ! means stress is high, she is injured or her loyalty is breaking. ♥ is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
+    "short": "The ring and symbol on a soldier's marker: ! danger, \u2665 bond, + trust, * affinity, ~ warning, \u00b7 nothing notable.",
+    "long": "The ring colour is always paired with a symbol, so it never has to be read by colour alone. ! means stress is high, she is injured or her loyalty is breaking. \u2665 is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
     "see": [
       "hub",
       "stress",
@@ -1097,7 +1097,7 @@
     "id": "semantic_colours",
     "term": "Semantic colours",
     "short": "Five tones for rings, pips and bars: danger, bond, trust, affinity and warning. A symbol always goes with the colour.",
-    "long": "! danger, ♥ bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without colour vision. Nothing is ever shown by colour alone.",
+    "long": "! danger, \u2665 bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without colour vision. Nothing is ever shown by colour alone.",
     "see": [
       "marker_tone"
     ]
@@ -1886,6 +1886,35 @@
     "long": "AUTHOR TO WRITE: Each of the three ends has its own cost. The arc stays open afterwards; its beats are the author's.",
     "see": [
       "oversight_suspicion"
+    ]
+  },
+  {
+    "id": "leashswap",
+    "term": "LEASHSWAP",
+    "short": "A campaign mode in which the commander carries the controller implant and one soldier holds the leash.",
+    "long": "In LEASHSWAP the commander is leashed like the squad. One soldier, the [[warden]], holds the controller for the corporation: she expects things of the commander, can override orders and can punish. The mode is chosen at setup, and what happens when the commander dies is set by the [[death_rule]].",
+    "see": [
+      "warden",
+      "death_rule"
+    ]
+  },
+  {
+    "id": "warden",
+    "term": "Warden",
+    "short": "The soldier who holds the commander's controller for the corporation.",
+    "long": "The warden is one soldier of the squad. She has an agenda of expectations, can override the commander's orders and can punish. She is outside the squad's hierarchy: she sits above it. She is picked at setup, by the player or by the corporation (the unit most loyal to it).",
+    "see": [
+      "leashswap",
+      "death_rule"
+    ]
+  },
+  {
+    "id": "death_rule",
+    "term": "Death rule",
+    "short": "What happens when the commander dies: the day is rewound, or the campaign ends.",
+    "long": "Chosen at setup and fixed for the campaign. REWIND DAY restores the start of the day and hides the scenes played since, so the death leaves no memory. CAMPAIGN END closes the campaign, writes an epilogue from the chronicle and makes the save read-only. The default follows the combat difficulty: Story and Normal rewind the day, Hard ends the campaign.",
+    "see": [
+      "leashswap"
     ]
   }
 ]

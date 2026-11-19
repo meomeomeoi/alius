@@ -206,6 +206,18 @@
       "comment": "debts_handler",
       "content": "AUTHOR TO WRITE: A handler from a rival corporation buys intel from the commander at night, by arrangement and never by name. A handler is not a soldier and has no card; the squad never meets one.",
       "constant": false
+    },
+    {
+      "key": [
+        "controller",
+        "implant",
+        "warden",
+        "leash",
+        "collar"
+      ],
+      "comment": "controller_implant",
+      "content": "AUTHOR TO WRITE: In a campaign where the commander carries the implant too, the controller is held by one soldier, the warden, on the corporation's orders. The implant does not lie: whatever the warden does with it is her own choice, and the corporation reads the log.",
+      "constant": false
     }
   ]
 }

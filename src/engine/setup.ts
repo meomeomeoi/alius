@@ -226,6 +226,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
     const p = reg.prologues.get(r.onboarding.prologueId);
     if (!p) out.push(`Unknown prologue "${r.onboarding.prologueId}"`);
     else if (p.startId !== r.startId) out.push(`Prologue "${p.id}" belongs to start "${String(p.startId)}", not "${r.startId}"`);
+    else if (p.mode !== undefined && p.mode !== r.mode?.kind) out.push(`Prologue "${p.id}" is for the ${String(p.mode)} mode`);
   }
 
   const units = r.units ?? [];

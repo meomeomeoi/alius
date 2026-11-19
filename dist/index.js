@@ -6763,6 +6763,7 @@ var RESERVED_EVENT_TYPES = [
   // P13
   "leashswap_started",
   "warden_assigned",
+  "warden_revealed",
   "warden_agenda_set",
   "expectation_learned",
   "warden_override",
@@ -7853,6 +7854,8 @@ var PrologueStepSchema = external_exports.object({
   exchangeCap: int.min(1).max(12).optional(),
   /** One scene per living named unit instead of one scene for all. */
   perUnit: external_exports.boolean().optional(),
+  /** P13: the scene is held with the warden alone (the step is skipped while nobody holds the leash). */
+  participants: external_exports.literal("warden").optional(),
   objective: str.max(100).optional(),
   hints: external_exports.array(external_exports.object({
     id: str,
@@ -7869,6 +7872,8 @@ var PrologueStepSchema = external_exports.object({
 }).strict();
 var PrologueSchema = BaseEntrySchema.extend({
   startId: str.optional(),
+  /** P13: the entry a start uses when the campaign is in this mode (`prologueFor` falls back to the one without a mode). */
+  mode: external_exports.literal("leashswap").optional(),
   order: external_exports.array(str).min(2),
   steps: external_exports.record(external_exports.string().regex(ID_PATTERN), PrologueStepSchema)
 }).superRefine((p, ctx2) => {
@@ -8213,15 +8218,39 @@ for (const name of DESCRIBED_REGISTRIES) {
 }
 
 // src/engine/onboarding/prologue.ts
-function prologueFor(reg, startId) {
-  for (const p of reg.prologues.values()) if (p.startId === startId) return p;
-  return null;
+function prologueFor(reg, startId, mode) {
+  let plain3 = null;
+  for (const p of reg.prologues.values()) {
+    if (p.startId !== startId) continue;
+    if (p.mode === void 0) plain3 ??= p;
+    else if (p.mode === mode) return p;
+  }
+  return plain3;
 }
 function stepsOf(entry) {
   const steps = entry.steps ?? {};
   return (entry.order ?? []).filter((id) => id in steps).map((id) => ({ ...steps[id], id }));
 }
 var isWizardStep = (step) => WIZARD_KINDS.includes(step.kind);
+
+// src/engine/warden/state.ts
+var DEATH_RULES = ["rewind_day", "campaign_end"];
+var newIntrigue = () => ({ suspicion: 0, seq: 0, lastAllyDay: {}, hack: { step: 0 }, discovered: 0 });
+var newLeashswap = (deathRule) => ({ deathRule, status: "held", intrigue: newIntrigue() });
+var leashswapOf = (state) => state.leashswap ?? null;
+function wardenOf(state) {
+  const ls = state.leashswap;
+  return ls !== void 0 && ls.status === "held" && ls.warden !== void 0 ? ls.warden : null;
+}
+var wardenUnitId = (state) => wardenOf(state)?.unitId ?? null;
+var defaultDeathRule = (difficulty) => difficulty === "hard" ? "campaign_end" : "rewind_day";
+function forgetWarden(draft, unitId) {
+  const ls = draft.leashswap;
+  if (!ls) return;
+  delete ls.intrigue.lastAllyDay[unitId];
+  const w = ls.warden;
+  if (w && w.unitId === unitId) delete w.override;
+}
 
 // src/engine/onboarding/state.ts
 var onboardingDone = (state) => state.onboarding === void 0 || state.onboarding.done;
@@ -8295,7 +8324,7 @@ function enterStep(draft, ctx2, index2, afterSkippedExpedition = false) {
       events.push({ type: "onboarding_done" });
       return events;
     }
-    const noOne = (step.kind === "scene" || step.kind === "expedition") && livingNamed(draft).length === 0;
+    const noOne = (step.kind === "scene" || step.kind === "expedition") && livingNamed(draft).length === 0 || step.participants === "warden" && wardenUnitId(draft) === null;
     if (noOne || skipDebrief && step.completion === "debriefed") {
       o.skipped.push(step.id);
       events.push({ type: "onboarding_step_skipped", stepId: step.id });
@@ -14769,24 +14798,6 @@ function wagerDayStep(draft, ctx2) {
   return events;
 }
 
-// src/engine/warden/state.ts
-var DEATH_RULES = ["rewind_day", "campaign_end"];
-var newIntrigue = () => ({ suspicion: 0, seq: 0, lastAllyDay: {}, hack: { step: 0 }, discovered: 0 });
-var newLeashswap = (deathRule) => ({ deathRule, status: "held", intrigue: newIntrigue() });
-var leashswapOf = (state) => state.leashswap ?? null;
-function wardenOf(state) {
-  const ls = state.leashswap;
-  return ls !== void 0 && ls.status === "held" && ls.warden !== void 0 ? ls.warden : null;
-}
-var wardenUnitId = (state) => wardenOf(state)?.unitId ?? null;
-function forgetWarden(draft, unitId) {
-  const ls = draft.leashswap;
-  if (!ls) return;
-  delete ls.intrigue.lastAllyDay[unitId];
-  const w = ls.warden;
-  if (w && w.unitId === unitId) delete w.override;
-}
-
 // src/engine/special/state.ts
 var newFrequency = () => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 var PREMONITION_ABOUT = ["doubt", "desertion", "mutiny", "defiance"];
@@ -19859,6 +19870,7 @@ function validateSetup(r, reg, opts) {
     const p = reg.prologues.get(r.onboarding.prologueId);
     if (!p) out.push(`Unknown prologue "${r.onboarding.prologueId}"`);
     else if (p.startId !== r.startId) out.push(`Prologue "${p.id}" belongs to start "${String(p.startId)}", not "${r.startId}"`);
+    else if (p.mode !== void 0 && p.mode !== r.mode?.kind) out.push(`Prologue "${p.id}" is for the ${String(p.mode)} mode`);
   }
   const units = r.units ?? [];
   if (r.mode !== void 0) {
@@ -23277,6 +23289,15 @@ registerAction("debts/answer_visit", (draft, payload, ctx2) => {
 registerDayEndStep("director_tick", specialDayStep);
 registerDayEndStep("dm_rumors", specialRumorStep);
 
+// src/engine/actions/warden.ts
+registerAction("warden/revealed", (draft) => {
+  const ls = draft.leashswap;
+  if (!ls) throw new Error("warden/revealed: the campaign is not in the LEASHSWAP mode.");
+  if (ls.revealed === true) throw new Error("warden/revealed: the warden was already revealed.");
+  ls.revealed = true;
+  return [{ type: "warden_revealed" }];
+});
+
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
   "profile_import",
@@ -25015,7 +25036,9 @@ var VOICE_OF = {
   // P12: the early warning is the device's readout too
   premonition: "terminal",
   // P12: the rival corporation's handler writes like a corporation
-  handler: "corporate"
+  handler: "corporate",
+  // P13: the notice that names the warden is the corporation's
+  warden_reveal: "corporate"
 };
 
 // src/ui/power/votePanel.ts
@@ -25447,6 +25470,19 @@ function createDiscipline(deps) {
   return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand };
 }
 
+// src/engine/warden/reveal.ts
+function revealPending(state, reg) {
+  const ls = state.leashswap;
+  if (!ls || ls.revealed === true || wardenOf(state) === null) return false;
+  const o = state.onboarding;
+  const entry = o ? reg.prologues.get(o.prologueId) : void 0;
+  const step = entry ? stepsOf(entry).find((st) => st.participants === "warden") : void 0;
+  if (!o || !step) return true;
+  if (o.completed.includes(step.id)) return false;
+  if (o.skipped.includes(step.id)) return true;
+  return o.done;
+}
+
 // src/onboarding/controller.ts
 var GOAL_DIRECTIVE = "prologue:goal";
 var WRAP_DIRECTIVE = "prologue:wrap";
@@ -25518,9 +25554,10 @@ function createOnboarding(deps) {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== "scene" || step.perUnit === true || s.scene) return false;
-      const who = candidates4(s);
+      const warden = step.participants === "warden" ? wardenUnitId(s) : null;
+      const who = step.participants === "warden" ? candidates4(s).filter((id) => id === warden) : candidates4(s);
       if (who.length === 0) {
-        deps.toast("warn", "Nobody is free for the line-up right now.");
+        deps.toast("warn", step.participants === "warden" ? "The warden is not free right now." : "Nobody is free for the line-up right now.");
         return false;
       }
       return open3(step, who);
@@ -25790,7 +25827,7 @@ function createTabBar(opts) {
 
 // src/ui/onboarding/card.ts
 function glossaryOf(step) {
-  if (step.kind === "scene") return step.perUnit === true ? "glossary:first_words" : "glossary:lineup";
+  if (step.kind === "scene") return step.perUnit === true ? "glossary:first_words" : step.participants === "warden" ? "glossary:warden" : "glossary:lineup";
   if (step.kind === "expedition") return "glossary:tutorial_expedition";
   return "glossary:prologue";
 }
@@ -25832,7 +25869,8 @@ function renderOnboardingCard(host, ctx2) {
     })));
     body.append(h("div", { class: "alius-row" }, skip()));
   } else if (step.kind === "scene") {
-    body.append(h("div", { class: "alius-row" }, button("[ BEGIN LINE-UP ]", "begin", address, () => void controller.startLineup(), scene !== void 0), skip()));
+    const label2 = step.participants === "warden" ? "[ MEET THE WARDEN ]" : "[ BEGIN LINE-UP ]";
+    body.append(h("div", { class: "alius-row" }, button(label2, "begin", address, () => void controller.startLineup(), scene !== void 0), skip()));
   } else if (step.kind === "expedition") {
     const out = state.expedition !== void 0;
     body.append(h(
@@ -25859,6 +25897,31 @@ function renderOnboardingCard(host, ctx2) {
   const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: step.title ?? "PROLOGUE", meta: "PROLOGUE", level: 3, body });
   card2.classList.add("alius-onboarding", "alius-stat");
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:prologue"))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+
+// src/ui/warden/revealCard.ts
+function renderRevealCard(host, state, reg, onAck) {
+  if (!revealPending(state, reg)) return;
+  const warden = wardenOf(state);
+  const unit2 = state.squad.find((u) => u.id === warden?.unitId);
+  if (!warden || !unit2) return;
+  const body = h(
+    "div",
+    { class: "alius-warden-reveal-body" },
+    h("p", {}, `By order of oversight, ${unit2.displayName} holds the controller of the commander's implant.`),
+    h("p", { class: "alius-dim" }, warden.assignedBy === "player" ? "Assigned at the request of the commander." : "Assigned by oversight: the unit most loyal to the corporation."),
+    h("div", { class: "alius-row" }, h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-action": "ack-reveal",
+      ...analyzeNative("glossary:warden"),
+      onclick: onAck
+    }, "[ ACKNOWLEDGE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_reveal, title: "WARDEN ASSIGNED", meta: "OVERSIGHT", level: 3, body });
+  card2.classList.add("alius-warden-reveal", "alius-stat");
+  card2.setAttribute("data-analyze", "glossary:warden");
   host.append(card2);
 }
 
@@ -29224,6 +29287,7 @@ var Wizard = class {
       commanderImport: { status: "idle", reasons: {} },
       world: this.startingWorld(),
       content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
+      campaign: { kind: "default", deathRule: defaultDeathRule(this.deps.difficulty ?? "normal"), warden: { by: "corporation" } },
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -29248,6 +29312,26 @@ var Wizard = class {
   setContent(enabled) {
     const known = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
     this.s.content = { enabled: known.filter((id) => enabled.includes(id)) };
+    this.emit();
+  }
+  /** P13: the campaign mode (the default mode writes no `mode` into the setup). */
+  setCampaignMode(kind) {
+    if (kind !== "default" && kind !== "leashswap") return;
+    this.s.campaign.kind = kind;
+    this.emit();
+  }
+  /** P13: what happens when the commander dies; stored in the campaign and fixed from then on. */
+  setDeathRule(rule) {
+    if (!DEATH_RULES.includes(rule)) return;
+    this.s.campaign.deathRule = rule;
+    this.emit();
+  }
+  /** P13: who holds the leash: a chosen unit (by her position in the squad) or the corporation's pick. An index outside the squad is ignored. */
+  setWardenPick(pick2) {
+    if (pick2.by === "player") {
+      if (!Number.isInteger(pick2.index) || pick2.index < 0 || pick2.index >= this.s.units.length) return;
+      this.s.campaign.warden = { by: "player", index: pick2.index };
+    } else this.s.campaign.warden = { by: "corporation" };
     this.emit();
   }
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
@@ -29288,12 +29372,16 @@ var Wizard = class {
   setStart(id) {
     if (!this.deps.registries.starts.has(id)) return;
     this.s.startId = id;
-    if (prologueFor(this.deps.registries, id) === null) this.s.mode = "veteran";
+    if (prologueFor(this.deps.registries, id, this.promptMode()) === null) this.s.mode = "veteran";
     this.emit();
   }
   /** The prologue entry of the chosen start, or null (no start yet, or the start has none). */
   prologue() {
-    return this.s.startId ? prologueFor(this.deps.registries, this.s.startId) : null;
+    return this.s.startId ? prologueFor(this.deps.registries, this.s.startId, this.promptMode()) : null;
+  }
+  /** P13: the prologue entry's mode follows the campaign mode. */
+  promptMode() {
+    return this.s.campaign.kind === "leashswap" ? "leashswap" : void 0;
   }
   /**
    * Switches between the prologue and the veteran intake. Only on the dossier (the steps after it differ), and `prologue`
@@ -29506,6 +29594,8 @@ var Wizard = class {
     const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
     if (i >= 0) {
       this.s.units.splice(i, 1);
+      const w = this.s.campaign.warden;
+      if (w.by === "player") this.s.campaign.warden = w.index === i ? { by: "corporation" } : w.index > i ? { by: "player", index: w.index - 1 } : w;
       this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
     } else if (this.s.units.length < SETUP_LIMITS.maxUnits) {
       this.s.units.push({
@@ -29775,7 +29865,11 @@ var Wizard = class {
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
     const result = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } }, content: { enabled: [...this.s.content.enabled] } };
-    const prologue = prologueFor(this.deps.registries, startId);
+    const prologue = prologueFor(this.deps.registries, startId, this.promptMode());
+    if (this.s.campaign.kind === "leashswap") {
+      const w = this.s.campaign.warden;
+      result.mode = { kind: "leashswap", deathRule: this.s.campaign.deathRule, warden: w.by === "player" && w.index < units.length ? { by: "player", index: w.index } : { by: "corporation" } };
+    }
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
@@ -30379,6 +30473,7 @@ function reviewLines(wizard, reg) {
     `CORPORATION : ${nameOf9(reg, "corporations", corpId)} \u2014 ${nameOf9(reg, "starts", s.startId)}`,
     `CRIME       : ${nameOf9(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
     ...commanderLines(s, reg),
+    ...s.campaign.kind === "leashswap" ? [`MODE        : LEASHSWAP \u2014 ${s.campaign.deathRule === "rewind_day" ? "REWIND DAY" : "CAMPAIGN END"} \u2014 WARDEN: ${s.campaign.warden.by === "player" ? s.units[s.campaign.warden.index]?.displayName ?? "CORPORATE ASSIGNMENT" : "CORPORATE ASSIGNMENT"}`] : [],
     `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
     ...s.units.flatMap((u, n) => unitLines(wizard, reg, u, n))
   ];
@@ -30538,6 +30633,68 @@ function renderContentSection(host, ctx2) {
   ));
 }
 
+// src/ui/warden/modeSection.ts
+var MODES = [
+  { id: "default", label: "DEFAULT", text: "The commander gives the orders. The Leash is the corporation's, filed through oversight.", address: "glossary:leash" },
+  { id: "leashswap", label: "LEASHSWAP", text: "The commander carries the controller implant. One soldier, the warden, holds the leash for the corporation.", address: "glossary:leashswap" }
+];
+var RULES = {
+  rewind_day: { label: "REWIND DAY", text: "The day starts again from its beginning. The death leaves no memory." },
+  campaign_end: { label: "CAMPAIGN END", text: "The campaign closes with an epilogue and the save becomes read-only." }
+};
+function renderModeSection(host, wizard) {
+  const c = wizard.state.campaign;
+  const section = h(
+    "section",
+    { class: "alius-section alius-mode" },
+    h("h3", {}, "MODE"),
+    h("div", { class: "alius-cards" }, ...MODES.map((m) => h("button", {
+      type: "button",
+      class: "alius-card alius-option alius-mode-choice",
+      "data-id": m.id,
+      "aria-pressed": String(c.kind === m.id),
+      ...analyzeNative(m.address),
+      onclick: () => wizard.setCampaignMode(m.id)
+    }, h("strong", {}, m.label), h("p", {}, m.text))))
+  );
+  if (c.kind === "leashswap") {
+    section.append(
+      h("h4", {}, "IF THE COMMANDER DIES"),
+      h("p", { class: "alius-dim" }, "Fixed when the campaign starts. The default follows the combat difficulty."),
+      h("div", { class: "alius-cards" }, ...DEATH_RULES.map((r) => h("button", {
+        type: "button",
+        class: "alius-card alius-option alius-death-rule",
+        "data-id": r,
+        "aria-pressed": String(c.deathRule === r),
+        ...analyzeNative("glossary:death_rule"),
+        onclick: () => wizard.setDeathRule(r)
+      }, h("strong", {}, RULES[r].label), h("p", {}, RULES[r].text))))
+    );
+  }
+  host.append(section);
+}
+var CORPORATION = "corporation";
+function renderWardenPick(host, wizard) {
+  const s = wizard.state;
+  if (s.campaign.kind !== "leashswap" || s.units.length === 0) return;
+  const select = h("select", { class: "alius-input", name: "warden", "aria-label": "Warden" });
+  select.append(h("option", { value: CORPORATION }, "CORPORATE ASSIGNMENT"));
+  s.units.forEach((u, i) => select.append(h("option", { value: `player:${i}` }, u.displayName)));
+  const w = s.campaign.warden;
+  select.value = w.by === "player" ? `player:${w.index}` : CORPORATION;
+  select.addEventListener("change", () => {
+    const v = select.value;
+    wizard.setWardenPick(v.startsWith("player:") ? { by: "player", index: Number(v.slice("player:".length)) } : { by: "corporation" });
+  });
+  host.append(h(
+    "label",
+    { class: "alius-field alius-warden-pick", ...analyzeNative("glossary:warden") },
+    h("span", { class: "alius-field-label" }, "WARDEN: the soldier who holds the leash"),
+    select,
+    h("span", { class: "alius-dim" }, w.by === "corporation" ? "Oversight picks the unit most loyal to the corporation." : "The warden is the squad's choice, not the corporation's.")
+  ));
+}
+
 // src/ui/setup/worldParams.ts
 var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
@@ -30590,6 +30747,8 @@ function renderWorldParams(host, ctx2) {
       }, h("strong", {}, c.label), h("p", {}, c.description))))
     );
   };
+  const modeHost = h("div", { class: "alius-world-mode" });
+  renderModeSection(modeHost, wizard);
   const contentHost = h("div", { class: "alius-section alius-world-content" });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
@@ -30611,6 +30770,7 @@ function renderWorldParams(host, ctx2) {
       h("h3", {}, g.toUpperCase()),
       ...options2.filter((o) => String(o.group) === g).map(optionBlock)
     ]),
+    modeHost,
     contentHost,
     h(
       "section",
@@ -30764,6 +30924,8 @@ function renderSetupScreen(host, ctx2) {
       search = input.value;
       render();
     });
+    const wardenHost = h("div", { class: "alius-warden-host" });
+    renderWardenPick(wardenHost, wizard);
     return h(
       "div",
       { class: "alius-setup-body" },
@@ -30775,7 +30937,8 @@ function renderSetupScreen(host, ctx2) {
         box.addEventListener("change", () => wizard.toggleUnit(c));
         return h("label", { class: "alius-tile" }, box, h("img", { src: st.getAvatarUrl(c.avatar), alt: "", width: "48", height: "48" }), h("span", {}, c.name));
       })),
-      chars.length === 0 ? h("p", { class: "alius-dim" }, "No characters found.") : null
+      chars.length === 0 ? h("p", { class: "alius-dim" }, "No characters found.") : null,
+      wardenHost.childElementCount > 0 ? wardenHost : null
     );
   }
   function calibration(s) {
@@ -40410,7 +40573,9 @@ function createApp(st, deps) {
     art: { hub: hubArt },
     ops: opsCtx(),
     onboardingCard: (host2) => {
-      if (state) renderOnboardingCard(host2, { state, registries, controller: onboarding, readOnly: load.kind === "readonly" });
+      if (!state) return;
+      renderOnboardingCard(host2, { state, registries, controller: onboarding, readOnly: load.kind === "readonly" });
+      if (load.kind !== "readonly") renderRevealCard(host2, state, registries, () => void act({ type: "warden/revealed", payload: {} }));
     },
     onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
     onEndSlot: () => void api.endSlot(),

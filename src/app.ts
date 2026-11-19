@@ -23,6 +23,7 @@ import './engine/actions/items'; // registers item/* actions and the workshop ho
 import './engine/actions/commander'; // registers commander/seed, set_profile and review_done (P7)
 import './engine/actions/onboarding'; // registers onboarding/* actions (P11)
 import './engine/actions/special'; // registers the P12 special-trait actions, after loyalty and personal
+import './engine/actions/warden'; // registers the P13 LEASHSWAP actions, after special
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
@@ -63,6 +64,7 @@ import { createOnboarding, type OnboardingController } from './onboarding/contro
 import { coachHints, isTutorialRun, lockedTabs, unlockedBetween } from './engine/onboarding';
 import { TAB_IDS } from './ui/shell/tabs';
 import { renderOnboardingCard } from './ui/onboarding/card';
+import { renderRevealCard } from './ui/warden/revealCard';
 import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
@@ -1964,7 +1966,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       art: { hub: hubArt },
       ops: opsCtx(),
       onboardingCard: (host) => {
-        if (state) renderOnboardingCard(host, { state, registries, controller: onboarding, readOnly: load.kind === 'readonly' });
+        if (!state) return;
+        renderOnboardingCard(host, { state, registries, controller: onboarding, readOnly: load.kind === 'readonly' });
+        // P13: the one-time WARDEN ASSIGNED notice (a campaign whose prologue does not play the reveal scene)
+        if (load.kind !== 'readonly') renderRevealCard(host, state, registries, () => void act({ type: 'warden/revealed', payload: {} }));
       },
       onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
       onEndSlot: () => void api.endSlot(),

@@ -4,10 +4,18 @@ import type { Entry, Registries } from '../../content/types';
 /** A prologue step with its id (the key it has in the entry's `steps`). */
 export type StepWithId = PrologueStep & { id: string };
 
-/** The prologue entry a start uses (the one whose `startId` matches), or `null`. */
-export function prologueFor(reg: Registries, startId: string): Entry | null {
-  for (const p of reg.prologues.values()) if (p.startId === startId) return p;
-  return null;
+/**
+ * The prologue entry a start uses (the one whose `startId` matches), or `null`. With a `mode` (P13) the entry for that mode is
+ * preferred and the one without a mode is the fallback; without a mode only an entry without one is returned.
+ */
+export function prologueFor(reg: Registries, startId: string, mode?: 'leashswap'): Entry | null {
+  let plain: Entry | null = null;
+  for (const p of reg.prologues.values()) {
+    if (p.startId !== startId) continue;
+    if (p.mode === undefined) plain ??= p;
+    else if (p.mode === mode) return p;
+  }
+  return plain;
 }
 
 /** The steps of a prologue in `order`. The schema guarantees every id in `order` has a step. */
