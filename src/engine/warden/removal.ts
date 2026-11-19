@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { removeFromService } from '../leash/use';
+import { addChronicle } from '../memory';
 import type { DilemmaOption } from '../dilemma/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -8,15 +9,18 @@ import { evaluateAutomatic } from '../relations/graph';
 import { socialRank } from '../social';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { addClock } from '../world/clocks';
+import { addClock, advanceClock } from '../world/clocks';
 import { currentBeat } from '../world/spine';
-import { intrigueBusy, intrigueDiscovered, kompromatOf } from './intrigue';
-import { leashswapOf, wardenOf, type WardenGoneHow } from './state';
+import { commanderDies } from './death';
+import { allies, intrigueBusy, intrigueDiscovered, kompromatOf } from './intrigue';
+import { applyRemotePunishment, painBurstId, pickPunishment } from './punish';
+import { corporateWardenPick, seedWarden } from './select';
+import { leashswapOf, wardenOf, type Expectation, type WardenGoneHow } from './state';
 import type { EventIntent } from '../relations/intents';
 
 /**
  * Getting rid of her (P13 §5): the three routes (hack, report, her death), what any removal sets off (an investigation clock, remote
- * control, the squad's reactions) and the report to oversight. The verdict and remote control's day step are in `verdict.ts`.
+ * control, the squad's reactions), the report to oversight, remote control and the verdict that closes the investigation.
  */
 
 export const INVESTIGATION_CLOCK = 'investigation';
@@ -48,7 +52,7 @@ export function startRemoval(draft: CampaignState, ctx: EngineCtx, route: 'hack'
   const former = w.unitId;
   delete ls.warden; // her open override goes with her
   ls.status = 'investigation';
-  ls.removal = { route, day: draft.day, clockId: INVESTIGATION_CLOCK };
+  ls.removal = { route, day: draft.day, clockId: INVESTIGATION_CLOCK, unitId: former };
   ls.remote = { sinceDay: draft.day };
   ls.intrigue.hack.step = 0;
   delete ls.intrigue.reportQueued;
@@ -157,4 +161,98 @@ export function wardenReportChoice(draft: CampaignState, ctx: EngineCtx, context
   if (!ctx.rng.chance(reportChance(draft, ctx.registries))) return intrigueDiscovered(draft, ctx, 'report_refused');
   const events = removeFromService(draft, w.unitId, 'reassigned', ctx);
   return [...events, ...startRemoval(draft, ctx, 'report')];
+}
+
+// ---------------------------------------------------------------------------------------------
+// The investigation: remote control and the verdict
+
+/** The fixed expectations of remote control (quota 0.6, obedience 0.4), all known: oversight states them. Empty outside remote control. */
+export function remoteExpectations(state: CampaignState): Expectation[] {
+  if (!state.leashswap?.remote) return [];
+  const R = TUNING.warden.remote;
+  return [
+    { id: 'remote_quota', kind: 'meet_quota', weight: R.quota, source: 'corporate', known: true },
+    { id: 'remote_obey', kind: 'obey_oversight', weight: R.obey, source: 'corporate', known: true },
+  ];
+}
+
+/**
+ * Remote control's automatic punishments, once a day at the day end (draws nothing): a mission failed in the day that is ending costs a
+ * pain burst, and a quota span of 7 days (counted from the start of remote control) that closes with no mission completed costs a
+ * reprimand. There is no one to defy, so defiance never moves, and no override and no negotiation exist (nobody holds the leash).
+ */
+export function remoteDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const ls = leashswapOf(draft);
+  if (!ls?.remote || wardenOf(draft)) return [];
+  const R = TUNING.warden.remote;
+  const events: EngineEvent[] = [];
+  const done = draft.missions.completed;
+  if (done.some((m) => m.status === 'failed' && m.outcomeDay === draft.day)) {
+    const id = painBurstId(ctx.registries);
+    if (id !== undefined) events.push(...applyRemotePunishment(draft, ctx, id));
+  }
+  const since = draft.day - ls.remote.sinceDay;
+  if (since > 0 && since % R.missionDays === 0 && !done.some((m) => m.status === 'completed' && m.outcomeDay !== undefined && m.outcomeDay > draft.day - R.missionDays && m.outcomeDay <= draft.day)) {
+    const id = pickPunishment(draft, ctx.registries, 1);
+    if (id !== null) events.push(...applyRemotePunishment(draft, ctx, id));
+  }
+  return events;
+}
+
+/**
+ * `clamp(base + 0.05 × (Cunning − 1) − 0.15 × (discovered ? 1 : 0) + 0.05 × allies, 0.1, 0.9)` with `base` 0.6 / 0.75 / 0.4 for hack / report /
+ * death: the chance that the investigation clears the commander. Never shown (a reading says only `An unseen threat`).
+ */
+export function verdictChance(state: CampaignState, _reg: Registries): number {
+  const ls = leashswapOf(state);
+  const V = TUNING.warden.verdict;
+  const route = ls?.removal?.route ?? 'death';
+  const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
+  return clamp(V.base[route] + V.perCunning * (socialRank(state, 'cunning') - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
+}
+
+/**
+ * The investigation ends (the clock is full): one draw at `verdictChance`. Cleared: status `free`, remote control ends, flag
+ * `commander_watched`, no warden and no co-sign from now on. Convicted: flag `commander_convicted`, and a new warden by the corporate
+ * ordering (satisfaction 40, the fallback agenda), without the one who was removed; nobody eligible means an execution, which ends the
+ * campaign under either death rule. The clock and the removal are closed either way.
+ */
+export function rollVerdict(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const ls = leashswapOf(draft);
+  if (!ls || ls.status !== 'investigation') return [];
+  const cleared = ctx.rng.chance(verdictChance(draft, ctx.registries));
+  const former = ls.removal?.unitId;
+  delete ls.removal;
+  delete ls.remote;
+  draft.world.clocks = draft.world.clocks.filter((c) => c.id !== INVESTIGATION_CLOCK);
+  ls.intrigue.suspicion = 0;
+  ls.intrigue.hack.step = 0;
+  const events: EngineEvent[] = [{ type: 'verdict', outcome: cleared ? 'cleared' : 'convicted' }];
+  if (cleared) {
+    ls.status = 'free';
+    if (!draft.commander.flags.includes('commander_watched')) draft.commander.flags.push('commander_watched');
+    return events;
+  }
+  if (!draft.commander.flags.includes('commander_convicted')) draft.commander.flags.push('commander_convicted');
+  const next = corporateWardenPick(draft, ctx.registries, former !== undefined ? [former] : []);
+  if (next === null) {
+    addChronicle(draft, { kind: 'day', day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the leash.`, audience: '*' });
+    return [...events, ...commanderDies(draft, ctx, 'executed')];
+  }
+  return [...events, ...seedWarden(draft, ctx, { unitId: next, assignedBy: 'oversight' })];
+}
+
+/**
+ * The investigation's day step: remote control's punishments, then the clock moves a segment (the world clock `investigation`), and the day
+ * it fills the verdict rolls, once. Nothing outside the investigation.
+ */
+export function investigationDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const ls = leashswapOf(draft);
+  if (!ls || ls.status !== 'investigation') return [];
+  const events = remoteDayStep(draft, ctx);
+  const id = ls.removal?.clockId ?? INVESTIGATION_CLOCK;
+  events.push(...advanceClock(draft, ctx, id, TUNING.warden.removal.perDay, 'investigation'));
+  const clock = draft.world.clocks.find((c) => c.id === id);
+  if (!clock || clock.filled >= clock.segments) events.push(...rollVerdict(draft, ctx));
+  return events;
 }

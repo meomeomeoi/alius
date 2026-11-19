@@ -106,7 +106,13 @@ export interface IntrigueState {
 }
 
 export const REMOVAL_ROUTES = ['hack', 'report', 'death'] as const;
-export interface RemovalState { route: (typeof REMOVAL_ROUTES)[number]; day: number; clockId: string }
+export interface RemovalState {
+  route: (typeof REMOVAL_ROUTES)[number];
+  day: number;
+  clockId: string;
+  /** The warden who was removed: a verdict that convicts picks her successor from the others. */
+  unitId?: string;
+}
 
 /** The mode block. */
 export interface LeashswapState {

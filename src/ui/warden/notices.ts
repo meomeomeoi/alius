@@ -29,6 +29,12 @@ export function wardenNotice(e: EngineEvent, state: CampaignState, reg: Registri
         : { kind: 'warn', title: 'THE LEASH', text: 'AUTHOR TO WRITE: The controller is used. The next choice is not the commander\'s own.' };
     case 'leash_cosign_denied':
       return { kind: 'info', title: 'WARDEN', text: `AUTHOR TO WRITE: ${name()} denies the request. Nothing was spent.` };
+    case 'remote_control_started':
+      return { kind: 'warn', title: 'OVERSIGHT', text: 'AUTHOR TO WRITE: The controller is now run from the corporate annex. Quota and obedience, no negotiation, until the investigation closes.', cutIn: true };
+    case 'verdict':
+      return e.outcome === 'cleared'
+        ? { kind: 'info', title: 'OVERSIGHT', text: 'AUTHOR TO WRITE: The investigation is closed. The commander is cleared and remains under watch.' }
+        : { kind: 'warn', title: 'OVERSIGHT', text: 'AUTHOR TO WRITE: The investigation is closed. The commander is convicted.', cutIn: true };
     case 'commander_terminated':
       return { kind: 'warn', title: 'THE CONTROLLER', text: 'AUTHOR TO WRITE: The controller is triggered. The commander is dead.', cutIn: true };
     default:

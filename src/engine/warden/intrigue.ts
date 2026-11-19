@@ -11,7 +11,7 @@ import type { CampaignState, Fact } from '../state/types';
 import { TUNING } from '../tuning';
 import { learnExpectation } from './agenda';
 import { addDefiance } from './escalation';
-import { applyCommanderPunishment, pickPunishment } from './punish';
+import { applyCommanderPunishment, painBurstId, pickPunishment } from './punish';
 import { leashswapOf, wardenOf } from './state';
 
 /**
@@ -201,11 +201,6 @@ export function hackProblem(state: CampaignState, reg: Registries, allyId?: stri
   if (state.resources.plyx < H.plyx) missing.push(`${H.plyx} plyx (have ${state.resources.plyx})`);
   if (!isAlly(state, allyId) || !isTech(state, reg, allyId)) missing.push('an ally with the know-how to open an implant');
   return missing.length > 0 ? `The hack needs ${missing.join(', ')}.` : null;
-}
-
-/** The pain burst of a failed hack step: the registry's punishment with an injury effect (read by effect, never by id). */
-function painBurstId(reg: Registries): string | undefined {
-  return [...reg.commanderPunishments.values()].find((e) => ((e.effects ?? []) as Array<{ type: string }>).some((x) => x.type === 'injury'))?.id as string | undefined;
 }
 
 /** Called when the third step makes the controller dark; `removal.ts` sets it (the investigation of the hack route). */

@@ -946,17 +946,17 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `rollVerdict(draft, ctx): EngineEvent[]` (event `verdict { outcome: 'cleared' | 'convicted' }`)
 - Consumes: `corporateWardenPick` / `seedWarden` (Task 1), `commanderDies` (Task 4), `applyCommanderPunishment` (Task 9)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the clock fills by a segment a day and the verdict rolls once`;
   - `cleared frees the commander: no warden, no co-sign, flag watched`;
   - `convicted assigns a new warden by the corporate ordering with satisfaction 40`;
   - `convicted with no eligible unit executes and ends the campaign` (also under `rewind_day`);
   - `remote control punishes automatically and never overrides`;
   - `the verdict rate matches the formula over seeds`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): investigation, remote control and verdicts`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): investigation, remote control and verdicts`
 
 ---
 

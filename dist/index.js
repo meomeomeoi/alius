@@ -12320,6 +12320,7 @@ function runEffect(draft, ctx2, w, fx2, events) {
       events.push(...addCommanderStress(draft, fx2.amount, "warden_punishment"));
       return;
     case "restrict": {
+      if (!w) return;
       const untilDay = draft.day + fx2.days;
       w.restrictions = [...w.restrictions.filter((r) => r.what !== fx2.what), { what: fx2.what, untilDay }];
       events.push({ type: "commander_restricted", what: fx2.what, untilDay });
@@ -12332,7 +12333,7 @@ function runEffect(draft, ctx2, w, fx2, events) {
       return;
     }
     case "squad_record":
-      for (const u of draft.squad) if (u.kind === "named" && isLiving(u) && u.id !== w.unitId) events.push(...addRecord(draft, u.id, fx2.amount, "warden_humiliation"));
+      for (const u of draft.squad) if (u.kind === "named" && isLiving(u) && u.id !== w?.unitId) events.push(...addRecord(draft, u.id, fx2.amount, "warden_humiliation"));
       return;
     case "injury": {
       const endurance = draft.commander.body?.endurance ?? 0;
@@ -12340,7 +12341,7 @@ function runEffect(draft, ctx2, w, fx2, events) {
       return;
     }
     case "leash":
-      events.push(...leashEffect(draft, ctx2, fx2.kind));
+      if (w) events.push(...leashEffect(draft, ctx2, fx2.kind));
       return;
   }
 }
@@ -12371,6 +12372,17 @@ function punishRoll(draft, ctx2, weight) {
   const severity = w.defiance < a ? 1 : w.defiance < b ? 2 : w.defiance < c ? 3 : 4;
   const id = pickPunishment(draft, ctx2.registries, severity);
   return id === null ? [] : applyCommanderPunishment(draft, ctx2, id);
+}
+function painBurstId(reg) {
+  return entries(reg).find((e) => effectsOf2(e).some((x) => x.type === "injury"))?.id;
+}
+function applyRemotePunishment(draft, ctx2, punishmentId) {
+  const entry = ctx2.registries.commanderPunishments.get(punishmentId);
+  if (!entry) throw new Error(`Unknown commander punishment "${punishmentId}".`);
+  const events = [];
+  for (const fx2 of effectsOf2(entry)) runEffect(draft, ctx2, null, fx2, events);
+  events.unshift({ type: "commander_punished", punishmentId, severity: entry.severity, remote: true });
+  return events;
 }
 
 // src/engine/special/state.ts
@@ -14392,9 +14404,6 @@ function hackProblem(state, reg, allyId) {
   if (state.resources.plyx < H.plyx) missing2.push(`${H.plyx} plyx (have ${state.resources.plyx})`);
   if (!isAlly(state, allyId) || !isTech(state, reg, allyId)) missing2.push("an ally with the know-how to open an implant");
   return missing2.length > 0 ? `The hack needs ${missing2.join(", ")}.` : null;
-}
-function painBurstId(reg) {
-  return [...reg.commanderPunishments.values()].find((e) => (e.effects ?? []).some((x) => x.type === "injury"))?.id;
 }
 var removalStarter = () => [];
 function setRemovalStarter(fn) {
@@ -23004,7 +23013,7 @@ function startRemoval(draft, ctx2, route) {
   const former = w.unitId;
   delete ls.warden;
   ls.status = "investigation";
-  ls.removal = { route, day: draft.day, clockId: INVESTIGATION_CLOCK };
+  ls.removal = { route, day: draft.day, clockId: INVESTIGATION_CLOCK, unitId: former };
   ls.remote = { sinceDay: draft.day };
   ls.intrigue.hack.step = 0;
   delete ls.intrigue.reportQueued;
@@ -23096,6 +23105,64 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
   if (!ctx2.rng.chance(reportChance(draft, ctx2.registries))) return intrigueDiscovered(draft, ctx2, "report_refused");
   const events = removeFromService(draft, w.unitId, "reassigned", ctx2);
   return [...events, ...startRemoval(draft, ctx2, "report")];
+}
+function remoteDayStep(draft, ctx2) {
+  const ls = leashswapOf(draft);
+  if (!ls?.remote || wardenOf(draft)) return [];
+  const R2 = TUNING.warden.remote;
+  const events = [];
+  const done = draft.missions.completed;
+  if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
+    const id = painBurstId(ctx2.registries);
+    if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
+  }
+  const since = draft.day - ls.remote.sinceDay;
+  if (since > 0 && since % R2.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R2.missionDays && m.outcomeDay <= draft.day)) {
+    const id = pickPunishment(draft, ctx2.registries, 1);
+    if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
+  }
+  return events;
+}
+function verdictChance(state, _reg) {
+  const ls = leashswapOf(state);
+  const V = TUNING.warden.verdict;
+  const route = ls?.removal?.route ?? "death";
+  const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
+  return clamp34(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
+}
+function rollVerdict(draft, ctx2) {
+  const ls = leashswapOf(draft);
+  if (!ls || ls.status !== "investigation") return [];
+  const cleared = ctx2.rng.chance(verdictChance(draft, ctx2.registries));
+  const former = ls.removal?.unitId;
+  delete ls.removal;
+  delete ls.remote;
+  draft.world.clocks = draft.world.clocks.filter((c) => c.id !== INVESTIGATION_CLOCK);
+  ls.intrigue.suspicion = 0;
+  ls.intrigue.hack.step = 0;
+  const events = [{ type: "verdict", outcome: cleared ? "cleared" : "convicted" }];
+  if (cleared) {
+    ls.status = "free";
+    if (!draft.commander.flags.includes("commander_watched")) draft.commander.flags.push("commander_watched");
+    return events;
+  }
+  if (!draft.commander.flags.includes("commander_convicted")) draft.commander.flags.push("commander_convicted");
+  const next = corporateWardenPick(draft, ctx2.registries, former !== void 0 ? [former] : []);
+  if (next === null) {
+    addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the leash.`, audience: "*" });
+    return [...events, ...commanderDies(draft, ctx2, "executed")];
+  }
+  return [...events, ...seedWarden(draft, ctx2, { unitId: next, assignedBy: "oversight" })];
+}
+function investigationDayStep(draft, ctx2) {
+  const ls = leashswapOf(draft);
+  if (!ls || ls.status !== "investigation") return [];
+  const events = remoteDayStep(draft, ctx2);
+  const id = ls.removal?.clockId ?? INVESTIGATION_CLOCK;
+  events.push(...advanceClock(draft, ctx2, id, TUNING.warden.removal.perDay, "investigation"));
+  const clock = draft.world.clocks.find((c) => c.id === id);
+  if (!clock || clock.filled >= clock.segments) events.push(...rollVerdict(draft, ctx2));
+  return events;
 }
 
 // src/engine/personal/tally.ts
@@ -24449,9 +24516,10 @@ registerDayEndStep("dm_rumors", specialRumorStep);
 function wardenDayStep(draft, _ctx) {
   const ls = draft.leashswap;
   if (ls) ls.intrigue.suspicion = Math.max(0, ls.intrigue.suspicion - TUNING.warden.intrigue.decayPerDay);
+  const inquiry = investigationDayStep(draft, _ctx);
   const w = wardenOf(draft);
-  if (!w) return [];
-  const events = openQueuedReport(draft, _ctx);
+  if (!w) return inquiry;
+  const events = [...inquiry, ...openQueuedReport(draft, _ctx)];
   w.defiance = Math.max(0, w.defiance - TUNING.warden.defiance.decayPerDay);
   const gone = w.restrictions.filter((r) => r.untilDay <= draft.day);
   if (gone.length > 0) w.restrictions = w.restrictions.filter((r) => r.untilDay > draft.day);
@@ -26608,7 +26676,8 @@ var REVEAL_DIRECTIVE = "warden:reveal";
 var ARGUE_DIRECTIVE = "warden:argue";
 var ROMANCE_DIRECTIVE = "warden:romance";
 var WARNING_DIRECTIVE = "warden:warning";
-var WARDEN_DERIVED = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE, WARNING_DIRECTIVE];
+var REMOTE_DIRECTIVE = "warden:remote";
+var WARDEN_DERIVED = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE, WARNING_DIRECTIVE, REMOTE_DIRECTIVE];
 function wardenDirectives(state, reg) {
   const out = [];
   const warden = wardenOf(state);
@@ -26634,6 +26703,13 @@ function wardenDirectives(state, reg) {
       id: WARNING_DIRECTIVE,
       expiresAfter: "manual",
       text: `AUTHOR TO WRITE: ${unit2.displayName} has warned the commander that open defiance has gone too far${final ? ": this is the final warning" : ""}. She holds the controller and will use it if it goes on.`
+    });
+  }
+  if (state.leashswap?.remote !== void 0 && wardenOf(state) === null) {
+    out.push({
+      id: REMOTE_DIRECTIVE,
+      expiresAfter: "manual",
+      text: "AUTHOR TO WRITE: Nobody holds the commander's leash while oversight investigates. The controller runs on corporate rules, quota and obedience, with no argument and no exceptions. The squad knows the warden is gone and does not yet know how this ends."
     });
   }
   if (unit2 && revealPending(state, reg)) {
@@ -27772,6 +27848,10 @@ function wardenNotice(e, state, reg) {
       return e.kind === "suppress" ? { kind: "warn", title: "THE LEASH", text: "AUTHOR TO WRITE: The controller is used. The rest of the day is lost." } : { kind: "warn", title: "THE LEASH", text: "AUTHOR TO WRITE: The controller is used. The next choice is not the commander's own." };
     case "leash_cosign_denied":
       return { kind: "info", title: "WARDEN", text: `AUTHOR TO WRITE: ${name()} denies the request. Nothing was spent.` };
+    case "remote_control_started":
+      return { kind: "warn", title: "OVERSIGHT", text: "AUTHOR TO WRITE: The controller is now run from the corporate annex. Quota and obedience, no negotiation, until the investigation closes.", cutIn: true };
+    case "verdict":
+      return e.outcome === "cleared" ? { kind: "info", title: "OVERSIGHT", text: "AUTHOR TO WRITE: The investigation is closed. The commander is cleared and remains under watch." } : { kind: "warn", title: "OVERSIGHT", text: "AUTHOR TO WRITE: The investigation is closed. The commander is convicted.", cutIn: true };
     case "commander_terminated":
       return { kind: "warn", title: "THE CONTROLLER", text: "AUTHOR TO WRITE: The controller is triggered. The commander is dead.", cutIn: true };
     default:

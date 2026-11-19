@@ -4,7 +4,7 @@ import { dispatch, type EngineEvent } from '../../src/engine/dispatch';
 import { Rng, seedRng } from '../../src/engine/rng';
 import { buildCampaign } from '../../src/engine/setup';
 import type { CampaignState } from '../../src/engine/state/types';
-import { addSuspicion, allies, allyChance, conspireInput, intrigueDiscovered, tryAlly, wardenDayStep, wardenOf } from '../../src/engine/warden';
+import { addSuspicion, allies, allyChance, conspireInput, intrigueDiscovered, startRemoval, tryAlly, wardenDayStep, wardenOf } from '../../src/engine/warden';
 import { loadCore, unitSetup } from '../helpers/world';
 import { sanitizeIntentOutput } from './intentHelper';
 import '../../src/engine/actions/warden';
@@ -231,7 +231,8 @@ describe('discovery', () => {
     s.leashswap!.intrigue.suspicion = 2;
     wardenDayStep(s, ctxOf());
     expect(suspicion(s)).toBe(0);
-    const inv = swap((x) => { x.leashswap!.status = 'investigation'; delete x.leashswap!.warden; x.leashswap!.intrigue.suspicion = 30; });
+    const inv = swap((x) => { x.leashswap!.intrigue.suspicion = 30; });
+    startRemoval(inv, ctxOf(), 'hack'); // nobody holds the leash now, and the investigation is far from over
     wardenDayStep(inv, ctxOf());
     expect(suspicion(inv)).toBe(27); // it fades even while nobody holds the leash
   });

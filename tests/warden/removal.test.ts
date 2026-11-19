@@ -53,7 +53,7 @@ describe('the hack route', () => {
     expect(ls.status).toBe('investigation');
     expect(ls.warden).toBeUndefined();
     expect(wardenOf(s)).toBeNull();
-    expect(ls.removal).toEqual({ route: 'hack', day: s.day, clockId: 'investigation' });
+    expect(ls.removal).toEqual({ route: 'hack', day: s.day, clockId: 'investigation', unitId: ID.bea });
     expect(ls.remote).toEqual({ sinceDay: s.day });
     expect(clock(s)).toMatchObject({ segments: 10, filled: 0, visibleToPlayer: true });
     expect(s.commander.flags).toContain('commander_implant_dark');

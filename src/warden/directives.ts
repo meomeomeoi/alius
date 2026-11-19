@@ -16,7 +16,8 @@ export const REVEAL_DIRECTIVE = 'warden:reveal';
 export const ARGUE_DIRECTIVE = 'warden:argue';
 export const ROMANCE_DIRECTIVE = 'warden:romance';
 export const WARNING_DIRECTIVE = 'warden:warning';
-export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE, WARNING_DIRECTIVE];
+export const REMOTE_DIRECTIVE = 'warden:remote';
+export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE, WARNING_DIRECTIVE, REMOTE_DIRECTIVE];
 
 /**
  * Derived from the state, so they survive a reload:
@@ -26,6 +27,8 @@ export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECT
  *    real compromise moves her;
  *  - `warden:romance`: while she is in a romantic-tier state and in the scene, any tenderness between her and the commander runs through
  *    the controller she holds;
+ *  - `warden:remote`: while oversight runs the controller (the investigation is open and nobody holds the leash), every scene knows the
+ *    rules are corporate and automatic: quota, obedience, no argument;
  *  - `warden:warning`: from her first warning until defiance falls below 50, while she is in the scene: what she has warned and that she
  *    means it.
  */
@@ -51,6 +54,12 @@ export function wardenDirectives(state: CampaignState, reg: Registries): Directi
     out.push({
       id: WARNING_DIRECTIVE, expiresAfter: 'manual',
       text: `AUTHOR TO WRITE: ${unit.displayName} has warned the commander that open defiance has gone too far${final ? ': this is the final warning' : ''}. She holds the controller and will use it if it goes on.`,
+    });
+  }
+  if (state.leashswap?.remote !== undefined && wardenOf(state) === null) {
+    out.push({
+      id: REMOTE_DIRECTIVE, expiresAfter: 'manual',
+      text: 'AUTHOR TO WRITE: Nobody holds the commander\'s leash while oversight investigates. The controller runs on corporate rules, quota and obedience, with no argument and no exceptions. The squad knows the warden is gone and does not yet know how this ends.',
     });
   }
   if (unit && revealPending(state, reg)) {

@@ -56,12 +56,13 @@ export function commanderRestriction(state: CampaignState, use: 'companion' | 'd
 const slotsLeftToday = (slot: Slot): number => Math.max(0, SLOTS.indexOf('evening') - SLOTS.indexOf(slot));
 
 /** Runs one effect. The Leash on the commander is `leashCommander` (Task 10) and is skipped until it exists. */
-function runEffect(draft: CampaignState, ctx: EngineCtx, w: WardenState, fx: CommanderPunishmentEffect, events: EngineEvent[]): void {
+function runEffect(draft: CampaignState, ctx: EngineCtx, w: WardenState | null, fx: CommanderPunishmentEffect, events: EngineEvent[]): void {
   switch (fx.type) {
     case 'commander_stress':
       events.push(...addCommanderStress(draft, fx.amount, 'warden_punishment'));
       return;
     case 'restrict': {
+      if (!w) return; // remote control has no warden to hold a restriction
       const untilDay = draft.day + fx.days;
       w.restrictions = [...w.restrictions.filter((r) => r.what !== fx.what), { what: fx.what, untilDay }];
       events.push({ type: 'commander_restricted', what: fx.what, untilDay });
@@ -74,7 +75,7 @@ function runEffect(draft: CampaignState, ctx: EngineCtx, w: WardenState, fx: Com
       return;
     }
     case 'squad_record':
-      for (const u of draft.squad) if (u.kind === 'named' && isLiving(u) && u.id !== w.unitId) events.push(...addRecord(draft, u.id, fx.amount, 'warden_humiliation'));
+      for (const u of draft.squad) if (u.kind === 'named' && isLiving(u) && u.id !== w?.unitId) events.push(...addRecord(draft, u.id, fx.amount, 'warden_humiliation'));
       return;
     case 'injury': {
       const endurance = draft.commander.body?.endurance ?? 0;
@@ -82,7 +83,7 @@ function runEffect(draft: CampaignState, ctx: EngineCtx, w: WardenState, fx: Com
       return;
     }
     case 'leash':
-      events.push(...leashEffect(draft, ctx, fx.kind));
+      if (w) events.push(...leashEffect(draft, ctx, fx.kind));
       return;
   }
 }
@@ -127,4 +128,23 @@ export function punishRoll(draft: CampaignState, ctx: EngineCtx, weight: number)
   const severity = w.defiance < a ? 1 : w.defiance < b ? 2 : w.defiance < c ? 3 : 4;
   const id = pickPunishment(draft, ctx.registries, severity);
   return id === null ? [] : applyCommanderPunishment(draft, ctx, id);
+}
+
+/** The pain burst: the registry's punishment with an injury effect (read by effect, never by id). */
+export function painBurstId(reg: Registries): string | undefined {
+  return entries(reg).find((e) => effectsOf(e).some((x) => x.type === 'injury'))?.id as string | undefined;
+}
+
+/**
+ * A punishment under remote control (P13 §5): oversight runs the controller, nobody holds the leash. Only what needs no warden happens
+ * (stress, injury, slots, the squad's record); a restriction or a Leash effect is skipped, and defiance and satisfaction are hers, so they
+ * stay out of it. Reported as `commander_punished` with `remote: true`.
+ */
+export function applyRemotePunishment(draft: CampaignState, ctx: EngineCtx, punishmentId: string): EngineEvent[] {
+  const entry = ctx.registries.commanderPunishments.get(punishmentId);
+  if (!entry) throw new Error(`Unknown commander punishment "${punishmentId}".`);
+  const events: EngineEvent[] = [];
+  for (const fx of effectsOf(entry)) runEffect(draft, ctx, null, fx, events);
+  events.unshift({ type: 'commander_punished', punishmentId, severity: entry.severity, remote: true });
+  return events;
 }
