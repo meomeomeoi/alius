@@ -506,7 +506,7 @@ After every unit:
   - `recapPairs(state: CampaignState): Array<{ unitId: string; kind: string }>`;
   - `Digest.knownDays?: number`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the first recap writes facts and one chronicle entry`. On a built N = 14 campaign, dispatch the recap with every stored pair and expect:
     - one fact per moment (`fr` ids, `knownBy [unit]`, tag `head_start`, the texts as sent, importance from the registry);
     - one chronicle entry `{ kind: 'day', day: 1, audience: <headStart unit ids>, text }`;
@@ -520,13 +520,13 @@ After every unit:
   - `a recap without a head start is rejected`.
   - `recapCommitted is null on day 1 before any scene, a reason otherwise` (an open scene, an ended scene, day 2).
   - `the digest says how long the squad has known the commander`: N = 30 → `buildDigest(state).knownDays === 30`; without a head start the key is absent.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/headStart/recap.test.ts tests/engine/world/digestHeadStart.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/engine/headStart/recap.test.ts tests/engine/world/digestHeadStart.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - The handler validates first and throws on any problem (overview §5: a rejected action changes nothing).
   - First application: `addChronicle`, set `recap`, return the events. `dispatch` then calls `rememberEvents`, which writes the facts.
   - Replace: rewrite the chronicle text by id and the facts per "Replacing".
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): head_start/recap writes the remembered moments and the squad's paragraph`
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): head_start/recap writes the remembered moments and the squad's paragraph`
 
 **Chunk (a) ends here.**
 

@@ -18886,6 +18886,7 @@ function buildDigest(state, reg) {
     const e = state.lastExpedition;
     digest.lastExpedition = { regionId: e.regionId, outcome: e.outcome, missionTitle: e.missionTitle };
   }
+  if (state.headStart) digest.knownDays = state.headStart.days;
   return digest;
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
@@ -25027,6 +25028,76 @@ registerAction("generation/expire", (draft, payload) => {
 });
 registerDayEndStep("dm_rumors", generationSweep);
 
+// src/engine/headStart/recap.ts
+var FIRST_SCENE_STARTED = "The first scene has started.";
+function recapCommitted(state) {
+  return state.scene !== void 0 || (state.memory.scenes ?? []).length > 0 || state.day !== 1 ? FIRST_SCENE_STARTED : null;
+}
+function recapPairs(state) {
+  return (state.headStart?.units ?? []).flatMap((u) => u.moments.map((kind) => ({ unitId: u.unitId, kind })));
+}
+var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function parse(draft, payload) {
+  if (!isObj32(payload) || !Array.isArray(payload.units) || typeof payload.chronicle !== "string") throw new Error("head_start/recap needs { units, chronicle, source }");
+  if (payload.source !== "model" && payload.source !== "fallback") throw new Error("head_start/recap: source is model or fallback");
+  const { textMax, chronicleMax } = TUNING.headStart;
+  const chronicle = payload.chronicle.trim();
+  if (chronicle === "" || chronicle.length > chronicleMax) throw new Error(`head_start/recap: the chronicle must be 1 to ${chronicleMax} characters`);
+  const texts = /* @__PURE__ */ new Map();
+  for (const u of payload.units) {
+    if (!isObj32(u) || typeof u.unitId !== "string" || !Array.isArray(u.moments)) throw new Error("head_start/recap: every unit needs { unitId, moments }");
+    for (const m of u.moments) {
+      if (!isObj32(m) || typeof m.kind !== "string" || typeof m.text !== "string") throw new Error("head_start/recap: every moment needs { kind, text }");
+      const key = `${u.unitId}|${m.kind}`;
+      const text2 = m.text.trim();
+      if (texts.has(key)) throw new Error(`head_start/recap: "${m.kind}" of ${u.unitId} is given twice`);
+      if (text2 === "" || text2.length > textMax) throw new Error(`head_start/recap: a moment text must be 1 to ${textMax} characters`);
+      texts.set(key, text2);
+    }
+  }
+  const pairs2 = recapPairs(draft);
+  const want = new Set(pairs2.map((p) => `${p.unitId}|${p.kind}`));
+  if (texts.size !== want.size || [...texts.keys()].some((k) => !want.has(k))) throw new Error("head_start/recap must give a text for every stored moment, and for no other");
+  return { texts, chronicle, source: payload.source };
+}
+function applyRecap(draft, reg, payload) {
+  const hs = draft.headStart;
+  if (!hs) throw new Error("This campaign has no head start.");
+  const { texts, chronicle, source } = parse(draft, payload);
+  const factMax = TUNING.memory.factTextMax;
+  if (hs.recap === void 0) {
+    const entry2 = addChronicle(draft, { kind: "day", day: draft.day, text: chronicle, audience: hs.units.map((u) => u.unitId) });
+    hs.recap = { source, chronicleId: entry2.id };
+    const events = [{ type: "head_start_applied", days: hs.days, units: hs.units.map((u) => u.unitId) }];
+    for (const p of recapPairs(draft)) {
+      events.push({
+        type: "head_start_moment",
+        unitId: p.unitId,
+        kind: p.kind,
+        text: texts.get(`${p.unitId}|${p.kind}`),
+        importance: Number(reg.headStartMoments.get(p.kind)?.importance ?? 2)
+      });
+    }
+    return events;
+  }
+  const reason = recapCommitted(draft);
+  if (reason !== null) throw new Error(reason);
+  const entry = draft.memory.chronicle.find((c) => c.id === hs.recap.chronicleId);
+  if (entry) entry.text = chronicle;
+  hs.recap.source = source;
+  for (const u of hs.units) {
+    const facts = draft.memory.facts.filter((f) => f.tags.includes("head_start") && f.about.length === 1 && f.about[0] === u.unitId);
+    u.moments.forEach((kind, i) => {
+      const fact = facts[i];
+      if (fact && fact.edited !== true) fact.text = texts.get(`${u.unitId}|${kind}`).slice(0, factMax).trim();
+    });
+  }
+  return [];
+}
+
+// src/engine/actions/headStart.ts
+registerAction("head_start/recap", (draft, payload, ctx2) => applyRecap(draft, ctx2.registries, payload));
+
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
   "profile_import",
@@ -26334,7 +26405,7 @@ function revealPending(state, reg) {
 }
 
 // src/engine/warden/describe.ts
-var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var strs2 = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 function describeOrder(state, reg, order) {
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -26360,7 +26431,7 @@ function overrideInput(state, reg, participants) {
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
 }
 function orderOfAction(action) {
-  const p = isObj32(action.payload) ? action.payload : {};
+  const p = isObj33(action.payload) ? action.payload : {};
   switch (action.type) {
     case "activity/do":
       return typeof p.activityId === "string" ? { kind: "activity", activityId: p.activityId, ...typeof p.companionId === "string" ? { companionId: p.companionId } : {}, ...Array.isArray(p.unitIds) ? { unitIds: strs2(p.unitIds) } : {} } : null;
@@ -28661,16 +28732,16 @@ var fieldSchemas = {
   autoRetry: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2)])
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj33(over) ? over : {};
+  const src = isObj34(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj33(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj34(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -30131,24 +30202,24 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj34(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj34(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj35(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj35(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj34(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj35(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj34(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj35(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
@@ -32448,7 +32519,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -32457,7 +32528,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj35(raw) ? raw : {};
+  const src = isObj36(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -32473,7 +32544,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj35(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj36(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -32482,7 +32553,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap3(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj35(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj36(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -32560,7 +32631,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str4(c.label) })) } : {}
   };
 }
-var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num4 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -32578,7 +32649,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj36(raw) ? raw : {};
+  const src = isObj37(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -32587,7 +32658,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj36(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj37(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -32635,11 +32706,11 @@ function sanitizeProfile(raw, ctx2) {
     const read = validateBond(src.bond, ctx2.registries);
     profile.bond = read.bond;
     bond = read.bond;
-    const reason = cap4(isObj36(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap4(isObj37(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read.valid.length === 0) missing2.push("bond");
-    if (!isObj36(src.bond)) delete profile.bond;
+    if (!isObj37(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick2(
@@ -32656,7 +32727,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj36(src.values)) {
+    if (isObj37(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num4(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -32681,25 +32752,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj36(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj37(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num4(src.dispositionOffset.offset, -2, 2, 0), reason: cap4(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj36(src.worldStances) ? src.worldStances : {};
+      const given = isObj37(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj36(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj37(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap4(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("baseline")) {
-    if (isObj36(src.emotionalBaseline)) {
+    if (isObj37(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -45528,13 +45599,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
     const m = chat[index2];
-    if (!isObj37(m) || m.is_system === true) continue;
+    if (!isObj38(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index: index2,
@@ -45551,7 +45622,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj37(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj38(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -45573,7 +45644,7 @@ function hideRuns(length, from, to, isSystem) {
 var hideCommand = (unhide, [a, b]) => `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
 var isSystemMessage = (chat, index2) => {
   const m = Array.isArray(chat) ? chat[index2] : void 0;
-  return !isObj37(m) || m.is_system === true;
+  return !isObj38(m) || m.is_system === true;
 };
 
 // src/st/slash.ts
@@ -45605,17 +45676,17 @@ function toStLorebook(book2, template) {
 }
 
 // src/st/sprites.ts
-var isObj38 = (v) => typeof v === "object" && v !== null;
+var isObj39 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj38(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj39(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj38(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj39(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

@@ -35,6 +35,8 @@ export interface Digest {
   lastExpedition?: { regionId: string; outcome: string; missionTitle: string };
   /** P8: the tone hints the director follows and the event families this world uses. */
   world: { hints: string[]; families: string[] };
+  /** P11b: how many days the squad has known the commander; present only with a head start. */
+  knownDays?: number;
 }
 
 /** Flags shown per thread (the newest ones) — the digest has to stay small. */
@@ -89,6 +91,7 @@ export function buildDigest(state: CampaignState, reg: Registries): Digest {
     const e = state.lastExpedition;
     digest.lastExpedition = { regionId: e.regionId, outcome: e.outcome, missionTitle: e.missionTitle };
   }
+  if (state.headStart) digest.knownDays = state.headStart.days;
   return digest;
 }
 
