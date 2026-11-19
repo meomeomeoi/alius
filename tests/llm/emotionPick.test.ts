@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pickEmotion } from '../../src/llm/calls/emotionPick';
+import { pickEmotion } from '../helpers/calls';
 import { llmLog } from '../../src/llm/log';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';

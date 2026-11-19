@@ -6880,7 +6880,8 @@ var RESERVED_EVENT_TYPES = [
   // P14
   "generation_failed",
   "generation_closed",
-  "generation_expired"
+  "generation_expired",
+  "scene_summarized_late"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -22448,6 +22449,23 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 });
+registerAction("scene/late_summary", (draft, payload, ctx2) => {
+  if (!isObj12(payload) || typeof payload.sceneId !== "string" || !isObj12(payload.summary)) throw new Error("scene/late_summary needs { sceneId, summary }");
+  const mark = draft.memory.scenes?.find((m) => m.sceneId === payload.sceneId);
+  if (!mark || mark.summarized || mark.participants === void 0 || mark.day === void 0) throw new Error("scene/late_summary: that scene is not waiting for a summary");
+  const summary = payload.summary;
+  const line2 = typeof summary.chronicle === "string" ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : "";
+  const entry = draft.memory.chronicle.find((e) => e.kind === "scene" && e.sceneId === mark.sceneId);
+  const replaced = line2 !== "" && entry !== void 0;
+  if (replaced) entry.text = line2;
+  const events = [];
+  if (Array.isArray(summary.facts)) events.push(...storeSceneFacts(draft, ctx2.registries, { id: mark.sceneId, day: mark.day, participants: mark.participants }, summary.facts));
+  mark.summarized = true;
+  delete mark.day;
+  delete mark.locationId;
+  delete mark.participants;
+  return [{ type: "scene_summarized_late", sceneId: mark.sceneId, replaced }, ...events];
+});
 registerAction("scene/abort", (draft, _payload, ctx2) => {
   const scene = draft.scene;
   if (!scene) throw new Error("scene/abort: no scene is open");
@@ -29723,6 +29741,23 @@ function sanitizeIntentOutput(raw, ctx2) {
   const sceneTone = ctx2.romance && (src.sceneTone === "romantic" || src.sceneTone === "intimate") ? src.sceneTone : null;
   return { intents, emotions, contentViolations, sceneTone };
 }
+function readIntentOutput(raw, input, opts) {
+  const ids = input.units.map((u) => u.id);
+  return sanitizeIntentOutput(raw, {
+    participants: ids,
+    squad: ids.map((id) => ({ id })),
+    minConfidence: opts.minConfidence,
+    romance: input.romance,
+    measures: input.measures,
+    excluded: (input.excluded ?? []).map((e) => e.id),
+    rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
+    intercepted: (input.intercepted ?? []).map((i) => i.id),
+    warned: input.warned ?? [],
+    overrides: (input.overrides ?? []).map((o) => o.id),
+    expectations: (input.expectations ?? []).map((x) => x.id),
+    conspire: input.conspire ?? []
+  });
+}
 async function extractIntents(input, deps, opts = {}) {
   const r = await callLlm("intent_extract", input, deps);
   if (!r.ok) return null;
@@ -30164,19 +30199,15 @@ function readAnswer(value, input) {
   });
   return { facts: kept, contentViolations };
 }
-async function summarizeScene(input, deps) {
-  const r = await callLlm("scene_summary", { ...input, mode: void 0 }, deps);
-  if (!r.ok) return null;
-  const chronicle = (r.value.chronicle ?? "").replace(/\s+/g, " ").trim().slice(0, CHRONICLE_LINE_MAX2).trim();
+function readSceneSummary(raw, input) {
+  const chronicle = (raw.chronicle ?? "").replace(/\s+/g, " ").trim().slice(0, CHRONICLE_LINE_MAX2).trim();
   if (chronicle === "") return null;
-  return { chronicle, ...readAnswer(r.value, input) };
+  return { chronicle, ...readAnswer(raw, input) };
 }
-async function digestScene(input, deps) {
-  const r = await callLlm("scene_summary", { ...input, mode: "digest" }, deps);
-  if (!r.ok) return null;
-  const digest = (r.value.digest ?? "").replace(/\s+/g, " ").trim().slice(0, TUNING.memory.digestMax).trim();
+function readDigest(raw, input) {
+  const digest = (raw.digest ?? "").replace(/\s+/g, " ").trim().slice(0, TUNING.memory.digestMax).trim();
   if (digest === "") return null;
-  return { digest, facts: readAnswer(r.value, input).facts };
+  return { digest, facts: readAnswer(raw, input).facts };
 }
 
 // src/scene/memoryController.ts
@@ -30256,6 +30287,35 @@ function createMemoryController(deps) {
       if (runs.length > 0) app.dispatch({ type: "memory/hidden", payload: { add: runs } }, { expectChatId: expect });
     }
   }
+  deps.generations.bind("scene.digest", {
+    build(key) {
+      const m = /^(.*):(\d+)$/.exec(key);
+      const s = state();
+      const scene = s?.scene;
+      if (!m || !s || !scene || scene.id !== m[1]) return { expired: "The scene is over." };
+      const upTo = Number(m[2]);
+      if (scene.digest && scene.digest.upTo >= upTo) return { expired: "A later digest covers it." };
+      const from = scene.digest ? scene.digest.upTo + 1 : scene.startIndex;
+      const slice = st.getChatMessages(Math.min(from, st.chatLength())).filter((x) => x.index <= upTo);
+      if (slice.length === 0) return { expired: "Those lines are no longer in the chat." };
+      const flagged = new Set((scene.violations ?? []).map((v) => v.index));
+      const excluded = disabledCategories(s, deps.registries());
+      return {
+        location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
+        participants: scene.participants.map((id) => ({ id, name: nameOf15(s, id) })),
+        transcript: slice.map((x) => ({ speaker: x.isUser ? s.commander.name : x.name, text: x.text, ...flagged.has(x.index) ? { flagged: true } : {} })),
+        ...excluded.length > 0 ? { excluded } : {},
+        ...scene.digest ? { previous: scene.digest.text } : {},
+        mode: "digest"
+      };
+    },
+    parse: (raw, input) => readDigest(raw, input),
+    apply(key, result) {
+      const upTo = Number(/(\d+)$/.exec(key)?.[1]);
+      const events = app.dispatch({ type: "scene/digest", payload: { text: result.digest, upTo, facts: result.facts } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === "error") ? { stale: true } : "ok";
+    }
+  });
   return {
     run() {
       if (folding) return Promise.resolve();
@@ -30289,17 +30349,7 @@ function createMemoryController(deps) {
           if (slice.length === 0) return;
           const line2 = (m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text });
           if (slice.reduce((n, m) => n + estTokens(`${line2(m).speaker}: ${line2(m).text}`), 0) <= TUNING.memory.digestThresholdTokens) return;
-          const flagged = new Set((scene.violations ?? []).map((v) => v.index));
-          const excluded = disabledCategories(s, deps.registries());
-          const result = await digestScene({
-            location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
-            participants: scene.participants.map((id) => ({ id, name: nameOf15(s, id) })),
-            transcript: slice.map((m) => ({ ...line2(m), ...flagged.has(m.index) ? { flagged: true } : {} })),
-            ...excluded.length > 0 ? { excluded } : {},
-            ...scene.digest ? { previous: scene.digest.text } : {}
-          }, { st, settings: deps.settings() });
-          if (!result) return;
-          app.dispatch({ type: "scene/digest", payload: { text: result.digest, upTo: slice[slice.length - 1].index, facts: result.facts } }, { expectChatId: expect });
+          await deps.generations.generate("scene.digest", `${scene.id}:${slice[slice.length - 1].index}`);
         } catch (e) {
           console.warn("[Alius] scene digest failed", e);
         } finally {
@@ -30443,551 +30493,10 @@ Line: ${i.text}`;
   },
   schema: EmotionSchema
 });
-async function pickEmotion(input, deps) {
-  const r = await callLlm("emotion_pick", input, deps);
-  if (!r.ok) return null;
-  return EXPRESSION_LABELS.includes(r.value.label) ? r.value.label : null;
-}
-
-// src/scene/directives.ts
-var REASON_TEXT = {
-  too_soon: "too soon",
-  no_trust: "she does not trust the commander enough",
-  not_interested: "she is not interested",
-  committed: "the commander is already committed to someone else",
-  unavailable: "it is not something she would consider"
-};
-function proposalDirectiveText(unitName3, kind, result) {
-  const label2 = kind.replace(/_/g, " ");
-  if (result.receptive) return `${unitName3} is receptive to the commander's proposal (${label2}). Play her accepting it in her own way.`;
-  return `${unitName3} DECLINES the commander's proposal (${label2}). Reason: ${REASON_TEXT[result.reason]}. She will not be talked into it this scene.`;
-}
-var proposalDirective = (unitId, unitName3, kind, result) => ({
-  id: `proposal:${unitId}`,
-  expiresAfter: "next_reply",
-  text: proposalDirectiveText(unitName3, kind, result)
-});
-var nightDirective = (unitName3, framing) => ({
-  id: "night",
-  expiresAfter: "scene",
-  text: `It is night. ${framing} Open the scene with this moment: ${unitName3} came for a reason of her own.`
-});
-function answerDirective(unitId, unitName3, kind, answer, condition) {
-  const label2 = kind.replace(/_/g, " ");
-  const text2 = answer === "accept_condition" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}) on her condition: "${condition ?? ""}". Play her reaction to that, and she holds the commander to it.` : answer === "deflect" ? `The commander deflects ${unitName3}'s proposal (${label2}) with a light touch, neither yes nor no. Play her reaction.` : answer === "accept" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}). Play her reaction to that.` : answer === "accept_secret" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}) but wants it kept secret from the others. Play her reaction to that.` : answer === "decline" ? `The commander DECLINES ${unitName3}'s proposal (${label2}). Play her reaction to being turned down.` : `The commander puts ${unitName3}'s proposal (${label2}) off: not now. Play her reaction.`;
-  return { id: `proposal:${unitId}`, expiresAfter: "next_reply", text: text2 };
-}
-
-// src/scene/sceneController.ts
-var EXTRACT_MAX_MESSAGES = 8;
-var EXTRACT_MAX_CHUNKS = 6;
-var DEBUG_NOT_ROLLED_BACK = "Not rolled back: something changed since.";
-function createSceneController(deps) {
-  const { st, app } = deps;
-  let extracted = 0;
-  let lastApply = null;
-  let extracting = false;
-  const swipedWhileExtracting = /* @__PURE__ */ new Set();
-  let awaitingReextract = false;
-  let pending3 = false;
-  let inflight = null;
-  let openingRun = null;
-  let openedScene = null;
-  let disposed = false;
-  let background = Promise.resolve();
-  const state = () => app.current().state;
-  const chatId = () => st.getActiveChat()?.chatId;
-  const debug = (text2) => {
-    if (deps.settings().debug) deps.toast("info", text2);
-  };
-  const unitById = (s, id) => s.squad.find((u) => u.id === id);
-  const unitByAvatar = (s, avatar) => avatar === void 0 ? void 0 : s.squad.find((u) => u.cardRef === avatar);
-  function dispatch2(action, expect) {
-    const events = app.dispatch(action, { expectChatId: expect });
-    const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
-    return events;
-  }
-  function reflect(events, extremeKinds = []) {
-    const set = [];
-    const s = state();
-    if (!s) return set;
-    for (const e of events) {
-      switch (e.type) {
-        case "relation_changed":
-          deps.onUi({ type: "pulse", unitId: String(e.unitId), axis: e.axis, up: Number(e.delta) > 0, delta: Number(e.delta) });
-          break;
-        case "relation_state_changed":
-          deps.onUi({ type: "cut_in", kind: `state:${String(e.to)}` });
-          break;
-        case "discipline_applied":
-        case "threat_registered":
-        case "discipline_undone":
-          deps.onUi({ type: "discipline" });
-          break;
-        case "proposal_offered": {
-          const p = s.proposals?.find((x) => x.id === e.proposalId);
-          if (p) deps.onUi({ type: "chips", proposal: p });
-          break;
-        }
-        case "proposal_resolved": {
-          const unit2 = unitById(s, String(e.unitId));
-          if (!unit2) break;
-          const result = e.receptive === true ? { receptive: true } : { receptive: false, reason: e.reason };
-          app.context.setDirective(proposalDirective(unit2.id, unit2.displayName, String(e.kind), result));
-          set.push(`proposal:${unit2.id}`);
-          break;
-        }
-      }
-    }
-    for (const kind of extremeKinds) deps.onUi({ type: "cut_in", kind });
-    app.refreshContext();
-    return set;
-  }
-  const avatarsOf = (s, ids) => ids.map((id) => unitById(s, id)?.cardRef).filter((a) => typeof a === "string");
-  function setSceneContext(s) {
-    sceneDirectives(app.context, s, deps.settings());
-    const scene = s.scene;
-    const entry = s.calendar.nightEvent;
-    if (scene?.origin === "night" && entry && (scene.nightEntryId === void 0 || scene.nightEntryId === entry.id)) {
-      const name = unitById(s, entry.unitId)?.displayName ?? "She";
-      app.context.setDirective(nightDirective(name, entry.framing));
-    }
-    app.refreshContext();
-  }
-  function contentInput(s, participants) {
-    const reg = deps.registries();
-    const excluded = disabledCategories(s, reg);
-    const limits = {};
-    for (const id of participants) {
-      const labels = unitById(s, id) ? ownLimitLabels(unitById(s, id), reg) : [];
-      if (labels.length > 0) limits[id] = labels;
-    }
-    const rules2 = rulesOf(s).filter((r) => (r.status === "active" || r.status === "negotiating") && participants.includes(r.unitId)).map((r) => ({ id: r.id, unitId: r.unitId, text: r.text, status: r.status }));
-    return { ...excluded.length > 0 ? { excluded } : {}, ...Object.keys(limits).length > 0 ? { limits } : {}, ...rules2.length > 0 ? { rules: rules2 } : {} };
-  }
-  function unitInput(s, id) {
-    const u = unitById(s, id);
-    const rel = s.relations[id];
-    if (!u || !rel) return null;
-    return { id, name: u.displayName, values: { ...u.values }, likes: u.likes, dislikes: u.dislikes, triggers: u.triggers, stateId: rel.stateId, defectIds: u.defects.map((d) => d.id) };
-  }
-  async function extract2(expect) {
-    let applied = false;
-    const first2 = st.getChatMessages(extracted);
-    if (first2.length > EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES) extracted = first2[first2.length - EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES].index;
-    for (let chunk = 0; chunk < EXTRACT_MAX_CHUNKS; chunk++) {
-      const s0 = state();
-      if (!s0?.scene) return applied;
-      const messages = st.getChatMessages(extracted).slice(0, EXTRACT_MAX_MESSAGES);
-      if (messages.length === 0) return applied;
-      const lastReply = [...messages].reverse().find((m) => !m.isUser);
-      const nextPointer = messages[messages.length - 1].index + 1;
-      if (!lastReply) {
-        extracted = nextPointer;
-        continue;
-      }
-      if (!await extractChunk(s0, messages, lastReply, nextPointer, expect)) return applied;
-      applied = true;
-    }
-    return applied;
-  }
-  async function extractChunk(s0, messages, lastReply, nextPointer, expect) {
-    const scene = s0.scene;
-    const units = scene.participants.map((id) => unitInput(s0, id)).filter((u) => u !== null);
-    const nm = (id) => id === "commander" ? s0.commander.name : unitById(s0, id)?.displayName ?? id;
-    const input = {
-      commanderName: s0.commander.name,
-      channel: "scene",
-      exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
-      units,
-      openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
-      romance: intimacyOf(s0).romance,
-      measures: measureList(deps.registries(), s0),
-      ...contentInput(s0, scene.participants),
-      ...leakInput(s0, deps.registries(), scene.participants),
-      // P12: what the frequency caught about those present (nothing without the trait)
-      ...warnedInput(s0, scene.participants),
-      // P12: the units the commander has an open warning about
-      ...overrideInput(s0, deps.registries(), scene.participants),
-      // P13: the warden's open override, while she is present
-      ...expectationInput(s0, deps.registries(), scene.participants),
-      // P13: her expectations, while she is present
-      ...conspireInput(s0, deps.registries(), scene.participants)
-      // P13: who the commander may enlist against her, while she is not present
-    };
-    for (const m of messages) {
-      if (m.isUser) continue;
-      const speaker = scene.participants.map((id) => unitById(s0, id)).find((u) => u !== void 0 && u.displayName === m.name);
-      if (speaker) deps.onUnitReply?.(speaker.id, m.text);
-    }
-    swipedWhileExtracting.clear();
-    extracting = true;
-    let result;
-    try {
-      result = await extractIntents(input, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
-    } finally {
-      extracting = false;
-    }
-    if (disposed || chatId() !== expect) return false;
-    if (messages.some((m) => swipedWhileExtracting.has(m.index))) {
-      swipedWhileExtracting.clear();
-      awaitingReextract = true;
-      debug("A reply was swiped while it was being read; the reading was dropped.");
-      return false;
-    }
-    if (!result) {
-      debug("Intent extraction failed; nothing changed.");
-      return false;
-    }
-    const from = extracted;
-    const before = state();
-    if (!before || !before.scene) return false;
-    const flaggedHere = result.contentViolations.map((v) => v.category);
-    if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(", ")}.`);
-    const events = dispatch2({
-      type: "intents/apply",
-      payload: {
-        channel: "scene",
-        intents: result.intents,
-        readIndex: nextPointer,
-        messageRef: `chat:${lastReply.index}`,
-        ...flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {},
-        ...result.sceneTone !== null ? { tone: result.sceneTone } : {}
-      }
-    }, expect);
-    if (events.some((e) => e.type === "error")) return false;
-    const after = state();
-    extracted = nextPointer;
-    const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
-    const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
-    if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after, directives };
-    if (deps.settings().spriteMode === "emotion_pick") {
-      for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
-    }
-    debug(`Extracted ${result.intents.events.length} event(s).`);
-    return true;
-  }
-  async function showSprites(replies, extractedNow) {
-    const s = state();
-    if (!s) return;
-    const mode = deps.settings().spriteMode;
-    const latest = /* @__PURE__ */ new Map();
-    for (const r of replies) if (r.avatar) latest.set(r.avatar, r);
-    for (const [avatar, msg] of latest) {
-      const unit2 = unitByAvatar(s, avatar);
-      if (!unit2) continue;
-      if (mode === "native") {
-        const label2 = await st.getLastExpression(avatar).catch(() => null);
-        if (label2) deps.onUi({ type: "sprite", unitId: unit2.id, label: label2 });
-      } else if (!extractedNow) {
-        const label2 = await pickEmotion({ unitName: unit2.displayName, text: msg.text }, { st, settings: deps.settings() });
-        if (label2) deps.onUi({ type: "sprite", unitId: unit2.id, label: label2 });
-      }
-    }
-  }
-  async function sendNow(t) {
-    const expect = chatId();
-    awaitingReextract = false;
-    try {
-      const before = st.chatLength();
-      try {
-        await st.sendUserMessage(t);
-      } catch (e) {
-        deps.toast("error", `Could not send: ${e instanceof Error ? e.message : String(e)}`);
-        return;
-      }
-      if (disposed || chatId() !== expect || !state()?.scene) return;
-      if (!st.getChatMessages(before).some((m) => !m.isUser)) {
-        deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
-        deps.onUi({ type: "transcript" });
-        return;
-      }
-      const events = dispatch2({ type: "scene/exchange", payload: {} }, expect);
-      const exchanges = Number(events.find((e) => e.type === "scene_exchange")?.exchanges ?? 0);
-      deps.onUi({ type: "transcript" });
-      const settings = deps.settings();
-      const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
-      const applied = due ? await extract2(expect) : false;
-      await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
-      if (deps.memory) background = background.then(() => deps.memory.digestIfDue()).catch(() => {
-      });
-      if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
-      deps.onUi({ type: "transcript" });
-    } finally {
-      pending3 = false;
-    }
-  }
-  let selfEdit = null;
-  function handleEdited(index2) {
-    const la = lastApply;
-    deps.onUi({ type: "transcript" });
-    if (extracting) {
-      swipedWhileExtracting.add(index2);
-      return;
-    }
-    if (!la || index2 < la.from || index2 > la.lastReplyIndex) {
-      if (index2 < extracted) debug("That message has already been read; what was taken from it stays.");
-      return;
-    }
-    awaitingReextract = false;
-    controller.onSwipe(la.lastReplyIndex);
-    if (!awaitingReextract) return;
-    awaitingReextract = false;
-    const expect = chatId();
-    background = background.then(async () => {
-      if (!state()?.scene || chatId() !== expect) return;
-      await extract2(expect);
-      deps.onUi({ type: "transcript" });
-    });
-  }
-  const controller = {
-    async start(opts) {
-      const expect = chatId();
-      const s = state();
-      if (!s) return false;
-      extracted = st.chatLength();
-      openedScene = null;
-      lastApply = null;
-      awaitingReextract = false;
-      const events = dispatch2({
-        type: "scene/start",
-        payload: { locationId: opts.locationId, participants: opts.participants, origin: opts.origin, consumesSlot: opts.consumesSlot, startIndex: extracted, nightEntryId: opts.nightEntryId }
-      }, expect);
-      if (events.some((e) => e.type === "error")) return false;
-      try {
-        await st.setMembersActive(avatarsOf(s, opts.participants));
-      } catch (e) {
-        dispatch2({ type: "scene/abort", payload: {} }, expect);
-        if (opts.origin === "activity") dispatch2({ type: "calendar/cancel_scene", payload: {} }, expect);
-        deps.toast("error", `Could not start the scene: the group chat refused the change (${e instanceof Error ? e.message : String(e)}).`);
-        return false;
-      }
-      const now = state();
-      if (now) setSceneContext(now);
-      deps.onUi({ type: "transcript" });
-      return true;
-    },
-    send(text2) {
-      if (text2.trim() !== "" && pending3 && openingRun) return openingRun.then(() => controller.send(text2));
-      if (text2.trim() === "" || pending3 || !state()?.scene) return Promise.resolve();
-      pending3 = true;
-      const run = sendNow(text2.trim());
-      inflight = run;
-      void run.finally(() => {
-        if (inflight === run) inflight = null;
-      });
-      return run;
-    },
-    opening() {
-      const scene = state()?.scene;
-      if (pending3 || !scene) return Promise.resolve();
-      if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
-      openedScene = scene.id;
-      pending3 = true;
-      const run = (async () => {
-        const expect = chatId();
-        try {
-          const before = st.chatLength();
-          try {
-            await st.triggerReplies();
-          } catch (e) {
-            deps.toast("error", `Could not start the conversation: ${e instanceof Error ? e.message : String(e)}`);
-            return;
-          }
-          if (disposed || chatId() !== expect || !state()?.scene) return;
-          const replies = st.getChatMessages(before).filter((m) => !m.isUser);
-          deps.onUi({ type: "transcript" });
-          if (replies.length === 0) {
-            deps.toast("warn", "Nobody spoke first. Say something to start, or use \u21BB to try again.");
-            return;
-          }
-          await showSprites(replies, false);
-          deps.onUi({ type: "transcript" });
-        } finally {
-          pending3 = false;
-        }
-      })();
-      inflight = run;
-      openingRun = run;
-      void run.finally(() => {
-        if (inflight === run) inflight = null;
-        if (openingRun === run) openingRun = null;
-      });
-      return run;
-    },
-    propose(kind, unitId) {
-      const s = state();
-      const target = unitId ?? s?.scene?.participants[0];
-      if (!s?.scene || !target) return;
-      const events = dispatch2({ type: "proposal/commander", payload: { unitId: target, kind, channel: "scene" } }, chatId());
-      if (!events.some((e) => e.type === "error")) reflect(events);
-    },
-    follow() {
-      const s = state();
-      if (!s?.scene?.lead) return;
-      const events = dispatch2({ type: "bonds/follow", payload: {} }, chatId());
-      if (!events.some((e) => e.type === "error")) {
-        reflect(events);
-        app.refreshContext();
-      }
-    },
-    ask() {
-      const s = state();
-      const lead = s?.scene?.lead;
-      const unit2 = lead ? unitById(s, lead.unitId) : void 0;
-      if (!lead || !unit2) return;
-      app.context.setDirective(askDirective(unit2.id, unit2.displayName));
-      app.refreshContext();
-    },
-    limit(text2) {
-      const s = state();
-      if (!s?.scene?.lead || text2.trim() === "") return;
-      const events = dispatch2({ type: "bonds/limit", payload: { text: text2 } }, chatId());
-      if (!events.some((e) => e.type === "error")) {
-        deps.onUi({ type: "transcript" });
-        app.refreshContext();
-      }
-    },
-    answer(proposalId, answer, condition) {
-      const s = state();
-      const p = s?.proposals?.find((x) => x.id === proposalId);
-      const events = dispatch2({ type: "proposal/answer", payload: { proposalId, answer, ...condition !== void 0 ? { condition } : {} } }, chatId());
-      if (events.some((e) => e.type === "error")) return;
-      if (p && s) {
-        const unit2 = unitById(s, p.unitId);
-        if (unit2 && p.from === "unit") app.context.setDirective(answerDirective(unit2.id, unit2.displayName, p.kind, answer, condition));
-      }
-      reflect(events);
-    },
-    async end() {
-      await inflight?.catch(() => {
-      });
-      await deps.memory?.idle();
-      const expect = chatId();
-      const s = state();
-      const scene = s?.scene;
-      if (!s || !scene) return;
-      pending3 = true;
-      try {
-        if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
-        const names = (ids) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
-        const flaggedIndexes = new Set((scene.violations ?? []).map((v) => v.index));
-        const excluded = disabledCategories(s, deps.registries());
-        const digest = scene.digest;
-        const tail = st.getChatMessages(Math.min(digest ? digest.upTo + 1 : scene.startIndex, st.chatLength())).map((m) => ({
-          speaker: m.isUser ? s.commander.name : m.name,
-          text: m.text,
-          ...flaggedIndexes.has(m.index) ? { flagged: true } : {}
-        }));
-        const summary = await summarizeScene({
-          location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
-          participants: names(scene.participants),
-          transcript: digest ? [{ speaker: "Digest of the scene so far", text: digest.text }, ...tail] : tail,
-          ...excluded.length > 0 ? { excluded } : {}
-        }, { st, settings: deps.settings() });
-        if (summary && summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(", ")}.`);
-        if (disposed || chatId() !== expect) return;
-        dispatch2({ type: "scene/end", payload: { ...summary ? { summary } : {}, endIndex: st.chatLength() - 1 } }, expect);
-      } finally {
-        pending3 = false;
-        lastApply = null;
-        awaitingReextract = false;
-        if (chatId() === expect) {
-          clearSceneDirectives(app.context);
-          app.context.clearDirective("night");
-          const now = state();
-          app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:"));
-          app.refreshContext();
-          const living2 = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
-          try {
-            await st.setMembersActive(living2.map((u) => u.cardRef).filter((a) => typeof a === "string"));
-          } catch (e) {
-            deps.toast("warn", `Could not re-activate the squad in the group chat: ${e instanceof Error ? e.message : String(e)}`);
-          }
-        }
-        deps.onUi({ type: "transcript" });
-      }
-    },
-    transcript() {
-      const scene = state()?.scene;
-      if (!scene) return [];
-      return st.getChatMessages(Math.min(scene.startIndex, st.chatLength()));
-    },
-    async edit(index2, text2) {
-      const t = text2.trim();
-      if (t === "" || !state()?.scene) return;
-      selfEdit = index2;
-      try {
-        await st.editMessage(index2, t);
-      } catch (e) {
-        deps.toast("error", `Could not edit the message: ${e instanceof Error ? e.message : String(e)}`);
-        return;
-      } finally {
-        selfEdit = null;
-      }
-      handleEdited(index2);
-    },
-    onEdited(index2) {
-      if (selfEdit === index2) return;
-      handleEdited(index2);
-    },
-    stop() {
-      st.stopGeneration();
-    },
-    onSwipe(index2) {
-      if (extracting) {
-        swipedWhileExtracting.add(index2);
-        return;
-      }
-      const la = lastApply;
-      if (!la || index2 !== la.lastReplyIndex) return;
-      lastApply = null;
-      const current = state();
-      if (current !== la.after || !deps.restore(la.before, la.after)) {
-        debug(DEBUG_NOT_ROLLED_BACK);
-        return;
-      }
-      extracted = la.from;
-      awaitingReextract = true;
-      for (const id of la.directives) app.context.clearDirective(id);
-      app.refreshContext();
-      debug("Swipe: the extraction for that reply was undone.");
-    },
-    resume() {
-      const s = state();
-      if (!s?.scene) return;
-      extracted = Math.min(s.scene.readIndex ?? st.chatLength(), st.chatLength());
-      lastApply = null;
-      void st.setMembersActive(avatarsOf(s, s.scene.participants)).catch((e) => deps.toast("warn", `Could not restore the scene members: ${e instanceof Error ? e.message : String(e)}`));
-      setSceneContext(s);
-      deps.onUi({ type: "transcript" });
-    },
-    idle: () => background,
-    dispose() {
-      disposed = true;
-    }
-  };
-  st.on("message_received", (i) => {
-    const s = state();
-    if (!s?.scene || disposed) return;
-    const m = st.getChatMessages(Number(i))[0];
-    const unit2 = m && !m.isUser ? unitByAvatar(s, m.avatar) : void 0;
-    if (!unit2) return;
-    app.context.clearDirective(`proposal:${unit2.id}`);
-    app.refreshContext();
-  });
-  st.on("generation_ended", () => {
-    if (!awaitingReextract || disposed) return;
-    awaitingReextract = false;
-    const expect = chatId();
-    background = background.then(async () => {
-      if (!state()?.scene || chatId() !== expect) return;
-      const applied = await extract2(expect);
-      if (applied) deps.onUi({ type: "transcript" });
-    });
-  });
-  return controller;
+function readEmotion(raw) {
+  const parsed = EmotionSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  return EXPRESSION_LABELS.includes(parsed.data.label) ? parsed.data.label : null;
 }
 
 // src/llm/describe.ts
@@ -31119,14 +30628,6 @@ function createEnvelope(host) {
           return { kind: "expired", why: again.expired };
         }
         input = again;
-        const open3 = record(siteId, key);
-        if (open3?.fallbackApplied && site.reroll === "revert") {
-          const why = h2.undo?.(key) ?? undoSnapshot(siteId, key);
-          if (why !== null) {
-            expire(siteId, key, why, chatId);
-            return { kind: "expired", why };
-          }
-        }
         const done = h2.apply(key, parsed, input);
         if (done === "ok") {
           value = parsed;
@@ -31149,6 +30650,7 @@ function createEnvelope(host) {
   function fail(site, h2, key, input, last, attempts, mult, chatId, opts) {
     const existing = record(site.id, key);
     const open3 = existing?.status === "open" ? existing : void 0;
+    const siteHadOpen = host.state() !== null && openRecords(host.state(), { siteId: site.id }).length > 0;
     let fallbackApplied = open3?.fallbackApplied === true;
     if (!fallbackApplied && !opts.skipFallback && h2.fallback) fallbackApplied = h2.fallback(key, input) === true;
     const writes = !opts.noRecord && last.reason !== "no_profile" && site.record !== "none" && !(fallbackApplied && site.reroll === "none");
@@ -31169,7 +30671,7 @@ function createEnvelope(host) {
         }
       }, { expectChatId: chatId });
       recordId = record(site.id, key)?.id;
-      if (site.record === "full" && open3 === void 0) {
+      if (site.record === "full" && !siteHadOpen) {
         host.toast("warn", describeFailure({ label: unitLabel2(site, key), reason: last.reason, budget: last.budget, timeoutMs: host.settings().llmTimeoutMs }));
       }
     }
@@ -31243,6 +30745,702 @@ function createEnvelope(host) {
       snapshots.clear();
     }
   };
+}
+
+// src/scene/directives.ts
+var REASON_TEXT = {
+  too_soon: "too soon",
+  no_trust: "she does not trust the commander enough",
+  not_interested: "she is not interested",
+  committed: "the commander is already committed to someone else",
+  unavailable: "it is not something she would consider"
+};
+function proposalDirectiveText(unitName3, kind, result) {
+  const label2 = kind.replace(/_/g, " ");
+  if (result.receptive) return `${unitName3} is receptive to the commander's proposal (${label2}). Play her accepting it in her own way.`;
+  return `${unitName3} DECLINES the commander's proposal (${label2}). Reason: ${REASON_TEXT[result.reason]}. She will not be talked into it this scene.`;
+}
+var proposalDirective = (unitId, unitName3, kind, result) => ({
+  id: `proposal:${unitId}`,
+  expiresAfter: "next_reply",
+  text: proposalDirectiveText(unitName3, kind, result)
+});
+var nightDirective = (unitName3, framing) => ({
+  id: "night",
+  expiresAfter: "scene",
+  text: `It is night. ${framing} Open the scene with this moment: ${unitName3} came for a reason of her own.`
+});
+function answerDirective(unitId, unitName3, kind, answer, condition) {
+  const label2 = kind.replace(/_/g, " ");
+  const text2 = answer === "accept_condition" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}) on her condition: "${condition ?? ""}". Play her reaction to that, and she holds the commander to it.` : answer === "deflect" ? `The commander deflects ${unitName3}'s proposal (${label2}) with a light touch, neither yes nor no. Play her reaction.` : answer === "accept" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}). Play her reaction to that.` : answer === "accept_secret" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}) but wants it kept secret from the others. Play her reaction to that.` : answer === "decline" ? `The commander DECLINES ${unitName3}'s proposal (${label2}). Play her reaction to being turned down.` : `The commander puts ${unitName3}'s proposal (${label2}) off: not now. Play her reaction.`;
+  return { id: `proposal:${unitId}`, expiresAfter: "next_reply", text: text2 };
+}
+
+// src/scene/sceneController.ts
+var EXTRACT_MAX_MESSAGES = 8;
+var EXTRACT_MAX_CHUNKS = 6;
+var DEBUG_NOT_ROLLED_BACK = "Not rolled back: something changed since.";
+function createSceneController(deps) {
+  const { st, app } = deps;
+  let extracted = 0;
+  let lastApply = null;
+  let summaryKey = null;
+  let extracting = false;
+  const swipedWhileExtracting = /* @__PURE__ */ new Set();
+  let awaitingReextract = false;
+  let pending3 = false;
+  let inflight = null;
+  let openingRun = null;
+  let openedScene = null;
+  let disposed = false;
+  let background = Promise.resolve();
+  const state = () => app.current().state;
+  const chatId = () => st.getActiveChat()?.chatId;
+  const debug = (text2) => {
+    if (deps.settings().debug) deps.toast("info", text2);
+  };
+  const unitById = (s, id) => s.squad.find((u) => u.id === id);
+  const unitByAvatar = (s, avatar) => avatar === void 0 ? void 0 : s.squad.find((u) => u.cardRef === avatar);
+  function dispatch2(action, expect) {
+    const events = app.dispatch(action, { expectChatId: expect });
+    const failed = events.find((e) => e.type === "error");
+    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    return events;
+  }
+  function reflect(events, extremeKinds = []) {
+    const set = [];
+    const s = state();
+    if (!s) return set;
+    for (const e of events) {
+      switch (e.type) {
+        case "relation_changed":
+          deps.onUi({ type: "pulse", unitId: String(e.unitId), axis: e.axis, up: Number(e.delta) > 0, delta: Number(e.delta) });
+          break;
+        case "relation_state_changed":
+          deps.onUi({ type: "cut_in", kind: `state:${String(e.to)}` });
+          break;
+        case "discipline_applied":
+        case "threat_registered":
+        case "discipline_undone":
+          deps.onUi({ type: "discipline" });
+          break;
+        case "proposal_offered": {
+          const p = s.proposals?.find((x) => x.id === e.proposalId);
+          if (p) deps.onUi({ type: "chips", proposal: p });
+          break;
+        }
+        case "proposal_resolved": {
+          const unit2 = unitById(s, String(e.unitId));
+          if (!unit2) break;
+          const result = e.receptive === true ? { receptive: true } : { receptive: false, reason: e.reason };
+          app.context.setDirective(proposalDirective(unit2.id, unit2.displayName, String(e.kind), result));
+          set.push(`proposal:${unit2.id}`);
+          break;
+        }
+      }
+    }
+    for (const kind of extremeKinds) deps.onUi({ type: "cut_in", kind });
+    app.refreshContext();
+    return set;
+  }
+  const avatarsOf = (s, ids) => ids.map((id) => unitById(s, id)?.cardRef).filter((a) => typeof a === "string");
+  function setSceneContext(s) {
+    sceneDirectives(app.context, s, deps.settings());
+    const scene = s.scene;
+    const entry = s.calendar.nightEvent;
+    if (scene?.origin === "night" && entry && (scene.nightEntryId === void 0 || scene.nightEntryId === entry.id)) {
+      const name = unitById(s, entry.unitId)?.displayName ?? "She";
+      app.context.setDirective(nightDirective(name, entry.framing));
+    }
+    app.refreshContext();
+  }
+  function contentInput(s, participants) {
+    const reg = deps.registries();
+    const excluded = disabledCategories(s, reg);
+    const limits = {};
+    for (const id of participants) {
+      const labels = unitById(s, id) ? ownLimitLabels(unitById(s, id), reg) : [];
+      if (labels.length > 0) limits[id] = labels;
+    }
+    const rules2 = rulesOf(s).filter((r) => (r.status === "active" || r.status === "negotiating") && participants.includes(r.unitId)).map((r) => ({ id: r.id, unitId: r.unitId, text: r.text, status: r.status }));
+    return { ...excluded.length > 0 ? { excluded } : {}, ...Object.keys(limits).length > 0 ? { limits } : {}, ...rules2.length > 0 ? { rules: rules2 } : {} };
+  }
+  function unitInput(s, id) {
+    const u = unitById(s, id);
+    const rel = s.relations[id];
+    if (!u || !rel) return null;
+    return { id, name: u.displayName, values: { ...u.values }, likes: u.likes, dislikes: u.dislikes, triggers: u.triggers, stateId: rel.stateId, defectIds: u.defects.map((d) => d.id) };
+  }
+  async function extract2(expect) {
+    let applied = false;
+    const first2 = st.getChatMessages(extracted);
+    if (first2.length > EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES) extracted = first2[first2.length - EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES].index;
+    for (let chunk = 0; chunk < EXTRACT_MAX_CHUNKS; chunk++) {
+      const s0 = state();
+      if (!s0?.scene) return applied;
+      const messages = st.getChatMessages(extracted).slice(0, EXTRACT_MAX_MESSAGES);
+      if (messages.length === 0) return applied;
+      const lastReply = [...messages].reverse().find((m) => !m.isUser);
+      const nextPointer = messages[messages.length - 1].index + 1;
+      if (!lastReply) {
+        extracted = nextPointer;
+        continue;
+      }
+      if (!await extractChunk(s0, messages, lastReply, nextPointer, expect)) return applied;
+      applied = true;
+    }
+    return applied;
+  }
+  const chunkKey = (sceneId, from, to) => `${sceneId}:${from}-${to}`;
+  const parseChunkKey = (key) => {
+    const m = /^(.*):(\d+)-(\d+)$/.exec(key);
+    return m ? { sceneId: m[1], from: Number(m[2]), to: Number(m[3]) } : null;
+  };
+  const chunkMessages = (k) => st.getChatMessages(k.from).filter((m) => m.index <= k.to);
+  function intentInput(s0, messages) {
+    const scene = s0.scene;
+    const units = scene.participants.map((id) => unitInput(s0, id)).filter((u) => u !== null);
+    const nm = (id) => id === "commander" ? s0.commander.name : unitById(s0, id)?.displayName ?? id;
+    return {
+      commanderName: s0.commander.name,
+      channel: "scene",
+      exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
+      units,
+      openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
+      romance: intimacyOf(s0).romance,
+      measures: measureList(deps.registries(), s0),
+      ...contentInput(s0, scene.participants),
+      ...leakInput(s0, deps.registries(), scene.participants),
+      // P12: what the frequency caught about those present (nothing without the trait)
+      ...warnedInput(s0, scene.participants),
+      // P12: the units the commander has an open warning about
+      ...overrideInput(s0, deps.registries(), scene.participants),
+      // P13: the warden's open override, while she is present
+      ...expectationInput(s0, deps.registries(), scene.participants),
+      // P13: her expectations, while she is present
+      ...conspireInput(s0, deps.registries(), scene.participants)
+      // P13: who the commander may enlist against her, while she is not present
+    };
+  }
+  function dropSuperseded(_s0, sceneId, from, key) {
+    const now = state();
+    for (const r of now ? openRecords(now, { siteId: "scene.intents" }) : []) {
+      const k = parseChunkKey(r.key);
+      if (k && k.sceneId === sceneId && k.from === from && r.key !== key) app.dispatch({ type: "generation/close", payload: { id: r.id, outcome: "dropped" } }, { expectChatId: chatId() });
+    }
+  }
+  async function extractChunk(s0, messages, _lastReply, _nextPointer, expect) {
+    const scene = s0.scene;
+    for (const m of messages) {
+      if (m.isUser) continue;
+      const speaker = scene.participants.map((id) => unitById(s0, id)).find((u) => u !== void 0 && u.displayName === m.name);
+      if (speaker) deps.onUnitReply?.(speaker.id, m.text);
+    }
+    const key = chunkKey(scene.id, extracted, messages[messages.length - 1].index);
+    const from = extracted;
+    swipedWhileExtracting.clear();
+    extracting = true;
+    let outcome;
+    try {
+      outcome = await deps.generations.generate("scene.intents", key);
+    } finally {
+      extracting = false;
+    }
+    if (disposed || chatId() !== expect) return false;
+    if (outcome.kind === "failed") {
+      debug("Intent extraction failed; nothing changed.");
+      dropSuperseded(s0, scene.id, from, key);
+    }
+    return outcome.kind === "applied";
+  }
+  deps.generations.bind("scene.intents", {
+    build(key) {
+      const k = parseChunkKey(key);
+      const s0 = state();
+      if (!k || !s0?.scene || s0.scene.id !== k.sceneId) return { expired: "The scene is over." };
+      if (extracted > k.to) return { expired: "Those lines were read already." };
+      const messages = chunkMessages(k);
+      if (messages.length === 0) return { expired: "Those lines are no longer in the chat." };
+      return intentInput(s0, messages);
+    },
+    // P8: the lowest disposition floor moved by the setting; the engine then judges each unit
+    parse: (raw, input) => readIntentOutput(raw, input, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }),
+    apply(key, result) {
+      const k = parseChunkKey(key);
+      if (!k || disposed) return { stale: true };
+      const messages = chunkMessages(k);
+      const lastReply = [...messages].reverse().find((m) => !m.isUser);
+      if (!lastReply) return { stale: true };
+      if (messages.some((m) => swipedWhileExtracting.has(m.index))) {
+        swipedWhileExtracting.clear();
+        awaitingReextract = true;
+        debug("A reply was swiped while it was being read; the reading was dropped.");
+        return { stale: true };
+      }
+      const expect = chatId();
+      const from = extracted;
+      const nextPointer = k.to + 1;
+      const before = state();
+      if (!before || !before.scene) return { stale: true };
+      const flaggedHere = result.contentViolations.map((v) => v.category);
+      if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(", ")}.`);
+      const events = dispatch2({
+        type: "intents/apply",
+        payload: {
+          channel: "scene",
+          intents: result.intents,
+          readIndex: nextPointer,
+          messageRef: `chat:${lastReply.index}`,
+          ...flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {},
+          ...result.sceneTone !== null ? { tone: result.sceneTone } : {}
+        }
+      }, expect);
+      if (events.some((e) => e.type === "error")) return { stale: true };
+      const after = state();
+      extracted = nextPointer;
+      const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
+      const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
+      if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before, after, directives };
+      if (deps.settings().spriteMode === "emotion_pick") {
+        for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
+      }
+      const now = state();
+      for (const r of now ? openRecords(now, { siteId: "scene.intents" }) : []) {
+        const o = parseChunkKey(r.key);
+        if (o && o.sceneId === k.sceneId && o.from >= k.from && o.to <= k.to && r.key !== key) app.dispatch({ type: "generation/close", payload: { id: r.id, outcome: "applied" } }, { expectChatId: expect });
+      }
+      debug(`Extracted ${result.intents.events.length} event(s).`);
+      return "ok";
+    },
+    // REROLL: the exchange that was read last, while nothing else changed (the same rule as a swipe)
+    canUndo(key) {
+      const la = lastApply;
+      const s0 = state();
+      if (!la || !s0?.scene || chunkKey(s0.scene.id, la.from, la.to) !== key) return "Nothing was read there.";
+      return state() === la.after ? null : MOVED_REASON;
+    },
+    undo(key) {
+      const la = lastApply;
+      const s0 = state();
+      if (!la || !s0?.scene || chunkKey(s0.scene.id, la.from, la.to) !== key) return "Nothing was read there.";
+      if (s0 !== la.after || !deps.restore(la.before, la.after)) return MOVED_REASON;
+      lastApply = null;
+      extracted = la.from;
+      for (const id of la.directives) app.context.clearDirective(id);
+      app.refreshContext();
+      return null;
+    }
+  });
+  deps.generations.bind("emotion.pick", {
+    build(unitId) {
+      const s0 = state();
+      const unit2 = s0 ? unitById(s0, unitId) : void 0;
+      const scene = s0?.scene;
+      if (!s0 || !scene || !unit2) return { expired: "She is not in the scene." };
+      const last = [...st.getChatMessages(Math.min(scene.startIndex, st.chatLength()))].reverse().find((m) => !m.isUser && m.avatar === unit2.cardRef);
+      return last ? { unitName: unit2.displayName, text: last.text } : { expired: "She has not spoken." };
+    },
+    parse: (raw) => readEmotion(raw),
+    apply(unitId, label2) {
+      deps.onUi({ type: "sprite", unitId, label: label2 });
+      return "ok";
+    }
+  });
+  async function showSprites(replies, extractedNow) {
+    const s = state();
+    if (!s) return;
+    const mode = deps.settings().spriteMode;
+    const latest = /* @__PURE__ */ new Map();
+    for (const r of replies) if (r.avatar) latest.set(r.avatar, r);
+    for (const [avatar, msg] of latest) {
+      const unit2 = unitByAvatar(s, avatar);
+      if (!unit2) continue;
+      if (mode === "native") {
+        const label2 = await st.getLastExpression(avatar).catch(() => null);
+        if (label2) deps.onUi({ type: "sprite", unitId: unit2.id, label: label2 });
+      } else if (!extractedNow) {
+        await deps.generations.generate("emotion.pick", unit2.id);
+      }
+    }
+  }
+  async function sendNow(t) {
+    const expect = chatId();
+    awaitingReextract = false;
+    try {
+      const before = st.chatLength();
+      try {
+        await st.sendUserMessage(t);
+      } catch (e) {
+        deps.toast("error", `Could not send: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+      if (disposed || chatId() !== expect || !state()?.scene) return;
+      if (!st.getChatMessages(before).some((m) => !m.isUser)) {
+        deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
+        deps.onUi({ type: "transcript" });
+        return;
+      }
+      const events = dispatch2({ type: "scene/exchange", payload: {} }, expect);
+      const exchanges = Number(events.find((e) => e.type === "scene_exchange")?.exchanges ?? 0);
+      deps.onUi({ type: "transcript" });
+      const settings = deps.settings();
+      const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
+      const applied = due ? await extract2(expect) : false;
+      await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
+      if (deps.memory) background = background.then(() => deps.memory.digestIfDue()).catch(() => {
+      });
+      if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
+      deps.onUi({ type: "transcript" });
+    } finally {
+      pending3 = false;
+    }
+  }
+  let selfEdit = null;
+  function handleEdited(index2) {
+    const la = lastApply;
+    deps.onUi({ type: "transcript" });
+    if (extracting) {
+      swipedWhileExtracting.add(index2);
+      return;
+    }
+    if (!la || index2 < la.from || index2 > la.lastReplyIndex) {
+      if (index2 < extracted) debug("That message has already been read; what was taken from it stays.");
+      return;
+    }
+    awaitingReextract = false;
+    controller.onSwipe(la.lastReplyIndex);
+    if (!awaitingReextract) return;
+    awaitingReextract = false;
+    const expect = chatId();
+    background = background.then(async () => {
+      if (!state()?.scene || chatId() !== expect) return;
+      await extract2(expect);
+      deps.onUi({ type: "transcript" });
+    });
+  }
+  const lastIntentsKey = () => {
+    const scene = state()?.scene;
+    return lastApply && scene ? chunkKey(scene.id, lastApply.from, lastApply.to) : null;
+  };
+  async function afterEnd(expect) {
+    if (chatId() === expect) {
+      clearSceneDirectives(app.context);
+      app.context.clearDirective("night");
+      const now = state();
+      app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:"));
+      app.refreshContext();
+      const living2 = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+      try {
+        await st.setMembersActive(living2.map((u) => u.cardRef).filter((a) => typeof a === "string"));
+      } catch (e) {
+        deps.toast("warn", `Could not re-activate the squad in the group chat: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    deps.onUi({ type: "transcript" });
+  }
+  function summaryInput(s, sceneId) {
+    const reg = deps.registries();
+    const names = (ids) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
+    const excluded = disabledCategories(s, reg);
+    const scene = s.scene;
+    if (scene && scene.id === sceneId) {
+      const flaggedIndexes = new Set((scene.violations ?? []).map((v) => v.index));
+      const digest = scene.digest;
+      const tail = st.getChatMessages(Math.min(digest ? digest.upTo + 1 : scene.startIndex, st.chatLength())).map((m) => ({
+        speaker: m.isUser ? s.commander.name : m.name,
+        text: m.text,
+        ...flaggedIndexes.has(m.index) ? { flagged: true } : {}
+      }));
+      return {
+        location: String(reg.locations.get(scene.locationId)?.name ?? scene.locationId),
+        participants: names(scene.participants),
+        transcript: digest ? [{ speaker: "Digest of the scene so far", text: digest.text }, ...tail] : tail,
+        ...excluded.length > 0 ? { excluded } : {}
+      };
+    }
+    const mark = s.memory.scenes?.find((m) => m.sceneId === sceneId);
+    if (!mark) return { expired: "That scene is no longer remembered." };
+    if (mark.summarized) return { expired: "That scene has its summary already." };
+    if (mark.participants === void 0 || mark.locationId === void 0) return { expired: "That scene ended before late summaries existed." };
+    if (st.chatLength() <= mark.to) return { expired: "The chat is shorter than that scene." };
+    return {
+      location: String(reg.locations.get(mark.locationId)?.name ?? mark.locationId),
+      participants: names(mark.participants),
+      transcript: st.getChatMessages(mark.from).filter((m) => m.index <= mark.to).map((m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text })),
+      ...excluded.length > 0 ? { excluded } : {}
+    };
+  }
+  deps.generations.bind("scene.summary", {
+    build(sceneId) {
+      const s0 = state();
+      return s0 ? summaryInput(s0, sceneId) : { expired: "No campaign is open." };
+    },
+    parse: (raw, input) => readSceneSummary(raw, input),
+    apply(sceneId, summary) {
+      const expect = chatId();
+      const before = state();
+      if (!before) return { stale: true };
+      if (summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(", ")}.`);
+      if (before.scene?.id === sceneId) {
+        const events2 = dispatch2({ type: "scene/end", payload: { summary, endIndex: st.chatLength() - 1 } }, expect);
+        const after = state();
+        if (events2.some((e) => e.type === "error") || !after) return { stale: true };
+        deps.generations.takeSnapshot("scene.summary", sceneId, before, after);
+        summaryKey = sceneId;
+        return "ok";
+      }
+      const events = dispatch2({ type: "scene/late_summary", payload: { sceneId, summary } }, expect);
+      return events.some((e) => e.type === "error") ? { stale: true } : "ok";
+    },
+    fallback(sceneId) {
+      const open3 = state()?.scene;
+      if (!open3 || open3.id !== sceneId) return false;
+      const events = dispatch2({ type: "scene/end", payload: { endIndex: st.chatLength() - 1 } }, chatId());
+      return !events.some((e) => e.type === "error");
+    }
+  });
+  const controller = {
+    async start(opts) {
+      const expect = chatId();
+      const s = state();
+      if (!s) return false;
+      extracted = st.chatLength();
+      openedScene = null;
+      lastApply = null;
+      awaitingReextract = false;
+      const events = dispatch2({
+        type: "scene/start",
+        payload: { locationId: opts.locationId, participants: opts.participants, origin: opts.origin, consumesSlot: opts.consumesSlot, startIndex: extracted, nightEntryId: opts.nightEntryId }
+      }, expect);
+      if (events.some((e) => e.type === "error")) return false;
+      try {
+        await st.setMembersActive(avatarsOf(s, opts.participants));
+      } catch (e) {
+        dispatch2({ type: "scene/abort", payload: {} }, expect);
+        if (opts.origin === "activity") dispatch2({ type: "calendar/cancel_scene", payload: {} }, expect);
+        deps.toast("error", `Could not start the scene: the group chat refused the change (${e instanceof Error ? e.message : String(e)}).`);
+        return false;
+      }
+      const now = state();
+      if (now) setSceneContext(now);
+      deps.onUi({ type: "transcript" });
+      return true;
+    },
+    send(text2) {
+      if (text2.trim() !== "" && pending3 && openingRun) return openingRun.then(() => controller.send(text2));
+      if (text2.trim() === "" || pending3 || !state()?.scene) return Promise.resolve();
+      pending3 = true;
+      const run = sendNow(text2.trim());
+      inflight = run;
+      void run.finally(() => {
+        if (inflight === run) inflight = null;
+      });
+      return run;
+    },
+    opening() {
+      const scene = state()?.scene;
+      if (pending3 || !scene) return Promise.resolve();
+      if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
+      openedScene = scene.id;
+      pending3 = true;
+      const run = (async () => {
+        const expect = chatId();
+        try {
+          const before = st.chatLength();
+          try {
+            await st.triggerReplies();
+          } catch (e) {
+            deps.toast("error", `Could not start the conversation: ${e instanceof Error ? e.message : String(e)}`);
+            return;
+          }
+          if (disposed || chatId() !== expect || !state()?.scene) return;
+          const replies = st.getChatMessages(before).filter((m) => !m.isUser);
+          deps.onUi({ type: "transcript" });
+          if (replies.length === 0) {
+            deps.toast("warn", "Nobody spoke first. Say something to start, or use \u21BB to try again.");
+            return;
+          }
+          await showSprites(replies, false);
+          deps.onUi({ type: "transcript" });
+        } finally {
+          pending3 = false;
+        }
+      })();
+      inflight = run;
+      openingRun = run;
+      void run.finally(() => {
+        if (inflight === run) inflight = null;
+        if (openingRun === run) openingRun = null;
+      });
+      return run;
+    },
+    propose(kind, unitId) {
+      const s = state();
+      const target = unitId ?? s?.scene?.participants[0];
+      if (!s?.scene || !target) return;
+      const events = dispatch2({ type: "proposal/commander", payload: { unitId: target, kind, channel: "scene" } }, chatId());
+      if (!events.some((e) => e.type === "error")) reflect(events);
+    },
+    follow() {
+      const s = state();
+      if (!s?.scene?.lead) return;
+      const events = dispatch2({ type: "bonds/follow", payload: {} }, chatId());
+      if (!events.some((e) => e.type === "error")) {
+        reflect(events);
+        app.refreshContext();
+      }
+    },
+    ask() {
+      const s = state();
+      const lead = s?.scene?.lead;
+      const unit2 = lead ? unitById(s, lead.unitId) : void 0;
+      if (!lead || !unit2) return;
+      app.context.setDirective(askDirective(unit2.id, unit2.displayName));
+      app.refreshContext();
+    },
+    limit(text2) {
+      const s = state();
+      if (!s?.scene?.lead || text2.trim() === "") return;
+      const events = dispatch2({ type: "bonds/limit", payload: { text: text2 } }, chatId());
+      if (!events.some((e) => e.type === "error")) {
+        deps.onUi({ type: "transcript" });
+        app.refreshContext();
+      }
+    },
+    answer(proposalId, answer, condition) {
+      const s = state();
+      const p = s?.proposals?.find((x) => x.id === proposalId);
+      const events = dispatch2({ type: "proposal/answer", payload: { proposalId, answer, ...condition !== void 0 ? { condition } : {} } }, chatId());
+      if (events.some((e) => e.type === "error")) return;
+      if (p && s) {
+        const unit2 = unitById(s, p.unitId);
+        if (unit2 && p.from === "unit") app.context.setDirective(answerDirective(unit2.id, unit2.displayName, p.kind, answer, condition));
+      }
+      reflect(events);
+    },
+    async end() {
+      await inflight?.catch(() => {
+      });
+      await deps.memory?.idle();
+      const expect = chatId();
+      const s = state();
+      const scene = s?.scene;
+      if (!s || !scene) return;
+      pending3 = true;
+      try {
+        if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
+        await deps.generations.generate("scene.summary", scene.id);
+      } finally {
+        pending3 = false;
+        lastApply = null;
+        awaitingReextract = false;
+        await afterEnd(expect);
+      }
+    },
+    rerollLast: async () => {
+      const key = lastIntentsKey();
+      if (key === null) return;
+      const out = await deps.generations.reroll("scene.intents", key);
+      if (out.kind === "applied") deps.onUi({ type: "transcript" });
+    },
+    rerollState: () => {
+      const key = lastIntentsKey();
+      return key === null ? { enabled: false, reason: "Nothing was read yet." } : deps.generations.rerollState("scene.intents", key);
+    },
+    async rerollSummary() {
+      const key = summaryKey;
+      if (key === null) return;
+      const expect = chatId();
+      pending3 = true;
+      try {
+        await deps.generations.reroll("scene.summary", key);
+      } finally {
+        pending3 = false;
+        const now = state();
+        if (now?.scene) controller.resume();
+        else await afterEnd(expect);
+      }
+    },
+    summaryRerollState: () => summaryKey === null ? { enabled: false, reason: "No scene has ended yet." } : deps.generations.rerollState("scene.summary", summaryKey),
+    transcript() {
+      const scene = state()?.scene;
+      if (!scene) return [];
+      return st.getChatMessages(Math.min(scene.startIndex, st.chatLength()));
+    },
+    async edit(index2, text2) {
+      const t = text2.trim();
+      if (t === "" || !state()?.scene) return;
+      selfEdit = index2;
+      try {
+        await st.editMessage(index2, t);
+      } catch (e) {
+        deps.toast("error", `Could not edit the message: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      } finally {
+        selfEdit = null;
+      }
+      handleEdited(index2);
+    },
+    onEdited(index2) {
+      if (selfEdit === index2) return;
+      handleEdited(index2);
+    },
+    stop() {
+      st.stopGeneration();
+    },
+    onSwipe(index2) {
+      if (extracting) {
+        swipedWhileExtracting.add(index2);
+        return;
+      }
+      const la = lastApply;
+      if (!la || index2 !== la.lastReplyIndex) return;
+      lastApply = null;
+      const current = state();
+      if (current !== la.after || !deps.restore(la.before, la.after)) {
+        debug(DEBUG_NOT_ROLLED_BACK);
+        return;
+      }
+      extracted = la.from;
+      awaitingReextract = true;
+      for (const id of la.directives) app.context.clearDirective(id);
+      app.refreshContext();
+      debug("Swipe: the extraction for that reply was undone.");
+    },
+    resume() {
+      const s = state();
+      if (!s?.scene) return;
+      extracted = Math.min(s.scene.readIndex ?? st.chatLength(), st.chatLength());
+      lastApply = null;
+      void st.setMembersActive(avatarsOf(s, s.scene.participants)).catch((e) => deps.toast("warn", `Could not restore the scene members: ${e instanceof Error ? e.message : String(e)}`));
+      setSceneContext(s);
+      deps.onUi({ type: "transcript" });
+    },
+    idle: () => background,
+    dispose() {
+      disposed = true;
+    }
+  };
+  st.on("message_received", (i) => {
+    const s = state();
+    if (!s?.scene || disposed) return;
+    const m = st.getChatMessages(Number(i))[0];
+    const unit2 = m && !m.isUser ? unitByAvatar(s, m.avatar) : void 0;
+    if (!unit2) return;
+    app.context.clearDirective(`proposal:${unit2.id}`);
+    app.refreshContext();
+  });
+  st.on("generation_ended", () => {
+    if (!awaitingReextract || disposed) return;
+    awaitingReextract = false;
+    const expect = chatId();
+    background = background.then(async () => {
+      if (!state()?.scene || chatId() !== expect) return;
+      const applied = await extract2(expect);
+      if (applied) deps.onUi({ type: "transcript" });
+    });
+  });
+  return controller;
 }
 
 // src/ui/special/handlerPanel.ts
@@ -41558,12 +41756,24 @@ function createApp(st, deps) {
     }
     sceneScreen?.handle(e);
   };
-  const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries });
+  const generations = createEnvelope({
+    st,
+    settings: () => getSettings(st),
+    registries: () => registries,
+    state: () => state,
+    chatId: () => st.getActiveChat()?.chatId,
+    dispatch: (a, o) => api.dispatch(a, o),
+    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
+    contentLine: () => contentLine(state, registries),
+    toast: (kind, text2) => toast(kind, text2)
+  });
+  const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries, generations });
   const sceneDeps = {
     st,
     app: sceneApp,
     memory,
     restore: (before, expected) => api.restoreSnapshot(before, expected),
+    generations,
     registries: () => registries,
     settings: () => getSettings(st),
     contentLine: () => contentLine(state, registries),
@@ -41585,17 +41795,6 @@ function createApp(st, deps) {
     contentLine: () => contentLine(state, registries),
     toast: (kind, text2) => toast(kind, text2)
   };
-  const generations = createEnvelope({
-    st,
-    settings: () => getSettings(st),
-    registries: () => registries,
-    state: () => state,
-    chatId: () => st.getActiveChat()?.chatId,
-    dispatch: (a, o) => api.dispatch(a, o),
-    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
-    contentLine: () => contentLine(state, registries),
-    toast: (kind, text2) => toast(kind, text2)
-  });
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a), judge: { needsJudge: (a) => warden.needsJudge(a), judgeThen: (a) => warden.judgeThen(a) } });
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });

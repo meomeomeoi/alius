@@ -8,11 +8,12 @@ import type { CampaignState, Fact } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { foldMemory } from '../llm/calls/memoryFold';
 import { retellRumor } from '../llm/calls/rumorRetell';
-import { digestScene } from '../llm/calls/sceneSummary';
+import { readDigest, type SceneDigest, type SceneSummaryInput } from '../llm/calls/sceneSummary';
+import type { Envelope } from '../llm/envelope';
 import { estTokens } from '../llm/text';
 import type { SceneDeps } from './sceneController';
 
-export type MemoryDeps = Pick<SceneDeps, 'st' | 'app' | 'settings'> & { registries: () => Registries };
+export type MemoryDeps = Pick<SceneDeps, 'st' | 'app' | 'settings'> & { registries: () => Registries; /** P14: the envelope; the memory binds its sites on creation. */ generations: Envelope };
 
 export interface MemoryController {
   /**
@@ -108,6 +109,37 @@ export function createMemoryController(deps: MemoryDeps): MemoryController {
     }
   }
 
+  // the `scene.digest` site (key `<sceneId>:<upTo>`): the digest of the scene so far, up to the message `upTo`
+  deps.generations.bind<SceneSummaryInput, SceneDigest>('scene.digest', {
+    build(key) {
+      const m = /^(.*):(\d+)$/.exec(key);
+      const s = state();
+      const scene = s?.scene;
+      if (!m || !s || !scene || scene.id !== m[1]) return { expired: 'The scene is over.' };
+      const upTo = Number(m[2]);
+      if (scene.digest && scene.digest.upTo >= upTo) return { expired: 'A later digest covers it.' };
+      const from = scene.digest ? scene.digest.upTo + 1 : scene.startIndex;
+      const slice = st.getChatMessages(Math.min(from, st.chatLength())).filter((x) => x.index <= upTo);
+      if (slice.length === 0) return { expired: 'Those lines are no longer in the chat.' };
+      const flagged = new Set((scene.violations ?? []).map((v) => v.index));
+      const excluded = disabledCategories(s, deps.registries());
+      return {
+        location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
+        participants: scene.participants.map((id) => ({ id, name: nameOf(s, id) })),
+        transcript: slice.map((x) => ({ speaker: x.isUser ? s.commander.name : x.name, text: x.text, ...(flagged.has(x.index) ? { flagged: true as const } : {}) })),
+        ...(excluded.length > 0 ? { excluded } : {}),
+        ...(scene.digest ? { previous: scene.digest.text } : {}),
+        mode: 'digest' as const,
+      };
+    },
+    parse: (raw, input) => readDigest(raw as never, input),
+    apply(key, result) {
+      const upTo = Number(/(\d+)$/.exec(key)?.[1]);
+      const events = app.dispatch({ type: 'scene/digest', payload: { text: result.digest, upTo, facts: result.facts } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';
+    },
+  });
+
   return {
     run() {
       if (folding) return Promise.resolve();
@@ -143,17 +175,8 @@ export function createMemoryController(deps: MemoryDeps): MemoryController {
           if (slice.length === 0) return;
           const line = (m: (typeof slice)[number]): { speaker: string; text: string } => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text });
           if (slice.reduce((n, m) => n + estTokens(`${line(m).speaker}: ${line(m).text}`), 0) <= TUNING.memory.digestThresholdTokens) return;
-          const flagged = new Set((scene.violations ?? []).map((v) => v.index));
-          const excluded = disabledCategories(s, deps.registries());
-          const result = await digestScene({
-            location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
-            participants: scene.participants.map((id) => ({ id, name: nameOf(s, id) })),
-            transcript: slice.map((m) => ({ ...line(m), ...(flagged.has(m.index) ? { flagged: true as const } : {}) })),
-            ...(excluded.length > 0 ? { excluded } : {}),
-            ...(scene.digest ? { previous: scene.digest.text } : {}),
-          }, { st, settings: deps.settings() });
-          if (!result) return;
-          app.dispatch({ type: 'scene/digest', payload: { text: result.digest, upTo: slice[slice.length - 1].index, facts: result.facts } }, { expectChatId: expect });
+          // the call, the record of a failure and the dispatch are the envelope's; a failed digest is quiet and the next exchange tries again
+          await deps.generations.generate('scene.digest', `${scene.id}:${slice[slice.length - 1].index}`);
         } catch (e) {
           console.warn('[Alius] scene digest failed', e);
         } finally {

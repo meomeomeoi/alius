@@ -138,6 +138,16 @@ describe('generate', () => {
     expect(w.toasts).toHaveLength(1);
   });
 
+  it('a failure of another key of a site that already shows a chip does not toast again', async () => {
+    const w = world();
+    w.bind('test.free');
+    w.st.profileReplies = [INVALID_OBJECT, INVALID_OBJECT];
+    await w.env.generate('test.free', 'k1');
+    await w.env.generate('test.free', 'k2');
+    expect(records(w)).toHaveLength(2);
+    expect(w.toasts).toHaveLength(1);
+  });
+
   it('fallback runs next to the record and sets fallbackApplied', async () => {
     const w = world();
     let ran = 0;

@@ -375,13 +375,25 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     sceneScreen?.handle(e);
   };
+  const generations = createEnvelope({
+    st,
+    settings: () => getSettings(st),
+    registries: () => registries,
+    state: () => state,
+    chatId: () => st.getActiveChat()?.chatId,
+    dispatch: (a, o) => api.dispatch(a, o),
+    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
+    contentLine: () => contentLine(state, registries),
+    toast: (kind, text) => toast(kind, text),
+  });
   /** P3b: folds old facts into dossiers, retells rumors, digests long scenes. */
-  const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries });
+  const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries, generations });
   const sceneDeps = {
     st,
     app: sceneApp,
     memory,
     restore: (before: CampaignState, expected: CampaignState) => api.restoreSnapshot(before, expected),
+    generations,
     registries: () => registries,
     settings: () => getSettings(st),
     contentLine: () => contentLine(state, registries), // P9d: the same text as the `content` directive, for the prose calls
@@ -399,17 +411,6 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     contentLine: () => contentLine(state, registries),
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };
-  const generations = createEnvelope({
-    st,
-    settings: () => getSettings(st),
-    registries: () => registries,
-    state: () => state,
-    chatId: () => st.getActiveChat()?.chatId,
-    dispatch: (a, o) => api.dispatch(a, o),
-    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
-    contentLine: () => contentLine(state, registries),
-    toast: (kind, text) => toast(kind, text),
-  });
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a), judge: { needsJudge: (a) => warden.needsJudge(a), judgeThen: (a) => warden.judgeThen(a) } });
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });

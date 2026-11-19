@@ -27,7 +27,7 @@ const aged = (s: CampaignState): void => {
   oldFacts(s, BEA, 7);
 };
 const controllerOf = (h: ReturnType<typeof harness>) => createMemoryController({
-  st: h.st, registries: () => reg, settings: () => h.settings,
+  st: h.st, registries: () => reg, settings: () => h.settings, generations: h.generations,
   app: {
     dispatch: (a: { type: string }, o?: { expectChatId?: string }) => {
       if (o?.expectChatId !== undefined && h.st.getActiveChat()?.chatId !== o.expectChatId) return [{ type: 'error', code: 'chat_changed' }];

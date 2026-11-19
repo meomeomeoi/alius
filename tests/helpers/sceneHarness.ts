@@ -7,6 +7,8 @@ import { createMemoryController, type MemoryController } from '../../src/scene/m
 import { createSceneController, type SceneController, type SceneUiEvent } from '../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
+import type { Envelope } from '../../src/llm/envelope';
+import { testEnvelope } from './envelopeHost';
 import { campaign } from './world';
 
 
@@ -16,6 +18,7 @@ export interface Harness {
   context: ContextBuilder;
   controller: SceneController;
   comms: Comms;
+  generations: Envelope;
   /** Only with `harness(reg, { memory: true })`. */
   memory?: MemoryController;
   ui: SceneUiEvent[];
@@ -63,21 +66,25 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
     context,
     refreshContext: () => context.apply(st, state, settings.contextTokenCap),
   };
-  const memory = opts.memory ? createMemoryController({ st, app: app as never, settings: () => settings, registries: () => reg }) : undefined;
+  const restore = (before: CampaignState, expected: CampaignState) => {
+    if (state !== expected) return false;
+    state = before;
+    return true;
+  };
+  const generations = testEnvelope({
+    st, reg, settings: () => settings, state: () => state, dispatch, restore, toast: (kind, text) => { toasts.push({ kind, text }); },
+  });
+  const memory = opts.memory ? createMemoryController({ st, app: app as never, settings: () => settings, registries: () => reg, generations }) : undefined;
   const deps = {
-    st, app, registries: () => reg, settings: () => settings, ...(memory ? { memory } : {}),
-    restore: (before: CampaignState, expected: CampaignState) => {
-      if (state !== expected) return false;
-      state = before;
-      return true;
-    },
+    st, app, registries: () => reg, settings: () => settings, generations, ...(memory ? { memory } : {}),
+    restore,
     toast: (kind: string, text: string) => { toasts.push({ kind, text }); },
     onUi: (e: SceneUiEvent) => { ui.push(e); },
   };
   const controller = createSceneController(deps as never);
   const comms = createComms({ ...deps, scene: controller } as never);
   return {
-    st, reg, context, controller, comms, ui, toasts, settings, actions, ...(memory ? { memory } : {}),
+    st, reg, context, controller, comms, generations, ui, toasts, settings, actions, ...(memory ? { memory } : {}),
     state: () => state,
     set: (s) => { state = s; },
     dispatch: (a) => dispatch(a),

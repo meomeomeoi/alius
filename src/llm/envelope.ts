@@ -164,14 +164,6 @@ export function createEnvelope(host: EnvelopeHost): Envelope {
           return { kind: 'expired', why: again.expired };
         }
         input = again;
-        const open = record(siteId, key);
-        if (open?.fallbackApplied && site.reroll === 'revert') {
-          const why = h.undo?.(key) ?? undoSnapshot(siteId, key);
-          if (why !== null) {
-            expire(siteId, key, why, chatId);
-            return { kind: 'expired', why };
-          }
-        }
         const done = h.apply(key, parsed, input);
         if (done === 'ok') {
           value = parsed;
@@ -200,6 +192,8 @@ export function createEnvelope(host: EnvelopeHost): Envelope {
   ): GenerationOutcome<V> {
     const existing = record(site.id, key);
     const open = existing?.status === 'open' ? existing : undefined;
+    // one toast while a chip of the site is already up: a failing model does not shout at every exchange
+    const siteHadOpen = host.state() !== null && openRecords(host.state()!, { siteId: site.id }).length > 0;
     let fallbackApplied = open?.fallbackApplied === true;
     if (!fallbackApplied && !opts.skipFallback && h.fallback) fallbackApplied = h.fallback(key, input) === true;
     const writes = !opts.noRecord && last.reason !== 'no_profile' && site.record !== 'none' && !(fallbackApplied && site.reroll === 'none');
@@ -213,7 +207,7 @@ export function createEnvelope(host: EnvelopeHost): Envelope {
         },
       }, { expectChatId: chatId });
       recordId = record(site.id, key)?.id;
-      if (site.record === 'full' && open === undefined) {
+      if (site.record === 'full' && !siteHadOpen) {
         host.toast('warn', describeFailure({ label: unitLabel(site, key), reason: last.reason, budget: last.budget, timeoutMs: host.settings().llmTimeoutMs }));
       }
     }

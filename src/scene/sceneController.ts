@@ -7,12 +7,14 @@ import { openPromises } from '../engine/memory';
 import { intimacyOf } from '../engine/relations/gain';
 import type { ProposalAnswer } from '../engine/relations/proposals';
 import type { CampaignState, PendingProposal, SceneOrigin, Unit } from '../engine/state/types';
-import { pickEmotion } from '../llm/calls/emotionPick';
+import { readEmotion } from '../llm/calls/emotionPick';
 import { leakInput } from '../engine/special/frequency/leaks';
 import { conspireInput, expectationInput, overrideInput } from '../engine/warden';
-import { extractIntents, type IntentExtractInput } from '../llm/calls/intentExtract';
+import { readIntentOutput, type ExpressionLabel, type IntentExtractInput } from '../llm/calls/intentExtract';
 import { confidenceFloor } from '../engine/worldOptions';
-import { summarizeScene } from '../llm/calls/sceneSummary';
+import { readSceneSummary, type SceneSummary, type SceneSummaryInput } from '../llm/calls/sceneSummary';
+import { MOVED_REASON, type Envelope } from '../llm/envelope';
+import { openRecords } from '../engine/generations';
 import type { AliusSettings } from '../settings';
 import type { ChatMessage, StAdapter } from '../st/adapter';
 import type { AliusApp } from '../app';
@@ -46,6 +48,8 @@ export interface SceneDeps {
   /** P9d: the content exclusion line a prose call appends to its system prompt. */
   contentLine?: () => string;
   toast: Toast;
+  /** P14: the envelope every model call runs through; the controller binds its sites (`scene.intents`, `scene.summary`, `emotion.pick`) on creation. */
+  generations: Envelope;
   onUi: (e: SceneUiEvent) => void;
   /** P9c: a line a soldier of the scene said in the last exchange (her first reply after a lost question wager answers it). */
   onUnitReply?: (unitId: string, text: string) => void;
@@ -75,6 +79,13 @@ export interface SceneController {
   /** `condition` is the text of an `accept_condition` answer (P9c). */
   answer(proposalId: string, answer: ProposalAnswer, condition?: string): void;
   end(): Promise<void>;
+  /** P14: REROLL of the last exchange's reading (`scene.intents`): the swipe undo, then the same lines are read again. */
+  rerollLast(): Promise<void>;
+  /** Whether REROLL of the last reading is possible, and why not. */
+  rerollState(): { enabled: boolean; reason?: string };
+  /** P14: REROLL of the summary of the scene that ended last (`scene.summary`): reopens it while nothing else happened and ends it with a new summary. */
+  rerollSummary(): Promise<void>;
+  summaryRerollState(): { enabled: boolean; reason?: string };
   /** Rewrites a message of the scene in the chat. If it belongs to the last exchange, that exchange's extraction is undone and read again. */
   edit(index: number, text: string): Promise<void>;
   /** A message was edited in the chat itself (not through `edit`). */
@@ -103,7 +114,9 @@ export function createSceneController(deps: SceneDeps): SceneController {
   /** First chat index not yet read by `intent_extract`. */
   let extracted = 0;
   /** The last applied extraction, so a swipe of its reply can undo exactly that. */
-  let lastApply: { lastReplyIndex: number; from: number; before: CampaignState; after: CampaignState; directives: string[] } | null = null;
+  let lastApply: { lastReplyIndex: number; from: number; to: number; before: CampaignState; after: CampaignState; directives: string[] } | null = null;
+  /** P14: the scene whose summary succeeded last (the key of its REROLL). */
+  let summaryKey: string | null = null;
   /** True while `intent_extract` runs; a swipe during it cannot be rolled back (nothing applied yet), so it is noted. */
   let extracting = false;
   const swipedWhileExtracting = new Set<number>();
@@ -232,13 +245,19 @@ export function createSceneController(deps: SceneDeps): SceneController {
     return applied;
   }
 
-  async function extractChunk(
-    s0: CampaignState, messages: ChatMessage[], lastReply: ChatMessage, nextPointer: number, expect: string | undefined,
-  ): Promise<boolean> {
+  const chunkKey = (sceneId: string, from: number, to: number): string => `${sceneId}:${from}-${to}`;
+  const parseChunkKey = (key: string): { sceneId: string; from: number; to: number } | null => {
+    const m = /^(.*):(\d+)-(\d+)$/.exec(key);
+    return m ? { sceneId: m[1], from: Number(m[2]), to: Number(m[3]) } : null;
+  };
+  const chunkMessages = (k: { from: number; to: number }): ChatMessage[] => st.getChatMessages(k.from).filter((m) => m.index <= k.to);
+
+  /** The model's input for the lines of one chunk: who is present and what the engine wants reported (rebuilt from the state, never stored). */
+  function intentInput(s0: CampaignState, messages: ChatMessage[]): IntentExtractInput {
     const scene = s0.scene!;
     const units = scene.participants.map((id) => unitInput(s0, id)).filter((u): u is NonNullable<typeof u> => u !== null);
     const nm = (id: string) => (id === 'commander' ? s0.commander.name : unitById(s0, id)?.displayName ?? id);
-    const input: IntentExtractInput = {
+    return {
       commanderName: s0.commander.name, channel: 'scene',
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
@@ -250,59 +269,141 @@ export function createSceneController(deps: SceneDeps): SceneController {
       ...expectationInput(s0, deps.registries(), scene.participants), // P13: her expectations, while she is present
       ...conspireInput(s0, deps.registries(), scene.participants), // P13: who the commander may enlist against her, while she is not present
     };
+  }
+
+  /** A chunk that fails again with more lines in it replaces the older failure of the same start: one record per start, never one per exchange. */
+  function dropSuperseded(_s0: CampaignState, sceneId: string, from: number, key: string): void {
+    const now = state();
+    for (const r of now ? openRecords(now, { siteId: 'scene.intents' }) : []) {
+      const k = parseChunkKey(r.key);
+      if (k && k.sceneId === sceneId && k.from === from && r.key !== key) app.dispatch({ type: 'generation/close', payload: { id: r.id, outcome: 'dropped' } }, { expectChatId: chatId() });
+    }
+  }
+
+  async function extractChunk(
+    s0: CampaignState, messages: ChatMessage[], _lastReply: ChatMessage, _nextPointer: number, expect: string | undefined,
+  ): Promise<boolean> {
+    const scene = s0.scene!;
     for (const m of messages) {
       if (m.isUser) continue;
       const speaker = scene.participants.map((id) => unitById(s0, id)).find((u) => u !== undefined && u.displayName === m.name);
       if (speaker) deps.onUnitReply?.(speaker.id, m.text);
     }
+    const key = chunkKey(scene.id, extracted, messages[messages.length - 1].index);
+    const from = extracted;
     swipedWhileExtracting.clear();
     extracting = true;
-    let result: Awaited<ReturnType<typeof extractIntents>>;
+    let outcome: Awaited<ReturnType<Envelope['generate']>>;
     try {
-      // P8: the lowest disposition floor moved by the setting; the engine then judges each unit
-      result = await extractIntents(input, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
+      outcome = await deps.generations.generate('scene.intents', key);
     } finally {
       extracting = false;
     }
     if (disposed || chatId() !== expect) return false; // a late answer for another chat
-    if (messages.some((m) => swipedWhileExtracting.has(m.index))) {
-      // the reply was swiped while it was being read: drop this reading; the new reply is read when it arrives
-      swipedWhileExtracting.clear();
-      awaitingReextract = true;
-      debug('A reply was swiped while it was being read; the reading was dropped.');
-      return false;
-    }
-    if (!result) {
+    if (outcome.kind === 'failed') {
       debug('Intent extraction failed; nothing changed.');
-      return false;
+      dropSuperseded(s0, scene.id, from, key);
     }
-    const from = extracted;
-    const before = state();
-    if (!before || !before.scene) return false;
-    // P9d: a flagged reply and a tone the reading found go in with the same step, so a rollback takes them too
-    const flaggedHere = result.contentViolations.map((v) => v.category);
-    if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(', ')}.`);
-    const events = dispatch({
-      type: 'intents/apply',
-      payload: {
-        channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}`,
-        ...(flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {}),
-        ...(result.sceneTone !== null ? { tone: result.sceneTone } : {}),
-      },
-    }, expect);
-    if (events.some((e) => e.type === 'error')) return false;
-    const after = state();
-    extracted = nextPointer;
-    // P8: an extreme event that was dropped for every unit shows no cut-in
-    const landed = (events.find((e) => e.type === 'intents_applied')?.landed as string[] | undefined) ?? result.intents.events.map((e) => e.type);
-    const directives = reflect(events, result.intents.events.filter((e) => e.severity === 'extreme' && landed.includes(e.type)).map((e) => e.type));
-    if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after, directives };
-    if (deps.settings().spriteMode === 'emotion_pick') {
-      for (const em of result.emotions) deps.onUi({ type: 'sprite', unitId: em.unitId, label: em.label });
-    }
-    debug(`Extracted ${result.intents.events.length} event(s).`);
-    return true;
+    return outcome.kind === 'applied';
   }
+
+  // the `scene.intents` site: the reading of one chunk of lines (key `<sceneId>:<from>-<to>`)
+  deps.generations.bind<IntentExtractInput, ReturnType<typeof readIntentOutput>>('scene.intents', {
+    build(key) {
+      const k = parseChunkKey(key);
+      const s0 = state();
+      if (!k || !s0?.scene || s0.scene.id !== k.sceneId) return { expired: 'The scene is over.' };
+      if (extracted > k.to) return { expired: 'Those lines were read already.' };
+      const messages = chunkMessages(k);
+      if (messages.length === 0) return { expired: 'Those lines are no longer in the chat.' };
+      return intentInput(s0, messages);
+    },
+    // P8: the lowest disposition floor moved by the setting; the engine then judges each unit
+    parse: (raw, input) => readIntentOutput(raw, input, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }),
+    apply(key, result) {
+      const k = parseChunkKey(key);
+      if (!k || disposed) return { stale: true };
+      const messages = chunkMessages(k);
+      const lastReply = [...messages].reverse().find((m) => !m.isUser);
+      if (!lastReply) return { stale: true };
+      if (messages.some((m) => swipedWhileExtracting.has(m.index))) {
+        // the reply was swiped while it was being read: drop this reading; the new reply is read when it arrives
+        swipedWhileExtracting.clear();
+        awaitingReextract = true;
+        debug('A reply was swiped while it was being read; the reading was dropped.');
+        return { stale: true };
+      }
+      const expect = chatId();
+      const from = extracted;
+      const nextPointer = k.to + 1;
+      const before = state();
+      if (!before || !before.scene) return { stale: true };
+      // P9d: a flagged reply and a tone the reading found go in with the same step, so a rollback takes them too
+      const flaggedHere = result.contentViolations.map((v) => v.category);
+      if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(', ')}.`);
+      const events = dispatch({
+        type: 'intents/apply',
+        payload: {
+          channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}`,
+          ...(flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {}),
+          ...(result.sceneTone !== null ? { tone: result.sceneTone } : {}),
+        },
+      }, expect);
+      if (events.some((e) => e.type === 'error')) return { stale: true };
+      const after = state();
+      extracted = nextPointer;
+      // P8: an extreme event that was dropped for every unit shows no cut-in
+      const landed = (events.find((e) => e.type === 'intents_applied')?.landed as string[] | undefined) ?? result.intents.events.map((e) => e.type);
+      const directives = reflect(events, result.intents.events.filter((e) => e.severity === 'extreme' && landed.includes(e.type)).map((e) => e.type));
+      if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before, after, directives };
+      if (deps.settings().spriteMode === 'emotion_pick') {
+        for (const em of result.emotions) deps.onUi({ type: 'sprite', unitId: em.unitId, label: em.label });
+      }
+      // the lines this reading covers are read: a failure of a smaller chunk inside them (the envelope closes this key's own) is over
+      const now = state();
+      for (const r of now ? openRecords(now, { siteId: 'scene.intents' }) : []) {
+        const o = parseChunkKey(r.key);
+        if (o && o.sceneId === k.sceneId && o.from >= k.from && o.to <= k.to && r.key !== key) app.dispatch({ type: 'generation/close', payload: { id: r.id, outcome: 'applied' } }, { expectChatId: expect });
+      }
+      debug(`Extracted ${result.intents.events.length} event(s).`);
+      return 'ok';
+    },
+    // REROLL: the exchange that was read last, while nothing else changed (the same rule as a swipe)
+    canUndo(key) {
+      const la = lastApply;
+      const s0 = state();
+      if (!la || !s0?.scene || chunkKey(s0.scene.id, la.from, la.to) !== key) return 'Nothing was read there.';
+      return state() === la.after ? null : MOVED_REASON;
+    },
+    undo(key) {
+      const la = lastApply;
+      const s0 = state();
+      if (!la || !s0?.scene || chunkKey(s0.scene.id, la.from, la.to) !== key) return 'Nothing was read there.';
+      if (s0 !== la.after || !deps.restore(la.before, la.after)) return MOVED_REASON;
+      lastApply = null;
+      extracted = la.from;
+      for (const id of la.directives) app.context.clearDirective(id);
+      app.refreshContext();
+      return null;
+    },
+  });
+
+  // the `emotion.pick` site: one sprite label for her last line (a failure writes nothing: the native sprite stands)
+  deps.generations.bind<{ unitName: string; text: string }, ExpressionLabel>('emotion.pick', {
+    build(unitId) {
+      const s0 = state();
+      const unit = s0 ? unitById(s0, unitId) : undefined;
+      const scene = s0?.scene;
+      if (!s0 || !scene || !unit) return { expired: 'She is not in the scene.' };
+      const last = [...st.getChatMessages(Math.min(scene.startIndex, st.chatLength()))].reverse().find((m) => !m.isUser && m.avatar === unit.cardRef);
+      return last ? { unitName: unit.displayName, text: last.text } : { expired: 'She has not spoken.' };
+    },
+    parse: (raw) => readEmotion(raw),
+    apply(unitId, label) {
+      deps.onUi({ type: 'sprite', unitId, label });
+      return 'ok';
+    },
+  });
 
   async function showSprites(replies: ChatMessage[], extractedNow: boolean): Promise<void> {
     const s = state();
@@ -317,8 +418,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
         const label = await st.getLastExpression(avatar).catch(() => null);
         if (label) deps.onUi({ type: 'sprite', unitId: unit.id, label });
       } else if (!extractedNow) {
-        const label = await pickEmotion({ unitName: unit.displayName, text: msg.text }, { st, settings: deps.settings() });
-        if (label) deps.onUi({ type: 'sprite', unitId: unit.id, label });
+        await deps.generations.generate('emotion.pick', unit.id);
       }
     }
   }
@@ -388,6 +488,95 @@ export function createSceneController(deps: SceneDeps): SceneController {
       deps.onUi({ type: 'transcript' });
     });
   }
+
+  const lastIntentsKey = (): string | null => {
+    const scene = state()?.scene;
+    return lastApply && scene ? chunkKey(scene.id, lastApply.from, lastApply.to) : null;
+  };
+
+  /** What follows a scene that ended: the scene's directives go, and the whole living squad is active in the chat again. */
+  async function afterEnd(expect: string | undefined): Promise<void> {
+    if (chatId() === expect) {
+      clearSceneDirectives(app.context);
+      app.context.clearDirective('night');
+      const now = state();
+      app.context.clearMatching((d) => d.id.startsWith('proposal:') || d.id.startsWith('ask:'));
+      app.refreshContext();
+      const living = (now?.squad ?? []).filter((u) => u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
+      try {
+        await st.setMembersActive(living.map((u) => u.cardRef).filter((a): a is string => typeof a === 'string'));
+      } catch (e) {
+        deps.toast('warn', `Could not re-activate the squad in the group chat: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    deps.onUi({ type: 'transcript' });
+  }
+
+  /** The input of a scene summary: of the open scene, or (a late summary) of an ended one whose mark kept its range, day and people. */
+  function summaryInput(s: CampaignState, sceneId: string): SceneSummaryInput | { expired: string } {
+    const reg = deps.registries();
+    const names = (ids: string[]) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
+    const excluded = disabledCategories(s, reg);
+    const scene = s.scene;
+    if (scene && scene.id === sceneId) {
+      const flaggedIndexes = new Set((scene.violations ?? []).map((v) => v.index));
+      // P3b: a scene that was digested is summarized from the digest and what came after it, not from the whole chat
+      const digest = scene.digest;
+      const tail = st.getChatMessages(Math.min(digest ? digest.upTo + 1 : scene.startIndex, st.chatLength())).map((m) => ({
+        speaker: m.isUser ? s.commander.name : m.name, text: m.text, ...(flaggedIndexes.has(m.index) ? { flagged: true as const } : {}),
+      }));
+      return {
+        location: String(reg.locations.get(scene.locationId)?.name ?? scene.locationId),
+        participants: names(scene.participants),
+        transcript: digest ? [{ speaker: 'Digest of the scene so far', text: digest.text }, ...tail] : tail,
+        ...(excluded.length > 0 ? { excluded } : {}),
+      };
+    }
+    const mark = s.memory.scenes?.find((m) => m.sceneId === sceneId);
+    if (!mark) return { expired: 'That scene is no longer remembered.' };
+    if (mark.summarized) return { expired: 'That scene has its summary already.' };
+    if (mark.participants === undefined || mark.locationId === undefined) return { expired: 'That scene ended before late summaries existed.' };
+    if (st.chatLength() <= mark.to) return { expired: 'The chat is shorter than that scene.' };
+    return {
+      location: String(reg.locations.get(mark.locationId)?.name ?? mark.locationId),
+      participants: names(mark.participants),
+      transcript: st.getChatMessages(mark.from).filter((m) => m.index <= mark.to).map((m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text })),
+      ...(excluded.length > 0 ? { excluded } : {}),
+    };
+  }
+
+  // the `scene.summary` site (key: the scene id): the summary ends the open scene; a failure ends it with a plain line and a record, and a
+  // later RETRY or REROLL stores the summary through `scene/late_summary` (an ended scene) or `scene/end` (the scene reopened by REROLL)
+  deps.generations.bind<SceneSummaryInput, SceneSummary>('scene.summary', {
+    build(sceneId) {
+      const s0 = state();
+      return s0 ? summaryInput(s0, sceneId) : { expired: 'No campaign is open.' };
+    },
+    parse: (raw, input) => readSceneSummary(raw as never, input),
+    apply(sceneId, summary) {
+      const expect = chatId();
+      const before = state();
+      if (!before) return { stale: true };
+      // P9d: the summary only reports; it never marks the UI
+      if (summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(', ')}.`);
+      if (before.scene?.id === sceneId) {
+        const events = dispatch({ type: 'scene/end', payload: { summary, endIndex: st.chatLength() - 1 } }, expect); // P3b: the chat range of the scene
+        const after = state();
+        if (events.some((e) => e.type === 'error') || !after) return { stale: true };
+        deps.generations.takeSnapshot('scene.summary', sceneId, before, after);
+        summaryKey = sceneId;
+        return 'ok';
+      }
+      const events = dispatch({ type: 'scene/late_summary', payload: { sceneId, summary } }, expect);
+      return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';
+    },
+    fallback(sceneId) {
+      const open = state()?.scene;
+      if (!open || open.id !== sceneId) return false;
+      const events = dispatch({ type: 'scene/end', payload: { endIndex: st.chatLength() - 1 } }, chatId());
+      return !events.some((e) => e.type === 'error');
+    },
+  });
 
   const controller: SceneController = {
     async start(opts) {
@@ -526,44 +715,44 @@ export function createSceneController(deps: SceneDeps): SceneController {
       try {
         // whatever the batched modes (or an earlier failure) left unread
         if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract(expect);
-        const names = (ids: string[]) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
-        const flaggedIndexes = new Set((scene.violations ?? []).map((v) => v.index));
-        const excluded = disabledCategories(s, deps.registries());
-        // P3b: a scene that was digested is summarized from the digest and what came after it, not from the whole chat
-        const digest = scene.digest;
-        const tail = st.getChatMessages(Math.min(digest ? digest.upTo + 1 : scene.startIndex, st.chatLength())).map((m) => ({
-          speaker: m.isUser ? s.commander.name : m.name, text: m.text, ...(flaggedIndexes.has(m.index) ? { flagged: true as const } : {}),
-        }));
-        const summary = await summarizeScene({
-          location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
-          participants: names(scene.participants),
-          transcript: digest ? [{ speaker: 'Digest of the scene so far', text: digest.text }, ...tail] : tail,
-          ...(excluded.length > 0 ? { excluded } : {}),
-        }, { st, settings: deps.settings() });
-        // P9d: the summary only reports; it never marks the UI
-        if (summary && summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(', ')}.`);
-        if (disposed || chatId() !== expect) return;
-        dispatch({ type: 'scene/end', payload: { ...(summary ? { summary } : {}), endIndex: st.chatLength() - 1 } }, expect); // P3b: the chat range of the scene
+        // the summary call, its fallback (the scene still ends, with a plain line) and the record of a failure are the envelope's
+        await deps.generations.generate('scene.summary', scene.id);
       } finally {
         pending = false;
         lastApply = null;
         awaitingReextract = false;
-        if (chatId() === expect) {
-          clearSceneDirectives(app.context);
-          app.context.clearDirective('night');
-          const now = state();
-          app.context.clearMatching((d) => d.id.startsWith('proposal:') || d.id.startsWith('ask:'));
-          app.refreshContext();
-          const living = (now?.squad ?? []).filter((u) => u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
-          try {
-            await st.setMembersActive(living.map((u) => u.cardRef).filter((a): a is string => typeof a === 'string'));
-          } catch (e) {
-            deps.toast('warn', `Could not re-activate the squad in the group chat: ${e instanceof Error ? e.message : String(e)}`);
-          }
-        }
-        deps.onUi({ type: 'transcript' });
+        await afterEnd(expect);
       }
     },
+
+    rerollLast: async () => {
+      const key = lastIntentsKey();
+      if (key === null) return;
+      const out = await deps.generations.reroll('scene.intents', key);
+      if (out.kind === 'applied') deps.onUi({ type: 'transcript' });
+    },
+
+    rerollState: () => {
+      const key = lastIntentsKey();
+      return key === null ? { enabled: false, reason: 'Nothing was read yet.' } : deps.generations.rerollState('scene.intents', key);
+    },
+
+    async rerollSummary() {
+      const key = summaryKey;
+      if (key === null) return;
+      const expect = chatId();
+      pending = true;
+      try {
+        await deps.generations.reroll('scene.summary', key); // reopens the scene from the snapshot, then ends it again with the new summary
+      } finally {
+        pending = false;
+        const now = state();
+        if (now?.scene) controller.resume(); // the reroll failed after the reopening: the scene is open again, as it was
+        else await afterEnd(expect);
+      }
+    },
+
+    summaryRerollState: () => (summaryKey === null ? { enabled: false, reason: 'No scene has ended yet.' } : deps.generations.rerollState('scene.summary', summaryKey)),
 
     transcript() {
       const scene = state()?.scene;

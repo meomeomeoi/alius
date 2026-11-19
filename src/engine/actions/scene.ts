@@ -138,7 +138,7 @@ registerAction('intents/apply', (draft, payload, ctx) => {
  * Stores the facts a summary or a digest reports (validated like every model answer), known by the scene's participants and inside the
  * scene's cap of `factsPerScene` (a digest and the final summary share it).
  */
-function storeSceneFacts(draft: CampaignState, reg: Registries, scene: SceneRecord, raw: unknown[]): EngineEvent[] {
+function storeSceneFacts(draft: CampaignState, reg: Registries, scene: Pick<SceneRecord, 'id' | 'day' | 'participants'>, raw: unknown[]): EngineEvent[] {
   const events: EngineEvent[] = [];
   const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad }).facts;
   const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
@@ -194,6 +194,29 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push(...argueEnded(draft, ctx, scene.id)); // P13: the argument with the warden ends: a compromise runs the order, none leaves COMPLY and DEFY
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx));
   return events;
+});
+
+/**
+ * P14: the summary of a scene that ended without one (the model failed) arrives later. It replaces the fallback line of that scene in
+ * the chronicle (keeping who knew it; a line already compacted is left alone), stores the facts inside the scene's cap, and marks the
+ * scene summarized. Draws nothing. Needs a mark that kept the scene's day and people (`scene/end` writes them while no summary exists).
+ */
+registerAction('scene/late_summary', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.sceneId !== 'string' || !isObj(payload.summary)) throw new Error('scene/late_summary needs { sceneId, summary }');
+  const mark = draft.memory.scenes?.find((m) => m.sceneId === payload.sceneId);
+  if (!mark || mark.summarized || mark.participants === undefined || mark.day === undefined) throw new Error('scene/late_summary: that scene is not waiting for a summary');
+  const summary = payload.summary as Record<string, unknown>;
+  const line = typeof summary.chronicle === 'string' ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : '';
+  const entry = draft.memory.chronicle.find((e) => e.kind === 'scene' && e.sceneId === mark.sceneId);
+  const replaced = line !== '' && entry !== undefined;
+  if (replaced) entry.text = line;
+  const events: EngineEvent[] = [];
+  if (Array.isArray(summary.facts)) events.push(...storeSceneFacts(draft, ctx.registries, { id: mark.sceneId, day: mark.day, participants: mark.participants }, summary.facts));
+  mark.summarized = true;
+  delete mark.day;
+  delete mark.locationId;
+  delete mark.participants;
+  return [{ type: 'scene_summarized_late', sceneId: mark.sceneId, replaced }, ...events];
 });
 
 registerAction('scene/abort', (draft, _payload, ctx) => {

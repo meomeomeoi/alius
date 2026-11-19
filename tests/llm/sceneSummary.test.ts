@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { llmLog } from '../../src/llm/log';
-import { summarizeScene, type SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
+import type { SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
+import { summarizeScene } from '../helpers/calls';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 

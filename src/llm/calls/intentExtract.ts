@@ -228,6 +228,18 @@ export function sanitizeIntentOutput(
   return { intents, emotions, contentViolations, sceneTone };
 }
 
+/** The engine intents of a model answer (the pure half of a reading: the envelope makes the call). `minConfidence` is the floor an event needs. */
+export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: { minConfidence: number }): IntentOutput {
+  const ids = input.units.map((u) => u.id);
+  return sanitizeIntentOutput(raw, {
+    participants: ids, squad: ids.map((id) => ({ id })),
+    minConfidence: opts.minConfidence, romance: input.romance, measures: input.measures,
+    excluded: (input.excluded ?? []).map((e) => e.id), rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
+    intercepted: (input.intercepted ?? []).map((i) => i.id), warned: input.warned ?? [],
+    overrides: (input.overrides ?? []).map((o) => o.id), expectations: (input.expectations ?? []).map((x) => x.id), conspire: input.conspire ?? [],
+  });
+}
+
 /** One mechanic call; any failure gives null and changes nothing. */
 export async function extractIntents(
   input: IntentExtractInput, deps: { st: StAdapter; settings: AliusSettings }, opts: { minConfidence?: number } = {},

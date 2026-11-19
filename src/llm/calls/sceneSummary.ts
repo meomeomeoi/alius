@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { validateIntents, type FactIntent } from '../../engine/relations/intents';
 import { TUNING } from '../../engine/tuning';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 import { estTokens } from '../text';
 
 export interface SceneSummaryInput {
@@ -31,7 +28,7 @@ const SceneSummarySchema = z.object({
   chronicle: z.string().optional(), digest: z.string().optional(),
   facts: z.array(z.unknown()).catch([]), contentViolations: z.array(z.unknown()).catch([]),
 }).strip().refine((v) => (v.chronicle ?? '') !== '' || (v.digest ?? '') !== '', { message: 'a chronicle line or a digest is required' });
-type SceneSummaryRaw = z.output<typeof SceneSummarySchema>;
+export type SceneSummaryRaw = z.output<typeof SceneSummarySchema>;
 
 /** Keeps the newest messages that fit; the oldest are dropped, and a single overlong message loses its beginning. */
 export function trimTranscript(lines: SceneSummaryInput['transcript'], maxTokens: number): SceneSummaryInput['transcript'] {
@@ -140,14 +137,11 @@ function readAnswer(value: SceneSummaryRaw, input: SceneSummaryInput): { facts: 
   return { facts: kept, contentViolations };
 }
 
-export async function summarizeScene(
-  input: SceneSummaryInput, deps: { st: StAdapter; settings: AliusSettings },
-): Promise<SceneSummary | null> {
-  const r = await callLlm<SceneSummaryRaw>('scene_summary', { ...input, mode: undefined }, deps);
-  if (!r.ok) return null;
-  const chronicle = (r.value.chronicle ?? '').replace(/\s+/g, ' ').trim().slice(0, CHRONICLE_LINE_MAX).trim();
+/** The summary of a model answer (`scene_summary`); null when it has no chronicle line (the scene then ends with a fallback line). */
+export function readSceneSummary(raw: SceneSummaryRaw, input: SceneSummaryInput): SceneSummary | null {
+  const chronicle = (raw.chronicle ?? '').replace(/\s+/g, ' ').trim().slice(0, CHRONICLE_LINE_MAX).trim();
   if (chronicle === '') return null;
-  return { chronicle, ...readAnswer(r.value, input) };
+  return { chronicle, ...readAnswer(raw, input) };
 }
 
 export interface SceneDigest {
@@ -155,11 +149,9 @@ export interface SceneDigest {
   facts: FactIntent[];
 }
 
-/** P3b: one mechanic call during a long scene: the digest so far (≤ 800 characters) and the facts it adds; null when it failed. */
-export async function digestScene(input: SceneSummaryInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<SceneDigest | null> {
-  const r = await callLlm<SceneSummaryRaw>('scene_summary', { ...input, mode: 'digest' }, deps);
-  if (!r.ok) return null;
-  const digest = (r.value.digest ?? '').replace(/\s+/g, ' ').trim().slice(0, TUNING.memory.digestMax).trim();
+/** P3b: the digest of a model answer (`scene_summary` in `digest` mode, ≤ 800 characters) and the facts it adds; null when it has no digest. */
+export function readDigest(raw: SceneSummaryRaw, input: SceneSummaryInput): SceneDigest | null {
+  const digest = (raw.digest ?? '').replace(/\s+/g, ' ').trim().slice(0, TUNING.memory.digestMax).trim();
   if (digest === '') return null;
-  return { digest, facts: readAnswer(r.value, input).facts };
+  return { digest, facts: readAnswer(raw, input).facts };
 }

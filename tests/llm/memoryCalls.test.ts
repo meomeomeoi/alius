@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { foldMemory, type FoldInput } from '../../src/llm/calls/memoryFold';
 import { retellRumor } from '../../src/llm/calls/rumorRetell';
-import { digestScene, summarizeScene, type SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
+import type { SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
+import { digestScene, summarizeScene } from '../helpers/calls';
 import { CALL_TYPE_IDS } from '../../src/llm/callTypes';
 import { llmLog } from '../../src/llm/log';
 import { DEFAULT_SETTINGS, getSettings } from '../../src/settings';

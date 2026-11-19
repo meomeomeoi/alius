@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 import { EXPRESSION_LABELS, type ExpressionLabel } from './intentExtract';
 
 export interface EmotionPickInput {
@@ -27,9 +24,9 @@ registerCallType<z.infer<typeof EmotionSchema>>({
   schema: EmotionSchema,
 });
 
-/** One cheap mechanic call (used only when extraction is batched and sprite mode is `emotion_pick`); unknown label → null. */
-export async function pickEmotion(input: EmotionPickInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<ExpressionLabel | null> {
-  const r = await callLlm<z.infer<typeof EmotionSchema>>('emotion_pick', input, deps);
-  if (!r.ok) return null;
-  return (EXPRESSION_LABELS as readonly string[]).includes(r.value.label) ? (r.value.label as ExpressionLabel) : null;
+/** The label of a model answer (`emotion_pick`, used only when extraction is batched and sprite mode is `emotion_pick`); an unknown label gives null. */
+export function readEmotion(raw: unknown): ExpressionLabel | null {
+  const parsed = EmotionSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  return (EXPRESSION_LABELS as readonly string[]).includes(parsed.data.label) ? (parsed.data.label as ExpressionLabel) : null;
 }
