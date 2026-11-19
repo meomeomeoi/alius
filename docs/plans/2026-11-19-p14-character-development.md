@@ -703,22 +703,22 @@ interface DevMoment {
   - `sanitizeReview(raw: unknown, input: DevelopmentReviewInput): ReviewValue | null`;
   - `readReview` (the call type's `read`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `valid fixture parses` to 2 shifts and 1 fact.
   - `sanitize cuts and drops`: a reason of 300 → 120; a text of 400 → 140; an axis not in `input.axes` and a kind `secret` are dropped; markdown and labels stripped; 5 shifts → 3.
   - `neither array → null`; `{ shifts: [] , facts: [] }` → a valid empty review.
   - `hostile text stays text` (an instruction inside `reason` survives as plain text and changes no field).
   - `the system prompt names only enabled categories, has no number for support and no pronoun for the commander`.
   - `site registry`: `tests/llm/siteRegistry.test.ts` passes (the call type has a site).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The system prompt (`AUTHOR TO WRITE` tone lines) says:
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The system prompt (`AUTHOR TO WRITE` tone lines) says:
   - change is slow and must fit her card and anchors;
   - an axis may be moved only along the listed direction;
   - `step` only when support is `strong`;
   - facts are one sentence in her voice or a narrator's;
   - reply JSON only.
-- [ ] **Step 4: Run** the file and `tests/llm/`, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): development_review call type and site`
+- [x] **Step 4: Run** the file and `tests/llm/`, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): development_review call type and site`
 
 ---
 

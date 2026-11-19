@@ -119,6 +119,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     epilogue: 700,
     warden_judge: 120,
     head_start_recap: 900,
+    development_review: 700,
     ping: 100,
   },
   contextTokenCap: 1600,

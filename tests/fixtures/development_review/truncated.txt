@@ -1,0 +1,3 @@
+{
+  "shifts": [
+    { "axis": "value:mercy", "direction": "up", "size": "nudge", "reason": "Weeks of small kindn

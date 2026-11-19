@@ -1,0 +1,11 @@
+```json
+{
+  "shifts": [
+    { "axis": "value:mercy", "direction": "up", "size": "nudge", "reason": "Weeks of small kindnesses have softened her." },
+    { "axis": "bond:desire", "direction": "up", "size": "step", "reason": "She has stopped pulling away." }
+  ],
+  "facts": [
+    { "text": "Ann now saves a seat for the commander at the long table.", "kind": "attitude" }
+  ]
+}
+```

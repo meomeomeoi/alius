@@ -68,18 +68,19 @@ export function eligibleAxes(
   return out;
 }
 
-/** The first due soldier in squad order, or null: mode on, a named living unit, enough material, and the time or a strong accumulator. */
-export function reviewDue(state: CampaignState, _reg: Registries): string | null {
+/** Is this soldier due: mode on, a named living unit, enough material, and the time or a strong accumulator. */
+export function unitDue(state: CampaignState, unitId: string): boolean {
   const mode = developmentMode(state);
-  if (mode === 'off') return null;
-  for (const u of state.squad) {
-    if (u.kind !== 'named' || !isLiving(u)) continue;
-    const dev = developmentOf(u);
-    if (dev.pending.length < D.minMaterial) continue;
-    const timed = state.day - (dev.lastReview ?? 0) >= D.cadence[mode];
-    if (timed || Object.values(dev.acc).some((a) => Math.abs(a) >= D.dueAcc)) return u.id;
-  }
-  return null;
+  const u = state.squad.find((x) => x.id === unitId);
+  if (mode === 'off' || !u || u.kind !== 'named' || !isLiving(u)) return false;
+  const dev = developmentOf(u);
+  if (dev.pending.length < D.minMaterial) return false;
+  return state.day - (dev.lastReview ?? 0) >= D.cadence[mode] || Object.values(dev.acc).some((a) => Math.abs(a) >= D.dueAcc);
+}
+
+/** The first due soldier in squad order, or null. */
+export function reviewDue(state: CampaignState, _reg: Registries): string | null {
+  return state.squad.find((u) => unitDue(state, u.id))?.id ?? null;
 }
 
 const cut = (s: string, n: number): string => s.replace(/\s+/g, ' ').trim().slice(0, n).trim();

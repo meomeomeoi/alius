@@ -59,6 +59,7 @@ import { createPersonal, type PersonalController } from './personal/controller';
 import { createSpecial, type SpecialController } from './special/controller';
 import { createWarden } from './warden/controller';
 import { createHeadStart } from './headStart/controller';
+import { createDevelopment } from './development/controller';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
 import { clearSpecialDirectives, refreshSpecialDirectives } from './special/directives';
 import type { VoteChoice } from './power/deps';
@@ -562,6 +563,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     },
   }); // P13: the warden's agenda, the day-start snapshot, the rewind and the epilogue
   const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext }); // P11b: the recap of the first weeks and the first scene's opening
+  const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -814,6 +816,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (has('day_started')) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st), generations }).catch(warn('chronicle compaction'));
       // P3b: what the memory owes after any change (a fold is due, a rumor waits for its retelling); one fold per run, so a fold asks again
       if (events.length > 0 && !has('error')) void memory.run().catch(warn('memory'));
+      if (events.length > 0 && !has('error')) void development.run().catch(warn('development')); // P14b: one due review per run (quiet)
       if (has('memory_folded')) setTimeout(() => void memory.run().catch(warn('memory')), 0);
     });
   }
