@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import { countDeed } from '../discipline/deeds';
+import { recordAppraisal } from '../development/appraisal';
 import { applyRelationDelta } from '../relationGain';
 import type { CampaignState, Relation, Unit } from '../state/types';
 import { computeDeltas } from './deltas';
@@ -65,5 +66,7 @@ export function applyEventToUnit(
     else if (event.type === 'broke_promise') countDeed(draft, 'promises_broken');
   }
   events.push(...evaluateEvent(draft, reg, unitId, event.type));
+  // P14b: how she read it (nothing while development is off); it changes no relation axis
+  events.push(...recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? 'actor' : 'subject'));
   return events;
 }

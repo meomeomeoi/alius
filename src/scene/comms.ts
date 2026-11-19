@@ -16,6 +16,7 @@ import { confidenceFloor } from '../engine/worldOptions';
 import type { PersonalController } from '../personal/controller';
 import type { SceneController, SceneDeps } from './sceneController';
 import { dislikesOf, likesOf, valuesOf } from '../engine/development/profile';
+import { developmentMode } from '../engine/development/state';
 
 export interface Comms {
   /**
@@ -100,6 +101,7 @@ export function createComms(deps: CommsDeps): Comms {
       romance: intimacyOf(s).romance, measures: measureList(deps.registries(), s),
       ...(excluded.length > 0 ? { excluded } : {}), ...(limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {}), // P9d
       ...(ruleList.length > 0 ? { rules: ruleList } : {}),
+      ...(developmentMode(s) !== 'off' ? { reading: true as const } : {}), // P14b
       ...leakInput(s, deps.registries(), [unitId]), // P12: what the frequency caught about her (nothing without the trait)
       ...warnedInput(s, [unitId]), // P12: the units the commander has an open warning about
     };

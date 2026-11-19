@@ -6,6 +6,7 @@ import { roundAway } from './gain';
 import { affectedUnits, computeDeltas, stressFromHint } from './deltas';
 import { applyEventToUnit } from './effects';
 import { applyDisciplineEvent } from '../discipline/record';
+import { recordWitnesses } from '../development/appraisal';
 import { measureList } from '../discipline';
 import { evaluateAutomatic } from './graph';
 import { validateIntents } from './intents';
@@ -94,6 +95,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
       touched.add(id);
     }
     if (believed.length > 0) landed.push(e.type);
+    // P14b: the others in the room read it from the side (scene only; a DM has no witnesses)
+    if (p.channel === 'scene') events.push(...recordWitnesses(draft, reg, e, believed, p.participants, p.sceneId));
     if (e.type === 'crime_revealed') events.push(...revealCrime(draft, reg, believed));
     if (e.type === 'shared_secret' && e.actor !== 'commander') {
       for (const id of believed) {

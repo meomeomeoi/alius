@@ -675,6 +675,8 @@ export interface Inverse {
   resources?: { credits?: number; supplies?: number; plyx?: number };
   deeds?: Partial<Record<DeedCounter, number>>;
   factId?: string;
+  /** P14b: the appraisals the application recorded for her (UNDO removes them and takes their pushes back out of the accumulators). */
+  appraisals?: Array<{ unitId: string; id: string }>;
   /** Copies of what the application removed. */
   defiance?: PendingDefiance;
   threat?: PendingThreat;

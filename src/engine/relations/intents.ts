@@ -1,5 +1,5 @@
 import { normalizeTag } from '../setup';
-import { VALUE_AXES, type Severity, type ValueAxis } from '../state/types';
+import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
 import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
@@ -26,6 +26,8 @@ export interface EventIntent {
   expectationId?: string;
   /** P12: the intercepted item a `knowledge_leak` is about (an id from the list the model was given). */
   itemId?: string;
+  /** P14b: how the person it happened to took it, read by the model (character development); only a complete, valid reading is kept. */
+  reading?: Reading;
   evidence: string;
   /** 0–1; the LLM sanitizer drops low-confidence events, the engine keeps the number for the debug log. */
   confidence: number;
@@ -92,6 +94,21 @@ function evidenceOf(v: unknown): string {
   return v.trim().split(/\s+/).filter(Boolean).slice(0, EVIDENCE_WORDS).join(' ').slice(0, EVIDENCE_CHARS);
 }
 
+const WANTED = ['yes', 'no', 'unclear'] as const;
+const INITIATORS = ['target', 'actor', 'mutual'] as const;
+const HARMS = ['none', 'minor', 'serious'] as const;
+const OUTCOMES = ['good', 'mixed', 'bad'] as const;
+
+/** P14b: a reading is kept only when all four words are valid; a partial one is dropped whole. */
+function readingOf(v: unknown): Reading | null {
+  if (!isObj(v)) return null;
+  const wanted = oneOf(WANTED, v.wanted);
+  const initiator = oneOf(INITIATORS, v.initiator);
+  const harm = oneOf(HARMS, v.harm);
+  const outcome = oneOf(OUTCOMES, v.outcome);
+  return wanted && initiator && harm && outcome ? { wanted, initiator, harm, outcome } : null;
+}
+
 function tagsOf(v: unknown): string[] {
   const out: string[] = [];
   for (const t of arr(v)) {
@@ -151,6 +168,8 @@ export function validateIntents(
     if (actor === 'commander' ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
     if (type === 'defied' ? actor === 'commander' : COMMANDER_DISCIPLINE.includes(type) && actor !== 'commander') continue;
     const intent: EventIntent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
+    const reading = readingOf(e.reading);
+    if (reading) intent.reading = reading;
     if (type === 'compromise_reached' && typeof e.overrideId === 'string') {
       // a compromise with the warden settles one of her open overrides, never a rule; an unknown id drops it
       if (actor !== 'commander' || !(ctx.overrides ?? []).includes(e.overrideId)) continue;

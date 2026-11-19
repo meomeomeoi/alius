@@ -514,7 +514,7 @@ interface DevMoment {
 
   Each returns `[]` when the mode is off, the unit is a grunt or not living, or no reading exists. Otherwise it pushes the appraisal (accumulation is Task 6; the misread is Task 7), trims `pending` to `pendingMax`, and returns `appraisal_recorded { unitId, appraisalId, role }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `off records nothing`: mode absent, an `insulted` intent applied → no `development` on any unit, no `appraisal_recorded`.
   - `subject and actor`: mode normal; `praised` (commander → ANN) gives ANN `role subject, target her`; `shared_secret` with actor BEA gives BEA `role actor, target commander`.
   - `witness`: a scene with ANN, BEA, CAT; `commander_enforced` on ANN → BEA and CAT each get `role witness`, `target unit:ANN`, `subject ANN`; ANN gets `subject`.
@@ -526,10 +526,10 @@ interface DevMoment {
   - `the intent prompt is unchanged without reading` (snapshot of the system text with `reading` absent equals the one before this task: store the string in the test from the pre-change build).
   - `undo removes appraisals`: `discipline/punish` then `discipline/undo` → the appraisal is gone and `acc` is back to its value before (Task 6 adds pushes; here assert `pending` only, and extend in Task 6).
   - `grunts never appraise`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** as in Interfaces. The `summary` is composed from the rulings. Ids come from `nextDevId(dev, 'ap')`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): appraisals from the viewer's point of view`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** as in Interfaces. The `summary` is composed from the rulings. Ids come from `nextDevId(dev, 'ap')`.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): appraisals from the viewer's point of view`
 
 ---
 

@@ -104,6 +104,10 @@ export function settleDefiance(draft: CampaignState, _ctx: EngineCtx, filter: { 
 // ---------------------------------------------------------------------------------------------------------------------
 // What one application changed, so UNDO can put exactly that back.
 
+/** P14b: the ids of the appraisals a unit holds (pending and kept for revision). */
+const appraisalIds = (unit: { development?: { pending: Array<{ id: string }>; misread?: Array<{ id: string }> } } | undefined): string[] =>
+  [...(unit?.development?.pending ?? []), ...(unit?.development?.misread ?? [])].map((a) => a.id);
+
 /**
  * Runs `fn` (which changes one unit) and reports what it did to her relation, stress and record as an `Inverse`: the
  * applied deltas after every clamp, the dailyGain change, the state and loyalty band it moved her to and the history
@@ -118,8 +122,11 @@ export function captureInverse(draft: CampaignState, unitId: string, fn: () => E
     publicity: rel.publicity ? structuredClone(rel.publicity) : undefined,
   } : undefined;
   const deedsBefore = deedsOf(draft);
+  const appraisalsBefore = appraisalIds(unit);
   const events = fn();
   const inverse: Inverse = {};
+  const recorded = appraisalIds(draft.squad.find((u) => u.id === unitId)).filter((id) => !appraisalsBefore.includes(id)); // P14b
+  if (recorded.length > 0) inverse.appraisals = recorded.map((id) => ({ unitId, id }));
   const moved: NonNullable<Inverse['deeds']> = {};
   const deedsAfter = deedsOf(draft);
   for (const k of Object.keys(deedsAfter) as Array<keyof typeof deedsAfter>) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
@@ -287,7 +294,7 @@ export function applyDisciplineEvent(
     const measure = event.measure ?? 'verbal';
     if (checkPunish(draft, ctx.registries, unitId, measure) !== null) return [];
     return applyPunishment(draft, ctx, {
-      unitId, measure, source: 'dialogue', channel: src.channel,
+      unitId, measure, source: 'dialogue', channel: src.channel, ...(event.reading ? { reading: event.reading } : {}),
       ...(src.channel === 'scene' && src.sceneId !== undefined ? { sceneId: src.sceneId } : {}), ...(src.messageRef !== undefined ? { messageRef: src.messageRef } : {}),
     });
   }

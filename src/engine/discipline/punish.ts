@@ -6,7 +6,7 @@ import { addFact, nextId } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
 import { SEVERITIES } from '../relations/vocab';
-import type { Application, CampaignState, DisciplineChannel, Inverse, Restriction } from '../state/types';
+import type { Application, CampaignState, DisciplineChannel, Inverse, Reading, Restriction } from '../state/types';
 import { TUNING } from '../tuning';
 import { countDeed } from './deeds';
 import { perceptionOf, punishmentFor } from './perception';
@@ -62,6 +62,8 @@ export interface PunishParams {
   channel: DisciplineChannel;
   sceneId?: string;
   messageRef?: string;
+  /** P14b: how the model read the punishment read from dialogue (it wins over the registry's row). */
+  reading?: Reading;
 }
 
 /**
@@ -85,7 +87,7 @@ export function applyPunishment(draft: CampaignState, ctx: EngineCtx, p: PunishP
   const { events: changed, inverse } = captureInverse(draft, p.unitId, () => {
     const out = applyEventToUnit(draft, reg, p.unitId, {
       type: 'commander_enforced', actor: 'commander', targets: [p.unitId], severity: SEVERITIES[severity - 1], measure: p.measure,
-      evidence: `imposed ${String(pun.label)}`, confidence: 1,
+      evidence: `imposed ${String(pun.label)}`, confidence: 1, ...(p.reading ? { reading: p.reading } : {}),
     });
     const k = perceptionOf(reg, unit, pun);
     const enforced = enforce(draft, ctx, p.unitId, { measure: p.measure, severity, recordDelta: Math.round(Number(pun.impunityDelta) * k) });

@@ -24,6 +24,7 @@ import { clearSceneDirectives, sceneDirectives } from './context';
 import { answerDirective, nightDirective, proposalDirective } from './directives';
 import type { MemoryController } from './memoryController';
 import { dislikesOf, likesOf, valuesOf } from '../engine/development/profile';
+import { developmentMode } from '../engine/development/state';
 
 /** What the scene screen needs to react to. */
 export type SceneUiEvent =
@@ -265,6 +266,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       factTextMax: factTextMax(s0), romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
+      ...(developmentMode(s0) !== 'off' ? { reading: true as const } : {}), // P14b: ask how each unit took it (an off campaign sends the old prompt)
       ...leakInput(s0, deps.registries(), scene.participants), // P12: what the frequency caught about those present (nothing without the trait)
       ...warnedInput(s0, scene.participants), // P12: the units the commander has an open warning about
       ...overrideInput(s0, deps.registries(), scene.participants), // P13: the warden's open override, while she is present

@@ -1,4 +1,6 @@
+import { registerActivityHook } from '../activities';
 import { registerAction } from '../dispatch';
+import { recordActivity } from '../development/appraisal';
 import { DEVELOPMENT_MODES } from '../development/state';
 import type { DevelopmentMode } from '../state/types';
 
@@ -14,3 +16,6 @@ registerAction('development/set_mode', (draft, payload) => {
   draft.settings.characterDevelopment = mode;
   return [];
 });
+
+// The companion of an activity reads it (P14b); nothing is recorded while development is off.
+registerActivityHook((draft, ctx, done) => (done.companionId ? recordActivity(draft, ctx.registries, done.companionId, done.activityId) : []));

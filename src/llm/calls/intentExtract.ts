@@ -53,6 +53,8 @@ export interface IntentExtractInput {
   expectations?: Array<{ id: string; text: string }>;
   /** P13: the present units the commander may enlist against the warden (she is not in the room). Absent or empty = `conspired` is not offered. */
   conspire?: string[];
+  /** P14b: ask for each event's `reading` (how the person it happened to took it); absent = the prompt is byte-identical to before development existed. */
+  reading?: true;
 }
 
 /** What one reading found besides events (P9d). */
@@ -95,6 +97,7 @@ function system(raw: unknown): string {
   const hasOverride = (input.overrides ?? []).length > 0;
   const hasExpectations = (input.expectations ?? []).length > 0;
   const hasConspire = (input.conspire ?? []).length > 0;
+  const asksReading = input.reading === true;
   const eventTypes = EVENT_TYPES.filter((t) => (hasRules || (hasOverride && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
@@ -111,6 +114,7 @@ function system(raw: unknown): string {
     '  "events": [{ "type": EVENT_TYPE, "actor": "commander" | "<unit id>", "targets": ["<unit id>"], "severity": SEVERITY,',
     '               "valueAxes": [{ "axis": VALUE_AXIS, "direction": -1 | 1 }],   // only for decision_aligned / decision_violated',
     '               "tags": ["<tag from the unit\'s likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0,',
+    ...(asksReading ? ['               "reading": { "wanted": "yes" | "no" | "unclear", "initiator": "target" | "actor" | "mutual", "harm": "none" | "minor" | "serious", "outcome": "good" | "mixed" | "bad" },   // how the person it happened to took it'] : []),
     ...(hasRules
       ? ['               "measure": MEASURE,   // only for commander_enforced / threatened', `               "ruleId": "<id from RULES>", "text": "<the agreed wording>"${hasLeaks ? ',' : ' }],'}   // only for rule_kept / rule_broken / compromise_reached (text: compromise_reached only)`]
       : [`               "measure": MEASURE${hasLeaks ? ',' : ' }],'}   // only for commander_enforced / threatened`]),
@@ -140,6 +144,7 @@ function system(raw: unknown): string {
     '"commander_yielded": the commander backs down after defiance or after a threat.',
     'Events between two units are not reported. "evidence" is required and at most 20 words, quoted from the exchange. Use only the unit ids you are given.',
     'Set "confidence" honestly; weak or ambiguous readings get a low number. Skip events you cannot support with a quote.',
+    ...(asksReading ? ['"reading": judged from the text, from the point of view of the person it happened to (the target, or the unit herself when she is the actor): "wanted" whether she welcomed it, "initiator" who began it, "harm" whether it hurt her, "outcome" how it ended. Use "unclear" when the text does not show it.'] : []),
     ...(excluded.length > 0 ? ['"contentViolations": list a category from EXCLUDED only when a reply depicts, implies or describes it; skip it when nothing does.'] : []),
     ...(asksTone ? ['"sceneTone": "romantic" when the scene turns flirtatious or tender between the commander and a unit, "intimate" when it turns physical or sexual, null otherwise.'] : []),
     ...(hasRules ? [
