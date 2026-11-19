@@ -551,17 +551,17 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `WardenController.onEvents(events)`: on `warden_assigned` asks the model and dispatches with `expectChatId`
 - Consumes: `seedWarden` (Task 1)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `fallback picks by values and normalizes to 1`: a unit with mercy 3 and ingroup 2 → `no_civilian_harm` and `protect_squad` first; Σ weight = 1 (to 0.01); exactly one `known`.
   - `obey_oversight joins a corporate unit`.
   - `normalizeAgenda drops unknown kinds and duplicates, caps personal at 2, refuses < 3`.
   - `the model's agenda replaces the fallback once`: `warden/agenda` → `agenda 'model'`; a second → refused; after a `warden_override` → refused.
   - `a late agenda for another chat is dropped`.
   - LLM fixtures: valid, truncated, a digit weight (`"weight": 0.7` → refused), a personal text with `he` about the commander (→ text dropped, the item dropped).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): warden expectations, the fallback agenda and warden_agenda`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): warden expectations, the fallback agenda and warden_agenda`
 
 ---
 

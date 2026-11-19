@@ -4,6 +4,7 @@ import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, WORLD_EFFECT_
 import { DEED_COUNTERS, RARITIES } from '../engine/state/types';
 import { BALLOT_TERMS, OUTSIDE_TRIGGERS, VALUE_AXES, VOTE_KINDS } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
+import { EXPECTATION_KINDS } from '../engine/warden/state';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
@@ -1882,6 +1883,22 @@ export const OutsideFeatSchema = BaseEntrySchema.extend({
 registrySchemas.outsideFeats = OutsideFeatSchema;
 
 /**
+ * P13: one kind of thing a warden can expect (the personal kind has no entry: its text is the warden's own). `weight` is the default
+ * (`low` 1, `medium` 2, `high` 3); `values` says how a unit's own values pull her toward it (`Σ values[axis] × her value`), and
+ * `corporate` adds her corporate value. Code reads the entry by its `kind`, never by id.
+ */
+export const WardenExpectationSchema = BaseEntrySchema.extend({
+  kind: z.enum(EXPECTATION_KINDS.filter((k) => k !== 'personal') as [string, ...string[]]),
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  weight: z.enum(['low', 'medium', 'high']),
+  values: VoteLeanSchema.optional(),
+  corporate: z.boolean().optional(),
+}).strict();
+export type WardenExpectationEntry = z.infer<typeof WardenExpectationSchema>;
+registrySchemas.wardenExpectations = WardenExpectationSchema;
+
+/**
  * P9c: one branch of a device-access level. Every field that is present must hold; a level is reached when any branch holds.
  * `tiers` are bond tiers (never state ids), `states` are relationship states as data, leads and Impunity are numbers.
  */
@@ -2142,6 +2159,8 @@ export const DESCRIBED_REGISTRIES = [
   'dmBehaviours', 'handFonts', 'handNotes', 'stickerArt',
   // P12 (the handler is shown to the player; the fragment and premonition wording is hidden)
   'debtHandlers',
+  // P13
+  'wardenExpectations',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

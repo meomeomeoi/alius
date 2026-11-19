@@ -1916,5 +1916,15 @@
     "see": [
       "leashswap"
     ]
+  },
+  {
+    "id": "warden_expectation",
+    "term": "Warden expectation",
+    "short": "Something the warden expects of the commander. She judges every order against what she expects.",
+    "long": "The warden's agenda holds three to five expectations, each with a weight. You see only the ones you have learned: from an override that names one, from what she says and does, or from digging. The rest show as unknown. An order that cuts across an expectation may be overridden, and the heavier the expectation, the likelier the override.",
+    "see": [
+      "warden",
+      "leashswap"
+    ]
   }
 ]

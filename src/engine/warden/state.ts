@@ -73,6 +73,8 @@ export interface WardenState {
   warnings: Array<{ level: 1 | 2; day: number }>;
   leashLeft: number;
   leashRefreshDay: number;
+  /** An override has fired at least once: the agenda is in play and the model may no longer replace it. */
+  overrideFired?: true;
   override?: OpenOverride;
   /** The Leash on the commander: only COMPLY is accepted at the next override. */
   compelled?: boolean;

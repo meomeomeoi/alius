@@ -54,6 +54,7 @@ import { createBonds, type BondsController } from './bonds/controller';
 import { createPower, type PowerController } from './power/controller';
 import { createPersonal, type PersonalController } from './personal/controller';
 import { createSpecial, type SpecialController } from './special/controller';
+import { createWarden } from './warden/controller';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
 import { clearSpecialDirectives, refreshSpecialDirectives } from './special/directives';
 import type { VoteChoice } from './power/deps';
@@ -424,6 +425,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     notice: (kind, text, title, source) => toast(kind, text, { voice: VOICE_OF[source], title }), // P12: the device's own readout
     cutIn: (text) => { const root = document.getElementById('alius-shell'); if (root) cutIn(root, 'frequency', text); },
   });
+  const warden = createWarden({ ...worldDeps, context, refreshContext: applyContext }); // P13: the warden's agenda and directives
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -545,6 +547,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       shell.showScreen('hub');
     }
     onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
+    warden.onLoaded(); // P13: the agenda of a campaign just built or reloaded, and the reveal directive
     personal.reopenSecrets(); // P9c: a secret that was found and never answered asks again
     void personal.onLoaded().then((ok) => { if (ok) shell.open(); }).catch((e) => console.warn('[Alius] booking failed', e)); // P9c: a booking that came due while the game was closed
     pendingEdit = null; // P9c: an edit of another chat is not this one's; a waiting one comes back from the state, freshly worded
@@ -642,6 +645,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       personal.onEvents(events); // P9c: a clash of bookings, a claim, a peeled decor
       power.onEvents(events); // P9b: a grudge that starts or ends changes the scene directives
       special.onEvents(events); // P12: a new frequency fragment is worded
+      warden.onEvents(events); // P13: a new warden is asked for her agenda
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();

@@ -4,6 +4,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addFact } from '../memory';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { fallbackAgenda } from './agenda';
 import { leashswapOf, type WardenState } from './state';
 
 /**
@@ -27,7 +28,7 @@ export function corporateWardenPick(state: CampaignState, reg: Registries, exclu
 
 /**
  * Puts a unit in charge of the leash: satisfaction at its start, defiance 0, a full week of Leash authorizations and an empty
- * agenda (Task 3 fills it at once with the fallback, so the campaign is playable without a model). Writes the site's own public
+ * fallback agenda (so the campaign is playable without a model; the controller may replace it once). Writes the site's own public
  * pinned fact and emits `warden_assigned`. Draws nothing. The mode block must exist.
  */
 export function seedWarden(draft: CampaignState, ctx: EngineCtx, p: { unitId: string; assignedBy: WardenState['assignedBy'] }): EngineEvent[] {
@@ -44,7 +45,7 @@ export function seedWarden(draft: CampaignState, ctx: EngineCtx, p: { unitId: st
     warnings: [], leashLeft: TUNING.warden.leash.weekly, leashRefreshDay: draft.day + TUNING.leash.refreshDays,
     restrictions: [], punishLog: [],
   };
-  void ctx;
+  ls.warden.expectations = fallbackAgenda(draft, ctx.registries, unit.id); // no model, no draw: the campaign is playable at once
   addFact(draft, {
     about: [unit.id], text: `${unit.displayName} holds the commander's controller.`, tags: ['warden'], importance: 4,
     day: draft.day, knownBy: ['*'], pinned: true,

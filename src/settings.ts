@@ -109,6 +109,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     commander_import: 600,
     memory_fold: 500,
     rumor_retell: 200,
+    warden_agenda: 800,
     ping: 100,
   },
   contextTokenCap: 1600,

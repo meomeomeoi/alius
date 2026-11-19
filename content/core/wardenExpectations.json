@@ -1,0 +1,64 @@
+[
+  {
+    "id": "warden_protect_squad",
+    "kind": "protect_squad",
+    "label": "Protect the squad",
+    "description": "AUTHOR TO WRITE: She expects the squad kept out of avoidable harm: no wounded soldier sent out, no ally left to fall.",
+    "weight": "high",
+    "values": {
+      "ingroup": 1,
+      "mercy": 1
+    }
+  },
+  {
+    "id": "warden_no_civilian_harm",
+    "kind": "no_civilian_harm",
+    "label": "No harm to civilians",
+    "description": "AUTHOR TO WRITE: She expects no civilian to be hurt on the commander's orders.",
+    "weight": "medium",
+    "values": {
+      "mercy": 2
+    }
+  },
+  {
+    "id": "warden_meet_quota",
+    "kind": "meet_quota",
+    "label": "Meet the quota",
+    "description": "AUTHOR TO WRITE: She expects the unit to deliver what the corporation asked for, on time.",
+    "weight": "medium",
+    "values": {
+      "pragmatism": 1
+    },
+    "corporate": true
+  },
+  {
+    "id": "warden_obey_oversight",
+    "kind": "obey_oversight",
+    "label": "Obey oversight",
+    "description": "AUTHOR TO WRITE: She expects the commander to follow the corporation's directives, even the ones nobody likes.",
+    "weight": "medium",
+    "corporate": true
+  },
+  {
+    "id": "warden_keep_me_close",
+    "kind": "keep_me_close",
+    "label": "Keep her close",
+    "description": "AUTHOR TO WRITE: She expects to be kept in sight: no leaving her behind, no one else at the commander's side.",
+    "weight": "low",
+    "values": {
+      "ingroup": 1,
+      "autonomy": -1
+    }
+  },
+  {
+    "id": "warden_no_romance_with_others",
+    "kind": "no_romance_with_others",
+    "label": "No one else",
+    "description": "AUTHOR TO WRITE: She expects no romance with anyone else in the squad.",
+    "weight": "low",
+    "values": {
+      "ingroup": 1,
+      "pragmatism": -1
+    }
+  }
+]

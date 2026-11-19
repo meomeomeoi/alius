@@ -69,6 +69,7 @@
     "stickerArt": "stickerArt.json",
     "frequencyFragments": "frequencyFragments.json",
     "premonitionLines": "premonitionLines.json",
-    "debtHandlers": "debtHandlers.json"
+    "debtHandlers": "debtHandlers.json",
+    "wardenExpectations": "wardenExpectations.json"
   }
 }
