@@ -7969,6 +7969,8 @@ var PrologueStepSchema = external_exports.object({
   headStartText: external_exports.array(str.max(400)).max(8).optional(),
   /** Named lines the screens look up by key (`ask_crime`, `dictate`...); `{KEY}` placeholders are filled by code. */
   lines: external_exports.record(external_exports.string().regex(ID_PATTERN), str.max(200)).optional(),
+  /** P11b: lines that replace the same keys of `lines` when the campaign starts with a head start (the others stay). */
+  headStartLines: external_exports.record(external_exports.string().regex(ID_PATTERN), str.max(200)).optional(),
   /** The scene goal, injected as a hard directive while the step's scene runs. */
   directive: str.max(400).optional(),
   fields: external_exports.array(external_exports.enum(PROLOGUE_FIELDS)).optional(),
@@ -34403,7 +34405,14 @@ function fillLine(template, vars) {
   return template.replace(/\{([A-Z_]+)\}/g, (whole, key) => Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole);
 }
 var paper = (title, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
-var linesOf = (ctx2) => ctx2.wizard.prologueStep()?.lines ?? {};
+var linesOf = (ctx2) => {
+  const step = ctx2.wizard.prologueStep();
+  return { ...step?.lines ?? {}, ...ctx2.wizard.state.headStart.days > 0 ? step?.headStartLines ?? {} : {} };
+};
+var titleOf = (ctx2) => {
+  const step = ctx2.wizard.prologueStep();
+  return ctx2.wizard.state.headStart.days > 0 ? step?.headStartTitle ?? step?.title : step?.title;
+};
 var clerk = (text2, cls = "alius-clerk") => text2 ? h("p", { class: cls }, text2) : null;
 function renderColdOpen(host, ctx2) {
   const step = ctx2.wizard.prologueStep();
@@ -34439,7 +34448,7 @@ function renderIntake(host, ctx2) {
     h("label", { class: "alius-field" }, h("span", { class: "alius-field-label alius-clerk" }, lines.ask_name ?? "Name for the record"), name),
     clerk(lines.confirm_owner ? fillLine(lines.confirm_owner, { CORPORATION: corporation }) : void 0)
   );
-  host.replaceChildren(paper(step?.title, "FORM CCP-1", body));
+  host.replaceChildren(paper(titleOf(ctx2), "FORM CCP-1", body));
 }
 var cap5 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function renderExam(host, ctx2) {
@@ -34475,7 +34484,7 @@ function renderExam(host, ctx2) {
     onRandom: () => wizard.randomCommander(),
     importStatus: wizard.state.commanderImport
   });
-  host.replaceChildren(paper(step?.title, "MEDICAL FILE", dictated), clerk(lines.traits_note, "alius-clerk alius-dim") ?? h("span"), file);
+  host.replaceChildren(paper(titleOf(ctx2), "MEDICAL FILE", dictated), clerk(lines.traits_note, "alius-clerk alius-dim") ?? h("span"), file);
 }
 function renderFile(host, ctx2) {
   const { wizard, registries: reg } = ctx2;
