@@ -80,5 +80,6 @@ declare('warden.agenda', 'warden_agenda', 'world', 'before_commit', 'quiet', "Th
 declare('warden.judge', 'warden_judge', 'world', 'none', 'none', 'Warden judgement');
 declare('warden.epilogue', 'epilogue', 'world', 'free', 'full', 'Epilogue');
 declare('setup.profile_import', 'profile_import', 'setup', 'before_commit', 'none', 'Profile import');
+declare('setup.head_start_recap', 'head_start_recap', 'world', 'before_commit', 'full', 'Recap of the first weeks');
 declare('setup.commander_import', 'commander_import', 'setup', 'before_commit', 'none', 'Commander import');
 declare('sys.ping', 'ping', 'sys', 'none', 'none', 'Connection test');

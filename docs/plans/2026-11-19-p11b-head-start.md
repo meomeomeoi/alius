@@ -555,7 +555,7 @@ After every unit:
   - `fallbackRecap(input: HeadStartRecapInput, reg: Registries): HeadStartRecapValue`;
   - `RECAP_CHRONICLE_FALLBACK` (the `AUTHOR TO WRITE` template with `{days}`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `a full answer passes`.
   - `a missing pair is invalid` (null).
   - `an unknown unit or kind is dropped, the rest must still be complete`.
@@ -565,16 +565,16 @@ After every unit:
   - `the system prompt forbids a pronoun for the commander` (the text contains `never use a pronoun for the commander`).
   - `the prompt marks the cards as data` (the `<card>` tags are stripped from the card text).
   - `the site is declared`: `generationSite('setup.head_start_recap')` → `{ callType: 'head_start_recap', surface: 'world', reroll: 'before_commit', record: 'full' }`. `tests/llm/siteRegistry.test.ts` passes unchanged.
-- [ ] **Step 2: Run** `npx vitest run tests/llm/headStartRecap.test.ts tests/llm/siteRegistry.test.ts tests/settings.test.ts` → FAIL.
-- [ ] **Step 3: Implement** in the style of `wardenAgenda.ts`: `profile: 'mechanic'`, `json: true`, no `prose`. The system prompt asks for:
+- [x] **Step 2: Run** `npx vitest run tests/llm/headStartRecap.test.ts tests/llm/siteRegistry.test.ts tests/settings.test.ts` → FAIL.
+- [x] **Step 3: Implement** in the style of `wardenAgenda.ts`: `profile: 'mechanic'`, `json: true`, no `prose`. The system prompt asks for:
   - one or two sentences per moment, past tense, from the squad's side, about the listed kind only;
   - a short paragraph for the squad;
   - no numbers about feelings;
   - the commander only as "the commander";
   - the soldiers as "she";
   - the crime mentioned only in the moments of soldiers marked as knowing it.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): head_start_recap call type, sanitizer, fallback and site`
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): head_start_recap call type, sanitizer, fallback and site`
 
 ---
 
@@ -594,7 +594,7 @@ After every unit:
   - `headStartOpening(state: CampaignState): string` (exported for the test);
   - `OPENING_DIRECTIVE = 'head_start:known'`.
 
-- [ ] **Step 1: Write the failing tests** (fake adapter and the envelope host helper `tests/helpers/envelopeHost.ts`)
+- [x] **Step 1: Write the failing tests** (fake adapter and the envelope host helper `tests/helpers/envelopeHost.ts`)
   - `onLoaded asks once and applies the answer`: a queued valid answer → facts and a chronicle entry, `recap.source 'model'`.
   - `reload asks once`: `onLoaded` twice in the same chat → one call.
   - `a recap already written is not asked again`.
@@ -608,13 +608,13 @@ After every unit:
     - absent without a head start.
   - `the opening names the new arrivals` ("Rhea arrived today and meets the commander for the first time.").
   - `no pronoun for the commander in the opening` (no `\b(he|him|his|she|her)\b` before "commander" in the text; use the pronoun test's helper if it exports one).
-- [ ] **Step 2: Run** `npx vitest run tests/headStart/controller.test.ts` → FAIL.
-- [ ] **Step 3: Implement** after `src/warden/controller.ts`.
+- [x] **Step 2: Run** `npx vitest run tests/headStart/controller.test.ts` → FAIL.
+- [x] **Step 3: Implement** after `src/warden/controller.ts`.
   - `bind('setup.head_start_recap', { build, parse, apply, fallback, committed })` per "The recap".
   - `apply` and `fallback` dispatch `head_start/recap` with `expectChatId`.
   - The `asked` set is keyed by `<chatId>:recap`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): head start controller asks for the recap and opens the first scene`
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): head start controller asks for the recap and opens the first scene`
 
 ---
 

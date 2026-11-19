@@ -57,6 +57,7 @@ import { createPower, type PowerController } from './power/controller';
 import { createPersonal, type PersonalController } from './personal/controller';
 import { createSpecial, type SpecialController } from './special/controller';
 import { createWarden } from './warden/controller';
+import { createHeadStart } from './headStart/controller';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
 import { clearSpecialDirectives, refreshSpecialDirectives } from './special/directives';
 import type { VoteChoice } from './power/deps';
@@ -556,6 +557,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return true;
     },
   }); // P13: the warden's agenda, the day-start snapshot, the rewind and the epilogue
+  const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext }); // P11b: the recap of the first weeks and the first scene's opening
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -664,11 +666,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     loyalty.onSceneClosed(); // refusal, band, trauma and aftermath directives belong to one scene of one campaign (P6)
     discipline.onSceneClosed(); // so do the stance and threat directives (P9)
     onboarding.onSceneClosed(); // and the prologue's goal and wrap directives (P11)
+    headStart.onSceneClosed(); // and the head start's opening line (P11b)
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
       discipline.onSceneOpened();
       onboarding.onSceneOpened();
+      headStart.onSceneOpened();
       showScene();
     } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
@@ -678,6 +682,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
     warden.onLoaded(); // P13: the agenda of a campaign just built or reloaded, and the reveal directive
+    headStart.onLoaded(); // P11b: the recap of the first weeks, once
     personal.reopenSecrets(); // P9c: a secret that was found and never answered asks again
     void personal.onLoaded().then((ok) => { if (ok) shell.open(); }).catch((e) => console.warn('[Alius] booking failed', e)); // P9c: a booking that came due while the game was closed
     pendingEdit = null; // P9c: an edit of another chat is not this one's; a waiting one comes back from the state, freshly worded
@@ -697,6 +702,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     loyalty.onSceneOpened();
     discipline.onSceneOpened();
     onboarding.onSceneOpened();
+    headStart.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -784,6 +790,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();
         discipline.onSceneClosed();
+        headStart.onSceneClosed();
       }
       if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
       if (has('night_started') && state?.slot === 'night' && !state.scene) {
