@@ -9,6 +9,8 @@ import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
 import { applyDispositionStart, applyWorldStartEffects, defaultWorldOptions, validateWorldOptions } from './worldOptions';
 import { applyFirstImpression } from './commander/presence';
+import { applyHeadStart } from './headStart/apply';
+import type { AxisDelta } from './headStart/develop';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { seedSpecialTraits } from './special/traits';
 import { corporateWardenPick, seedWarden } from './warden/select';
@@ -430,6 +432,7 @@ export function buildCampaign(
 
   const used = new Set<string>();
   const days = headStartDays(r);
+  const impressions = new Map<string, { delta: AxisDelta; trustBefore: number }>();
   for (const u of r.units) {
     const unit = makeNamedUnit(u, reg, used);
     const id = unit.id;
@@ -443,8 +446,16 @@ export function buildCampaign(
       ...(days > 0 && !isNewArrival(r, u.cardRef) ? { since: 1 - days } : {}), // P11b: she has known the commander for `days`
     });
     applyDispositionStart(state, reg, unit, state.relations[id]); // P8: before the first impression, which re-bases the band
-    applyFirstImpression(state, reg, unit, state.relations[id]);
+    const rel = state.relations[id];
+    const met = { trust: rel.trust, affinity: rel.affinity, attraction: rel.attraction };
+    applyFirstImpression(state, reg, unit, rel);
+    if (days > 0 && !isNewArrival(r, u.cardRef)) {
+      // P11b: what the first impression did, for the development of the skipped days
+      impressions.set(id, { delta: { trust: rel.trust - met.trust, affinity: rel.affinity - met.affinity, attraction: rel.attraction - met.attraction }, trustBefore: rel.trust });
+    }
   }
+  // P11b: after every unit joined (disposition and first impression done) and before the world, the warden and the prologue read the relations
+  if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days: days as 7 | 14 | 30, impressions });
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set

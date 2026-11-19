@@ -8416,6 +8416,9 @@ function stepsOf(entry) {
 }
 var isWizardStep = (step) => WIZARD_KINDS.includes(step.kind);
 
+// src/engine/headStart/skip.ts
+var HEAD_START_SKIPPED_KINDS = ["scene", "expedition", "guided_slot"];
+
 // src/engine/onboarding/state.ts
 var onboardingDone = (state) => state.onboarding === void 0 || state.onboarding.done;
 var livingNamed = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
@@ -8488,7 +8491,7 @@ function enterStep(draft, ctx2, index2, afterSkippedExpedition = false) {
       events.push({ type: "onboarding_done" });
       return events;
     }
-    const noOne = (step.kind === "scene" || step.kind === "expedition") && livingNamed(draft).length === 0 || step.participants === "warden" && wardenUnitId(draft) === null;
+    const noOne = (step.kind === "scene" || step.kind === "expedition") && livingNamed(draft).length === 0 || step.participants === "warden" && wardenUnitId(draft) === null || draft.headStart !== void 0 && HEAD_START_SKIPPED_KINDS.includes(step.kind);
     if (noOne || skipDebrief && step.completion === "debriefed") {
       o.skipped.push(step.id);
       events.push({ type: "onboarding_step_skipped", stepId: step.id });
@@ -8614,6 +8617,9 @@ function fallbackCompaction(entries2) {
 }
 
 // src/engine/memory/crime.ts
+function reactsToCrime(unit2, crime) {
+  return (crime?.valueReactions ?? []).some((r) => r.sign === "+" ? unit2.values[r.axis] > 0 : unit2.values[r.axis] < 0);
+}
 function revealCrime(draft, reg, unitIds) {
   const events = [];
   const crime = draft.commander.crimeId ? reg.crimes.get(draft.commander.crimeId) : void 0;
@@ -12175,6 +12181,112 @@ function objectiveList(state, reg) {
   return out;
 }
 
+// src/engine/headStart/hash.ts
+var headStartRaw = (seed, unitId, key) => fnv1a(`${seed}|${unitId}|head_start|${key}`);
+var headStartHash = (seed, unitId, key) => headStartRaw(seed, unitId, key) / 2 ** 32;
+
+// src/engine/headStart/develop.ts
+var AXES2 = ["trust", "affinity", "attraction"];
+var RANGE3 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
+function impressionOf(d) {
+  const sum = d.trust + d.affinity;
+  return sum > 0 ? "positive" : sum < 0 ? "negative" : "neutral";
+}
+function developRelation(rel, d, days, seed, unitId) {
+  const k = TUNING.headStart.k[days];
+  const spreadMax = TUNING.headStart.spread;
+  for (const axis of AXES2) {
+    if (d[axis] === 0) continue;
+    const spread2 = headStartRaw(seed, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
+    const [lo, hi] = RANGE3[axis];
+    rel[axis] = Math.min(hi, Math.max(lo, rel[axis] + Math.round(d[axis] * k) + spread2));
+  }
+}
+function crimeChance(state, reg, unit2, days) {
+  const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : void 0;
+  const chance = TUNING.headStart.crime[days] * (reactsToCrime(unit2, crime) ? TUNING.headStart.crimeReactMult : 1);
+  return Math.min(TUNING.headStart.crimeCap, chance);
+}
+function rollCrime(draft, reg, unit2, days, seed) {
+  if (draft.relations[unit2.id]?.flags.includes("knows_crime")) return false;
+  if (headStartHash(seed, unit2.id, "crime") >= crimeChance(draft, reg, unit2, days)) return false;
+  revealCrime(draft, reg, [unit2.id]);
+  return true;
+}
+
+// src/engine/headStart/moments.ts
+function eligible(reg, unit2, ctx2) {
+  return [...reg.headStartMoments.values()].filter((m) => {
+    if ((m.tags ?? []).includes("probe")) return false;
+    const req = m.requires ?? {};
+    if (req.minDays !== void 0 && req.minDays > ctx2.days) return false;
+    if (req.knowsCrime !== void 0 && req.knowsCrime !== ctx2.knowsCrime) return false;
+    for (const [axis, sign] of Object.entries(req.values ?? {})) {
+      const v = unit2.values[axis];
+      if (sign === "+" ? !(v > 0) : !(v < 0)) return false;
+    }
+    return m.sign === "any" || ctx2.impression === "neutral" || m.sign === ctx2.impression;
+  });
+}
+function pickMoments(_state, reg, unit2, ctx2) {
+  const [lo, hi] = TUNING.headStart.moments[ctx2.days];
+  const count = lo + (hi > lo ? headStartRaw(ctx2.seed, unit2.id, "count") % (hi - lo + 1) : 0);
+  const keyed = eligible(reg, unit2, ctx2).map((m) => ({ m, h: headStartHash(ctx2.seed, unit2.id, `moment:${String(m.id)}`) }));
+  keyed.sort((a, b) => a.h - b.h || String(a.m.id).localeCompare(String(b.m.id)));
+  return keyed.slice(0, count).map((k) => k.m);
+}
+var RANGE4 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
+function applyMoment(draft, reg, unitId, moment) {
+  const rel = draft.relations[unitId];
+  if (!rel) return;
+  const row2 = moment.eventDelta;
+  const byCommander = row2.actor === "commander";
+  const event = {
+    type: row2.type,
+    severity: row2.severity,
+    actor: byCommander ? "commander" : unitId,
+    targets: byCommander ? [unitId] : [],
+    evidence: "head start",
+    confidence: 1
+  };
+  const d = computeDeltas(draft, reg, unitId, event);
+  if (d.dropped) return;
+  for (const axis of ["trust", "affinity", "attraction"]) {
+    const [lo, hi] = RANGE4[axis];
+    rel[axis] = Math.min(hi, Math.max(lo, rel[axis] + roundAway(d[axis])));
+  }
+  pushHistory(draft, unitId, { day: draft.day, kind: "event", type: event.type, severity: d.severity });
+}
+function capTrust(rel, trustBefore) {
+  rel.trust = Math.min(rel.trust, Math.max(TUNING.headStart.trustCap, trustBefore));
+}
+function headStartTransition(draft, reg, unitId) {
+  const rel = draft.relations[unitId];
+  if (!rel) return [];
+  rel.loyaltyBand = initialLoyaltyBand(rel.trust, bandShift(dispositionById(draft, reg, unitId)));
+  return evaluateAutomatic(draft, reg, unitId, { allow: (st) => st.bondTier !== "romantic" });
+}
+
+// src/engine/headStart/apply.ts
+function applyHeadStart(draft, reg, o) {
+  const units = [];
+  for (const unit2 of draft.squad) {
+    const known = o.impressions.get(unit2.id);
+    const rel = draft.relations[unit2.id];
+    if (!known || !rel) continue;
+    developRelation(rel, known.delta, o.days, o.seed, unit2.id);
+    const impression = impressionOf(known.delta);
+    rollCrime(draft, reg, unit2, o.days, o.seed);
+    const moments = pickMoments(draft, reg, unit2, { days: o.days, seed: o.seed, impression, knowsCrime: rel.flags.includes("knows_crime") });
+    for (const m of moments) applyMoment(draft, reg, unit2.id, m);
+    capTrust(rel, known.trustBefore);
+    headStartTransition(draft, reg, unit2.id);
+    units.push({ unitId: unit2.id, impression, moments: moments.map((m) => String(m.id)) });
+  }
+  for (const rel of Object.values(draft.relations)) rel.dailyGain = { trust: 0, affinity: 0, attraction: 0 };
+  draft.headStart = { days: o.days, units };
+}
+
 // src/engine/calendar.ts
 var SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
 var slotIndex = (day, slot2) => day * SLOT_ORDER.length + SLOT_ORDER.indexOf(slot2);
@@ -12368,8 +12480,8 @@ function pickPunishment(state, reg, severity) {
   const w = wardenOf(state);
   const busy = state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0;
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    const eligible2 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy));
-    if (eligible2.length > 0) return String(eligible2[(w?.punishLog.length ?? 0) % eligible2.length].id);
+    const eligible3 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy));
+    if (eligible3.length > 0) return String(eligible3[(w?.punishLog.length ?? 0) % eligible3.length].id);
   }
   return null;
 }
@@ -12529,23 +12641,23 @@ function legalTargets(cs, actorCid, skill, reg) {
   }
   const enemies = living(cs, opposite(actor.side)).filter((c) => !hasFlag2(c, reg, "untargetable"));
   const ignoreRows = skill.effects.some((e) => e.type === "damage" && e.ignoreRows === true);
-  let eligible2;
-  if (ignoreRows) eligible2 = enemies;
+  let eligible3;
+  if (ignoreRows) eligible3 = enemies;
   else {
-    eligible2 = enemies.filter((c) => targets.rows.includes(c.row));
+    eligible3 = enemies.filter((c) => targets.rows.includes(c.row));
     if (targets.melee) {
-      const front = eligible2.filter((c) => c.row === "front");
+      const front = eligible3.filter((c) => c.row === "front");
       const anyFront = living(cs, opposite(actor.side)).some((c) => c.row === "front");
-      eligible2 = front.length > 0 || anyFront ? front : eligible2;
+      eligible3 = front.length > 0 || anyFront ? front : eligible3;
     }
   }
-  const taunters = eligible2.filter((c) => hasFlag2(c, reg, "taunt"));
-  if (taunters.length > 0) eligible2 = taunters;
+  const taunters = eligible3.filter((c) => hasFlag2(c, reg, "taunt"));
+  if (taunters.length > 0) eligible3 = taunters;
   if (actor.lockedTargetId) {
-    const locked = eligible2.find((c) => c.cid === actor.lockedTargetId);
-    if (locked) eligible2 = [locked];
+    const locked = eligible3.find((c) => c.cid === actor.lockedTargetId);
+    if (locked) eligible3 = [locked];
   }
-  const out = eligible2.map((c) => c.cid);
+  const out = eligible3.map((c) => c.cid);
   if (actor.side === "enemy" && cs.commander && !cs.commander.downed && taunters.length === 0) {
     const frontStands = living(cs, "squad").some((c) => c.row === "front");
     const reachesBack = ignoreRows || targets.rows.includes("back") && (!targets.melee || !frontStands);
@@ -13767,7 +13879,7 @@ function disciplineDayStep(draft, ctx2) {
 }
 
 // src/engine/discipline/undo.ts
-var RANGE3 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
+var RANGE5 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function canUndo(state, id) {
   const d = state.discipline;
@@ -13793,7 +13905,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
   if (rel) {
     for (const axis of ["trust", "affinity", "attraction"]) {
       const delta = inv.axes?.[axis];
-      if (delta) rel[axis] = clamp12(rel[axis] - delta, RANGE3[axis][0], RANGE3[axis][1]);
+      if (delta) rel[axis] = clamp12(rel[axis] - delta, RANGE5[axis][0], RANGE5[axis][1]);
       const daily = inv.dailyGain?.[axis];
       if (daily) rel.dailyGain[axis] = Math.max(0, rel.dailyGain[axis] - daily);
     }
@@ -20520,7 +20632,7 @@ function itemFor(state, reg, unit2, cost) {
   return state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === cost.slot && RARITIES.indexOf(i.rarity) >= min && equippedBy(state, i.uid) === void 0 && canEquip(reg, unit2, i) === null).sort((a, b) => RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity) || b.upgrade - a.upgrade)[0];
 }
 var otherUnit = (state, unitId) => namedLiving6(state).filter((u) => u.id !== unitId).sort((a, b) => (state.relations[a.id]?.affinity ?? 0) - (state.relations[b.id]?.affinity ?? 0))[0];
-function eligible(state, reg, unit2, t) {
+function eligible2(state, reg, unit2, t) {
   const rel = state.relations[unit2.id];
   const c = t.conditions ?? {};
   const stance = commandStance(state, reg, unit2.id);
@@ -20543,7 +20655,7 @@ function eligible(state, reg, unit2, t) {
 function eligibleTemplates(state, reg, unitId, kind) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   if (!unit2 || unit2.kind !== "named" || !isLiving(unit2) || !state.relations[unitId]) return [];
-  return [...reg.demandTemplates.values()].filter((t) => t.kind === "desire" === (kind === "desire") && contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit2, t));
+  return [...reg.demandTemplates.values()].filter((t) => t.kind === "desire" === (kind === "desire") && contentAllowed(state, reg, t, unitId) && eligible2(state, reg, unit2, t));
 }
 function openDemand(draft, ctx2, unitId, opts = {}) {
   const reg = ctx2.registries;
@@ -21394,6 +21506,7 @@ function buildCampaign(r, reg, opts) {
   const knowsCrime = crimeKnownByDefault(crime, start);
   const used = /* @__PURE__ */ new Set();
   const days = headStartDays(r);
+  const impressions = /* @__PURE__ */ new Map();
   for (const u of r.units) {
     const unit2 = makeNamedUnit(u, reg, used);
     const id = unit2.id;
@@ -21407,8 +21520,14 @@ function buildCampaign(r, reg, opts) {
       // P11b: she has known the commander for `days`
     });
     applyDispositionStart(state, reg, unit2, state.relations[id]);
-    applyFirstImpression(state, reg, unit2, state.relations[id]);
+    const rel = state.relations[id];
+    const met = { trust: rel.trust, affinity: rel.affinity, attraction: rel.attraction };
+    applyFirstImpression(state, reg, unit2, rel);
+    if (days > 0 && !isNewArrival(r, u.cardRef)) {
+      impressions.set(id, { delta: { trust: rel.trust - met.trust, affinity: rel.affinity - met.affinity, attraction: rel.attraction - met.attraction }, trustBefore: rel.trust });
+    }
   }
+  if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days, impressions });
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg);

@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState, OnboardingState, Unit } from '../state/types';
+import { HEAD_START_SKIPPED_KINDS } from '../headStart/skip';
 import { wardenUnitId } from '../warden/state';
 import { isWizardStep, stepsOf, type StepWithId } from './prologue';
 
@@ -76,7 +77,7 @@ export function registerStepEntry(kind: StepWithId['kind'], fn: StepEntry): void
 
 /**
  * Enters the step at `index` of the prologue, then keeps going while the step is skipped by rule: a scene or expedition
- * with no living named unit, and the `debriefed` step that follows a skipped expedition. Entering `free` completes the
+ * with no living named unit, every scene, expedition and guided_slot step of a head start (P11b), and the `debriefed` step that follows a skipped expedition. Entering `free` completes the
  * prologue. Skipped steps are listed in `skipped`; a skipped step is never "started".
  */
 export function enterStep(draft: CampaignState, ctx: EngineCtx, index: number, afterSkippedExpedition = false): EngineEvent[] {
@@ -98,7 +99,8 @@ export function enterStep(draft: CampaignState, ctx: EngineCtx, index: number, a
       return events;
     }
     const noOne = ((step.kind === 'scene' || step.kind === 'expedition') && livingNamed(draft).length === 0)
-      || (step.participants === 'warden' && wardenUnitId(draft) === null); // P13: nobody holds the leash, so there is no one to meet
+      || (step.participants === 'warden' && wardenUnitId(draft) === null) // P13: nobody holds the leash, so there is no one to meet
+      || (draft.headStart !== undefined && (HEAD_START_SKIPPED_KINDS as readonly string[]).includes(step.kind)); // P11b: the squad already knows the commander
     if (noOne || (skipDebrief && step.completion === 'debriefed')) {
       o.skipped.push(step.id);
       events.push({ type: 'onboarding_step_skipped', stepId: step.id });

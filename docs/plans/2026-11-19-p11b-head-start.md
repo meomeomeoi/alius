@@ -463,7 +463,7 @@ After every unit:
   - `applyHeadStart(draft: CampaignState, reg: Registries, o: { seed: number; days: 7 | 14 | 30; impressions: Map<string, { delta: AxisDelta; trustBefore: number }> }): void`;
   - `HEAD_START_SKIPPED_KINDS = ['scene', 'expedition', 'guided_slot'] as const`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - Build:
     - `a head start draws nothing`: the same `SetupResult` and seed with N = 30 and without a head start → `state.rng` equal;
     - `a head start is deterministic`: two builds with seed 7 → `toEqual`;
@@ -477,14 +477,14 @@ After every unit:
     - `every tab is unlocked`: `lockedTabs(state, reg).size === 0`;
     - `no tutorial mission is offered` (`missions.offered` has no `tutorial` template);
     - `without a head start the prologue starts as before` (the first campaign step is current, `done` false).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/headStart/build.test.ts tests/engine/onboarding/headStartSkip.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/engine/headStart/build.test.ts tests/engine/onboarding/headStartSkip.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - In `buildCampaign`, capture `before` axes just before `applyFirstImpression` and the change just after, keyed by unit id, for non-new units only.
   - After the loop, `if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days, impressions })`. This comes before `state.roster.activeIds`, `seedWorld`, the LEASHSWAP block (`corporateWardenPick` reads values and Impunity; the head start may change who oversight picks, which is intended) and the onboarding block.
   - `applyHeadStart` writes `draft.headStart = { days, units }`.
   - In `enterStep`, add to the skip condition: `(draft.headStart !== undefined && HEAD_START_SKIPPED_KINDS.includes(step.kind))`.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS. Run the unaffected tests explicitly; any moved golden stops the task.
-- [ ] **Step 5: Commit** `feat(P11b): the build applies the head start and skips the prologue's campaign steps`
+- [x] **Step 4: Run** the files, then `npm test` → PASS. Run the unaffected tests explicitly; any moved golden stops the task.
+- [x] **Step 5: Commit** `feat(P11b): the build applies the head start and skips the prologue's campaign steps`
 
 ---
 
