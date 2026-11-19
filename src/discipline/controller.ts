@@ -2,7 +2,7 @@ import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { commandStance, stanceEntry } from '../engine/discipline';
 import { herJournal } from '../engine/memory/inputs';
-import { generateDemandFlavor } from '../llm/calls/flavor';
+import { sanitizeDemandFlavor, type DemandFlavorInput } from '../llm/calls/flavor';
 import { clearDisciplineDirectives, disciplineDirectives, reputationDirectives } from './context';
 import type { DisciplineDeps } from './deps';
 import { measureLabel, nicknameDirective, punishDirective, threatDirective } from './directives';
@@ -23,6 +23,8 @@ export interface DisciplineController {
   answerDemand(demandId: string, answer: 'grant' | 'refuse'): boolean;
   /** [TALK]: opens a private scene with her (her quarters) while the demand stays open. */
   talkDemand(demandId: string): Promise<boolean>;
+  /** P14: REROLL of a delivered demand's wording, before an answer (`flavor.demand`). */
+  reword(demandId: string): Promise<void>;
   /** UNDO — not what I meant: an application read from dialogue or a threat. Toasts and returns false when it cannot be undone. */
   undo(id: string): boolean;
 }
@@ -43,30 +45,56 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
     deps.refreshContext();
   };
 
-  /** Words one undelivered demand (setting on, model answers) and delivers it; a chat that changed meanwhile drops it (the day end delivers it). */
-  async function wordAndDeliver(demandId: string, expect: string | undefined): Promise<void> {
-    const s = state();
-    const demand = s?.discipline?.demands.find((d) => d.id === demandId);
-    if (!s || !demand || demand.status !== 'undelivered') return;
-    const reg = deps.registries();
-    let text: string | undefined;
-    if (deps.settings().demandWording) {
+  const demandOf = (id: string) => state()?.discipline?.demands.find((d) => d.id === id);
+
+  // the `flavor.demand` site (key: the demand's id): her demand in her words. An undelivered demand is delivered with the wording (a failure
+  // delivers the template text: a quiet record); a delivered one that waits for an answer is worded again (RETRY of the template, REROLL)
+  deps.generations.bind<DemandFlavorInput, string>('flavor.demand', {
+    build(demandId) {
+      const s = state();
+      const demand = demandOf(demandId);
+      if (!s || !demand) return { expired: 'It was answered.' };
+      const reg = deps.registries();
       const stance = commandStance(s, reg, demand.unitId);
       const unit = s.squad.find((u) => u.id === demand.unitId);
-      try {
-        text = (await generateDemandFlavor({
-          kind: 'demand', unitName: unit?.displayName ?? demand.unitId, stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? '')?.promptHint ?? ''),
-          stanceName: String((stance === null ? undefined : stanceEntry(reg, stance)?.name) ?? ''), demand: demand.text,
-          journal: herJournal(s, reg, demand.unitId, false), // P3b: what lately passed between her and the commander
-        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine })) ?? undefined;
-      } catch {
-        text = undefined; // a failed call never blocks the demand: the template text is used
-      }
+      return {
+        kind: 'demand', unitName: unit?.displayName ?? demand.unitId, stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? '')?.promptHint ?? ''),
+        stanceName: String((stance === null ? undefined : stanceEntry(reg, stance)?.name) ?? ''), demand: demand.text,
+        journal: herJournal(s, reg, demand.unitId, false), // P3b: what lately passed between her and the commander
+      };
+    },
+    parse: (raw) => sanitizeDemandFlavor(raw)?.text ?? null,
+    apply(demandId, text) {
+      const demand = demandOf(demandId);
+      if (!demand) return { stale: true };
+      const events = deps.app.dispatch({ type: demand.status === 'undelivered' ? 'demand/deliver' : 'demand/reword', payload: { demandId, text } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === 'error')) return { stale: true };
+      syncDirectives();
+      return 'ok';
+    },
+    // a failed call never blocks the demand: the template text is delivered
+    fallback(demandId) {
+      const demand = demandOf(demandId);
+      if (!demand) return false;
+      if (demand.status === 'open') return true;
+      const events = deps.app.dispatch({ type: 'demand/deliver', payload: { demandId } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === 'error')) return false;
+      syncDirectives();
+      return true;
+    },
+    committed: (demandId) => (demandOf(demandId)?.status === 'open' ? null : 'It was answered.'),
+  });
+
+  /** Words one undelivered demand (setting on, model answers) and delivers it; a chat that changed meanwhile drops it (the day end delivers it). */
+  async function wordAndDeliver(demandId: string, expect: string | undefined): Promise<void> {
+    const demand = demandOf(demandId);
+    if (!demand || demand.status !== 'undelivered' || chatId() !== expect) return;
+    if (deps.settings().demandWording) {
+      await deps.generations.generate('flavor.demand', demandId);
+      return;
     }
-    if (chatId() !== expect) return;
-    const events = deps.app.dispatch({ type: 'demand/deliver', payload: { demandId, ...(text !== undefined ? { text } : {}) } }, { expectChatId: expect });
-    if (events.some((e) => e.type === 'error')) return;
-    syncDirectives();
+    const events = deps.app.dispatch({ type: 'demand/deliver', payload: { demandId } }, { expectChatId: expect });
+    if (!events.some((e) => e.type === 'error')) syncDirectives();
   }
 
   async function onSlotAdvanced(): Promise<void> {
@@ -99,6 +127,10 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
     const ok = await deps.startScene({ locationId: 'quarters_unit', participants: [demand.unitId], origin: 'event' });
     if (ok) syncDirectives();
     return ok;
+  }
+
+  async function reword(demandId: string): Promise<void> {
+    await deps.generations.reroll('flavor.demand', demandId);
   }
 
   function onEvents(events: EngineEvent[]): void {
@@ -201,5 +233,5 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
     return true;
   }
 
-  return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand, talkDemand };
+  return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand, talkDemand, reword };
 }

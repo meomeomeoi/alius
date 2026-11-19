@@ -5,7 +5,7 @@ import { liveVote } from '../engine/power/state';
 import type { OverruleMeans } from '../engine/power/votes';
 import { VALUE_AXES, type CampaignState, type Vote } from '../engine/state/types';
 import { effectiveValues } from '../engine/worldOptions/stances';
-import { generateBallotFlavor } from '../llm/calls/flavor';
+import { sanitizeBallotFlavor, type BallotFlavorInput } from '../llm/calls/flavor';
 import type { ChallengeStat } from '../engine/power/moves';
 import type { PowerDeps, VoteChoice } from './deps';
 
@@ -62,6 +62,24 @@ export function createPower(deps: PowerDeps): PowerController {
     return text.replaceAll('{name}', name).replaceAll('{axis}', axis);
   }
 
+  const votersOf = (s: CampaignState, vote: Vote) => vote.ballots.filter((b) => b.vote !== 'abstain').map((b) => ({ id: b.unitId, name: s.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId, vote: b.vote as 'for' | 'against', term: b.term }));
+
+  // the `flavor.ballot` site (key: the vote's id): the voters' lines in their words; no record, the template lines stand
+  deps.generations.bind<BallotFlavorInput, Record<string, string>>('flavor.ballot', {
+    build(voteId) {
+      const s = state();
+      const vote = s ? liveVote(s) : null;
+      if (!s || !vote || vote.id !== voteId) return { expired: 'The vote is over.' };
+      const reg = deps.registries();
+      return {
+        kind: 'ballot', voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind), subjectLabel: voteSubjectLabel(s, reg, vote.kind, vote.subject),
+        ballots: votersOf(s, vote).map((v) => ({ name: v.name, vote: v.vote, term: v.term })),
+      };
+    },
+    parse: (raw, input) => sanitizeBallotFlavor(raw, input.ballots.map((b) => b.name)),
+    apply: () => 'ok', // the lines are the outcome's value: the caller shows them
+  });
+
   async function ballotLines(vote: Vote): Promise<Record<string, string>> {
     const s = state();
     const reg = deps.registries();
@@ -69,17 +87,10 @@ export function createPower(deps: PowerDeps): PowerController {
     const lines: Record<string, string> = {};
     for (const b of vote.ballots) lines[b.unitId] = templateLine(s, reg, vote, b.unitId);
     if (!deps.settings().ballotWording) return lines;
-    const voters = vote.ballots.filter((b) => b.vote !== 'abstain').map((b) => ({ id: b.unitId, name: s.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId, vote: b.vote as 'for' | 'against', term: b.term }));
+    const voters = votersOf(s, vote);
     if (voters.length === 0 || new Set(voters.map((v) => v.name)).size !== voters.length) return lines; // a name the model could not tell apart keeps its template
-    try {
-      const worded = await generateBallotFlavor({
-        kind: 'ballot', voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind), subjectLabel: voteSubjectLabel(s, reg, vote.kind, vote.subject),
-        ballots: voters.map((v) => ({ name: v.name, vote: v.vote, term: v.term })),
-      }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
-      for (const v of voters) if (worded[v.name] !== undefined) lines[v.id] = worded[v.name];
-    } catch {
-      // a failed call never blocks the vote: the template lines stand
-    }
+    const out = await deps.generations.generate<Record<string, string>>('flavor.ballot', vote.id);
+    if (out.kind === 'applied') for (const v of voters) if (out.value[v.name] !== undefined) lines[v.id] = out.value[v.name];
     return lines;
   }
 

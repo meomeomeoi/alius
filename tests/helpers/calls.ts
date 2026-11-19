@@ -6,7 +6,10 @@ import { readCompaction, type ChronicleCompactInput } from '../../src/llm/calls/
 import { readFold, type FoldInput, type FoldRaw } from '../../src/llm/calls/memoryFold';
 import { readRumor, type RumorInput } from '../../src/llm/calls/rumorRetell';
 import { sanitizeVignette, type VignetteInput } from '../../src/llm/calls/activityVignette';
-import { sanitizeEnemyFlavor, sanitizeGruntFlavor, generateFlavor, type EnemyFlavorInput, type GruntFlavorInput } from '../../src/llm/calls/flavor';
+import {
+  hasFlavorKind, sanitizeBallotFlavor, sanitizeDemandFlavor, sanitizeDmEdit, sanitizeEnemyFlavor, sanitizeFragment, sanitizeGruntFlavor, sanitizeRuleFlavor,
+  type BallotFlavorInput, type DemandFlavorInput, type DmEditFlavorInput, type EnemyFlavorInput, type GruntFlavorInput, type RuleFlavorInput,
+} from '../../src/llm/calls/flavor';
 import { sanitizeRecap, type RecapInput } from '../../src/llm/calls/expeditionRecap';
 import type { DilemmaGenerateInput } from '../../src/llm/calls/dilemmaGenerate';
 import type { DirectorTickInput } from '../../src/llm/calls/directorTick';
@@ -84,4 +87,32 @@ export async function generateGruntFlavor(input: GruntFlavorInput, deps: LlmDeps
 
 export async function generateEnemyFlavor(input: EnemyFlavorInput, deps: LlmDeps): Promise<{ name: string } | null> {
   return sanitizeEnemyFlavor(await generateFlavor(input, deps));
+}
+
+/** The model's JSON object for a flavor input, or null when the kind is unknown (no call) or the call failed. */
+export async function generateFlavor<T extends { kind: string }>(input: T, deps: LlmDeps): Promise<Record<string, unknown> | null> {
+  if (!hasFlavorKind(input.kind)) return null;
+  const r = await callLlm<Record<string, unknown>>('flavor', input, deps);
+  return r.ok ? r.value : null;
+}
+
+export async function generateDemandFlavor(input: DemandFlavorInput, deps: LlmDeps): Promise<string | null> {
+  return sanitizeDemandFlavor(await generateFlavor(input, deps))?.text ?? null;
+}
+
+export async function generateRuleFlavor(input: RuleFlavorInput, deps: LlmDeps): Promise<string | null> {
+  return sanitizeRuleFlavor(await generateFlavor(input, deps))?.text ?? null;
+}
+
+export async function generateBallotFlavor(input: BallotFlavorInput, deps: LlmDeps): Promise<Record<string, string>> {
+  return sanitizeBallotFlavor(await generateFlavor(input, deps), input.ballots.map((b) => b.name));
+}
+
+export async function generateDmEdit(input: DmEditFlavorInput, deps: LlmDeps): Promise<string | null> {
+  return sanitizeDmEdit(await generateFlavor(input, deps))?.text ?? null;
+}
+
+export async function generateFragment(input: { name: string; kind: string; gist: string; partial: boolean }, deps: LlmDeps): Promise<string | null> {
+  const r = await generateFlavor({ kind: 'frequency_fragment' as const, name: input.name, candidate: input.kind, gist: input.gist, partial: input.partial }, deps);
+  return sanitizeFragment(r?.text);
 }

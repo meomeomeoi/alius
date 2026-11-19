@@ -1,6 +1,6 @@
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
-import { generateRuleFlavor } from '../llm/calls/flavor';
+import { sanitizeRuleFlavor, type RuleFlavorInput } from '../llm/calls/flavor';
 import type { BondsDeps } from './deps';
 
 export type { BondsDeps } from './deps';
@@ -12,6 +12,8 @@ export interface BondsController {
   answerRule(ruleId: string, answer: 'accept' | 'refuse'): boolean;
   /** [NEGOTIATE]: the rule becomes `negotiating` and a private scene with her opens (her quarters). */
   negotiateRule(ruleId: string): Promise<boolean>;
+  /** P14: REROLL of a delivered proposal's wording, before an answer (`flavor.rule`). */
+  reword(ruleId: string): Promise<void>;
   /** The dossier's [SECRET] [KNOWN] [PUBLIC]: the commander sets how open the relationship is. Toasts the reason and returns false when the engine refuses. */
   setPublicity(unitId: string, level: 'secret' | 'known' | 'public'): boolean;
 }
@@ -25,26 +27,52 @@ export function createBonds(deps: BondsDeps): BondsController {
   const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
   const state = (): CampaignState | null => deps.app.current().state;
 
+  const ruleOf = (id: string) => state()?.bonds?.rules.find((r) => r.id === id);
+
+  // the `flavor.rule` site (key: the rule's id): a proposal in her words, delivered; a failure delivers the template text (a quiet record).
+  // A delivered proposal nobody answered is worded again by RETRY or REROLL
+  deps.generations.bind<RuleFlavorInput, string>('flavor.rule', {
+    build(ruleId) {
+      const s = state();
+      const rule = ruleOf(ruleId);
+      if (!s || !rule || rule.status !== 'proposed') return { expired: 'It was answered.' };
+      const reg = deps.registries();
+      const unit = s.squad.find((u) => u.id === rule.unitId);
+      return {
+        kind: 'rule', unitName: unit?.displayName ?? rule.unitId,
+        stateHint: String(reg.relationshipStates.get(s.relations[rule.unitId]?.stateId ?? '')?.promptHint ?? ''), rule: rule.text,
+      };
+    },
+    parse: (raw) => sanitizeRuleFlavor(raw)?.text ?? null,
+    apply(ruleId, text) {
+      const rule = ruleOf(ruleId);
+      if (!rule) return { stale: true };
+      const events = deps.app.dispatch({ type: rule.delivered ? 'bonds/reword_rule' : 'bonds/deliver_rule', payload: { ruleId, text } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === 'error')) return { stale: true };
+      deps.refreshContext();
+      return 'ok';
+    },
+    fallback(ruleId) {
+      const rule = ruleOf(ruleId);
+      if (!rule) return false;
+      if (rule.delivered) return true;
+      const events = deps.app.dispatch({ type: 'bonds/deliver_rule', payload: { ruleId } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === 'error')) return false;
+      deps.refreshContext();
+      return true;
+    },
+    committed: (ruleId) => (ruleOf(ruleId)?.status === 'proposed' ? null : 'It was answered.'),
+  });
+
   /** Words one undelivered proposal and delivers it; a chat that changed meanwhile drops it (the next day end delivers the template text). */
   async function wordAndDeliver(ruleId: string, expect: string | undefined): Promise<void> {
-    const s = state();
-    const rule = s?.bonds?.rules.find((r) => r.id === ruleId);
-    if (!s || !rule || rule.status !== 'proposed' || rule.delivered) return;
-    const reg = deps.registries();
-    let text: string | undefined;
+    const rule = ruleOf(ruleId);
+    if (!rule || rule.status !== 'proposed' || rule.delivered || chatId() !== expect) return;
     if (deps.settings().ruleWording) {
-      const unit = s.squad.find((u) => u.id === rule.unitId);
-      try {
-        text = (await generateRuleFlavor({
-          kind: 'rule', unitName: unit?.displayName ?? rule.unitId,
-          stateHint: String(reg.relationshipStates.get(s.relations[rule.unitId]?.stateId ?? '')?.promptHint ?? ''), rule: rule.text,
-        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine })) ?? undefined;
-      } catch {
-        text = undefined; // a failed call never blocks the proposal: the template text is used
-      }
+      await deps.generations.generate('flavor.rule', ruleId);
+      return;
     }
-    if (chatId() !== expect) return;
-    const events = deps.app.dispatch({ type: 'bonds/deliver_rule', payload: { ruleId, ...(text !== undefined ? { text } : {}) } }, { expectChatId: expect });
+    const events = deps.app.dispatch({ type: 'bonds/deliver_rule', payload: { ruleId } }, { expectChatId: expect });
     if (!events.some((e) => e.type === 'error')) deps.refreshContext();
   }
 
@@ -60,6 +88,7 @@ export function createBonds(deps: BondsDeps): BondsController {
   }
 
   return {
+    reword: async (ruleId) => { await deps.generations.reroll('flavor.rule', ruleId); },
     setPublicity(unitId, level) {
       const events = deps.app.dispatch({ type: 'bonds/set_publicity', payload: { unitId, level } }, { expectChatId: chatId() });
       const bad = events.find((e) => e.type === 'error');

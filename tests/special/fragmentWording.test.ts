@@ -135,6 +135,17 @@ describe('the special controller words new intercepts', () => {
     expect(textOf(r.h)).toBe(fallbackFragment(reg, x(), 'Ann'));
   });
 
+  it('a fragment record never exists: a failed call keeps the template and leaves no trace (hidden truth)', async () => {
+    const r = rig(true);
+    r.h.st.mainReplies = []; // the call fails
+    r.special.onEvents([event]);
+    await flush();
+    expect(textOf(r.h)).toBe(fallbackFragment(reg, x(), 'Ann'));
+    expect(r.h.state().generations).toBeUndefined();
+    expect(r.h.toasts).toEqual([]);
+    expect(JSON.stringify(r.h.state().generations ?? {})).not.toContain('fq1');
+  });
+
   it('a late fragment for another chat is dropped', async () => {
     const r = rig(true);
     r.h.st.mainReplies = ['{"text":"…late…"}'];

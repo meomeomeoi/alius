@@ -5,7 +5,7 @@ import { bookingPlayable, dueBooking } from '../engine/personal/bookings';
 import { interceptEditor } from '../engine/personal/intercept';
 import type { SecretAnswer } from '../engine/personal/secrets';
 import type { CampaignState, Intercept, Slot } from '../engine/state/types';
-import { generateDmEdit } from '../llm/calls/flavor';
+import { sanitizeDmEdit, type DmEditFlavorInput } from '../llm/calls/flavor';
 import type { PersonalDeps } from './deps';
 
 export type { EditPrompt, PersonalDeps } from './deps';
@@ -78,20 +78,34 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
   const keyOf = (id: string): string => `${chatId() ?? ''}:${id}`;
   const nameOf = (s: CampaignState, id: string | undefined): string => s.squad.find((u) => u.id === id)?.displayName ?? 'She';
 
+  const interceptOf = (id: string): Intercept | undefined => {
+    const open = state()?.personal?.intercepts?.open;
+    return open?.id === id ? open : undefined;
+  };
+
+  // the `flavor.dm_edit` site (key: the intercept's id): the edit in the editor's words; no record, the authored line stands
+  deps.generations.bind<DmEditFlavorInput, string>('flavor.dm_edit', {
+    build(interceptId) {
+      const s = state();
+      const open = interceptOf(interceptId);
+      const unit = s?.squad.find((u) => u.id === open?.unitId);
+      if (!s || !open || !unit) return { expired: 'The edit is over.' };
+      return {
+        kind: 'dm_edit', unitName: unit.displayName, stateHint: String(reg().relationshipStates.get(s.relations[unit.id]?.stateId ?? '')?.promptHint ?? ''),
+        recipientName: nameOf(s, open.toUnitId) === 'She' ? '' : nameOf(s, open.toUnitId), original: open.original ?? '',
+      };
+    },
+    parse: (raw) => sanitizeDmEdit(raw)?.text ?? null,
+    apply: () => 'ok', // the text is the outcome's value: `word` returns it
+  });
+
   /** The edit in the editor's words (the mechanic model when allowed and it answers), else an authored line with `{text}` and `{name}` filled. */
   async function word(s: CampaignState, open: Intercept): Promise<string> {
     const unit = s.squad.find((u) => u.id === open.unitId);
     const original = open.original ?? '';
     if (unit && deps.settings().dmEditWording) {
-      try {
-        const text = await generateDmEdit({
-          kind: 'dm_edit', unitName: unit.displayName, stateHint: String(reg().relationshipStates.get(s.relations[unit.id]?.stateId ?? '')?.promptHint ?? ''),
-          recipientName: nameOf(s, open.toUnitId) === 'She' ? '' : nameOf(s, open.toUnitId), original,
-        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
-        if (text !== null) return text;
-      } catch {
-        // a failed call never blocks the edit: the authored line is used
-      }
+      const out = await deps.generations.generate<string>('flavor.dm_edit', open.id);
+      if (out.kind === 'applied') return out.value;
     }
     const lines = ([...reg().deviceAccessRules.values()].find((r) => Number(r.level) === 4)?.editLines as string[] | undefined) ?? [];
     const line = lines.length > 0 ? lines[fnv1a(open.id) % lines.length] : '{text} — {name} added this.';

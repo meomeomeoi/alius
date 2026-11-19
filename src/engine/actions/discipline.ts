@@ -2,7 +2,7 @@ import { registerDayEndStep } from '../calendar';
 import { actOnWarning } from '../special/paranoia/accusations';
 import { registerAction } from '../dispatch';
 import { disciplineDayStep } from '../discipline/dayStep';
-import { answerDemand, deliverDemand, rollDemands } from '../discipline/demands';
+import { answerDemand, deliverDemand, rewordDemand, rollDemands } from '../discipline/demands';
 import { applyPunishment } from '../discipline/punish';
 import { introduceNickname } from '../discipline/reputation';
 import { undoApplication, undoThreat } from '../discipline/undo';
@@ -43,6 +43,12 @@ registerAction('demand/roll', (draft, _payload, ctx) => rollDemands(draft, ctx))
 registerAction('demand/deliver', (draft, payload) => {
   if (!isObj(payload) || typeof payload.demandId !== 'string') throw new Error('demand/deliver needs { demandId }');
   return deliverDemand(draft, payload.demandId, typeof payload.text === 'string' ? payload.text : undefined);
+});
+
+// P14: a new wording of a delivered demand, before an answer
+registerAction('demand/reword', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.demandId !== 'string' || typeof payload.text !== 'string') throw new Error('demand/reword needs { demandId, text }');
+  return rewordDemand(draft, payload.demandId, payload.text);
 });
 
 registerAction('demand/answer', (draft, payload, ctx) => {

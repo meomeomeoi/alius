@@ -155,6 +155,22 @@ export function deliverDemand(draft: CampaignState, demandId: string, text?: str
   return [{ type: 'demand_delivered', demandId, unitId: demand.unitId, viaDm }];
 }
 
+/**
+ * P14: a new wording of a demand that was delivered and waits for an answer (RETRY of the template text, REROLL). The text is cleaned
+ * exactly like the first one; the DM that carried the demand shows the new words. Draws nothing.
+ */
+export function rewordDemand(draft: CampaignState, demandId: string, text: string): EngineEvent[] {
+  const demand = draft.discipline?.demands.find((d) => d.id === demandId);
+  if (!demand) throw new Error(`Unknown demand "${demandId}".`);
+  if (demand.status !== 'open') throw new Error('Only a demand that waits for an answer can be reworded.');
+  const worded = clean(text);
+  if (worded === '') throw new Error('The wording is empty.');
+  demand.text = worded;
+  const carrier = demand.dmId === undefined ? undefined : draft.dms[demand.unitId]?.find((m) => m.id === demand.dmId);
+  if (carrier) carrier.text = worded;
+  return [{ type: 'demand_reworded', demandId, unitId: demand.unitId }];
+}
+
 /** Why the commander cannot grant this demand now, or `null`. */
 export function grantProblem(state: CampaignState, reg: Registries, demandId: string): string | null {
   const demand = state.discipline?.demands.find((d) => d.id === demandId);

@@ -80,6 +80,21 @@ export function deliverRule(draft: CampaignState, ruleId: string, text?: string)
 }
 
 /**
+ * P14: a new wording of a rule proposal that was delivered and has not been answered (RETRY of the template text, REROLL). Cleaned like
+ * the first one; the DM that carried it shows the new words. Draws nothing.
+ */
+export function rewordRule(draft: CampaignState, ruleId: string, text: string): EngineEvent[] {
+  const rule = rulesOf(draft).find((r) => r.id === ruleId);
+  if (!rule || rule.status !== 'proposed' || !rule.delivered) throw new Error('Only a delivered proposal that waits for an answer can be reworded.');
+  const worded = clean(text, R.textMax);
+  if (worded === '') throw new Error('The wording is empty.');
+  rule.text = worded;
+  const carrier = rule.dmId === undefined ? undefined : draft.dms[rule.unitId]?.find((m) => m.id === rule.dmId);
+  if (carrier) carrier.text = worded;
+  return [{ type: 'rule_reworded', ruleId, unitId: rule.unitId }];
+}
+
+/**
  * The commander answers a delivered proposal. Accept: it is active (`rule_accepted`, draft Affinity +3). Refuse: it is gone
  * (`rule_refused`, draft Trust −1, Affinity −3, stress +3). Negotiate: it becomes `negotiating`; the app opens a scene with her
  * and an extracted `compromise_reached` settles the text. A fourth active rule is refused.

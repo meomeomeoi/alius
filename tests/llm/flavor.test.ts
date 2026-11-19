@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { llmLog } from '../../src/llm/log';
-import {
-  generateDemandFlavor, generateFlavor, registerFlavorKind, sanitizeDemandFlavor, sanitizeGruntFlavor, type GruntFlavorInput,
-} from '../../src/llm/calls/flavor';
-import { generateGruntFlavor } from '../helpers/calls';
+import { registerFlavorKind, sanitizeDemandFlavor, sanitizeGruntFlavor, type GruntFlavorInput } from '../../src/llm/calls/flavor';
+import { generateDemandFlavor, generateFlavor, generateGruntFlavor } from '../helpers/calls';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 

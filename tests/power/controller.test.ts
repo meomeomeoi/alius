@@ -208,6 +208,8 @@ describe('ballot lines', () => {
     failing.h.app().dispatch({ type: 'vote/open', payload: { kind: 'upgrade', subject: 'workshop' } });
     failing.h.st.mainReplies = [];
     expect(await failing.power.ballotLines(failing.h.state().power!.votes.open!)).toEqual(template);
+    expect(failing.h.state().generations).toBeUndefined(); // P14: `flavor.ballot` keeps the template lines and writes no record
+    expect(failing.h.toasts).toEqual([]);
   });
 
   it('sanitizeBallotFlavor keeps only known names, plain text of at most 120 characters', () => {

@@ -52,27 +52,28 @@ async function boot() {
   return { st, app, state, toasts };
 }
 
-const records = (t: Awaited<ReturnType<typeof boot>>) => t.state().generations?.records ?? [];
+/** The records of one site (the campaign seed is random: another site may fail too, e.g. a soldier writing first). */
+const records = (t: Awaited<ReturnType<typeof boot>>, siteId: string) => (t.state().generations?.records ?? []).filter((r) => r.siteId === siteId);
 
 describe('the sites the app owns', () => {
   it('a failed vignette is quiet and expires when the slot passes', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'rest', companionId: 'unit_rhea' }); // no reply queued
-    expect(records(t)).toMatchObject([{ siteId: 'activity.vignette', quiet: true, status: 'open' }]);
+    expect(records(t, 'activity.vignette')).toMatchObject([{ quiet: true, status: 'open' }]);
     expect(t.toasts.some((x) => x.kind === 'story' || x.kind === 'warn' || x.kind === 'error')).toBe(false);
     // two more slots pass
     await t.app.performActivity({ activityId: 'rest' });
     await t.app.performActivity({ activityId: 'rest' });
-    expect(await t.app.generations.retry(records(t)[0].id)).toEqual({ kind: 'expired', why: 'That moment has passed.' });
+    expect(await t.app.generations.retry(records(t, 'activity.vignette')[0].id)).toEqual({ kind: 'expired', why: 'That moment has passed.' });
   });
 
   it('a retried vignette is told', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'rest', companionId: 'unit_rhea' });
     t.st.mainReplies = ['Rhea pours the tea.'];
-    expect((await t.app.generations.retry(records(t)[0].id)).kind).toBe('applied');
+    expect((await t.app.generations.retry(records(t, 'activity.vignette')[0].id)).kind).toBe('applied');
     expect(t.toasts.some((x) => x.kind === 'story' && x.text === 'Rhea pours the tea.')).toBe(true);
-    expect(records(t)).toEqual([]);
+    expect(records(t, 'activity.vignette')).toEqual([]);
   });
 
   it('a failed grunt name is quiet and RETRY names the grunt', async () => {
@@ -82,9 +83,9 @@ describe('the sites the app owns', () => {
     await t.app.recruitGrunt();
     const grunt = t.state().squad.find((u) => u.kind === 'grunt');
     if (!grunt) return; // the fixture cannot afford a recruit: nothing to name
-    expect(records(t)).toMatchObject([{ siteId: 'flavor.grunt', key: grunt.id, quiet: true }]);
+    expect(records(t, 'flavor.grunt')).toMatchObject([{ key: grunt.id, quiet: true }]);
     t.st.mainReplies = ['{"name": "Pike", "bio": "Keeps her head down."}'];
-    expect((await t.app.generations.retry(records(t)[0].id)).kind).toBe('applied');
+    expect((await t.app.generations.retry(records(t, 'flavor.grunt')[0].id)).kind).toBe('applied');
     expect(t.state().squad.find((u) => u.id === grunt.id)!.displayName).toBe('Pike');
   });
 

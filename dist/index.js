@@ -6882,7 +6882,9 @@ var RESERVED_EVENT_TYPES = [
   "generation_closed",
   "generation_expired",
   "scene_summarized_late",
-  "dilemma_reworded"
+  "dilemma_reworded",
+  "demand_reworded",
+  "rule_reworded"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -9954,6 +9956,16 @@ function deliverRule(draft, ruleId, text2) {
   const viaDm = draft.scene?.participants.includes(rule.unitId) !== true;
   if (viaDm) rule.dmId = pushMessage(draft, rule.unitId, { from: rule.unitId, text: rule.text, day: draft.day, slot: draft.slot, read: false, initiated: true }).id;
   return [{ type: "rule_delivered", ruleId, unitId: rule.unitId, viaDm }];
+}
+function rewordRule(draft, ruleId, text2) {
+  const rule = rulesOf(draft).find((r) => r.id === ruleId);
+  if (!rule || rule.status !== "proposed" || !rule.delivered) throw new Error("Only a delivered proposal that waits for an answer can be reworded.");
+  const worded = clean(text2, R.textMax);
+  if (worded === "") throw new Error("The wording is empty.");
+  rule.text = worded;
+  const carrier = rule.dmId === void 0 ? void 0 : draft.dms[rule.unitId]?.find((m) => m.id === rule.dmId);
+  if (carrier) carrier.text = worded;
+  return [{ type: "rule_reworded", ruleId, unitId: rule.unitId }];
 }
 function answerRule(draft, ctx2, ruleId, answer) {
   const reg = ctx2.registries;
@@ -20553,6 +20565,17 @@ function deliverDemand(draft, demandId, text2) {
   if (viaDm) demand.dmId = pushMessage(draft, demand.unitId, { from: demand.unitId, text: demand.text, day: draft.day, slot: draft.slot, read: false, initiated: true }).id;
   return [{ type: "demand_delivered", demandId, unitId: demand.unitId, viaDm }];
 }
+function rewordDemand(draft, demandId, text2) {
+  const demand = draft.discipline?.demands.find((d) => d.id === demandId);
+  if (!demand) throw new Error(`Unknown demand "${demandId}".`);
+  if (demand.status !== "open") throw new Error("Only a demand that waits for an answer can be reworded.");
+  const worded = clean2(text2);
+  if (worded === "") throw new Error("The wording is empty.");
+  demand.text = worded;
+  const carrier = demand.dmId === void 0 ? void 0 : draft.dms[demand.unitId]?.find((m) => m.id === demand.dmId);
+  if (carrier) carrier.text = worded;
+  return [{ type: "demand_reworded", demandId, unitId: demand.unitId }];
+}
 function grantProblem(state, reg, demandId) {
   const demand = state.discipline?.demands.find((d) => d.id === demandId);
   const tpl = demand ? reg.demandTemplates.get(demand.templateId) : void 0;
@@ -23884,6 +23907,10 @@ registerAction("demand/deliver", (draft, payload) => {
   if (!isObj21(payload) || typeof payload.demandId !== "string") throw new Error("demand/deliver needs { demandId }");
   return deliverDemand(draft, payload.demandId, typeof payload.text === "string" ? payload.text : void 0);
 });
+registerAction("demand/reword", (draft, payload) => {
+  if (!isObj21(payload) || typeof payload.demandId !== "string" || typeof payload.text !== "string") throw new Error("demand/reword needs { demandId, text }");
+  return rewordDemand(draft, payload.demandId, payload.text);
+});
 registerAction("demand/answer", (draft, payload, ctx2) => {
   if (!isObj21(payload) || typeof payload.demandId !== "string" || payload.answer !== "grant" && payload.answer !== "refuse") throw new Error('demand/answer needs { demandId, answer: "grant" | "refuse" }');
   return answerDemand(draft, ctx2, payload.demandId, payload.answer);
@@ -23988,6 +24015,10 @@ registerAction("bonds/limit", (draft, payload) => {
 registerAction("bonds/deliver_rule", (draft, payload) => {
   if (!isObj22(payload) || typeof payload.ruleId !== "string") throw new Error("bonds/deliver_rule needs { ruleId }");
   return deliverRule(draft, payload.ruleId, typeof payload.text === "string" ? payload.text : void 0);
+});
+registerAction("bonds/reword_rule", (draft, payload) => {
+  if (!isObj22(payload) || typeof payload.ruleId !== "string" || typeof payload.text !== "string") throw new Error("bonds/reword_rule needs { ruleId, text }");
+  return rewordRule(draft, payload.ruleId, payload.text);
 });
 registerAction("bonds/answer_rule", (draft, payload, ctx2) => {
   if (!isObj22(payload) || typeof payload.ruleId !== "string" || payload.answer !== "accept" && payload.answer !== "negotiate" && payload.answer !== "refuse") {
@@ -25036,270 +25067,6 @@ registerCallType({
   }
 });
 
-// src/llm/log.ts
-var CAPACITY = 50;
-var LlmLog = class {
-  items = [];
-  push(e) {
-    this.items.push(e);
-    if (this.items.length > CAPACITY) this.items.shift();
-  }
-  entries() {
-    return [...this.items];
-  }
-  clear() {
-    this.items = [];
-  }
-};
-var llmLog = new LlmLog();
-
-// src/llm/text.ts
-var THINK_TAGS = "think|thinking|reasoning";
-function stripThinking(s) {
-  const closed = new RegExp(`<(${THINK_TAGS})\\b[^>]*>[\\s\\S]*?</\\1\\s*>`, "gi");
-  const out = s.replace(closed, "");
-  if (new RegExp(`<(${THINK_TAGS})\\b[^>]*>`, "i").test(out)) return "";
-  return out.trim();
-}
-var THINKING_PART_TYPES = /* @__PURE__ */ new Set(["thinking", "redacted_thinking", "reasoning"]);
-function extract(data) {
-  if (typeof data === "string") return data;
-  if (Array.isArray(data)) {
-    return data.map((p) => {
-      if (typeof p === "string") return p;
-      if (typeof p !== "object" || p === null) return "";
-      const part = p;
-      if (typeof part.type === "string" && THINKING_PART_TYPES.has(part.type)) return "";
-      return typeof part.text === "string" ? part.text : typeof part.content === "string" ? part.content : "";
-    }).join("");
-  }
-  if (typeof data !== "object" || data === null) return "";
-  const o = data;
-  if (Array.isArray(o.choices) && o.choices.length > 0) {
-    const c = o.choices[0];
-    const msg = c?.message;
-    return extract(msg?.content ?? c?.text);
-  }
-  if (o.content !== void 0) return extract(o.content);
-  if (o.message !== void 0) return extract(o.message);
-  if (typeof o.text === "string") return o.text;
-  return "";
-}
-function answerText(data) {
-  return stripThinking(extract(data));
-}
-function scan(text2, start) {
-  const n = text2.length;
-  const stack = [];
-  let safeEnd = -1;
-  let open3 = [];
-  const mark = (end) => {
-    safeEnd = end;
-    open3 = stack.map((c) => c.t);
-  };
-  let i = start;
-  while (i < n) {
-    const c = text2[i];
-    if (c === '"') {
-      let j = i + 1;
-      while (j < n && text2[j] !== '"') j += text2[j] === "\\" ? 2 : 1;
-      if (j >= n) break;
-      const top = stack[stack.length - 1];
-      if (!(top && top.t === "{" && top.key)) mark(j + 1);
-      i = j + 1;
-    } else if (c === "{" || c === "[") {
-      stack.push({ t: c, key: c === "{" });
-      i++;
-    } else if (c === "}" || c === "]") {
-      stack.pop();
-      if (stack.length === 0) return { kind: "balanced", end: i };
-      mark(i + 1);
-      i++;
-    } else if (c === ":") {
-      if (stack.length) stack[stack.length - 1].key = false;
-      i++;
-    } else if (c === ",") {
-      const top = stack[stack.length - 1];
-      if (top && top.t === "{") top.key = true;
-      i++;
-    } else if (/\s/.test(c)) {
-      i++;
-    } else {
-      let j = i;
-      while (j < n && !/[\s,\]}:"{[]/.test(text2[j])) j++;
-      if (j >= n) break;
-      mark(j);
-      i = j;
-    }
-  }
-  return { kind: "cut", safeEnd, open: open3 };
-}
-function looseJson(text2) {
-  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
-  const src = fenced ? fenced[1] : text2;
-  let pos = 0;
-  for (; ; ) {
-    const rel = src.slice(pos).search(/[{[]/);
-    if (rel < 0) return null;
-    const start = pos + rel;
-    const r = scan(src, start);
-    if (r.kind === "balanced") {
-      try {
-        return JSON.parse(src.slice(start, r.end + 1));
-      } catch {
-        pos = r.end + 1;
-        continue;
-      }
-    }
-    if (r.safeEnd < 0) return null;
-    const closers = [...r.open].reverse().map((t) => t === "{" ? "}" : "]").join("");
-    try {
-      return JSON.parse(src.slice(start, r.safeEnd) + closers);
-    } catch {
-      return null;
-    }
-  }
-}
-function hasCutJson(text2) {
-  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
-  const src = fenced ? fenced[1] : text2;
-  let pos = 0;
-  for (; ; ) {
-    const rel = src.slice(pos).search(/[{[]/);
-    if (rel < 0) return false;
-    const start = pos + rel;
-    const r = scan(src, start);
-    if (r.kind === "cut") return true;
-    pos = r.end + 1;
-  }
-}
-function estTokens(s) {
-  return Math.ceil(s.length / 3.6);
-}
-
-// src/llm/orchestrator.ts
-var RETRY_BUDGET_FACTOR = 1.5;
-var DETAIL_MAX = 160;
-function compileRefusals(reg) {
-  const out = [];
-  for (const e of reg.llmRefusals.values()) {
-    try {
-      out.push({ re: new RegExp(String(e.pattern), "i"), scope: e.scope === "any" ? "any" : "json" });
-    } catch {
-    }
-  }
-  return out;
-}
-var cut3 = (s) => s.length > DETAIL_MAX ? s.slice(0, DETAIL_MAX) : s;
-var isAbort = (e) => typeof e === "object" && e !== null && (e.name === "AbortError" || e.name === "TimeoutError");
-function refuses(patterns, text2, scopes) {
-  return patterns.some((p) => scopes.includes(p.scope) && p.re.test(text2));
-}
-var OPEN_THINK = /<(?:think|thinking|reasoning)\b[^>]*>/i;
-function classify(ct, answer, patterns) {
-  const length = answer.finishReason === "length";
-  const text2 = stripThinking(answer.text);
-  if (text2 === "") {
-    if (OPEN_THINK.test(answer.text) || length) return { ok: false, reason: "truncated", detail: "the answer ran out of tokens before it began" };
-    return { ok: false, reason: "empty", detail: "empty answer" };
-  }
-  if (!ct.json) {
-    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
-    return { ok: true, value: text2 };
-  }
-  const json = looseJson(text2);
-  if (json === null) {
-    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
-    if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail: "the JSON was cut off" };
-    return { ok: false, reason: "invalid_output", detail: "no JSON found in the answer" };
-  }
-  if (!ct.schema) return { ok: true, value: json };
-  const checked = ct.schema.safeParse(json);
-  if (checked.success) return { ok: true, value: checked.data };
-  const empty = Array.isArray(json) ? json.length === 0 : typeof json === "object" && Object.keys(json).length === 0;
-  if (empty) return { ok: false, reason: "refused", detail: "an empty answer where the form needs content" };
-  const detail = cut3(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
-  if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail };
-  return { ok: false, reason: "invalid_output", detail };
-}
-async function attemptLlm(id, input, deps, opts) {
-  const { st, settings } = deps;
-  const ct = getCallType(id);
-  const now = Date.now();
-  if (!ct) return { ok: false, reason: "invalid_output", detail: `unknown call type: ${id}`, attempts: 0, at: now, budget: 0 };
-  const wantsMechanic = opts.profile === void 0 ? ct.profile === "mechanic" : opts.profile === "mechanic";
-  const hasProfile = st.listConnectionProfiles().some((p) => p.id === settings.mechanicProfileId);
-  const useMain = !wantsMechanic || !hasProfile;
-  if (wantsMechanic && !hasProfile && !settings.mechanicFallbackToMain) {
-    return { ok: false, reason: "no_profile", detail: "no mechanic connection profile selected", attempts: 0, at: now, budget: 0 };
-  }
-  const line2 = ct.prose === true ? (deps.contentLine?.() ?? "").trim() : "";
-  const system4 = line2 === "" ? ct.system(input) : `${ct.system(input)}
-
-${line2}`;
-  const prompt4 = ct.prompt(input);
-  const profileLabel = useMain ? "main" : settings.mechanicProfileId;
-  const maxTokens = wantsMechanic ? Math.max(opts.budget, settings.requestFloor) : opts.budget;
-  const started = Date.now();
-  const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
-  const fail = (reason, detail, raw) => {
-    llmLog.push({ ...entry, raw, ok: false, ms: Date.now() - started, reason });
-    return { ok: false, reason, detail: cut3(detail), attempts: 1, at: started, budget: maxTokens };
-  };
-  const ctrl = new AbortController();
-  let timer;
-  const timedOut = new Promise((resolve) => {
-    timer = setTimeout(() => {
-      ctrl.abort();
-      resolve("timeout");
-    }, settings.llmTimeoutMs);
-  });
-  let answer;
-  const call = useMain ? st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens, signal: ctrl.signal }) : st.generateWithProfile({
-    profileId: settings.mechanicProfileId,
-    system: system4,
-    prompt: prompt4,
-    maxTokens,
-    think: settings.mechanicThink,
-    signal: ctrl.signal
-  });
-  try {
-    const won = await Promise.race([call, timedOut]);
-    if (won === "timeout") {
-      call.then(
-        (late2) => llmLog.push({ ...entry, raw: late2.text, ok: false, ms: Date.now() - started, reason: "timeout", late: true }),
-        () => {
-        }
-      );
-      return fail("timeout", `no answer within ${Math.round(settings.llmTimeoutMs / 1e3)} s`, "");
-    }
-    answer = won;
-  } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
-    return isAbort(e) ? fail("timeout", detail, detail) : fail("network", detail, detail);
-  } finally {
-    clearTimeout(timer);
-  }
-  const parsed = classify(ct, answer, opts.refusals ?? deps.refusals ?? []);
-  if (!parsed.ok) return fail(parsed.reason, parsed.detail, answer.text);
-  llmLog.push({ ...entry, raw: answer.text, parsed: parsed.value, ok: true, ms: Date.now() - started });
-  return { ok: true, value: parsed.value, attempts: 1, at: started };
-}
-async function callLlm(id, input, deps, opts = {}) {
-  const base = deps.settings.budgets[id];
-  const maxAttempts = 1 + deps.settings.autoRetry;
-  let factor = opts.budgetMult ?? 1;
-  let last;
-  for (let attempt2 = 1; attempt2 <= maxAttempts; attempt2++) {
-    const r = await attemptLlm(id, input, deps, { ...opts, budget: Math.ceil(base * factor) });
-    last = { ...r, attempts: r.attempts === 0 ? 0 : attempt2 };
-    if (r.ok) return last;
-    if (r.reason === "refused" || r.reason === "no_profile") break;
-    if (r.reason === "truncated" || r.reason === "invalid_output") factor *= RETRY_BUDGET_FACTOR;
-  }
-  return last;
-}
-
 // src/llm/calls/flavor.ts
 var kinds = /* @__PURE__ */ new Map();
 function registerFlavorKind(kind, impl) {
@@ -25316,11 +25083,6 @@ registerCallType({
   prompt: (input) => kindOf3(input)?.prompt(input) ?? "{}",
   schema: external_exports.object({}).passthrough()
 });
-async function generateFlavor(input, deps) {
-  if (!kinds.has(input.kind)) return null;
-  const r = await callLlm("flavor", input, deps);
-  return r.ok ? r.value : null;
-}
 registerFlavorKind("grunt", {
   system: () => [
     "You name a freshly recruited conscript soldier for a dark, near-future squad-command RPG.",
@@ -25389,9 +25151,6 @@ function sanitizeDemandFlavor(raw) {
   const text2 = t.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, DEMAND_TEXT_MAX).trim();
   return text2 === "" ? null : { text: text2 };
 }
-async function generateDemandFlavor(input, deps) {
-  return sanitizeDemandFlavor(await generateFlavor(input, deps))?.text ?? null;
-}
 var RULE_TEXT_MAX = 160;
 registerFlavorKind("rule", {
   system: () => [
@@ -25416,9 +25175,6 @@ function sanitizeRuleFlavor(raw) {
   if (typeof t !== "string") return null;
   const text2 = t.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, RULE_TEXT_MAX).trim();
   return text2 === "" ? null : { text: text2 };
-}
-async function generateRuleFlavor(input, deps) {
-  return sanitizeRuleFlavor(await generateFlavor(input, deps))?.text ?? null;
 }
 var BALLOT_LINE_MAX = 120;
 registerFlavorKind("ballot", {
@@ -25453,9 +25209,6 @@ function sanitizeBallotFlavor(raw, names) {
   }
   return out;
 }
-async function generateBallotFlavor(input, deps) {
-  return sanitizeBallotFlavor(await generateFlavor(input, deps), input.ballots.map((b) => b.name));
-}
 var DM_EDIT_MAX = 300;
 registerFlavorKind("dm_edit", {
   system: () => [
@@ -25483,9 +25236,6 @@ function sanitizeDmEdit(raw) {
   const text2 = t.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, DM_EDIT_MAX).trim();
   return text2 === "" ? null : { text: text2 };
 }
-async function generateDmEdit(input, deps) {
-  return sanitizeDmEdit(await generateFlavor(input, deps))?.text ?? null;
-}
 var FRAGMENT_MAX3 = 160;
 var COMMANDER_PRONOUN2 = /\b(he|him|his|himself|he's)\b/i;
 registerFlavorKind("frequency_fragment", {
@@ -25510,10 +25260,6 @@ function sanitizeFragment(raw) {
   const t = raw.trim();
   if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN2.test(t) || /[<>]/.test(t)) return null;
   return t;
-}
-async function generateFragment(input, deps) {
-  const r = await generateFlavor({ kind: "frequency_fragment", name: input.name, candidate: input.kind, gist: input.gist, partial: input.partial }, deps);
-  return sanitizeFragment(r?.text);
 }
 
 // src/loyalty/dilemmaController.ts
@@ -25820,27 +25566,49 @@ function reputationDirectives(builder, state, reg) {
 function createBonds(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
-  async function wordAndDeliver(ruleId, expect) {
-    const s = state();
-    const rule = s?.bonds?.rules.find((r) => r.id === ruleId);
-    if (!s || !rule || rule.status !== "proposed" || rule.delivered) return;
-    const reg = deps.registries();
-    let text2;
-    if (deps.settings().ruleWording) {
+  const ruleOf = (id) => state()?.bonds?.rules.find((r) => r.id === id);
+  deps.generations.bind("flavor.rule", {
+    build(ruleId) {
+      const s = state();
+      const rule = ruleOf(ruleId);
+      if (!s || !rule || rule.status !== "proposed") return { expired: "It was answered." };
+      const reg = deps.registries();
       const unit2 = s.squad.find((u) => u.id === rule.unitId);
-      try {
-        text2 = await generateRuleFlavor({
-          kind: "rule",
-          unitName: unit2?.displayName ?? rule.unitId,
-          stateHint: String(reg.relationshipStates.get(s.relations[rule.unitId]?.stateId ?? "")?.promptHint ?? ""),
-          rule: rule.text
-        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine }) ?? void 0;
-      } catch {
-        text2 = void 0;
-      }
+      return {
+        kind: "rule",
+        unitName: unit2?.displayName ?? rule.unitId,
+        stateHint: String(reg.relationshipStates.get(s.relations[rule.unitId]?.stateId ?? "")?.promptHint ?? ""),
+        rule: rule.text
+      };
+    },
+    parse: (raw) => sanitizeRuleFlavor(raw)?.text ?? null,
+    apply(ruleId, text2) {
+      const rule = ruleOf(ruleId);
+      if (!rule) return { stale: true };
+      const events = deps.app.dispatch({ type: rule.delivered ? "bonds/reword_rule" : "bonds/deliver_rule", payload: { ruleId, text: text2 } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === "error")) return { stale: true };
+      deps.refreshContext();
+      return "ok";
+    },
+    fallback(ruleId) {
+      const rule = ruleOf(ruleId);
+      if (!rule) return false;
+      if (rule.delivered) return true;
+      const events = deps.app.dispatch({ type: "bonds/deliver_rule", payload: { ruleId } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === "error")) return false;
+      deps.refreshContext();
+      return true;
+    },
+    committed: (ruleId) => ruleOf(ruleId)?.status === "proposed" ? null : "It was answered."
+  });
+  async function wordAndDeliver(ruleId, expect) {
+    const rule = ruleOf(ruleId);
+    if (!rule || rule.status !== "proposed" || rule.delivered || chatId() !== expect) return;
+    if (deps.settings().ruleWording) {
+      await deps.generations.generate("flavor.rule", ruleId);
+      return;
     }
-    if (chatId() !== expect) return;
-    const events = deps.app.dispatch({ type: "bonds/deliver_rule", payload: { ruleId, ...text2 !== void 0 ? { text: text2 } : {} } }, { expectChatId: expect });
+    const events = deps.app.dispatch({ type: "bonds/deliver_rule", payload: { ruleId } }, { expectChatId: expect });
     if (!events.some((e) => e.type === "error")) deps.refreshContext();
   }
   function answer(ruleId, how) {
@@ -25854,6 +25622,9 @@ function createBonds(deps) {
     return true;
   }
   return {
+    reword: async (ruleId) => {
+      await deps.generations.reroll("flavor.rule", ruleId);
+    },
     setPublicity(unitId, level) {
       const events = deps.app.dispatch({ type: "bonds/set_publicity", payload: { unitId, level } }, { expectChatId: chatId() });
       const bad = events.find((e) => e.type === "error");
@@ -25896,6 +25667,24 @@ function createPower(deps) {
     const text2 = reasons?.[ballot.term]?.[ballot.vote] ?? `${name} voted ${ballot.vote}.`;
     return text2.replaceAll("{name}", name).replaceAll("{axis}", axis);
   }
+  const votersOf = (s, vote) => vote.ballots.filter((b) => b.vote !== "abstain").map((b) => ({ id: b.unitId, name: s.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId, vote: b.vote, term: b.term }));
+  deps.generations.bind("flavor.ballot", {
+    build(voteId) {
+      const s = state();
+      const vote = s ? liveVote(s) : null;
+      if (!s || !vote || vote.id !== voteId) return { expired: "The vote is over." };
+      const reg = deps.registries();
+      return {
+        kind: "ballot",
+        voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind),
+        subjectLabel: voteSubjectLabel(s, reg, vote.kind, vote.subject),
+        ballots: votersOf(s, vote).map((v) => ({ name: v.name, vote: v.vote, term: v.term }))
+      };
+    },
+    parse: (raw, input) => sanitizeBallotFlavor(raw, input.ballots.map((b) => b.name)),
+    apply: () => "ok"
+    // the lines are the outcome's value: the caller shows them
+  });
   async function ballotLines(vote) {
     const s = state();
     const reg = deps.registries();
@@ -25903,17 +25692,11 @@ function createPower(deps) {
     const lines = {};
     for (const b of vote.ballots) lines[b.unitId] = templateLine(s, reg, vote, b.unitId);
     if (!deps.settings().ballotWording) return lines;
-    const voters = vote.ballots.filter((b) => b.vote !== "abstain").map((b) => ({ id: b.unitId, name: s.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId, vote: b.vote, term: b.term }));
+    const voters = votersOf(s, vote);
     if (voters.length === 0 || new Set(voters.map((v) => v.name)).size !== voters.length) return lines;
-    try {
-      const worded = await generateBallotFlavor({
-        kind: "ballot",
-        voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind),
-        subjectLabel: voteSubjectLabel(s, reg, vote.kind, vote.subject),
-        ballots: voters.map((v) => ({ name: v.name, vote: v.vote, term: v.term }))
-      }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
-      for (const v of voters) if (worded[v.name] !== void 0) lines[v.id] = worded[v.name];
-    } catch {
+    const out = await deps.generations.generate("flavor.ballot", vote.id);
+    if (out.kind === "applied") {
+      for (const v of voters) if (out.value[v.name] !== void 0) lines[v.id] = out.value[v.name];
     }
     return lines;
   }
@@ -26080,21 +25863,34 @@ function createPersonal(deps) {
   const wording = /* @__PURE__ */ new Map();
   const keyOf = (id) => `${chatId() ?? ""}:${id}`;
   const nameOf15 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? "She";
+  const interceptOf = (id) => {
+    const open3 = state()?.personal?.intercepts?.open;
+    return open3?.id === id ? open3 : void 0;
+  };
+  deps.generations.bind("flavor.dm_edit", {
+    build(interceptId) {
+      const s = state();
+      const open3 = interceptOf(interceptId);
+      const unit2 = s?.squad.find((u) => u.id === open3?.unitId);
+      if (!s || !open3 || !unit2) return { expired: "The edit is over." };
+      return {
+        kind: "dm_edit",
+        unitName: unit2.displayName,
+        stateHint: String(reg().relationshipStates.get(s.relations[unit2.id]?.stateId ?? "")?.promptHint ?? ""),
+        recipientName: nameOf15(s, open3.toUnitId) === "She" ? "" : nameOf15(s, open3.toUnitId),
+        original: open3.original ?? ""
+      };
+    },
+    parse: (raw) => sanitizeDmEdit(raw)?.text ?? null,
+    apply: () => "ok"
+    // the text is the outcome's value: `word` returns it
+  });
   async function word(s, open3) {
     const unit2 = s.squad.find((u) => u.id === open3.unitId);
     const original = open3.original ?? "";
     if (unit2 && deps.settings().dmEditWording) {
-      try {
-        const text2 = await generateDmEdit({
-          kind: "dm_edit",
-          unitName: unit2.displayName,
-          stateHint: String(reg().relationshipStates.get(s.relations[unit2.id]?.stateId ?? "")?.promptHint ?? ""),
-          recipientName: nameOf15(s, open3.toUnitId) === "She" ? "" : nameOf15(s, open3.toUnitId),
-          original
-        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
-        if (text2 !== null) return text2;
-      } catch {
-      }
+      const out = await deps.generations.generate("flavor.dm_edit", open3.id);
+      if (out.kind === "applied") return out.value;
     }
     const lines = [...reg().deviceAccessRules.values()].find((r) => Number(r.level) === 4)?.editLines ?? [];
     const line2 = lines.length > 0 ? lines[fnv1a(open3.id) % lines.length] : "{text} \u2014 {name} added this.";
@@ -26246,25 +26042,37 @@ function createPersonal(deps) {
 function createSpecial(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
+  const interceptOf = (id) => state()?.special?.frequency?.intercepts.find((y) => y.id === id);
+  const nameFor2 = (s, unitId) => s.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  deps.generations.bind("flavor.frequency_fragment", {
+    build(interceptId) {
+      const s = state();
+      const x = interceptOf(interceptId);
+      if (!s || !x || x.text !== void 0) return { expired: "It is worded already." };
+      return { kind: "frequency_fragment", name: nameFor2(s, x.unitId), candidate: x.kind, gist: interceptGist(s, deps.registries(), x), partial: x.partial };
+    },
+    parse: (raw) => sanitizeFragment(raw?.text),
+    apply(interceptId, text2) {
+      const events = deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: text2 } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === "error") ? { stale: true } : "ok";
+    },
+    fallback(interceptId) {
+      const s = state();
+      const x = interceptOf(interceptId);
+      if (!s || !x) return false;
+      const events = deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: fallbackFragment(deps.registries(), x, nameFor2(s, x.unitId)) } }, { expectChatId: chatId() });
+      return !events.some((e) => e.type === "error");
+    }
+  });
   async function word(interceptId, expect) {
     const s = state();
-    const x = s?.special?.frequency?.intercepts.find((y) => y.id === interceptId);
-    if (!s || !x || x.text !== void 0) return;
-    const reg = deps.registries();
-    const name = s.squad.find((u) => u.id === x.unitId)?.displayName ?? x.unitId;
-    let text2 = fallbackFragment(reg, x, name);
+    const x = interceptOf(interceptId);
+    if (!s || !x || x.text !== void 0 || chatId() !== expect) return;
     if (deps.settings().fragmentWording) {
-      try {
-        const worded = await generateFragment(
-          { name, kind: x.kind, gist: interceptGist(s, reg, x), partial: x.partial },
-          { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine }
-        );
-        if (worded !== null) text2 = worded;
-      } catch {
-      }
+      await deps.generations.generate("flavor.frequency_fragment", interceptId);
+      return;
     }
-    if (chatId() !== expect) return;
-    deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: text2 } }, { expectChatId: expect });
+    deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: fallbackFragment(deps.registries(), x, nameFor2(s, x.unitId)) } }, { expectChatId: expect });
   }
   const nameOf15 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? "A soldier";
   let dreamt = null;
@@ -26379,6 +26187,270 @@ function expectationInput(state, reg, participants) {
   return { expectations: w.expectations.map((x) => ({ id: x.id, text: textOf2(x) })) };
 }
 var investigationBand = (filled, segments2) => filled * 3 < segments2 ? "JUST OPENED" : filled * 3 < segments2 * 2 ? "UNDER WAY" : "NEARLY CLOSED";
+
+// src/llm/log.ts
+var CAPACITY = 50;
+var LlmLog = class {
+  items = [];
+  push(e) {
+    this.items.push(e);
+    if (this.items.length > CAPACITY) this.items.shift();
+  }
+  entries() {
+    return [...this.items];
+  }
+  clear() {
+    this.items = [];
+  }
+};
+var llmLog = new LlmLog();
+
+// src/llm/text.ts
+var THINK_TAGS = "think|thinking|reasoning";
+function stripThinking(s) {
+  const closed = new RegExp(`<(${THINK_TAGS})\\b[^>]*>[\\s\\S]*?</\\1\\s*>`, "gi");
+  const out = s.replace(closed, "");
+  if (new RegExp(`<(${THINK_TAGS})\\b[^>]*>`, "i").test(out)) return "";
+  return out.trim();
+}
+var THINKING_PART_TYPES = /* @__PURE__ */ new Set(["thinking", "redacted_thinking", "reasoning"]);
+function extract(data) {
+  if (typeof data === "string") return data;
+  if (Array.isArray(data)) {
+    return data.map((p) => {
+      if (typeof p === "string") return p;
+      if (typeof p !== "object" || p === null) return "";
+      const part = p;
+      if (typeof part.type === "string" && THINKING_PART_TYPES.has(part.type)) return "";
+      return typeof part.text === "string" ? part.text : typeof part.content === "string" ? part.content : "";
+    }).join("");
+  }
+  if (typeof data !== "object" || data === null) return "";
+  const o = data;
+  if (Array.isArray(o.choices) && o.choices.length > 0) {
+    const c = o.choices[0];
+    const msg = c?.message;
+    return extract(msg?.content ?? c?.text);
+  }
+  if (o.content !== void 0) return extract(o.content);
+  if (o.message !== void 0) return extract(o.message);
+  if (typeof o.text === "string") return o.text;
+  return "";
+}
+function answerText(data) {
+  return stripThinking(extract(data));
+}
+function scan(text2, start) {
+  const n = text2.length;
+  const stack = [];
+  let safeEnd = -1;
+  let open3 = [];
+  const mark = (end) => {
+    safeEnd = end;
+    open3 = stack.map((c) => c.t);
+  };
+  let i = start;
+  while (i < n) {
+    const c = text2[i];
+    if (c === '"') {
+      let j = i + 1;
+      while (j < n && text2[j] !== '"') j += text2[j] === "\\" ? 2 : 1;
+      if (j >= n) break;
+      const top = stack[stack.length - 1];
+      if (!(top && top.t === "{" && top.key)) mark(j + 1);
+      i = j + 1;
+    } else if (c === "{" || c === "[") {
+      stack.push({ t: c, key: c === "{" });
+      i++;
+    } else if (c === "}" || c === "]") {
+      stack.pop();
+      if (stack.length === 0) return { kind: "balanced", end: i };
+      mark(i + 1);
+      i++;
+    } else if (c === ":") {
+      if (stack.length) stack[stack.length - 1].key = false;
+      i++;
+    } else if (c === ",") {
+      const top = stack[stack.length - 1];
+      if (top && top.t === "{") top.key = true;
+      i++;
+    } else if (/\s/.test(c)) {
+      i++;
+    } else {
+      let j = i;
+      while (j < n && !/[\s,\]}:"{[]/.test(text2[j])) j++;
+      if (j >= n) break;
+      mark(j);
+      i = j;
+    }
+  }
+  return { kind: "cut", safeEnd, open: open3 };
+}
+function looseJson(text2) {
+  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+  const src = fenced ? fenced[1] : text2;
+  let pos = 0;
+  for (; ; ) {
+    const rel = src.slice(pos).search(/[{[]/);
+    if (rel < 0) return null;
+    const start = pos + rel;
+    const r = scan(src, start);
+    if (r.kind === "balanced") {
+      try {
+        return JSON.parse(src.slice(start, r.end + 1));
+      } catch {
+        pos = r.end + 1;
+        continue;
+      }
+    }
+    if (r.safeEnd < 0) return null;
+    const closers = [...r.open].reverse().map((t) => t === "{" ? "}" : "]").join("");
+    try {
+      return JSON.parse(src.slice(start, r.safeEnd) + closers);
+    } catch {
+      return null;
+    }
+  }
+}
+function hasCutJson(text2) {
+  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+  const src = fenced ? fenced[1] : text2;
+  let pos = 0;
+  for (; ; ) {
+    const rel = src.slice(pos).search(/[{[]/);
+    if (rel < 0) return false;
+    const start = pos + rel;
+    const r = scan(src, start);
+    if (r.kind === "cut") return true;
+    pos = r.end + 1;
+  }
+}
+function estTokens(s) {
+  return Math.ceil(s.length / 3.6);
+}
+
+// src/llm/orchestrator.ts
+var RETRY_BUDGET_FACTOR = 1.5;
+var DETAIL_MAX = 160;
+function compileRefusals(reg) {
+  const out = [];
+  for (const e of reg.llmRefusals.values()) {
+    try {
+      out.push({ re: new RegExp(String(e.pattern), "i"), scope: e.scope === "any" ? "any" : "json" });
+    } catch {
+    }
+  }
+  return out;
+}
+var cut3 = (s) => s.length > DETAIL_MAX ? s.slice(0, DETAIL_MAX) : s;
+var isAbort = (e) => typeof e === "object" && e !== null && (e.name === "AbortError" || e.name === "TimeoutError");
+function refuses(patterns, text2, scopes) {
+  return patterns.some((p) => scopes.includes(p.scope) && p.re.test(text2));
+}
+var OPEN_THINK = /<(?:think|thinking|reasoning)\b[^>]*>/i;
+function classify(ct, answer, patterns) {
+  const length = answer.finishReason === "length";
+  const text2 = stripThinking(answer.text);
+  if (text2 === "") {
+    if (OPEN_THINK.test(answer.text) || length) return { ok: false, reason: "truncated", detail: "the answer ran out of tokens before it began" };
+    return { ok: false, reason: "empty", detail: "empty answer" };
+  }
+  if (!ct.json) {
+    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
+    return { ok: true, value: text2 };
+  }
+  const json = looseJson(text2);
+  if (json === null) {
+    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
+    if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail: "the JSON was cut off" };
+    return { ok: false, reason: "invalid_output", detail: "no JSON found in the answer" };
+  }
+  if (!ct.schema) return { ok: true, value: json };
+  const checked = ct.schema.safeParse(json);
+  if (checked.success) return { ok: true, value: checked.data };
+  const empty = Array.isArray(json) ? json.length === 0 : typeof json === "object" && Object.keys(json).length === 0;
+  if (empty) return { ok: false, reason: "refused", detail: "an empty answer where the form needs content" };
+  const detail = cut3(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
+  if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail };
+  return { ok: false, reason: "invalid_output", detail };
+}
+async function attemptLlm(id, input, deps, opts) {
+  const { st, settings } = deps;
+  const ct = getCallType(id);
+  const now = Date.now();
+  if (!ct) return { ok: false, reason: "invalid_output", detail: `unknown call type: ${id}`, attempts: 0, at: now, budget: 0 };
+  const wantsMechanic = opts.profile === void 0 ? ct.profile === "mechanic" : opts.profile === "mechanic";
+  const hasProfile = st.listConnectionProfiles().some((p) => p.id === settings.mechanicProfileId);
+  const useMain = !wantsMechanic || !hasProfile;
+  if (wantsMechanic && !hasProfile && !settings.mechanicFallbackToMain) {
+    return { ok: false, reason: "no_profile", detail: "no mechanic connection profile selected", attempts: 0, at: now, budget: 0 };
+  }
+  const line2 = ct.prose === true ? (deps.contentLine?.() ?? "").trim() : "";
+  const system4 = line2 === "" ? ct.system(input) : `${ct.system(input)}
+
+${line2}`;
+  const prompt4 = ct.prompt(input);
+  const profileLabel = useMain ? "main" : settings.mechanicProfileId;
+  const maxTokens = wantsMechanic ? Math.max(opts.budget, settings.requestFloor) : opts.budget;
+  const started = Date.now();
+  const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
+  const fail = (reason, detail, raw) => {
+    llmLog.push({ ...entry, raw, ok: false, ms: Date.now() - started, reason });
+    return { ok: false, reason, detail: cut3(detail), attempts: 1, at: started, budget: maxTokens };
+  };
+  const ctrl = new AbortController();
+  let timer;
+  const timedOut = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      ctrl.abort();
+      resolve("timeout");
+    }, settings.llmTimeoutMs);
+  });
+  let answer;
+  const call = useMain ? st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens, signal: ctrl.signal }) : st.generateWithProfile({
+    profileId: settings.mechanicProfileId,
+    system: system4,
+    prompt: prompt4,
+    maxTokens,
+    think: settings.mechanicThink,
+    signal: ctrl.signal
+  });
+  try {
+    const won = await Promise.race([call, timedOut]);
+    if (won === "timeout") {
+      call.then(
+        (late2) => llmLog.push({ ...entry, raw: late2.text, ok: false, ms: Date.now() - started, reason: "timeout", late: true }),
+        () => {
+        }
+      );
+      return fail("timeout", `no answer within ${Math.round(settings.llmTimeoutMs / 1e3)} s`, "");
+    }
+    answer = won;
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return isAbort(e) ? fail("timeout", detail, detail) : fail("network", detail, detail);
+  } finally {
+    clearTimeout(timer);
+  }
+  const parsed = classify(ct, answer, opts.refusals ?? deps.refusals ?? []);
+  if (!parsed.ok) return fail(parsed.reason, parsed.detail, answer.text);
+  llmLog.push({ ...entry, raw: answer.text, parsed: parsed.value, ok: true, ms: Date.now() - started });
+  return { ok: true, value: parsed.value, attempts: 1, at: started };
+}
+async function callLlm(id, input, deps, opts = {}) {
+  const base = deps.settings.budgets[id];
+  const maxAttempts = 1 + deps.settings.autoRetry;
+  let factor = opts.budgetMult ?? 1;
+  let last;
+  for (let attempt2 = 1; attempt2 <= maxAttempts; attempt2++) {
+    const r = await attemptLlm(id, input, deps, { ...opts, budget: Math.ceil(base * factor) });
+    last = { ...r, attempts: r.attempts === 0 ? 0 : attempt2 };
+    if (r.ok) return last;
+    if (r.reason === "refused" || r.reason === "no_profile") break;
+    if (r.reason === "truncated" || r.reason === "invalid_output") factor *= RETRY_BUDGET_FACTOR;
+  }
+  return last;
+}
 
 // src/llm/calls/wardenJudge.ts
 var WardenJudgeSchema = external_exports.object({ expectationId: external_exports.string(), conflict: external_exports.enum(["none", "minor", "major"]) }).strip();
@@ -27662,33 +27734,55 @@ function createDiscipline(deps) {
     if (s?.scene) disciplineDirectives(deps.context, s, deps.registries());
     deps.refreshContext();
   };
-  async function wordAndDeliver(demandId, expect) {
-    const s = state();
-    const demand = s?.discipline?.demands.find((d) => d.id === demandId);
-    if (!s || !demand || demand.status !== "undelivered") return;
-    const reg = deps.registries();
-    let text2;
-    if (deps.settings().demandWording) {
+  const demandOf = (id) => state()?.discipline?.demands.find((d) => d.id === id);
+  deps.generations.bind("flavor.demand", {
+    build(demandId) {
+      const s = state();
+      const demand = demandOf(demandId);
+      if (!s || !demand) return { expired: "It was answered." };
+      const reg = deps.registries();
       const stance = commandStance(s, reg, demand.unitId);
       const unit2 = s.squad.find((u) => u.id === demand.unitId);
-      try {
-        text2 = await generateDemandFlavor({
-          kind: "demand",
-          unitName: unit2?.displayName ?? demand.unitId,
-          stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? "")?.promptHint ?? ""),
-          stanceName: String((stance === null ? void 0 : stanceEntry(reg, stance)?.name) ?? ""),
-          demand: demand.text,
-          journal: herJournal(s, reg, demand.unitId, false)
-          // P3b: what lately passed between her and the commander
-        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine }) ?? void 0;
-      } catch {
-        text2 = void 0;
-      }
+      return {
+        kind: "demand",
+        unitName: unit2?.displayName ?? demand.unitId,
+        stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? "")?.promptHint ?? ""),
+        stanceName: String((stance === null ? void 0 : stanceEntry(reg, stance)?.name) ?? ""),
+        demand: demand.text,
+        journal: herJournal(s, reg, demand.unitId, false)
+        // P3b: what lately passed between her and the commander
+      };
+    },
+    parse: (raw) => sanitizeDemandFlavor(raw)?.text ?? null,
+    apply(demandId, text2) {
+      const demand = demandOf(demandId);
+      if (!demand) return { stale: true };
+      const events = deps.app.dispatch({ type: demand.status === "undelivered" ? "demand/deliver" : "demand/reword", payload: { demandId, text: text2 } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === "error")) return { stale: true };
+      syncDirectives();
+      return "ok";
+    },
+    // a failed call never blocks the demand: the template text is delivered
+    fallback(demandId) {
+      const demand = demandOf(demandId);
+      if (!demand) return false;
+      if (demand.status === "open") return true;
+      const events = deps.app.dispatch({ type: "demand/deliver", payload: { demandId } }, { expectChatId: chatId() });
+      if (events.some((e) => e.type === "error")) return false;
+      syncDirectives();
+      return true;
+    },
+    committed: (demandId) => demandOf(demandId)?.status === "open" ? null : "It was answered."
+  });
+  async function wordAndDeliver(demandId, expect) {
+    const demand = demandOf(demandId);
+    if (!demand || demand.status !== "undelivered" || chatId() !== expect) return;
+    if (deps.settings().demandWording) {
+      await deps.generations.generate("flavor.demand", demandId);
+      return;
     }
-    if (chatId() !== expect) return;
-    const events = deps.app.dispatch({ type: "demand/deliver", payload: { demandId, ...text2 !== void 0 ? { text: text2 } : {} } }, { expectChatId: expect });
-    if (events.some((e) => e.type === "error")) return;
-    syncDirectives();
+    const events = deps.app.dispatch({ type: "demand/deliver", payload: { demandId } }, { expectChatId: expect });
+    if (!events.some((e) => e.type === "error")) syncDirectives();
   }
   async function onSlotAdvanced() {
     const expect = chatId();
@@ -27717,6 +27811,9 @@ function createDiscipline(deps) {
     const ok = await deps.startScene({ locationId: "quarters_unit", participants: [demand.unitId], origin: "event" });
     if (ok) syncDirectives();
     return ok;
+  }
+  async function reword(demandId) {
+    await deps.generations.reroll("flavor.demand", demandId);
   }
   function onEvents(events) {
     let set = false;
@@ -27807,7 +27904,7 @@ function createDiscipline(deps) {
     deps.toast("info", "Undone.");
     return true;
   }
-  return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand };
+  return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand, reword };
 }
 
 // src/ui/shell/router.ts

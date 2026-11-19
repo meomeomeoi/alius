@@ -493,7 +493,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'intrigue_action', 'ally_won', 'ally_refused', 'kompromat_found', 'hack_step', 'controller_dark', 'intrigue_discovered',
   'warden_removed', 'investigation_opened', 'remote_control_started', 'verdict',
   // P14
-  'generation_failed', 'generation_closed', 'generation_expired', 'scene_summarized_late', 'dilemma_reworded',
+  'generation_failed', 'generation_closed', 'generation_expired', 'scene_summarized_late', 'dilemma_reworded', 'demand_reworded', 'rule_reworded',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

@@ -101,6 +101,8 @@ describe('the edit of an outgoing DM', () => {
     const lines = ([...reg.deviceAccessRules.values()].find((e) => e.level === 4)!.editLines as string[]).map((l) => l.replaceAll('{text}', dm().original).replaceAll('{name}', 'Ann'));
     expect(lines).toContain(res.text);
     expect(res.text).not.toContain('{');
+    expect(r.h.state().generations).toBeUndefined(); // P14: `flavor.dm_edit` keeps its authored line and writes no record
+    expect(r.h.toasts).toEqual([]);
   });
 
   it('with dmEditWording off no model is called', async () => {

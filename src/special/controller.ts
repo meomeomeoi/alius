@@ -3,7 +3,7 @@ import { handlerLine } from '../engine/special/debts/handler';
 import { premonitionLine } from '../engine/special/paranoia/premonitions';
 import { nightmareLine } from '../engine/special/paranoia/nightmares';
 import { fallbackFragment, interceptGist } from '../engine/special/frequency/fragments';
-import { generateFragment } from '../llm/calls/flavor';
+import { sanitizeFragment, type FragmentFlavorInput } from '../llm/calls/flavor';
 import type { SpecialDeps } from './deps';
 
 export type { SpecialDeps } from './deps';
@@ -24,27 +24,42 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
   const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
 
+  const interceptOf = (id: string) => state()?.special?.frequency?.intercepts.find((y) => y.id === id);
+  const nameFor = (s: NonNullable<ReturnType<typeof state>>, unitId: string): string => s.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+
+  // the `flavor.frequency_fragment` site (key: the intercept's id): never a record or a chip (a record would be a trace of what she overheard:
+  // hidden truth); a failure puts the template fragment in
+  deps.generations.bind<FragmentFlavorInput, string>('flavor.frequency_fragment', {
+    build(interceptId) {
+      const s = state();
+      const x = interceptOf(interceptId);
+      if (!s || !x || x.text !== undefined) return { expired: 'It is worded already.' };
+      return { kind: 'frequency_fragment', name: nameFor(s, x.unitId), candidate: x.kind, gist: interceptGist(s, deps.registries(), x), partial: x.partial };
+    },
+    parse: (raw) => sanitizeFragment((raw as { text?: unknown })?.text),
+    apply(interceptId, text) {
+      const events = deps.app.dispatch({ type: 'frequency/word', payload: { id: interceptId, text } }, { expectChatId: chatId() });
+      return events.some((e) => e.type === 'error') ? { stale: true } : 'ok';
+    },
+    fallback(interceptId) {
+      const s = state();
+      const x = interceptOf(interceptId);
+      if (!s || !x) return false;
+      const events = deps.app.dispatch({ type: 'frequency/word', payload: { id: interceptId, text: fallbackFragment(deps.registries(), x, nameFor(s, x.unitId)) } }, { expectChatId: chatId() });
+      return !events.some((e) => e.type === 'error');
+    },
+  });
+
   /** Words one intercept that has no text yet. A chat that changed meanwhile drops it (the chip falls back to the template). */
   async function word(interceptId: string, expect: string | undefined): Promise<void> {
     const s = state();
-    const x = s?.special?.frequency?.intercepts.find((y) => y.id === interceptId);
-    if (!s || !x || x.text !== undefined) return;
-    const reg = deps.registries();
-    const name = s.squad.find((u) => u.id === x.unitId)?.displayName ?? x.unitId;
-    let text = fallbackFragment(reg, x, name);
+    const x = interceptOf(interceptId);
+    if (!s || !x || x.text !== undefined || chatId() !== expect) return;
     if (deps.settings().fragmentWording) {
-      try {
-        const worded = await generateFragment(
-          { name, kind: x.kind, gist: interceptGist(s, reg, x), partial: x.partial },
-          { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine },
-        );
-        if (worded !== null) text = worded;
-      } catch {
-        // a failed call never blocks the fragment: the template stands
-      }
+      await deps.generations.generate('flavor.frequency_fragment', interceptId);
+      return;
     }
-    if (chatId() !== expect) return;
-    deps.app.dispatch({ type: 'frequency/word', payload: { id: interceptId, text } }, { expectChatId: expect });
+    deps.app.dispatch({ type: 'frequency/word', payload: { id: interceptId, text: fallbackFragment(deps.registries(), x, nameFor(s, x.unitId)) } }, { expectChatId: expect });
   }
 
   const nameOf = (id: unknown): string => state()?.squad.find((u) => u.id === id)?.displayName ?? 'A soldier';

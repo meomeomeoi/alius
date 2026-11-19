@@ -2,7 +2,7 @@ import { setCategories } from '../bonds/content';
 import { bondsDayStep } from '../bonds/dayStep';
 import { setPublicity } from '../bonds/publicity';
 import { PUBLICITY_LEVELS } from '../bonds/profile';
-import { answerRule, deliverRule } from '../bonds/rules';
+import { answerRule, deliverRule, rewordRule } from '../bonds/rules';
 import { followLead, setSceneLimit } from '../bonds/scene';
 import { relieveWant } from '../bonds/want';
 import { registerActivityHook } from '../activities';
@@ -37,6 +37,12 @@ registerAction('bonds/limit', (draft, payload) => {
 registerAction('bonds/deliver_rule', (draft, payload) => {
   if (!isObj(payload) || typeof payload.ruleId !== 'string') throw new Error('bonds/deliver_rule needs { ruleId }');
   return deliverRule(draft, payload.ruleId, typeof payload.text === 'string' ? payload.text : undefined);
+});
+
+// P14: a new wording of a delivered proposal, before an answer
+registerAction('bonds/reword_rule', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.ruleId !== 'string' || typeof payload.text !== 'string') throw new Error('bonds/reword_rule needs { ruleId, text }');
+  return rewordRule(draft, payload.ruleId, payload.text);
 });
 
 /** ACCEPT / NEGOTIATE / REFUSE on a delivered proposal. Draws no rng. */

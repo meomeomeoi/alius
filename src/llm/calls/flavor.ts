@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { enemyNameKey, isEnemyName } from '../../engine/combat/spawn';
 import { GENERATED_NAME, GRUNT_BIO_MAX } from '../../engine/grunts';
 import { registerCallType } from '../callTypes';
-import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface FlavorKind {
   system(input: unknown): string;
@@ -17,6 +16,9 @@ export function registerFlavorKind(kind: string, impl: FlavorKind): void {
   kinds.set(kind, impl);
 }
 
+/** Is a flavor kind registered? (A site's input always names a registered kind.) */
+export const hasFlavorKind = (kind: string): boolean => kinds.has(kind);
+
 const kindOf = (input: unknown): FlavorKind | undefined => kinds.get(String((input as { kind?: unknown })?.kind));
 
 registerCallType<Record<string, unknown>>({
@@ -28,15 +30,6 @@ registerCallType<Record<string, unknown>>({
   prompt: (input) => kindOf(input)?.prompt(input) ?? '{}',
   schema: z.object({}).passthrough(),
 });
-
-/** Returns the model's JSON object, or null when the kind is unknown or the call failed. */
-export async function generateFlavor<T extends { kind: string }>(
-  input: T, deps: LlmDeps,
-): Promise<Record<string, unknown> | null> {
-  if (!kinds.has(input.kind)) return null;
-  const r = await callLlm<Record<string, unknown>>('flavor', input, deps);
-  return r.ok ? r.value : null;
-}
 
 // --- grunt kind -----------------------------------------------------------------------------
 
@@ -147,12 +140,6 @@ export function sanitizeDemandFlavor(raw: unknown): { text: string } | null {
   return text === '' ? null : { text };
 }
 
-export async function generateDemandFlavor(
-  input: DemandFlavorInput, deps: LlmDeps,
-): Promise<string | null> {
-  return sanitizeDemandFlavor(await generateFlavor(input, deps))?.text ?? null;
-}
-
 // --- rule kind (P9d) ------------------------------------------------------------------------
 
 export interface RuleFlavorInput {
@@ -192,10 +179,6 @@ export function sanitizeRuleFlavor(raw: unknown): { text: string } | null {
   if (typeof t !== 'string') return null;
   const text = t.replace(/<[^>]*>/g, '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, RULE_TEXT_MAX).trim();
   return text === '' ? null : { text };
-}
-
-export async function generateRuleFlavor(input: RuleFlavorInput, deps: LlmDeps): Promise<string | null> {
-  return sanitizeRuleFlavor(await generateFlavor(input, deps))?.text ?? null;
 }
 
 // --- ballot kind (P9b) ----------------------------------------------------------------------
@@ -247,10 +230,6 @@ export function sanitizeBallotFlavor(raw: unknown, names: string[]): Record<stri
   return out;
 }
 
-export async function generateBallotFlavor(input: BallotFlavorInput, deps: LlmDeps): Promise<Record<string, string>> {
-  return sanitizeBallotFlavor(await generateFlavor(input, deps), input.ballots.map((b) => b.name));
-}
-
 // --- dm_edit kind (P9c) ---------------------------------------------------------------------
 
 export interface DmEditFlavorInput {
@@ -297,10 +276,6 @@ export function sanitizeDmEdit(raw: unknown): { text: string } | null {
   return text === '' ? null : { text };
 }
 
-export async function generateDmEdit(input: DmEditFlavorInput, deps: LlmDeps): Promise<string | null> {
-  return sanitizeDmEdit(await generateFlavor(input, deps))?.text ?? null;
-}
-
 // --- frequency_fragment kind (P12) -----------------------------------------------------------
 
 export interface FragmentFlavorInput {
@@ -343,11 +318,4 @@ export function sanitizeFragment(raw: unknown): string | null {
   const t = raw.trim();
   if (t === '' || t.length > FRAGMENT_MAX || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN.test(t) || /[<>]/.test(t)) return null;
   return t;
-}
-
-export async function generateFragment(
-  input: { name: string; kind: string; gist: string; partial: boolean }, deps: LlmDeps,
-): Promise<string | null> {
-  const r = await generateFlavor({ kind: 'frequency_fragment' as const, name: input.name, candidate: input.kind, gist: input.gist, partial: input.partial }, deps);
-  return sanitizeFragment(r?.text);
 }
