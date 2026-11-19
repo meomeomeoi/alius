@@ -351,7 +351,7 @@ Draft balance values agreed with the author; the plan copies them into `TUNING` 
 | `jaw` | 0 → 100 | +8 | from 70 the input degrades further; rest by style |
 | `gulp` | 4–8 swallows | a window per swallow | a miss = a spill → `tongue_work` with dirt 60 |
 
-- **Breath window width by style** (real time, ms; author ruling: narrow on purpose, a cruel window is meant to be hard to catch): `affectionate` 700, `cold` 550 (even, predictable), `ritual` 500 (strictly counted), `clinical` 500 (every 3rd–4th window "measures": half width), `possessive` 450, `playful` 450 (35 % of windows are false: open and shut at once), `cruel` 250, `obsessive` random 200–1000 → **200–700**. Blend of the style pair 0.65 / 0.35, reversed in the phase the secondary leads.
+- **Breath window width by style** (real time, ms; author ruling: narrow on purpose, a cruel window is meant to be hard to catch): `affectionate` 700, `cold` 550 (even, predictable), `ritual` 500 (strictly counted), `clinical` 500 (every 3rd–4th window "measures": half width), `possessive` 450, `playful` 450 (35 % of windows are false: open and shut at once), `cruel` 250, `obsessive` random 200–700. Blend of the style pair 0.65 / 0.35, reversed in the phase the secondary leads.
 - **Turn-based mode:** a window lasts one beat and is given away only by a faint sensory line; for `cruel`, 40 % of windows come with no cue.
 - `holdsUntil`: `signal` releases at a tap or at air ≤ 15; `limit` ignores the first tap and releases at ≤ 5; `blackout` ignores taps and at 0 the blackout happens (without `breath_play` it acts as `limit`).
 - Blackout: time moves 1 slot; status `dizzy` for the rest of the day (commander checks −1, stress +5).
