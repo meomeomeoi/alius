@@ -799,16 +799,16 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `checkEscalation(draft, ctx): EngineEvent[]` (events `warden_warning`, `commander_terminated`, then `commanderDies`)
 - Consumes: `commanderDies` (Task 4)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `two warnings on different days are needed`: defiance 0 → 100 in one day → warning 1 and defiance 74; next day +30 → warning 2 and 99; the day after +5 → terminated.
   - `warning 2 the same day as warning 1 is held at 74`.
   - `decay −2 a day`.
   - `termination with rewind_day emits commander_died and changes nothing else`.
   - `the warning directive has no commander pronoun and clears below 50`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): lethal escalation with two warnings`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): lethal escalation with two warnings`
 
 ---
 

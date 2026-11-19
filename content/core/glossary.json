@@ -1944,7 +1944,8 @@
     "long": "After a defiance the warden may punish. The harder the defiance, the harder the punishment: it follows how much open disobedience has built up. A punishment deters (it lowers defiance) and satisfies her. The Leash on the commander is the hardest and needs one of her weekly authorizations.",
     "see": [
       "warden",
-      "commander_leash"
+      "commander_leash",
+      "warden_defiance"
     ]
   },
   {
@@ -1966,6 +1967,26 @@
     "see": [
       "warden",
       "commander_leash"
+    ]
+  },
+  {
+    "id": "warden_defiance",
+    "term": "Defiance",
+    "short": "How much open disobedience the warden has seen. It fades by itself, and she answers it.",
+    "long": "Defiance rises when the commander defies an override or breaks what she expects, and it fades a little every day. Crossing 50 earns a warning, 75 a final warning. Only after two warnings on two different days can it end in the controller being triggered. A punishment lowers it, and complying does too.",
+    "see": [
+      "lethal_escalation",
+      "commander_punishment"
+    ]
+  },
+  {
+    "id": "lethal_escalation",
+    "term": "Lethal escalation",
+    "short": "Two warnings on different days come before the controller is triggered. Then the death rule decides what happens.",
+    "long": "At 50 defiance the warden warns the commander; at 75 she gives the final warning, but never on the same day as the first. At 100, with two warnings behind, the controller is triggered and the commander is dead. What follows is set by the death rule chosen at setup: the day is rewound, or the campaign ends. Being downed in combat is an injury, not this.",
+    "see": [
+      "warden_defiance",
+      "death_rule"
     ]
   }
 ]

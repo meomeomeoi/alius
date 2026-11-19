@@ -1,4 +1,5 @@
 import { bondTierOf } from '../engine/bonds';
+import { TUNING } from '../engine/tuning';
 import { describeOrder, overrideOpen, revealPending, wardenOf } from '../engine/warden';
 import type { Registries } from '../content/types';
 import type { CampaignState } from '../engine/state/types';
@@ -14,7 +15,8 @@ export const REVEAL_DIRECTIVE = 'warden:reveal';
 /** Ids derived from the state on every refresh. */
 export const ARGUE_DIRECTIVE = 'warden:argue';
 export const ROMANCE_DIRECTIVE = 'warden:romance';
-export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE];
+export const WARNING_DIRECTIVE = 'warden:warning';
+export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE, WARNING_DIRECTIVE];
 
 /**
  * Derived from the state, so they survive a reload:
@@ -23,7 +25,9 @@ export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECT
  *  - `warden:argue`: while the scene with her alone is the argument over an override, what she overrode, what she wants and that only a
  *    real compromise moves her;
  *  - `warden:romance`: while she is in a romantic-tier state and in the scene, any tenderness between her and the commander runs through
- *    the controller she holds.
+ *    the controller she holds;
+ *  - `warden:warning`: from her first warning until defiance falls below 50, while she is in the scene: what she has warned and that she
+ *    means it.
  */
 export function wardenDirectives(state: CampaignState, reg: Registries): Directive[] {
   const out: Directive[] = [];
@@ -40,6 +44,13 @@ export function wardenDirectives(state: CampaignState, reg: Registries): Directi
     out.push({
       id: ROMANCE_DIRECTIVE, expiresAfter: 'scene',
       text: `AUTHOR TO WRITE: ${unit.displayName} holds the commander's controller. Any tenderness between them runs through that power; she knows it and so does the commander.`,
+    });
+  }
+  if (unit && warden && state.scene?.participants.includes(unit.id) && warden.warnings.length > 0 && warden.defiance >= TUNING.warden.escalation.warning1) {
+    const final = warden.warnings.length >= 2;
+    out.push({
+      id: WARNING_DIRECTIVE, expiresAfter: 'manual',
+      text: `AUTHOR TO WRITE: ${unit.displayName} has warned the commander that open defiance has gone too far${final ? ': this is the final warning' : ''}. She holds the controller and will use it if it goes on.`,
     });
   }
   if (unit && revealPending(state, reg)) {

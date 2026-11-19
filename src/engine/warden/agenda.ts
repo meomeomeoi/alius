@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
-import type { EngineEvent } from '../dispatch';
+import type { EngineCtx, EngineEvent } from '../dispatch';
+import { addDefiance } from './escalation';
 import type { CampaignState } from '../state/types';
 import { VALUE_AXES } from '../state/types';
 import { EXPECTATION_KINDS, leashswapOf, wardenOf, type Expectation, type ExpectationKind, type WardenState } from './state';
@@ -141,18 +142,20 @@ const clamp100 = (n: number): number => Math.min(100, Math.max(0, n));
 /**
  * The commander kept or broke an expectation (the model reported it in a scene): kept → satisfaction +3 / +5 / +8 (minor / moderate /
  * major and up); broken → satisfaction −5 / −10 / −15 and defiance +5 / +10 / +15. Either teaches the commander that expectation.
- * An id that is not one of hers changes nothing. Draws nothing; the relation event itself is applied by `applyEventToUnit`.
+ * An id that is not one of hers changes nothing. Draws nothing; the relation event itself is applied by `applyEventToUnit`. A rise of defiance
+ * runs the escalation (a warning, or the end).
  */
-export function expectationEvent(draft: CampaignState, expectationId: string, kept: boolean, severity: 'minor' | 'moderate' | 'major' | 'extreme'): EngineEvent[] {
+export function expectationEvent(draft: CampaignState, ctx: EngineCtx, expectationId: string, kept: boolean, severity: 'minor' | 'moderate' | 'major' | 'extreme'): EngineEvent[] {
   const w = wardenOf(draft);
   if (!w || !w.expectations.some((x) => x.id === expectationId)) return [];
   const step = EXPECTATION_STEP[severity];
+  const events: EngineEvent[] = learnExpectation(draft, expectationId);
   if (kept) w.satisfaction = clamp100(w.satisfaction + [3, 5, 8][step]);
   else {
     w.satisfaction = clamp100(w.satisfaction - [5, 10, 15][step]);
-    w.defiance = clamp100(w.defiance + [5, 10, 15][step]);
+    events.push(...addDefiance(draft, ctx, [5, 10, 15][step])); // the escalation runs after the rise
   }
-  return learnExpectation(draft, expectationId);
+  return events;
 }
 
 /** An expectation becomes known to the commander (an override cites it, a report names it, a dig finds it). Says so once; the event carries the id only. */

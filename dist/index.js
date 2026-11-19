@@ -14062,6 +14062,58 @@ function rollDiscovery(draft, reg, rng, presentIds) {
   return events;
 }
 
+// src/engine/warden/death.ts
+var DEATH_CAUSES = ["terminated", "executed"];
+var CLOSING = {
+  terminated: "The controller was triggered. The commander is dead.",
+  executed: "The investigation ended with an execution order. The commander is dead."
+};
+function commanderDies(draft, _ctx, cause, opts = {}) {
+  const ls = leashswapOf(draft);
+  if (!ls) throw new Error("The commander cannot die: the campaign is not in the LEASHSWAP mode.");
+  if (draft.ended) throw new Error("The campaign is already closed.");
+  if (ls.deathRule === "rewind_day" && cause !== "executed" && opts.forceEnd !== true) {
+    return [{ type: "commander_died", rule: "rewind_day", cause }];
+  }
+  draft.ended = { day: draft.day, cause };
+  addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: ${CLOSING[cause]}`, audience: "*" });
+  return [
+    { type: "commander_died", rule: "campaign_end", cause },
+    { type: "campaign_ended", cause }
+  ];
+}
+
+// src/engine/warden/escalation.ts
+var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function addDefiance(draft, ctx2, amount) {
+  const w = wardenOf(draft);
+  if (!w) return [];
+  w.defiance = clamp13(w.defiance + amount, 0, 100);
+  return amount > 0 ? checkEscalation(draft, ctx2) : [];
+}
+function checkEscalation(draft, ctx2) {
+  const w = wardenOf(draft);
+  if (!w) return [];
+  const E = TUNING.warden.escalation;
+  const events = [];
+  const warn = (level) => {
+    w.warnings.push({ level, day: draft.day });
+    events.push({ type: "warden_warning", level });
+  };
+  if (w.defiance >= E.warning1 && w.warnings.length === 0) warn(1);
+  if (w.defiance >= E.warning2) {
+    if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
+    else if (w.warnings.length < 2) w.defiance = E.warning2 - 1;
+  }
+  if (w.defiance >= E.terminate) {
+    const second = w.warnings[1];
+    if (w.warnings.length >= 2 && second.day < draft.day) {
+      events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
+    } else w.defiance = E.terminate - 1;
+  }
+  return events;
+}
+
 // src/engine/warden/agenda.ts
 var WEIGHT_POINTS = { low: 1, medium: 2, high: 3 };
 var isWeightWord = (w) => w === "low" || w === "medium" || w === "high";
@@ -14164,16 +14216,17 @@ function setAgenda(draft, reg, list5) {
 }
 var EXPECTATION_STEP = { minor: 0, moderate: 1, major: 2, extreme: 2 };
 var clamp100 = (n) => Math.min(100, Math.max(0, n));
-function expectationEvent(draft, expectationId, kept, severity) {
+function expectationEvent(draft, ctx2, expectationId, kept, severity) {
   const w = wardenOf(draft);
   if (!w || !w.expectations.some((x) => x.id === expectationId)) return [];
   const step = EXPECTATION_STEP[severity];
+  const events = learnExpectation(draft, expectationId);
   if (kept) w.satisfaction = clamp100(w.satisfaction + [3, 5, 8][step]);
   else {
     w.satisfaction = clamp100(w.satisfaction - [5, 10, 15][step]);
-    w.defiance = clamp100(w.defiance + [5, 10, 15][step]);
+    events.push(...addDefiance(draft, ctx2, [5, 10, 15][step]));
   }
-  return learnExpectation(draft, expectationId);
+  return events;
 }
 function learnExpectation(draft, expectationId) {
   const x = wardenOf(draft)?.expectations.find((e) => e.id === expectationId);
@@ -14592,7 +14645,7 @@ function forgetNotes(draft, unitId) {
 }
 
 // src/engine/leash/use.ts
-var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf3 = (state, id) => state.squad.find((u) => u.id === id);
 function leashCost(state, reg, unitId, kind) {
   const unit2 = unitOf3(state, unitId);
@@ -14660,7 +14713,7 @@ function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
 function addStress2(draft, unitId, amount) {
   const u = unitOf3(draft, unitId);
   if (!u || amount === 0) return [];
-  const next = clamp13(u.stress + amount, 0, 100);
+  const next = clamp14(u.stress + amount, 0, 100);
   const delta = next - u.stress;
   u.stress = next;
   return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
@@ -14682,7 +14735,7 @@ function payCost(draft, reg, unitId, cost, opts = {}) {
 }
 var witnessScale = (u) => {
   const w = TUNING.leash.witness;
-  return clamp13(w.base + w.autonomy * u.values.autonomy - w.corporate * u.values.corporate, w.min, w.max);
+  return clamp14(w.base + w.autonomy * u.values.autonomy - w.corporate * u.values.corporate, w.min, w.max);
 };
 var COERCED = { type: "coerced", actor: "commander", evidence: "witnessed the Leash", confidence: 1 };
 function compel(draft, ctx2, p) {
@@ -14770,7 +14823,7 @@ function terminateChance(state, reg) {
   const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
   const t = TUNING.leash.terminate;
   const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
-  return clamp13(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+  return clamp14(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
 }
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
@@ -14815,7 +14868,7 @@ function terminate(draft, ctx2, unitId) {
 
 // src/engine/power/ballot.ts
 var kindEntry = (reg, kind) => reg.voteKinds.get(kind);
-var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function compatibility(a, b) {
   const total2 = VALUE_AXES.reduce((sum, axis) => sum + Math.abs(a.values[axis] - b.values[axis]), 0);
   return 1 - total2 / (VALUE_AXES.length * 6);
@@ -14845,7 +14898,7 @@ function leanFor(state, reg, kind, subject) {
   }
   const out = {};
   for (const axis of VALUE_AXES) {
-    const n = clamp14(sum[axis] ?? 0, -2, 2);
+    const n = clamp15(sum[axis] ?? 0, -2, 2);
     if (n !== 0) out[axis] = n;
   }
   return out;
@@ -14871,7 +14924,7 @@ function ballotFor(state, reg, unit2, kind, subject) {
   const values = effectiveValues(state, reg, unit2);
   const parts = {
     values: VALUE_AXES.reduce((sum, axis) => sum + values[axis] * (lean[axis] ?? 0), 0),
-    trust: clamp14(((state.relations[unit2.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
+    trust: clamp15(((state.relations[unit2.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
     stance: Number((() => {
       const s = commandStance(state, reg, unit2.id);
       return s === null ? 0 : stanceEntry(reg, s)?.voteBias;
@@ -15084,11 +15137,11 @@ function challenge(draft, ctx2, stat3) {
 
 // src/engine/arcs.ts
 var ARC_PATHS = ["manage", "embrace", "cure"];
-var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function arcAlignment(unit2, path) {
   const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + unit2.values[axis] * direction, 0);
-  return clamp15(sum / 3, -1, 1);
+  return clamp16(sum / 3, -1, 1);
 }
 function wantedPath(unit2, paths) {
   const order = [...paths].sort((a, b) => ARC_PATHS.indexOf(a) - ARC_PATHS.indexOf(b));
@@ -15245,7 +15298,7 @@ function arcDayStep(draft, ctx2) {
 }
 
 // src/engine/loyalty/desertion.ts
-var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function desertionChance(state, reg, unitId) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
@@ -15255,7 +15308,7 @@ function desertionChance(state, reg, unitId) {
   p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
   p += t.perStressAbove * Math.max(0, unit2.stress - t.stressRef);
   for (const d of unit2.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp16(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
+  return clamp17(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
 }
 function mayDesert(state, unitId) {
   if (state.disloyalty?.open) return false;
@@ -15304,7 +15357,7 @@ function talkDown(draft, ctx2, stat3) {
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit2.stress >= t.highStress ? 1 : 0);
   const bonus = stat3 === "authority" ? intimidationBonus(draft) : 0;
-  const chance = clamp16(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
+  const chance = clamp17(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -15752,7 +15805,7 @@ function actOnWarning(draft, ctx2, unitId, act) {
 }
 
 // src/engine/relations/apply.ts
-var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function openOverrideIds(state, participants) {
   const o = overrideOpen(state);
   const w = wardenOf(state);
@@ -15794,7 +15847,7 @@ function applyIntents(draft, ctx2, p) {
   for (const { e, believed } of judged) {
     for (const id of believed) {
       events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
-      if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, e.expectationId, e.type === "expectation_kept", e.severity));
+      if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
@@ -15813,7 +15866,7 @@ function applyIntents(draft, ctx2, p) {
   for (const h2 of intents.stressHints) {
     const unit2 = draft.squad.find((u) => u.id === h2.unitId);
     if (!unit2) continue;
-    const next = clamp17(unit2.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
+    const next = clamp18(unit2.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
     if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
     unit2.stress = next;
     touched.add(unit2.id);
@@ -15975,12 +16028,12 @@ function falseValue(kind, value, rng) {
 }
 
 // src/engine/special/frequency/intercepts.ts
-var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var stressOf = (state, unitId) => state.squad.find((u) => u.id === unitId)?.stress ?? 0;
 function catchChance(state, unitId, o) {
   const T4 = TUNING.special.frequency;
   const p = T4.catchBase + (o.private ? T4.privateBonus : 0) - (stressOf(state, unitId) >= T4.catchStressAt ? T4.catchStressPenalty : 0);
-  return clamp18(p, 0, 1) * (o.dm ? T4.dmMult : 1);
+  return clamp19(p, 0, 1) * (o.dm ? T4.dmMult : 1);
 }
 function distortChance(state, unitId) {
   const T4 = TUNING.special.frequency;
@@ -16121,7 +16174,7 @@ function activityCost(state, reg, a) {
   for (const k of ["credits", "supplies", "plyx"]) if (out[k] === 0) delete out[k];
   return out;
 }
-var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var asReq = (v) => {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
   const r = v;
@@ -16252,7 +16305,7 @@ function runActivity(draft, ctx2, request) {
         break;
       case "unit_stress":
         for (const u of unitsOf2(fx2.target)) {
-          const next = clamp19(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
+          const next = clamp20(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
           events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }
@@ -16480,7 +16533,7 @@ function herAlternative(state, reg, order, expectationId) {
 }
 
 // src/engine/warden/override.ts
-var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var round = Math.round;
 var STALE = "There is no override to answer.";
 var OPEN_FIRST = "The warden has overridden an order: answer it first.";
@@ -16492,7 +16545,7 @@ function wardenSource(state) {
 }
 function overrideChance(weight, source) {
   const T4 = TUNING.warden.override;
-  return clamp20(weight * source.authority * source.leniency * T4.scale, 0, T4.cap);
+  return clamp21(weight * source.authority * source.leniency * T4.scale, 0, T4.cap);
 }
 var contextOf = (order) => order.kind === "combat_order" ? "combat" : order.kind === "dilemma" ? "dilemma" : "base";
 function hersToGive(order, unitId) {
@@ -16588,11 +16641,11 @@ function argueChance(state, _reg) {
   const w = wardenOf(state);
   if (!w) return 0;
   const rank2 = Math.max(socialRank(state, "authority"), socialRank(state, "empathy"));
-  const herRank = clamp20(round((w.satisfaction <= 50 ? 4 : 3) + (state.relations[w.unitId]?.affinity ?? 0) / 100), 1, 5);
-  return clamp20(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
+  const herRank = clamp21(round((w.satisfaction <= 50 ? 4 : 3) + (state.relations[w.unitId]?.affinity ?? 0) / 100), 1, 5);
+  return clamp21(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
 }
 var addTo = (w, key, n) => {
-  w[key] = clamp20(w[key] + n, 0, 100);
+  w[key] = clamp21(w[key] + n, 0, 100);
 };
 function afterDefy(draft, ctx2, weight) {
   return punishRoll(draft, ctx2, weight);
@@ -16632,15 +16685,15 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   if (answer === "comply") {
     const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : [];
     addTo(w, "satisfaction", T4.satisfaction.comply);
-    addTo(w, "defiance", -T4.defiance.comply);
+    events2.push(...addDefiance(draft, ctx2, -T4.defiance.comply));
     delete w.compelled;
     return [...events2, ...relationEvent(draft, ctx2, "warden_complied", "minor", "followed the warden's call"), done("comply")];
   }
   const events = runOrder(draft, ctx2, ov.order, base);
   addTo(w, "satisfaction", -round(T4.override.defySatisfaction * ov.weight));
-  addTo(w, "defiance", round(T4.override.defyDefiance * ov.weight));
-  events.push(...relationEvent(draft, ctx2, "warden_defied", ov.weight >= T4.override.majorAt ? "major" : "moderate", "defied the warden's call"));
-  events.push(done("defy"), ...afterDefy(draft, ctx2, ov.weight));
+  const rose = addDefiance(draft, ctx2, round(T4.override.defyDefiance * ov.weight));
+  events.push(...rose, ...relationEvent(draft, ctx2, "warden_defied", ov.weight >= T4.override.majorAt ? "major" : "moderate", "defied the warden's call"), done("defy"));
+  if (!rose.some((e) => e.type === "commander_terminated")) events.push(...afterDefy(draft, ctx2, ov.weight));
   return events;
 }
 function argueAvailable(state) {
@@ -16839,7 +16892,7 @@ function readRoutePick(v) {
 
 // src/engine/special/debts/consequences.ts
 var T2 = () => TUNING.special.debts;
-var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp22 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function scheduleConsequences(draft, ctx2, visit, answers) {
   const d = draft.special?.debts;
   if (!d) return;
@@ -16885,7 +16938,7 @@ function runConsequences(draft, ctx2) {
   const events = [];
   for (const x of due) {
     if (x.falsified) {
-      if (ctx2.rng.chance(T2().foundOut)) d.handlerSuspicion = clamp21(d.handlerSuspicion + T2().foundOutGain, 0, 100);
+      if (ctx2.rng.chance(T2().foundOut)) d.handlerSuspicion = clamp22(d.handlerSuspicion + T2().foundOutGain, 0, 100);
       continue;
     }
     if (x.kind === "plan") {
@@ -16900,7 +16953,7 @@ function runConsequences(draft, ctx2) {
         { type: "faction", factionId: "own", amount: -Math.round(T2().ownLoss * x.strength) }
       ], { kind: "event", id: "debts" }));
     }
-    d.oversightSuspicion = clamp21(d.oversightSuspicion + oversightGain(draft, ctx2.registries, x.strength), 0, 100);
+    d.oversightSuspicion = clamp22(d.oversightSuspicion + oversightGain(draft, ctx2.registries, x.strength), 0, 100);
     events.push({ type: "debts_consequence", kind: x.kind });
   }
   d.exposures = d.exposures.filter((e) => e.untilDay >= draft.day);
@@ -17929,7 +17982,7 @@ function overruleVote(draft, ctx2, voteId, means, punish) {
 }
 
 // src/engine/power/herCall.ts
-var clamp22 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf7 = (state, id) => state.squad.find((u) => u.id === id);
 function herCallSpecOf(template) {
   return template?.herCall ?? null;
@@ -17973,7 +18026,7 @@ function herCallOdds(state, reg, unitId, spec) {
   };
   const categories = new Set(unit2.defects.map((d) => String(reg.defects.get(d.id)?.category)));
   const tilt = (spec.defectTilt ?? []).reduce((sum, t) => sum + (categories.has(t.category) ? t.shift : 0), 0);
-  return clamp22(T4.base + T4.perPoint * (score("good") - score("bad")) + tilt, T4.min, T4.max);
+  return clamp23(T4.base + T4.perPoint * (score("good") - score("bad")) + tilt, T4.min, T4.max);
 }
 function rollHerCall(state, reg, rng, spec, partyIds) {
   const candidates4 = herCallCandidates(state, reg, spec, partyIds);
@@ -18455,7 +18508,7 @@ function buildDigest(state, reg) {
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
 var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function plain(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
@@ -18536,7 +18589,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
         offer.danger = o.danger;
       }
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
-        offer.deadlineDays = clamp23(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+        offer.deadlineDays = clamp24(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
       const title = plain(o.title, TUNING.director.titleMax);
       if (title !== "") offer.title = title;
@@ -18741,7 +18794,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const pending3 = draft.world.director?.pending;
   if (!pending3 || pending3.id !== requestId) throw new Error("Stale director answer.");
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp23(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp24(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending3), {
     cooldownDays,
     only: pending3.reason === "scout" ? "rumors" : void 0
@@ -19212,7 +19265,7 @@ function treat(draft, ctx2, unitId, kind) {
   addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
   return [{ type: "expedition_treated", unitId, kind }];
 }
-var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function enterCombat(draft, ctx2, nodeId, def, mission) {
   const exp = draft.expedition;
   const reg = ctx2.registries;
@@ -19223,7 +19276,7 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   try {
     encounter = generateEncounter(draft, reg, ctx2.rng, {
       table: region.enemyTable,
-      danger: clamp24(mission.danger + combat2.dangerDelta + ambush, 1, 5),
+      danger: clamp25(mission.danger + combat2.dangerDelta + ambush, 1, 5),
       squadPower: squadPower(draft, reg, ableParty(draft)),
       exposesCommander: combat2.exposesCommander,
       lootTableId: combat2.lootTableId
@@ -19665,7 +19718,7 @@ function toWorldEffect(raw, ctx2) {
 
 // src/engine/dilemma/validate.ts
 var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index2, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index2, reason });
@@ -19757,7 +19810,7 @@ function parseDilemmaOutput(raw, ctx2) {
 function alignment(fx2, unit2) {
   if (fx2.valueAxes && fx2.valueAxes.length > 0) {
     const sum = fx2.valueAxes.reduce((n, a) => n + (unit2.values[a.axis] ?? 0) * a.direction, 0);
-    return clamp25(sum / 3, -1, 1);
+    return clamp26(sum / 3, -1, 1);
   }
   return ["sided_against", "decision_violated", "endangered", "coerced", "dismissed", "insulted", "lied_detected", "broke_promise", "mocked_defect", "crime_revealed", "rejected_advance"].includes(fx2.event) ? -1 : 1;
 }
@@ -19851,7 +19904,7 @@ function checkDefining(state, beatId) {
 }
 
 // src/engine/dilemma/flow.ts
-var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var STALE2 = "Stale dilemma answer.";
 var capital2 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function presentUnits(state) {
@@ -20048,7 +20101,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
-    const chance = clamp26(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
+    const chance = clamp27(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
@@ -20158,7 +20211,7 @@ function herVote(state, _reg, vote) {
 
 // src/engine/discipline/demands.ts
 var DRIVEN = ["open_defiance", "defiant_loyal"];
-var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var costsOf = (t) => t.grantCost ?? [];
 var namedLiving6 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
 function demandChance(state, reg, unitId) {
@@ -20170,7 +20223,7 @@ function demandChance(state, reg, unitId) {
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit2).refusalMult);
   const squad = assertiveness(state, reg).demandMult;
-  return clamp27(T4.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T4.maxChance);
+  return clamp28(T4.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T4.maxChance);
 }
 var openedThisWeek = (state, unitId) => (state.discipline?.demandLog ?? []).filter((e) => e.unitId === unitId && state.day - e.day < TUNING.demands.weekDays).length;
 var hasOpen = (state, unitId) => (state.discipline?.demands ?? []).some((d) => d.unitId === unitId);
@@ -20282,7 +20335,7 @@ function pay(draft, ctx2, unit2, cost) {
     case "squad_stress": {
       const out = [];
       for (const u of draft.squad.filter((x) => x.id !== unit2.id && isLiving(x))) {
-        const next = clamp27(u.stress + cost.amount, 0, 100);
+        const next = clamp28(u.stress + cost.amount, 0, 100);
         if (next !== u.stress) out.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
         u.stress = next;
       }
@@ -20392,7 +20445,7 @@ function demandDayStep(draft, ctx2) {
 
 // src/engine/special/debts/discovery.ts
 var T3 = () => TUNING.special.debts;
-var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp29 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 var named2 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
 function templateOf2(ctx2, context) {
@@ -20509,14 +20562,14 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
       const own = draft.commander.corporationId;
       if (own !== null) draft.world.factions[own] = Math.min(draft.world.factions[own] ?? 0, T3().hostileAt);
       const rival = d.corporationId;
-      draft.world.factions[rival] = clamp28((draft.world.factions[rival] ?? 0) + 20, -100, 100);
+      draft.world.factions[rival] = clamp29((draft.world.factions[rival] ?? 0) + 20, -100, 100);
       d.ended = "fled";
     }
     events.push({ type: "defector_arc", outcome: optionId });
     return events;
   }
   if (context !== "debts_unit" || subjectId === void 0) return [];
-  if (optionId === "report") d.oversightSuspicion = clamp28(d.oversightSuspicion + 40, 0, 100);
+  if (optionId === "report") d.oversightSuspicion = clamp29(d.oversightSuspicion + 40, 0, 100);
   else if (optionId === "protect_commander") {
     const kind = [...reg.secretKinds.values()].find((k) => k.source === "debts");
     const name = draft.squad.find((u) => u.id === subjectId)?.displayName ?? "";
@@ -20526,7 +20579,7 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
 }
 
 // src/engine/special/debts/intel.ts
-var clamp29 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp30 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function intelOf(state, reg) {
   const d = state.special?.debts;
   const seen = new Set(d?.answered ?? []);
@@ -20578,7 +20631,7 @@ function leak(draft, ctx2, d) {
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
   addFact(draft, { about: ["commander"], text: "The commander sold intel to a rival corporation, and the rival has made it public.", tags: ["debts"], importance: 5, day: draft.day, knownBy: ["*"] });
-  d.oversightSuspicion = clamp29(d.oversightSuspicion + 25, 0, 100);
+  d.oversightSuspicion = clamp30(d.oversightSuspicion + 25, 0, 100);
   d.ended = "leaked";
   events.push({ type: "handler_leak" });
   return events;
@@ -20603,7 +20656,7 @@ function settle2(draft, ctx2, d, answers, spendNight) {
       events.push({ type: "resource_changed", resource: k, amount: pay2[k] });
     }
   }
-  d.handlerPressure = clamp29(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
+  d.handlerPressure = clamp30(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
   scheduleConsequences(draft, ctx2, visit, answers);
   d.answered.push(...visit.items.map((i) => i.id));
   delete d.visit;
@@ -20907,7 +20960,7 @@ var slug2 = (name) => {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s === "" ? "unit" : s;
 };
-var clamp30 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf3(crime.perk), ...effectsOf3(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -20924,7 +20977,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp30(o.trust, 0, 100);
+  const trust = clamp31(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -22700,7 +22753,7 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
 // src/engine/warden/leash.ts
-var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var SLOTS2 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
@@ -22708,7 +22761,7 @@ function cosignChance(state, _reg, _targetId) {
   const C = TUNING.warden.cosign;
   const unit2 = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp31(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit2?.values.corporate ?? 0) - C.mercy * (unit2?.values.mercy ?? 0) + C.perAffinity * affinity, C.min, C.max);
+  return clamp32(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit2?.values.corporate ?? 0) - C.mercy * (unit2?.values.mercy ?? 0) + C.perAffinity * affinity, C.min, C.max);
 }
 function rollCosign(draft, ctx2, targetId, kind) {
   const w = wardenOf(draft);
@@ -24091,30 +24144,10 @@ registerDayEndStep("dm_rumors", specialRumorStep);
 function wardenDayStep(draft, _ctx) {
   const w = wardenOf(draft);
   if (!w) return [];
+  w.defiance = Math.max(0, w.defiance - TUNING.warden.defiance.decayPerDay);
   const gone = w.restrictions.filter((r) => r.untilDay <= draft.day);
   if (gone.length > 0) w.restrictions = w.restrictions.filter((r) => r.untilDay > draft.day);
   return gone.map((r) => ({ type: "commander_restriction_ended", what: r.what }));
-}
-
-// src/engine/warden/death.ts
-var DEATH_CAUSES = ["terminated", "executed"];
-var CLOSING = {
-  terminated: "The controller was triggered. The commander is dead.",
-  executed: "The investigation ended with an execution order. The commander is dead."
-};
-function commanderDies(draft, _ctx, cause, opts = {}) {
-  const ls = leashswapOf(draft);
-  if (!ls) throw new Error("The commander cannot die: the campaign is not in the LEASHSWAP mode.");
-  if (draft.ended) throw new Error("The campaign is already closed.");
-  if (ls.deathRule === "rewind_day" && cause !== "executed" && opts.forceEnd !== true) {
-    return [{ type: "commander_died", rule: "rewind_day", cause }];
-  }
-  draft.ended = { day: draft.day, cause };
-  addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: ${CLOSING[cause]}`, audience: "*" });
-  return [
-    { type: "commander_died", rule: "campaign_end", cause },
-    { type: "campaign_ended", cause }
-  ];
 }
 
 // src/engine/actions/warden.ts
@@ -26253,7 +26286,8 @@ function createOnboarding(deps) {
 var REVEAL_DIRECTIVE = "warden:reveal";
 var ARGUE_DIRECTIVE = "warden:argue";
 var ROMANCE_DIRECTIVE = "warden:romance";
-var WARDEN_DERIVED = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE];
+var WARNING_DIRECTIVE = "warden:warning";
+var WARDEN_DERIVED = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE, WARNING_DIRECTIVE];
 function wardenDirectives(state, reg) {
   const out = [];
   const warden = wardenOf(state);
@@ -26271,6 +26305,14 @@ function wardenDirectives(state, reg) {
       id: ROMANCE_DIRECTIVE,
       expiresAfter: "scene",
       text: `AUTHOR TO WRITE: ${unit2.displayName} holds the commander's controller. Any tenderness between them runs through that power; she knows it and so does the commander.`
+    });
+  }
+  if (unit2 && warden && state.scene?.participants.includes(unit2.id) && warden.warnings.length > 0 && warden.defiance >= TUNING.warden.escalation.warning1) {
+    const final = warden.warnings.length >= 2;
+    out.push({
+      id: WARNING_DIRECTIVE,
+      expiresAfter: "manual",
+      text: `AUTHOR TO WRITE: ${unit2.displayName} has warned the commander that open defiance has gone too far${final ? ": this is the final warning" : ""}. She holds the controller and will use it if it goes on.`
     });
   }
   if (unit2 && revealPending(state, reg)) {
@@ -32717,7 +32759,7 @@ function renderMemoryBlock(host, ctx2) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit = (seed, i) => fnv1a(`${seed}${i}`) % 1e3 / 1e3;
-var clamp32 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp33 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a(seed) % n;
@@ -32741,7 +32783,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp32(v));
+    out.push(clamp33(v));
   }
   return out;
 }

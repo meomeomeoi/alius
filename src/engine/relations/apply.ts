@@ -81,7 +81,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
         ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
         : applyEventToUnit(draft, reg, id, e)));
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
-      if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
+      if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)

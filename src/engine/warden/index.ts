@@ -10,6 +10,7 @@ export { commanderDies, DEATH_CAUSES, type DeathCause } from './death';
 export { describeOrder, expectationInput, orderOfAction, overrideInput } from './describe';
 export { applyCommanderPunishment, commanderRestriction, pickPunishment, punishRoll } from './punish';
 export { wardenDayStep } from './dayStep';
+export { addDefiance, checkEscalation } from './escalation';
 export { cosignChance, leashCommander, logCosignDenied, refreshWardenLeash, rollCosign } from './leash';
 export { conflictOf, herAlternative, type Alternative, type Conflict, type Judged } from './conflict';
 export { afterDefy, answerOverride, argueAvailable, argueEnded, argueStarted, resolveCompromise, argueChance, overrideChance, judgedOf, overrideOpen, plainPayload, rollOverride, runOrder, wardenSource, type OverrideSource } from './override';

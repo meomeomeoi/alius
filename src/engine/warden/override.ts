@@ -11,6 +11,7 @@ import { TUNING } from '../tuning';
 import { addFact } from '../memory';
 import { learnExpectation } from './agenda';
 import { conflictOf, herAlternative, type Judged } from './conflict';
+import { addDefiance } from './escalation';
 import { punishRoll } from './punish';
 import { overrideOpen, wardenOf, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
 
@@ -219,16 +220,16 @@ export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId:
   if (answer === 'comply') {
     const events = ov.alternative ? runOrder(draft, ctx, ov.alternative, base, false) : [];
     addTo(w, 'satisfaction', T.satisfaction.comply);
-    addTo(w, 'defiance', -T.defiance.comply);
+    events.push(...addDefiance(draft, ctx, -T.defiance.comply));
     delete w.compelled;
     return [...events, ...relationEvent(draft, ctx, 'warden_complied', 'minor', 'followed the warden\'s call'), done('comply')];
   }
 
   const events = runOrder(draft, ctx, ov.order, base);
   addTo(w, 'satisfaction', -round(T.override.defySatisfaction * ov.weight));
-  addTo(w, 'defiance', round(T.override.defyDefiance * ov.weight));
-  events.push(...relationEvent(draft, ctx, 'warden_defied', ov.weight >= T.override.majorAt ? 'major' : 'moderate', 'defied the warden\'s call'));
-  events.push(done('defy'), ...afterDefy(draft, ctx, ov.weight));
+  const rose = addDefiance(draft, ctx, round(T.override.defyDefiance * ov.weight)); // the escalation runs at once, before any punishment
+  events.push(...rose, ...relationEvent(draft, ctx, 'warden_defied', ov.weight >= T.override.majorAt ? 'major' : 'moderate', 'defied the warden\'s call'), done('defy'));
+  if (!rose.some((e) => e.type === 'commander_terminated')) events.push(...afterDefy(draft, ctx, ov.weight));
   return events;
 }
 
