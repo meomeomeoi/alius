@@ -2,6 +2,7 @@ import type { ChallengeStat } from '../../engine/power/moves';
 import { renderHierarchyBlock } from '../power/hierarchy';
 import { renderDeviceBlock } from '../personal/deviceBlock';
 import { renderMemoryBlock } from '../memory/memoryBlock';
+import { renderDevelopmentBlock } from '../development/developmentBlock';
 import { renderVitalsBlock } from '../vitals/block';
 import { motionReduced } from '../motion';
 import { renderChallenge, type WagerChoice } from '../personal/wagerForm';
@@ -75,6 +76,8 @@ export interface SquadTabCtx {
   onWear?: (tokenId: string) => void;
   onTakeOff?: (tokenId: string) => void;
   /** P3b: the MEMORY block of each named unit's dossier; absent = no block. */
+  /** P14b: the DEVELOPMENT view of each named unit (HOLD and fact editing go through `dispatch`); absent = no block. */
+  development?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
   memory?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; confirm: (text: string) => Promise<boolean>; onChanged?: () => void };
 }
 
@@ -334,6 +337,14 @@ function bondBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElem
       : null);
 }
 
+/** P14b: the unit's DEVELOPMENT view (what she has become and shown); named units only. */
+function developmentBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
+  if (!ctx.development || unit.kind !== 'named') return null;
+  const host = h('div', { class: 'alius-development' });
+  renderDevelopmentBlock(host, { state, registries: ctx.registries, settings: ctx.settings(), unitId: unit.id, dispatch: ctx.development.dispatch, ...(ctx.development.onChanged ? { onChanged: ctx.development.onChanged } : {}) });
+  return host;
+}
+
 /** P3b: the unit's MEMORY block (dossier and facts, with PIN / FORGET and, with the edit lock off, EDIT). */
 function memoryBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
   if (!ctx.memory) return null;
@@ -387,6 +398,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : hierarchyBlock(unit, state, ctx),
       gone ? null : renderDeviceBlock(state, ctx.registries, unit.id, { onPeel: (id, part) => ctx.onPeel?.(id, part), onCancel: (id) => ctx.onCancelBooking?.(id) }),
       unit.kind === 'named' ? memoryBlock(unit, ctx, state) : null,
+      unit.kind === 'named' ? developmentBlock(unit, ctx, state) : null, // P14b
       gone || !ctx.onWager ? null : renderChallenge(state, ctx.registries, unit.id, (choice) => ctx.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),

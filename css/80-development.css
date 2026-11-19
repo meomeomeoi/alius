@@ -1,0 +1,31 @@
+/* Character development (P14b): the DEVELOPMENT view of a soldier. Palette variables only; no semantic colours (readable mode safe). */
+#alius-shell .alius-development {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-dev-axis,
+#alius-shell .alius-dev-fact,
+#alius-shell .alius-dev-habit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
+
+#alius-shell .alius-dev-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+#alius-shell .alius-development [aria-pressed='true'] {
+  text-decoration: underline;
+}
+
+#alius-shell .alius-development [aria-disabled='true'] {
+  opacity: 0.6;
+}

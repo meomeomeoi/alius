@@ -16,6 +16,7 @@ import type { GenerationUi } from '../generation/surface';
 import { renderGenerationsSection } from './generationsSection';
 import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
+import { developmentMode } from '../../engine/development/state';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -116,6 +117,28 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
       if (err) {
         ctx.toast('warn', String(err.message ?? 'The difficulty could not be changed.'));
         el.value = ctx.getState()?.difficulty ?? 'normal';
+      }
+    });
+    return el;
+  };
+
+  /** P14b: how far soldiers change from what they live through; a campaign without the setting (an old save) reads `off`. Goes through the engine. */
+  const developmentSelect = (): HTMLElement => {
+    const state = ctx.getState();
+    const value = state ? developmentMode(state) : 'off';
+    const el = h(
+      'select',
+      { name: 'characterDevelopment', class: 'alius-input', disabled: !state || !ctx.dispatch },
+      ...(['off', 'slow', 'normal'] as const).map((v) => h('option', { value: v, selected: v === value }, v)),
+    ) as HTMLSelectElement;
+    el.value = value;
+    el.addEventListener('change', () => {
+      const events = ctx.dispatch?.({ type: 'development/set_mode', payload: { mode: el.value } }) ?? [];
+      const err = events.find((e) => e.type === 'error');
+      if (err) {
+        ctx.toast('warn', String(err.message ?? 'The setting could not be changed.'));
+        const now = ctx.getState();
+        el.value = now ? developmentMode(now) : 'off';
       }
     });
     return el;
@@ -247,6 +270,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     h('h3', {}, 'World options'),
     ...worldOptionRows(),
     h('h3', {}, 'Relationships'),
+    h('label', { class: 'alius-field alius-option', ...analyzeNative('glossary:character_development') }, h('span', { class: 'alius-field-label' }, 'Character development (this campaign)'), developmentSelect()), // P14b
     field('The mechanic model words soldiers\' demands', checkbox('demandWording', settings.demandWording), 'demandWording'),
     field('The mechanic model words soldiers\' rule proposals', checkbox('ruleWording', settings.ruleWording), 'ruleWording'),
     field('The mechanic model words the reasons on a squad vote', checkbox('ballotWording', settings.ballotWording), 'ballotWording'),

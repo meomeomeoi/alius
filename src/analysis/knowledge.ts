@@ -1,4 +1,6 @@
-import type { CampaignState, Fact } from '../engine/state/types';
+import type { Registries } from '../content/types';
+import { changedAxes } from '../engine/development/words';
+import type { CampaignState, DevFact, Fact } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
 
 /**
@@ -15,6 +17,18 @@ export interface Knowledge {
   flagVisible(id: string): boolean;
   /** The facts the commander may know. */
   facts(): Fact[];
+  /**
+   * P14b: what she has become, as far as the player may read it: the axes whose change she has shown (words, and why once shown), her
+   * development lines she has shown, and her habits whose line is shown. Accumulators, pending and misread appraisals, `insight` and
+   * anything not shown yet never appear here.
+   */
+  development(unitId: string, reg: Registries): DevelopmentView;
+}
+
+export interface DevelopmentView {
+  axes: Array<{ axis: string; words: string; up: boolean; reason: string; shownDay: number; held: boolean }>;
+  facts: DevFact[];
+  habits: string[];
 }
 
 /** A rule returns `false` to hide. Later packages add rules (e.g. P12 hides facts of a secret). */
@@ -55,5 +69,19 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
     factVisible,
     flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds(() => r.flag!(id, state))),
     facts: () => (state?.memory?.facts ?? []).filter(factVisible),
+    development(unitId, reg) {
+      const unit = state?.squad.find((u) => u.id === unitId);
+      const dev = unit?.development;
+      if (!state || !unit || unit.kind !== 'named' || !dev) return { axes: [], facts: [], habits: [] };
+      const axes: DevelopmentView['axes'] = [];
+      for (const a of changedAxes(unit, reg)) {
+        const shown = [...dev.moments].reverse().find((m) => m.axis === a.axis && m.shownDay !== undefined);
+        if (shown) axes.push({ axis: a.axis, words: a.words, up: a.up, reason: shown.reason, shownDay: shown.shownDay!, held: dev.held?.includes(a.axis) === true });
+      }
+      const facts = dev.facts.filter((f) => f.shownDay !== undefined);
+      // a habit shows with its line; one whose line was pushed out of the list was shown long ago
+      const habits = dev.habits.filter((id) => { const f = dev.facts.find((x) => x.habitId === id); return f === undefined || f.shownDay !== undefined; });
+      return { axes, facts, habits };
+    },
   };
 }

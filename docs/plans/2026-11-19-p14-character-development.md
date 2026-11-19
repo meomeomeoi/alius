@@ -851,7 +851,7 @@ interface DevMoment {
   - With the edit lock off: HOLD per axis line (`aria-pressed`), EDIT / REMOVE per fact. With it on, the controls are `aria-disabled` and analyzable.
   - Empty: `NOTHING YET.`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `shows only shown items`: an unshown moment and an unshown fact are absent; after `showMoments` they render.
   - `no number is rendered` with raw values off.
   - `HOLD toggles held` (dispatch payload), and a held axis then takes no push (engine test in `control.test.ts`).
@@ -859,10 +859,10 @@ interface DevMoment {
   - `edit lock on disables the controls with aria-disabled`.
   - `the SYS select dispatches development/set_mode`.
   - `tests/ui/analyzeCoverage` passes (every new control carries `data-analyze`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** CSS uses the existing variables; no `url(` with a scheme.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): the DEVELOPMENT view, HOLD and fact editing`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** CSS uses the existing variables; no `url(` with a scheme.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): the DEVELOPMENT view, HOLD and fact editing`
 
 ---
 

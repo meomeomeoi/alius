@@ -237,6 +237,8 @@ export interface DevFact {
   kind: 'attitude' | 'value' | 'habit' | 'skill' | 'memory';
   day: number;
   source: 'review' | 'habit';
+  /** The `habits` entry a habit fact was written for (so the view and the readings can show the habit with its line). */
+  habitId?: string;
   sceneId?: string;
   shownDay?: number;
   edited?: true;

@@ -19458,7 +19458,7 @@ function checkHabits(draft, reg, unitId) {
     if (key === null) continue;
     const other = h2.counter.kind === "companion" ? draft.squad.find((u) => u.id === key.slice("companion:".length))?.displayName ?? "someone" : "";
     const text2 = h2.fallback.replace(/\{name\}/g, unit2.displayName).replace(/\{other\}/g, other).replace(/\s+/g, " ").trim().slice(0, D.factTextMax).trim();
-    const fact = { id: nextDevId(dev, "df"), text: text2, kind: "habit", day: draft.day, source: "habit" };
+    const fact = { id: nextDevId(dev, "df"), text: text2, kind: "habit", day: draft.day, source: "habit", habitId: h2.id };
     dev.habits.push(h2.id);
     dev.facts.push(fact);
     while (dev.facts.length > D.factsMax) {
@@ -26087,6 +26087,25 @@ registerAction("development/edit_fact", (draft, payload) => {
   if (p?.byModel !== true) fact.edited = true;
   return [];
 });
+registerAction("development/hold", (draft, payload) => {
+  const p = payload;
+  const unit2 = typeof p?.unitId === "string" ? draft.squad.find((u) => u.id === p.unitId) : void 0;
+  if (!unit2 || unit2.kind !== "named") throw new Error("Only a named soldier can be held.");
+  if (typeof p?.axis !== "string" || axisKind(p.axis) === null || typeof p.on !== "boolean") throw new Error("development/hold needs { unitId, axis, on }.");
+  const dev = ensureDevelopment(unit2);
+  const held2 = (dev.held ?? []).filter((a) => a !== p.axis);
+  if (p.on) held2.push(p.axis);
+  if (held2.length > 0) dev.held = held2;
+  else delete dev.held;
+  return [];
+});
+registerAction("development/remove_fact", (draft, payload) => {
+  const p = payload;
+  const dev = typeof p?.unitId === "string" ? draft.squad.find((u) => u.id === p.unitId)?.development : void 0;
+  if (!dev || !dev.facts.some((f) => f.id === p?.factId)) throw new Error("She has no such line.");
+  dev.facts = dev.facts.filter((f) => f.id !== p.factId);
+  return [];
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -29810,7 +29829,23 @@ function buildKnowledge(state, settings) {
     clockVisible: (id) => visibleClocks.has(id),
     factVisible,
     flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds3(() => r.flag(id, state))),
-    facts: () => (state?.memory?.facts ?? []).filter(factVisible)
+    facts: () => (state?.memory?.facts ?? []).filter(factVisible),
+    development(unitId, reg) {
+      const unit2 = state?.squad.find((u) => u.id === unitId);
+      const dev = unit2?.development;
+      if (!state || !unit2 || unit2.kind !== "named" || !dev) return { axes: [], facts: [], habits: [] };
+      const axes = [];
+      for (const a of changedAxes(unit2, reg)) {
+        const shown = [...dev.moments].reverse().find((m) => m.axis === a.axis && m.shownDay !== void 0);
+        if (shown) axes.push({ axis: a.axis, words: a.words, up: a.up, reason: shown.reason, shownDay: shown.shownDay, held: dev.held?.includes(a.axis) === true });
+      }
+      const facts = dev.facts.filter((f) => f.shownDay !== void 0);
+      const habits = dev.habits.filter((id) => {
+        const f = dev.facts.find((x) => x.habitId === id);
+        return f === void 0 || f.shownDay !== void 0;
+      });
+      return { axes, facts, habits };
+    }
   };
 }
 
@@ -36477,6 +36512,75 @@ function renderMemoryBlock(host, ctx2) {
   ));
 }
 
+// src/ui/development/developmentBlock.ts
+function renderDevelopmentBlock(host, ctx2) {
+  const { state, unitId } = ctx2;
+  const locked = ctx2.settings.editLock !== false;
+  const view = buildKnowledge(state, ctx2.settings).development(unitId, ctx2.registries);
+  const send = (action) => {
+    ctx2.dispatch(action);
+    ctx2.onChanged?.();
+  };
+  host.replaceChildren();
+  const head = h("p", { class: "alius-stat", ...analyzeAttrs("glossary:character_development") }, "DEVELOPMENT");
+  host.append(head);
+  const control = (label2, action, address, run, pressed) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    "data-action": action,
+    "aria-disabled": locked ? "true" : null,
+    ...pressed !== void 0 ? { "aria-pressed": String(pressed) } : {},
+    ...analyzeNative(address),
+    onclick: () => {
+      if (!locked) run();
+    }
+  }, label2);
+  const axisRow = (a) => h(
+    "div",
+    { class: "alius-dev-axis", "data-axis": a.axis },
+    h("span", { class: "alius-stat", ...analyzeAttrs(`development:${unitId}:${a.axis}`) }, `${a.words.charAt(0).toUpperCase()}${a.words.slice(1)}.`),
+    control(a.held ? "[ HELD ]" : "[ HOLD ]", "hold", "glossary:development_hold", () => send({ type: "development/hold", payload: { unitId, axis: a.axis, on: !a.held } }), a.held)
+  );
+  const factRow = (f) => {
+    const row2 = h("div", { class: "alius-dev-fact", "data-fact": f.id });
+    const draw2 = (editing) => {
+      if (editing) {
+        const ta = h("textarea", { class: "alius-input", rows: "2", maxlength: String(TUNING.development.factTextMax), "aria-label": "Her line" });
+        ta.value = f.text;
+        row2.replaceChildren(ta, h(
+          "div",
+          { class: "alius-dev-actions" },
+          control("[ SAVE ]", "save", "glossary:development_fact", () => send({ type: "development/edit_fact", payload: { unitId, factId: f.id, text: ta.value } })),
+          h("button", { type: "button", class: "alius-btn", onclick: () => draw2(false) }, "[ CANCEL ]")
+        ));
+        return;
+      }
+      row2.replaceChildren(
+        h("span", { class: "alius-stat", "data-role": "text", ...analyzeAttrs(f.habitId !== void 0 ? "glossary:habit" : "glossary:development_fact") }, f.text),
+        ...f.edited ? [h("span", { class: "alius-chip", ...analyzeAttrs("glossary:development_fact") }, "EDITED")] : [],
+        h(
+          "div",
+          { class: "alius-dev-actions" },
+          control("[ EDIT ]", "edit", "glossary:development_fact", () => draw2(true)),
+          control("[ REMOVE ]", "remove", "glossary:development_fact", () => send({ type: "development/remove_fact", payload: { unitId, factId: f.id } }))
+        )
+      );
+    };
+    draw2(false);
+    return row2;
+  };
+  const lone = view.habits.filter((id) => !view.facts.some((f) => f.habitId === id));
+  const loneRows = lone.flatMap((id) => {
+    const e = ctx2.registries.habits.get(id);
+    return e ? [h("div", { class: "alius-dev-habit", "data-habit": id }, h("span", { class: "alius-stat", ...analyzeAttrs(`habits:${id}`) }, String(e.description).replace(/^\s*AUTHOR TO WRITE:\s*/i, "")))] : [];
+  });
+  if (view.axes.length === 0 && view.facts.length === 0 && loneRows.length === 0) {
+    host.append(h("p", { class: "alius-dim" }, "NOTHING YET."));
+    return;
+  }
+  host.append(...view.axes.map(axisRow), ...[...view.facts].reverse().map(factRow), ...loneRows);
+}
+
 // src/ui/vitals/trace.ts
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
@@ -37223,6 +37327,12 @@ function bondBlock(unit2, state, ctx2) {
     }, `${r.status === "negotiating" ? "NEGOTIATING" : r.status === "proposed" ? "PROPOSED" : "ACTIVE"} \u2014 ${r.text}${r.brokenCount > 0 ? ` (broken ${r.brokenCount}\xD7)` : ""}`)))) : null
   );
 }
+function developmentBlock(unit2, ctx2, state) {
+  if (!ctx2.development || unit2.kind !== "named") return null;
+  const host = h("div", { class: "alius-development" });
+  renderDevelopmentBlock(host, { state, registries: ctx2.registries, settings: ctx2.settings(), unitId: unit2.id, dispatch: ctx2.development.dispatch, ...ctx2.development.onChanged ? { onChanged: ctx2.development.onChanged } : {} });
+  return host;
+}
 function memoryBlock(unit2, ctx2, state) {
   if (!ctx2.memory) return null;
   const host = h("div", { class: "alius-memory-host" });
@@ -37274,6 +37384,8 @@ function unitBlock(unit2, ctx2, state) {
       gone ? null : hierarchyBlock(unit2, state, ctx2),
       gone ? null : renderDeviceBlock(state, ctx2.registries, unit2.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
       unit2.kind === "named" ? memoryBlock(unit2, ctx2, state) : null,
+      unit2.kind === "named" ? developmentBlock(unit2, ctx2, state) : null,
+      // P14b
       gone || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit2.id, (choice) => ctx2.onWager?.(unit2.id, choice)),
       gone ? null : restrictionLine(unit2, state),
       gone || !ctx2.onPunish || unit2.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit2.id, onPunish: (measure, days) => ctx2.onPunish(unit2.id, measure, days) }),
@@ -43447,6 +43559,26 @@ function renderSysTab(host, ctx2) {
     });
     return el;
   };
+  const developmentSelect = () => {
+    const state = ctx2.getState();
+    const value = state ? developmentMode(state) : "off";
+    const el = h(
+      "select",
+      { name: "characterDevelopment", class: "alius-input", disabled: !state || !ctx2.dispatch },
+      ...["off", "slow", "normal"].map((v) => h("option", { value: v, selected: v === value }, v))
+    );
+    el.value = value;
+    el.addEventListener("change", () => {
+      const events = ctx2.dispatch?.({ type: "development/set_mode", payload: { mode: el.value } }) ?? [];
+      const err = events.find((e) => e.type === "error");
+      if (err) {
+        ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
+        const now = ctx2.getState();
+        el.value = now ? developmentMode(now) : "off";
+      }
+    });
+    return el;
+  };
   const worldOptionRows = () => {
     const state = ctx2.getState();
     const reg = ctx2.getRegistries?.();
@@ -43576,6 +43708,8 @@ function renderSysTab(host, ctx2) {
     h("h3", {}, "World options"),
     ...worldOptionRows(),
     h("h3", {}, "Relationships"),
+    h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:character_development") }, h("span", { class: "alius-field-label" }, "Character development (this campaign)"), developmentSelect()),
+    // P14b
     field("The mechanic model words soldiers' demands", checkbox("demandWording", settings.demandWording), "demandWording"),
     field("The mechanic model words soldiers' rule proposals", checkbox("ruleWording", settings.ruleWording), "ruleWording"),
     field("The mechanic model words the reasons on a squad vote", checkbox("ballotWording", settings.ballotWording), "ballotWording"),
@@ -46018,6 +46152,8 @@ function createApp(st, deps) {
       onWear: (id) => void personal.wearToken(id),
       onTakeOff: (id) => void personal.takeOffToken(id),
       // P3b: the MEMORY block of each unit (pin, forget, and with the edit lock off edit)
+      development: { dispatch: (a) => act(a), onChanged: () => shell.refresh() },
+      // P14b: HOLD and fact editing
       memory: {
         dispatch: (a) => act(a),
         confirm: async (text2) => await shell.modal({ title: "FORGET", body: text2, actions: [{ label: "[ FORGET ]", value: "yes" }, { label: "[ CANCEL ]", value: "no" }] }) === "yes",

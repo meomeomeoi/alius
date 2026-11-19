@@ -47,7 +47,7 @@ export function checkHabits(draft: CampaignState, reg: Registries, unitId: strin
     if (key === null) continue;
     const other = h.counter.kind === 'companion' ? (draft.squad.find((u) => u.id === key.slice('companion:'.length))?.displayName ?? 'someone') : '';
     const text = h.fallback.replace(/\{name\}/g, unit.displayName).replace(/\{other\}/g, other).replace(/\s+/g, ' ').trim().slice(0, D.factTextMax).trim();
-    const fact: DevFact = { id: nextDevId(dev, 'df'), text, kind: 'habit', day: draft.day, source: 'habit' };
+    const fact: DevFact = { id: nextDevId(dev, 'df'), text, kind: 'habit', day: draft.day, source: 'habit', habitId: h.id };
     dev.habits.push(h.id);
     dev.facts.push(fact);
     while (dev.facts.length > D.factsMax) {

@@ -5,8 +5,9 @@ import { registerAction } from '../dispatch';
 import { recordActivity } from '../development/appraisal';
 import { countActivity, habitEffect } from '../development/habits';
 import { developmentDayStep } from '../development/misread';
+import { axisKind } from '../development/axes';
 import { applyReview, reviewCommitted, undoReview, type ReviewValue } from '../development/review';
-import { DEVELOPMENT_MODES, developmentMode } from '../development/state';
+import { DEVELOPMENT_MODES, developmentMode, ensureDevelopment } from '../development/state';
 import { isLiving } from '../economy';
 import { TUNING } from '../tuning';
 import type { DevelopmentMode } from '../state/types';
@@ -83,5 +84,31 @@ registerAction('development/edit_fact', (draft, payload) => {
   if (text === '') throw new Error('A line cannot be empty.');
   fact.text = text;
   if (p?.byModel !== true) fact.edited = true;
+  return [];
+});
+
+/**
+ * `development/hold { unitId, axis, on }`: the player freezes (or releases) one axis of hers: it keeps its drift and its change, and takes no
+ * push and no shift. The edit lock is the UI's gate; the engine only checks that the axis and the unit are real.
+ */
+registerAction('development/hold', (draft, payload) => {
+  const p = payload as { unitId?: unknown; axis?: unknown; on?: unknown } | undefined;
+  const unit = typeof p?.unitId === 'string' ? draft.squad.find((u) => u.id === p.unitId) : undefined;
+  if (!unit || unit.kind !== 'named') throw new Error('Only a named soldier can be held.');
+  if (typeof p?.axis !== 'string' || axisKind(p.axis) === null || typeof p.on !== 'boolean') throw new Error('development/hold needs { unitId, axis, on }.');
+  const dev = ensureDevelopment(unit);
+  const held = (dev.held ?? []).filter((a) => a !== p.axis);
+  if (p.on) held.push(p.axis);
+  if (held.length > 0) dev.held = held;
+  else delete dev.held;
+  return [];
+});
+
+/** `development/remove_fact { unitId, factId }`: the player removes one of her development lines. */
+registerAction('development/remove_fact', (draft, payload) => {
+  const p = payload as { unitId?: unknown; factId?: unknown } | undefined;
+  const dev = typeof p?.unitId === 'string' ? draft.squad.find((u) => u.id === p.unitId)?.development : undefined;
+  if (!dev || !dev.facts.some((f) => f.id === p?.factId)) throw new Error('She has no such line.');
+  dev.facts = dev.facts.filter((f) => f.id !== p!.factId);
   return [];
 });

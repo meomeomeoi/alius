@@ -2085,6 +2085,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onWear: (id) => void personal.wearToken(id),
       onTakeOff: (id) => void personal.takeOffToken(id),
       // P3b: the MEMORY block of each unit (pin, forget, and with the edit lock off edit)
+      development: { dispatch: (a) => act(a), onChanged: () => shell.refresh() }, // P14b: HOLD and fact editing
       memory: {
         dispatch: (a) => act(a),
         confirm: async (text) => (await shell.modal({ title: 'FORGET', body: text, actions: [{ label: '[ FORGET ]', value: 'yes' }, { label: '[ CANCEL ]', value: 'no' }] })) === 'yes',
