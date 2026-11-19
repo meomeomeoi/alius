@@ -3,6 +3,7 @@ import type { Wizard } from '../../setup/wizard';
 import { analyzeNative } from '../analyze/mark';
 import { renderContentSection } from '../bonds/content';
 import { renderModeSection } from '../warden/modeSection';
+import { renderHeadStartSection } from './headStart';
 import { h } from '../dom';
 
 /** More choices than this are drawn as a slider instead of cards. */
@@ -58,6 +59,8 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
 
   const modeHost = h('div', { class: 'alius-world-mode' });
   renderModeSection(modeHost, wizard); // P13: DEFAULT or LEASHSWAP
+  const headStartHost = h('div', { class: 'alius-world-head-start' });
+  renderHeadStartSection(headStartHost, wizard); // P11b: how long the squad has known the commander
   const contentHost = h('div', { class: 'alius-section alius-world-content' });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
@@ -74,6 +77,7 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
       ...options.filter((o) => String(o.group) === g).map(optionBlock),
     ]),
     modeHost,
+    headStartHost,
     contentHost,
     h('section', { class: 'alius-section alius-world-summary' },
       h('h3', {}, 'WHAT THIS CHANGES'),

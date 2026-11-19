@@ -440,6 +440,42 @@ describe('coverage: world parameters and disposition controls (P8)', () => {
     expect(addresses).toEqual(expect.arrayContaining(['worldOptions:disposition', 'worldOptions:oversight', 'worldPresets:brutal']));
   });
 
+  it('the HEAD START options and the NEW ARRIVAL toggles are marked, resolve and can be reached (P11b)', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const w = wiz();
+    w.setStart('start_vesper');
+    w.setCrime('mutiny');
+    w.setHeadStart(14);
+    w.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    w.toggleUnit({ avatar: 'b.png', name: 'Bea' });
+    const renderStep = (): HTMLElement => {
+      const host = h('div');
+      document.body.append(host);
+      renderSetupScreen(host, { wizard: w, registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
+      return host;
+    };
+    w.next();
+    expect(w.state.step).toBe('world');
+    const world = renderStep();
+    expect(world.querySelectorAll('.alius-head-start-choice')).toHaveLength(4);
+    expect(unitIdsIn(world)).toContain('glossary:head_start');
+    for (const host of [world]) {
+      expect(markedWithout(host)).toEqual([]);
+      expect(unresolved(host, env(null))).toEqual([]);
+      expect(unreachable(host)).toEqual([]);
+    }
+    document.body.innerHTML = '';
+    for (let i = 0; i < 4 && w.state.step !== 'units'; i++) w.next();
+    expect(w.state.step).toBe('units');
+    w.toggleNewArrival('b.png');
+    const units = renderStep();
+    expect(units.querySelectorAll('.alius-new-arrival')).toHaveLength(2);
+    expect(markedWithout(units)).toEqual([]);
+    expect(unresolved(units, env(null))).toEqual([]);
+    expect(unreachable(units)).toEqual([]);
+    expect(unitIdsIn(units)).toContain('glossary:new_arrival');
+  });
+
   it('every content category row carries data-analyze and resolves (P9d)', () => {
     const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
     const w = wiz();

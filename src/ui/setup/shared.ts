@@ -4,6 +4,7 @@ import { VALUE_AXES } from '../../engine/state/types';
 import { difficultyHint, type UnitDraft, type Wizard, type WizardState } from '../../setup/wizard';
 import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { HEAD_START_LABEL } from './headStart';
 
 /** Helpers the setup screen and the in-world intake steps (P11) share. */
 
@@ -69,6 +70,7 @@ export function reviewLines(wizard: Wizard, reg: Registries): string[] {
     `CRIME       : ${nameOf(reg, 'crimes', s.crimeId)} (Plea: GUILTY)`,
     ...commanderLines(s, reg),
     ...(s.campaign.kind === 'leashswap' ? [`MODE        : LEASHSWAP — ${s.campaign.deathRule === 'rewind_day' ? 'REWIND DAY' : 'CAMPAIGN END'} — WARDEN: ${s.campaign.warden.by === 'player' ? (s.units[s.campaign.warden.index]?.displayName ?? 'CORPORATE ASSIGNMENT') : 'CORPORATE ASSIGNMENT'}`] : []),
+    ...(s.headStart.days > 0 ? [`HEAD START  : ${HEAD_START_LABEL[s.headStart.days]}${s.headStart.newArrivals.length > 0 ? ` — NEW ARRIVALS: ${s.headStart.newArrivals.map((a) => s.units.find((u) => u.avatar === a)?.displayName ?? a).join(', ')}` : ''}`] : []),
     `SQUAD       : ${s.units.length}/4 — ${difficultyHint(s.units.length)}`,
     ...s.units.flatMap((u, n) => unitLines(wizard, reg, u, n)),
   ];

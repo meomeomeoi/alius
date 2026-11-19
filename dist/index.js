@@ -33061,6 +33061,7 @@ var Wizard = class {
       world: this.startingWorld(),
       content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
       campaign: { kind: "default", deathRule: defaultDeathRule(this.deps.difficulty ?? "normal"), warden: { by: "corporation" } },
+      headStart: { days: 0, newArrivals: [] },
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -33105,6 +33106,19 @@ var Wizard = class {
       if (!Number.isInteger(pick2.index) || pick2.index < 0 || pick2.index >= this.s.units.length) return;
       this.s.campaign.warden = { by: "player", index: pick2.index };
     } else this.s.campaign.warden = { by: "corporation" };
+    this.emit();
+  }
+  /** P11b: how long the squad has known the commander; 0 (arrival) clears the new arrivals. An unknown value is ignored. */
+  setHeadStart(days) {
+    if (!TUNING.headStart.days.includes(days)) return;
+    this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    this.emit();
+  }
+  /** P11b: a chosen unit arrives today instead of having known the commander; nothing happens at arrival or for a card that is not chosen. */
+  toggleNewArrival(avatar) {
+    const h2 = this.s.headStart;
+    if (h2.days === 0 || !this.s.units.some((u) => u.avatar === avatar)) return;
+    h2.newArrivals = h2.newArrivals.includes(avatar) ? h2.newArrivals.filter((a) => a !== avatar) : [...h2.newArrivals, avatar];
     this.emit();
   }
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
@@ -33367,6 +33381,7 @@ var Wizard = class {
     const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
     if (i >= 0) {
       this.s.units.splice(i, 1);
+      this.s.headStart.newArrivals = this.s.headStart.newArrivals.filter((a) => a !== c.avatar);
       const w = this.s.campaign.warden;
       if (w.by === "player") this.s.campaign.warden = w.index === i ? { by: "corporation" } : w.index > i ? { by: "player", index: w.index - 1 } : w;
       this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
@@ -33643,6 +33658,7 @@ var Wizard = class {
       const w = this.s.campaign.warden;
       result.mode = { kind: "leashswap", deathRule: this.s.campaign.deathRule, warden: w.by === "player" && w.index < units.length ? { by: "player", index: w.index } : { by: "corporation" } };
     }
+    if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
@@ -34185,6 +34201,51 @@ function textArea(key, value, max, commit) {
   return el;
 }
 
+// src/ui/setup/headStart.ts
+var HEAD_START_LABEL = { 0: "ARRIVAL", 7: "ONE WEEK", 14: "TWO WEEKS", 30: "ONE MONTH" };
+var TEXT = {
+  0: "Day 1 is the first meeting: everyone meets the commander today.",
+  7: "The squad has known the commander for seven days.",
+  14: "The squad has known the commander for two weeks.",
+  30: "The squad has known the commander for a month."
+};
+var DAYS = [0, 7, 14, 30];
+function renderHeadStartSection(host, wizard) {
+  const current = wizard.state.headStart.days;
+  host.append(h(
+    "section",
+    { class: "alius-section alius-head-start" },
+    h("h3", {}, "HEAD START"),
+    h("p", { class: "alius-hint" }, "The squad has already met the commander: first impressions have settled, a few remember moments, some may know the crime. No missions, time or progress are skipped."),
+    h("div", { class: "alius-cards" }, ...DAYS.map((d) => h("button", {
+      type: "button",
+      class: "alius-card alius-option alius-head-start-choice",
+      "data-days": String(d),
+      "aria-pressed": String(current === d),
+      ...analyzeNative("glossary:head_start"),
+      onclick: () => wizard.setHeadStart(d)
+    }, h("strong", {}, HEAD_START_LABEL[d]), h("p", {}, TEXT[d]))))
+  ));
+}
+function renderNewArrivals(host, wizard) {
+  const s = wizard.state;
+  if (s.headStart.days === 0 || s.units.length === 0) return;
+  host.append(h(
+    "section",
+    { class: "alius-section alius-new-arrivals" },
+    h("h4", {}, "NEW ARRIVAL"),
+    h("p", { class: "alius-dim" }, "A new arrival reaches the base today and meets the commander for the first time. At least one soldier must already know the commander."),
+    h("div", { class: "alius-row" }, ...s.units.map((u) => h("button", {
+      type: "button",
+      class: "alius-btn alius-option alius-new-arrival",
+      "data-avatar": u.avatar,
+      "aria-pressed": String(s.headStart.newArrivals.includes(u.avatar)),
+      ...analyzeNative("glossary:new_arrival"),
+      onclick: () => wizard.toggleNewArrival(u.avatar)
+    }, u.displayName)))
+  ));
+}
+
 // src/ui/setup/shared.ts
 var nameOf10 = (reg, registry2, id) => {
   if (!id) return "\u2014";
@@ -34247,6 +34308,7 @@ function reviewLines(wizard, reg) {
     `CRIME       : ${nameOf10(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
     ...commanderLines(s, reg),
     ...s.campaign.kind === "leashswap" ? [`MODE        : LEASHSWAP \u2014 ${s.campaign.deathRule === "rewind_day" ? "REWIND DAY" : "CAMPAIGN END"} \u2014 WARDEN: ${s.campaign.warden.by === "player" ? s.units[s.campaign.warden.index]?.displayName ?? "CORPORATE ASSIGNMENT" : "CORPORATE ASSIGNMENT"}`] : [],
+    ...s.headStart.days > 0 ? [`HEAD START  : ${HEAD_START_LABEL[s.headStart.days]}${s.headStart.newArrivals.length > 0 ? ` \u2014 NEW ARRIVALS: ${s.headStart.newArrivals.map((a) => s.units.find((u) => u.avatar === a)?.displayName ?? a).join(", ")}` : ""}`] : [],
     `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
     ...s.units.flatMap((u, n) => unitLines(wizard, reg, u, n))
   ];
@@ -34522,6 +34584,8 @@ function renderWorldParams(host, ctx2) {
   };
   const modeHost = h("div", { class: "alius-world-mode" });
   renderModeSection(modeHost, wizard);
+  const headStartHost = h("div", { class: "alius-world-head-start" });
+  renderHeadStartSection(headStartHost, wizard);
   const contentHost = h("div", { class: "alius-section alius-world-content" });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
@@ -34544,6 +34608,7 @@ function renderWorldParams(host, ctx2) {
       ...options2.filter((o) => String(o.group) === g).map(optionBlock)
     ]),
     modeHost,
+    headStartHost,
     contentHost,
     h(
       "section",
@@ -34699,6 +34764,8 @@ function renderSetupScreen(host, ctx2) {
     });
     const wardenHost = h("div", { class: "alius-warden-host" });
     renderWardenPick(wardenHost, wizard);
+    const arrivalsHost = h("div", { class: "alius-arrivals-host" });
+    renderNewArrivals(arrivalsHost, wizard);
     return h(
       "div",
       { class: "alius-setup-body" },
@@ -34711,6 +34778,7 @@ function renderSetupScreen(host, ctx2) {
         return h("label", { class: "alius-tile" }, box, h("img", { src: st.getAvatarUrl(c.avatar), alt: "", width: "48", height: "48" }), h("span", {}, c.name));
       })),
       chars.length === 0 ? h("p", { class: "alius-dim" }, "No characters found.") : null,
+      arrivalsHost.childElementCount > 0 ? arrivalsHost : null,
       wardenHost.childElementCount > 0 ? wardenHost : null
     );
   }

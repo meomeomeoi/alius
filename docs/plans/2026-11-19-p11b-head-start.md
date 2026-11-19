@@ -640,7 +640,7 @@ After every unit:
   - `renderNewArrivals(host: HTMLElement, wizard: Wizard): void`;
   - `HEAD_START_LABEL: Record<HeadStartDays, string>` = `ARRIVAL` / `ONE WEEK` / `TWO WEEKS` / `ONE MONTH`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - Wizard:
     - `the default is arrival` and the result has no `headStart`;
     - `two weeks writes the result` (`{ days: 14, newArrivals: [] }`);
@@ -656,10 +656,10 @@ After every unit:
     - `the review shows the head start`;
     - `prologue and veteran modes both show the section` (the `world` step in both).
   - Add both renderers to the analyze coverage harness (`tests/helpers/analyzeCoverage.ts`) so `tests/ui/analyzeCoverage.test.ts` checks them.
-- [ ] **Step 2: Run** `npx vitest run tests/setup/wizardHeadStart.test.ts tests/ui/setup/headStart.test.ts tests/ui/analyzeCoverage.test.ts` → FAIL.
-- [ ] **Step 3: Implement** after `src/ui/warden/modeSection.ts` (section markup, `h()` only). The hint under the options, plain meta text with no pronoun for the commander: `The squad has already met the commander: first impressions have settled, a few remember moments, some may know the crime. No missions, time or progress are skipped.`
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): HEAD START option and NEW ARRIVAL toggles in the wizard`
+- [x] **Step 2: Run** `npx vitest run tests/setup/wizardHeadStart.test.ts tests/ui/setup/headStart.test.ts tests/ui/analyzeCoverage.test.ts` → FAIL.
+- [x] **Step 3: Implement** after `src/ui/warden/modeSection.ts` (section markup, `h()` only). The hint under the options, plain meta text with no pronoun for the commander: `The squad has already met the commander: first impressions have settled, a few remember moments, some may know the crime. No missions, time or progress are skipped.`
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): HEAD START option and NEW ARRIVAL toggles in the wizard`
 
 ---
 

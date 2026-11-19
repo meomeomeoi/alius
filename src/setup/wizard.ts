@@ -1,7 +1,7 @@
 import type { Entry, Registries } from '../content/types';
 import { BODY_STATS, defaultCommanderSetup, poolSpent, traitBlockReason, validateCommanderSetup, type CommanderSetup } from '../engine/commander/profile';
 import { commandStance, impunityBand, impunityOf, stanceEntry, type CommandStance } from '../engine/discipline';
-import { SETUP_LIMITS, buildCampaign, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
+import { SETUP_LIMITS, buildCampaign, validateSetup, type HeadStartDays, type SetupResult, type UnitSetup } from '../engine/setup';
 import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
 import { defectAllowedFor } from '../engine/bonds';
@@ -85,6 +85,8 @@ export interface WizardState {
   content: { enabled: string[] };
   /** P13: LEASHSWAP or the default mode, its death rule and who holds the leash. */
   campaign: CampaignModeDraft;
+  /** P11b: the head start (days the squad has known the commander) and the cards of the units who arrive today. */
+  headStart: { days: HeadStartDays; newArrivals: string[] };
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -161,6 +163,7 @@ export class Wizard {
       world: this.startingWorld(),
       content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
       campaign: { kind: 'default', deathRule: defaultDeathRule(this.deps.difficulty ?? 'normal'), warden: { by: 'corporation' } },
+      headStart: { days: 0, newArrivals: [] },
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
@@ -203,6 +206,21 @@ export class Wizard {
       if (!Number.isInteger(pick.index) || pick.index < 0 || pick.index >= this.s.units.length) return;
       this.s.campaign.warden = { by: 'player', index: pick.index };
     } else this.s.campaign.warden = { by: 'corporation' };
+    this.emit();
+  }
+
+  /** P11b: how long the squad has known the commander; 0 (arrival) clears the new arrivals. An unknown value is ignored. */
+  setHeadStart(days: HeadStartDays): void {
+    if (!(TUNING.headStart.days as readonly number[]).includes(days)) return;
+    this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    this.emit();
+  }
+
+  /** P11b: a chosen unit arrives today instead of having known the commander; nothing happens at arrival or for a card that is not chosen. */
+  toggleNewArrival(avatar: string): void {
+    const h = this.s.headStart;
+    if (h.days === 0 || !this.s.units.some((u) => u.avatar === avatar)) return;
+    h.newArrivals = h.newArrivals.includes(avatar) ? h.newArrivals.filter((a) => a !== avatar) : [...h.newArrivals, avatar];
     this.emit();
   }
 
@@ -495,6 +513,7 @@ export class Wizard {
     const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
     if (i >= 0) {
       this.s.units.splice(i, 1);
+      this.s.headStart.newArrivals = this.s.headStart.newArrivals.filter((a) => a !== c.avatar);
       const w = this.s.campaign.warden;
       if (w.by === 'player') this.s.campaign.warden = w.index === i ? { by: 'corporation' } : w.index > i ? { by: 'player', index: w.index - 1 } : w;
       this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
@@ -794,6 +813,7 @@ export class Wizard {
       // a pick that no longer points at a chosen unit falls back to the corporation (toggleUnit keeps it in step, this is the net)
       result.mode = { kind: 'leashswap', deathRule: this.s.campaign.deathRule, warden: w.by === 'player' && w.index < units.length ? { by: 'player', index: w.index } : { by: 'corporation' } };
     }
+    if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
