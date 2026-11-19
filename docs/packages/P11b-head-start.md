@@ -104,6 +104,8 @@ Chunks (a) the engine, (b) the recap call, the wizard and the screens. Automated
 - **Fact length is a campaign memory setting** (user request, 2026-11-19). `MemoryConfig.factTextMax` (100–400, default 200) is the player's own choice like `hideScenesAfter`: kept across presets, accepted with any preset in `memory/configure`, never locked, SYS › MEMORY has the input (glossary `fact_length`). `addFact`, `memory/edit`, `memory/rumor_text`, the intent validator (`validateIntents` option `factTextMax`) and the scene-summary and reading inputs (`SceneSummaryInput.factTextMax`, `IntentExtractInput.factTextMax`) read it; `memoryConfig(state).factTextMax` / `factTextMax(state)`. The recap asks the model for `min(240, factTextMax)` characters per moment (`HeadStartRecapInput.textMax`), so nothing is cut silently. `rumor_retell` still asks for 200 (its call has no state). The engine's own moment cap stays 240.
 - **`HEAD_START_SKIPPED_KINDS`** lives in `headStart/skip.ts` (a leaf) and is re-exported from `apply.ts`: `onboarding/state.ts` importing `apply.ts` closed an import cycle.
 - **`head_start_recap` replaces facts by position:** her facts tagged `head_start` in creation order match her moments in order; a fact pruned or merged by `addFact`'s duplicate check is skipped.
+- **The draft marker is stripped at use** (review finding): `fallbackRecap` and the controller's input remove `AUTHOR TO WRITE:` from the fallback lines, the chronicle fallback and the moment descriptions; the ten fallbacks are sentences with `{name}` as subject (no `Name:` label). The recap prompt asks the squad paragraph to stay under 600 characters and never to name the crime (not every soldier knows it).
+- **A dropped answer does not stop the next ask** (review finding): `createHeadStart` forgets its `asked` key when the answer was stale or expired or no recap exists afterwards, so the next load of that chat asks again.
 - **The recap's chronicle entry takes a `c` id from `memory.nextId`**; the facts take `fr` ids and leave it alone.
 
 ### Non-obvious things to know
@@ -123,4 +125,7 @@ Chunks (a) the engine, (b) the recap call, the wizard and the screens. Automated
 - `k(N)`, the trust cap 55 and the moment → event mapping need tuning after play.
 - The prologue's cold open has its own head start text (`headStartTitle` / `headStartText` on the step: a RECOLLECTION instead of the transport, chosen by `Wizard.state.headStart.days > 0`); the intake and exam forms take `headStartTitle` and `headStartLines` (the keys they name replace the step's `lines`; `traits_note` and the dossier's `sign_prompt` stay).
 - `Wizard.previewStart` shows Trust without the head start.
-- `rumor_retell` ignores `factTextMax`.
+- `rumor_retell` ignores `factTextMax`; P14b's development facts have their own `TUNING.development.factTextMax` (140) and ignore it too.
+- A reroll replaces facts by position: if the player deletes one head-start fact (MEMORY › FORGET) before the first scene, a later reroll puts a text on the wrong moment (narrow window; storing fact ids per moment would fix it).
+- The `dropped` branch of `applyMoment` has no test (confidence is fixed at 1, so it cannot be reached without changing the floors).
+- The cold-open recollection says "The weeks since" even for the 7-day option; `headStartOpening` and the head start reading list a deserted or terminated new arrival differently; `renderRecapCard` has a leftover `void reg`.

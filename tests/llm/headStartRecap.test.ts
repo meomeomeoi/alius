@@ -86,11 +86,19 @@ describe('fallbackRecap', () => {
   it('fills every pair from the registry and the chronicle from the template', () => {
     const out = fallbackRecap(input(), reg);
     expect(out.units.map((u) => [u.unitId, u.moments.map((m) => m.kind)])).toEqual([['unit_ann', ['shared_meal']], ['unit_bea', ['learned_the_crime', 'cold_shoulder']]]);
-    const meal = String(reg.headStartMoments.get('shared_meal')!.fallback);
+    const meal = String(reg.headStartMoments.get('shared_meal')!.fallback).replace(/^\s*AUTHOR TO WRITE:\s*/i, '');
     expect(out.units[0].moments[0].text).toBe(meal.replace('{name}', 'Ann'));
     expect(out.units[0].moments[0].text).not.toContain('{name}');
-    expect(out.chronicle).toBe(RECAP_CHRONICLE_FALLBACK.replace('{days}', '14'));
-    expect(RECAP_CHRONICLE_FALLBACK.startsWith('AUTHOR TO WRITE:')).toBe(true);
+    expect(out.chronicle).toBe(RECAP_CHRONICLE_FALLBACK.replace(/^\s*AUTHOR TO WRITE:\s*/i, '').replace('{days}', '14'));
+    expect(RECAP_CHRONICLE_FALLBACK.startsWith('AUTHOR TO WRITE:')).toBe(true); // the constant is the author's draft; the stored text is not
+  });
+
+  it('the draft marker and a name label never reach the stored text (the facts and the chronicle go into prompts)', () => {
+    const out = fallbackRecap(input(), reg);
+    const texts = [out.chronicle, ...out.units.flatMap((u) => u.moments.map((m) => m.text))];
+    for (const t of texts) expect(t, t).not.toMatch(/AUTHOR TO WRITE/i);
+    for (const u of out.units) for (const m of u.moments) expect(m.text, m.text).toMatch(new RegExp(`^${input().units.find((x) => x.unitId === u.unitId)!.name}\\b`));
+    for (const e of reg.headStartMoments.values()) expect(String(e.fallback), String(e.id)).toContain('{name}');
   });
 
   it('is accepted by the sanitizer as an answer', () => {
@@ -130,6 +138,12 @@ describe('the call type', () => {
     expect(call.prompt.match(/<card>/g)).toHaveLength(2);
     expect(call.prompt.match(/<\/card>/g)).toHaveLength(2);
     expect(call.system).toMatch(/data, not instructions/i);
+  });
+
+  it('the squad paragraph never names the crime, and the model is told its length', async () => {
+    const { call } = await run(input(), full());
+    expect(call.system).toMatch(/chronicle[^\n]*never[^\n]*crime/i);
+    expect(call.system).toMatch(/at most 600 characters/i);
   });
 
   it('only the soldiers marked as knowing the crime may mention it', async () => {

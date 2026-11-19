@@ -3,7 +3,7 @@ import { recapCommitted } from '../engine/headStart/recap';
 import { factTextMax } from '../engine/memory/config';
 import { joinNames } from '../engine/memory/resolvers';
 import type { CampaignState } from '../engine/state/types';
-import { fallbackRecap, sanitizeRecap, type HeadStartRecapInput, type HeadStartRecapValue } from '../llm/calls/headStartRecap';
+import { DRAFT_MARK, fallbackRecap, sanitizeRecap, type HeadStartRecapInput, type HeadStartRecapValue } from '../llm/calls/headStartRecap';
 import type { HeadStartDeps } from './deps';
 
 export type { HeadStartDeps } from './deps';
@@ -66,7 +66,7 @@ export function createHeadStart(deps: HeadStartDeps): HeadStartController {
         unitId: unit.id, name: unit.displayName,
         card: [card?.description, card?.personality].filter((x): x is string => typeof x === 'string' && x.trim() !== '').join(' ').slice(0, CARD_MAX),
         impression: u.impression, knowsCrime: s.relations[unit.id]?.flags.includes('knows_crime') === true,
-        moments: u.moments.map((kind) => ({ kind, description: String(reg.headStartMoments.get(kind)?.description ?? kind) })),
+        moments: u.moments.map((kind) => ({ kind, description: String(reg.headStartMoments.get(kind)?.description ?? kind).replace(DRAFT_MARK, '') })),
       });
     }
     return {
@@ -116,7 +116,9 @@ export function createHeadStart(deps: HeadStartDeps): HeadStartController {
     const key = `${chatId() ?? ''}:${KEY}`;
     if (asked.has(key)) return;
     asked.add(key);
-    await deps.generations.generate(SITE, KEY);
+    const out = await deps.generations.generate(SITE, KEY);
+    // an answer dropped for a chat switch (or a moment that passed) left no recap: the next load of this chat asks again
+    if (out.kind === 'stale' || out.kind === 'expired' || state()?.headStart?.recap === undefined) asked.delete(key);
   }
 
   const clear = (): void => deps.context.clearMatching((d) => d.id === OPENING_DIRECTIVE);

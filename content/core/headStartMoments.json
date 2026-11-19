@@ -11,7 +11,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A late meal at the long table, eaten in near silence, and nobody left.",
+    "fallback": "AUTHOR TO WRITE: {name} shared a late meal with the commander at the long table, eaten in near silence.",
     "description": "AUTHOR TO WRITE: A late meal at the long table, eaten in near silence, and nobody left."
   },
   {
@@ -26,7 +26,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: An argument in the corridor over a small order, and neither of them gave way.",
+    "fallback": "AUTHOR TO WRITE: {name} argued with the commander in the corridor over a small order, and neither gave way.",
     "description": "AUTHOR TO WRITE: An argument in the corridor over a small order, and neither of them gave way."
   },
   {
@@ -41,7 +41,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A sparring bout the commander only watched, and a word said about it after.",
+    "fallback": "AUTHOR TO WRITE: {name} sparred while the commander watched, and a word was said about it after.",
     "description": "AUTHOR TO WRITE: A sparring bout the commander only watched, and a word said about it after."
   },
   {
@@ -59,7 +59,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A night when she could not sleep and told the commander something she had told no one.",
+    "fallback": "AUTHOR TO WRITE: {name} could not sleep one night and told the commander something she had told no one.",
     "description": "AUTHOR TO WRITE: A night when she could not sleep and told the commander something she had told no one."
   },
   {
@@ -74,7 +74,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A mistake of the commander's that put her in a worse spot than the plan had promised.",
+    "fallback": "AUTHOR TO WRITE: {name} was left in a worse spot than the plan promised by a mistake of the commander's.",
     "description": "AUTHOR TO WRITE: A mistake of the commander's that put her in a worse spot than the plan had promised."
   },
   {
@@ -92,7 +92,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A day the commander took the blame for something that was hers.",
+    "fallback": "AUTHOR TO WRITE: {name} was covered for by the commander, who took the blame for something that was hers.",
     "description": "AUTHOR TO WRITE: A day the commander took the blame for something that was hers."
   },
   {
@@ -107,7 +107,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A request she brought to the commander and was turned away from without a reason.",
+    "fallback": "AUTHOR TO WRITE: {name} brought the commander a request and was turned away without a reason.",
     "description": "AUTHOR TO WRITE: A request she brought to the commander and was turned away from without a reason."
   },
   {
@@ -125,7 +125,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: The day she learned what the commander was convicted of, and what she made of it.",
+    "fallback": "AUTHOR TO WRITE: {name} learned what the commander was convicted of, and made her own peace with it.",
     "description": "AUTHOR TO WRITE: The day she learned what the commander was convicted of, and what she made of it."
   },
   {
@@ -140,7 +140,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A small favour, a ration or a spare part, that cost the commander something to give.",
+    "fallback": "AUTHOR TO WRITE: {name} was given a small favour, a ration or a spare part, that cost the commander something.",
     "description": "AUTHOR TO WRITE: A small favour, a ration or a spare part, that cost the commander something to give."
   },
   {
@@ -155,7 +155,7 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name}: A rule the commander set in the first days and kept to when it was inconvenient.",
+    "fallback": "AUTHOR TO WRITE: {name} saw the commander keep a rule set in the first days, even when it was inconvenient.",
     "description": "AUTHOR TO WRITE: A rule the commander set in the first days and kept to when it was inconvenient."
   }
 ]

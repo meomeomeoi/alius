@@ -58,6 +58,14 @@ describe('the recap request', () => {
     expect(records(h)).toEqual([]);
   });
 
+  it('the model is not told the authors\' draft marker', async () => {
+    const { h, ctl } = rig();
+    h.st.mainReplies = [JSON.stringify(answerFor(h.state()))];
+    ctl.onLoaded();
+    await flush();
+    expect((h.st.calls[0] as { prompt: string }).prompt).not.toMatch(/AUTHOR TO WRITE/i);
+  });
+
   it('the prompt is built from the state: the days, the crime, her card and her moments', async () => {
     const { h, ctl } = rig();
     h.st.mainReplies = [JSON.stringify(answerFor(h.state()))];
@@ -69,6 +77,25 @@ describe('the recap request', () => {
     expect(prompt).toContain('unit_ann');
     expect(prompt).not.toContain('unit_rhea'); // the new arrival is no part of the recap
     for (const kind of h.state().headStart!.units[0].moments) expect(prompt).toContain(kind);
+  });
+
+  it('a chat switch that dropped the answer does not stop the next load from asking again', async () => {
+    const { h, ctl } = rig();
+    const original = h.st.generateMain.bind(h.st);
+    h.st.mainReplies = [JSON.stringify(answerFor(h.state()))];
+    h.st.generateMain = async (req) => { h.switchChat('other'); return original(req); };
+    ctl.onLoaded();
+    await flush();
+    expect(h.state().headStart!.recap).toBeUndefined();
+    // back in the first chat: the load asks again and the recap lands
+    h.switchChat('c');
+    h.st.generateMain = original;
+    h.st.mainReplies = [JSON.stringify(answerFor(h.state(), 'b'))];
+    ctl.onLoaded();
+    await flush();
+    expect(h.st.calls).toHaveLength(2);
+    expect(h.state().headStart!.recap).toMatchObject({ source: 'model' });
+    expect(headFacts(h.state()).every((f) => f.text.startsWith('b: '))).toBe(true);
   });
 
   it('reload asks once', async () => {
@@ -103,7 +130,8 @@ describe('the recap request', () => {
     const s = h.state();
     expect(s.headStart!.recap!.source).toBe('fallback');
     expect(headFacts(s)).toHaveLength(recapPairs(s).length);
-    expect(s.memory.chronicle.at(-1)!.text).toMatch(/^AUTHOR TO WRITE:/);
+    expect(s.memory.chronicle.at(-1)!.text).toMatch(/^The squad had 14 days with the commander/);
+    for (const f of headFacts(s)) expect(f.text, f.text).not.toMatch(/AUTHOR TO WRITE|^unit_|^Ann:|^Bea:/);
     expect(s.generations).toBeUndefined();
   });
 
