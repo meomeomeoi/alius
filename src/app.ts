@@ -67,6 +67,9 @@ import { TAB_IDS } from './ui/shell/tabs';
 import { renderOnboardingCard } from './ui/onboarding/card';
 import { renderRevealCard } from './ui/warden/revealCard';
 import { renderEndScreen } from './ui/warden/endScreen';
+import { renderOverrideChip } from './ui/warden/overrideChip';
+import { wardenNotice } from './ui/warden/notices';
+import { overrideOpen } from './engine/warden';
 import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
@@ -1285,6 +1288,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (state.dilemmas.open.status === 'requested') void dilemmas.onRequested().catch((e) => console.warn('[Alius] dilemma failed', e));
     }
     openConfrontationModal();
+    showOverrideModal(); // P13: an override that was waiting when the campaign was saved
   }
 
   function replaceState(next: CampaignState): void {
@@ -1710,7 +1714,31 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   }
 
   /** Toasts for what happened while the day ran; errors are the caller's to report. */
+  /** P13: the warden's override waits for an answer: a corporate-voice modal with the chip (one at a time; it comes back when an order is refused until it is answered). */
+  let overrideModalOpen = false;
+  function showOverrideModal(): void {
+    if (overrideModalOpen || !state || !overrideOpen(state) || load.kind !== 'ok') return;
+    overrideModalOpen = true;
+    const host = h('div', { class: 'alius-override-modal' });
+    renderOverrideChip(host, state, registries, (answer) => {
+      shell.closeModal?.();
+      void warden.answer(answer);
+    });
+    shell.open();
+    void shell.modal({ title: 'WARDEN OVERRIDE', body: host, actions: [] }).then(() => { overrideModalOpen = false; });
+  }
+
   function reportEvents(events: EngineEvent[]): void {
+    // P13: the warden's moves (a warning, a punishment, the Leash, a denied request) are the corporation's notices
+    for (const e of events) {
+      const n = state ? wardenNotice(e, state, registries) : null;
+      if (!n) continue;
+      toast(n.kind, n.text, { voice: VOICE_OF.warden_notice, title: n.title });
+      const root = document.getElementById('alius-shell');
+      if (n.cutIn && root) cutIn(root, 'warden', n.title);
+    }
+    if (events.some((e) => e.type === 'warden_override')) setTimeout(showOverrideModal, 0);
+    if (events.some((e) => e.type === 'error' && typeof e.message === 'string' && e.message.startsWith('The warden has overridden an order'))) setTimeout(showOverrideModal, 0);
     for (const e of events) {
       switch (e.type) {
         case 'supply_shortage':
@@ -1885,6 +1913,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }),
       onPeel: (unitId, part) => void confirmPeel(unitId, part),
       rule: { accept: (id) => answerRule(id, 'accept'), negotiate: (id) => answerRule(id, 'negotiate'), refuse: (id) => answerRule(id, 'refuse') },
+      warden: { avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)), showRaw: getSettings(st).showRawValues, onAnswer: (a) => void warden.answer(a) }, // P13: the WARDEN panel
     }),
   );
   shell.registerTab('squad', (host) =>
@@ -1996,6 +2025,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       assetUrl: deps.assetUrl,
       art: { hub: hubArt },
       ops: opsCtx(),
+      overrideChip: (host) => { if (state && load.kind !== 'readonly') renderOverrideChip(host, state, registries, (a) => void warden.answer(a)); }, // P13: the warden's open override
       onboardingCard: (host) => {
         if (!state) return;
         renderOnboardingCard(host, { state, registries, controller: onboarding, readOnly: load.kind === 'readonly' });

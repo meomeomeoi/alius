@@ -1,6 +1,6 @@
 import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
-import { EXPECTATION_KINDS, argueAvailable, describeOrder, normalizeAgenda, orderOfAction, wardenOf } from '../engine/warden';
+import { EXPECTATION_KINDS, argueAvailable, describeOrder, normalizeAgenda, orderOfAction, overrideOpen, wardenOf } from '../engine/warden';
 import { judgeOrder } from '../llm/calls/wardenJudge';
 import { worldDossier } from '../engine/memory/inputs';
 import { generateEpilogue, fallbackEpilogue } from '../llm/calls/epilogue';
@@ -24,6 +24,8 @@ export interface WardenController {
   onLoaded(): void;
   /** [ARGUE] outside combat: opens the private scene with her alone; resolves whether it opened. The override then waits for a compromise or the scene's end. */
   argue(): Promise<boolean>;
+  /** The commander's answer to the warden's open override (the chip's buttons). ARGUE outside combat opens the scene; the rest is `warden/answer`. Toasts a refusal. */
+  answer(answer: 'comply' | 'argue' | 'defy'): Promise<boolean>;
   /** Would the judge be asked about this action? Only with the setting on, a personal expectation of hers, and an out-of-combat overridable action. */
   needsJudge(action: Action): boolean;
   /**
@@ -181,8 +183,21 @@ export function createWarden(deps: WardenDeps): WardenController {
     return send(judged !== null && judged.conflict !== 'none' ? { ...action, payload: { ...payload, wardenJudged: judged } } : action);
   }
 
+  async function answer(a: 'comply' | 'argue' | 'defy'): Promise<boolean> {
+    const s = state();
+    const expect = chatId();
+    const ov = s ? overrideOpen(s) : null;
+    if (!s || !ov) return false;
+    if (a === 'argue' && ov.context !== 'combat') return argue();
+    const events = deps.app.dispatch({ type: 'warden/answer', payload: { overrideId: ov.id, answer: a } }, { expectChatId: expect });
+    const failed = events.find((e) => e.type === 'error');
+    if (failed && failed.code !== 'chat_changed') deps.toast('error', String(failed.message ?? failed.code));
+    refreshDirectives();
+    return failed === undefined;
+  }
+
   return {
-    argue, needsJudge, judgeThen,
+    argue, answer, needsJudge, judgeThen,
     onEvents(events) {
       if (events.some((e) => e.type === 'warden_assigned')) void ask().catch(() => {});
       if (events.some((e) => e.type === 'day_started')) snapshot();

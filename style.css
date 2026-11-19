@@ -3266,6 +3266,16 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 .alius-end-screen { display: grid; place-items: center; min-height: 100%; padding: 1rem; }
 .alius-end-epilogue p { margin: 0 0 0.6rem; white-space: pre-wrap; }
 
+/* The override chip and the WARDEN panel. */
+.alius-warden-override { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.4rem 0; }
+.alius-override-answer[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+.alius-defiance { position: relative; height: 0.6rem; border: 1px solid var(--alius-fg); margin: 0.25rem 0 0.5rem; }
+.alius-defiance-fill { height: 100%; background: var(--alius-fg); }
+.alius-defiance-mark { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 1px dashed var(--alius-fg); }
+.alius-warden-head { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; }
+.alius-expectation.alius-unknown { opacity: 0.7; }
+.alius-warden-body h4 { margin: 0.6rem 0 0.2rem; }
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

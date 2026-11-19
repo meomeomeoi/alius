@@ -1,5 +1,6 @@
 import { registerKnowledgeRule } from '../../../src/analysis/knowledge';
 import { specialKnowledgeRule } from '../../../src/analysis/providers/special';
+import { wardenKnowledgeRule } from '../../../src/analysis/providers/warden';
 import type { Registries } from '../../../src/content/types';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign } from '../../helpers/world';
@@ -70,6 +71,22 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   state.relations[unit.id].flags.push('knows_frequency');
   registerKnowledgeRule(specialKnowledgeRule); // P12's own rule hides the fact and the flag (not announced)
 
+  // P13: a warden whose satisfaction, defiance and unknown expectation (its kind, text and weight) never reach a reading
+  state.leashswap = {
+    deathRule: 'rewind_day', status: 'held',
+    intrigue: { suspicion: 67, seq: 0, lastAllyDay: {}, hack: { step: 0 }, discovered: 0 },
+    warden: {
+      unitId: state.squad[1].id, assignedBy: 'player', sinceDay: 1, agenda: 'model', satisfaction: 43, defiance: 47, warnings: [], leashLeft: 2, leashRefreshDay: 14, restrictions: [], punishLog: [],
+      expectations: [
+        { id: 'x1', kind: 'personal', weight: 0.31, source: 'card', known: false, text: 'SENTINEL_EXPECTATION' },
+        { id: 'x2', kind: 'meet_quota', weight: 0.5, source: 'corporate', known: false },
+        { id: 'x3', kind: 'protect_squad', weight: 0.19, source: 'values', known: true },
+      ],
+    },
+  };
+
+  registerKnowledgeRule(wardenKnowledgeRule); // P13: what the warden knows about an ally
+
   state.disloyalty = { units: { [unit.id]: { signs: [], attempts: 3, nextCheckDay: 97 } } };
 
   state.dilemmas = {
@@ -88,8 +105,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67],
+      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION'],
     },
   };
 }

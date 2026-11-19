@@ -26449,8 +26449,21 @@ function createWarden(deps) {
     const payload = typeof action.payload === "object" && action.payload !== null ? action.payload : {};
     return send(judged !== null && judged.conflict !== "none" ? { ...action, payload: { ...payload, wardenJudged: judged } } : action);
   }
+  async function answer(a) {
+    const s = state();
+    const expect = chatId();
+    const ov = s ? overrideOpen(s) : null;
+    if (!s || !ov) return false;
+    if (a === "argue" && ov.context !== "combat") return argue();
+    const events = deps.app.dispatch({ type: "warden/answer", payload: { overrideId: ov.id, answer: a } }, { expectChatId: expect });
+    const failed = events.find((e) => e.type === "error");
+    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    refreshDirectives();
+    return failed === void 0;
+  }
   return {
     argue,
+    answer,
     needsJudge,
     judgeThen,
     onEvents(events) {
@@ -26746,7 +26759,9 @@ var VOICE_OF = {
   // P12: the rival corporation's handler writes like a corporation
   handler: "corporate",
   // P13: the notice that names the warden is the corporation's
-  warden_reveal: "corporate"
+  warden_reveal: "corporate",
+  // P13: the warden's moves (warnings, punishments, the Leash, her panel) are the corporation's too
+  warden_notice: "corporate"
 };
 
 // src/ui/power/votePanel.ts
@@ -27379,6 +27394,68 @@ function renderEndScreen(host, state, deps) {
   card2.classList.add("alius-end", "alius-stat");
   card2.setAttribute("data-analyze", "glossary:death_rule");
   host.append(h("div", { class: "alius-end-screen" }, card2));
+}
+
+// src/ui/warden/overrideChip.ts
+function expectationLabel(reg, x) {
+  if (x.kind === "personal") return x.text ?? "Something personal";
+  return String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.label ?? x.kind);
+}
+function renderOverrideChip(host, state, reg, onAnswer) {
+  const o = overrideOpen(state);
+  const w = wardenOf(state);
+  if (!o || !w) return;
+  const cited = w.expectations.find((x) => x.id === o.expectationId);
+  const compelled = w.compelled === true;
+  const canArgue = !compelled && (o.context === "combat" ? true : argueAvailable(state));
+  const button2 = (answer, label2, open3, why) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-override-answer",
+    "data-action": `override-${answer}`,
+    "aria-disabled": open3 ? null : "true",
+    title: open3 ? null : why,
+    ...analyzeNative("glossary:warden_override"),
+    onclick: () => {
+      if (open3) onAnswer(answer);
+    }
+  }, label2);
+  host.append(h(
+    "div",
+    { class: "alius-chips alius-warden-override", "data-override": o.id },
+    h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:warden_override") }, `WARDEN OVERRIDE \u2014 ${o.altLabel}`),
+    cited ? h("span", { class: "alius-dim alius-override-cause" }, `She expects: ${expectationLabel(reg, cited)}`) : null,
+    h(
+      "span",
+      { class: "alius-row" },
+      button2("comply", "[COMPLY]", true, ""),
+      button2("argue", "[ARGUE]", canArgue, compelled ? "The commander is compelled: only COMPLY is open." : "There is nothing left to argue here."),
+      button2("defy", "[DEFY]", !compelled, "The commander is compelled: only COMPLY is open.")
+    )
+  ));
+}
+
+// src/ui/warden/notices.ts
+function wardenNotice(e, state, reg) {
+  const name = () => {
+    const id = wardenOf(state)?.unitId;
+    return state.squad.find((u) => u.id === id)?.displayName ?? "The warden";
+  };
+  switch (e.type) {
+    case "warden_warning":
+      return e.level === 2 ? { kind: "warn", title: "FINAL WARNING", text: `AUTHOR TO WRITE: ${name()} gives the final warning. Open defiance is on the record, and the controller is in her hand.`, cutIn: true } : { kind: "warn", title: "WARNING", text: `AUTHOR TO WRITE: ${name()} warns the commander. Open defiance is on the record.`, cutIn: true };
+    case "commander_punished": {
+      const entry = reg.commanderPunishments.get(String(e.punishmentId));
+      return { kind: "warn", title: "WARDEN", text: `AUTHOR TO WRITE: ${String(entry?.label ?? "A punishment")}. ${String(entry?.description ?? "")}`.trim() };
+    }
+    case "commander_leashed":
+      return e.kind === "suppress" ? { kind: "warn", title: "THE LEASH", text: "AUTHOR TO WRITE: The controller is used. The rest of the day is lost." } : { kind: "warn", title: "THE LEASH", text: "AUTHOR TO WRITE: The controller is used. The next choice is not the commander's own." };
+    case "leash_cosign_denied":
+      return { kind: "info", title: "WARDEN", text: `AUTHOR TO WRITE: ${name()} denies the request. Nothing was spent.` };
+    case "commander_terminated":
+      return { kind: "warn", title: "THE CONTROLLER", text: "AUTHOR TO WRITE: The controller is triggered. The commander is dead.", cutIn: true };
+    default:
+      return null;
+  }
 }
 
 // src/ui/dilemma/routePicker.ts
@@ -34567,12 +34644,15 @@ function sideColumn(ctx2, state, readOnly) {
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : "";
   const prologue = h("div", { class: "alius-onboarding-host" });
   ctx2.onboardingCard?.(prologue);
+  const warden = h("div", { class: "alius-warden-chips" });
+  ctx2.overrideChip?.(warden);
   const countermand = h("div", { class: "alius-chips alius-countermand-chips" });
   if (ctx2.ops.onCountermand) drawCountermandChips(countermand, state, ctx2.registries, ctx2.ops.onCountermand);
   return h(
     "aside",
     { class: "alius-hub-side" },
     prologue.childElementCount > 0 ? prologue : null,
+    warden.childElementCount > 0 ? warden : null,
     countermand.childElementCount > 0 ? countermand : null,
     stat2(
       "alius-objective",
@@ -36403,6 +36483,69 @@ function renderCommsTab(host, ctx2) {
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
 }
 
+// src/ui/warden/wardenPanel.ts
+var satisfactionBand = (n) => n < 20 ? "HOSTILE" : n < 40 ? "COLD" : n < 60 ? "WARY" : n < 80 ? "SATISFIED" : "PLEASED";
+var weightBand = (w) => w < 0.2 ? "LOW" : w < 0.35 ? "MEDIUM" : "HIGH";
+var entryIdFor = (reg, x) => x.kind === "personal" ? null : String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.id ?? "") || null;
+function renderWardenPanel(host, state, reg, deps = {}) {
+  const w = wardenOf(state);
+  const unit2 = w ? state.squad.find((u) => u.id === w.unitId) : void 0;
+  if (!w || !unit2) return;
+  const E = TUNING.warden.escalation;
+  const known = w.expectations.filter((x) => x.known);
+  const unknown2 = w.expectations.length - known.length;
+  const raw = deps.showRaw === true;
+  const meter = h(
+    "div",
+    { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(w.defiance), ...analyzeAttrs("glossary:warden_defiance") },
+    h("div", { class: "alius-defiance-fill", style: `width:${w.defiance}%` }),
+    h("span", { class: "alius-defiance-mark", style: `left:${E.warning1}%`, "aria-hidden": "true" }),
+    h("span", { class: "alius-defiance-mark", style: `left:${E.warning2}%`, "aria-hidden": "true" })
+  );
+  const active = w.restrictions.filter((r) => state.day <= r.untilDay);
+  const rows = [
+    h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "satisfaction", ...analyzeAttrs("glossary:warden_satisfaction") }, `SATISFACTION: ${satisfactionBand(w.satisfaction)}${raw ? ` (${w.satisfaction})` : ""}`)),
+    h("div", {}, h("span", { class: "alius-dim" }, `DEFIANCE${raw ? ` ${w.defiance}` : ""}`), meter),
+    ...w.warnings.map((x) => h("p", { class: "alius-chip alius-stat alius-warning", "data-warning": String(x.level), ...analyzeAttrs("glossary:lethal_escalation") }, `${x.level === 2 ? "FINAL WARNING" : "WARNING"} \u2014 day ${x.day}`)),
+    h("h4", {}, "EXPECTATIONS"),
+    ...known.map((x) => {
+      const id = entryIdFor(reg, x);
+      return h("p", { class: "alius-chip alius-stat alius-expectation", ...analyzeAttrs(id ? `wardenExpectations:${id}` : "glossary:warden_expectation") }, `${expectationLabel(reg, x)} \u2014 ${weightBand(x.weight)}`);
+    }),
+    ...Array.from({ length: unknown2 }, () => h("p", { class: "alius-chip alius-stat alius-expectation alius-unknown", ...analyzeAttrs("glossary:warden_expectation") }, "? UNKNOWN EXPECTATION")),
+    h("h4", {}, "THE LEASH"),
+    h(
+      "p",
+      {},
+      h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:commander_leash") }, `AUTHORIZATIONS LEFT: ${w.leashLeft}`),
+      w.compelled ? h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:commander_leash") }, "COMPELLED") : null
+    ),
+    ...active.map((r) => h(
+      "p",
+      { class: "alius-chip alius-stat alius-restriction", "data-restriction": r.what, ...analyzeAttrs("glossary:commander_punishment") },
+      `${r.what === "no_dms" ? "NO MESSAGES" : "NO LEAVE"} until day ${r.untilDay}`
+    )),
+    h("h4", {}, "RECENT"),
+    ...w.punishLog.length === 0 ? [h("p", { class: "alius-dim" }, "NOTHING ON THE RECORD.")] : w.punishLog.slice(-5).reverse().map((p) => h("p", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:commander_punishment") }, `Day ${p.day}: ${String(reg.commanderPunishments.get(p.punishmentId)?.label ?? "Punishment")}`))
+  ];
+  const portrait = deps.avatar?.(unit2) ?? null;
+  const body = h(
+    "div",
+    { class: "alius-warden-body" },
+    h(
+      "div",
+      { class: "alius-warden-head" },
+      portrait ? h("span", { class: "alius-warden-portrait", "aria-hidden": "true" }, portrait) : null,
+      h("span", {}, `${unit2.displayName.toUpperCase()} holds the controller.`)
+    ),
+    ...rows
+  );
+  if (overrideOpen(state) && deps.onAnswer) renderOverrideChip(body, state, reg, deps.onAnswer);
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "WARDEN", meta: "OVERSIGHT", level: 3, body });
+  card2.classList.add("alius-warden-panel");
+  host.append(card2);
+}
+
 // src/ui/home/homeTab.ts
 function fadedWallpaperUnit(state) {
   let best = null;
@@ -36495,6 +36638,11 @@ function renderHomeTab(host, ctx2) {
     ...lines,
     h("div", { class: "alius-home-notes" }, h("h3", {}, "NOTES"), ...notes.length > 0 ? notes : [h("p", { class: "alius-dim" }, "NOTHING IS PINNED.")])
   ));
+  if (ctx2.warden) {
+    const panel = h("div", { class: "alius-home-warden" });
+    renderWardenPanel(panel, state, reg, ctx2.warden);
+    if (panel.childElementCount > 0) host.querySelector(".alius-home")?.append(panel);
+  }
 }
 
 // src/ui/personal/claimCard.ts
@@ -38125,6 +38273,47 @@ function registerSpecialProviders() {
   registerAnalyzeProvider("glossary:defector_arc", arcProvider);
 }
 
+// src/analysis/providers/warden.ts
+var SATISFACTION_WORDS = (n) => n < 20 ? "hostile" : n < 40 ? "cold" : n < 60 ? "wary" : n < 80 ? "satisfied" : "pleased";
+function satisfactionProvider(_s, env, k) {
+  const w = env.state ? wardenOf(env.state) : null;
+  if (!w) return null;
+  const raw = k.raw(w.satisfaction);
+  return { lines: [`She is ${SATISFACTION_WORDS(w.satisfaction)} with the commander${raw !== null ? ` (${raw})` : ""}.`, w.satisfaction < 40 ? "She is likely to override." : "She seldom overrides."] };
+}
+function defianceProvider(_s, env, k) {
+  const w = env.state ? wardenOf(env.state) : null;
+  if (!w) return null;
+  const E = TUNING.warden.escalation;
+  const raw = k.raw(w.defiance);
+  const lines = [w.defiance >= E.warning2 ? "Open defiance is near the limit." : w.defiance >= E.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
+  if (raw !== null) lines.push(`Defiance: ${raw}.`);
+  if (w.warnings.length > 0) lines.push(`${w.warnings.length === 1 ? "One warning" : "Two warnings"} given.`);
+  return { lines };
+}
+var WEIGHT_WORDS = (w) => w < 0.2 ? "low" : w < 0.35 ? "medium" : "high";
+function expectationProvider(subject, env, k) {
+  const w = env.state ? wardenOf(env.state) : null;
+  const entry = env.registries.wardenExpectations.get(subject.id);
+  if (!w || !entry) return null;
+  const x = w.expectations.find((e) => e.kind === entry.kind && e.known);
+  if (!x) return null;
+  const raw = k.raw(x.weight);
+  return { lines: [`She weighs this ${WEIGHT_WORDS(x.weight)}${raw !== null ? ` (${raw})` : ""}.`] };
+}
+var wardenKnowledgeRule = {
+  flag: (id) => id !== "warden_knows_ally"
+};
+var registered3 = false;
+function registerWardenProviders() {
+  if (registered3) return;
+  registered3 = true;
+  registerKnowledgeRule(wardenKnowledgeRule);
+  registerAnalyzeProvider("glossary:warden_satisfaction", satisfactionProvider);
+  registerAnalyzeProvider("glossary:warden_defiance", defianceProvider);
+  registerAnalyzeProvider("wardenExpectations", expectationProvider);
+}
+
 // src/analysis/providers/power.ts
 var TERM_WORDS = {
   values: "what she values",
@@ -38363,10 +38552,10 @@ function dispositionProvider(subject, env, k) {
   }
   return { lines };
 }
-var registered3 = false;
+var registered4 = false;
 function registerWorldProviders() {
-  if (registered3) return;
-  registered3 = true;
+  if (registered4) return;
+  registered4 = true;
   registerAnalyzeProvider("worldOptions", worldOptionProvider);
   registerAnalyzeProvider("glossary:disposition", dispositionProvider);
 }
@@ -38583,10 +38772,10 @@ var decisionProvider = (subject, env) => {
   lines.push("What it changes stays uncertain until you choose.");
   return { lines };
 };
-var registered4 = false;
+var registered5 = false;
 function registerCoreProviders() {
-  if (registered4) return;
-  registered4 = true;
+  if (registered5) return;
+  registered5 = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
   for (const stat3 of STATS) registerAnalyzeProvider(`glossary:stat_${stat3}`, statProvider(stat3));
@@ -38602,6 +38791,7 @@ function registerCoreProviders() {
   registerImmersionProviders();
   registerMemoryProviders();
   registerSpecialProviders();
+  registerWardenProviders();
 }
 
 // src/analysis/describe.ts
@@ -41243,6 +41433,7 @@ function createApp(st, deps) {
       if (state.dilemmas.open.status === "requested") void dilemmas.onRequested().catch((e) => console.warn("[Alius] dilemma failed", e));
     }
     openConfrontationModal();
+    showOverrideModal();
   }
   function replaceState(next) {
     const chat = st.getActiveChat();
@@ -41645,7 +41836,30 @@ function createApp(st, deps) {
     shell.showScreen("setup");
     shell.open();
   }
+  let overrideModalOpen = false;
+  function showOverrideModal() {
+    if (overrideModalOpen || !state || !overrideOpen(state) || load.kind !== "ok") return;
+    overrideModalOpen = true;
+    const host = h("div", { class: "alius-override-modal" });
+    renderOverrideChip(host, state, registries, (answer) => {
+      shell.closeModal?.();
+      void warden.answer(answer);
+    });
+    shell.open();
+    void shell.modal({ title: "WARDEN OVERRIDE", body: host, actions: [] }).then(() => {
+      overrideModalOpen = false;
+    });
+  }
   function reportEvents(events) {
+    for (const e of events) {
+      const n = state ? wardenNotice(e, state, registries) : null;
+      if (!n) continue;
+      toast(n.kind, n.text, { voice: VOICE_OF.warden_notice, title: n.title });
+      const root = document.getElementById("alius-shell");
+      if (n.cutIn && root) cutIn(root, "warden", n.title);
+    }
+    if (events.some((e) => e.type === "warden_override")) setTimeout(showOverrideModal, 0);
+    if (events.some((e) => e.type === "error" && typeof e.message === "string" && e.message.startsWith("The warden has overridden an order"))) setTimeout(showOverrideModal, 0);
     for (const e of events) {
       switch (e.type) {
         case "supply_shortage":
@@ -41813,7 +42027,9 @@ function createApp(st, deps) {
       settings: () => getSettings(st),
       onReadNote: (id) => void act({ type: "notes/read", payload: { id } }),
       onPeel: (unitId, part) => void confirmPeel(unitId, part),
-      rule: { accept: (id) => answerRule2(id, "accept"), negotiate: (id) => answerRule2(id, "negotiate"), refuse: (id) => answerRule2(id, "refuse") }
+      rule: { accept: (id) => answerRule2(id, "accept"), negotiate: (id) => answerRule2(id, "negotiate"), refuse: (id) => answerRule2(id, "refuse") },
+      warden: { avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)), showRaw: getSettings(st).showRawValues, onAnswer: (a) => void warden.answer(a) }
+      // P13: the WARDEN panel
     })
   );
   shell.registerTab(
@@ -41932,6 +42148,10 @@ function createApp(st, deps) {
       assetUrl: deps.assetUrl,
       art: { hub: hubArt },
       ops: opsCtx(),
+      overrideChip: (host2) => {
+        if (state && load.kind !== "readonly") renderOverrideChip(host2, state, registries, (a) => void warden.answer(a));
+      },
+      // P13: the warden's open override
       onboardingCard: (host2) => {
         if (!state) return;
         renderOnboardingCard(host2, { state, registries, controller: onboarding, readOnly: load.kind === "readonly" });

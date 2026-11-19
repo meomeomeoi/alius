@@ -1976,7 +1976,8 @@
     "long": "Defiance rises when the commander defies an override or breaks what she expects, and it fades a little every day. Crossing 50 earns a warning, 75 a final warning. Only after two warnings on two different days can it end in the controller being triggered. A punishment lowers it, and complying does too.",
     "see": [
       "lethal_escalation",
-      "commander_punishment"
+      "commander_punishment",
+      "warden_override"
     ]
   },
   {
@@ -1987,6 +1988,28 @@
     "see": [
       "warden_defiance",
       "death_rule"
+    ]
+  },
+  {
+    "id": "warden_override",
+    "term": "Warden override",
+    "short": "The warden countermands an order that cuts across what she expects. Answer: COMPLY, ARGUE or DEFY.",
+    "long": "When an order conflicts with one of her expectations, she may stop it: nothing happens and no slot is spent. COMPLY does what she wants instead. ARGUE opens a scene: only a real compromise runs the commander's order with no price; in a fight it is one roll. DEFY runs the commander's order, raises her defiance, lowers her satisfaction and may earn a punishment. While the commander is compelled only COMPLY is open.",
+    "see": [
+      "warden_expectation",
+      "warden_defiance",
+      "warden_satisfaction"
+    ]
+  },
+  {
+    "id": "warden_satisfaction",
+    "term": "Warden satisfaction",
+    "short": "How content the warden is with the commander. The lower it is, the more likely she is to override.",
+    "long": "Satisfaction rises when the commander complies, keeps what she expects and takes the punishments she gives; it falls when the commander defies her or breaks what she expects. It also decides how readily she co-signs the squad's Leash requests. You see it as a band, never as a number, unless raw values are on.",
+    "see": [
+      "warden_override",
+      "leash_cosign",
+      "warden"
     ]
   }
 ]

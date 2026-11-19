@@ -15,6 +15,7 @@ import { motionReduced } from '../motion';
 import { renderNote } from '../notes/note';
 import { renderRuleNote, ruleNotesFor } from '../notes/ruleNote';
 import { portraitOptions, unitPortrait } from '../portrait/portrait';
+import { renderWardenPanel, type WardenPanelDeps } from '../warden/wardenPanel';
 
 export interface HomeCtx {
   getState: () => CampaignState | null;
@@ -27,6 +28,8 @@ export interface HomeCtx {
   onPeel?(unitId: string, part: DecorPart): void;
   /** [SIGN] / [NEGOTIATE] / [DON'T SIGN] on a rule she proposed. */
   rule: RuleChipHandlers;
+  /** P13: the WARDEN panel's deps (her portrait, the answer to an open override). Absent = no panel. */
+  warden?: WardenPanelDeps;
 }
 
 /** The unit whose decor is fading and still has the wallpaper part: the wallpaper shows faded, as a memory of her. */
@@ -123,4 +126,9 @@ export function renderHomeTab(host: HTMLElement, ctx: HomeCtx): void {
     ...lines,
     h('div', { class: 'alius-home-notes' }, h('h3', {}, 'NOTES'), ...(notes.length > 0 ? notes : [h('p', { class: 'alius-dim' }, 'NOTHING IS PINNED.')])),
   ));
+  if (ctx.warden) {
+    const panel = h('div', { class: 'alius-home-warden' });
+    renderWardenPanel(panel, state, reg, ctx.warden); // P13: draws nothing unless someone holds the leash
+    if (panel.childElementCount > 0) host.querySelector('.alius-home')?.append(panel);
+  }
 }

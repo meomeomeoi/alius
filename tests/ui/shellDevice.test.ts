@@ -419,7 +419,7 @@ describe('voice sources', () => {
   it('VOICE_OF names the voice of each source', () => {
     expect(VOICE_OF).toEqual({
       toast: 'terminal', dm: 'personal', unit_note: 'personal', chronicle: 'paper', dossier: 'paper', commander_file: 'paper',
-      oversight: 'corporate', leash_verdict: 'corporate', corporate_mail: 'corporate', intake_form: 'paper', squad_vote: 'corporate', her_call: 'personal', booking: 'personal', device_edit: 'personal', squad_secret: 'paper', frequency: 'terminal', premonition: 'terminal', handler: 'corporate', warden_reveal: 'corporate',
+      oversight: 'corporate', leash_verdict: 'corporate', corporate_mail: 'corporate', intake_form: 'paper', squad_vote: 'corporate', her_call: 'personal', booking: 'personal', device_edit: 'personal', squad_secret: 'paper', frequency: 'terminal', premonition: 'terminal', handler: 'corporate', warden_reveal: 'corporate', warden_notice: 'corporate',
     });
   });
 });

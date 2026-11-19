@@ -33,6 +33,8 @@ export interface HubCtx {
   ops: OpsTabCtx;
   /** P11: draws the prologue card (nothing once the prologue is done); the hub puts it above the objective and redraws it with the hub. */
   onboardingCard?: (host: HTMLElement) => void;
+  /** P13: draws the warden's open override as a chip (nothing when none is open). */
+  overrideChip?: (host: HTMLElement) => void;
   onTalk(unitId: string, locationId: string): void;
   onEndSlot(): void;
   onOpenPda(tab?: TabId): void;
@@ -166,11 +168,14 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : '';
   const prologue = h('div', { class: 'alius-onboarding-host' });
   ctx.onboardingCard?.(prologue);
+  const warden = h('div', { class: 'alius-warden-chips' });
+  ctx.overrideChip?.(warden);
   const countermand = h('div', { class: 'alius-chips alius-countermand-chips' });
   if (ctx.ops.onCountermand) drawCountermandChips(countermand, state, ctx.registries, ctx.ops.onCountermand);
   return h(
     'aside', { class: 'alius-hub-side' },
     prologue.childElementCount > 0 ? prologue : null,
+    warden.childElementCount > 0 ? warden : null,
     countermand.childElementCount > 0 ? countermand : null,
     stat('alius-objective', 'glossary:objective',
       h('div', { class: 'alius-card-label' }, 'OBJECTIVE'),

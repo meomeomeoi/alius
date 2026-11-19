@@ -827,16 +827,16 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `wardenKnowledgeRule`.
 - Consumes: Tasks 3–11
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the chip shows the alternative and three buttons with data-analyze`; `compelled: only COMPLY`; `ARGUE outside combat opens a scene` (controller spy).
   - `an unknown expectation renders only as ?` (Review Focus 5: neither kind nor weight is in the DOM).
   - `the panel shows the warnings and the restrictions`.
   - `providers read through Knowledge`: the hidden test over every provider passes; sentinels for unknown expectations.
   - `the coverage test passes` (`tests/ui/analyzeCoverage.test.ts`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** All notice text is AUTHOR TO WRITE with no commander pronoun.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): override chips, notices and the WARDEN panel`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** All notice text is AUTHOR TO WRITE with no commander pronoun.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): override chips, notices and the WARDEN panel`
 
 **Chunk (b) ends here.**
 

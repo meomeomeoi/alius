@@ -9,6 +9,7 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   worldOptions: 'worldOptions:oversight', // P8
   commandStances: 'commandStances:disciplined', // P9
   punishments: 'punishments:verbal', // P9
+  wardenExpectations: 'wardenExpectations:warden_meet_quota', // P13
   reputations: 'reputations:iron_rule', // P9
   contentCategories: 'contentCategories:restraint', // P9d
   relationshipRuleTemplates: 'relationshipRuleTemplates:report_evening', // P9d
