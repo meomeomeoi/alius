@@ -128,7 +128,7 @@ The holder cap and seeded marks can be changed in SYS mid-campaign; lowering the
 
 ## 8. How the squad sees it
 
-A dynamic at `role` or `rule` is noticed even without `public_humiliation` (E4): protocol in public, the commander's absences in her quarters, tasks done in sight. Each named unit learns of it by a seeded roll per day she shares the commander's routine (higher at `rule`, with `audience: show_off`, with witnessed practices), producing a fact (`knows_dynamic:<holderId>`).
+A dynamic at `role` or `rule` is noticed even without `public_humiliation` (E4): protocol in public, the commander's absences in her quarters, tasks done in sight. Each named unit learns of it through three levels of knowledge and a suspicion gauge (**§15.13**, which replaces the daily roll first drafted here), ending in a fact (`knows_dynamic:<holderId>`).
 
 Reactions by her own profile (`witness` attitude of the practices she has seen, values, her own leadStyle and holder status):
 - **drawn**: interest; if eligible, her own hold rises a step (the start of a second holder, capped);
@@ -359,6 +359,53 @@ Draft balance values agreed with the author for `TUNING.dynamic`, `TUNING.probes
 
 **Practices (P16, P17e):** named postures: 8 s timer (one exchange in turn-based mode), a new posture per track level, at most 8. Speech as a choice: 4 options, one trap. Habits: 5 repetitions within 14 days with a good verdict; breaking one: favour −2; unused, it fades in 10 days. Litany: 1 line at the start, +1 per milestone, at most 8; more than 2 character errors = a slip.
 
+### 15.13 How the squad learns: three levels of knowledge
+
+Replaces the daily roll of §8 (the reactions of §8 stay). Agreed in the design session 2026-11-19.
+
+**Levels**, per woman, per pair (commander + holder):
+
+| Level | What she thinks | What it gives |
+|---|---|---|
+| `suspects_close` | "there is something between them" | rumours and teasing; may move a romance's publicity (P9d); opens nothing of the dynamic |
+| `suspects_dynamic` | "looks like she gives the orders" | questions and hints, a `her_question` moment from her; her reaction stays cautious |
+| `knows_dynamic` | she knows | the full reactions of §8 by her profile (drawn, indifferent, dislikes, rivalry) |
+
+Each is a fact (`hiddenFromCommander` until she shows it in a scene or DM, through `Knowledge`).
+
+**Suspicion** 0–100 per woman per pair: at 60 she `suspects_dynamic`, at 100 she `knows_dynamic`. Without new signs it falls 2 a day (never below the 60 floor once `suspects_dynamic` was reached within the last 7 days).
+
+**Instant knowledge (100 %):**
+- she sees an item with `scope: dynamic` on the commander (collar, leash, property tag, gag, …);
+- she walks in on a practice in progress (a contact with `scope: dynamic`);
+- she watches a demonstration (P16 §5);
+- she exposes a staging (P17 §7);
+- the holder tells her herself (`audience: select_few` or `show_off`);
+- she is shown compromat.
+
+**Signs of a dynamic (added to suspicion):**
+
+| Sign | + |
+|---|---|
+| `step_behind` before everyone | 15 |
+| protocol address in public ("ma'am") | 20 |
+| a `protocol_slip` (a habit that slips out) | 20 |
+| `kneeling_at_door`, seen | 25 |
+| `her_marks` seen | 30 |
+| oddities from `remote_toy` in the commander's messages | 10 |
+| the commander seen leaving her quarters in the morning | 5 |
+| a `held_night`: to everyone at base | 5 |
+| background, per day of shared routine: `role` / `rule` | 3 / 6 |
+| gossip: per woman who knows / suspects | 5 / 2 (cap 15) |
+
+**Closeness only** (`suspects_close`, +0 toward the dynamic): her scent on the commander (P17d), her scent in the commander's quarters, being seen together, time alone together. Exception: **territory marking** (`watersports`, P17b) adds +30.
+
+**Multipliers:** her perceptiveness ×0.7–1.3 (the same as for scent); closeness to the pair (Trust or Affinity ≥ 50, a friend of the holder) ×1.5; holder `show_off` ×1.5 (she gives signs on purpose), `private_only` ×0.5. At `play` there is no background term (the dynamic lives in scenes).
+
+**Expected pace** (5 named units, holder `select_few`, frame `role`): an ordinary woman suspects in 9–10 days and knows in 2–3 weeks unless a demonstration comes first; the holder's friend about twice as fast.
+
+**Memory check:** `suspects_close`, `suspects_dynamic` and `knows_dynamic` are facts written at their sites (no `memoryRules` entry for them); suspicion values are hidden (a sentinel in `tests/fixtures/analyze/hidden.ts`). Outside the squad only through `public_humiliation` (B4), unchanged.
+
 ## Acceptance criteria
 
 1. With no practice category enabled, or holders `0`, nothing in this package runs, and every seeded test stays byte-identical (no new draw unless someone is eligible).
@@ -377,7 +424,7 @@ Draft balance values agreed with the author for `TUNING.dynamic`, `TUNING.probes
 ## Open decisions (author)
 
 - Names of the hold bands, frames and domains in the UI; milestone texts; aftermath texts; style descriptions.
-- Every number in `TUNING.dynamic`: drafts agreed in §15.12 (gains, decay, bands, head start); squad-discovery chances (§8) still open.
+- Every number in `TUNING.dynamic`: drafts agreed in §15.12 and §15.13 (squad knowledge).
 - Whether `rule` without the command domain is possible (draft: yes; `rule` over the private domains only).
 
 ## Interfaces already provided by P9d (implemented — use, do not rebuild)
