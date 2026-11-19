@@ -94,6 +94,8 @@ export const TUNING = Object.freeze({
   vitals: Object.freeze({ conflictDelta: 3, flickerDelta: 3, flickerLog: 5 }),
   /** P10b: a hand note lasts `keepDays` days after the day it was written; the list keeps at most `max` (oldest out first). */
   notes: Object.freeze({ keepDays: 3, max: 12 }),
+  /** P14: failed model calls kept in the campaign (`maxRecords`, oldest dropped), how many whole days an expired one stays listed after the day it expired (`expiredDays`), and the length `detail` is cut to. */
+  generation: Object.freeze({ maxRecords: 20, expiredDays: 1, detailMax: 160 }),
   /** P11: how many soldiers one scene can hold (the line-up takes the whole squad of four). */
   scene: Object.freeze({ maxParticipants: 4 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),

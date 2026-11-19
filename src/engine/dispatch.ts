@@ -30,10 +30,10 @@ const ONBOARDING_HINT = 'onboarding/hint_seen';
 const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT, 'content/', 'notes/read', 'squad/set_hand'];
 
 /** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
-/** P13: a closed campaign (`ended`) runs only these: `debug/*` and the epilogue. */
-const ENDED_OK_PREFIXES = ['debug/', 'campaign/epilogue'];
+/** P13: a closed campaign (`ended`) runs only these: `debug/*` and the epilogue. P14: a failed generation can be recorded, closed or expired on a closed campaign (the epilogue's own call). */
+const ENDED_OK_PREFIXES = ['debug/', 'campaign/epilogue', 'generation/'];
 /** P13: allowed while a combat or an expedition is open (the death that closes the campaign, and its epilogue, must always be able to run). */
-const ALWAYS_OPEN = ['warden/no_snapshot', 'campaign/epilogue', 'warden/answer'];
+const ALWAYS_OPEN = ['warden/no_snapshot', 'campaign/epilogue', 'warden/answer', 'generation/failed', 'generation/close', 'generation/expire'];
 const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start', 'intrigue/act'];
 
 /** P13: runs another action's handler on the same draft (the warden's COMPLY and DEFY re-run the order that was overridden). Throws when the action is unknown. */

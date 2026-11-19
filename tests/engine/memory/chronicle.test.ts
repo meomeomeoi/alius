@@ -209,14 +209,15 @@ describe('scene ranges', () => {
     const withSummary = sceneWith([ANN], { endIndex: 12, summary: { chronicle: 'Ann talked it through.', facts: [] } });
     expect(withSummary.memory.scenes).toEqual([{ sceneId: 's1', from: 7, to: 12, summarized: true }]);
     const without = sceneWith([ANN], { endIndex: 9 });
-    expect(without.memory.scenes).toEqual([{ sceneId: 's1', from: 7, to: 9, summarized: false }]);
+    // P14: an unsummarized mark also keeps the scene's day, place and people for a late summary
+    expect(without.memory.scenes).toEqual([{ sceneId: 's1', from: 7, to: 9, summarized: false, day: expect.any(Number), locationId: expect.any(String), participants: [ANN] }]);
   });
 
   it('no range without a usable endIndex', () => {
     for (const endIndex of [undefined, 'x', 3, -1, 1.5]) {
       expect(sceneWith([ANN], { endIndex }).memory.scenes, String(endIndex)).toBeUndefined();
     }
-    expect(sceneWith([ANN], { endIndex: 7 }).memory.scenes).toEqual([{ sceneId: 's1', from: 7, to: 7, summarized: false }]);
+    expect(sceneWith([ANN], { endIndex: 7 }).memory.scenes).toMatchObject([{ sceneId: 's1', from: 7, to: 7, summarized: false }]);
   });
 
   it('scene/end keeps the last 50 ended scenes', () => {

@@ -170,7 +170,11 @@ registerAction('scene/end', (draft, payload, ctx) => {
   });
   const endIndex = isObj(payload) ? payload.endIndex : undefined;
   if (typeof endIndex === 'number' && Number.isInteger(endIndex) && endIndex >= scene.startIndex) {
-    recordSceneRange(draft, { sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== undefined });
+    // P14: a scene that ended with no summary keeps its day, place and people, so a late summary (`scene/late_summary`) can still be stored
+    recordSceneRange(draft, {
+      sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== undefined,
+      ...(summary === undefined ? { day: scene.day, locationId: scene.locationId, participants: [...scene.participants] } : {}),
+    });
   }
 
   if (summary && Array.isArray(summary.facts)) events.push(...storeSceneFacts(draft, reg, scene, summary.facts));

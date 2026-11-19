@@ -108,6 +108,8 @@ var TUNING = Object.freeze({
   vitals: Object.freeze({ conflictDelta: 3, flickerDelta: 3, flickerLog: 5 }),
   /** P10b: a hand note lasts `keepDays` days after the day it was written; the list keeps at most `max` (oldest out first). */
   notes: Object.freeze({ keepDays: 3, max: 12 }),
+  /** P14: failed model calls kept in the campaign (`maxRecords`, oldest dropped), how many whole days an expired one stays listed after the day it expired (`expiredDays`), and the length `detail` is cut to. */
+  generation: Object.freeze({ maxRecords: 20, expiredDays: 1, detailMax: 160 }),
   /** P11: how many soldiers one scene can hold (the line-up takes the whole squad of four). */
   scene: Object.freeze({ maxParticipants: 4 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -6874,7 +6876,11 @@ var RESERVED_EVENT_TYPES = [
   "warden_removed",
   "investigation_opened",
   "remote_control_started",
-  "verdict"
+  "verdict",
+  // P14
+  "generation_failed",
+  "generation_closed",
+  "generation_expired"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -21776,8 +21782,8 @@ function rememberEvents(draft, events, reg) {
 var handlers = /* @__PURE__ */ new Map();
 var ONBOARDING_HINT = "onboarding/hint_seen";
 var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand"];
-var ENDED_OK_PREFIXES = ["debug/", "campaign/epilogue"];
-var ALWAYS_OPEN = ["warden/no_snapshot", "campaign/epilogue", "warden/answer"];
+var ENDED_OK_PREFIXES = ["debug/", "campaign/epilogue", "generation/"];
+var ALWAYS_OPEN = ["warden/no_snapshot", "campaign/epilogue", "warden/answer", "generation/failed", "generation/close", "generation/expire"];
 var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start", "intrigue/act"];
 function runHandler(type, draft, payload, ctx2) {
   const handler2 = handlers.get(type);
@@ -22418,7 +22424,13 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   });
   const endIndex = isObj12(payload) ? payload.endIndex : void 0;
   if (typeof endIndex === "number" && Number.isInteger(endIndex) && endIndex >= scene.startIndex) {
-    recordSceneRange(draft, { sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== void 0 });
+    recordSceneRange(draft, {
+      sceneId: scene.id,
+      from: scene.startIndex,
+      to: endIndex,
+      summarized: summary !== void 0,
+      ...summary === void 0 ? { day: scene.day, locationId: scene.locationId, participants: [...scene.participants] } : {}
+    });
   }
   if (summary && Array.isArray(summary.facts)) events.push(...storeSceneFacts(draft, reg, scene, summary.facts));
   events.push(...relieveAtSceneEnd(draft, scene));
@@ -24637,6 +24649,111 @@ setWardenGoneHook(wardenGone);
 registerDayEndStep("director_tick", wardenDayStep);
 setLeashEffect((draft, ctx2, kind) => leashCommander(draft, ctx2, kind));
 
+// src/engine/generations.ts
+var GENERATION_REASONS = ["no_profile", "network", "timeout", "truncated", "refused", "invalid_output", "empty"];
+var CLOSE_OUTCOMES = ["applied", "dropped", "kept_fallback"];
+var cut2 = (s, n) => s.length > n ? s.slice(0, n) : s;
+var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function readFailure(payload) {
+  if (!isObj30(payload)) throw new Error("generation/failed needs a payload");
+  const { siteId, key, reason, detail, attempts, at, budgetMult } = payload;
+  if (typeof siteId !== "string" || siteId === "" || typeof key !== "string" || key === "") throw new Error("generation/failed needs { siteId, key }");
+  if (typeof reason !== "string" || !GENERATION_REASONS.includes(reason)) throw new Error(`generation/failed: unknown reason "${String(reason)}"`);
+  if (typeof attempts !== "number" || !Number.isInteger(attempts) || attempts < 1) throw new Error("generation/failed needs attempts \u2265 1");
+  if (typeof at !== "number" || !Number.isFinite(at)) throw new Error("generation/failed needs at");
+  if (typeof budgetMult !== "number" || !Number.isFinite(budgetMult) || budgetMult <= 0) throw new Error("generation/failed needs budgetMult > 0");
+  return {
+    siteId,
+    key,
+    reason,
+    detail: typeof detail === "string" ? detail : "",
+    attempts,
+    at,
+    budgetMult,
+    ...payload.fallbackApplied === true ? { fallbackApplied: true } : {},
+    ...payload.quiet === true ? { quiet: true } : {}
+  };
+}
+function recordFailure(draft, p) {
+  const gens = draft.generations ??= { seq: 0, records: [] };
+  const detail = cut2(p.detail, TUNING.generation.detailMax);
+  let rec = gens.records.find((r) => r.status === "open" && r.siteId === p.siteId && r.key === p.key);
+  if (rec) {
+    rec.attempts += p.attempts;
+    rec.reason = p.reason;
+    rec.detail = detail;
+    rec.at = p.at;
+    rec.budgetMult = p.budgetMult;
+    if (p.fallbackApplied) rec.fallbackApplied = true;
+  } else {
+    gens.seq += 1;
+    rec = {
+      id: `g${gens.seq}`,
+      siteId: p.siteId,
+      key: p.key,
+      reason: p.reason,
+      detail,
+      attempts: p.attempts,
+      day: draft.day,
+      slot: draft.slot,
+      at: p.at,
+      budgetMult: p.budgetMult,
+      status: "open",
+      ...p.fallbackApplied ? { fallbackApplied: true } : {},
+      ...p.quiet ? { quiet: true } : {}
+    };
+    gens.records.push(rec);
+    while (gens.records.length > TUNING.generation.maxRecords) {
+      const dropped = gens.records.shift();
+      console.info(`[alius] generation record ${dropped.id} (${dropped.siteId}) dropped: the list is full`);
+    }
+  }
+  return [{ type: "generation_failed", id: rec.id, siteId: rec.siteId, key: rec.key, reason: rec.reason }];
+}
+function closeRecords(draft, by, outcome) {
+  const gens = draft.generations;
+  if (!gens) return [];
+  const hit = (r) => "id" in by ? r.id === by.id : r.status === "open" && r.siteId === by.siteId && r.key === by.key;
+  const closed = gens.records.filter(hit);
+  if (closed.length === 0) return [];
+  gens.records = gens.records.filter((r) => !hit(r));
+  return closed.map((r) => ({ type: "generation_closed", id: r.id, siteId: r.siteId, key: r.key, outcome }));
+}
+function expireRecord(draft, id, why) {
+  const rec = draft.generations?.records.find((r) => r.id === id);
+  if (!rec || rec.status === "expired") return [];
+  rec.status = "expired";
+  rec.reason = "expired";
+  rec.expiredWhy = cut2(why, TUNING.generation.detailMax);
+  rec.expiredDay = draft.day;
+  return [{ type: "generation_expired", id: rec.id, siteId: rec.siteId, key: rec.key, why: rec.expiredWhy }];
+}
+function generationSweep(draft) {
+  const gens = draft.generations;
+  if (!gens) return [];
+  const keep = gens.records.filter((r) => r.status === "open" || (r.expiredDay ?? 0) + TUNING.generation.expiredDays > draft.day);
+  if (keep.length !== gens.records.length) gens.records = keep;
+  return [];
+}
+
+// src/engine/actions/generations.ts
+var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("generation/failed", (draft, payload) => recordFailure(draft, readFailure(payload)));
+registerAction("generation/close", (draft, payload) => {
+  if (!isObj31(payload) || !CLOSE_OUTCOMES.includes(payload.outcome)) throw new Error("generation/close needs an outcome of applied, dropped or kept_fallback");
+  const outcome = payload.outcome;
+  if (typeof payload.id === "string" && payload.id !== "") return closeRecords(draft, { id: payload.id }, outcome);
+  if (typeof payload.siteId === "string" && payload.siteId !== "" && typeof payload.key === "string" && payload.key !== "") {
+    return closeRecords(draft, { siteId: payload.siteId, key: payload.key }, outcome);
+  }
+  throw new Error("generation/close needs { id } or { siteId, key }");
+});
+registerAction("generation/expire", (draft, payload) => {
+  if (!isObj31(payload) || typeof payload.id !== "string" || typeof payload.why !== "string") throw new Error("generation/expire needs { id, why }");
+  return expireRecord(draft, payload.id, payload.why);
+});
+registerDayEndStep("dm_rumors", generationSweep);
+
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
   "profile_import",
@@ -24980,7 +25097,7 @@ function estTokens(s) {
 // src/llm/orchestrator.ts
 var RETRY_BUDGET_FACTOR = 1.5;
 var DETAIL_MAX = 160;
-var cut2 = (s) => s.length > DETAIL_MAX ? s.slice(0, DETAIL_MAX) : s;
+var cut3 = (s) => s.length > DETAIL_MAX ? s.slice(0, DETAIL_MAX) : s;
 var isAbort = (e) => typeof e === "object" && e !== null && (e.name === "AbortError" || e.name === "TimeoutError");
 function refuses(patterns, text2, scopes) {
   return patterns.some((p) => scopes.includes(p.scope) && p.re.test(text2));
@@ -24994,12 +25111,12 @@ function classify(ct, answer, patterns) {
     return { ok: false, reason: "empty", detail: "empty answer" };
   }
   if (!ct.json) {
-    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: cut2(text2) };
+    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
     return { ok: true, value: text2 };
   }
   const json = looseJson(text2);
   if (json === null) {
-    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: cut2(text2) };
+    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
     if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail: "the JSON was cut off" };
     return { ok: false, reason: "invalid_output", detail: "no JSON found in the answer" };
   }
@@ -25008,7 +25125,7 @@ function classify(ct, answer, patterns) {
   if (checked.success) return { ok: true, value: checked.data };
   const empty = Array.isArray(json) ? json.length === 0 : typeof json === "object" && Object.keys(json).length === 0;
   if (empty) return { ok: false, reason: "refused", detail: "an empty answer where the form needs content" };
-  const detail = cut2(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
+  const detail = cut3(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
   if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail };
   return { ok: false, reason: "invalid_output", detail };
 }
@@ -25034,7 +25151,7 @@ ${line2}`;
   const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
   const fail = (reason, detail, raw) => {
     llmLog.push({ ...entry, raw, ok: false, ms: Date.now() - started, reason });
-    return { ok: false, reason, detail: cut2(detail), attempts: 1, at: started, budget: maxTokens };
+    return { ok: false, reason, detail: cut3(detail), attempts: 1, at: started, budget: maxTokens };
   };
   const ctrl = new AbortController();
   let timer;
@@ -26190,7 +26307,7 @@ function revealPending(state, reg) {
 }
 
 // src/engine/warden/describe.ts
-var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var strs2 = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 function describeOrder(state, reg, order) {
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -26216,7 +26333,7 @@ function overrideInput(state, reg, participants) {
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
 }
 function orderOfAction(action) {
-  const p = isObj30(action.payload) ? action.payload : {};
+  const p = isObj32(action.payload) ? action.payload : {};
   switch (action.type) {
     case "activity/do":
       return typeof p.activityId === "string" ? { kind: "activity", activityId: p.activityId, ...typeof p.companionId === "string" ? { companionId: p.companionId } : {}, ...Array.isArray(p.unitIds) ? { unitIds: strs2(p.unitIds) } : {} } : null;
@@ -28235,16 +28352,16 @@ var fieldSchemas = {
   autoRetry: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2)])
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj31(over) ? over : {};
+  const src = isObj33(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj31(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj33(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -29304,8 +29421,8 @@ function fitTo(text2, fits, tokens) {
   while (lines.length > 1 && !fits(lines.join("\n"))) lines.pop();
   const first2 = lines.join("\n");
   if (fits(first2)) return first2;
-  const cut3 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
-  return cut3 !== "" && fits(cut3) ? cut3 : null;
+  const cut4 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
+  return cut4 !== "" && fits(cut4) ? cut4 : null;
 }
 
 // src/llm/calls/chronicleCompact.ts
@@ -29565,24 +29682,24 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj32(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj32(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj34(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj34(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj32(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj34(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj32(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj34(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
@@ -31058,7 +31175,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -31067,7 +31184,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj33(raw) ? raw : {};
+  const src = isObj35(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -31083,7 +31200,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj33(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj35(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -31092,7 +31209,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap3(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj33(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj35(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -31162,7 +31279,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str4(c.label) })) } : {}
   };
 }
-var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num4 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -31180,7 +31297,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj34(raw) ? raw : {};
+  const src = isObj36(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -31189,7 +31306,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj34(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj36(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -31237,11 +31354,11 @@ function sanitizeProfile(raw, ctx2) {
     const read = validateBond(src.bond, ctx2.registries);
     profile.bond = read.bond;
     bond = read.bond;
-    const reason = cap4(isObj34(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap4(isObj36(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read.valid.length === 0) missing2.push("bond");
-    if (!isObj34(src.bond)) delete profile.bond;
+    if (!isObj36(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick2(
@@ -31258,7 +31375,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj34(src.values)) {
+    if (isObj36(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num4(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -31283,25 +31400,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj34(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj36(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num4(src.dispositionOffset.offset, -2, 2, 0), reason: cap4(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj34(src.worldStances) ? src.worldStances : {};
+      const given = isObj36(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj34(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj36(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap4(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("baseline")) {
-    if (isObj34(src.emotionalBaseline)) {
+    if (isObj36(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -43992,13 +44109,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
     const m = chat[index2];
-    if (!isObj35(m) || m.is_system === true) continue;
+    if (!isObj37(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index: index2,
@@ -44015,7 +44132,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj35(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj37(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -44037,7 +44154,7 @@ function hideRuns(length, from, to, isSystem) {
 var hideCommand = (unhide, [a, b]) => `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
 var isSystemMessage = (chat, index2) => {
   const m = Array.isArray(chat) ? chat[index2] : void 0;
-  return !isObj35(m) || m.is_system === true;
+  return !isObj37(m) || m.is_system === true;
 };
 
 // src/st/slash.ts
@@ -44069,17 +44186,17 @@ function toStLorebook(book2, template) {
 }
 
 // src/st/sprites.ts
-var isObj36 = (v) => typeof v === "object" && v !== null;
+var isObj38 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj36(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj38(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj36(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj38(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

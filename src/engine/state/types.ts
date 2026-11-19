@@ -293,6 +293,43 @@ export interface SceneMark {
   from: number;
   to: number;
   summarized: boolean;
+  /** P14: the scene's day, place and people, written only while `summarized` is false, so a late summary can still be stored (`scene/late_summary`). */
+  day?: number;
+  locationId?: string;
+  participants?: string[];
+}
+
+/** P14: why a model call failed; mirrors the `FailReason` of `src/llm/orchestrator.ts` (the engine does not import `llm/`). */
+export type GenerationFailReason = 'no_profile' | 'network' | 'timeout' | 'truncated' | 'refused' | 'invalid_output' | 'empty';
+
+/**
+ * P14: one failed model call that can still be retried. It holds no prompt, no transcript and no model text: `detail` is a zod
+ * issue path and message or an adapter error message, cut to `TUNING.generation.detailMax`.
+ */
+export interface GenerationRecord {
+  /** `g<n>` from `generations.seq`. */
+  id: string;
+  /** The site (`scene.intents`, `flavor.demand`, …): what asked for the generation. */
+  siteId: string;
+  /** What the site generates for (a scene chunk, a dilemma id, a unit id), site-specific. */
+  key: string;
+  reason: GenerationFailReason | 'expired';
+  detail: string;
+  /** Model calls made for it so far (every automatic retry and every RETRY counts). */
+  attempts: number;
+  day: number;
+  slot: Slot;
+  /** The `llmLog` timestamp of the last attempt (matches the debug log entry). */
+  at: number;
+  /** The budget multiplier of the last attempt. */
+  budgetMult: number;
+  /** The site's fallback already ran next to this record. */
+  fallbackApplied?: true;
+  status: 'open' | 'expired';
+  expiredWhy?: string;
+  expiredDay?: number;
+  /** A background site: listed in SYS only, never counted for the badge or the hub line. */
+  quiet?: true;
 }
 
 export interface PromiseRecord {
@@ -881,6 +918,8 @@ export interface CampaignState {
   ledger?: LedgerEntry[];
   /** P10b: the notes soldiers left (a counter and the list, oldest first); absent in older saves = none. */
   notes?: { seq: number; list: HandNote[] };
+  /** P14: failed model calls that can be retried (at most `TUNING.generation.maxRecords`, oldest first); absent in older saves = none. */
+  generations?: { seq: number; records: GenerationRecord[] };
   /** The open scene, if any (P3). */
   scene?: SceneRecord;
   /** Open proposals waiting for the commander's answer (P3). */

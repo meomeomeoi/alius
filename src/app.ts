@@ -24,6 +24,7 @@ import './engine/actions/commander'; // registers commander/seed, set_profile an
 import './engine/actions/onboarding'; // registers onboarding/* actions (P11)
 import './engine/actions/special'; // registers the P12 special-trait actions, after loyalty and personal
 import './engine/actions/warden'; // registers the P13 LEASHSWAP actions, after special
+import './engine/actions/generations'; // registers generation/* (failure records of model calls) and their day-end sweep (P14)
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
