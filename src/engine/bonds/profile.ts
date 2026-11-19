@@ -20,9 +20,12 @@ export const MODEST_BOND: Bond = Object.freeze({
 }) as Bond;
 
 /** The bond profile of a named unit (a modest one when the card gave none); `null` for a grunt, which has no bond. */
-export function bondOf(unit: Pick<Unit, 'kind' | 'bond'>): Bond | null {
+export function bondOf(unit: Pick<Unit, 'kind' | 'bond' | 'development'>): Bond | null {
   if (unit.kind !== 'named') return null;
-  return unit.bond ?? MODEST_BOND;
+  const bond = unit.bond;
+  if (bond === undefined) return MODEST_BOND; // P14b: a unit without an imported bond never takes development (its fields stay raw)
+  const d = unit.development?.bond; // P14b: what she has become sits on top of the import; the limits and the publicity never drift
+  return d === undefined ? bond : { ...bond, ...d };
 }
 
 /**

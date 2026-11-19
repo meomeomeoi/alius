@@ -447,7 +447,7 @@ interface DevMoment {
   - `effectiveProfile(unit) => { values, likes, dislikes, tastes, bond }`;
   - `RAW_MARK = '// P14b: raw profile'`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `drift moves in whole steps`: base mercy 1, drift 0.9 → 1; drift 1.2 → 2; drift −1.7 → 0; base 3, drift 2 → 3 (clamped).
   - `likes gain and lose`: likes `['tech']`, gained `['cooking']`, lost `['tech']` → `['cooking']`.
   - `bondOf takes development only on an imported bond`: a unit with `bond` and `development.bond.desire 'high'` → `desire 'high'`; a unit without `bond` → `MODEST_BOND` unchanged.
@@ -455,10 +455,10 @@ interface DevMoment {
   - `readers guard` (`tests/development/readers.test.ts`):
     - scan `src/**/*.ts`, except `src/engine/development/**`, `src/engine/setup.ts`, `src/engine/actions/squad.ts`, `src/setup/**`, `src/ui/setup/**`;
     - fail on any line matching `/\b(unit|u|her|other|companion|w|warden|a|b|subject|target)\??\.(values|likes|dislikes|commanderTastes)\b/` or `/\.bond\??\.(leadStyle|attachment|desire|caretaker)\b/`, unless the line carries `RAW_MARK`.
-- [ ] **Step 2: Run** the two files → FAIL (the guard lists today's ~45 direct reads).
-- [ ] **Step 3: Implement** `profile.ts`, `bondOf` and `effectiveValues`. In this task only, the guard has an explicit `PENDING` allow-list of today's offending files (copied from the failing output). Task 4 empties it.
-- [ ] **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): effective profile readers and the guard`
+- [x] **Step 2: Run** the two files → FAIL (the guard lists today's ~45 direct reads).
+- [x] **Step 3: Implement** `profile.ts`, `bondOf` and `effectiveValues`. In this task only, the guard has an explicit `PENDING` allow-list of today's offending files (copied from the failing output). Task 4 empties it.
+- [x] **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): effective profile readers and the guard`
 
 ---
 

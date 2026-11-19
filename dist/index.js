@@ -9108,7 +9108,10 @@ var MODEST_BOND = Object.freeze({
 });
 function bondOf(unit2) {
   if (unit2.kind !== "named") return null;
-  return unit2.bond ?? MODEST_BOND;
+  const bond = unit2.bond;
+  if (bond === void 0) return MODEST_BOND;
+  const d = unit2.development?.bond;
+  return d === void 0 ? bond : { ...bond, ...d };
 }
 function bondTierOf(state, reg, unitId) {
   const stateId = state.relations[unitId]?.stateId;
@@ -10378,6 +10381,21 @@ function applyWorldStartEffects(draft, reg) {
   draft.world.factions[own] = clamp4((draft.world.factions[own] ?? 0) + per * distance, -100, 100);
 }
 
+// src/engine/development/profile.ts
+var clamp32 = (n) => Math.min(3, Math.max(-3, n));
+function valuesOf(unit2) {
+  const drift = unit2.development?.drift;
+  if (!drift) return unit2.values;
+  let out = null;
+  for (const axis of Object.keys(drift)) {
+    const step = Math.trunc(drift[axis] ?? 0);
+    if (step === 0) continue;
+    out ??= { ...unit2.values };
+    out[axis] = clamp32(unit2.values[axis] + step);
+  }
+  return out ?? unit2.values;
+}
+
 // src/engine/worldOptions/stances.ts
 var INDIFFERENT = { stance: "indifferent", strength: 1, reason: "" };
 function stanceOf(state, reg, unit2, optionId) {
@@ -10403,7 +10421,7 @@ function optionStanceEffects(state, reg, unit2, optionId) {
   return [...reg.stanceEffects.values()].filter((e) => e.option === optionId && e.stance === s.stance && e.strength === s.strength).flatMap((e) => e.effects);
 }
 function effectiveValues(state, reg, unit2) {
-  const values = { ...unit2.values };
+  const values = { ...valuesOf(unit2) };
   for (const fx2 of stanceEffects(state, reg, unit2, "value_shift")) {
     if (!VALUE_AXES.includes(fx2.axis)) continue;
     values[fx2.axis] = Math.min(3, Math.max(-3, values[fx2.axis] + fx2.amount));
@@ -21618,7 +21636,7 @@ var slug2 = (name) => {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s === "" ? "unit" : s;
 };
-var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf3(crime.perk), ...effectsOf3(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -21635,7 +21653,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp32(o.trust, 0, 100);
+  const trust = clamp33(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -23417,7 +23435,7 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
 // src/engine/warden/leash.ts
-var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var SLOTS2 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
@@ -23425,7 +23443,7 @@ function cosignChance(state, _reg, _targetId) {
   const C = TUNING.warden.cosign;
   const unit2 = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp33(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit2?.values.corporate ?? 0) - C.mercy * (unit2?.values.mercy ?? 0) + C.perAffinity * affinity, C.min, C.max);
+  return clamp34(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit2?.values.corporate ?? 0) - C.mercy * (unit2?.values.mercy ?? 0) + C.perAffinity * affinity, C.min, C.max);
 }
 function rollCosign(draft, ctx2, targetId, kind) {
   const w = wardenOf(draft);
@@ -23461,7 +23479,7 @@ function refreshWardenLeash(draft, _reg) {
 
 // src/engine/warden/removal.ts
 var INVESTIGATION_CLOCK = "investigation";
-var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill4 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 function reactionAxes(draft, wardenId, route) {
   const her = draft.squad.find((u) => u.id === wardenId);
@@ -23504,7 +23522,7 @@ function wardenGone(draft, ctx2, how) {
 }
 function reportChance(state, _reg) {
   const R2 = TUNING.warden.verdict.report;
-  return clamp34(R2.base + R2.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R2.perCunning * (socialRank(state, "cunning") - 1), R2.min, R2.max);
+  return clamp35(R2.base + R2.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R2.perCunning * (socialRank(state, "cunning") - 1), R2.min, R2.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -23600,7 +23618,7 @@ function verdictChance(state, _reg) {
   const V = TUNING.warden.verdict;
   const route = ls?.removal?.route ?? "death";
   const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
-  return clamp34(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
+  return clamp35(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
 }
 function rollVerdict(draft, ctx2) {
   const ls = leashswapOf(draft);
@@ -35317,7 +35335,7 @@ function renderMemoryBlock(host, ctx2) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit = (seed, i) => fnv1a(`${seed}${i}`) % 1e3 / 1e3;
-var clamp35 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp36 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a(seed) % n;
@@ -35341,7 +35359,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp35(v));
+    out.push(clamp36(v));
   }
   return out;
 }

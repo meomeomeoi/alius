@@ -4,6 +4,7 @@ import type { Rng } from '../rng';
 import type { CampaignState, Unit, WorldStance } from '../state/types';
 import { VALUE_AXES } from '../state/types';
 import { isNeutralChoice, worldChoice, worldChoices, type WorldHolder } from './options';
+import { valuesOf } from '../development/profile';
 
 /**
  * Per-unit stances toward the world's norms (P8 §3.1). A norm reaches a unit only through her own stance, set at
@@ -48,9 +49,9 @@ export function optionStanceEffects(state: WorldHolder, reg: Registries, unit: S
 
 /** Her values as she judges the commander's decisions: the stored values shifted by her stances (`value_shift`), each clamped to −3…3. */
 export function effectiveValues(
-  state: WorldHolder, reg: Registries, unit: StanceHolder & Pick<Unit, 'values'>,
+  state: WorldHolder, reg: Registries, unit: StanceHolder & Pick<Unit, 'values' | 'development'>,
 ): Unit['values'] {
-  const values = { ...unit.values };
+  const values = { ...valuesOf(unit) }; // P14b: her drift first, the stance on top
   for (const fx of stanceEffects(state, reg, unit, 'value_shift')) {
     if (!VALUE_AXES.includes(fx.axis)) continue;
     values[fx.axis] = Math.min(3, Math.max(-3, values[fx.axis] + fx.amount));
