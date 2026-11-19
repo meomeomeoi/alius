@@ -59,7 +59,8 @@ export function startRemoval(draft: CampaignState, ctx: EngineCtx, route: 'hack'
   delete ls.intrigue.reportQueued;
   if (draft.dilemmas?.open?.context === 'warden_report') delete draft.dilemmas.open;
   const segments = TUNING.warden.removal.clock[route];
-  addClock(draft, { id: INVESTIGATION_CLOCK, label: 'INVESTIGATION', segments, filled: 0, visibleToPlayer: true });
+  // not visible on the map or in the scene context (its length would give the route away): the panel shows a band; the engine alone moves it
+  addClock(draft, { id: INVESTIGATION_CLOCK, label: 'INVESTIGATION', segments, filled: 0, visibleToPlayer: false, engine: true });
   if (route === 'report' && !draft.world.flags.includes('warden_reassigned')) draft.world.flags.push('warden_reassigned');
   const events: EngineEvent[] = [
     { type: 'warden_removed', unitId: former, route },
@@ -105,7 +106,7 @@ function presentReport(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   d.seq += 1;
   d.open = {
     id: `dl${d.seq}`, templateId: String(template.id), scale: template.scale as 'major' | 'defining', context: REPORT_CONTEXT, day: draft.day, status: 'presented', attempts: 0,
-    units: [w.unitId], beatId: currentBeat(draft, ctx.registries)?.id ?? 'open', source: 'fallback',
+    units: [], beatId: currentBeat(draft, ctx.registries)?.id ?? 'open', source: 'fallback',
     title: fill(fixed.title, vars), setup: fill(fixed.setup, vars),
     options: (fixed.options as unknown as DilemmaOption[]).map((o) => ({ ...structuredClone(o), label: fill(o.label, vars), magnitudes: [] })),
     subjectId: w.unitId,
@@ -228,6 +229,7 @@ export function rollVerdict(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
   draft.world.clocks = draft.world.clocks.filter((c) => c.id !== INVESTIGATION_CLOCK);
   ls.intrigue.suspicion = 0;
   ls.intrigue.hack.step = 0;
+  ls.intrigue.discovered = 0; // it counted against this investigation only
   const events: EngineEvent[] = [{ type: 'verdict', outcome: cleared ? 'cleared' : 'convicted' }];
   if (cleared) {
     ls.status = 'free';
@@ -235,7 +237,7 @@ export function rollVerdict(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
     return events;
   }
   if (!draft.commander.flags.includes('commander_convicted')) draft.commander.flags.push('commander_convicted');
-  const next = corporateWardenPick(draft, ctx.registries, former !== undefined ? [former] : []);
+  const next = corporateWardenPick(draft, ctx.registries, former !== undefined ? [former] : [], { anyLiving: true });
   if (next === null) {
     addChronicle(draft, { kind: 'day', day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the leash.`, audience: '*' });
     return [...events, ...commanderDies(draft, ctx, 'executed')];

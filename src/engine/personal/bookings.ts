@@ -48,9 +48,9 @@ export function bookingPlayable(state: CampaignState, booking: Booking): boolean
   return restrictionReason(state, unit.id, 'scene') === null;
 }
 
-/** The refusal of `dispatch` while a playable booking is due: `activity/`, `expedition/start`, END SLOT and a scene without her. */
+/** The refusal of `dispatch` while a playable booking is due: `activity/`, `expedition/start`, END SLOT, a scene without her and (P13) an intrigue slot action. */
 export function bookingGuard(state: CampaignState, action: { type: string; payload?: unknown }): { code: 'booking_due'; message: string } | null {
-  const blocked = action.type.startsWith('activity/') || action.type === 'expedition/start' || action.type === 'calendar/consume_slot' || action.type === 'scene/start';
+  const blocked = action.type.startsWith('activity/') || action.type === 'expedition/start' || action.type === 'calendar/consume_slot' || action.type === 'scene/start' || action.type === 'intrigue/act';
   if (!blocked || state.personal?.bookings === undefined) return null;
   const due = dueBooking(state);
   if (!due || !bookingPlayable(state, due)) return null;

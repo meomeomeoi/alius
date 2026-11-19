@@ -149,6 +149,7 @@
     - `leash_cosigned` / `leash_cosign_denied`: the Leash log already records them.
     - `expectation_learned`: the commander's own knowledge, not something the squad remembers.
     - `commander_died` / `campaign_ended`: the campaign is over, or the day is rewound.
+    - `intrigue_discovered`: its consequences are `warden_betrayed` (journal), the punishment's own rule and the `warden_knows_ally` flag. `ally_refused`: the commander's own failed move (`conspired` has a journal phrase). `controller_dark`, `investigation_opened`, `remote_control_started`: `warden_removed` carries the fact. `report_queued`: bookkeeping. Remote-control punishments (`remote: true`): oversight's automation, nobody to remember it.
     - `campaign_ended` writes a chronicle line with `audience: '*'`.
   - **Journal.** Every new relation event (`warden_complied`, `warden_defied`, `warden_betrayed`, `warden_removed_by`, `conspired`, `expectation_kept`, `expectation_broken`) gets an `eventDeltas[].journal` phrase (AUTHOR TO WRITE).
   - **Prompt.** No `group: 'memory'` provider is added; the warden context is an ordinary directive (`warden:*`). Chronicle lines this package writes all carry an `audience`.
@@ -422,7 +423,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `warden` is deleted (her unit stays, or is gone);
   - `status: 'investigation'`;
   - `removal = { route, day, clockId }`;
-  - a world clock `investigation` (visible, segments: hack 10, report 6, death 4; +1 segment per day in the day step);
+  - a world clock `investigation` (engine-driven and not visible on the map: the panel shows a band; segments: hack 10, report 6, death 4; +1 segment per day in the day step; the director and generated dilemmas never touch it);
   - `remote = { sinceDay: day }`;
   - **squad reactions** by values, one `warden_removed_by` (moderate) per named living unit:
     - valueAxes `autonomy +1`, `corporate −1` read as liberation;

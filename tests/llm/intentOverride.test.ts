@@ -62,3 +62,16 @@ describe('sanitizing a compromise for an override', () => {
     expect(r!.intents.events[0]).toMatchObject({ overrideId: 'ov1' });
   });
 });
+
+describe('CONSPIRE in the extraction input', () => {
+  it('is offered only with a unit to name, and the instruction gives the commander no pronoun', () => {
+    expect(types(ct().system(input()))).not.toContain('conspired');
+    const withUnit = input({ conspire: [BEA] });
+    expect(types(ct().system(withUnit))).toContain('conspired');
+    expect(ct().prompt(withUnit)).toContain(`CONSPIRE (units the commander may enlist): ${BEA}`);
+    const line = ct().system(withUnit).split('\n').find((l) => l.startsWith('"conspired"')) ?? '';
+    expect(line.length).toBeGreaterThan(0);
+    expect(line).not.toMatch(/\b(he|him|his|they|them|their|themselves?)\b/i);
+  });
+});
+

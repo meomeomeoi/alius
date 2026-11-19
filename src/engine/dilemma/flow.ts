@@ -69,7 +69,7 @@ export function buildDilemmaDigest(state: CampaignState, reg: Registries, d: Dil
     units: unitsOf(state, d.units).map((u) => ({ name: u.displayName, values: { ...valuesOf(u) }, triggers: [...u.triggers] })),
     resources: { credits: level('credits'), supplies: level('supplies'), plyx: level('plyx') },
     factions: [...reg.corporations.values()].map((c) => ({ id: String(c.id), name: String(c.name), standing: standingBand(state.world.factions[String(c.id)] ?? 0) })),
-    clocks: state.world.clocks.filter((c) => c.filled < c.segments).map((c) => ({ id: c.id, label: c.label })),
+    clocks: state.world.clocks.filter((c) => c.filled < c.segments && c.engine !== true).map((c) => ({ id: c.id, label: c.label })),
     flags: state.world.flags.slice(-TUNING.director.digestFlags),
     allowedFlags: ((template?.allowedFlags as string[] | undefined) ?? []).map((id) => ({ id, description: String(reg.flags.get(id)?.description ?? id) })),
   };

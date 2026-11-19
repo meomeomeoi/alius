@@ -55,7 +55,7 @@ describe('the hack route', () => {
     expect(wardenOf(s)).toBeNull();
     expect(ls.removal).toEqual({ route: 'hack', day: s.day, clockId: 'investigation', unitId: ID.bea });
     expect(ls.remote).toEqual({ sinceDay: s.day });
-    expect(clock(s)).toMatchObject({ segments: 10, filled: 0, visibleToPlayer: true });
+    expect(clock(s)).toMatchObject({ segments: 10, filled: 0, visibleToPlayer: false, engine: true }); // not on the map: its length would give the route away
     expect(s.commander.flags).toContain('commander_implant_dark');
     expect(ls.intrigue.hack.step).toBe(0);
   });

@@ -15066,12 +15066,193 @@ function learnExpectation(draft, expectationId) {
   return [{ type: "expectation_learned", expectationId }];
 }
 
+// src/engine/personal/bookings.ts
+var bookingsOf = (state) => state.personal?.bookings ?? [];
+var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
+var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
+function bookingChance(state, reg, unitId) {
+  const T4 = TUNING.personal.booking;
+  const affinity = state.relations[unitId]?.affinity ?? 0;
+  const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
+  const raw = T4.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
+  return Math.min(T4.cap, raw);
+}
+function dueBooking(state) {
+  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
+  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
+}
+function bookingPlayable(state, booking) {
+  const unit2 = state.squad.find((u) => u.id === booking.unitId);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return false;
+  if (unit2.status === "injured" || (unit2.injuryDays ?? 0) > 0) return false;
+  if (state.expedition?.party.includes(unit2.id)) return false;
+  return restrictionReason(state, unit2.id, "scene") === null;
+}
+function bookingGuard(state, action) {
+  const blocked = action.type.startsWith("activity/") || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
+  if (!blocked || state.personal?.bookings === void 0) return null;
+  const due = dueBooking(state);
+  if (!due || !bookingPlayable(state, due)) return null;
+  if (action.type === "scene/start") {
+    const ids = action.payload?.participants;
+    if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
+  }
+  return { code: "booking_due", message: `${unitName(state, due.unitId)} has booked this slot: go to her or cancel it.` };
+}
+function nextSlotAfter(day, slot2) {
+  if (slot2 === "morning") return { day, slot: "afternoon" };
+  if (slot2 === "afternoon") return { day, slot: "evening" };
+  return { day: day + 1, slot: "morning" };
+}
+function syncConflicts(draft, day, slot2) {
+  const same = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
+  for (const b of same) {
+    if (same.length > 1) b.conflict = true;
+    else delete b.conflict;
+  }
+  return same;
+}
+function book(draft, _ctx, p) {
+  const booking = {
+    id: nextPersonalId(draft, "bk"),
+    unitId: p.unitId,
+    kindId: p.kindId,
+    day: p.day,
+    slot: p.slot,
+    status: "booked",
+    source: p.source,
+    made: draft.day
+  };
+  (personalOf(draft).bookings ??= []).push(booking);
+  const events = [{ type: "booking_made", bookingId: booking.id, unitId: p.unitId, kindId: p.kindId, day: p.day, slot: p.slot, source: p.source }];
+  if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
+  return events;
+}
+function bookingKindsFor(state, reg, unitId) {
+  const tier = bondTierOf(state, reg, unitId);
+  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
+}
+function rollBookings(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const u of draft.squad) {
+    if (u.kind !== "named") continue;
+    if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
+    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
+    if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
+    const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
+    if (mine.some((b) => b.status === "booked")) continue;
+    if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
+    if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
+    const kinds2 = bookingKindsFor(draft, reg, u.id);
+    if (kinds2.length === 0) continue;
+    let pick2 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick2 -= Number(k.weight)) < 0) ?? kinds2[0];
+    events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "roll" }));
+    pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
+  }
+  return events;
+}
+var holdRank = (state, unitId) => {
+  const bond = bondOf(state.squad.find((u) => u.id === unitId) ?? { kind: "grunt" });
+  return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
+};
+function settleWinner(state, reg, contenders) {
+  const order = (b) => state.squad.findIndex((u) => u.id === b.unitId);
+  return [...contenders].sort((a, b) => holdRank(state, b.unitId) - holdRank(state, a.unitId) || (impunityOf(state, reg, b.unitId)?.value ?? 0) - (impunityOf(state, reg, a.unitId)?.value ?? 0) || order(a) - order(b))[0];
+}
+function resolveConflict(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  let day;
+  let slot2;
+  let keepId;
+  if ("bookingId" in p) {
+    const b = bookingsOf(draft).find((x) => x.id === p.bookingId);
+    if (!b || b.status !== "booked" || b.conflict !== true) throw new Error("That booking is not in a conflict.");
+    ({ day, slot: slot2 } = b);
+    keepId = b.id;
+  } else {
+    ({ day, slot: slot2 } = p);
+  }
+  const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
+  if (rivals.length < 2) throw new Error("Nothing is in conflict there.");
+  const winner = keepId !== void 0 ? rivals.find((b) => b.id === keepId) : settleWinner(draft, reg, rivals);
+  const events = [];
+  for (const loser of rivals.filter((b) => b !== winner)) {
+    loser.status = "cancelled";
+    delete loser.conflict;
+    if (keepId !== void 0) {
+      events.push(...hitHer(draft, reg, loser.unitId, "rejected_advance", "moderate", "her booking lost the slot"));
+    } else {
+      const unit2 = draft.squad.find((u) => u.id === loser.unitId);
+      if (unit2) {
+        const next = Math.min(100, unit2.stress + TUNING.personal.booking.settleStress);
+        if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
+        unit2.stress = next;
+      }
+    }
+    events.push({ type: "booking_cancelled", bookingId: loser.id, unitId: loser.unitId, lost: true });
+  }
+  delete winner.conflict;
+  events.push({ type: "booking_resolved", day, slot: slot2, kept: winner.id, unitId: winner.unitId, settled: keepId === void 0 });
+  return events;
+}
+function cancelBooking(draft, ctx2, bookingId) {
+  const b = bookingsOf(draft).find((x) => x.id === bookingId);
+  if (!b || b.status !== "booked") throw new Error("That booking cannot be cancelled.");
+  const reg = ctx2.registries;
+  b.status = "cancelled";
+  delete b.conflict;
+  syncConflicts(draft, b.day, b.slot);
+  const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
+  if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
+  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was cancelled" }));
+  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was cancelled"));
+  else events.push(...evaluateAutomatic(draft, reg, b.unitId));
+  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "cancelled her booking on the day of obedience"));
+  return events;
+}
+function markPlayed(draft, reg, booking) {
+  booking.status = "played";
+  delete booking.conflict;
+  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
+  return relieveWant(draft, booking.unitId, relief, "booking");
+}
+function playBooking(draft, ctx2, id) {
+  const reg = ctx2.registries;
+  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
+  if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
+  const events = [];
+  if (target.conflict) {
+    const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot);
+    const winner = settleWinner(draft, reg, rivals);
+    events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
+    target = winner;
+  }
+  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
+  const kind = kindOf2(reg, target.kindId);
+  events.push(...markPlayed(draft, reg, target));
+  const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
+  events.push({ type: "booking_played", bookingId: target.id, unitId: target.unitId, scene });
+  return { events, scene };
+}
+var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
+function metAtScene(draft, reg, participants) {
+  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
+  if (!due) return [];
+  const events = markPlayed(draft, reg, due);
+  syncConflicts(draft, due.day, due.slot);
+  return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
+}
+
 // src/engine/warden/intrigue.ts
 var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf3 = (state, id) => state.squad.find((u) => u.id === id);
 var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ?? false;
 function allies(state) {
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
+  const holder = wardenOf(state)?.unitId;
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
 }
 function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   const ls = leashswapOf(draft);
@@ -15139,9 +15320,20 @@ function intrigueBusy(state) {
   if (state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0) return "Not while a scene, a fight or a run is open.";
   return null;
 }
+function slotActionBusy(state) {
+  const busy = intrigueBusy(state);
+  if (busy) return busy;
+  if (state.slot === "night") return "Not at night.";
+  if (state.calendar.pendingScene) return "A conversation is still open; end it first.";
+  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting: answer it first.";
+  return bookingGuard(state, { type: "intrigue/act" })?.message ?? null;
+}
+function spendSlot(draft, ctx2, day, slot2) {
+  return draft.day === day && draft.slot === slot2 ? consumeSlots(draft, 1, ctx2) : [];
+}
 var isAlly = (state, id) => id !== void 0 && allies(state).includes(id);
 function digProblem(state, _reg, allyId) {
-  const busy = intrigueBusy(state);
+  const busy = slotActionBusy(state);
   if (busy) return busy;
   if (allyId !== void 0 && !isAlly(state, allyId)) return "That unit does not stand with the commander.";
   if (allyId === void 0 && socialRank(state, "cunning") < TUNING.warden.kompromat.digCunning) return `Digging needs an ally or Cunning ${TUNING.warden.kompromat.digCunning}.`;
@@ -15157,8 +15349,9 @@ function dig(draft, ctx2, allyId) {
   if (problem) throw new Error(problem);
   const ls = leashswapOf(draft);
   const w = wardenOf(draft);
+  const { day, slot: slot2 } = draft;
   ls.intrigue.seq += 1;
-  const events = [{ type: "intrigue_action", action: "dig" }, ...consumeSlots(draft, 1, ctx2)];
+  const events = [{ type: "intrigue_action", action: "dig" }];
   const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*"));
   const newest = hidden.reduce((best, f) => best === void 0 || f.day >= best.day ? f : best, void 0);
   if (newest) {
@@ -15183,7 +15376,8 @@ function dig(draft, ctx2, allyId) {
       events.push({ type: "kompromat_found", factId: fact.id });
     }
   }
-  return [...events, ...addSuspicion(draft, ctx2, TUNING.warden.intrigue.digNoise, "dig")];
+  events.push(...addSuspicion(draft, ctx2, TUNING.warden.intrigue.digNoise, "dig"));
+  return [...events, ...spendSlot(draft, ctx2, day, slot2)];
 }
 function isTech(state, reg, unitId) {
   const u = state.squad.find((x) => x.id === unitId);
@@ -15191,7 +15385,7 @@ function isTech(state, reg, unitId) {
   return reg.roles.get(u.roleId)?.tech === true || u.defects.some((d) => reg.defects.get(d.id)?.tech === true);
 }
 function hackProblem(state, reg, allyId) {
-  const busy = intrigueBusy(state);
+  const busy = slotActionBusy(state);
   if (busy) return busy;
   const H = TUNING.warden.hack;
   const missing2 = [];
@@ -15211,18 +15405,19 @@ function hackStep(draft, ctx2, allyId) {
   if (problem) throw new Error(problem);
   const ls = leashswapOf(draft);
   const H = TUNING.warden.hack;
+  const { day, slot: slot2 } = draft;
   draft.resources.plyx -= H.plyx;
-  const events = [...consumeSlots(draft, 1, ctx2)];
+  const events = [];
   ls.intrigue.hack.step += 1;
   const pain = painBurstId(ctx2.registries);
   const found2 = addSuspicion(draft, ctx2, H.noise, "hack", pain !== void 0 ? { punishmentId: pain } : {});
-  if (found2.some((e) => e.type === "intrigue_discovered")) return [{ type: "hack_step", step: 0, failed: true }, ...events, ...found2];
+  if (found2.some((e) => e.type === "intrigue_discovered")) return [{ type: "hack_step", step: 0, failed: true }, ...found2, ...spendSlot(draft, ctx2, day, slot2)];
   events.unshift({ type: "hack_step", step: ls.intrigue.hack.step, failed: false });
   if (ls.intrigue.hack.step >= H.steps) {
     if (!draft.commander.flags.includes("commander_implant_dark")) draft.commander.flags.push("commander_implant_dark");
     events.push({ type: "controller_dark" }, ...removalStarter(draft, ctx2, "hack"));
   }
-  return [...events, ...found2];
+  return [...events, ...found2, ...spendSlot(draft, ctx2, day, slot2)];
 }
 
 // src/engine/special/frequency/fragments.ts
@@ -15400,186 +15595,6 @@ function requireOpen(draft, kind) {
 }
 function closeNight(draft, ctx2, open3) {
   return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
-}
-
-// src/engine/personal/bookings.ts
-var bookingsOf = (state) => state.personal?.bookings ?? [];
-var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
-var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
-function bookingChance(state, reg, unitId) {
-  const T4 = TUNING.personal.booking;
-  const affinity = state.relations[unitId]?.affinity ?? 0;
-  const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
-  const raw = T4.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
-  return Math.min(T4.cap, raw);
-}
-function dueBooking(state) {
-  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
-  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
-}
-function bookingPlayable(state, booking) {
-  const unit2 = state.squad.find((u) => u.id === booking.unitId);
-  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return false;
-  if (unit2.status === "injured" || (unit2.injuryDays ?? 0) > 0) return false;
-  if (state.expedition?.party.includes(unit2.id)) return false;
-  return restrictionReason(state, unit2.id, "scene") === null;
-}
-function bookingGuard(state, action) {
-  const blocked = action.type.startsWith("activity/") || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start";
-  if (!blocked || state.personal?.bookings === void 0) return null;
-  const due = dueBooking(state);
-  if (!due || !bookingPlayable(state, due)) return null;
-  if (action.type === "scene/start") {
-    const ids = action.payload?.participants;
-    if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
-  }
-  return { code: "booking_due", message: `${unitName(state, due.unitId)} has booked this slot: go to her or cancel it.` };
-}
-function nextSlotAfter(day, slot2) {
-  if (slot2 === "morning") return { day, slot: "afternoon" };
-  if (slot2 === "afternoon") return { day, slot: "evening" };
-  return { day: day + 1, slot: "morning" };
-}
-function syncConflicts(draft, day, slot2) {
-  const same = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
-  for (const b of same) {
-    if (same.length > 1) b.conflict = true;
-    else delete b.conflict;
-  }
-  return same;
-}
-function book(draft, _ctx, p) {
-  const booking = {
-    id: nextPersonalId(draft, "bk"),
-    unitId: p.unitId,
-    kindId: p.kindId,
-    day: p.day,
-    slot: p.slot,
-    status: "booked",
-    source: p.source,
-    made: draft.day
-  };
-  (personalOf(draft).bookings ??= []).push(booking);
-  const events = [{ type: "booking_made", bookingId: booking.id, unitId: p.unitId, kindId: p.kindId, day: p.day, slot: p.slot, source: p.source }];
-  if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
-  return events;
-}
-function bookingKindsFor(state, reg, unitId) {
-  const tier = bondTierOf(state, reg, unitId);
-  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
-}
-function rollBookings(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const u of draft.squad) {
-    if (u.kind !== "named") continue;
-    if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
-    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
-    if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
-    const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
-    if (mine.some((b) => b.status === "booked")) continue;
-    if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
-    if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
-    const kinds2 = bookingKindsFor(draft, reg, u.id);
-    if (kinds2.length === 0) continue;
-    let pick2 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick2 -= Number(k.weight)) < 0) ?? kinds2[0];
-    events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "roll" }));
-    pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
-  }
-  return events;
-}
-var holdRank = (state, unitId) => {
-  const bond = bondOf(state.squad.find((u) => u.id === unitId) ?? { kind: "grunt" });
-  return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
-};
-function settleWinner(state, reg, contenders) {
-  const order = (b) => state.squad.findIndex((u) => u.id === b.unitId);
-  return [...contenders].sort((a, b) => holdRank(state, b.unitId) - holdRank(state, a.unitId) || (impunityOf(state, reg, b.unitId)?.value ?? 0) - (impunityOf(state, reg, a.unitId)?.value ?? 0) || order(a) - order(b))[0];
-}
-function resolveConflict(draft, ctx2, p) {
-  const reg = ctx2.registries;
-  let day;
-  let slot2;
-  let keepId;
-  if ("bookingId" in p) {
-    const b = bookingsOf(draft).find((x) => x.id === p.bookingId);
-    if (!b || b.status !== "booked" || b.conflict !== true) throw new Error("That booking is not in a conflict.");
-    ({ day, slot: slot2 } = b);
-    keepId = b.id;
-  } else {
-    ({ day, slot: slot2 } = p);
-  }
-  const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
-  if (rivals.length < 2) throw new Error("Nothing is in conflict there.");
-  const winner = keepId !== void 0 ? rivals.find((b) => b.id === keepId) : settleWinner(draft, reg, rivals);
-  const events = [];
-  for (const loser of rivals.filter((b) => b !== winner)) {
-    loser.status = "cancelled";
-    delete loser.conflict;
-    if (keepId !== void 0) {
-      events.push(...hitHer(draft, reg, loser.unitId, "rejected_advance", "moderate", "her booking lost the slot"));
-    } else {
-      const unit2 = draft.squad.find((u) => u.id === loser.unitId);
-      if (unit2) {
-        const next = Math.min(100, unit2.stress + TUNING.personal.booking.settleStress);
-        if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
-        unit2.stress = next;
-      }
-    }
-    events.push({ type: "booking_cancelled", bookingId: loser.id, unitId: loser.unitId, lost: true });
-  }
-  delete winner.conflict;
-  events.push({ type: "booking_resolved", day, slot: slot2, kept: winner.id, unitId: winner.unitId, settled: keepId === void 0 });
-  return events;
-}
-function cancelBooking(draft, ctx2, bookingId) {
-  const b = bookingsOf(draft).find((x) => x.id === bookingId);
-  if (!b || b.status !== "booked") throw new Error("That booking cannot be cancelled.");
-  const reg = ctx2.registries;
-  b.status = "cancelled";
-  delete b.conflict;
-  syncConflicts(draft, b.day, b.slot);
-  const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
-  if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
-  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was cancelled" }));
-  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was cancelled"));
-  else events.push(...evaluateAutomatic(draft, reg, b.unitId));
-  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "cancelled her booking on the day of obedience"));
-  return events;
-}
-function markPlayed(draft, reg, booking) {
-  booking.status = "played";
-  delete booking.conflict;
-  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
-  return relieveWant(draft, booking.unitId, relief, "booking");
-}
-function playBooking(draft, ctx2, id) {
-  const reg = ctx2.registries;
-  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
-  if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
-  const events = [];
-  if (target.conflict) {
-    const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot);
-    const winner = settleWinner(draft, reg, rivals);
-    events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
-    target = winner;
-  }
-  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
-  const kind = kindOf2(reg, target.kindId);
-  events.push(...markPlayed(draft, reg, target));
-  const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
-  events.push({ type: "booking_played", bookingId: target.id, unitId: target.unitId, scene });
-  return { events, scene };
-}
-var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
-function metAtScene(draft, reg, participants) {
-  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
-  if (!due) return [];
-  const events = markPlayed(draft, reg, due);
-  syncConflicts(draft, due.day, due.slot);
-  return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
 }
 
 // src/engine/bonds/smother.ts
@@ -19535,7 +19550,7 @@ function buildDigest(state, reg) {
     day: state.day,
     phase: spine.length > 0 && !isOpenEnded(state, reg) ? "spine" : "open",
     threads: state.world.threads.filter((t, _i, all) => t.status === "open" || t.status === "dormant" && all.filter((x) => x.status === "dormant").slice(-6).includes(t)).map((t) => ({ id: t.id, title: t.title, status: t.status, flags: t.flags.slice(-DIGEST_THREAD_FLAGS).map((f) => f.id) })),
-    clocks: state.world.clocks.map((c) => ({
+    clocks: state.world.clocks.filter((c) => c.engine !== true).map((c) => ({
       id: c.id,
       label: c.label,
       filled: c.filled,
@@ -19760,7 +19775,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
     const part = `clockAdvances[${i}]`;
     if (!isObj5(c) || typeof c.clockId !== "string") return reject(part, "not a clock advance");
     const clock = state.world.clocks.find((x) => x.id === c.clockId);
-    if (!clock) return reject(part, `unknown clock "${c.clockId}"`);
+    if (!clock || clock.engine === true) return reject(part, `unknown clock "${c.clockId}"`);
     const repeat = reg.clocks.get(clock.id)?.repeat === true;
     if (clock.filled >= clock.segments && !repeat) return reject(part, "the clock is full");
     if (c.by !== 1 && c.by !== 2) return reject(part, "by must be exactly 1 or 2");
@@ -20748,7 +20763,7 @@ function toWorldEffect(raw, ctx2) {
     }
     case "clock": {
       const clock = clockById(ctx2.state, target);
-      if (!clock) return shape(`Unknown clock "${target}".`);
+      if (!clock || clock.engine === true) return shape(`Unknown clock "${target}".`);
       if (clock.filled >= clock.segments) return shape(`Clock "${target}" is full.`);
       return { type: "clock", clockId: target, by: direction * m.clock[i] };
     }
@@ -21000,7 +21015,7 @@ function buildDilemmaDigest(state, reg, d) {
     units: unitsOf(state, d.units).map((u) => ({ name: u.displayName, values: { ...valuesOf(u) }, triggers: [...u.triggers] })),
     resources: { credits: level("credits"), supplies: level("supplies"), plyx: level("plyx") },
     factions: [...reg.corporations.values()].map((c) => ({ id: String(c.id), name: String(c.name), standing: standingBand(state.world.factions[String(c.id)] ?? 0) })),
-    clocks: state.world.clocks.filter((c) => c.filled < c.segments).map((c) => ({ id: c.id, label: c.label })),
+    clocks: state.world.clocks.filter((c) => c.filled < c.segments && c.engine !== true).map((c) => ({ id: c.id, label: c.label })),
     flags: state.world.flags.slice(-TUNING.director.digestFlags),
     allowedFlags: (template?.allowedFlags ?? []).map((id) => ({ id, description: String(reg.flags.get(id)?.description ?? id) }))
   };
@@ -21858,8 +21873,8 @@ function seedSpecialTraits(draft, ctx2) {
 }
 
 // src/engine/warden/select.ts
-function corporateWardenPick(state, reg, exclude = []) {
-  const pool = state.squad.map((unit2, order) => ({ unit: unit2, order })).filter(({ unit: unit2 }) => unit2.kind === "named" && unit2.status === "active" && !exclude.includes(unit2.id));
+function corporateWardenPick(state, reg, exclude = [], opts = {}) {
+  const pool = state.squad.map((unit2, order) => ({ unit: unit2, order })).filter(({ unit: unit2 }) => unit2.kind === "named" && (opts.anyLiving === true ? isLiving(unit2) : unit2.status === "active") && !exclude.includes(unit2.id));
   if (pool.length === 0) return null;
   const impunity = (id) => impunityOf(state, reg, id)?.value ?? 0;
   pool.sort((a, b) => valuesOf(b.unit).corporate - valuesOf(a.unit).corporate || valuesOf(a.unit).autonomy - valuesOf(b.unit).autonomy || impunity(a.unit.id) - impunity(b.unit.id) || a.order - b.order);
@@ -21871,6 +21886,8 @@ function seedWarden(draft, ctx2, p) {
   if (!ls) throw new Error("The campaign is not in the LEASHSWAP mode.");
   if (!unit2) throw new Error(`Unknown unit "${p.unitId}".`);
   ls.status = "held";
+  for (const rel of Object.values(draft.relations)) rel.flags = rel.flags.filter((f) => f !== "warden_knows_ally");
+  if (draft.relations[unit2.id]) draft.relations[unit2.id].flags = draft.relations[unit2.id].flags.filter((f) => f !== "warden_ally");
   ls.warden = {
     unitId: unit2.id,
     assignedBy: p.assignedBy,
@@ -24064,7 +24081,7 @@ function startRemoval(draft, ctx2, route) {
   delete ls.intrigue.reportQueued;
   if (draft.dilemmas?.open?.context === "warden_report") delete draft.dilemmas.open;
   const segments2 = TUNING.warden.removal.clock[route];
-  addClock(draft, { id: INVESTIGATION_CLOCK, label: "INVESTIGATION", segments: segments2, filled: 0, visibleToPlayer: true });
+  addClock(draft, { id: INVESTIGATION_CLOCK, label: "INVESTIGATION", segments: segments2, filled: 0, visibleToPlayer: false, engine: true });
   if (route === "report" && !draft.world.flags.includes("warden_reassigned")) draft.world.flags.push("warden_reassigned");
   const events = [
     { type: "warden_removed", unitId: former, route },
@@ -24104,7 +24121,7 @@ function presentReport(draft, ctx2) {
     day: draft.day,
     status: "presented",
     attempts: 0,
-    units: [w.unitId],
+    units: [],
     beatId: currentBeat(draft, ctx2.registries)?.id ?? "open",
     source: "fallback",
     title: fill4(fixed.title, vars),
@@ -24193,6 +24210,7 @@ function rollVerdict(draft, ctx2) {
   draft.world.clocks = draft.world.clocks.filter((c) => c.id !== INVESTIGATION_CLOCK);
   ls.intrigue.suspicion = 0;
   ls.intrigue.hack.step = 0;
+  ls.intrigue.discovered = 0;
   const events = [{ type: "verdict", outcome: cleared ? "cleared" : "convicted" }];
   if (cleared) {
     ls.status = "free";
@@ -24200,7 +24218,7 @@ function rollVerdict(draft, ctx2) {
     return events;
   }
   if (!draft.commander.flags.includes("commander_convicted")) draft.commander.flags.push("commander_convicted");
-  const next = corporateWardenPick(draft, ctx2.registries, former !== void 0 ? [former] : []);
+  const next = corporateWardenPick(draft, ctx2.registries, former !== void 0 ? [former] : [], { anyLiving: true });
   if (next === null) {
     addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the leash.`, audience: "*" });
     return [...events, ...commanderDies(draft, ctx2, "executed")];
@@ -31722,7 +31740,7 @@ function system3(raw) {
     ] : [],
     ...hasOverride ? ['"compromise_reached" with the warden: the commander and the warden agree a real alternative to the overridden order; report it only when the exchange shows both accepting it; set "overrideId" to its id from OVERRIDE and put the agreed wording in "text" (at most 160 characters). Her giving in or the commander giving way is not a compromise.'] : [],
     ...hasExpectations ? ['"expectation_kept" / "expectation_broken": the commander does what an expectation of the warden asks, or what it forbids, in this exchange; the warden is the target; set "expectationId" to its id from EXPECTATIONS. When the commander turns romantic with a unit other than the warden and an expectation says no one else, that is expectation_broken. Skip an expectation the exchange does not touch.'] : [],
-    ...hasConspire ? ['"conspired": the commander quietly asks a unit listed in CONSPIRE to stand with them against the one who holds the controller (to look away, to warn, to help); that unit is the target. Report it only when the exchange shows the ask, not a complaint.'] : [],
+    ...hasConspire ? ['"conspired": the commander quietly asks a unit listed in CONSPIRE to stand with the commander against the one who holds the controller (to look away, to warn, to help); that unit is the target. Report it only when the exchange shows the ask, not a complaint.'] : [],
     ...hasWarned ? ['"accused": the commander openly accuses a unit listed in WARNED of planning disloyalty, desertion, mutiny or defiance; the unit is the target. Report it only when the exchange shows the accusation.'] : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");

@@ -86,7 +86,9 @@ describe('the intrigue and investigation readings', () => {
     const { state } = hiddenFixture(reg);
     const text = analyze('glossary:implant_hack', envOf(state)).join(' ');
     expect(text).toContain('Step 0 of 3.');
-    expect(text).toMatch(/The hack needs/);
+    expect(text).toMatch(/decision is waiting/); // the fixture has an open decision: the engine's first reason
+    delete state.dilemmas!.open;
+    expect(analyze('glossary:implant_hack', envOf(state)).join(' ')).toMatch(/The hack needs/);
   });
 
   it('the investigation reads as a band and an unseen threat; segments only with raw values on', async () => {

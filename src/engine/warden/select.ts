@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { impunityOf } from '../discipline/impunity';
+import { isLiving } from '../economy';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addFact } from '../memory';
 import type { CampaignState } from '../state/types';
@@ -11,12 +12,13 @@ import { valuesOf } from '../development/profile';
 /**
  * Corporate assignment (P13 §1): among the named units whose status is `active`, the one with the highest `values.corporate`, then
  * the lowest `autonomy`, then the lowest Impunity (0 when it cannot be read), then the earliest in the squad. A total order, so
- * no draw. `exclude` keeps a unit out (the removed warden, a deserter). Null when nobody is eligible.
+ * no draw. `exclude` keeps a unit out (the removed warden, a deserter). `anyLiving` (a conviction's successor) also takes a unit who is injured or
+ * in reserve: a full medbay is no reason to execute the commander. Null when nobody is eligible.
  */
-export function corporateWardenPick(state: CampaignState, reg: Registries, exclude: readonly string[] = []): string | null {
+export function corporateWardenPick(state: CampaignState, reg: Registries, exclude: readonly string[] = [], opts: { anyLiving?: true } = {}): string | null {
   const pool = state.squad
     .map((unit, order) => ({ unit, order }))
-    .filter(({ unit }) => unit.kind === 'named' && unit.status === 'active' && !exclude.includes(unit.id));
+    .filter(({ unit }) => unit.kind === 'named' && (opts.anyLiving === true ? isLiving(unit) : unit.status === 'active') && !exclude.includes(unit.id));
   if (pool.length === 0) return null;
   const impunity = (id: string): number => impunityOf(state, reg, id)?.value ?? 0;
   pool.sort((a, b) =>
@@ -38,6 +40,9 @@ export function seedWarden(draft: CampaignState, ctx: EngineCtx, p: { unitId: st
   if (!ls) throw new Error('The campaign is not in the LEASHSWAP mode.');
   if (!unit) throw new Error(`Unknown unit "${p.unitId}".`);
   ls.status = 'held';
+  // she holds the leash now: she is nobody's ally against herself, and a new warden has not been told who stood against the last
+  for (const rel of Object.values(draft.relations)) rel.flags = rel.flags.filter((f) => f !== 'warden_knows_ally');
+  if (draft.relations[unit.id]) draft.relations[unit.id].flags = draft.relations[unit.id].flags.filter((f) => f !== 'warden_ally');
   ls.warden = {
     unitId: unit.id, assignedBy: p.assignedBy, sinceDay: draft.day,
     expectations: [], agenda: 'fallback',

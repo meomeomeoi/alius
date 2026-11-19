@@ -68,6 +68,8 @@ export interface Clock {
   filled: number;
   regionId?: string;
   visibleToPlayer: boolean;
+  /** P13: the engine alone moves it (the investigation): the director's digest, a model-written dilemma and `clockAdvances` never touch it. */
+  engine?: true;
   /** Day of the last fill (set when the clock fills, cleared when it repeats). */
   filledDay?: number;
 }

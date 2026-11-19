@@ -6,6 +6,7 @@ import { fnv1a } from '../hub';
 import { addFact } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
+import { bookingGuard } from '../personal/bookings';
 import { socialRank } from '../social';
 import type { CampaignState, Fact } from '../state/types';
 import { TUNING } from '../tuning';
@@ -27,7 +28,8 @@ const hasFlag = (state: CampaignState, id: string, flag: string): boolean => sta
 
 /** The units who have joined the commander against her (flag `warden_ally`), named and still in service. */
 export function allies(state: CampaignState): string[] {
-  return state.squad.filter((u) => u.kind === 'named' && isLiving(u) && hasFlag(state, u.id, 'warden_ally')).map((u) => u.id);
+  const holder = wardenOf(state)?.unitId;
+  return state.squad.filter((u) => u.kind === 'named' && isLiving(u) && u.id !== holder && hasFlag(state, u.id, 'warden_ally')).map((u) => u.id);
 }
 
 /**
@@ -130,11 +132,29 @@ export function intrigueBusy(state: CampaignState): string | null {
   return null;
 }
 
+/**
+ * Why a slot action (a dig, a hack step) cannot start now, or null: the busy reasons above, plus the night (the night slot belongs to its
+ * knock or visit), an open conversation, a decision that waits and a booking that is due (the same refusals an activity meets).
+ */
+export function slotActionBusy(state: CampaignState): string | null {
+  const busy = intrigueBusy(state);
+  if (busy) return busy;
+  if (state.slot === 'night') return 'Not at night.';
+  if (state.calendar.pendingScene) return 'A conversation is still open; end it first.';
+  if (state.dilemmas?.open?.status === 'presented') return 'A decision is waiting: answer it first.';
+  return bookingGuard(state, { type: 'intrigue/act' })?.message ?? null;
+}
+
+/** Spends the action's slot after its work is done (a day end rebuilds the state, so nothing may be held across it), unless a punishment already spent it. */
+function spendSlot(draft: CampaignState, ctx: EngineCtx, day: number, slot: CampaignState['slot']): EngineEvent[] {
+  return draft.day === day && draft.slot === slot ? consumeSlots(draft, 1, ctx) : [];
+}
+
 const isAlly = (state: CampaignState, id: string | undefined): id is string => id !== undefined && allies(state).includes(id);
 
 /** What digging needs: an ally to help or Cunning 3. Null when it can be done. */
 export function digProblem(state: CampaignState, _reg: Registries, allyId?: string): string | null {
-  const busy = intrigueBusy(state);
+  const busy = slotActionBusy(state);
   if (busy) return busy;
   if (allyId !== undefined && !isAlly(state, allyId)) return 'That unit does not stand with the commander.';
   if (allyId === undefined && socialRank(state, 'cunning') < TUNING.warden.kompromat.digCunning) return `Digging needs an ally or Cunning ${TUNING.warden.kompromat.digCunning}.`;
@@ -159,8 +179,9 @@ export function dig(draft: CampaignState, ctx: EngineCtx, allyId?: string): Engi
   if (problem) throw new Error(problem);
   const ls = leashswapOf(draft)!;
   const w = wardenOf(draft)!;
+  const { day, slot } = draft;
   ls.intrigue.seq += 1;
-  const events: EngineEvent[] = [{ type: 'intrigue_action', action: 'dig' }, ...consumeSlots(draft, 1, ctx)];
+  const events: EngineEvent[] = [{ type: 'intrigue_action', action: 'dig' }];
   const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes('*'));
   const newest = hidden.reduce<Fact | undefined>((best, f) => (best === undefined || f.day >= best.day ? f : best), undefined);
   if (newest) {
@@ -180,7 +201,8 @@ export function dig(draft: CampaignState, ctx: EngineCtx, allyId?: string): Engi
       events.push({ type: 'kompromat_found', factId: fact.id });
     }
   }
-  return [...events, ...addSuspicion(draft, ctx, TUNING.warden.intrigue.digNoise, 'dig')];
+  events.push(...addSuspicion(draft, ctx, TUNING.warden.intrigue.digNoise, 'dig'));
+  return [...events, ...spendSlot(draft, ctx, day, slot)]; // last: an evening dig ends the day after its work, on its own day
 }
 
 /** Does this unit have the know-how to work on the implant (a role or a defect with the `tech` field)? */
@@ -192,7 +214,7 @@ function isTech(state: CampaignState, reg: Registries, unitId: string): boolean 
 
 /** Every gate the hack has not met (workshop, medbay, plyx, a tech ally), named in one line; null when it can be worked on. */
 export function hackProblem(state: CampaignState, reg: Registries, allyId?: string): string | null {
-  const busy = intrigueBusy(state);
+  const busy = slotActionBusy(state);
   if (busy) return busy;
   const H = TUNING.warden.hack;
   const missing: string[] = [];
@@ -220,16 +242,17 @@ export function hackStep(draft: CampaignState, ctx: EngineCtx, allyId: string): 
   if (problem) throw new Error(problem);
   const ls = leashswapOf(draft)!;
   const H = TUNING.warden.hack;
+  const { day, slot } = draft;
   draft.resources.plyx -= H.plyx;
-  const events: EngineEvent[] = [...consumeSlots(draft, 1, ctx)];
+  const events: EngineEvent[] = [];
   ls.intrigue.hack.step += 1;
   const pain = painBurstId(ctx.registries);
   const found = addSuspicion(draft, ctx, H.noise, 'hack', pain !== undefined ? { punishmentId: pain } : {}); // a discovery resets the progress itself
-  if (found.some((e) => e.type === 'intrigue_discovered')) return [{ type: 'hack_step', step: 0, failed: true }, ...events, ...found];
+  if (found.some((e) => e.type === 'intrigue_discovered')) return [{ type: 'hack_step', step: 0, failed: true }, ...found, ...spendSlot(draft, ctx, day, slot)];
   events.unshift({ type: 'hack_step', step: ls.intrigue.hack.step, failed: false });
   if (ls.intrigue.hack.step >= H.steps) {
     if (!draft.commander.flags.includes('commander_implant_dark')) draft.commander.flags.push('commander_implant_dark');
     events.push({ type: 'controller_dark' }, ...removalStarter(draft, ctx, 'hack'));
   }
-  return [...events, ...found];
+  return [...events, ...found, ...spendSlot(draft, ctx, day, slot)]; // last: an evening step ends the day after its work, so its progress is kept
 }

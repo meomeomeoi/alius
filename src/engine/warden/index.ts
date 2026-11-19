@@ -12,7 +12,7 @@ export { applyCommanderPunishment, applyRemotePunishment, commanderRestriction, 
 export { wardenDayStep } from './dayStep';
 export { addDefiance, checkEscalation } from './escalation';
 export { INVESTIGATION_CLOCK, investigationDayStep, openQueuedReport, openReportCase, remoteDayStep, remoteExpectations, reportChance, reportProblem, rollVerdict, startRemoval, verdictChance, wardenGone, wardenReportChoice } from './removal';
-export { addSuspicion, allies, allyChance, conspireInput, dig, digProblem, hackProblem, hackStep, intrigueBusy, intrigueDiscovered, kompromatOf, setRemovalStarter, tryAlly } from './intrigue';
+export { addSuspicion, allies, allyChance, conspireInput, dig, digProblem, hackProblem, hackStep, intrigueBusy, intrigueDiscovered, kompromatOf, setRemovalStarter, slotActionBusy, tryAlly } from './intrigue';
 export { cosignChance, leashCommander, logCosignDenied, refreshWardenLeash, rollCosign } from './leash';
 export { conflictOf, herAlternative, type Alternative, type Conflict, type Judged } from './conflict';
 export { afterDefy, answerOverride, argueAvailable, argueEnded, argueStarted, resolveCompromise, argueChance, overrideChance, judgedOf, overrideOpen, plainPayload, rollOverride, runOrder, wardenSource, type OverrideSource } from './override';

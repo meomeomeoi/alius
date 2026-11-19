@@ -1405,7 +1405,7 @@
   {
     "id": "conspired",
     "cause": "The commander asked for help against the warden",
-    "journal": "the commander asked her to stand with them",
+    "journal": "the commander asked her to stand against the warden",
     "rows": {
       "minor": {
         "trust": 1

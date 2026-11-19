@@ -61,7 +61,7 @@ export function buildDigest(state: CampaignState, reg: Registries): Digest {
     threads: state.world.threads
       .filter((t, _i, all) => t.status === 'open' || (t.status === 'dormant' && all.filter((x) => x.status === 'dormant').slice(-6).includes(t)))
       .map((t) => ({ id: t.id, title: t.title, status: t.status, flags: t.flags.slice(-DIGEST_THREAD_FLAGS).map((f) => f.id) })),
-    clocks: state.world.clocks.map((c) => ({
+    clocks: state.world.clocks.filter((c) => c.engine !== true).map((c) => ({
       id: c.id, label: c.label, filled: c.filled, segments: c.segments, ...(c.regionId !== undefined ? { regionId: c.regionId } : {}),
     })),
     factions: { ...state.world.factions },
@@ -330,7 +330,7 @@ export function validateDirectorOutput(
     const part = `clockAdvances[${i}]`;
     if (!isObj(c) || typeof c.clockId !== 'string') return reject(part, 'not a clock advance');
     const clock = state.world.clocks.find((x) => x.id === c.clockId);
-    if (!clock) return reject(part, `unknown clock "${c.clockId}"`);
+    if (!clock || clock.engine === true) return reject(part, `unknown clock "${c.clockId}"`); // an engine clock is not the director's
     const repeat = reg.clocks.get(clock.id)?.repeat === true;
     if (clock.filled >= clock.segments && !repeat) return reject(part, 'the clock is full');
     if (c.by !== 1 && c.by !== 2) return reject(part, 'by must be exactly 1 or 2');

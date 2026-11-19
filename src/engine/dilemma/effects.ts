@@ -60,7 +60,7 @@ export function toWorldEffect(raw: unknown, ctx: MapCtx): MappedEffect | Rejecti
     }
     case 'clock': {
       const clock = clockById(ctx.state, target);
-      if (!clock) return shape(`Unknown clock "${target}".`);
+      if (!clock || clock.engine === true) return shape(`Unknown clock "${target}".`); // an engine clock is moved by the engine alone
       if (clock.filled >= clock.segments) return shape(`Clock "${target}" is full.`);
       return { type: 'clock', clockId: target, by: direction * m.clock[i] };
     }
