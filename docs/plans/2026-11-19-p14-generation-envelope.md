@@ -731,7 +731,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `CLAUDE.md`: a P14 rule line in the style of the others.
   - `docs/CONTENT.md`: `llmRefusals` (fields, `scope`, how to add a language).
   - `docs/ROADMAP-next.md`: P14 marked done.
-- [ ] **Step 1: Write** the docs. The manual test covers, in SillyTavern:
+- [x] **Step 1: Write** the docs. The manual test covers, in SillyTavern:
   - a refusing mechanic profile (a scene reading, a dilemma, a recap);
   - a tiny budget (truncated);
   - a 10 s timeout against a slow model;
@@ -742,7 +742,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - REROLL of a DM, a dilemma, a recap and the last scene;
   - the disabled REROLL reason;
   - the SYS list, the badge and the hub line.
-- [ ] **Step 2: Run** `npm test` → PASS; record the final file and test counts in the spec.
-- [ ] **Step 3: Commit** `docs(P14): implemented as, overview, hand-offs, manual test`
+- [x] **Step 2: Run** `npm test` → PASS; record the final file and test counts in the spec.
+- [x] **Step 3: Commit** `docs(P14): implemented as, overview, hand-offs, manual test`
 
 **Chunk (c) ends here.**

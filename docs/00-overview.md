@@ -149,7 +149,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `epilogue` | main | The campaign's public chronicle lines, the world dossier and the cause → the epilogue of a closed campaign, at most 2400 characters (P13; without a model the lines are joined under a fixed heading) | 700 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 
-Every budget is a user setting. Every mechanic call: request JSON → validate → on truncation/invalid JSON, one repair attempt (lenient parser) → one retry with budget ×1.5 → fail soft (no state change, toast in debug mode). Where the provider allows it, reasoning/thinking is disabled or capped for mechanic calls.
+Every budget is a user setting. Every model call runs through one **envelope** (P14, `src/llm/envelope.ts`: the only module that calls `callLlm`; a site is declared in `src/llm/sites.ts` and bound by the controller that owns it): request JSON → validate → a failure is classified (`refused`, `truncated`, `timeout`, `network`, `invalid_output`, `empty`, `no_profile`) → up to `autoRetry` automatic retries (default 1; a truncated or invalid answer retries with the budget ×1.5, a connection failure with the same budget, a refusal never) → fail soft (the site's fallback, no other state change) → a small record (`CampaignState.generations`, at most 20, no prompt and no model text) and a chip where it happened, with RETRY (budget ×1.5 / ×2 / ×3, main or mechanic profile), DROP and, where a site allows it, REROLL of a success. Where the provider allows it, reasoning/thinking is disabled or capped for mechanic calls.
 
 ### 5.3 Context injection (main model)
 
@@ -165,7 +165,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b, P10b, P12, P13)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b, P10b, P12, P13, P14)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -306,6 +306,10 @@ Later packages build on these; change them only together with the owning spec.
 | `night/door_say { text }`, `night/door_reply { text }`, `NightEntry.door`, `Comms.throughDoor(text)`, `renderDoor`, `DoorCtx`, setting `doorTimer`, `SoundId 'knock'`, `NIGHT_GAIN`, `Sound.setNight`, root `data-night` | P10b | The night door: every night entry outside `CONFRONTATION_KINDS`; one exchange, one model reply, a real-time timer (counts as staying silent), a blurred silhouette; the night theme, quieter sound. |
 | registries `handFonts` (6), `handNotes` (5), `stickerArt` (8), `handOf`, `squad/set_hand`, `Unit.hand`, `CampaignState.notes`, `notesFor`, `unreadNotes`, `writeDoorNote`, `notesDayStep`, `forgetNotes`, action `notes/read`, `renderNote`, `renderRuleNote`, `--alius-font-hand` | P10b | Handwriting and notes: a stable default hand per soldier, notes in the quarters / gear / under the door (3 days, at most 12), rule notes signed and torn. |
 | `TabId 'home'`, `KEY_TABS`, `renderHomeTab`, `HubCtx.onReadNote`, `ShellDeps.marks`, `renderMarks`, `stickerFor`, `deviceSkins[].stickerSpots`, `app.confirmPeel`, `TonightItem 'note'` | P10b | The PDA HOME view (first tab and default; wallpaper, access lines, notes), stickers on the casing (a layer under the screen, never clickable) and the confirm behind every PEEL. |
+| `createEnvelope(host)` / `app.generations: Envelope` (`generate(siteId, key, opts?)`, `retry(recordId, opts?)`, `reroll`, `rerollState`, `drop`, `useFallback`, `bind(siteId, handlers)`, `takeSnapshot`, `clearSnapshots`), `GenerationOutcome`, `SiteHandlers` (`build`, `parse?`, `apply`, `fallback?`, `committed?`, `canUndo?`, `undo?`), `MOVED_REASON` | P14 | The only way a model is called. `callLlm` and `attemptLlm` are imported by `src/llm/envelope.ts` alone (an architecture test); `callLlm` returns `{ ok: false, reason: FailReason, detail, attempts, at, budget }` (`FailReason`: `no_profile`, `network`, `timeout`, `truncated`, `refused`, `invalid_output`, `empty`; `call_failed` is gone). |
+| `registerGenerationSite(decl)`, `generationSite`, `generationSites`, `SiteDecl` (`id`, `callType`, `surface`, `reroll`, `record`, `glossary`, `label`, `held?`), `fullOpenRecords(state)` (`src/llm/sites.ts`), `describeFailure(view)` (`src/llm/describe.ts`) | P14 | Sites are declarations (data only); a new call type or flavor kind registers its site in the same change (`tests/llm/siteRegistry.test.ts`). Record mode `full` (chip, SYS, badge, hub line), `quiet` (SYS only), `none`. |
+| `GenerationRecord`, `CampaignState.generations?: { seq, records }`, `openRecords`, `recordFor`, `TUNING.generation`, actions `generation/failed`, `generation/close`, `generation/expire`, day-end step `generation_sweep`, events `generation_failed` / `generation_closed` / `generation_expired`, actions `scene/late_summary`, `dilemma/reword`, `demand/reword`, `bonds/reword_rule`, `campaign/epilogue { replace }` | P14 | Pure bookkeeping, no rng; allowed in combat, in a run and on a closed campaign. |
+| `drawGenerationChip`, `drawReroll`, `openRetryMenu`, `chipsFor`, `GenerationUi`, `drawGenerationChips`, `drawSiteReroll`, `drawRecordChip`, `runPending` (`src/ui/generation/`), `renderGenerationsSection`, `generationBadge`, `registerGenerationProviders`, `StAdapter.generateMain / generateWithProfile → GenAnswer { text, finishReason? }` with `signal`, `compileRefusals`, registry `llmRefusals`, settings `llmTimeoutMs` / `autoRetry` | P14 | The UI side (one optional `generation` in a screen's context), SYS › GENERATIONS and the adapter's stop reason. |
 
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -339,6 +343,7 @@ Campaign {
   dilemmas?: { seq, lastDay?, lastDefiningDay?, definingBeats?[], recent?[] /* 3 */, open?: DilemmaState /* { id, templateId, scale, context, status: requested|presented, attempts, units, threadId?, beatId, title?, setup?, options?, source? } */ }   // P6
   expedition?: ExpeditionState   // P5: open run (map, party, formation, carried supplies, pending node, unbanked loot, log, queued relation hints)
   lastExpedition?: ExpeditionReport   // P5: the after-action report (outcome, log, loot, rewards, injuries, deaths, recap?)
+  generations?: { seq, records: GenerationRecord[] }   // P14: failed model calls that wait for a retry (≤ 20; { id g<n>, siteId, key, reason, detail ≤ 160, attempts, day, slot, at, budgetMult, fallbackApplied?, status, expiredWhy?, quiet? }); no prompt, no model text; absent in old saves = none
   combat?: CombatState        // P4: only combat and rng change while it runs
   lastCombat?: CombatResult   // P4: for P5's recap and debrief
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
@@ -438,6 +443,8 @@ P5: **story director** on/off (`directorEnabled`, default on; off = the engine's
 
 P3b: **memory** is per campaign (`memory.config`, absent = the `normal` preset): presets `short` / `normal` / `long` or `custom` (numbers editable with the edit lock off), **rumor mode** (`plain` / `model`) and **hide old scenes** (0 = off) — SYS › MEMORY, with the fill indicator; **context cap** (`contextTokenCap`) defaults to 1600 on new installs (a stored value stays); budgets `memory_fold` 500 and `rumor_retell` 200.
 
+P14: **model timeout** (`llmTimeoutMs`, 10–600 s, default 120; SYS › Generation; a call that has not answered by then counts as `timeout`) and **automatic retries** (`autoRetry`, 0–2, default 1 = the old behaviour; a refusal is never retried) — the failed-generation list is SYS › GENERATIONS.
+
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 
 ## 9. Packages
@@ -465,7 +472,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 19 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | implemented |
 | 20 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | implemented |
 | 21 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | implemented |
-| 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | spec |
+| 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | implemented |
 | 23 | P11b | Head start: begin as if the commander had been at the base for a week / two weeks / a month (acquaintance only: `metDay` shifted, first impressions developed, crime knowledge, a model-written recap of the first weeks as facts and a chronicle entry; world time does not move) | P1, P3, P3b, P7, P8, P11, P14 | spec |
 | 24 | P14b | Character development: development layer over card and profile, appraisal of events from her viewpoint (with misreading), rule accumulators + model review bounded by card anchors, quiet development moments, habits and skills, the "since joining" prompt block | P1, P3, P3b, P7, P8, P9d, P14 | spec |
 
