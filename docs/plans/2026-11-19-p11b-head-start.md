@@ -252,7 +252,7 @@ After every unit:
   - Resolver `head_start_moment`: ids `{ unit: [unitId] }`; vars `{ text, kind, importance: String(n) }`; shape `{ ids: ['unit'], vars: ['text', 'kind', 'importance'] }`. It returns null when the unit is unknown or the text is empty.
   - Event shape (written in Task 6): `{ type: 'head_start_moment', unitId, kind, text, importance }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the core pack loads headStartMoments`: 10 entries, no load errors.
   - `the draft kinds are the spec's`:
     - ids `shared_meal`, `first_argument`, `sparring_bout`, `night_talk`, `commander_mistake`, `covered_for_her`, `cold_shoulder`, `learned_the_crime`, `small_favour`, `rule_reminder`;
@@ -267,8 +267,8 @@ After every unit:
     - `memory.nextId` is unchanged.
   - `head_start_applied has no rule`: `rememberEvents` writes nothing.
   - The pronoun test (`tests/content/pronouns.test.ts`) covers the new file through the content glob. Confirm it reads `headStartMoments.json`; if it lists files, add it.
-- [ ] **Step 2: Run** `npx vitest run tests/content/headStartSchemas.test.ts tests/content/memoryRules.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/content/headStartSchemas.test.ts tests/content/memoryRules.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - `headStartMoments.json`: texts are drafts, every `description` and `fallback` starts `AUTHOR TO WRITE:`, and none gives the commander a pronoun. Each `eventDelta` is `severity: "minor"`; the type and actor are:
 
     | id | sign | type | actor |
@@ -290,8 +290,8 @@ After every unit:
     - `head_start`: "The campaign begins as if the commander had already been at the base for a while: acquaintance only, no missions or time skipped."
     - `new_arrival`: "This soldier arrives on day 1 and meets the commander for the first time, even in a head start."
     - `head_start_recap`: "The remembered moments of the first weeks and the squad's paragraph; written by the mechanic model, or from templates."
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): head start moments registry, glossary and the remembered moment`
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): head start moments registry, glossary and the remembered moment`
 
 ---
 
