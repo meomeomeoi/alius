@@ -684,7 +684,7 @@ After every unit:
   - `OPERATIONS_LABEL = 'DAY 1 OF OPERATIONS'` (`AUTHOR TO WRITE`);
   - provider `glossary:head_start`: "Known for N days; new arrivals: …", or "No head start".
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - Card:
     - `the card shows the paragraph and each soldier's moments`: the chronicle text, names as headings, texts from the facts tagged `head_start`;
     - `while the recap is pending the card says so` ("The first weeks are being written." when `recap` is absent);
@@ -700,12 +700,12 @@ After every unit:
     - `the reading names the days and the new arrivals`;
     - it passes `tests/analysis/hidden.test.ts` (runs over every registered provider).
   - `tests/assets.test.ts` passes (no `url(` with a scheme in the new CSS).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/headStart tests/ui/statusHeadStart.test.ts tests/analysis/headStartProvider.test.ts tests/ui/analyzeCoverage.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/ui/headStart tests/ui/statusHeadStart.test.ts tests/analysis/headStartProvider.test.ts tests/ui/analyzeCoverage.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - The card uses the paper voice (`VOICE_OF`: register `headStart: 'paper'`, as P11's intake forms) and the existing card classes.
   - The moment texts come from the facts, never from a cache: the state is the truth.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): THE FIRST WEEKS card, day-1 chip and head start reading`
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): THE FIRST WEEKS card, day-1 chip and head start reading`
 
 ---
 

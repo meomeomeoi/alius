@@ -27699,7 +27699,9 @@ var VOICE_OF = {
   // P13: the notice that names the warden is the corporation's
   warden_reveal: "corporate",
   // P13: the warden's moves (warnings, punishments, the Leash, her panel) are the corporation's too
-  warden_notice: "corporate"
+  warden_notice: "corporate",
+  // P11b: the first weeks are a file of the squad's recollections, like the intake forms
+  head_start: "paper"
 };
 
 // src/ui/power/votePanel.ts
@@ -28571,6 +28573,228 @@ function renderEndScreen(host, state, deps) {
   host.append(h("div", { class: "alius-end-screen" }, card2));
 }
 
+// src/analysis/knowledge.ts
+var rules = [];
+function registerKnowledgeRule(rule) {
+  rules.push(rule);
+}
+function holds3(check) {
+  try {
+    return check() !== false;
+  } catch {
+    return true;
+  }
+}
+function buildKnowledge(state, settings) {
+  const showRaw = settings.showRawValues === true;
+  const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
+  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds3(() => r.fact(f, state)));
+  return {
+    showRaw,
+    raw: (n) => showRaw ? String(n) : null,
+    clockVisible: (id) => visibleClocks.has(id),
+    factVisible,
+    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds3(() => r.flag(id, state))),
+    facts: () => (state?.memory?.facts ?? []).filter(factVisible)
+  };
+}
+
+// src/settings.ts
+var DEFAULT_SETTINGS = {
+  mechanicProfileId: "",
+  mechanicThink: "min",
+  mechanicFallbackToMain: true,
+  requestFloor: 2e3,
+  budgets: {
+    profile_import: 1500,
+    intent_extract: 600,
+    scene_summary: 800,
+    dilemma_generate: 1e3,
+    director_tick: 1200,
+    flavor: 400,
+    dm_reply: 300,
+    expedition_recap: 700,
+    emotion_pick: 50,
+    activity_vignette: 150,
+    chronicle_compact: 400,
+    commander_import: 600,
+    memory_fold: 500,
+    rumor_retell: 200,
+    warden_agenda: 800,
+    epilogue: 700,
+    warden_judge: 120,
+    head_start_recap: 900,
+    ping: 100
+  },
+  contextTokenCap: 1600,
+  palette: "amber",
+  scanlines: true,
+  flicker: false,
+  debug: false,
+  editLock: true,
+  desireBondDefects: false,
+  showRawValues: false,
+  spriteMode: "native",
+  activityFlavor: true,
+  gruntFlavor: true,
+  intentMode: "exchange",
+  intentEveryN: 3,
+  intentMinConfidence: 0.5,
+  scenePacing: 30,
+  typingSpeed: 60,
+  romance: true,
+  explicitContent: false,
+  romanticInitiative: "med",
+  unitDms: true,
+  chronicleCompaction: true,
+  demandWording: true,
+  ruleWording: true,
+  ballotWording: false,
+  dmEditWording: true,
+  fragmentWording: true,
+  wardenJudge: false,
+  easyRetry: false,
+  enemyFlavor: false,
+  directorEnabled: true,
+  beatCooldownDays: 3,
+  expeditionRecap: true,
+  dilemmasEnabled: true,
+  analyzeEnabled: true,
+  analyzeAnimation: "full",
+  analyzeHoverDelay: 250,
+  firstImpressionTau: 7,
+  deviceSkin: "",
+  readableMode: false,
+  reducedMotion: false,
+  ditheredPortraits: true,
+  soundVolume: 20,
+  soundMuted: false,
+  ambientHum: false,
+  doorTimer: 15,
+  llmTimeoutMs: 12e4,
+  autoRetry: 1
+};
+var fieldSchemas = {
+  mechanicProfileId: external_exports.string(),
+  mechanicThink: external_exports.enum(["min", "low", "auto"]),
+  mechanicFallbackToMain: external_exports.boolean(),
+  requestFloor: external_exports.number().int().min(0),
+  contextTokenCap: external_exports.number().int().min(1),
+  palette: external_exports.enum(["amber", "green", "white"]),
+  scanlines: external_exports.boolean(),
+  flicker: external_exports.boolean(),
+  debug: external_exports.boolean(),
+  editLock: external_exports.boolean(),
+  desireBondDefects: external_exports.boolean(),
+  showRawValues: external_exports.boolean(),
+  spriteMode: external_exports.enum(["native", "emotion_pick"]),
+  activityFlavor: external_exports.boolean(),
+  gruntFlavor: external_exports.boolean(),
+  intentMode: external_exports.enum(["exchange", "every_n", "scene_end"]),
+  intentEveryN: external_exports.number().int().min(2).max(10),
+  intentMinConfidence: external_exports.number().min(0).max(1),
+  scenePacing: external_exports.number().int().min(5),
+  typingSpeed: external_exports.number().min(0),
+  romance: external_exports.boolean(),
+  explicitContent: external_exports.boolean(),
+  romanticInitiative: external_exports.enum(["low", "med", "high"]),
+  unitDms: external_exports.boolean(),
+  chronicleCompaction: external_exports.boolean(),
+  demandWording: external_exports.boolean(),
+  ruleWording: external_exports.boolean(),
+  ballotWording: external_exports.boolean(),
+  dmEditWording: external_exports.boolean(),
+  fragmentWording: external_exports.boolean(),
+  wardenJudge: external_exports.boolean(),
+  easyRetry: external_exports.boolean(),
+  enemyFlavor: external_exports.boolean(),
+  directorEnabled: external_exports.boolean(),
+  beatCooldownDays: external_exports.number().int().min(1).max(14),
+  expeditionRecap: external_exports.boolean(),
+  dilemmasEnabled: external_exports.boolean(),
+  analyzeEnabled: external_exports.boolean(),
+  analyzeAnimation: external_exports.enum(["full", "short", "off"]),
+  analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
+  firstImpressionTau: external_exports.number().int().min(1).max(30),
+  deviceSkin: external_exports.string(),
+  readableMode: external_exports.boolean(),
+  reducedMotion: external_exports.boolean(),
+  ditheredPortraits: external_exports.boolean(),
+  soundVolume: external_exports.number().int().min(0).max(100),
+  soundMuted: external_exports.boolean(),
+  ambientHum: external_exports.boolean(),
+  doorTimer: external_exports.number().int().min(0).max(60),
+  llmTimeoutMs: external_exports.number().int().min(1e4).max(6e5),
+  autoRetry: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2)])
+};
+var budgetSchema = external_exports.number().int().min(1);
+var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function merge(base, over) {
+  const src = isObj34(over) ? over : {};
+  const out = { ...base };
+  for (const [key, schema] of Object.entries(fieldSchemas)) {
+    const parsed = schema.safeParse(src[key]);
+    if (parsed.success) out[key] = parsed.data;
+  }
+  const budgets = { ...base.budgets };
+  const srcBudgets = isObj34(src.budgets) ? src.budgets : {};
+  for (const id of CALL_TYPE_IDS) {
+    const parsed = budgetSchema.safeParse(srcBudgets[id]);
+    if (parsed.success) budgets[id] = parsed.data;
+  }
+  out.budgets = budgets;
+  return out;
+}
+function store(st, s) {
+  Object.assign(st.getSettings(), s);
+}
+function getSettings(st) {
+  const s = merge(DEFAULT_SETTINGS, st.getSettings());
+  store(st, s);
+  return s;
+}
+function updateSettings(st, patch) {
+  const s = merge(getSettings(st), patch);
+  store(st, s);
+  st.saveSettings();
+  return s;
+}
+
+// src/ui/headStart/recapCard.ts
+var OPERATIONS_LABEL = "DAY 1 OF OPERATIONS";
+var SITE2 = "setup.head_start_recap";
+function renderRecapCard(host, ctx2) {
+  host.replaceChildren();
+  const { state, registries: reg } = ctx2;
+  const hs = state.headStart;
+  if (!hs || recapCommitted(state) !== null) return;
+  const title = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
+  const body = h("div", { class: "alius-head-start-body" }, title);
+  if (hs.recap === void 0) {
+    body.append(h("p", { class: "alius-dim" }, "The first weeks are being written."));
+  } else {
+    const chronicle = state.memory.chronicle.find((c) => c.id === hs.recap.chronicleId);
+    if (chronicle) body.append(h("p", { class: "alius-head-start-paragraph" }, chronicle.text));
+    const facts = buildKnowledge(state, DEFAULT_SETTINGS).facts().filter((f) => f.tags.includes("head_start"));
+    for (const u of hs.units) {
+      const mine = facts.filter((f) => f.about.length === 1 && f.about[0] === u.unitId);
+      const lines = u.moments.map((kind, i) => ({ kind, text: mine[i]?.text })).filter((m) => m.text !== void 0);
+      if (lines.length === 0) continue;
+      body.append(h(
+        "div",
+        { class: "alius-head-start-unit" },
+        h("h3", {}, state.squad.find((x) => x.id === u.unitId)?.displayName ?? u.unitId),
+        h("ul", {}, ...lines.map((m) => h("li", { class: "alius-head-start-moment alius-stat", ...analyzeAttrs(`headStartMoments:${m.kind}`), tabindex: "0" }, m.text)))
+      ));
+    }
+  }
+  const actions = h("div", { class: "alius-row alius-head-start-actions" });
+  const chips = drawGenerationChips(actions, ctx2.generation, state, "world", (r) => r.siteId === SITE2);
+  if (chips === 0 && hs.recap !== void 0) drawSiteReroll(actions, ctx2.generation, SITE2, "recap", ctx2.onReroll, ctx2.rerollState?.());
+  if (actions.childElementCount > 0) body.append(actions);
+  host.append(renderVoiceCard({ voice: VOICE_OF.head_start, body }));
+}
+
 // src/ui/shell/generationsSection.ts
 var generationBadge = (state) => state ? fullOpenRecords(state).length : 0;
 function renderGenerationsSection(host, ctx2) {
@@ -28809,167 +29033,6 @@ function renderDilemma(host, ctx2) {
     ) : null,
     list5
   ));
-}
-
-// src/settings.ts
-var DEFAULT_SETTINGS = {
-  mechanicProfileId: "",
-  mechanicThink: "min",
-  mechanicFallbackToMain: true,
-  requestFloor: 2e3,
-  budgets: {
-    profile_import: 1500,
-    intent_extract: 600,
-    scene_summary: 800,
-    dilemma_generate: 1e3,
-    director_tick: 1200,
-    flavor: 400,
-    dm_reply: 300,
-    expedition_recap: 700,
-    emotion_pick: 50,
-    activity_vignette: 150,
-    chronicle_compact: 400,
-    commander_import: 600,
-    memory_fold: 500,
-    rumor_retell: 200,
-    warden_agenda: 800,
-    epilogue: 700,
-    warden_judge: 120,
-    head_start_recap: 900,
-    ping: 100
-  },
-  contextTokenCap: 1600,
-  palette: "amber",
-  scanlines: true,
-  flicker: false,
-  debug: false,
-  editLock: true,
-  desireBondDefects: false,
-  showRawValues: false,
-  spriteMode: "native",
-  activityFlavor: true,
-  gruntFlavor: true,
-  intentMode: "exchange",
-  intentEveryN: 3,
-  intentMinConfidence: 0.5,
-  scenePacing: 30,
-  typingSpeed: 60,
-  romance: true,
-  explicitContent: false,
-  romanticInitiative: "med",
-  unitDms: true,
-  chronicleCompaction: true,
-  demandWording: true,
-  ruleWording: true,
-  ballotWording: false,
-  dmEditWording: true,
-  fragmentWording: true,
-  wardenJudge: false,
-  easyRetry: false,
-  enemyFlavor: false,
-  directorEnabled: true,
-  beatCooldownDays: 3,
-  expeditionRecap: true,
-  dilemmasEnabled: true,
-  analyzeEnabled: true,
-  analyzeAnimation: "full",
-  analyzeHoverDelay: 250,
-  firstImpressionTau: 7,
-  deviceSkin: "",
-  readableMode: false,
-  reducedMotion: false,
-  ditheredPortraits: true,
-  soundVolume: 20,
-  soundMuted: false,
-  ambientHum: false,
-  doorTimer: 15,
-  llmTimeoutMs: 12e4,
-  autoRetry: 1
-};
-var fieldSchemas = {
-  mechanicProfileId: external_exports.string(),
-  mechanicThink: external_exports.enum(["min", "low", "auto"]),
-  mechanicFallbackToMain: external_exports.boolean(),
-  requestFloor: external_exports.number().int().min(0),
-  contextTokenCap: external_exports.number().int().min(1),
-  palette: external_exports.enum(["amber", "green", "white"]),
-  scanlines: external_exports.boolean(),
-  flicker: external_exports.boolean(),
-  debug: external_exports.boolean(),
-  editLock: external_exports.boolean(),
-  desireBondDefects: external_exports.boolean(),
-  showRawValues: external_exports.boolean(),
-  spriteMode: external_exports.enum(["native", "emotion_pick"]),
-  activityFlavor: external_exports.boolean(),
-  gruntFlavor: external_exports.boolean(),
-  intentMode: external_exports.enum(["exchange", "every_n", "scene_end"]),
-  intentEveryN: external_exports.number().int().min(2).max(10),
-  intentMinConfidence: external_exports.number().min(0).max(1),
-  scenePacing: external_exports.number().int().min(5),
-  typingSpeed: external_exports.number().min(0),
-  romance: external_exports.boolean(),
-  explicitContent: external_exports.boolean(),
-  romanticInitiative: external_exports.enum(["low", "med", "high"]),
-  unitDms: external_exports.boolean(),
-  chronicleCompaction: external_exports.boolean(),
-  demandWording: external_exports.boolean(),
-  ruleWording: external_exports.boolean(),
-  ballotWording: external_exports.boolean(),
-  dmEditWording: external_exports.boolean(),
-  fragmentWording: external_exports.boolean(),
-  wardenJudge: external_exports.boolean(),
-  easyRetry: external_exports.boolean(),
-  enemyFlavor: external_exports.boolean(),
-  directorEnabled: external_exports.boolean(),
-  beatCooldownDays: external_exports.number().int().min(1).max(14),
-  expeditionRecap: external_exports.boolean(),
-  dilemmasEnabled: external_exports.boolean(),
-  analyzeEnabled: external_exports.boolean(),
-  analyzeAnimation: external_exports.enum(["full", "short", "off"]),
-  analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
-  firstImpressionTau: external_exports.number().int().min(1).max(30),
-  deviceSkin: external_exports.string(),
-  readableMode: external_exports.boolean(),
-  reducedMotion: external_exports.boolean(),
-  ditheredPortraits: external_exports.boolean(),
-  soundVolume: external_exports.number().int().min(0).max(100),
-  soundMuted: external_exports.boolean(),
-  ambientHum: external_exports.boolean(),
-  doorTimer: external_exports.number().int().min(0).max(60),
-  llmTimeoutMs: external_exports.number().int().min(1e4).max(6e5),
-  autoRetry: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2)])
-};
-var budgetSchema = external_exports.number().int().min(1);
-var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-function merge(base, over) {
-  const src = isObj34(over) ? over : {};
-  const out = { ...base };
-  for (const [key, schema] of Object.entries(fieldSchemas)) {
-    const parsed = schema.safeParse(src[key]);
-    if (parsed.success) out[key] = parsed.data;
-  }
-  const budgets = { ...base.budgets };
-  const srcBudgets = isObj34(src.budgets) ? src.budgets : {};
-  for (const id of CALL_TYPE_IDS) {
-    const parsed = budgetSchema.safeParse(srcBudgets[id]);
-    if (parsed.success) budgets[id] = parsed.data;
-  }
-  out.budgets = budgets;
-  return out;
-}
-function store(st, s) {
-  Object.assign(st.getSettings(), s);
-}
-function getSettings(st) {
-  const s = merge(DEFAULT_SETTINGS, st.getSettings());
-  store(st, s);
-  return s;
-}
-function updateSettings(st, patch) {
-  const s = merge(getSettings(st), patch);
-  store(st, s);
-  st.saveSettings();
-  return s;
 }
 
 // src/ui/motion.ts
@@ -34990,32 +35053,6 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
   return block2;
 }
 
-// src/analysis/knowledge.ts
-var rules = [];
-function registerKnowledgeRule(rule) {
-  rules.push(rule);
-}
-function holds3(check) {
-  try {
-    return check() !== false;
-  } catch {
-    return true;
-  }
-}
-function buildKnowledge(state, settings) {
-  const showRaw = settings.showRawValues === true;
-  const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
-  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds3(() => r.fact(f, state)));
-  return {
-    showRaw,
-    raw: (n) => showRaw ? String(n) : null,
-    clockVisible: (id) => visibleClocks.has(id),
-    factVisible,
-    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds3(() => r.flag(id, state))),
-    facts: () => (state?.memory?.facts ?? []).filter(factVisible)
-  };
-}
-
 // src/ui/memory/memoryBlock.ts
 var about = (f, target) => target === WORLD ? f.about.length === 0 || f.about.includes("world") : f.about.includes(target);
 var audienceChip = (f) => f.knownBy.includes("*") ? { id: "public", label: "PUBLIC", address: "glossary:memory" } : f.heard !== void 0 && Object.keys(f.heard).length > 0 ? { id: "heard", label: "HEARD", address: "glossary:squad_rumor" } : { id: "seen", label: "SEEN", address: "glossary:memory" };
@@ -36578,6 +36615,8 @@ function renderStatusHeader(host, state) {
       " \xB7 ",
       stat("alius-res", `PLYX ${r.plyx}`, "glossary:plyx")
     ),
+    state.headStart && state.day === 1 ? stat("alius-ops", OPERATIONS_LABEL, "glossary:head_start") : null,
+    // P11b
     stat("alius-leash", `LEASH ${state.leash.authorizationsLeft}`, "glossary:leash"),
     injuredDays > 0 ? stat("alius-warn", `INJURED ${injuredDays}d`, "glossary:commander_injury") : null,
     shortage > 0 ? stat("alius-warn", `SHORTAGE ${shortage}d`, "glossary:upkeep") : null
@@ -36946,6 +36985,8 @@ function sideColumn(ctx2, state, readOnly) {
     }
   }, `END ${slotName} \u25B8`);
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : "";
+  const firstWeeks = h("div", { class: "alius-head-start-host" });
+  ctx2.headStartCard?.(firstWeeks);
   const prologue = h("div", { class: "alius-onboarding-host" });
   ctx2.onboardingCard?.(prologue);
   const warden = h("div", { class: "alius-warden-chips" });
@@ -36955,6 +36996,7 @@ function sideColumn(ctx2, state, readOnly) {
   return h(
     "aside",
     { class: "alius-hub-side" },
+    firstWeeks.childElementCount > 0 ? firstWeeks : null,
     prologue.childElementCount > 0 ? prologue : null,
     warden.childElementCount > 0 ? warden : null,
     countermand.childElementCount > 0 ? countermand : null,
@@ -40750,6 +40792,20 @@ function registerWardenProviders() {
   registerAnalyzeProvider("glossary:investigation", investigationProvider);
 }
 
+// src/analysis/providers/headStart.ts
+function headStartProvider(_s, env, _k) {
+  const state = env.state;
+  if (!state) return null;
+  const hs = state.headStart;
+  if (!hs) return { lines: ["No head start."] };
+  const known = new Set(hs.units.map((u) => u.unitId));
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id)).map((u) => u.displayName);
+  return { lines: [`The squad has known the commander for ${hs.days} days.`, ...arrivals.length > 0 ? [`New arrivals: ${arrivals.join(", ")}.`] : []] };
+}
+function registerHeadStartProviders() {
+  registerAnalyzeProvider("glossary:head_start", headStartProvider);
+}
+
 // src/analysis/providers/power.ts
 var TERM_WORDS = {
   values: "what she values",
@@ -41229,6 +41285,7 @@ function registerCoreProviders() {
   registerMemoryProviders();
   registerSpecialProviders();
   registerWardenProviders();
+  registerHeadStartProviders();
 }
 
 // src/analysis/describe.ts
@@ -44699,6 +44756,10 @@ function createApp(st, deps) {
       generation: genUi,
       lastScene: { state: () => scene.summaryRerollState(), run: () => scene.rerollSummary() },
       ops: opsCtx(),
+      headStartCard: (host2) => {
+        if (state && load.kind !== "readonly") renderRecapCard(host2, { state, registries, generation: genUi, onReroll: () => headStart.rerollRecap(), rerollState: () => headStart.rerollState() });
+      },
+      // P11b: THE FIRST WEEKS
       overrideChip: (host2) => {
         if (state && load.kind !== "readonly") renderOverrideChip(host2, state, registries, (a) => void warden.answer(a));
       },

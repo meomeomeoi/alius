@@ -70,6 +70,7 @@ import { TAB_IDS } from './ui/shell/tabs';
 import { renderOnboardingCard } from './ui/onboarding/card';
 import { renderRevealCard } from './ui/warden/revealCard';
 import { renderEndScreen } from './ui/warden/endScreen';
+import { renderRecapCard } from './ui/headStart/recapCard';
 import type { GenerationUi } from './ui/generation/surface';
 import { generationBadge } from './ui/shell/generationsSection';
 import { renderOverrideChip } from './ui/warden/overrideChip';
@@ -2143,6 +2144,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       generation: genUi,
       lastScene: { state: () => scene.summaryRerollState(), run: () => scene.rerollSummary() },
       ops: opsCtx(),
+      headStartCard: (host) => { if (state && load.kind !== 'readonly') renderRecapCard(host, { state, registries, generation: genUi, onReroll: () => headStart.rerollRecap(), rerollState: () => headStart.rerollState() }); }, // P11b: THE FIRST WEEKS
       overrideChip: (host) => { if (state && load.kind !== 'readonly') renderOverrideChip(host, state, registries, (a) => void warden.answer(a)); }, // P13: the warden's open override
       onboardingCard: (host) => {
         if (!state) return;

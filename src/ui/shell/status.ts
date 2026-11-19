@@ -2,6 +2,7 @@ import { clockText, isQuietNight } from '../../engine/calendar';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
+import { OPERATIONS_LABEL } from '../headStart/recapCard';
 
 const stat = (cls: string, text: string, address: string): HTMLElement => h('span', { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text);
 
@@ -21,6 +22,7 @@ export function renderStatusHeader(host: HTMLElement, state: CampaignState | nul
       stat('alius-res', `CR ${r.credits}`, 'glossary:credits'), ' · ',
       stat('alius-res', `SUP ${r.supplies}`, 'glossary:supplies'), ' · ',
       stat('alius-res', `PLYX ${r.plyx}`, 'glossary:plyx')),
+    state.headStart && state.day === 1 ? stat('alius-ops', OPERATIONS_LABEL, 'glossary:head_start') : null, // P11b
     stat('alius-leash', `LEASH ${state.leash.authorizationsLeft}`, 'glossary:leash'),
     injuredDays > 0 ? stat('alius-warn', `INJURED ${injuredDays}d`, 'glossary:commander_injury') : null,
     shortage > 0 ? stat('alius-warn', `SHORTAGE ${shortage}d`, 'glossary:upkeep') : null,

@@ -3327,6 +3327,31 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   margin: 0 0 4px;
 }
 
+/* P11b: THE FIRST WEEKS card on the hub (paper voice) and the DAY 1 OF OPERATIONS chip */
+#alius-shell .alius-head-start-host {
+  margin-bottom: 0.6em;
+}
+#alius-shell .alius-head-start-paragraph {
+  margin: 0.4em 0;
+}
+#alius-shell .alius-head-start-unit h3 {
+  margin: 0.6em 0 0.2em;
+  font-size: 1em;
+}
+#alius-shell .alius-head-start-unit ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+#alius-shell .alius-head-start-moment {
+  margin: 0.15em 0;
+}
+#alius-shell .alius-head-start-actions {
+  margin-top: 0.5em;
+}
+#alius-shell .alius-ops {
+  letter-spacing: 0.05em;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

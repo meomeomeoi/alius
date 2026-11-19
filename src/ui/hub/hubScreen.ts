@@ -34,6 +34,8 @@ export interface HubCtx {
   ops: OpsTabCtx;
   /** P11: draws the prologue card (nothing once the prologue is done); the hub puts it above the objective and redraws it with the hub. */
   onboardingCard?: (host: HTMLElement) => void;
+  /** P11b: draws THE FIRST WEEKS card (nothing once the first scene has started); the hub puts it above the prologue card. */
+  headStartCard?: (host: HTMLElement) => void;
   /** P13: draws the warden's open override as a chip (nothing when none is open). */
   overrideChip?: (host: HTMLElement) => void;
   onTalk(unitId: string, locationId: string): void;
@@ -187,6 +189,8 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
     }, `END ${slotName} ▸`);
 
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : '';
+  const firstWeeks = h('div', { class: 'alius-head-start-host' });
+  ctx.headStartCard?.(firstWeeks);
   const prologue = h('div', { class: 'alius-onboarding-host' });
   ctx.onboardingCard?.(prologue);
   const warden = h('div', { class: 'alius-warden-chips' });
@@ -195,6 +199,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
   if (ctx.ops.onCountermand) drawCountermandChips(countermand, state, ctx.registries, ctx.ops.onCountermand);
   return h(
     'aside', { class: 'alius-hub-side' },
+    firstWeeks.childElementCount > 0 ? firstWeeks : null,
     prologue.childElementCount > 0 ? prologue : null,
     warden.childElementCount > 0 ? warden : null,
     countermand.childElementCount > 0 ? countermand : null,
