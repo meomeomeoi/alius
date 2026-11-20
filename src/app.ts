@@ -27,6 +27,7 @@ import './engine/actions/warden'; // registers the P13 LEASHSWAP actions, after 
 import './engine/actions/generations'; // registers generation/* (failure records of model calls) and their day-end sweep (P14)
 import './engine/actions/headStart'; // registers head_start/recap (P11b)
 import './engine/actions/development'; // registers development/set_mode and the review actions (P14b)
+import './engine/actions/life'; // registers life/set_frequency and, later, the life and profile actions (P14c)
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
 import { sanitizeVignette, type VignetteInput } from './llm/calls/activityVignette'; // registers the activity_vignette call type

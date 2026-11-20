@@ -201,6 +201,106 @@ export interface Unit {
   development?: Development;
   /** P14b: how well she reads what happens around her (from the import; absent = `mid`). A profile field. */
   insight?: Insight;
+  /** P14c: how she talks and carries herself (absent = the defaults). Read through `temperamentOf`; a re-sync keeps the locked fields. */
+  temperament?: Temperament;
+  /** P14c: the temperament fields the player locked (a re-sync and a future drift leave them alone). */
+  temperamentLocks?: Array<keyof Temperament>;
+  /** P14c: her hobbies and how far each has come (absent = none). */
+  hobbies?: HobbyState[];
+  /** P14c: what she picks up quickly and what she does not (absent = every hobby is standard). */
+  aptitudes?: { high: string[]; low: string[] };
+  /** P14c: her formed opinions, by topic id (absent = none yet; they form lazily). */
+  opinions?: Record<string, Opinion>;
+}
+
+/** P14c: the setting `lifeEvents`: how often her days off-screen bring something. */
+export type LifeMode = 'off' | 'rare' | 'normal' | 'often';
+export type Talkativeness = 'silent' | 'terse' | 'talkative';
+export type Volatility = 'steady' | 'moody';
+export type Humor = 'none' | 'dry' | 'mocking' | 'warm';
+export interface Temperament { talkativeness: Talkativeness; volatility: Volatility; humor: Humor }
+
+/** P14c: one hobby of hers. `skill` and `interest` are 0..100 and never shown as numbers. */
+export interface HobbyState {
+  id: string;
+  skill: number;
+  interest: number;
+  state: 'active' | 'cooling' | 'dropped';
+  since: number;
+  lastPracticeDay?: number;
+  coolingSince?: number;
+  plateau?: { at: number; since: number };
+  /** Ids of the milestones reached. */
+  milestones: string[];
+  ceiling?: true;
+  mastered?: true;
+}
+
+/** P14c: a formed opinion on a topic of the library. */
+export interface Opinion {
+  position: string;
+  strength: 'strong' | 'held' | 'loose';
+  /** The position in her own words (at most 200 characters). */
+  text?: string;
+  formedDay: number;
+  voicedDay?: number;
+  history?: Array<{ day: number; from: string; to: string }>;
+  push?: { toward: 'first' | 'last'; amount: number };
+}
+
+/** P14c: something waiting to reach the commander, in the news queue. */
+export interface NewsItem {
+  id: string;
+  unitId: string;
+  kind: 'event' | 'hobby';
+  /** A life event id or a hobby id. */
+  ref: string;
+  what: 'event' | 'milestone' | 'breakthrough' | 'started' | 'dropped' | 'mastered';
+  milestoneId?: string;
+  factId?: string;
+  category: string;
+  day: number;
+  notable?: true;
+  urgent?: true;
+  caused?: true;
+}
+
+/** P14c: what is kept of one woman's days off-screen. */
+export interface LifeUnit {
+  /** Life event id → the last day she had it. */
+  last: Record<string, number>;
+  week?: { n: number; events: number; notable: number };
+  hub?: { eventId: string; day: number };
+  firsts?: string[];
+  jokes?: Record<string, { count: number; last: number }>;
+  jokeDay?: number;
+  meetingDay?: number;
+  taught?: string[];
+  /** The open scene's triggers and picks. */
+  scene?: { sceneId: string; topics: string[]; topic?: string; joke?: string };
+  /** Topics opened by an event or a trace, waiting to be formed. */
+  pendingTopics?: string[];
+}
+
+/** P14c: the life systems (events off-screen, the news queue, hobbies' bookkeeping, running jokes). Created by `life/set_frequency` or by the setup; absent = nothing. */
+export interface LifeState {
+  /** The seed of every hash-picked chance: the setup seed, or a hash of the rng at the moment life was turned on. */
+  salt: number;
+  nextId: number;
+  units: Record<string, LifeUnit>;
+  queue: NewsItem[];
+  /** The last 14 days of delivered news. */
+  delivered: Array<{ day: number; unitId: string; category: string; hobby: boolean; caused?: true }>;
+  outbox: Array<{ itemId: string; unitId: string; channel: 'dm' | 'note'; day: number }>;
+  /** Pending news directives. */
+  news: Array<{ itemId: string; unitId: string; until: number; passing?: true }>;
+  /** The last 7 days of event kinds, for the squad-wide gap. */
+  kinds: Array<{ kind: string; unitId: string; day: number }>;
+  deaths: Array<{ unitId: string; day: number; grunt: boolean }>;
+  busy: Array<{ unitId: string; slot: number; activityId?: string }>;
+  shortageDay?: number;
+  /** A `time_together` waiting for its scene. */
+  pending?: { unitId: string; pastimeId: string; locationId: string; day: number; slot: Slot };
 }
 
 /** P14b: the setting `characterDevelopment`. */
@@ -502,6 +602,8 @@ export interface SceneRecord {
   limits?: string[];
   /** P9d: replies flagged for content that is switched off (`index` = the reply's chat index, so a rollback removes the mark). */
   violations?: Array<{ index: number; categories: string[] }>;
+  /** P14c: this scene is a quiet meeting (a pastime with her); set when the scene starts, read at its end. */
+  pastime?: { id: string; unitId: string };
 }
 
 export interface PendingProposal {
@@ -621,6 +723,8 @@ export interface Commander {
   stress?: number;
   /** P9: counters of the commander's deeds (absent = all 0). Reputations are read from them. */
   deeds?: Partial<Record<DeedCounter, number>>;
+  /** P14c: how well the commander has learned each hobby from her (0..100, by hobby id); shown only as a descriptor, no mechanical value. */
+  hobbySkill?: Record<string, number>;
   /** P9: the nicknames the squad gives the commander (at most 2 active) and the one waiting for its scene. */
   reputation?: {
     active: Array<{ id: string; name: string; sinceDay: number; by?: string; /** The day its pattern stopped holding (it leaves a week later without a successor). */ lapsedDay?: number }>;
@@ -1102,6 +1206,8 @@ export interface CampaignState {
    * nothing is locked and no step is shown. Written by `buildCampaign`, moved only by the `onboarding/*` actions.
    */
   onboarding?: OnboardingState;
+  /** P14c: her days off-screen, the news queue and the running jokes. Created when the setting is turned on; absent = nothing. */
+  life?: LifeState;
   /** P11b: set only when the campaign began with a head start (`days > 0`); absent = 0. World time never moves: `day` is still 1 at the start. */
   headStart?: HeadStartState;
   /**

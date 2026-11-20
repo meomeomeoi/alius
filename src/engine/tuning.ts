@@ -575,4 +575,28 @@ export const TUNING = Object.freeze({
       caretaker: Object.freeze([false, true] as const),
     }),
   }),
+  /**
+   * P14c: her life off-screen. Every value is `AUTHOR TO TUNE`. Nothing here draws: a chance is `lifeChance` (a hash of the salt and a key).
+   * `perWeek` / `perDay` are by setting (`life/set_frequency`); `share` is by talkativeness.
+   */
+  life: Object.freeze({
+    perWeek: Object.freeze({ rare: 0.5, normal: 1, often: 2 }), notablePerWeek: 1, dayBoost: 1.4,
+    cooldown: Object.freeze({ small: 21, notable: 45, yearly: 360 }), squadKindDays: 5,
+    share: Object.freeze({ talkative: 0.7, terse: 0.4, silent: 0.15 }), shareAffinity: 40, shareLowMult: 0.5,
+    newsDays: 3, staleDays: 7, perDay: Object.freeze({ rare: 0.5, normal: 1, often: 2 }), hobbyWeek: 2, sameWomanDays: 2, deliveredKeep: 14,
+    aptitude: Object.freeze({ low: 0.5, standard: 1, high: 1.6 }), interestDiv: 60, interestCap: 1.3,
+    milestones: Object.freeze([10, 30, 60, 100]), milestoneShift: 0.15, plateauAt: 0.7, breakthrough: 0.06, lowCeiling: 60,
+    decayPerWeek: 1, maxActive: 3, practiceStressMax: 70, hobbyRoomWeight: 2,
+    interest: Object.freeze({
+      start: 50, noveltyWeeks: 3, novelty: 3, milestone: 15, push: 8, share: 5, plateau: -4, stress: -3, stressAt: 50,
+      newer: -2, ceiling: -10, ceilingMoody: -20, cooling: 25, active: 40, dropAfterDays: 30,
+    }),
+    friendHobby: 0.02,
+    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12 }),
+    meeting: Object.freeze({ affinityMin: -30 }),
+    joke: Object.freeze({
+      windowDays: 30, running: 3, gapDays: 5, base: 0.3, humor: Object.freeze({ warm: 1, mocking: 1, dry: 0.6, none: 0 }), offerMax: 5, minAgeDays: 3,
+    }),
+    commanderSkill: Object.freeze({ meeting: 2, taught: 4 }),
+  }),
 });

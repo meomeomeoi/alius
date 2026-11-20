@@ -5,7 +5,7 @@ import { SETUP_LIMITS, buildCampaign, validateSetup, type HeadStartDays, type Se
 import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
 import { defectAllowedFor } from '../engine/bonds';
-import type { Bond, DevelopmentMode, SignatureInstance, Unit } from '../engine/state/types';
+import type { Bond, DevelopmentMode, LifeMode, SignatureInstance, Unit } from '../engine/state/types';
 import { EXPLICIT_CATEGORY } from '../bonds/directives';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
 import type { CharacterSummary } from '../st/adapter';
@@ -89,6 +89,8 @@ export interface WizardState {
   headStart: { days: HeadStartDays; newArrivals: string[] };
   /** P14b: the pace of character development (default normal); sent as `SetupResult.characterDevelopment`. */
   development: DevelopmentMode;
+  /** P14c: how often her days off-screen bring something (default normal); sent as `SetupResult.lifeEvents`. */
+  lifeEvents: LifeMode;
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -169,6 +171,7 @@ export class Wizard {
       campaign: { kind: 'default', deathRule: defaultDeathRule(this.deps.difficulty ?? 'normal'), warden: { by: 'corporation' } },
       headStart: { days: 0, newArrivals: [] },
       development: 'normal',
+      lifeEvents: 'normal',
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
@@ -218,6 +221,13 @@ export class Wizard {
   setHeadStart(days: HeadStartDays): void {
     if (!(TUNING.headStart.days as readonly number[]).includes(days)) return;
     this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    this.emit();
+  }
+
+  /** P14c: how often her days off-screen bring something; an unknown value is ignored. */
+  setLifeEvents(mode: LifeMode): void {
+    if (!(['off', 'rare', 'normal', 'often'] as const).includes(mode)) return;
+    this.s.lifeEvents = mode;
     this.emit();
   }
 
@@ -833,6 +843,7 @@ export class Wizard {
       result.mode = { kind: 'leashswap', deathRule: this.s.campaign.deathRule, warden: w.by === 'player' && w.index < units.length ? { by: 'player', index: w.index } : { by: 'corporation' } };
     }
     result.characterDevelopment = this.s.development; // P14b: normal unless the player chose otherwise (SYS changes it later)
+    result.lifeEvents = this.s.lifeEvents; // P14c: normal unless the player chose otherwise (SYS › World changes it later)
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });

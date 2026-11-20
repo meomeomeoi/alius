@@ -732,6 +732,68 @@ var TUNING = Object.freeze({
       leadStyle: Object.freeze(["yielding", "balanced", "assertive", "dominant"]),
       caretaker: Object.freeze([false, true])
     })
+  }),
+  /**
+   * P14c: her life off-screen. Every value is `AUTHOR TO TUNE`. Nothing here draws: a chance is `lifeChance` (a hash of the salt and a key).
+   * `perWeek` / `perDay` are by setting (`life/set_frequency`); `share` is by talkativeness.
+   */
+  life: Object.freeze({
+    perWeek: Object.freeze({ rare: 0.5, normal: 1, often: 2 }),
+    notablePerWeek: 1,
+    dayBoost: 1.4,
+    cooldown: Object.freeze({ small: 21, notable: 45, yearly: 360 }),
+    squadKindDays: 5,
+    share: Object.freeze({ talkative: 0.7, terse: 0.4, silent: 0.15 }),
+    shareAffinity: 40,
+    shareLowMult: 0.5,
+    newsDays: 3,
+    staleDays: 7,
+    perDay: Object.freeze({ rare: 0.5, normal: 1, often: 2 }),
+    hobbyWeek: 2,
+    sameWomanDays: 2,
+    deliveredKeep: 14,
+    aptitude: Object.freeze({ low: 0.5, standard: 1, high: 1.6 }),
+    interestDiv: 60,
+    interestCap: 1.3,
+    milestones: Object.freeze([10, 30, 60, 100]),
+    milestoneShift: 0.15,
+    plateauAt: 0.7,
+    breakthrough: 0.06,
+    lowCeiling: 60,
+    decayPerWeek: 1,
+    maxActive: 3,
+    practiceStressMax: 70,
+    hobbyRoomWeight: 2,
+    interest: Object.freeze({
+      start: 50,
+      noveltyWeeks: 3,
+      novelty: 3,
+      milestone: 15,
+      push: 8,
+      share: 5,
+      plateau: -4,
+      stress: -3,
+      stressAt: 50,
+      newer: -2,
+      ceiling: -10,
+      ceilingMoody: -20,
+      cooling: 25,
+      active: 40,
+      dropAfterDays: 30
+    }),
+    friendHobby: 0.02,
+    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12 }),
+    meeting: Object.freeze({ affinityMin: -30 }),
+    joke: Object.freeze({
+      windowDays: 30,
+      running: 3,
+      gapDays: 5,
+      base: 0.3,
+      humor: Object.freeze({ warm: 1, mocking: 1, dry: 0.6, none: 0 }),
+      offerMax: 5,
+      minAgeDays: 3
+    }),
+    commanderSkill: Object.freeze({ meeting: 2, taught: 4 })
   })
 });
 
@@ -12771,6 +12833,24 @@ function objectiveList(state, reg) {
   return out;
 }
 
+// src/engine/life/state.ts
+var LIFE_MODES = ["off", "rare", "normal", "often"];
+var TEMPERAMENT_DEFAULTS = Object.freeze({ talkativeness: "terse", volatility: "steady", humor: "dry" });
+function newLife(salt) {
+  return { salt, nextId: 0, units: {}, queue: [], delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [] };
+}
+function ensureLife(draft) {
+  return draft.life ??= newLife(fnv1a2(JSON.stringify(draft.rng)));
+}
+function fnv1a2(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+
 // src/engine/headStart/hash.ts
 var headStartRaw = (seed, unitId, key) => fnv1a(`${seed}|${unitId}|head_start|${key}`);
 var headStartHash = (seed, unitId, key) => headStartRaw(seed, unitId, key) / 2 ** 32;
@@ -22213,6 +22293,7 @@ function validateSetup(r, reg, opts) {
   }
   if (r.headStart !== void 0) out.push(...validateHeadStart(r.headStart, units));
   if (r.characterDevelopment !== void 0 && !DEVELOPMENT_MODES.includes(r.characterDevelopment)) out.push("Character development must be off, slow or normal");
+  if (r.lifeEvents !== void 0 && !LIFE_MODES.includes(r.lifeEvents)) out.push("Life events must be off, rare, normal or often");
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = /* @__PURE__ */ new Set();
   units.forEach((u, i) => {
@@ -22315,7 +22396,8 @@ function buildCampaign(r, reg, opts) {
   state.commander.fileReviewed = true;
   state.world.startId = start.id;
   state.world.options = { ...defaultWorldOptions(reg), ...r.world?.options ?? {} };
-  state.settings = { desireBondDefects: opts.desireBondDefects, ...r.characterDevelopment !== void 0 ? { characterDevelopment: r.characterDevelopment } : {} };
+  state.settings = { desireBondDefects: opts.desireBondDefects, ...r.characterDevelopment !== void 0 ? { characterDevelopment: r.characterDevelopment } : {}, ...r.lifeEvents !== void 0 ? { lifeEvents: r.lifeEvents } : {} };
+  if (r.lifeEvents !== void 0 && r.lifeEvents !== "off") state.life = newLife(opts.seed);
   if (r.content !== void 0) {
     const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
     state.content = { enabled: known.filter((id) => r.content.enabled.includes(id)) };
@@ -26276,6 +26358,15 @@ registerAction("development/remove_fact", (draft, payload) => {
   if (!dev || !dev.facts.some((f) => f.id === p?.factId)) throw new Error("She has no such line.");
   dev.facts = dev.facts.filter((f) => f.id !== p.factId);
   return [];
+});
+
+// src/engine/actions/life.ts
+registerAction("life/set_frequency", (draft, payload) => {
+  const mode = payload?.mode;
+  if (typeof mode !== "string" || !LIFE_MODES.includes(mode)) throw new Error("Life events must be off, rare, normal or often.");
+  draft.settings.lifeEvents = mode;
+  if (mode !== "off") ensureLife(draft);
+  return [{ type: "life_frequency_set", mode }];
 });
 
 // src/llm/callTypes.ts
@@ -34731,6 +34822,7 @@ var Wizard = class {
       campaign: { kind: "default", deathRule: defaultDeathRule(this.deps.difficulty ?? "normal"), warden: { by: "corporation" } },
       headStart: { days: 0, newArrivals: [] },
       development: "normal",
+      lifeEvents: "normal",
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -34781,6 +34873,12 @@ var Wizard = class {
   setHeadStart(days) {
     if (!TUNING.headStart.days.includes(days)) return;
     this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    this.emit();
+  }
+  /** P14c: how often her days off-screen bring something; an unknown value is ignored. */
+  setLifeEvents(mode) {
+    if (!["off", "rare", "normal", "often"].includes(mode)) return;
+    this.s.lifeEvents = mode;
     this.emit();
   }
   /** P14b: the pace of character development; an unknown value is ignored. */
@@ -35341,6 +35439,7 @@ var Wizard = class {
       result.mode = { kind: "leashswap", deathRule: this.s.campaign.deathRule, warden: w.by === "player" && w.index < units.length ? { by: "player", index: w.index } : { by: "corporation" } };
     }
     result.characterDevelopment = this.s.development;
+    result.lifeEvents = this.s.lifeEvents;
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
