@@ -445,7 +445,7 @@
       "setup": "Nothing moves. The only sound is the squad breathing.",
       "options": [
         {
-          "label": "CONTINUE",
+          "label": "Continue",
           "effects": []
         }
       ]
@@ -463,7 +463,7 @@
       "setup": "Someone marked the wall with a tally of days, then stopped counting.",
       "options": [
         {
-          "label": "CONTINUE",
+          "label": "Continue",
           "effects": []
         }
       ]
@@ -1829,7 +1829,7 @@
       "options": [
         {
           "id": "take_blame",
-          "label": "TAKE THE BLAME",
+          "label": "Take the blame",
           "effects": [
             {
               "type": "faction",
@@ -1856,7 +1856,7 @@
         },
         {
           "id": "shift_blame",
-          "label": "SHIFT IT",
+          "label": "Shift it",
           "effects": [
             {
               "type": "oversight_punish",
@@ -1892,7 +1892,7 @@
       "options": [
         {
           "id": "double_agent",
-          "label": "KEEP SELLING AS A DOUBLE AGENT",
+          "label": "Keep selling as a double agent",
           "effects": [
             {
               "type": "faction",
@@ -1911,7 +1911,7 @@
         },
         {
           "id": "confess",
-          "label": "CONFESS TO THE SQUAD AND OVERSIGHT",
+          "label": "Confess to the squad and oversight",
           "effects": [
             {
               "type": "faction",
@@ -1934,7 +1934,7 @@
         },
         {
           "id": "flee",
-          "label": "FLEE TO THE RIVAL CORPORATION",
+          "label": "Flee to the rival corporation",
           "effects": [
             {
               "type": "faction",
@@ -1971,7 +1971,7 @@
       "options": [
         {
           "id": "report",
-          "label": "LET HER REPORT IT TO OVERSIGHT",
+          "label": "Let her report it to oversight",
           "effects": [
             {
               "type": "party_stress",
@@ -1981,7 +1981,7 @@
         },
         {
           "id": "protect_commander",
-          "label": "ASK HER TO KEEP IT QUIET",
+          "label": "Ask her to keep it quiet",
           "effects": [
             {
               "type": "party_stress",
@@ -1991,7 +1991,7 @@
         },
         {
           "id": "demand",
-          "label": "HEAR WHAT SHE WANTS FOR HER SILENCE",
+          "label": "Hear what she wants for her silence",
           "effects": [
             {
               "type": "party_stress",
@@ -2014,7 +2014,7 @@
       "options": [
         {
           "id": "submit",
-          "label": "SUBMIT THE REPORT TO OVERSIGHT",
+          "label": "Submit the report to oversight",
           "effects": [
             {
               "type": "party_stress",
@@ -2024,7 +2024,7 @@
         },
         {
           "id": "withdraw",
-          "label": "KEEP IT AND WAIT",
+          "label": "Keep it and wait",
           "effects": [
             {
               "type": "party_stress",
