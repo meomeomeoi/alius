@@ -400,26 +400,61 @@ def outline(rects):
 
 def floor(corrs, rooms, extra_doors, markers, counts, caption):
     out.clear()
+    lights = []
     opens = list(corrs) + [rm['r'] for rm in rooms if rm['kind'] == 'lobby' or (rm['kind'] == 'stair' and not rm.get('doors'))]
     for r in opens:
         rect(*r, 'none', 'corridor', 'none')
     for (x1, y1, x2, y2) in outline(opens):
         line(x1, y1, x2, y2, 'wall', 'line')
-    for c in corrs:  # emergency lights along each corridor, night only
+    # emergency lights, night only: on a stretch of solid wall, clear of any doorway and of a junction (where no wall is)
+    segs = outline(opens)
+    door_spans = [d for rm in rooms for d in rm.get('doors', [])] + list(extra_doors)
+
+    def wall_ok(horizontal, line_at, pos):
+        for (x1, y1, x2, y2) in segs:
+            if horizontal and y1 == y2 == line_at and min(x1, x2) <= pos - 9 and pos + 9 <= max(x1, x2):
+                break
+            if not horizontal and x1 == x2 == line_at and min(y1, y2) <= pos - 9 and pos + 9 <= max(y1, y2):
+                break
+        else:
+            return False
+        for (dx, dy, side, size) in door_spans:
+            if horizontal and side in ('n', 's') and abs(dy - line_at) < 1 and dx - 10 < pos < dx + size + 10:
+                return False
+            if not horizontal and side in ('e', 'w') and abs(dx - line_at) < 1 and dy - 10 < pos < dy + size + 10:
+                return False
+        return True
+
+    for c in corrs:
         x, y, w, h = c
+        horizontal = w > h
         n = max(1, int(max(w, h) // 70))
         for i in range(n):
-            t = (i + 0.5) / n
-            if w > h:   # a lamp on the north wall, its glow a half-disc that falls into the corridor only
-                ex, ey = x + w * t, y
-                glow = f'M {ex - 7:.1f} {ey + 1.2:.1f} A 7 7 0 0 0 {ex + 7:.1f} {ey + 1.2:.1f} Z'
-                dot = (ex, ey + 2)
-            else:       # a lamp on the west wall
-                ex, ey = x, y + h * t
-                glow = f'M {ex + 1.2:.1f} {ey - 7:.1f} A 7 7 0 0 1 {ex + 1.2:.1f} {ey + 7:.1f} Z'
-                dot = (ex + 2, ey)
-            a(f'<path d="{glow}" class="night-on cut-only" fill="{{{{k.danger}}}}" opacity="0.16"></path>')
-            a(f'<circle cx="{dot[0]:.1f}" cy="{dot[1]:.1f}" r="1.4" class="night-on elight" fill="{{{{k.danger}}}}"></circle>')
+            base = (x + w * (i + 0.5) / n) if horizontal else (y + h * (i + 0.5) / n)
+            placed = None
+            for off in (0, 12, -12, 24, -24, 36, -36):
+                pos = base + off
+                walls = [(y, 1), (y + h, -1)] if horizontal else [(x, 1), (x + w, -1)]
+                for (line_at, inward) in walls:
+                    if wall_ok(horizontal, line_at, pos):
+                        placed = (pos, line_at, inward)
+                        break
+                if placed:
+                    break
+            if not placed:
+                continue
+            pos, line_at, inward = placed
+            if horizontal:
+                ex, ey = pos, line_at
+                sweep = 0 if inward > 0 else 1
+                glow = f'M {ex - 7:.1f} {ey + 1.2 * inward:.1f} A 7 7 0 0 {sweep} {ex + 7:.1f} {ey + 1.2 * inward:.1f} Z'
+                dot = (ex, ey + 2 * inward)
+            else:
+                ex, ey = line_at, pos
+                sweep = 1 if inward > 0 else 0
+                glow = f'M {ex + 1.2 * inward:.1f} {ey - 7:.1f} A 7 7 0 0 {sweep} {ex + 1.2 * inward:.1f} {ey + 7:.1f} Z'
+                dot = (ex + 2 * inward, ey)
+            lights.append((glow, dot))
     for c in corrs:  # a dashed centre line along each corridor
         x, y, w, h = c
         if w > h:
@@ -448,6 +483,9 @@ def floor(corrs, rooms, extra_doors, markers, counts, caption):
             door(*d)
     for d in extra_doors:
         door(*d)
+    for glow, dot in lights:
+        a(f'<path d="{glow}" class="night-on cut-only" fill="{{{{k.danger}}}}" opacity="0.16"></path>')
+        a(f'<circle cx="{dot[0]:.1f}" cy="{dot[1]:.1f}" r="1.4" class="night-on elight" fill="{{{{k.danger}}}}"></circle>')
     for rm in rooms:
         x, y, w, h = rm['r']
         if rm.get('cabin'):
