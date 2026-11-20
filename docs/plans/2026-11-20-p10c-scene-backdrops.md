@@ -139,7 +139,18 @@
 
 ### Task 5: Docs and hand-offs
 
-- [ ] `docs/MANUAL_TEST_P10c.md` (in SillyTavern: every location in every slot, three quarters, a broken file renamed away, reduced motion, readable mode, a narrow window).
-- [ ] An **Implemented as** section at the end of this plan (it is the spec); overview §9 (a row for P10c), §5.4 (`quartersOf`, `sceneBackdrop`, `squad/set_quarters`, registries `quartersStyles` and `backdrops`), §5 file list if needed; a **Interfaces already provided by P10c** note in P17c (the registries, the finishes, the frames, the full-bleed stage).
-- [ ] `CLAUDE.md`: one rule line for P10c (read by field, art never gates, the asset script).
-- [ ] `npm test` green; tick, commit, push.
+- [x] `docs/MANUAL_TEST_P10c.md` (in SillyTavern: every location in every slot, three quarters, a broken file renamed away, reduced motion, readable mode, a narrow window).
+- [x] An **Implemented as** section at the end of this plan (it is the spec); overview §9 (a row for P10c), §5.4 (`quartersOf`, `sceneBackdrop`, `squad/set_quarters`, registries `quartersStyles` and `backdrops`), §5 file list if needed; a **Interfaces already provided by P10c** note in P17c (the registries, the finishes, the frames, the full-bleed stage).
+- [x] `CLAUDE.md`: one rule line for P10c (read by field, art never gates, the asset script).
+- [x] `npm test` green; tick, commit, push.
+
+## Implemented as
+
+**Status: implemented** (2026-11-20). There is no separate package spec: this plan is the spec. Where it differs from the draft above, the code wins.
+
+- **Assets.** 50 author PNGs (285 MB) became 50 WebP files (7 MB) in `content/core/art/backdrops/` through `scripts/art/backdrops.py` (Python 3 + Pillow, run with `python3 -I`). The cage frames needed a step the plan did not foresee: the author's colour-to-alpha cut left a haze in the gaps (alpha 18–25 on the clinical cage, 3–9 on the old one, tinted by the magenta key), so `clean_alpha` zeroes alpha below 48 and stretches the rest, and `despill` caps red and blue near green on the soft edges of the clinical cage. `pov_wall` (`pov_corner`) is opaque, so it is a `place`, not a `frame`. The git history still holds the 285 MB of PNGs (commit `e168198`); SillyTavern installs extensions with a shallow clone, so players download only the WebP.
+- **Data.** `quartersStyles` (14, described; `summary` for the model, `description` for the player, `floor` / `ceiling` finishes) and `backdrops` (hidden: 13 floor/ceiling surfaces by `finish`, three skies with `slots`, two cage frames and the desk frame, `pov_corner`, two corridors). `locations` gained `backgroundEvening`, `floor`, `ceiling`; `quarters_unit` has no `background` of its own (a scene there always has an owner; without a style it falls to the ASCII stage).
+- **Engine.** `src/engine/backdrops.ts`: `quartersOf`, `sceneBackdrop` → `{ file, slotted }[]`, `slotLight`. `squad/set_quarters { unitId, styleId }` (event `quarters_set`, reserved) beside `squad/set_hand`, open during a run.
+- **Scene screen.** A root-level `.alius-scene-backdrop` (the image), `data-backdrop="image" | "ascii"` and `data-light="evening" | "night" | "day"` on `.alius-scene`; the ASCII art stays in `.alius-scene-bg` inside the stage. The scene spreads under the view's side padding (`margin: 0 -12px`); the shell's own padding and frame stay around it. `--alius-pan` follows the pointer over the whole scene width (0…1, two decimals); the CSS eases it (0.8 s, none under `alius-reduced-motion`). The loader caches each URL's result for the session; a test passes its own `loadImage`, which is never cached.
+- **Prompt.** `scene_header` reads `{name}'s quarters ({summary})`. The pronoun test covers the summaries.
+- **Not done here (open items):** turning the pan toward the door when a visitor enters, props, the 0.2 places `medbay_exam` / `medbay_exam_lying` / `comms_console` (no art yet), anything that reads `backdrops` (P17c), a hub map (a separate SVG mini-package, see `docs/00-overview.md` §10).

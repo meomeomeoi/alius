@@ -167,7 +167,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b, P10b, P12, P13, P14, P11b, P14b)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b, P10b, P12, P13, P14, P11b, P14b, P10c)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -325,6 +325,7 @@ Later packages build on these; change them only together with the owning spec.
 | `stampMoments`, `showMoments`, `unstampMoments`, `stampedMoments`, `momentDirective`, `axisWords`, `changedAxes`, `createDevelopment` / `app.development` (`run`, `onEvents`, `onSceneOpened`, `onSceneClosed`, `reroll`, `rerollState`, `idle`), directive `development:<unitId>`, events `development_moment` / `development_fact` | P14b | Quiet moments and the controller. |
 | `countActivity`, `countCompanions`, `countRun`, `checkHabits`, `habitEffect`, `DevFact.habitId`, events `habit_formed`, flavor kind `habit` (`sanitizeHabitWording`), site `flavor.habit`, setting `habitWording`, actions `development/edit_fact` / `development/hold` / `development/remove_fact` | P14b | Counters, habits and the player's control. |
 | `registerDevelopmentContext` (`since_joining`, memory group, priority 68), `Knowledge.development(unitId, reg)`, `renderDevelopmentBlock`, `renderDevelopmentSection`, `Wizard.setDevelopment`, `registerDevelopmentProviders` (`developmentAxes`, `glossary:character_development` / `development_fact` / `habit` / `development_hold`) | P14b | The prompt block, the DEVELOPMENT view and its readings. |
+| `quartersOf(state, reg, unitId)`, `sceneBackdrop(state, reg, locationId, ownerId)` → `{ file, slotted }[]`, `slotLight(slot)`, action `squad/set_quarters`, `Unit.quarters?`, registries `quartersStyles` (described) and `backdrops` (hidden: `surface` / `frame` / `place`, `finish`, `slots`), location fields `backgroundEvening`, `floor`, `ceiling` | P10c | Scene backgrounds by slot and her room style (stored choice, else `fnv1a(unitId)` over the registry order); the UI tries the candidates in order and ends at the ASCII stage. Surfaces and frames are data for P17c (no reader yet). |
 
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -491,6 +492,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | implemented |
 | 23 | P11b | Head start: begin as if the commander had been at the base for a week / two weeks / a month (acquaintance only: `metDay` shifted, first impressions developed, crime knowledge, a model-written recap of the first weeks as facts and a chronicle entry; world time does not move) | P1, P3, P3b, P7, P8, P11, P14 | implemented |
 | 24 | P14b | Character development: development layer over card and profile, appraisal of events from her viewpoint (with misreading), rule accumulators + model review bounded by card anchors, quiet development moments, habits and skills, the "since joining" prompt block | P1, P3, P3b, P7, P8, P9d, P14 | implemented |
+| 25 | P10c | Scene backdrops: the author's location, quarters, floor, ceiling, sky and frame art; full-bleed scene background with pan and slot light; 14 room styles chosen in the dossier (plan `docs/plans/2026-11-20-p10c-scene-backdrops.md` is its spec) | P10, P10b | implemented |
 
 The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.
 
@@ -542,6 +544,8 @@ After the authored prologue (spine beats 1–5) the model builds story arcs from
 **Immersion ideas for later** (from the 0.2 design talk): her photos in DMs (pose shots and backdrops reused as pictures with captions; compromat as a gallery), a squad group chat generated from memory (the holder can mute the commander), a wake-up card after each night (where the commander woke and her first line), a living hub (a line about what happens in a room on hover; light under her door at night).
 
 **Character interaction ideas beyond 0.2** (from the 0.2 design talk; not scheduled): a nickname she gives the commander (renamed in her DMs and on the PDA header), marks that last days and are seen by others (`pain_rough`), provocations (`jealousy_games`: flirting in front of the commander, lending the commander to another), marks of ownership (`body_modification`: a plyx ring, her unit number), categories `voyeurism`, `implant_play` (the Leash or the implant in intimacy), `sharing`, aftercare as a post-scene phase, the obscured presence layer in missions (voices behind a wall), and the mirrored direction of P15–P17 (the commander holds).
+
+**Hub map as SVG (next mini-package after P10c, author decision 2026-11-20):** instead of a generated `hub/base.png`, a styled SVG/CSS cross-section of the outpost drawn from `hubRooms` data (walls, floors, stairs, ground hatching, a sky band by slot, lit windows at night, alarm, occupancy), so a new room draws itself and nothing is regenerated. The room backgrounds are eye-level, not cutaway, so they are not used inside it. A mock-up comes first, then a plan. P10c also ships two corridor pictures (`place_corridor_1/2`) for the corridor place below.
 
 **From the 0.2 depth review (2026-11-19), not scheduled:**
 - **Affordances for every room and new places** (0.2.1 or instead of 0.3, together with the backdrop generation work): affordances `thin_walls`, `loud`, `dark`, `water`, `mirror`, `cramped`, `table_under`, `straps`, `window`, `her_things`, `shared`; places shower block, storage, laundry, briefing room, corridor, field tent; their furniture-bound anchors (`under_table`, `in_shower`, `on_windowsill`, `in_vehicle`, …). 0.2 reads only the affordances already in P17 §2.

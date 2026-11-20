@@ -32,6 +32,12 @@ describe('no pronoun for the commander in content', () => {
   const fields = (registry: keyof Registries, keys: string[]): Array<[string, string]> =>
     [...reg[registry].values()].flatMap((e) => keys.map((k): [string, string] => [`${registry}:${e.id}.${k}`, String(e[k] ?? '')]));
 
+  it('P10c: room styles (the model reads the summary) and the quarters glossary entry', () => {
+    const texts = [...fields('quartersStyles', ['name', 'summary', 'description']), ...fields('glossary', ['short', 'long']).filter(([k]) => k.startsWith('glossary:quarters.'))];
+    expect(texts.length).toBeGreaterThanOrEqual(44);
+    for (const [where, text] of texts) expect(text.match(COMMANDER_PRONOUN), where).toBeNull();
+  });
+
   it('traits, tastes and relationship-state prompts', () => {
     const texts = [
       ...fields('commanderTraits', ['description', 'upside', 'downside']),
