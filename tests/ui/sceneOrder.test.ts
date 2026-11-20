@@ -51,7 +51,7 @@ function setup(participants = [ANN], withOrder = true) {
 describe('scene orders', () => {
   it('the ORDER toggle calls onOrder before sending and shows REFUSED with a COMPEL chip', () => {
     const t = setup();
-    expect(t.toggle()!.textContent).toBe('[ORDER]');
+    expect(t.toggle()!.textContent).toBe('[ ORDER ]');
     t.toggle()!.click();
     expect(t.toggle()!.getAttribute('aria-pressed')).toBe('true');
     t.input.value = 'Move out.';

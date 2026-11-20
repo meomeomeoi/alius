@@ -29,7 +29,7 @@ export function drawDisciplineChips(
   const group = (id: string, unitId: string, address: string, text: string): HTMLElement => h('div', { class: 'alius-chip-group', 'data-discipline': id },
     h('span', { class: 'alius-chip', 'data-chip-unit': unitId, ...analyzeAttrs(address, { unitId }) }, text),
     canUndo(state, id) === null
-      ? h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-undo': id, onclick: () => onUndo(id) }, '[UNDO — not what I meant]')
+      ? h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-undo': id, onclick: () => onUndo(id) }, '[ UNDO — not what I meant ]')
       : null);
   for (const a of state.discipline?.applications ?? []) {
     if (a.source !== 'dialogue' || a.day !== state.day || !pick({ channel: a.channel, unitId: a.unitId, ...(a.sceneId !== undefined ? { sceneId: a.sceneId } : {}) })) continue;
@@ -77,15 +77,15 @@ export function drawDemandChips(
     };
     // P9c: a day the commander obeys her: GRANT is her pick, refusing or putting off defies her
     const obeyed = obeyedBy(state, d.unitId);
-    const grant = button('grant', desire ? '[SATISFY]' : '[GRANT]', () => on.grant(d.id), why !== null, why ?? undefined);
+    const grant = button('grant', desire ? '[ SATISFY ]' : '[ GRANT ]', () => on.grant(d.id), why !== null, why ?? undefined);
     if (obeyed !== null) markPick(grant);
     host.append(h('div', { class: 'alius-chip-group', 'data-demand-group': d.id },
       h('span', { class: 'alius-chip', 'data-demand': d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h('span', { class: 'alius-chip', 'data-owed': d.id, ...analyzeAttrs('glossary:owed_demand') }, 'OWED') : null,
       grant,
-      button('refuse', desire ? '[POSTPONE]' : '[REFUSE]', () => on.refuse(d.id)),
+      button('refuse', desire ? '[ POSTPONE ]' : '[ REFUSE ]', () => on.refuse(d.id)),
       obeyed !== null ? defiesHint(obeyed) : null,
-      on.talk ? button('talk', '[TALK]', () => on.talk!(d.id)) : null,
+      on.talk ? button('talk', '[ TALK ]', () => on.talk!(d.id)) : null,
       on.generation ? drawSiteReroll(h('span'), on.generation, 'flavor.demand', d.id) : null));
   }
 }

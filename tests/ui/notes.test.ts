@@ -63,11 +63,11 @@ describe('renderNote', () => {
     expect(el.textContent).toContain('<img');
   });
 
-  it('an unread note has a [GOT IT] button that calls onRead once; a read one has none and is dimmed', () => {
+  it('an unread note has a [ GOT IT ] button that calls onRead once; a read one has none and is dimmed', () => {
     const onRead = vi.fn();
     const unread = renderNote({ text: 'x', unitName: 'Ann', hand: null, analyze: 'glossary:hand_note', onRead });
     const b = unread.querySelector<HTMLButtonElement>('button[data-action="read-note"]')!;
-    expect(b.textContent).toBe('[GOT IT]');
+    expect(b.textContent).toBe('[ GOT IT ]');
     b.click();
     b.click();
     expect(onRead).toHaveBeenCalledTimes(1);
@@ -78,13 +78,13 @@ describe('renderNote', () => {
 });
 
 describe('rule notes', () => {
-  it('a delivered proposal is her signed note with [SIGN] / [NEGOTIATE] / [DON\'T SIGN] calling accept / negotiate / refuse', () => {
+  it('a delivered proposal is her signed note with [ SIGN ] / [ NEGOTIATE ] / [DON\'T SIGN] calling accept / negotiate / refuse', () => {
     const s = withRule(rule());
     const on = handlers();
     const el = renderRuleNote(s, reg, s.bonds!.rules[0], on, { motion: true });
     document.body.append(el);
     const btn = (k: string) => el.querySelector<HTMLButtonElement>(`button[data-rule-answer="${k}"]`)!;
-    expect(['accept', 'negotiate', 'refuse'].map((k) => btn(k).textContent)).toEqual(['[SIGN]', '[NEGOTIATE]', "[DON'T SIGN]"]);
+    expect(['accept', 'negotiate', 'refuse'].map((k) => btn(k).textContent)).toEqual(['[ SIGN ]', '[ NEGOTIATE ]', "[ DON'T SIGN ]"]);
     for (const k of ['accept', 'negotiate', 'refuse']) expect(btn(k).getAttribute('data-analyze'), k).toBe('glossary:rule_note');
     btn('accept').click();
     btn('negotiate').click();
@@ -97,7 +97,7 @@ describe('rule notes', () => {
     expect(el.style.getPropertyValue('--alius-font-hand')).toContain(String(handOf(s, reg, ANN)!.family));
   });
 
-  it('[SIGN] is soft-disabled while she already holds three rules', () => {
+  it('[ SIGN ] is soft-disabled while she already holds three rules', () => {
     const s = withRule(rule());
     for (const [i, t] of ['hands_off_gear', 'no_other_tokens', 'name_me_first'].entries()) s.bonds!.rules.push(rule({ id: `a${i}`, templateId: t, status: 'active' }));
     const on = handlers();

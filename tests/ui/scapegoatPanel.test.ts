@@ -52,8 +52,8 @@ describe('the scapegoat panel', () => {
     const { host } = panel(withCase());
     expect(host.querySelector('[data-scapegoat-subject]')!.textContent).toBe('RESPONSIBLE: Ann');
     expect(host.querySelector('[data-scapegoat-witnesses]')!.textContent).toBe('WITNESSES: Bea, Cat');
-    expect(host.textContent).toContain('TAKE THE BLAME');
-    expect(host.textContent).toContain('SHIFT IT');
+    expect(host.textContent).toContain('Take the blame');
+    expect(host.textContent).toContain('Shift it');
   });
 
   it('each option lists its effects through summarizeWorldEffect, with data-analyze', () => {

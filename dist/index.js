@@ -1909,7 +1909,7 @@ function createCampaign(opts) {
   return state;
 }
 
-// node_modules/zod/v3/external.js
+// ../../../node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -2021,7 +2021,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// node_modules/zod/v3/helpers/util.js
+// ../../../node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -2155,7 +2155,7 @@ var getParsedType = (data) => {
   }
 };
 
-// node_modules/zod/v3/ZodError.js
+// ../../../node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -2273,7 +2273,7 @@ ZodError.create = (issues) => {
   return error;
 };
 
-// node_modules/zod/v3/locales/en.js
+// ../../../node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -2376,7 +2376,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// node_modules/zod/v3/errors.js
+// ../../../node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -2385,7 +2385,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// node_modules/zod/v3/helpers/parseUtil.js
+// ../../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -2495,14 +2495,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// node_modules/zod/v3/helpers/errorUtil.js
+// ../../../node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// node_modules/zod/v3/types.js
+// ../../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -29847,12 +29847,12 @@ function drawGenerationChip(host, rec, hd) {
     onclick
   }, label2);
   if (expired) {
-    if (hd.onDrop) chip2.append(" ", button2("drop", "[DROP]", `Remove this note about ${hd.label}`, hd.onDrop));
+    if (hd.onDrop) chip2.append(" ", button2("drop", "[ DROP ]", `Remove this note about ${hd.label}`, hd.onDrop));
   } else {
-    chip2.append(" ", button2("retry", "[RETRY]", `Retry ${hd.label}`, hd.onRetry));
-    if (hd.onUseFallback) chip2.append(" ", button2("fallback", "[USE FALLBACK]", `Use the plain version of ${hd.label}`, hd.onUseFallback));
+    chip2.append(" ", button2("retry", "[ RETRY ]", `Retry ${hd.label}`, hd.onRetry));
+    if (hd.onUseFallback) chip2.append(" ", button2("fallback", "[ USE FALLBACK ]", `Use the plain version of ${hd.label}`, hd.onUseFallback));
     chip2.append(" ", button2("menu", "[\u22EF]", `More ways to retry ${hd.label}`, hd.onMenu));
-    if (hd.showDrop && hd.onDrop) chip2.append(" ", button2("drop", "[DROP]", `Give up ${hd.label}`, hd.onDrop));
+    if (hd.showDrop && hd.onDrop) chip2.append(" ", button2("drop", "[ DROP ]", `Give up ${hd.label}`, hd.onDrop));
   }
   host.append(chip2);
   return chip2;
@@ -29872,7 +29872,7 @@ function drawReroll(host, state, onReroll, pending4 = false) {
     onclick: () => {
       if (!off) onReroll();
     }
-  }, "[REROLL]");
+  }, "[ REROLL ]");
   host.append(btn);
   return btn;
 }
@@ -30320,9 +30320,9 @@ function renderOverrideChip(host, state, reg, onAnswer) {
     h(
       "span",
       { class: "alius-row" },
-      button2("comply", "[COMPLY]", true, ""),
-      button2("argue", "[ARGUE]", canArgue, compelled ? "The commander is compelled: only COMPLY is open." : "There is nothing left to argue here."),
-      button2("defy", "[DEFY]", !compelled, "The commander is compelled: only COMPLY is open.")
+      button2("comply", "[ COMPLY ]", true, ""),
+      button2("argue", "[ ARGUE ]", canArgue, compelled ? "The commander is compelled: only COMPLY is open." : "There is nothing left to argue here."),
+      button2("defy", "[ DEFY ]", !compelled, "The commander is compelled: only COMPLY is open.")
     )
   ));
 }
@@ -30597,18 +30597,18 @@ function renderConfrontation(host, ctx2) {
   const noLeash = ctx2.leashLeft < 1 ? "NO AUTHORIZATIONS REMAIN THIS WEEK" : null;
   if (ctx2.kind === "desertion") {
     if (!ctx2.talkTried) {
-      add(actions, `[TALK HER DOWN \u2014 AUTHORITY ${ctx2.ranks.authority}]`, () => ctx2.onTalk("authority"));
-      add(actions, `[TALK HER DOWN \u2014 EMPATHY ${ctx2.ranks.empathy}]`, () => ctx2.onTalk("empathy"));
+      add(actions, `[ TALK HER DOWN \u2014 AUTHORITY ${ctx2.ranks.authority} ]`, () => ctx2.onTalk("authority"));
+      add(actions, `[ TALK HER DOWN \u2014 EMPATHY ${ctx2.ranks.empathy} ]`, () => ctx2.onTalk("empathy"));
     }
-    add(actions, "[LET HER GO]", ctx2.onLetGo);
-    add(actions, "[SUPPRESS]", ctx2.onSuppress, noLeash);
+    add(actions, "[ LET HER GO ]", ctx2.onLetGo);
+    add(actions, "[ SUPPRESS ]", ctx2.onSuppress, noLeash);
   } else if (ctx2.kind === "mutiny") {
-    if (ctx2.canFight) add(actions, "[FIGHT]", ctx2.onFight);
-    else add(actions, "[YIELD]", ctx2.onYield);
-    add(actions, "[SUPPRESS]", ctx2.onSuppress, noLeash);
+    if (ctx2.canFight) add(actions, "[ FIGHT ]", ctx2.onFight);
+    else add(actions, "[ YIELD ]", ctx2.onYield);
+    add(actions, "[ SUPPRESS ]", ctx2.onSuppress, noLeash);
   } else {
-    add(actions, "[TAKE HER BACK]", ctx2.onTakeBack, ctx2.canTakeBack);
-    add(actions, "[TURN HER AWAY]", ctx2.onTurnAway);
+    add(actions, "[ TAKE HER BACK ]", ctx2.onTakeBack, ctx2.canTakeBack);
+    add(actions, "[ TURN HER AWAY ]", ctx2.onTurnAway);
   }
   host.append(h(
     "div",
@@ -31036,7 +31036,7 @@ function renderCombatScreen(host, ctx2) {
       { class: "alius-combat-result" },
       h("h2", {}, "[ COMBAT REPORT ]"),
       ...rows.map((t) => h("div", { class: "alius-combat-result-row" }, t)),
-      h("button", { type: "button", class: "alius-btn", "data-act": "continue", onclick: () => ctx2.onClose() }, "[CONTINUE]")
+      h("button", { type: "button", class: "alius-btn", "data-act": "continue", onclick: () => ctx2.onClose() }, "[ CONTINUE ]")
     );
   }
   function render() {
@@ -31123,8 +31123,8 @@ function renderCombatScreen(host, ctx2) {
       }, `[${"QWERTY"[i]}] ${o.name} ${cost}CP`);
     });
     const controls = cs.phase === "lost_pending" ? [
-      h("button", { type: "button", class: "alius-btn", "data-act": "retry", onclick: () => ctx2.onRetry() }, "[RETRY]"),
-      h("button", { type: "button", class: "alius-btn", "data-act": "accept", onclick: () => ctx2.onAccept() }, "[ACCEPT DEFEAT]")
+      h("button", { type: "button", class: "alius-btn", "data-act": "retry", onclick: () => ctx2.onRetry() }, "[ RETRY ]"),
+      h("button", { type: "button", class: "alius-btn", "data-act": "accept", onclick: () => ctx2.onAccept() }, "[ ACCEPT DEFEAT ]")
     ] : [
       h("button", { type: "button", class: "alius-btn", "data-act": "guard", disabled: !waiting2, onclick: () => {
         const s = ctx2.getState();
@@ -31139,7 +31139,7 @@ function renderCombatScreen(host, ctx2) {
         if (s) act(s, { kind: "pass" });
       } }, "[P] PASS"),
       h("button", { type: "button", class: `alius-btn${cs.auto ? " alius-skill-selected" : ""}`, "data-act": "auto", onclick: () => ctx2.onAuto(!cs.auto) }, `[A] AUTO${cs.auto ? " ON" : ""}`),
-      h("button", { type: "button", class: "alius-btn", "data-act": "retreat", onclick: () => ctx2.onRetreat() }, "[RETREAT]"),
+      h("button", { type: "button", class: "alius-btn", "data-act": "retreat", onclick: () => ctx2.onRetreat() }, "[ RETREAT ]"),
       presenceButton(cs, !!waiting2),
       compelState(state) !== "none" ? h("button", {
         type: "button",
@@ -31244,7 +31244,7 @@ function renderNote(o) {
         used = true;
         o.onRead();
       }
-    }, "[GOT IT]"));
+    }, "[ GOT IT ]"));
   }
   return note;
 }
@@ -31386,7 +31386,7 @@ function renderInvTab(host, ctx2) {
         onclick: () => {
           if (unit2) ctx2.onEquip(unit2.id, item.uid);
         }
-      }, reason ? `[EQUIP] ${reason}` : "[EQUIP]")
+      }, reason ? `[ EQUIP ] ${reason}` : "[ EQUIP ]")
     );
   }
   function workshopPanel(state, item) {
@@ -31410,11 +31410,11 @@ function renderInvTab(host, ctx2) {
       const up = refusal(state, reg, "item/upgrade", { uid: item.uid });
       const dis = refusal(state, reg, "item/dismantle", { uid: item.uid });
       itemButtons.push(
-        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "upgrade", ...analyzeNative("glossary:workshop"), disabled: up !== null, title: up ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` \u2014 ${up}` : ""}`),
-        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "dismantle", ...analyzeNative("glossary:workshop"), disabled: dis !== null, title: dis ?? "Dismantle", onclick: () => ctx2.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` \u2014 ${dis}` : ""}`),
+        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "upgrade", ...analyzeNative("glossary:workshop"), disabled: up !== null, title: up ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[ UPGRADE +${item.upgrade + 1} ]${up ? ` \u2014 ${up}` : ""}`),
+        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "dismantle", ...analyzeNative("glossary:workshop"), disabled: dis !== null, title: dis ?? "Dismantle", onclick: () => ctx2.onDismantle(item.uid) }, `[ DISMANTLE ]${dis ? ` \u2014 ${dis}` : ""}`),
         ...item.affixes.map((a, i) => {
           const why = refusal(state, reg, "item/reroll", { uid: item.uid, affixIndex: i });
-          return h("button", { type: "button", class: "alius-btn alius-option", "data-act": "reroll", "data-index": String(i), ...analyzeNative("glossary:workshop"), disabled: why !== null, title: why ?? "Reroll", onclick: () => ctx2.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` \u2014 ${why}` : ""}`);
+          return h("button", { type: "button", class: "alius-btn alius-option", "data-act": "reroll", "data-index": String(i), ...analyzeNative("glossary:workshop"), disabled: why !== null, title: why ?? "Reroll", onclick: () => ctx2.onReroll(item.uid, i) }, `[ REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))} ]${why ? ` \u2014 ${why}` : ""}`);
         })
       );
     }
@@ -36675,7 +36675,7 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
         "span",
         { class: "alius-device-part", "data-decor-part": part, ...faded ? { "data-faded": "true" } : {} },
         h("span", { class: "alius-chip", ...analyzeAttrs("glossary:device_access", live) }, faded ? `${label2} (FADED)` : label2),
-        faded ? null : h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "peel", "aria-label": `Peel ${PART_LABEL[part].toLowerCase()}`, onclick: () => handlers2.onPeel(unitId, part) }, "[PEEL]")
+        faded ? null : h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "peel", "aria-label": `Peel ${PART_LABEL[part].toLowerCase()}`, onclick: () => handlers2.onPeel(unitId, part) }, "[ PEEL ]")
       );
     })));
   }
@@ -36688,7 +36688,7 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
       "div",
       { class: "alius-device-booking", "data-booking": b.id },
       h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId }) }, `${String(kind?.label ?? b.kindId).toUpperCase()} \u2014 DAY ${b.day} ${SLOT_WORD[b.slot]}`),
-      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id, unitId }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id, unitId }), onclick: () => handlers2.onCancel(b.id) }, "[ CANCEL ]"),
       obeyedBy(state, unitId) !== null ? defiesHint(obeyedBy(state, unitId)) : null
     ));
   }
@@ -37011,14 +37011,14 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
         const pick2 = pickHost.querySelector("select")?.value;
         onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick2 !== void 0 ? { pick: pick2 } : {} });
       }
-    }, "[CHALLENGE]")
+    }, "[ CHALLENGE ]")
   );
   return root;
 }
 function renderChallenge(state, reg, unitId, onSubmit) {
   if (deviceGateReason(state, unitId) !== null) return null;
   const host = h("div", { class: "alius-challenge", "data-challenge": unitId });
-  const open3 = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "open-challenge", ...analyzeNative("glossary:wager", { unitId }) }, "[CHALLENGE]");
+  const open3 = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "open-challenge", ...analyzeNative("glossary:wager", { unitId }) }, "[ CHALLENGE ]");
   open3.addEventListener("click", () => {
     if (host.querySelector(".alius-wager-form")) host.querySelector(".alius-wager-form").remove();
     else host.append(renderWagerForm(state, reg, unitId, onSubmit));
@@ -37193,7 +37193,7 @@ function renderTokens(state, reg, handlers2) {
         if (t.worn) handlers2.onTakeOff(t.id);
         else if (problem === null) handlers2.onWear(t.id);
       }
-    }, t.worn ? "[TAKE OFF]" : "[WEAR]");
+    }, t.worn ? "[ TAKE OFF ]" : "[ WEAR ]");
     block2.append(h(
       "div",
       { class: "alius-token", "data-token": t.id, "data-worn": String(t.worn) },
@@ -37499,7 +37499,7 @@ function progressionBlock(unit2, ctx2, state) {
       "data-respec": unit2.id,
       disabled: unit2.unlockedNodes.length === 0 || !canPay,
       onclick: () => ctx2.onRespec(unit2.id)
-    }, `[RESPEC \u2014 ${cost.credits} CR / ${cost.plyx} PLYX]`) : null
+    }, `[ RESPEC \u2014 ${cost.credits} CR / ${cost.plyx} PLYX ]`) : null
   );
 }
 var COST_NAMES = { credits: "CREDITS", supplies: "SUPPLIES", plyx: "PLYX" };
@@ -37587,7 +37587,7 @@ function publicityLine(unit2, level, pref, ctx2, concealed) {
       "aria-pressed": String(l === level),
       ...analyzeNative("glossary:publicity", live),
       onclick: () => ctx2.onSetPublicity(unit2.id, l)
-    }, `[${l.toUpperCase()}]`)]) : []
+    }, `[ ${l.toUpperCase()} ]`)]) : []
   );
 }
 function bondBlock(unit2, state, ctx2) {
@@ -37769,9 +37769,9 @@ function drawCountermandChips(host, state, reg, onAnswer) {
     { class: "alius-countermand", "data-countermand-line": "" },
     h("span", { class: "alius-chip", ...analyzeAttrs("glossary:countermand") }, `${nameOf16(c.leaderId)} COUNTERMANDS`),
     ` ${activity} with ${nameOf16(c.unitId)}. `,
-    h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "accept", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("accept") }, "[ACCEPT]"),
+    h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "accept", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("accept") }, "[ ACCEPT ]"),
     " ",
-    h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "overrule", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("overrule") }, "[OVERRULE]")
+    h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "overrule", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("overrule") }, "[ OVERRULE ]")
   ));
 }
 function herCallChip(state, mission) {
@@ -37801,7 +37801,7 @@ function renderSchedule(state, reg, handlers2) {
         section.append(h(
           "p",
           { class: "alius-schedule-row" },
-          h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "settle", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onSettle(b.day, b.slot) }, "[LET THEM SETTLE IT]")
+          h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "settle", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onSettle(b.day, b.slot) }, "[ LET THEM SETTLE IT ]")
         ));
       }
     }
@@ -37812,14 +37812,14 @@ function row(state, reg, b, handlers2) {
   const name = state.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId;
   const chip2 = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId: b.unitId }) }, `${name.toUpperCase()} \xB7 ${SLOT_WORD[b.slot]}`);
   chip2.style.setProperty("--unit-accent", unitAccent(b.unitId));
-  const keep = b.conflict ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onKeep(b.id) }, "[KEEP HERS]") : null;
+  const keep = b.conflict ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onKeep(b.id) }, "[ KEEP HERS ]") : null;
   return h(
     "div",
     { class: "alius-schedule-row", "data-booking": b.id, ...b.conflict ? { "data-conflict": "true" } : {} },
     chip2,
     h("span", { class: "alius-dim" }, String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId)),
     keep,
-    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]"),
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onCancel(b.id) }, "[ CANCEL ]"),
     obeyedBy(state, b.unitId) !== null ? defiesHint(obeyedBy(state, b.unitId)) : null
   );
 }
@@ -40618,7 +40618,7 @@ function roster(state, ctx2) {
             title: full ? `The active roster is full (${TUNING.rosterActiveMax})` : "",
             onclick: () => ctx2.onSetRoster(on ? active.filter((id) => id !== u.id) : [...active, u.id])
           },
-          on ? "[ACTIVE]" : "[RESERVE]"
+          on ? "[ ACTIVE ]" : "[ RESERVE ]"
         )
       )
     );
@@ -40683,7 +40683,7 @@ function drawViolation(host, labels, onRegenerate, disabled = false) {
       disabled,
       ...analyzeNative("glossary:content_categories"),
       onclick: onRegenerate
-    }, "[REGENERATE]"));
+    }, "[ REGENERATE ]"));
   }
   host.append(chip2);
   return chip2;
@@ -40713,9 +40713,9 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   const row2 = h(
     "div",
     { class: "alius-lead-chips" },
-    chip2("follow", "[FOLLOW]", () => handlers2.follow(), scene.followed === true),
-    chip2("ask", "[ASK]", () => handlers2.ask()),
-    chip2("limit", "[SET A LIMIT]", () => {
+    chip2("follow", "[ FOLLOW ]", () => handlers2.follow(), scene.followed === true),
+    chip2("ask", "[ ASK ]", () => handlers2.ask()),
+    chip2("limit", "[ SET A LIMIT ]", () => {
       field2.open = !field2.open;
       redraw();
     })
@@ -40741,7 +40741,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
     handlers2.limit(text2);
     redraw();
   };
-  host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[SET]", send)));
+  host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[ SET ]", send)));
 }
 function drawRuleChips(host, state, reg, pick2, on) {
   host.replaceChildren();
@@ -40767,9 +40767,9 @@ function drawRuleChips(host, state, reg, pick2, on) {
       "div",
       { class: "alius-chip-group", "data-rule-group": rule.id },
       h("span", { class: "alius-chip", "data-rule": rule.id, ...analyzeAttrs(`relationshipRuleTemplates:${rule.templateId}`, { unitId: rule.unitId, ruleId: rule.id }) }, `${name} PROPOSES A RULE: ${rule.text}`),
-      button2("accept", "[ACCEPT]", () => on.accept(rule.id), full),
-      button2("negotiate", "[NEGOTIATE]", () => on.negotiate(rule.id)),
-      button2("refuse", "[REFUSE]", () => on.refuse(rule.id)),
+      button2("accept", "[ ACCEPT ]", () => on.accept(rule.id), full),
+      button2("negotiate", "[ NEGOTIATE ]", () => on.negotiate(rule.id)),
+      button2("refuse", "[ REFUSE ]", () => on.refuse(rule.id)),
       on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.rule", rule.id) : null
     ));
   }
@@ -40816,9 +40816,9 @@ function renderRuleNote(state, reg, rule, on, opts) {
     note.append(h(
       "div",
       { class: "alius-chip-group", "data-rule-group": rule.id },
-      button2("accept", "[SIGN]", () => on.accept(rule.id), full),
-      button2("negotiate", "[NEGOTIATE]", () => on.negotiate(rule.id)),
-      button2("refuse", "[DON'T SIGN]", () => on.refuse(rule.id)),
+      button2("accept", "[ SIGN ]", () => on.accept(rule.id), full),
+      button2("negotiate", "[ NEGOTIATE ]", () => on.negotiate(rule.id)),
+      button2("refuse", "[ DON'T SIGN ]", () => on.refuse(rule.id)),
       on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.rule", rule.id) : null
     ));
   }
@@ -40843,7 +40843,7 @@ function drawProposalChips(host, state, pick2, onAnswer, reg) {
       host.append(group2);
       continue;
     }
-    const buttons = p.needsDisclosure ? [["[OPENLY]", "accept"], ["[SECRETLY]", "accept_secret"], ["[NOT NOW]", "not_now"]] : p.from === "commander" ? [["[NOT NOW]", "not_now"]] : [["[ACCEPT]", "accept"], ["[DECLINE]", "decline"], ["[NOT NOW]", "not_now"]];
+    const buttons = p.needsDisclosure ? [["[ OPENLY ]", "accept"], ["[ SECRETLY ]", "accept_secret"], ["[ NOT NOW ]", "not_now"]] : p.from === "commander" ? [["[ NOT NOW ]", "not_now"]] : [["[ ACCEPT ]", "accept"], ["[ DECLINE ]", "decline"], ["[ NOT NOW ]", "not_now"]];
     const group = h(
       "div",
       { class: "alius-chip-group", "data-proposal": p.id },
@@ -40861,9 +40861,9 @@ function courtingGroup(p, label2, onAnswer) {
     group.replaceChildren(
       label2,
       badge,
-      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, "accept") }, "[ACCEPT]"),
-      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, "deflect") }, "[DEFLECT]"),
-      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: drawCondition }, "[SET A CONDITION]")
+      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, "accept") }, "[ ACCEPT ]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, "deflect") }, "[ DEFLECT ]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: drawCondition }, "[ SET A CONDITION ]")
     );
   };
   function drawCondition() {
@@ -40879,8 +40879,8 @@ function courtingGroup(p, label2, onAnswer) {
       "span",
       { class: "alius-condition" },
       input,
-      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "condition-ok", onclick: confirm }, "[ACCEPT ON THIS]"),
-      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "condition-back", onclick: draw2 }, "[BACK]")
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "condition-ok", onclick: confirm }, "[ ACCEPT ON THIS ]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "condition-back", onclick: draw2 }, "[ BACK ]")
     ));
     input.focus();
   }
@@ -40891,7 +40891,7 @@ function pickForObedience(state, p, group) {
   const obeyed = p.from === "unit" ? obeyedBy(state, p.unitId) : null;
   if (obeyed === null) return;
   for (const b of group.querySelectorAll("button")) {
-    if (b.textContent === "[ACCEPT]") markPick(b);
+    if (b.textContent === "[ ACCEPT ]") markPick(b);
   }
   group.append(defiesHint(obeyed));
 }
@@ -40902,8 +40902,8 @@ function editChip(edit, name, onKeep, onRevert) {
     "div",
     { class: "alius-edit alius-chip-group", "data-edit": edit.id },
     h("span", { class: "alius-chip", ...analyzeAttrs("glossary:device_access", { unitId: edit.editorId }) }, `EDITED BY ${name.toUpperCase()}`),
-    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", onclick: onKeep }, "[KEEP]"),
-    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "revert", onclick: onRevert }, "[REVERT]")
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", onclick: onKeep }, "[ KEEP ]"),
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "revert", onclick: onRevert }, "[ REVERT ]")
   );
   group.style.setProperty("--unit-accent", unitAccent(edit.editorId));
   return group;
@@ -40930,8 +40930,8 @@ function drawPersonalChips(host, state, reg, pick2, on) {
       "glossary:token",
       { unitId: offer.giverId },
       `${nameOf16(offer.giverId)} OFFERS: ${offer.label.toUpperCase()}`,
-      button2("[ACCEPT]", "accept", () => on.onAnswerToken(offer.id, true)),
-      button2("[DECLINE]", "decline", () => on.onAnswerToken(offer.id, false))
+      button2("[ ACCEPT ]", "accept", () => on.onAnswerToken(offer.id, true)),
+      button2("[ DECLINE ]", "decline", () => on.onAnswerToken(offer.id, false))
     ));
   }
   for (const w of state.personal?.wagers?.open ?? []) {
@@ -40946,15 +40946,15 @@ function drawPersonalChips(host, state, reg, pick2, on) {
         "glossary:wager",
         live,
         `${nameOf16(w.unitId)} CHALLENGES: ${what}`,
-        button2("[ACCEPT]", "accept", () => on.onAnswerWager(w.id, true)),
-        button2("[DECLINE]", "decline", () => on.onAnswerWager(w.id, false))
+        button2("[ ACCEPT ]", "accept", () => on.onAnswerWager(w.id, true)),
+        button2("[ DECLINE ]", "decline", () => on.onAnswerWager(w.id, false))
       ));
     } else if (w.status === "pending_run") {
       host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf16(w.unitId)}: ${what} \u2014 WAITS FOR THE NEXT RUN`));
     } else if (game?.kind === "rps") {
-      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf16(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[${hand.toUpperCase()}]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
+      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf16(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[ ${hand.toUpperCase()} ]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
     } else {
-      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf16(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[FIGHT]" : "[PLAY]", "play", () => on.onPlayWager(w.id, void 0))));
+      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf16(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[ FIGHT ]" : "[ PLAY ]", "play", () => on.onPlayWager(w.id, void 0))));
     }
   }
   const q = state.personal?.pendingQuestion;
@@ -40973,7 +40973,7 @@ function drawPersonalChips(host, state, reg, pick2, on) {
       "glossary:wager",
       { unitId: q.unitId },
       asks ? `YOU WON A QUESTION: ASK ${nameOf16(q.unitId)}` : `${nameOf16(q.unitId)} WON A QUESTION: ANSWER TRUTHFULLY`,
-      h("span", { class: "alius-condition" }, input, button2(asks ? "[ASK]" : "[ANSWER]", "question-ok", send))
+      h("span", { class: "alius-condition" }, input, button2(asks ? "[ ASK ]" : "[ ANSWER ]", "question-ok", send))
     ));
   }
 }
@@ -40986,7 +40986,7 @@ function drawDisciplineChips(host, state, reg, pick2, onUndo) {
     "div",
     { class: "alius-chip-group", "data-discipline": id },
     h("span", { class: "alius-chip", "data-chip-unit": unitId, ...analyzeAttrs(address, { unitId }) }, text2),
-    canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[UNDO \u2014 not what I meant]") : null
+    canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[ UNDO \u2014 not what I meant ]") : null
   );
   for (const a of state.discipline?.applications ?? []) {
     if (a.source !== "dialogue" || a.day !== state.day || !pick2({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
@@ -41024,7 +41024,7 @@ function drawDemandChips(host, state, reg, pick2, on) {
       return b;
     };
     const obeyed = obeyedBy(state, d.unitId);
-    const grant = button2("grant", desire ? "[SATISFY]" : "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0);
+    const grant = button2("grant", desire ? "[ SATISFY ]" : "[ GRANT ]", () => on.grant(d.id), why !== null, why ?? void 0);
     if (obeyed !== null) markPick(grant);
     host.append(h(
       "div",
@@ -41032,9 +41032,9 @@ function drawDemandChips(host, state, reg, pick2, on) {
       h("span", { class: "alius-chip", "data-demand": d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h("span", { class: "alius-chip", "data-owed": d.id, ...analyzeAttrs("glossary:owed_demand") }, "OWED") : null,
       grant,
-      button2("refuse", desire ? "[POSTPONE]" : "[REFUSE]", () => on.refuse(d.id)),
+      button2("refuse", desire ? "[ POSTPONE ]" : "[ REFUSE ]", () => on.refuse(d.id)),
       obeyed !== null ? defiesHint(obeyed) : null,
-      on.talk ? button2("talk", "[TALK]", () => on.talk(d.id)) : null,
+      on.talk ? button2("talk", "[ TALK ]", () => on.talk(d.id)) : null,
       on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.demand", d.id) : null
     ));
   }
@@ -41104,7 +41104,7 @@ function renderHerMessage(_state, reg, _unitId, msg, opts) {
       "VOICE MESSAGE ",
       waveform(msg.id),
       " ",
-      h("button", { type: "button", class: "alius-btn alius-option", "data-play": msg.id, ...analyzeNative("glossary:voice_message"), onclick: () => opts.onReveal(msg.id) }, "[PLAY]")
+      h("button", { type: "button", class: "alius-btn alius-option", "data-play": msg.id, ...analyzeNative("glossary:voice_message"), onclick: () => opts.onReveal(msg.id) }, "[ PLAY ]")
     );
     voice.style.setProperty("--bubble-accent", opts.accent);
     out.push(voice);
@@ -41283,7 +41283,7 @@ function renderCommsTab(host, ctx2) {
     if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current, ctx2.personal);
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
     const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
-    const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[SEND]");
+    const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
     thread.append(chips, disciplineChips, demandChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit2.id));
   }
@@ -41317,7 +41317,7 @@ function renderIntrigueSection(host, state, reg, deps = {}) {
       onclick: () => {
         if (why === null) run();
       }
-    }, `[${label2}]`),
+    }, `[ ${label2} ]`),
     why === null ? null : h("span", { class: "alius-dim alius-intrigue-why" }, why)
   );
   host.append(h(
@@ -41485,7 +41485,7 @@ function renderHomeTab(host, ctx2) {
         "aria-label": `Peel ${u.displayName}'s sticker`,
         ...analyzeNative("glossary:device_marks"),
         onclick: () => ctx2.onPeel(u.id, "sticker")
-      }, "[PEEL STICKER]") : null
+      }, "[ PEEL STICKER ]") : null
     )];
   });
   const change = owner !== null && ctx2.onPeel !== void 0 ? h("button", {
@@ -41495,7 +41495,7 @@ function renderHomeTab(host, ctx2) {
     "data-unit": owner,
     ...analyzeNative("glossary:device_marks"),
     onclick: () => ctx2.onPeel(owner, "wallpaper")
-  }, "[CHANGE WALLPAPER]") : null;
+  }, "[ CHANGE WALLPAPER ]") : null;
   const notes = [];
   const answers = ctx2.rule;
   for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers, { motion: !motionReduced(settings) }));
@@ -41542,8 +41542,8 @@ function renderClaimCard(state, reg, claim2, handlers2) {
     h(
       "div",
       { class: "alius-claim-actions" },
-      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "stand", onclick: () => handlers2.onLetStand(claim2.unitId) }, "[LET IT STAND]"),
-      refusable ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "refuse", onclick: () => handlers2.onRefuse(claim2.unitId) }, "[REFUSE PUBLICLY]") : null
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "stand", onclick: () => handlers2.onLetStand(claim2.unitId) }, "[ LET IT STAND ]"),
+      refusable ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "refuse", onclick: () => handlers2.onRefuse(claim2.unitId) }, "[ REFUSE PUBLICLY ]") : null
     )
   );
 }
@@ -41583,7 +41583,7 @@ function renderSecretCard(state, _reg, secret, onChoose) {
       body: secret.text,
       redact: nameRanges(state, secret)
     }),
-    h("div", { class: "alius-secret-actions" }, choice("[CONFRONT EVERYONE]", "confront"), choice("[PRETEND NOT TO KNOW]", "pretend"), choice("[USE IT]", "use"))
+    h("div", { class: "alius-secret-actions" }, choice("[ CONFRONT EVERYONE ]", "confront"), choice("[ PRETEND NOT TO KNOW ]", "pretend"), choice("[ USE IT ]", "use"))
   );
 }
 
@@ -41763,7 +41763,7 @@ function renderDoor(host, ctx2) {
   const openForm = () => {
     if (input || used || pending3.has(entry.id)) return;
     input = h("input", { type: "text", class: "alius-input alius-door-input", name: "door", maxlength: String(DOOR_SAY_MAX2), autocomplete: "off", "aria-label": `Say something through the door to ${ctx2.unitName}` });
-    const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send-door", onclick: send }, "[SAY]");
+    const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send-door", onclick: send }, "[ SAY ]");
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") send();
     });
@@ -41787,9 +41787,9 @@ function renderDoor(host, ctx2) {
       else renderDoor(host, ctx2);
     });
   }
-  const row2 = h("div", { class: "alius-row" }, option("open", "[OPEN]", press(ctx2.onOpen)));
-  if (!entry.door) row2.append(option("say", "[SAY SOMETHING THROUGH THE DOOR]", openForm));
-  row2.append(option("ignore", "[STAY SILENT]", press(ctx2.onSilent)));
+  const row2 = h("div", { class: "alius-row" }, option("open", "[ OPEN ]", press(ctx2.onOpen)));
+  if (!entry.door) row2.append(option("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
+  row2.append(option("ignore", "[ STAY SILENT ]", press(ctx2.onSilent)));
   host.append(h(
     "section",
     { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
@@ -42228,8 +42228,8 @@ function renderSceneScreen(host, ctx2) {
           "div",
           { class: "alius-edit-form" },
           box2,
-          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => saveEdit(s) }, "[SAVE]"),
-          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => cancelEdit(s) }, "[CANCEL]")
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => saveEdit(s) }, "[ SAVE ]"),
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => cancelEdit(s) }, "[ CANCEL ]")
         ));
       }
       const text2 = h("span", { class: "alius-text" });
@@ -42254,7 +42254,7 @@ function renderSceneScreen(host, ctx2) {
     }));
     if (messages.length === 0) {
       const prologue = s.scene?.origin === "prologue";
-      log.append(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [END TRANSMISSION] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [END TRANSMISSION] closes the scene."));
+      log.append(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene."));
     }
     const box = log.querySelector("textarea.alius-edit-box");
     if (box && (editing?.focus || boxHadFocus)) {
@@ -42307,7 +42307,7 @@ function renderSceneScreen(host, ctx2) {
       "div",
       { class: "alius-busy", role: "status" },
       text2,
-      h("button", { type: "button", class: "alius-btn", "data-action": "stop", "aria-label": "Stop the generation", onclick: () => controller.stop() }, "[STOP]")
+      h("button", { type: "button", class: "alius-btn", "data-action": "stop", "aria-label": "Stop the generation", onclick: () => controller.stop() }, "[ STOP ]")
     ));
     busyTimer = setInterval(() => {
       text2.textContent = `AWAITING REPLY\u2026 ${Math.floor((Date.now() - busyStarted) / 1e3)}s`;
@@ -42393,7 +42393,7 @@ function renderSceneScreen(host, ctx2) {
           orderOn = !orderOn;
           syncOrder();
         }
-      }, "[ORDER]");
+      }, "[ ORDER ]");
       orderWho = units.length > 1 ? h("select", { name: "order-unit", class: "alius-select", "aria-label": "Order for" }, ...units.map((u) => h("option", { value: u.id }, u.displayName))) : null;
       orderOn = false;
     } else {
@@ -42417,7 +42417,7 @@ function renderSceneScreen(host, ctx2) {
           act("regenerate", "\u21BB", () => ignore(st.regenerateLast()), "Regenerate the last reply"),
           genTools,
           act("swipe-right", "\u203A", () => ignore(st.swipeLast("right")), "Next reply"),
-          act("end", "[END TRANSMISSION]", () => void controller.end().then(() => {
+          act("end", "[ END TRANSMISSION ]", () => void controller.end().then(() => {
             if (!disposed) ctx2.onEnded();
           }), "End the conversation")
         )
@@ -44101,7 +44101,7 @@ function renderPanel(host, view, on) {
     const bar2 = [];
     if (view.crumbs.length > 1) bar2.push(h("button", { type: "button", class: "alius-analyze-back", "aria-label": "Back", onclick: () => on.back() }, "[<]"));
     bar2.push(h("div", { class: "alius-analyze-title" }, model.title));
-    bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view.pinned), onclick: () => on.pin() }, view.pinned ? "[PINNED]" : "[PIN]"));
+    bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view.pinned), onclick: () => on.pin() }, view.pinned ? "[ PINNED ]" : "[ PIN ]"));
     body.append(h("div", { class: "alius-analyze-bar" }, ...bar2));
     if (view.crumbs.length > 1) {
       const last = view.crumbs.length - 1;
@@ -47292,7 +47292,7 @@ function createApp(st, deps) {
     const answer = await shell.modal({
       title: `PEEL HER ${part.toUpperCase()}?`,
       body: `${name} put it there. She will notice it is gone.`,
-      actions: [{ label: "[PEEL]", value: "peel" }, { label: "[KEEP]", value: "keep" }]
+      actions: [{ label: "[ PEEL ]", value: "peel" }, { label: "[ KEEP ]", value: "keep" }]
     });
     if (answer !== "peel" || st.getActiveChat()?.chatId !== chatId) return;
     act({ type: "device/remove_decor", payload: { unitId, part } });

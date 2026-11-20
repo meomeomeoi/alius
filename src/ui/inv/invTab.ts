@@ -128,7 +128,7 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
       h('button', {
         type: 'button', class: 'alius-btn', 'data-act': 'equip', disabled: reason !== null || !unit, title: reason ?? 'Equip',
         onclick: () => { if (unit) ctx.onEquip(unit.id, item.uid); },
-      }, reason ? `[EQUIP] ${reason}` : '[EQUIP]'));
+      }, reason ? `[ EQUIP ] ${reason}` : '[ EQUIP ]'));
   }
 
   function workshopPanel(state: CampaignState, item: ItemInstance | null): HTMLElement {
@@ -147,11 +147,11 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
       const up = refusal(state, reg, 'item/upgrade', { uid: item.uid });
       const dis = refusal(state, reg, 'item/dismantle', { uid: item.uid });
       itemButtons.push(
-        h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'upgrade', ...analyzeNative('glossary:workshop'), disabled: up !== null, title: up ?? 'Upgrade', onclick: () => ctx.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` — ${up}` : ''}`),
-        h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'dismantle', ...analyzeNative('glossary:workshop'), disabled: dis !== null, title: dis ?? 'Dismantle', onclick: () => ctx.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` — ${dis}` : ''}`),
+        h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'upgrade', ...analyzeNative('glossary:workshop'), disabled: up !== null, title: up ?? 'Upgrade', onclick: () => ctx.onUpgrade(item.uid) }, `[ UPGRADE +${item.upgrade + 1} ]${up ? ` — ${up}` : ''}`),
+        h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'dismantle', ...analyzeNative('glossary:workshop'), disabled: dis !== null, title: dis ?? 'Dismantle', onclick: () => ctx.onDismantle(item.uid) }, `[ DISMANTLE ]${dis ? ` — ${dis}` : ''}`),
         ...item.affixes.map((a, i) => {
           const why = refusal(state, reg, 'item/reroll', { uid: item.uid, affixIndex: i });
-          return h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'reroll', 'data-index': String(i), ...analyzeNative('glossary:workshop'), disabled: why !== null, title: why ?? 'Reroll', onclick: () => ctx.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` — ${why}` : ''}`);
+          return h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'reroll', 'data-index': String(i), ...analyzeNative('glossary:workshop'), disabled: why !== null, title: why ?? 'Reroll', onclick: () => ctx.onReroll(item.uid, i) }, `[ REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))} ]${why ? ` — ${why}` : ''}`);
         }));
     }
     return h('section', { class: 'alius-section alius-inv-workshop' },

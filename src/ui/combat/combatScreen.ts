@@ -334,7 +334,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       'section', { class: 'alius-combat-result' },
       h('h2', {}, '[ COMBAT REPORT ]'),
       ...rows.map((t) => h('div', { class: 'alius-combat-result-row' }, t)),
-      h('button', { type: 'button', class: 'alius-btn', 'data-act': 'continue', onclick: () => ctx.onClose() }, '[CONTINUE]'),
+      h('button', { type: 'button', class: 'alius-btn', 'data-act': 'continue', onclick: () => ctx.onClose() }, '[ CONTINUE ]'),
     );
   }
 
@@ -411,15 +411,15 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
 
     const controls = cs.phase === 'lost_pending'
       ? [
-        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'retry', onclick: () => ctx.onRetry() }, '[RETRY]'),
-        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'accept', onclick: () => ctx.onAccept() }, '[ACCEPT DEFEAT]'),
+        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'retry', onclick: () => ctx.onRetry() }, '[ RETRY ]'),
+        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'accept', onclick: () => ctx.onAccept() }, '[ ACCEPT DEFEAT ]'),
       ]
       : [
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'guard', disabled: !waiting, onclick: () => { const s = ctx.getState(); if (s) act(s, { kind: 'guard' }); } }, '[G] GUARD'),
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'swap', disabled: !waiting, onclick: () => { const s = ctx.getState(); if (s) act(s, { kind: 'swap' }); } }, '[S] SWAP'),
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'pass', disabled: !waiting, onclick: () => { const s = ctx.getState(); if (s) act(s, { kind: 'pass' }); } }, '[P] PASS'),
         h('button', { type: 'button', class: `alius-btn${cs.auto ? ' alius-skill-selected' : ''}`, 'data-act': 'auto', onclick: () => ctx.onAuto(!cs.auto) }, `[A] AUTO${cs.auto ? ' ON' : ''}`),
-        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'retreat', onclick: () => ctx.onRetreat() }, '[RETREAT]'),
+        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'retreat', onclick: () => ctx.onRetreat() }, '[ RETREAT ]'),
         presenceButton(cs, !!waiting),
         compelState(state) !== 'none'
           ? h('button', {

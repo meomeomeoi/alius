@@ -44,5 +44,5 @@ export function renderSecretCard(
       voice: VOICE_OF.squad_secret, title: 'SQUAD SECRET', meta: ROUTE_WORDS[secret.foundRoute ?? ''] ?? 'It has come out.',
       body: secret.text, redact: nameRanges(state, secret),
     }),
-    h('div', { class: 'alius-secret-actions' }, choice('[CONFRONT EVERYONE]', 'confront'), choice('[PRETEND NOT TO KNOW]', 'pretend'), choice('[USE IT]', 'use')));
+    h('div', { class: 'alius-secret-actions' }, choice('[ CONFRONT EVERYONE ]', 'confront'), choice('[ PRETEND NOT TO KNOW ]', 'pretend'), choice('[ USE IT ]', 'use')));
 }

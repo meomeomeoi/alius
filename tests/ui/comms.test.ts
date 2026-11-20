@@ -110,7 +110,7 @@ describe('COMMS tab', () => {
     expect(r.q('.alius-chips')!.textContent).toContain('ANN PROPOSES: DATE');
     expect(r.q('.alius-chips')!.textContent).not.toContain('CONFIDE');
     expect(r.q('.alius-chips')!.textContent).not.toContain('FWB');
-    expect(r.qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DECLINE]', '[NOT NOW]']);
+    expect(r.qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DECLINE ]', '[ NOT NOW ]']);
     r.qa('.alius-chips button')[0].click();
     expect(r.ctx.onAnswer).toHaveBeenCalledWith('q1', 'accept');
   });
@@ -120,7 +120,7 @@ describe('COMMS tab', () => {
     s.proposals = [{ id: 'q1', unitId: ANN, kind: 'date', from: 'unit', day: 3, channel: 'dm', targetState: 'flirting', needsDisclosure: true }];
     const r = render({ state: s });
     r.q(`button[data-unit="${ANN}"]`)!.click();
-    expect(r.qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[OPENLY]', '[SECRETLY]', '[NOT NOW]']);
+    expect(r.qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[ OPENLY ]', '[ SECRETLY ]', '[ NOT NOW ]']);
     r.qa('.alius-chips button')[1].click();
     expect(r.ctx.onAnswer).toHaveBeenCalledWith('q1', 'accept_secret');
   });

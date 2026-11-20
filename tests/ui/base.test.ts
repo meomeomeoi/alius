@@ -95,7 +95,7 @@ describe('BASE tab', () => {
     const { host, onSetRoster } = render({ state: s });
     expect(host.textContent).toContain('UNITS 6/6');
     const toggle = (id: string) => host.querySelector<HTMLButtonElement>(`button[data-roster-toggle="${id}"]`)!;
-    expect(toggle('unit_ann').textContent).toBe('[ACTIVE]');
+    expect(toggle('unit_ann').textContent).toBe('[ ACTIVE ]');
     toggle('unit_ann').click();
     expect(onSetRoster).toHaveBeenLastCalledWith(['unit_bea', 'unit_cat', 'unit_dee']);
   });
@@ -103,7 +103,7 @@ describe('BASE tab', () => {
   it('roster toggle refuses a fifth active unit', () => {
     const { host } = render({ state: campaign(reg, 6) });
     const eve = host.querySelector<HTMLButtonElement>('button[data-roster-toggle="unit_eve"]')!;
-    expect(eve.textContent).toBe('[RESERVE]');
+    expect(eve.textContent).toBe('[ RESERVE ]');
     expect(eve.disabled).toBe(true);
     expect(eve.title).toMatch(/4/);
   });

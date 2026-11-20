@@ -101,7 +101,7 @@ describe('the night door in the app (P10b)', () => {
     await nightWith(t, { kind: WANT_VISIT_KIND, framing: 'Rhea is at the door.' });
     const host = t.renderScreen('scene');
     expect(host.querySelector('.alius-door')).not.toBeNull();
-    expect([...host.querySelectorAll('.alius-option')].map((b) => b.textContent)).toEqual(['[OPEN]', '[SAY SOMETHING THROUGH THE DOOR]', '[STAY SILENT]']);
+    expect([...host.querySelectorAll('.alius-option')].map((b) => b.textContent)).toEqual(['[ OPEN ]', '[ SAY SOMETHING THROUGH THE DOOR ]', '[ STAY SILENT ]']);
   });
 
   it('a mutiny or desertion confrontation still renders its panel, not the door', async () => {
@@ -147,7 +147,7 @@ describe('the night door in the app (P10b)', () => {
     host.querySelector<HTMLButtonElement>('button[data-action="send-door"]')!.click();
     await vi.waitFor(() => expect(t.state().calendar.nightEvent!.door).toEqual({ said: 'Rhea? Open up.', reply: 'Not now.' }));
     await vi.waitFor(() => expect(host.textContent).toContain('Not now.'));
-    expect([...host.querySelectorAll('.alius-option')].map((b) => b.textContent)).toEqual(['[OPEN]', '[STAY SILENT]']);
+    expect([...host.querySelectorAll('.alius-option')].map((b) => b.textContent)).toEqual(['[ OPEN ]', '[ STAY SILENT ]']);
     expect(t.state().slot).toBe('night');
   });
 

@@ -107,10 +107,10 @@ describe('double and triple texts', () => {
 describe('voice messages', () => {
   const voiced = () => world([m(ANN, 'I miss you. Come over.', { behaviours: ['voice_close'] })]);
 
-  it('shows a waveform and [PLAY], and no text until it is played', () => {
+  it('shows a waveform and [ PLAY ], and no text until it is played', () => {
     const { q, host } = mount(voiced());
     expect(q('.alius-voicemsg svg')).not.toBeNull();
-    expect(q('.alius-voicemsg [data-play]')!.textContent).toBe('[PLAY]');
+    expect(q('.alius-voicemsg [data-play]')!.textContent).toBe('[ PLAY ]');
     expect(host.textContent).not.toContain('I miss you');
   });
 

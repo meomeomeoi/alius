@@ -217,7 +217,7 @@ describe('chips in COMMS', () => {
     const { host, onAnswerToken } = draw(s);
     expect(host.textContent).toContain("ANN OFFERS: ANN'S PATCH");
     const buttons = qa(host, 'button');
-    expect(buttons.map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DECLINE]']);
+    expect(buttons.map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DECLINE ]']);
     buttons[0].click();
     expect(onAnswerToken).toHaveBeenCalledWith('tk_1', true);
     buttons[1].click();
@@ -230,24 +230,24 @@ describe('chips in COMMS', () => {
     const offered = fresh();
     personalOf(offered).wagers = { open: [wager()], log: [] };
     const a = draw(offered);
-    expect(qa(a.host, 'button').map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DECLINE]']);
+    expect(qa(a.host, 'button').map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DECLINE ]']);
     qa(a.host, 'button')[0].click();
     expect(a.onAnswerWager).toHaveBeenCalledWith('wg_1', true);
     const coin = fresh();
     personalOf(coin).wagers = { open: [wager({ status: 'accepted' })], log: [] };
     const c = draw(coin);
-    expect(qa(c.host, 'button').map((b) => b.textContent)).toEqual(['[PLAY]']);
+    expect(qa(c.host, 'button').map((b) => b.textContent)).toEqual(['[ PLAY ]']);
     qa(c.host, 'button')[0].click();
     expect(c.onPlayWager).toHaveBeenCalledWith('wg_1', undefined);
     const rps = fresh();
     personalOf(rps).wagers = { open: [wager({ status: 'accepted', gameId: 'rps' })], log: [] };
     const r = draw(rps);
-    expect(qa(r.host, 'button').map((b) => b.textContent)).toEqual(['[ROCK]', '[PAPER]', '[SCISSORS]']);
+    expect(qa(r.host, 'button').map((b) => b.textContent)).toEqual(['[ ROCK ]', '[ PAPER ]', '[ SCISSORS ]']);
     qa(r.host, 'button')[1].click();
     expect(r.onPlayWager).toHaveBeenCalledWith('wg_1', 'paper');
     const spar = fresh();
     personalOf(spar).wagers = { open: [wager({ status: 'accepted', gameId: 'sparring', pick: 'none' })], log: [] };
-    expect(qa(draw(spar).host, 'button').map((b) => b.textContent)).toEqual(['[FIGHT]']);
+    expect(qa(draw(spar).host, 'button').map((b) => b.textContent)).toEqual(['[ FIGHT ]']);
     const bet = fresh();
     personalOf(bet).wagers = { open: [wager({ status: 'pending_run', gameId: 'expedition_bet', pick: 'kills' })], log: [] };
     const b = draw(bet);
@@ -314,7 +314,7 @@ describe('under obedience her pick is pre-selected (acceptance 6)', () => {
     };
     for (const lead of ['balanced', 'assertive'] as const) {
       const host = make('commander', lead);
-      expect(preselected(host).map((b) => b.textContent)).toEqual(['[ACCEPT]']);
+      expect(preselected(host).map((b) => b.textContent)).toEqual(['[ ACCEPT ]']);
       expect(defies(host).length).toBeGreaterThan(0);
       expect(preselected(make(null, lead))).toEqual([]);
       expect(preselected(make('unit', lead))).toEqual([]);

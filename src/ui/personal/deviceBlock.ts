@@ -39,7 +39,7 @@ export function renderDeviceBlock(state: CampaignState, reg: Registries, unitId:
       const label = part === 'contact' ? `CONTACT: ${decor.contactName}` : PART_LABEL[part];
       return h('span', { class: 'alius-device-part', 'data-decor-part': part, ...(faded ? { 'data-faded': 'true' } : {}) },
         h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:device_access', live) }, faded ? `${label} (FADED)` : label),
-        faded ? null : h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'peel', 'aria-label': `Peel ${PART_LABEL[part].toLowerCase()}`, onclick: () => handlers.onPeel(unitId, part) }, '[PEEL]'));
+        faded ? null : h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'peel', 'aria-label': `Peel ${PART_LABEL[part].toLowerCase()}`, onclick: () => handlers.onPeel(unitId, part) }, '[ PEEL ]'));
     })));
   }
   for (const note of pinnedNotes(state, reg).find((n) => n.unitId === unitId)?.lines ?? []) {
@@ -49,7 +49,7 @@ export function renderDeviceBlock(state: CampaignState, reg: Registries, unitId:
     const kind = reg.bookingKinds.get(b.kindId);
     block.append(h('div', { class: 'alius-device-booking', 'data-booking': b.id },
       h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:booking', { bookingId: b.id, unitId }) }, `${String(kind?.label ?? b.kindId).toUpperCase()} — DAY ${b.day} ${SLOT_WORD[b.slot]}`),
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id, unitId }), onclick: () => handlers.onCancel(b.id) }, '[CANCEL]'),
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id, unitId }), onclick: () => handlers.onCancel(b.id) }, '[ CANCEL ]'),
       obeyedBy(state, unitId) !== null ? defiesHint(obeyedBy(state, unitId)!) : null));
   }
   return block;

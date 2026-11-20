@@ -60,7 +60,7 @@ export function renderPanel(host: HTMLElement, view: PanelView, on: PanelHandler
     const bar: Child[] = [];
     if (view.crumbs.length > 1) bar.push(h('button', { type: 'button', class: 'alius-analyze-back', 'aria-label': 'Back', onclick: () => on.back() }, '[<]'));
     bar.push(h('div', { class: 'alius-analyze-title' }, model.title));
-    bar.push(h('button', { type: 'button', class: 'alius-analyze-pin', 'aria-pressed': String(view.pinned), onclick: () => on.pin() }, view.pinned ? '[PINNED]' : '[PIN]'));
+    bar.push(h('button', { type: 'button', class: 'alius-analyze-pin', 'aria-pressed': String(view.pinned), onclick: () => on.pin() }, view.pinned ? '[ PINNED ]' : '[ PIN ]'));
     body.append(h('div', { class: 'alius-analyze-bar' }, ...bar));
 
     if (view.crumbs.length > 1) {

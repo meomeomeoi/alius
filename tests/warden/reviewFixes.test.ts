@@ -124,7 +124,7 @@ describe('2: answering the report does not tell her about it', () => {
     const before = s.memory.facts.length;
     const r = dispatch(s, { type: 'dilemma/choose', payload: { id: s.dilemmas!.open!.id, index: idx } }, reg);
     const fresh = r.state.memory.facts.slice(before);
-    expect(fresh.some((f) => /A report on|KEEP IT AND WAIT|SUBMIT THE REPORT/.test(f.text))).toBe(false);
+    expect(fresh.some((f) => /A report on|Keep it and wait|Submit the report/i.test(f.text))).toBe(false);
     if (answer === 'withdraw') expect(fresh).toEqual([]);
   });
 

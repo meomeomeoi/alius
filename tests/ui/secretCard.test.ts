@@ -40,7 +40,7 @@ describe('the secret card', () => {
     document.body.append(card);
     expect(card.querySelector('[data-voice="paper"]')).not.toBeNull();
     const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')];
-    expect(buttons.map((b) => b.textContent)).toEqual(['[CONFRONT EVERYONE]', '[PRETEND NOT TO KNOW]', '[USE IT]']);
+    expect(buttons.map((b) => b.textContent)).toEqual(['[ CONFRONT EVERYONE ]', '[ PRETEND NOT TO KNOW ]', '[ USE IT ]']);
     expect(buttons.every((b) => b.getAttribute('data-analyze') === 'glossary:squad_secret')).toBe(true);
     buttons[0].click();
     buttons[1].click();

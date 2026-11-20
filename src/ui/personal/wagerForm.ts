@@ -52,7 +52,7 @@ export function renderWagerForm(state: CampaignState, reg: Registries, unitId: s
         const pick = (pickHost.querySelector('select') as HTMLSelectElement | null)?.value;
         onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...(pick !== undefined ? { pick } : {}) });
       },
-    }, '[CHALLENGE]'));
+    }, '[ CHALLENGE ]'));
   return root;
 }
 
@@ -60,7 +60,7 @@ export function renderWagerForm(state: CampaignState, reg: Registries, unitId: s
 export function renderChallenge(state: CampaignState, reg: Registries, unitId: string, onSubmit: (choice: WagerChoice) => void): HTMLElement | null {
   if (deviceGateReason(state, unitId) !== null) return null;
   const host = h('div', { class: 'alius-challenge', 'data-challenge': unitId });
-  const open = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'open-challenge', ...analyzeNative('glossary:wager', { unitId }) }, '[CHALLENGE]');
+  const open = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'open-challenge', ...analyzeNative('glossary:wager', { unitId }) }, '[ CHALLENGE ]');
   open.addEventListener('click', () => {
     if (host.querySelector('.alius-wager-form')) host.querySelector('.alius-wager-form')!.remove();
     else host.append(renderWagerForm(state, reg, unitId, onSubmit));

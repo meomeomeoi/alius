@@ -23,6 +23,6 @@ export function renderClaimCard(state: CampaignState, reg: Registries, claim: { 
   return h('div', { class: 'alius-claim', 'data-claim': claim.unitId },
     h('p', {}, chip, ` ${name.toUpperCase()} HAS TOLD EVERYONE THE COMMANDER IS HERS.`),
     h('div', { class: 'alius-claim-actions' },
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'stand', onclick: () => handlers.onLetStand(claim.unitId) }, '[LET IT STAND]'),
-      refusable ? h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'refuse', onclick: () => handlers.onRefuse(claim.unitId) }, '[REFUSE PUBLICLY]') : null));
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'stand', onclick: () => handlers.onLetStand(claim.unitId) }, '[ LET IT STAND ]'),
+      refusable ? h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'refuse', onclick: () => handlers.onRefuse(claim.unitId) }, '[ REFUSE PUBLICLY ]') : null));
 }

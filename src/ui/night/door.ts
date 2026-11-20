@@ -128,7 +128,7 @@ export function renderDoor(host: HTMLElement, ctx: DoorCtx): void {
   const openForm = (): void => {
     if (input || used || pending.has(entry.id)) return;
     input = h('input', { type: 'text', class: 'alius-input alius-door-input', name: 'door', maxlength: String(DOOR_SAY_MAX), autocomplete: 'off', 'aria-label': `Say something through the door to ${ctx.unitName}` }) as HTMLInputElement;
-    const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send-door', onclick: send }, '[SAY]') as HTMLButtonElement;
+    const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send-door', onclick: send }, '[ SAY ]') as HTMLButtonElement;
     input.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') send();
     });
@@ -153,9 +153,9 @@ export function renderDoor(host: HTMLElement, ctx: DoorCtx): void {
     });
   }
 
-  const row = h('div', { class: 'alius-row' }, option('open', '[OPEN]', press(ctx.onOpen)));
-  if (!entry.door) row.append(option('say', '[SAY SOMETHING THROUGH THE DOOR]', openForm));
-  row.append(option('ignore', '[STAY SILENT]', press(ctx.onSilent)));
+  const row = h('div', { class: 'alius-row' }, option('open', '[ OPEN ]', press(ctx.onOpen)));
+  if (!entry.door) row.append(option('say', '[ SAY SOMETHING THROUGH THE DOOR ]', openForm));
+  row.append(option('ignore', '[ STAY SILENT ]', press(ctx.onSilent)));
 
   host.append(h(
     'section', { class: 'alius-section alius-door alius-knock', 'aria-label': `${ctx.unitName} at the door` },

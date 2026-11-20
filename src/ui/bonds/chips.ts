@@ -21,7 +21,7 @@ export function drawViolation(host: HTMLElement, labels: readonly string[], onRe
     chip.append(' ', h('button', {
       type: 'button', class: 'alius-btn alius-option', 'data-action': 'regenerate-violation', 'aria-label': 'Regenerate this reply',
       disabled, ...analyzeNative('glossary:content_categories'), onclick: onRegenerate,
-    }, '[REGENERATE]'));
+    }, '[ REGENERATE ]'));
   }
   host.append(chip);
   return chip;
@@ -55,9 +55,9 @@ export function drawLeadChips(host: HTMLElement, scene: Pick<SceneRecord, 'lead'
     'aria-disabled': soft ? 'true' : null, ...analyzeNative('glossary:lead'), onclick: () => { if (!soft) onclick(); },
   }, label);
   const row = h('div', { class: 'alius-lead-chips' },
-    chip('follow', '[FOLLOW]', () => handlers.follow(), scene.followed === true),
-    chip('ask', '[ASK]', () => handlers.ask()),
-    chip('limit', '[SET A LIMIT]', () => { field.open = !field.open; redraw(); }));
+    chip('follow', '[ FOLLOW ]', () => handlers.follow(), scene.followed === true),
+    chip('ask', '[ ASK ]', () => handlers.ask()),
+    chip('limit', '[ SET A LIMIT ]', () => { field.open = !field.open; redraw(); }));
   host.append(row);
   if (!field.open) return;
   const input = h('input', { type: 'text', class: 'alius-input', 'data-key': 'lead-limit', maxlength: String(TUNING.bonds.limits.sceneLimitMax), 'aria-label': 'A boundary for this scene', disabled }) as HTMLInputElement;
@@ -72,7 +72,7 @@ export function drawLeadChips(host: HTMLElement, scene: Pick<SceneRecord, 'lead'
     handlers.limit(text);
     redraw();
   };
-  host.append(h('div', { class: 'alius-lead-limit' }, input, ' ', chip('limit-set', '[SET]', send)));
+  host.append(h('div', { class: 'alius-lead-limit' }, input, ' ', chip('limit-set', '[ SET ]', send)));
 }
 
 export interface RuleChipHandlers {
@@ -104,9 +104,9 @@ export function drawRuleChips(host: HTMLElement, state: CampaignState, reg: Regi
     };
     host.append(h('div', { class: 'alius-chip-group', 'data-rule-group': rule.id },
       h('span', { class: 'alius-chip', 'data-rule': rule.id, ...analyzeAttrs(`relationshipRuleTemplates:${rule.templateId}`, { unitId: rule.unitId, ruleId: rule.id }) }, `${name} PROPOSES A RULE: ${rule.text}`),
-      button('accept', '[ACCEPT]', () => on.accept(rule.id), full),
-      button('negotiate', '[NEGOTIATE]', () => on.negotiate(rule.id)),
-      button('refuse', '[REFUSE]', () => on.refuse(rule.id)),
+      button('accept', '[ ACCEPT ]', () => on.accept(rule.id), full),
+      button('negotiate', '[ NEGOTIATE ]', () => on.negotiate(rule.id)),
+      button('refuse', '[ REFUSE ]', () => on.refuse(rule.id)),
       on.generation ? drawSiteReroll(h('span'), on.generation, 'flavor.rule', rule.id) : null));
   }
 }

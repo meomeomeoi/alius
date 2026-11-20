@@ -133,7 +133,7 @@ describe('mouse', () => {
     vi.advanceTimersByTime(1000);
     expect(panel()).not.toBeNull();
     expect(analyzer!.isPinned()).toBe(true);
-    expect(panelText()).toContain('[PINNED]');
+    expect(panelText()).toContain('[ PINNED ]');
   });
 
   it('moving into the panel keeps it open', () => {
@@ -161,7 +161,7 @@ describe('mouse', () => {
     expect(panelText()).toContain('Strain.');
   });
 
-  it('the [PIN] button pins, and [PINNED] closes', () => {
+  it('the [ PIN ] button pins, and [ PINNED ] closes', () => {
     const { a } = setup({ analyzeAnimation: 'off' });
     ptr('pointerover', a);
     vi.advanceTimersByTime(250);

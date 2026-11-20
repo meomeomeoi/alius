@@ -35,7 +35,7 @@ export function renderOverrideChip(host: HTMLElement, state: CampaignState, reg:
     h('span', { class: 'alius-chip alius-stat', ...analyzeAttrs('glossary:warden_override') }, `WARDEN OVERRIDE — ${o.altLabel}`),
     cited ? h('span', { class: 'alius-dim alius-override-cause' }, `She expects: ${expectationLabel(reg, cited)}`) : null,
     h('span', { class: 'alius-row' },
-      button('comply', '[COMPLY]', true, ''),
-      button('argue', '[ARGUE]', canArgue, compelled ? 'The commander is compelled: only COMPLY is open.' : 'There is nothing left to argue here.'),
-      button('defy', '[DEFY]', !compelled, 'The commander is compelled: only COMPLY is open.'))));
+      button('comply', '[ COMPLY ]', true, ''),
+      button('argue', '[ ARGUE ]', canArgue, compelled ? 'The commander is compelled: only COMPLY is open.' : 'There is nothing left to argue here.'),
+      button('defy', '[ DEFY ]', !compelled, 'The commander is compelled: only COMPLY is open.'))));
 }

@@ -51,9 +51,9 @@ export function renderRuleNote(state: CampaignState, reg: Registries, rule: Rule
       return b;
     };
     note.append(h('div', { class: 'alius-chip-group', 'data-rule-group': rule.id },
-      button('accept', '[SIGN]', () => on.accept(rule.id), full),
-      button('negotiate', '[NEGOTIATE]', () => on.negotiate(rule.id)),
-      button('refuse', "[DON'T SIGN]", () => on.refuse(rule.id)),
+      button('accept', '[ SIGN ]', () => on.accept(rule.id), full),
+      button('negotiate', '[ NEGOTIATE ]', () => on.negotiate(rule.id)),
+      button('refuse', "[ DON'T SIGN ]", () => on.refuse(rule.id)),
       on.generation ? drawSiteReroll(h('span'), on.generation, 'flavor.rule', rule.id) : null));
   }
   return note;

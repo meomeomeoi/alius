@@ -57,7 +57,7 @@ describe('demand chips', () => {
     expect(label.textContent).toBe(`ANN DEMANDS: ${s.discipline!.demands[0].text}`);
     expect(label.getAttribute('data-analyze')).toBe('demandTemplates:double_ration');
     expect(JSON.parse(label.getAttribute('data-analyze-ctx')!)).toEqual({ unitId: ANN });
-    expect(['grant', 'refuse', 'talk'].map((k) => btn(k)?.textContent)).toEqual(['[GRANT]', '[REFUSE]', '[TALK]']);
+    expect(['grant', 'refuse', 'talk'].map((k) => btn(k)?.textContent)).toEqual(['[ GRANT ]', '[ REFUSE ]', '[ TALK ]']);
     expect(host.querySelector('[data-owed]')).toBeNull();
     const env: AnalyzeEnv = { registries: reg, state: s, settings: DEFAULT_SETTINGS };
     expect(unresolved(host, env)).toEqual([]);
@@ -84,7 +84,7 @@ describe('demand chips', () => {
     expect(handlers.talk).toHaveBeenCalledWith(id);
   });
 
-  it('[GRANT] is soft-disabled with the reason and inert when the cost cannot be paid', () => {
+  it('[ GRANT ] is soft-disabled with the reason and inert when the cost cannot be paid', () => {
     const s = withDemand('double_ration', { mutate: (x) => { x.resources.supplies = 1; } });
     const { btn, handlers } = draw(s);
     expect(btn('grant')!.getAttribute('aria-disabled')).toBe('true');
@@ -95,7 +95,7 @@ describe('demand chips', () => {
     expect(handlers.refuse).toHaveBeenCalled(); // she can still be refused
   });
 
-  it('[TALK] is absent inside a scene (no talk handler)', () => {
+  it('[ TALK ] is absent inside a scene (no talk handler)', () => {
     const { btn } = draw(withDemand(), () => true, { talk: undefined });
     expect(btn('talk')).toBeNull();
     expect(btn('grant')).not.toBeNull();
@@ -160,7 +160,7 @@ describe('desire demand chips (P9d)', () => {
     const s = withDemand('double_ration');
     s.discipline!.demands[0].templateId = 'want_tonight';
     const d = draw(s);
-    expect(['grant', 'refuse', 'talk'].map((k) => d.btn(k)!.textContent)).toEqual(['[SATISFY]', '[POSTPONE]', '[TALK]']);
+    expect(['grant', 'refuse', 'talk'].map((k) => d.btn(k)!.textContent)).toEqual(['[ SATISFY ]', '[ POSTPONE ]', '[ TALK ]']);
     for (const k of ['grant', 'refuse', 'talk']) expect(d.btn(k)!.getAttribute('data-analyze'), k).toBe('glossary:want');
     d.btn('grant')!.click();
     d.btn('refuse')!.click();
@@ -170,7 +170,7 @@ describe('desire demand chips (P9d)', () => {
 
   it('an ordinary demand keeps GRANT / REFUSE', () => {
     const d = draw(withDemand('double_ration'));
-    expect([d.btn('grant')!.textContent, d.btn('refuse')!.textContent]).toEqual(['[GRANT]', '[REFUSE]']);
+    expect([d.btn('grant')!.textContent, d.btn('refuse')!.textContent]).toEqual(['[ GRANT ]', '[ REFUSE ]']);
   });
 });
 
@@ -190,7 +190,7 @@ describe('rule chips (P9d)', () => {
 
   it('a delivered proposal shows ACCEPT / NEGOTIATE / REFUSE with data-analyze and calls the handlers', () => {
     const d = drawRules(withRule());
-    expect(['accept', 'negotiate', 'refuse'].map((k) => d.btn(k)!.textContent)).toEqual(['[ACCEPT]', '[NEGOTIATE]', '[REFUSE]']);
+    expect(['accept', 'negotiate', 'refuse'].map((k) => d.btn(k)!.textContent)).toEqual(['[ ACCEPT ]', '[ NEGOTIATE ]', '[ REFUSE ]']);
     for (const k of ['accept', 'negotiate', 'refuse']) expect(d.btn(k)!.getAttribute('data-analyze'), k).toBe('glossary:relationship_rules');
     d.btn('accept')!.click();
     d.btn('negotiate')!.click();

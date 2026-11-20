@@ -43,7 +43,7 @@ describe('DISCIPLINE LOGGED', () => {
     expect(label.getAttribute('data-analyze')).toBe('glossary:discipline_logged');
     expect(JSON.parse(label.getAttribute('data-analyze-ctx')!)).toEqual({ unitId: ANN });
     expect(undo).toHaveLength(1);
-    expect(undo[0].textContent).toBe('[UNDO — not what I meant]');
+    expect(undo[0].textContent).toBe('[ UNDO — not what I meant ]');
     expect(undo[0].classList.contains('alius-tagchip')).toBe(true);
     expect(undo[0].dataset.undo).toBe(s.discipline!.applications[0].id);
   });
