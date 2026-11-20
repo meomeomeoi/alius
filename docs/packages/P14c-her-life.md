@@ -9,7 +9,8 @@ Origin: the 2026-11-20 design session. 0.2 builds a deep, mostly physical dynami
 ## Goal
 
 - **Her own days:** small things happen to her whether the commander is there or not, and she may tell about them.
-- **Her hobbies grow:** what she does in her free time accumulates (a book finished, a plant in flower, a song learned) and leaves traces.
+- **Her hobbies live:** picked up, practised unevenly, cooled, dropped and taken up again, each by her own gift; milestones leave traces (a book finished, a plant in flower, a song learned).
+- **News on a schedule:** whatever happens, the squad's news reaches the player spread out, never bunched (§3.6).
 - **She has opinions** about the world, the service, everyday life, people and abstract things, voiced when something brings them up, not every line.
 - **Time together without stakes:** an activity for spending a slot with her doing something ordinary.
 - **Temperament:** three personality fields every package of 0.2 reads.
@@ -42,22 +43,68 @@ Registry `lifeEvents` (draft: 51 events with wording in `docs/content/life.md` �
 
 - **Day step:** per named unit at base, a hash pick (`fnv1a(<seed>|<unitId>|life|<day>)`, no rng draw) chooses at most one event a day (a weekly cap by the setting `lifeEventFrequency`: rare 0.5, **normal 1 (default)**, often 2 events a week per woman; at most one `notable` a week), from those whose `requires` hold (her activities that day, her defect, a relation event, the world state) and whose cooldown has passed: per woman per kind (`cooldownDays`: small 21, notable 45, `vat_day` once a fiction year) and per kind across the squad (5 days), so that no kind repeats for one woman within a month and the commander does not hear the same news from two women in a row.
 - **It becomes a fact** about her (audience = her; `hiddenFromCommander: true` until she shares it; P3b `Knowledge`).
-- **Sharing**, by her `talkativeness`, Affinity and the event's `share`:
+- **Sharing**, by her `talkativeness`, Affinity and the event's `share`, always **through the news queue** (§3.6), which decides the day:
   - a **DM** from her (P10b living DM; the text is a `flavor` line from the event and her card, site `life.share`, budget 120; fallback the event's description line);
   - a **hub line**: hovering her on the hub shows a short line about her day (the "living hub" idea of overview §10);
   - **news** she brings to the next scene with her: a once-directive (`life:news:<unitId>`, "she has news: …; she brings it up only if it fits, once"); `intent_extract` reports `news_told { eventId }` and the directive goes.
 - `keeps` events are hers alone; they surface only through a P15a `memory_surfaces` moment or never.
-- `becomes` links an event to a hobby milestone (§3) or opens an opinion topic for her (§4): she finished a book, so she now has a view on it.
+- `becomes` links an event to a hobby (§3: it starts a new one, rekindles a cooling one, or pushes one over its plateau) or opens an opinion topic for her (§4): she finished a book, so she now has a view on it.
 
-## 3. Hobbies as projects
+## 3. Hobbies: a cycle, not a ladder
 
-Registry `hobbies` (draft: 27 hobbies with wording in `docs/content/life.md` §3): `{ id, activityIds (her blocking activities, P15a), milestones: [{ at, id, line, trace?: 'note' | 'prop' | 'opinion' }], teachable: boolean, description, traceText? }`. A milestone's `line` is her fallback words; the model words the moment.
+Registry `hobbies` (draft: 27 hobbies with wording in `docs/content/life.md` §3): `{ id, activityIds (her blocking activities, P15a), milestones: [{ id, line, trace?: 'note' | 'prop' | 'opinion' }] (four), teachable: boolean, description, traceText? }`. A milestone's `line` is her fallback words; the model words the moment. **Milestones mark her confidence and skill**, not gifts to the commander; a portrait, a poem or a carving given to the commander is a later **special event** (overview §10).
 
-- `Unit.hobbies`: 1–3 ids proposed by `profile_import` from the card, editable.
-- **Progress:** whereabouts that put her in a hobby activity (leisure slots) add to a counter (P14b `Development.counters`, key kind `hobby:<id>`; a new `counter.kind`). Milestones fire at thresholds (`TUNING.life.hobbyStep`).
-- **Milestones mark her confidence and skill**, not gifts to the commander; a portrait, a poem or a carving given to the commander is a later **special event** (overview §10).
-- **Traces:** `note` — a P10b note in her hand (a drawing, a poem, a page of her journal, as a `paper` card; the text from site `life.trace`, budget 150, fallback authored); `prop` — an object in her quarters (P17c layers when they exist; until then a line in the QUARTERS section of her dossier); `opinion` — a new topic for her (§4).
-- **Together:** the commander may join her hobby as a pastime of a quiet meeting (§5). The commander gains a skill in her hobby (`Commander.hobbySkill[hobbyId]`: descriptors, no number shown); with `teachable` she teaches it: her explanations are a pastime moment and grow the skill faster. A woman who taught the commander something remembers it (`memoryRules`, §8).
+Author ruling (2026-11-20): hobbies must not turn every woman into a professional within two months and then stop. A hobby is a **cycle**: picked up, practised unevenly, cooled, dropped, sometimes taken up again; most women never reach the last milestone.
+
+### 3.1 State
+
+`Unit.hobbies: [{ id, skill: 0..100, interest: 0..100, state: 'active' | 'cooling' | 'dropped', since, lastPracticeDay, plateau?: { at }, milestones: string[] }]` and `Unit.aptitudes: { high: hobbyId[], low: hobbyId[] }`.
+
+- **Aptitude.** `profile_import` picks **2–3 hobbies with high aptitude and 2–3 with low** from the whole registry (including hobbies she does not do yet); the rest are standard. Multipliers `TUNING.life.aptitude`: low 0.5, standard 1, high 1.6. Editable in the wizard. Loving a hobby she has no gift for is allowed and is content.
+- **Starting hobbies:** 1–3 from the card (`profile_import`), each starting with a skill hashed inside the first two steps (`fnv1a(<seed>|<unitId>|hobby|<id>)`), so that at the start of a campaign some are halfway to a milestone and nobody is in step.
+- **At most three** hobbies are `active` at once.
+
+### 3.2 Skill
+
+- **Practice:** each leisure slot in which her whereabouts (P10, derived) put her in the hobby's activity, and each quiet meeting `her_hobby` (§5), adds `1 × aptitude × interestFactor` (interest / 60, capped at 1.3). Nothing while she is on a run, in the medbay, restricted, or at stress ≥ 70.
+- **Milestones at 10 / 30 / 60 / 100**, each threshold moved by ±15 % per woman and hobby (`fnv1a(<seed>|<unitId>|hobby|<id>|<n>)`), so that two equally gifted women never reach a step on the same day.
+- **Plateaus.** At 70 % of the way to each milestone progress stops. It breaks either through **persistence** (each practice slot on the plateau: a hashed chance, `TUNING.life.breakthrough`) or through a **push**: a quiet meeting `her_hobby`, an event that `becomes` this hobby (a find, a recording), another woman with the same active hobby, the commander's praise of it in a scene (`intent_extract` `hobby_praised { hobbyId }`). The breakthrough is the milestone.
+- **Ceiling.** With low aptitude the skill stops at the third milestone (60). She accepts it or drops the hobby (her `volatility`, P14c §1: `moody` drops it more often).
+- **Decay.** A dropped hobby loses skill slowly (`TUNING.life.decay`), never below its last milestone.
+
+### 3.3 Interest
+
+- **Rises:** novelty (the first 3 weeks of a hobby), a milestone, a push or praise, sharing it with another woman or the commander.
+- **Falls:** each week on a plateau, stress ≥ 50, a newer hobby taking her slots, the ceiling reached.
+- **States:** interest < 25 → `cooling` (her leisure slots go elsewhere; she may still mention it); 30 days `cooling` → `dropped` ("I haven't picked it up in a while"). Interest ≥ 40 again (a push, an event, a request) → `active`.
+- **New hobbies** come from events whose `becomes` names a hobby she does not have (a found recording → music, a stray → animals), from a woman with an active hobby she has spent time with (a hashed chance per shared leisure slot), or from a quiet meeting where someone shows it to her. A new hobby starts at skill 0 with novelty interest; a fourth one pushes the coolest out of `active`.
+
+### 3.4 After mastery
+
+The last milestone is not an end: the hobby becomes **part of her** (a P14b development fact: "the base's guitarist"); others come to her for it (other women's hobbies may start from hers); later her interest may drift to something new, and the cycle starts again.
+
+### 3.5 Traces and the commander
+
+- **Traces:** `note` — a P10b note in her hand (a drawing, a poem, a page, as a `paper` card; the text from site `life.trace`, budget 150, fallback `traceText`); `prop` — an object in her quarters (P17c layers when they exist; until then a line in QUARTERS); `opinion` — a new topic for her (§4).
+- **Together:** the commander may join her hobby as a pastime (§5). The commander gains a skill in her hobby (`Commander.hobbySkill[hobbyId]`: descriptors only, **no mechanical value** in 0.2); with `teachable` she teaches it and the skill grows faster. A woman who taught the commander something remembers it (`memoryRules`, §8).
+
+### 3.6 The news queue
+
+Things happen at their own pace; **they reach the player on a schedule**, so that the squad's news never bunches (all milestones in one week, a week of nothing but hobbies).
+
+- **What enters the queue:** every shared life event (§2), every hobby milestone and breakthrough, a hobby picked up or dropped. The state changes at once; only the **telling** (her DM, her news directive, a note) waits.
+- **Delivery** (day step, after the life events are picked): at most
+  - **one item a day for the whole squad** (`lifeEventFrequency`: rare one every two days, **normal one a day**, often two a day),
+  - **two hobby items a week** for the whole squad,
+  - **one item every two days from the same woman**.
+- **Variety:** every item has a **category** (her things, her body, construct life, people, service, hobbies; the subsections of `docs/content/life.md` §2 plus `hobby`); two items of the same category never come one after the other: the scheduler takes another category or skips the day.
+- **Order:** `notable` first, then the oldest, then the category not seen longest.
+- **Staleness:** an item older than 7 days is not delivered as news; it turns into a **passing mention** (a once-directive at her next scene: "last week she finally …"; `intent_extract` `news_told` closes it) or stays a hub line.
+- **Outside the queue:**
+  - **hub lines** — passive, seen only on hover;
+  - **what the player caused** — a breakthrough in a quiet meeting the player chose happens in that scene, though it still counts toward the weekly hobby cap so the scheduler waits before the next hobby item;
+  - **urgent notable events** (a grunt lost, an anniversary of a death) — delivered on their day.
+- State: `CampaignState.life.queue: [{ unitId, kind, ref, category, day }]`, `life.delivered: [{ day, unitId, category }]` (the last 14 days). No rng: picks are ordered by the rules and ties broken by `fnv1a`.
 
 ## 4. Opinions
 
@@ -114,15 +161,15 @@ A line or a situation from an earlier scene that both remember can become a runn
 - `life_event` → a fact written at its site (no `memoryRules` entry); shared → `Knowledge` turns it known to the commander.
 - `opinion_voiced` → the commander's `Knowledge` fact at its site; `opinion_changed` → a `memoryRules` entry (audience: her and the commander, importance low, spread none).
 - `first_moment` → `memoryRules` entries `first_<kind>` (audience: the pair, importance by kind, spread none).
-- `hobby_milestone` → a fact at its site; a skill she taught the commander → `memoryRules` entry `taught_commander` (audience: her, importance low).
+- `hobby_milestone` → a fact at its site; `hobby_started`, `hobby_dropped`, `hobby_mastered` → facts at their sites (audience: her; the commander learns them when they are told); a skill she taught the commander → `memoryRules` entry `taught_commander` (audience: her, importance low). The queue, interest and plateaus: bookkeeping.
 - `joke_returned`, counters, cooldowns: bookkeeping.
 - Journal: new relation events (`time_together`, `first_moment`) get `eventDeltas[].journal`. Chronicle: none. Prompt: news, opinions and jokes are triggered directives (§0), not a `memory` provider.
 
 ## 9. Directives, intents, events, actions
 
 - Directives (`life:`-prefixed, derived, never stored): `life:news:<unitId>`, `life:opinion:<unitId>`, `life:joke:<unitId>`, `life:pastime:<unitId>`, the temperament word in her block. Keep away from the prefixes P9, P9b, P9c, P9d, P9e, P11, P12, P13 and `development:` reserve.
-- Intents: `news_told`, `opinion_voiced`, `opinion_challenged`, `opinion_agreed`, `first_moment`, `joke_returned` (each offered only while there is something it can be about).
-- Events: `life_event`, `life_shared`, `hobby_progress`, `hobby_milestone`, `opinion_formed`, `opinion_voiced`, `opinion_changed`, `opinion_hardened`, `time_together`, `first_moment`, `joke_returned`.
+- Intents: `news_told`, `hobby_praised`, `opinion_voiced`, `opinion_challenged`, `opinion_agreed`, `first_moment`, `joke_returned` (each offered only while there is something it can be about).
+- Events: `life_event`, `life_shared`, `news_queued`, `news_delivered`, `news_stale`, `hobby_started`, `hobby_progress`, `hobby_plateau`, `hobby_breakthrough`, `hobby_milestone`, `hobby_cooling`, `hobby_dropped`, `hobby_rekindled`, `hobby_mastered`, `opinion_formed`, `opinion_voiced`, `opinion_changed`, `opinion_hardened`, `time_together`, `first_moment`, `joke_returned`.
 - Actions: `life/time_together { unitId, pastimeId }`, `profile/set_temperament`, `profile/set_hobbies`, `profile/set_opinion` (edit lock).
 - Sites (P14): `profile.temperament` (inside `profile_import`), `opinion.form`, `life.share`, `life.trace`.
 
@@ -132,7 +179,9 @@ A line or a situation from an earlier scene that both remember can become a runn
 |---|---|
 | life events | `lifeEventFrequency` (SYS › World): rare 0.5 / normal 1 / often 2 a week per woman (normal ≈ 4–5 a month, ≈ 20–22 for five women); at most 1 a day and 1 `notable` a week; cooldown per kind per woman: small 21 days, notable 45, `vat_day` a fiction year; the same kind across the squad: 5 days; share chance: `talkative` 0.7, `terse` 0.4, `silent` 0.15, × (Affinity ≥ 40 ? 1 : 0.5) |
 | news directive | lives until her next scene or 3 days |
-| hobby | +1 per leisure slot in a hobby activity; milestones at 5 / 15 / 30 / 60 |
+| hobby skill | +1 per practice slot × aptitude (low 0.5, standard 1, high 1.6) × interest / 60 (cap 1.3); milestones 10 / 30 / 60 / 100, each ±15 % per woman and hobby; plateau at 70 % of each step, breakthrough chance per practice slot 0.06 (× aptitude); low aptitude caps at 60; decay of a dropped hobby 1 a week down to its last milestone; standard aptitude reaches the first milestone in about 2 weeks and mastery in 4–6 months, high in 2–3 |
+| hobby interest | novelty +3 a week for the first 3 weeks; milestone +15; push or praise +8; sharing +5; plateau −4 a week; stress ≥ 50 −3 a week; a newer hobby −2 a week; ceiling reached −10 once; `cooling` < 25; `dropped` after 30 days cooling; back to `active` at ≥ 40; picking up a friend's hobby: 0.02 per shared leisure slot |
+| news queue | squad-wide: rare 1 per 2 days, normal 1 a day, often 2 a day; hobby items 2 a week; one woman at most every 2 days; no two items of one category in a row; stale after 7 days → a passing mention |
 | opinions | one voiced per scene at most; cooldown 21 days per topic; `persuadeAt` 3 major or 6 minor challenges (×2 for `strong`); hardening chance for `strong` 0.5 |
 | quiet meeting | Affinity +2 (diminishing like P2 `rest`), her stress −5; once a day per woman |
 | running joke | becomes a habit after 3 returns within 30 days; `humor` frequency: `warm` 1, `mocking` 1, `dry` 0.6, `none` 0 |
@@ -142,7 +191,8 @@ A line or a situation from an earlier scene that both remember can become a runn
 1. With no named unit, nothing runs; every seeded test stays byte-identical (no rng draw: picks are hashed).
 2. Temperament imports, validates, edits, locks and defaults for old saves; every reader goes through `temperamentOf`.
 3. Life events are picked by hash under the caps, written as hidden facts, shared by DM, hub line or news by her temperament, and voiced at most once.
-4. Hobbies progress from whereabouts, fire milestones, leave notes, props and opinion topics; the commander's hobby skill grows; teaching works.
+4. Hobbies follow the cycle of §3: aptitude (2–3 high, 2–3 low), skill with shifted thresholds, plateaus and breakthroughs, the low-aptitude ceiling, interest with `cooling` and `dropped`, new hobbies from events and friends, at most three active; nothing stops at mastery. Traces, the commander's hobby skill and teaching work.
+4b. The news queue delivers at most its caps (one item a day squad-wide at normal, two hobby items a week, one woman every two days), never two items of a category in a row, turns stale items into passing mentions, and lets hub lines, player-caused breakthroughs and urgent events through; a seeded month of five women shows no week with more than two hobby items.
 5. Strong opinions import; lazy opinions form once per topic and never change outside §4.4; at most one topic per scene, with cooldowns; heard opinions appear in THOUGHTS through `Knowledge`.
 6. Challenges move a position one adjacent step past the threshold, or harden a strong one; history is kept.
 7. `time_together` runs a pastime scene with general moments only, small effects, firsts accepted once per pair.

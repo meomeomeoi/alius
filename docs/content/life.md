@@ -760,12 +760,12 @@ That is 65 topics and 302 positions; the author may cut or regroup.
 
 ## 2. Life events (`lifeEvents`)
 
-Each event: `size` (`small` / `notable`), `requires` (draft conditions), `share` (`anyone` / `close` / `keeps`), `becomes` (a hobby milestone or an opinion topic it opens), `cooldownDays`, and wording:
+Each event: `size` (`small` / `notable`), `requires` (draft conditions), `share` (`anyone` / `close` / `keeps`), `becomes` (a hobby it starts, rekindles or pushes over a plateau, or an opinion topic it opens), `cooldownDays`, and wording:
 - `description` — neutral, what happened: the hint the model receives;
 - `hub` — a short third-person line shown when hovering her on the hub;
 - `lines` — two fallback lines in her voice for her DM or her news. **The model writes the real line** (site `life.share`) from the event, her card and the moment; these lines are used only when generation is off or fails, and serve the model as examples of tone.
 
-**Frequency** (P14c TUNING, setting `lifeEventFrequency`: rare / normal / often = 0.5 / 1 / 2 events a week per woman; default normal): at most one event a week per woman at normal, about 4–5 a month; each kind has a cooldown per woman (small 21 days, notable 45, `vat_day` once a fiction year), so no kind repeats for the same woman within a month; the same kind is not picked for two women within 5 days; `requires` keeps many events rare (they need a run, a death, a hobby, a defect). With 51 kinds, five women see about 20–22 events a month at normal, of which roughly half are shared, and the wording is generated each time.
+**Frequency** (P14c TUNING, setting `lifeEventFrequency`: rare / normal / often = 0.5 / 1 / 2 events a week per woman; default normal): at most one event a week per woman at normal, about 4–5 a month; what is shared is delivered through the **news queue** (P14c §3.6: one item a day squad-wide at normal, two hobby items a week, one woman every two days, never two of a category in a row; the subsections below are the categories); each kind has a cooldown per woman (small 21 days, notable 45, `vat_day` once a fiction year), so no kind repeats for the same woman within a month; the same kind is not picked for two women within 5 days; `requires` keeps many events rare (they need a run, a death, a hobby, a defect). With 51 kinds, five women see about 20–22 events a month at normal, of which roughly half are shared, and the wording is generated each time.
 
 ### 2.1 Her things and her days
 
@@ -1036,7 +1036,7 @@ Each event: `size` (`small` / `notable`), `requires` (draft conditions), `share`
 
 ## 3. Hobbies (`hobbies`)
 
-Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 / 60 (P14c TUNING), each with an id and a line, and the text of its trace when it has one. **Milestones mark her confidence and skill, not gifts:** a portrait of the commander, a poem or a carving given to the commander belong to the later **special events** (overview §10), which join the pool when several conditions hold. **Milestone lines are fallbacks:** the model words the moment in a scene or a DM (site `life.trace`, or the news directive of P14c §2); the line is used when generation is off or fails and shows the model the tone.
+Each hobby: her activities (P15a), `teachable`, four milestones (skill 10 / 30 / 60 / 100, each shifted ±15 % per woman; P14c §3), each with an id and a line, and the text of its trace when it has one. A woman's aptitude (2–3 high, 2–3 low, the rest standard) sets her pace; with low aptitude she stops at the third milestone. Hobbies cool, are dropped and taken up again (P14c §3.3), so the fourth milestone is rare. **Milestones mark her confidence and skill, not gifts:** a portrait of the commander, a poem or a carving given to the commander belong to the later **special events** (overview §10), which join the pool when several conditions hold. **Milestone lines are fallbacks:** the model words the moment in a scene or a DM (site `life.trace`, or the news directive of P14c §2); the line is used when generation is off or fails and shows the model the tone.
 
 #### `reading` — `reading_book` · not teachable · trace: prop (a shelf), opinion `books`
 - description: *She reads whatever paper reaches the base, slowly and completely.*
