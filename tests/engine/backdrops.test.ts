@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { REGISTRY_NAMES, type Entry, type Registries } from '../../src/content/types';
 import { BackdropSchema, DESCRIBED_REGISTRIES, LocationSchema, QuartersStyleSchema, RESERVED_EVENT_TYPES } from '../../src/content/schemas';
-import { quartersOf, sceneBackdrop, slotLight } from '../../src/engine/backdrops';
+import { quartersOf, roomHash, sceneBackdrop, slotLight } from '../../src/engine/backdrops';
 import { fnv1a } from '../../src/engine/hub';
 import type { CampaignState } from '../../src/engine/state/types';
 import '../../src/engine/actions/immersion';
@@ -57,8 +57,18 @@ describe('quartersOf', () => {
     const s = campaign(core, 4);
     for (const u of s.squad) {
       expect(u.quarters).toBeUndefined();
-      expect(quartersOf(s, reg, u.id)!.id).toBe(STYLES[fnv1a(u.id) % STYLES.length].id);
+      expect(quartersOf(s, reg, u.id)!.id).toBe(STYLES[roomHash(u.id) % STYLES.length].id);
     }
+  });
+
+  it('review fix: the default room does not follow her hand (the hashes are salted apart)', async () => {
+    const { handOf } = await import('../../src/engine/hand');
+    const s = campaign(core, 4);
+    for (let i = 0; i < 40; i++) s.squad.push({ ...structuredClone(s.squad[0]), id: `unit_h${i}` });
+    const coreStyles = [...core.quartersStyles.keys()];
+    const parity = s.squad.map((u) => [[...core.handFonts.keys()].indexOf(String(handOf(s, core, u.id)!.id)) % 2, coreStyles.indexOf(String(quartersOf(s, core, u.id)!.id)) % 2]);
+    expect(parity.some(([a, b]) => a !== b)).toBe(true);
+    expect(parity.some(([a, b]) => a === b)).toBe(true);
   });
 
   it('a stored style wins; one the pack lost falls back to the hash', () => {
@@ -66,7 +76,7 @@ describe('quartersOf', () => {
     s.squad[0].quarters = 'gamma';
     expect(quartersOf(s, reg, ANN)!.id).toBe('gamma');
     s.squad[0].quarters = 'gone';
-    expect(quartersOf(s, reg, ANN)!.id).toBe(STYLES[fnv1a(ANN) % STYLES.length].id);
+    expect(quartersOf(s, reg, ANN)!.id).toBe(STYLES[roomHash(ANN) % STYLES.length].id);
   });
 
   it('null for a grunt, an unknown unit and an empty registry', () => {

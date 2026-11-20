@@ -9,6 +9,7 @@ import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
 import { drawLeadChips, drawRuleChips, drawViolation, violationLabels } from '../bonds/chips';
 import { motionReduced } from '../motion';
+import { cssUrl } from '../fx';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { renderDisciplineMenu } from '../discipline/menu';
@@ -52,9 +53,28 @@ export interface SceneScreen {
   dispose(): void;
 }
 
-/** P10c: what each backdrop URL did when it was tried, for the session (a redraw shows a known image at once). */
-const loaded = new Map<string, boolean>();
+/**
+ * P10c: what each backdrop URL did when it was tried (a redraw shows a known image at once). A success is kept for the
+ * session; a failure for `RETRY_MS` (an extension update or a hiccup should not hide a picture until the page reloads).
+ */
+const loaded = new Map<string, { ok: boolean; at: number }>();
 const loading = new Map<string, Promise<boolean>>();
+const RETRY_MS = 30_000;
+const knownResult = (url: string): boolean | undefined => {
+  const r = loaded.get(url);
+  if (!r) return undefined;
+  if (!r.ok && Date.now() - r.at > RETRY_MS) {
+    loaded.delete(url);
+    return undefined;
+  }
+  return r.ok;
+};
+
+/** Tests only: forgets every result. */
+export function resetBackdropCache(): void {
+  loaded.clear();
+  loading.clear();
+}
 
 function defaultLoadImage(url: string): Promise<boolean> {
   if (typeof Image === 'undefined') return Promise.resolve(false);
@@ -66,15 +86,14 @@ function defaultLoadImage(url: string): Promise<boolean> {
   });
 }
 
-/** Tries a URL once per session with the given loader (a result is remembered; a test loader is not shared with the default). */
-function tryLoad(url: string, load: (url: string) => Promise<boolean>, own: boolean): Promise<boolean> {
-  if (own) return load(url);
-  const known = loaded.get(url);
+/** Tries a URL with the given loader; the result is remembered (`knownResult`) and a rejecting loader counts as a failure. */
+function tryLoad(url: string, load: (url: string) => Promise<boolean>): Promise<boolean> {
+  const known = knownResult(url);
   if (known !== undefined) return Promise.resolve(known);
   let p = loading.get(url);
   if (!p) {
-    p = load(url).catch(() => false).then((ok) => {
-      loaded.set(url, ok);
+    p = Promise.resolve().then(() => load(url)).catch(() => false).then((ok) => {
+      loaded.set(url, { ok, at: Date.now() });
       loading.delete(url);
       return ok;
     });
@@ -137,7 +156,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const root = h('div', { class: 'alius-scene' });
   host.append(root);
   attachPan();
-  // P10c: a window resize or a HUD that wraps moves the transcript; the sprites follow it
+  // P10c: a window resize, or a HUD that wraps (a pulse, a REFUSED line, a late font), moves the transcript; the sprites follow
   const resizer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => placeSprites());
   resizer?.observe(root);
 
@@ -204,7 +223,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     root.dataset.backdrop = 'image';
     if (light) root.dataset.light = light;
     else delete root.dataset.light;
-    backdrop.style.backgroundImage = `url("${url}")`;
+    backdrop.style.backgroundImage = cssUrl(url);
     bg.replaceChildren();
     placeSprites();
   }
@@ -226,24 +245,23 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       showAscii(s);
       return;
     }
-    const own = ctx.loadImage !== undefined;
     const load = ctx.loadImage ?? defaultLoadImage;
-    // a known image is shown at once (no flash on a redraw); otherwise the stage waits for the first that loads
-    const known = own ? undefined : candidates.find((c) => loaded.get(c.url) !== false);
-    if (known && loaded.get(known.url) === true) {
+    // a known image is shown at once (no flash on a redraw); otherwise the ASCII stage shows until the first one loads
+    const known = candidates.find((c) => knownResult(c.url) !== false);
+    if (known && knownResult(known.url) === true) {
       showImage(known.url, known.light);
       return;
     }
+    showAscii(s);
     void (async () => {
       for (const c of candidates) {
-        const ok = await tryLoad(c.url, load, own);
+        const ok = await tryLoad(c.url, load);
         if (token !== backdropToken || disposed) return;
         if (ok) {
           showImage(c.url, c.light);
           return;
         }
       }
-      showAscii(s);
     })();
   }
 
@@ -266,8 +284,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   /** P10c: the pointer pans the wide background over its extra width (0 = left edge, 1 = right); centred under reduced motion. */
   function attachPan(): void {
     root.style.setProperty('--alius-pan', '0.5');
-    if (motionReduced(ctx.settings())) return;
     root.addEventListener('pointermove', (ev) => {
+      // read on every move: Reduce motion may be switched on or off mid-scene
+      if (motionReduced(ctx.settings())) {
+        root.style.setProperty('--alius-pan', '0.5');
+        return;
+      }
       const box = root.getBoundingClientRect();
       if (box.width <= 0) return;
       const f = Math.min(1, Math.max(0, ((ev as PointerEvent).clientX - box.left) / box.width));
@@ -500,8 +522,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     bg = h('div', { class: 'alius-scene-bg' });
     backdrop = h('div', { class: 'alius-scene-backdrop', 'aria-hidden': 'true' });
     backdropKey = '';
+    backdropToken++; // a load still running for the previous scene must not paint this one
+    delete root.dataset.backdrop;
+    delete root.dataset.light;
     spriteHost = h('div', { class: 'alius-sprites' });
     hud = h('div', { class: 'alius-hud' });
+    resizer?.observe(hud);
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
@@ -615,6 +641,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (!s?.scene) {
       root.replaceChildren(h('div', { class: 'alius-stub' }, 'NO SCENE OPEN'));
       sceneKey = '';
+      backdropKey = '';
+      backdropToken++;
+      delete root.dataset.backdrop;
+      delete root.dataset.light;
       stopTyping();
       return;
     }
@@ -675,6 +705,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     },
     dispose() {
       disposed = true;
+      backdropToken++;
       resizer?.disconnect();
       stopTyping();
       if (busyTimer) clearInterval(busyTimer);

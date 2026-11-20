@@ -75,10 +75,11 @@ describe('scene screen', () => {
     }
   });
 
-  it('a location with a background does not draw the ASCII stage (P10c: the loader decides; tests/ui/sceneBackdrop.test.ts)', () => {
+  it('a location with a background shows the ASCII stage until its picture loads (P10c; tests/ui/sceneBackdrop.test.ts)', () => {
     const { q } = setup();
     expect(q('.alius-scene-backdrop')).not.toBeNull();
-    expect(q('pre.alius-ascii')).toBeNull();
+    expect(q('pre.alius-ascii')).not.toBeNull();
+    expect(q('.alius-scene')!.dataset.backdrop).toBe('ascii');
   });
 
   it('a group scene places three sprites left/center/right', () => {

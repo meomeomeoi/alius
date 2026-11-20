@@ -34,7 +34,7 @@ const setupResult = (): SetupResult => ({
   }],
 });
 
-async function boot() {
+async function boot(opts: { assetUrl?: (p: string) => string } = {}) {
   const st = new FakeStAdapter(SOLO);
   st.characters = [{ avatar: 'rhea.png', name: 'Rhea' }];
   st.cards.set('rhea.png', { avatar: 'rhea.png', name: 'Rhea', description: 'd', personality: 'p', scenario: '', creatorNotes: '' });
@@ -60,7 +60,7 @@ async function boot() {
     },
     setPalette() {}, refresh() {}, destroy() {},
   };
-  const app = createApp(st, { loadContent: async () => content, shellFactory: (d) => { deps = d; return shell as never; } });
+  const app = createApp(st, { loadContent: async () => content, shellFactory: (d) => { deps = d; return shell as never; }, assetUrl: opts.assetUrl });
   await app.start();
   expect(await app.deployCampaign(setupResult(), 'new_group')).toBe(true);
   toasts.length = 0;
@@ -83,6 +83,25 @@ async function boot() {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('scenes in the app', () => {
+  it('P10c: the scene screen resolves its backdrop through the extension folder (deps.assetUrl)', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(v: string) { asked.push(v); queueMicrotask(() => this.onload?.()); }
+    });
+    try {
+      const t = await boot({ assetUrl: (p) => `/scripts/extensions/third-party/alius/${p}` });
+      await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
+      const host = t.renderScreen('scene');
+      await flush();
+      expect(asked.some((u) => u.startsWith('/scripts/extensions/third-party/alius/content/core/art/backdrops/'))).toBe(true);
+      expect(host.querySelector<HTMLElement>('.alius-scene-backdrop')!.style.backgroundImage).toContain('/scripts/extensions/third-party/alius/content/core/art/backdrops/');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('talk opens the location picker and starts a scene', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'talk', companionId: RHEA });

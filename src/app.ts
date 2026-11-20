@@ -836,6 +836,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
         controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound,
+        assetUrl: deps.assetUrl, // P10c: backdrops live in the extension folder
         generation: genUi,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash('compel', unitId),

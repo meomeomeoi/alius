@@ -10,6 +10,7 @@ import { FakeStAdapter } from '../../src/st/fake';
 import type { LoadResult } from '../../src/st/persistence';
 import { h } from '../../src/ui/dom';
 import { fnv1a } from '../../src/engine/hub';
+import { roomHash } from '../../src/engine/backdrops';
 import { valueBand } from '../../src/ui/squad/bands';
 import { renderSquadTab } from '../../src/ui/squad/squadTab';
 import { markedWithout, unresolved } from '../helpers/analyzeCoverage';
@@ -776,7 +777,7 @@ describe('QUARTERS select (P10c)', () => {
     const sel = select(host, 0);
     expect([...sel.options].map((o) => o.value)).toEqual([...reg.quartersStyles.keys()]);
     expect([...sel.options].map((o) => o.textContent)).toEqual([...reg.quartersStyles.values()].map((e) => String(e.name)));
-    expect(sel.value).toBe([...reg.quartersStyles.keys()][fnv1a(state.squad[0].id) % reg.quartersStyles.size]);
+    expect(sel.value).toBe([...reg.quartersStyles.keys()][roomHash(state.squad[0].id) % reg.quartersStyles.size]);
     expect(sel.closest('[data-analyze]')!.getAttribute('data-analyze')).toBe('glossary:quarters');
     expect(markedWithout(host)).toEqual([]);
     expect(reg.glossary.has('quarters')).toBe(true);

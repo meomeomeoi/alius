@@ -7,7 +7,7 @@ import type { SceneController } from '../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import { h } from '../../src/ui/dom';
-import { renderSceneScreen } from '../../src/ui/scene/sceneScreen';
+import { renderSceneScreen, resetBackdropCache } from '../../src/ui/scene/sceneScreen';
 import '../../src/engine/actions/immersion';
 import { campaign, errors, loadCore, run } from '../helpers/world';
 
@@ -17,10 +17,12 @@ beforeAll(async () => {
 });
 afterEach(() => {
   document.body.innerHTML = '';
+  resetBackdropCache();
+  vi.useRealTimers();
 });
 const ANN = 'unit_ann';
 const flush = async (): Promise<void> => {
-  for (let i = 0; i < 6; i++) await Promise.resolve();
+  for (let i = 0; i < 20; i++) await Promise.resolve();
 };
 
 /** A loader that fails the files in `broken` and records every request. */
@@ -33,7 +35,7 @@ function loader(broken: string[] = []) {
   return { load, asked };
 }
 
-function setup(opts: { locationId?: string; slot?: CampaignState['slot']; broken?: string[]; settings?: Partial<AliusSettings>; tweak?: (s: CampaignState) => void } = {}) {
+function setup(opts: { locationId?: string; slot?: CampaignState['slot']; broken?: string[]; settings?: Partial<AliusSettings>; tweak?: (s: CampaignState) => void; loadImage?: (url: string) => Promise<boolean> } = {}) {
   let state = campaign(reg, 4);
   state.slot = opts.slot ?? 'morning';
   opts.tweak?.(state);
@@ -50,11 +52,11 @@ function setup(opts: { locationId?: string; slot?: CampaignState['slot']; broken
   document.body.append(host);
   const screen = renderSceneScreen(host, {
     controller, getState: () => state, registries: reg, st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }),
-    settings: () => settings, onEnded: vi.fn(), assetUrl: (p) => `ext/${p}`, loadImage: load,
+    settings: () => settings, onEnded: vi.fn(), assetUrl: (p) => `ext/${p}`, loadImage: opts.loadImage ?? load,
   });
   const root = () => host.querySelector<HTMLElement>('.alius-scene')!;
   const image = () => host.querySelector<HTMLElement>('.alius-scene-backdrop')?.style.backgroundImage ?? '';
-  return { screen, root, image, asked, load, setState: (s: CampaignState) => { state = s; }, state: () => state, host };
+  return { screen, root, image, asked, load, settings, setState: (s: CampaignState) => { state = s; }, state: () => state, host };
 }
 
 describe('scene backdrop (P10c)', () => {
@@ -142,5 +144,99 @@ describe('scene backdrop (P10c)', () => {
     await flush();
     ascii.screen.refresh();
     expect(ascii.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe('');
+  });
+
+  it('review fixes: the ASCII stage shows while a picture loads; a new scene does not inherit the last one\'s image mode', async () => {
+    let release!: (ok: boolean) => void;
+    const t = setup({ loadImage: () => new Promise<boolean>((r) => { release = r; }) });
+    expect(t.root().dataset.backdrop).toBe('ascii');
+    expect(t.host.querySelector('pre.alius-ascii')).not.toBeNull();
+    await flush();
+    release(true);
+    await flush();
+    expect(t.root().dataset.backdrop).toBe('image');
+    // the scene ends and a new one starts at an uncached place: no stale image mode or light while it loads
+    const ended = run(t.state(), reg, { type: 'scene/end', payload: {} });
+    expect(errors(ended.events)).toEqual([]);
+    t.setState(ended.state);
+    t.screen.refresh();
+    expect(t.root().dataset.backdrop).toBeUndefined();
+    const again = run(t.state(), reg, { type: 'scene/start', payload: { locationId: 'garage', participants: [ANN], origin: 'event', startIndex: 0 } });
+    expect(errors(again.events)).toEqual([]);
+    t.setState(again.state);
+    t.screen.refresh();
+    expect(t.root().dataset.backdrop).toBe('ascii');
+    expect(t.root().dataset.light).toBeUndefined();
+  });
+
+  it('review fixes: a load overtaken by a newer one, or by the end of the screen, paints nothing', async () => {
+    const releases: Array<(ok: boolean) => void> = [];
+    const t = setup({ locationId: 'quarters_unit', loadImage: () => new Promise<boolean>((r) => { releases.push(r); }) });
+    const other = [...reg.quartersStyles.values()].find((e) => e.id !== quartersOf(t.state(), reg, ANN)!.id)!;
+    t.setState(run(t.state(), reg, { type: 'squad/set_quarters', payload: { unitId: ANN, styleId: String(other.id) } }).state);
+    t.screen.refresh();
+    await flush();
+    releases[1](true);                // the newer style loads first
+    await flush();
+    releases[0](true);                // the old one arrives late
+    await flush();
+    expect(t.image()).toContain(String(other.background));
+    t.screen.dispose();
+    expect(() => releases.forEach((r) => r(true))).not.toThrow();
+  });
+
+  it('review fixes: a rejecting loader is a failure (the ASCII stays); a known picture shows at once on the next screen; a failure is retried after 30 s', async () => {
+    const rejecting = setup({ loadImage: async () => { throw new Error('boom'); } });
+    await flush();
+    expect(rejecting.root().dataset.backdrop).toBe('ascii');
+    document.body.innerHTML = '';
+    resetBackdropCache();
+    const first = setup();
+    await flush();
+    expect(first.root().dataset.backdrop).toBe('image');
+    document.body.innerHTML = '';
+    const second = setup();                                 // same file, already known: no flash, no new request
+    expect(second.root().dataset.backdrop).toBe('image');
+    expect(second.load).not.toHaveBeenCalled();
+    document.body.innerHTML = '';
+    resetBackdropCache();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const failed = setup({ broken: ['loc_garage'], locationId: 'garage' });
+    await flush();
+    document.body.innerHTML = '';
+    const soon = setup({ locationId: 'garage' });
+    await flush();
+    expect(soon.load).not.toHaveBeenCalled();                // within 30 s the failure is remembered
+    vi.setSystemTime(Date.now() + 31_000);
+    document.body.innerHTML = '';
+    const later = setup({ locationId: 'garage' });
+    await flush();
+    expect(later.load).toHaveBeenCalled();
+    expect(later.root().dataset.backdrop).toBe('image');
+    void failed;
+  });
+
+  it('review fixes: switching Reduce motion mid-scene stops (and re-centres) the pan', async () => {
+    const t = setup();
+    await flush();
+    Object.defineProperty(t.root(), 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
+    t.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 900, bubbles: true }));
+    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.9');
+    t.settings.reducedMotion = true;
+    t.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 100, bubbles: true }));
+    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
+  });
+
+  it('review fixes: the HUD is observed, so a pulse that wraps it moves the sprites', async () => {
+    const observed: Element[] = [];
+    vi.stubGlobal('ResizeObserver', class { observe(el: Element) { observed.push(el); } disconnect() {} });
+    try {
+      const t = setup();
+      await flush();
+      expect(observed).toContain(t.root());
+      expect(observed).toContain(t.host.querySelector('.alius-hud'));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

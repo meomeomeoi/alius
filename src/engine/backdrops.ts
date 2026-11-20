@@ -8,8 +8,9 @@ import type { CampaignState, Slot } from './state/types';
  */
 
 /**
- * The room style of a soldier's quarters: `unit.quarters` when it names an entry, else the entry at `fnv1a(unitId) % n` in
- * registry order (the `handOf` rule), so every named soldier has a stable room with nothing stored. Grunts have none.
+ * The room style of a soldier's quarters: `unit.quarters` when it names an entry, else the entry at `roomHash(unitId) % n` in
+ * registry order (like `handOf`, but on other bits so it does not follow her hand), so every named soldier has a stable
+ * room with nothing stored. Grunts have none.
  */
 export function quartersOf(state: Pick<CampaignState, 'squad'>, reg: Registries, unitId: string): Entry | null {
   const unit = state.squad.find((u) => u.id === unitId);
@@ -17,8 +18,15 @@ export function quartersOf(state: Pick<CampaignState, 'squad'>, reg: Registries,
   const chosen = unit.quarters === undefined ? undefined : reg.quartersStyles.get(unit.quarters);
   if (chosen) return chosen;
   const all = [...reg.quartersStyles.values()];
-  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+  return all.length === 0 ? null : all[roomHash(unitId) % all.length];
 }
+
+/**
+ * The default room's hash. FNV-1a's low bit is fixed by the low bits of the characters (the prime is odd), so `handOf`'s
+ * `fnv1a(unitId) % 6` and any salted `fnv1a(…) % 14` would share their parity: her room would follow her hand. The high
+ * bits are mixed, so the room reads them.
+ */
+export const roomHash = (unitId: string): number => fnv1a(`${unitId}|quarters`) >>> 8;
 
 export interface BackdropCandidate {
   /** Extension-relative path. */

@@ -495,7 +495,9 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P14b
   'appraisal_recorded', 'appraisal_revised', 'development_review', 'development_shift', 'development_moment', 'development_fact', 'habit_formed',
   // P10b
-  'door_said', 'door_replied', 'hand_set', 'quarters_set', 'note_left', 'note_read', 'notes_expired',
+  'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
+  // P10c
+  'quarters_set',
   // P13
   'leashswap_started', 'warden_assigned', 'warden_revealed', 'warden_agenda_set', 'expectation_learned',
   'warden_override', 'override_answered', 'override_compromise', 'override_argue_roll',

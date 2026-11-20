@@ -39,11 +39,10 @@
   overflow: hidden;
 }
 
+/* the ASCII art of a place without a picture (P10c: the picture itself is .alius-scene-backdrop) */
 #alius-shell .alius-scene-bg {
   position: absolute;
   inset: 0;
-  background-size: cover;
-  background-position: center;
   opacity: 0.55;
 }
 
@@ -496,4 +495,9 @@
 
 #alius-shell.alius-reduced-motion .alius-scene-backdrop {
   transition: none;
+}
+
+/* the rows below the stage sit at z-index 1 over a picture: a cut-in must stay above them */
+#alius-shell .alius-scene[data-backdrop="image"] > .alius-cutin {
+  z-index: 2;
 }
