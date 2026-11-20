@@ -127,7 +127,7 @@ export function agendaProblem(list: unknown, reg: Registries): string | null {
  */
 export function setAgenda(draft: CampaignState, reg: Registries, list: unknown): EngineEvent[] {
   const w = wardenOf(draft);
-  if (!w || !leashswapOf(draft)) throw new Error('warden/agenda: nobody holds the leash.');
+  if (!w || !leashswapOf(draft)) throw new Error('warden/agenda: nobody holds the Leash.');
   if (w.agenda !== 'fallback' || w.overrideFired === true) throw new Error('The agenda is already in play.');
   const problem = agendaProblem(list, reg);
   if (problem) throw new Error(`warden/agenda: ${problem}`);

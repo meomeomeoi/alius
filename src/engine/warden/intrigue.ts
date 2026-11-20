@@ -127,7 +127,7 @@ export function intrigueDiscovered(draft: CampaignState, ctx: EngineCtx, cause: 
 
 /** Why an intrigue slot action cannot start now (a scene, a fight or a run is open, or nobody holds the leash), or null. */
 export function intrigueBusy(state: CampaignState): string | null {
-  if (!wardenOf(state)) return 'Nobody holds the leash.';
+  if (!wardenOf(state)) return 'Nobody holds the Leash.';
   if (state.scene !== undefined || state.combat !== undefined || state.expedition !== undefined) return 'Not while a scene, a fight or a run is open.';
   return null;
 }

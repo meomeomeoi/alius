@@ -59,7 +59,7 @@ export function wardenDirectives(state: CampaignState, reg: Registries): Directi
   if (state.leashswap?.remote !== undefined && wardenOf(state) === null) {
     out.push({
       id: REMOTE_DIRECTIVE, expiresAfter: 'manual',
-      text: 'AUTHOR TO WRITE: Nobody holds the commander\'s leash while oversight investigates. The controller runs on corporate rules, quota and obedience, with no argument and no exceptions. The squad knows the warden is gone and does not yet know how this ends.',
+      text: 'AUTHOR TO WRITE: Nobody holds the commander\'s Leash while oversight investigates. The controller runs on corporate rules, quota and obedience, with no argument and no exceptions. The squad knows the warden is gone and does not yet know how this ends.',
     });
   }
   if (unit && revealPending(state, reg)) {

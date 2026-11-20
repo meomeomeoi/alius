@@ -51,7 +51,7 @@ const restOfDay = (slot: Slot): number => (SLOTS.includes(slot) ? SLOTS.length -
  */
 export function leashCommander(draft: CampaignState, ctx: EngineCtx, kind: 'compel' | 'suppress'): EngineEvent[] {
   const w = wardenOf(draft);
-  if (!w) throw new Error('Nobody holds the leash.');
+  if (!w) throw new Error('Nobody holds the Leash.');
   if (w.leashLeft < 1) throw new Error('The warden has no Leash authorization left this week.');
   w.leashLeft -= 1;
   const events: EngineEvent[] = [{ type: 'commander_leashed', kind }];

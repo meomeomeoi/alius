@@ -210,7 +210,7 @@
     "id": "leash",
     "term": "Leash",
     "short": "A corporate override you can request: Compel, Suppress or Terminate. Authorizations refill weekly, and every use costs relations.",
-    "long": "Each request goes through an oversight form. Every use is logged, the squad notices, and soldiers who value their autonomy hate it. A soldier you leash may not forgive you.",
+    "long": "Each request goes through an oversight form. Every use is logged, the squad notices, and soldiers who value their autonomy hate it. A soldier you use the Leash on may not forgive you.",
     "see": [
       "leash_compel",
       "leash_suppress",
@@ -1919,7 +1919,7 @@
     "id": "false_alarm",
     "term": "False alarm",
     "short": "A premonition about a soldier who is planning nothing. It looks exactly like a real one.",
-    "long": "AUTHOR TO WRITE: Each day a premonition may come with nothing behind it; a sharper Insight makes it rarer, and a bad night makes it likelier. Accusing, punishing, leashing or benching a soldier on a false alarm costs trust, adds commander stress and is remembered.",
+    "long": "AUTHOR TO WRITE: Each day a premonition may come with nothing behind it; a sharper Insight makes it rarer, and a bad night makes it likelier. Accusing, punishing, benching or using the Leash on a soldier on a false alarm costs trust, adds commander stress and is remembered.",
     "see": [
       "premonition",
       "commander_stress"
@@ -1986,8 +1986,8 @@
   {
     "id": "leashswap",
     "term": "LEASHSWAP",
-    "short": "A campaign mode in which the commander carries the controller implant and one soldier holds the leash.",
-    "long": "In LEASHSWAP the commander is leashed like the squad. One soldier, the [[warden]], holds the controller for the corporation: she expects things of the commander, can override orders and can punish. The mode is chosen at setup, and what happens when the commander dies is set by the [[death_rule]].",
+    "short": "A campaign mode in which the commander carries the controller implant and one soldier holds the Leash.",
+    "long": "In LEASHSWAP the commander is under the Leash like the squad. One soldier, the [[warden]], holds the controller for the corporation: she expects things of the commander, can override orders and can punish. The mode is chosen at setup, and what happens when the commander dies is set by the [[death_rule]].",
     "see": [
       "warden",
       "death_rule"
@@ -2058,7 +2058,7 @@
     "id": "leash_cosign",
     "term": "Co-sign",
     "short": "A Leash request on a soldier goes through the warden first: she co-signs or denies it.",
-    "long": "While a warden holds the leash, every request to compel, suppress or terminate a soldier needs her co-sign. A denial spends no authorization, is logged with her name and leaves the situation as it was. Her answer depends on how satisfied she is and on her own mind; a request against the warden herself is always denied.",
+    "long": "While a warden holds the Leash, every request to compel, suppress or terminate a soldier needs her co-sign. A denial spends no authorization, is logged with her name and leaves the situation as it was. Her answer depends on how satisfied she is and on her own mind; a request against the warden herself is always denied.",
     "see": [
       "warden",
       "commander_leash"
@@ -2166,7 +2166,7 @@
     "id": "verdict",
     "term": "Verdict",
     "short": "When the investigation closes, the commander is cleared or convicted.",
-    "long": "Cleared: the commander is free, the implant is dormant and oversight keeps watch. Convicted: oversight assigns a new warden from the squad, and with no one left to hold the leash the commander is executed and the campaign ends, whatever the death rule says.",
+    "long": "Cleared: the commander is free, the implant is dormant and oversight keeps watch. Convicted: oversight assigns a new warden from the squad, and with no one left to hold the Leash the commander is executed and the campaign ends, whatever the death rule says.",
     "see": [
       "investigation",
       "death_rule"

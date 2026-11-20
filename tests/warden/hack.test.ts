@@ -68,7 +68,7 @@ describe('hackProblem', () => {
   it('a unit who is not an ally is not enough, and nothing can be done with nobody holding the leash', () => {
     const s = swap((x) => { x.relations[ID.cat].flags = []; });
     expect(hackProblem(s, reg, ID.cat)).toMatch(/know-how/);
-    expect(hackProblem(swap((x) => { x.leashswap!.status = 'free'; }), reg, ID.cat)).toBe('Nobody holds the leash.');
+    expect(hackProblem(swap((x) => { x.leashswap!.status = 'free'; }), reg, ID.cat)).toBe('Nobody holds the Leash.');
   });
 });
 
