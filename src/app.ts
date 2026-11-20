@@ -693,7 +693,6 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
     warden.onLoaded(); // P13: the agenda of a campaign just built or reloaded, and the reveal directive
     headStart.onLoaded(); // P11b: the recap of the first weeks, once
-    personal.reopenSecrets(); // P9c: a secret that was found and never answered asks again
     void personal.onLoaded().then((ok) => { if (ok) shell.open(); }).catch((e) => console.warn('[Alius] booking failed', e)); // P9c: a booking that came due while the game was closed
     pendingEdit = null; // P9c: an edit of another chat is not this one's; a waiting one comes back from the state, freshly worded
     void personal.pendingEdit().then((edit) => { if (edit) { pendingEdit = edit; shell.refresh(); } }).catch((e) => console.warn('[Alius] edit failed', e));
@@ -1366,6 +1365,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (st.getActiveChat()?.chatId === chatId) {
         openDilemmaModal();
         openConfrontationModal();
+        reopenSecretIfFree();
       }
     }
   }
@@ -1420,6 +1420,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     openConfrontationModal();
     showOverrideModal(); // P13: an override that was waiting when the campaign was saved
+    reopenSecretIfFree(); // P9c: a secret that was found and never answered asks again, after the modal of the previous chat closed
+  }
+
+  /** P9c: the card of a found, unanswered secret, unless another modal of this campaign is up (a new modal cancels the open one). */
+  function reopenSecretIfFree(): void {
+    if (reviewOpen || dilemmaModalOpen || overrideModalOpen) return;
+    if (state?.disloyalty?.open?.at === 'mission_start') return; // the confrontation modal is up
+    personal.reopenSecrets();
   }
 
   function replaceState(next: CampaignState): void {
