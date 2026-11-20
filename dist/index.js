@@ -41025,6 +41025,7 @@ function tryLoad(url, load, own) {
   }
   return p;
 }
+var SPRITE_TUCK = 14;
 var PULSE_MS = 1500;
 var TICK_MS2 = 50;
 var NON_ROMANTIC_KINDS = ["friendship_deepen", "confide", "rivalry", "reconcile", "break_up"];
@@ -41076,6 +41077,8 @@ function renderSceneScreen(host, ctx2) {
   const root = h("div", { class: "alius-scene" });
   host.append(root);
   attachPan();
+  const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => placeSprites());
+  resizer?.observe(root);
   let pacing = false;
   let pending4 = false;
   let disposed = false;
@@ -41127,6 +41130,7 @@ function renderSceneScreen(host, ctx2) {
     const art2 = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
     art2.textContent = (loc?.ascii ?? []).join("\n");
     bg.replaceChildren(art2);
+    placeSprites();
   }
   function showImage(url, light) {
     root.dataset.backdrop = "image";
@@ -41134,6 +41138,7 @@ function renderSceneScreen(host, ctx2) {
     else delete root.dataset.light;
     backdrop.style.backgroundImage = `url("${url}")`;
     bg.replaceChildren();
+    placeSprites();
   }
   function drawBackground(s) {
     caption.textContent = locationName(s, present2(s)).toUpperCase();
@@ -41166,6 +41171,16 @@ function renderSceneScreen(host, ctx2) {
       }
       showAscii(s);
     })();
+  }
+  function placeSprites() {
+    if (!spriteHost) return;
+    const stage = spriteHost.parentElement;
+    if (root.dataset.backdrop !== "image" || !stage || !log) {
+      spriteHost.style.bottom = "";
+      return;
+    }
+    const gap = Math.max(0, log.getBoundingClientRect().top - stage.getBoundingClientRect().bottom);
+    spriteHost.style.bottom = `-${Math.round(gap + SPRITE_TUCK)}px`;
   }
   function attachPan() {
     root.style.setProperty("--alius-pan", "0.5");
@@ -41545,6 +41560,7 @@ function renderSceneScreen(host, ctx2) {
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
+    placeSprites();
   }
   function pulse(e) {
     const holder = hud.querySelector(`.alius-hud-unit[data-unit="${e.unitId}"] .alius-pulses`);
@@ -41588,6 +41604,7 @@ function renderSceneScreen(host, ctx2) {
     },
     dispose() {
       disposed = true;
+      resizer?.disconnect();
       stopTyping();
       if (busyTimer) clearInterval(busyTimer);
       for (const t of timeouts) clearTimeout(t);

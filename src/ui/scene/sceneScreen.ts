@@ -83,6 +83,9 @@ function tryLoad(url: string, load: (url: string) => Promise<boolean>, own: bool
   return p;
 }
 
+/** P10c: how far a knee-length sprite reaches behind the top of the transcript panel. */
+const SPRITE_TUCK = 14;
+
 const PULSE_MS = 1500;
 const TICK_MS = 50;
 const NON_ROMANTIC_KINDS = ['friendship_deepen', 'confide', 'rivalry', 'reconcile', 'break_up'] as const;
@@ -134,6 +137,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const root = h('div', { class: 'alius-scene' });
   host.append(root);
   attachPan();
+  // P10c: a window resize or a HUD that wraps moves the transcript; the sprites follow it
+  const resizer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => placeSprites());
+  resizer?.observe(root);
 
   let pacing = false;
   let pending = false;
@@ -191,6 +197,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const art = h('pre', { class: 'alius-ascii', 'aria-hidden': 'true' });
     art.textContent = ((loc?.ascii as string[] | undefined) ?? []).join('\n');
     bg.replaceChildren(art);
+    placeSprites();
   }
 
   function showImage(url: string, light: string | null): void {
@@ -199,6 +206,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     else delete root.dataset.light;
     backdrop.style.backgroundImage = `url("${url}")`;
     bg.replaceChildren();
+    placeSprites();
   }
 
   /**
@@ -237,6 +245,22 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       }
       showAscii(s);
     })();
+  }
+
+  /**
+   * P10c: sprites are knee-length, so over a full-bleed picture their cut must never show: the sprite layer reaches down
+   * past the HUD to the transcript's top edge and `SPRITE_TUCK` px behind it (the panel covers the cut, the CSS fades it).
+   * Measured from the layout because the HUD's height varies (a REFUSED line, wrapping names). Image mode only.
+   */
+  function placeSprites(): void {
+    if (!spriteHost) return;
+    const stage = spriteHost.parentElement;
+    if (root.dataset.backdrop !== 'image' || !stage || !log) {
+      spriteHost.style.bottom = '';
+      return;
+    }
+    const gap = Math.max(0, log.getBoundingClientRect().top - stage.getBoundingClientRect().bottom);
+    spriteHost.style.bottom = `-${Math.round(gap + SPRITE_TUCK)}px`;
   }
 
   /** P10c: the pointer pans the wide background over its extra width (0 = left edge, 1 = right); centred under reduced motion. */
@@ -610,6 +634,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
+    placeSprites();
   }
 
   function pulse(e: Extract<SceneUiEvent, { type: 'pulse' }>): void {
@@ -650,6 +675,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     },
     dispose() {
       disposed = true;
+      resizer?.disconnect();
       stopTyping();
       if (busyTimer) clearInterval(busyTimer);
       for (const t of timeouts) clearTimeout(t);

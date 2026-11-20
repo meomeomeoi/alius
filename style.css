@@ -2415,6 +2415,24 @@
 #alius-shell .alius-scene[data-backdrop="image"] .alius-stage {
   flex: 1 1 52%;
   border: none;
+  overflow: visible; /* the knee-length sprites reach down behind the transcript (placeSprites) */
+  z-index: 0;
+}
+
+/* the rows below the stage sit above the sprites' legs; the transcript panel hides their cut (the cut-in keeps its own position) */
+#alius-shell .alius-scene[data-backdrop="image"] > :is(.alius-hud, .alius-transcript, .alius-chips, .alius-generation-chips, .alius-discipline-units, .alius-cmd) {
+  position: relative;
+  z-index: 1;
+}
+
+/* the cut fades out under the panel's top edge, so no hard line shows through its translucency */
+#alius-shell .alius-scene[data-backdrop="image"] .alius-sprite-img {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] .alius-stage-caption {
+  z-index: 1;
 }
 
 #alius-shell .alius-scene[data-backdrop="image"] .alius-scene-bg {

@@ -128,4 +128,19 @@ describe('scene backdrop (P10c)', () => {
     still.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 900, bubbles: true }));
     expect(still.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
   });
+
+  it('knee-length sprites reach down behind the transcript, measured from the layout (image mode only)', async () => {
+    const t = setup();
+    await flush();
+    const rect = (top: number, bottom: number) => () => ({ top, bottom, left: 0, right: 1000, width: 1000, height: bottom - top, x: 0, y: top, toJSON() {} });
+    Object.defineProperty(t.host.querySelector('.alius-stage')!, 'getBoundingClientRect', { value: rect(50, 600) });
+    Object.defineProperty(t.host.querySelector('.alius-transcript')!, 'getBoundingClientRect', { value: rect(640, 900) });
+    t.screen.refresh();
+    expect(t.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe('-54px');
+    document.body.innerHTML = '';
+    const ascii = setup({ locationId: 'garage', broken: ['loc_garage'] });
+    await flush();
+    ascii.screen.refresh();
+    expect(ascii.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe('');
+  });
 });
