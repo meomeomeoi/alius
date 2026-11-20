@@ -15,13 +15,17 @@ export function writeDayStart(st: StAdapter, snap: DayStart): void {
   st.saveMetadata().catch((e) => console.warn('[Alius] saving the day-start snapshot failed', e));
 }
 
-/** The stored snapshot, or null when there is none or it is malformed (a foreign chat's is the caller's to check by `chatId`). */
+/**
+ * The stored snapshot, or null when there is none or it is malformed (a foreign chat's is the caller's to check by `chatId`). A rewind
+ * makes its state the live campaign, so the state passes the same `migrate` as a load (version, shape, prototype keys, hidden runs).
+ */
 export function readDayStart(st: StAdapter): DayStart | null {
   const raw = st.readMetadata(DAY_START_KEY) as Partial<DayStart> | undefined;
   if (typeof raw !== 'object' || raw === null) return null;
-  if (typeof raw.chatId !== 'string' || typeof raw.day !== 'number' || typeof raw.chatLength !== 'number') return null;
-  if (typeof raw.state !== 'object' || raw.state === null) return null;
-  return raw as DayStart;
+  if (typeof raw.chatId !== 'string' || typeof raw.day !== 'number' || !Number.isSafeInteger(raw.chatLength) || (raw.chatLength as number) < 0) return null;
+  const checked = migrate(raw.state);
+  if (!checked.ok) return null;
+  return { chatId: raw.chatId, day: raw.day, chatLength: raw.chatLength as number, state: checked.state };
 }
 
 export type LoadResult =
