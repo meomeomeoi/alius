@@ -1,6 +1,6 @@
 import type { Severity } from '../state/types';
 
-/** The 35 event types the mechanic model may report (26 of P3 spec §3, the four of P9, the three of P9d, P12's knowledge_leak and accused). Content (`eventDeltas`) must have a row for each. */
+/** The event types the mechanic model may report (the 26 of P3 spec §3, then P9, P9d, P12, P13 and P14c's seven). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
@@ -18,7 +18,16 @@ export const EVENT_TYPES = [
   'expectation_kept', 'expectation_broken',
   // P13: the commander enlists a unit against the warden (offered only while she holds the leash and is not in the scene)
   'conspired',
+  // P14c: her life (offered to the model only while there is something of the kind to report; the engine's own offered lists decide)
+  'news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned',
 ] as const;
+
+/** P14c: the model-reportable types of her life. The intent prompt offers each only with its own list, and `validateIntents` drops one it was not offered. */
+export const LIFE_EVENT_TYPES: readonly string[] = ['news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned'];
+
+/** P14c: the kinds of a `first_moment` (a closed enum; a kind the pair has not had yet is kept). */
+export const FIRST_KINDS = ['laughed', 'fell_asleep_beside', 'told_her_past', 'cried', 'taught', 'asked_about_commander'] as const;
+export type FirstKind = (typeof FIRST_KINDS)[number];
 
 /** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead; P9b: the leader's moves). Never offered to the model; `validateIntents` rejects them. */
 export const ENGINE_EVENT_TYPES = ['warden_complied', 'warden_defied', 'warden_betrayed', 'warden_removed_by', 'granted_demand', 'refused_demand', 'followed_lead', 'rule_accepted', 'rule_refused',
@@ -34,6 +43,8 @@ export const ENGINE_EVENT_TYPES = ['warden_complied', 'warden_defied', 'warden_b
   'false_accusation',
   // P12: she found out the commander sells intel to a rival corporation
   'debts_exposed',
+  // P14c: a quiet meeting with her (a pastime) ended; never reported by the model
+  'time_together',
 ] as const;
 
 /** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */

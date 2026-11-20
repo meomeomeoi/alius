@@ -465,7 +465,7 @@ describe('location picker', () => {
   it('offers only slot-allowed locations', async () => {
     let seen: string[] = [];
     await pickLocation(modalFor((b) => { seen = [...b.querySelectorAll<HTMLInputElement>('input[name="location"]')].map((i) => i.value); }, 'cancel'), base(campaign(reg, 4)));
-    expect(seen).toEqual(['quarters_commander', 'quarters_unit', 'mess_hall', 'training_yard', 'workshop', 'medbay', 'garage', 'comms_room', 'perimeter']);
+    expect(seen).toEqual(['quarters_commander', 'quarters_unit', 'mess_hall', 'training_yard', 'workshop', 'medbay', 'garage', 'comms_room', 'perimeter', 'laundry']);
     let night: string[] = [];
     const s = campaign(reg, 4);
     s.slot = 'night';

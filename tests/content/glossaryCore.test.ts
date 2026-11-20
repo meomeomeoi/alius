@@ -20,7 +20,7 @@ describe('core glossary and descriptions', () => {
   });
 
   it('every glossary id the code addresses exists', () => {
-    const wanted = [...CORE_GLOSSARY_IDS, ...Object.keys(DEFAULT_SETTINGS).map(settingGlossaryId), settingGlossaryId('difficulty')];
+    const wanted = [...CORE_GLOSSARY_IDS, ...Object.keys(DEFAULT_SETTINGS).map(settingGlossaryId), settingGlossaryId('difficulty'), settingGlossaryId('lifeEvents')];
     expect(wanted.filter((id) => !reg.glossary.has(id))).toEqual([]);
     expect(new Set(CORE_GLOSSARY_IDS).size).toBe(CORE_GLOSSARY_IDS.length);
   });
@@ -30,7 +30,7 @@ describe('core glossary and descriptions', () => {
     expect(concepts.length).toBeGreaterThanOrEqual(30);
     expect([...concepts].sort()).toEqual([...CORE_GLOSSARY_IDS].sort());
     const settings = [...reg.glossary.keys()].filter((id) => id.startsWith('setting_'));
-    expect(settings.sort()).toEqual([...Object.keys(DEFAULT_SETTINGS), 'difficulty'].map(settingGlossaryId).sort());
+    expect(settings.sort()).toEqual([...Object.keys(DEFAULT_SETTINGS), 'difficulty', 'lifeEvents'].map(settingGlossaryId).sort());
   });
 
   it('every glossary entry has a term and a short text, concepts about numbers carry a long text', () => {

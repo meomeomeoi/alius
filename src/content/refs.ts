@@ -922,3 +922,74 @@ registerChecks('habits', (entry, regs) => {
   if (fx && !regs.activities.has(String(fx.activityId))) out.push({ path: 'effect.activityId', message: `unknown activity "${String(fx.activityId)}"` });
   return out;
 });
+
+// ---------------------------------------------------------------------------------------------
+// P14c: her life. A life event's conditions and `becomes` name hobbies, topics, locations, activities, defect categories and other life
+// events; a hobby has four milestones, places she can practise (one hosted by a hub room) and the traces it leaves; a topic's triggers name
+// locations, activities and life events; a pastime names locations and a hobby; the habit counter `joke` counts jokes, not an id.
+
+interface LifeRegs { regs: Record<RegistryName, Map<string, Entry>> }
+const lifeCheck = (path: string, registry: RegistryName, id: unknown, { regs }: LifeRegs, label: string): RegistryCheck[] =>
+  typeof id === 'string' && !regs[registry].has(id) ? [{ path, message: `unknown ${label} "${id}"` }] : [];
+
+registerChecks('lifeEvents', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const r = (entry.requires ?? {}) as { hobby?: string; location?: string[]; activity?: string[]; defectCategory?: string; afterEvent?: string; otherHadThisWeek?: string };
+  const b = (entry.becomes ?? {}) as { hobby?: string; opinionTopic?: string };
+  const ctx = { regs };
+  if (r.hobby !== undefined && r.hobby !== 'any') out.push(...lifeCheck('requires.hobby', 'hobbies', r.hobby, ctx, 'hobby'));
+  (r.location ?? []).forEach((id, i) => out.push(...lifeCheck(`requires.location[${i}]`, 'locations', id, ctx, 'location')));
+  (r.activity ?? []).forEach((id, i) => out.push(...lifeCheck(`requires.activity[${i}]`, 'activities', id, ctx, 'activity')));
+  if (r.defectCategory !== undefined && ![...regs.defects.values()].some((d) => d.category === r.defectCategory)) out.push({ path: 'requires.defectCategory', message: `no defect has the category "${r.defectCategory}"` });
+  out.push(...lifeCheck('requires.afterEvent', 'lifeEvents', r.afterEvent, ctx, 'life event'));
+  out.push(...lifeCheck('requires.otherHadThisWeek', 'lifeEvents', r.otherHadThisWeek, ctx, 'life event'));
+  out.push(...lifeCheck('becomes.hobby', 'hobbies', b.hobby, ctx, 'hobby'));
+  out.push(...lifeCheck('becomes.opinionTopic', 'opinionTopics', b.opinionTopic, ctx, 'opinion topic'));
+  return out;
+});
+
+registerChecks('hobbies', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const ctx = { regs };
+  const locations = (entry.locations as string[] | undefined) ?? [];
+  locations.forEach((id, i) => out.push(...lifeCheck(`locations[${i}]`, 'locations', id, ctx, 'location')));
+  const hosted = new Set([...regs.hubRooms.values()].map((room) => room.sceneLocationId));
+  if (locations.length > 0 && !locations.some((id) => hosted.has(id))) out.push({ path: 'locations', message: `hobby "${entry.id}" needs at least one location hosted by a hub room (she practises where she spends her slots)` });
+  const milestones = (entry.milestones as Array<{ id: string; trace?: string }> | undefined) ?? [];
+  if (milestones.length !== 4) out.push({ path: 'milestones', message: `hobby "${entry.id}" needs exactly 4 milestones (has ${milestones.length})` });
+  const ids = new Set<string>();
+  milestones.forEach((m, i) => {
+    if (ids.has(m.id)) out.push({ path: `milestones[${i}].id`, message: `milestone id "${m.id}" is used twice` });
+    ids.add(m.id);
+    if (m.trace === 'opinion' && entry.opinionTopic === undefined) out.push({ path: `milestones[${i}].trace`, message: 'an opinion trace needs the hobby\'s opinionTopic' });
+    if ((m.trace === 'note' || m.trace === 'prop') && entry.traceText === undefined) out.push({ path: `milestones[${i}].trace`, message: `a ${m.trace} trace needs the hobby's traceText` });
+  });
+  out.push(...lifeCheck('opinionTopic', 'opinionTopics', entry.opinionTopic, ctx, 'opinion topic'));
+  return out;
+});
+
+registerChecks('opinionTopics', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const ctx = { regs };
+  const t = (entry.triggers ?? {}) as { locations?: string[]; activities?: string[]; lifeEvents?: string[] };
+  (t.locations ?? []).forEach((id, i) => out.push(...lifeCheck(`triggers.locations[${i}]`, 'locations', id, ctx, 'location')));
+  (t.activities ?? []).forEach((id, i) => out.push(...lifeCheck(`triggers.activities[${i}]`, 'activities', id, ctx, 'activity')));
+  (t.lifeEvents ?? []).forEach((id, i) => out.push(...lifeCheck(`triggers.lifeEvents[${i}]`, 'lifeEvents', id, ctx, 'life event')));
+  const n = ((entry.positions as unknown[] | undefined) ?? []).length;
+  if (entry.axis !== undefined && n < 3) out.push({ path: 'positions', message: `topic "${entry.id}" has an axis and needs at least 3 positions (has ${n})` });
+  return out;
+});
+
+registerChecks('pastimes', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const ctx = { regs };
+  ((entry.locations as string[] | undefined) ?? []).forEach((id, i) => out.push(...lifeCheck(`locations[${i}]`, 'locations', id, ctx, 'location')));
+  out.push(...lifeCheck('requires.hobby', 'hobbies', (entry.requires as { hobby?: string } | undefined)?.hobby, ctx, 'hobby'));
+  return out;
+});
+
+// the running joke habit counts jokes (`joke:<fact id>`), which no id names
+registerChecks('habits', (entry) => {
+  const counter = entry.counter as { kind?: string; id?: string } | undefined;
+  return counter?.kind === 'joke' && counter.id !== undefined ? [{ path: 'counter.id', message: 'a joke habit counts every running joke; it names none' }] : [];
+});

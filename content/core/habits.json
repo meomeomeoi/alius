@@ -56,5 +56,14 @@
     "threshold": 4,
     "fallback": "AUTHOR TO WRITE: {name} knows the ground out there now, and walks it without looking.",
     "description": "AUTHOR TO WRITE: She has been out to the same ground so often that she knows it."
+  },
+  {
+    "id": "running_joke",
+    "counter": {
+      "kind": "joke"
+    },
+    "threshold": 3,
+    "fallback": "AUTHOR TO WRITE: {name} and the commander have a running joke.",
+    "description": "AUTHOR TO WRITE: A joke she and the commander have brought back often enough to be theirs."
   }
 ]

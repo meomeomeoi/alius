@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
+import { EVENT_TYPES, LIFE_EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
@@ -98,7 +98,7 @@ function system(raw: unknown): string {
   const hasExpectations = (input.expectations ?? []).length > 0;
   const hasConspire = (input.conspire ?? []).length > 0;
   const asksReading = input.reading === true;
-  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || (hasOverride && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const eventTypes = EVENT_TYPES.filter((t) => !LIFE_EVENT_TYPES.includes(t) /* P14c: offered with their own lists, from the intents task on */ && (hasRules || (hasOverride && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),

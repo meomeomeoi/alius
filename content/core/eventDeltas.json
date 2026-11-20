@@ -1464,5 +1464,133 @@
       }
     },
     "valueAligned": true
+  },
+  {
+    "id": "time_together",
+    "cause": "You spent a quiet hour with her",
+    "journal": "the commander spent a quiet hour with her",
+    "rows": {
+      "minor": {
+        "affinity": 2,
+        "stress": -5
+      },
+      "moderate": {
+        "affinity": 2,
+        "stress": -5
+      },
+      "major": {
+        "affinity": 2,
+        "stress": -5
+      },
+      "extreme": {
+        "affinity": 2,
+        "stress": -5
+      }
+    },
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
+    }
+  },
+  {
+    "id": "first_moment",
+    "cause": "A first between you and her",
+    "journal": "a first between her and the commander",
+    "rows": {
+      "minor": {
+        "affinity": 2
+      },
+      "moderate": {
+        "affinity": 2
+      },
+      "major": {
+        "affinity": 2
+      },
+      "extreme": {
+        "affinity": 2
+      }
+    }
+  },
+  {
+    "id": "opinion_agreed",
+    "cause": "You agreed with her on what she holds firmly",
+    "journal": "the commander agreed with her on something she holds firmly",
+    "rows": {
+      "minor": {
+        "affinity": 1
+      },
+      "moderate": {
+        "affinity": 1
+      },
+      "major": {
+        "affinity": 1
+      },
+      "extreme": {
+        "affinity": 1
+      }
+    }
+  },
+  {
+    "id": "opinion_challenged",
+    "cause": "You challenged what she believes",
+    "journal": "the commander challenged something she believes",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    },
+    "appraisal": {
+      "wanted": "no",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "bad"
+    }
+  },
+  {
+    "id": "news_told",
+    "cause": "She told you her news",
+    "journal": "she told the commander her news",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "hobby_praised",
+    "cause": "You praised her hobby",
+    "journal": "the commander praised her hobby",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "opinion_voiced",
+    "cause": "She told you what she thinks",
+    "journal": "she told the commander what she thinks about something",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "joke_returned",
+    "cause": "A joke came back between you",
+    "journal": "she and the commander brought back a joke",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
   }
 ]

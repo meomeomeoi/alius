@@ -78,11 +78,11 @@ describe('core content pack', () => {
 });
 
 describe('core content: P2 registries', () => {
-  it('core pack has the nine v1 activities and five facilities', async () => {
+  it('core pack has the ten activities (nine v1 and P14c\'s quiet meeting) and five facilities', async () => {
     const { registries: r, errors } = await load();
     expect(errors).toEqual([]);
     expect([...r.activities.keys()].sort()).toEqual(
-      ['medbay', 'mess', 'rest', 'scout_net', 'study', 'talk', 'train', 'work', 'workshop'],
+      ['medbay', 'mess', 'rest', 'scout_net', 'study', 'talk', 'time_together', 'train', 'work', 'workshop'],
     );
     expect([...r.facilities.keys()].sort()).toEqual(['barracks', 'comms', 'medbay', 'mess_hall', 'workshop']);
   });
@@ -201,7 +201,7 @@ describe('activity cross references', () => {
       expect(Object.keys(e!.rows as object).sort(), t).toEqual(['extreme', 'major', 'minor', 'moderate']);
     }
     expect(r.eventDeltas.size).toBe(ALL_EVENT_TYPES.length);
-    expect(ALL_EVENT_TYPES).toHaveLength(61); // 38 the model reports (P12: knowledge_leak, accused; P13: expectation_kept, expectation_broken, conspired), 23 only the engine writes (P9d: 5, P9b: the leader's four and shielded, P9c: 6, P12: frequency_exposed, false_accusation, debts_exposed, P13: warden_complied, warden_defied, warden_betrayed, warden_removed_by)
+    expect(ALL_EVENT_TYPES).toHaveLength(69); // 45 the model reports (P12: knowledge_leak, accused; P13: expectation_kept, expectation_broken, conspired; P14c: news_told, hobby_praised, opinion_voiced, opinion_challenged, opinion_agreed, first_moment, joke_returned), 24 only the engine writes (P14c: time_together) (P9d: 5, P9b: the leader's four and shielded, P9c: 6, P12: frequency_exposed, false_accusation, debts_exposed, P13: warden_complied, warden_defied, warden_betrayed, warden_removed_by)
   });
 
   it('table rows from the spec', async () => {
@@ -215,10 +215,10 @@ describe('activity cross references', () => {
     expect(r.eventDeltas.get('decision_aligned')!.valueAligned).toBe(true);
   });
 
-  it('ten base locations with ASCII art', async () => {
+  it('eleven base locations with ASCII art (the ten of P3 and the laundry of P14c)', async () => {
     const { registries: r } = await load();
     expect([...r.locations.keys()].sort()).toEqual([
-      'comms_room', 'garage', 'medbay', 'mess_hall', 'perimeter', 'quarters_commander', 'quarters_unit', 'roof',
+      'comms_room', 'garage', 'laundry', 'medbay', 'mess_hall', 'perimeter', 'quarters_commander', 'quarters_unit', 'roof',
       'training_yard', 'workshop',
     ]);
     for (const l of r.locations.values()) expect((l.ascii as string[]).length, String(l.id)).toBeGreaterThan(0);

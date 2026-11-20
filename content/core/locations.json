@@ -217,5 +217,25 @@
     "backgroundNight": "content/core/art/backdrops/loc_perimeter_night.webp",
     "floor": "concrete",
     "ceiling": "sky"
+  },
+  {
+    "id": "laundry",
+    "name": "Laundry",
+    "summary": "Three machines, a drying line and the smell of cheap detergent.",
+    "ascii": [
+      "+------------------------+",
+      "| [==]  [==]  [==]       |",
+      "| |  |  |  |  |  |  ~~~~ |",
+      "| '--'  '--'  '--'  line |",
+      "|                        |",
+      "+---------[DOOR]---------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "floor": "concrete",
+    "ceiling": "technical"
   }
 ]

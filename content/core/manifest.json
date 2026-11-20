@@ -79,6 +79,10 @@
     "habits": "habits.json",
     "quartersStyles": "quartersStyles.json",
     "backdrops": "backdrops.json",
-    "planRooms": "planRooms.json"
+    "planRooms": "planRooms.json",
+    "lifeEvents": "lifeEvents.json",
+    "hobbies": "hobbies.json",
+    "opinionTopics": "opinionTopics.json",
+    "pastimes": "pastimes.json"
   }
 }

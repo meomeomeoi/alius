@@ -539,7 +539,7 @@ describe('coverage: OPS', () => {
     expect(unreachable(host)).toEqual([]);
     expect(markerCount(host)).toBeGreaterThanOrEqual(25);
     const addresses = new Set(unitIdsIn(host));
-    for (const id of reg.activities.keys()) expect(addresses.has(`activities:${id}`), id).toBe(true);
+    for (const [id, a] of reg.activities) if (a.pastime !== true) expect(addresses.has(`activities:${id}`), id).toBe(true); // P14c: a quiet meeting is picked from her pastimes
     for (const wanted of ['glossary:supplies', 'glossary:mission_board', 'glossary:expedition', 'glossary:danger', 'glossary:reward_tier', 'glossary:mission_deadline', 'regions:quarantine_d7']) {
       expect(addresses.has(wanted), wanted).toBe(true);
     }

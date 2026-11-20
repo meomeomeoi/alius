@@ -1,0 +1,419 @@
+[
+  {
+    "id": "cook_together",
+    "label": "Cook together",
+    "locations": [
+      "mess_hall"
+    ],
+    "slots": [
+      "evening"
+    ],
+    "talk": "some",
+    "herActivity": "cooking",
+    "commanderActivity": "helping",
+    "sensoryTag": "kitchen",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Cooking something real in the mess kitchen after hours.",
+    "opening": "The mess is empty; she has a pot on the burner and a second knife laid out on the board.",
+    "lines": [
+      "Chop those. Smaller. Smaller than that.",
+      "If it's terrible, we eat it anyway. That's the rule."
+    ]
+  },
+  {
+    "id": "rain_on_the_roof",
+    "label": "Rain on the roof",
+    "locations": [
+      "roof"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "talk": "quiet",
+    "herActivity": "idle",
+    "commanderActivity": "idle",
+    "sensoryTag": "rain",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Sitting under the overhang on the roof while it rains, saying little.",
+    "opening": "Rain drums on the sheet metal; she has a spot under the overhang and has kept half of it free.",
+    "lines": [
+      "Sit. Don't talk yet. Listen to it first.",
+      "Rain washes the spores out. Best air on the base, for an hour."
+    ]
+  },
+  {
+    "id": "fix_gear",
+    "label": "Fix gear",
+    "locations": [
+      "workshop"
+    ],
+    "slots": [
+      "morning",
+      "afternoon"
+    ],
+    "talk": "some",
+    "herActivity": "repairing_gear",
+    "commanderActivity": "holding_for_her",
+    "sensoryTag": "machine_oil",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: She repairs gear at the workbench; the commander holds parts and passes tools.",
+    "opening": "Her rifle lies in pieces on the bench, every part in a row; she points at the one she needs without looking up.",
+    "lines": [
+      "Hold this. No, by the edge. There.",
+      "You're useless with a wrench. Stay anyway."
+    ]
+  },
+  {
+    "id": "cards",
+    "label": "Cards",
+    "locations": [
+      "mess_hall",
+      "quarters_unit"
+    ],
+    "slots": [
+      "evening",
+      "night"
+    ],
+    "talk": "some",
+    "herActivity": "playing",
+    "commanderActivity": "playing",
+    "sensoryTag": "shuffling",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: A game of cards, with small stakes and a lot of talk.",
+    "opening": "She shuffles a soft, worn deck and deals two hands without asking.",
+    "lines": [
+      "Stakes are chores. Loser does the dishes.",
+      "I'll go easy on you. That's a lie."
+    ]
+  },
+  {
+    "id": "music",
+    "label": "Music",
+    "locations": [
+      "quarters_unit",
+      "roof"
+    ],
+    "slots": [
+      "evening"
+    ],
+    "talk": "quiet",
+    "herActivity": "music",
+    "commanderActivity": "listening",
+    "sensoryTag": "music",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: She plays or puts on music and the commander listens.",
+    "opening": "She tunes her instrument with her ear close to the strings, then glances up to see if the commander is staying.",
+    "lines": [
+      "Sit. This one's short. I think.",
+      "Don't clap. Just listen."
+    ]
+  },
+  {
+    "id": "perimeter_walk",
+    "label": "Perimeter walk",
+    "locations": [
+      "perimeter"
+    ],
+    "slots": [
+      "afternoon",
+      "evening"
+    ],
+    "talk": "quiet",
+    "herActivity": "walking",
+    "commanderActivity": "walking",
+    "sensoryTag": "wire",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Walking the fence line together, checking posts, talking or not.",
+    "opening": "The fence hums faintly; she sets a slow pace along the wire, rifle slung, not in a hurry.",
+    "lines": [
+      "Same posts every day. Feels different with company.",
+      "If something moves out there, we pretend we didn't see it. Just for tonight."
+    ]
+  },
+  {
+    "id": "read_together",
+    "label": "Read together",
+    "locations": [
+      "quarters_unit",
+      "medbay"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "talk": "quiet",
+    "herActivity": "reading_book",
+    "commanderActivity": "reading_aloud",
+    "sensoryTag": "paper",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Reading in the same room, or one reading aloud to the other.",
+    "opening": "She is curled up with a book and moves her boots to make room, without a word.",
+    "lines": [
+      "Read me a page. Any page. I like your voice on paper.",
+      "Shh. I'm at the good part."
+    ]
+  },
+  {
+    "id": "train_together",
+    "label": "Train together",
+    "locations": [
+      "training_yard"
+    ],
+    "slots": [
+      "morning",
+      "afternoon"
+    ],
+    "talk": "some",
+    "herActivity": "training",
+    "commanderActivity": "training",
+    "sensoryTag": "sweat",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Training together on the yard: drills, stretches, a little sparring.",
+    "opening": "She is already warm, sleeves rolled, and tosses the commander a towel.",
+    "lines": [
+      "Twenty more. I'll count. I'll cheat in your favor.",
+      "Hold the pad. Higher. Brace."
+    ]
+  },
+  {
+    "id": "tea_at_night",
+    "label": "Tea at night",
+    "locations": [
+      "mess_hall",
+      "quarters_unit"
+    ],
+    "slots": [
+      "night"
+    ],
+    "talk": "some",
+    "herActivity": "drinking",
+    "commanderActivity": "drinking",
+    "sensoryTag": "steam",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Something hot to drink late at night, when neither can sleep.",
+    "opening": "Two mugs steam on the table; she has wrapped both hands around hers and is watching the dark window.",
+    "lines": [
+      "Couldn't sleep either? Sit.",
+      "It's not real tea. It's warm. That's enough."
+    ]
+  },
+  {
+    "id": "her_hobby",
+    "label": "Her hobby",
+    "locations": [],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "hobby": true,
+    "talk": "some",
+    "herActivity": "her_hobby",
+    "commanderActivity": "learning",
+    "sensoryTag": "hobby",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: She shows the commander her hobby and lets the commander try.",
+    "opening": "She has laid out her things for the hobby and pushes one set across: an invitation.",
+    "lines": [
+      "Your turn. Don't be careful. Careful is boring.",
+      "No one's ever asked me to show them. Sit."
+    ]
+  },
+  {
+    "id": "laundry_together",
+    "label": "Laundry together",
+    "locations": [
+      "laundry"
+    ],
+    "slots": [
+      "morning",
+      "afternoon"
+    ],
+    "talk": "some",
+    "herActivity": "washing",
+    "commanderActivity": "washing",
+    "sensoryTag": "detergent",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Doing laundry together: the most boring chore, made bearable.",
+    "opening": "The machines thump and rattle; she sits on one, swinging her legs, a basket at her feet.",
+    "lines": [
+      "Fold. Corners first. Who taught you to fold?",
+      "This is the only place on base where nobody comes looking for you."
+    ]
+  },
+  {
+    "id": "patch_each_other",
+    "label": "Patch each other up",
+    "locations": [
+      "medbay",
+      "quarters_unit"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "requires": {
+      "afterRun": true
+    },
+    "talk": "some",
+    "herActivity": "tending",
+    "commanderActivity": "tending",
+    "sensoryTag": "antiseptic",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Cleaning and bandaging each other's small wounds after a run.",
+    "opening": "She has the med kit open on her knees and nods at the stool in front of her: the commander's turn first.",
+    "lines": [
+      "Hold still. This will sting. I'm not sorry.",
+      "Your turn. My shoulder. Gently. Gently!"
+    ]
+  },
+  {
+    "id": "old_film",
+    "label": "An old film",
+    "locations": [
+      "quarters_unit"
+    ],
+    "slots": [
+      "evening",
+      "night"
+    ],
+    "talk": "quiet",
+    "herActivity": "watching",
+    "commanderActivity": "watching",
+    "sensoryTag": "projector",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Watching an old film on a cracked projector.",
+    "opening": "A wall flickers with grainy light; she has dragged two cushions in front of it and is hunting for the sound.",
+    "lines": [
+      "It's from before. Everyone in it is dead. It's a comedy.",
+      "Shh, this is the part. Watch her face."
+    ]
+  },
+  {
+    "id": "sunrise_roof",
+    "label": "Sunrise on the roof",
+    "locations": [
+      "roof"
+    ],
+    "slots": [
+      "morning"
+    ],
+    "requires": {
+      "firstSlot": true
+    },
+    "talk": "quiet",
+    "herActivity": "idle",
+    "commanderActivity": "idle",
+    "sensoryTag": "dawn",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Watching the sun come up over the dead city from the roof.",
+    "opening": "The sky over the ruins is going gray to pink; she is sitting on the parapet with her knees up.",
+    "lines": [
+      "Shh. Thirty seconds. Then it comes over the tower.",
+      "Every morning it does this, and every morning nobody watches."
+    ]
+  },
+  {
+    "id": "tidy_her_quarters",
+    "label": "Tidy her quarters",
+    "locations": [
+      "quarters_unit"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "talk": "some",
+    "herActivity": "tidying",
+    "commanderActivity": "tidying",
+    "sensoryTag": "dust",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Tidying her quarters together, which turns into going through her things.",
+    "opening": "Her quarters are half chaos; she hands the commander a box and points at a shelf.",
+    "lines": [
+      "Don't judge. Just put it where it looks like it goes.",
+      "That? Keep it. No, I don't know why either."
+    ]
+  },
+  {
+    "id": "shooting_range",
+    "label": "Shooting range",
+    "locations": [
+      "training_yard"
+    ],
+    "slots": [
+      "morning",
+      "afternoon"
+    ],
+    "talk": "some",
+    "herActivity": "shooting",
+    "commanderActivity": "shooting",
+    "sensoryTag": "gunpowder",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Target practice together at the range, with a little betting.",
+    "opening": "She sets up cans on a beam and offers the commander the first shot.",
+    "lines": [
+      "Breathe out, then squeeze. Don't pull.",
+      "Loser cleans both rifles."
+    ]
+  },
+  {
+    "id": "care_for_animal",
+    "label": "Care for her stray",
+    "locations": [
+      "perimeter"
+    ],
+    "slots": [
+      "afternoon",
+      "evening"
+    ],
+    "requires": {
+      "hobby": "animals"
+    },
+    "talk": "quiet",
+    "herActivity": "feeding",
+    "commanderActivity": "feeding",
+    "sensoryTag": "fur",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Feeding the stray she looks after at the fence.",
+    "opening": "She crouches by the fence with a ration tin, clicking her tongue at something in the grass.",
+    "lines": [
+      "Slowly. She doesn't know you yet.",
+      "She likes you. She doesn't like anyone."
+    ]
+  },
+  {
+    "id": "haircut",
+    "label": "A haircut",
+    "locations": [
+      "quarters_unit"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "talk": "some",
+    "herActivity": "cutting",
+    "commanderActivity": "sitting",
+    "sensoryTag": "scissors",
+    "momentSources": [],
+    "description": "AUTHOR TO WRITE: Cutting each other's hair, or one cutting the other's.",
+    "opening": "She sits on an upturned crate with a towel over her shoulders and holds out the scissors.",
+    "lines": [
+      "Just the ends. If you ruin it, I ruin yours.",
+      "Sit. I've done half the squad. Mostly they still talk to me."
+    ]
+  }
+]

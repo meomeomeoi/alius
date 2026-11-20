@@ -1,0 +1,910 @@
+[
+  {
+    "id": "broke_favourite_thing",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "cooldownDays": 21,
+    "description": "AUTHOR TO WRITE: She broke something small that mattered to her: a mug, a charm, a cracked mirror.",
+    "hub": "She is gluing something back together, badly.",
+    "lines": [
+      "My mug. The chipped one. It finally gave up.",
+      "Don't laugh. It was the only thing I owned that wasn't issued."
+    ]
+  },
+  {
+    "id": "found_something",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "requires": {
+      "location": [
+        "perimeter",
+        "garage"
+      ]
+    },
+    "becomes": {
+      "hobby": "collecting"
+    },
+    "tags": [
+      "collecting"
+    ],
+    "description": "AUTHOR TO WRITE: She found something odd and kept it: a pre-Bloom coin, a toy soldier, a key to nothing.",
+    "hub": "She is turning a small object over in her fingers.",
+    "lines": [
+      "Found this in the garage wall. A coin. Older than the company.",
+      "It's a key. To what, I don't know. I like that."
+    ]
+  },
+  {
+    "id": "things_touched",
+    "size": "small",
+    "category": "things",
+    "share": "close",
+    "requires": {
+      "otherNamed": true
+    },
+    "becomes": {
+      "opinionTopic": "trust"
+    },
+    "tags": [
+      "trust"
+    ],
+    "description": "AUTHOR TO WRITE: Someone went through her things while she was out.",
+    "hub": "She is checking her locker, item by item.",
+    "lines": [
+      "Someone's been in my locker. Nothing's missing. That's worse.",
+      "I fold my shirts a certain way. Someone didn't."
+    ]
+  },
+  {
+    "id": "old_photo",
+    "size": "notable",
+    "category": "things",
+    "share": "close",
+    "requires": {
+      "afterRun": {}
+    },
+    "becomes": {
+      "opinionTopic": "memory"
+    },
+    "tags": [
+      "memory"
+    ],
+    "description": "AUTHOR TO WRITE: She brought back a photograph or a data chip from before the Bloom: strangers smiling in a world that is gone.",
+    "hub": "A faded photograph is propped against her lamp.",
+    "lines": [
+      "A family at a beach. Before. Look how bored they are. Look how safe.",
+      "I don't know who they are. I can't throw them away."
+    ]
+  },
+  {
+    "id": "music_found",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "becomes": {
+      "hobby": "music"
+    },
+    "tags": [
+      "music"
+    ],
+    "description": "AUTHOR TO WRITE: She found an old recording that still plays.",
+    "hub": "A tinny old song leaks from her quarters.",
+    "lines": [
+      "Found a music chip in a dead terminal. Ninety years old. Still works.",
+      "The singer's probably dust. Her voice isn't."
+    ]
+  },
+  {
+    "id": "outfit_change",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "becomes": {
+      "opinionTopic": "clothes"
+    },
+    "tags": [
+      "clothes"
+    ],
+    "description": "AUTHOR TO WRITE: She changed something about how she looks: a scarf, a patch, an earring.",
+    "hub": "There is something new about her uniform.",
+    "lines": [
+      "Traded two ration cards for this scarf. Worth it.",
+      "It's a small thing. It's mine."
+    ]
+  },
+  {
+    "id": "hair_cut",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "description": "AUTHOR TO WRITE: She cut her hair, or had it cut, or let it down for once.",
+    "hub": "Her hair is different today.",
+    "lines": [
+      "Cut it myself. Don't say anything.",
+      "Felt like being someone slightly different. Hair's the cheap way."
+    ]
+  },
+  {
+    "id": "bored",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "requires": {
+      "noRunDays": 5
+    },
+    "description": "AUTHOR TO WRITE: Nothing has happened for days and she is climbing the walls.",
+    "hub": "She is bouncing a ball against the wall, over and over.",
+    "lines": [
+      "If nothing happens soon, I'm going to start a fight for fun.",
+      "I've cleaned my rifle four times today. Four."
+    ]
+  },
+  {
+    "id": "weather_mood",
+    "size": "small",
+    "category": "things",
+    "share": "anyone",
+    "becomes": {
+      "opinionTopic": "weather_rain"
+    },
+    "tags": [
+      "weather_rain"
+    ],
+    "description": "AUTHOR TO WRITE: The weather has got into her mood.",
+    "hub": "She watches the weather from the window.",
+    "lines": [
+      "Rain all day. Either I sleep or I scream.",
+      "It's so hot the walls are sweating."
+    ]
+  },
+  {
+    "id": "wrote_journal",
+    "size": "small",
+    "category": "things",
+    "share": "keeps",
+    "requires": {
+      "hobby": "journal"
+    },
+    "tags": [
+      "journal"
+    ],
+    "description": "AUTHOR TO WRITE: She wrote in her journal tonight, longer than usual.",
+    "hub": "She closes a notebook as soon as anyone looks.",
+    "lines": [
+      "Writing. No, you can't read it.",
+      "Some things only make sense on paper."
+    ]
+  },
+  {
+    "id": "nightmare",
+    "size": "small",
+    "category": "body",
+    "share": "close",
+    "requires": {
+      "stressMin": 40
+    },
+    "becomes": {
+      "opinionTopic": "the_vat"
+    },
+    "tags": [
+      "the_vat"
+    ],
+    "description": "AUTHOR TO WRITE: She had a nightmare and has not shaken it off.",
+    "hub": "She looks like she slept badly.",
+    "lines": [
+      "Bad night. The tank again.",
+      "I woke up with my hand on my knife. Don't ask."
+    ]
+  },
+  {
+    "id": "good_sleep",
+    "size": "small",
+    "category": "body",
+    "share": "keeps",
+    "requires": {
+      "stressMax": 19
+    },
+    "description": "AUTHOR TO WRITE: For once she slept through the night.",
+    "hub": "She seems rested, almost cheerful.",
+    "lines": [
+      "Eight hours. No dreams. I feel new.",
+      "I don't know what happened, but I slept like the dead. The nice dead."
+    ]
+  },
+  {
+    "id": "sick_day",
+    "size": "small",
+    "category": "body",
+    "share": "anyone",
+    "description": "AUTHOR TO WRITE: She is ill: a fever, a bad stomach, a construct cold.",
+    "hub": "She is wrapped in a blanket, sniffing.",
+    "lines": [
+      "Even off-spec bodies catch colds. Who knew.",
+      "Medbay says rest. Medbay is boring."
+    ]
+  },
+  {
+    "id": "new_scar",
+    "size": "small",
+    "category": "body",
+    "share": "anyone",
+    "requires": {
+      "afterRun": {
+        "hurt": true
+      }
+    },
+    "description": "AUTHOR TO WRITE: A wound from the last run has closed into a new scar.",
+    "hub": "She is studying a fresh scar in the mirror.",
+    "lines": [
+      "New scar. Left shoulder. It'll go with the others.",
+      "Medic says it'll fade. I hope it doesn't. I earned it."
+    ]
+  },
+  {
+    "id": "hurt_in_training",
+    "size": "small",
+    "category": "body",
+    "share": "anyone",
+    "requires": {
+      "activity": [
+        "train"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: She pulled something or bruised herself in training.",
+    "hub": "She is walking a little stiffly.",
+    "lines": [
+      "Twisted my ankle on the yard. My own fault.",
+      "Don't make me laugh. Ribs."
+    ]
+  },
+  {
+    "id": "body_ache",
+    "size": "small",
+    "category": "body",
+    "share": "anyone",
+    "requires": {
+      "injured": true
+    },
+    "description": "AUTHOR TO WRITE: An old wound aches in the cold.",
+    "hub": "She rubs an old scar absently.",
+    "lines": [
+      "The old one's acting up. Rain's coming.",
+      "My knee is a better weather forecast than oversight."
+    ]
+  },
+  {
+    "id": "firmware_glitch",
+    "size": "small",
+    "category": "body",
+    "share": "close",
+    "requires": {
+      "defectCategory": "cybernetic"
+    },
+    "description": "AUTHOR TO WRITE: Her implants misbehaved: a stutter, a lost minute, a flicker in her vision.",
+    "hub": "She keeps blinking, as if clearing her eyes.",
+    "lines": [
+      "Lost about ninety seconds this morning. Just... gone.",
+      "My HUD said I was underwater. I was in the shower."
+    ]
+  },
+  {
+    "id": "firmware_update",
+    "size": "notable",
+    "category": "body",
+    "share": "close",
+    "requires": {
+      "activity": [
+        "medbay"
+      ]
+    },
+    "becomes": {
+      "opinionTopic": "memory"
+    },
+    "tags": [
+      "memory"
+    ],
+    "description": "AUTHOR TO WRITE: She had a corporate firmware update or a deep scan and does not feel quite the same.",
+    "hub": "She sits very still, as if listening to something inside.",
+    "lines": [
+      "They patched me last night. Everything feels a little to the left.",
+      "I keep checking my memories, like pockets after a pickpocket."
+    ]
+  },
+  {
+    "id": "cried_alone",
+    "size": "small",
+    "category": "body",
+    "share": "keeps",
+    "requires": {
+      "stressMin": 60
+    },
+    "description": "AUTHOR TO WRITE: She cried alone, where nobody would see.",
+    "hub": "Her eyes are a little red.",
+    "lines": [
+      "Allergies.",
+      "I'm fine. Really."
+    ]
+  },
+  {
+    "id": "vat_day",
+    "size": "notable",
+    "category": "construct",
+    "share": "close",
+    "becomes": {
+      "opinionTopic": "being_construct"
+    },
+    "yearly": true,
+    "tags": [
+      "being_construct"
+    ],
+    "description": "AUTHOR TO WRITE: Today is the anniversary of her decanting, the closest thing she has to a birthday.",
+    "hub": "She is quieter than usual today.",
+    "lines": [
+      "Some people have birthdays. I have a batch date. It's today.",
+      "Seven years out of the tank. Nobody brought cake. I'm not hinting. I'm hinting."
+    ]
+  },
+  {
+    "id": "memory_flash",
+    "size": "notable",
+    "category": "construct",
+    "share": "close",
+    "requires": {
+      "trustMin": 60
+    },
+    "becomes": {
+      "opinionTopic": "memory"
+    },
+    "tags": [
+      "memory"
+    ],
+    "description": "AUTHOR TO WRITE: A memory surfaced that she cannot place: a room, a voice, a song from before.",
+    "hub": "She stops mid-step, staring at nothing.",
+    "lines": [
+      "I remembered a kitchen. I've never been in a kitchen like that.",
+      "There was a woman humming. I don't know who she was. I think she knew me."
+    ]
+  },
+  {
+    "id": "corp_news",
+    "size": "notable",
+    "category": "construct",
+    "share": "close",
+    "becomes": {
+      "opinionTopic": "own_corporation"
+    },
+    "tags": [
+      "own_corporation"
+    ],
+    "description": "AUTHOR TO WRITE: News reached her about the corporation that made her: a recall, a scrapped batch, a new model.",
+    "hub": "She is reading the same corporate bulletin again and again.",
+    "lines": [
+      "They retired my batch. All of them. I'm a discontinued model now.",
+      "New line of units out. Faster than us. Of course."
+    ]
+  },
+  {
+    "id": "letter_received",
+    "size": "notable",
+    "category": "people",
+    "share": "close",
+    "becomes": {
+      "opinionTopic": "cities_outside"
+    },
+    "tags": [
+      "cities_outside"
+    ],
+    "description": "AUTHOR TO WRITE: A letter reached her through the corporate post: rare, censored, from someone outside.",
+    "hub": "She keeps rereading a folded letter.",
+    "lines": [
+      "Got a letter. Half of it's blacked out. The other half I've read forty times.",
+      "Someone out there still knows my number. Weird feeling."
+    ]
+  },
+  {
+    "id": "letter_none",
+    "size": "small",
+    "category": "people",
+    "share": "keeps",
+    "requires": {
+      "otherHadThisWeek": "letter_received"
+    },
+    "description": "AUTHOR TO WRITE: Another woman got a letter; nobody wrote to her.",
+    "hub": "She watches the mail drop and walks away.",
+    "lines": [
+      "Who'd write to me? I was born in a tank.",
+      "It's fine. I don't need letters."
+    ]
+  },
+  {
+    "id": "argued_with_unit",
+    "size": "small",
+    "category": "people",
+    "share": "close",
+    "requires": {
+      "otherNamed": true
+    },
+    "description": "AUTHOR TO WRITE: She argued with another woman of the squad.",
+    "hub": "She is avoiding someone and making a point of it.",
+    "lines": [
+      "Don't put me next to her at dinner.",
+      "She's wrong and she knows it. I'm waiting for her to say it."
+    ]
+  },
+  {
+    "id": "made_up_with_unit",
+    "size": "small",
+    "category": "people",
+    "share": "close",
+    "requires": {
+      "afterEvent": "argued_with_unit"
+    },
+    "description": "AUTHOR TO WRITE: She made peace with the woman she argued with.",
+    "hub": "She is laughing with someone she was avoiding yesterday.",
+    "lines": [
+      "We talked. We're fine. Don't make a thing of it.",
+      "She brought me coffee. I'm not made of stone."
+    ]
+  },
+  {
+    "id": "late_night_talk",
+    "size": "small",
+    "category": "people",
+    "share": "close",
+    "requires": {
+      "otherNamed": true
+    },
+    "becomes": {
+      "opinionTopic": "friendship"
+    },
+    "tags": [
+      "friendship"
+    ],
+    "description": "AUTHOR TO WRITE: She sat up half the night talking with another woman of the squad.",
+    "hub": "She yawns, looking oddly content.",
+    "lines": [
+      "We talked until the generators switched. About nothing. It was good.",
+      "I learned more about her in one night than in a year of patrols."
+    ]
+  },
+  {
+    "id": "gift_from_unit",
+    "size": "small",
+    "category": "people",
+    "share": "anyone",
+    "requires": {
+      "otherNamed": true
+    },
+    "description": "AUTHOR TO WRITE: Another woman gave her a small gift.",
+    "hub": "She is wearing something new that someone gave her.",
+    "lines": [
+      "She made me a bracelet out of wire. It's terrible. I love it.",
+      "Got a present. For no reason. Suspicious. Nice."
+    ]
+  },
+  {
+    "id": "snubbed",
+    "size": "small",
+    "category": "people",
+    "share": "keeps",
+    "description": "AUTHOR TO WRITE: Someone brushed her off or forgot her, and it stung more than it should.",
+    "hub": "She is short with everyone today.",
+    "lines": [
+      "Nothing. It's nothing.",
+      "Some people only remember you when they need something."
+    ]
+  },
+  {
+    "id": "praise_from_leader",
+    "size": "small",
+    "category": "people",
+    "share": "anyone",
+    "requires": {
+      "leaderNotHer": true
+    },
+    "becomes": {
+      "opinionTopic": "rank"
+    },
+    "tags": [
+      "rank"
+    ],
+    "description": "AUTHOR TO WRITE: The squad's leader praised her in front of the others.",
+    "hub": "She stands a little straighter today.",
+    "lines": [
+      "She said I did well. In front of everyone.",
+      "Don't tell anyone it got to me. It got to me."
+    ]
+  },
+  {
+    "id": "quartermaster_row",
+    "size": "small",
+    "category": "people",
+    "share": "anyone",
+    "description": "AUTHOR TO WRITE: She had a row with the quartermaster over supplies.",
+    "hub": "She is muttering about requisition forms.",
+    "lines": [
+      "Three forms for a pair of socks. Three.",
+      "I'm going to requisition the quartermaster's head."
+    ]
+  },
+  {
+    "id": "rumour_heard",
+    "size": "small",
+    "category": "people",
+    "share": "anyone",
+    "requires": {
+      "rumour": true
+    },
+    "description": "AUTHOR TO WRITE: She heard a rumor and cannot stop turning it over.",
+    "hub": "She is whispering with someone in the corridor.",
+    "lines": [
+      "Did you hear? No? Then I didn't tell you.",
+      "Probably nonsense. Probably."
+    ]
+  },
+  {
+    "id": "restless_before_run",
+    "size": "small",
+    "category": "service",
+    "share": "close",
+    "requires": {
+      "missionBoard": true
+    },
+    "becomes": {
+      "opinionTopic": "fear_in_combat"
+    },
+    "tags": [
+      "fear_in_combat"
+    ],
+    "description": "AUTHOR TO WRITE: A mission is coming and she cannot settle.",
+    "hub": "She checks her gear for the third time.",
+    "lines": [
+      "I've packed and unpacked twice. Normal. Totally normal.",
+      "Day before a drop, I can't eat. Day after, I can't stop."
+    ]
+  },
+  {
+    "id": "grunt_lost",
+    "size": "notable",
+    "category": "service",
+    "share": "close",
+    "requires": {
+      "gruntDiedDays": 7
+    },
+    "becomes": {
+      "opinionTopic": "death_in_battle"
+    },
+    "urgent": true,
+    "tags": [
+      "death_in_battle"
+    ],
+    "description": "AUTHOR TO WRITE: A grunt died and she cannot let it go.",
+    "hub": "She is sitting alone near the vehicle bay.",
+    "lines": [
+      "Nobody even knew her name. I did. I asked.",
+      "They'll print a new one. Same face. It's not the same."
+    ]
+  },
+  {
+    "id": "anniversary_of_loss",
+    "size": "notable",
+    "category": "service",
+    "share": "close",
+    "requires": {
+      "deathAgo": 30
+    },
+    "becomes": {
+      "opinionTopic": "grief"
+    },
+    "urgent": true,
+    "tags": [
+      "grief"
+    ],
+    "description": "AUTHOR TO WRITE: Today marks the day someone she lost died.",
+    "hub": "She has set out two cups instead of one.",
+    "lines": [
+      "A month today. Feels like a year and a minute.",
+      "I keep her tag in my pocket. Today I'm holding it."
+    ]
+  },
+  {
+    "id": "reprimand",
+    "size": "small",
+    "category": "service",
+    "share": "close",
+    "becomes": {
+      "opinionTopic": "oversight"
+    },
+    "tags": [
+      "oversight"
+    ],
+    "description": "AUTHOR TO WRITE: She received a formal reprimand.",
+    "hub": "She is glaring at a printed form.",
+    "lines": [
+      "Written up. For being late to a briefing about punctuality.",
+      "Another mark in my file. They can frame it."
+    ]
+  },
+  {
+    "id": "promotion_rumour",
+    "size": "small",
+    "category": "service",
+    "share": "close",
+    "becomes": {
+      "opinionTopic": "freedom"
+    },
+    "tags": [
+      "freedom"
+    ],
+    "description": "AUTHOR TO WRITE: She heard that a transfer or a reduced contract might be possible for her.",
+    "hub": "She seems distracted, hopeful, trying not to be.",
+    "lines": [
+      "There's talk of a transfer list. I'm not getting my hopes up. I'm getting my hopes up.",
+      "If it's true, I could be out in a year. If."
+    ]
+  },
+  {
+    "id": "weapon_broke",
+    "size": "small",
+    "category": "service",
+    "share": "anyone",
+    "becomes": {
+      "opinionTopic": "weapons"
+    },
+    "tags": [
+      "weapons"
+    ],
+    "description": "AUTHOR TO WRITE: Her weapon jammed or broke on the range.",
+    "hub": "She has her rifle in pieces and a scowl.",
+    "lines": [
+      "Jammed three times on the range. If it does that in the field, I'm dead.",
+      "Workshop says two days. Two days naked."
+    ]
+  },
+  {
+    "id": "sparring_win",
+    "size": "small",
+    "category": "service",
+    "share": "anyone",
+    "requires": {
+      "sparring": "won"
+    },
+    "becomes": {
+      "opinionTopic": "strength"
+    },
+    "tags": [
+      "strength"
+    ],
+    "description": "AUTHOR TO WRITE: She won a sparring bout and is pleased with herself.",
+    "hub": "She is grinning and rolling her shoulders.",
+    "lines": [
+      "Put her on the mat in ten seconds. A new record.",
+      "I'm not bragging. I'm reporting."
+    ]
+  },
+  {
+    "id": "sparring_loss",
+    "size": "small",
+    "category": "service",
+    "share": "close",
+    "requires": {
+      "sparring": "lost"
+    },
+    "description": "AUTHOR TO WRITE: She lost a sparring bout and it rankles.",
+    "hub": "She is replaying a move in the air, scowling.",
+    "lines": [
+      "She got me with the hip throw. Again.",
+      "Rematch. Tomorrow. I'm not asking."
+    ]
+  },
+  {
+    "id": "bloom_sighting",
+    "size": "small",
+    "category": "service",
+    "share": "anyone",
+    "requires": {
+      "bloomHalf": true
+    },
+    "becomes": {
+      "opinionTopic": "the_bloom"
+    },
+    "tags": [
+      "the_bloom"
+    ],
+    "description": "AUTHOR TO WRITE: She saw Bloom growth closer to the fence than it should be.",
+    "hub": "She keeps glancing toward the perimeter.",
+    "lines": [
+      "There's growth on the east fence post. It wasn't there last week.",
+      "It's creeping closer. Nobody's mentioned it. So I am."
+    ]
+  },
+  {
+    "id": "ration_cut",
+    "size": "small",
+    "category": "service",
+    "share": "anyone",
+    "requires": {
+      "rationsShort": true
+    },
+    "becomes": {
+      "opinionTopic": "food"
+    },
+    "tags": [
+      "food"
+    ],
+    "description": "AUTHOR TO WRITE: Rations were short or bad today.",
+    "hub": "She is staring at her tray with loathing.",
+    "lines": [
+      "Today's protein is gray. Not gray-brown. Gray.",
+      "Half rations again. My stomach has filed a complaint."
+    ]
+  },
+  {
+    "id": "finished_book",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "requires": {
+      "hobby": "reading"
+    },
+    "becomes": {
+      "milestone": true,
+      "opinionTopic": "books"
+    },
+    "tags": [
+      "books",
+      "reading"
+    ],
+    "description": "AUTHOR TO WRITE: She finished a book and is still inside it.",
+    "hub": "She is holding a closed book, not ready to put it down.",
+    "lines": [
+      "Finished it. The ending was wrong. I want to argue with someone.",
+      "Done. Now I don't know what to do with my evenings."
+    ]
+  },
+  {
+    "id": "plant_progress",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "requires": {
+      "hobby": "plants"
+    },
+    "becomes": {
+      "milestone": true
+    },
+    "tags": [
+      "plants"
+    ],
+    "description": "AUTHOR TO WRITE: Her plant did something new.",
+    "hub": "She is crouched by her window, looking at a tin of soil.",
+    "lines": [
+      "New leaf. Don't laugh.",
+      "It's leaning toward the light. Smart plant."
+    ]
+  },
+  {
+    "id": "learned_trick",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "requires": {
+      "hobby": "any"
+    },
+    "becomes": {
+      "milestone": true
+    },
+    "description": "AUTHOR TO WRITE: She got something right in her hobby that she has been trying for weeks.",
+    "hub": "She looks quietly proud of something.",
+    "lines": [
+      "I finally got it. Three weeks. Finally.",
+      "Want to see? No, really, watch."
+    ]
+  },
+  {
+    "id": "cooked_something",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "requires": {
+      "hobby": "cooking"
+    },
+    "becomes": {
+      "milestone": true
+    },
+    "tags": [
+      "cooking"
+    ],
+    "description": "AUTHOR TO WRITE: She cooked something from almost nothing.",
+    "hub": "The smell of something actually good drifts from the mess.",
+    "lines": [
+      "Made soup out of ration powder and spite. It's edible. It's good, even.",
+      "Come taste this before I lose my nerve."
+    ]
+  },
+  {
+    "id": "song_stuck",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "requires": {
+      "hobby": "music"
+    },
+    "tags": [
+      "music"
+    ],
+    "description": "AUTHOR TO WRITE: A song is stuck in her head and she is humming it all day.",
+    "hub": "She is humming under her breath.",
+    "lines": [
+      "It's been in my head since dawn. Make it stop. Don't make it stop.",
+      "You'll have it too by tonight. Sorry."
+    ]
+  },
+  {
+    "id": "stray_found",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "becomes": {
+      "hobby": "animals",
+      "opinionTopic": "animals"
+    },
+    "tags": [
+      "animals"
+    ],
+    "description": "AUTHOR TO WRITE: She found an animal near the base: a stray cat, a bird with a hurt wing.",
+    "hub": "She has crumbs in her pocket and a secret.",
+    "lines": [
+      "There's a cat by the east fence. Don't tell supply.",
+      "Found a bird with a bad wing. I'm calling her Sergeant."
+    ]
+  },
+  {
+    "id": "won_at_cards",
+    "size": "small",
+    "category": "luck",
+    "share": "anyone",
+    "becomes": {
+      "opinionTopic": "gambling"
+    },
+    "tags": [
+      "gambling"
+    ],
+    "description": "AUTHOR TO WRITE: She won at cards and is insufferable about it.",
+    "hub": "She is counting a small pile of cigarettes and ration chits.",
+    "lines": [
+      "Cleaned them out. Ask me how. Skill.",
+      "I'm rich. In cigarettes. I don't smoke."
+    ]
+  },
+  {
+    "id": "lost_at_cards",
+    "size": "small",
+    "category": "luck",
+    "share": "close",
+    "description": "AUTHOR TO WRITE: She lost at cards and owes someone a chore.",
+    "hub": "She is scrubbing something that is not her job.",
+    "lines": [
+      "I owe a week of latrine duty. Don't ask.",
+      "Never bet against a medic. They count everything."
+    ]
+  },
+  {
+    "id": "dreamt_of_commander",
+    "size": "small",
+    "category": "luck",
+    "share": "keeps",
+    "keepsUnless": {
+      "affinityMin": 60,
+      "romantic": true
+    },
+    "description": "AUTHOR TO WRITE: She dreamt of the commander and is not sure what to do with it.",
+    "hub": "She glances away when the commander looks at her.",
+    "lines": [
+      "I had a dream. You were in it. That's all I'm saying.",
+      "Weird night. Never mind."
+    ]
+  }
+]

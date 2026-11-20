@@ -32,7 +32,7 @@ describe('the core pack (P14b)', () => {
   it('loads the three registries', () => {
     expect(reg.developmentAxes.size).toBe(13);
     expect(reg.developmentRules.size).toBe(16);
-    expect(reg.habits.size).toBe(5);
+    expect(reg.habits.size).toBe(6); // P14c: + running_joke
   });
 
   it('every value axis and every bond field has an axis entry, and the wildcards exist', () => {
@@ -65,7 +65,8 @@ describe('the core pack (P14b)', () => {
 
   it('eventDeltas appraisal rows are valid', () => {
     expect(reg.eventDeltas.get('commander_enforced')?.appraisal).toEqual({ wanted: 'no', initiator: 'actor', harm: 'minor', outcome: 'bad' });
-    const rows = ['commander_enforced', 'threatened', 'coerced', 'protected', 'endangered', 'praised', 'insulted', 'comforted', 'physical_affection', 'accepted_advance', 'rejected_advance', 'granted_demand', 'refused_demand', 'shielded', 'overrode_her'];
+    const rows = ['commander_enforced', 'threatened', 'coerced', 'protected', 'endangered', 'praised', 'insulted', 'comforted', 'physical_affection', 'accepted_advance', 'rejected_advance', 'granted_demand', 'refused_demand', 'shielded', 'overrode_her',
+      'time_together', 'opinion_challenged']; // P14c
     for (const id of rows) expect(reg.eventDeltas.get(id)?.appraisal, id).toBeDefined();
     expect([...reg.eventDeltas.values()].filter((e) => e.appraisal !== undefined)).toHaveLength(rows.length);
   });

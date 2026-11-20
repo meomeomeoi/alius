@@ -476,5 +476,37 @@
     "appraisalTags": [
       "talk"
     ]
+  },
+  {
+    "id": "time_together",
+    "name": "Time together",
+    "summary": "Spend the slot with her at something quiet and unhurried. The slot is spent when the scene ends.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "cost": {},
+    "companion": "required",
+    "startsScene": true,
+    "effects": [],
+    "companionEffects": [
+      {
+        "type": "emit_event",
+        "event": "scene_requested"
+      }
+    ],
+    "flavor": "none",
+    "appraisal": {
+      "wanted": "yes",
+      "initiator": "actor",
+      "harm": "none",
+      "outcome": "good"
+    },
+    "appraisalTags": [
+      "pastime"
+    ],
+    "pastime": true
   }
 ]

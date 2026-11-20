@@ -68,7 +68,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('journal phrases of the event deltas (P3b)', () => {
     const texts = fields('eventDeltas', ['journal']);
-    expect(texts.length).toBe(61); // P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
+    expect(texts.length).toBe(69); // P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 
@@ -92,8 +92,27 @@ describe('no pronoun for the commander in content', () => {
       ...['character_development', 'development_moment', 'development_fact', 'habit', 'development_hold', 'appraisal'].flatMap((id) =>
         ['short', 'long'].map((k): [string, string] => [`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')])),
     ];
-    expect(texts).toHaveLength(13 * 3 + 16 + 5 * 2 + 12);
+    expect(texts).toHaveLength(13 * 3 + 16 + 6 * 2 + 12); // P14c: the running joke habit
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
+  it('her life content (P14c): events, hobbies, topics, pastimes and the glossary', () => {
+    const where: Array<[string, string]> = [];
+    const text = (path: string, v: unknown): void => {
+      if (typeof v === 'string') where.push([path, v]);
+      else if (Array.isArray(v)) v.forEach((x, i) => text(`${path}[${i}]`, x));
+      else if (typeof v === 'object' && v !== null) for (const [k, x] of Object.entries(v)) text(`${path}.${k}`, x);
+    };
+    for (const registry of ['lifeEvents', 'hobbies', 'opinionTopics', 'pastimes'] as const) for (const e of reg[registry].values()) text(`${registry}:${e.id}`, { ...e, id: undefined });
+    for (const id of ['temperament', 'talkativeness', 'volatility', 'humor', 'life_events', 'news_queue', 'hobby_cycle', 'quiet_meeting', 'thoughts', 'running_joke', 'commander_hobby_skill', 'setting_life_events']) {
+      for (const k of ['term', 'short', 'long']) where.push([`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')]);
+    }
+    expect(where.length).toBeGreaterThan(1800);
+    // three of her fallback lines are about someone else (a stray, the quartermaster, a victim): the soldiers' own words, not the commander
+    const aboutOthers = ['opinionTopics:animals.positions[0].lines[0]', 'opinionTopics:lying.positions[4].lines[1]', 'opinionTopics:revenge.positions[1].lines[0]'];
+    const flagged = where.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t)).map(([w]) => w);
+    expect(flagged.filter((w) => !aboutOthers.includes(w))).toEqual([]);
+    expect(flagged.sort()).toEqual([...aboutOthers].sort()); // the exceptions are real: remove one from the list when its line changes
   });
 
   it('head start glossary entries (P11b)', () => {

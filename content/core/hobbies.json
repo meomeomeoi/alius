@@ -1,0 +1,843 @@
+[
+  {
+    "id": "reading",
+    "label": "reading",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "reading_book"
+    ],
+    "teachable": false,
+    "milestones": [
+      {
+        "id": "first_book",
+        "line": "Found a book in a crate of manuals. It has a dragon in it."
+      },
+      {
+        "id": "shelf",
+        "line": "Five now. I've made a shelf out of an ammo box.",
+        "trace": "prop"
+      },
+      {
+        "id": "favorite",
+        "line": "This one. I've read it three times. I'll lend it to you if you swear on your life.",
+        "trace": "opinion"
+      },
+      {
+        "id": "library",
+        "line": "The others borrow from me now. I keep a ledger."
+      }
+    ],
+    "opinionTopic": "books",
+    "description": "AUTHOR TO WRITE: She reads whatever paper reaches the base, slowly and completely.",
+    "traceText": "A shelf made of an ammo box, lined with worn paperbacks."
+  },
+  {
+    "id": "sketching",
+    "label": "sketching",
+    "locations": [
+      "quarters_unit",
+      "roof"
+    ],
+    "activityIds": [
+      "sketching"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_page",
+        "line": "Don't look. It's just lines."
+      },
+      {
+        "id": "faces",
+        "line": "I'm getting the eyes right now. The eyes are the hard part.",
+        "trace": "note"
+      },
+      {
+        "id": "the_squad",
+        "line": "I drew all of us. Even the ones who're gone."
+      },
+      {
+        "id": "own_hand",
+        "line": "People can tell my drawings apart now. I have a hand."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She draws in a battered notebook: faces, gear, the view from the roof.",
+    "traceText": "A pencil sketch on torn notebook paper, signed with her unit number."
+  },
+  {
+    "id": "plants",
+    "label": "growing plants",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "caring_for_plant"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "sprout",
+        "line": "It came up. Look. It actually came up."
+      },
+      {
+        "id": "leaves",
+        "line": "Three leaves. I talk to it. Shut up.",
+        "trace": "prop"
+      },
+      {
+        "id": "repotted",
+        "line": "It needed a bigger tin. Growing things need room."
+      },
+      {
+        "id": "flowered",
+        "line": "It flowered. Out here. In this. I almost cried."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She keeps something green alive in a ration tin by her window.",
+    "traceText": "A small plant in a dented tin, carefully watered."
+  },
+  {
+    "id": "music",
+    "label": "music",
+    "locations": [
+      "quarters_unit",
+      "comms_room"
+    ],
+    "activityIds": [
+      "music",
+      "playing_instrument"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_chord",
+        "line": "Three chords. That's all music is, apparently."
+      },
+      {
+        "id": "a_song",
+        "line": "I can play one whole song now. Don't request anything.",
+        "trace": "note"
+      },
+      {
+        "id": "own_tune",
+        "line": "I made this one up. It doesn't have words yet.",
+        "trace": "prop"
+      },
+      {
+        "id": "plays_for_squad",
+        "line": "They asked me to play at dinner. My hands were shaking."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She plays an instrument she scavenged and repaired, badly at first.",
+    "traceText": "A sheet of lyrics in her hand, crossed out and rewritten."
+  },
+  {
+    "id": "cooking",
+    "label": "cooking",
+    "locations": [
+      "mess_hall"
+    ],
+    "activityIds": [],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "edible",
+        "line": "It's edible. That's the first step."
+      },
+      {
+        "id": "spices",
+        "line": "Traded a magazine for salt and pepper. Worth it."
+      },
+      {
+        "id": "signature_dish",
+        "line": "My stew. Ask anyone. Actually don't, they'll fight over it."
+      },
+      {
+        "id": "feeds_the_squad",
+        "line": "I cooked for everyone. Nobody complained. Nobody."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She cooks real food out of rations and whatever she can trade for."
+  },
+  {
+    "id": "tinkering",
+    "label": "tinkering",
+    "locations": [
+      "workshop",
+      "garage"
+    ],
+    "activityIds": [
+      "tinkering",
+      "repairing_gear"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "fixed_it",
+        "line": "The kettle works. You're welcome."
+      },
+      {
+        "id": "upgrade",
+        "line": "My scope has night mode now. It didn't before.",
+        "trace": "prop"
+      },
+      {
+        "id": "invention",
+        "line": "I built a thing. I'm not sure what it's for yet."
+      },
+      {
+        "id": "master_tinker",
+        "line": "Bring me anything broken. If it had a purpose once, I'll find it."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She takes broken things apart and makes them do something new.",
+    "traceText": "A small gadget of salvaged parts with her initials scratched on it."
+  },
+  {
+    "id": "journal",
+    "label": "journal-keeping",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "writing_journal"
+    ],
+    "teachable": false,
+    "milestones": [
+      {
+        "id": "first_entry",
+        "line": "Started writing things down. In case I forget."
+      },
+      {
+        "id": "habit",
+        "line": "Every night. Even the bad ones.",
+        "trace": "note"
+      },
+      {
+        "id": "full_book",
+        "line": "Filled the first notebook. Started the second."
+      },
+      {
+        "id": "own_voice",
+        "line": "I read the old entries and I sound like a stranger. I write better now."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She keeps a journal and writes in it most nights.",
+    "traceText": "A torn-out journal page, a few lines in her hand."
+  },
+  {
+    "id": "cards",
+    "label": "cards",
+    "locations": [
+      "mess_hall"
+    ],
+    "activityIds": [
+      "playing_cards"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "knows_the_rules",
+        "line": "I know all the rules now. Including the ones they made up."
+      },
+      {
+        "id": "wins_often",
+        "line": "I'm winning more than I lose. Statistically suspicious."
+      },
+      {
+        "id": "own_game",
+        "line": "I invented a game. The rules are complicated. I always win."
+      },
+      {
+        "id": "house_champion",
+        "line": "Undefeated for a month. Someone challenge me."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She plays cards whenever she can find someone to beat."
+  },
+  {
+    "id": "training",
+    "label": "training",
+    "locations": [
+      "training_yard"
+    ],
+    "activityIds": [
+      "working_out",
+      "stretching"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "routine",
+        "line": "Same routine every morning. My body expects it now."
+      },
+      {
+        "id": "stronger",
+        "line": "New max on the bar. Write it down."
+      },
+      {
+        "id": "flexible",
+        "line": "I can touch my toes. I couldn't, out of the tank."
+      },
+      {
+        "id": "trains_others",
+        "line": "The rookies ask me for programs now."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She trains beyond what is required, every spare hour."
+  },
+  {
+    "id": "mending",
+    "label": "mending",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "mending_clothes"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "patch",
+        "line": "Patched my sleeve. You can barely see it."
+      },
+      {
+        "id": "for_others",
+        "line": "I'm mending half the squad's socks now. Bring yours.",
+        "trace": "prop"
+      },
+      {
+        "id": "embroidery",
+        "line": "I stitched a little flower inside my collar. Nobody can see it. I know it's there."
+      },
+      {
+        "id": "made_something",
+        "line": "Made a pouch from old canvas. It's the nicest thing I own."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She mends uniforms and anything torn, with tidy stitches.",
+    "traceText": "A patched jacket hung neatly, with a small embroidered mark inside the collar."
+  },
+  {
+    "id": "weapons_care",
+    "label": "weapon care",
+    "locations": [
+      "training_yard",
+      "workshop"
+    ],
+    "activityIds": [
+      "cleaning_weapon"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "spotless",
+        "line": "Look at that. You could eat off the bolt."
+      },
+      {
+        "id": "tuned",
+        "line": "Trigger's lighter now. Half a kilo. Perfect."
+      },
+      {
+        "id": "custom",
+        "line": "New grip, wrapped by hand. She fits me now."
+      },
+      {
+        "id": "armorer",
+        "line": "The others bring me their rifles. I'm the unofficial armorer."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She tends weapons the way others tend gardens."
+  },
+  {
+    "id": "poetry",
+    "label": "poetry",
+    "locations": [
+      "quarters_unit",
+      "roof"
+    ],
+    "activityIds": [
+      "writing_journal"
+    ],
+    "teachable": false,
+    "milestones": [
+      {
+        "id": "first_poem",
+        "line": "It's four lines. It's terrible. I wrote it."
+      },
+      {
+        "id": "rhymes",
+        "line": "I can rhyme now. That's dangerous.",
+        "trace": "note"
+      },
+      {
+        "id": "reads_aloud",
+        "line": "I read one at the funeral. I don't know why."
+      },
+      {
+        "id": "finds_the_words",
+        "line": "The words come easier now. That frightens me a little."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She writes short poems and hides them.",
+    "traceText": "A short poem in her hand, folded small."
+  },
+  {
+    "id": "stargazing",
+    "label": "stargazing",
+    "locations": [
+      "roof"
+    ],
+    "activityIds": [],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_clear_night",
+        "line": "No spore haze tonight. Look up."
+      },
+      {
+        "id": "names_them",
+        "line": "That's the Hook. I named it myself. The old names are lost."
+      },
+      {
+        "id": "star_chart",
+        "line": "I've drawn a chart. Nobody's made one in decades."
+      },
+      {
+        "id": "navigator",
+        "line": "I can tell the time and the bearing from the sky now. Better than my HUD."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She goes up to the roof on clear nights and maps the stars."
+  },
+  {
+    "id": "languages",
+    "label": "languages",
+    "locations": [
+      "quarters_unit",
+      "comms_room"
+    ],
+    "activityIds": [
+      "reading_book"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_words",
+        "line": "I know twenty words of a language nobody speaks."
+      },
+      {
+        "id": "sentences",
+        "line": "I can make sentences now. Mostly rude ones.",
+        "trace": "note"
+      },
+      {
+        "id": "reads_a_page",
+        "line": "I read a whole page. It was a recipe."
+      },
+      {
+        "id": "dreams_in_it",
+        "line": "I dreamt in it last night. Badly. It still counts."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She is teaching herself an old language from scraps of books.",
+    "traceText": "A page of careful vocabulary, two columns, in her hand."
+  },
+  {
+    "id": "puzzles",
+    "label": "puzzles",
+    "locations": [
+      "mess_hall",
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "idle"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "stuck",
+        "line": "This knot has beaten me for three days."
+      },
+      {
+        "id": "solved",
+        "line": "Solved it. Don't touch it, I'm admiring it."
+      },
+      {
+        "id": "makes_them",
+        "line": "I make my own now. Try this one."
+      },
+      {
+        "id": "unbeatable",
+        "line": "Bring me anything. I'll have it open by dinner."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She does puzzles: wire knots, logic grids, an old cube."
+  },
+  {
+    "id": "collecting",
+    "label": "collecting",
+    "locations": [
+      "garage"
+    ],
+    "activityIds": [],
+    "teachable": false,
+    "milestones": [
+      {
+        "id": "first_find",
+        "line": "A button from before. I'm keeping it."
+      },
+      {
+        "id": "collection",
+        "line": "Twelve things now. Each has a story.",
+        "trace": "prop"
+      },
+      {
+        "id": "display",
+        "line": "Built a little shelf for them. Don't dust it."
+      },
+      {
+        "id": "prize",
+        "line": "This is the best one. I'll never find another."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She collects small finds from the ruins.",
+    "traceText": "A shelf of small ruins-finds, each with a paper label in her hand."
+  },
+  {
+    "id": "dancing",
+    "label": "dancing",
+    "locations": [
+      "mess_hall",
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "music"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "alone",
+        "line": "You didn't see that."
+      },
+      {
+        "id": "steps",
+        "line": "I learned steps from an old film. They're harder than combat drills."
+      },
+      {
+        "id": "unselfconscious",
+        "line": "I don't check whether anyone's watching anymore."
+      },
+      {
+        "id": "at_a_party",
+        "line": "Everyone danced. Even the quartermaster. Even me."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She dances when she thinks nobody is looking."
+  },
+  {
+    "id": "hair_and_makeup",
+    "label": "hair and makeup",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "doing_hair"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "braids",
+        "line": "Learned a new braid. Took an hour."
+      },
+      {
+        "id": "for_others",
+        "line": "I did her hair for the night out. She cried. Good crying."
+      },
+      {
+        "id": "kit",
+        "line": "I have a whole kit now. Don't ask what I traded."
+      },
+      {
+        "id": "artist",
+        "line": "I did the whole squad before the night out. Nobody recognized anybody."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She does hair, hers and other women's, and hoards bits of makeup."
+  },
+  {
+    "id": "games_on_pda",
+    "label": "PDA games",
+    "locations": [
+      "quarters_unit",
+      "comms_room"
+    ],
+    "activityIds": [
+      "chatting_on_pda"
+    ],
+    "teachable": false,
+    "milestones": [
+      {
+        "id": "hooked",
+        "line": "One more level. Then sleep. One more."
+      },
+      {
+        "id": "high_score",
+        "line": "Top of the base leaderboard. There are four people on it."
+      },
+      {
+        "id": "secret_level",
+        "line": "Found a hidden level nobody knew about."
+      },
+      {
+        "id": "beat_it",
+        "line": "Finished it. Felt empty after. Weird."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She plays old games on her PDA late at night."
+  },
+  {
+    "id": "animals",
+    "label": "animals",
+    "locations": [
+      "perimeter",
+      "garage"
+    ],
+    "activityIds": [],
+    "teachable": false,
+    "milestones": [
+      {
+        "id": "first_contact",
+        "line": "It ate from my hand. Just once."
+      },
+      {
+        "id": "named",
+        "line": "She has a name now. Sergeant.",
+        "trace": "prop"
+      },
+      {
+        "id": "trusts_her",
+        "line": "She waits for me at the fence every evening."
+      },
+      {
+        "id": "inside",
+        "line": "I smuggled her in. Don't tell anyone. She sleeps on my feet."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She looks after a stray at the fence: a cat, a bird, a dog that won't come in.",
+    "traceText": "A food dish and a scrap of blanket by her bunk."
+  },
+  {
+    "id": "photography",
+    "label": "photography",
+    "locations": [
+      "roof"
+    ],
+    "activityIds": [],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_roll",
+        "line": "Twelve shots. Three came out. That's a good ratio."
+      },
+      {
+        "id": "darkroom",
+        "line": "Made a darkroom in a supply closet. Smells awful. Worth it.",
+        "trace": "note"
+      },
+      {
+        "id": "portraits",
+        "line": "Hold still. Don't smile. Real faces."
+      },
+      {
+        "id": "the_eye",
+        "line": "I see frames everywhere now. Corners, light, faces."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She takes photographs with an old camera and develops them herself.",
+    "traceText": "A small black-and-white print, curled at the edges."
+  },
+  {
+    "id": "woodcarving",
+    "label": "woodcarving",
+    "locations": [
+      "workshop"
+    ],
+    "activityIds": [
+      "tinkering"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_figure",
+        "line": "It's a bird. Or a fish. Depends on the light."
+      },
+      {
+        "id": "better",
+        "line": "This one has feathers. Look, real feathers.",
+        "trace": "prop"
+      },
+      {
+        "id": "set",
+        "line": "I've carved the whole squad. Tiny. Don't lose yours."
+      },
+      {
+        "id": "fine_work",
+        "line": "This one has eyelashes. I used a needle."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She carves small figures from scrap wood with her knife.",
+    "traceText": "A small wooden figure, smoothed by a thumb."
+  },
+  {
+    "id": "running",
+    "label": "running",
+    "locations": [
+      "perimeter",
+      "training_yard"
+    ],
+    "activityIds": [],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_laps",
+        "line": "Five laps. My lungs hate me."
+      },
+      {
+        "id": "distance",
+        "line": "Ten kilometers. Every morning now."
+      },
+      {
+        "id": "personal_best",
+        "line": "New best. I'll beat it next week."
+      },
+      {
+        "id": "endurance",
+        "line": "Twenty kilometers without stopping. My legs don't argue anymore."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She runs laps of the perimeter, alone, before anyone is up."
+  },
+  {
+    "id": "chess",
+    "label": "chess",
+    "locations": [
+      "mess_hall",
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "idle",
+      "playing_cards"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "learning",
+        "line": "The horse moves funny. I hate the horse."
+      },
+      {
+        "id": "openings",
+        "line": "I know three openings now. Don't tell anyone which."
+      },
+      {
+        "id": "beats_someone",
+        "line": "Beat the medic. She's still angry."
+      },
+      {
+        "id": "plays_blind",
+        "line": "I can play without the board now. Call your moves."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She plays chess on a board with half the pieces replaced by bolts and bullets."
+  },
+  {
+    "id": "tattoos",
+    "label": "tattoos",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_line",
+        "line": "One line on my wrist. Straight. Mostly."
+      },
+      {
+        "id": "own_design",
+        "line": "Designed this one myself. It's a map of nowhere."
+      },
+      {
+        "id": "others_ask",
+        "line": "Half the squad wants one now. I have a waiting list."
+      },
+      {
+        "id": "steady_hand",
+        "line": "My lines are clean now. Nobody flinches when I pick up the needle."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She does tattoos with a home-made needle, on herself and on whoever asks."
+  },
+  {
+    "id": "ration_alchemy",
+    "label": "ration alchemy",
+    "locations": [
+      "mess_hall"
+    ],
+    "activityIds": [],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_experiment",
+        "line": "Fried ration bar. Don't. Don't try it."
+      },
+      {
+        "id": "discovery",
+        "line": "Powdered eggs and coffee. Trust me."
+      },
+      {
+        "id": "recipe_book",
+        "line": "I'm writing them down. Recipes from the end of the world."
+      },
+      {
+        "id": "feast",
+        "line": "Tonight I'm making a three-course dinner out of nothing."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She experiments with rations, turning bars and powders into something else."
+  },
+  {
+    "id": "knitting",
+    "label": "knitting",
+    "locations": [
+      "quarters_unit"
+    ],
+    "activityIds": [
+      "mending_clothes"
+    ],
+    "teachable": true,
+    "milestones": [
+      {
+        "id": "first_rows",
+        "line": "It's a rectangle. It's meant to be a rectangle."
+      },
+      {
+        "id": "scarf",
+        "line": "A whole scarf. Lumpy. Warm.",
+        "trace": "prop"
+      },
+      {
+        "id": "patterns",
+        "line": "I can do stripes now. Stripes!"
+      },
+      {
+        "id": "cables",
+        "line": "Cable stitch. Do you know how hard cable stitch is?"
+      }
+    ],
+    "description": "AUTHOR TO WRITE: She knits with yarn unravelled from old sweaters.",
+    "traceText": "A lumpy, warm scarf in two colors."
+  }
+]

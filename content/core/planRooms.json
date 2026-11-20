@@ -237,6 +237,7 @@
       "h": 80
     },
     "kind": "laundry",
+    "sceneLocationId": "laundry",
     "description": "Three machines, a drying line and the smell of cheap detergent. Not open yet.",
     "doors": [
       {

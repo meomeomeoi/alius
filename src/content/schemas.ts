@@ -6,6 +6,7 @@ import { BALLOT_TERMS, OUTSIDE_TRIGGERS, VALUE_AXES, VOTE_KINDS } from '../engin
 import { TUNING } from '../engine/tuning';
 import { EXPECTATION_KINDS } from '../engine/warden/state';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
+import { LIFE_CATEGORIES, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
 import { stripLinks } from './links';
@@ -509,6 +510,11 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'generation_failed', 'generation_closed', 'generation_expired', 'scene_summarized_late', 'dilemma_reworded', 'demand_reworded', 'rule_reworded',
   // P11b
   'head_start_applied', 'head_start_moment',
+  // P14c
+  'life_event', 'life_shared', 'life_noted', 'life_frequency_set', 'news_queued', 'news_delivered', 'news_stale',
+  'hobby_started', 'hobby_progress', 'hobby_plateau', 'hobby_breakthrough', 'hobby_milestone', 'hobby_cooling', 'hobby_dropped',
+  'hobby_rekindled', 'hobby_mastered', 'hobby_taught', 'opinion_formed', 'opinion_changed', 'opinion_hardened', 'first_moment_kept',
+  'joke_counted', 'pastime_set', 'temperament_set',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -584,6 +590,8 @@ export const ActivitySchema = BaseEntrySchema.extend({
   appraisal: ReadingSchema.optional(),
   /** P14b: the tags a rule may turn into a like (`like:{tag}`), normalized like imported likes. */
   appraisalTags: z.array(str.max(32)).max(3).optional(),
+  /** P14c: the activity a quiet meeting (a pastime) runs through. Read by this field, never by id; exactly one activity carries it. */
+  pastime: z.literal(true).optional(),
 }).superRefine((a, ctx) => {
   const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (a.companion === 'none' && a.companionEffects.length > 0) issue(['companionEffects'], 'companion "none" cannot have companionEffects');
@@ -2322,6 +2330,8 @@ export const DESCRIBED_REGISTRIES = [
   'quartersStyles',
   // P10d
   'planRooms',
+  // P14c
+  'lifeEvents', 'hobbies', 'opinionTopics', 'pastimes',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -2400,7 +2410,7 @@ registrySchemas.developmentRules = DevelopmentRuleSchema;
 
 /** A counter that reaches `threshold` forms the habit. `fallback` is the fact text (`{name}`, and `{other}` for a companion habit). */
 export const HabitSchema = BaseEntrySchema.extend({
-  counter: z.object({ kind: z.enum(['activity', 'companion', 'region']), id: str.optional() }).strict(),
+  counter: z.object({ kind: z.enum(['activity', 'companion', 'region', 'joke']), id: str.optional() }).strict(),
   threshold: int.min(2).max(60),
   fallback: str.max(140),
   effect: z.object({ type: z.enum(['unit_stress', 'unit_xp']), amount: int.min(-20).max(20).refine((n) => n !== 0, 'an effect amount is not 0'), activityId: str }).strict().optional(),
@@ -2408,6 +2418,116 @@ export const HabitSchema = BaseEntrySchema.extend({
   description: str,
 }).strict();
 registrySchemas.habits = HabitSchema;
+
+// ---------------------------------------------------------------------------------------------
+// P14c: her life (life events, hobbies, opinion topics, pastimes). `AUTHOR TO WRITE`: every text is a draft. The engine reads these by
+// field (`requires`, `share`, `size`, `category`, `becomes`, `locations`, `teachable`, `milestones[].trace`, `group`, `axis`, `triggers`,
+// `slots`, `talk`), never by id.
+
+const trueFlag = z.literal(true);
+const lifeText = str.max(300);
+const linePair = z.tuple([lifeText, lifeText]);
+
+/** The closed vocabulary of life event conditions; every listed field must hold. Cross-registry names are checked in `refs.ts`. */
+export const LifeRequiresSchema = z.object({
+  hobby: str.optional(),
+  location: z.array(str).min(1).optional(),
+  activity: z.array(str).min(1).optional(),
+  afterRun: z.object({ hurt: trueFlag.optional() }).strict().optional(),
+  noRunDays: int.min(1).max(60).optional(),
+  stressMin: int.min(0).max(100).optional(),
+  stressMax: int.min(0).max(100).optional(),
+  defectCategory: str.optional(),
+  injured: trueFlag.optional(),
+  otherNamed: trueFlag.optional(),
+  affinityMin: int.min(-100).max(100).optional(),
+  trustMin: int.min(0).max(100).optional(),
+  romantic: trueFlag.optional(),
+  leaderNotHer: trueFlag.optional(),
+  gruntDiedDays: int.min(1).max(60).optional(),
+  deathAgo: int.min(1).max(360).optional(),
+  rumour: trueFlag.optional(),
+  rationsShort: trueFlag.optional(),
+  sparring: z.enum(['won', 'lost']).optional(),
+  bloomHalf: trueFlag.optional(),
+  missionBoard: trueFlag.optional(),
+  afterEvent: str.optional(),
+  otherHadThisWeek: str.optional(),
+}).strict();
+
+export const LifeEventSchema = BaseEntrySchema.extend({
+  size: z.enum(LIFE_SIZES),
+  category: z.enum(LIFE_CATEGORIES),
+  tags: z.array(str.max(32)).max(6).optional(),
+  share: z.enum(LIFE_SHARES),
+  keepsUnless: z.object({ affinityMin: int.min(-100).max(100).optional(), romantic: trueFlag.optional() }).strict().optional(),
+  requires: LifeRequiresSchema.optional(),
+  becomes: z.object({ hobby: str.optional(), milestone: trueFlag.optional(), opinionTopic: str.optional() }).strict().optional(),
+  cooldownDays: int.min(1).max(720).optional(),
+  yearly: trueFlag.optional(),
+  urgent: trueFlag.optional(),
+  description: str,
+  /** A short third-person line shown when hovering her on the hub. */
+  hub: lifeText,
+  /** Two fallback lines in her voice (her DM or her news); the model words the real one. */
+  lines: linePair,
+}).strict().superRefine((e, ctx) => {
+  if (e.keepsUnless !== undefined && e.share !== 'keeps') ctx.addIssue({ code: 'custom', path: ['keepsUnless'], message: 'keepsUnless only turns a "keeps" event into a shared one' });
+});
+export type LifeEventSchemaT = z.infer<typeof LifeEventSchema>;
+
+export const HobbySchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  locations: z.array(str).min(1),
+  activityIds: z.array(str),
+  teachable: z.boolean(),
+  /** Exactly four, with unique ids (checked in `refs.ts`). */
+  milestones: z.array(z.object({ id: str, line: lifeText, trace: z.enum(TRACE_KINDS).optional() }).strict()).min(1),
+  opinionTopic: str.optional(),
+  description: str,
+  traceText: lifeText.optional(),
+}).strict();
+
+export const OpinionTopicSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  group: z.enum(TOPIC_GROUPS),
+  axis: z.object({ id: valueAxis, sign: z.union([z.literal(1), z.literal(-1)]) }).strict().optional(),
+  positions: z.array(z.object({ id: str, description: lifeText, lines: linePair }).strict()).min(2).max(5),
+  triggers: z.object({
+    locations: z.array(str).min(1).optional(),
+    activities: z.array(str).min(1).optional(),
+    lifeEvents: z.array(str).min(1).optional(),
+    keywords: z.array(str.max(32)).min(1).max(8).optional(),
+  }).strict(),
+  description: str,
+}).strict().superRefine((t, ctx) => {
+  const seen = new Set<string>();
+  t.positions.forEach((p, i) => {
+    if (seen.has(p.id)) ctx.addIssue({ code: 'custom', path: ['positions', i, 'id'], message: `position id "${p.id}" is used twice in this topic` });
+    seen.add(p.id);
+  });
+});
+
+export const PastimeSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  /** Scene location ids (the first one open for the slot is used); empty only for the pastime that is her hobby. */
+  locations: z.array(str),
+  slots: z.array(slotEnum).min(1),
+  requires: z.object({ afterRun: trueFlag.optional(), firstSlot: trueFlag.optional(), hobby: str.optional() }).strict().optional(),
+  hobby: trueFlag.optional(),
+  talk: z.enum(TALK_LEVELS),
+  herActivity: str,
+  commanderActivity: str,
+  sensoryTag: str,
+  momentSources: z.array(str),
+  description: str,
+  opening: lifeText,
+  lines: linePair,
+}).strict().superRefine((p, ctx) => {
+  if (p.locations.length === 0 && p.hobby !== true) ctx.addIssue({ code: 'custom', path: ['locations'], message: 'a pastime needs a location (only the one that is her hobby uses her hobby\'s)' });
+});
+
+Object.assign(registrySchemas, { lifeEvents: LifeEventSchema, hobbies: HobbySchema, opinionTopics: OpinionTopicSchema, pastimes: PastimeSchema });
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

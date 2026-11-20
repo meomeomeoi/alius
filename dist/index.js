@@ -6127,8 +6127,17 @@ var EVENT_TYPES = [
   "expectation_kept",
   "expectation_broken",
   // P13: the commander enlists a unit against the warden (offered only while she holds the leash and is not in the scene)
-  "conspired"
+  "conspired",
+  // P14c: her life (offered to the model only while there is something of the kind to report; the engine's own offered lists decide)
+  "news_told",
+  "hobby_praised",
+  "opinion_voiced",
+  "opinion_challenged",
+  "opinion_agreed",
+  "first_moment",
+  "joke_returned"
 ];
+var LIFE_EVENT_TYPES = ["news_told", "hobby_praised", "opinion_voiced", "opinion_challenged", "opinion_agreed", "first_moment", "joke_returned"];
 var ENGINE_EVENT_TYPES = [
   "warden_complied",
   "warden_defied",
@@ -6158,7 +6167,9 @@ var ENGINE_EVENT_TYPES = [
   // P12: she was accused (or punished, or leashed) on a false alarm
   "false_accusation",
   // P12: she found out the commander sells intel to a rival corporation
-  "debts_exposed"
+  "debts_exposed",
+  // P14c: a quiet meeting with her (a pastime) ended; never reported by the model
+  "time_together"
 ];
 var WORLD_EFFECT_EVENT_TYPES = [...EVENT_TYPES, "shielded"];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
@@ -6224,6 +6235,14 @@ function wardenArgueStart(state, action) {
 
 // src/engine/dilemma/types.ts
 var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director", "scapegoat", "debts_oversight", "debts_unit", "warden_report"];
+
+// src/engine/life/types.ts
+var LIFE_SIZES = ["small", "notable"];
+var LIFE_CATEGORIES = ["things", "body", "construct", "people", "service", "luck"];
+var LIFE_SHARES = ["anyone", "close", "keeps"];
+var TOPIC_GROUPS = ["lore", "service", "everyday", "people", "abstract"];
+var TRACE_KINDS = ["note", "prop", "opinion"];
+var TALK_LEVELS = ["quiet", "some"];
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -6324,7 +6343,12 @@ var REGISTRY_NAMES = [
   "quartersStyles",
   "backdrops",
   // P10d
-  "planRooms"
+  "planRooms",
+  // P14c
+  "lifeEvents",
+  "hobbies",
+  "opinionTopics",
+  "pastimes"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7035,7 +7059,32 @@ var RESERVED_EVENT_TYPES = [
   "rule_reworded",
   // P11b
   "head_start_applied",
-  "head_start_moment"
+  "head_start_moment",
+  // P14c
+  "life_event",
+  "life_shared",
+  "life_noted",
+  "life_frequency_set",
+  "news_queued",
+  "news_delivered",
+  "news_stale",
+  "hobby_started",
+  "hobby_progress",
+  "hobby_plateau",
+  "hobby_breakthrough",
+  "hobby_milestone",
+  "hobby_cooling",
+  "hobby_dropped",
+  "hobby_rekindled",
+  "hobby_mastered",
+  "hobby_taught",
+  "opinion_formed",
+  "opinion_changed",
+  "opinion_hardened",
+  "first_moment_kept",
+  "joke_counted",
+  "pastime_set",
+  "temperament_set"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -7106,7 +7155,9 @@ var ActivitySchema = BaseEntrySchema.extend({
   /** P14b: how the companion reads the activity (character development); absent = nothing is recorded. */
   appraisal: ReadingSchema.optional(),
   /** P14b: the tags a rule may turn into a like (`like:{tag}`), normalized like imported likes. */
-  appraisalTags: external_exports.array(str.max(32)).max(3).optional()
+  appraisalTags: external_exports.array(str.max(32)).max(3).optional(),
+  /** P14c: the activity a quiet meeting (a pastime) runs through. Read by this field, never by id; exactly one activity carries it. */
+  pastime: external_exports.literal(true).optional()
 }).superRefine((a, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
@@ -8566,7 +8617,12 @@ var DESCRIBED_REGISTRIES = [
   // P10c
   "quartersStyles",
   // P10d
-  "planRooms"
+  "planRooms",
+  // P14c
+  "lifeEvents",
+  "hobbies",
+  "opinionTopics",
+  "pastimes"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -8620,7 +8676,7 @@ var DevelopmentRuleSchema = BaseEntrySchema.extend({
 }).strict();
 registrySchemas.developmentRules = DevelopmentRuleSchema;
 var HabitSchema = BaseEntrySchema.extend({
-  counter: external_exports.object({ kind: external_exports.enum(["activity", "companion", "region"]), id: str.optional() }).strict(),
+  counter: external_exports.object({ kind: external_exports.enum(["activity", "companion", "region", "joke"]), id: str.optional() }).strict(),
   threshold: int.min(2).max(60),
   fallback: str.max(140),
   effect: external_exports.object({ type: external_exports.enum(["unit_stress", "unit_xp"]), amount: int.min(-20).max(20).refine((n) => n !== 0, "an effect amount is not 0"), activityId: str }).strict().optional(),
@@ -8628,6 +8684,102 @@ var HabitSchema = BaseEntrySchema.extend({
   description: str
 }).strict();
 registrySchemas.habits = HabitSchema;
+var trueFlag = external_exports.literal(true);
+var lifeText = str.max(300);
+var linePair = external_exports.tuple([lifeText, lifeText]);
+var LifeRequiresSchema = external_exports.object({
+  hobby: str.optional(),
+  location: external_exports.array(str).min(1).optional(),
+  activity: external_exports.array(str).min(1).optional(),
+  afterRun: external_exports.object({ hurt: trueFlag.optional() }).strict().optional(),
+  noRunDays: int.min(1).max(60).optional(),
+  stressMin: int.min(0).max(100).optional(),
+  stressMax: int.min(0).max(100).optional(),
+  defectCategory: str.optional(),
+  injured: trueFlag.optional(),
+  otherNamed: trueFlag.optional(),
+  affinityMin: int.min(-100).max(100).optional(),
+  trustMin: int.min(0).max(100).optional(),
+  romantic: trueFlag.optional(),
+  leaderNotHer: trueFlag.optional(),
+  gruntDiedDays: int.min(1).max(60).optional(),
+  deathAgo: int.min(1).max(360).optional(),
+  rumour: trueFlag.optional(),
+  rationsShort: trueFlag.optional(),
+  sparring: external_exports.enum(["won", "lost"]).optional(),
+  bloomHalf: trueFlag.optional(),
+  missionBoard: trueFlag.optional(),
+  afterEvent: str.optional(),
+  otherHadThisWeek: str.optional()
+}).strict();
+var LifeEventSchema = BaseEntrySchema.extend({
+  size: external_exports.enum(LIFE_SIZES),
+  category: external_exports.enum(LIFE_CATEGORIES),
+  tags: external_exports.array(str.max(32)).max(6).optional(),
+  share: external_exports.enum(LIFE_SHARES),
+  keepsUnless: external_exports.object({ affinityMin: int.min(-100).max(100).optional(), romantic: trueFlag.optional() }).strict().optional(),
+  requires: LifeRequiresSchema.optional(),
+  becomes: external_exports.object({ hobby: str.optional(), milestone: trueFlag.optional(), opinionTopic: str.optional() }).strict().optional(),
+  cooldownDays: int.min(1).max(720).optional(),
+  yearly: trueFlag.optional(),
+  urgent: trueFlag.optional(),
+  description: str,
+  /** A short third-person line shown when hovering her on the hub. */
+  hub: lifeText,
+  /** Two fallback lines in her voice (her DM or her news); the model words the real one. */
+  lines: linePair
+}).strict().superRefine((e, ctx2) => {
+  if (e.keepsUnless !== void 0 && e.share !== "keeps") ctx2.addIssue({ code: "custom", path: ["keepsUnless"], message: 'keepsUnless only turns a "keeps" event into a shared one' });
+});
+var HobbySchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  locations: external_exports.array(str).min(1),
+  activityIds: external_exports.array(str),
+  teachable: external_exports.boolean(),
+  /** Exactly four, with unique ids (checked in `refs.ts`). */
+  milestones: external_exports.array(external_exports.object({ id: str, line: lifeText, trace: external_exports.enum(TRACE_KINDS).optional() }).strict()).min(1),
+  opinionTopic: str.optional(),
+  description: str,
+  traceText: lifeText.optional()
+}).strict();
+var OpinionTopicSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  group: external_exports.enum(TOPIC_GROUPS),
+  axis: external_exports.object({ id: valueAxis, sign: external_exports.union([external_exports.literal(1), external_exports.literal(-1)]) }).strict().optional(),
+  positions: external_exports.array(external_exports.object({ id: str, description: lifeText, lines: linePair }).strict()).min(2).max(5),
+  triggers: external_exports.object({
+    locations: external_exports.array(str).min(1).optional(),
+    activities: external_exports.array(str).min(1).optional(),
+    lifeEvents: external_exports.array(str).min(1).optional(),
+    keywords: external_exports.array(str.max(32)).min(1).max(8).optional()
+  }).strict(),
+  description: str
+}).strict().superRefine((t, ctx2) => {
+  const seen = /* @__PURE__ */ new Set();
+  t.positions.forEach((p, i) => {
+    if (seen.has(p.id)) ctx2.addIssue({ code: "custom", path: ["positions", i, "id"], message: `position id "${p.id}" is used twice in this topic` });
+    seen.add(p.id);
+  });
+});
+var PastimeSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  /** Scene location ids (the first one open for the slot is used); empty only for the pastime that is her hobby. */
+  locations: external_exports.array(str),
+  slots: external_exports.array(slotEnum).min(1),
+  requires: external_exports.object({ afterRun: trueFlag.optional(), firstSlot: trueFlag.optional(), hobby: str.optional() }).strict().optional(),
+  hobby: trueFlag.optional(),
+  talk: external_exports.enum(TALK_LEVELS),
+  herActivity: str,
+  commanderActivity: str,
+  sensoryTag: str,
+  momentSources: external_exports.array(str),
+  description: str,
+  opening: lifeText,
+  lines: linePair
+}).strict().superRefine((p, ctx2) => {
+  if (p.locations.length === 0 && p.hobby !== true) ctx2.addIssue({ code: "custom", path: ["locations"], message: "a pastime needs a location (only the one that is her hobby uses her hobby's)" });
+});
+Object.assign(registrySchemas, { lifeEvents: LifeEventSchema, hobbies: HobbySchema, opinionTopics: OpinionTopicSchema, pastimes: PastimeSchema });
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -14775,6 +14927,7 @@ function validateIntents(raw, ctx2) {
     const severity = oneOf(SEVERITIES, e.severity);
     const evidence = evidenceOf(e.evidence);
     if (!type || !severity || evidence === "") continue;
+    if (LIFE_EVENT_TYPES.includes(type)) continue;
     const actor = e.actor === "commander" ? "commander" : isUnit(e.actor) ? e.actor : null;
     if (actor === null) continue;
     const targets = [...new Set(arr(e.targets).filter(isUnit))].filter((t) => t !== actor);
@@ -31962,7 +32115,7 @@ function system3(raw) {
   const hasExpectations = (input.expectations ?? []).length > 0;
   const hasConspire = (input.conspire ?? []).length > 0;
   const asksReading = input.reading === true;
-  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || hasOverride && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const eventTypes = EVENT_TYPES.filter((t) => !LIFE_EVENT_TYPES.includes(t) && (hasRules || hasOverride && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []
@@ -38188,7 +38341,7 @@ function renderOpsTab(host, ctx2) {
     host.append(h("section", { class: "alius-section" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT")));
     return;
   }
-  const all = [...ctx2.registries.activities.values()];
+  const all = [...ctx2.registries.activities.values()].filter((a) => a.pastime !== true);
   if (ctx2.onCountermand) {
     const chips = h("div", { class: "alius-chips alius-countermand-chips" });
     drawCountermandChips(chips, state, ctx2.registries, ctx2.onCountermand);
@@ -38608,7 +38761,7 @@ function renderMarker(state, reg, unit2) {
 
 // src/ui/hub/roomPanel.ts
 function talkActivity(reg) {
-  return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === "required");
+  return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === "required" && a.pastime !== true);
 }
 function talkBlock(state, reg, unit2, room2) {
   const open3 = endSlotBlock(state);
@@ -47810,7 +47963,7 @@ function createApp(st, deps) {
     },
     async talkAt(unitId, locationId) {
       const s = state;
-      const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === "required");
+      const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === "required" && a.pastime !== true);
       if (!s || load.kind !== "ok" || !talk || !s.squad.some((u) => u.id === unitId)) return false;
       const why = endSlotBlock(s) ?? restrictionReason(s, unitId, "scene");
       if (why) {
@@ -48726,6 +48879,63 @@ registerChecks("habits", (entry, regs) => {
   const fx2 = entry.effect;
   if (fx2 && !regs.activities.has(String(fx2.activityId))) out.push({ path: "effect.activityId", message: `unknown activity "${String(fx2.activityId)}"` });
   return out;
+});
+var lifeCheck = (path, registry2, id, { regs }, label2) => typeof id === "string" && !regs[registry2].has(id) ? [{ path, message: `unknown ${label2} "${id}"` }] : [];
+registerChecks("lifeEvents", (entry, regs) => {
+  const out = [];
+  const r = entry.requires ?? {};
+  const b = entry.becomes ?? {};
+  const ctx2 = { regs };
+  if (r.hobby !== void 0 && r.hobby !== "any") out.push(...lifeCheck("requires.hobby", "hobbies", r.hobby, ctx2, "hobby"));
+  (r.location ?? []).forEach((id, i) => out.push(...lifeCheck(`requires.location[${i}]`, "locations", id, ctx2, "location")));
+  (r.activity ?? []).forEach((id, i) => out.push(...lifeCheck(`requires.activity[${i}]`, "activities", id, ctx2, "activity")));
+  if (r.defectCategory !== void 0 && ![...regs.defects.values()].some((d) => d.category === r.defectCategory)) out.push({ path: "requires.defectCategory", message: `no defect has the category "${r.defectCategory}"` });
+  out.push(...lifeCheck("requires.afterEvent", "lifeEvents", r.afterEvent, ctx2, "life event"));
+  out.push(...lifeCheck("requires.otherHadThisWeek", "lifeEvents", r.otherHadThisWeek, ctx2, "life event"));
+  out.push(...lifeCheck("becomes.hobby", "hobbies", b.hobby, ctx2, "hobby"));
+  out.push(...lifeCheck("becomes.opinionTopic", "opinionTopics", b.opinionTopic, ctx2, "opinion topic"));
+  return out;
+});
+registerChecks("hobbies", (entry, regs) => {
+  const out = [];
+  const ctx2 = { regs };
+  const locations = entry.locations ?? [];
+  locations.forEach((id, i) => out.push(...lifeCheck(`locations[${i}]`, "locations", id, ctx2, "location")));
+  const hosted = new Set([...regs.hubRooms.values()].map((room2) => room2.sceneLocationId));
+  if (locations.length > 0 && !locations.some((id) => hosted.has(id))) out.push({ path: "locations", message: `hobby "${entry.id}" needs at least one location hosted by a hub room (she practises where she spends her slots)` });
+  const milestones = entry.milestones ?? [];
+  if (milestones.length !== 4) out.push({ path: "milestones", message: `hobby "${entry.id}" needs exactly 4 milestones (has ${milestones.length})` });
+  const ids = /* @__PURE__ */ new Set();
+  milestones.forEach((m, i) => {
+    if (ids.has(m.id)) out.push({ path: `milestones[${i}].id`, message: `milestone id "${m.id}" is used twice` });
+    ids.add(m.id);
+    if (m.trace === "opinion" && entry.opinionTopic === void 0) out.push({ path: `milestones[${i}].trace`, message: "an opinion trace needs the hobby's opinionTopic" });
+    if ((m.trace === "note" || m.trace === "prop") && entry.traceText === void 0) out.push({ path: `milestones[${i}].trace`, message: `a ${m.trace} trace needs the hobby's traceText` });
+  });
+  out.push(...lifeCheck("opinionTopic", "opinionTopics", entry.opinionTopic, ctx2, "opinion topic"));
+  return out;
+});
+registerChecks("opinionTopics", (entry, regs) => {
+  const out = [];
+  const ctx2 = { regs };
+  const t = entry.triggers ?? {};
+  (t.locations ?? []).forEach((id, i) => out.push(...lifeCheck(`triggers.locations[${i}]`, "locations", id, ctx2, "location")));
+  (t.activities ?? []).forEach((id, i) => out.push(...lifeCheck(`triggers.activities[${i}]`, "activities", id, ctx2, "activity")));
+  (t.lifeEvents ?? []).forEach((id, i) => out.push(...lifeCheck(`triggers.lifeEvents[${i}]`, "lifeEvents", id, ctx2, "life event")));
+  const n = (entry.positions ?? []).length;
+  if (entry.axis !== void 0 && n < 3) out.push({ path: "positions", message: `topic "${entry.id}" has an axis and needs at least 3 positions (has ${n})` });
+  return out;
+});
+registerChecks("pastimes", (entry, regs) => {
+  const out = [];
+  const ctx2 = { regs };
+  (entry.locations ?? []).forEach((id, i) => out.push(...lifeCheck(`locations[${i}]`, "locations", id, ctx2, "location")));
+  out.push(...lifeCheck("requires.hobby", "hobbies", entry.requires?.hobby, ctx2, "hobby"));
+  return out;
+});
+registerChecks("habits", (entry) => {
+  const counter = entry.counter;
+  return counter?.kind === "joke" && counter.id !== void 0 ? [{ path: "counter.id", message: "a joke habit counts every running joke; it names none" }] : [];
 });
 
 // src/content/loader.ts

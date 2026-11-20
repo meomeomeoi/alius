@@ -2395,7 +2395,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     async talkAt(unitId, locationId) {
       const s = state;
-      const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === 'required');
+      const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === 'required' && a.pastime !== true);
       if (!s || load.kind !== 'ok' || !talk || !s.squad.some((u) => u.id === unitId)) return false;
       const why = endSlotBlock(s) ?? restrictionReason(s, unitId, 'scene');
       if (why) {

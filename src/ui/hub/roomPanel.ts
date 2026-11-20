@@ -15,9 +15,9 @@ import type { HubCtx } from './hubScreen';
 import { renderMarker } from './marker';
 import { endSlotBlock } from './model';
 
-/** The activity that opens a conversation: found by what it does (`startsScene`, companion required), never by id. */
+/** The activity that opens a conversation: found by what it does (`startsScene`, companion required, not the quiet-meeting one), never by id. */
 export function talkActivity(reg: Registries): Entry | undefined {
-  return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === 'required');
+  return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === 'required' && a.pastime !== true);
 }
 
 /** Why she cannot be talked to in this room right now, or `null`. The first reason that applies wins. */

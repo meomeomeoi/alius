@@ -181,7 +181,7 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO ACTIVE CAMPAIGN IN THIS CHAT')));
     return;
   }
-  const all = [...ctx.registries.activities.values()];
+  const all = [...ctx.registries.activities.values()].filter((a) => a.pastime !== true); // P14c: a quiet meeting is picked from her pastimes, not from this list
   if (ctx.onCountermand) {
     const chips = h('div', { class: 'alius-chips alius-countermand-chips' });
     drawCountermandChips(chips, state, ctx.registries, ctx.onCountermand);

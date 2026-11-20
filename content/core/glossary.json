@@ -2260,5 +2260,104 @@
     "id": "setting_habit_wording",
     "term": "Habit wording",
     "short": "The mechanic model words each habit a soldier forms in one call; off, the registry's text stands."
+  },
+  {
+    "id": "temperament",
+    "term": "Temperament",
+    "short": "How she talks and carries herself: how much she speaks, whether she is steady or moody, and what kind of humor she has.",
+    "long": "AUTHOR TO WRITE: Three words describe her temperament. They shape how often she shares what happens to her, how she takes a hard word and whether she makes a joke. They are set at import and can be changed, and a locked one stays as it is.",
+    "see": [
+      "talkativeness",
+      "volatility",
+      "humor"
+    ]
+  },
+  {
+    "id": "talkativeness",
+    "term": "Talkativeness",
+    "short": "How readily she speaks: silent, terse or talkative.",
+    "long": "AUTHOR TO WRITE: A talkative soldier tells you her news and brings things up on her own. A silent one keeps most of it to herself and has to be asked."
+  },
+  {
+    "id": "volatility",
+    "term": "Volatility",
+    "short": "Steady or moody. A moody soldier takes a hard word harder, and her mood shows.",
+    "long": "AUTHOR TO WRITE: A steady soldier takes a blow and carries on. A moody one is shaken by it and holds it longer."
+  },
+  {
+    "id": "humor",
+    "term": "Humor",
+    "short": "What kind of jokes she makes: none, dry, mocking or warm.",
+    "long": "AUTHOR TO WRITE: Humor decides whether she brings back a running joke and in what spirit. None means she never does.",
+    "see": [
+      "running_joke"
+    ]
+  },
+  {
+    "id": "life_events",
+    "term": "Life events",
+    "short": "What happens to her when you are not there: a broken mug, a letter, a bad night. Most stay hers; some she tells you.",
+    "long": "AUTHOR TO WRITE: A day off-screen can bring something small or something that matters. What she keeps to herself is never shown. What she tells you arrives in its own time, as a message, a word when you next meet, or a line on the hub.",
+    "see": [
+      "news_queue",
+      "setting_life_events"
+    ]
+  },
+  {
+    "id": "news_queue",
+    "term": "News queue",
+    "short": "What she has to tell you waits its turn, so that you hear one thing at a time.",
+    "long": "AUTHOR TO WRITE: Her news comes at a pace: no more than a few items a day across the squad, never the same kind twice in a row. Old news becomes a passing mention. Which item comes next is never shown.",
+    "see": [
+      "life_events"
+    ]
+  },
+  {
+    "id": "hobby_cycle",
+    "term": "Hobby cycle",
+    "short": "A hobby is picked up, practiced, stalls, cools, is put away and sometimes taken up again.",
+    "long": "AUTHOR TO WRITE: She practices where she spends her slots. Progress comes in steps, each with its own moment. Interest rises and falls, and a hobby she drops can return. How far she has come is shown by what she says and what she keeps, never as a number.",
+    "see": [
+      "commander_hobby_skill"
+    ]
+  },
+  {
+    "id": "quiet_meeting",
+    "term": "Quiet meeting",
+    "short": "A meeting with no stakes: cooking, the roof in the rain, cards. Both of you are at ease, and it brings you closer.",
+    "long": "AUTHOR TO WRITE: A quiet meeting takes a slot and opens a scene that is only what it is. It lowers her stress and warms her a little, and the first time something happens in one, it is remembered.",
+    "see": [
+      "running_joke"
+    ]
+  },
+  {
+    "id": "thoughts",
+    "term": "Thoughts",
+    "short": "What she thinks about things, in her own words. A view appears once she has told you.",
+    "long": "AUTHOR TO WRITE: Opinions form when something brings a subject up. She voices one once, when it fits. A view she holds firmly changes only slowly, and only if you argue it well."
+  },
+  {
+    "id": "running_joke",
+    "term": "Running joke",
+    "short": "Something you and she keep coming back to. After a few returns it is yours.",
+    "long": "AUTHOR TO WRITE: A joke she has shared with you can come back. Three returns within a month make it a running joke. Whether she brings one up depends on her humor.",
+    "see": [
+      "humor"
+    ]
+  },
+  {
+    "id": "commander_hobby_skill",
+    "term": "Hobby skill",
+    "short": "How far you have learned a hobby from her: none, a beginner, getting there, good at it.",
+    "long": "AUTHOR TO WRITE: Spending time on her hobby teaches you a little, and a soldier who is good at it and likes to teach, teaches faster. It is only a description: it changes nothing else.",
+    "see": [
+      "hobby_cycle"
+    ]
+  },
+  {
+    "id": "setting_life_events",
+    "term": "Life events",
+    "short": "How often things happen to her off-screen: off, rare, normal or often. Off keeps the days as they were.",
+    "long": "AUTHOR TO WRITE: Off, nothing happens to her when you are not there. A running campaign can switch it on at any time; what already happened stays."
   }
 ]

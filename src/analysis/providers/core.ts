@@ -297,6 +297,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'head_start', 'new_arrival', 'head_start_recap',
   // P14b (the DEVELOPMENT view and its analyze readings address these)
   'character_development', 'development_moment', 'development_fact', 'habit', 'development_hold', 'appraisal',
+  // P14c (the TEMPERAMENT, HOBBIES and THOUGHTS views, the news and the quiet meetings address these; `setting_life_events` is a campaign setting, checked with the settings)
+  'temperament', 'talkativeness', 'volatility', 'humor', 'life_events', 'news_queue', 'hobby_cycle', 'quiet_meeting', 'thoughts', 'running_joke', 'commander_hobby_skill',
   'vitals', 'vitals_flat', 'vitals_flicker', // P10b
   'dm_behaviour', 'read_receipt', 'voice_message', 'night_theme', 'night_door', 'handwriting', 'hand_note', 'rule_note', 'device_marks',
   // P9c (the DEVICE block, the SCHEDULE, the EDITED BY chip, the courtship chips and the claim card address these)

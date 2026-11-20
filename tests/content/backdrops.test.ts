@@ -73,8 +73,9 @@ describe('P10c backdrop assets', () => {
 
   it('fourteen room styles; every location but the per-unit one has a day background; the incoming folder is gone', () => {
     expect(reg.quartersStyles.size).toBe(14);
+    const noArt = new Set(['laundry']); // P14c: a place with no art yet; the scene ends at the ASCII stage
     for (const l of reg.locations.values()) {
-      if (l.perUnit === true) expect(l.background, String(l.id)).toBeUndefined();
+      if (l.perUnit === true || noArt.has(String(l.id))) expect(l.background, String(l.id)).toBeUndefined();
       else expect(typeof l.background, String(l.id)).toBe('string');
     }
     expect(existsSync('content/core/art/incoming')).toBe(false);

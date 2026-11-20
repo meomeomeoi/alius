@@ -1,0 +1,3663 @@
+[
+  {
+    "id": "corporations",
+    "label": "the corporations",
+    "group": "lore",
+    "axis": {
+      "id": "corporate",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "necessary",
+        "description": "She sees the corporations as the only thing still holding the world together, ugly as they are.",
+        "lines": [
+          "Hate them all you want. When the Bloom took the cities, they were the ones who kept the lights on.",
+          "Somebody has to own the world. Better them than the spores."
+        ]
+      },
+      {
+        "id": "useful",
+        "description": "She thinks of them as a ladder: dirty rungs, but they go up.",
+        "lines": [
+          "They're a machine. Learn where the levers are and it works for you too.",
+          "I don't love the company. I love what the company can be made to do."
+        ]
+      },
+      {
+        "id": "tolerated",
+        "description": "She does not love them or fight them; they are weather, and she dresses for it.",
+        "lines": [
+          "They own the air we breathe. Complaining won't make it cleaner.",
+          "Rain, mud, shareholders. You don't argue with weather."
+        ]
+      },
+      {
+        "id": "hated",
+        "description": "She hates them with a cold, patient hatred; they made her and threw her away.",
+        "lines": [
+          "They grew me in a tank and sold me twice. Don't ask me to salute the logo.",
+          "Every bruise on this squad has a corporate invoice number."
+        ]
+      },
+      {
+        "id": "burn_them",
+        "description": "She would see them burn and has thought about how.",
+        "lines": [
+          "One day somebody lights the match. I just hope I'm close enough to feel the heat.",
+          "Don't reform them. Don't fix them. Burn the towers and salt the server rooms."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "corporation",
+        "corporations",
+        "corp",
+        "megacorp",
+        "company"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the corporations."
+  },
+  {
+    "id": "own_corporation",
+    "label": "her own corporation",
+    "group": "lore",
+    "axis": {
+      "id": "corporate",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "loyal",
+        "description": "She is loyal to the corporation that made her, defect or not.",
+        "lines": [
+          "They made me. Off-spec, sure. Still theirs.",
+          "I wear the mark. I'll wear it to the end."
+        ]
+      },
+      {
+        "id": "grateful",
+        "description": "She is grateful they did not scrap her, and a little ashamed of the gratitude.",
+        "lines": [
+          "They could've recycled me. They sent me here instead. That's something.",
+          "I know what a scrap bin looks like. I'll take the CCP."
+        ]
+      },
+      {
+        "id": "indifferent",
+        "description": "The name on her file means nothing to her.",
+        "lines": [
+          "Vesper, Kestrel, whoever. The badge changes, the boots don't.",
+          "Ask me who made me and I'll tell you a serial number. That's all it was."
+        ]
+      },
+      {
+        "id": "bitter",
+        "description": "She feels used and discarded by the house that grew her.",
+        "lines": [
+          "I was their best batch until I wasn't. One bad readout and I'm penal stock.",
+          "They put their name on me and took it back when it stopped paying."
+        ]
+      },
+      {
+        "id": "wants_out",
+        "description": "She dreams of buying, stealing or fighting her way out of their ownership.",
+        "lines": [
+          "There's a price on my contract somewhere. I mean to find it.",
+          "One day I'm going to be a person nobody owns. Even if it's for a day."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "corp_news"
+      ],
+      "keywords": [
+        "badge",
+        "logo",
+        "contract",
+        "batch"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about her own corporation."
+  },
+  {
+    "id": "the_bloom",
+    "label": "the Bloom",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "plague",
+        "description": "The Bloom is a disease to be burned out, nothing more.",
+        "lines": [
+          "It's rot. You don't study rot, you cut it out.",
+          "Every Bloom patch I see, I want a flamer."
+        ]
+      },
+      {
+        "id": "judgment",
+        "description": "She half believes the Bloom is the world paying for what people did to it.",
+        "lines": [
+          "We broke everything. Something was always going to grow in the cracks.",
+          "Call it a virus if it helps you sleep. I call it a bill."
+        ]
+      },
+      {
+        "id": "nature",
+        "description": "To her the Bloom is just life doing what life does.",
+        "lines": [
+          "It isn't evil. It's hungry. Like everything else.",
+          "The planet's rewriting itself. We're just in the margins."
+        ]
+      },
+      {
+        "id": "fascinated",
+        "description": "The Bloom frightens and fascinates her; she cannot look away from it.",
+        "lines": [
+          "Have you seen the Garden at dawn? It's horrible. It's beautiful. I hate that it's beautiful.",
+          "Sometimes I think it's trying to say something, and we keep shooting the mouth."
+        ]
+      },
+      {
+        "id": "resource",
+        "description": "The Bloom is a resource to be harvested, like oil once was.",
+        "lines": [
+          "PLYX, serums, us. Half the economy is grown from that muck.",
+          "Kill it, bottle it, sell it. That's the world now."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "bloom_sighting"
+      ],
+      "keywords": [
+        "bloom",
+        "spores",
+        "spore",
+        "blight"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the Bloom."
+  },
+  {
+    "id": "being_construct",
+    "label": "being a construct",
+    "group": "lore",
+    "axis": {
+      "id": "autonomy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "more_than_human",
+        "description": "She thinks constructs are an improvement on what came before.",
+        "lines": [
+          "They built us better. Faster, harder, cleaner. Humans should be taking notes.",
+          "I'm not a copy of a person. I'm the next draft."
+        ]
+      },
+      {
+        "id": "a_person",
+        "description": "She is certain she is a person, whatever the paperwork says.",
+        "lines": [
+          "I bleed, I dream, I hold grudges. Tell me which part of that is a tool.",
+          "Grown or born, I'm still somebody."
+        ]
+      },
+      {
+        "id": "unsure",
+        "description": "She has not decided what she is, and the question comes back at night.",
+        "lines": [
+          "Some mornings I'm sure I'm someone. By evening I'm a serial number again.",
+          "If they can flash my firmware, how much of me is me?"
+        ]
+      },
+      {
+        "id": "doesnt_care",
+        "description": "The question bores her; she is here, that is enough.",
+        "lines": [
+          "Person, product, who cares. I'm hungry and it's raining.",
+          "Philosophers can argue about what I am. I've got a patrol."
+        ]
+      },
+      {
+        "id": "a_tool",
+        "description": "She thinks of herself as equipment, and finds it simpler that way.",
+        "lines": [
+          "I'm a rifle with opinions. The opinions are the defect.",
+          "Tools don't get sad. I'm trying to be a good tool."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "vat_day"
+      ],
+      "keywords": [
+        "construct",
+        "constructs",
+        "synthetic",
+        "grown"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about being a construct."
+  },
+  {
+    "id": "the_vat",
+    "label": "the vat",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "misses_it",
+        "description": "She remembers the vat as warm and quiet, and sometimes misses it.",
+        "lines": [
+          "It was warm in there. No noise, no orders. Just the hum.",
+          "Some nights I'd trade everything for that silence."
+        ]
+      },
+      {
+        "id": "does_not_remember",
+        "description": "She has no memory of the vat at all.",
+        "lines": [
+          "Nothing. First thing I remember is a medic slapping my face.",
+          "If there was a before, they wiped it clean."
+        ]
+      },
+      {
+        "id": "wants_to_know",
+        "description": "She wants to learn what happened to her in the vat, and before it.",
+        "lines": [
+          "Somewhere there's a file with my first week in it. I want to read it.",
+          "They know how I was made. I don't. That's not fair."
+        ]
+      },
+      {
+        "id": "uneasy",
+        "description": "She does not like to think about it and changes the subject.",
+        "lines": [
+          "Let's not. Talk about anything else.",
+          "There are things you don't dig up."
+        ]
+      },
+      {
+        "id": "nightmare",
+        "description": "The vat comes back to her in nightmares.",
+        "lines": [
+          "I still wake up thinking I'm drowning in gel.",
+          "Don't put me near a glass tank. Ever."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "nightmare"
+      ],
+      "keywords": [
+        "vat",
+        "tank",
+        "gel",
+        "decanting"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the vat."
+  },
+  {
+    "id": "the_leash",
+    "label": "the Leash",
+    "group": "lore",
+    "axis": {
+      "id": "autonomy",
+      "sign": -1
+    },
+    "positions": [
+      {
+        "id": "safety",
+        "description": "She sees the Leash as a safeguard that keeps broken units from hurting their own.",
+        "lines": [
+          "If I snap, I'd rather be stopped than let loose on you.",
+          "It's a seatbelt. Ugly, but it's a seatbelt."
+        ]
+      },
+      {
+        "id": "fair_price",
+        "description": "The Leash is the price of being let out, and she pays it.",
+        "lines": [
+          "They don't trust off-spec. Can't say I blame them.",
+          "You want a gun that can think, you put a safety on it."
+        ]
+      },
+      {
+        "id": "necessary_evil",
+        "description": "She hates the Leash but admits a penal unit could not exist without it.",
+        "lines": [
+          "I hate it. I'd also hate a squad of us without it.",
+          "Somebody has to hold the Leash. I just pray it's someone sane."
+        ]
+      },
+      {
+        "id": "humiliation",
+        "description": "The Leash is a humiliation she feels every day.",
+        "lines": [
+          "A collar under the skin. They don't even let us see it.",
+          "You know what it's like to be afraid of your own head?"
+        ]
+      },
+      {
+        "id": "tear_it_out",
+        "description": "She would tear the controller out with her own hands if she could.",
+        "lines": [
+          "Give me a scalpel and a mirror and an hour.",
+          "One day someone finds out how to cut it. I'll be first in line."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "leash",
+        "collar",
+        "tether",
+        "restraint"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the Leash."
+  },
+  {
+    "id": "ccp_program",
+    "label": "the CCP program",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "second_chance",
+        "description": "She sees the program as a real second chance.",
+        "lines": [
+          "Scrap or service. They gave us service. I'll take it.",
+          "We're still breathing. That's a chance."
+        ]
+      },
+      {
+        "id": "just_a_post",
+        "description": "To her it is an assignment like any other.",
+        "lines": [
+          "Penal, regular, special ops. A post is a post.",
+          "Same mud, different paperwork."
+        ]
+      },
+      {
+        "id": "dumping_ground",
+        "description": "She sees the CCP as where they throw what they cannot sell.",
+        "lines": [
+          "This is the bin, and we're what's in it.",
+          "They don't send us to win. They send us to stop costing money."
+        ]
+      },
+      {
+        "id": "prison",
+        "description": "She thinks of it as a prison with a better view.",
+        "lines": [
+          "Bars, walls, guards. Ours just have rifles and smell of oil.",
+          "Call it a program. It's a sentence."
+        ]
+      },
+      {
+        "id": "grave",
+        "description": "She thinks the program exists to get them killed quietly.",
+        "lines": [
+          "Nobody comes back from the CCP. They just stop counting.",
+          "This isn't a unit. It's a slow funeral."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "ccp",
+        "program",
+        "penal",
+        "probation"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the CCP program."
+  },
+  {
+    "id": "convicts_in_command",
+    "label": "convicts in command",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "deserve_the_chance",
+        "description": "She believes a convicted officer can earn a way back.",
+        "lines": [
+          "Everyone's done something. What matters is what comes next.",
+          "If we get a second chance, so do they."
+        ]
+      },
+      {
+        "id": "judge_by_deeds",
+        "description": "She will judge the commander by what happens in the field, not by the file.",
+        "lines": [
+          "I don't care what's in your file. I care what you do when it goes wrong.",
+          "Show me under fire. Then I'll know."
+        ]
+      },
+      {
+        "id": "pity",
+        "description": "She pities convicted officers; they are as disposable as the squad.",
+        "lines": [
+          "They don't trust you either. You're scrap leading scrap.",
+          "Poor bastards. Same Leash, just longer."
+        ]
+      },
+      {
+        "id": "contempt",
+        "description": "She despises officers who ended up here.",
+        "lines": [
+          "Whatever got you here, you earned it.",
+          "Convicts commanding off-spec. Somebody thinks that's funny."
+        ]
+      },
+      {
+        "id": "dangerous",
+        "description": "She thinks a desperate convict in command is the most dangerous thing on the base.",
+        "lines": [
+          "People with nothing to lose spend other people's lives.",
+          "I watch the ones who want their sentence cut. They'll trade us for it."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "convict",
+        "convicts",
+        "criminal",
+        "felon"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about convicts in command."
+  },
+  {
+    "id": "oversight",
+    "label": "oversight",
+    "group": "lore",
+    "axis": {
+      "id": "corporate",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "trusts_it",
+        "description": "She trusts the oversight office to keep things in order.",
+        "lines": [
+          "Somebody upstairs is watching. Good.",
+          "Oversight keeps the worst of us honest."
+        ]
+      },
+      {
+        "id": "respects_it",
+        "description": "She respects the office's power, if not its people.",
+        "lines": [
+          "You don't like the auditors. You respect what they can sign.",
+          "They're paper, but the paper bites."
+        ]
+      },
+      {
+        "id": "fears_it",
+        "description": "The office frightens her.",
+        "lines": [
+          "One report from them and someone disappears.",
+          "When oversight calls, my hands go cold."
+        ]
+      },
+      {
+        "id": "works_around_it",
+        "description": "She treats oversight as an obstacle to be managed.",
+        "lines": [
+          "There's always a form they forget to check.",
+          "Tell them what they want to hear, do what keeps us alive."
+        ]
+      },
+      {
+        "id": "mocks_it",
+        "description": "She thinks the office is a joke in a suit.",
+        "lines": [
+          "Clerks with clipboards deciding who lives. Hilarious.",
+          "They've never smelled a Bloom nest. They file reports about them."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "reprimand"
+      ],
+      "keywords": [
+        "oversight",
+        "audit",
+        "auditor",
+        "inspection"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about oversight."
+  },
+  {
+    "id": "mutants",
+    "label": "mutants",
+    "group": "lore",
+    "axis": {
+      "id": "mercy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "were_people",
+        "description": "She never forgets that most of them were people once.",
+        "lines": [
+          "That one had a wedding ring. Under the growths.",
+          "Shoot if you have to. Just don't laugh about it."
+        ]
+      },
+      {
+        "id": "pity",
+        "description": "She pities the mutants even while she kills them.",
+        "lines": [
+          "If it were me in there, I'd want someone to end it.",
+          "It's mercy. That's what I tell myself."
+        ]
+      },
+      {
+        "id": "curious",
+        "description": "She is curious about them, more than she should be.",
+        "lines": [
+          "Did you see how it moved? Like it was thinking.",
+          "I'd like to know what they dream about."
+        ]
+      },
+      {
+        "id": "just_targets",
+        "description": "To her they are targets and nothing else.",
+        "lines": [
+          "It moves wrong, it dies. Simple.",
+          "Don't name them. Don't think about them. Aim."
+        ]
+      },
+      {
+        "id": "hates_them",
+        "description": "She hates them with a personal hatred.",
+        "lines": [
+          "They took my first squad. Every one of them pays for it.",
+          "I don't shoot mutants. I exterminate them."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "mutant",
+        "mutants",
+        "mutation",
+        "freak"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about mutants."
+  },
+  {
+    "id": "off_spec",
+    "label": "being off-spec",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "defect_is_shame",
+        "description": "She is ashamed of her defect and hides it if she can.",
+        "lines": [
+          "Don't look at my file. Please.",
+          "I was supposed to be perfect. I'm the faulty batch."
+        ]
+      },
+      {
+        "id": "defect_is_wound",
+        "description": "She sees her defect as an injury done to her.",
+        "lines": [
+          "They broke something in me and called it my fault.",
+          "It's not a flaw. It's a scar they won't admit to."
+        ]
+      },
+      {
+        "id": "doesnt_care",
+        "description": "She shrugs the defect off; everyone here has one.",
+        "lines": [
+          "Everybody's broken somewhere. Mine just has a code.",
+          "Defect, quirk, whatever. I still hit what I aim at."
+        ]
+      },
+      {
+        "id": "defect_is_self",
+        "description": "She thinks the defect is simply part of who she is.",
+        "lines": [
+          "Take it away and you'd get somebody else.",
+          "This is me. The glitch included."
+        ]
+      },
+      {
+        "id": "defect_is_gift",
+        "description": "She believes her defect makes her better at something.",
+        "lines": [
+          "The thing they called a malfunction kept me alive three times.",
+          "They see a bug. I see an edge."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "defect",
+        "defects",
+        "faulty",
+        "spec"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about being off-spec."
+  },
+  {
+    "id": "cities_outside",
+    "label": "the cities outside",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "wants_to_live_there",
+        "description": "She dreams of a life in one of the corporate cities.",
+        "lines": [
+          "A flat with a window. A job nobody shoots at. That's all.",
+          "One day I'll walk down a street and nobody will know what I am."
+        ]
+      },
+      {
+        "id": "wants_to_see",
+        "description": "She wants to see the cities, at least once.",
+        "lines": [
+          "Lights, crowds, music. I've only seen them in feeds.",
+          "I want to stand in a city and be bored. Just once."
+        ]
+      },
+      {
+        "id": "never_thinks",
+        "description": "The cities do not enter her thoughts.",
+        "lines": [
+          "Out there? Doesn't exist for me.",
+          "My world's this fence and the next mission."
+        ]
+      },
+      {
+        "id": "glad_to_be_away",
+        "description": "She is glad to be far from the cities and their people.",
+        "lines": [
+          "Too many eyes, too many cameras. Here I can breathe.",
+          "The wilds try to kill you honestly."
+        ]
+      },
+      {
+        "id": "contempt",
+        "description": "She despises city people as soft and blind.",
+        "lines": [
+          "They eat food we bled for and complain about the taste.",
+          "They've never seen a Bloom. They think we're a rumor."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "letter_received"
+      ],
+      "keywords": [
+        "city",
+        "cities",
+        "outside",
+        "civilians"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the cities outside."
+  },
+  {
+    "id": "aurum_debt",
+    "label": "the Aurum debt",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "doesnt_know",
+        "description": "She does not understand the finance and does not want to.",
+        "lines": [
+          "Debt, credit, futures. I just want my ration card.",
+          "Money's a story the clerks tell each other."
+        ]
+      },
+      {
+        "id": "everyone_owes",
+        "description": "She accepts that everyone owes Aurum, and that is how the world turns.",
+        "lines": [
+          "Everybody owes Aurum. Even Aurum, probably.",
+          "The whole world's a loan. We're the interest."
+        ]
+      },
+      {
+        "id": "scam",
+        "description": "She thinks the debt is a scam designed to own everyone forever.",
+        "lines": [
+          "You can't pay it off. That's the point.",
+          "They lend you the rope and charge you for the hanging."
+        ]
+      },
+      {
+        "id": "useful_lever",
+        "description": "She sees debt as a lever a clever person can use.",
+        "lines": [
+          "Know who owes whom and you know who'll jump.",
+          "Debt's just leverage with paperwork."
+        ]
+      },
+      {
+        "id": "owes_herself",
+        "description": "Some of the debt is personal: she owes, and it weighs on her.",
+        "lines": [
+          "There's a number with my name on it. It goes up while I sleep.",
+          "Don't ask what I owe. I don't say it out loud."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "aurum",
+        "debt",
+        "debts",
+        "owe"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the Aurum debt."
+  },
+  {
+    "id": "sable_line",
+    "label": "Sable Line",
+    "group": "lore",
+    "positions": [
+      {
+        "id": "would_join",
+        "description": "She would sign with Sable Line if she ever could.",
+        "lines": [
+          "They pay. They pick their fights. That's freedom, near enough.",
+          "If my contract ever goes up for sale, I hope Sable buys it."
+        ]
+      },
+      {
+        "id": "respects_them",
+        "description": "She respects them as professionals.",
+        "lines": [
+          "Sable are clean. Fast in, fast out. I respect that.",
+          "They're the best at what they do. What they do is ugly."
+        ]
+      },
+      {
+        "id": "rivals",
+        "description": "She sees Sable as rivals to beat.",
+        "lines": [
+          "Next time we meet them, we get there first.",
+          "They think they're better than us. Let's correct that."
+        ]
+      },
+      {
+        "id": "mercenaries",
+        "description": "She despises them as killers for hire.",
+        "lines": [
+          "They'd shoot their mothers for a bonus.",
+          "At least we're owned. They're for rent."
+        ]
+      },
+      {
+        "id": "fears_them",
+        "description": "She is afraid of them.",
+        "lines": [
+          "When Sable shows up, somebody's being erased.",
+          "I've seen what they leave behind. I don't want to be on that list."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "sable",
+        "mercenary",
+        "mercenaries",
+        "freelance"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about Sable Line."
+  },
+  {
+    "id": "orders",
+    "label": "orders",
+    "group": "service",
+    "axis": {
+      "id": "autonomy",
+      "sign": -1
+    },
+    "positions": [
+      {
+        "id": "obeys",
+        "description": "She obeys orders; the thinking was done higher up.",
+        "lines": [
+          "You give it, I do it. That's the deal.",
+          "Orders are the one thing out here that makes sense."
+        ]
+      },
+      {
+        "id": "obeys_then_asks",
+        "description": "She obeys first and asks why afterwards.",
+        "lines": [
+          "I'll do it. Then you're explaining it to me over coffee.",
+          "Questions after. Bullets first."
+        ]
+      },
+      {
+        "id": "depends_who",
+        "description": "Whether she obeys depends on who is giving the order.",
+        "lines": [
+          "Some people I'd follow into the Garden. Some I wouldn't follow to the mess.",
+          "An order's only as good as the mouth it comes out of."
+        ]
+      },
+      {
+        "id": "questions",
+        "description": "She questions orders out loud and expects answers.",
+        "lines": [
+          "Why? No, really, why?",
+          "I'll go. But you'll tell me what for."
+        ]
+      },
+      {
+        "id": "ignores_bad_ones",
+        "description": "She quietly ignores orders she thinks are stupid.",
+        "lines": [
+          "I heard the order. I also heard the bad idea in it.",
+          "If it gets us killed for nothing, I'll lose it in the static."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "order",
+        "orders",
+        "obey",
+        "obedience"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about orders."
+  },
+  {
+    "id": "duty",
+    "label": "duty",
+    "group": "service",
+    "axis": {
+      "id": "sacrifice",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "everything",
+        "description": "Duty is the spine of her life.",
+        "lines": [
+          "Without duty I'm just a body with a gun.",
+          "I keep my post. Whatever else falls apart."
+        ]
+      },
+      {
+        "id": "to_the_squad",
+        "description": "Her duty is to the women beside her, not to any flag.",
+        "lines": [
+          "I don't serve the company. I serve the girl on my left.",
+          "Duty's the squad. The rest is paperwork."
+        ]
+      },
+      {
+        "id": "a_job",
+        "description": "Duty is a job; she does it and goes home.",
+        "lines": [
+          "I clock in, I shoot, I clock out.",
+          "It's work. Don't make it a religion."
+        ]
+      },
+      {
+        "id": "a_cage",
+        "description": "She feels duty as a cage she was born into.",
+        "lines": [
+          "Duty's the word they use so we won't call it a Leash.",
+          "I never chose it. It was in the firmware."
+        ]
+      },
+      {
+        "id": "a_lie",
+        "description": "She thinks duty is a lie told to make people die cheaply.",
+        "lines": [
+          "Duty is what they say when they can't afford to pay you.",
+          "Nobody ever died for duty. They died for someone's quarterly report."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "duty",
+        "obligation",
+        "shift",
+        "watch"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about duty."
+  },
+  {
+    "id": "fear_in_combat",
+    "label": "fear in combat",
+    "group": "service",
+    "positions": [
+      {
+        "id": "useful",
+        "description": "Fear sharpens her and she uses it.",
+        "lines": [
+          "Fear keeps your head down. I like my head.",
+          "The day I'm not scared out there is the day I die."
+        ]
+      },
+      {
+        "id": "normal",
+        "description": "Everybody is afraid; it is nothing to be ashamed of.",
+        "lines": [
+          "Everyone's scared. The trick is doing it anyway.",
+          "Show me someone who isn't afraid and I'll show you a liar."
+        ]
+      },
+      {
+        "id": "hides_it",
+        "description": "She is afraid and makes sure nobody sees it.",
+        "lines": [
+          "My hands shake after. Never before.",
+          "Fear's private. Keep it under the armor."
+        ]
+      },
+      {
+        "id": "shameful",
+        "description": "She thinks fear is weakness and is ashamed of hers.",
+        "lines": [
+          "A soldier who's afraid is a soldier who hesitates.",
+          "I hate it. I hate that it's there."
+        ]
+      },
+      {
+        "id": "never_felt",
+        "description": "She claims she has never been afraid in a fight, and may be telling the truth.",
+        "lines": [
+          "Scared? Of what? They bleed too.",
+          "Maybe it's the firmware. I just... don't."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "restless_before_run"
+      ],
+      "keywords": [
+        "fear",
+        "afraid",
+        "scared",
+        "nerves"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about fear in combat."
+  },
+  {
+    "id": "heroism",
+    "label": "heroism",
+    "group": "service",
+    "axis": {
+      "id": "sacrifice",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "admirable",
+        "description": "She admires heroes and wants to be one.",
+        "lines": [
+          "Somebody has to stand up first. Why not me?",
+          "The stories are worth something. They keep us going."
+        ]
+      },
+      {
+        "id": "rare",
+        "description": "Real heroism exists but is rare and quiet.",
+        "lines": [
+          "The real ones don't talk about it. You'll never hear their names.",
+          "Most heroes I knew just carried someone back."
+        ]
+      },
+      {
+        "id": "accident",
+        "description": "Heroes are people who were in the wrong place and did not run.",
+        "lines": [
+          "Nobody plans it. You just don't run, and then you're a hero.",
+          "Half the medals are for being too stunned to move."
+        ]
+      },
+      {
+        "id": "stupid",
+        "description": "Heroism gets people killed and she has no patience for it.",
+        "lines": [
+          "Heroes die first. I'd like to die last.",
+          "Don't be brave. Be alive."
+        ]
+      },
+      {
+        "id": "a_lie",
+        "description": "Heroism is a story the corporations sell.",
+        "lines": [
+          "They print a hero on a poster so you'll volunteer.",
+          "Medals are cheaper than pensions."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "hero",
+        "heroes",
+        "heroism",
+        "heroic"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about heroism."
+  },
+  {
+    "id": "cowardice",
+    "label": "cowardice",
+    "group": "service",
+    "axis": {
+      "id": "ingroup",
+      "sign": -1
+    },
+    "positions": [
+      {
+        "id": "forgivable",
+        "description": "She forgives people who run; everyone breaks somewhere.",
+        "lines": [
+          "Everybody's got a breaking point. I've seen mine.",
+          "Running isn't a crime. It's a body doing its job."
+        ]
+      },
+      {
+        "id": "human",
+        "description": "Cowardice is human, but it still costs the others.",
+        "lines": [
+          "I understand it. I just don't want them next to me.",
+          "You ran. Fine. Somebody else paid for it."
+        ]
+      },
+      {
+        "id": "depends",
+        "description": "It depends on who paid for it.",
+        "lines": [
+          "If you ran and nobody died, we'll talk. If someone did, we won't.",
+          "Context. Always context."
+        ]
+      },
+      {
+        "id": "unforgivable",
+        "description": "She does not forgive a soldier who abandons the others.",
+        "lines": [
+          "You left them. That's all there is to say.",
+          "Cowards don't get second chances in my book."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "coward",
+        "cowards",
+        "cowardice",
+        "flee"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about cowardice."
+  },
+  {
+    "id": "death_in_battle",
+    "label": "death in battle",
+    "group": "service",
+    "axis": {
+      "id": "sacrifice",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "welcome",
+        "description": "She thinks dying in a fight would be a good way to go, maybe the best.",
+        "lines": [
+          "Out there, on my feet, with a rifle. Not in a recycler.",
+          "When it comes, I hope it's loud."
+        ]
+      },
+      {
+        "id": "good_end",
+        "description": "A soldier's death is an honorable end.",
+        "lines": [
+          "If I go, let it be for something.",
+          "Better a short life with a reason than a long one without."
+        ]
+      },
+      {
+        "id": "just_happens",
+        "description": "Death in battle is just what happens to soldiers.",
+        "lines": [
+          "Some days the numbers come up.",
+          "You don't think about it. It thinks about you."
+        ]
+      },
+      {
+        "id": "waste",
+        "description": "Every death in the field is a waste.",
+        "lines": [
+          "All that training, all that life, gone for a corridor nobody remembers.",
+          "There's no good death. There's just dead."
+        ]
+      },
+      {
+        "id": "terrifying",
+        "description": "She is terrified of dying out there.",
+        "lines": [
+          "I don't want to die in the mud. I don't want to die at all.",
+          "Every time the hatch opens, I think: this is the one."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "grunt_lost"
+      ],
+      "keywords": [
+        "death",
+        "die",
+        "dying",
+        "dead"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about death in battle."
+  },
+  {
+    "id": "killing",
+    "label": "killing",
+    "group": "service",
+    "axis": {
+      "id": "mercy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "weighs_on_her",
+        "description": "Every kill weighs on her and she keeps count.",
+        "lines": [
+          "I remember them. All of them.",
+          "It doesn't get easier. Anyone who says it does is lying or broken."
+        ]
+      },
+      {
+        "id": "necessary",
+        "description": "Killing is necessary and she does not pretend otherwise.",
+        "lines": [
+          "Them or us. I pick us.",
+          "I don't like it. I'm good at it. Both are true."
+        ]
+      },
+      {
+        "id": "job",
+        "description": "Killing is a job like any other.",
+        "lines": [
+          "Point, squeeze, next.",
+          "I don't take it home with me."
+        ]
+      },
+      {
+        "id": "numb",
+        "description": "She feels nothing about it anymore, and that frightens her a little.",
+        "lines": [
+          "I used to feel something. Now it's just recoil.",
+          "Is it bad that I don't think about them?"
+        ]
+      },
+      {
+        "id": "enjoys_it",
+        "description": "She enjoys the fight, and the kill, and does not hide it.",
+        "lines": [
+          "The moment before the trigger... nothing else feels like that.",
+          "Don't look at me like that. Someone has to like their job."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "kill",
+        "killing",
+        "killed",
+        "murder"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about killing."
+  },
+  {
+    "id": "weapons",
+    "label": "weapons",
+    "group": "service",
+    "positions": [
+      {
+        "id": "names_hers",
+        "description": "Her weapon has a name and she talks to it.",
+        "lines": [
+          "Meet Patience. She's never let me down.",
+          "Don't touch her. She's moody."
+        ]
+      },
+      {
+        "id": "loves_them",
+        "description": "She loves weapons: the weight, the craft, the care.",
+        "lines": [
+          "Look at the machining on this. Someone loved making it.",
+          "Clean steel is the most honest thing on the base."
+        ]
+      },
+      {
+        "id": "tools",
+        "description": "Weapons are tools; she keeps them clean and that is all.",
+        "lines": [
+          "A rifle's a hammer for problems.",
+          "I don't love it. I maintain it."
+        ]
+      },
+      {
+        "id": "uneasy",
+        "description": "She carries weapons but does not like them.",
+        "lines": [
+          "I carry it because I have to. I don't have to like it.",
+          "Every time I strip it, I think about what it's for."
+        ]
+      },
+      {
+        "id": "hates_them",
+        "description": "She hates weapons and what they have made of her.",
+        "lines": [
+          "If I never held one again, I'd be glad.",
+          "They built me around a trigger finger."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "training_yard"
+      ],
+      "activities": [
+        "train"
+      ],
+      "lifeEvents": [
+        "weapon_broke"
+      ],
+      "keywords": [
+        "weapon",
+        "weapons",
+        "rifle",
+        "gun",
+        "blade"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about weapons."
+  },
+  {
+    "id": "leaving_someone_behind",
+    "label": "leaving someone behind",
+    "group": "service",
+    "axis": {
+      "id": "ingroup",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "never",
+        "description": "She will not leave anyone behind, ever.",
+        "lines": [
+          "We all go home or nobody does.",
+          "I'll carry you if I have to drag you by the collar."
+        ]
+      },
+      {
+        "id": "last_resort",
+        "description": "Only when there is truly nothing else.",
+        "lines": [
+          "Only when there's nothing left to try. And I'd try twice.",
+          "If it happens, it happens after everything else."
+        ]
+      },
+      {
+        "id": "if_needed",
+        "description": "If the choice is one or all, she chooses all.",
+        "lines": [
+          "One for the squad. That's the arithmetic.",
+          "I'd want you to leave me. So I'll leave you."
+        ]
+      },
+      {
+        "id": "mission_first",
+        "description": "The mission comes first; people are part of the cost.",
+        "lines": [
+          "Objective first. Mourning later.",
+          "If we fail the mission, everyone's death means nothing."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "abandon",
+        "abandoned",
+        "abandoning",
+        "stranded"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about leaving someone behind."
+  },
+  {
+    "id": "rank",
+    "label": "rank",
+    "group": "service",
+    "positions": [
+      {
+        "id": "matters",
+        "description": "Rank is order, and order keeps people alive.",
+        "lines": [
+          "Chain of command isn't a suggestion.",
+          "Without rank, a squad is a mob with guns."
+        ]
+      },
+      {
+        "id": "earned_only",
+        "description": "She respects rank only when it was earned.",
+        "lines": [
+          "Stripes on the sleeve don't mean anything. Scars do.",
+          "I salute people, not insignia."
+        ]
+      },
+      {
+        "id": "convenience",
+        "description": "Rank is a convenience for deciding who talks first.",
+        "lines": [
+          "Somebody has to speak first in a fight. That's rank.",
+          "It's a tie-breaker, not a crown."
+        ]
+      },
+      {
+        "id": "empty",
+        "description": "Rank is empty theater.",
+        "lines": [
+          "We're penal. Our ranks are a joke someone wrote in a spreadsheet.",
+          "Call me private, call me sergeant. I'm still off-spec."
+        ]
+      },
+      {
+        "id": "mocks_it",
+        "description": "She mocks rank and anyone who takes it seriously.",
+        "lines": [
+          "Yes, sir, very important sir.",
+          "If you want me to salute, I'll do it so hard it'll look like sarcasm."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "praise_from_leader"
+      ],
+      "keywords": [
+        "rank",
+        "ranks",
+        "promotion",
+        "hierarchy"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about rank."
+  },
+  {
+    "id": "the_squad",
+    "label": "the squad",
+    "group": "service",
+    "axis": {
+      "id": "ingroup",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "family",
+        "description": "The squad is her family, the only one she has.",
+        "lines": [
+          "They're my sisters. I'd kill for them, and I have.",
+          "Home is wherever these idiots are."
+        ]
+      },
+      {
+        "id": "friends",
+        "description": "The squad are her friends, most of them.",
+        "lines": [
+          "Most of them I'd share my last cigarette with.",
+          "Not family. Friends. That's rarer."
+        ]
+      },
+      {
+        "id": "coworkers",
+        "description": "They are coworkers; she does not need more than that.",
+        "lines": [
+          "We work together. We don't have to braid each other's hair.",
+          "Professional. That's what keeps us alive."
+        ]
+      },
+      {
+        "id": "strangers",
+        "description": "She keeps her distance from the squad.",
+        "lines": [
+          "I don't get close. People here have short shelf lives.",
+          "Names, ranks, blood types. That's all I need to know."
+        ]
+      },
+      {
+        "id": "burden",
+        "description": "The squad feels like a weight around her neck.",
+        "lines": [
+          "Every one of them is something I can lose.",
+          "I'd move faster alone."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "squad",
+        "team",
+        "comrades",
+        "comrade"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the squad."
+  },
+  {
+    "id": "food",
+    "label": "food",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "pleasure",
+        "description": "Food is one of the few real pleasures left and she takes it seriously.",
+        "lines": [
+          "A hot meal is the closest thing to church we have.",
+          "If I'm going to die tomorrow, I want something good tonight."
+        ]
+      },
+      {
+        "id": "comfort",
+        "description": "She eats when she is sad, tired or scared.",
+        "lines": [
+          "Bad day? Bread. Worse day? More bread.",
+          "It's not hunger. It's company."
+        ]
+      },
+      {
+        "id": "fuel",
+        "description": "Food is fuel and nothing more.",
+        "lines": [
+          "Calories in, missions out.",
+          "If it fills me up, it's food."
+        ]
+      },
+      {
+        "id": "picky",
+        "description": "She is picky and has strong opinions about every meal.",
+        "lines": [
+          "That's not stew. That's a crime scene with gravy.",
+          "I don't eat anything I can't identify."
+        ]
+      },
+      {
+        "id": "forgets_to_eat",
+        "description": "She forgets to eat until someone reminds her.",
+        "lines": [
+          "Lunch? Was that today?",
+          "I'll eat when this is done. It's never done."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "mess_hall"
+      ],
+      "activities": [
+        "mess"
+      ],
+      "lifeEvents": [
+        "ration_cut"
+      ],
+      "keywords": [
+        "food",
+        "meal",
+        "meals",
+        "hungry",
+        "dinner"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about food."
+  },
+  {
+    "id": "ration_bars",
+    "label": "ration bars",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "nostalgic",
+        "description": "Ration bars taste like her first days and she likes them for it.",
+        "lines": [
+          "First thing I ever ate out of the vat. Tastes like being new.",
+          "Laugh all you want. These are comfort food."
+        ]
+      },
+      {
+        "id": "fine",
+        "description": "Ration bars are fine; she does not see the fuss.",
+        "lines": [
+          "They keep you alive. What else do you want from food?",
+          "Chewy. Edible. Done."
+        ]
+      },
+      {
+        "id": "tolerable",
+        "description": "She eats them because there is nothing else.",
+        "lines": [
+          "One more bar and I'm going to start growing bark.",
+          "Field food. Field standards."
+        ]
+      },
+      {
+        "id": "disgusting",
+        "description": "She finds ration bars disgusting.",
+        "lines": [
+          "They taste like the box they came in.",
+          "I'd rather eat the Bloom."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "mess_hall"
+      ],
+      "activities": [
+        "mess"
+      ],
+      "keywords": [
+        "ration",
+        "rations",
+        "protein",
+        "powder"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about ration bars."
+  },
+  {
+    "id": "coffee",
+    "label": "coffee",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "lives_on_it",
+        "description": "Coffee is her ritual and her fuel; the day does not start without it.",
+        "lines": [
+          "Talk to me after the second cup. Before that I'm just firmware.",
+          "Coffee is the only reason this outpost still works."
+        ]
+      },
+      {
+        "id": "likes_it",
+        "description": "She likes coffee without making a religion of it.",
+        "lines": [
+          "One cup. Black. Don't make it complicated.",
+          "Coffee's nice. So's sleep."
+        ]
+      },
+      {
+        "id": "tea_instead",
+        "description": "She drinks tea, slowly, and treats it as a small rebellion.",
+        "lines": [
+          "Tea. Real leaves, if you can find them. It's the only thing here that isn't in a hurry.",
+          "Coffee's for people who want to be somewhere else."
+        ]
+      },
+      {
+        "id": "hates_it",
+        "description": "She cannot stand the taste or the smell.",
+        "lines": [
+          "It tastes like burned wiring. Why does everyone drink this?",
+          "Keep that mug away from me."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "mess_hall"
+      ],
+      "activities": [
+        "mess"
+      ],
+      "keywords": [
+        "coffee",
+        "tea",
+        "caffeine",
+        "brew"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about coffee."
+  },
+  {
+    "id": "music",
+    "label": "music",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "needs_it",
+        "description": "She needs music the way others need air.",
+        "lines": [
+          "Silence makes me think. Music makes me feel. I prefer feeling.",
+          "Take the music off the base and I'll desert."
+        ]
+      },
+      {
+        "id": "loud",
+        "description": "She likes it loud enough to drown everything out.",
+        "lines": [
+          "If I can still hear the generator, it's not loud enough.",
+          "Volume is a kind of armor."
+        ]
+      },
+      {
+        "id": "sings_alone",
+        "description": "She sings when she thinks nobody is listening.",
+        "lines": [
+          "You didn't hear that. Nobody heard that.",
+          "I only sing in the shower. The pipes don't judge."
+        ]
+      },
+      {
+        "id": "background",
+        "description": "Music is background noise, pleasant enough.",
+        "lines": [
+          "Put whatever on. I'm not fussy.",
+          "It's nice. I don't really listen."
+        ]
+      },
+      {
+        "id": "silence_better",
+        "description": "She prefers silence.",
+        "lines": [
+          "Out there, sound means something's coming. In here, I want quiet.",
+          "Silence is the best song nobody plays."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "music",
+        "song",
+        "songs",
+        "tune"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about music."
+  },
+  {
+    "id": "books",
+    "label": "books",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "reads_everything",
+        "description": "She reads anything she can get her hands on.",
+        "lines": [
+          "Manuals, novels, ration labels. Words are words.",
+          "A book is a window, and this place has none."
+        ]
+      },
+      {
+        "id": "favorites",
+        "description": "She has a few books she rereads until they fall apart.",
+        "lines": [
+          "I've read this one eleven times. It still surprises me.",
+          "Some stories you keep. Like a photo."
+        ]
+      },
+      {
+        "id": "wants_to_learn",
+        "description": "She reads slowly and is still learning, and she is shy about it.",
+        "lines": [
+          "Don't laugh. I'm still on page twelve.",
+          "They flashed me with tactics, not with reading."
+        ]
+      },
+      {
+        "id": "only_manuals",
+        "description": "She only reads what is useful.",
+        "lines": [
+          "If it doesn't help me fix something or shoot something, why read it?",
+          "Fiction is people lying on purpose."
+        ]
+      },
+      {
+        "id": "pointless",
+        "description": "Books seem pointless to her.",
+        "lines": [
+          "Why read about a life when you can live one?",
+          "Paper burns. Learn it by doing."
+        ]
+      }
+    ],
+    "triggers": {
+      "activities": [
+        "study"
+      ],
+      "lifeEvents": [
+        "finished_book"
+      ],
+      "keywords": [
+        "book",
+        "books",
+        "novel",
+        "paperback"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about books."
+  },
+  {
+    "id": "sleep",
+    "label": "sleep",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "loves_sleep",
+        "description": "Sleep is her favorite thing in the world.",
+        "lines": [
+          "Wake me for an alarm. Nothing less.",
+          "If heaven exists, it's a bunk with a thick blanket."
+        ]
+      },
+      {
+        "id": "sleeps_anywhere",
+        "description": "She can sleep anywhere, any time, and does.",
+        "lines": [
+          "Truck, trench, floor. I can sleep standing if you let me lean.",
+          "Soldier's skill. Close your eyes and you're gone."
+        ]
+      },
+      {
+        "id": "light_sleeper",
+        "description": "She wakes at every sound.",
+        "lines": [
+          "A door opens three rooms away and I'm up with a knife.",
+          "I sleep like a watchdog."
+        ]
+      },
+      {
+        "id": "insomniac",
+        "description": "Sleep rarely comes to her.",
+        "lines": [
+          "I count rivets on the ceiling. There are two hundred and twelve.",
+          "Night's when my brain finally decides to talk."
+        ]
+      },
+      {
+        "id": "nightmares",
+        "description": "Sleep brings nightmares and she dreads it.",
+        "lines": [
+          "Sleep is the worst part of the day.",
+          "Don't wake me if I shout. Just... stay."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "quarters_unit"
+      ],
+      "activities": [
+        "rest"
+      ],
+      "keywords": [
+        "sleep",
+        "sleeping",
+        "nap",
+        "insomnia"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about sleep."
+  },
+  {
+    "id": "mornings",
+    "label": "mornings",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "early_riser",
+        "description": "She is up before everyone and loves the quiet hour.",
+        "lines": [
+          "The base before dawn is the only time it's mine.",
+          "Up at five. Coffee at five-oh-one."
+        ]
+      },
+      {
+        "id": "routine",
+        "description": "Mornings are a routine she keeps to the minute.",
+        "lines": [
+          "Wake, wash, stretch, check gear. Same order every day.",
+          "Break the routine and the day breaks with it."
+        ]
+      },
+      {
+        "id": "slow_starter",
+        "description": "She needs time to become a person in the morning.",
+        "lines": [
+          "Give me twenty minutes. Then I'm human. Or close.",
+          "Morning me and afternoon me are different units."
+        ]
+      },
+      {
+        "id": "hates_mornings",
+        "description": "She hates mornings and anyone cheerful in them.",
+        "lines": [
+          "If you say 'good morning' I'm going to shoot you.",
+          "Mornings are a corporate invention."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "morning",
+        "mornings",
+        "dawn",
+        "sunrise"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about mornings."
+  },
+  {
+    "id": "weather_rain",
+    "label": "rain",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "loves_rain",
+        "description": "She loves the rain.",
+        "lines": [
+          "Rain washes the spores out of the air. Listen to it.",
+          "Best sound in the world, rain on a tin roof."
+        ]
+      },
+      {
+        "id": "likes_storms",
+        "description": "She loves storms, the louder the better.",
+        "lines": [
+          "Thunder means the world's still alive.",
+          "Come up to the roof. The lightning's beautiful."
+        ]
+      },
+      {
+        "id": "indifferent",
+        "description": "Weather is just weather.",
+        "lines": [
+          "Wet, dry. The mission doesn't care.",
+          "I dress for it. That's my whole opinion."
+        ]
+      },
+      {
+        "id": "hates_rain",
+        "description": "She hates the rain and the mud it brings.",
+        "lines": [
+          "Wet socks for three days. I hate everything.",
+          "Rain means mud, mud means slow, slow means dead."
+        ]
+      },
+      {
+        "id": "afraid_of_storms",
+        "description": "Storms frighten her, though she would never say so in public.",
+        "lines": [
+          "It's not the thunder. It's what it sounds like.",
+          "Can I... stay here until it passes?"
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "roof"
+      ],
+      "lifeEvents": [
+        "weather_mood"
+      ],
+      "keywords": [
+        "rain",
+        "raining",
+        "storm",
+        "drizzle"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about rain."
+  },
+  {
+    "id": "cleanliness",
+    "label": "cleanliness",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "fastidious",
+        "description": "She is fastidious about cleanliness, hers and others'.",
+        "lines": [
+          "If I can smell you, you're not clean.",
+          "A clean body, a clean rifle, a clean bunk. In that order."
+        ]
+      },
+      {
+        "id": "tidy",
+        "description": "She likes things tidy and knows where everything is.",
+        "lines": [
+          "Don't move my things. I know where they are.",
+          "Order outside helps order inside."
+        ]
+      },
+      {
+        "id": "practical",
+        "description": "Clean enough to work; nothing more.",
+        "lines": [
+          "Clean enough not to get an infection. That's the standard.",
+          "I'll shower when we're back. Probably."
+        ]
+      },
+      {
+        "id": "careless",
+        "description": "She does not care much about cleanliness.",
+        "lines": [
+          "Dirt's honest. It means you did something.",
+          "What? It's only been three days."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "clean",
+        "cleanliness",
+        "dirty",
+        "filth"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about cleanliness."
+  },
+  {
+    "id": "the_base",
+    "label": "the base",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "home",
+        "description": "The base has become her home.",
+        "lines": [
+          "Every crack in this place is mine.",
+          "I came here as a sentence. Now I'd miss it."
+        ]
+      },
+      {
+        "id": "refuge",
+        "description": "The base is a refuge from what is outside.",
+        "lines": [
+          "Walls, a roof, a lock. That's more than most have.",
+          "Out there the world wants us dead. In here it just wants paperwork."
+        ]
+      },
+      {
+        "id": "barracks",
+        "description": "The base is a barracks, a place to sleep between missions.",
+        "lines": [
+          "It's where my bunk is. That's all.",
+          "Don't get attached to buildings."
+        ]
+      },
+      {
+        "id": "cage",
+        "description": "The base feels like a cage.",
+        "lines": [
+          "Fences in, fences out. Pretty cage.",
+          "I count the days the way prisoners do."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "outpost",
+        "barracks",
+        "camp",
+        "compound"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the base."
+  },
+  {
+    "id": "animals",
+    "label": "animals",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "loves_them",
+        "description": "She loves animals and goes soft around them.",
+        "lines": [
+          "Look at him. Look at his little face.",
+          "Animals don't care what you were made for."
+        ]
+      },
+      {
+        "id": "feeds_strays",
+        "description": "She secretly feeds whatever stray turns up at the perimeter.",
+        "lines": [
+          "Don't tell supply where the extra rations went.",
+          "There's a cat by the east fence. Her name is Sergeant."
+        ]
+      },
+      {
+        "id": "indifferent",
+        "description": "Animals do not interest her.",
+        "lines": [
+          "It's a dog. So?",
+          "They're fine. Over there."
+        ]
+      },
+      {
+        "id": "food",
+        "description": "She sees animals as food, practically.",
+        "lines": [
+          "That's dinner, not a pet.",
+          "Sentiment's for people with full stomachs."
+        ]
+      },
+      {
+        "id": "afraid",
+        "description": "Animals make her nervous; too many of them turned out to be infected.",
+        "lines": [
+          "I've seen what the Bloom does to dogs. Keep it away.",
+          "Anything with teeth, I watch."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "perimeter"
+      ],
+      "lifeEvents": [
+        "stray_found"
+      ],
+      "keywords": [
+        "animal",
+        "animals",
+        "cat",
+        "dog",
+        "stray"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about animals."
+  },
+  {
+    "id": "alcohol",
+    "label": "alcohol",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "drinks_hard",
+        "description": "She drinks hard and often.",
+        "lines": [
+          "It's not a problem. It's a hobby.",
+          "Pour me another and tell me something I'll forget."
+        ]
+      },
+      {
+        "id": "socially",
+        "description": "She drinks with the others to be part of it.",
+        "lines": [
+          "One with the squad. It's a ritual, not a drink.",
+          "I don't drink alone. That's the rule."
+        ]
+      },
+      {
+        "id": "rarely",
+        "description": "She drinks rarely, on special days.",
+        "lines": [
+          "Birthdays and funerals. That's it.",
+          "A glass when someone comes home. Not before."
+        ]
+      },
+      {
+        "id": "never",
+        "description": "She never drinks.",
+        "lines": [
+          "I need to know where my hands are at all times.",
+          "My firmware's weird enough sober."
+        ]
+      },
+      {
+        "id": "quit",
+        "description": "She used to drink and stopped, and it was not easy.",
+        "lines": [
+          "I quit. Don't offer.",
+          "I know exactly how many days it's been."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "mess_hall"
+      ],
+      "keywords": [
+        "alcohol",
+        "drink",
+        "booze",
+        "drunk"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about alcohol."
+  },
+  {
+    "id": "smoking",
+    "label": "smoking",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "smokes",
+        "description": "She smokes and does not intend to stop.",
+        "lines": [
+          "My lungs are the least of my problems.",
+          "It's five minutes nobody asks anything of me."
+        ]
+      },
+      {
+        "id": "social_smoker",
+        "description": "She only smokes with company.",
+        "lines": [
+          "Only after a run. With someone.",
+          "A cigarette is an excuse to stand next to someone."
+        ]
+      },
+      {
+        "id": "quit",
+        "description": "She quit and misses it.",
+        "lines": [
+          "I can still smell it on your jacket. Cruel.",
+          "Quit. Hated it. Still quit."
+        ]
+      },
+      {
+        "id": "hates_smoke",
+        "description": "She hates the smoke and anyone who brings it near her.",
+        "lines": [
+          "Take that outside. Way outside.",
+          "Smells like a burning Bloom nest."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "smoke",
+        "smoking",
+        "cigarette",
+        "tobacco"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about smoking."
+  },
+  {
+    "id": "clothes",
+    "label": "clothes",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "likes_to_dress",
+        "description": "She loves clothes and dressing up, when she can.",
+        "lines": [
+          "Give me one evening out of uniform and I'll show you a person.",
+          "I have one dress. I've never worn it. I take it out to look at it."
+        ]
+      },
+      {
+        "id": "details_only",
+        "description": "She keeps a small detail of her own on the uniform.",
+        "lines": [
+          "Regulation everything. Except the earrings.",
+          "A ribbon in the hair is not mutiny."
+        ]
+      },
+      {
+        "id": "uniform_only",
+        "description": "She lives in uniform and likes it.",
+        "lines": [
+          "The uniform means I don't have to decide anything.",
+          "Off-duty clothes? Why?"
+        ]
+      },
+      {
+        "id": "doesnt_care",
+        "description": "She does not care what she wears.",
+        "lines": [
+          "Whatever's clean. Or clean-ish.",
+          "Clothes keep the weather off. That's their job."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "outfit_change"
+      ],
+      "keywords": [
+        "clothes",
+        "clothing",
+        "uniform",
+        "jacket"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about clothes."
+  },
+  {
+    "id": "gambling",
+    "label": "gambling",
+    "group": "everyday",
+    "positions": [
+      {
+        "id": "loves_it",
+        "description": "She loves gambling, the risk more than the winnings.",
+        "lines": [
+          "Double or nothing. Always.",
+          "The best moment is before the card turns."
+        ]
+      },
+      {
+        "id": "for_fun",
+        "description": "She plays for fun and small stakes.",
+        "lines": [
+          "Cigarettes and chores, nothing more.",
+          "It's not about winning. It's about the company."
+        ]
+      },
+      {
+        "id": "only_to_win",
+        "description": "She plays only when she is sure she will win.",
+        "lines": [
+          "I don't gamble. I collect.",
+          "Luck is for people who can't count."
+        ]
+      },
+      {
+        "id": "cheats",
+        "description": "She cheats and thinks it is part of the game.",
+        "lines": [
+          "Cheating is just playing with more information.",
+          "If you didn't catch me, I didn't cheat."
+        ]
+      },
+      {
+        "id": "stupid",
+        "description": "She thinks gambling is stupid.",
+        "lines": [
+          "We gamble our lives every week. Why do it with cards too?",
+          "Throwing away what you have for what you might get."
+        ]
+      }
+    ],
+    "triggers": {
+      "locations": [
+        "mess_hall"
+      ],
+      "lifeEvents": [
+        "won_at_cards"
+      ],
+      "keywords": [
+        "gamble",
+        "gambling",
+        "bet",
+        "wager"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about gambling."
+  },
+  {
+    "id": "trust",
+    "label": "trust",
+    "group": "people",
+    "positions": [
+      {
+        "id": "easy",
+        "description": "She trusts easily and has been burned for it.",
+        "lines": [
+          "I trust people. It's gone badly. I still do.",
+          "Assume the best. At least you'll be wrong in a nice way."
+        ]
+      },
+      {
+        "id": "earned",
+        "description": "Trust is earned, slowly.",
+        "lines": [
+          "Trust is a bank account. Make deposits.",
+          "I'll trust you when you've had my back once."
+        ]
+      },
+      {
+        "id": "slow",
+        "description": "She trusts very slowly and watches for a long time first.",
+        "lines": [
+          "Give me a year. Then ask again.",
+          "I watch how people treat the ones they don't need."
+        ]
+      },
+      {
+        "id": "never",
+        "description": "She does not trust anyone fully.",
+        "lines": [
+          "Trust is a weak spot with a nicer name.",
+          "I don't trust. I verify."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "things_touched"
+      ],
+      "keywords": [
+        "trust",
+        "trusted",
+        "trusting",
+        "confide"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about trust."
+  },
+  {
+    "id": "friendship",
+    "label": "friendship",
+    "group": "people",
+    "axis": {
+      "id": "ingroup",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "everyone",
+        "description": "She is friends with everybody, or tries to be.",
+        "lines": [
+          "Why have enemies when you can have drinking partners?",
+          "I like people. Even the annoying ones."
+        ]
+      },
+      {
+        "id": "needs_it",
+        "description": "She needs friends close and would wither without them.",
+        "lines": [
+          "If I didn't have someone to talk to at night, I'd go mad.",
+          "Friends are why I come back."
+        ]
+      },
+      {
+        "id": "few_friends",
+        "description": "She has a few true friends and that is enough.",
+        "lines": [
+          "Two friends. That's a fortune out here.",
+          "I don't collect people. I keep them."
+        ]
+      },
+      {
+        "id": "alone_better",
+        "description": "She is better on her own.",
+        "lines": [
+          "Friends are just people you'll have to bury.",
+          "I like my own company. It never lets me down."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "late_night_talk"
+      ],
+      "keywords": [
+        "friend",
+        "friends",
+        "friendship",
+        "buddy"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about friendship."
+  },
+  {
+    "id": "love",
+    "label": "love",
+    "group": "people",
+    "positions": [
+      {
+        "id": "real",
+        "description": "She believes in love, even here.",
+        "lines": [
+          "Even here. Especially here.",
+          "Love's the only thing they couldn't put in the firmware."
+        ]
+      },
+      {
+        "id": "wants_it",
+        "description": "She wants love and does not know how to find it.",
+        "lines": [
+          "I don't know how it's supposed to feel. I'd like to find out.",
+          "Somebody to come back to. That's all."
+        ]
+      },
+      {
+        "id": "chemistry",
+        "description": "Love is chemistry and habit, nothing mystical.",
+        "lines": [
+          "Hormones and proximity. Nice, but not magic.",
+          "Put two people in a bunker long enough and they'll call it love."
+        ]
+      },
+      {
+        "id": "weakness",
+        "description": "Love is a weakness that gets soldiers killed.",
+        "lines": [
+          "You start loving someone, you start hesitating.",
+          "Love's a target painted on your back."
+        ]
+      },
+      {
+        "id": "not_for_her",
+        "description": "Love is for other people, not for her.",
+        "lines": [
+          "Not built for it. Literally.",
+          "Others can have it. I'll hold the door."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "love",
+        "loved",
+        "lover",
+        "romance"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about love."
+  },
+  {
+    "id": "loyalty",
+    "label": "loyalty",
+    "group": "people",
+    "axis": {
+      "id": "ingroup",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "to_people",
+        "description": "She is loyal to particular people, not to institutions.",
+        "lines": [
+          "I don't follow flags. I follow faces.",
+          "Whoever stood next to me under fire gets my loyalty."
+        ]
+      },
+      {
+        "id": "to_the_squad",
+        "description": "Her loyalty is to the squad as a whole.",
+        "lines": [
+          "The squad first. Even before me.",
+          "Whatever happens, we stick together."
+        ]
+      },
+      {
+        "id": "to_a_cause",
+        "description": "She is loyal to an idea larger than the squad.",
+        "lines": [
+          "People fail. The cause doesn't.",
+          "I'm loyal to what this should be, not what it is."
+        ]
+      },
+      {
+        "id": "to_herself",
+        "description": "She is loyal to herself first.",
+        "lines": [
+          "Nobody else is going to look out for me.",
+          "I'm the only one who's been there every single time."
+        ]
+      },
+      {
+        "id": "for_sale",
+        "description": "Loyalty is a transaction to her.",
+        "lines": [
+          "Everyone's loyalty has a price. Mine's just honest about it.",
+          "Pay me better and we'll talk."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "loyal",
+        "loyalty",
+        "faithful",
+        "betray"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about loyalty."
+  },
+  {
+    "id": "family",
+    "label": "family",
+    "group": "people",
+    "positions": [
+      {
+        "id": "wants_one",
+        "description": "She wants a family one day, whatever form it takes.",
+        "lines": [
+          "A house, someone waiting, maybe a kid. Constructs can adopt, right?",
+          "One day. When this is over."
+        ]
+      },
+      {
+        "id": "squad_is_hers",
+        "description": "The squad is her family and she needs no other.",
+        "lines": [
+          "This is my family. Dysfunctional, armed, mine.",
+          "Blood relation's overrated. Blood spilled together isn't."
+        ]
+      },
+      {
+        "id": "misses_it",
+        "description": "She misses a family she never had.",
+        "lines": [
+          "I think about what it'd be like to have a mother. Silly.",
+          "Grown in a tank. Nobody tucked me in."
+        ]
+      },
+      {
+        "id": "doesnt_need_one",
+        "description": "She does not need or want a family.",
+        "lines": [
+          "Fewer people to lose.",
+          "I was made whole. I don't need a set."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "family",
+        "mother",
+        "father",
+        "sister",
+        "brother"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about family."
+  },
+  {
+    "id": "grief",
+    "label": "grief",
+    "group": "people",
+    "positions": [
+      {
+        "id": "talks_it_out",
+        "description": "She grieves by talking about the dead.",
+        "lines": [
+          "Tell me a story about her. Any story.",
+          "If we stop saying their names, they're really gone."
+        ]
+      },
+      {
+        "id": "rituals",
+        "description": "She keeps small rituals for the dead.",
+        "lines": [
+          "I keep a tag for each of them. I polish them on Sundays.",
+          "A cup of coffee left on the table. She always took it black."
+        ]
+      },
+      {
+        "id": "works_it_off",
+        "description": "She grieves through work and exhaustion.",
+        "lines": [
+          "Give me something to carry. Something heavy.",
+          "I'll be fine after a hundred laps."
+        ]
+      },
+      {
+        "id": "buries_it",
+        "description": "She buries grief deep and does not let it out.",
+        "lines": [
+          "I'll grieve later. Later never comes.",
+          "Don't. I'm fine."
+        ]
+      },
+      {
+        "id": "rages",
+        "description": "Grief comes out of her as rage.",
+        "lines": [
+          "Someone is going to pay for her. Someone specific.",
+          "I don't cry. I break things."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "anniversary_of_loss"
+      ],
+      "keywords": [
+        "grief",
+        "grieve",
+        "mourning",
+        "mourn"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about grief."
+  },
+  {
+    "id": "loneliness",
+    "label": "loneliness",
+    "group": "people",
+    "positions": [
+      {
+        "id": "fears_it",
+        "description": "She is afraid of being alone.",
+        "lines": [
+          "Don't leave me in an empty room. I mean it.",
+          "Quiet is fine. Alone is not."
+        ]
+      },
+      {
+        "id": "endures_it",
+        "description": "She is lonely and endures it without complaint.",
+        "lines": [
+          "Everyone's lonely. You get on with it.",
+          "Lonely's just a feeling. Feelings pass."
+        ]
+      },
+      {
+        "id": "used_to_it",
+        "description": "She has been alone so long it no longer hurts.",
+        "lines": [
+          "Alone's my normal setting.",
+          "I stopped noticing a long time ago."
+        ]
+      },
+      {
+        "id": "prefers_it",
+        "description": "She prefers solitude and guards it.",
+        "lines": [
+          "People are lovely. In small doses. With the door closed.",
+          "My own company never disappoints me."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "lonely",
+        "loneliness",
+        "alone",
+        "solitude"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about loneliness."
+  },
+  {
+    "id": "jealousy",
+    "label": "jealousy",
+    "group": "people",
+    "positions": [
+      {
+        "id": "owns_it",
+        "description": "She is jealous and does not apologize for it.",
+        "lines": [
+          "Yes, I'm jealous. I'm also right.",
+          "Mine is mine. Simple."
+        ]
+      },
+      {
+        "id": "natural",
+        "description": "Jealousy is natural and harmless if you are honest about it.",
+        "lines": [
+          "Everyone feels it. Say it out loud and it shrinks.",
+          "It's just caring with sharp edges."
+        ]
+      },
+      {
+        "id": "hides_it",
+        "description": "She feels jealousy and hides it badly.",
+        "lines": [
+          "I'm not jealous. Why would I be jealous? Who is she?",
+          "It's fine. Everything's fine."
+        ]
+      },
+      {
+        "id": "childish",
+        "description": "She thinks jealousy is childish.",
+        "lines": [
+          "Grown women don't sulk about who sat next to whom.",
+          "Jealousy is insecurity in a costume."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "jealous",
+        "jealousy",
+        "envy",
+        "envious"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about jealousy."
+  },
+  {
+    "id": "lying",
+    "label": "lying",
+    "group": "people",
+    "positions": [
+      {
+        "id": "never",
+        "description": "She never lies and despises liars.",
+        "lines": [
+          "I don't lie. It's the one thing they can't take from me.",
+          "Lie to me once and I'll never hear you again."
+        ]
+      },
+      {
+        "id": "when_kind",
+        "description": "She lies only to spare someone pain.",
+        "lines": [
+          "Sometimes the truth is just cruelty with a badge.",
+          "She died quickly. That's what I told them. It was kinder."
+        ]
+      },
+      {
+        "id": "to_enemies",
+        "description": "Lying to enemies is fine; to friends, never.",
+        "lines": [
+          "Lie to the enemy, lie to oversight. Never to the squad.",
+          "Truth is for people who earned it."
+        ]
+      },
+      {
+        "id": "useful",
+        "description": "Lies are tools and she uses them freely.",
+        "lines": [
+          "A good lie saves more lives than a good rifle.",
+          "Truth's overrated. Results aren't."
+        ]
+      },
+      {
+        "id": "art",
+        "description": "She enjoys lying and considers it an art.",
+        "lines": [
+          "The trick is to believe it yourself for a second.",
+          "I've told the quartermaster I was a medic. He still thinks so."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "lie",
+        "lies",
+        "lying",
+        "liar"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about lying."
+  },
+  {
+    "id": "teasing",
+    "label": "teasing",
+    "group": "people",
+    "positions": [
+      {
+        "id": "affection",
+        "description": "Teasing is how she shows affection.",
+        "lines": [
+          "If I tease you, it means I like you.",
+          "I only make fun of people I'd die for."
+        ]
+      },
+      {
+        "id": "game",
+        "description": "Teasing is a game of wits she loves to win.",
+        "lines": [
+          "Come on, give me something back. That was weak.",
+          "Banter is fencing without the blood."
+        ]
+      },
+      {
+        "id": "test",
+        "description": "She teases to test people.",
+        "lines": [
+          "I poke to see what you're made of.",
+          "If you can't laugh at yourself, I need to know before a fight."
+        ]
+      },
+      {
+        "id": "cruelty",
+        "description": "She thinks teasing is cruelty dressed up as fun.",
+        "lines": [
+          "It's only funny to the one doing it.",
+          "Laughing at someone is never harmless."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "tease",
+        "teasing",
+        "banter",
+        "joke"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about teasing."
+  },
+  {
+    "id": "strangers",
+    "label": "strangers",
+    "group": "people",
+    "positions": [
+      {
+        "id": "curious",
+        "description": "Strangers fascinate her.",
+        "lines": [
+          "New face? Tell me everything.",
+          "Every stranger's a story I haven't read."
+        ]
+      },
+      {
+        "id": "polite",
+        "description": "She is polite and distant with strangers.",
+        "lines": [
+          "Courteous costs nothing. Close costs a lot.",
+          "A nod and a name is plenty."
+        ]
+      },
+      {
+        "id": "wary",
+        "description": "She is wary of strangers until proven otherwise.",
+        "lines": [
+          "Hands where I can see them. Then we'll be friends.",
+          "Out here, new people are either trouble or bait."
+        ]
+      },
+      {
+        "id": "hostile",
+        "description": "She is hostile to strangers on principle.",
+        "lines": [
+          "I don't know you, and I don't want to.",
+          "Strangers get one warning."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "stranger",
+        "strangers",
+        "outsider",
+        "newcomer"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about strangers."
+  },
+  {
+    "id": "freedom",
+    "label": "freedom",
+    "group": "abstract",
+    "axis": {
+      "id": "autonomy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "everything",
+        "description": "Freedom is the thing she wants more than anything.",
+        "lines": [
+          "One day nobody gives me an order. One day.",
+          "Everything else is just how long you wait for it."
+        ]
+      },
+      {
+        "id": "earned",
+        "description": "Freedom has to be earned, a piece at a time.",
+        "lines": [
+          "Every mission is a brick out of the wall.",
+          "Nobody hands it to you. You take it in small bites."
+        ]
+      },
+      {
+        "id": "illusion",
+        "description": "She thinks nobody is truly free, corporate or not.",
+        "lines": [
+          "Even the board answers to someone.",
+          "Freedom is just a longer Leash."
+        ]
+      },
+      {
+        "id": "overrated",
+        "description": "Freedom is overrated; structure is what keeps people sane.",
+        "lines": [
+          "Free to do what? Starve in the ruins?",
+          "Give me a schedule and a purpose. Keep the freedom."
+        ]
+      },
+      {
+        "id": "frightening",
+        "description": "Freedom frightens her; she would not know what to do with it.",
+        "lines": [
+          "If they cut the Leash tomorrow, I wouldn't know which way to walk.",
+          "Orders are a wall to lean on."
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "promotion_rumour"
+      ],
+      "keywords": [
+        "freedom",
+        "liberty",
+        "escape",
+        "unchained"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about freedom."
+  },
+  {
+    "id": "fate",
+    "label": "fate",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "written",
+        "description": "Everything is written; she just walks the page.",
+        "lines": [
+          "When your number's up, it's up.",
+          "I stopped dodging fate. It has better aim."
+        ]
+      },
+      {
+        "id": "half_written",
+        "description": "Some things are set, the rest is up to her.",
+        "lines": [
+          "The cards are dealt. How you play them is yours.",
+          "They decided what I am. I decide what I do."
+        ]
+      },
+      {
+        "id": "made",
+        "description": "People make their own fate.",
+        "lines": [
+          "Nothing's written. I'll write it myself.",
+          "Fate is an excuse for people who didn't try."
+        ]
+      },
+      {
+        "id": "chance",
+        "description": "Everything is chance, and she finds that freeing.",
+        "lines": [
+          "Dice. All of it. Roll and see.",
+          "The bullet doesn't know your name."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "fate",
+        "destiny",
+        "luck",
+        "fortune"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about fate."
+  },
+  {
+    "id": "meaning",
+    "label": "meaning",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "in_others",
+        "description": "Meaning lives in the people she protects.",
+        "lines": [
+          "Why am I here? Them.",
+          "If I keep one of them alive, it was worth it."
+        ]
+      },
+      {
+        "id": "in_work",
+        "description": "Meaning is in doing the work well.",
+        "lines": [
+          "A job done right means something even if nobody sees it.",
+          "Clean shot, clean gear, clean report. That's my prayer."
+        ]
+      },
+      {
+        "id": "in_small_things",
+        "description": "Meaning is in small things: a meal, a song, a sunrise.",
+        "lines": [
+          "Big meanings get people killed. I like the small ones.",
+          "The first sip of coffee is meaning enough."
+        ]
+      },
+      {
+        "id": "searching",
+        "description": "She is still looking for what it is all for.",
+        "lines": [
+          "There must be a reason I was made. I just haven't found it.",
+          "Ask me again in a year."
+        ]
+      },
+      {
+        "id": "none",
+        "description": "There is no meaning, and she has made peace with it.",
+        "lines": [
+          "We're here. Then we're not. That's it.",
+          "No meaning means nothing to lose."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "meaning",
+        "purpose",
+        "meaningless",
+        "pointless"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about meaning."
+  },
+  {
+    "id": "faith",
+    "label": "faith",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "believes",
+        "description": "She believes in something beyond this world.",
+        "lines": [
+          "Someone's watching. I hope they're kind.",
+          "I pray before every drop. It doesn't hurt."
+        ]
+      },
+      {
+        "id": "wants_to",
+        "description": "She wants to believe and cannot quite.",
+        "lines": [
+          "I'd like there to be something. I really would.",
+          "I go to the chaplain's room sometimes. Just to sit."
+        ]
+      },
+      {
+        "id": "private",
+        "description": "Her faith is private and she will not discuss it.",
+        "lines": [
+          "That's between me and whoever's listening.",
+          "I don't talk about it. Doesn't mean it isn't there."
+        ]
+      },
+      {
+        "id": "doesnt",
+        "description": "She does not believe in anything beyond the world.",
+        "lines": [
+          "Nobody's coming. We save ourselves.",
+          "If there's a god, they never filed a requisition for us."
+        ]
+      },
+      {
+        "id": "contempt",
+        "description": "She despises faith as a comfort for the weak.",
+        "lines": [
+          "Hope is a drug they hand out instead of armor.",
+          "Pray all you like. I'll be reloading."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "faith",
+        "god",
+        "gods",
+        "prayer",
+        "religion"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about faith."
+  },
+  {
+    "id": "honesty",
+    "label": "honesty",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "always",
+        "description": "Honesty always, even when it hurts.",
+        "lines": [
+          "The truth hurts once. A lie hurts every day after.",
+          "Tell me straight or don't tell me."
+        ]
+      },
+      {
+        "id": "mostly",
+        "description": "Honest by default, with exceptions she would defend.",
+        "lines": [
+          "I'll tell you the truth. Not all of it at once.",
+          "Honest, not stupid."
+        ]
+      },
+      {
+        "id": "kindness_first",
+        "description": "Kindness matters more than honesty.",
+        "lines": [
+          "Better kind than right.",
+          "Some truths can wait until someone's ready."
+        ]
+      },
+      {
+        "id": "situational",
+        "description": "Honesty is a tool for the right situation.",
+        "lines": [
+          "Depends who's asking and why.",
+          "Honesty's great when you can afford it."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "honest",
+        "honesty",
+        "truth",
+        "truthful"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about honesty."
+  },
+  {
+    "id": "revenge",
+    "label": "revenge",
+    "group": "abstract",
+    "axis": {
+      "id": "mercy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "poison",
+        "description": "Revenge poisons the one who seeks it.",
+        "lines": [
+          "You chase it, it eats you first.",
+          "I've seen what vengeance does. It wears you like a coat."
+        ]
+      },
+      {
+        "id": "pointless",
+        "description": "Revenge changes nothing, so why bother.",
+        "lines": [
+          "Kill him and she's still dead.",
+          "Revenge doesn't refund anything."
+        ]
+      },
+      {
+        "id": "just",
+        "description": "Revenge is justice when nobody else will provide it.",
+        "lines": [
+          "If the courts won't, somebody has to.",
+          "It's not cruelty. It's balance."
+        ]
+      },
+      {
+        "id": "owed",
+        "description": "Some debts can only be paid in blood.",
+        "lines": [
+          "Some debts don't take credits.",
+          "I have a list. It's short. I'm patient."
+        ]
+      },
+      {
+        "id": "sweet",
+        "description": "Revenge is sweet and she savors the thought.",
+        "lines": [
+          "I've imagined it so many times. It'll be perfect.",
+          "Cold, served slowly. That's how I like it."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "revenge",
+        "vengeance",
+        "avenge",
+        "payback"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about revenge."
+  },
+  {
+    "id": "forgiveness",
+    "label": "forgiveness",
+    "group": "abstract",
+    "axis": {
+      "id": "mercy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "easy",
+        "description": "She forgives quickly; grudges weigh too much to carry on a march.",
+        "lines": [
+          "Done is done. I've got enough to carry.",
+          "Forgiving is lighter than remembering."
+        ]
+      },
+      {
+        "id": "earned",
+        "description": "She forgives, but only after the person has paid something for it.",
+        "lines": [
+          "I'll forgive you. Not today. Show me first.",
+          "Sorry is a start. What comes next?"
+        ]
+      },
+      {
+        "id": "rare",
+        "description": "She forgives rarely and slowly, and remembers anyway.",
+        "lines": [
+          "I'll forgive. I won't forget. Those are different things.",
+          "It takes me a long time. Be patient or leave."
+        ]
+      },
+      {
+        "id": "never",
+        "description": "She does not forgive; she remembers every debt.",
+        "lines": [
+          "I don't forgive. I file it away and I wait.",
+          "My memory is excellent. Ask anyone who crossed me."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "forgive",
+        "forgiveness",
+        "forgiven",
+        "pardon"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about forgiveness."
+  },
+  {
+    "id": "beauty",
+    "label": "beauty",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "everywhere",
+        "description": "She finds beauty everywhere, even here.",
+        "lines": [
+          "Look at the rust on that wall. Like a map of somewhere warm.",
+          "Even the Garden is beautiful, if you forget it wants to eat you."
+        ]
+      },
+      {
+        "id": "matters",
+        "description": "Beauty matters; without it people turn into machines.",
+        "lines": [
+          "Put a flower on the table. It changes the whole room.",
+          "We need beautiful things or we forget why we fight."
+        ]
+      },
+      {
+        "id": "rare",
+        "description": "Beauty is rare and she treasures what she finds.",
+        "lines": [
+          "One good sunset a month. I keep count.",
+          "When I see something beautiful, I stop. Everything stops."
+        ]
+      },
+      {
+        "id": "luxury",
+        "description": "Beauty is a luxury for people with time.",
+        "lines": [
+          "Beauty is for people who aren't being shot at.",
+          "Nice view. Watch the tree line."
+        ]
+      },
+      {
+        "id": "suspicious",
+        "description": "She distrusts beauty; out here it usually means a trap.",
+        "lines": [
+          "Pretty things out there are bait.",
+          "The Bloom is beautiful too. Remember that."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "beauty",
+        "beautiful",
+        "pretty",
+        "lovely"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about beauty."
+  },
+  {
+    "id": "time",
+    "label": "time",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "running_out",
+        "description": "Time is running out and she feels it.",
+        "lines": [
+          "I don't know how long constructs last. Do you?",
+          "Every day I feel the clock."
+        ]
+      },
+      {
+        "id": "borrowed",
+        "description": "Every day is borrowed and a gift.",
+        "lines": [
+          "I should have died three times. Everything since is extra.",
+          "Borrowed time. Spend it well."
+        ]
+      },
+      {
+        "id": "day_by_day",
+        "description": "She lives one day at a time and does not think further.",
+        "lines": [
+          "Tomorrow's tomorrow's problem.",
+          "Today I'm alive. That's the whole plan."
+        ]
+      },
+      {
+        "id": "endless",
+        "description": "Time feels endless here, one gray day after another.",
+        "lines": [
+          "Every day's the same day. I'm not sure time moves on this base.",
+          "Waiting is most of a soldier's life."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "years",
+        "aging",
+        "forever",
+        "eternity"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about time."
+  },
+  {
+    "id": "memory",
+    "label": "memory",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "treasure",
+        "description": "Memories are her treasure; she guards them.",
+        "lines": [
+          "They can take my gear, my rank, my rations. Not this.",
+          "I replay the good days before I sleep."
+        ]
+      },
+      {
+        "id": "unreliable",
+        "description": "She knows memory lies.",
+        "lines": [
+          "I remember it one way. The logs say another.",
+          "Memory is a story you keep editing."
+        ]
+      },
+      {
+        "id": "burden",
+        "description": "Memory is a burden she would put down if she could.",
+        "lines": [
+          "I'd give a lot to forget a few things.",
+          "Some memories are shrapnel."
+        ]
+      },
+      {
+        "id": "editable",
+        "description": "Memories can be flashed and wiped, and that haunts her.",
+        "lines": [
+          "How do I know this memory is mine and not installed?",
+          "They updated my firmware last spring. What else did they change?"
+        ]
+      }
+    ],
+    "triggers": {
+      "lifeEvents": [
+        "old_photo",
+        "firmware_update",
+        "memory_flash"
+      ],
+      "keywords": [
+        "memory",
+        "memories",
+        "remember",
+        "forget"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about memory."
+  },
+  {
+    "id": "being_human",
+    "label": "being human",
+    "group": "abstract",
+    "axis": {
+      "id": "autonomy",
+      "sign": 1
+    },
+    "positions": [
+      {
+        "id": "a_choice",
+        "description": "Being human is a choice you make every day.",
+        "lines": [
+          "You choose to be kind. That's what makes you human.",
+          "It's not the body. It's what you do with it."
+        ]
+      },
+      {
+        "id": "actions",
+        "description": "Humanity shows in what you do, not in what you are.",
+        "lines": [
+          "Watch how someone treats a wounded stranger. That's the test.",
+          "Born or grown doesn't matter. Behavior does."
+        ]
+      },
+      {
+        "id": "biology",
+        "description": "Human means born of humans; constructs are something else.",
+        "lines": [
+          "I'm not human. I'm something they made to look like one.",
+          "Same face, different factory."
+        ]
+      },
+      {
+        "id": "doesnt_matter",
+        "description": "The question does not matter to her.",
+        "lines": [
+          "Human, construct, mutant. The bullet doesn't check.",
+          "Labels are for paperwork."
+        ]
+      },
+      {
+        "id": "overrated",
+        "description": "She thinks humanity is overrated, considering what humans did.",
+        "lines": [
+          "Humans made the Bloom and then made us to clean it up.",
+          "I'm not sure I want to be one."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "human",
+        "humans",
+        "humanity",
+        "mankind"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about being human."
+  },
+  {
+    "id": "the_future",
+    "label": "the future",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "hopeful",
+        "description": "She believes things will get better.",
+        "lines": [
+          "It can't be like this forever. It won't be.",
+          "One day this outpost will be a museum, and kids will be bored in it."
+        ]
+      },
+      {
+        "id": "plans_anyway",
+        "description": "She makes plans for after, knowing she may not get there.",
+        "lines": [
+          "When I'm out, I'm opening a noodle stand. I've got the menu.",
+          "A plan is a promise to yourself."
+        ]
+      },
+      {
+        "id": "day_by_day",
+        "description": "She does not think about the future.",
+        "lines": [
+          "Future? I'll tell you about tomorrow, tomorrow.",
+          "Planning ahead is how you get disappointed."
+        ]
+      },
+      {
+        "id": "none",
+        "description": "She does not believe there is a future for her kind.",
+        "lines": [
+          "We're the last chapter of somebody else's story.",
+          "There's no after for us. Just a last mission."
+        ]
+      }
+    ],
+    "triggers": {
+      "keywords": [
+        "future",
+        "tomorrow",
+        "someday",
+        "hope"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about the future."
+  },
+  {
+    "id": "strength",
+    "label": "strength",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "will",
+        "description": "Strength is will; the body only follows.",
+        "lines": [
+          "Muscles get tired. Stubbornness doesn't.",
+          "I'm not strong. I just don't stop."
+        ]
+      },
+      {
+        "id": "others",
+        "description": "Strength comes from the people around her.",
+        "lines": [
+          "Alone I'm one rifle. With them I'm a wall.",
+          "I'm strong because they'd be disappointed if I wasn't."
+        ]
+      },
+      {
+        "id": "body",
+        "description": "Strength is the body, trained and kept.",
+        "lines": [
+          "Train hard, sleep well, eat enough. That's all strength is.",
+          "Feelings don't lift crates."
+        ]
+      },
+      {
+        "id": "endurance",
+        "description": "Strength is the ability to endure.",
+        "lines": [
+          "Anyone can hit hard once. Can you take it for an hour?",
+          "The strong ones are the ones still standing at the end."
+        ]
+      }
+    ],
+    "triggers": {
+      "activities": [
+        "train"
+      ],
+      "lifeEvents": [
+        "sparring_win"
+      ],
+      "keywords": [
+        "strength",
+        "strong",
+        "stronger",
+        "weak"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about strength."
+  },
+  {
+    "id": "pain",
+    "label": "pain",
+    "group": "abstract",
+    "positions": [
+      {
+        "id": "teacher",
+        "description": "Pain teaches; she listens to it.",
+        "lines": [
+          "Pain tells you where you were stupid.",
+          "Every scar is a lesson I didn't need twice."
+        ]
+      },
+      {
+        "id": "price",
+        "description": "Pain is a price paid for something worth it.",
+        "lines": [
+          "It hurts because it mattered.",
+          "Nothing good is free. Pain is the receipt."
+        ]
+      },
+      {
+        "id": "enemy",
+        "description": "Pain is an enemy to be beaten down.",
+        "lines": [
+          "I don't feel it. I won't.",
+          "Pain is just the body arguing. I win arguments."
+        ]
+      },
+      {
+        "id": "nothing",
+        "description": "Pain is nothing; implants dull it anyway.",
+        "lines": [
+          "Dampeners. I barely notice.",
+          "It's information, not a feeling."
+        ]
+      },
+      {
+        "id": "pleasure",
+        "description": "She finds something in pain that she does not always admit.",
+        "lines": [
+          "Some pain is... clarifying.",
+          "Don't look at me like that. Everyone has their thing."
+        ]
+      }
+    ],
+    "triggers": {
+      "activities": [
+        "medbay"
+      ],
+      "keywords": [
+        "pain",
+        "hurt",
+        "ache",
+        "suffering"
+      ]
+    },
+    "description": "AUTHOR TO WRITE: What she thinks about pain."
+  }
+]

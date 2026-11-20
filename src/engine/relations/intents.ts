@@ -1,7 +1,7 @@
 import { normalizeTag } from '../setup';
 import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
-import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
+import { EVENT_TYPES, LIFE_EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
 export { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES };
 export type { EventType, ProposalKind };
@@ -162,6 +162,7 @@ export function validateIntents(
     const severity = oneOf(SEVERITIES, e.severity);
     const evidence = evidenceOf(e.evidence);
     if (!type || !severity || evidence === '') continue;
+    if (LIFE_EVENT_TYPES.includes(type)) continue; // P14c: her life's types are offered with their own lists, from the intents task on; until then none is
     const actor = e.actor === 'commander' ? 'commander' : isUnit(e.actor) ? e.actor : null;
     if (actor === null) continue;
     const targets = [...new Set(arr(e.targets).filter(isUnit))].filter((t) => t !== actor);
