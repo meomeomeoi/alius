@@ -3,7 +3,7 @@ import { recordLedger } from './ledger';
 import { rememberEvents } from './memory/remember';
 import { bookingGuard } from './personal/bookings';
 import { votingOn } from './power/options';
-import { carryVote, voteFor } from './power/votes';
+import { carryIfRan, voteFor } from './power/votes';
 import { Rng } from './rng';
 import { wardenArgueStart } from './warden/state';
 import type { CampaignState, VoteKind } from './state/types';
@@ -125,7 +125,8 @@ export function dispatch(
   const rng = new Rng(draft.rng);
   try {
     const events = handler(draft, action.payload, { registries, rng });
-    if (voteId !== undefined) events.push(...carryVote(draft, voteId, { registries })); // the vote is spent once, in the same state
+    // the vote is spent once, in the same state, and only if the decision ran (P9b; 0.1 audit: not when the warden or a walk-out stopped it)
+    if (voteId !== undefined) events.push(...carryIfRan(draft, voteId, events, { registries }));
     for (const step of afterActions) events.push(...step(draft, { registries, rng }));
     draft.rng = rng.state;
     try {

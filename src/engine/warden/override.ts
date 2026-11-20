@@ -13,6 +13,7 @@ import { learnExpectation } from './agenda';
 import { conflictOf, herAlternative, type Judged } from './conflict';
 import { addDefiance } from './escalation';
 import { punishRoll } from './punish';
+import { carryIfRan } from '../power/votes';
 import { overrideOpen, wardenOf, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
 
 export { overrideOpen };
@@ -151,9 +152,15 @@ export function runOrder(draft: CampaignState, ctx: EngineCtx, order: WardenOrde
       });
     }
     case 'roster': return runHandler('roster/set_active', draft, { activeIds: order.activeIds, wardenChecked: true }, ctx);
-    case 'expedition':
-      return runHandler('expedition/start', draft, { ...base, unitIds: order.unitIds, formation: formationFor(base.formation, order.unitIds), wardenChecked: true }, ctx);
-    case 'dilemma': return chooseDilemma(draft, ctx, base.id ?? draft.dilemmas?.open?.id, order.index, sameAsOriginal ? (base.route as never) : undefined, true);
+    case 'expedition': {
+      const events = runHandler('expedition/start', draft, { ...base, unitIds: order.unitIds, formation: formationFor(base.formation, order.unitIds), wardenChecked: true }, ctx);
+      // P9b: the voted decision runs now (DEFY, a won argument): its vote, kept open by the override, is spent here
+      return sameAsOriginal ? [...events, ...carryIfRan(draft, base.voteId, events, ctx)] : events;
+    }
+    case 'dilemma': {
+      const events = chooseDilemma(draft, ctx, base.id ?? draft.dilemmas?.open?.id, order.index, sameAsOriginal ? (base.route as never) : undefined, true);
+      return sameAsOriginal ? [...events, ...carryIfRan(draft, base.voteId, events, ctx)] : events;
+    }
     case 'combat_order': return runHandler('combat/order', draft, { ...base, orderId: order.orderId, ...(order.targetCid !== undefined ? { targetCid: order.targetCid } : {}), wardenChecked: true }, ctx);
   }
 }

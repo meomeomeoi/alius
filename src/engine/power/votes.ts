@@ -114,6 +114,19 @@ export function carryVote(draft: CampaignState, voteId: string, ctx?: Pick<Engin
   return events;
 }
 
+/** Events that mean the voted action was stopped before it ran: the warden overrode it, or a soldier walked out at the gate. */
+const STOPPED_BY = new Set(['warden_override', 'desertion_attempt']);
+
+/**
+ * Spends the vote for an action that ran with it (`carryVote`), and only then: when the action was stopped (see `STOPPED_BY`) the vote
+ * stays open, so the decision can be tried again today (or carried out when the warden is defied) without a second vote.
+ */
+export function carryIfRan(draft: CampaignState, voteId: unknown, events: EngineEvent[], ctx?: Pick<EngineCtx, 'registries'>): EngineEvent[] {
+  if (typeof voteId !== 'string' || draft.power?.votes.open?.id !== voteId) return [];
+  if (events.some((e) => STOPPED_BY.has(e.type) || e.type === 'error')) return [];
+  return carryVote(draft, voteId, ctx);
+}
+
 /**
  * Overrules a failed vote. It always costs: `decision_violated` (moderate, confidence 1) and `+5` Impunity record on every
  * unit that voted against, and a grudge on each until the next day end. The means adds its own usual cost: a punishment
