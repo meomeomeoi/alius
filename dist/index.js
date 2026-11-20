@@ -32148,6 +32148,33 @@ function createComms(deps) {
   return controller;
 }
 
+// src/engine/backdrops.ts
+function quartersOf(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  if (!unit2 || unit2.kind !== "named") return null;
+  const chosen = unit2.quarters === void 0 ? void 0 : reg.quartersStyles.get(unit2.quarters);
+  if (chosen) return chosen;
+  const all = [...reg.quartersStyles.values()];
+  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+}
+function slotLight(slot2) {
+  return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
+}
+var str4 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
+function sceneBackdrop(state, reg, locationId, ownerId) {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return [];
+  const out = [];
+  const add = (file, slotted) => {
+    if (file && !out.some((c) => c.file === file)) out.push({ file, slotted });
+  };
+  if (loc.perUnit === true && ownerId !== null) add(str4(quartersOf(state, reg, ownerId)?.background), false);
+  if (state.slot === "evening") add(str4(loc.backgroundEvening), true);
+  if (state.slot === "night") add(str4(loc.backgroundNight), true);
+  add(str4(loc.background), false);
+  return out;
+}
+
 // src/scene/context.ts
 var SLOT_LABEL2 = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", night: "Night" };
 var SOCIAL_STATS2 = ["authority", "insight", "empathy", "cunning"];
@@ -32164,7 +32191,8 @@ function registerSceneContext(builder, deps) {
       if (!s.scene) return null;
       const loc = deps.registries().locations.get(s.scene.locationId);
       const units = presentUnits2(s);
-      const place2 = loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters` : String(loc?.name ?? s.scene.locationId);
+      const style = loc?.perUnit === true && units[0] ? quartersOf(s, deps.registries(), units[0].id) : null;
+      const place2 = loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters${style ? ` (${String(style.summary)})` : ""}` : String(loc?.name ?? s.scene.locationId);
       return `Scene: ${place2}, Day ${s.day} ${SLOT_LABEL2[s.slot]}. Present: ${units.map((u) => u.displayName).join(", ")}. ${s.scene.mode === "group" ? "Group" : "Private"}.`;
     }
   });
@@ -37527,6 +37555,7 @@ function unitBlock(unit2, ctx2, state) {
       gone ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit2.stress).toUpperCase()}${raw ? ` (${unit2.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : renderVitalsBlock(state, reg, unit2.id, { motion: !motionReduced(ctx2.settings()) }),
       gone ? null : handSelect(unit2, state, ctx2),
+      gone ? null : quartersSelect(unit2, state, ctx2),
       gone ? null : leashMenu(unit2, ctx2),
       unit2.bio ? h("p", { class: "alius-dim" }, unit2.bio) : null,
       h("p", {}, ...joinWith([
@@ -37563,6 +37592,18 @@ function handSelect(unit2, state, ctx2) {
   select.value = String(current.id);
   select.addEventListener("change", () => ctx2.onSetHand(unit2.id, select.value));
   return h("label", { class: "alius-stat alius-hand", ...analyzeNative("glossary:handwriting", { unitId: unit2.id }) }, "HAND ", select);
+}
+function quartersSelect(unit2, state, ctx2) {
+  const current = quartersOf(state, ctx2.registries, unit2.id);
+  if (!ctx2.onSetQuarters || !current) return null;
+  const select = h("select", { class: "alius-input", "data-quarters": unit2.id, "aria-label": `Quarters of ${unit2.displayName}` }, ...[...ctx2.registries.quartersStyles.values()].map((e) => {
+    const option = h("option", { value: String(e.id), title: String(e.description) }, String(e.name));
+    if (e.id === current.id) option.setAttribute("selected", "");
+    return option;
+  }));
+  select.value = String(current.id);
+  select.addEventListener("change", () => ctx2.onSetQuarters(unit2.id, select.value));
+  return h("label", { class: "alius-stat alius-quarters", ...analyzeNative("glossary:quarters", { unitId: unit2.id }) }, "QUARTERS ", select);
 }
 function renderSquadTab(host, ctx2) {
   host.replaceChildren();
@@ -40944,33 +40985,6 @@ async function pickLocation(modal, ctx2) {
   if (!picked) return null;
   const extraIds = boxes.filter((b) => b.checked).map((b) => b.value).slice(0, MAX_PARTICIPANTS - 1);
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
-}
-
-// src/engine/backdrops.ts
-function quartersOf(state, reg, unitId) {
-  const unit2 = state.squad.find((u) => u.id === unitId);
-  if (!unit2 || unit2.kind !== "named") return null;
-  const chosen = unit2.quarters === void 0 ? void 0 : reg.quartersStyles.get(unit2.quarters);
-  if (chosen) return chosen;
-  const all = [...reg.quartersStyles.values()];
-  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
-}
-function slotLight(slot2) {
-  return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
-}
-var str4 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
-function sceneBackdrop(state, reg, locationId, ownerId) {
-  const loc = reg.locations.get(locationId);
-  if (!loc) return [];
-  const out = [];
-  const add = (file, slotted) => {
-    if (file && !out.some((c) => c.file === file)) out.push({ file, slotted });
-  };
-  if (loc.perUnit === true && ownerId !== null) add(str4(quartersOf(state, reg, ownerId)?.background), false);
-  if (state.slot === "evening") add(str4(loc.backgroundEvening), true);
-  if (state.slot === "night") add(str4(loc.backgroundNight), true);
-  add(str4(loc.background), false);
-  return out;
 }
 
 // src/ui/special/freqChip.ts
@@ -46435,6 +46449,7 @@ function createApp(st, deps) {
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
       onSetHand: (unitId, handId) => void act({ type: "squad/set_hand", payload: { unitId, handId } }),
+      onSetQuarters: (unitId, styleId) => void act({ type: "squad/set_quarters", payload: { unitId, styleId } }),
       onEndorse: () => void power.endorse(),
       onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => {
         if (ok) shell.open();

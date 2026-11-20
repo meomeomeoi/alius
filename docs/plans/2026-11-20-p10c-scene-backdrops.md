@@ -132,10 +132,10 @@
 
 **Files:** `src/ui/squad/squadTab.ts`, `src/app.ts`, `content/core/glossary.json`, `src/scene/context.ts`, tests beside the existing ones (`tests/ui/squad*.test.ts`, `tests/scene/context*.test.ts`).
 
-- [ ] Write failing tests: the dossier of a named soldier shows a QUARTERS select (registry order, current style selected, `data-analyze="glossary:quarters"`), a change calls `onSetQuarters`; none without `onSetQuarters`; the `scene_header` of a quarters scene reads `{name}'s quarters ({summary})`; other locations are unchanged.
-- [ ] Run, see them fail.
-- [ ] Implement; glossary entry `quarters` (term, short, long marked `AUTHOR TO WRITE:` as the others); `app.ts` dispatches `squad/set_quarters`.
-- [ ] The analyze coverage test passes. Tick, commit.
+- [x] Write failing tests: the dossier of a named soldier shows a QUARTERS select (registry order, current style selected, `data-analyze="glossary:quarters"`), a change calls `onSetQuarters`; none without `onSetQuarters`; the `scene_header` of a quarters scene reads `{name}'s quarters ({summary})`; other locations are unchanged.
+- [x] Run, see them fail.
+- [x] Implement; glossary entry `quarters` (term, short, long marked `AUTHOR TO WRITE:` as the others); `app.ts` dispatches `squad/set_quarters`.
+- [x] The analyze coverage test passes. Tick, commit.
 
 ### Task 5: Docs and hand-offs
 

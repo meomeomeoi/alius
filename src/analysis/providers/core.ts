@@ -313,6 +313,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'leashswap', 'warden', 'death_rule', 'warden_expectation', 'commander_punishment', 'commander_leash', 'leash_cosign', 'warden_defiance', 'lethal_escalation', 'warden_override', 'warden_satisfaction', 'intrigue', 'kompromat', 'implant_hack', 'investigation', 'remote_control', 'verdict',
   // P14 (the failure chip, REROLL, the hub line and SYS › GENERATIONS address these)
   'generation_failed', 'generation_reroll', 'generation_record', 'generation_reasons',
+  // P10c (the QUARTERS select in the dossier)
+  'quarters',
 ];
 
 let registered = false;

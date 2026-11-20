@@ -1,3 +1,4 @@
+import { quartersOf } from '../engine/backdrops';
 import type { Registries } from '../content/types';
 import { firstImpressionWeight } from '../engine/commander/presence';
 import { commanderLine } from '../engine/commander/profile';
@@ -32,7 +33,11 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
       if (!s.scene) return null;
       const loc = deps.registries().locations.get(s.scene.locationId);
       const units = presentUnits(s);
-      const place = loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters` : String(loc?.name ?? s.scene.locationId);
+      // P10c: her quarters are described by her room style (the picture the player sees)
+      const style = loc?.perUnit === true && units[0] ? quartersOf(s, deps.registries(), units[0].id) : null;
+      const place = loc?.perUnit === true && units[0]
+        ? `${units[0].displayName}'s quarters${style ? ` (${String(style.summary)})` : ''}`
+        : String(loc?.name ?? s.scene.locationId);
       return `Scene: ${place}, Day ${s.day} ${SLOT_LABEL[s.slot]}. Present: ${units.map((u) => u.displayName).join(', ')}. ${s.scene.mode === 'group' ? 'Group' : 'Private'}.`;
     },
   });

@@ -26,6 +26,7 @@ import { stressBand } from '../../engine/combat/stress';
 import { portraitOptions, unitPortrait } from '../portrait/portrait';
 import { renderVoiceCard } from '../voice/voiceCard';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { quartersOf } from '../../engine/backdrops';
 import { handOf } from '../../engine/hand';
 import { dispositionFor } from '../../engine/worldOptions';
 import { activeRestrictions, commandStance, impunityBand, impunityOf, stanceEntry } from '../../engine/discipline';
@@ -62,6 +63,8 @@ export interface SquadTabCtx {
   onSetPublicity?: (unitId: string, level: Publicity) => void;
   /** P10b: the HAND select: the commander picks the handwriting of her notes (absent = no select). */
   onSetHand?: (unitId: string, handId: string) => void;
+  /** P10c: QUARTERS, the room style of her quarters scenes. */
+  onSetQuarters?: (unitId: string, styleId: string) => void;
   /** P9b: the squad leader's dossier block: ENDORSE her, or CHALLENGE her on a stat. */
   onEndorse?: () => void;
   onChallenge?: (stat: ChallengeStat) => void;
@@ -405,6 +408,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
       gone ? null : renderVitalsBlock(state, reg, unit.id, { motion: !motionReduced(ctx.settings()) }),
       gone ? null : handSelect(unit, state, ctx),
+      gone ? null : quartersSelect(unit, state, ctx),
       gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
       h('p', {}, ...joinWith([
@@ -444,6 +448,20 @@ function handSelect(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLEle
   select.value = String(current.id);
   select.addEventListener('change', () => ctx.onSetHand!(unit.id, select.value));
   return h('label', { class: 'alius-stat alius-hand', ...analyzeNative('glossary:handwriting', { unitId: unit.id }) }, 'HAND ', select);
+}
+
+/** P10c: QUARTERS, the room style her quarters scenes show and the model describes. Named units only, and only where the app can store it. */
+function quartersSelect(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElement | null {
+  const current = quartersOf(state, ctx.registries, unit.id);
+  if (!ctx.onSetQuarters || !current) return null;
+  const select = h('select', { class: 'alius-input', 'data-quarters': unit.id, 'aria-label': `Quarters of ${unit.displayName}` }, ...[...ctx.registries.quartersStyles.values()].map((e) => {
+    const option = h('option', { value: String(e.id), title: String(e.description) }, String(e.name));
+    if (e.id === current.id) option.setAttribute('selected', '');
+    return option;
+  })) as HTMLSelectElement;
+  select.value = String(current.id);
+  select.addEventListener('change', () => ctx.onSetQuarters!(unit.id, select.value));
+  return h('label', { class: 'alius-stat alius-quarters', ...analyzeNative('glossary:quarters', { unitId: unit.id }) }, 'QUARTERS ', select);
 }
 
 export function renderSquadTab(host: HTMLElement, ctx: SquadTabCtx): void {

@@ -1768,6 +1768,15 @@
     ]
   },
   {
+    "id": "quarters",
+    "term": "Quarters",
+    "short": "The room a soldier lives in. Her quarters scenes show it, and you can change which of the fourteen rooms is hers.",
+    "long": "AUTHOR TO WRITE: Every named soldier starts in a room picked from her name: cosy, tidy, severe, Japanese, gilded and so on. The QUARTERS select in her dossier changes it. The room is only what you see and how the scene describes it; it changes nothing else.",
+    "see": [
+      "handwriting"
+    ]
+  },
+  {
     "id": "hand_note",
     "term": "Handwritten note",
     "short": "A note a soldier leaves for the commander: in the quarters, in the gear or under the door, in her own hand.",

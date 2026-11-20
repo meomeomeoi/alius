@@ -47,7 +47,16 @@ describe('scene context', () => {
     const b = builder();
     const s = campaign(reg, 4);
     const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_unit', participants: [BEA], origin: 'event', startIndex: 0 } });
-    expect(block(b, r.state)).toContain("Scene: Bea's quarters,");
+    expect(block(b, r.state)).toContain("Scene: Bea's quarters (");
+  });
+  it('P10c: her quarters are described by her room style; other places are not', () => {
+    const b = builder();
+    const s = campaign(reg, 4);
+    s.squad.find((u) => u.id === BEA)!.quarters = 'quarters_japanese';
+    const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_unit', participants: [BEA], origin: 'event', startIndex: 0 } });
+    const summary = String(reg.quartersStyles.get('quarters_japanese')!.summary);
+    expect(block(b, r.state)).toContain(`Scene: Bea's quarters (${summary}), Day 1 Morning.`);
+    expect(block(b, inScene([ANN]))).toContain('Scene: Mess hall, Day 12 Evening.');
   });
   it('units show state, hint, bands and defects, never raw numbers by default', () => {
     const b = builder();

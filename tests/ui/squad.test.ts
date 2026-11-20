@@ -754,3 +754,48 @@ describe('HAND select (P10b)', () => {
     expect(h2.querySelectorAll('select[data-hand]')).toHaveLength(1);
   });
 });
+
+describe('QUARTERS select (P10c)', () => {
+  function withQuarters(over: Partial<Parameters<typeof renderSquadTab>[1]> = {}, units = [unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' })]) {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = campaign(units);
+    const host = h('div');
+    document.body.append(host);
+    const onSetQuarters = vi.fn();
+    renderSquadTab(host, {
+      st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg,
+      settings: () => getSettings(st), onNewCampaign: () => {}, onSetQuarters, ...over,
+    });
+    return { host, onSetQuarters, state };
+  }
+  const select = (host: HTMLElement, i: number) => host.querySelectorAll<HTMLSelectElement>('select[data-quarters]')[i];
+
+  it('a named unit has a QUARTERS select with every style in registry order, her current one selected, analyzable', () => {
+    const { host, state } = withQuarters();
+    expect(host.querySelectorAll('select[data-quarters]')).toHaveLength(2);
+    const sel = select(host, 0);
+    expect([...sel.options].map((o) => o.value)).toEqual([...reg.quartersStyles.keys()]);
+    expect([...sel.options].map((o) => o.textContent)).toEqual([...reg.quartersStyles.values()].map((e) => String(e.name)));
+    expect(sel.value).toBe([...reg.quartersStyles.keys()][fnv1a(state.squad[0].id) % reg.quartersStyles.size]);
+    expect(sel.closest('[data-analyze]')!.getAttribute('data-analyze')).toBe('glossary:quarters');
+    expect(markedWithout(host)).toEqual([]);
+    expect(reg.glossary.has('quarters')).toBe(true);
+  });
+
+  it('changing the select calls onSetQuarters with the unit and the style', () => {
+    const { host, onSetQuarters, state } = withQuarters();
+    const sel = select(host, 1);
+    sel.value = 'quarters_japanese';
+    sel.dispatchEvent(new Event('change'));
+    expect(onSetQuarters).toHaveBeenCalledWith(state.squad[1].id, 'quarters_japanese');
+  });
+
+  it('no select without a handler', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = campaign([unit()]);
+    const host = h('div');
+    document.body.append(host);
+    renderSquadTab(host, { st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => getSettings(st), onNewCampaign: () => {} });
+    expect(host.querySelector('select[data-quarters]')).toBeNull();
+  });
+});
