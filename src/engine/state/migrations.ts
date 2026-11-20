@@ -51,6 +51,21 @@ const v1Shape = z.object({
   leash: obj,
 });
 
+const isRun = (r: unknown): boolean =>
+  Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && (r[0] as number) >= 0 && (r[0] as number) <= (r[1] as number);
+
+/**
+ * Fields a save controls that reach SillyTavern outside the engine are cleaned here, on every load: `memory.hidden` becomes the
+ * arguments of `/unhide`, so only well-formed index runs are kept (a shared chat file must not run slash commands).
+ */
+function sanitize(cur: Raw): Raw {
+  const memory = cur.memory as Raw;
+  if (!('hidden' in memory)) return cur;
+  const runs = Array.isArray(memory.hidden) ? memory.hidden.filter(isRun) : [];
+  const { hidden: _drop, ...rest } = memory;
+  return { ...cur, memory: runs.length > 0 ? { ...rest, hidden: runs } : rest };
+}
+
 const invalid = (detail: string): MigrateResult => ({ ok: false, reason: 'invalid', detail });
 
 export function migrate(raw: unknown): MigrateResult {
@@ -77,5 +92,5 @@ export function migrate(raw: unknown): MigrateResult {
     const detail = checked.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ');
     return invalid(detail);
   }
-  return { ok: true, state: cur as unknown as CampaignState, migratedFrom: from };
+  return { ok: true, state: sanitize(cur) as unknown as CampaignState, migratedFrom: from };
 }

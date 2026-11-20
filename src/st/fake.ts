@@ -1,7 +1,7 @@
 import type {
   GenAnswer, CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
-import { hideRuns } from './chat';
+import { hideRuns, unhideRuns } from './chat';
 
 export interface ScriptedReply { avatar: string; name: string; text: string }
 
@@ -257,9 +257,8 @@ export class FakeStAdapter implements StAdapter {
   }
 
   async unhideMessages(ranges: Array<[number, number]>): Promise<void> {
-    const length = this.chatMessages.length;
     // like `/unhide a-b`: every message of the (cut) range shows again, which is why callers pass only the runs they hid
-    for (const [a, b] of ranges) for (let i = a; i <= Math.min(b, length - 1); i++) delete this.chatMessages[i].isSystem;
+    for (const [a, b] of unhideRuns(ranges, this.chatMessages.length)) for (let i = a; i <= b; i++) delete this.chatMessages[i].isSystem;
   }
 
   chatLength(): number {

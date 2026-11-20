@@ -49,8 +49,25 @@ export function hideRuns(length: number, from: number, to: number, isSystem: (in
   return runs;
 }
 
-/** ST's slash command for a run: `/hide 2-7` or `/unhide 5`. */
-export const hideCommand = (unhide: boolean, [a, b]: [number, number]): string => `/${unhide ? 'unhide' : 'hide'} ${a === b ? a : `${a}-${b}`}`;
+/**
+ * A run Alius may pass to `/hide` or `/unhide`: two safe non-negative integers in order. The runs come back from the save
+ * (`memory.hidden`), which a shared chat file controls, so anything else is never pasted into a slash command.
+ */
+export const isIndexRun = (r: unknown): r is [number, number] =>
+  Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
+
+/** ST's slash command for a run: `/hide 2-7` or `/unhide 5`. Throws on anything that is not a run (see `isIndexRun`). */
+export const hideCommand = (unhide: boolean, run: [number, number]): string => {
+  if (!isIndexRun(run)) throw new Error('hide: a run is two message indices in order');
+  const [a, b] = run;
+  return `/${unhide ? 'unhide' : 'hide'} ${a === b ? a : `${a}-${b}`}`;
+};
+
+/** The stored runs to unhide in a chat of `length` messages: malformed runs and runs past the end are dropped, one that ends past it is cut. */
+export function unhideRuns(ranges: unknown, length: number): Array<[number, number]> {
+  if (!Array.isArray(ranges)) return [];
+  return ranges.filter(isIndexRun).filter(([a]) => a < length).map(([a, b]): [number, number] => [a, Math.min(b, length - 1)]);
+}
 
 /** Whether ST marked the message as a system message (`is_system`): hidden from the model, and from every Alius read of the chat. */
 export const isSystemMessage = (chat: unknown, index: number): boolean => {
