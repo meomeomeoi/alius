@@ -6259,7 +6259,9 @@ var REGISTRY_NAMES = [
   "habits",
   // P10c
   "quartersStyles",
-  "backdrops"
+  "backdrops",
+  // P10d
+  "planRooms"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7966,8 +7968,6 @@ var pct = external_exports.number().min(0).max(100);
 var HubRoomSchema = BaseEntrySchema.extend({
   label: str,
   description: str.max(DESCRIPTION_MAX),
-  /** Position over the cross-section, in percent of its width and height. */
-  rect: external_exports.object({ x: pct, y: pct, w: pct, h: pct }).strict().refine((r) => r.x + r.w <= 100 && r.y + r.h <= 100, "the rect must stay inside the cross-section (x + w and y + h at most 100)"),
   sceneLocationId: str,
   /** The room is skipped by the routine pick while this facility is below level 1 (absent = always there). */
   facilityId: str.optional(),
@@ -7986,6 +7986,40 @@ var HubRoomSchema = BaseEntrySchema.extend({
   commanderCell: external_exports.boolean().optional()
 }).strict();
 Object.assign(registrySchemas, { hubRooms: HubRoomSchema });
+var PLAN_FLOORS = ["ground", "upper", "roof"];
+var PLAN_W = 1e3;
+var PLAN_H = 625;
+var PLAN_OPEN_KINDS = ["corridor", "lobby"];
+var planNum = external_exports.number().min(0);
+var PlanDoorSchema = external_exports.object({ x: planNum, y: planNum, side: external_exports.enum(["n", "s", "e", "w"]), size: external_exports.number().min(4).max(40) }).strict();
+var PlanRoomSchema = BaseEntrySchema.extend({
+  label: str.max(24),
+  shortLabel: str.max(10).optional(),
+  floor: external_exports.enum(PLAN_FLOORS),
+  rect: external_exports.object({ x: planNum, y: planNum, w: external_exports.number().gt(0), h: external_exports.number().gt(0) }).strict().refine((r) => r.x + r.w <= PLAN_W && r.y + r.h <= PLAN_H, `the rect must stay inside the plan (x + w at most ${PLAN_W}, y + h at most ${PLAN_H})`),
+  kind: external_exports.string().regex(/^[a-z_]+$/, "a kind is lower-case letters and underscores"),
+  description: str.max(DESCRIPTION_MAX),
+  hubRoomId: str.optional(),
+  sceneLocationId: str.optional(),
+  cabin: external_exports.enum(["unit", "commander"]).optional(),
+  stairTo: external_exports.enum(PLAN_FLOORS).optional(),
+  doors: external_exports.array(PlanDoorSchema).max(8).optional(),
+  labelAt: external_exports.object({ x: planNum, y: planNum }).strict().optional(),
+  /** P17 §2 / P15a: what the place offers (`desk`, `bunk`, `lock`, `thin_walls`, …). Data only in P10d. */
+  affordances: external_exports.array(external_exports.string().regex(/^[a-z_]+$/)).max(16).optional()
+}).strict().superRefine((e, ctx2) => {
+  if (e.cabin !== void 0 && e.kind !== "cabin") ctx2.addIssue({ code: "custom", path: ["cabin"], message: 'only a room of kind "cabin" is a cabin' });
+  if (e.stairTo !== void 0 && e.kind !== "stair") ctx2.addIssue({ code: "custom", path: ["stairTo"], message: 'only a room of kind "stair" leads to another floor' });
+  if (e.stairTo !== void 0 && e.stairTo === e.floor) ctx2.addIssue({ code: "custom", path: ["stairTo"], message: "a staircase leads to another floor" });
+  const { x, y, w, h: h2 } = e.rect;
+  (e.doors ?? []).forEach((d, i) => {
+    const near = (a, b) => Math.abs(a - b) < 0.01;
+    const horizontal = d.side === "n" || d.side === "s";
+    const onEdge = horizontal ? (near(d.y, y) || near(d.y, y + h2)) && d.x >= x - 0.01 && d.x + d.size <= x + w + 0.01 : (near(d.x, x) || near(d.x, x + w)) && d.y >= y - 0.01 && d.y + d.size <= y + h2 + 0.01;
+    if (!onEdge) ctx2.addIssue({ code: "custom", path: ["doors", i], message: `the door must lie on ${horizontal ? "the top or bottom" : "the left or right"} edge of the room, within it` });
+  });
+});
+registrySchemas.planRooms = PlanRoomSchema;
 var hex = external_exports.string().regex(/^#[0-9a-fA-F]{6}$/, "a colour is #rrggbb");
 var CSS_PRESETS = ["ccp_standard", "kestrel", "vesper"];
 var DeviceSkinSchema = BaseEntrySchema.extend({
@@ -8463,7 +8497,9 @@ var DESCRIBED_REGISTRIES = [
   "developmentRules",
   "habits",
   // P10c
-  "quartersStyles"
+  "quartersStyles",
+  // P10d
+  "planRooms"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -38467,6 +38503,11 @@ function quartersNotes(state, reg, ctx2) {
 var openRoom = /* @__PURE__ */ new WeakMap();
 var teardown = /* @__PURE__ */ new WeakMap();
 var LEGEND_TONES = ["danger", "bond", "trust", "affinity", "warn"];
+function roomRect(reg, room2) {
+  const plan = [...reg.planRooms.values()].find((p) => p.hubRoomId === room2.id);
+  const r = plan?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
+  return { x: r.x / 10, y: r.y / 6.25, w: r.w / 10, h: r.h / 6.25 };
+}
 var stat2 = (cls, address, ...children) => h("div", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, ...children);
 var dueText = (days) => days === null ? "NO DEADLINE" : days < 0 ? "OVERDUE" : days === 0 ? "DUE TODAY" : `DUE IN ${days} DAY${days === 1 ? "" : "S"}`;
 function topBar(ctx2, state) {
@@ -38509,7 +38550,7 @@ function crossSection(ctx2, state, here, onRoom) {
   }
   const unitOf11 = (id) => state.squad.find((u) => u.id === id);
   const rooms = [...reg.hubRooms.values()].map((room2) => {
-    const r = room2.rect;
+    const r = roomRect(reg, room2);
     const inside = here.filter((w) => w.roomId === room2.id).map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
     const el = h(
       "div",
@@ -38669,7 +38710,7 @@ function renderHub(host, device, ctx2) {
     const id = openRoom.get(host);
     const room2 = id !== void 0 ? ctx2.registries.hubRooms.get(id) : void 0;
     if (!room2) return;
-    const r = room2.rect;
+    const r = roomRect(ctx2.registries, room2);
     const panel = renderRoomPanel(room2, state, ctx2, here, { readOnly, onClose: close });
     panel.style.setProperty("--panel-x", `${r.x}%`);
     panel.style.setProperty("--panel-y", `${Math.min(r.y + r.h * 0.25, 60)}%`);
@@ -47441,6 +47482,34 @@ registerChecks("hubRooms", (entry, regs) => {
   if (rooms[0]?.id === entry.id) {
     for (const host of HUB_HOSTS) {
       if (!rooms.some((r) => hostsOf(r).includes(host))) out.push({ path: "hosts", message: `no room hosts "${host}" (all of ${HUB_HOSTS.join(", ")} are needed)` });
+    }
+  }
+  return out;
+});
+registerRefs("planRooms", (entry) => {
+  const out = [];
+  if (typeof entry.hubRoomId === "string") out.push({ registry: "hubRooms", id: entry.hubRoomId, path: "hubRoomId" });
+  if (typeof entry.sceneLocationId === "string") out.push({ registry: "locations", id: entry.sceneLocationId, path: "sceneLocationId" });
+  return out;
+});
+registerChecks("planRooms", (entry, regs) => {
+  const out = [];
+  const all = [...regs.planRooms.values()];
+  const free = (e) => PLAN_OPEN_KINDS.includes(String(e.kind)) || e.kind === "stair";
+  const r = entry.rect;
+  for (const other of all) {
+    if (other.id === entry.id || other.floor !== entry.floor || free(entry) || free(other)) continue;
+    const o = other.rect;
+    if (r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h) {
+      out.push({ path: "rect", message: `overlaps "${String(other.id)}" on the ${String(entry.floor)} floor (only corridors, lobbies and stairs may overlap)` });
+    }
+  }
+  if (all[0]?.id === entry.id) {
+    for (const hub of regs.hubRooms.values()) {
+      if (!all.some((p) => p.hubRoomId === hub.id)) out.push({ path: "hubRoomId", message: `hub room "${String(hub.id)}" has no plan room (it would never be drawn)` });
+    }
+    if ([...regs.hubRooms.values()].some((h2) => h2.commanderCell === true) && !all.some((p) => p.cabin === "commander")) {
+      out.push({ path: "cabin", message: 'a hub room is the commander cell but no plan room is the commander cabin (cabin: "commander")' });
     }
   }
   return out;

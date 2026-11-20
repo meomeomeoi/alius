@@ -4,7 +4,7 @@ import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import { ALL_EVENT_TYPES, INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
 import { VALUE_AXES } from '../engine/state/types';
-import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, type Conditions } from './schemas';
+import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, PLAN_OPEN_KINDS, type Conditions } from './schemas';
 import { linkTargets } from './links';
 import { REGISTRY_NAMES, type Entry, type RegistryName } from './types';
 
@@ -638,6 +638,39 @@ registerChecks('hubRooms', (entry, regs) => {
   if (rooms[0]?.id === entry.id) {
     for (const host of HUB_HOSTS) {
       if (!rooms.some((r) => hostsOf(r).includes(host))) out.push({ path: 'hosts', message: `no room hosts "${host}" (all of ${HUB_HOSTS.join(', ')} are needed)` });
+    }
+  }
+  return out;
+});
+
+// P10d: plan rooms point at hub rooms and locations; every hub room is on the plan; closed rooms do not overlap;
+// a commander cell has a commander cabin
+registerRefs('planRooms', (entry) => {
+  const out: Ref[] = [];
+  if (typeof entry.hubRoomId === 'string') out.push({ registry: 'hubRooms', id: entry.hubRoomId, path: 'hubRoomId' });
+  if (typeof entry.sceneLocationId === 'string') out.push({ registry: 'locations', id: entry.sceneLocationId, path: 'sceneLocationId' });
+  return out;
+});
+
+registerChecks('planRooms', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const all = [...regs.planRooms.values()];
+  type R = { x: number; y: number; w: number; h: number };
+  const free = (e: Entry): boolean => (PLAN_OPEN_KINDS as readonly string[]).includes(String(e.kind)) || e.kind === 'stair';
+  const r = entry.rect as R;
+  for (const other of all) {
+    if (other.id === entry.id || other.floor !== entry.floor || free(entry) || free(other)) continue;
+    const o = other.rect as R;
+    if (r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h) {
+      out.push({ path: 'rect', message: `overlaps "${String(other.id)}" on the ${String(entry.floor)} floor (only corridors, lobbies and stairs may overlap)` });
+    }
+  }
+  if (all[0]?.id === entry.id) {
+    for (const hub of regs.hubRooms.values()) {
+      if (!all.some((p) => p.hubRoomId === hub.id)) out.push({ path: 'hubRoomId', message: `hub room "${String(hub.id)}" has no plan room (it would never be drawn)` });
+    }
+    if ([...regs.hubRooms.values()].some((h) => h.commanderCell === true) && !all.some((p) => p.cabin === 'commander')) {
+      out.push({ path: 'cabin', message: 'a hub room is the commander cell but no plan room is the commander cabin (cabin: "commander")' });
     }
   }
   return out;

@@ -78,6 +78,7 @@
     "developmentRules": "developmentRules.json",
     "habits": "habits.json",
     "quartersStyles": "quartersStyles.json",
-    "backdrops": "backdrops.json"
+    "backdrops": "backdrops.json",
+    "planRooms": "planRooms.json"
   }
 }

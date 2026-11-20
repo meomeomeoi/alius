@@ -783,7 +783,6 @@ describe('core content pack: P6 content', () => {
 });
 
 describe('core content pack: P10 hub rooms', () => {
-  const rect = (r: unknown) => r as { x: number; y: number; w: number; h: number };
 
   it('hubRooms has 8 rooms, each pointing at an existing location, facility and activities', async () => {
     const { registries: r } = await load();
@@ -811,17 +810,9 @@ describe('core content pack: P10 hub rooms', () => {
     expect([...r.hubRooms.values()].filter((x) => x.commanderCell === true).map((x) => x.id)).toEqual(['quarters']);
   });
 
-  it('the room rects do not overlap', async () => {
+  it('P10d: every hub room is drawn on the plan', async () => {
     const { registries: r } = await load();
-    const rooms = [...r.hubRooms.values()];
-    for (let i = 0; i < rooms.length; i++) {
-      for (let j = i + 1; j < rooms.length; j++) {
-        const a = rect(rooms[i].rect);
-        const b = rect(rooms[j].rect);
-        const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-        expect(overlap, `${rooms[i].id} vs ${rooms[j].id}`).toBe(false);
-      }
-    }
+    for (const room of r.hubRooms.values()) expect([...r.planRooms.values()].some((p) => p.hubRoomId === room.id), String(room.id)).toBe(true);
   });
 
   it('the hub glossary concepts exist', async () => {

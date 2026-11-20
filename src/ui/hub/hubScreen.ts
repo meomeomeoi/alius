@@ -58,6 +58,13 @@ const teardown = new WeakMap<HTMLElement, () => void>();
 
 const LEGEND_TONES: MarkerTone[] = ['danger', 'bond', 'trust', 'affinity', 'warn'];
 
+/** P10d (temporary until the plan view lands): a hub room's box in percent, from its first plan room. */
+function roomRect(reg: Registries, room: Entry): { x: number; y: number; w: number; h: number } {
+  const plan = [...reg.planRooms.values()].find((p) => p.hubRoomId === room.id);
+  const r = (plan?.rect ?? { x: 0, y: 0, w: 0, h: 0 }) as { x: number; y: number; w: number; h: number };
+  return { x: r.x / 10, y: r.y / 6.25, w: r.w / 10, h: r.h / 6.25 };
+}
+
 const stat = (cls: string, address: string, ...children: Array<Node | string | null>): HTMLElement =>
   h('div', { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, ...children);
 
@@ -107,7 +114,7 @@ function crossSection(
 
   const unitOf = (id: string): Unit | undefined => state.squad.find((u) => u.id === id);
   const rooms = [...reg.hubRooms.values()].map((room: Entry) => {
-    const r = room.rect as { x: number; y: number; w: number; h: number };
+    const r = roomRect(reg, room);
     const inside = here.filter((w) => w.roomId === room.id).map((w) => unitOf(w.unitId)).filter((u): u is Unit => u !== undefined);
     const el = h(
       'div',
@@ -265,7 +272,7 @@ export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): 
     const id = openRoom.get(host);
     const room = id !== undefined ? ctx.registries.hubRooms.get(id) : undefined;
     if (!room) return;
-    const r = room.rect as { x: number; y: number; w: number; h: number };
+    const r = roomRect(ctx.registries, room);
     const panel = renderRoomPanel(room, state, ctx, here, { readOnly, onClose: close });
     panel.style.setProperty('--panel-x', `${r.x}%`);
     panel.style.setProperty('--panel-y', `${Math.min(r.y + r.h * 0.25, 60)}%`);

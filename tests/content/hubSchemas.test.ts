@@ -6,7 +6,7 @@ import { REGISTRY_NAMES } from '../../src/content/types';
 
 const room = {
   id: 'mess', label: 'MESS HALL', description: 'Long tables and a dented serving line.',
-  rect: { x: 0, y: 46, w: 32, h: 32 }, sceneLocationId: 'mess_hall',
+  sceneLocationId: 'mess_hall',
   weights: { morning: 3, afternoon: 1, evening: 3, night: 0 },
 };
 
@@ -20,10 +20,8 @@ describe('hubRooms schema', () => {
     expect(HubRoomSchema.safeParse({ ...room, facilityId: 'mess_hall', activityIds: ['mess'], likeTags: ['food'], hosts: ['night'], commanderCell: true }).success).toBe(true);
   });
 
-  it('a rect past the right edge is rejected', () => {
-    expect(HubRoomSchema.safeParse({ ...room, rect: { x: 80, y: 0, w: 30, h: 10 } }).success).toBe(false);
-    expect(HubRoomSchema.safeParse({ ...room, rect: { x: 0, y: 95, w: 10, h: 10 } }).success).toBe(false);
-    expect(HubRoomSchema.safeParse({ ...room, rect: { x: 70, y: 0, w: 30, h: 10 } }).success).toBe(true);
+  it('P10d: a rect is rejected (the geometry lives in planRooms)', () => {
+    expect(HubRoomSchema.safeParse({ ...room, rect: { x: 0, y: 46, w: 32, h: 32 } }).success).toBe(false);
   });
 
   it('weights above 5 are rejected', () => {
@@ -75,7 +73,7 @@ describe('hubRooms loader checks', () => {
   });
 
   it('two rooms hosting injured is an error', async () => {
-    const other = { ...room, id: 'cot', label: 'COT', rect: { x: 40, y: 0, w: 10, h: 10 } };
+    const other = { ...room, id: 'cot', label: 'COT' };
     const { errors } = await loadRooms([
       { ...room, hosts: ['injured', 'confined', 'duty', 'night'] },
       { ...other, hosts: ['injured'] },

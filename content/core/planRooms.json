@@ -1,0 +1,1208 @@
+[
+  {
+    "id": "g_corridor_1",
+    "label": "CORRIDOR",
+    "floor": "ground",
+    "rect": {
+      "x": 450,
+      "y": 230,
+      "w": 22,
+      "h": 150
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "g_corridor_2",
+    "label": "CORRIDOR",
+    "floor": "ground",
+    "rect": {
+      "x": 300,
+      "y": 230,
+      "w": 400,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost.",
+    "doors": [
+      {
+        "x": 700,
+        "y": 232,
+        "side": "e",
+        "size": 18
+      }
+    ]
+  },
+  {
+    "id": "g_corridor_3",
+    "label": "CORRIDOR",
+    "floor": "ground",
+    "rect": {
+      "x": 300,
+      "y": 140,
+      "w": 22,
+      "h": 90
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost.",
+    "doors": [
+      {
+        "x": 302,
+        "y": 140,
+        "side": "n",
+        "size": 18
+      }
+    ]
+  },
+  {
+    "id": "g_corridor_4",
+    "label": "CORRIDOR",
+    "floor": "ground",
+    "rect": {
+      "x": 640,
+      "y": 252,
+      "w": 22,
+      "h": 128
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "g_corridor_5",
+    "label": "CORRIDOR",
+    "floor": "ground",
+    "rect": {
+      "x": 560,
+      "y": 380,
+      "w": 290,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "g_lobby",
+    "label": "LOBBY",
+    "floor": "ground",
+    "rect": {
+      "x": 380,
+      "y": 380,
+      "w": 180,
+      "h": 90
+    },
+    "kind": "lobby",
+    "description": "The way in: a duty desk, a bench nobody sits on long and the mat everyone wipes their boots on.",
+    "doors": [
+      {
+        "x": 460,
+        "y": 470,
+        "side": "s",
+        "size": 26
+      }
+    ]
+  },
+  {
+    "id": "g_duty",
+    "label": "DUTY",
+    "floor": "ground",
+    "rect": {
+      "x": 380,
+      "y": 330,
+      "w": 70,
+      "h": 50
+    },
+    "kind": "office",
+    "description": "A cramped office with a desk and the night log. Not open yet.",
+    "doors": [
+      {
+        "x": 450,
+        "y": 344,
+        "side": "w",
+        "size": 12
+      }
+    ]
+  },
+  {
+    "id": "g_stairs",
+    "label": "STAIRS",
+    "floor": "ground",
+    "rect": {
+      "x": 384,
+      "y": 402,
+      "w": 46,
+      "h": 64
+    },
+    "kind": "stair",
+    "description": "The main stairs between the lobby and the upper floor.",
+    "stairTo": "upper"
+  },
+  {
+    "id": "g_mess_hall",
+    "label": "MESS HALL",
+    "floor": "ground",
+    "rect": {
+      "x": 170,
+      "y": 300,
+      "w": 210,
+      "h": 150
+    },
+    "kind": "mess",
+    "description": "Long tables, a dented serving line and whatever the stew is today.",
+    "hubRoomId": "mess",
+    "affordances": [
+      "crowd"
+    ],
+    "shortLabel": "MESS",
+    "doors": [
+      {
+        "x": 380,
+        "y": 404,
+        "side": "w",
+        "size": 20
+      },
+      {
+        "x": 170,
+        "y": 400,
+        "side": "w",
+        "size": 16
+      }
+    ]
+  },
+  {
+    "id": "g_kitchen",
+    "label": "KITCHEN",
+    "floor": "ground",
+    "rect": {
+      "x": 190,
+      "y": 230,
+      "w": 110,
+      "h": 70
+    },
+    "kind": "kitchen",
+    "description": "Behind the serving line: four burners, a prep table and the hatch to the mess.",
+    "affordances": [
+      "cupboard"
+    ],
+    "doors": [
+      {
+        "x": 300,
+        "y": 234,
+        "side": "e",
+        "size": 14
+      },
+      {
+        "x": 230,
+        "y": 300,
+        "side": "s",
+        "size": 16
+      }
+    ]
+  },
+  {
+    "id": "g_storage",
+    "label": "STORAGE",
+    "floor": "ground",
+    "rect": {
+      "x": 200,
+      "y": 140,
+      "w": 100,
+      "h": 90
+    },
+    "kind": "storage",
+    "description": "Shelves of crates, ration packs and spare parts. Not open yet.",
+    "affordances": [
+      "cupboard"
+    ],
+    "doors": [
+      {
+        "x": 300,
+        "y": 170,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_laundry",
+    "label": "LAUNDRY",
+    "floor": "ground",
+    "rect": {
+      "x": 322,
+      "y": 150,
+      "w": 108,
+      "h": 80
+    },
+    "kind": "laundry",
+    "description": "Three machines, a drying line and the smell of cheap detergent. Not open yet.",
+    "doors": [
+      {
+        "x": 322,
+        "y": 170,
+        "side": "e",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_back_stairs",
+    "label": "BACK STAIRS",
+    "floor": "ground",
+    "rect": {
+      "x": 430,
+      "y": 160,
+      "w": 50,
+      "h": 70
+    },
+    "kind": "stair",
+    "description": "The narrow stairs at the back, the quiet way up, and the only way onto the roof.",
+    "stairTo": "upper",
+    "shortLabel": "STAIRS",
+    "doors": [
+      {
+        "x": 442,
+        "y": 230,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_gym",
+    "label": "GYM",
+    "floor": "ground",
+    "rect": {
+      "x": 480,
+      "y": 110,
+      "w": 160,
+      "h": 120
+    },
+    "kind": "gym",
+    "description": "Mats, racks and a pull-up bar under a high ceiling. Not open yet.",
+    "doors": [
+      {
+        "x": 540,
+        "y": 230,
+        "side": "s",
+        "size": 16
+      }
+    ]
+  },
+  {
+    "id": "g_armory",
+    "label": "ARMORY",
+    "floor": "ground",
+    "rect": {
+      "x": 380,
+      "y": 252,
+      "w": 70,
+      "h": 78
+    },
+    "kind": "armory",
+    "description": "Rifle racks behind a locked door. Not open yet.",
+    "doors": [
+      {
+        "x": 450,
+        "y": 270,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_medbay",
+    "label": "MEDBAY",
+    "floor": "ground",
+    "rect": {
+      "x": 472,
+      "y": 252,
+      "w": 168,
+      "h": 128
+    },
+    "kind": "medbay",
+    "description": "Where the injured lie up and defects are worked on.",
+    "hubRoomId": "medbay",
+    "affordances": [
+      "curtain"
+    ],
+    "doors": [
+      {
+        "x": 472,
+        "y": 270,
+        "side": "e",
+        "size": 16
+      },
+      {
+        "x": 640,
+        "y": 330,
+        "side": "w",
+        "size": 16
+      }
+    ]
+  },
+  {
+    "id": "g_workshop",
+    "label": "WORKSHOP",
+    "floor": "ground",
+    "rect": {
+      "x": 662,
+      "y": 252,
+      "w": 140,
+      "h": 128
+    },
+    "kind": "workshop",
+    "description": "Benches, a plyx press and the smell of hot solder.",
+    "hubRoomId": "workshop",
+    "doors": [
+      {
+        "x": 662,
+        "y": 300,
+        "side": "e",
+        "size": 16
+      },
+      {
+        "x": 740,
+        "y": 380,
+        "side": "s",
+        "size": 18
+      }
+    ]
+  },
+  {
+    "id": "g_lockers",
+    "label": "LOCKERS",
+    "floor": "ground",
+    "rect": {
+      "x": 560,
+      "y": 402,
+      "w": 120,
+      "h": 68
+    },
+    "kind": "lockers",
+    "description": "Rows of gear lockers and a bench. Not open yet.",
+    "doors": [
+      {
+        "x": 600,
+        "y": 402,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_generator",
+    "label": "GENERATOR",
+    "floor": "ground",
+    "rect": {
+      "x": 680,
+      "y": 402,
+      "w": 90,
+      "h": 68
+    },
+    "kind": "generator",
+    "description": "The generator and its fuel line; it hums through the floor. Not open yet.",
+    "doors": [
+      {
+        "x": 720,
+        "y": 402,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_garage",
+    "label": "GARAGE",
+    "floor": "ground",
+    "rect": {
+      "x": 850,
+      "y": 290,
+      "w": 110,
+      "h": 230
+    },
+    "kind": "garage",
+    "description": "Two stripped transports and a floor nobody has ever managed to get clean.",
+    "hubRoomId": "garage",
+    "doors": [
+      {
+        "x": 850,
+        "y": 384,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "g_training_yard",
+    "label": "TRAINING YARD",
+    "shortLabel": "YARD",
+    "floor": "ground",
+    "rect": {
+      "x": 720,
+      "y": 40,
+      "w": 240,
+      "h": 190
+    },
+    "kind": "yard",
+    "description": "A running track, a sparring ring and the shooting lanes along the fence.",
+    "hubRoomId": "training",
+    "affordances": [
+      "exposed",
+      "crowd"
+    ]
+  },
+  {
+    "id": "u_corridor_1",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 380,
+      "y": 380,
+      "w": 282,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "u_corridor_2",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 170,
+      "y": 380,
+      "w": 210,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "u_corridor_3",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 450,
+      "y": 252,
+      "w": 22,
+      "h": 128
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "u_corridor_4",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 300,
+      "y": 230,
+      "w": 362,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost.",
+    "doors": [
+      {
+        "x": 300,
+        "y": 233,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_corridor_5",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 640,
+      "y": 252,
+      "w": 22,
+      "h": 150
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "u_corridor_6",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 300,
+      "y": 140,
+      "w": 22,
+      "h": 90
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "u_corridor_7",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 662,
+      "y": 300,
+      "w": 140,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost."
+  },
+  {
+    "id": "u_corridor_8",
+    "label": "CORRIDOR",
+    "floor": "upper",
+    "rect": {
+      "x": 640,
+      "y": 402,
+      "w": 130,
+      "h": 22
+    },
+    "kind": "corridor",
+    "description": "A corridor of the outpost.",
+    "doors": [
+      {
+        "x": 770,
+        "y": 406,
+        "side": "e",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_stairs",
+    "label": "STAIRS",
+    "floor": "upper",
+    "rect": {
+      "x": 384,
+      "y": 402,
+      "w": 46,
+      "h": 64
+    },
+    "kind": "stair",
+    "description": "The main stairs between the lobby and the upper floor.",
+    "stairTo": "ground"
+  },
+  {
+    "id": "u_back_stairs",
+    "label": "BACK STAIRS",
+    "floor": "upper",
+    "rect": {
+      "x": 430,
+      "y": 160,
+      "w": 50,
+      "h": 70
+    },
+    "kind": "stair",
+    "description": "The narrow stairs at the back, the quiet way up, and the only way onto the roof.",
+    "stairTo": "roof",
+    "shortLabel": "STAIRS",
+    "doors": [
+      {
+        "x": 442,
+        "y": 230,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_1",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 200,
+      "y": 185,
+      "w": 100,
+      "h": 45
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 300,
+        "y": 196,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_2",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 240,
+      "y": 300,
+      "w": 70,
+      "h": 80
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 260,
+        "y": 380,
+        "side": "n",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_3",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 472,
+      "y": 252,
+      "w": 84,
+      "h": 64
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 472,
+        "y": 268,
+        "side": "e",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_4",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 662,
+      "y": 424,
+      "w": 54,
+      "h": 46
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 680,
+        "y": 424,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_5",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 200,
+      "y": 140,
+      "w": 100,
+      "h": 45
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 300,
+        "y": 150,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_6",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 322,
+      "y": 150,
+      "w": 54,
+      "h": 80
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 322,
+        "y": 176,
+        "side": "e",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_7",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 170,
+      "y": 300,
+      "w": 70,
+      "h": 80
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 190,
+        "y": 380,
+        "side": "n",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_8",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 472,
+      "y": 316,
+      "w": 84,
+      "h": 64
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 472,
+        "y": 336,
+        "side": "e",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_cabin_9",
+    "label": "CABIN",
+    "floor": "upper",
+    "rect": {
+      "x": 716,
+      "y": 424,
+      "w": 54,
+      "h": 46
+    },
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
+    "affordances": [
+      "bunk",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 734,
+        "y": 424,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_linen",
+    "label": "LINEN",
+    "floor": "upper",
+    "rect": {
+      "x": 376,
+      "y": 150,
+      "w": 54,
+      "h": 80
+    },
+    "kind": "storage",
+    "description": "Sheets, blankets and spare pillows on narrow shelves. Not open yet.",
+    "affordances": [
+      "cupboard"
+    ],
+    "doors": [
+      {
+        "x": 392,
+        "y": 230,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_library",
+    "label": "LIBRARY",
+    "floor": "upper",
+    "rect": {
+      "x": 310,
+      "y": 300,
+      "w": 70,
+      "h": 80
+    },
+    "kind": "library",
+    "description": "A few shelves of paperbacks and manuals, and one good chair. Not open yet.",
+    "doors": [
+      {
+        "x": 330,
+        "y": 380,
+        "side": "n",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_showers",
+    "label": "SHOWERS",
+    "floor": "upper",
+    "rect": {
+      "x": 170,
+      "y": 402,
+      "w": 210,
+      "h": 48
+    },
+    "kind": "showers",
+    "description": "A row of stalls and one mirror everyone fights over. Not open yet.",
+    "affordances": [
+      "water",
+      "mirror"
+    ],
+    "doors": [
+      {
+        "x": 262,
+        "y": 402,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_briefing",
+    "label": "BRIEFING",
+    "floor": "upper",
+    "rect": {
+      "x": 380,
+      "y": 252,
+      "w": 70,
+      "h": 128
+    },
+    "kind": "briefing",
+    "description": "A table, six chairs and a wall screen. Not open yet.",
+    "doors": [
+      {
+        "x": 450,
+        "y": 300,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_comms",
+    "label": "COMMS",
+    "floor": "upper",
+    "rect": {
+      "x": 556,
+      "y": 252,
+      "w": 84,
+      "h": 128
+    },
+    "kind": "comms",
+    "description": "A humming rack of corporate radios and one chair that always seems to be taken.",
+    "hubRoomId": "comms",
+    "affordances": [
+      "line",
+      "desk"
+    ],
+    "doors": [
+      {
+        "x": 590,
+        "y": 252,
+        "side": "n",
+        "size": 16
+      },
+      {
+        "x": 640,
+        "y": 330,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_lookout",
+    "label": "LOOKOUT",
+    "floor": "upper",
+    "rect": {
+      "x": 430,
+      "y": 402,
+      "w": 130,
+      "h": 68
+    },
+    "kind": "lookout",
+    "description": "Windows over the gate and the road, chairs pulled up to them. Not open yet.",
+    "affordances": [
+      "window"
+    ],
+    "doors": [
+      {
+        "x": 480,
+        "y": 402,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_rec_room",
+    "label": "REC ROOM",
+    "floor": "upper",
+    "rect": {
+      "x": 560,
+      "y": 402,
+      "w": 80,
+      "h": 68
+    },
+    "kind": "rec",
+    "description": "A card table, a worn couch and a radio that only gets static. Not open yet.",
+    "doors": [
+      {
+        "x": 640,
+        "y": 406,
+        "side": "w",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_mops",
+    "label": "MOPS",
+    "floor": "upper",
+    "rect": {
+      "x": 640,
+      "y": 424,
+      "w": 22,
+      "h": 46
+    },
+    "kind": "storage",
+    "description": "Mops, buckets and the smell of bleach. Not open yet.",
+    "affordances": [
+      "cupboard"
+    ],
+    "doors": [
+      {
+        "x": 645,
+        "y": 424,
+        "side": "s",
+        "size": 12
+      }
+    ]
+  },
+  {
+    "id": "u_office",
+    "label": "OFFICE",
+    "floor": "upper",
+    "rect": {
+      "x": 662,
+      "y": 252,
+      "w": 38,
+      "h": 48
+    },
+    "kind": "office",
+    "description": "A small office with a desk and a filing cabinet. Not open yet.",
+    "doors": [
+      {
+        "x": 662,
+        "y": 266,
+        "side": "e",
+        "size": 12
+      }
+    ]
+  },
+  {
+    "id": "u_store",
+    "label": "STORE",
+    "floor": "upper",
+    "rect": {
+      "x": 662,
+      "y": 322,
+      "w": 38,
+      "h": 58
+    },
+    "kind": "storage",
+    "description": "A store cupboard. Not open yet.",
+    "affordances": [
+      "cupboard"
+    ],
+    "doors": [
+      {
+        "x": 662,
+        "y": 340,
+        "side": "e",
+        "size": 12
+      }
+    ]
+  },
+  {
+    "id": "u_cmdr",
+    "label": "CMDR",
+    "floor": "upper",
+    "rect": {
+      "x": 700,
+      "y": 252,
+      "w": 60,
+      "h": 48
+    },
+    "kind": "cabin",
+    "cabin": "commander",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_commander",
+    "description": "The commander's cabin: a bunk, a desk, a locked terminal. The only door on the floor that locks.",
+    "affordances": [
+      "bunk",
+      "desk",
+      "lock"
+    ],
+    "doors": [
+      {
+        "x": 712,
+        "y": 300,
+        "side": "n",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "u_archive",
+    "label": "ARCHIVE",
+    "floor": "upper",
+    "rect": {
+      "x": 760,
+      "y": 252,
+      "w": 42,
+      "h": 48
+    },
+    "kind": "storage",
+    "description": "Boxes of old reports nobody reads. Not open yet.",
+    "affordances": [
+      "cupboard"
+    ],
+    "doors": [
+      {
+        "x": 772,
+        "y": 300,
+        "side": "n",
+        "size": 12
+      }
+    ]
+  },
+  {
+    "id": "u_map_room",
+    "label": "MAP ROOM",
+    "floor": "upper",
+    "rect": {
+      "x": 700,
+      "y": 322,
+      "w": 102,
+      "h": 58
+    },
+    "kind": "map",
+    "description": "A table under a big map of the sector, pins and routes on it. Not open yet.",
+    "doors": [
+      {
+        "x": 740,
+        "y": 322,
+        "side": "s",
+        "size": 14
+      }
+    ]
+  },
+  {
+    "id": "r_roof",
+    "label": "ROOF",
+    "floor": "roof",
+    "rect": {
+      "x": 200,
+      "y": 140,
+      "w": 280,
+      "h": 90
+    },
+    "kind": "roof",
+    "description": "Open sky, a rusted rail and the only place on the outpost where nobody listens.",
+    "hubRoomId": "roof",
+    "affordances": [
+      "exposed"
+    ],
+    "labelAt": {
+      "x": 206,
+      "y": 212
+    }
+  },
+  {
+    "id": "r_hatch",
+    "label": "HATCH",
+    "floor": "roof",
+    "rect": {
+      "x": 430,
+      "y": 160,
+      "w": 50,
+      "h": 70
+    },
+    "kind": "stair",
+    "stairTo": "upper",
+    "description": "The hatch at the top of the back stairs."
+  }
+]

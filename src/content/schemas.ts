@@ -1644,8 +1644,6 @@ const pct = z.number().min(0).max(100);
 export const HubRoomSchema = BaseEntrySchema.extend({
   label: str,
   description: str.max(DESCRIPTION_MAX),
-  /** Position over the cross-section, in percent of its width and height. */
-  rect: z.object({ x: pct, y: pct, w: pct, h: pct }).strict().refine((r) => r.x + r.w <= 100 && r.y + r.h <= 100, 'the rect must stay inside the cross-section (x + w and y + h at most 100)'),
   sceneLocationId: str,
   /** The room is skipped by the routine pick while this facility is below level 1 (absent = always there). */
   facilityId: str.optional(),
@@ -1663,6 +1661,57 @@ export const HubRoomSchema = BaseEntrySchema.extend({
 }).strict();
 
 Object.assign(registrySchemas, { hubRooms: HubRoomSchema });
+
+// ---------------------------------------------------------------------------------------------
+// P10d: the plan of the base (every room, corridor and staircase of every floor; geometry in plan units)
+
+export const PLAN_FLOORS = ['ground', 'upper', 'roof'] as const;
+export type PlanFloor = (typeof PLAN_FLOORS)[number];
+/** The plan's box: 1000 × 625 units, the 16:10 hub stage. */
+export const PLAN_W = 1000;
+export const PLAN_H = 625;
+/** Kinds whose walls are the outline of their union (no wall where two meet); a staircase may also sit inside another room. */
+export const PLAN_OPEN_KINDS = ['corridor', 'lobby'] as const;
+
+const planNum = z.number().min(0);
+const PlanDoorSchema = z.object({ x: planNum, y: planNum, side: z.enum(['n', 's', 'e', 'w']), size: z.number().min(4).max(40) }).strict();
+
+/**
+ * One place on the plan. Open (clickable, lit) when `hubRoomId` resolves, or it is a cabin, an open space or a staircase;
+ * otherwise drawn closed. A door's `side` is the way its leaf swings; the door lies on an edge of its room. Read by
+ * `floor`, `kind`, `hubRoomId`, `cabin`, `stairTo`, never by id.
+ */
+export const PlanRoomSchema = BaseEntrySchema.extend({
+  label: str.max(24),
+  shortLabel: str.max(10).optional(),
+  floor: z.enum(PLAN_FLOORS),
+  rect: z.object({ x: planNum, y: planNum, w: z.number().gt(0), h: z.number().gt(0) }).strict()
+    .refine((r) => r.x + r.w <= PLAN_W && r.y + r.h <= PLAN_H, `the rect must stay inside the plan (x + w at most ${PLAN_W}, y + h at most ${PLAN_H})`),
+  kind: z.string().regex(/^[a-z_]+$/, 'a kind is lower-case letters and underscores'),
+  description: str.max(DESCRIPTION_MAX),
+  hubRoomId: str.optional(),
+  sceneLocationId: str.optional(),
+  cabin: z.enum(['unit', 'commander']).optional(),
+  stairTo: z.enum(PLAN_FLOORS).optional(),
+  doors: z.array(PlanDoorSchema).max(8).optional(),
+  labelAt: z.object({ x: planNum, y: planNum }).strict().optional(),
+  /** P17 §2 / P15a: what the place offers (`desk`, `bunk`, `lock`, `thin_walls`, …). Data only in P10d. */
+  affordances: z.array(z.string().regex(/^[a-z_]+$/)).max(16).optional(),
+}).strict().superRefine((e, ctx) => {
+  if (e.cabin !== undefined && e.kind !== 'cabin') ctx.addIssue({ code: 'custom', path: ['cabin'], message: 'only a room of kind "cabin" is a cabin' });
+  if (e.stairTo !== undefined && e.kind !== 'stair') ctx.addIssue({ code: 'custom', path: ['stairTo'], message: 'only a room of kind "stair" leads to another floor' });
+  if (e.stairTo !== undefined && e.stairTo === e.floor) ctx.addIssue({ code: 'custom', path: ['stairTo'], message: 'a staircase leads to another floor' });
+  const { x, y, w, h } = e.rect;
+  (e.doors ?? []).forEach((d, i) => {
+    const near = (a: number, b: number): boolean => Math.abs(a - b) < 0.01;
+    const horizontal = d.side === 'n' || d.side === 's';
+    const onEdge = horizontal
+      ? (near(d.y, y) || near(d.y, y + h)) && d.x >= x - 0.01 && d.x + d.size <= x + w + 0.01
+      : (near(d.x, x) || near(d.x, x + w)) && d.y >= y - 0.01 && d.y + d.size <= y + h + 0.01;
+    if (!onEdge) ctx.addIssue({ code: 'custom', path: ['doors', i], message: `the door must lie on ${horizontal ? 'the top or bottom' : 'the left or right'} edge of the room, within it` });
+  });
+});
+registrySchemas.planRooms = PlanRoomSchema;
 
 // ---------------------------------------------------------------------------------------------
 // P10: device skins
@@ -2266,6 +2315,8 @@ export const DESCRIBED_REGISTRIES = [
   'developmentAxes', 'developmentRules', 'habits',
   // P10c
   'quartersStyles',
+  // P10d
+  'planRooms',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
