@@ -68,6 +68,33 @@ function sanitize(cur: Raw): Raw {
 
 const invalid = (detail: string): MigrateResult => ({ ok: false, reason: 'invalid', detail });
 
+const PROTO_WORDS = new Set(['__proto__', 'constructor', 'prototype']);
+/** A key whose value is an id or a list of ids: `id`, `…Id`, `…Ids`, `…By`, `about`. */
+const ID_KEY = /^(id|about)$|Id$|Ids$|By$/;
+
+/**
+ * The first path where the save holds a prototype word as a key (anywhere) or as an id (see `ID_KEY`), or null. A save is untrusted
+ * (a shared chat file): such an id would make `relations[id]` the page's `Object.prototype`, and engine writes would land on every object.
+ */
+function protoPath(v: unknown, path: string, idKey: boolean): string | null {
+  if (typeof v === 'string') return idKey && PROTO_WORDS.has(v) ? path : null;
+  if (Array.isArray(v)) {
+    for (let i = 0; i < v.length; i++) {
+      const hit = protoPath(v[i], `${path}[${i}]`, idKey);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (typeof v !== 'object' || v === null) return null;
+  for (const key of Object.keys(v)) {
+    const at = path ? `${path}.${key}` : key;
+    if (PROTO_WORDS.has(key)) return at;
+    const hit = protoPath((v as Raw)[key], at, ID_KEY.test(key));
+    if (hit) return hit;
+  }
+  return null;
+}
+
 export function migrate(raw: unknown): MigrateResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return invalid('campaign state must be an object');
@@ -85,6 +112,8 @@ export function migrate(raw: unknown): MigrateResult {
       detail: `state version ${from} is newer than supported version ${CURRENT_VERSION}`,
     };
   }
+  const proto = protoPath(cur, '', false);
+  if (proto !== null) return invalid(`${proto}: a prototype key or id is not allowed`);
   for (let v = from; v < CURRENT_VERSION; v++) cur = migrations[v](cur);
 
   const checked = v1Shape.safeParse(cur);
