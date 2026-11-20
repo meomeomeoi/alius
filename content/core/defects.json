@@ -10,7 +10,7 @@
       "name": "Overwritten",
       "text": "Acts as a previous carrier for the rest of the expedition (random skill use, may call the commander by another name)."
     },
-    "social": "Scenes where she shares a memory that is not hers; can learn facts about the setting the player should not know.",
+    "social": "Scenes where she shares a memory that is not hers; sometimes she knows things about the world she has no way of knowing.",
     "arc": {
       "cure": "Memories gone, scouting gone.",
       "manage": "Journaling ritual with the commander.",
@@ -341,7 +341,7 @@
       "name": "Bloom Surge",
       "text": "Massive damage to everyone in her row, allies included; mutation clock +1."
     },
-    "social": "Fear of turning; disgust or pity from squadmates; strongly tied to the strain_trade and experimentation crimes.",
+    "social": "Fear of turning; disgust or pity from squadmates; a commander with a past in strain trafficking or in experiments on units touches a nerve.",
     "arc": {
       "cure": "Risky treatment (may fail).",
       "manage": "A medbay regimen.",
@@ -677,7 +677,7 @@
       "name": "Old Orders",
       "text": "Follows her previous commander's directives (which may be hostile)."
     },
-    "social": "Haunted by who she was; possible link to the commander's crime (liquidation).",
+    "social": "Haunted by who she was; fragments of an older life surface at the worst moments, and she wants to know whose life it was.",
     "arc": {
       "cure": "Her old self is deleted.",
       "embrace": "She integrates both selves."
@@ -828,7 +828,7 @@
       "name": "Claim",
       "text": "Attacks whoever is near the chosen person."
     },
-    "social": "Feeds the obsessed state; conflicts with a second romance.",
+    "social": "Drifts toward obsession; clashes with any second romance.",
     "arc": {},
     "dmChanceBonus": 0.1,
     "combat": {
@@ -910,7 +910,7 @@
       "name": "Lost",
       "text": "Passes her turns until given an order."
     },
-    "social": "The moral trap is explicit: easy to exploit, harder to help her want things for herself.",
+    "social": "Easy to command and easy to exploit; helping her want things for herself is the harder road.",
     "arc": {},
     "socialHooks": [
       {
