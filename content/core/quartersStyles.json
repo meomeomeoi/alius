@@ -11,7 +11,7 @@
   {
     "id": "quarters_2",
     "name": "Homely",
-    "summary": "a homely room: fairy lights, framed photos, plants on the shelves, a yellow bedspread and a grey service locker",
+    "summary": "a homely room: fairy lights, framed photos, plants on the shelves, a yellow bedspread and a gray service locker",
     "description": "Photos, plants and a yellow bedspread next to the service locker.",
     "background": "content/core/art/backdrops/quarters_2.webp",
     "floor": "wood",
@@ -20,7 +20,7 @@
   {
     "id": "quarters_3",
     "name": "Bookish",
-    "summary": "a bookish room: full shelves, a desk lamp over notes, lavender bedding and a grey service locker",
+    "summary": "a bookish room: full shelves, a desk lamp over notes, lavender bedding and a gray service locker",
     "description": "Shelves of books, notes on the wall, lavender sheets.",
     "background": "content/core/art/backdrops/quarters_3.webp",
     "floor": "wood",
@@ -74,7 +74,7 @@
   {
     "id": "quarters_dark",
     "name": "Blackout",
-    "summary": "a dark, bare room: black furniture, closed blinds, grey sheets, one small lamp",
+    "summary": "a dark, bare room: black furniture, closed blinds, gray sheets, one small lamp",
     "description": "Black furniture, blinds down, one small lamp.",
     "background": "content/core/art/backdrops/quarters_dark.webp",
     "floor": "wood",
@@ -110,8 +110,8 @@
   {
     "id": "quarters_science",
     "name": "Lab notes",
-    "summary": "a study room: a whiteboard full of equations, a laptop, labelled boxes, navy curtains and a round pink rug",
-    "description": "A whiteboard of equations and labelled boxes.",
+    "summary": "a study room: a whiteboard full of equations, a laptop, labeled boxes, navy curtains and a round pink rug",
+    "description": "A whiteboard of equations and labeled boxes.",
     "background": "content/core/art/backdrops/quarters_science.webp",
     "floor": "linoleum",
     "ceiling": "office"

@@ -68,7 +68,7 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
     const unit = state.squad.find((u) => u.id === id);
     const band = wantBandOf(state, reg, id);
     if (!unit || (band !== 'aching' && band !== 'desperate')) continue;
-    builder.setDirective({ id: `want:${id}`, expiresAfter: 'manual', text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
+    builder.setDirective({ id: `want:${id}`, expiresAfter: 'manual', text: `${unit.displayName} is restless and irritable with unmet want; it colors how she speaks to the commander.` });
     wantSet.get(builder)!.add(`want:${id}`);
   }
 

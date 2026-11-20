@@ -91,7 +91,7 @@
   {
     "id": "workshop",
     "name": "Workshop",
-    "summary": "Benches, half-stripped weapons and the hum of the plyx extruder.",
+    "summary": "Benches, half-stripped weapons and the hum of the PLYX extruder.",
     "ascii": [
       "+----------------------------+",
       "| ==[BENCH]==   (  ) <- extruder|",

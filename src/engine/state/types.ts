@@ -34,6 +34,9 @@ export type LootDrop =
   | { kind: 'item'; item: ItemInstance }
   | { kind: 'credits' | 'plyx' | 'supplies'; amount: number };
 
+/** A resource key as the player reads it: PLYX is always written in capitals (the key stays `plyx`). */
+export const resourceWord = (resource: string): string => (resource === 'plyx' ? 'PLYX' : resource);
+
 export type LeashKind = 'compel' | 'suppress' | 'terminate';
 
 /** One Leash use. P3's `resentful` state counts entries by `unitId`. */

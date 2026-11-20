@@ -118,7 +118,7 @@
   {
     "id": "trusted",
     "name": "Trusted",
-    "description": "She relies on your judgement and says so. She follows orders without needing them explained.",
+    "description": "She relies on your judgment and says so. She follows orders without needing them explained.",
     "group": "platonic",
     "romance": false,
     "glyph": "+",
@@ -153,7 +153,7 @@
       ]
     },
     "dmChance": 0.08,
-    "promptHint": "She relies on the commander's judgement and says so; she speaks plainly and follows orders without needing them justified."
+    "promptHint": "She relies on the commander's judgment and says so; she speaks plainly and follows orders without needing them justified."
   },
   {
     "id": "friend",

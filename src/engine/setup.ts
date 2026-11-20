@@ -298,7 +298,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
     if (m.kind !== 'leashswap') out.push(`Unknown campaign mode "${String((m as { kind?: unknown }).kind)}"`);
     else {
       if (!DEATH_RULES.includes(m.deathRule)) out.push(`Unknown death rule "${String(m.deathRule)}"`);
-      if (units.length === 0) out.push('LEASHSWAP needs at least one named unit to hold the leash');
+      if (units.length === 0) out.push('LEASHSWAP needs at least one named unit to hold the Leash');
       else if (m.warden?.by === 'player') {
         if (!Number.isInteger(m.warden.index) || m.warden.index < 0 || m.warden.index >= units.length) out.push('The warden must be one of the chosen units');
       } else if (m.warden?.by !== 'corporation') out.push('The warden must be picked by the player or assigned by the corporation');
@@ -489,7 +489,7 @@ export function buildCampaign(
     // P13: the mode block and the warden, after the special traits and before the Leash; nothing here draws
     state.leashswap = newLeashswap(r.mode.deathRule);
     const unitId = r.mode.warden.by === 'player' ? state.squad[r.mode.warden.index].id : corporateWardenPick(state, reg);
-    if (unitId === null) throw new Error('LEASHSWAP found no unit to hold the leash.');
+    if (unitId === null) throw new Error('LEASHSWAP found no unit to hold the Leash.');
     seedWarden(state, { registries: reg, rng: new Rng(state.rng) }, { unitId, assignedBy: r.mode.warden.by === 'player' ? 'player' : 'corporation' });
   }
   applyWorldStartEffects(state, reg); // P8: the world's norm costs the own corporation's standing

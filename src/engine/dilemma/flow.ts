@@ -7,7 +7,7 @@ import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { activeRosterUnits, isLiving } from '../economy';
 import { meetsSocialRequirements, socialRank, type SocialStat } from '../social';
-import type { CampaignState, Unit } from '../state/types';
+import { resourceWord, type CampaignState, type Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { familyEnabled } from '../worldOptions';
 import { afterFailedRoute, resolveRoute, routeChoices, routeScope, type RouteChoice, type RoutePick } from '../commander/checks';
@@ -245,7 +245,7 @@ function blockedReason(state: CampaignState, reg: Registries, o: { requires?: Di
   if (o.routeCheck && routeChoices(state, reg, o.routeCheck, routeScope(state)).every((r) => r.disabled !== null)) return 'No way to do this right now';
   if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) return `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
   for (const fx of o.effects) {
-    if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) return `Not enough ${fx.resource}`;
+    if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) return `Not enough ${resourceWord(fx.resource)}`;
     if (fx.type === 'carried_supplies' && fx.amount < 0 && (state.expedition?.supplies ?? 0) < -fx.amount) return 'Not enough supplies';
   }
   return null;

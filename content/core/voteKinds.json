@@ -40,7 +40,7 @@
   {
     "id": "upgrade",
     "label": "Base upgrade",
-    "description": "Which facility the base spends its credits and Plyx on next. The commander picks the upgrade; the squad votes for or against that pick.",
+    "description": "Which facility the base spends its credits and PLYX on next. The commander picks the upgrade; the squad votes for or against that pick.",
     "lean": {
       "pragmatism": 1
     },

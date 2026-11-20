@@ -127,7 +127,7 @@ export function intrigueDiscovered(draft: CampaignState, ctx: EngineCtx, cause: 
 
 /** Why an intrigue slot action cannot start now (a scene, a fight or a run is open, or nobody holds the leash), or null. */
 export function intrigueBusy(state: CampaignState): string | null {
-  if (!wardenOf(state)) return 'Nobody holds the leash.';
+  if (!wardenOf(state)) return 'Nobody holds the Leash.';
   if (state.scene !== undefined || state.combat !== undefined || state.expedition !== undefined) return 'Not while a scene, a fight or a run is open.';
   return null;
 }
@@ -221,7 +221,7 @@ export function hackProblem(state: CampaignState, reg: Registries, allyId?: stri
   for (const [id, need] of [['workshop', H.workshop], ['medbay', H.medbay]] as const) {
     if (facilityLevel(state, id) < need) missing.push(`${String(reg.facilities.get(id)?.name ?? id)} level ${need} (now ${facilityLevel(state, id)})`);
   }
-  if (state.resources.plyx < H.plyx) missing.push(`${H.plyx} plyx (have ${state.resources.plyx})`);
+  if (state.resources.plyx < H.plyx) missing.push(`${H.plyx} PLYX (have ${state.resources.plyx})`);
   if (!isAlly(state, allyId) || !isTech(state, reg, allyId)) missing.push('an ally with the know-how to open an implant');
   return missing.length > 0 ? `The hack needs ${missing.join(', ')}.` : null;
 }

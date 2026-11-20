@@ -239,7 +239,7 @@ export function rollVerdict(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
   if (!draft.commander.flags.includes('commander_convicted')) draft.commander.flags.push('commander_convicted');
   const next = corporateWardenPick(draft, ctx.registries, former !== undefined ? [former] : [], { anyLiving: true });
   if (next === null) {
-    addChronicle(draft, { kind: 'day', day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the leash.`, audience: '*' });
+    addChronicle(draft, { kind: 'day', day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the Leash.`, audience: '*' });
     return [...events, ...commanderDies(draft, ctx, 'executed')];
   }
   return [...events, ...seedWarden(draft, ctx, { unitId: next, assignedBy: 'oversight' })];

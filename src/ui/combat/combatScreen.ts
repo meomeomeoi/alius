@@ -11,7 +11,7 @@ import type { Combatant, LogEntry, PlannedAction } from '../../engine/combat/typ
 import type { EngineEvent } from '../../engine/dispatch';
 import { getSynergies } from '../../engine/relations';
 import { Rng } from '../../engine/rng';
-import type { CampaignState, Unit } from '../../engine/state/types';
+import { resourceWord, type CampaignState, type Unit } from '../../engine/state/types';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -324,7 +324,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     if (r.loot.length > 0) {
       rows.push(`LOOT${r.banked ? '' : ' (NOT BANKED YET)'}: ${r.loot.map((d) => d.kind === 'item'
         ? `${(reg.items.get(d.item.itemId)?.name as string | undefined) ?? d.item.itemId} [${d.item.rarity}]`
-        : `${d.amount} ${d.kind}`).join(', ')}`);
+        : `${d.amount} ${resourceWord(d.kind)}`).join(', ')}`);
     }
     if (r.injuries.length > 0) rows.push(`INJURED: ${r.injuries.map(unitName).join(', ')}`);
     if (r.deaths.length > 0) rows.push(`LOST: ${r.deaths.map(unitName).join(', ')}`);

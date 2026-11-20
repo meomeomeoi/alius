@@ -276,7 +276,7 @@
     "name": "Web of Debts",
     "kind": "special",
     "description": "AUTHOR TO WRITE: old mistakes and shady ties. The commander must feed information to a rival corporation.",
-    "upside": "A handler from a rival corporation pays supplies, credits and plyx for intel.",
+    "upside": "A handler from a rival corporation pays supplies, credits and PLYX for intel.",
     "downside": "What is sold comes back as ambushes, sabotage and shifts in standing. Oversight and the squad can find out.",
     "effects": [
       {

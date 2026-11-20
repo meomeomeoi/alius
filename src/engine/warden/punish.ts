@@ -114,7 +114,7 @@ export function setLeashEffect(fn: typeof leashEffect): void {
  */
 export function applyCommanderPunishment(draft: CampaignState, ctx: EngineCtx, punishmentId: string): EngineEvent[] {
   const w = wardenOf(draft);
-  if (!w) throw new Error('Nobody holds the leash.');
+  if (!w) throw new Error('Nobody holds the Leash.');
   const entry = ctx.registries.commanderPunishments.get(punishmentId);
   if (!entry) throw new Error(`Unknown commander punishment "${punishmentId}".`);
   const events: EngineEvent[] = [];

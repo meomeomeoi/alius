@@ -811,7 +811,7 @@
   },
   {
     "id": "refused_demand",
-    "cause": "The commander refused her demand or cancelled what she booked",
+    "cause": "The commander refused her demand or canceled what she booked",
     "journal": "the commander refused her demand",
     "rows": {
       "minor": {
@@ -1093,8 +1093,8 @@
   },
   {
     "id": "rival_favoured",
-    "cause": "The commander favoured someone else",
-    "journal": "the commander favoured someone else over her",
+    "cause": "The commander favored someone else",
+    "journal": "the commander favored someone else over her",
     "rows": {
       "minor": {
         "affinity": -1,

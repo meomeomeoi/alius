@@ -140,8 +140,8 @@
     "tags": [
       "head_start"
     ],
-    "fallback": "AUTHOR TO WRITE: {name} was given a small favour, a ration or a spare part, that cost the commander something.",
-    "description": "AUTHOR TO WRITE: A small favour, a ration or a spare part, that cost the commander something to give."
+    "fallback": "AUTHOR TO WRITE: {name} was given a small favor, a ration or a spare part, that cost the commander something.",
+    "description": "AUTHOR TO WRITE: A small favor, a ration or a spare part, that cost the commander something to give."
   },
   {
     "id": "rule_reminder",

@@ -63,7 +63,7 @@ export function personalDirectives(state: CampaignState, reg: Registries, presen
     if (played) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: 'scene', text: `${name} booked this time and expects the commander's full attention.` });
     } else if (cancelled) {
-      out.push({ id: `personal:booking:${id}`, expiresAfter: 'scene', text: `The commander cancelled the time ${name} had booked; she remembers it.` });
+      out.push({ id: `personal:booking:${id}`, expiresAfter: 'scene', text: `The commander canceled the time ${name} had booked; she remembers it.` });
     }
   }
   // a squad secret the commander has not found (or pretends not to know) is kept by the knowers who are here; one the commander uses is held over them

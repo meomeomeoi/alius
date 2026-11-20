@@ -191,7 +191,7 @@
     "name": "Strain Trafficking",
     "summary": "Sold Bloom samples.",
     "perk": {
-      "text": "Starts with extra Plyx and a black-market contact.",
+      "text": "Starts with extra PLYX and a black-market contact.",
       "effects": [
         {
           "type": "resource",

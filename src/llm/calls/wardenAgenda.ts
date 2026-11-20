@@ -33,7 +33,7 @@ registerCallType<WardenAgendaShape>({
   profile: 'mechanic',
   json: true,
   system: () => [
-    'You write what one soldier of a squad-command roleplay expects of her commander, who is leashed by the corporation and answers to her.',
+    'You write what one soldier of a squad-command roleplay expects of her commander, who is under the corporation\'s Leash and answers to her.',
     'She holds the controller of the commander\'s implant. Read her card, her values and the corporation\'s wishes, and list 3 to 5 expectations.',
     'Reply with a single JSON object and nothing else. Write in English.',
     '{ "expectations": [{ "kind": "<one of the kinds>", "weight": "low"|"medium"|"high", "source": "card"|"values"|"corporate", "text": "<personal only, at most 80 characters>" }] }',

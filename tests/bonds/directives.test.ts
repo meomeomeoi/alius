@@ -222,7 +222,7 @@ describe('the lead and boundary directives (Task 8)', () => {
 });
 
 describe('the want directive (Task 9)', () => {
-  const TEXT = 'Ann is restless and irritable with unmet want; it colours how she speaks to the commander.';
+  const TEXT = 'Ann is restless and irritable with unmet want; it colors how she speaks to the commander.';
   const eligible = (want: number, participants = [ANN]) => inScene(participants, (s) => {
     s.relations[ANN].stateId = 'lover';
     withBond(s, ANN, { desire: 'medium' });

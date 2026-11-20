@@ -68,7 +68,7 @@ function leadProvider(_subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines
 const WANT_EFFECT: Record<string, string> = {
   calm: '',
   restless: 'She writes first more often and may come to the door.',
-  aching: 'She is irritable and under stress, and it colours how she speaks to the commander.',
+  aching: 'She is irritable and under stress, and it colors how she speaks to the commander.',
   desperate: 'Her defect may break her for a day.',
 };
 

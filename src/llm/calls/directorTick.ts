@@ -49,7 +49,7 @@ registerCallType<DirectorShape>({
     '  "clockAdvances": [{ "clockId": "<id>", "by": 1|2, "reason": "<short>" }],',
     '  "storyBeatProposal": { "beatId": "<id>", "framing": "<at most 60 words>" } }',
     'Hard rules:',
-    '- Use only ids that appear in the digest. Never invent ids. Never write amounts: no credits, plyx, loot or numbers of any reward; the engine decides rewards from the tier.',
+    '- Use only ids that appear in the digest. Never invent ids. Never write amounts: no credits, PLYX, loot or numbers of any reward; the engine decides rewards from the tier.',
     '- At most 2 mission offers and 3 rumors. Prefer fewer. Offer at most 1 new thread per answer.',
     '- Only one command mission can be open at a time: your first offer may become it, later offers become side missions that the board size (boardRoom) limits. Look at the board and boardRoom in the digest before offering.',
     '- Never skip or invent story beats. Propose the current beat only when the digest says it is ready and not yet proposed. The engine rejects anything else.',

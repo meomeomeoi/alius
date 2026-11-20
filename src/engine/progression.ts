@@ -125,7 +125,7 @@ export function respec(draft: CampaignState, reg: Registries, unitId: string): E
   if (unit.unlockedNodes.length === 0) throw new Error('Nothing to respec.');
   const cost = respecCost(unit);
   if (draft.resources.credits < cost.credits || draft.resources.plyx < cost.plyx) {
-    throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} plyx.`);
+    throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} PLYX.`);
   }
   draft.resources.credits -= cost.credits;
   draft.resources.plyx -= cost.plyx;

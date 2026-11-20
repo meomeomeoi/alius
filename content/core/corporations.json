@@ -41,7 +41,7 @@
       "corporate": 3,
       "sacrifice": 1
     },
-    "oversightStyle": "Approves Leash requests against quota shortfalls; treats the CCP as a labour pool.",
+    "oversightStyle": "Approves Leash requests against quota shortfalls; treats the CCP as a labor pool.",
     "playable": true,
     "startingBonus": {
       "text": "Quota advance: +100 credits.",

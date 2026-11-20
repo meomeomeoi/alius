@@ -8,7 +8,7 @@ import { trustBand, type TrustBand } from '../relations/bands';
 import { openDemand } from '../discipline/demands';
 import { applyRelationDelta } from '../relationGain';
 import { socialRank } from '../social';
-import type { CampaignState } from '../state/types';
+import { resourceWord, type CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { commanderProfile, descriptor } from './profile';
 
@@ -91,8 +91,8 @@ function choiceOf(state: CampaignState, reg: Registries, route: CheckRoute, inde
       const { resource, amount } = route.cost;
       return {
         ...base,
-        label: `Pay ${amount} ${resource}`,
-        disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resource} (needs ${amount}).`,
+        label: `Pay ${amount} ${resourceWord(resource)}`,
+        disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resourceWord(resource)} (needs ${amount}).`,
       };
     }
     case 'delegate': {

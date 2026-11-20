@@ -15,7 +15,7 @@ import { commanderObeys, unitObeys } from '../personal/state';
 import { assertiveness } from '../power/options';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
-import { RARITIES, type CampaignState, type Demand, type Unit } from '../state/types';
+import { RARITIES, resourceWord, type CampaignState, type Demand, type Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { dispositionFor } from '../worldOptions';
 import { inAcquaintance } from './acquaintance';
@@ -179,7 +179,7 @@ export function grantProblem(state: CampaignState, reg: Registries, demandId: st
   const unit = demand ? state.squad.find((u) => u.id === demand.unitId) : undefined;
   if (!demand || !tpl || !unit) return 'Unknown demand.';
   for (const cost of costsOf(tpl)) {
-    if (cost.type === 'resource' && state.resources[cost.resource] < cost.amount) return `Not enough ${cost.resource} (needs ${cost.amount}).`;
+    if (cost.type === 'resource' && state.resources[cost.resource] < cost.amount) return `Not enough ${resourceWord(cost.resource)} (needs ${cost.amount}).`;
     if (cost.type === 'equip_item' && !itemFor(state, reg, unit, cost)) return `There is no suitable ${cost.slot} to give.`;
     if (cost.type === 'reveal_crime' && state.relations[unit.id]?.flags.includes('knows_crime')) return 'She already knows.';
     if (cost.type === 'other_unit_event' && !otherUnit(state, unit.id)) return 'There is nobody else to bring into it.';

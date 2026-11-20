@@ -45,7 +45,7 @@ registerAction('item/unequip', (draft, payload) => {
 // ------------------------------------------------------------------------------------------------ workshop
 
 const spend = (draft: CampaignState, credits: number, plyx: number): EngineEvent[] => {
-  if (draft.resources.credits < credits || draft.resources.plyx < plyx) throw new Error(`Not enough resources: needs ${credits} credits and ${plyx} plyx.`);
+  if (draft.resources.credits < credits || draft.resources.plyx < plyx) throw new Error(`Not enough resources: needs ${credits} credits and ${plyx} PLYX.`);
   draft.resources.credits -= credits;
   draft.resources.plyx -= plyx;
   const out: EngineEvent[] = [];

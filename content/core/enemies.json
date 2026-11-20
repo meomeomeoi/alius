@@ -494,7 +494,7 @@
     "id": "rogue_assault",
     "categoryId": "offspec_hostile",
     "name": "Rogue Assault Unit",
-    "description": "An off-spec assault unit that has cut its leash. It fights like one of yours.",
+    "description": "An off-spec assault unit that has cut its Leash. It fights like one of yours.",
     "stats": {
       "base": {
         "hp": 90,

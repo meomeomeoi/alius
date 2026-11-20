@@ -6,7 +6,7 @@ import { h } from '../dom';
 /** What each campaign mode and death rule is called and says. Plain meta text: no fiction voice, no pronoun for the commander. */
 const MODES: Array<{ id: 'default' | 'leashswap'; label: string; text: string; address: string }> = [
   { id: 'default', label: 'DEFAULT', text: 'The commander gives the orders. The Leash is the corporation\'s, filed through oversight.', address: 'glossary:leash' },
-  { id: 'leashswap', label: 'LEASHSWAP', text: 'The commander carries the controller implant. One soldier, the warden, holds the leash for the corporation.', address: 'glossary:leashswap' },
+  { id: 'leashswap', label: 'LEASHSWAP', text: 'The commander carries the controller implant. One soldier, the warden, holds the Leash for the corporation.', address: 'glossary:leashswap' },
 ];
 const RULES: Record<DeathRule, { label: string; text: string }> = {
   rewind_day: { label: 'REWIND DAY', text: 'The day starts again from its beginning. The death leaves no memory.' },
@@ -55,7 +55,7 @@ export function renderWardenPick(host: HTMLElement, wizard: Wizard): void {
     wizard.setWardenPick(v.startsWith('player:') ? { by: 'player', index: Number(v.slice('player:'.length)) } : { by: 'corporation' });
   });
   host.append(h('label', { class: 'alius-field alius-warden-pick', ...analyzeNative('glossary:warden') },
-    h('span', { class: 'alius-field-label' }, 'WARDEN: the soldier who holds the leash'),
+    h('span', { class: 'alius-field-label' }, 'WARDEN: the soldier who holds the Leash'),
     select,
     h('span', { class: 'alius-dim' }, w.by === 'corporation' ? 'Oversight picks the unit most loyal to the corporation.' : 'The warden is the squad\'s choice, not the corporation\'s.')));
 }

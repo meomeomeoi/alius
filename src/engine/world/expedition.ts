@@ -26,7 +26,7 @@ import type { RouteCheck } from '../../content/schemas';
 import { meetsSocialRequirements } from '../social';
 import { nextId } from '../memory';
 import type { Rng } from '../rng';
-import type { CampaignState, LootDrop, Unit } from '../state/types';
+import { resourceWord, type CampaignState, type LootDrop, type Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { familyEnabled } from '../worldOptions';
 import { applyWorldEffects } from './effects';
@@ -241,7 +241,7 @@ export function resolveUnknownType(reg: Registries, rng: Rng, typeId: string): s
 
 const describeLoot = (drops: LootDrop[], reg: Registries): string => {
   if (drops.length === 0) return 'nothing';
-  return drops.map((d) => (d.kind === 'item' ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${d.kind}`)).join(', ');
+  return drops.map((d) => (d.kind === 'item' ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${resourceWord(d.kind)}`)).join(', ');
 };
 
 function missionOf(draft: CampaignState): Mission {
@@ -597,7 +597,7 @@ export function reportLines(report: ExpeditionReport, state: CampaignState, reg:
   lines.push(report.outcome === 'success' ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
   if (report.rewards) {
     const r = report.rewards;
-    const parts = [`${r.credits} credits`, `${r.plyx} plyx`, ...r.items];
+    const parts = [`${r.credits} credits`, `${r.plyx} PLYX`, ...r.items];
     if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
     if (r.clearance !== undefined) parts.push(`clearance tier ${r.clearance}`);
     lines.push(`Rewards: ${parts.join(', ')}.`);
@@ -753,7 +753,7 @@ export function eventOptions(state: CampaignState, reg: Registries): Array<{ ind
     if (disabled === null) {
       for (const fx of o.effects) {
         if (fx.type === 'carried_supplies' && fx.amount < 0 && exp.supplies < -fx.amount) disabled = 'Not enough supplies';
-        else if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) disabled = `Not enough ${fx.resource}`;
+        else if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) disabled = `Not enough ${resourceWord(fx.resource)}`;
         if (disabled !== null) break;
       }
     }

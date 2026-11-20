@@ -78,7 +78,7 @@ describe('world and activity effect summaries', () => {
 
   it('−15 Credits for a world resource', () => {
     expect(summarizeWorldEffect({ type: 'resource', resource: 'credits', amount: -15 }, world)).toBe('−15 Credits');
-    expect(summarizeWorldEffect({ type: 'resource', resource: 'plyx', amount: 4 }, world)).toBe('+4 Plyx');
+    expect(summarizeWorldEffect({ type: 'resource', resource: 'plyx', amount: 4 }, world)).toBe('+4 PLYX');
     expect(summarizeWorldEffect({ type: 'faction', factionId: 'vesper', amount: 5 }, world)).toBe('+5 standing with [[corporations:vesper]]');
     expect(summarizeWorldEffect({ type: 'party_stress', amount: 8 }, world)).toBe('+8 Stress to the party');
     expect(summarizeWorldEffect({ type: 'party_hp', pct: -20 }, world)).toBe('−20% HP to the party');

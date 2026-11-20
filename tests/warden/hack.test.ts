@@ -45,7 +45,7 @@ describe('hackProblem', () => {
     const p = hackProblem(s, reg, undefined)!;
     expect(p).toMatch(/Workshop level 3/);
     expect(p).toMatch(/Medbay level 3/);
-    expect(p).toMatch(/5 plyx/);
+    expect(p).toMatch(/5 PLYX/);
     expect(p).toMatch(/ally with the know-how/);
   });
 
@@ -68,7 +68,7 @@ describe('hackProblem', () => {
   it('a unit who is not an ally is not enough, and nothing can be done with nobody holding the leash', () => {
     const s = swap((x) => { x.relations[ID.cat].flags = []; });
     expect(hackProblem(s, reg, ID.cat)).toMatch(/know-how/);
-    expect(hackProblem(swap((x) => { x.leashswap!.status = 'free'; }), reg, ID.cat)).toBe('Nobody holds the leash.');
+    expect(hackProblem(swap((x) => { x.leashswap!.status = 'free'; }), reg, ID.cat)).toBe('Nobody holds the Leash.');
   });
 });
 
@@ -141,7 +141,7 @@ describe('hackStep', () => {
 
   it('throws with the problem and changes nothing', () => {
     const s = swap((x) => { x.resources.plyx = 1; });
-    expect(() => hackStep(s, chancing(false), ID.cat)).toThrow(/5 plyx/);
+    expect(() => hackStep(s, chancing(false), ID.cat)).toThrow(/5 PLYX/);
   });
 
   it('the action: needs a unit, is refused in a scene, and runs through dispatch', () => {
