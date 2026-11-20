@@ -1,0 +1,128 @@
+[
+  {
+    "id": "quarters_1",
+    "name": "Lantern room",
+    "summary": "a warm, crowded room: fairy lights along the walls, orange curtains, plants, a round rug and a day bed heaped with cushions",
+    "description": "String lights, plants and too many cushions. Warm and crowded.",
+    "background": "content/core/art/backdrops/quarters_1.webp",
+    "floor": "wood",
+    "ceiling": "room_1"
+  },
+  {
+    "id": "quarters_2",
+    "name": "Homely",
+    "summary": "a homely room: fairy lights, framed photos, plants on the shelves, a yellow bedspread and a grey service locker",
+    "description": "Photos, plants and a yellow bedspread next to the service locker.",
+    "background": "content/core/art/backdrops/quarters_2.webp",
+    "floor": "wood",
+    "ceiling": "room_2"
+  },
+  {
+    "id": "quarters_3",
+    "name": "Bookish",
+    "summary": "a bookish room: full shelves, a desk lamp over notes, lavender bedding and a grey service locker",
+    "description": "Shelves of books, notes on the wall, lavender sheets.",
+    "background": "content/core/art/backdrops/quarters_3.webp",
+    "floor": "wood",
+    "ceiling": "room_1"
+  },
+  {
+    "id": "quarters_4",
+    "name": "Tidy",
+    "summary": "a tidy, orderly room: a red patterned rug, framed pictures in a row, a clean desk, everything put away",
+    "description": "Everything in its place on a red patterned rug.",
+    "background": "content/core/art/backdrops/quarters_4.webp",
+    "floor": "wood",
+    "ceiling": "room_2"
+  },
+  {
+    "id": "quarters_5",
+    "name": "Bunk room",
+    "summary": "a shared room with two bunk beds, posters, a teal dresser and a red rug; it was meant for more than one",
+    "description": "Two bunk beds and posters: a room meant for more than one.",
+    "background": "content/core/art/backdrops/quarters_5.webp",
+    "floor": "wood",
+    "ceiling": "room_1"
+  },
+  {
+    "id": "quarters_6",
+    "name": "Reading corner",
+    "summary": "a lived-in room: a navy armchair, a low table, pink sheets, papers pinned over the desk",
+    "description": "A navy armchair, a low table and papers over the desk.",
+    "background": "content/core/art/backdrops/quarters_6.webp",
+    "floor": "wood",
+    "ceiling": "room_2"
+  },
+  {
+    "id": "quarters_cruel",
+    "name": "Severe",
+    "summary": "a severe, dim room: heavy black and red curtains, a black bedspread, a leather armchair, a rack of blades and riding crops on the wall",
+    "description": "Black and red drapes, a leather armchair, a rack on the wall.",
+    "background": "content/core/art/backdrops/quarters_cruel.webp",
+    "floor": "wood",
+    "ceiling": "dark"
+  },
+  {
+    "id": "quarters_cute",
+    "name": "Sweet",
+    "summary": "a sweet, bright room: a pink floral bedspread, yellow cushions, fresh flowers and framed pictures",
+    "description": "Pink flowers on the bed and fresh ones on the desk.",
+    "background": "content/core/art/backdrops/quarters_cute.webp",
+    "floor": "wood",
+    "ceiling": "room_1"
+  },
+  {
+    "id": "quarters_dark",
+    "name": "Blackout",
+    "summary": "a dark, bare room: black furniture, closed blinds, grey sheets, one small lamp",
+    "description": "Black furniture, blinds down, one small lamp.",
+    "background": "content/core/art/backdrops/quarters_dark.webp",
+    "floor": "wood",
+    "ceiling": "dark"
+  },
+  {
+    "id": "quarters_japanese",
+    "name": "Tatami",
+    "summary": "a Japanese-style room: tatami floor, sliding paper screens, a low table, paper lanterns",
+    "description": "Tatami, paper screens and a low table.",
+    "background": "content/core/art/backdrops/quarters_japanese.webp",
+    "floor": "tatami",
+    "ceiling": "japanese"
+  },
+  {
+    "id": "quarters_messy",
+    "name": "Messy",
+    "summary": "a messy room: clothes on the bed, posters everywhere, cans and magazines on the floor, a green rug",
+    "description": "Clothes on the bed, cans on the floor, posters everywhere.",
+    "background": "content/core/art/backdrops/quarters_messy.webp",
+    "floor": "wood",
+    "ceiling": "room_2"
+  },
+  {
+    "id": "quarters_rich",
+    "name": "Gilded",
+    "summary": "a lavish room out of place on a base: a tufted headboard with gold trim, a gilded mirror, a vanity, a patterned rug",
+    "description": "A gilded headboard and a vanity mirror. Corporate money.",
+    "background": "content/core/art/backdrops/quarters_rich.webp",
+    "floor": "wood",
+    "ceiling": "rich"
+  },
+  {
+    "id": "quarters_science",
+    "name": "Lab notes",
+    "summary": "a study room: a whiteboard full of equations, a laptop, labelled boxes, navy curtains and a round pink rug",
+    "description": "A whiteboard of equations and labelled boxes.",
+    "background": "content/core/art/backdrops/quarters_science.webp",
+    "floor": "linoleum",
+    "ceiling": "office"
+  },
+  {
+    "id": "quarters_spiritual",
+    "name": "Shrine",
+    "summary": "a quiet room with a small shrine: icons on the wall, a hanging charm, candles by the bed, a red rug",
+    "description": "Icons on the wall, a charm and candles by the bed.",
+    "background": "content/core/art/backdrops/quarters_spiritual.webp",
+    "floor": "wood",
+    "ceiling": "bright_1"
+  }
+]

@@ -17,7 +17,10 @@
       "afternoon",
       "evening",
       "night"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_quarters_commander.webp",
+    "floor": "wood",
+    "ceiling": "room_1"
   },
   {
     "id": "quarters_unit",
@@ -38,7 +41,9 @@
       "afternoon",
       "evening",
       "night"
-    ]
+    ],
+    "floor": "wood",
+    "ceiling": "room_2"
   },
   {
     "id": "mess_hall",
@@ -56,7 +61,10 @@
       "morning",
       "afternoon",
       "evening"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_mess_hall.webp",
+    "floor": "linoleum",
+    "ceiling": "office"
   },
   {
     "id": "training_yard",
@@ -74,7 +82,11 @@
       "morning",
       "afternoon",
       "evening"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_training_yard_day.webp",
+    "backgroundEvening": "content/core/art/backdrops/loc_training_yard_evening.webp",
+    "floor": "concrete",
+    "ceiling": "sky"
   },
   {
     "id": "workshop",
@@ -92,7 +104,10 @@
       "morning",
       "afternoon",
       "evening"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_workshop.webp",
+    "floor": "concrete",
+    "ceiling": "technical"
   },
   {
     "id": "medbay",
@@ -111,7 +126,10 @@
       "afternoon",
       "evening",
       "night"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_medbay.webp",
+    "floor": "linoleum",
+    "ceiling": "office"
   },
   {
     "id": "roof",
@@ -129,7 +147,12 @@
       "afternoon",
       "evening",
       "night"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_roof_day.webp",
+    "backgroundEvening": "content/core/art/backdrops/loc_roof_evening.webp",
+    "backgroundNight": "content/core/art/backdrops/loc_roof_night.webp",
+    "floor": "concrete",
+    "ceiling": "sky"
   },
   {
     "id": "garage",
@@ -146,7 +169,10 @@
       "morning",
       "afternoon",
       "evening"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_garage.webp",
+    "floor": "concrete",
+    "ceiling": "technical"
   },
   {
     "id": "comms_room",
@@ -164,7 +190,10 @@
       "morning",
       "afternoon",
       "evening"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_comms_room.webp",
+    "floor": "linoleum",
+    "ceiling": "office"
   },
   {
     "id": "perimeter",
@@ -182,6 +211,11 @@
       "afternoon",
       "evening",
       "night"
-    ]
+    ],
+    "background": "content/core/art/backdrops/loc_perimeter_day.webp",
+    "backgroundEvening": "content/core/art/backdrops/loc_perimeter_evening.webp",
+    "backgroundNight": "content/core/art/backdrops/loc_perimeter_night.webp",
+    "floor": "concrete",
+    "ceiling": "sky"
   }
 ]

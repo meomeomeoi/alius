@@ -107,12 +107,12 @@
 
 **Files:** `scripts/art/backdrops.py`, `content/core/art/backdrops/*.webp`, `content/core/{quartersStyles,backdrops,locations,manifest}.json`, `tests/content/backdrops.test.ts`.
 
-- [ ] Write the failing test (`tests/content/backdrops.test.ts`, core registries): every `background*` of a location, every style `background` and every backdrop `file` exists on disk; every file in `content/core/art/backdrops/` is named by some entry; every opaque backdrop is 3072×1280 (read from the WebP header); every `floor` / `ceiling` finish a location or style declares has a surface entry; `quartersStyles` has 14 entries; `content/core/art/incoming/` does not exist.
-- [ ] Run, see it fail.
-- [ ] Write `scripts/art/backdrops.py` (the mapping table above; the normalizing rules; prints a size report; `--dry-run`), run it, check the report and look at a contact sheet of the output.
-- [ ] Write `quartersStyles.json` (14 styles: name, a one-line `summary` of what the room looks like for the model, background, finishes) and `backdrops.json`; fill `locations.json` and the manifest.
-- [ ] Remove `content/core/art/incoming/`.
-- [ ] Tests pass. Tick, commit (the WebP files with it).
+- [x] Write the failing test (`tests/content/backdrops.test.ts`, core registries): every `background*` of a location, every style `background` and every backdrop `file` exists on disk; every file in `content/core/art/backdrops/` is named by some entry; every opaque backdrop is 3072×1280 (read from the WebP header); every `floor` / `ceiling` finish a location or style declares has a surface entry; `quartersStyles` has 14 entries; `content/core/art/incoming/` does not exist.
+- [x] Run, see it fail.
+- [x] Write `scripts/art/backdrops.py` (the mapping table above; the normalizing rules; prints a size report; `--dry-run`), run it, check the report and look at a contact sheet of the output.
+- [x] Write `quartersStyles.json` (14 styles: name, a one-line `summary` of what the room looks like for the model, background, finishes) and `backdrops.json`; fill `locations.json` and the manifest.
+- [x] Remove `content/core/art/incoming/`.
+- [x] Tests pass. Tick, commit (the WebP files with it).
 
 ### Task 3: The scene screen
 

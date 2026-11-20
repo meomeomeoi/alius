@@ -1,0 +1,157 @@
+[
+  {
+    "id": "floor_wood",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/floor_wood.webp",
+    "surface": "floor",
+    "finish": "wood"
+  },
+  {
+    "id": "floor_linoleum",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/floor_linoleum.webp",
+    "surface": "floor",
+    "finish": "linoleum"
+  },
+  {
+    "id": "floor_concrete",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/floor_concrete.webp",
+    "surface": "floor",
+    "finish": "concrete"
+  },
+  {
+    "id": "floor_tatami",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/floor_tatami.webp",
+    "surface": "floor",
+    "finish": "tatami"
+  },
+  {
+    "id": "ceiling_dark",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_dark.webp",
+    "surface": "ceiling",
+    "finish": "dark"
+  },
+  {
+    "id": "ceiling_technical",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_technical.webp",
+    "surface": "ceiling",
+    "finish": "technical"
+  },
+  {
+    "id": "ceiling_office",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_office.webp",
+    "surface": "ceiling",
+    "finish": "office"
+  },
+  {
+    "id": "ceiling_room_1",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_room_1.webp",
+    "surface": "ceiling",
+    "finish": "room_1"
+  },
+  {
+    "id": "ceiling_room_2",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_room_2.webp",
+    "surface": "ceiling",
+    "finish": "room_2"
+  },
+  {
+    "id": "ceiling_rich",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_rich.webp",
+    "surface": "ceiling",
+    "finish": "rich"
+  },
+  {
+    "id": "ceiling_japanese",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_japanese.webp",
+    "surface": "ceiling",
+    "finish": "japanese"
+  },
+  {
+    "id": "ceiling_bright_1",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_bright_1.webp",
+    "surface": "ceiling",
+    "finish": "bright_1"
+  },
+  {
+    "id": "ceiling_bright_2",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_bright_2.webp",
+    "surface": "ceiling",
+    "finish": "bright_2"
+  },
+  {
+    "id": "ceiling_sky_day",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_sky_day.webp",
+    "surface": "ceiling",
+    "finish": "sky",
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "ceiling_sky_day_cloudy",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_sky_day_cloudy.webp",
+    "surface": "ceiling",
+    "finish": "sky",
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "ceiling_sky_night",
+    "kind": "surface",
+    "file": "content/core/art/backdrops/ceiling_sky_night.webp",
+    "surface": "ceiling",
+    "finish": "sky",
+    "slots": [
+      "night"
+    ]
+  },
+  {
+    "id": "frame_under_desk",
+    "kind": "frame",
+    "file": "content/core/art/backdrops/frame_under_desk.webp"
+  },
+  {
+    "id": "frame_cage_bars",
+    "kind": "frame",
+    "file": "content/core/art/backdrops/frame_cage_bars.webp"
+  },
+  {
+    "id": "frame_cage_clinical",
+    "kind": "frame",
+    "file": "content/core/art/backdrops/frame_cage_clinical.webp"
+  },
+  {
+    "id": "pov_corner",
+    "kind": "place",
+    "file": "content/core/art/backdrops/pov_corner.webp"
+  },
+  {
+    "id": "place_corridor_1",
+    "kind": "place",
+    "file": "content/core/art/backdrops/place_corridor_1.webp"
+  },
+  {
+    "id": "place_corridor_2",
+    "kind": "place",
+    "file": "content/core/art/backdrops/place_corridor_2.webp"
+  }
+]

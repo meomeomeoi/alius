@@ -76,6 +76,8 @@
     "headStartMoments": "headStartMoments.json",
     "developmentAxes": "developmentAxes.json",
     "developmentRules": "developmentRules.json",
-    "habits": "habits.json"
+    "habits": "habits.json",
+    "quartersStyles": "quartersStyles.json",
+    "backdrops": "backdrops.json"
   }
 }

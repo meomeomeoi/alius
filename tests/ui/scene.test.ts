@@ -62,25 +62,23 @@ function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settin
 
 describe('scene screen', () => {
   it('renders location ASCII when there is no image', () => {
-    const { q } = setup();
-    const art = q('pre.alius-ascii')!;
-    expect(art.textContent).toContain('[SERVING]');
-    expect(q('.alius-scene-header')!.textContent).toContain('Mess hall');
+    const loc = reg.locations.get('mess_hall')!;
+    const file = loc.background;
+    delete loc.background;
+    try {
+      const { q } = setup();
+      const art = q('pre.alius-ascii')!;
+      expect(art.textContent).toContain('[SERVING]');
+      expect(q('.alius-scene-header')!.textContent).toContain('Mess hall');
+    } finally {
+      loc.background = file;
+    }
   });
 
   it('uses the background image when the location has one', () => {
-    const { q } = setup({ tweak: () => {} });
-    expect(q('.alius-scene-bg')!.style.backgroundImage).toBe('');
-    document.body.innerHTML = '';
-    const loc = reg.locations.get('mess_hall')!;
-    loc.background = 'assets/mess.png';
-    try {
-      const again = setup();
-      expect(again.q('.alius-scene-bg')!.style.backgroundImage).toContain('assets/mess.png');
-      expect(again.q('pre.alius-ascii')).toBeNull();
-    } finally {
-      delete loc.background;
-    }
+    const { q } = setup();
+    expect(q('.alius-scene-bg')!.style.backgroundImage).toContain('loc_mess_hall.webp');
+    expect(q('pre.alius-ascii')).toBeNull();
   });
 
   it('a group scene places three sprites left/center/right', () => {
