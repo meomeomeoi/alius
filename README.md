@@ -2,7 +2,7 @@
 
 Alius is a SillyTavern extension that turns a group chat into a squad-command RPG: relationships first, turn-based combat second, base management as background. You play a convicted officer given command of a penal squad of off-spec soldiers; the soldiers are your imported character cards.
 
-**Version 0.1.0.** Every package of release 0.1 is implemented (P0–P14b; the table in `docs/00-overview.md` §9). The packages of 0.2 and later (P14c, P15–P26) are specs only. The lore and many texts are still drafts: entries marked `AUTHOR TO WRITE:` are being written.
+**Version 0.1.0.** Every package of release 0.1 is implemented (P0–P14b; the table in `docs/00-overview.md` §9). The packages of 0.2 and later (P14c, P15–P26) are specs only. The lore and many texts are still drafts: entries marked `AUTHOR TO WRITE:` are being written. What each version brought: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Install
 
