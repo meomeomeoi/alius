@@ -16,7 +16,7 @@ import type { Subject } from '../subject';
 
 const WHERE_USED: Record<BodyStat, string> = {
   strength: 'Used by: an Authority talk-down (together with seasoning), body routes of physical checks.',
-  endurance: "Used by: Crisis HP (the commander's HP if a fight reaches them); with low endurance a three-slot expedition exhausts the commander.",
+  endurance: "Used by: Crisis HP (the commander's HP if a fight reaches the commander); with low endurance a three-slot expedition exhausts the commander.",
   reflexes: 'Used by: the chance to dodge a hit that reaches the commander in Commander Crisis.',
 };
 

@@ -18,7 +18,7 @@ Not every unit leaves the vat to spec. **Off-spec units** — soldiers with a ma
 
 **Author note (2026-11-19):** biopunk, not chrome. Enhancements are in the head and under the skin; to the eye and to the touch a soldier cannot be told from a human, though an ordinary human loses to her in a fight. Visible metal augmentations are the exception. The CCP base is long lived-in: the apocalypse is biological, not earthquakes and ruin, so rooms are about 80 % lived-in and personal and 20 % near-future military.
 
-The scrap leads the scrap. That is the joke every corporate clerk makes about the CCP. The player is the punchline.
+The scrap leads the scrap. That is the joke every corporate clerk makes about the CCP. The commander is the punchline.
 
 ## 2. The Leash (lorebook: `leash_protocol`, constant)
 

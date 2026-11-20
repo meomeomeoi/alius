@@ -646,7 +646,7 @@
     "id": "body_endurance",
     "term": "Endurance",
     "short": "How much punishment and how many hours the commander can take. Shown as a word, never a number.",
-    "long": "Endurance sets the commander's HP if a fight reaches them (Commander Crisis). With low endurance a long expedition exhausts the commander: the next morning is lost unless a close friend in the party covers. It grows by training.",
+    "long": "Endurance sets the commander's HP if a fight reaches the commander (Commander Crisis). With low endurance a long expedition exhausts the commander: the next morning is lost unless a close friend in the party covers. It grows by training.",
     "see": [
       "body_strength",
       "body_reflexes",
@@ -657,7 +657,7 @@
     "id": "body_reflexes",
     "term": "Reflexes",
     "short": "How quickly the commander gets out of the way. Shown as a word, never a number.",
-    "long": "Reflexes give the commander a chance to dodge a hit that reaches them in Commander Crisis. The better they are, the more often a blow misses. It grows by training.",
+    "long": "Reflexes give the commander a chance to dodge a hit aimed at the commander in Commander Crisis. The better they are, the more often a blow misses. It grows by training.",
     "see": [
       "body_strength",
       "body_endurance",
@@ -757,7 +757,7 @@
   {
     "id": "presence",
     "term": "Presence",
-    "short": "How the commander comes across to someone who has just met them: build, experience and the weight of Authority.",
+    "short": "How the commander comes across at a first meeting: build, experience and the weight of Authority.",
     "long": "Presence moves a soldier's Trust once, the day she joins, scaled by her tastes. It matters most on first meeting and fades as she gets to know the commander; what the commander does matters more and more. It is never shown as a number unless raw values are on.",
     "see": [
       "first_impression",
@@ -769,7 +769,7 @@
   {
     "id": "first_impression",
     "term": "First impression",
-    "short": "Looks count most the day a soldier meets the commander and fade with every day she knows them.",
+    "short": "Looks count most the day a soldier meets the commander and fade with every day she knows the commander.",
     "long": "A unit's first impression decays over days (the setting First impression fades). While it lasts, acts that do not fit the commander's build land harder, and the narration is told that the squad is still sizing the commander up.",
     "see": [
       "presence",
@@ -779,7 +779,7 @@
   {
     "id": "image_consistency",
     "term": "Image consistency",
-    "short": "A commander who acts against the picture the build gives makes a bigger impression, for better or worse, until the squad knows them.",
+    "short": "A commander who acts against the picture the build gives makes a bigger impression, for better or worse, until the squad knows the commander better.",
     "long": "A gentle commander who coerces, or a hard one who comforts, shocks. The effect is strongest at first and fades with the days a unit has known the commander. Some soldiers' tastes make it stronger. The engine tags the act, never the model.",
     "see": [
       "archetype",

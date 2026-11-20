@@ -32,7 +32,7 @@
   {
     "id": "protective_of_frail",
     "name": "Protective of the frail",
-    "description": "Warms to a commander who looks fragile and wants to look after them.",
+    "description": "Warms to a commander who looks fragile and wants to protect that commander.",
     "match": {
       "archetypes": [
         "frail",

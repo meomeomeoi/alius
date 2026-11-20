@@ -84,7 +84,7 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
   const hold = smotherActive(state);
   const holder = hold ? state.squad.find((u) => u.id === hold.unitId) : undefined;
   if (hold && holder && state.scene.participants.includes(holder.id)) {
-    builder.setDirective({ id: `smother:${holder.id}`, expiresAfter: 'scene', text: `${holder.displayName} has locked the hangar to keep the commander at base; she wants them close and safe.` });
+    builder.setDirective({ id: `smother:${holder.id}`, expiresAfter: 'scene', text: `${holder.displayName} has locked the hangar to keep the commander at base; she wants the commander close and safe.` });
   }
 
   // she wants the relationship more or less open than it is: she is present, so it can come up

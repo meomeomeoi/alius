@@ -13,7 +13,7 @@
   {
     "id": "desk_eat",
     "name": "Eat something",
-    "description": "AUTHOR TO WRITE: a note that nags the commander to look after themselves.",
+    "description": "AUTHOR TO WRITE: a note that nags the commander to eat and rest.",
     "where": "quarters",
     "text": "AUTHOR TO WRITE: You skipped the mess again. Eat something. I will check. — {name}",
     "chance": 0.3,

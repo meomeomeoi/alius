@@ -240,7 +240,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       case 'crit': return `R${l.round} ${name(l.actor)} CRITS ${name(l.target)} for ${l.amount ?? 0}`;
       case 'heal': return `R${l.round} ${name(l.target)} recovers ${l.amount ?? 0}`;
       case 'downed': return `R${l.round} ${name(l.target)} is down`;
-      case 'revived': return `R${l.round} ${name(l.target)} is back on their feet`;
+      case 'revived': return `R${l.round} ${name(l.target)} is back up`;
       case 'order': return `R${l.round} ORDER ${order}${l.target ? ` → ${name(l.target)}` : ''}`;
       case 'order_refused': return `R${l.round} ${name(l.target)} REFUSES ${order}`;
       case 'breakdown': return `R${l.round} ${name(l.target)} BREAKS DOWN`;

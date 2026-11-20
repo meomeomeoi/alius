@@ -387,3 +387,37 @@ describe('no pronoun for the commander in the P10b content', () => {
     expect(lines.filter((l) => /\b(he|him|his|himself)\b/i.test(l) || /commander[^.'`]*\btheir\b/i.test(l)).map((l) => l.trim().slice(0, 100))).toEqual([]);
   });
 });
+
+describe('no "them / their / they" for the commander (0.1 audit)', () => {
+  /** Strings where the plural after "commander" is the soldiers, not the commander. */
+  const SQUAD_PLURAL = new Set(['glossary.json:squad_secret.long', 'reputations.json:shield.description']);
+  const AFTER_COMMANDER = /\bcommander\b[^.;:!?]*\b(them|their|themselves|themself)\b/i;
+
+  it('every content string', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const hits: string[] = [];
+    const walk = (v: unknown, path: string, file: string): void => {
+      if (typeof v === 'string') { if (AFTER_COMMANDER.test(v) && !SQUAD_PLURAL.has(`${file}:${path}`)) hits.push(`${file}:${path}`); return; }
+      if (Array.isArray(v)) { v.forEach((x, i) => walk(x, `${path}[${i}]`, file)); return; }
+      if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, path ? `${path}.${k}` : k, file);
+    };
+    for (const f of readdirSync('content/core').filter((x) => x.endsWith('.json'))) {
+      const data = JSON.parse(readFileSync(`content/core/${f}`, 'utf8')) as unknown;
+      if (Array.isArray(data)) data.forEach((e) => walk(e, String((e as { id?: unknown }).id ?? '?'), f)); else walk(data, '', f);
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('relationship-state prompts (sent every scene) never say "they" or "their" for the commander', () => {
+    const hints = [...reg.relationshipStates.values()].map((s) => [String(s.id), String(s.promptHint ?? '')] as const);
+    const bad = hints.filter(([, t]) => /\b(if they|whatever they|they did|their time|tells them|watching them|works with them|fights them)\b/i.test(t)).map(([id]) => id);
+    expect(bad).toEqual([]);
+  });
+
+  it('the strings in src that the audit found', async () => {
+    const { readFile } = await import('node:fs/promises');
+    expect(await readFile('src/bonds/directives.ts', 'utf8')).not.toMatch(/wants them close/);
+    expect(await readFile('src/analysis/providers/commander.ts', 'utf8')).not.toMatch(/reaches them/);
+    expect(await readFile('src/ui/combat/combatScreen.ts', 'utf8')).not.toMatch(/on their feet/);
+  });
+});
