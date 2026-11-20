@@ -1382,6 +1382,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
   function afterLoad(): void {
     resetDoor(); // P10b: night entry ids repeat across campaigns, so a deadline or a draft never carries over
+    // a scene or next-reply directive belongs to one moment of one campaign (a page reload loses them too): the controllers and
+    // applyContext below re-derive what still holds; manual directives are their owners' to refresh
+    context.clearMatching((d) => d.expiresAfter !== 'manual');
     // a save from before P5 has no world yet: seed it, then everything else sees a complete state
     if (load.kind === 'ok' && state && state.world.seeded !== true) {
       api.dispatch({ type: 'world/seed', payload: {} }, { expectChatId: load.chatId });

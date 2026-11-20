@@ -243,6 +243,19 @@ describe('scenes in the app', () => {
     expect(t.st.members.filter((m) => m.active).map((m) => m.avatar)).toEqual(['rhea.png']);
   });
 
+  it('a (re)load drops every scene and next-reply directive of the previous chat; manual ones are their owners\' to keep', async () => {
+    const t = await boot();
+    await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
+    t.app.replaceState(t.state()); // flush to metadata
+    t.app.context.setDirective({ id: 'power:challenge', text: 'LEAKED CHALLENGE', expiresAfter: 'scene' });
+    t.app.context.setDirective({ id: 'power:countermand', text: 'LEAKED COUNTERMAND', expiresAfter: 'next_reply' });
+    t.app.context.setDirective({ id: `want:${RHEA}`, text: 'LEAKED WANT', expiresAfter: 'next_reply' });
+    t.st.switchChat(t.st.getActiveChat()!);
+    expect(t.state().scene).toBeDefined();
+    const text = t.app.context.build(t.state(), 100000).directives;
+    expect(text).not.toContain('LEAKED');
+  });
+
   it('switching to a chat without a scene leaves the scene screen', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
