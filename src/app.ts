@@ -1438,6 +1438,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell.closeModal?.(); // a modal of the previous chat must not act on this campaign
     dilemmaHost = null;
     dilemmaModalOpen = false;
+    overrideModalOpen = false; // its close settles later, as a microtask: the flag is reset here and the stale close ignored
+    overrideModalSeq++;
     // the review comes first: a modal that opens while it is up would cancel it (and the reverse), so the others wait for it
     void reviewCommanderFile().catch((e) => console.warn('[Alius] commander review failed', e));
     if (state?.dilemmas?.open) {
@@ -1905,16 +1907,19 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** Toasts for what happened while the day ran; errors are the caller's to report. */
   /** P13: the warden's override waits for an answer: a corporate-voice modal with the chip (one at a time; it comes back when an order is refused until it is answered). */
   let overrideModalOpen = false;
+  /** Which override modal is the current one: a closed modal of an earlier load must not clear the flag of a newer one. */
+  let overrideModalSeq = 0;
   function showOverrideModal(): void {
     if (overrideModalOpen || !state || !overrideOpen(state) || load.kind !== 'ok') return;
     overrideModalOpen = true;
+    const mine = ++overrideModalSeq;
     const host = h('div', { class: 'alius-override-modal' });
     renderOverrideChip(host, state, registries, (answer) => {
       shell.closeModal?.();
       void warden.answer(answer);
     });
     shell.open();
-    void shell.modal({ title: 'WARDEN OVERRIDE', body: host, actions: [] }).then(() => { overrideModalOpen = false; });
+    void shell.modal({ title: 'WARDEN OVERRIDE', body: host, actions: [] }).then(() => { if (overrideModalSeq === mine) overrideModalOpen = false; });
   }
 
   function reportEvents(events: EngineEvent[]): void {
