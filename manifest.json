@@ -6,7 +6,7 @@
   "js": "dist/index.js",
   "css": "style.css",
   "author": "meomeomeoi",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "homePage": "https://github.com/meomeomeoi/alius",
   "auto_update": false
 }

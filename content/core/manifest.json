@@ -1,7 +1,7 @@
 {
   "id": "core",
   "name": "Alius Core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "priority": 0,
   "lorebook": "lorebook.json",
   "files": {
