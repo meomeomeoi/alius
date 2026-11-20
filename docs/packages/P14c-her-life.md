@@ -62,14 +62,14 @@ Registry `hobbies` (draft list: `docs/content/life.md` §3): `{ id, activityIds 
 
 ### 4.1 The library
 
-Registry `opinionTopics` (draft: about 60 topics in five groups, `docs/content/life.md` §1): `{ id, group: 'lore' | 'service' | 'everyday' | 'people' | 'abstract', positions: string[] (2–4 ids), axis?: { id, sign } (a values axis that suggests a position), triggers: { locations?, activities?, events?, keywords? }, description }`.
+Registry `opinionTopics` (draft: 65 topics and 302 positions in five groups, with wording, `docs/content/life.md` §1): `{ id, group: 'lore' | 'service' | 'everyday' | 'people' | 'abstract', positions: [{ id, description, lines: string[] }] (3–5, **ordered**: neighbours are the steps of §4.4), axis?: { id, sign } (a values axis that suggests the first or the last position), triggers: { locations?, activities?, events?, keywords? }, description }`. A position's `description` is the neutral hint the model receives and the analyze line; its `lines` are her fallback words.
 
 ### 4.2 Her opinions
 
 `Unit.opinions: { [topicId]: { position, strength: 'strong' | 'held' | 'loose', text?, formedDay, voicedDay?, history?: [{ day, from, to }] } }`.
 
 - **Strong opinions** (8–12) come from `profile_import` (budget +200): topic id, position, a one-line text in her words. Validated against the registry (unknown topic or position dropped).
-- **Lazy forming:** the first time a topic's trigger fires near her and she has no opinion on it, a small call (site `opinion.form`, budget 150) forms one consistent with her card, her values axes and her strong opinions; the engine validates the topic and the position, stores the text (≤ 200 characters, her words) and the opinion is fixed from then on. Without a model or on failure: the position the values axis suggests (`axis`), else the topic's first position, no text. The library grows per woman; nothing is generated ahead.
+- **Lazy forming:** the first time a topic's trigger fires near her and she has no opinion on it, a small call (site `opinion.form`, budget 150) forms one consistent with her card, her values axes and her strong opinions; the engine validates the topic and the position, stores the text (≤ 200 characters, her words) and the opinion is fixed from then on. Without a model or on failure: the position the values axis suggests (`axis`), else the middle position, and one of the position's `lines` (picked by hash) as her text. The library grows per woman; nothing is generated ahead.
 - The model never writes a position into state outside these two validated paths (P1).
 
 ### 4.3 Voicing
