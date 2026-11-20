@@ -39,3 +39,10 @@ SillyTavern extension (TypeScript). Design docs live in `docs/`.
 - Before extending P7 read its **Non-obvious things to know** (same spec): registry-free readers need mirrored state, new relation join sites must call `applyFirstImpression`, quiet nights, modal order, `aria-disabled`, seeded-RNG shifts.
 - When you finish a package, update its spec (status line and an **Implemented as** section), the status table in `docs/00-overview.md` §9, the interface list in §5.4, and add an **Interfaces already provided by <package>** note to the specs of the packages that depend on it.
 - `npm test` rebuilds `dist/index.js` and `style.css`; commit them with your change.
+
+## Releasing a version
+A *version* (0.1.0, 0.2.0, …) is a whole release, not a package. When the user says a version is ready (and only then):
+1. Bump the version in `package.json`, the root of `package-lock.json`, `manifest.json` and `content/core/manifest.json`.
+2. Add its section on top of `CHANGELOG.md` (`## X.Y.Z — YYYY-MM-DD`), written for players who do not know the code, in the same style as 0.1.0: grouped by area, every main change, known limitations last. Update `README.md` / `docs/README.md` if they name the version.
+3. Run `npm test` and `npm run typecheck`, commit, push the branch.
+4. Tag the release commit with an annotated tag `vX.Y.Z` (`git tag -a vX.Y.Z <commit> -m "Alius X.Y.Z — see CHANGELOG.md"`) and push it (`git push origin vX.Y.Z`). Cloud sessions may be refused a tag push (HTTP 403: they push only their branch); then do not work around it, give the user the exact commands to create and push the tag themselves.
