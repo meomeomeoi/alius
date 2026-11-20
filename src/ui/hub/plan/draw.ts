@@ -16,7 +16,19 @@ const GATE: [number, number] = [432, 502];
 
 // ---------------------------------------------------------------------------------------------- the compound
 
+let siteGroup: { doc: Document; g: SVGElement } | null = null;
+
+/** The compound does not depend on anything: drawn once per document, then cloned. */
 export function drawSite(pen: Pen): void {
+  if (!siteGroup || siteGroup.doc !== document) {
+    const fresh = Pen.group('p-site');
+    paintSite(fresh);
+    siteGroup = { doc: document, g: fresh.g };
+  }
+  pen.g.append(siteGroup.g.cloneNode(true));
+}
+
+function paintSite(pen: Pen): void {
   pen.rect(0, 0, PLAN_W, PLAN_H, 'p-outside');
   const rnd = scatter(11);
   const specks = pen.child('p-specks');
@@ -110,8 +122,10 @@ function hatch(pen: Pen, r: PlanRect, step = 12): void {
   }
 }
 
+export interface EmergencyLight { glow: string; dot: [number, number] }
+
 /** Emergency lights on stretches of solid wall, clear of doorways and of junctions; the glow is a half-disc inward. */
-function emergencyLights(pen: Pen, corridors: PlanRect[], segs: Segment[], doors: PlanDoor[]): void {
+export function emergencyLights(corridors: PlanRect[], segs: Segment[], doors: PlanDoor[]): EmergencyLight[] {
   const wallOk = (horizontal: boolean, at: number, pos: number): boolean => {
     const onWall = segs.some(([x1, y1, x2, y2]) => horizontal
       ? y1 === y2 && y1 === at && Math.min(x1, x2) <= pos - 9 && pos + 9 <= Math.max(x1, x2)
@@ -121,7 +135,7 @@ function emergencyLights(pen: Pen, corridors: PlanRect[], segs: Segment[], doors
       ? (d.side === 'n' || d.side === 's') && Math.abs(d.y - at) < 1 && d.x - 10 < pos && pos < d.x + d.size + 10
       : (d.side === 'e' || d.side === 'w') && Math.abs(d.x - at) < 1 && d.y - 10 < pos && pos < d.y + d.size + 10);
   };
-  const lights = pen.child('p-elights');
+  const out: EmergencyLight[] = [];
   for (const c of corridors) {
     const horizontal = c.w > c.h;
     const n = Math.max(1, Math.floor(Math.max(c.w, c.h) / 70));
@@ -138,15 +152,30 @@ function emergencyLights(pen: Pen, corridors: PlanRect[], segs: Segment[], doors
       }
       if (!placed) continue;
       const [pos, at, inward] = placed;
-      if (horizontal) {
-        lights.path(`M ${pos - 7} ${at + 1.2 * inward} A 7 7 0 0 ${inward > 0 ? 0 : 1} ${pos + 7} ${at + 1.2 * inward} Z`, 'p-elight-glow');
-        lights.circle(pos, at + 2 * inward, 1.4, 'p-elight');
-      } else {
-        lights.path(`M ${at + 1.2 * inward} ${pos - 7} A 7 7 0 0 ${inward > 0 ? 1 : 0} ${at + 1.2 * inward} ${pos + 7} Z`, 'p-elight-glow');
-        lights.circle(at + 2 * inward, pos, 1.4, 'p-elight');
-      }
+      out.push(horizontal
+        ? { glow: `M ${pos - 7} ${at + 1.2 * inward} A 7 7 0 0 ${inward > 0 ? 0 : 1} ${pos + 7} ${at + 1.2 * inward} Z`, dot: [pos, at + 2 * inward] }
+        : { glow: `M ${at + 1.2 * inward} ${pos - 7} A 7 7 0 0 ${inward > 0 ? 1 : 0} ${at + 1.2 * inward} ${pos + 7} Z`, dot: [at + 2 * inward, pos] });
     }
   }
+  return out;
+}
+
+/** What a floor's walls and lights are: it depends on the registry only, so it is worked out once per registry. */
+interface FloorGeometry { segs: Segment[]; lights: EmergencyLight[] }
+const floorGeometry = new WeakMap<Registries, Map<PlanFloor, FloorGeometry>>();
+
+export function geometryOf(reg: Registries, floor: PlanFloor): FloorGeometry {
+  let byFloor = floorGeometry.get(reg);
+  if (!byFloor) floorGeometry.set(reg, (byFloor = new Map()));
+  const known = byFloor.get(floor);
+  if (known) return known;
+  const rooms = planRoomsOn(reg, floor);
+  const opens = rooms.filter(isOpenSpace);
+  const segs = outline(opens.map(rectOf));
+  const lights = emergencyLights(opens.filter((o) => o.kind === 'corridor').map(rectOf), segs, rooms.flatMap(doorsOf));
+  const geo = { segs, lights };
+  byFloor.set(floor, geo);
+  return geo;
 }
 
 /** One floor: open spaces and their walls, rooms (open, lit or closed) with their furniture, doors, emergency lights. */
@@ -157,7 +186,7 @@ export function drawFloor(pen: Pen, reg: Registries, floor: PlanFloor, look: Flo
     const r = rectOf(e);
     pen.rect(r.x, r.y, r.w, r.h, 'p-corridor');
   }
-  const segs = outline(opens.map(rectOf));
+  const { segs, lights } = geometryOf(reg, floor);
   for (const [x1, y1, x2, y2] of segs) pen.line(x1, y1, x2, y2, 'p-wall');
   for (const e of opens.filter((o) => o.kind === 'corridor')) {
     const { x, y, w, h } = rectOf(e);
@@ -183,9 +212,12 @@ export function drawFloor(pen: Pen, reg: Registries, floor: PlanFloor, look: Flo
     if (closed || variant === 'vacant') hatch(pen, r);
     furnish(pen, e.cabin === 'commander' ? 'commander' : String(e.kind), r, variant);
   }
-  const doors = rooms.flatMap(doorsOf);
-  for (const d of doors) door(pen, d);
-  emergencyLights(pen, opens.filter((o) => o.kind === 'corridor').map(rectOf), segs, doors);
+  for (const d of rooms.flatMap(doorsOf)) door(pen, d);
+  const lightPen = pen.child('p-elights');
+  for (const l of lights) {
+    lightPen.path(l.glow, 'p-elight-glow');
+    lightPen.circle(l.dot[0], l.dot[1], 1.4, 'p-elight');
+  }
 }
 
 // ---------------------------------------------------------------------------------------------- the roofs
@@ -197,7 +229,20 @@ const inRoof = (cover: Cover, x: number, y: number): boolean => cover.has(Math.f
  * ground-floor rooms it does not cover (`gym` and `garage` corrugated). The decor (a canopy over the hatch, the rail,
  * the smoking spot, the antenna over the room with a `line`, HVAC, panels) is drawn where it lands on a roof.
  */
+const roofGroups = new WeakMap<Registries, SVGElement>();
+
+/** The roofs depend on the registry only: drawn once per registry, then cloned. */
 export function drawRoofs(pen: Pen, reg: Registries): void {
+  let g = roofGroups.get(reg);
+  if (!g) {
+    const fresh = Pen.group('p-roofs');
+    paintRoofs(fresh, reg);
+    roofGroups.set(reg, (g = fresh.g));
+  }
+  pen.g.append(g.cloneNode(true));
+}
+
+function paintRoofs(pen: Pen, reg: Registries): void {
   const upper = planRoomsOn(reg, 'upper').map(rectOf);
   const high = new Cover(upper);
   for (const e of planRoomsOn(reg, 'ground')) {

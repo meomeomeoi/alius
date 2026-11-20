@@ -86,14 +86,20 @@ function roomLayer(ctx: PlanStageCtx, e: Entry, marks: PlanMark[]): HTMLElement 
     const up = PLAN_FLOORS.indexOf(to) > PLAN_FLOORS.indexOf(e.floor as PlanFloor);
     return h('div', { class: 'alius-plan-stair', 'data-plan': String(e.id), style: pct(r), ...markAttr },
       h('button', {
-        type: 'button', class: 'alius-chip alius-plan-stair-btn', 'data-stair-to': to,
+        type: 'button', class: 'alius-chip alius-plan-stair-btn', 'data-stair-to': to, 'data-key': `plan:${String(e.id)}`,
         'aria-label': `${up ? 'Up' : 'Down'} to the ${FLOOR_NAME[to].toLowerCase()}`,
         ...analyzeNative('glossary:base_floor'),
         onclick: (ev: Event) => { ev.stopPropagation(); ctx.onFloor(to); },
-      }, `${up ? '↑' : '↓'} ${FLOOR_LABEL[to]}`));
+      }, `${up ? '↑' : '↓'} ${FLOOR_LABEL[to]}`),
+      markChips(marks));
   }
-  if (e.kind === 'corridor') return null;
-  if (isOpenSpace(e) || isClosed(reg, e)) {
+  // a place with a hub room is a room whatever its kind (a corridor or a lobby given one comes alive with its people)
+  const hubbed = typeof e.hubRoomId === 'string' && reg.hubRooms.has(e.hubRoomId);
+  if (e.kind === 'corridor' && !hubbed) {
+    // nothing to read on a corridor; a mark on it still shows
+    return marks.length > 0 ? h('div', { class: 'alius-plan-markzone', 'data-plan': String(e.id), style: pct(r), ...markAttr }, markChips(marks)) : null;
+  }
+  if (!hubbed) {
     // a place to read but not to enter: the lobby, and what the game does not have yet
     const closed = isClosed(reg, e);
     const small = r.w < 60 || r.h < 40;
@@ -124,7 +130,7 @@ function roomLayer(ctx: PlanStageCtx, e: Entry, marks: PlanMark[]): HTMLElement 
     h(
       'div', { class: 'alius-room-head' },
       h('button', {
-        type: 'button', class: 'alius-room-label alius-chip', 'data-short': String(e.shortLabel ?? ''),
+        type: 'button', class: 'alius-room-label alius-chip', 'data-short': String(e.shortLabel ?? ''), 'data-key': `plan:${String(e.id)}`,
         'aria-label': inside.length > 0 ? `${ariaName}, ${inside.length} here` : ariaName, ...analyze,
       }, label),
       inside.length > 0 ? h('span', { class: 'alius-room-count', 'aria-hidden': 'true' }, String(inside.length)) : null,
@@ -156,7 +162,7 @@ export function renderPlanStage(ctx: PlanStageCtx): { stage: HTMLElement; floorB
     ...PLAN_FLOORS.map((f) => {
       const n = counts.get(f) ?? 0;
       const b = h('button', {
-        type: 'button', class: 'alius-btn alius-plan-floor-btn', 'data-floor': f,
+        type: 'button', class: 'alius-btn alius-plan-floor-btn', 'data-floor': f, 'data-key': `floor:${f}`,
         'aria-label': `${FLOOR_NAME[f].toLowerCase()}${n > 0 ? `, ${n} here` : ''}`,
         ...analyzeNative('glossary:base_floor'),
         onclick: () => ctx.onFloor(f),

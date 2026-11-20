@@ -872,8 +872,8 @@
     ]
   },
   {
-    "id": "u_linen",
-    "label": "LINEN",
+    "id": "u_cabin_10",
+    "label": "CABIN",
     "floor": "upper",
     "rect": {
       "x": 376,
@@ -881,10 +881,14 @@
       "w": 54,
       "h": 80
     },
-    "kind": "storage",
-    "description": "Sheets, blankets and spare pillows on narrow shelves. Not open yet.",
+    "kind": "cabin",
+    "cabin": "unit",
+    "hubRoomId": "quarters",
+    "sceneLocationId": "quarters_unit",
+    "description": "A soldier's cabin: a bunk, a locker, a desk and whatever she has made of it.",
     "affordances": [
-      "cupboard"
+      "bunk",
+      "desk"
     ],
     "doors": [
       {

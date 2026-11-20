@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { registerCoreProviders } from '../../src/analysis/providers/core';
 import type { Registries } from '../../src/content/types';
@@ -19,6 +20,22 @@ afterEach(() => {
   resetPlanMarks();
   document.body.innerHTML = '';
 });
+
+function mountWith(state: CampaignState, registries: Registries) {
+  const ctx: HubCtx = {
+    getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries,
+    settings: () => ({ ...DEFAULT_SETTINGS }),
+    ops: { getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries, onDo: vi.fn(), onRequisition: vi.fn() },
+    onTalk: vi.fn(), onEndSlot: vi.fn(), onOpenPda: vi.fn(), avatar: () => null,
+  };
+  const root = h('div', { id: 'alius-shell' });
+  const host = h('div', { class: 'alius-hub-host' });
+  const device = h('div', { class: 'alius-device' });
+  root.append(host, device);
+  document.body.append(root);
+  renderHub(host, device, ctx);
+  return { host };
+}
 
 function mount(state: CampaignState, opts: { reduced?: boolean } = {}) {
   const onTalk = vi.fn();
@@ -166,5 +183,76 @@ describe('the plan stage (P10d)', () => {
     expect(markedWithout(m.host)).toEqual([]);
     expect(unresolved(m.host, { registries: reg, state: s, settings: { ...DEFAULT_SETTINGS } })).toEqual([]);
     expect(unreachable(m.host)).toEqual([]);
+  });
+
+  it('review fix: a corridor given a hub room is a room: its people are drawn there', () => {
+    const planRooms = new Map(reg.planRooms);
+    planRooms.set('g_corridor_2', { ...reg.planRooms.get('g_corridor_2')!, hubRoomId: 'garage' });
+    planRooms.set('g_garage', { ...reg.planRooms.get('g_garage')!, hubRoomId: undefined });
+    const local = { ...reg, planRooms } as Registries;
+    const s = campaign(reg, 4);
+    const ctx = { reg: local };
+    const m = mountWith(s, ctx.reg);
+    const room = m.host.querySelector<HTMLElement>('.alius-room[data-plan="g_corridor_2"]')!;
+    expect(room).not.toBeNull();
+    expect(room.dataset.room).toBe('garage');
+  });
+
+  it('review fix: a mark without a label still shows (an outline by CSS), on a corridor too, and on stairs with its chip', () => {
+    registerPlanMarks(() => [
+      { planRoomId: 'g_gym', kind: 'locked' },
+      { planRoomId: 'g_corridor_2', kind: 'route', label: 'PATH' },
+      { planRoomId: 'g_stairs', kind: 'watched', label: 'WATCHED' },
+    ]);
+    const m = mount(campaign(reg, 4));
+    expect(m.q('[data-plan="g_gym"]')!.dataset.marks).toBe('locked');
+    expect(m.q('[data-plan="g_corridor_2"]')!.dataset.marks).toBe('route');
+    expect(m.q('[data-plan="g_corridor_2"] .alius-plan-mark')!.textContent).toBe('PATH');
+    expect(m.q('[data-plan="g_stairs"] .alius-plan-mark')!.textContent).toBe('WATCHED');
+    const css = readFileSync('css/15-hub.css', 'utf8');
+    expect(css).toMatch(/\[data-marks\][^{]*\{[^}]*outline/);
+  });
+
+  it('review fix: PageUp / PageDown are left alone in a field, a contenteditable, a dialog, the analysis panel, a modal and with the device up', () => {
+    const m = mount(campaign(reg, 4));
+    const press = (target: EventTarget) => {
+      const e = new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true, cancelable: true });
+      target.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    const shell = document.getElementById('alius-shell')!;
+    const field = h('input', { type: 'text' });
+    const editable = h('div', { contenteditable: 'true' });
+    const dialog = h('div', { role: 'dialog' }, h('button', {}, 'x'));
+    const analyze = h('div', { class: 'alius-analyze' }, h('button', {}, 'y'));
+    shell.append(field, editable, dialog, analyze);
+    Object.defineProperty(editable, 'isContentEditable', { value: true });
+    for (const t of [field, editable, dialog.querySelector('button')!, analyze.querySelector('button')!]) {
+      expect(press(t)).toBe(false);
+      expect(stage(m.host).dataset.floor).toBe('ground');
+    }
+    const modal = h('div', { class: 'alius-modal-backdrop' });
+    shell.append(modal);
+    expect(press(document.body)).toBe(false);
+    modal.remove();
+    m.device.dataset.up = 'true';
+    expect(press(document.body)).toBe(false);
+    m.device.dataset.up = 'false';
+    expect(press(document.body)).toBe(true);
+    expect(stage(m.host).dataset.floor).toBe('upper');
+  });
+
+  it('review fix: a cabin\'s panel describes the cabin, not the quarters; the commander\'s cabin panel analyzes as its plan entry', () => {
+    const s = campaign(reg, 4);
+    const m = mount(s);
+    const c = cabinOf(s, reg, s.squad[0].id)!;
+    m.q(`.alius-room[data-plan="${String(c.id)}"]`)!.click();
+    const panel = m.q('.alius-room-panel')!;
+    expect(panel.textContent).toContain(String(c.description));
+    expect(panel.textContent).not.toContain(String(reg.hubRooms.get('quarters')!.description));
+    m.q('.alius-room[data-cabin="commander"]')!.click();
+    const cmdr = m.q('.alius-room-panel')!;
+    expect(cmdr.querySelector('h2 .alius-chip')!.getAttribute('data-analyze')).toBe('planRooms:u_cmdr');
+    expect(cmdr.textContent).toContain(String(reg.planRooms.get('u_cmdr')!.description));
   });
 });

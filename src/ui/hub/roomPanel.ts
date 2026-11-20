@@ -42,6 +42,8 @@ export interface RoomPanelView {
   sceneLocationId?: string;
   cabin?: 'unit' | 'commander';
   title?: string;
+  /** The plan room's own description (a cabin is not the whole quarters). */
+  description?: string;
 }
 
 /**
@@ -98,10 +100,10 @@ export function renderRoomPanel(
     { class: 'alius-room-panel', 'data-room': String(room.id), ...(view ? { 'data-plan': view.planRoomId } : {}), role: 'region', 'aria-label': `${title} room` },
     h(
       'div', { class: 'alius-room-panel-head' },
-      h('h2', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(view?.cabin === 'unit' ? 'glossary:cabin' : `hubRooms:${String(room.id)}`) }, title)),
+      h('h2', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(view?.cabin === 'unit' ? 'glossary:cabin' : view?.cabin === 'commander' ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room.id)}`) }, title)),
       h('button', { type: 'button', class: 'alius-btn', 'data-close-room': '', 'aria-label': `Close ${title}`, onclick: opts.onClose }, '[X]'),
     ),
-    h('p', { class: 'alius-dim' }, String(room.description)),
+    h('p', { class: 'alius-dim' }, view?.description ?? String(room.description)),
     h('h3', {}, 'HERE'),
     people.length > 0 ? h('ul', { class: 'alius-room-people' }, ...rows) : h('p', { class: 'alius-dim' }, 'Nobody is here.'),
     ...(noteCards.length > 0 ? [h('h3', {}, 'NOTES'), ...noteCards] : []),

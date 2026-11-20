@@ -96,6 +96,12 @@ describe('planRooms loader checks', () => {
     expect(await loadPlan([...plan, { ...room, id: 'x4', hubRoomId: undefined, kind: 'corridor', floor: 'roof', rect: { x: 0, y: 0, w: 40, h: 20 } }, { ...room, id: 'x5', hubRoomId: undefined, kind: 'corridor', floor: 'roof', rect: { x: 20, y: 0, w: 40, h: 20 } }])).toBe('');
   });
 
+  it('review fix: fewer unit cabins than the largest roster is an error; the commander cabin must belong to the commander cell', async () => {
+    const plan = await core('planRooms.json') as Array<Record<string, unknown>>;
+    expect(await loadPlan(plan.filter((p) => p.id !== 'u_cabin_10'))).toMatch(/9 unit cabins for a roster of up to 10/);
+    expect(await loadPlan(plan.map((p) => (p.cabin === 'commander' ? { ...p, hubRoomId: 'comms' } : p)))).toMatch(/must belong to the commander cell/);
+  });
+
   it('a commander cell needs a commander cabin', async () => {
     const plan = (await core('planRooms.json') as Array<Record<string, unknown>>).filter((p) => p.cabin !== 'commander');
     expect(await loadPlan(plan)).toMatch(/commander/);

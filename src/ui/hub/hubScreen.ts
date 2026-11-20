@@ -17,6 +17,7 @@ import {
   currentObjective, endSlotBlock, latestOversight, TONE_GLYPH, TONE_LABEL, tonightItems, type MarkerTone,
 } from './model';
 import { renderRoomPanel } from './roomPanel';
+import { isEditable, isInsideOverlay } from '../shell/keys';
 import { peopleIn, renderPlanStage } from './plan/planView';
 import { cabinOwner } from '../../engine/basePlan';
 import { PLAN_FLOORS, type PlanFloor } from '../../content/schemas';
@@ -206,7 +207,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
 }
 
 /**
- * The home screen: the outpost cross-section with its rooms and the soldiers in them, and a column with the standing
+ * The home screen: the plan of the outpost with its rooms and the soldiers in them (P10d), and a column with the standing
  * order, what is waiting tonight and the two buttons that matter (open the PDA, end the slot). The device element is
  * the shell's: it is only handed over for reference.
  */
@@ -249,6 +250,7 @@ export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): 
         sceneLocationId: typeof plan.sceneLocationId === 'string' ? plan.sceneLocationId : undefined,
         cabin: plan.cabin as 'unit' | 'commander' | undefined,
         title: plan.cabin === 'unit' ? cabinTitle(state, ctx.registries, String(plan.id)) : String(plan.label),
+        description: plan.cabin !== undefined ? String(plan.description) : undefined,
       },
     });
     panel.style.setProperty('--panel-x', `${r.x / 10}%`);
@@ -281,10 +283,10 @@ export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): 
   const onKey = (ev: Event): void => {
     const e = ev as KeyboardEvent;
     if (!host.isConnected) return teardown.get(host)?.();
-    // P10d: PageUp / PageDown change the floor (not while typing, not from the raised device, not with a modifier)
+    // P10d: PageUp / PageDown change the floor; never while typing, in a dialog, the analysis panel or a modal, with the
+    // device up or with a modifier (the shell's own rules for its keys)
     if ((e.key === 'PageUp' || e.key === 'PageDown') && device.dataset.up !== 'true' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const el = e.target as HTMLElement | null;
-      if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+      if (isEditable(e.target) || isInsideOverlay(e.target) || document.querySelector('.alius-modal-backdrop')) return;
       const i = PLAN_FLOORS.indexOf(shownFloor.get(host) ?? 'ground');
       const next = PLAN_FLOORS[Math.max(0, Math.min(PLAN_FLOORS.length - 1, i + (e.key === 'PageUp' ? 1 : -1)))];
       e.preventDefault();

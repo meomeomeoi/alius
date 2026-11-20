@@ -342,7 +342,7 @@
 }
 
 /*
- * The hub: the outpost cross-section (the blueprint is the fallback when there is no art) and a right column. Colours
+ * The hub: the plan of the outpost (P10d, drawn from data) and a right column. Colours
  * come from the palette variables only, never from the reference canvas. Rooms are placed in percent of the stage.
  */
 #alius-shell .alius-hub {
@@ -390,7 +390,7 @@
   #alius-shell .alius-hub-body { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* cross-section */
+/* the hub stage (P10d: the plan) */
 #alius-shell .alius-hub-main {
   container-type: inline-size;
   container-name: hub;
@@ -526,7 +526,7 @@
   left: clamp(0px, var(--panel-x, 0%), calc(100% - min(420px, 92%)));
   top: var(--panel-y, 10%);
   width: min(420px, 92%);
-  max-height: calc(100% - var(--panel-y, 10%)); /* scrolls inside the cross-section instead of running past it */
+  max-height: calc(100% - var(--panel-y, 10%)); /* scrolls inside the plan's frame instead of running past it */
   overflow: auto;
   pointer-events: auto;
   background: var(--alius-bg);
@@ -623,7 +623,7 @@
   padding: 6px 10px;
 }
 
-/* a narrow cross-section: the label keeps a readable size and the rooms their touch height */
+/* a narrow hub: the label keeps a readable size and the rooms their touch height */
 @container hub (max-width: 480px) {
   #alius-shell .alius-room-label {
     font-size: 0.65em;
@@ -631,7 +631,7 @@
     min-height: 1.8em;
   }
   #alius-shell .alius-hub-stage { min-height: 420px; }
-  /* the room panel fills the cross-section so its buttons are reachable without scrolling past the description */
+  /* the room panel fills the plan's frame so its buttons are reachable without scrolling past the description */
   #alius-shell .alius-room-panel {
     left: 0;
     top: 0;
@@ -826,6 +826,10 @@
   cursor: pointer;
 }
 #alius-shell .alius-plan-marks { display: flex; flex-wrap: wrap; gap: 2px; order: 3; }
+/* a mark of any kind outlines its place; later packages style their kinds by [data-marks~="kind"] */
+#alius-shell .alius-hub-plan [data-marks] { outline: 1px dashed var(--alius-accent); outline-offset: -3px; }
+#alius-shell .alius-plan-markzone { position: absolute; display: flex; align-items: flex-start; padding: 2px; pointer-events: none; }
+#alius-shell .alius-plan-markzone .alius-plan-mark { pointer-events: auto; }
 #alius-shell .alius-plan-mark { font-size: 0.55em; }
 #alius-shell .alius-plan-floors {
   position: absolute;
@@ -2191,11 +2195,10 @@
   overflow: hidden;
 }
 
+/* the ASCII art of a place without a picture (P10c: the picture itself is .alius-scene-backdrop) */
 #alius-shell .alius-scene-bg {
   position: absolute;
   inset: 0;
-  background-size: cover;
-  background-position: center;
   opacity: 0.55;
 }
 
@@ -2648,6 +2651,11 @@
 
 #alius-shell.alius-reduced-motion .alius-scene-backdrop {
   transition: none;
+}
+
+/* the rows below the stage sit at z-index 1 over a picture: a cut-in must stay above them */
+#alius-shell .alius-scene[data-backdrop="image"] > .alius-cutin {
+  z-index: 2;
 }
 
 /* World parameters and disposition controls (P8). Palette variables only. */

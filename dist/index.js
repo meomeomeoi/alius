@@ -6927,10 +6927,11 @@ var RESERVED_EVENT_TYPES = [
   "door_said",
   "door_replied",
   "hand_set",
-  "quarters_set",
   "note_left",
   "note_read",
   "notes_expired",
+  // P10c
+  "quarters_set",
   // P13
   "leashswap_started",
   "warden_assigned",
@@ -32191,8 +32192,9 @@ function quartersOf(state, reg, unitId) {
   const chosen = unit2.quarters === void 0 ? void 0 : reg.quartersStyles.get(unit2.quarters);
   if (chosen) return chosen;
   const all = [...reg.quartersStyles.values()];
-  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+  return all.length === 0 ? null : all[roomHash(unitId) % all.length];
 }
+var roomHash = (unitId) => fnv1a(`${unitId}|quarters`) >>> 8;
 function slotLight(slot2) {
   return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
 }
@@ -38437,10 +38439,10 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : `hubRooms:${String(room2.id)}`) }, title)),
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : view?.cabin === "commander" ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title)),
       h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title}`, onclick: opts.onClose }, "[X]")
     ),
-    h("p", { class: "alius-dim" }, String(room2.description)),
+    h("p", { class: "alius-dim" }, view?.description ?? String(room2.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
     ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
@@ -38463,6 +38465,26 @@ function quartersNotes(state, reg, ctx2) {
   return cards;
 }
 
+// src/ui/shell/keys.ts
+function isEditable2(t) {
+  const el = t;
+  if (!el || typeof el.tagName !== "string") return false;
+  return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true;
+}
+var CONTROL_TAGS = ["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "SUMMARY"];
+var CONTROL_ROLES = ["button", "link", "tab", "menuitem", "checkbox", "radio", "switch", "option"];
+function isInsideOverlay(t) {
+  const el = t;
+  return !!el && typeof el.closest === "function" && el.closest('.alius-device, [role="dialog"], .alius-analyze') !== null;
+}
+function isControl(t) {
+  const el = t;
+  if (!el || typeof el.tagName !== "string") return false;
+  if (CONTROL_TAGS.includes(el.tagName) || el.isContentEditable === true) return true;
+  const role = el.getAttribute?.("role");
+  return role !== null && role !== void 0 && CONTROL_ROLES.includes(role);
+}
+
 // src/engine/basePlan.ts
 var rectOf = (e) => e.rect;
 var doorsOf = (e) => e.doors ?? [];
@@ -38483,7 +38505,7 @@ function cabinMap(state, reg) {
   const out = /* @__PURE__ */ new Map();
   if (cabins.length === 0) return out;
   const taken = /* @__PURE__ */ new Set();
-  state.squad.forEach((u, k) => {
+  state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
     if (!isLiving(u)) return;
     const start = k % cabins.length;
     let pick2 = cabins[start];
@@ -38497,6 +38519,13 @@ function cabinMap(state, reg) {
     taken.add(String(pick2.id));
     out.set(u.id, pick2);
   });
+  for (const u of state.squad) {
+    if (u.kind === "named" || !isLiving(u)) continue;
+    const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
+    const pick2 = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick2.id));
+    out.set(u.id, pick2);
+  }
   return out;
 }
 function cabinOf(state, reg, unitId) {
@@ -38832,7 +38861,16 @@ function scatter(seed) {
 // src/ui/hub/plan/draw.ts
 var FENCE = { x: 14, y: 14, w: 972, h: 597 };
 var GATE = [432, 502];
+var siteGroup = null;
 function drawSite(pen) {
+  if (!siteGroup || siteGroup.doc !== document) {
+    const fresh = Pen.group("p-site");
+    paintSite(fresh);
+    siteGroup = { doc: document, g: fresh.g };
+  }
+  pen.g.append(siteGroup.g.cloneNode(true));
+}
+function paintSite(pen) {
   pen.rect(0, 0, PLAN_W, PLAN_H, "p-outside");
   const rnd = scatter(11);
   const specks = pen.child("p-specks");
@@ -38912,13 +38950,13 @@ function hatch(pen, r, step = 12) {
     pen.line(x + a, y + (a - t), x + b, y + (b - t), "p-hatch");
   }
 }
-function emergencyLights(pen, corridors, segs, doors) {
+function emergencyLights(corridors, segs, doors) {
   const wallOk = (horizontal, at, pos) => {
     const onWall = segs.some(([x1, y1, x2, y2]) => horizontal ? y1 === y2 && y1 === at && Math.min(x1, x2) <= pos - 9 && pos + 9 <= Math.max(x1, x2) : x1 === x2 && x1 === at && Math.min(y1, y2) <= pos - 9 && pos + 9 <= Math.max(y1, y2));
     if (!onWall) return false;
     return !doors.some((d) => horizontal ? (d.side === "n" || d.side === "s") && Math.abs(d.y - at) < 1 && d.x - 10 < pos && pos < d.x + d.size + 10 : (d.side === "e" || d.side === "w") && Math.abs(d.x - at) < 1 && d.y - 10 < pos && pos < d.y + d.size + 10);
   };
-  const lights = pen.child("p-elights");
+  const out = [];
   for (const c of corridors) {
     const horizontal = c.w > c.h;
     const n = Math.max(1, Math.floor(Math.max(c.w, c.h) / 70));
@@ -38935,15 +38973,24 @@ function emergencyLights(pen, corridors, segs, doors) {
       }
       if (!placed) continue;
       const [pos, at, inward] = placed;
-      if (horizontal) {
-        lights.path(`M ${pos - 7} ${at + 1.2 * inward} A 7 7 0 0 ${inward > 0 ? 0 : 1} ${pos + 7} ${at + 1.2 * inward} Z`, "p-elight-glow");
-        lights.circle(pos, at + 2 * inward, 1.4, "p-elight");
-      } else {
-        lights.path(`M ${at + 1.2 * inward} ${pos - 7} A 7 7 0 0 ${inward > 0 ? 1 : 0} ${at + 1.2 * inward} ${pos + 7} Z`, "p-elight-glow");
-        lights.circle(at + 2 * inward, pos, 1.4, "p-elight");
-      }
+      out.push(horizontal ? { glow: `M ${pos - 7} ${at + 1.2 * inward} A 7 7 0 0 ${inward > 0 ? 0 : 1} ${pos + 7} ${at + 1.2 * inward} Z`, dot: [pos, at + 2 * inward] } : { glow: `M ${at + 1.2 * inward} ${pos - 7} A 7 7 0 0 ${inward > 0 ? 1 : 0} ${at + 1.2 * inward} ${pos + 7} Z`, dot: [at + 2 * inward, pos] });
     }
   }
+  return out;
+}
+var floorGeometry = /* @__PURE__ */ new WeakMap();
+function geometryOf(reg, floor) {
+  let byFloor = floorGeometry.get(reg);
+  if (!byFloor) floorGeometry.set(reg, byFloor = /* @__PURE__ */ new Map());
+  const known = byFloor.get(floor);
+  if (known) return known;
+  const rooms = planRoomsOn(reg, floor);
+  const opens = rooms.filter(isOpenSpace);
+  const segs = outline(opens.map(rectOf));
+  const lights = emergencyLights(opens.filter((o) => o.kind === "corridor").map(rectOf), segs, rooms.flatMap(doorsOf));
+  const geo = { segs, lights };
+  byFloor.set(floor, geo);
+  return geo;
 }
 function drawFloor(pen, reg, floor, look) {
   const rooms = planRoomsOn(reg, floor);
@@ -38952,7 +38999,7 @@ function drawFloor(pen, reg, floor, look) {
     const r = rectOf(e);
     pen.rect(r.x, r.y, r.w, r.h, "p-corridor");
   }
-  const segs = outline(opens.map(rectOf));
+  const { segs, lights } = geometryOf(reg, floor);
   for (const [x1, y1, x2, y2] of segs) pen.line(x1, y1, x2, y2, "p-wall");
   for (const e of opens.filter((o) => o.kind === "corridor")) {
     const { x, y, w, h: h2 } = rectOf(e);
@@ -38978,12 +39025,25 @@ function drawFloor(pen, reg, floor, look) {
     if (closed || variant === "vacant") hatch(pen, r);
     furnish(pen, e.cabin === "commander" ? "commander" : String(e.kind), r, variant);
   }
-  const doors = rooms.flatMap(doorsOf);
-  for (const d of doors) door(pen, d);
-  emergencyLights(pen, opens.filter((o) => o.kind === "corridor").map(rectOf), segs, doors);
+  for (const d of rooms.flatMap(doorsOf)) door(pen, d);
+  const lightPen = pen.child("p-elights");
+  for (const l of lights) {
+    lightPen.path(l.glow, "p-elight-glow");
+    lightPen.circle(l.dot[0], l.dot[1], 1.4, "p-elight");
+  }
 }
 var inRoof = (cover, x, y) => cover.has(Math.floor(x), Math.floor(y));
+var roofGroups = /* @__PURE__ */ new WeakMap();
 function drawRoofs(pen, reg) {
+  let g = roofGroups.get(reg);
+  if (!g) {
+    const fresh = Pen.group("p-roofs");
+    paintRoofs(fresh, reg);
+    roofGroups.set(reg, g = fresh.g);
+  }
+  pen.g.append(g.cloneNode(true));
+}
+function paintRoofs(pen, reg) {
   const upper2 = planRoomsOn(reg, "upper").map(rectOf);
   const high = new Cover(upper2);
   for (const e of planRoomsOn(reg, "ground")) {
@@ -39101,17 +39161,22 @@ function roomLayer(ctx2, e, marks) {
         type: "button",
         class: "alius-chip alius-plan-stair-btn",
         "data-stair-to": to,
+        "data-key": `plan:${String(e.id)}`,
         "aria-label": `${up ? "Up" : "Down"} to the ${FLOOR_NAME[to].toLowerCase()}`,
         ...analyzeNative("glossary:base_floor"),
         onclick: (ev) => {
           ev.stopPropagation();
           ctx2.onFloor(to);
         }
-      }, `${up ? "\u2191" : "\u2193"} ${FLOOR_LABEL[to]}`)
+      }, `${up ? "\u2191" : "\u2193"} ${FLOOR_LABEL[to]}`),
+      markChips(marks)
     );
   }
-  if (e.kind === "corridor") return null;
-  if (isOpenSpace(e) || isClosed(reg, e)) {
+  const hubbed = typeof e.hubRoomId === "string" && reg.hubRooms.has(e.hubRoomId);
+  if (e.kind === "corridor" && !hubbed) {
+    return marks.length > 0 ? h("div", { class: "alius-plan-markzone", "data-plan": String(e.id), style: pct3(r), ...markAttr }, markChips(marks)) : null;
+  }
+  if (!hubbed) {
     const closed = isClosed(reg, e);
     const small = r.w < 60 || r.h < 40;
     const at = e.labelAt;
@@ -39150,6 +39215,7 @@ function roomLayer(ctx2, e, marks) {
         type: "button",
         class: "alius-room-label alius-chip",
         "data-short": String(e.shortLabel ?? ""),
+        "data-key": `plan:${String(e.id)}`,
         "aria-label": inside.length > 0 ? `${ariaName}, ${inside.length} here` : ariaName,
         ...analyze
       }, label2),
@@ -39187,6 +39253,7 @@ function renderPlanStage(ctx2) {
         type: "button",
         class: "alius-btn alius-plan-floor-btn",
         "data-floor": f,
+        "data-key": `floor:${f}`,
         "aria-label": `${FLOOR_NAME[f].toLowerCase()}${n > 0 ? `, ${n} here` : ""}`,
         ...analyzeNative("glossary:base_floor"),
         onclick: () => ctx2.onFloor(f)
@@ -39386,7 +39453,8 @@ function renderHub(host, device, ctx2) {
         people: peopleIn(state, ctx2.registries, here, String(plan.id)),
         sceneLocationId: typeof plan.sceneLocationId === "string" ? plan.sceneLocationId : void 0,
         cabin: plan.cabin,
-        title: plan.cabin === "unit" ? cabinTitle(state, ctx2.registries, String(plan.id)) : String(plan.label)
+        title: plan.cabin === "unit" ? cabinTitle(state, ctx2.registries, String(plan.id)) : String(plan.label),
+        description: plan.cabin !== void 0 ? String(plan.description) : void 0
       }
     });
     panel.style.setProperty("--panel-x", `${r.x / 10}%`);
@@ -39418,8 +39486,7 @@ function renderHub(host, device, ctx2) {
     const e = ev;
     if (!host.isConnected) return teardown.get(host)?.();
     if ((e.key === "PageUp" || e.key === "PageDown") && device.dataset.up !== "true" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const el2 = e.target;
-      if (el2 && ["INPUT", "TEXTAREA", "SELECT"].includes(el2.tagName)) return;
+      if (isEditable2(e.target) || isInsideOverlay(e.target) || document.querySelector(".alius-modal-backdrop")) return;
       const i = PLAN_FLOORS.indexOf(shownFloor.get(host) ?? "ground");
       const next = PLAN_FLOORS[Math.max(0, Math.min(PLAN_FLOORS.length - 1, i + (e.key === "PageUp" ? 1 : -1)))];
       e.preventDefault();
@@ -41738,6 +41805,16 @@ function renderFreqChip(host, state, reg, unitId) {
 // src/ui/scene/sceneScreen.ts
 var loaded = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
+var RETRY_MS2 = 3e4;
+var knownResult = (url) => {
+  const r = loaded.get(url);
+  if (!r) return void 0;
+  if (!r.ok && Date.now() - r.at > RETRY_MS2) {
+    loaded.delete(url);
+    return void 0;
+  }
+  return r.ok;
+};
 function defaultLoadImage(url) {
   if (typeof Image === "undefined") return Promise.resolve(false);
   return new Promise((resolve) => {
@@ -41747,14 +41824,13 @@ function defaultLoadImage(url) {
     img.src = url;
   });
 }
-function tryLoad(url, load, own) {
-  if (own) return load(url);
-  const known = loaded.get(url);
+function tryLoad(url, load) {
+  const known = knownResult(url);
   if (known !== void 0) return Promise.resolve(known);
   let p = loading.get(url);
   if (!p) {
-    p = load(url).catch(() => false).then((ok) => {
-      loaded.set(url, ok);
+    p = Promise.resolve().then(() => load(url)).catch(() => false).then((ok) => {
+      loaded.set(url, { ok, at: Date.now() });
       loading.delete(url);
       return ok;
     });
@@ -41873,7 +41949,7 @@ function renderSceneScreen(host, ctx2) {
     root.dataset.backdrop = "image";
     if (light) root.dataset.light = light;
     else delete root.dataset.light;
-    backdrop.style.backgroundImage = `url("${url}")`;
+    backdrop.style.backgroundImage = cssUrl(url);
     bg.replaceChildren();
     placeSprites();
   }
@@ -41890,23 +41966,22 @@ function renderSceneScreen(host, ctx2) {
       showAscii(s);
       return;
     }
-    const own = ctx2.loadImage !== void 0;
     const load = ctx2.loadImage ?? defaultLoadImage;
-    const known = own ? void 0 : candidates3.find((c) => loaded.get(c.url) !== false);
-    if (known && loaded.get(known.url) === true) {
+    const known = candidates3.find((c) => knownResult(c.url) !== false);
+    if (known && knownResult(known.url) === true) {
       showImage(known.url, known.light);
       return;
     }
+    showAscii(s);
     void (async () => {
       for (const c of candidates3) {
-        const ok = await tryLoad(c.url, load, own);
+        const ok = await tryLoad(c.url, load);
         if (token !== backdropToken || disposed) return;
         if (ok) {
           showImage(c.url, c.light);
           return;
         }
       }
-      showAscii(s);
     })();
   }
   function placeSprites() {
@@ -41921,8 +41996,11 @@ function renderSceneScreen(host, ctx2) {
   }
   function attachPan() {
     root.style.setProperty("--alius-pan", "0.5");
-    if (motionReduced(ctx2.settings())) return;
     root.addEventListener("pointermove", (ev) => {
+      if (motionReduced(ctx2.settings())) {
+        root.style.setProperty("--alius-pan", "0.5");
+        return;
+      }
       const box = root.getBoundingClientRect();
       if (box.width <= 0) return;
       const f = Math.min(1, Math.max(0, (ev.clientX - box.left) / box.width));
@@ -42157,8 +42235,12 @@ function renderSceneScreen(host, ctx2) {
     bg = h("div", { class: "alius-scene-bg" });
     backdrop = h("div", { class: "alius-scene-backdrop", "aria-hidden": "true" });
     backdropKey = "";
+    backdropToken++;
+    delete root.dataset.backdrop;
+    delete root.dataset.light;
     spriteHost = h("div", { class: "alius-sprites" });
     hud = h("div", { class: "alius-hud" });
+    resizer?.observe(hud);
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
@@ -42278,6 +42360,10 @@ function renderSceneScreen(host, ctx2) {
     if (!s?.scene) {
       root.replaceChildren(h("div", { class: "alius-stub" }, "NO SCENE OPEN"));
       sceneKey = "";
+      backdropKey = "";
+      backdropToken++;
+      delete root.dataset.backdrop;
+      delete root.dataset.light;
       stopTyping();
       return;
     }
@@ -42341,6 +42427,7 @@ function renderSceneScreen(host, ctx2) {
     },
     dispose() {
       disposed = true;
+      backdropToken++;
       resizer?.disconnect();
       stopTyping();
       if (busyTimer) clearInterval(busyTimer);
@@ -44380,26 +44467,6 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
   chrome.lastElementChild?.setAttribute("aria-hidden", "true");
 }
 
-// src/ui/shell/keys.ts
-function isEditable2(t) {
-  const el = t;
-  if (!el || typeof el.tagName !== "string") return false;
-  return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true;
-}
-var CONTROL_TAGS = ["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "SUMMARY"];
-var CONTROL_ROLES = ["button", "link", "tab", "menuitem", "checkbox", "radio", "switch", "option"];
-function isInsideOverlay(t) {
-  const el = t;
-  return !!el && typeof el.closest === "function" && el.closest('.alius-device, [role="dialog"], .alius-analyze') !== null;
-}
-function isControl(t) {
-  const el = t;
-  if (!el || typeof el.tagName !== "string") return false;
-  if (CONTROL_TAGS.includes(el.tagName) || el.isContentEditable === true) return true;
-  const role = el.getAttribute?.("role");
-  return role !== null && role !== void 0 && CONTROL_ROLES.includes(role);
-}
-
 // src/ui/shell/modal.ts
 function createModalHost(layer) {
   let cancelCurrent = null;
@@ -46025,6 +46092,8 @@ function createApp(st, deps) {
         settings: () => getSettings(st),
         onEnded: leaveScene,
         sound,
+        assetUrl: deps.assetUrl,
+        // P10c: backdrops live in the extension folder
         generation: genUi,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash("compel", unitId),
@@ -48204,8 +48273,18 @@ registerChecks("planRooms", (entry, regs) => {
     for (const hub of regs.hubRooms.values()) {
       if (!all.some((p) => p.hubRoomId === hub.id)) out.push({ path: "hubRoomId", message: `hub room "${String(hub.id)}" has no plan room (it would never be drawn)` });
     }
-    if ([...regs.hubRooms.values()].some((h2) => h2.commanderCell === true) && !all.some((p) => p.cabin === "commander")) {
+    const cell = [...regs.hubRooms.values()].find((h2) => h2.commanderCell === true);
+    const cmdr = all.filter((p) => p.cabin === "commander");
+    if (cell && cmdr.length === 0) {
       out.push({ path: "cabin", message: 'a hub room is the commander cell but no plan room is the commander cabin (cabin: "commander")' });
+    }
+    for (const c of cmdr) {
+      if (cell && c.hubRoomId !== cell.id) out.push({ path: "hubRoomId", message: `the commander cabin "${String(c.id)}" must belong to the commander cell "${String(cell.id)}" (its notes are reached there)` });
+    }
+    const capacity = Math.max(0, ...[...regs.facilities.values()].flatMap((f) => (f.levels ?? []).map((l) => l.effects?.rosterCapacity ?? 0)));
+    const cabins = all.filter((p) => p.cabin === "unit").length;
+    if (cabins > 0 && cabins < capacity) {
+      out.push({ path: "cabin", message: `${cabins} unit cabins for a roster of up to ${capacity}: soldiers would share (add cabins or lower the capacity)` });
     }
   }
   return out;

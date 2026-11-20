@@ -155,3 +155,12 @@
 - **Knee-length sprites.** Over a picture the sprite layer is not clipped by the stage: `placeSprites` measures the gap from the stage's bottom to the transcript's top (the HUD's height varies) and extends the layer down by it plus `SPRITE_TUCK` (14 px), so the cut sits behind the transcript panel; the sprite image fades out over its last 28 px (`mask-image`) so no hard line shows through the panel's translucency. Re-measured on every refresh and on a resize (`ResizeObserver`). The rows below the stage get `z-index: 1` by class (not by a sibling selector, which would move the absolutely placed cut-in).
 - **Prompt.** `scene_header` reads `{name}'s quarters ({summary})`. The pronoun test covers the summaries.
 - **Not done here (open items):** turning the pan toward the door when a visitor enters, props, the 0.2 places `medbay_exam` / `medbay_exam_lying` / `comms_console` (no art yet), anything that reads `backdrops` (P17c), a hub map (a separate SVG mini-package, see `docs/00-overview.md` §10).
+
+### Review fixes (independent review, 2026-11-20)
+
+- **The app never passed `assetUrl` to the scene screen**, so in SillyTavern every backdrop resolved against the page and 404'd (the ASCII stage showed silently). `renderSceneView` now passes `deps.assetUrl`; `tests/app-scene.test.ts` checks the URL goes through the extension folder.
+- **The ASCII stage shows until a picture loads** (it used to be a blank stage), and a new scene, the "no scene" stub and `dispose` reset `data-backdrop` / `data-light` and invalidate any load still running.
+- **Loader cache:** every loader (the test's too) goes through it; a rejecting loader is a failure; a failure is retried after 30 s (`RETRY_MS`); `resetBackdropCache` for tests. The URL goes through `cssUrl`.
+- **The pan reads Reduce motion on every move** (switched mid-scene, it stops and re-centres); **the HUD is observed** with the ResizeObserver, so a pulse that wraps it moves the sprites.
+- **The cut-in stays above the panel** in image mode (`z-index: 2`).
+- **The default room no longer follows the hand.** FNV-1a's low bit is fixed by the characters' low bits, so `fnv1a(id) % 6` (hand) and any salted `fnv1a(…) % 14` share their parity; `roomHash` reads the high bits (`fnv1a(id + '|quarters') >>> 8`). Default rooms changed once.

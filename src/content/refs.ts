@@ -669,8 +669,20 @@ registerChecks('planRooms', (entry, regs) => {
     for (const hub of regs.hubRooms.values()) {
       if (!all.some((p) => p.hubRoomId === hub.id)) out.push({ path: 'hubRoomId', message: `hub room "${String(hub.id)}" has no plan room (it would never be drawn)` });
     }
-    if ([...regs.hubRooms.values()].some((h) => h.commanderCell === true) && !all.some((p) => p.cabin === 'commander')) {
+    const cell = [...regs.hubRooms.values()].find((h) => h.commanderCell === true);
+    const cmdr = all.filter((p) => p.cabin === 'commander');
+    if (cell && cmdr.length === 0) {
       out.push({ path: 'cabin', message: 'a hub room is the commander cell but no plan room is the commander cabin (cabin: "commander")' });
+    }
+    for (const c of cmdr) {
+      if (cell && c.hubRoomId !== cell.id) out.push({ path: 'hubRoomId', message: `the commander cabin "${String(c.id)}" must belong to the commander cell "${String(cell.id)}" (its notes are reached there)` });
+    }
+    // every soldier the barracks can hold has a cabin of her own (read by the effect, not by facility id)
+    const capacity = Math.max(0, ...[...regs.facilities.values()].flatMap((f) => ((f.levels ?? []) as Array<{ effects?: { rosterCapacity?: number } }>)
+      .map((l) => l.effects?.rosterCapacity ?? 0)));
+    const cabins = all.filter((p) => p.cabin === 'unit').length;
+    if (cabins > 0 && cabins < capacity) {
+      out.push({ path: 'cabin', message: `${cabins} unit cabins for a roster of up to ${capacity}: soldiers would share (add cabins or lower the capacity)` });
     }
   }
   return out;

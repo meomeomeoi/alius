@@ -2,7 +2,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { planRoomsOn, rectOf } from '../../src/engine/basePlan';
-import { drawFloor, drawRoofs, drawSite } from '../../src/ui/hub/plan/draw';
+import { drawFloor, drawRoofs, drawSite, geometryOf } from '../../src/ui/hub/plan/draw';
+import { readFileSync } from 'node:fs';
+import { doorsOf, isOpenSpace } from '../../src/engine/basePlan';
 import { FURNISHED_KINDS, furnish } from '../../src/ui/hub/plan/furnish';
 import { outline } from '../../src/ui/hub/plan/geometry';
 import { Pen } from '../../src/ui/hub/plan/svg';
@@ -105,5 +107,38 @@ describe('site, floors and roofs', () => {
     expect(low.length).toBeGreaterThanOrEqual(3);                  // kitchen, gym, garage at least
     expect(pen.g.querySelectorAll('.p-warnlight')).toHaveLength(1);
     expect(pen.g.querySelectorAll('.p-canopy')).toHaveLength(1);
+  });
+
+  it('review fix: emergency lights sit on a corridor wall, never in a doorway, and glow into the corridor', () => {
+    for (const floor of ['ground', 'upper'] as const) {
+      const corridors = planRoomsOn(reg, floor).filter((e) => e.kind === 'corridor').map(rectOf);
+      const doors = planRoomsOn(reg, floor).flatMap(doorsOf);
+      const { lights } = geometryOf(reg, floor);
+      expect(lights.length).toBeGreaterThan(5);
+      for (const l of lights) {
+        const [x, y] = l.dot;
+        // the dot is 2 units inside a corridor
+        expect(corridors.some((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h), `${floor} ${x},${y}`).toBe(true);
+        // no door within 9 units of it on its wall
+        for (const d of doors) {
+          const horizontal = d.side === 'n' || d.side === 's';
+          const near = horizontal
+            ? Math.abs(d.y - y) <= 2.5 && x > d.x - 9 && x < d.x + d.size + 9
+            : Math.abs(d.x - x) <= 2.5 && y > d.y - 9 && y < d.y + d.size + 9;
+          expect(near, `${floor} light at ${x},${y} by a door at ${d.x},${d.y}`).toBe(false);
+        }
+      }
+    }
+    expect(planRoomsOn(reg, 'ground').some(isOpenSpace)).toBe(true);
+  });
+
+  it('review fix: Reduce motion stops every blink on the plan; readable mode drops the glow', () => {
+    const css = readFileSync('css/15-hub.css', 'utf8');
+    expect(css).toMatch(/#alius-shell\.alius-reduced-motion \.alius-plan-svg \*\s*\{\s*animation:\s*none/);
+    expect(css).toMatch(/#alius-shell\.alius-readable \.alius-plan-svg \.p-glow/);
+  });
+
+  it('review fix: the geometry is worked out once per registry', () => {
+    expect(geometryOf(reg, 'upper')).toBe(geometryOf(reg, 'upper'));
   });
 });

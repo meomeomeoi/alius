@@ -1780,7 +1780,7 @@
     "id": "cabin",
     "term": "Cabin",
     "short": "Every soldier has her own cabin on the upper floor, marked with her name. At night and when confined she is there.",
-    "long": "AUTHOR TO WRITE: Cabins are handed out in the order soldiers joined the unit, scattered over the floor, and nobody moves when someone leaves or arrives; the cabin of a soldier who left stays vacant until the turn comes round to it. Click a cabin to see who is in it and talk to her there.",
+    "long": "AUTHOR TO WRITE: Cabins are handed out in the order soldiers joined the unit, scattered over the floor. The first ten never move; the cabin of a soldier who left stays vacant until the turn comes round to it, and a soldier who joined after every cabin was taken may move into one when it frees up. Grunts take whatever cabins are free. Click a cabin to see who is in it and talk to her there.",
     "see": [
       "quarters",
       "base_floor"

@@ -68,8 +68,8 @@ function mount(opts: { state?: CampaignState | null; readonly?: boolean; registr
 const room = (m: Mounted, id: string) => m.host.querySelector<HTMLElement>(`.alius-room[data-room="${id}"]`)!;
 /** P10d: her own cabin on the plan. */
 const cabin = (m: Mounted, s: CampaignState, unitId: string) => m.host.querySelector<HTMLElement>(`.alius-room[data-plan="${String(cabinOf(s, reg, unitId)!.id)}"]`)!;
-/** P10d: open plan rooms with a hub room (7 rooms, 9 unit cabins, the commander's cabin). */
-const OPEN_ROOMS = 17;
+/** P10d: open plan rooms with a hub room (7 rooms, 10 unit cabins, the commander's cabin). */
+const OPEN_ROOMS = 18;
 const panel = (m: Mounted) => m.host.querySelector<HTMLElement>('.alius-room-panel');
 const keydown = (target: EventTarget, k: string) => {
   const e = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });

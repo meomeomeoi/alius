@@ -4,7 +4,7 @@ Automated coverage first (all in `npm test`), then the steps that must be done b
 
 ## Automated
 1. **The plan as data** (schema, doors on edges, refs, every hub room on the plan, closed rooms do not overlap, a commander cabin): `tests/content/planRooms.test.ts`, `tests/content/core.test.ts`, `tests/content/hubSchemas.test.ts`.
-2. **Cabins, persons, lit rooms, the door graph, plan marks** (no rng, no state; nobody moves when someone leaves): `tests/engine/basePlan.test.ts`.
+2. **Cabins, persons, lit rooms, the door graph, plan marks** (no rng, no state; the first ten named soldiers never move, grunts take the free cabins): `tests/engine/basePlan.test.ts`.
 3. **Drawing** (walls of a union with no wall across a junction, furniture inside its room, cabin variants, site, floors, roofs): `tests/ui/planDraw.test.ts`.
 4. **The stage** (floors, buttons with counts, staircases, PageUp / PageDown, labels as buttons, closed rooms, named and vacant cabins, a cabin's panel, TALK in her quarters, the commander's cabin, light, marks, coverage on every floor): `tests/ui/planView.test.ts`, `tests/ui/hub.test.ts`, `tests/ui/notes.test.ts`, `tests/app-hub.test.ts`, `tests/ui/analyzeCoverage.test.ts`.
 5. **Old saves:** no state field was added.

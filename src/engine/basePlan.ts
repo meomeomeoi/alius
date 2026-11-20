@@ -36,16 +36,19 @@ export const unitCabins = (reg: Registries): Entry[] => [...reg.planRooms.values
 export const commanderCabin = (reg: Registries): Entry | undefined => [...reg.planRooms.values()].find((e) => e.cabin === 'commander');
 
 /**
- * Who lives where. A unit's index `k` among all units in `state.squad` (append-only: a departed unit keeps hers) picks
- * `cabins[k % n]`; a cabin held by a living unit with a smaller index sends her on to the next free one; with none free
- * she shares the one she was pointed at. Nobody moves when someone leaves or joins.
+ * Who lives where. Named soldiers: a named unit's index `k` among all named units in `state.squad` (append-only: a
+ * departed one keeps hers) picks `cabins[k % n]`; a cabin held by a living named unit with a smaller index sends her on
+ * to the next free one; with none free she shares the one she was pointed at. So the first `n` named soldiers never move;
+ * one who joined after the cabins ran out (the `n + 1`-th named) may move into a cabin freed by someone leaving (the state
+ * has no day of leaving to do better). Grunts come and go: they take the free cabins from the end of the list (sharing
+ * the last one when none is free) and may move whenever a named soldier needs the room.
  */
 function cabinMap(state: Pick<CampaignState, 'squad'>, reg: Registries): Map<string, Entry> {
   const cabins = unitCabins(reg);
   const out = new Map<string, Entry>();
   if (cabins.length === 0) return out;
   const taken = new Set<string>();
-  state.squad.forEach((u, k) => {
+  state.squad.filter((u) => u.kind === 'named').forEach((u, k) => {
     if (!isLiving(u)) return;
     const start = k % cabins.length;
     let pick = cabins[start];
@@ -59,6 +62,13 @@ function cabinMap(state: Pick<CampaignState, 'squad'>, reg: Registries): Map<str
     taken.add(String(pick.id));
     out.set(u.id, pick);
   });
+  for (const u of state.squad) {
+    if (u.kind === 'named' || !isLiving(u)) continue;
+    const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
+    const pick = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick.id));
+    out.set(u.id, pick);
+  }
   return out;
 }
 
@@ -105,7 +115,9 @@ export function litRooms(state: CampaignState, reg: Registries, here: Whereabout
 // The door graph (groundwork for P17 visitors, P17a summons, P17d sounds)
 
 export interface PlanEdge { to: string; via: 'door' | 'open' | 'stair'; length: number }
+/** Outside a door to nowhere. Graph nodes are `outside:<floor>:<n>` (one per such door); answers name them all `outside`. */
 export const OUTSIDE = 'outside';
+const isOutside = (id: string): boolean => id === OUTSIDE || id.startsWith(`${OUTSIDE}:`);
 
 const centre = (r: PlanRect): [number, number] => [r.x + r.w / 2, r.y + r.h / 2];
 const dist = (a: PlanRect, b: PlanRect): number => Math.hypot(centre(a)[0] - centre(b)[0], centre(a)[1] - centre(b)[1]);
@@ -130,7 +142,8 @@ const graphs = new WeakMap<Registries, Map<string, PlanEdge[]>>();
 
 /**
  * Rooms joined by their doors (each door probed 2 units to either side of its middle, across its wall; nothing there
- * is `outside`), open spaces joined where they touch, a staircase joined to the room it stands in and to the staircase
+ * is an outside node of that floor, and a floor's outside nodes are joined by the distance between their doors), open
+ * spaces joined where they touch, a staircase joined to the room it stands in and to the staircase
  * of `stairTo` that it overlaps. Edges carry the distance between the rooms' centres.
  */
 export function planGraph(reg: Registries): Map<string, PlanEdge[]> {
@@ -150,6 +163,9 @@ export function planGraph(reg: Registries): Map<string, PlanEdge[]> {
   const byFloor = new Map<string, Entry[]>();
   for (const e of all) byFloor.set(String(e.floor), [...(byFloor.get(String(e.floor)) ?? []), e]);
 
+  // every door to nowhere gets an outside node of its own floor at the door; the outside doors of a floor are joined by
+  // the walk between them (the yard), and no outside node of one floor touches another floor
+  const outsides = new Map<string, Array<{ id: string; x: number; y: number }>>();
   for (const e of all) {
     const floor = byFloor.get(String(e.floor)) ?? [];
     for (const d of doorsOf(e)) {
@@ -159,10 +175,23 @@ export function planGraph(reg: Registries): Map<string, PlanEdge[]> {
       const [p, q] = across ? [[mx, my - 2], [mx, my + 2]] : [[mx - 2, my], [mx + 2, my]];
       const a = roomAt(floor, p[0], p[1]);
       const b = roomAt(floor, q[0], q[1]);
-      const ida = a ? String(a.id) : OUTSIDE;
-      const idb = b ? String(b.id) : OUTSIDE;
-      if (ida === OUTSIDE && idb === OUTSIDE) continue;
-      add(ida, idb, 'door', a && b ? dist(rectOf(a), rectOf(b)) : 30);
+      if (!a && !b) continue;
+      if (a && b) {
+        add(String(a.id), String(b.id), 'door', dist(rectOf(a), rectOf(b)));
+        continue;
+      }
+      const room = (a ?? b)!;
+      const list = outsides.get(String(e.floor)) ?? [];
+      const id = `${OUTSIDE}:${String(e.floor)}:${list.length}`;
+      list.push({ id, x: mx, y: my });
+      outsides.set(String(e.floor), list);
+      const [cx, cy] = centre(rectOf(room));
+      add(String(room.id), id, 'door', Math.hypot(cx - mx, cy - my));
+    }
+  }
+  for (const list of outsides.values()) {
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) add(list[i].id, list[j].id, 'open', Math.hypot(list[i].x - list[j].x, list[i].y - list[j].y));
     }
   }
   for (const rooms of byFloor.values()) {
@@ -193,7 +222,7 @@ export function planGraph(reg: Registries): Map<string, PlanEdge[]> {
  */
 export function neighbours(reg: Registries, roomId: string, by: 'door' | 'wall' | 'any' = 'any'): string[] {
   const g = planGraph(reg);
-  const door = (g.get(roomId) ?? []).map((e) => e.to);
+  const door = (g.get(roomId) ?? []).map((e) => (isOutside(e.to) ? OUTSIDE : e.to));
   if (by === 'door') return [...new Set(door)];
   const me = reg.planRooms.get(roomId);
   const wall = me
@@ -230,8 +259,9 @@ export function route(reg: Registries, from: string, to: string): PlanRoute | nu
     }
   }
   if (!best.has(to)) return null;
-  const rooms = [to];
-  while (rooms[0] !== from) rooms.unshift(prev.get(rooms[0])!);
+  const path = [to];
+  while (path[0] !== from) path.unshift(prev.get(path[0])!);
+  const rooms = path.map((id) => (isOutside(id) ? OUTSIDE : id)).filter((id, i, all) => !(id === OUTSIDE && all[i - 1] === OUTSIDE));
   const floors: PlanFloor[] = [];
   for (const id of rooms) {
     const f = reg.planRooms.get(id)?.floor as PlanFloor | undefined;
