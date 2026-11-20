@@ -765,7 +765,7 @@ Each event: `size` (`small` / `notable`), `requires` (draft conditions), `share`
 - `hub` — a short third-person line shown when hovering her on the hub;
 - `lines` — two fallback lines in her voice for her DM or her news. **The model writes the real line** (site `life.share`) from the event, her card and the moment; these lines are used only when generation is off or fails, and serve the model as examples of tone.
 
-**Frequency** (P14c TUNING): at most 2 events a week per woman (one of them `notable` at most), so about 8–9 a month; each kind has a cooldown per woman (small 21 days, notable 45, `vat_day` once a fiction year), so no kind repeats for the same woman within a month; the same kind is not picked for two women within 5 days; `requires` keeps many events rare (they need a run, a death, a hobby, a defect). With 51 kinds, five women see about 40–45 events a month, of which roughly half are shared, and the wording is generated each time.
+**Frequency** (P14c TUNING, setting `lifeEventFrequency`: rare / normal / often = 0.5 / 1 / 2 events a week per woman; default normal): at most one event a week per woman at normal, about 4–5 a month; each kind has a cooldown per woman (small 21 days, notable 45, `vat_day` once a fiction year), so no kind repeats for the same woman within a month; the same kind is not picked for two women within 5 days; `requires` keeps many events rare (they need a run, a death, a hobby, a defect). With 51 kinds, five women see about 20–22 events a month at normal, of which roughly half are shared, and the wording is generated each time.
 
 ### 2.1 Her things and her days
 
@@ -1036,7 +1036,7 @@ Each event: `size` (`small` / `notable`), `requires` (draft conditions), `share`
 
 ## 3. Hobbies (`hobbies`)
 
-Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 / 60 (P14c TUNING), each with an id and a line, and the text of its trace when it has one. **Milestone lines are fallbacks:** the model words the moment in a scene or a DM (site `life.trace`, or the news directive of P14c §2); the line is used when generation is off or fails and shows the model the tone.
+Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 / 60 (P14c TUNING), each with an id and a line, and the text of its trace when it has one. **Milestones mark her confidence and skill, not gifts:** a portrait of the commander, a poem or a carving given to the commander belong to the later **special events** (overview §10), which join the pool when several conditions hold. **Milestone lines are fallbacks:** the model words the moment in a scene or a DM (site `life.trace`, or the news directive of P14c §2); the line is used when generation is off or fails and shows the model the tone.
 
 #### `reading` — `reading_book` · not teachable · trace: prop (a shelf), opinion `books`
 - description: *She reads whatever paper reaches the base, slowly and completely.*
@@ -1045,7 +1045,7 @@ Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 /
 
 #### `sketching` — `sketching` · teachable · trace: note (a drawing)
 - description: *She draws in a battered notebook: faces, gear, the view from the roof.*
-- `first_page` "Don't look. It's just lines." · `faces` "I'm getting the eyes right now. The eyes are the hard part." · `the_squad` "I drew all of us. Even the ones who're gone." · `the_commander` "Here. Don't make it weird. You had a face worth drawing."
+- `first_page` "Don't look. It's just lines." · `faces` "I'm getting the eyes right now. The eyes are the hard part." · `the_squad` "I drew all of us. Even the ones who're gone." · `own_hand` "People can tell my drawings apart now. I have a hand."
 - trace: *A pencil sketch on torn notebook paper, signed with her unit number.*
 
 #### `plants` — `caring_for_plant` · teachable · trace: prop (the plant)
@@ -1064,12 +1064,12 @@ Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 /
 
 #### `tinkering` — `tinkering`, `repairing_gear` · teachable · trace: prop (a gadget)
 - description: *She takes broken things apart and makes them do something new.*
-- `fixed_it` "The kettle works. You're welcome." · `upgrade` "My scope has night mode now. It didn't before." · `invention` "I built a thing. I'm not sure what it's for yet." · `for_someone` "Made this for you. It's a lamp that doesn't flicker. You're the only one with a steady light now."
+- `fixed_it` "The kettle works. You're welcome." · `upgrade` "My scope has night mode now. It didn't before." · `invention` "I built a thing. I'm not sure what it's for yet." · `master_tinker` "Bring me anything broken. If it had a purpose once, I'll find it."
 - trace: *A small gadget of salvaged parts with her initials scratched on it.*
 
 #### `journal` — `writing_journal` · not teachable · trace: note (a page, rarely shared)
 - description: *She keeps a journal and writes in it most nights.*
-- `first_entry` "Started writing things down. In case I forget." · `habit` "Every night. Even the bad ones." · `full_book` "Filled the first notebook. Started the second." · `shares_a_page` "Read this one page. Only this one."
+- `first_entry` "Started writing things down. In case I forget." · `habit` "Every night. Even the bad ones." · `full_book` "Filled the first notebook. Started the second." · `own_voice` "I read the old entries and I sound like a stranger. I write better now."
 - trace: *A torn-out journal page, a few lines in her hand.*
 
 #### `cards` — `playing_cards` · teachable · trace: —
@@ -1091,16 +1091,16 @@ Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 /
 
 #### `poetry` — `writing_journal` · not teachable · trace: note (a poem)
 - description: *She writes short poems and hides them.*
-- `first_poem` "It's four lines. It's terrible. I wrote it." · `rhymes` "I can rhyme now. That's dangerous." · `reads_aloud` "I read one at the funeral. I don't know why." · `gives_one` "This one's for you. Don't read it in front of me."
+- `first_poem` "It's four lines. It's terrible. I wrote it." · `rhymes` "I can rhyme now. That's dangerous." · `reads_aloud` "I read one at the funeral. I don't know why." · `finds_the_words` "The words come easier now. That frightens me a little."
 - trace: *A short poem in her hand, folded small.*
 
 #### `stargazing` — the roof at night · teachable · trace: —
 - description: *She goes up to the roof on clear nights and maps the stars.*
-- `first_clear_night` "No spore haze tonight. Look up." · `names_them` "That's the Hook. I named it myself. The old names are lost." · `star_chart` "I've drawn a chart. Nobody's made one in decades." · `shares_the_sky` "This one's mine. I'm giving it to you."
+- `first_clear_night` "No spore haze tonight. Look up." · `names_them` "That's the Hook. I named it myself. The old names are lost." · `star_chart` "I've drawn a chart. Nobody's made one in decades." · `navigator` "I can tell the time and the bearing from the sky now. Better than my HUD."
 
 #### `languages` — `reading_book` · teachable · trace: note
 - description: *She is teaching herself an old language from scraps of books.*
-- `first_words` "I know twenty words of a language nobody speaks." · `sentences` "I can make sentences now. Mostly rude ones." · `reads_a_page` "I read a whole page. It was a recipe." · `teaches_it` "Want to learn? We'll have a secret language."
+- `first_words` "I know twenty words of a language nobody speaks." · `sentences` "I can make sentences now. Mostly rude ones." · `reads_a_page` "I read a whole page. It was a recipe." · `dreams_in_it` "I dreamt in it last night. Badly. It still counts."
 - trace: *A page of careful vocabulary, two columns, in her hand.*
 
 #### `puzzles` — `idle` · teachable · trace: —
@@ -1114,11 +1114,11 @@ Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 /
 
 #### `dancing` — `music` · teachable · trace: —
 - description: *She dances when she thinks nobody is looking.*
-- `alone` "You didn't see that." · `steps` "I learned steps from an old film. They're harder than combat drills." · `with_someone` "It's better with two. Obviously." · `at_a_party` "Everyone danced. Even the quartermaster. Even me."
+- `alone` "You didn't see that." · `steps` "I learned steps from an old film. They're harder than combat drills." · `unselfconscious` "I don't check whether anyone's watching anymore." · `at_a_party` "Everyone danced. Even the quartermaster. Even me."
 
 #### `hair_and_makeup` — `doing_hair` · teachable · trace: —
 - description: *She does hair, hers and other women's, and hoards bits of makeup.*
-- `braids` "Learned a new braid. Took an hour." · `for_others` "I did her hair for the night out. She cried. Good crying." · `kit` "I have a whole kit now. Don't ask what I traded." · `transformation` "Sit down. Trust me. Ten minutes."
+- `braids` "Learned a new braid. Took an hour." · `for_others` "I did her hair for the night out. She cried. Good crying." · `kit` "I have a whole kit now. Don't ask what I traded." · `artist` "I did the whole squad before the night out. Nobody recognised anybody."
 
 #### `games_on_pda` — `chatting_on_pda` · not teachable · trace: —
 - description: *She plays old games on her PDA late at night.*
@@ -1131,25 +1131,25 @@ Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 /
 
 #### `photography` — after runs, the roof · teachable · trace: note (a print)
 - description: *She takes photographs with an old camera and develops them herself.*
-- `first_roll` "Twelve shots. Three came out. That's a good ratio." · `darkroom` "Made a darkroom in a supply closet. Smells awful. Worth it." · `portraits` "Hold still. Don't smile. Real faces." · `the_commander` "Here. I took this when you weren't looking."
+- `first_roll` "Twelve shots. Three came out. That's a good ratio." · `darkroom` "Made a darkroom in a supply closet. Smells awful. Worth it." · `portraits` "Hold still. Don't smile. Real faces." · `the_eye` "I see frames everywhere now. Corners, light, faces."
 - trace: *A small black-and-white print, curled at the edges.*
 
 #### `woodcarving` — `tinkering` · teachable · trace: prop (a carving)
 - description: *She carves small figures from scrap wood with her knife.*
-- `first_figure` "It's a bird. Or a fish. Depends on the light." · `better` "This one has feathers. Look, real feathers." · `set` "I've carved the whole squad. Tiny. Don't lose yours." · `for_someone` "For you. It took a week. Don't drop it."
+- `first_figure` "It's a bird. Or a fish. Depends on the light." · `better` "This one has feathers. Look, real feathers." · `set` "I've carved the whole squad. Tiny. Don't lose yours." · `fine_work` "This one has eyelashes. I used a needle."
 - trace: *A small wooden figure, smoothed by a thumb.*
 
 #### `running` — the perimeter · teachable · trace: —
 - description: *She runs laps of the perimeter, alone, before anyone is up.*
-- `first_laps` "Five laps. My lungs hate me." · `distance` "Ten kilometres. Every morning now." · `personal_best` "New best. I'll beat it next week." · `run_together` "Run with me tomorrow. I'll go slow. I won't."
+- `first_laps` "Five laps. My lungs hate me." · `distance` "Ten kilometres. Every morning now." · `personal_best` "New best. I'll beat it next week." · `endurance` "Twenty kilometres without stopping. My legs don't argue anymore."
 
 #### `chess` — `idle`, `playing_cards` · teachable · trace: —
 - description: *She plays chess on a board with half the pieces replaced by bolts and bullets.*
-- `learning` "The horse moves funny. I hate the horse." · `openings` "I know three openings now. Don't tell anyone which." · `beats_someone` "Beat the medic. She's still angry." · `teaches_it` "Sit. I'll teach you. You'll lose, but beautifully."
+- `learning` "The horse moves funny. I hate the horse." · `openings` "I know three openings now. Don't tell anyone which." · `beats_someone` "Beat the medic. She's still angry." · `plays_blind` "I can play without the board now. Call your moves."
 
 #### `tattoos` — her quarters · teachable · trace: — (a mark, P9c-style, only with consent)
 - description: *She does tattoos with a home-made needle, on herself and on whoever asks.*
-- `first_line` "One line on my wrist. Straight. Mostly." · `own_design` "Designed this one myself. It's a map of nowhere." · `others_ask` "Half the squad wants one now. I have a waiting list." · `offers` "I have one design left in me. Want it?"
+- `first_line` "One line on my wrist. Straight. Mostly." · `own_design` "Designed this one myself. It's a map of nowhere." · `others_ask` "Half the squad wants one now. I have a waiting list." · `steady_hand` "My lines are clean now. Nobody flinches when I pick up the needle."
 
 #### `ration_alchemy` — the mess kitchen · teachable · trace: —
 - description: *She experiments with rations, turning bars and powders into something else.*
@@ -1157,7 +1157,7 @@ Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 /
 
 #### `knitting` — `mending_clothes` · teachable · trace: prop (a scarf)
 - description: *She knits with yarn unravelled from old sweaters.*
-- `first_rows` "It's a rectangle. It's meant to be a rectangle." · `scarf` "A whole scarf. Lumpy. Warm." · `patterns` "I can do stripes now. Stripes!" · `gift` "Here. Winter's coming. Don't say anything about the lumps."
+- `first_rows` "It's a rectangle. It's meant to be a rectangle." · `scarf` "A whole scarf. Lumpy. Warm." · `patterns` "I can do stripes now. Stripes!" · `cables` "Cable stitch. Do you know how hard cable stitch is?"
 - trace: *A lumpy, warm scarf in two colours.*
 
 ## 4. Pastimes (`pastimes`, quiet meetings)

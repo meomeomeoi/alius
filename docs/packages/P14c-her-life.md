@@ -40,7 +40,7 @@ Grunts have none. A reader `temperamentOf(state, unitId)` with defaults (`terse`
 
 Registry `lifeEvents` (draft: 51 events with wording in `docs/content/life.md` §2): `{ id, size: 'small' | 'notable', tags, requires?: { activity?, defectTag?, relation?, world?, slot? }, share: 'close' | 'anyone' | 'keeps', becomes?: { hobbyMilestone? | opinionTopic? }, cooldownDays, description, hub, lines: string[] }`. `description` is the model's hint, `hub` the hover line, `lines` her fallback words when the share text cannot be generated.
 
-- **Day step:** per named unit at base, a hash pick (`fnv1a(<seed>|<unitId>|life|<day>)`, no rng draw) chooses at most one event a day (cap 2 a week, at most one `notable`), from those whose `requires` hold (her activities that day, her defect, a relation event, the world state) and whose cooldown has passed: per woman per kind (`cooldownDays`: small 21, notable 45, `vat_day` once a fiction year) and per kind across the squad (5 days), so that no kind repeats for one woman within a month and the commander does not hear the same news from two women in a row.
+- **Day step:** per named unit at base, a hash pick (`fnv1a(<seed>|<unitId>|life|<day>)`, no rng draw) chooses at most one event a day (a weekly cap by the setting `lifeEventFrequency`: rare 0.5, **normal 1 (default)**, often 2 events a week per woman; at most one `notable` a week), from those whose `requires` hold (her activities that day, her defect, a relation event, the world state) and whose cooldown has passed: per woman per kind (`cooldownDays`: small 21, notable 45, `vat_day` once a fiction year) and per kind across the squad (5 days), so that no kind repeats for one woman within a month and the commander does not hear the same news from two women in a row.
 - **It becomes a fact** about her (audience = her; `hiddenFromCommander: true` until she shares it; P3b `Knowledge`).
 - **Sharing**, by her `talkativeness`, Affinity and the event's `share`:
   - a **DM** from her (P10b living DM; the text is a `flavor` line from the event and her card, site `life.share`, budget 120; fallback the event's description line);
@@ -55,6 +55,7 @@ Registry `hobbies` (draft: 27 hobbies with wording in `docs/content/life.md` §3
 
 - `Unit.hobbies`: 1–3 ids proposed by `profile_import` from the card, editable.
 - **Progress:** whereabouts that put her in a hobby activity (leisure slots) add to a counter (P14b `Development.counters`, key kind `hobby:<id>`; a new `counter.kind`). Milestones fire at thresholds (`TUNING.life.hobbyStep`).
+- **Milestones mark her confidence and skill**, not gifts to the commander; a portrait, a poem or a carving given to the commander is a later **special event** (overview §10).
 - **Traces:** `note` — a P10b note in her hand (a drawing, a poem, a page of her journal, as a `paper` card; the text from site `life.trace`, budget 150, fallback authored); `prop` — an object in her quarters (P17c layers when they exist; until then a line in the QUARTERS section of her dossier); `opinion` — a new topic for her (§4).
 - **Together:** the commander may join her hobby as a pastime of a quiet meeting (§5). The commander gains a skill in her hobby (`Commander.hobbySkill[hobbyId]`: descriptors, no number shown); with `teachable` she teaches it: her explanations are a pastime moment and grow the skill faster. A woman who taught the commander something remembers it (`memoryRules`, §8).
 
@@ -101,6 +102,8 @@ A line or a situation from an earlier scene that both remember can become a runn
 
 ## 7. UI
 
+- SYS › World: **life events** frequency (`lifeEventFrequency`: rare / normal / often; default normal).
+
 - Dossier: **THOUGHTS** (heard opinions, her words, the history of a changed mind), **HOBBIES** (descriptors of progress, traces), news she has told. Every row `data-analyze` through `Knowledge`.
 - Hub: hover lines about her day; `time_together` in the activity list with the pastime picker.
 - CMDR dossier: the commander's skills in her hobbies (descriptors).
@@ -127,7 +130,7 @@ A line or a situation from an earlier scene that both remember can become a runn
 
 | what | value |
 |---|---|
-| life events | at most 1 a day, 2 a week (about 8–9 a month), 1 `notable` a week per woman; cooldown per kind per woman: small 21 days, notable 45, `vat_day` a fiction year; the same kind across the squad: 5 days; share chance: `talkative` 0.7, `terse` 0.4, `silent` 0.15, × (Affinity ≥ 40 ? 1 : 0.5) |
+| life events | `lifeEventFrequency` (SYS › World): rare 0.5 / normal 1 / often 2 a week per woman (normal ≈ 4–5 a month, ≈ 20–22 for five women); at most 1 a day and 1 `notable` a week; cooldown per kind per woman: small 21 days, notable 45, `vat_day` a fiction year; the same kind across the squad: 5 days; share chance: `talkative` 0.7, `terse` 0.4, `silent` 0.15, × (Affinity ≥ 40 ? 1 : 0.5) |
 | news directive | lives until her next scene or 3 days |
 | hobby | +1 per leisure slot in a hobby activity; milestones at 5 / 15 / 30 / 60 |
 | opinions | one voiced per scene at most; cooldown 21 days per topic; `persuadeAt` 3 major or 6 minor challenges (×2 for `strong`); hardening chance for `strong` 0.5 |

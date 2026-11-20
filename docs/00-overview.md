@@ -551,6 +551,8 @@ After the authored prologue (spine beats 1–5) the model builds story arcs from
 
 **Hub map (done as P10d):** a top-down SVG plan of the outpost drawn from `planRooms` (two floors and the roofs, named cabins, closed rooms for later, light by slot), so a new room draws itself and nothing is regenerated. P10c ships two corridor pictures (`place_corridor_1/2`) for the corridor place below; on the plan the corridors already exist.
 
+**Special events (from the 2026-11-20 session, not scheduled):** events with compound conditions, as in Sir Brante: when several conditions hold at once (a hobby at its last milestone, Affinity ≥ 70, a `first_moment` of a kind, a remembered fact), an event **joins the pool**; it is not forced and may never fire. Examples: she gives the commander a portrait, a poem, a carving or a knitted scarf; she shares a page of her journal; she offers to teach the commander her secret language. Built on P14c's `lifeEvents` with a `requiresAll` block and on P3b facts.
+
 **From the 0.2 depth review (2026-11-19), not scheduled:**
 - **Affordances for every room and new places** (0.2.1 or instead of 0.3, together with the backdrop generation work): affordances `thin_walls`, `loud`, `dark`, `water`, `mirror`, `cramped`, `table_under`, `straps`, `window`, `her_things`, `shared`; places shower block, storage, laundry, briefing room, corridor, field tent; their furniture-bound anchors (`under_table`, `in_shower`, `on_windowsill`, `in_vehicle`, …). 0.2 reads only the affordances already in P17 §2.
 - **Interrogation** as a general mechanic (a holder questioning the commander, a corporation questioning anyone): typed answers checked for consistency against memory facts; not tied to 0.2.
