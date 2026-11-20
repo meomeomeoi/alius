@@ -36,8 +36,8 @@ const run = (state: CampaignState, unitId: string, patch: Record<string, unknown
   dispatch(state, { type: 'squad/resync', payload: { unitId, patch } }, reg);
 
 describe('squad/resync', () => {
-  it('RESYNC_SECTIONS excludes baseline and includes the P7 tastes, the P8 disposition and stances the P9d bond and the P14b development', () => {
-    expect([...RESYNC_SECTIONS]).toEqual(['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development']);
+  it('RESYNC_SECTIONS excludes baseline and includes the P7 tastes, the P8 disposition and stances the P9d bond, the P14b development and the P14c temperament', () => {
+    expect([...RESYNC_SECTIONS]).toEqual(['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament']);
   });
 
   it('resync values replaces only values', () => {

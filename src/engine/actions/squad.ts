@@ -10,13 +10,14 @@ import {
 } from '../setup';
 import { TUNING } from '../tuning';
 import { refundTree } from '../progression';
-import type { Bond, CampaignState, Insight, WorldStance } from '../state/types';
+import { temperamentOf } from '../life/state';
+import type { Bond, CampaignState, Insight, Temperament, WorldStance } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
 export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
@@ -31,13 +32,15 @@ export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' 
   /** P14b: the axes her card states strongly and how well she reads people. Never touches drift, accumulators or facts. */
   anchors?: string[];
   insight?: Insight;
+  /** P14c: replaces her temperament fields (some or all); a field she has locked keeps its word. */
+  temperament?: Partial<Temperament>;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
-  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond', anchors: 'development', insight: 'development',
+  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond', anchors: 'development', insight: 'development', temperament: 'temperament',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -67,6 +70,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     bond: patch.bond ?? unit.bond,
     anchors: patch.anchors ?? unit.development?.anchors,
     insight: patch.insight ?? unit.insight,
+    temperament: patch.temperament as Temperament | undefined, // P14c: only the patch is checked (the words); a partial block is fine here
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
@@ -116,6 +120,12 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   if (patch.insight !== undefined) {
     if (patch.insight === 'mid') delete unit.insight;
     else unit.insight = patch.insight;
+  }
+  if (patch.temperament !== undefined) {
+    // P14c: a locked field keeps the word she has; the others take the patch
+    const locked = unit.temperamentLocks ?? [];
+    const kept = Object.fromEntries(Object.entries(patch.temperament).filter(([f]) => !locked.includes(f as keyof Temperament)));
+    unit.temperament = { ...temperamentOf(draft, unit.id), ...kept };
   }
   if (patch.defects) {
     unit.defects = patch.defects.map((d): DefectInstance => {

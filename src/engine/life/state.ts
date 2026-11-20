@@ -16,6 +16,26 @@ export function lifeMode(state: Pick<CampaignState, 'settings'>): LifeMode {
   return m === 'rare' || m === 'normal' || m === 'often' ? m : 'off';
 }
 
+/** The words of each temperament field, in the order a picker lists them. */
+export const TEMPERAMENT_VALUES: Readonly<Record<keyof Temperament, readonly string[]>> = Object.freeze({
+  talkativeness: Object.freeze(['silent', 'terse', 'talkative']),
+  volatility: Object.freeze(['steady', 'moody']),
+  humor: Object.freeze(['none', 'dry', 'mocking', 'warm']),
+});
+export const TEMPERAMENT_FIELDS = Object.freeze(['talkativeness', 'volatility', 'humor'] as const);
+
+/** One readable line per problem of a (possibly partial) temperament block; an empty list means every given field is a known word. */
+export function temperamentProblems(t: unknown): string[] {
+  if (typeof t !== 'object' || t === null || Array.isArray(t)) return ['temperament must be an object of talkativeness, volatility and humor'];
+  const out: string[] = [];
+  for (const [k, v] of Object.entries(t)) {
+    const words = TEMPERAMENT_VALUES[k as keyof Temperament];
+    if (words === undefined) out.push(`temperament has no field "${k}"`);
+    else if (typeof v !== 'string' || !words.includes(v)) out.push(`temperament ${k} must be ${words.join(', ')}`);
+  }
+  return out;
+}
+
 /** What she is when nothing is stored (and what a grunt or an unknown id reads). */
 export const TEMPERAMENT_DEFAULTS: Readonly<Temperament> = Object.freeze({ talkativeness: 'terse', volatility: 'steady', humor: 'dry' });
 

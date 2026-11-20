@@ -12987,7 +12987,31 @@ function objectiveList(state, reg) {
 
 // src/engine/life/state.ts
 var LIFE_MODES = ["off", "rare", "normal", "often"];
+function lifeMode(state) {
+  const m = state.settings.lifeEvents;
+  return m === "rare" || m === "normal" || m === "often" ? m : "off";
+}
+var TEMPERAMENT_VALUES = Object.freeze({
+  talkativeness: Object.freeze(["silent", "terse", "talkative"]),
+  volatility: Object.freeze(["steady", "moody"]),
+  humor: Object.freeze(["none", "dry", "mocking", "warm"])
+});
+var TEMPERAMENT_FIELDS = Object.freeze(["talkativeness", "volatility", "humor"]);
+function temperamentProblems(t) {
+  if (typeof t !== "object" || t === null || Array.isArray(t)) return ["temperament must be an object of talkativeness, volatility and humor"];
+  const out = [];
+  for (const [k, v] of Object.entries(t)) {
+    const words3 = TEMPERAMENT_VALUES[k];
+    if (words3 === void 0) out.push(`temperament has no field "${k}"`);
+    else if (typeof v !== "string" || !words3.includes(v)) out.push(`temperament ${k} must be ${words3.join(", ")}`);
+  }
+  return out;
+}
 var TEMPERAMENT_DEFAULTS = Object.freeze({ talkativeness: "terse", volatility: "steady", humor: "dry" });
+function temperamentOf(state, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  return { ...TEMPERAMENT_DEFAULTS, ...u?.kind === "named" ? u.temperament : void 0 };
+}
 function newLife(salt) {
   return { salt, nextId: 0, units: {}, queue: [], delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [] };
 }
@@ -22349,6 +22373,7 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
   }
   validateDisposition(u, label2, reg, out);
   validateDevelopmentProfile(u, label2, reg, out);
+  validateTemperament(u, label2, out);
   if (u.bond !== void 0) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label2}: bond: ${issue}`);
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
   for (const [field2, cap7] of Object.entries(tagCaps)) {
@@ -22375,6 +22400,12 @@ function validateDevelopmentProfile(u, label2, reg, out) {
     if (seen.has(a)) out.push(`${label2}: anchor "${String(a)}" is listed twice`);
     seen.add(a);
   }
+}
+function validateTemperament(u, label2, out) {
+  if (u.temperament !== void 0) for (const p of temperamentProblems(u.temperament)) out.push(`${label2}: ${p}`);
+  if (u.temperamentLocks === void 0) return;
+  if (!Array.isArray(u.temperamentLocks)) return void out.push(`${label2}: temperament locks must be a list of fields`);
+  for (const f of u.temperamentLocks) if (!TEMPERAMENT_FIELDS.includes(f)) out.push(`${label2}: cannot lock "${String(f)}": a temperament field is ${TEMPERAMENT_FIELDS.join(", ")}`);
 }
 function validateUnitProfile(u, label2, reg, opts) {
   const out = [];
@@ -22526,6 +22557,8 @@ function makeNamedUnit(u, reg, usedIds) {
     ...u.worldStances && Object.keys(u.worldStances).length > 0 ? { worldStances: structuredClone(u.worldStances) } : {},
     ...u.bond ? { bond: structuredClone(u.bond) } : {},
     ...u.insight !== void 0 && u.insight !== "mid" ? { insight: u.insight } : {},
+    ...u.temperament ? { temperament: { ...u.temperament } } : {},
+    ...u.temperamentLocks && u.temperamentLocks.length > 0 ? { temperamentLocks: [...new Set(u.temperamentLocks)] } : {},
     ...u.anchors && u.anchors.length > 0 ? { development: { drift: {}, acc: {}, anchors: [...u.anchors], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 } } : {}
   };
 }
@@ -23202,7 +23235,7 @@ function gruntRelation(state, reg, grunt) {
 }
 
 // src/engine/actions/squad.ts
-var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development"];
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development", "temperament"];
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
@@ -23218,7 +23251,8 @@ var SECTION_OF = {
   worldStances: "stances",
   bond: "bond",
   anchors: "development",
-  insight: "development"
+  insight: "development",
+  temperament: "temperament"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
   if (!isObj8(payload) || typeof payload.unitId !== "string" || !isObj8(payload.patch)) {
@@ -23245,7 +23279,9 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     worldStances: patch.worldStances ?? unit2.worldStances,
     bond: patch.bond ?? unit2.bond,
     anchors: patch.anchors ?? unit2.development?.anchors,
-    insight: patch.insight ?? unit2.insight
+    insight: patch.insight ?? unit2.insight,
+    temperament: patch.temperament
+    // P14c: only the patch is checked (the words); a partial block is fine here
   };
   const errors = validateUnitProfile(next, unit2.displayName, ctx2.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true
@@ -23292,6 +23328,11 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   if (patch.insight !== void 0) {
     if (patch.insight === "mid") delete unit2.insight;
     else unit2.insight = patch.insight;
+  }
+  if (patch.temperament !== void 0) {
+    const locked = unit2.temperamentLocks ?? [];
+    const kept = Object.fromEntries(Object.entries(patch.temperament).filter(([f]) => !locked.includes(f)));
+    unit2.temperament = { ...temperamentOf(draft, unit2.id), ...kept };
   }
   if (patch.defects) {
     unit2.defects = patch.defects.map((d) => {
@@ -26520,6 +26561,36 @@ registerAction("life/set_frequency", (draft, payload) => {
   draft.settings.lifeEvents = mode;
   if (mode !== "off") ensureLife(draft);
   return [{ type: "life_frequency_set", mode }];
+});
+function namedUnit2(draft, id, action) {
+  const unit2 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
+  if (!unit2 || unit2.kind !== "named") throw new Error(`${action} needs a named unit.`);
+  return unit2;
+}
+registerAction("profile/set_temperament", (draft, payload) => {
+  const p = payload;
+  const unit2 = namedUnit2(draft, p?.unitId, "profile/set_temperament");
+  const problems = temperamentProblems(p?.temperament);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  const patch = p?.temperament;
+  const fields = Object.keys(patch);
+  if (fields.length === 0) throw new Error("profile/set_temperament needs at least one field.");
+  const locked = unit2.temperamentLocks ?? [];
+  if (fields.some((f) => locked.includes(f))) throw new Error("That trait is locked.");
+  unit2.temperament = { ...temperamentOf(draft, unit2.id), ...patch };
+  return [{ type: "temperament_set", unitId: unit2.id, temperament: { ...unit2.temperament }, locks: [...locked] }];
+});
+registerAction("profile/lock_temperament", (draft, payload) => {
+  const p = payload;
+  const unit2 = namedUnit2(draft, p?.unitId, "profile/lock_temperament");
+  const field2 = TEMPERAMENT_FIELDS.includes(p?.field) ? p?.field : void 0;
+  if (field2 === void 0) throw new Error(`A temperament field is ${TEMPERAMENT_FIELDS.join(", ")}.`);
+  if (typeof p?.on !== "boolean") throw new Error("profile/lock_temperament needs on: true or false.");
+  const locks = (unit2.temperamentLocks ?? []).filter((f) => f !== field2);
+  if (p.on) locks.push(field2);
+  if (locks.length > 0) unit2.temperamentLocks = locks;
+  else delete unit2.temperamentLocks;
+  return [{ type: "temperament_set", unitId: unit2.id, temperament: temperamentOf(draft, unit2.id), locks: [...locks] }];
 });
 
 // src/llm/callTypes.ts
@@ -32597,6 +32668,7 @@ function registerSceneContext(builder, deps) {
       const romance = intimacyOf(s).romance;
       const num5 = (n) => raw ? ` (${n})` : "";
       const here = new Set(s.scene?.participants ?? []);
+      const lifeOn = lifeMode(s) !== "off";
       return presentUnits2(s).map((u) => {
         const rel = s.relations[u.id];
         if (!rel) return `${u.displayName}`;
@@ -32611,7 +32683,9 @@ function registerSceneContext(builder, deps) {
           const def = reg.defects.get(d.id);
           return def ? `; defect ${String(def.name)}: ${String(def.social)}` : "";
         }).join("");
-        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num5(u.stress)}${defects}`;
+        const t = lifeOn && u.kind === "named" ? temperamentOf(s, u.id) : null;
+        const temper = t ? `; temperament: ${t.talkativeness}, ${t.volatility}, ${t.humor} humor` : "";
+        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num5(u.stress)}${temper}${defects}`;
       }).join("\n");
     }
   });
@@ -47203,7 +47277,8 @@ function createApp(st, deps) {
     disposition: "How hard or kind she is for this world (disposition offset)",
     stances: "Her stance toward the world's norms",
     bond: "Bond profile: how she leads, bonds and what she will not do",
-    development: "What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)"
+    development: "What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)",
+    temperament: "Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)"
   };
   async function resyncUnit(unitId) {
     const unit2 = state?.squad.find((u) => u.id === unitId);
@@ -47211,7 +47286,7 @@ function createApp(st, deps) {
     const startChatId = st.getActiveChat()?.chatId;
     const desireBond = state.settings.desireBondDefects === true;
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered2 = RESYNC_SECTIONS.filter((s) => s !== "stances" || stanceOptionIds(registries, world).length > 0);
+    const offered2 = RESYNC_SECTIONS.filter((s) => s !== "temperament" && (s !== "stances" || stanceOptionIds(registries, world).length > 0));
     const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
     const resetBox = h("input", { type: "checkbox", "data-reset-development": unitId });
     const picker = await shell.modal({

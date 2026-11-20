@@ -3,6 +3,7 @@ import type { Registries } from '../content/types';
 import { firstImpressionWeight } from '../engine/commander/presence';
 import { commanderLine } from '../engine/commander/profile';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
+import { lifeMode, temperamentOf } from '../engine/life/state';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
@@ -51,6 +52,7 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
       const romance = intimacyOf(s).romance;
       const num = (n: number) => (raw ? ` (${n})` : '');
       const here = new Set(s.scene?.participants ?? []);
+      const lifeOn = lifeMode(s) !== 'off'; // P14c: the temperament words are the one standing addition of her life to the prompt
       return presentUnits(s).map((u) => {
         const rel = s.relations[u.id];
         if (!rel) return `${u.displayName}`;
@@ -66,7 +68,9 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
           const def = reg.defects.get(d.id);
           return def ? `; defect ${String(def.name)}: ${String(def.social)}` : '';
         }).join('');
-        return `${u.displayName} — state ${String(st?.name ?? 'Comrade')}${st ? ` (${String(st.promptHint)})` : ''}; ${axes}; stress ${stressBand(u.stress)}${num(u.stress)}${defects}`;
+        const t = lifeOn && u.kind === 'named' ? temperamentOf(s, u.id) : null;
+        const temper = t ? `; temperament: ${t.talkativeness}, ${t.volatility}, ${t.humor} humor` : '';
+        return `${u.displayName} — state ${String(st?.name ?? 'Comrade')}${st ? ` (${String(st.promptHint)})` : ''}; ${axes}; stress ${stressBand(u.stress)}${num(u.stress)}${temper}${defects}`;
       }).join('\n');
     },
   });

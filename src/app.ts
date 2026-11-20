@@ -1655,6 +1655,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     stances: 'Her stance toward the world\'s norms',
     bond: 'Bond profile: how she leads, bonds and what she will not do',
     development: 'What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)',
+    temperament: 'Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1666,7 +1667,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     // P8: the world the unit lives in; the stances section only makes sense while some norm is not neutral
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered = RESYNC_SECTIONS.filter((s) => s !== 'stances' || stanceOptionIds(registries, world).length > 0);
+    // P14c: the temperament section is offered once the profile import reads it (the import task); until then the card has nothing to give
+    const offered = RESYNC_SECTIONS.filter((s): s is Exclude<ResyncSection, 'temperament'> => s !== 'temperament' && (s !== 'stances' || stanceOptionIds(registries, world).length > 0));
 
     // 1. which sections
     const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);

@@ -5,7 +5,7 @@ import { enterStep, initialOnboarding, stepIndex } from './onboarding';
 import { defectAllowedFor, validateBond } from './bonds/profile';
 import { TUNING } from './tuning';
 import { DEVELOPMENT_MODES } from './development/state';
-import { LIFE_MODES, newLife } from './life/state';
+import { LIFE_MODES, TEMPERAMENT_FIELDS, newLife, temperamentProblems } from './life/state';
 import { anchorKey } from './development/axes';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
@@ -20,7 +20,7 @@ import { corporateWardenPick, seedWarden } from './warden/select';
 import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
-  VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Insight, type LifeMode, type Relation, type SignatureInstance, type Unit, type WorldStance,
+  VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Insight, type LifeMode, type Relation, type SignatureInstance, type Temperament, type Unit, type WorldStance,
 } from './state/types';
 
 export const SETUP_LIMITS = {
@@ -68,6 +68,9 @@ export interface UnitSetup {
   /** P14b: the axes her card states strongly (at most 4 axis keys) and how well she reads people (absent = mid). */
   anchors?: string[];
   insight?: Insight;
+  /** P14c: how she talks and carries herself, and the fields the player locked (absent = the defaults, nothing locked). */
+  temperament?: Temperament;
+  temperamentLocks?: Array<keyof Temperament>;
 }
 
 export interface SetupResult {
@@ -196,6 +199,7 @@ function validateUnit(
 
   validateDisposition(u, label, reg, out);
   validateDevelopmentProfile(u, label, reg, out);
+  validateTemperament(u, label, out);
   if (u.bond !== undefined) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label}: bond: ${issue}`);
 
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers } as const;
@@ -228,6 +232,14 @@ function validateDevelopmentProfile(u: Pick<UnitSetup, 'anchors' | 'insight'>, l
     if (seen.has(a)) out.push(`${label}: anchor "${String(a)}" is listed twice`);
     seen.add(a);
   }
+}
+
+/** P14c: her temperament words are known (a re-sync patch may give some of the fields) and her locks name fields. */
+function validateTemperament(u: Pick<UnitSetup, 'temperament' | 'temperamentLocks'>, label: string, out: string[]): void {
+  if (u.temperament !== undefined) for (const p of temperamentProblems(u.temperament)) out.push(`${label}: ${p}`);
+  if (u.temperamentLocks === undefined) return;
+  if (!Array.isArray(u.temperamentLocks)) return void out.push(`${label}: temperament locks must be a list of fields`);
+  for (const f of u.temperamentLocks) if (!(TEMPERAMENT_FIELDS as readonly unknown[]).includes(f)) out.push(`${label}: cannot lock "${String(f)}": a temperament field is ${TEMPERAMENT_FIELDS.join(', ')}`);
 }
 
 /** The per-unit rules of `validateSetup`, minus the baseline (re-sync never touches relationship axes). */
@@ -405,6 +417,8 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     ...(u.worldStances && Object.keys(u.worldStances).length > 0 ? { worldStances: structuredClone(u.worldStances) } : {}),
     ...(u.bond ? { bond: structuredClone(u.bond) } : {}),
     ...(u.insight !== undefined && u.insight !== 'mid' ? { insight: u.insight } : {}),
+    ...(u.temperament ? { temperament: { ...u.temperament } } : {}),
+    ...(u.temperamentLocks && u.temperamentLocks.length > 0 ? { temperamentLocks: [...new Set(u.temperamentLocks)] } : {}),
     ...(u.anchors && u.anchors.length > 0 ? { development: { drift: {}, acc: {}, anchors: [...u.anchors], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 } } : {}),
   };
 }
