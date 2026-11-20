@@ -22,8 +22,8 @@
   },
   {
     "id": "plyx_ring",
-    "label": "{name}'s plyx ring",
-    "description": "AUTHOR TO WRITE: a ring cast from plyx that a soldier gives the commander.",
+    "label": "{name}'s PLYX ring",
+    "description": "AUTHOR TO WRITE: a ring cast from PLYX that a soldier gives the commander.",
     "minTier": "romantic",
     "text": "AUTHOR TO WRITE: I made you something. Wear it if you want. [{label}]",
     "weight": 6

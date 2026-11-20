@@ -176,7 +176,7 @@
   },
   {
     "id": "plyx",
-    "term": "Plyx",
+    "term": "PLYX",
     "short": "Programmable polymer: the material for crafting and upgrading gear. Scarce, and needed for defect arcs."
   },
   {
@@ -340,7 +340,7 @@
   {
     "id": "skill_points",
     "term": "Skill points",
-    "short": "One per level. Spend them in her skill tree on actives, passives and upgrades. A respec costs plyx and credits."
+    "short": "One per level. Spend them in her skill tree on actives, passives and upgrades. A respec costs PLYX and credits."
   },
   {
     "id": "loadout",
@@ -410,7 +410,7 @@
   {
     "id": "reward_tier",
     "term": "Reward tier",
-    "short": "The class of payout for finishing the mission: credits, plyx, loot and standing with the corporation all grow with the tier."
+    "short": "The class of payout for finishing the mission: credits, PLYX, loot and standing with the corporation all grow with the tier."
   },
   {
     "id": "mission_deadline",
@@ -2132,8 +2132,8 @@
   {
     "id": "implant_hack",
     "term": "Implant hack",
-    "short": "A project in three steps to silence the controller. It needs a workshop, a medbay, plyx and an ally who knows implants.",
-    "long": "Each step pays plyx, takes a slot and adds noise. A step that is noticed fails: the progress starts over, the commander takes a pain burst, and the warden learns what is going on. The third clean step makes the controller dark. That removes the warden, and oversight opens an investigation.",
+    "short": "A project in three steps to silence the controller. It needs a workshop, a medbay, PLYX and an ally who knows implants.",
+    "long": "Each step pays PLYX, takes a slot and adds noise. A step that is noticed fails: the progress starts over, the commander takes a pain burst, and the warden learns what is going on. The third clean step makes the controller dark. That removes the warden, and oversight opens an investigation.",
     "see": [
       "intrigue",
       "kompromat",

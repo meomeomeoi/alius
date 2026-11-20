@@ -53,7 +53,7 @@
   {
     "id": "workshop",
     "label": "WORKSHOP",
-    "description": "Benches, a plyx press and the smell of hot solder. Duty shifts end up here.",
+    "description": "Benches, a PLYX press and the smell of hot solder. Duty shifts end up here.",
     "sceneLocationId": "workshop",
     "facilityId": "workshop",
     "activityIds": ["workshop"],

@@ -2,6 +2,7 @@ import type { ActivityEffect, CombatEffect, TraitEffect } from '../content/schem
 import { TUNING } from '../engine/tuning';
 import type { Entry, Registries, RegistryName } from '../content/types';
 import type { WorldEffect } from '../engine/world/types';
+import { resourceWord } from '../engine/state/types';
 
 /**
  * Plain-English lines generated from structured effects (P7a §3). Lines may carry `[[links]]`.
@@ -160,7 +161,7 @@ export function summarizeCombatEffect(effect: CombatEffect, _reg: Registries): s
 // ---------------------------------------------------------------------------------------------
 // world
 
-const RESOURCE_LABEL: Record<string, string> = { credits: 'Credits', supplies: 'Supplies', plyx: 'Plyx' };
+const RESOURCE_LABEL: Record<string, string> = { credits: 'Credits', supplies: 'Supplies', plyx: 'PLYX' };
 const NO_LINE_WORLD = new Set(['flag', 'thread_flag', 'thread', 'fact']);
 
 /** `null` for effects the player has no line for (flags, threads, facts). */
@@ -319,7 +320,7 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries, data?
     }
     case 'activities': {
       const cost = e.cost && typeof e.cost === 'object'
-        ? Object.entries(e.cost as Loose).filter(([, n]) => isNum(n) && n > 0).map(([r, n]) => `${n} ${r}`)
+        ? Object.entries(e.cost as Loose).filter(([, n]) => isNum(n) && n > 0).map(([r, n]) => `${n} ${resourceWord(r)}`)
         : [];
       const focus = list(e.focus) as Array<{ id: string; label: string }>;
       return compact([
@@ -419,7 +420,7 @@ export function summarizeTraitEffect(e: TraitEffect, _reg: Registries): string {
     case 'crisis_hp': return `Crisis HP ${signed(x.amount)}`;
     case 'terminate_approval': return `Termination approval ${pctSigned(x.amount * 100)}`;
     case 'requisition_price': return `Requisition price ${pctSigned(x.pct)}`;
-    case 'activity_cost': return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${x.resource}`;
+    case 'activity_cost': return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${resourceWord(x.resource)}`;
     case 'activity_relation': return `[[activities:${x.activityId}]] with a companion: ${cap(x.axis)} ${signed(x.amount)}`;
     case 'relation_event_mult': return `[[eventDeltas:${x.event}]] lands ×${num(x.mult)}${x.ifTrigger ? ` with units that have the trigger "${x.ifTrigger}"` : ''}`;
     case 'night_slot': return 'The Night is always yours: a quiet night when nobody knocks';
@@ -490,7 +491,7 @@ export function summarizePunishment(entry: Entry): string[] {
     else if (fx.type === 'no_leave') out.push('No leave for a couple of days: she can still talk and visit the medbay');
     else if (fx.type === 'bench') out.push('She is left out of the next expedition');
     else if (fx.type === 'duty') out.push('She works one slot for the base');
-    else if (fx.type === 'resource' && isNum(fx.amount)) out.push(`The base ${fx.amount > 0 ? 'gains' : 'pays'} ${({ credits: 'credits', supplies: 'a supply', plyx: 'plyx' } as Record<string, string>)[resource(fx.resource)] ?? resource(fx.resource)}`);
+    else if (fx.type === 'resource' && isNum(fx.amount)) out.push(`The base ${fx.amount > 0 ? 'gains' : 'pays'} ${({ credits: 'credits', supplies: 'a supply', plyx: 'PLYX' } as Record<string, string>)[resource(fx.resource)] ?? resource(fx.resource)}`);
   }
   for (const p of Array.isArray(e.perception) ? (e.perception as Loose[]) : []) {
     out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? 'Lands lighter' : 'Lands harder'} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);

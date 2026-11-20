@@ -136,7 +136,7 @@ export function checkUpgrade(state: CampaignState, reg: Registries, id: string):
   const up = levels[level].upgrade;
   if (!up) return `${name} has no upgrade to level ${level + 1}.`;
   if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
-  if (state.resources.plyx < up.plyx) return `Not enough plyx to upgrade ${name} (needs ${up.plyx}).`;
+  if (state.resources.plyx < up.plyx) return `Not enough PLYX to upgrade ${name} (needs ${up.plyx}).`;
   return null;
 }
 

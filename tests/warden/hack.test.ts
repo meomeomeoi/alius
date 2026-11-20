@@ -45,7 +45,7 @@ describe('hackProblem', () => {
     const p = hackProblem(s, reg, undefined)!;
     expect(p).toMatch(/Workshop level 3/);
     expect(p).toMatch(/Medbay level 3/);
-    expect(p).toMatch(/5 plyx/);
+    expect(p).toMatch(/5 PLYX/);
     expect(p).toMatch(/ally with the know-how/);
   });
 
@@ -141,7 +141,7 @@ describe('hackStep', () => {
 
   it('throws with the problem and changes nothing', () => {
     const s = swap((x) => { x.resources.plyx = 1; });
-    expect(() => hackStep(s, chancing(false), ID.cat)).toThrow(/5 plyx/);
+    expect(() => hackStep(s, chancing(false), ID.cat)).toThrow(/5 PLYX/);
   });
 
   it('the action: needs a unit, is refused in a scene, and runs through dispatch', () => {
