@@ -735,6 +735,32 @@ var TUNING = Object.freeze({
   })
 });
 
+// src/engine/state/types.ts
+var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
+var resourceWord = (resource) => resource === "plyx" ? "PLYX" : resource;
+var DEED_COUNTERS = [
+  "leash_compel",
+  "leash_suppress",
+  "leash_terminate",
+  "grunts_lost",
+  "protected",
+  "defiance_tolerated",
+  "punish_1",
+  "punish_2",
+  "punish_3",
+  "punish_4",
+  "promises_kept",
+  "promises_broken",
+  "demands_granted",
+  "demands_refused",
+  "threats_kept",
+  "threats_empty"
+];
+var VOTE_KINDS = ["mission", "upgrade", "punish", "rations", "scapegoat"];
+var OUTSIDE_TRIGGERS = ["crisis_cover", "ordered_mission", "negotiation"];
+var BALLOT_TERMS = ["values", "trust", "stance", "demand", "affected"];
+
 // src/analysis/effects.ts
 var MINUS = "\u2212";
 function humanize(key) {
@@ -892,7 +918,7 @@ function summarizeCombatEffect(effect, _reg) {
   if (e.limit === "round" || e.limit === "combat") s += ` (once per ${e.limit})`;
   return e.downside === true ? `Downside: ${s}` : s;
 }
-var RESOURCE_LABEL = { credits: "Credits", supplies: "Supplies", plyx: "Plyx" };
+var RESOURCE_LABEL = { credits: "Credits", supplies: "Supplies", plyx: "PLYX" };
 var NO_LINE_WORLD = /* @__PURE__ */ new Set(["flag", "thread_flag", "thread", "fact"]);
 function summarizeWorldEffect(effect, reg) {
   const e = effect ?? {};
@@ -1064,7 +1090,7 @@ function effectsFor(registry2, entry, reg, data) {
       return compact([...combat(c.upside, reg), ...combat(c.downside, reg), typeof name === "string" ? `Breakdown: ${name}` : null]);
     }
     case "activities": {
-      const cost = e.cost && typeof e.cost === "object" ? Object.entries(e.cost).filter(([, n]) => isNum(n) && n > 0).map(([r, n]) => `${n} ${r}`) : [];
+      const cost = e.cost && typeof e.cost === "object" ? Object.entries(e.cost).filter(([, n]) => isNum(n) && n > 0).map(([r, n]) => `${n} ${resourceWord(r)}`) : [];
       const focus = list(e.focus);
       return compact([
         cost.length ? `Costs ${cost.join(", ")}` : null,
@@ -1171,7 +1197,7 @@ function summarizeTraitEffect(e, _reg) {
     case "requisition_price":
       return `Requisition price ${pctSigned(x.pct)}`;
     case "activity_cost":
-      return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${x.resource}`;
+      return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${resourceWord(x.resource)}`;
     case "activity_relation":
       return `[[activities:${x.activityId}]] with a companion: ${cap(x.axis)} ${signed(x.amount)}`;
     case "relation_event_mult":
@@ -1260,7 +1286,7 @@ function summarizePunishment(entry) {
     else if (fx2.type === "no_leave") out.push("No leave for a couple of days: she can still talk and visit the medbay");
     else if (fx2.type === "bench") out.push("She is left out of the next expedition");
     else if (fx2.type === "duty") out.push("She works one slot for the base");
-    else if (fx2.type === "resource" && isNum(fx2.amount)) out.push(`The base ${fx2.amount > 0 ? "gains" : "pays"} ${{ credits: "credits", supplies: "a supply", plyx: "plyx" }[resource(fx2.resource)] ?? resource(fx2.resource)}`);
+    else if (fx2.type === "resource" && isNum(fx2.amount)) out.push(`The base ${fx2.amount > 0 ? "gains" : "pays"} ${{ credits: "credits", supplies: "a supply", plyx: "PLYX" }[resource(fx2.resource)] ?? resource(fx2.resource)}`);
   }
   for (const p of Array.isArray(e.perception) ? e.perception : []) {
     out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? "Lands lighter" : "Lands harder"} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);
@@ -1791,7 +1817,7 @@ function checkUpgrade(state, reg, id) {
   const up = levels[level].upgrade;
   if (!up) return `${name} has no upgrade to level ${level + 1}.`;
   if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
-  if (state.resources.plyx < up.plyx) return `Not enough plyx to upgrade ${name} (needs ${up.plyx}).`;
+  if (state.resources.plyx < up.plyx) return `Not enough PLYX to upgrade ${name} (needs ${up.plyx}).`;
   return null;
 }
 function checkRecruit(state) {
@@ -6090,31 +6116,6 @@ var ROMANTIC_PROPOSALS = ["date", "fwb", "romance", "exclusive", "secret_affair"
 var SEVERITIES = ["minor", "moderate", "major", "extreme"];
 var INTERNAL_HISTORY_TYPES = ["stress_high"];
 
-// src/engine/state/types.ts
-var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
-var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
-var DEED_COUNTERS = [
-  "leash_compel",
-  "leash_suppress",
-  "leash_terminate",
-  "grunts_lost",
-  "protected",
-  "defiance_tolerated",
-  "punish_1",
-  "punish_2",
-  "punish_3",
-  "punish_4",
-  "promises_kept",
-  "promises_broken",
-  "demands_granted",
-  "demands_refused",
-  "threats_kept",
-  "threats_empty"
-];
-var VOTE_KINDS = ["mission", "upgrade", "punish", "rations", "scapegoat"];
-var OUTSIDE_TRIGGERS = ["crisis_cover", "ordered_mission", "negotiation"];
-var BALLOT_TERMS = ["values", "trust", "stance", "demand", "affected"];
-
 // src/engine/warden/state.ts
 var DEATH_RULES = ["rewind_day", "campaign_end"];
 var EXPECTATION_KINDS = ["protect_squad", "no_civilian_harm", "meet_quota", "obey_oversight", "keep_me_close", "no_romance_with_others", "personal"];
@@ -8022,7 +8023,7 @@ var PlanRoomSchema = BaseEntrySchema.extend({
   });
 });
 registrySchemas.planRooms = PlanRoomSchema;
-var hex = external_exports.string().regex(/^#[0-9a-fA-F]{6}$/, "a colour is #rrggbb");
+var hex = external_exports.string().regex(/^#[0-9a-fA-F]{6}$/, "a color is #rrggbb");
 var CSS_PRESETS = ["ccp_standard", "kestrel", "vesper"];
 var DeviceSkinSchema = BaseEntrySchema.extend({
   name: str,
@@ -10374,7 +10375,7 @@ function favourReactions(draft, reg, favouredId, rival) {
     const tier = bondTierOf(draft, reg, other.id);
     if (tier === "romantic") {
       reactions.push({ unitId: other.id, kind: "rival" });
-      events.push(...hitHer(draft, reg, other.id, "rival_favoured", rival, "the commander favoured someone else", { amplified: true }));
+      events.push(...hitHer(draft, reg, other.id, "rival_favoured", rival, "the commander favored someone else", { amplified: true }));
     } else if (tier === "close" || valuesOf(other).ingroup >= 1) {
       reactions.push({ unitId: other.id, kind: "respect" });
       events.push(...hitHer(draft, reg, other.id, "bond_shown", "minor", "a bond was shown"));
@@ -13125,7 +13126,7 @@ function setLeashEffect(fn) {
 }
 function applyCommanderPunishment(draft, ctx2, punishmentId) {
   const w = wardenOf(draft);
-  if (!w) throw new Error("Nobody holds the leash.");
+  if (!w) throw new Error("Nobody holds the Leash.");
   const entry = ctx2.registries.commanderPunishments.get(punishmentId);
   if (!entry) throw new Error(`Unknown commander punishment "${punishmentId}".`);
   const events = [];
@@ -15108,7 +15109,7 @@ function agendaProblem(list5, reg) {
 }
 function setAgenda(draft, reg, list5) {
   const w = wardenOf(draft);
-  if (!w || !leashswapOf(draft)) throw new Error("warden/agenda: nobody holds the leash.");
+  if (!w || !leashswapOf(draft)) throw new Error("warden/agenda: nobody holds the Leash.");
   if (w.agenda !== "fallback" || w.overrideFired === true) throw new Error("The agenda is already in play.");
   const problem = agendaProblem(list5, reg);
   if (problem) throw new Error(`warden/agenda: ${problem}`);
@@ -15273,17 +15274,17 @@ function resolveConflict(draft, ctx2, p) {
 }
 function cancelBooking(draft, ctx2, bookingId) {
   const b = bookingsOf(draft).find((x) => x.id === bookingId);
-  if (!b || b.status !== "booked") throw new Error("That booking cannot be cancelled.");
+  if (!b || b.status !== "booked") throw new Error("That booking cannot be canceled.");
   const reg = ctx2.registries;
   b.status = "cancelled";
   delete b.conflict;
   syncConflicts(draft, b.day, b.slot);
   const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
   if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
-  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was cancelled" }));
-  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was cancelled"));
+  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was canceled" }));
+  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was canceled"));
   else events.push(...evaluateAutomatic(draft, reg, b.unitId));
-  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "cancelled her booking on the day of obedience"));
+  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "canceled her booking on the day of obedience"));
   return events;
 }
 function markPlayed(draft, reg, booking) {
@@ -15389,7 +15390,7 @@ function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   return events;
 }
 function intrigueBusy(state) {
-  if (!wardenOf(state)) return "Nobody holds the leash.";
+  if (!wardenOf(state)) return "Nobody holds the Leash.";
   if (state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0) return "Not while a scene, a fight or a run is open.";
   return null;
 }
@@ -15465,7 +15466,7 @@ function hackProblem(state, reg, allyId) {
   for (const [id, need] of [["workshop", H.workshop], ["medbay", H.medbay]]) {
     if (facilityLevel2(state, id) < need) missing2.push(`${String(reg.facilities.get(id)?.name ?? id)} level ${need} (now ${facilityLevel2(state, id)})`);
   }
-  if (state.resources.plyx < H.plyx) missing2.push(`${H.plyx} plyx (have ${state.resources.plyx})`);
+  if (state.resources.plyx < H.plyx) missing2.push(`${H.plyx} PLYX (have ${state.resources.plyx})`);
   if (!isAlly(state, allyId) || !isTech(state, reg, allyId)) missing2.push("an ally with the know-how to open an implant");
   return missing2.length > 0 ? `The hack needs ${missing2.join(", ")}.` : null;
 }
@@ -17914,8 +17915,8 @@ function choiceOf(state, reg, route, index2, scope) {
       const { resource, amount } = route.cost;
       return {
         ...base,
-        label: `Pay ${amount} ${resource}`,
-        disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resource} (needs ${amount}).`
+        label: `Pay ${amount} ${resourceWord(resource)}`,
+        disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resourceWord(resource)} (needs ${amount}).`
       };
     }
     case "delegate": {
@@ -19501,7 +19502,7 @@ function respec(draft, reg, unitId) {
   if (unit2.unlockedNodes.length === 0) throw new Error("Nothing to respec.");
   const cost = respecCost(unit2);
   if (draft.resources.credits < cost.credits || draft.resources.plyx < cost.plyx) {
-    throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} plyx.`);
+    throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} PLYX.`);
   }
   draft.resources.credits -= cost.credits;
   draft.resources.plyx -= cost.plyx;
@@ -20339,7 +20340,7 @@ function resolveUnknownType(reg, rng, typeId) {
 }
 var describeLoot = (drops, reg) => {
   if (drops.length === 0) return "nothing";
-  return drops.map((d) => d.kind === "item" ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${d.kind}`).join(", ");
+  return drops.map((d) => d.kind === "item" ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${resourceWord(d.kind)}`).join(", ");
 };
 function missionOf(draft) {
   const m = draft.missions.active.find((x) => x.id === draft.expedition.missionId);
@@ -20636,7 +20637,7 @@ function reportLines(report, state, reg) {
   lines.push(report.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
   if (report.rewards) {
     const r = report.rewards;
-    const parts = [`${r.credits} credits`, `${r.plyx} plyx`, ...r.items];
+    const parts = [`${r.credits} credits`, `${r.plyx} PLYX`, ...r.items];
     if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
     if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
     lines.push(`Rewards: ${parts.join(", ")}.`);
@@ -20769,7 +20770,7 @@ function eventOptions(state, reg) {
     if (disabled === null) {
       for (const fx2 of o.effects) {
         if (fx2.type === "carried_supplies" && fx2.amount < 0 && exp.supplies < -fx2.amount) disabled = "Not enough supplies";
-        else if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) disabled = `Not enough ${fx2.resource}`;
+        else if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) disabled = `Not enough ${resourceWord(fx2.resource)}`;
         if (disabled !== null) break;
       }
     }
@@ -21252,7 +21253,7 @@ function blockedReason(state, reg, o) {
   if (o.routeCheck && routeChoices(state, reg, o.routeCheck, routeScope(state)).every((r) => r.disabled !== null)) return "No way to do this right now";
   if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) return `Needs ${capital2(o.requires.stat)} ${o.requires.rank}`;
   for (const fx2 of o.effects) {
-    if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) return `Not enough ${fx2.resource}`;
+    if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) return `Not enough ${resourceWord(fx2.resource)}`;
     if (fx2.type === "carried_supplies" && fx2.amount < 0 && (state.expedition?.supplies ?? 0) < -fx2.amount) return "Not enough supplies";
   }
   return null;
@@ -21529,7 +21530,7 @@ function grantProblem(state, reg, demandId) {
   const unit2 = demand ? state.squad.find((u) => u.id === demand.unitId) : void 0;
   if (!demand || !tpl || !unit2) return "Unknown demand.";
   for (const cost of costsOf(tpl)) {
-    if (cost.type === "resource" && state.resources[cost.resource] < cost.amount) return `Not enough ${cost.resource} (needs ${cost.amount}).`;
+    if (cost.type === "resource" && state.resources[cost.resource] < cost.amount) return `Not enough ${resourceWord(cost.resource)} (needs ${cost.amount}).`;
     if (cost.type === "equip_item" && !itemFor(state, reg, unit2, cost)) return `There is no suitable ${cost.slot} to give.`;
     if (cost.type === "reveal_crime" && state.relations[unit2.id]?.flags.includes("knows_crime")) return "She already knows.";
     if (cost.type === "other_unit_event" && !otherUnit(state, unit2.id)) return "There is nobody else to bring into it.";
@@ -22193,7 +22194,7 @@ function validateSetup(r, reg, opts) {
     if (m.kind !== "leashswap") out.push(`Unknown campaign mode "${String(m.kind)}"`);
     else {
       if (!DEATH_RULES.includes(m.deathRule)) out.push(`Unknown death rule "${String(m.deathRule)}"`);
-      if (units.length === 0) out.push("LEASHSWAP needs at least one named unit to hold the leash");
+      if (units.length === 0) out.push("LEASHSWAP needs at least one named unit to hold the Leash");
       else if (m.warden?.by === "player") {
         if (!Number.isInteger(m.warden.index) || m.warden.index < 0 || m.warden.index >= units.length) out.push("The warden must be one of the chosen units");
       } else if (m.warden?.by !== "corporation") out.push("The warden must be picked by the player or assigned by the corporation");
@@ -22353,7 +22354,7 @@ function buildCampaign(r, reg, opts) {
   if (r.mode !== void 0) {
     state.leashswap = newLeashswap(r.mode.deathRule);
     const unitId = r.mode.warden.by === "player" ? state.squad[r.mode.warden.index].id : corporateWardenPick(state, reg);
-    if (unitId === null) throw new Error("LEASHSWAP found no unit to hold the leash.");
+    if (unitId === null) throw new Error("LEASHSWAP found no unit to hold the Leash.");
     seedWarden(state, { registries: reg, rng: new Rng(state.rng) }, { unitId, assignedBy: r.mode.warden.by === "player" ? "player" : "corporation" });
   }
   applyWorldStartEffects(state, reg);
@@ -24148,7 +24149,7 @@ function logCosignDenied(draft, ctx2, unitId, kind, context) {
 var restOfDay = (slot2) => SLOTS2.includes(slot2) ? SLOTS2.length - SLOTS2.indexOf(slot2) : 0;
 function leashCommander(draft, ctx2, kind) {
   const w = wardenOf(draft);
-  if (!w) throw new Error("Nobody holds the leash.");
+  if (!w) throw new Error("Nobody holds the Leash.");
   if (w.leashLeft < 1) throw new Error("The warden has no Leash authorization left this week.");
   w.leashLeft -= 1;
   const events = [{ type: "commander_leashed", kind }];
@@ -24331,7 +24332,7 @@ function rollVerdict(draft, ctx2) {
   if (!draft.commander.flags.includes("commander_convicted")) draft.commander.flags.push("commander_convicted");
   const next = corporateWardenPick(draft, ctx2.registries, former !== void 0 ? [former] : [], { anyLiving: true });
   if (next === null) {
-    addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the leash.`, audience: "*" });
+    addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: oversight convicted the commander, and there was no one left to hold the Leash.`, audience: "*" });
     return [...events, ...commanderDies(draft, ctx2, "executed")];
   }
   return [...events, ...seedWarden(draft, ctx2, { unitId: next, assignedBy: "oversight" })];
@@ -25463,7 +25464,7 @@ registerAction("item/unequip", (draft, payload) => {
   return [{ type: "item_equipped", unitId: unit2.id, slot: slot2, uid: null, from: null }];
 });
 var spend = (draft, credits, plyx) => {
-  if (draft.resources.credits < credits || draft.resources.plyx < plyx) throw new Error(`Not enough resources: needs ${credits} credits and ${plyx} plyx.`);
+  if (draft.resources.credits < credits || draft.resources.plyx < plyx) throw new Error(`Not enough resources: needs ${credits} credits and ${plyx} PLYX.`);
   draft.resources.credits -= credits;
   draft.resources.plyx -= plyx;
   const out = [];
@@ -28219,7 +28220,7 @@ function wardenDirectives(state, reg) {
     out.push({
       id: REMOTE_DIRECTIVE,
       expiresAfter: "manual",
-      text: "AUTHOR TO WRITE: Nobody holds the commander's leash while oversight investigates. The controller runs on corporate rules, quota and obedience, with no argument and no exceptions. The squad knows the warden is gone and does not yet know how this ends."
+      text: "AUTHOR TO WRITE: Nobody holds the commander's Leash while oversight investigates. The controller runs on corporate rules, quota and obedience, with no argument and no exceptions. The squad knows the warden is gone and does not yet know how this ends."
     });
   }
   if (unit2 && revealPending(state, reg)) {
@@ -28909,7 +28910,7 @@ function personalDirectives(state, reg, present2) {
     if (played2) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `${name} booked this time and expects the commander's full attention.` });
     } else if (cancelled) {
-      out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `The commander cancelled the time ${name} had booked; she remembers it.` });
+      out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `The commander canceled the time ${name} had booked; she remembers it.` });
     }
   }
   for (const x of state.personal?.secrets ?? []) {
@@ -29314,7 +29315,7 @@ function bondsDirectives(builder, state, reg) {
     const unit2 = state.squad.find((u) => u.id === id);
     const band2 = wantBandOf(state, reg, id);
     if (!unit2 || band2 !== "aching" && band2 !== "desperate") continue;
-    builder.setDirective({ id: `want:${id}`, expiresAfter: "manual", text: `${unit2.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
+    builder.setDirective({ id: `want:${id}`, expiresAfter: "manual", text: `${unit2.displayName} is restless and irritable with unmet want; it colors how she speaks to the commander.` });
     wantSet.get(builder).add(`want:${id}`);
   }
   for (const id of state.scene.participants) {
@@ -29819,7 +29820,7 @@ declare("flavor.dm_edit", "flavor", "comms", "none", "none", "Message edit");
 declare("flavor.habit", "flavor", "day", "free", "none", "Habit wording");
 declare("flavor.frequency_fragment", "flavor", "scene", "none", "none", "Fragment wording");
 declare("warden.agenda", "warden_agenda", "world", "before_commit", "quiet", "The warden's agenda");
-declare("warden.judge", "warden_judge", "world", "none", "none", "Warden judgement");
+declare("warden.judge", "warden_judge", "world", "none", "none", "Warden judgment");
 declare("warden.epilogue", "epilogue", "world", "free", "full", "Epilogue");
 declare("setup.profile_import", "profile_import", "setup", "before_commit", "none", "Profile import");
 declare("setup.head_start_recap", "head_start_recap", "world", "before_commit", "full", "Recap of the first weeks");
@@ -31025,7 +31026,7 @@ function renderCombatScreen(host, ctx2) {
     if (xp.length > 0) rows.push(`XP: ${xp.map(([id, n]) => `${unitName3(id)} +${n}`).join(", ")}`);
     if (r.levelUps.length > 0) rows.push(`LEVEL UP: ${r.levelUps.map((l) => `${unitName3(l.unitId)} \u2192 ${l.level}`).join(", ")}`);
     if (r.loot.length > 0) {
-      rows.push(`LOOT${r.banked ? "" : " (NOT BANKED YET)"}: ${r.loot.map((d) => d.kind === "item" ? `${reg.items.get(d.item.itemId)?.name ?? d.item.itemId} [${d.item.rarity}]` : `${d.amount} ${d.kind}`).join(", ")}`);
+      rows.push(`LOOT${r.banked ? "" : " (NOT BANKED YET)"}: ${r.loot.map((d) => d.kind === "item" ? `${reg.items.get(d.item.itemId)?.name ?? d.item.itemId} [${d.item.rarity}]` : `${d.amount} ${resourceWord(d.kind)}`).join(", ")}`);
     }
     if (r.injuries.length > 0) rows.push(`INJURED: ${r.injuries.map(unitName3).join(", ")}`);
     if (r.deaths.length > 0) rows.push(`LOST: ${r.deaths.map(unitName3).join(", ")}`);
@@ -32427,7 +32428,7 @@ registerCallType({
   json: false,
   system: (raw) => [
     "You retell a rumor of a squad-command roleplay in the voice of the soldier who passes it on.",
-    `Write ONE line of at most ${raw?.factTextMax ?? TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; colour it by how she feels.`,
+    `Write ONE line of at most ${raw?.factTextMax ?? TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; color it by how she feels.`,
     'No numbers, no headings, no markdown, no quotation marks. Give the commander no pronoun (write "the commander").'
   ].join("\n"),
   prompt: (raw) => {
@@ -32993,7 +32994,7 @@ registerCallType({
     '  "clockAdvances": [{ "clockId": "<id>", "by": 1|2, "reason": "<short>" }],',
     '  "storyBeatProposal": { "beatId": "<id>", "framing": "<at most 60 words>" } }',
     "Hard rules:",
-    "- Use only ids that appear in the digest. Never invent ids. Never write amounts: no credits, plyx, loot or numbers of any reward; the engine decides rewards from the tier.",
+    "- Use only ids that appear in the digest. Never invent ids. Never write amounts: no credits, PLYX, loot or numbers of any reward; the engine decides rewards from the tier.",
     "- At most 2 mission offers and 3 rumors. Prefer fewer. Offer at most 1 new thread per answer.",
     "- Only one command mission can be open at a time: your first offer may become it, later offers become side missions that the board size (boardRoom) limits. Look at the board and boardRoom in the digest before offering.",
     "- Never skip or invent story beats. Propose the current beat only when the digest says it is ready and not yet proposed. The engine rejects anything else.",
@@ -33069,7 +33070,7 @@ registerCallType({
   profile: "mechanic",
   json: true,
   system: () => [
-    "You write what one soldier of a squad-command roleplay expects of her commander, who is leashed by the corporation and answers to her.",
+    "You write what one soldier of a squad-command roleplay expects of her commander, who is under the corporation's Leash and answers to her.",
     "She holds the controller of the commander's implant. Read her card, her values and the corporation's wishes, and list 3 to 5 expectations.",
     "Reply with a single JSON object and nothing else. Write in English.",
     '{ "expectations": [{ "kind": "<one of the kinds>", "weight": "low"|"medium"|"high", "source": "card"|"values"|"corporate", "text": "<personal only, at most 80 characters>" }] }',
@@ -36147,7 +36148,7 @@ function renderContentSection(host, ctx2) {
 // src/ui/warden/modeSection.ts
 var MODES = [
   { id: "default", label: "DEFAULT", text: "The commander gives the orders. The Leash is the corporation's, filed through oversight.", address: "glossary:leash" },
-  { id: "leashswap", label: "LEASHSWAP", text: "The commander carries the controller implant. One soldier, the warden, holds the leash for the corporation.", address: "glossary:leashswap" }
+  { id: "leashswap", label: "LEASHSWAP", text: "The commander carries the controller implant. One soldier, the warden, holds the Leash for the corporation.", address: "glossary:leashswap" }
 ];
 var RULES2 = {
   rewind_day: { label: "REWIND DAY", text: "The day starts again from its beginning. The death leaves no memory." },
@@ -36200,7 +36201,7 @@ function renderWardenPick(host, wizard) {
   host.append(h(
     "label",
     { class: "alius-field alius-warden-pick", ...analyzeNative("glossary:warden") },
-    h("span", { class: "alius-field-label" }, "WARDEN: the soldier who holds the leash"),
+    h("span", { class: "alius-field-label" }, "WARDEN: the soldier who holds the Leash"),
     select,
     h("span", { class: "alius-dim" }, w.by === "corporation" ? "Oversight picks the unit most loyal to the corporation." : "The warden is the squad's choice, not the corporation's.")
   ));
@@ -41592,7 +41593,7 @@ var STAKE_WORDS = {
   obedience: { she: "the commander follows her choices for the rest of the day", commander: "she follows the commander's non-combat orders for the rest of the day" },
   slot: { she: "she books a slot of the commander's time for tomorrow", commander: "she cannot book the commander's time for a week" },
   privilege: { she: "her standing over the commander grows", commander: "her standing over the commander shrinks" },
-  drop_demand: { she: "her open demand is granted", commander: "her open demand is dropped with no offence" },
+  drop_demand: { she: "her open demand is granted", commander: "her open demand is dropped with no offense" },
   token: { she: "she gives a token that the commander wears and cannot take off early for a week", commander: "she gives a token now" },
   question: { she: "she asks one question and the commander answers truthfully", commander: "the commander asks one question and she answers truthfully" },
   mark: { she: "the commander bears her mark for three days", commander: "nothing, but she is stung" }
@@ -42850,7 +42851,7 @@ function leadProvider(_subject, env, k) {
 var WANT_EFFECT = {
   calm: "",
   restless: "She writes first more often and may come to the door.",
-  aching: "She is irritable and under stress, and it colours how she speaks to the commander.",
+  aching: "She is irritable and under stress, and it colors how she speaks to the commander.",
   desperate: "Her defect may break her for a day."
 };
 function wantProvider(subject, env, k) {
@@ -43041,8 +43042,8 @@ function bookingProvider(subject, env, k) {
     const kind = env.registries.bookingKinds.get(booking.kindId);
     lines.push(`${name} has booked the ${SLOT_WORD2[booking.slot]} of day ${booking.day}: ${String(kind?.label ?? booking.kindId).toLowerCase()}.`);
     const high = (impunityOf(state, env.registries, who)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
-    lines.push(high ? "Cancelling counts as a refused demand, and because she does not fear the commander's reaction it lands harder and she holds it as a defiance." : "Cancelling counts as a refused demand.");
-    if (booking.source === "wager") lines.push("It was won in a wager: cancelling it also breaks a promise.");
+    lines.push(high ? "Canceling counts as a refused demand, and because she does not fear the commander's reaction it lands harder and she holds it as a defiance." : "Canceling counts as a refused demand.");
+    if (booking.source === "wager") lines.push("It was won in a wager: canceling it also breaks a promise.");
   } else {
     lines.push(deviceAccess(state, env.registries, who) >= 3 ? `${name} has no booking now; she may book a slot of the commander's time.` : `${name} has no booking, and no access to the calendar to make one.`);
   }
