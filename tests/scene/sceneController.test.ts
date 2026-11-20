@@ -230,6 +230,45 @@ describe('swipes', () => {
 });
 
 describe('chat switches and reloads', () => {
+  it('a summary still running in one chat does not swallow a message typed in another (0.1 audit)', async () => {
+    const h = harness(reg);
+    await open(h);
+    // the summary call of chat-1 hangs until released
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const real = h.st.generateMain.bind(h.st);
+    let hung = false;
+    h.st.generateMain = async (req) => {
+      if (!hung) { hung = true; await gate; }
+      return real(req);
+    };
+    h.st.mainReplies = [summaryJson('A short talk.')];
+    const ending = h.controller.end();
+    await Promise.resolve();
+    // the player opens chat-2, where (in this harness) the same campaign has an open scene, and types
+    h.st.switchChat({ chatId: 'chat-2', isGroup: true, groupId: 'g2' });
+    const s = structuredClone(h.state());
+    if (!s.scene) await open(h); else h.set(s);
+    h.controller.resume();
+    h.st.groupReplies = [[reply('Ann', 'Hello back.')]];
+    h.st.mainReplies.push(intentJson());
+    const sent = await h.controller.send('Hello from chat B');
+    expect(sent).toBe(true);
+    expect(h.st.getChatMessages().some((m) => m.isUser && m.text === 'Hello from chat B')).toBe(true);
+    release();
+    await ending;
+  });
+
+  it('send reports whether the message went out', async () => {
+    const h = harness(reg);
+    await open(h);
+    expect(await h.controller.send('   ')).toBe(false);
+    h.st.groupReplies = [[reply('Ann', 'ok')]];
+    h.st.mainReplies = [intentJson()];
+    const [a, b] = await Promise.all([h.controller.send('one'), h.controller.send('two')]);
+    expect([a, b]).toEqual([true, false]);
+  });
+
   it('a late extraction after a chat switch is dropped', async () => {
     const h = harness(reg);
     await open(h);

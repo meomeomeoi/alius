@@ -553,7 +553,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       editing = null;
       lock(true);
       setBusy(true);
-      void controller.send(text).finally(() => {
+      let sent = false;
+      void controller.send(text).then((ok) => { sent = ok; }, () => {}).finally(() => {
         pending = false;
         if (disposed) return;
         orderOn = false;
@@ -561,7 +562,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         setBusy(false);
         lock(false);
         input.disabled = false;
-        input.value = '';
+        if (sent) input.value = ''; // a message that did not go out (the scene is busy, or it closed) stays in the line
         input.focus();
       });
     });

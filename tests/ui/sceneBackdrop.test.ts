@@ -43,7 +43,7 @@ function setup(opts: { locationId?: string; slot?: CampaignState['slot']; broken
   expect(errors(r.events)).toEqual([]);
   state = r.state;
   const controller = {
-    send: vi.fn(async () => {}), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(async () => {}),
+    send: vi.fn(async () => true), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(async () => {}),
     stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn(),
   } as unknown as SceneController;
   const { load, asked } = loader(opts.broken);

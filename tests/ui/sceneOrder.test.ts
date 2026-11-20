@@ -27,7 +27,7 @@ function setup(participants = [ANN], withOrder = true) {
   state = r.state;
   const calls: string[] = [];
   const controller = {
-    send: vi.fn(() => { calls.push('send'); return Promise.resolve(); }), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}),
+    send: vi.fn(() => { calls.push('send'); return Promise.resolve(true); }), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}),
     edit: vi.fn(async () => {}), stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn(),
   } as unknown as SceneController;
   const onOrder = vi.fn((_id: string) => { calls.push('order'); return false; });

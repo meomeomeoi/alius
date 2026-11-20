@@ -33,9 +33,9 @@ function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settin
   state = r.state;
   const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
   const messages = opts.messages ?? [];
-  let pendingSend: (() => void) | null = null;
+  let pendingSend: ((sent: boolean) => void) | null = null;
   const controller = {
-    send: vi.fn(() => new Promise<void>((res) => { pendingSend = res; })),
+    send: vi.fn(() => new Promise<boolean>((res) => { pendingSend = res; })),
     propose: vi.fn(),
     answer: vi.fn(),
     end: vi.fn(async () => {}),
@@ -54,7 +54,7 @@ function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settin
     host, st, controller, screen, swipe, regen, onEnded, messages, settings,
     setState: (s: CampaignState) => { state = s; },
     state: () => state,
-    finishSend: () => pendingSend?.(),
+    finishSend: (sent = true) => pendingSend?.(sent),
     q: <T extends HTMLElement = HTMLElement>(sel: string) => host.querySelector<T>(sel),
     qa: <T extends HTMLElement = HTMLElement>(sel: string) => [...host.querySelectorAll<T>(sel)],
   };
@@ -181,6 +181,17 @@ describe('scene screen', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(input.disabled).toBe(false);
     expect(input.value).toBe('');
+  });
+
+  it('a message the controller did not send stays in the command line (0.1 audit)', async () => {
+    const { q, finishSend } = setup();
+    const input = q<HTMLInputElement>('input[name="cmd"]')!;
+    input.value = 'Still here.';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    finishSend(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(input.disabled).toBe(false);
+    expect(input.value).toBe('Still here.');
   });
 
   it('END, swipe, regenerate, edit and PROPOSE are locked while a send is pending; STOP is available then (review #1)', async () => {

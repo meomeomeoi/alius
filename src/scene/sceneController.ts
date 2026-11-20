@@ -70,7 +70,8 @@ export interface StartOptions {
 
 export interface SceneController {
   start(opts: StartOptions): Promise<boolean>;
-  send(text: string): Promise<void>;
+  /** True when the message went out to ST (it may still have drawn no reply); false when it was empty, nothing is open or this chat is busy. */
+  send(text: string): Promise<boolean>;
   /** The group speaks first (a scene whose goal is set before the commander says anything). Not an exchange: nothing is counted. */
   opening(): Promise<void>;
   /** The commander proposes something; the engine decides at once and the result becomes a directive for her next reply. */
@@ -124,11 +125,22 @@ export function createSceneController(deps: SceneDeps): SceneController {
   let extracting = false;
   const swipedWhileExtracting = new Set<number>();
   let awaitingReextract = false;
-  let pending = false;
-  /** The send in flight (reply, extraction, sprites); `end()` waits for it so an exchange is never applied twice. */
-  let inflight: Promise<void> | null = null;
-  /** The opening in flight (the group speaking first); a message typed meanwhile waits for it. */
-  let openingRun: Promise<void> | null = null;
+  /**
+   * What is running, per chat: a send, an opening, an end or a summary reroll. Keyed by chat because a summary of one chat can take
+   * minutes, and a message typed meanwhile in another chat must go out, not be dropped as "busy".
+   */
+  const busyChats = new Map<string, number>();
+  const chatKey = (): string => st.getActiveChat()?.chatId ?? '';
+  const begin = (chat: string): string => { busyChats.set(chat, (busyChats.get(chat) ?? 0) + 1); return chat; };
+  const finish = (chat: string): void => {
+    const n = (busyChats.get(chat) ?? 1) - 1;
+    if (n <= 0) busyChats.delete(chat); else busyChats.set(chat, n);
+  };
+  const busyHere = (): boolean => (busyChats.get(chatKey()) ?? 0) > 0;
+  /** The send in flight (reply, extraction, sprites) and its chat; `end()` waits for it so an exchange is never applied twice. */
+  let inflight: { chat: string; run: Promise<unknown> } | null = null;
+  /** The opening in flight (the group speaking first) and its chat; a message typed meanwhile in that chat waits for it. */
+  let openingRun: { chat: string; run: Promise<void> } | null = null;
   /** The scene the group was already asked to open (scene ids repeat across campaigns: `start` forgets it). */
   let openedScene: string | null = null;
   let disposed = false;
@@ -427,8 +439,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
     }
   }
 
-  /** One exchange: send, read the group's replies, extract, draw sprites. The caller has set `pending`. */
-  async function sendNow(t: string): Promise<void> {
+  /** One exchange: send, read the group's replies, extract, draw sprites. The caller marked `chat` busy; this clears it. */
+  async function sendNow(t: string, chat: string): Promise<boolean> {
     const expect = chatId();
     awaitingReextract = false;
     try {
@@ -437,14 +449,14 @@ export function createSceneController(deps: SceneDeps): SceneController {
         await st.sendUserMessage(t);
       } catch (e) {
         deps.toast('error', `Could not send: ${e instanceof Error ? e.message : String(e)}`);
-        return;
+        return false;
       }
-      if (disposed || chatId() !== expect || !state()?.scene) return;
+      if (disposed || chatId() !== expect || !state()?.scene) return true;
       if (!st.getChatMessages(before).some((m) => !m.isUser)) {
         // /trigger gives up quietly after 10 s when ST is still busy; the group may also simply have chosen nobody
         deps.toast('warn', 'No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use ↻ to regenerate.');
         deps.onUi({ type: 'transcript' });
-        return;
+        return true;
       }
       const events = dispatch({ type: 'scene/exchange', payload: {} }, expect);
       const exchanges = Number(events.find((e) => e.type === 'scene_exchange')?.exchanges ?? 0);
@@ -458,8 +470,9 @@ export function createSceneController(deps: SceneDeps): SceneController {
       if (deps.memory) background = background.then(() => deps.memory!.digestIfDue()).catch(() => {});
       if (exchanges >= settings.scenePacing) deps.onUi({ type: 'pacing' });
       deps.onUi({ type: 'transcript' });
+      return true;
     } finally {
-      pending = false;
+      finish(chat);
     }
   }
 
@@ -613,25 +626,26 @@ export function createSceneController(deps: SceneDeps): SceneController {
     },
 
     send(text) {
+      const here = chatKey();
       // typed while the group is still speaking first: it goes out when they have finished, never thrown away
-      if (text.trim() !== '' && pending && openingRun) return openingRun.then(() => controller.send(text));
-      if (text.trim() === '' || pending || !state()?.scene) return Promise.resolve();
-      pending = true;
-      const run = sendNow(text.trim());
-      inflight = run;
+      if (text.trim() !== '' && openingRun?.chat === here) return openingRun.run.then(() => controller.send(text));
+      if (text.trim() === '' || busyHere() || !state()?.scene) return Promise.resolve(false);
+      const run = sendNow(text.trim(), begin(here));
+      const mine = { chat: here, run };
+      inflight = mine;
       void run.finally(() => {
-        if (inflight === run) inflight = null;
+        if (inflight === mine) inflight = null;
       });
       return run;
     },
 
     opening() {
       const scene = state()?.scene;
-      if (pending || !scene) return Promise.resolve();
+      if (busyHere() || !scene) return Promise.resolve();
       // once per scene, and never into a scene that already has messages (a reload finds it either way)
       if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      pending = true;
+      const chat = begin(chatKey());
       const run = (async () => {
         const expect = chatId();
         try {
@@ -652,14 +666,15 @@ export function createSceneController(deps: SceneDeps): SceneController {
           await showSprites(replies, false);
           deps.onUi({ type: 'transcript' });
         } finally {
-          pending = false;
+          finish(chat);
         }
       })();
-      inflight = run;
-      openingRun = run;
+      const mine = { chat, run };
+      inflight = mine;
+      openingRun = mine;
       void run.finally(() => {
-        if (inflight === run) inflight = null;
-        if (openingRun === run) openingRun = null;
+        if (inflight === mine) inflight = null;
+        if (openingRun === mine) openingRun = null;
       });
       return run;
     },
@@ -710,21 +725,21 @@ export function createSceneController(deps: SceneDeps): SceneController {
     },
 
     async end() {
-      // an exchange still being read must finish first, or it would be applied twice (here and by this flush)
-      await inflight?.catch(() => {});
+      // an exchange of this chat still being read must finish first, or it would be applied twice (here and by this flush)
+      if (inflight?.chat === chatKey()) await inflight.run.catch(() => {});
       await deps.memory?.idle(); // P3b: a digest in flight lands before the summary reads the scene
       const expect = chatId();
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      pending = true;
+      const chat = begin(expect ?? '');
       try {
         // whatever the batched modes (or an earlier failure) left unread
         if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract(expect);
         // the summary call, its fallback (the scene still ends, with a plain line) and the record of a failure are the envelope's
         await deps.generations.generate('scene.summary', scene.id);
       } finally {
-        pending = false;
+        finish(chat);
         lastApply = null;
         awaitingReextract = false;
         await afterEnd(expect);
@@ -747,11 +762,11 @@ export function createSceneController(deps: SceneDeps): SceneController {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      pending = true;
+      const chat = begin(expect ?? '');
       try {
         await deps.generations.reroll('scene.summary', key); // reopens the scene from the snapshot, then ends it again with the new summary
       } finally {
-        pending = false;
+        finish(chat);
         const now = state();
         if (now?.scene) controller.resume(); // the reroll failed after the reopening: the scene is open again, as it was
         else await afterEnd(expect);
