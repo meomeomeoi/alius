@@ -507,16 +507,18 @@ Where each enters:
 
 ### 16.7 New holder fields
 
-`bond.practice` gains two fields (proposed by `profile_import`, edited in the wizard and the dossier, lockable like the expectation profile; no drift in 0.2):
+`bond.practice` gains three fields (proposed by `profile_import`, edited in the wizard and the dossier, lockable like the expectation profile; no drift in 0.2):
 
 - **`fairness: fair | strict | capricious | unfair`** — independent of style (a fair `cruel` and a capricious `affectionate` both exist). Read by P16 §R.10: punishment without guilt, double standards, cancelled rewards, moved goals.
 - **`hintStyle: offers | hints | expects`** — how she invites: `offers` says it, `hints` hints (P17d rev. 2026-11-20 armpit hints and every `her_offer` moment), `expects` waits to be understood; a missed hint at `expects` is a quiet disappointment, a caught one is a mood-reading bonus.
+
+- **`drive: low | moderate | high`** — how fast her desire (P9d Want) grows: a trait of the character, not of her style. Growth is uneven: a hashed noise term and her `volatility` (P14c) on top of the base; her mood and jealousy speed it, stress, an injury or a bad day slow it; it falls after relief. How she pursues it is P17b rev. ("her desire").
 
 Temperament for every named unit (`talkativeness`, `volatility`, `humor`) is P14c §1; this package reads `talkativeness` for silent use and `humor` for her mock answers.
 
 ### 16.8 State, events, memory check
 
-- State: `Relation.regard?`; the five motive weights in `Relation.dynamic.readOf`; region `cowed`; `bond.practice.fairness`, `bond.practice.hintStyle`; `practiceStyles` rows `drill`, `regal`, `vindictive`.
+- State: `Relation.regard?`; the five motive weights in `Relation.dynamic.readOf`; region `cowed`; `bond.practice.fairness`, `bond.practice.hintStyle`, `bond.practice.drive`; `practiceStyles` rows `drill`, `regal`, `vindictive`.
 - Events: `regard_changed`, `regard_band_changed`, `disappointed`, `regard_question_asked` (the moment), `nickname_given` (P9's, with new deed kinds).
 - Memory check: `disappointed` → a `memoryRules` entry (audience: her; `hiddenFromCommander: true`; importance mid; the commander sees only the behaviour); the question moment → P15a §13 (`her_question` is tagged `remember`); Regard changes and bands → bookkeeping (hidden); the nickname → P9's existing site.
 

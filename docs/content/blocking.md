@@ -32,6 +32,8 @@ Notation:
 
 Meanings per target (her profile): `reward | duty | humiliation | intimacy | play | comfort`.
 
+**Anatomy variants (2026-11-20, P15a §16.15).** `genitalia` (and the `scent_intimate` / `taste_intimate` stimulus kinds of P15a §16.8) resolve by her `anatomy` (`vulva | penis | both | unspecified`): each variant has its own essence, body-map zone, "how" fields in her expectation profile and scent base. Shown and sent to the model only with `explicit_scenes`.
+
 ## 2. Items (`worn`)
 
 | id | slot | tags | Essence | Effects |
@@ -59,6 +61,13 @@ Meanings per target (her profile): `reward | duty | humiliation | intimacy | pla
 | `earpiece` | ears | exposure_risk | an earpiece on her line | her whispers (P17d §3) in any scene she is not in; tasks through whispers |
 | `tail` | body | pet_play, explicit_scenes | a tail | under `third_party` "show yourself" is unavoidable in any posture but `lying` |
 | `food_bowl` | prop | pet_play, deprivation | a bowl at her feet | food only from it (P17b §5); with `watersports`, drink only from her (the hardest step) |
+| `strap` | her hips (H) | strap, explicit_scenes | a strap she wears for the active role, any anatomy | `size` tiers 1–4, each opened by the `strap` track level (P17b rev.); tied to her `strap` handling skill (P15a §16.10); kept in her quarters as a prop others may notice |
+| `fem_underwear` | body (under the uniform) | feminization | feminine underwear under the uniform | hidden; a noticing roll at undressing, medbay, showers; the first rung of the outing (P17b rev.) |
+| `fem_legwear` | legs | feminization | stockings or tights | visible in `kneeling` and `sitting`; noticing roll in public |
+| `fem_dress` | body | feminization | a skirt or dress of her choosing | visible; the outing's open rung |
+| `fem_makeup` | face | feminization | makeup she applies | visible; washing it off without leave is a slip |
+| `fem_jewellery` | ears / neck / hands | feminization | earrings, a choker, rings | small, visible; a choker may double as `collar` |
+| `fem_wig_or_hair` | head | feminization | hair styled or a wig | visible; ties to the `haircut` pastime (P14c) |
 | `plug` | body | explicit_scenes, restraint | a plug | `strain endurance`, worse when `sitting` or moving; removal is her privilege (P17a); a vibrating variant shares `remote_toy`'s remote channel |
 
 ## 3. Contacts
@@ -135,6 +144,19 @@ Meanings per target (her profile): `reward | duty | humiliation | intimacy | pla
 | `bathing_her` | washing her | requires a `water` place (future); worship; her profile decides what pleases her |
 | `painting_her_nails` | painting her nails, hands or feet | the colour is hers or trusted to the commander; a mistake is seen by everyone |
 | `massaging_shoulders` | shoulders while she reads or writes | pressure is part of her profile; pairs with her `focused` activities |
+
+### 3.6 Role reversal (`dyn`; tags `strap` or `her_anatomy`, always with `explicit_scenes`)
+
+Couplings of an existing posture of the commander (§7.3) with her position; the means is her `strap` (§2) or her own anatomy (`her_anatomy`, requires her `anatomy` `penis` or `both`). Essence lines are clinical; the model writes the scene.
+
+| id | C posture | H position | Physics | Escalation channel |
+|---|---|---|---|---|
+| `taken_all_fours` | `all_fours` | kneeling behind | `relax_rhythm` (P15a §16.16) | `hand_in_hair`, `palm_on_back` |
+| `taken_bent_over` | `bent_over` (requires `desk` or `bunk`) | standing behind | `relax_rhythm` | `palm_on_back`, `hand_in_hair` |
+| `taken_chest_down` | `chest_down_hips_up` | kneeling behind | `relax_rhythm` + posture drift (P16b) | `palm_on_back` |
+| `taken_on_back` | `lying_back_open` | over the commander | `relax_rhythm` | `hand_on_throat` (only `breath_play`: combined with `breath`) |
+| `taken_astride` | `lying_back` | astride, she sets the pace from above | `relax_rhythm` (her pace fully hers) | `pin_wrists` |
+| `oral_her` | `kneeling_upright` / `kneel_at_feet` | standing or seated | `depth` (P15a §16.17) | `hand_in_hair` |
 
 ## 4. Her activities (`actor: her`)
 

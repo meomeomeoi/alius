@@ -40,6 +40,7 @@ Author rulings:
 | `composure` | P17 Strain, the slap QTE's stillness, reading her under load | |
 | `speech` | litany, dictation, typing under jolts | |
 | `pain` | physical discipline (P16 §R.2) | P7 `endurance` adds |
+| `depth` | the `depth` physics (P15a §16.17) | the reflex threshold; trained alone at the base with her `strap` or under her eye; `drill` sets norms in fiction seconds; only with `strap` or `her_anatomy` and `explicit_scenes` |
 
 Plus the **stimulus body layer** (tolerance and reflex per stimulus kind) of P15a §16.8, which grows by exposure rather than xp.
 
@@ -69,6 +70,7 @@ The activity `train` gains **service drills** (P2 `activities` focus options; a 
 | posture drill | `posture` (a chosen preset) | quarters, training yard |
 | stillness drill | `stillness` | quarters |
 | recitation | `speech` | quarters |
+| depth drill | `depth` | quarters (gated as the discipline) |
 | rhythm drill | `rhythm` | anywhere |
 
 - The drills play the **same mini-games** as the scenes, without her verdict.

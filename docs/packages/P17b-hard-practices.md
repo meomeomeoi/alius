@@ -108,6 +108,8 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 
 Added after the 2026-11-20 design session. Where it conflicts with the sections above, this section wins. Each entry is gated by its categories and offered by holders whose profile fits; none is a default.
 
+### R.1 Hard practices from the session
+
 - **Her socks in the commander's boots.** A day task: the commander wears her worn items under the uniform all day (her socks inside the boots, her training shirt under the jacket; `worship`, `bodily_fluids` for sweat). Every briefing and every meal is a P17d noticing roll ("you smell of her"); the stimulus layer (P15a §16.8) runs all day at low intensity. A risk the commander carries, not her.
 - **Air for answers** (interrogation under smothering; `worship` + `restraint`, deeper with `breath_play`). She questions the commander under her armpit or thighs; air only for an answer. A minimal lie check without a separate interrogation engine (the general mechanic stays on the roadmap, overview §10): `intent_extract` marks an answer `evasive` or `contradicts { factId }` against facts **she** knows (P3b `Knowledge` for her); an evasion or a contradiction costs air (the next window shut) and goes on her list. Air becomes the currency of truth.
 - **The squad's boots.** A rare outcome of serving the squad (§8): after a run the commander cleans every woman's boots; each has her own scent and her own dirt (stimulus kinds per woman, P15a §16.8), so the stimulus stages are tested on each; the Regard of the whole squad moves at once (P15 §16.3).
@@ -116,6 +118,74 @@ Added after the 2026-11-20 design session. Where it conflicts with the sections 
   - **The pillow.** For a week the commander sleeps face in her boots or her worn socks. Afterwards the conditioned reaction (P17d, revision of 2026-11-20) is literal: without her scent sleep does not come (a sleepless status, P7; commander stress, P12).
 - **Breath by her rhythm** (`breath_play`). For a whole session there are no taps (`holdsUntil` ≥ `limit`): the commander breathes only when she lifts or breathes out onto the face; her `seal` skill is high (P15a §16.10); blackout is a real risk (P15a §9.5). The stop word always ends it (P15a §9.4).
 - **Memory check:** the socks day noticed by someone → P17d's existing discovery site; an `evasive` / `contradicts` answer → her fact (`hiddenFromCommander: true`); the squad's boots → a `memoryRules` entry (audience: the squad present; importance mid); the rare turns → a `memoryRules` entry each (audience: the pair; importance high); breath by her rhythm → P15a §13 (blackout).
+
+### R.2 Role reversal: `strap` and `her_anatomy` (2026-11-20, part 2)
+
+Two content categories, both requiring `explicit_scenes`, off by default; either may be enabled without the other:
+- **`strap`** — she takes the active role with a worn item (`strap`, `docs/content/blocking.md` §2), whatever her anatomy. For her it is a **deliberate gesture** (her meaning tends to power, play or possession); handling it is learned, so her `strap` handling grows with her skills (P15a §16.10); the item has size tiers 1–4 opened by the track level.
+- **`her_anatomy`** — she takes the active role with her own anatomy; only for a soldier whose `anatomy` is `penis` or `both` (P15a §16.15). For her it is **natural**: her profile leans to `as: enjoys`, there is nothing new for her to learn; her meaning tends to intimacy or dominance.
+
+**The commander's side is shared** by both: the tolerance and trajectory of receiving (P15a §16.8, starting from `Commander.experience.receiving`, §16.15), the language of perception, the physics `relax_rhythm` (P15a §16.16) and `depth` (§16.17), the stop word. The **first time** is a P15 milestone she offers and a `severe` rung of the consent ladder (P16 §R.1).
+
+**Track `role_reversal`** (P15 §6): 1 the first time → 2 regular → 3 on her schedule (protocol, ritual) → 4 only this way (with `denial`: other forms of intimacy are closed to the commander, for a term she sets: a `severe` rung with irreversibility for that term) → 5 the squad knows (with `public_humiliation`).
+
+**Her meaning** (a field per category, like worship meanings): `dominance | intimacy | humiliation | play | possession`; it decides the tone, the Regard move (P15 §16.3) and the squad's reading.
+
+**Contacts** are `docs/content/blocking.md` §3.6 (existing postures of the commander coupled with her position, each with its physics and escalation channel).
+
+**Links:**
+- **Worship:** the anatomy variant of `genitalia` with its own zone, "how" and meaning (`reward` to be earned, `duty` a morning duty, `humiliation`, `intimacy`); per-target mastery; worshipping her `strap` before as a ritual of preparation (service); a kiss of thanks after, by protocol.
+- **Scent and taste:** `scent_intimate`, `taste_intimate` (P15a §16.19); her intention not to wash "for you"; her scent clings to the commander and can be noticed.
+- **Postures:** the presets of P16b (`all_fours`, `bent_over`, `chest_down_hips_up`, `lying_back_open`, astride) with drift; her named postures for these scenes.
+- **Physical discipline:** before or after, as part of a ceremony (P16 §R.4); marks.
+- **`denial`:** `chastity_device` on the commander with `her_anatomy`; stop on her word (P16b); release as her privilege.
+- **Feminization and Pygmalion:** clothing and "the role" in the scene; together they make the full reversal; for Pygmalion (P17f) the summit of the plan.
+- **The squad and memory:** signs for suspicion (her scent, the commander's gait when `sore`, noise); compromat; Regard by meaning and style; the milestones "first time" and "on her schedule"; records in fiction time; a habit of the pair.
+
+### R.3 Her desire
+
+Her desire is P9d's Want; its pace is her `drive` (P15 §16.7): uneven, it can fall, it rises with her mood and jealousy and falls with stress, an injury, a bad day or relief. With `her_anatomy` (and in any category when her bond profile has one) a high Want turns into her **pursuing it**, decided by the depth of the dynamic, her style, her Regard and **how well the commander has satisfied her before** (her accumulated verdicts and favour):
+
+- **A shallow dynamic** (`equal`, `play`): she does not ask and relieves herself, or asks softly.
+- **A deep one** (`role`, `rule`), by style:
+
+| Style | How she pursues it |
+|---|---|
+| `regal` | demands it, and that is all |
+| `affectionate` | nestles, leads up to it softly; a refusal barely irritates her |
+| `cruel` | summons the commander and takes what she wants |
+| `cold` | sets a time |
+| `ritual` | a formal summons |
+| `playful` | teases, makes a game of it |
+| `possessive` | at once, and jealous if the commander is with another woman |
+| `obsessive` | at any time, anywhere |
+| `drill` | as part of the routine |
+| `vindictive` | as part of the sentence |
+| `clinical` | as an experiment |
+
+- **Low Regard:** she takes without asking; **high:** she asks.
+- **A poor history** of satisfying her: she relieves herself coldly, or grows irritated; **a good one:** she calls more often and expects more.
+- A summons may come at any time when her contract has the clause (P17a, `summons`).
+- **Unrelieved desire makes her irritated**, and irritation tightens the windows of `relax_rhythm` (P15a §16.16).
+
+**Worship of her anatomy as a morning duty:** `her_anatomy` worship with the meaning `duty` every morning becomes a habit of the pair (P17e); missing it is a slip.
+
+**Marking with her anatomy** (`watersports`, gated): the `possessive` territory marking of the revision above, by her anatomy: the strongest scent mark, noticed by the squad almost surely.
+
+### R.4 Feminization
+
+Content category **`feminization`** (off by default; descriptions `AUTHOR TO WRITE`).
+
+- **Who:** any commander; the starting `expression` (P7) sets the length of the arc: from a masculine start it is a long transformation, from a feminine one a short "accentuate". A WORLD PARAMETERS option limits it to commanders who start at androgynous or more feminine.
+- **What changes:** the commander's `expression` (P7) moves for real toward "very feminine" by stages (a trajectory like P15a §16.8, deed-based). By P7's principle expression gives no buffs or debuffs; it acts only through the women's tastes (`drawn_to_feminine` warmer, `drawn_to_masculine` cooler), the squad's notice, Regard, the nickname and the shame mechanisms (P15 §16.5). **The game never gives the commander a pronoun and never decides the commander's gender or identity**: only the description of how the commander presents changes; who the commander is stays the player's to write.
+- **Levers:** clothing and items (`fem_*`, `docs/content/blocking.md` §2), hair (the `haircut` pastime, P14c), makeup (her hobby `hair_and_makeup`), manners and postures (P16b), speech and address (P17b §3, P17e §5), body care.
+- **Stages:** early steps are reversible; late ones are not (a `severe` rung of the consent ladder).
+- **Her name for the commander** is part of it: a feminine name she gives, used in her DMs and on the PDA header (the nickname idea of overview §10); the squad picks it up over time through P9's nickname system.
+- **Her attitude:** P15 §2's `as` (does she want to do it) and `witness` (seeing another do it) per category, independent of the `drawn_to_*` tastes (a woman drawn to masculine people may love feminizing the commander), plus **her meaning**: `humiliation | aesthetic | intimacy | play | control | possession`.
+- **The outing.** A staging (P17) in which the commander, dressed by her choice, goes to the mess or a briefing. Rungs of exposure: under the uniform → noticeable → fully. Suspicion, Regard, the nickname, the consent ladder.
+- **Manners and speech.** Training of gait, feminine variants of P16b postures, and turns of speech of her choosing under dictation; `drill` holds an exam, `regal` a showing to her.
+- **Body care** as tasks: she paints the commander's nails (`painting_her_nails` reversed), skin care, hair.
+- **Memory check:** a stage crossed → a `memoryRules` entry (audience: the pair; importance mid); the outing seen → `knows_dynamic` / suspicion sites and a `memoryRules` entry (audience: those present); her name adopted by the squad → P9's nickname site.
 
 ## Acceptance criteria
 
@@ -127,6 +197,7 @@ Added after the 2026-11-20 design session. Where it conflicts with the sections 
 6. Service draws on real state; preferences are hidden until revealed and affect the verdict.
 7. Humiliation uses real memory and verbatim quotes; dictation, edits and the board work.
 8. Every element carries `data-analyze`; every generation goes through P14.
+9. (R, 2026-11-20) `strap` and `her_anatomy` are separate categories, both behind `explicit_scenes`; `her_anatomy` needs her `anatomy`; the commander's side is shared; the track, meaning and links work; her desire grows by `drive`, unevenly, and is pursued by depth, style, Regard and history; `feminization` moves `expression` by stages without ever giving the commander a pronoun or an identity, with her name, the outing, manners and body care.
 
 ## Interfaces already provided by P13 (implemented — use, do not rebuild)
 

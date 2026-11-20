@@ -506,6 +506,94 @@ P15 §16.6 adds `drill`, `regal`, `vindictive`. Rhythm: `drill` even and counted
 | trajectory | moving average 0.15 per contact; stage boundaries at seek share 0.2 / 0.4 / 0.6 / 0.8; hysteresis 3 updates |
 | her skills | +1 level per 8 practices of that kind with the commander, cap 5; `drill`, `clinical` ×1.5, `affectionate` ×0.7 |
 
+### 16.15 Anatomy
+
+- **Soldiers:** `Unit.anatomy: 'vulva' | 'penis' | 'both' | 'unspecified'` (default `unspecified`), proposed by `profile_import` from the card, editable in the wizard and the dossier while the edit lock allows. Whatever the value, she is a woman and is written "she / her" (lore §0).
+- **The commander:** `Commander.anatomy` (same values, default `unspecified`: the game assumes nothing) and, when `strap` or `her_anatomy` (P17b rev.) is enabled, `Commander.experience.receiving: 'none' | 'some' | 'used_to'` (default `none`) in the COMMANDER FILE. Experience sets the starting tolerance and the starting stage of the trajectory for receiving (§16.8).
+- **Where it is read** (by field, only with `explicit_scenes`): the variants of the `genitalia` worship target and its body-map zone (`docs/content/blocking.md` §1), the stimulus kinds `scent_intimate` and `taste_intimate` (§16.8), the role-reversal contacts (`blocking.md` §3.6: `her_anatomy` requires `penis` or `both`), `bodily_fluids` descriptions, and one line in her prompt block so that the model writes her body correctly. Without `explicit_scenes` the field reaches no prompt, label or reading.
+
+### 16.16 Relax in rhythm (the role-reversal physics)
+
+`contactPhysics.relax_rhythm`: gauge **tension** (0 → 100), her beats as the rhythm, the interaction **hold "relax" on her beat, release and breathe between**. A hit lowers tension; a miss, or staying clenched outside a beat, raises it.
+
+**She sets two parameters** at each segment boundary (§16.1), from her style, her **mood**, her skill, the scene's phase and her escalation:
+
+| Tempo | Beat interval | Window |
+|---|---|---|
+| slow | 1.4 s | 700 ms |
+| even | 1.0 s | 500 ms |
+| fast | 0.6 s | 250 ms |
+| erratic | 0.4–1.5 s at random | 300 ms; cues only from her lines |
+
+| Force | Tension per miss | Jolts |
+|---|---|---|
+| soft | ×0.6 | none |
+| firm | ×1 | rare |
+| rough | ×1.6 | often: heavy beats without a cue that must be held longer |
+
+**Her mood** is the third multiplier (mood from her state: Want, stress, the day, the commander's last answers; read by the player only through signs, P15 §15.8):
+
+| Mood | Tempo | Force | Windows |
+|---|---|---|---|
+| tender | −1 step | softer | ×1.2 |
+| calm | — | — | ×1 |
+| playful | false tempo changes | — | ×1 |
+| bored | erratic, sudden pauses | — | ×1 |
+| aroused (`her_anatomy`) | erratic toward the peak | +1 | ×0.9 |
+| irritated | +1 | +1 | ×0.75 |
+| angry | erratic | rough | ×0.6, jolts ×2 |
+
+Rough + erratic + angry gives windows near 150 ms: meant to be nearly impossible.
+
+**The scene expects failure.** Each combination has an **expected miss share** (`TUNING`: about 10 % at soft-slow-calm, 50–60 % at rough-erratic-angry).
+- Her verdict is judged **against the expectation**: in an angry session, holding on to the end is a good result; accuracy is not asked.
+- Tension has **breaking stages** instead of one end: a cry (noise, §16.5), a tap (her `holdsUntil` decides, here about intensity, not air), a posture break (P16b). Each is a reaction of hers; the scene goes on.
+- For `cruel` and `vindictive` in an angry mood the commander's breaking is the point: their satisfaction rises with the breaks, not with the holding.
+
+**Style tendencies:** `affectionate` slow and soft, even toward the peak; `cold` even and firm; `ritual` even, counting aloud; `drill` even, raising the tempo in steps (a norm); `playful` falsely slow, then suddenly fast; `clinical` raises tempo and force step by step to find the limit; `cruel` rough and erratic; `vindictive` rough and even; `regal` slow, drawing it out; `possessive` firm and long; `obsessive` erratic.
+
+**Her own anatomy** (`her_anatomy`): she has her own arousal; toward her peak she holds the rhythm worse (`playful`, `affectionate` go erratic), and the difficulty jumps: it happens to her, she did not plan it.
+
+**The commander can:** ask "slower" or "gentler" (a moment option, or typed begging, P17b §10): her answer by style, favour and `holdsUntil`; ask "harder": moves her reading of the motive toward `process` and Regard by her style (P15 §16.3–§16.4); the stop word always ends it.
+
+**Growth:** tolerance (§16.8, starting from the commander's `experience`) lowers tension per miss; her `reading` skill senses the limit: `cruel` presses exactly there, `affectionate` eases.
+
+**The quota.** She may set a number of beats ("a hundred") or a time; the commander counts aloud (typed in rhythm, P16 §R.2); a miscount restarts it. Under "no duration" (P16 §R.9) the quota is hidden. Long quotas run as a marathon (§16.3).
+
+**Under a blindfold** the visible beat indicator is gone; the cues are **text and interface only**: sensory lines of touch (P17d: "her palm settles on the small of the back", "she shifts her weight"), a neutral synthesized metronome click or pulse (no file, like P10b's knock; never a body sound), and a pulse of the vignette.
+
+**Combined** (§16.6) with a posture (`chest_down_hips_up`: points drift, P16b), her weight on the back, a hand in the hair as the escalation channel, a hand on the throat (only `breath_play`: breath and rhythm at once). Misses are heard (noise, §16.5: a staging's risk). When she talks, typing under load (§16.2). After: status `sore` for slots by force and duration, visible in the commander's gait (a squad sign, P15 §15.13); aftercare by style.
+
+### 16.17 Depth
+
+`contactPhysics.depth` for oral contact with her anatomy or her `strap`: keep the depth marker inside the band she sets while breathing in the windows; she sets band and pace, her hand guides.
+- Gauges: **reflex** (rises when depth is above tolerance: the same reflex as taste and scent, §16.8), **air**, **jaw** fatigue.
+- **The hold.** She holds at depth on a count; air and reflex run together; she releases on her count; a tap follows her `holdsUntil`; her worship meaning says what it is to her (duty, humiliation, intimacy).
+- **Eyes up.** `regal` (and others by profile) demands the commander look at her: the gaze point must stay **on her** (P16b gaze, reversed).
+- **No wiping** (`bodily_fluids`): a rule until she allows, like her sweat (P17d rev.).
+- After: a kiss of thanks; the taste trajectory (`taste_intimate`).
+- Style: `cruel` holds at depth, `affectionate` praises and releases, `clinical` measures, `regal` demands eye contact.
+- Training is P16b's discipline `depth`.
+
+### 16.18 Her edge
+
+The reversed form of "stop on her word" (P16b mini-games): the commander keeps **her** at the edge as long as she orders, reading her tells (her expectation profile); she must not go over and must not be let down. With `volatility: moody` her tells are unreliable. She goes over → her displeasure or her delight, by style; held to her order → favour and per-pair mastery. Works with any anatomy.
+
+### 16.19 Intimate stimulus kinds
+
+`stimulusKinds` gain `scent_intimate` and `taste_intimate` (anatomy variants, §16.15; only with `explicit_scenes`): tolerance, reflex, the trajectory and the language of perception as every kind (§16.8); her hygiene, situation and intention terms apply (stronger after training: the sweat link of P17d rev.); "deep inhale" is a choice here too.
+
+### 16.20 TUNING additions (2026-11-20, part 2)
+
+| what | value |
+|---|---|
+| expected miss share | soft-slow-calm 0.10; even-firm-calm 0.25; fast-firm-irritated 0.40; rough-erratic-angry 0.55 |
+| breaking stages (tension) | 70 a cry, 85 a tap, 95 a posture break; tension −15 after a stage |
+| tolerance for receiving | start: `none` 0, `some` 30, `used_to` 60; +3 per session, −1 per 10 days apart (floor half of the best) |
+| `sore` | slots = 1 + force (soft 0, firm 1, rough 2) + 1 per fiction hour |
+| depth | reflex at depth > tolerance band: +12 per beat; air −10 per beat at depth; hold count 3–10 by style and skill |
+| her edge | window 400 ms (`steady`), 250 ms with false tells 30 % (`moody`) |
+
 ## Acceptance criteria
 
 1. With none of the new or gated categories enabled and no close relation present, nothing here runs and every seeded test stays byte-identical (no new RNG draw unless a moment or physics is live).
@@ -520,6 +608,7 @@ P15 §16.6 adds `drill`, `regal`, `vindictive`. Rhythm: `drill` even and counted
 10. `scope: dynamic` entries never appear below P15 frame `play`; disabled categories never reach a prompt, a label or a chip.
 11. Every new element carries `data-analyze`; every generation goes through P14; the memory verdicts of §13 are implemented.
 12. (§16, 2026-11-20) The real-time layer never waits for the model: cues fire locally from the pool, segments have a fixed length, a late reply holds the body neutral, and a seeded test with a slow and a fast fake model gives the same physics outcome. Typing under load lapses maintenance only when there is talk. Marathons run in phases with resolved skips, attrition, a visible clock and the calendar cost, at every `marathonPace` with the same fiction-time results. Cheating, noise, combined physics, seal, the stimulus body layer (tolerance, reflex, choices, deep inhale, trajectory, the language of perception), kisses and the tongue, her skills and her personal rhythm work as specified, each interaction type can be switched off, and the model never receives a line that states the commander's feelings.
+13. (§16.15–§16.20) `anatomy` and the commander's `experience` import, edit and are read by field only with `explicit_scenes`; relax-in-rhythm runs with tempo, force and mood, expected miss shares, breaking stages, the quota and the blindfold cues (interface only, no body sounds, nothing loaded from the network); depth and her edge run as specified; the intimate stimulus kinds join the body layer.
 
 ## Open decisions (author)
 

@@ -5,6 +5,7 @@
 ## 0. Who is who (rules for every text; the author keeps them when rewriting)
 
 - **The squad is women.** Every soldier, named or grunt, is a woman: text about them uses "she / her". Cards the player imports are female characters.
+- **Her body is what her card says.** A soldier's primary sexual characteristics are whatever her card gives her (`anatomy`: `vulva`, `penis`, `both` or unspecified; P15a §16.15); whatever they are, she is a woman and is written "she / her". The field is read only with `explicit_scenes`.
 - **The player is of any gender.** The commander is the player's persona and may be a man, a woman or anyone else; the game never assumes which. Text that the player or the main model reads (UI, glossary, descriptions, `promptHint`, the lorebook, directives) **never gives the commander a pronoun**: write "the commander", "you", or rephrase. The soldiers' own "she / her" stay. A soldier's feeling about the commander is written as "she ... the commander", never "she ... him".
 - Expression (very feminine … very masculine) is only a description of how the commander presents; it has no mechanical value and does not change this rule.
 - NPCs outside the squad (clerks, officers, enemies) may have any gender the author gives them.

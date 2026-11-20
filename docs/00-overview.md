@@ -515,10 +515,11 @@ Packages after release 0.1.0 (the table above). Same rule: take the first row wh
 | 3b | P16b | Service as a craft: the commander's disciplines, lesson xp, records in fiction time, training at base, new mini-games, postures from points that drift (48 presets), her feet and foot language, the sparring hold, unasked care, the `drill` / `regal` / `vindictive` programmes | P15a, P15, P16, P14c, P14b, P7, P2, P9c | spec |
 | 4 | P17 | Staged scenes (roles, visibility, condition, Strain, live visitors, her tactics, complicity) and the obscured presence layer | P16, P15, P14, P3, P9c, P10 | spec |
 | 5 | P17a | Dynamic foundations: attitudes between the women involved, contracts (hard dominants and the obsessive style), privileges, inspections, nights | P15, P16, P17, P9c | spec |
-| 6 | P17b | Hard practices: categories `deprivation`, `pet_play`, `objectification`, `coercion`; speech control, shock collar, cage, gratitude and begging, service and humiliation built from real state and memory | P17a, P15–P17, P3b | spec |
+| 6 | P17b | Hard practices: categories `deprivation`, `pet_play`, `objectification`, `coercion`; speech control, shock collar, cage, gratitude and begging, service and humiliation built from real state and memory; (rev. 2026-11-20) categories `strap`, `her_anatomy`, `feminization`, her desire by `drive` | P17a, P15–P17, P3b | spec |
 | 7 | P17c | Immersion: gag and gestures, dictation, passcodes, her voice in the UI, permissions, session rituals, status effects, scene staging with the existing art, optional backdrops / props / pose shots, map marks, quiet runs | P17b, P10, P10b, P9c | spec |
 | 8 | P17d | Senses and voice: the sensory layer (room, events, scene call, her replies), her scent (arrives before her, clings, can be noticed, washing), whispers only the player sees, interruptions (display only), her rhythm and distance, "she thinks" | P17c, P17, P9d, P3 | spec |
 | 9 | P17e | The living dynamic: secret tests, emergent rituals, her weakness, the drawn signature, the chosen address, "what do you feel?" | P14b, P15–P17d | spec |
+| 10 | P17f | Special traits of holders (whole subsystems, like P12's): hide and seek on the base, Pygmalion, the canvas | P15–P17e, P14c, P10d, P12 | spec |
 
 ### Post-release (0.3) — the AI story sandbox
 
@@ -550,6 +551,8 @@ After the authored prologue (spine beats 1–5) the model builds story arcs from
 **Character interaction ideas beyond 0.2** (from the 0.2 design talk; not scheduled): a nickname she gives the commander (renamed in her DMs and on the PDA header), marks that last days and are seen by others (`pain_rough`), provocations (`jealousy_games`: flirting in front of the commander, lending the commander to another), marks of ownership (`body_modification`: a plyx ring, her unit number), categories `voyeurism`, `implant_play` (the Leash or the implant in intimacy), `sharing`, aftercare as a post-scene phase, the obscured presence layer in missions (voices behind a wall), and the mirrored direction of P15–P17 (the commander holds).
 
 **Hub map (done as P10d):** a top-down SVG plan of the outpost drawn from `planRooms` (two floors and the roofs, named cabins, closed rooms for later, light by slot), so a new room draws itself and nothing is regenerated. P10c ships two corridor pictures (`place_corridor_1/2`) for the corridor place below; on the plan the corridors already exist.
+
+**Her circle and group ownership (from the 2026-11-20 session, not scheduled):** a holder special trait (P17f §4) in which she slowly stirs other women toward owning the commander together; it needs group ownership deepened first (shared holds, a group's rules and schedule, conflicts inside the group).
 
 **Special events (from the 2026-11-20 session, not scheduled):** events with compound conditions, as in Sir Brante: when several conditions hold at once (a hobby at its last milestone, Affinity ≥ 70, a `first_moment` of a kind, a remembered fact), an event **joins the pool**; it is not forced and may never fire. Examples: she gives the commander a portrait, a poem, a carving or a knitted scarf; she shares a page of her journal; she offers to teach the commander her secret language. Built on P14c's `lifeEvents` with a `requiresAll` block and on P3b facts.
 
