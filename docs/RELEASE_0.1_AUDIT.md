@@ -2,7 +2,7 @@
 
 Final check of release 0.1 (P0–P14b, P10b–P10d, P11b, P3b; the §9 table of `00-overview.md`) before the changelog. Four reviews: security, engine, integration/UI, content. Baseline: `npm test` 489 files / 7523 tests green, `npm run typecheck` clean, committed `dist/` and `style.css` match the sources. This file is the worklist.
 
-**Status (2026-11-20, after the user's rulings):** section A is closed. A1, A3, A4, A5 and A6 are fixed (A1 and A3–A5 with new tests; A6 is the version bump to 0.1.0 and the two READMEs); A2 stays as it is by the user's decision (the author fills the `AUTHOR TO WRITE:` texts gradually; the marker is the to-do). Section B is closed too (all ten fixed with tests, see below). Section C is open.
+**Status (2026-11-20, after the user's rulings):** section A is closed. A1, A3, A4, A5 and A6 are fixed (A1 and A3–A5 with new tests; A6 is the version bump to 0.1.0 and the two READMEs); A2 stays as it is by the user's decision (the author fills the `AUTHOR TO WRITE:` texts gradually; the marker is the to-do). Section B is closed too (all ten fixed with tests, see below). From section C the user picked 1–4, 7–9, 12, 13 and the text items 15–19; all are done (below). Still open in C: 5 (`stripThinking`, theoretical), 6 (the P7 review for pre-P7 saves), 10 (`message_deleted` index, to check against a real ST), 11 (one throw in `followUps`), 14 (habit XP and hook order), 20 (terse role branch summaries), 21 (`expeditionScreen.ts` "cover the commander").
 
 **User rulings:** A2 — keep the marker for now; A3 — hide the paths without text, writing them is a "for the future" item (overview §10), not 0.2; spelling — **US English** for every new or changed text (the existing mix in C is to be unified to US); Kestrel's "more metal than flesh" is fine (the biopunk note is about the soldiers' and enemies' own bodies, not their gear).
 
@@ -44,6 +44,22 @@ Final check of release 0.1 (P0–P14b, P10b–P10d, P11b, P3b; the §9 table of 
 - **Content consistency:** US/UK spelling mixed (armor/defense/color vs colour/favour/judgement — the user chose **US**); Plyx/plyx/PLYX; "the Leash" vs "holds the leash"; button padding `[CANCEL]` vs `[ CANCEL ]` (and SAVE, BACK, ACCEPT, RETREAT, …); dilemma options in mixed case; terse role branch summaries ("Crit.", "Heals."); `expeditionScreen.ts:154` "someone must cover the commander" → "someone must provide cover"; Kestrel "more metal than flesh" — no change (user: the biopunk note is about bodies, not gear).
 - **Balance:** known, in `BALANCE_REPORT.md` (danger 4: six defects +5.7…+13.6 pp).
 - **Lore** is still marked placeholder (`docs/content/lore.md`): the author's call whether 0.1 ships with it.
+
+## What was done in C (2026-11-20)
+
+Numbers follow the list given to the user (security 1–5, integration 6–11, engine 12–14, text 15–21).
+
+- **1** `readDayStart` runs `migrate` and needs a whole, non-negative chat length.
+- **2** the load runs in `openCampaign`: a throw makes the campaign read-only with the reason, restores the metadata it found and clears the context; tab, screen and hub renderers run through `guarded` (`src/ui/shell/guard.ts`) and show `MODULE FAULT` in place.
+- **3** the WARDEN meter width is a number clamped to 0…100.
+- **4** `showToastr` (`src/st/toastr.ts`) passes `{ escapeHtml: true }` on every toast.
+- **7** `afterLoad` resets `overrideModalOpen`; a sequence number keeps a stale close from clearing a newer modal's flag.
+- **8** the saver writes the state into the chat metadata at once and debounces only `saveMetadata()`; nothing reaches another chat; the read-only check runs once per saver.
+- **9** combat keys step aside while a modal backdrop or a dialog is up.
+- **12** `carryIfRan`: a vote stays open when a walk-out or the warden stopped the action; DEFY / a won ARGUE spends it in `runOrder`.
+- **13** the encounter level averages the living fielded units.
+- **15–17** (agent) US spelling, PLYX in capitals, the Leash with a capital L in shipped text (ids, keys and classes unchanged); `resourceWord()` prints resource keys; `tests/content/spelling.test.ts` guards it.
+- **18–19** (agent) every bracketed action label reads `[ LABEL ]` (key hints, checkbox marks, the close glyph and notation excluded); dilemma option labels in sentence case; `tests/ui/labelStyle.test.ts` guards both.
 
 ## Checked and clean
 

@@ -1935,7 +1935,7 @@ function createCampaign(opts) {
   return state;
 }
 
-// ../../../node_modules/zod/v3/external.js
+// node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -2047,7 +2047,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// ../../../node_modules/zod/v3/helpers/util.js
+// node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -2181,7 +2181,7 @@ var getParsedType = (data) => {
   }
 };
 
-// ../../../node_modules/zod/v3/ZodError.js
+// node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -2299,7 +2299,7 @@ ZodError.create = (issues) => {
   return error;
 };
 
-// ../../../node_modules/zod/v3/locales/en.js
+// node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -2402,7 +2402,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// ../../../node_modules/zod/v3/errors.js
+// node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -2411,7 +2411,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// ../../../node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -2521,14 +2521,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// ../../../node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// ../../../node_modules/zod/v3/types.js
+// node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -17635,6 +17635,135 @@ function herAlternative(state, reg, order, expectationId) {
   }
 }
 
+// src/engine/power/rations.ts
+function rationsVotable(state, reg) {
+  return (state.calendar.shortageStreak ?? 0) > 0 || state.resources.supplies < upkeepNeeded(state, reg).needed;
+}
+function setRations(draft, mode) {
+  if (typeof mode !== "string" || !RATION_MODES.includes(mode)) throw new Error(`Unknown ration mode "${String(mode)}".`);
+  if (mode === "equal") delete draft.base.rations;
+  else draft.base.rations = mode;
+  return [{ type: "rations_set", mode }];
+}
+
+// src/engine/power/votes.ts
+var MEANS = ["order", "punish", "leash"];
+var isNamedLiving2 = (state, id) => {
+  const u = state.squad.find((x) => x.id === id);
+  return u !== void 0 && u.kind === "named" && isLiving(u);
+};
+function subjectProblem(state, ctx2, kind, subject) {
+  const reg = ctx2.registries;
+  if (kind === "mission" && !missionById(state, subject)) return `There is no mission "${subject}" to vote on.`;
+  if (kind === "upgrade" && !reg.facilities.has(subject)) return `There is no facility "${subject}" to vote on.`;
+  if (kind === "punish" && !isNamedLiving2(state, subject)) return `There is no soldier "${subject}" to vote on.`;
+  if (kind === "scapegoat") {
+    const open3 = state.dilemmas?.open;
+    if (open3?.context !== "scapegoat" || open3.status !== "presented") return "There is no scapegoat decision waiting.";
+    if (!open3.options?.some((o) => o.id === subject)) return `There is no answer "${subject}" to vote on.`;
+  }
+  if (kind === "rations") {
+    if (!RATION_MODES.includes(subject)) return `There is no ration mode "${subject}" to vote on.`;
+    if (!rationsVotable(state, ctx2.registries)) return "There is no shortage: the rations are set freely.";
+  }
+  return null;
+}
+var againstHerValues = (draft, reg, unit2) => {
+  const values = effectiveValues(draft, reg, unit2);
+  return VALUE_AXES.filter((a) => values[a] !== 0).map((axis) => ({ axis, direction: values[axis] > 0 ? -1 : 1 }));
+};
+function voteFor(state, kind, subject, voteId) {
+  const open3 = state.power?.votes.open;
+  if (!open3 || typeof voteId !== "string" || open3.id !== voteId) return null;
+  if (open3.kind !== kind || open3.subject !== subject || open3.day !== state.day) return null;
+  return open3.status === "passed" || open3.status === "overruled" ? open3 : null;
+}
+function openVote(draft, ctx2, kind, subject) {
+  if (!votingOn(draft, ctx2.registries)) throw new Error("The squad does not vote in this world.");
+  if (!VOTE_KINDS.includes(kind)) throw new Error(`"${String(kind)}" is not something the squad votes on.`);
+  if (typeof subject !== "string" || subject === "") throw new Error("A vote needs a subject.");
+  const problem = subjectProblem(draft, ctx2, kind, subject);
+  if (problem) throw new Error(problem);
+  const power = powerOf(draft);
+  const events = [];
+  const older = power.votes.open;
+  if (older) {
+    logVote(draft, older, older.status === "overruled" ? "overruled" : "dropped");
+    events.push({ type: "vote_dropped", voteId: older.id, reason: "replaced" });
+  }
+  power.votes.seq += 1;
+  const tally = tallyVote(draft, ctx2.registries, kind, subject);
+  const vote = { id: `v${power.votes.seq}`, kind, subject, day: draft.day, ...tally, status: tally.passed ? "passed" : "failed" };
+  power.votes.open = vote;
+  events.push({ type: "vote_opened", voteId: vote.id, kind, subject, passed: vote.passed, forWeight: vote.forWeight, againstWeight: vote.againstWeight });
+  return events;
+}
+function dropVote(draft, voteId) {
+  const open3 = draft.power?.votes.open;
+  if (!open3 || open3.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
+  if (open3.status !== "passed" && open3.status !== "failed") throw new Error("That vote was already overruled: carry it out.");
+  logVote(draft, open3, "dropped");
+  delete draft.power.votes.open;
+  return [{ type: "vote_dropped", voteId, reason: "commander" }];
+}
+function carryVote(draft, voteId, ctx2) {
+  const open3 = draft.power?.votes.open;
+  if (!open3 || open3.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
+  logVote(draft, open3, open3.status === "overruled" ? "overruled" : "carried");
+  delete draft.power.votes.open;
+  const events = [{ type: "vote_carried", voteId, kind: open3.kind, subject: open3.subject, ...open3.status === "overruled" ? { overruled: true } : {} }];
+  const ob = obedienceOf(draft);
+  if (ctx2 && open3.status !== "overruled" && ob?.who === "commander" && open3.ballots.some((b) => b.unitId === ob.unitId && b.vote === "against")) {
+    events.push(...overrideHer(draft, ctx2, ob.unitId, "carried a decision she voted against on the day of obedience"));
+  }
+  return events;
+}
+var STOPPED_BY = /* @__PURE__ */ new Set(["warden_override", "desertion_attempt"]);
+function carryIfRan(draft, voteId, events, ctx2) {
+  if (typeof voteId !== "string" || draft.power?.votes.open?.id !== voteId) return [];
+  if (events.some((e) => STOPPED_BY.has(e.type) || e.type === "error")) return [];
+  return carryVote(draft, voteId, ctx2);
+}
+function overruleVote(draft, ctx2, voteId, means, punish) {
+  const reg = ctx2.registries;
+  const open3 = draft.power?.votes.open;
+  if (!open3 || open3.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
+  if (open3.status !== "failed") throw new Error("Only a vote that failed can be overruled.");
+  if (!MEANS.includes(means)) throw new Error("A vote is overruled by an order, a punishment or the Leash.");
+  const dissent = open3.ballots.filter((b) => b.vote === "against" && isNamedLiving2(draft, b.unitId));
+  if (dissent.length === 0) throw new Error("No named soldier voted against this: there is no one to overrule.");
+  if (means === "punish") {
+    if (!punish || !dissent.some((b) => b.unitId === punish.unitId)) throw new Error("A punishment must name one of the soldiers who voted against.");
+  }
+  const V = TUNING.power.vote;
+  const events = [];
+  const grudges = powerOf(draft).grudges ??= {};
+  for (const b of dissent) {
+    const unit2 = draft.squad.find((u) => u.id === b.unitId);
+    events.push(...applyEventToUnit(draft, reg, b.unitId, {
+      type: "decision_violated",
+      actor: "commander",
+      targets: [b.unitId],
+      severity: V.overruleSeverity,
+      evidence: "overruled a squad vote",
+      confidence: 1,
+      valueAxes: againstHerValues(draft, reg, unit2)
+    }));
+    events.push(...addRecord(draft, b.unitId, V.overruleRecord, "vote_overruled"));
+    grudges[b.unitId] = draft.day;
+  }
+  for (const b of dissent) events.push(...evaluateAutomatic(draft, reg, b.unitId));
+  if (means === "punish") {
+    events.push(...applyPunishment(draft, ctx2, { unitId: punish.unitId, measure: punish.measure, source: "menu", channel: "pda" }));
+  } else if (means === "leash") {
+    const loudest = [...dissent].sort((a, b) => Math.abs(b.score) * b.weight - Math.abs(a.score) * a.weight)[0];
+    events.push(...compel(draft, ctx2, { unitId: loudest.unitId, context: "pda", roll: false }).events);
+  }
+  open3.status = "overruled";
+  events.push({ type: "vote_overruled", voteId, means, against: dissent.map((b) => b.unitId) });
+  return events;
+}
+
 // src/engine/warden/override.ts
 var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var round3 = Math.round;
@@ -17733,10 +17862,14 @@ function runOrder(draft, ctx2, order, base = {}, sameAsOriginal = true) {
     }
     case "roster":
       return runHandler("roster/set_active", draft, { activeIds: order.activeIds, wardenChecked: true }, ctx2);
-    case "expedition":
-      return runHandler("expedition/start", draft, { ...base, unitIds: order.unitIds, formation: formationFor(base.formation, order.unitIds), wardenChecked: true }, ctx2);
-    case "dilemma":
-      return chooseDilemma(draft, ctx2, base.id ?? draft.dilemmas?.open?.id, order.index, sameAsOriginal ? base.route : void 0, true);
+    case "expedition": {
+      const events = runHandler("expedition/start", draft, { ...base, unitIds: order.unitIds, formation: formationFor(base.formation, order.unitIds), wardenChecked: true }, ctx2);
+      return sameAsOriginal ? [...events, ...carryIfRan(draft, base.voteId, events, ctx2)] : events;
+    }
+    case "dilemma": {
+      const events = chooseDilemma(draft, ctx2, base.id ?? draft.dilemmas?.open?.id, order.index, sameAsOriginal ? base.route : void 0, true);
+      return sameAsOriginal ? [...events, ...carryIfRan(draft, base.voteId, events, ctx2)] : events;
+    }
     case "combat_order":
       return runHandler("combat/order", draft, { ...base, orderId: order.orderId, ...order.targetCid !== void 0 ? { targetCid: order.targetCid } : {}, wardenChecked: true }, ctx2);
   }
@@ -18962,129 +19095,6 @@ function wagerDayStep(draft, ctx2) {
   return events;
 }
 
-// src/engine/power/rations.ts
-function rationsVotable(state, reg) {
-  return (state.calendar.shortageStreak ?? 0) > 0 || state.resources.supplies < upkeepNeeded(state, reg).needed;
-}
-function setRations(draft, mode) {
-  if (typeof mode !== "string" || !RATION_MODES.includes(mode)) throw new Error(`Unknown ration mode "${String(mode)}".`);
-  if (mode === "equal") delete draft.base.rations;
-  else draft.base.rations = mode;
-  return [{ type: "rations_set", mode }];
-}
-
-// src/engine/power/votes.ts
-var MEANS = ["order", "punish", "leash"];
-var isNamedLiving2 = (state, id) => {
-  const u = state.squad.find((x) => x.id === id);
-  return u !== void 0 && u.kind === "named" && isLiving(u);
-};
-function subjectProblem(state, ctx2, kind, subject) {
-  const reg = ctx2.registries;
-  if (kind === "mission" && !missionById(state, subject)) return `There is no mission "${subject}" to vote on.`;
-  if (kind === "upgrade" && !reg.facilities.has(subject)) return `There is no facility "${subject}" to vote on.`;
-  if (kind === "punish" && !isNamedLiving2(state, subject)) return `There is no soldier "${subject}" to vote on.`;
-  if (kind === "scapegoat") {
-    const open3 = state.dilemmas?.open;
-    if (open3?.context !== "scapegoat" || open3.status !== "presented") return "There is no scapegoat decision waiting.";
-    if (!open3.options?.some((o) => o.id === subject)) return `There is no answer "${subject}" to vote on.`;
-  }
-  if (kind === "rations") {
-    if (!RATION_MODES.includes(subject)) return `There is no ration mode "${subject}" to vote on.`;
-    if (!rationsVotable(state, ctx2.registries)) return "There is no shortage: the rations are set freely.";
-  }
-  return null;
-}
-var againstHerValues = (draft, reg, unit2) => {
-  const values = effectiveValues(draft, reg, unit2);
-  return VALUE_AXES.filter((a) => values[a] !== 0).map((axis) => ({ axis, direction: values[axis] > 0 ? -1 : 1 }));
-};
-function voteFor(state, kind, subject, voteId) {
-  const open3 = state.power?.votes.open;
-  if (!open3 || typeof voteId !== "string" || open3.id !== voteId) return null;
-  if (open3.kind !== kind || open3.subject !== subject || open3.day !== state.day) return null;
-  return open3.status === "passed" || open3.status === "overruled" ? open3 : null;
-}
-function openVote(draft, ctx2, kind, subject) {
-  if (!votingOn(draft, ctx2.registries)) throw new Error("The squad does not vote in this world.");
-  if (!VOTE_KINDS.includes(kind)) throw new Error(`"${String(kind)}" is not something the squad votes on.`);
-  if (typeof subject !== "string" || subject === "") throw new Error("A vote needs a subject.");
-  const problem = subjectProblem(draft, ctx2, kind, subject);
-  if (problem) throw new Error(problem);
-  const power = powerOf(draft);
-  const events = [];
-  const older = power.votes.open;
-  if (older) {
-    logVote(draft, older, older.status === "overruled" ? "overruled" : "dropped");
-    events.push({ type: "vote_dropped", voteId: older.id, reason: "replaced" });
-  }
-  power.votes.seq += 1;
-  const tally = tallyVote(draft, ctx2.registries, kind, subject);
-  const vote = { id: `v${power.votes.seq}`, kind, subject, day: draft.day, ...tally, status: tally.passed ? "passed" : "failed" };
-  power.votes.open = vote;
-  events.push({ type: "vote_opened", voteId: vote.id, kind, subject, passed: vote.passed, forWeight: vote.forWeight, againstWeight: vote.againstWeight });
-  return events;
-}
-function dropVote(draft, voteId) {
-  const open3 = draft.power?.votes.open;
-  if (!open3 || open3.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
-  if (open3.status !== "passed" && open3.status !== "failed") throw new Error("That vote was already overruled: carry it out.");
-  logVote(draft, open3, "dropped");
-  delete draft.power.votes.open;
-  return [{ type: "vote_dropped", voteId, reason: "commander" }];
-}
-function carryVote(draft, voteId, ctx2) {
-  const open3 = draft.power?.votes.open;
-  if (!open3 || open3.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
-  logVote(draft, open3, open3.status === "overruled" ? "overruled" : "carried");
-  delete draft.power.votes.open;
-  const events = [{ type: "vote_carried", voteId, kind: open3.kind, subject: open3.subject, ...open3.status === "overruled" ? { overruled: true } : {} }];
-  const ob = obedienceOf(draft);
-  if (ctx2 && open3.status !== "overruled" && ob?.who === "commander" && open3.ballots.some((b) => b.unitId === ob.unitId && b.vote === "against")) {
-    events.push(...overrideHer(draft, ctx2, ob.unitId, "carried a decision she voted against on the day of obedience"));
-  }
-  return events;
-}
-function overruleVote(draft, ctx2, voteId, means, punish) {
-  const reg = ctx2.registries;
-  const open3 = draft.power?.votes.open;
-  if (!open3 || open3.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
-  if (open3.status !== "failed") throw new Error("Only a vote that failed can be overruled.");
-  if (!MEANS.includes(means)) throw new Error("A vote is overruled by an order, a punishment or the Leash.");
-  const dissent = open3.ballots.filter((b) => b.vote === "against" && isNamedLiving2(draft, b.unitId));
-  if (dissent.length === 0) throw new Error("No named soldier voted against this: there is no one to overrule.");
-  if (means === "punish") {
-    if (!punish || !dissent.some((b) => b.unitId === punish.unitId)) throw new Error("A punishment must name one of the soldiers who voted against.");
-  }
-  const V = TUNING.power.vote;
-  const events = [];
-  const grudges = powerOf(draft).grudges ??= {};
-  for (const b of dissent) {
-    const unit2 = draft.squad.find((u) => u.id === b.unitId);
-    events.push(...applyEventToUnit(draft, reg, b.unitId, {
-      type: "decision_violated",
-      actor: "commander",
-      targets: [b.unitId],
-      severity: V.overruleSeverity,
-      evidence: "overruled a squad vote",
-      confidence: 1,
-      valueAxes: againstHerValues(draft, reg, unit2)
-    }));
-    events.push(...addRecord(draft, b.unitId, V.overruleRecord, "vote_overruled"));
-    grudges[b.unitId] = draft.day;
-  }
-  for (const b of dissent) events.push(...evaluateAutomatic(draft, reg, b.unitId));
-  if (means === "punish") {
-    events.push(...applyPunishment(draft, ctx2, { unitId: punish.unitId, measure: punish.measure, source: "menu", channel: "pda" }));
-  } else if (means === "leash") {
-    const loudest = [...dissent].sort((a, b) => Math.abs(b.score) * b.weight - Math.abs(a.score) * a.weight)[0];
-    events.push(...compel(draft, ctx2, { unitId: loudest.unitId, context: "pda", roll: false }).events);
-  }
-  open3.status = "overruled";
-  events.push({ type: "vote_overruled", voteId, means, against: dissent.map((b) => b.unitId) });
-  return events;
-}
-
 // src/engine/power/herCall.ts
 var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf8 = (state, id) => state.squad.find((u) => u.id === id);
@@ -19366,8 +19376,9 @@ function defaultEnemyName(reg, enemyId, affixes) {
   return [...words3, reg.enemies.get(enemyId)?.name ?? enemyId].join(" ");
 }
 function averageLevel(state) {
-  const fielded = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
-  const pool = fielded.length > 0 ? fielded : state.squad;
+  const living2 = state.squad.filter(isLiving);
+  const fielded = state.roster.activeIds.map((id) => living2.find((u) => u.id === id)).filter((u) => u !== void 0);
+  const pool = fielded.length > 0 ? fielded : living2;
   if (pool.length === 0) return 1;
   return pool.reduce((s, u) => s + u.level, 0) / pool.length;
 }
@@ -22832,7 +22843,7 @@ function dispatch(state, action, registries) {
   const rng = new Rng(draft.rng);
   try {
     const events = handler2(draft, action.payload, { registries, rng });
-    if (voteId !== void 0) events.push(...carryVote(draft, voteId, { registries }));
+    if (voteId !== void 0) events.push(...carryIfRan(draft, voteId, events, { registries }));
     for (const step of afterActions) events.push(...step(draft, { registries, rng }));
     draft.rng = rng.state;
     try {
@@ -27861,9 +27872,10 @@ function writeDayStart(st, snap) {
 function readDayStart(st) {
   const raw = st.readMetadata(DAY_START_KEY);
   if (typeof raw !== "object" || raw === null) return null;
-  if (typeof raw.chatId !== "string" || typeof raw.day !== "number" || typeof raw.chatLength !== "number") return null;
-  if (typeof raw.state !== "object" || raw.state === null) return null;
-  return raw;
+  if (typeof raw.chatId !== "string" || typeof raw.day !== "number" || !Number.isSafeInteger(raw.chatLength) || raw.chatLength < 0) return null;
+  const checked = migrate(raw.state);
+  if (!checked.ok) return null;
+  return { chatId: raw.chatId, day: raw.day, chatLength: raw.chatLength, state: checked.state };
 }
 function loadCampaign(st) {
   const chat = st.getActiveChat();
@@ -27903,8 +27915,9 @@ async function writeNewCampaign(st, state, expectChatId) {
   return { ok: true };
 }
 function createSaver(st, chatId, debounceMs = 500) {
-  let pending4 = null;
+  let dirty = false;
   let timer = null;
+  let readonly = null;
   const clearTimer = () => {
     if (timer !== null) {
       clearTimeout(timer);
@@ -27913,23 +27926,27 @@ function createSaver(st, chatId, debounceMs = 500) {
   };
   const flush = async () => {
     clearTimer();
-    const state = pending4;
-    pending4 = null;
-    if (!state) return;
+    if (!dirty) return;
+    dirty = false;
     if (st.getActiveChat()?.chatId !== chatId) {
-      console.warn(`[Alius] dropped pending save: chat ${chatId} is no longer open`);
+      console.warn(`[Alius] chat ${chatId} is no longer open: its state stays in that chat's metadata for SillyTavern to save with it`);
       return;
     }
-    if (loadCampaign(st).kind === "readonly") {
-      console.warn("[Alius] refused to save: campaign metadata is read-only (corrupt or from a newer version)");
-      return;
-    }
-    st.writeMetadata(METADATA_KEY, state);
     await st.saveMetadata();
   };
   return {
     save(state) {
-      pending4 = structuredClone(state);
+      if (st.getActiveChat()?.chatId !== chatId) {
+        console.warn(`[Alius] dropped a save: chat ${chatId} is no longer open`);
+        return;
+      }
+      readonly ??= loadCampaign(st).kind === "readonly";
+      if (readonly) {
+        console.warn("[Alius] refused to save: campaign metadata is read-only (corrupt or from a newer version)");
+        return;
+      }
+      st.writeMetadata(METADATA_KEY, structuredClone(state));
+      dirty = true;
       clearTimer();
       timer = setTimeout(() => {
         flush().catch((e) => console.warn("[Alius] save failed", e));
@@ -27938,7 +27955,7 @@ function createSaver(st, chatId, debounceMs = 500) {
     flush,
     dispose() {
       clearTimer();
-      pending4 = null;
+      dirty = false;
     }
   };
 }
@@ -29551,6 +29568,23 @@ function createDiscipline(deps) {
   return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand, reword };
 }
 
+// src/ui/shell/guard.ts
+function guarded(host, what, render) {
+  try {
+    render(host);
+  } catch (e) {
+    console.error(`[Alius] ${what} failed to render`, e);
+    const message = e instanceof Error ? e.message : String(e);
+    host.replaceChildren(h(
+      "pre",
+      { class: "alius-stub alius-fault", role: "alert" },
+      `MODULE FAULT // ${what.toUpperCase()}
+${message}
+The other tabs and SYS still work.`
+    ));
+  }
+}
+
 // src/ui/shell/router.ts
 function stubText(name) {
   const lines = [name, "NO DATA // MODULE OFFLINE"];
@@ -29572,7 +29606,7 @@ function createRouter() {
     render(host) {
       host.replaceChildren();
       const render = renderers.get(current);
-      if (render) render(host);
+      if (render) guarded(host, `screen ${current}`, render);
       else host.append(h("pre", { class: "alius-stub" }, stubText(current.toUpperCase())));
     }
   };
@@ -30691,6 +30725,7 @@ function attachCombatKeys(h2) {
   const onKey = (e) => {
     if (!document.getElementById("alius-shell")) return;
     if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.querySelector(".alius-modal-backdrop") || e.target?.closest?.('[role="dialog"]')) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     let handled = true;
     if (k >= "1" && k <= "6") h2.skill(Number(k) - 1);
@@ -41353,10 +41388,11 @@ function renderWardenPanel(host, state, reg, deps = {}) {
   const known = w.expectations.filter((x) => x.known);
   const unknown2 = w.expectations.length - known.length;
   const raw = deps.showRaw === true;
+  const defiance = Math.max(0, Math.min(100, Number.isFinite(Number(w.defiance)) ? Number(w.defiance) : 0));
   const meter = h(
     "div",
-    { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(w.defiance), ...analyzeAttrs("glossary:warden_defiance") },
-    h("div", { class: "alius-defiance-fill", style: `width:${w.defiance}%` }),
+    { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(defiance), ...analyzeAttrs("glossary:warden_defiance") },
+    h("div", { class: "alius-defiance-fill", style: `width:${defiance}%` }),
     h("span", { class: "alius-defiance-mark", style: `left:${E.warning1}%`, "aria-hidden": "true" }),
     h("span", { class: "alius-defiance-mark", style: `left:${E.warning2}%`, "aria-hidden": "true" })
   );
@@ -45258,7 +45294,7 @@ function createShell(deps) {
       return;
     }
     const render = tabRenderers.get(tab);
-    if (render) render(panel2);
+    if (render) guarded(panel2, `tab ${tab}`, render);
     else panel2.append(tabStub(tab));
   }
   function glitch() {
@@ -45325,7 +45361,7 @@ function createShell(deps) {
     const dev = device;
     renderKeepingFocus(target, () => {
       target.replaceChildren();
-      hubRender(target, dev);
+      guarded(target, "hub", (host) => hubRender(host, dev));
     });
   }
   function focusDevice(up) {
@@ -46619,6 +46655,27 @@ function createApp(st, deps) {
     if (load.kind === "ok") saver = createSaver(st, load.chatId);
     if (load.kind === "readonly") toast("warn", `Alius campaign in this chat is read-only: ${load.reason}`);
   }
+  function openCampaign() {
+    const stored = st.readMetadata(METADATA_KEY);
+    try {
+      reload();
+      afterLoad();
+    } catch (e) {
+      console.error("[Alius] opening the campaign failed", e);
+      saver?.dispose();
+      saver = null;
+      if (st.readMetadata(METADATA_KEY) !== stored) st.writeMetadata(METADATA_KEY, stored);
+      state = null;
+      const chat = st.getActiveChat();
+      load = chat ? { kind: "readonly", reason: `the campaign could not be opened (${errText3(e)})`, chatId: chat.chatId } : { kind: "none" };
+      context.clearMatching(() => true);
+      try {
+        applyContext();
+      } catch {
+      }
+      toast("error", `Alius could not open this campaign: ${errText3(e)}. It stays read-only; nothing is overwritten.`);
+    }
+  }
   let reviewShownFor = null;
   let reviewOpen = false;
   async function reviewCommanderFile() {
@@ -46712,6 +46769,8 @@ function createApp(st, deps) {
     shell.closeModal?.();
     dilemmaHost = null;
     dilemmaModalOpen = false;
+    overrideModalOpen = false;
+    overrideModalSeq++;
     void reviewCommanderFile().catch((e) => console.warn("[Alius] commander review failed", e));
     if (state?.dilemmas?.open) {
       if (state.dilemmas.open.context !== "expedition_event") openDilemmaModal();
@@ -47153,9 +47212,11 @@ function createApp(st, deps) {
     shell.open();
   }
   let overrideModalOpen = false;
+  let overrideModalSeq = 0;
   function showOverrideModal() {
     if (overrideModalOpen || !state || !overrideOpen(state) || load.kind !== "ok") return;
     overrideModalOpen = true;
+    const mine = ++overrideModalSeq;
     const host = h("div", { class: "alius-override-modal" });
     renderOverrideChip(host, state, registries, (answer) => {
       shell.closeModal?.();
@@ -47163,7 +47224,7 @@ function createApp(st, deps) {
     });
     shell.open();
     void shell.modal({ title: "WARDEN OVERRIDE", body: host, actions: [] }).then(() => {
-      overrideModalOpen = false;
+      if (overrideModalSeq === mine) overrideModalOpen = false;
     });
   }
   function reportEvents(events) {
@@ -47744,16 +47805,14 @@ function createApp(st, deps) {
         for (const e of contentErrors) console.warn(`[Alius] content: ${e.pack} ${e.file} ${e.path} \u2014 ${e.message}`);
         toast("warn", `Content: ${contentErrors.length} error(s) \u2014 see SYS \u203A debug`);
       }
-      reload();
-      afterLoad();
+      openCampaign();
       if (!started) {
         started = true;
         st.on("chat_changed", () => {
           expedition.cancelPlan();
           seenOffers.clear();
           generations.clearSnapshots();
-          reload();
-          afterLoad();
+          openCampaign();
           shell.refresh();
         });
         st.on("message_received", () => {
@@ -48879,6 +48938,14 @@ function reasoningPayload(api, think) {
   return {};
 }
 
+// src/st/toastr.ts
+function showToastr(t, kind, text2) {
+  const fn = t?.[kind === "warn" ? "warning" : kind];
+  if (typeof fn !== "function") return false;
+  fn.call(t, text2, "Alius", { escapeHtml: true });
+  return true;
+}
+
 // src/st/real.ts
 function finishReasonOf(raw) {
   if (typeof raw !== "object" || raw === null) return void 0;
@@ -49134,10 +49201,7 @@ var RealStAdapter = class {
     ctx().saveSettingsDebounced();
   }
   toast(kind, text2) {
-    const t = globalThis.toastr;
-    const fn = t?.[kind === "warn" ? "warning" : kind];
-    if (typeof fn === "function") fn.call(t, text2, "Alius");
-    else console[kind === "info" ? "info" : kind === "warn" ? "warn" : "error"](`[Alius] ${text2}`);
+    if (!showToastr(globalThis.toastr, kind, text2)) console[kind === "info" ? "info" : kind === "warn" ? "warn" : "error"](`[Alius] ${text2}`);
   }
 };
 
