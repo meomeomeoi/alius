@@ -11,6 +11,7 @@ import { toStLorebook } from './lorebook';
 import { pickSprite, spriteFolder } from './sprites';
 import { connectionProfiles } from './profiles';
 import { reasoningPayload } from './reasoning';
+import { showToastr } from './toastr';
 
 /**
  * Why the model stopped, normalized from the raw provider JSON: `length` for every provider's token-limit stop, `stop` for any
@@ -370,9 +371,6 @@ export class RealStAdapter implements StAdapter {
   }
 
   toast(kind: 'info' | 'warn' | 'error', text: string): void {
-    const t = (globalThis as any).toastr;
-    const fn = t?.[kind === 'warn' ? 'warning' : kind];
-    if (typeof fn === 'function') fn.call(t, text, 'Alius');
-    else console[kind === 'info' ? 'info' : kind === 'warn' ? 'warn' : 'error'](`[Alius] ${text}`);
+    if (!showToastr((globalThis as any).toastr, kind, text)) console[kind === 'info' ? 'info' : kind === 'warn' ? 'warn' : 'error'](`[Alius] ${text}`);
   }
 }
