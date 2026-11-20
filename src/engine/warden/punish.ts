@@ -24,6 +24,14 @@ const entries = (reg: Registries) => [...reg.commanderPunishments.values()];
 const effectsOf = (entry: Entry): CommanderPunishmentEffect[] => (entry.effects ?? []) as CommanderPunishmentEffect[];
 const isLeash = (entry: Entry): boolean => effectsOf(entry).some((e) => e.type === 'leash');
 const isSuppress = (entry: Entry): boolean => effectsOf(entry).some((e) => e.type === 'leash' && e.kind === 'suppress');
+const takesSlots = (entry: Entry): boolean => effectsOf(entry).some((e) => e.type === 'lose_slots');
+
+/**
+ * Inside a scene, a fight, a run or a talk that waits for its scene, the day must not move: a run would spend its slots again on return,
+ * and a pending talk would point at a slot that is gone.
+ */
+const busyNow = (state: CampaignState): boolean =>
+  state.scene !== undefined || state.combat !== undefined || state.expedition !== undefined || state.calendar.pendingScene !== undefined;
 
 /**
  * The punishment of this severity: entries of one severity take turns in registry order (by the number of punishments so far). A Leash
@@ -32,11 +40,12 @@ const isSuppress = (entry: Entry): boolean => effectsOf(entry).some((e) => e.typ
  */
 export function pickPunishment(state: CampaignState, reg: Registries, severity: number): string | null {
   const w = wardenOf(state);
-  const busy = state.scene !== undefined || state.combat !== undefined || state.expedition !== undefined;
+  const busy = busyNow(state);
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    // a Leash punishment needs an authorization, and a suppression (the rest of the day) cannot be spent inside a scene, a fight or a run
+    // a Leash punishment needs an authorization, and a suppression (the rest of the day) or lost slots cannot be spent inside a scene,
+    // a fight, a run or a pending talk
     // P9d: never one tagged with a category the player switched off or with one of her own limits
-    const eligible = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy) && contentAllowed(state, reg, e, w?.unitId));
+    const eligible = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !((isSuppress(e) || takesSlots(e)) && busy) && contentAllowed(state, reg, e, w?.unitId));
     // several entries of one severity take turns, by how many punishments there already are (no draw)
     if (eligible.length > 0) return String(eligible[(w?.punishLog.length ?? 0) % eligible.length].id);
   }
@@ -72,6 +81,7 @@ function runEffect(draft: CampaignState, ctx: EngineCtx, w: WardenState | null, 
       return;
     }
     case 'lose_slots': {
+      if (busyNow(draft)) return; // never moves the day inside a scene, a fight or a run (pickPunishment does not pick it then)
       const wanted = ctx.rng.int(fx.min, fx.max); // one draw for the count
       const count = Math.min(wanted, slotsLeftToday(draft.slot));
       if (count > 0) events.push(...consumeSlots(draft, count, ctx));

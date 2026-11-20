@@ -282,3 +282,38 @@ describe('after a DEFY', () => {
     expect(punished).toBeGreaterThan(0);
   });
 });
+
+describe('losing slots while busy (0.1 audit)', () => {
+  const sev3 = (s: CampaignState): string[] => {
+    const seen = new Set<string>();
+    for (let n = 0; n < 6; n++) {
+      wardenOf(s)!.punishLog = Array.from({ length: n }, () => ({ punishmentId: 'reprimand', day: 1, severity: 1 }));
+      const id = pickPunishment(s, reg, 3);
+      if (id) seen.add(id);
+    }
+    return [...seen];
+  };
+
+  it('a punishment that takes slots is never picked inside a scene, a fight, a run or a pending talk', () => {
+    expect(sev3(swap())).toContain('confinement');
+    const busy: Array<(s: CampaignState) => void> = [
+      (s) => { s.expedition = {} as never; },
+      (s) => { s.combat = {} as never; },
+      (s) => { s.scene = {} as never; },
+      (s) => { s.calendar.pendingScene = { unitId: ID.ann, day: s.day, slot: s.slot as never }; },
+    ];
+    for (const make of busy) {
+      const picks = sev3(swap(make));
+      expect(picks).not.toContain('confinement');
+      expect(picks.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('applied anyway while busy (an explicit id), it takes no slot', () => {
+    const s = swap((x) => { x.expedition = {} as never; });
+    const before = { day: s.day, slot: s.slot };
+    const { d, events } = apply(s, 'confinement');
+    expect(events.map((e) => e.type)).not.toContain('slot_advanced');
+    expect({ day: d.day, slot: d.slot }).toEqual(before);
+  });
+});
