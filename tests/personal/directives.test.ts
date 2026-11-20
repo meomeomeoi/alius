@@ -58,7 +58,7 @@ describe('derived directives', () => {
     s.personal = { seq: 0, bookings: [{ id: 'bk_1', unitId: ANN, kindId: 'evening_with_me', day: s.day, slot: s.slot, status: 'played', source: 'roll' }] };
     expect(ids(s, [ANN])).toContain(`personal:booking:${ANN}`);
     s.personal.bookings![0].status = 'cancelled';
-    expect(text(s, [ANN])).toContain('cancelled');
+    expect(text(s, [ANN])).toContain('canceled');
     s.personal.bookings![0].day = s.day - 3;
     expect(ids(s, [ANN])).not.toContain(`personal:booking:${ANN}`);
   });

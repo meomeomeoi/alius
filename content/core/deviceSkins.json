@@ -2,7 +2,7 @@
   {
     "id": "ccp_standard",
     "name": "CCP standard issue",
-    "description": "Corporate-surplus handheld: olive-grey shell, rubber bumpers, screws someone has already tried to open.",
+    "description": "Corporate-surplus handheld: olive-gray shell, rubber bumpers, screws someone has already tried to open.",
     "kind": "css",
     "cssPreset": "ccp_standard",
     "ledColor": "#ffb000",

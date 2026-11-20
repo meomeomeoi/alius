@@ -185,17 +185,17 @@ export function resolveConflict(draft: CampaignState, ctx: EngineCtx, p: { booki
  */
 export function cancelBooking(draft: CampaignState, ctx: EngineCtx, bookingId: string): EngineEvent[] {
   const b = bookingsOf(draft).find((x) => x.id === bookingId);
-  if (!b || b.status !== 'booked') throw new Error('That booking cannot be cancelled.');
+  if (!b || b.status !== 'booked') throw new Error('That booking cannot be canceled.');
   const reg = ctx.registries;
   b.status = 'cancelled';
   delete b.conflict;
   syncConflicts(draft, b.day, b.slot);
   const events: EngineEvent[] = [{ type: 'booking_cancelled', bookingId: b.id, unitId: b.unitId }];
   if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
-  events.push(...refuseLikeDemand(draft, ctx, b.unitId, { evidence: 'a booking was cancelled' }));
-  if (b.source === 'wager') events.push(...hitHer(draft, reg, b.unitId, 'broke_promise', 'moderate', 'a wagered booking was cancelled'));
+  events.push(...refuseLikeDemand(draft, ctx, b.unitId, { evidence: 'a booking was canceled' }));
+  if (b.source === 'wager') events.push(...hitHer(draft, reg, b.unitId, 'broke_promise', 'moderate', 'a wagered booking was canceled'));
   else events.push(...evaluateAutomatic(draft, reg, b.unitId));
-  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx, b.unitId, 'cancelled her booking on the day of obedience'));
+  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx, b.unitId, 'canceled her booking on the day of obedience'));
   return events;
 }
 

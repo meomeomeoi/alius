@@ -18,7 +18,7 @@ registerCallType<string>({
   json: false,
   system: (raw) => [
     'You retell a rumor of a squad-command roleplay in the voice of the soldier who passes it on.',
-    `Write ONE line of at most ${(raw as RumorInput | undefined)?.factTextMax ?? TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; colour it by how she feels.`,
+    `Write ONE line of at most ${(raw as RumorInput | undefined)?.factTextMax ?? TUNING.memory.factTextMax} characters, in English, as hearsay ("they say", "I heard"). Keep who and what; color it by how she feels.`,
     'No numbers, no headings, no markdown, no quotation marks. Give the commander no pronoun (write "the commander").',
   ].join('\n'),
   prompt: (raw) => {

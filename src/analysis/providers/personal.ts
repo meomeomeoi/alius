@@ -75,9 +75,9 @@ function bookingProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lin
     lines.push(`${name} has booked the ${SLOT_WORD[booking.slot]} of day ${booking.day}: ${String(kind?.label ?? booking.kindId).toLowerCase()}.`);
     const high = (impunityOf(state, env.registries, who)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
     lines.push(high
-      ? 'Cancelling counts as a refused demand, and because she does not fear the commander\'s reaction it lands harder and she holds it as a defiance.'
-      : 'Cancelling counts as a refused demand.');
-    if (booking.source === 'wager') lines.push('It was won in a wager: cancelling it also breaks a promise.');
+      ? 'Canceling counts as a refused demand, and because she does not fear the commander\'s reaction it lands harder and she holds it as a defiance.'
+      : 'Canceling counts as a refused demand.');
+    if (booking.source === 'wager') lines.push('It was won in a wager: canceling it also breaks a promise.');
   } else {
     lines.push(deviceAccess(state, env.registries, who) >= 3
       ? `${name} has no booking now; she may book a slot of the commander's time.`

@@ -1010,7 +1010,7 @@
     "id": "marker_tone",
     "term": "Marker ring",
     "short": "The ring and symbol on a soldier's marker: ! danger, \u2665 bond, + trust, * affinity, ~ warning, \u00b7 nothing notable.",
-    "long": "The ring colour is always paired with a symbol, so it never has to be read by colour alone. ! means stress is high, she is injured or her loyalty is breaking. \u2665 is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
+    "long": "The ring color is always paired with a symbol, so it never has to be read by color alone. ! means stress is high, she is injured or her loyalty is breaking. \u2665 is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
     "see": [
       "hub",
       "stress",
@@ -1079,7 +1079,7 @@
     "id": "setting_readable_mode",
     "term": "Readable mode",
     "short": "Switches off scanlines, flicker, dithered portraits and the tab glitch, and makes the text larger.",
-    "long": "Use it when the terminal look gets in the way of reading. Colours and layout stay as they are. It does not stop slides and fades: for those use Reduce motion.",
+    "long": "Use it when the terminal look gets in the way of reading. Colors and layout stay as they are. It does not stop slides and fades: for those use Reduce motion.",
     "see": [
       "setting_reduced_motion"
     ]
@@ -1095,9 +1095,9 @@
   },
   {
     "id": "semantic_colours",
-    "term": "Semantic colours",
-    "short": "Five tones for rings, pips and bars: danger, bond, trust, affinity and warning. A symbol always goes with the colour.",
-    "long": "! danger, \u2665 bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without colour vision. Nothing is ever shown by colour alone.",
+    "term": "Semantic colors",
+    "short": "Five tones for rings, pips and bars: danger, bond, trust, affinity and warning. A symbol always goes with the color.",
+    "long": "! danger, \u2665 bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without color vision. Nothing is ever shown by color alone.",
     "see": [
       "marker_tone"
     ]
@@ -1105,8 +1105,8 @@
   {
     "id": "setting_dithered_portraits",
     "term": "Dithered portraits",
-    "short": "PDA portraits are redrawn in the three tones of your phosphor palette. Scenes keep full colour.",
-    "long": "The portrait is turned into a pattern of dots in the screen's own colours, like an old terminal image. It is switched off by Readable mode.",
+    "short": "PDA portraits are redrawn in the three tones of your phosphor palette. Scenes keep full color.",
+    "long": "The portrait is turned into a pattern of dots in the screen's own colors, like an old terminal image. It is switched off by Readable mode.",
     "see": [
       "setting_readable_mode"
     ]
@@ -1462,7 +1462,7 @@
     "id": "booking",
     "term": "Booking",
     "short": "A soldier with calendar access books a slot of the commander's time. At that slot the commander goes to her, or cancels, which counts as refusing a demand.",
-    "long": "AUTHOR TO WRITE: She books tomorrow's evening or afternoon and tells the commander in a message. While the booked slot is under way and she can be met, nothing else can use it: go to her, or cancel. Cancelling costs Trust, Affinity and stress like a refused demand, and more when she does not fear the commander's reaction. Two bookings of one slot clash: choose one, or let the two settle it by how hard each holds on. A booking she cannot keep (the brig, an injury, a run) lapses at no cost.",
+    "long": "AUTHOR TO WRITE: She books tomorrow's evening or afternoon and tells the commander in a message. While the booked slot is under way and she can be met, nothing else can use it: go to her, or cancel. Canceling costs Trust, Affinity and stress like a refused demand, and more when she does not fear the commander's reaction. Two bookings of one slot clash: choose one, or let the two settle it by how hard each holds on. A booking she cannot keep (the brig, an injury, a run) lapses at no cost.",
     "see": [
       "device_access",
       "demand",
@@ -1493,7 +1493,7 @@
     "id": "token",
     "term": "Token",
     "short": "A keepsake a close soldier gives the commander, once. The commander may wear two: they please the giver and others take note.",
-    "long": "AUTHOR TO WRITE: A soldier who is close to the commander offers one token, once. Accepted, it is kept; worn, it earns her a little Affinity every day and the others react: a rival is stung, a friend takes note. Taking it off is an offence to her, and a token won in a wager is locked for a week: taking it off early also breaks a promise.",
+    "long": "AUTHOR TO WRITE: A soldier who is close to the commander offers one token, once. Accepted, it is kept; worn, it earns her a little Affinity every day and the others react: a rival is stung, a friend takes note. Taking it off is an offense to her, and a token won in a wager is locked for a week: taking it off early also breaks a promise.",
     "see": [
       "wager",
       "courtship"
@@ -1744,7 +1744,7 @@
     "id": "setting_llm_timeout_ms",
     "term": "Model timeout",
     "short": "Seconds a model call may run before it counts as failed, 10 to 600. The default is 120.",
-    "long": "AUTHOR TO WRITE: A call that has not answered by then is abandoned and shown as a failure with a RETRY. A main-model call cannot be cancelled in SillyTavern, so an answer that arrives late is ignored and only logged in debug mode. A slow model needs a longer timeout, not a bigger budget.",
+    "long": "AUTHOR TO WRITE: A call that has not answered by then is abandoned and shown as a failure with a RETRY. A main-model call cannot be canceled in SillyTavern, so an answer that arrives late is ignored and only logged in debug mode. A slow model needs a longer timeout, not a bigger budget.",
     "see": [
       "setting_auto_retry"
     ]
@@ -1771,7 +1771,7 @@
     "id": "quarters",
     "term": "Quarters",
     "short": "The room a soldier lives in. Her quarters scenes show it, and you can change which of the fourteen rooms is hers.",
-    "long": "AUTHOR TO WRITE: Every named soldier starts in a room picked from her name: cosy, tidy, severe, Japanese, gilded and so on. The QUARTERS select in her dossier changes it. The room is only what you see and how the scene describes it; it changes nothing else.",
+    "long": "AUTHOR TO WRITE: Every named soldier starts in a room picked from her name: cozy, tidy, severe, Japanese, gilded and so on. The QUARTERS select in her dossier changes it. The room is only what you see and how the scene describes it; it changes nothing else.",
     "see": [
       "handwriting"
     ]

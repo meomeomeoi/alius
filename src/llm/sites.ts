@@ -78,7 +78,7 @@ declare('flavor.dm_edit', 'flavor', 'comms', 'none', 'none', 'Message edit');
 declare('flavor.habit', 'flavor', 'day', 'free', 'none', 'Habit wording');
 declare('flavor.frequency_fragment', 'flavor', 'scene', 'none', 'none', 'Fragment wording');
 declare('warden.agenda', 'warden_agenda', 'world', 'before_commit', 'quiet', "The warden's agenda");
-declare('warden.judge', 'warden_judge', 'world', 'none', 'none', 'Warden judgement');
+declare('warden.judge', 'warden_judge', 'world', 'none', 'none', 'Warden judgment');
 declare('warden.epilogue', 'epilogue', 'world', 'free', 'full', 'Epilogue');
 declare('setup.profile_import', 'profile_import', 'setup', 'before_commit', 'none', 'Profile import');
 declare('setup.head_start_recap', 'head_start_recap', 'world', 'before_commit', 'full', 'Recap of the first weeks');

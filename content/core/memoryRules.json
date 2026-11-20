@@ -339,7 +339,7 @@
   {
     "id": "booking_cancelled",
     "event": "booking_cancelled",
-    "text": "The commander cancelled the time {name} had booked.",
+    "text": "The commander canceled the time {name} had booked.",
     "importance": 2,
     "about": "subject",
     "audience": "subject",

@@ -73,7 +73,7 @@
   {
     "id": "item_precision_rifle",
     "name": "Standard Precision Rifle",
-    "description": "A long-barrelled rifle built for single, well-aimed shots with a high crit chance.",
+    "description": "A long-barreled rifle built for single, well-aimed shots with a high crit chance.",
     "slot": "weapon",
     "class": "Precision Rifle",
     "rarity": "standard",
@@ -101,7 +101,7 @@
   {
     "id": "item_tech",
     "name": "Standard Emitter",
-    "description": "An emitter that turns corporate tech into a weapon, favoured by specialists and support units.",
+    "description": "An emitter that turns corporate tech into a weapon, favored by specialists and support units.",
     "slot": "weapon",
     "class": "Tech",
     "rarity": "standard",

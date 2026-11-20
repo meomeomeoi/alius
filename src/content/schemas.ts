@@ -1719,7 +1719,7 @@ registrySchemas.planRooms = PlanRoomSchema;
 // ---------------------------------------------------------------------------------------------
 // P10: device skins
 
-const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a colour is #rrggbb');
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a color is #rrggbb');
 export const CSS_PRESETS = ['ccp_standard', 'kestrel', 'vesper'] as const;
 
 /**

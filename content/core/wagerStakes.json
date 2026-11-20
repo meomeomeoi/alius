@@ -23,7 +23,7 @@
   {
     "id": "drop_demand",
     "label": "Her demand",
-    "description": "AUTHOR TO WRITE: if she wins her open demand is granted; if the commander wins it is dropped with no offence.",
+    "description": "AUTHOR TO WRITE: if she wins her open demand is granted; if the commander wins it is dropped with no offense.",
     "effect": "drop_demand",
     "text": "what she asked of you"
   },

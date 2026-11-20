@@ -3765,7 +3765,7 @@
     "id": "en_elite_strike",
     "name": "Elite Strike",
     "kind": "enemy",
-    "description": "A practised, devastating blow.",
+    "description": "A practiced, devastating blow.",
     "cooldown": 3,
     "usableFrom": [
       "front",

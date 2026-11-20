@@ -21,7 +21,7 @@ export function favourReactions(draft: CampaignState, reg: Registries, favouredI
     const tier = bondTierOf(draft, reg, other.id);
     if (tier === 'romantic') {
       reactions.push({ unitId: other.id, kind: 'rival' });
-      events.push(...hitHer(draft, reg, other.id, 'rival_favoured', rival, 'the commander favoured someone else', { amplified: true }));
+      events.push(...hitHer(draft, reg, other.id, 'rival_favoured', rival, 'the commander favored someone else', { amplified: true }));
     } else if (tier === 'close' || valuesOf(other).ingroup >= 1) {
       reactions.push({ unitId: other.id, kind: 'respect' });
       events.push(...hitHer(draft, reg, other.id, 'bond_shown', 'minor', 'a bond was shown'));
