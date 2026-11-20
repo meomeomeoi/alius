@@ -7214,7 +7214,8 @@ var DefectSchema = BaseEntrySchema.extend({
   downside: str,
   breakdown: external_exports.object({ name: str, text: str }),
   social: str,
-  arc: external_exports.object({ cure: str, manage: str, embrace: str }),
+  /** A path without text is hidden (not offered, not shown) until it is written. */
+  arc: external_exports.object({ cure: str.optional(), manage: str.optional(), embrace: str.optional() }),
   /** P3: multipliers applied after state modifiers; `events` multiplies the whole delta of one event type. */
   relationModifiers: gainLoss.extend({ events: external_exports.record(external_exports.number().min(0)).optional() }).strict().optional(),
   /** P3: activity-driven social effects (e.g. Hunger Loop meals give Affinity). */
@@ -8225,7 +8226,9 @@ var CommanderPunishmentSchema = BaseEntrySchema.extend({
   severity: int.min(1).max(4),
   defianceDelta: int.max(0),
   satisfactionDelta: int.min(0),
-  effects: external_exports.array(CommanderPunishmentEffectSchema).min(1)
+  effects: external_exports.array(CommanderPunishmentEffectSchema).min(1),
+  /** P9d gate: the warden never picks it while a tag is switched off or among her own limits (`pickPunishment`). */
+  contentTags
 }).strict().superRefine((p, ctx2) => {
   p.effects.forEach((e, i) => {
     if (e.type === "lose_slots" && e.min > e.max) ctx2.addIssue({ code: "custom", path: ["effects", i], message: "min is at most max" });
@@ -10680,7 +10683,7 @@ function syncRulesWithContent(draft, reg) {
 }
 
 // src/engine/bonds/content.ts
-var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks", "wagerStakes", "developmentRules", "habits"];
+var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks", "wagerStakes", "developmentRules", "habits", "commanderPunishments"];
 var enabledCategories = (state) => state.content?.enabled ?? [];
 var tagsOf = (entry) => {
   const tags = entry.contentTags;
@@ -13066,7 +13069,7 @@ function pickPunishment(state, reg, severity) {
   const w = wardenOf(state);
   const busy = state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0;
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    const eligible3 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy));
+    const eligible3 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy) && contentAllowed(state, reg, e, w?.unitId));
     if (eligible3.length > 0) return String(eligible3[(w?.punishLog.length ?? 0) % eligible3.length].id);
   }
   return null;
@@ -13141,8 +13144,9 @@ function punishRoll(draft, ctx2, weight) {
   const id = pickPunishment(draft, ctx2.registries, severity);
   return id === null ? [] : applyCommanderPunishment(draft, ctx2, id);
 }
-function painBurstId(reg) {
-  return entries(reg).find((e) => effectsOf2(e).some((x) => x.type === "injury"))?.id;
+function painBurstId(state, reg) {
+  const entry = entries(reg).find((e) => effectsOf2(e).some((x) => x.type === "injury"));
+  return entry && contentAllowed(state, reg, entry, wardenOf(state)?.unitId) ? entry.id : void 0;
 }
 function applyRemotePunishment(draft, ctx2, punishmentId) {
   const entry = ctx2.registries.commanderPunishments.get(punishmentId);
@@ -15475,7 +15479,7 @@ function hackStep(draft, ctx2, allyId) {
   draft.resources.plyx -= H.plyx;
   const events = [];
   ls.intrigue.hack.step += 1;
-  const pain = painBurstId(ctx2.registries);
+  const pain = painBurstId(draft, ctx2.registries);
   const found = addSuspicion(draft, ctx2, H.noise, "hack", pain !== void 0 ? { punishmentId: pain } : {});
   if (found.some((e) => e.type === "intrigue_discovered")) return [{ type: "hack_step", step: 0, failed: true }, ...found, ...spendSlot(draft, ctx2, day, slot2)];
   events.unshift({ type: "hack_step", step: ls.intrigue.hack.step, failed: false });
@@ -16241,7 +16245,21 @@ var afford = (state, cost) => {
   for (const k of ["credits", "supplies", "plyx"]) if ((cost[k] ?? 0) > state.resources[k]) return `Not enough ${k}.`;
   return null;
 };
+function writtenArcPaths(def) {
+  const texts = isObj4(def?.arc) ? def.arc : {};
+  return ARC_PATHS.filter((p) => typeof texts[p] === "string" && texts[p].trim() !== "");
+}
+function arcLine(def) {
+  const texts = def.arc;
+  const label2 = { cure: "Cure", manage: "Manage", embrace: "Embrace" };
+  const parts = ["cure", "manage", "embrace"].filter((p) => writtenArcPaths(def).includes(p)).map((p) => `${label2[p]}: ${texts[p]}`);
+  return parts.length > 0 ? parts.join(" \xB7 ") : null;
+}
 function arcPaths(state, reg, unitId, defectId) {
+  const written = writtenArcPaths(reg.defects.get(defectId));
+  return allArcPaths(state, reg, unitId, defectId, written).filter((p) => written.includes(p.path));
+}
+function allArcPaths(state, reg, unitId, defectId, written) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   const inst = unit2?.defects.find((d) => d.id === defectId);
   const def = reg.defects.get(defectId);
@@ -16266,7 +16284,7 @@ function arcPaths(state, reg, unitId, defectId) {
     else if (TUNING.arc.stage[path] > cap7) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
     return { path, reason };
   });
-  const offered2 = structural.filter((s) => s.reason === null).map((s) => s.path);
+  const offered2 = structural.filter((s) => s.reason === null && written.includes(s.path)).map((s) => s.path);
   const wanted = offered2.length > 0 ? wantedPath(unit2, offered2) : void 0;
   return structural.map(({ path, reason }) => {
     const cost = base(path).cost;
@@ -16286,6 +16304,7 @@ function decideArc(draft, ctx2, p) {
   const unit2 = draft.squad.find((u) => u.id === p.unitId);
   if (!unit2 || !isLiving(unit2)) throw new Error(`Unknown unit "${p.unitId}".`);
   const info = arcPaths(draft, reg, p.unitId, p.defectId).find((x) => x.path === p.path);
+  if (!info) throw new Error("That path is not open for this defect.");
   if (!info.available) throw new Error(info.reason ?? "That path is not available.");
   const events = [];
   let forced = false;
@@ -24253,7 +24272,7 @@ function remoteDayStep(draft, ctx2) {
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
-    const id = painBurstId(ctx2.registries);
+    const id = painBurstId(draft, ctx2.registries);
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
@@ -27751,6 +27770,14 @@ var v1Shape = external_exports.object({
   calendar: obj,
   leash: obj
 });
+var isRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
+function sanitize(cur) {
+  const memory = cur.memory;
+  if (!("hidden" in memory)) return cur;
+  const runs = Array.isArray(memory.hidden) ? memory.hidden.filter(isRun) : [];
+  const { hidden: _drop, ...rest } = memory;
+  return { ...cur, memory: runs.length > 0 ? { ...rest, hidden: runs } : rest };
+}
 var invalid = (detail) => ({ ok: false, reason: "invalid", detail });
 function migrate(raw) {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -27775,7 +27802,7 @@ function migrate(raw) {
     const detail = checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
     return invalid(detail);
   }
-  return { ok: true, state: cur, migratedFrom: from };
+  return { ok: true, state: sanitize(cur), migratedFrom: from };
 }
 
 // src/st/persistence.ts
@@ -35760,14 +35787,14 @@ function renderCalibration(host, ctx2) {
 function defectLines(d) {
   const line2 = (label2, text2) => h("p", { class: "alius-defect-line" }, `${label2}: ${String(text2)}`);
   const bd = d.breakdown;
-  const arc = d.arc;
+  const arc = arcLine(d);
   return [
     line2("Lore", d.lore),
     line2("Upside", d.upside),
     line2("Downside", d.downside),
     line2("Breakdown", `${bd.name} \u2014 ${bd.text}`),
     line2("Social", d.social),
-    line2("Arc", `Cure: ${arc.cure} \xB7 Manage: ${arc.manage} \xB7 Embrace: ${arc.embrace}`)
+    ...arc === null ? [] : [line2("Arc", arc)]
   ];
 }
 function textInput(key, value, max, commit) {
@@ -37290,7 +37317,7 @@ function defectBlock(reg, d) {
   const def = reg.defects.get(d.id);
   if (!def) return h("div", { class: "alius-defect" }, h("strong", {}, unknown(d.id)));
   const bd = def.breakdown;
-  const arc = def.arc;
+  const arc = arcLine(def);
   const line2 = (label2, text2) => h("p", { class: "alius-defect-line" }, `${label2}: ${text2}`);
   return h(
     "div",
@@ -37303,7 +37330,7 @@ function defectBlock(reg, d) {
     line2("Downside", String(def.downside)),
     line2("Breakdown", `${bd.name} \u2014 ${bd.text}`),
     line2("Social", String(def.social)),
-    d.lite ? null : line2("Arc", `Cure: ${arc.cure} \xB7 Manage: ${arc.manage} \xB7 Embrace: ${arc.embrace}`)
+    d.lite || arc === null ? null : line2("Arc", arc)
   );
 }
 function relationLine(unit2, state, ctx2) {
@@ -48689,7 +48716,16 @@ function hideRuns(length, from, to, isSystem) {
   if (start !== null) runs.push([start, end]);
   return runs;
 }
-var hideCommand = (unhide, [a, b]) => `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
+var isIndexRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
+var hideCommand = (unhide, run) => {
+  if (!isIndexRun(run)) throw new Error("hide: a run is two message indices in order");
+  const [a, b] = run;
+  return `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
+};
+function unhideRuns(ranges, length) {
+  if (!Array.isArray(ranges)) return [];
+  return ranges.filter(isIndexRun).filter(([a]) => a < length).map(([a, b]) => [a, Math.min(b, length - 1)]);
+}
 var isSystemMessage = (chat, index2) => {
   const m = Array.isArray(chat) ? chat[index2] : void 0;
   return !isObj39(m) || m.is_system === true;
@@ -48977,11 +49013,7 @@ var RealStAdapter = class {
     return runs;
   }
   async unhideMessages(ranges) {
-    const length = ctx().chat.length;
-    for (const [a, b] of ranges) {
-      if (a >= length) continue;
-      await this.slash(hideCommand(true, [a, Math.min(b, length - 1)]));
-    }
+    for (const run of unhideRuns(ranges, ctx().chat.length)) await this.slash(hideCommand(true, run));
   }
   async sendUserMessage(text2) {
     await this.slash(sendCommand(text2));

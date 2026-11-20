@@ -55,7 +55,7 @@ const isRun = (r: unknown): boolean =>
   Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && (r[0] as number) >= 0 && (r[0] as number) <= (r[1] as number);
 
 /**
- * Fields a save controls that reach SillyTavern outside the engine are cleaned here, on every load: `memory.hidden` becomes the
+ * Fields a save controls that leave the engine for the host are cleaned here, on every load: `memory.hidden` becomes the
  * arguments of `/unhide`, so only well-formed index runs are kept (a shared chat file must not run slash commands).
  */
 function sanitize(cur: Raw): Raw {
