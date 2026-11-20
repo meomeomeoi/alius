@@ -165,6 +165,17 @@ function showFallback(draft: CampaignState, reg: Registries, open: DilemmaState)
   return [{ type: 'dilemma_presented', id: open.id, templateId: open.templateId, title: open.title, source: 'fallback' }];
 }
 
+/**
+ * After any action: a presented dilemma that nobody can answer any more (its costs became unaffordable after it was shown, a
+ * requirement no longer holds) would block time for good, because the answer is the only way on. It falls back to the template's
+ * authored block, or resolves as nothing when that one is blocked too (or was already the one shown). Draws nothing.
+ */
+export function settleBlockedDilemma(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const open = draft.dilemmas?.open;
+  if (!open || open.status !== 'presented' || !open.options || !nothingChoosable(draft, ctx.registries, open.options)) return [];
+  return open.source === 'fallback' ? resolveNothing(draft, open) : showFallback(draft, ctx.registries, open);
+}
+
 /** Presents the template's authored block: no model, a failed call, the setting off. */
 export function fallbackDilemma(draft: CampaignState, ctx: EngineCtx, requestId: unknown): EngineEvent[] {
   return showFallback(draft, ctx.registries, openRequest(draft, requestId));

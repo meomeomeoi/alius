@@ -48,6 +48,16 @@ export function registerAction(type: string, handler: Handler): void {
   handlers.set(type, handler);
 }
 
+/**
+ * A step that runs after every successful action, in the same draft and rng (registered by the module that owns the state it settles).
+ * It must draw nothing unless its own condition holds, so actions that do not touch it stay byte-identical.
+ */
+export type AfterAction = (draft: CampaignState, ctx: EngineCtx) => EngineEvent[];
+const afterActions: AfterAction[] = [];
+export function registerAfterAction(step: AfterAction): void {
+  afterActions.push(step);
+}
+
 /** P9b: what a gated action decides, for the squad vote it needs (`null`: this call is not a votable decision). */
 export type VoteGate = (state: CampaignState, payload: unknown, reg: Registries) => { kind: VoteKind; subject: string } | null;
 const gates = new Map<string, VoteGate>();
@@ -116,6 +126,7 @@ export function dispatch(
   try {
     const events = handler(draft, action.payload, { registries, rng });
     if (voteId !== undefined) events.push(...carryVote(draft, voteId, { registries })); // the vote is spent once, in the same state
+    for (const step of afterActions) events.push(...step(draft, { registries, rng }));
     draft.rng = rng.state;
     try {
       rememberEvents(draft, events, registries); // P3b: engine events become facts; memory never fails a valid action

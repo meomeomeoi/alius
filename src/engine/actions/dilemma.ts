@@ -1,9 +1,9 @@
 import { registerDayEndStep } from '../calendar';
 import { debtsChoice } from '../special/debts/discovery';
 import { wardenReportChoice } from '../warden/removal';
-import { registerAction } from '../dispatch';
+import { registerAction, registerAfterAction } from '../dispatch';
 import { readRoutePick } from '../commander/checks';
-import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma, rewordDilemma } from '../dilemma/flow';
+import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma, rewordDilemma, settleBlockedDilemma } from '../dilemma/flow';
 import type { DilemmaContext } from '../dilemma/types';
 import './loyalty'; // registered first: pacing runs after the loyalty day step
 
@@ -12,6 +12,8 @@ import './loyalty'; // registered first: pacing runs after the loyalty day step
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 registerDayEndStep('director_tick', pacingStep);
+// 0.1 audit: a presented dilemma that every later action left unanswerable falls back or resolves as nothing (no soft-lock)
+registerAfterAction(settleBlockedDilemma);
 
 registerAction('dilemma/request', (draft, payload, ctx) => {
   const p = isObj(payload) ? payload : {};

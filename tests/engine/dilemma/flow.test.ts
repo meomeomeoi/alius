@@ -578,3 +578,49 @@ describe('final review fixes', () => {
   });
 });
 
+
+describe('a presented dilemma whose options all became blocked (0.1 audit)', () => {
+  /** Both options cost credits: affordable when shown, not after the credits are spent elsewhere. */
+  const costly = (): Record<string, unknown> => ({
+    title: 'Short rations', setup: 'The mess hall is short again.',
+    options: [
+      opt('Buy on the black market', [eff('resource', 'supplies', 1), eff('resource', 'credits', -1, 'medium'), eff('faction', 'sable', 1)]),
+      opt('Bribe the quartermaster', [eff('resource', 'supplies', 1), eff('resource', 'credits', -1, 'small'), eff('stress', 'party', 1)]),
+    ],
+  });
+  const spendAll = (s: CampaignState, r: Registries = reg) => {
+    const n = Math.floor(s.resources.credits / 3); // a requisition at 3 credits a supply leaves next to nothing
+    return act(s, 'base/requisition', { supplies: Math.max(1, n) }, r);
+  };
+
+  it('falls back to the authored block when that one can still be answered', () => {
+    const s0 = clone();
+    s0.resources.credits = 60;
+    const s = presented(costly(), s0);
+    expect(dilemmaOptions(s, reg).every((o) => o.disabled === null)).toBe(true);
+    const spent = spendAll(s);
+    expect(errors(spent.events)).toEqual([]);
+    const after = spent.state.dilemmas?.open;
+    expect(after?.status).toBe('presented');
+    expect(after?.source).toBe('fallback');
+    expect(dilemmaOptions(spent.state, reg).some((o) => o.disabled === null)).toBe(true);
+    expect(ofType(spent.events, 'dilemma_presented')).toHaveLength(1);
+  });
+
+  it('resolves as nothing when the authored block is blocked too', () => {
+    const r = regWith((t) => {
+      const tpl = structuredClone(reg.dilemmaTemplates.get('dil_rations')!) as Entry & { fixed: { options: Array<{ effects: unknown[] }> } };
+      for (const o of tpl.fixed.options) o.effects.push({ type: 'resource', resource: 'credits', amount: -30 });
+      t.set('dil_rations', tpl as Entry);
+    });
+    const s0 = clone();
+    s0.resources.credits = 60;
+    const s = presented(costly(), s0, 'dil_rations', r);
+    const spent = spendAll(s, r);
+    expect(errors(spent.events)).toEqual([]);
+    expect(spent.state.dilemmas?.open).toBeUndefined();
+    expect(ofType(spent.events, 'dilemma_resolved')).toMatchObject([{ nothing: true }]);
+    // time moves again
+    expect(errors(act(spent.state, 'calendar/consume_slot', {}, r).events)).toEqual([]);
+  });
+});
