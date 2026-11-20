@@ -451,9 +451,11 @@ describe('the Leash in scenes', () => {
     t.app.context.setDirective({ id: 'discipline:unit_rhea', text: 'DISCIPLINE TEXT', expiresAfter: 'next_reply' });
     t.app.refreshContext();
     expect(t.directives()).toContain('THREAT TEXT');
-    t.st.emit('chat_changed');
+    // another chat (the scene of this one is saved at once now, so a reload of the same chat would rightly bring its stance back)
+    t.st.switchChat({ chatId: 'other-chat', isGroup: true, groupId: 'g-other' });
     await settle();
-    for (const gone of ['THREAT TEXT', 'DISCIPLINE TEXT', 'Rhea ']) expect(t.directives()).not.toContain(gone);
+    const injected = t.st.injections.get('dir')?.text ?? '';
+    for (const gone of ['THREAT TEXT', 'DISCIPLINE TEXT', 'Rhea ']) expect(injected).not.toContain(gone);
   });
 
   it('the DISCIPLINE menu in a scene punishes through the app: reply directive, restriction chip, UNDO refused for a menu punishment (P9)', async () => {
