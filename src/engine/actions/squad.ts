@@ -9,6 +9,7 @@ import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
 import { TUNING } from '../tuning';
+import { refundTree } from '../progression';
 import type { Bond, CampaignState, Insight, WorldStance } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
@@ -72,7 +73,13 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   });
   if (errors.length > 0) throw new Error(errors.join('; '));
 
+  const extra: Array<{ type: 'unit_respec'; unitId: string; refunded: number }> = [];
   if (patch.roleId !== undefined && patch.roleId !== unit.roleId) {
+    // the old role's nodes are not in the new tree: give their points back first, free (a role change is not a paid respec)
+    if (unit.unlockedNodes.length > 0 || unit.loadout !== undefined) {
+      const refunded = refundTree(ctx.registries, unit);
+      extra.push({ type: 'unit_respec', unitId: unit.id, refunded });
+    }
     const stats = (ctx.registries.roles.get(patch.roleId) as Entry).baseStats as typeof unit.baseStats;
     unit.roleId = patch.roleId;
     unit.baseStats = { ...stats };
@@ -118,7 +125,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   }
 
   const sections = RESYNC_SECTIONS.filter((s) => keys.some((k) => SECTION_OF[k] === s));
-  return [{ type: 'unit_resynced', unitId: unit.id, sections }];
+  return [{ type: 'unit_resynced', unitId: unit.id, sections }, ...extra];
 });
 
 // ---------------------------------------------------------------------------------------------

@@ -67,6 +67,22 @@ describe('squad/resync', () => {
     expect(r.events[0]).toMatchObject({ sections: ['role'] });
   });
 
+  it('a role change refunds the old tree\'s nodes and clears the loadout (0.1 audit)', () => {
+    const s = campaign();
+    const u0 = s.squad[0];
+    u0.level = 6;
+    u0.skillPoints = 1;
+    u0.unlockedNodes = ['as_b1_t1', 'as_b1_t2']; // 2 + 3 points spent
+    u0.loadout = ['x'] as never;
+    const r = run(s, 'unit_rhea', { roleId: 'defender' });
+    const u = r.state.squad[0];
+    expect(u.skillPoints).toBe(6);
+    expect(u.unlockedNodes).toEqual([]);
+    expect(u.loadout).toBeUndefined();
+    expect(r.events).toContainEqual({ type: 'unit_respec', unitId: 'unit_rhea', refunded: 5 });
+    expect(r.state.resources).toEqual(s.resources); // free: the role change is not a paid respec
+  });
+
   it('resync to the same role keeps wounds', () => {
     const s = campaign();
     s.squad[0].currentHp = 7;

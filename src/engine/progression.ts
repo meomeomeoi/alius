@@ -105,6 +105,19 @@ export const respecCost = (unit: Unit): { credits: number; plyx: number } => ({
   plyx: TUNING.progression.respec.plyxPerLevel * unit.level,
 });
 
+/**
+ * Gives back the skill points of every owned node of her current role's tree, forgets every owned node and the loadout choice (back
+ * to the starters). Returns the points given back. Call it before a role change: afterwards the old nodes are no longer in her tree.
+ */
+export function refundTree(reg: Registries, unit: Unit): number {
+  const owned = new Set(unit.unlockedNodes);
+  const refund = treeOf(reg, unit).filter((n) => owned.has(n.id)).reduce((sum, n) => sum + n.cost, 0);
+  unit.skillPoints += refund;
+  unit.unlockedNodes = [];
+  delete unit.loadout;
+  return refund;
+}
+
 /** Refunds every owned node, clears the loadout choice (back to the starters) and charges credits and plyx. */
 export function respec(draft: CampaignState, reg: Registries, unitId: string): EngineEvent[] {
   const unit = draft.squad.find((u) => u.id === unitId);
@@ -114,13 +127,9 @@ export function respec(draft: CampaignState, reg: Registries, unitId: string): E
   if (draft.resources.credits < cost.credits || draft.resources.plyx < cost.plyx) {
     throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} plyx.`);
   }
-  const owned = new Set(unit.unlockedNodes);
-  const refund = treeOf(reg, unit).filter((n) => owned.has(n.id)).reduce((s, n) => s + n.cost, 0);
   draft.resources.credits -= cost.credits;
   draft.resources.plyx -= cost.plyx;
-  unit.skillPoints += refund;
-  unit.unlockedNodes = [];
-  delete unit.loadout;
+  const refund = refundTree(reg, unit);
   return [
     { type: 'resource_changed', resource: 'credits', amount: -cost.credits },
     { type: 'resource_changed', resource: 'plyx', amount: -cost.plyx },
