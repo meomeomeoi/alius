@@ -656,7 +656,11 @@ describe('coverage: hub (P10)', () => {
     for (const wanted of ['glossary:objective', 'glossary:end_slot', 'glossary:pda_device', 'glossary:marker_tone', 'glossary:away', 'glossary:tonight', 'glossary:leash', 'hubRooms:medbay']) {
       expect(addresses.has(wanted), wanted).toBe(true);
     }
-    for (const id of reg.hubRooms.keys()) expect(addresses.has(`hubRooms:${id}`), id).toBe(true);
+    // P10d: a hub room drawn as cabins is addressed by its cabins (glossary:cabin), every other one by itself
+    for (const id of reg.hubRooms.keys()) {
+      const cabins = [...reg.planRooms.values()].some((p) => p.hubRoomId === id && p.cabin !== undefined);
+      expect(addresses.has(cabins ? 'glossary:cabin' : `hubRooms:${id}`), id).toBe(true);
+    }
   });
 });
 

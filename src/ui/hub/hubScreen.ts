@@ -9,8 +9,6 @@ import { h } from '../dom';
 import type { OpsTabCtx } from '../ops/opsTab';
 import { renderStatusHeader } from '../shell/status';
 import type { TabId } from '../shell/tabs';
-import { peekHubArt, probeHubArt } from './art';
-import { cssUrl } from '../fx';
 import { renderVoiceCard } from '../voice/voiceCard';
 import { motionReduced } from '../motion';
 import { renderVitalsStrip } from '../vitals/block';
@@ -19,6 +17,9 @@ import {
   currentObjective, endSlotBlock, latestOversight, TONE_GLYPH, TONE_LABEL, tonightItems, type MarkerTone,
 } from './model';
 import { renderRoomPanel } from './roomPanel';
+import { peopleIn, renderPlanStage } from './plan/planView';
+import { cabinOwner } from '../../engine/basePlan';
+import { PLAN_FLOORS, type PlanFloor } from '../../content/schemas';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 
 export interface HubCtx {
@@ -26,9 +27,9 @@ export interface HubCtx {
   getLoad: () => LoadResult;
   registries: Registries;
   settings: () => AliusSettings;
-  /** Resolves a file shipped with the extension (hub art); without it the blueprint always shows. */
+  /** Resolves a file shipped with the extension (unused by the plan; kept for the app's wiring). */
   assetUrl?: (path: string) => string;
-  /** The art the packs declare in their manifests (`hub`: extension-relative paths); nothing declared = the blueprint, no request. */
+  /** P10: the art the packs declare (`hub`). P10d: ignored, the plan is drawn from data. */
   art?: { hub: readonly string[] };
   /** The cards of a room's activities are the OPS tab's, so they need its context. */
   ops: OpsTabCtx;
@@ -51,19 +52,14 @@ export interface HubCtx {
   lastScene?: { state(): { enabled: boolean; reason?: string }; run(): Promise<void> };
 }
 
-/** Which room's panel is open, per hub host: a refresh redraws the hub and keeps the panel. */
+/** Which plan room's panel is open, per hub host: a refresh redraws the hub and keeps the panel. */
 const openRoom = new WeakMap<HTMLElement, string>();
+/** P10d: the floor the plan shows, per hub host (a redraw keeps it, a reload starts on the ground floor). */
+const shownFloor = new WeakMap<HTMLElement, PlanFloor>();
 /** Removes the window listeners of a previous render of the same host. */
 const teardown = new WeakMap<HTMLElement, () => void>();
 
 const LEGEND_TONES: MarkerTone[] = ['danger', 'bond', 'trust', 'affinity', 'warn'];
-
-/** P10d (temporary until the plan view lands): a hub room's box in percent, from its first plan room. */
-function roomRect(reg: Registries, room: Entry): { x: number; y: number; w: number; h: number } {
-  const plan = [...reg.planRooms.values()].find((p) => p.hubRoomId === room.id);
-  const r = (plan?.rect ?? { x: 0, y: 0, w: 0, h: 0 }) as { x: number; y: number; w: number; h: number };
-  return { x: r.x / 10, y: r.y / 6.25, w: r.w / 10, h: r.h / 6.25 };
-}
 
 const stat = (cls: string, address: string, ...children: Array<Node | string | null>): HTMLElement =>
   h('div', { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, ...children);
@@ -91,64 +87,35 @@ function strip(cls: string, address: string, label: string, state: CampaignState
   );
 }
 
-function crossSection(
-  ctx: HubCtx, state: CampaignState, here: Whereabout[], onRoom: (id: string) => void,
-): { section: HTMLElement; panelHost: HTMLElement } {
-  const reg = ctx.registries;
-  const slot: Slot = state.slot;
-  const bg = h('div', { class: 'alius-hub-bg alius-hub-blueprint', 'aria-hidden': 'true' });
-  const caption = h('span', { class: 'alius-hub-caption', 'aria-hidden': 'true' }, 'SECTION A-A · NOT TO SCALE');
-  const showArt = (url: string): void => {
-    bg.className = 'alius-hub-bg alius-hub-art';
-    bg.style.backgroundImage = cssUrl(url);
-    caption.remove();
-  };
-  const declared = ctx.art?.hub ?? [];
-  const known = declared.length > 0 ? peekHubArt(ctx.assetUrl, slot, declared) : null;
-  if (typeof known === 'string') showArt(known);
-  else if (known === undefined) {
-    void probeHubArt(ctx.assetUrl, slot, declared).then((url) => {
-      if (url && bg.isConnected) showArt(url);
-    });
-  }
+/** A unit cabin's panel title: hers, or VACANT. */
+function cabinTitle(state: CampaignState, reg: Registries, cabinId: string): string {
+  const owner = cabinOwner(state, reg, cabinId);
+  const name = owner ? state.squad.find((u) => u.id === owner)?.displayName : undefined;
+  return name ? `${name.toUpperCase()}'S CABIN` : 'VACANT CABIN';
+}
 
+function planSection(
+  ctx: HubCtx, state: CampaignState, here: Whereabout[], floor: PlanFloor, onFloor: (f: PlanFloor) => void, onRoom: (id: string) => void,
+): { section: HTMLElement; panelHost: HTMLElement; setFloor: (f: PlanFloor) => void } {
+  const reg = ctx.registries;
   const unitOf = (id: string): Unit | undefined => state.squad.find((u) => u.id === id);
-  const rooms = [...reg.hubRooms.values()].map((room: Entry) => {
-    const r = roomRect(reg, room);
-    const inside = here.filter((w) => w.roomId === room.id).map((w) => unitOf(w.unitId)).filter((u): u is Unit => u !== undefined);
-    const el = h(
-      'div',
-      {
-        class: 'alius-room', 'data-room': String(room.id), role: 'group', 'aria-label': String(room.label),
-        style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%`,
-        onclick: () => onRoom(String(room.id)),
-      },
-      h(
-        'div', { class: 'alius-room-head' },
-        h('button', {
-          type: 'button', class: 'alius-room-label alius-chip', 'aria-label': inside.length > 0 ? `${String(room.label)}, ${inside.length} here` : String(room.label),
-          ...analyzeNative(`hubRooms:${String(room.id)}`),
-        }, String(room.label)),
-        // a small room can hold more markers than fit: it scrolls, and the count keeps the number in view
-        inside.length > 0 ? h('span', { class: 'alius-room-count', 'aria-hidden': 'true' }, String(inside.length)) : null,
-      ),
-      h('div', { class: 'alius-room-markers' }, ...inside.map((u) => renderMarker(state, reg, u))),
-    );
-    return el;
-  });
+  const { stage, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
+  const panelHost = h('div', { class: 'alius-room-panel-host' });
+  // the plan keeps its 16:10 and scrolls inside its frame on a narrow screen; the panel stays over the visible frame
+  const frame = h('div', { class: 'alius-plan-frame' }, h('div', { class: 'alius-plan-scroll' }, stage), floorBar, panelHost);
 
   const away = here.filter((w) => w.reason === 'expedition').map((w) => unitOf(w.unitId)).filter((u): u is Unit => u !== undefined);
-  const elsewhere = here.filter((w) => w.reason === 'nowhere').map((w) => unitOf(w.unitId)).filter((u): u is Unit => u !== undefined);
-
-  const panelHost = h('div', { class: 'alius-room-panel-host' });
-  const stage = h('div', { class: 'alius-hub-stage', 'data-slot': slot }, bg, ...rooms, caption, panelHost);
+  // a unit whose hub room has no plan room is not lost either: she is listed with the nowhere ones
+  const drawnSomewhere = (w: Whereabout): boolean => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
+  const elsewhere = here.filter((w) => w.reason === 'nowhere' || (w.reason !== 'expedition' && !drawnSomewhere(w)))
+    .map((w) => unitOf(w.unitId)).filter((u): u is Unit => u !== undefined);
   const section = h(
-    'section', { class: 'alius-hub-main', 'aria-label': 'Outpost cross-section' },
-    stage,
+    'section', { class: 'alius-hub-main', 'aria-label': 'Plan of the outpost' },
+    frame,
     away.length > 0 ? strip('alius-away', 'glossary:away', 'AWAY', state, reg, away) : null,
     elsewhere.length > 0 ? strip('alius-elsewhere', 'glossary:whereabouts', 'ELSEWHERE', state, reg, elsewhere) : null,
   );
-  return { section, panelHost };
+  return { section, panelHost, setFloor };
 }
 
 /** Today's (or yesterday's) Leash request, in the corporation's own voice. */
@@ -270,12 +237,22 @@ export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): 
   const showPanel = (): void => {
     panelHost.replaceChildren();
     const id = openRoom.get(host);
-    const room = id !== undefined ? ctx.registries.hubRooms.get(id) : undefined;
-    if (!room) return;
-    const r = roomRect(ctx.registries, room);
-    const panel = renderRoomPanel(room, state, ctx, here, { readOnly, onClose: close });
-    panel.style.setProperty('--panel-x', `${r.x}%`);
-    panel.style.setProperty('--panel-y', `${Math.min(r.y + r.h * 0.25, 60)}%`);
+    const plan = id !== undefined ? ctx.registries.planRooms.get(id) : undefined;
+    const room = plan ? ctx.registries.hubRooms.get(String(plan.hubRoomId)) : undefined;
+    if (!plan || !room) return;
+    const r = plan.rect as { x: number; y: number; w: number; h: number };
+    const panel = renderRoomPanel(room, state, ctx, here, {
+      readOnly, onClose: close,
+      view: {
+        planRoomId: String(plan.id),
+        people: peopleIn(state, ctx.registries, here, String(plan.id)),
+        sceneLocationId: typeof plan.sceneLocationId === 'string' ? plan.sceneLocationId : undefined,
+        cabin: plan.cabin as 'unit' | 'commander' | undefined,
+        title: plan.cabin === 'unit' ? cabinTitle(state, ctx.registries, String(plan.id)) : String(plan.label),
+      },
+    });
+    panel.style.setProperty('--panel-x', `${r.x / 10}%`);
+    panel.style.setProperty('--panel-y', `${Math.min((r.y + r.h * 0.25) / 6.25, 60)}%`);
     panelHost.append(panel);
   };
   const open = (id: string): void => {
@@ -287,7 +264,16 @@ export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): 
     showPanel();
   }
 
-  const { section, panelHost } = crossSection(ctx, state, here, open);
+  const floor = shownFloor.get(host) ?? 'ground';
+  let setFloor: (f: PlanFloor) => void = () => {};
+  const onFloor = (f: PlanFloor): void => {
+    shownFloor.set(host, f);
+    if (openRoom.has(host) && ctx.registries.planRooms.get(openRoom.get(host)!)?.floor !== f) close();
+    setFloor(f);
+  };
+  const built = planSection(ctx, state, here, floor, onFloor, open);
+  const { section, panelHost } = built;
+  setFloor = built.setFloor;
   root.append(h('div', { class: 'alius-hub-body' }, section, sideColumn(ctx, state, readOnly)));
   showPanel();
 
@@ -295,6 +281,16 @@ export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): 
   const onKey = (ev: Event): void => {
     const e = ev as KeyboardEvent;
     if (!host.isConnected) return teardown.get(host)?.();
+    // P10d: PageUp / PageDown change the floor (not while typing, not from the raised device, not with a modifier)
+    if ((e.key === 'PageUp' || e.key === 'PageDown') && device.dataset.up !== 'true' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const el = e.target as HTMLElement | null;
+      if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+      const i = PLAN_FLOORS.indexOf(shownFloor.get(host) ?? 'ground');
+      const next = PLAN_FLOORS[Math.max(0, Math.min(PLAN_FLOORS.length - 1, i + (e.key === 'PageUp' ? 1 : -1)))];
+      e.preventDefault();
+      onFloor(next);
+      return;
+    }
     if (e.key !== 'Escape' || !openRoom.has(host)) return;
     if (device.dataset.up === 'true') return; // the raised device is on top of the room panel: Escape lowers it first
     const el = e.target as HTMLElement | null;

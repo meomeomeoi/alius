@@ -68,17 +68,6 @@
   background-color: var(--alius-bg);
 }
 
-#alius-shell .alius-hub-blueprint {
-  background-image:
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--alius-fg) 5%, transparent) 0 1px, transparent 1px 32px),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--alius-fg) 5%, transparent) 0 1px, transparent 1px 32px);
-}
-
-#alius-shell .alius-hub-art {
-  background-size: cover;
-  background-position: center;
-}
-
 #alius-shell .alius-hub-caption {
   position: absolute;
   right: 6px;
@@ -306,4 +295,206 @@
     width: 100%;
     max-height: 100%;
   }
+}
+
+/*
+ * P10d: the plan of the base. The SVG draws geometry with classes; every colour is a mix of the palette (fg, dim, bg,
+ * accent, danger) and the time of day (`data-slot` on the hub) dims it. One HTML layer per floor (the inactive ones are
+ * `hidden`) holds the labels, markers and staircases; `data-floor` on the stage says which floor is shown.
+ */
+#alius-shell .alius-hub-plan {
+  --pm: 1; /* how much daylight: 1 by day, less at dusk and at night */
+  --p-mix: color-mix(in srgb, var(--alius-fg) calc(var(--pm) * 100%), var(--alius-bg));
+  background: var(--alius-bg);
+  overflow: hidden;
+}
+#alius-shell .alius-plan-frame { position: relative; }
+#alius-shell .alius-plan-scroll { overflow: auto; scrollbar-width: thin; }
+/* the SVG and the HTML layers share the stage's box, so the stage must keep the plan's 16:10 */
+#alius-shell .alius-hub-plan { min-height: 0; aspect-ratio: 16 / 10; }
+#alius-shell .alius-hub[data-slot="evening"] .alius-hub-plan { --pm: 0.75; }
+#alius-shell .alius-hub[data-slot="night"] .alius-hub-plan { --pm: 0.45; }
+
+#alius-shell .alius-plan-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* fills and lines: share of the daylight-scaled foreground over the background */
+#alius-shell .alius-plan-svg .p-outside { fill: color-mix(in srgb, var(--p-mix) 2%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-compound { fill: color-mix(in srgb, var(--p-mix) 4.5%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-speck { fill: color-mix(in srgb, var(--p-mix) 35%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-speck-in { opacity: 0.45; }
+#alius-shell .alius-plan-svg .p-road { fill: color-mix(in srgb, var(--p-mix) 11%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-roadline { stroke: color-mix(in srgb, var(--p-mix) 40%, var(--alius-bg)); stroke-width: 0.7; }
+#alius-shell .alius-plan-svg .p-path { stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); stroke-width: 5; opacity: 0.3; fill: none; stroke-linecap: round; }
+#alius-shell .alius-plan-svg .p-leaf { fill: color-mix(in srgb, var(--p-mix) 45%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-fence { stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); stroke-width: 1.1; fill: none; }
+#alius-shell .alius-plan-svg .p-post { fill: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-tower { fill: color-mix(in srgb, var(--p-mix) 16%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 2.2; }
+#alius-shell .alius-plan-svg .p-booth { fill: color-mix(in srgb, var(--p-mix) 8.5%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 1.2; }
+
+#alius-shell .alius-plan-svg .p-corridor { fill: color-mix(in srgb, var(--p-mix) 16%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-room { fill: color-mix(in srgb, var(--p-mix) 8.5%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-room-dark { fill: color-mix(in srgb, var(--p-mix) 4%, var(--alius-bg)); }
+#alius-shell .alius-hub[data-slot="night"] .alius-plan-svg .p-room-lit { fill: color-mix(in srgb, var(--alius-fg) 13%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-closed { fill: color-mix(in srgb, var(--alius-fg) 3.5%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-wall { stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 2.2; }
+#alius-shell .alius-plan-svg .p-wall-thin { stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 0.7; }
+#alius-shell .alius-plan-svg .p-doorcut { stroke: color-mix(in srgb, var(--p-mix) 16%, var(--alius-bg)); stroke-width: 3.4; }
+#alius-shell .alius-plan-svg .p-hatch { stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 0.5; opacity: 0.45; }
+#alius-shell .alius-plan-svg .p-corrline { stroke: color-mix(in srgb, var(--p-mix) 34%, var(--alius-bg)); stroke-width: 0.7; }
+
+/* furniture */
+#alius-shell .alius-plan-svg .p-f { fill: color-mix(in srgb, var(--p-mix) 17%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); stroke-width: 1.1; stroke-linejoin: round; }
+#alius-shell .alius-plan-svg .p-fl { fill: none; stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+#alius-shell .alius-plan-svg .p-thin { stroke-width: 0.7; }
+#alius-shell .alius-plan-svg .p-dash { stroke-dasharray: 4 3; }
+#alius-shell .alius-plan-svg .p-bed { fill: color-mix(in srgb, var(--p-mix) 30%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-rug { fill: color-mix(in srgb, var(--p-mix) 24%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-screen { fill: color-mix(in srgb, var(--alius-accent) 32%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-solid { fill: color-mix(in srgb, var(--p-mix) 55%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-accent { fill: none; stroke: var(--alius-accent); stroke-width: 1.1; }
+#alius-shell .alius-plan-svg .p-led { fill: var(--alius-accent); }
+#alius-shell .alius-plan-svg .p-stain { fill: var(--alius-dim); opacity: 0.18; }
+#alius-shell .alius-plan-svg .p-baydoor { stroke: var(--alius-accent); stroke-width: 3; stroke-dasharray: 6 3; }
+
+/* roofs */
+#alius-shell .alius-plan-svg .p-roof-high { fill: color-mix(in srgb, var(--p-mix) 15%, var(--alius-bg)); }
+#alius-shell .alius-plan-svg .p-roof-low { fill: color-mix(in srgb, var(--p-mix) 8%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 1.2; }
+#alius-shell .alius-plan-svg .p-roof-edge { stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 4; }
+#alius-shell .alius-plan-svg .p-parapet { stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 0.7; stroke-dasharray: 4 3; }
+#alius-shell .alius-plan-svg .p-canopy { fill: color-mix(in srgb, var(--p-mix) 22%, var(--alius-bg)); stroke: color-mix(in srgb, var(--p-mix) 62%, var(--alius-bg)); stroke-width: 0.7; }
+#alius-shell .alius-plan-svg .p-hatchbox { fill: color-mix(in srgb, var(--p-mix) 16%, var(--alius-bg)); stroke: var(--alius-accent); stroke-width: 1.1; }
+#alius-shell .alius-plan-svg .p-puddle { fill: color-mix(in srgb, var(--p-mix) 11%, var(--alius-bg)); opacity: 0.8; }
+#alius-shell .alius-plan-svg .p-warnlight { fill: var(--alius-danger, var(--alius-err)); }
+
+/* light: lit rooms glow at dusk and night, emergency lights and floodlights at night */
+#alius-shell .alius-plan-svg .p-glow,
+#alius-shell .alius-plan-svg .p-cone,
+#alius-shell .alius-plan-svg .p-elights { display: none; }
+#alius-shell .alius-plan-svg .p-glow { fill: var(--alius-accent); }
+#alius-shell .alius-plan-svg .p-glow-a { opacity: 0.05; }
+#alius-shell .alius-plan-svg .p-glow-b { opacity: 0.05; }
+#alius-shell .alius-plan-svg .p-cone { fill: var(--alius-accent); opacity: 0.07; }
+#alius-shell .alius-plan-svg .p-elight-glow { fill: var(--alius-danger, var(--alius-err)); opacity: 0.16; }
+#alius-shell .alius-plan-svg .p-elight { fill: var(--alius-danger, var(--alius-err)); }
+#alius-shell .alius-hub[data-slot="evening"] .alius-plan-svg .p-glow,
+#alius-shell .alius-hub[data-slot="night"] .alius-plan-svg .p-glow,
+#alius-shell .alius-hub[data-slot="night"] .alius-plan-svg .p-cone,
+#alius-shell .alius-hub[data-slot="night"] .alius-plan-svg .p-elights { display: inline; }
+#alius-shell .alius-hub[data-slot="night"] .alius-plan-svg .p-glow-a { opacity: 0.09; }
+#alius-shell .alius-hub[data-slot="night"] .alius-plan-svg .p-glow-b { opacity: 0.1; }
+#alius-shell .alius-plan-svg .p-led,
+#alius-shell .alius-plan-svg .p-warnlight { animation: alius-plan-blink 3.2s steps(1) infinite; }
+#alius-shell .alius-plan-svg .p-elight { animation: alius-plan-blink 5s steps(1) infinite; }
+@keyframes alius-plan-blink { 0% { opacity: 1; } 40% { opacity: 0.3; } 70% { opacity: 1; } }
+#alius-shell.alius-reduced-motion .alius-plan-svg * { animation: none; }
+#alius-shell.alius-readable .alius-plan-svg .p-glow,
+#alius-shell.alius-readable .alius-plan-svg .p-specks { display: none; }
+
+/* floors: the shown one is drawn in full, the one below it ghosts through */
+#alius-shell .alius-hub-plan[data-floor="ground"] .p-layer-upper,
+#alius-shell .alius-hub-plan[data-floor="ground"] .p-layer-roof,
+#alius-shell .alius-hub-plan[data-floor="upper"] .p-layer-roof,
+#alius-shell .alius-hub-plan[data-floor="roof"] .p-layer-upper { display: none; }
+#alius-shell .alius-hub-plan[data-floor="upper"] .p-layer-site,
+#alius-shell .alius-hub-plan[data-floor="roof"] .p-layer-site { opacity: 0.35; }
+#alius-shell .alius-hub-plan[data-floor="upper"] .p-layer-ground { opacity: 0.13; }
+#alius-shell .alius-hub-plan[data-floor="roof"] .p-layer-ground { opacity: 0.08; }
+
+/* the HTML layers over the SVG */
+#alius-shell .alius-plan-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#alius-shell .alius-plan-layer[hidden] { display: none; }
+#alius-shell .alius-plan-layer > * { pointer-events: auto; }
+#alius-shell .alius-hub-plan .alius-room {
+  border: 1px solid transparent;
+  justify-content: flex-start;
+}
+#alius-shell .alius-hub-plan .alius-room:hover,
+#alius-shell .alius-hub-plan .alius-room:focus-within {
+  border-color: color-mix(in srgb, var(--alius-accent) 70%, transparent);
+}
+#alius-shell .alius-hub-plan .alius-room-head {
+  order: 2;
+  position: static;
+  margin-top: auto;
+  background: transparent;
+}
+#alius-shell .alius-hub-plan .alius-room-label,
+#alius-shell .alius-plan-label {
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  padding: 1px 4px;
+  min-height: 0;
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+  border: 1px solid var(--alius-fg);
+  line-height: 1.3;
+}
+#alius-shell .alius-hub-plan .alius-plan-cabin .alius-room-label {
+  background: transparent;
+  color: var(--alius-fg);
+  border-color: transparent;
+}
+#alius-shell .alius-hub-plan .alius-plan-vacant .alius-room-label { color: var(--alius-dim); }
+#alius-shell .alius-hub-plan .alius-room-markers { padding: 2px; gap: 2px; }
+#alius-shell .alius-hub-plan .alius-marker-ring { width: 22px; height: 22px; font-size: 0.62em; border-width: 1.5px; background: var(--alius-bg); }
+#alius-shell .alius-hub-plan .alius-marker-glyphs { font-size: 0.62em; }
+#alius-shell .alius-plan-closed {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  padding: 2px;
+  pointer-events: none;
+}
+#alius-shell .alius-plan-closed .alius-plan-label {
+  pointer-events: auto;
+  background: var(--alius-bg);
+  color: var(--alius-dim);
+  border-color: var(--alius-dim);
+}
+#alius-shell .alius-plan-open-space .alius-plan-label { background: var(--alius-fg); color: var(--alius-bg); }
+#alius-shell .alius-plan-small .alius-plan-label { font-size: 0.5em; border-color: transparent; background: transparent; }
+#alius-shell .alius-plan-stair {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+#alius-shell .alius-plan-stair-btn {
+  pointer-events: auto;
+  font: inherit;
+  font-size: 0.62em;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+  min-height: 24px;
+  background: var(--alius-bg);
+  color: var(--alius-accent);
+  border: 1px solid var(--alius-accent);
+  cursor: pointer;
+}
+#alius-shell .alius-plan-marks { display: flex; flex-wrap: wrap; gap: 2px; order: 3; }
+#alius-shell .alius-plan-mark { font-size: 0.55em; }
+#alius-shell .alius-plan-floors {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 1;
+}
+#alius-shell .alius-plan-floor-btn { min-height: 32px; min-width: 52px; font-size: 0.75em; background: var(--alius-bg); }
+#alius-shell .alius-plan-floor-btn[aria-pressed="true"] { background: var(--alius-fg); color: var(--alius-bg); }
+@container hub (max-width: 700px) {
+  /* narrower than this the labels would not read: the plan keeps 720 px and scrolls in its frame */
+  #alius-shell .alius-hub-plan { min-width: 720px; }
 }

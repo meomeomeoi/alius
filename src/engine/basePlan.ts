@@ -26,10 +26,10 @@ export function isOpenSpace(e: Entry): boolean {
   return (PLAN_OPEN_KINDS as readonly string[]).includes(String(e.kind)) || (e.kind === 'stair' && doorsOf(e).length === 0);
 }
 
-/** Drawn dark and not clickable: no hub room behind it, and not a cabin, an open space or a staircase. */
+/** Drawn dark and not clickable: no hub room behind it (a cabin included), and not an open space or a staircase. */
 export function isClosed(reg: Registries, e: Entry): boolean {
   if (typeof e.hubRoomId === 'string' && reg.hubRooms.has(e.hubRoomId)) return false;
-  return e.cabin === undefined && !isOpenSpace(e) && e.kind !== 'stair';
+  return !isOpenSpace(e) && e.kind !== 'stair';
 }
 
 export const unitCabins = (reg: Registries): Entry[] => [...reg.planRooms.values()].filter((e) => e.cabin === 'unit');

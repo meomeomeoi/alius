@@ -1777,6 +1777,35 @@
     ]
   },
   {
+    "id": "cabin",
+    "term": "Cabin",
+    "short": "Every soldier has her own cabin on the upper floor, marked with her name. At night and when confined she is there.",
+    "long": "AUTHOR TO WRITE: Cabins are handed out in the order soldiers joined the unit, scattered over the floor, and nobody moves when someone leaves or arrives; the cabin of a soldier who left stays vacant until the turn comes round to it. Click a cabin to see who is in it and talk to her there.",
+    "see": [
+      "quarters",
+      "base_floor"
+    ]
+  },
+  {
+    "id": "base_floor",
+    "term": "Floors",
+    "short": "The outpost has a ground floor, an upper floor and the roofs. Switch with 1F / 2F / ROOF, a staircase or PageUp and PageDown.",
+    "long": "AUTHOR TO WRITE: The ground floor is where the outpost works: the mess, the medbay, the workshop, the garage and the yard. The upper floor is where it lives: the cabins, comms and the commander's cabin. The roof is reached only by the back stairs. Each floor button says how many soldiers are on it.",
+    "see": [
+      "cabin",
+      "closed_room"
+    ]
+  },
+  {
+    "id": "closed_room",
+    "term": "Closed room",
+    "short": "A dark, hatched room is part of the outpost but nothing happens there yet.",
+    "long": "AUTHOR TO WRITE: Showers, storage, the laundry, the briefing room and the others are drawn so the outpost is whole. They open when a later update gives them something to do.",
+    "see": [
+      "base_floor"
+    ]
+  },
+  {
     "id": "hand_note",
     "term": "Handwritten note",
     "short": "A note a soldier leaves for the commander: in the quarters, in the gear or under the door, in her own hand.",

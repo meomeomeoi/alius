@@ -9,7 +9,6 @@ import { createShell } from '../../src/ui/shell/shell';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { campaign, loadCore } from '../helpers/world';
 
-vi.mock('../../src/ui/hub/art', () => ({ probeHubArt: vi.fn(async () => null), peekHubArt: vi.fn(() => undefined) }));
 
 let reg: Registries;
 beforeAll(async () => {

@@ -51,6 +51,8 @@ const FURNITURE: Record<string, Draw> = {
     pen.rect(x + w - 26, y + 4, 22, 12, F);
     pen.rect(x + w - 21, y + 6, 12, 7, 'p-screen p-thin');
     pen.circle(x + w - 15, y + 23, 4.5, F);
+    // the lock on the only door on the floor that locks
+    pen.path(`M ${x + 28} ${y + 22} h 8 v 7 h -8 Z M ${x + 29.5} ${y + 22} v -3 a 2.5 2.5 0 0 1 5 0 v 3`, 'p-accent p-lock');
   },
   map: (pen, x, y) => {
     pen.rect(x + 20, y + 14, 62, 30, OUT);

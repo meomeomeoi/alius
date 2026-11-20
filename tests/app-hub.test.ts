@@ -93,7 +93,7 @@ describe('hub actions in the app', () => {
     const host = h('div');
     document.body.append(host);
     t.hub()!(host, h('div'));
-    expect(host.querySelectorAll('.alius-room[data-room]')).toHaveLength(8);
+    expect(host.querySelectorAll('.alius-room[data-room]')).toHaveLength(17); // P10d: open plan rooms with a hub room
     expect(host.querySelector('.alius-marker')).not.toBeNull();
   });
 
@@ -234,7 +234,7 @@ describe('the real shell opens on the hub', () => {
     try {
       const root = document.getElementById('alius-shell')!;
       expect(root.querySelector('.alius-hub')).not.toBeNull();
-      expect(root.querySelectorAll('.alius-room[data-room]')).toHaveLength(8);
+      expect(root.querySelectorAll('.alius-room[data-room]')).toHaveLength(17); // P10d: open plan rooms with a hub room
       expect(root.querySelector<HTMLElement>('.alius-device')!.dataset.up).toBe('false');
       expect(second.shell.isDeviceUp()).toBe(false);
       second.shell.showTab('comms');

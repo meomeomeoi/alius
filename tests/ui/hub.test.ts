@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AnalyzeEnv } from '../../src/analysis/model';
 import { registerCoreProviders } from '../../src/analysis/providers/core';
 import type { Registries } from '../../src/content/types';
@@ -9,12 +9,10 @@ import { DEFAULT_SETTINGS } from '../../src/settings';
 import { attachAnalyzer, type Analyzer } from '../../src/ui/analyze/analyzer';
 import { h } from '../../src/ui/dom';
 import { renderHub, type HubCtx } from '../../src/ui/hub/hubScreen';
-import { probeHubArt } from '../../src/ui/hub/art';
+import { cabinOf } from '../../src/engine/basePlan';
 import { markedWithout, unreachable, unresolved } from '../helpers/analyzeCoverage';
 import { campaign, loadCore } from '../helpers/world';
 import { setRelation } from '../helpers/loyalty';
-
-vi.mock('../../src/ui/hub/art', () => ({ probeHubArt: vi.fn(async () => null), peekHubArt: vi.fn(() => undefined) }));
 
 let reg: Registries;
 beforeAll(async () => {
@@ -23,10 +21,6 @@ beforeAll(async () => {
 });
 
 let analyzer: Analyzer | null = null;
-beforeEach(() => {
-  vi.mocked(probeHubArt).mockReset();
-  vi.mocked(probeHubArt).mockResolvedValue(null);
-});
 afterEach(() => {
   analyzer?.destroy();
   analyzer = null;
@@ -71,8 +65,11 @@ function mount(opts: { state?: CampaignState | null; readonly?: boolean; registr
   return { host, device, ctx, state, onTalk, onEndSlot, onOpenPda, onDo, rerender: () => { host.replaceChildren(); renderHub(host, device, ctx); } };
 }
 
-const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
 const room = (m: Mounted, id: string) => m.host.querySelector<HTMLElement>(`.alius-room[data-room="${id}"]`)!;
+/** P10d: her own cabin on the plan. */
+const cabin = (m: Mounted, s: CampaignState, unitId: string) => m.host.querySelector<HTMLElement>(`.alius-room[data-plan="${String(cabinOf(s, reg, unitId)!.id)}"]`)!;
+/** P10d: open plan rooms with a hub room (7 rooms, 9 unit cabins, the commander's cabin). */
+const OPEN_ROOMS = 17;
 const panel = (m: Mounted) => m.host.querySelector<HTMLElement>('.alius-room-panel');
 const keydown = (target: EventTarget, k: string) => {
   const e = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
@@ -110,7 +107,7 @@ describe('hub screen', () => {
     expect(m.host.querySelector('.alius-hub-topbar')!.textContent).toContain('ALIUS');
     expect(m.host.querySelector('.alius-hub-topbar')!.textContent).toContain('CCP OUTPOST // ');
     expect(m.host.querySelector('.alius-hub-status')!.textContent).toMatch(/CR \d+/);
-    expect(m.host.querySelectorAll('.alius-room[data-room]')).toHaveLength(8);
+    expect(m.host.querySelectorAll('.alius-room[data-room]')).toHaveLength(OPEN_ROOMS);
     expect(m.host.querySelector('.alius-objective')).not.toBeNull();
     expect(m.host.querySelector('.alius-tonight')).not.toBeNull();
     expect(m.host.querySelector('[data-open-pda]')).not.toBeNull();
@@ -133,8 +130,8 @@ describe('hub screen', () => {
     const s = staged();
     const m = mount({ state: s });
     expect(room(m, 'medbay').querySelector(`.alius-marker[data-unit="${s.squad[0].id}"]`)).not.toBeNull();
-    expect(room(m, 'quarters').querySelector(`.alius-marker[data-unit="${s.squad[1].id}"]`)).not.toBeNull();
-    // each unit is on the cross-section exactly once
+    expect(cabin(m, s, s.squad[1].id).querySelector(`.alius-marker[data-unit="${s.squad[1].id}"]`)).not.toBeNull();
+    // each unit is on the plan exactly once
     expect(m.host.querySelectorAll('.alius-room .alius-marker')).toHaveLength(4);
   });
 
@@ -193,7 +190,7 @@ describe('hub screen', () => {
     const m = mount({ state: s });
     expect(m.host.querySelectorAll('.alius-away .alius-marker')).toHaveLength(4);
     expect(m.host.querySelectorAll('.alius-room .alius-marker')).toHaveLength(0);
-    expect(m.host.querySelectorAll('.alius-room')).toHaveLength(8);
+    expect(m.host.querySelectorAll('.alius-room')).toHaveLength(OPEN_ROOMS);
     expect(m.host.querySelector<HTMLElement>('[data-end-slot]')!.getAttribute('aria-disabled')).toBe('true');
   });
 
@@ -201,33 +198,6 @@ describe('hub screen', () => {
     const m = mount({ registries: { ...reg, hubRooms: new Map() } });
     expect(m.host.querySelectorAll('.alius-room')).toHaveLength(0);
     expect(m.host.querySelectorAll('.alius-elsewhere .alius-marker')).toHaveLength(4);
-  });
-
-  it('missing hub art falls back to the blueprint', async () => {
-    vi.mocked(probeHubArt).mockResolvedValue(null);
-    const m = mount({ assetUrl: (p) => `/ext/${p}` });
-    await flush();
-    expect(m.host.querySelector('.alius-hub-blueprint')).not.toBeNull();
-    expect(m.host.querySelector('.alius-hub-art')).toBeNull();
-    expect(m.host.textContent).toContain('SECTION A-A · NOT TO SCALE');
-  });
-
-  it('a pack that declares no hub art costs no probe at all (nothing is requested blind)', async () => {
-    const m = mount({ assetUrl: (p) => `/ext/${p}` });
-    await flush();
-    expect(vi.mocked(probeHubArt)).not.toHaveBeenCalled();
-    expect(m.host.querySelector('.alius-hub-blueprint')).not.toBeNull();
-  });
-
-  it('hub art that loads replaces the blueprint grid', async () => {
-    vi.mocked(probeHubArt).mockResolvedValue('/ext/content/core/art/hub/base.png');
-    const m = mount({ assetUrl: (p) => `/ext/${p}`, art: ['content/core/art/hub/base.png'] });
-    await flush();
-    const art = m.host.querySelector<HTMLElement>('.alius-hub-art')!;
-    expect(art).not.toBeNull();
-    expect(art.style.backgroundImage).toContain('/ext/content/core/art/hub/base.png');
-    expect(m.host.querySelector('.alius-hub-blueprint')).toBeNull();
-    expect(vi.mocked(probeHubArt)).toHaveBeenCalledWith(expect.any(Function), 'morning', ['content/core/art/hub/base.png']);
   });
 
   it('clicking a room opens its panel with who is there, TALK and its activity cards', () => {
@@ -263,7 +233,7 @@ describe('hub screen', () => {
   it('TALK is aria-disabled with the restriction reason for a confined unit, and does nothing', () => {
     const s = staged();
     const m = mount({ state: s });
-    room(m, 'quarters').click();
+    cabin(m, s, s.squad[1].id).click();
     const btn = panel(m)!.querySelector<HTMLElement>(`[data-talk="${s.squad[1].id}"]`)!;
     expect(btn.getAttribute('aria-disabled')).toBe('true');
     expect(panel(m)!.textContent).toContain('is in the brig until day');
@@ -278,7 +248,7 @@ describe('hub screen', () => {
     const quarters = reg.locations.get('quarters_unit')!;
     locations.set('quarters_unit', { ...quarters, slots: ['morning', 'afternoon', 'evening'] });
     const m = mount({ state: s, registries: { ...reg, locations } });
-    room(m, 'quarters').click();
+    cabin(m, s, s.squad[0].id).click();
     const btn = panel(m)!.querySelector<HTMLElement>(`[data-talk="${s.squad[0].id}"]`)!;
     expect(btn.getAttribute('aria-disabled')).toBe('true');
     expect(panel(m)!.textContent).toContain('Closed this night.');
@@ -462,7 +432,7 @@ describe('hub screen', () => {
   it('rooms stay labelled at 360 px', () => {
     const m = mount({ width: 360 });
     const labels = [...m.host.querySelectorAll<HTMLElement>('.alius-room-label')];
-    expect(labels).toHaveLength(8);
+    expect(labels).toHaveLength(OPEN_ROOMS);
     for (const l of labels) expect((l.textContent ?? '').trim().length).toBeGreaterThan(0);
     // the narrow-width rules are CSS: a container query on the cross-section keeps the label readable
     const css = readFileSync('css/15-hub.css', 'utf8');
@@ -519,12 +489,10 @@ describe('hub and the analysis panel', () => {
 });
 
 describe('time of day', () => {
-  it.each<Slot>(['morning', 'afternoon', 'evening', 'night'])('probes the art of the %s', async (slot) => {
+  it.each<Slot>(['morning', 'afternoon', 'evening', 'night'])('the hub carries the %s (the plan\'s light follows it)', (slot) => {
     const s = campaign(reg, 4);
     s.slot = slot;
-    const m = mount({ state: s, assetUrl: (p) => p, art: ['content/core/art/hub/base.png'] });
-    await flush();
-    expect(vi.mocked(probeHubArt)).toHaveBeenCalledWith(expect.any(Function), slot, ['content/core/art/hub/base.png']);
+    const m = mount({ state: s });
     expect(m.host.querySelector<HTMLElement>('.alius-hub')!.dataset.slot).toBe(slot);
   });
 });

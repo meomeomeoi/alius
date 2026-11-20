@@ -164,9 +164,9 @@ function mountHub(state: CampaignState, over: Partial<HubCtx> = {}) {
   renderHub(host, root.lastElementChild as HTMLElement, ctx);
   return { host, ctx };
 }
+/** P10d: the commander's cabin on the plan (the room with the commander cell). */
 const openCell = (host: HTMLElement) => {
-  const cell = [...reg.hubRooms.values()].find((r) => r.commanderCell === true)!;
-  host.querySelector<HTMLElement>(`.alius-room[data-room="${String(cell.id)}"]`)!.click();
+  host.querySelector<HTMLElement>('.alius-room[data-cabin="commander"]')!.click();
   return host.querySelector<HTMLElement>('.alius-room-panel');
 };
 

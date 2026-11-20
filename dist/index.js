@@ -772,10 +772,10 @@ function scaleUnit(scale) {
       return humanize(String(scale.by));
   }
 }
-function scaledPct(pct4, name, scale) {
-  if (!scale || !isNum(scale.per)) return `${pctSigned(pct4)} ${name}`;
-  if (pct4 === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
-  return `${pctSigned(pct4)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
+function scaledPct(pct5, name, scale) {
+  if (!scale || !isNum(scale.per)) return `${pctSigned(pct5)} ${name}`;
+  if (pct5 === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
+  return `${pctSigned(pct5)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
 }
 function combatBase(e) {
   switch (e.type) {
@@ -1810,8 +1810,8 @@ function recoverUnit(draft, u) {
   return { type: "unit_recovered", unitId: u.id };
 }
 function requisitionCost(state, reg, n) {
-  const pct4 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
-  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct4 / 100);
+  const pct5 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
+  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct5 / 100);
   return Math.max(n, Math.ceil(raw - 1e-9));
 }
 
@@ -8417,10 +8417,10 @@ var HandNoteSchema = BaseEntrySchema.extend({
   chance: external_exports.number().min(0).max(1),
   when: HandNoteWhenSchema.optional()
 }).strict().superRefine((n, ctx2) => {
-  const door = n.where === "door";
+  const door2 = n.where === "door";
   const trigger = n.when?.trigger ?? "daily";
-  if (door && trigger !== "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "a door note is written by an unanswered knock" });
-  if (!door && trigger === "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "only a door note is written by an unanswered knock" });
+  if (door2 && trigger !== "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "a door note is written by an unanswered knock" });
+  if (!door2 && trigger === "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "only a door note is written by an unanswered knock" });
 });
 registrySchemas.handNotes = HandNoteSchema;
 var StickerArtSchema = BaseEntrySchema.extend({
@@ -9111,16 +9111,16 @@ function unitStats(state, reg, unit2) {
   const growth = role.growth ?? ZERO;
   const out = { ...ZERO };
   for (const k of STATS) out[k] = unit2.baseStats[k] + Math.floor(growth[k] * (unit2.level - 1));
-  const pct4 = { ...ZERO };
+  const pct5 = { ...ZERO };
   for (const { inst } of wornItems(state, reg, unit2)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
     for (const k of STATS) {
       out[k] += it.stats[k] ?? 0;
-      pct4[k] += it.statPct[k] ?? 0;
+      pct5[k] += it.statPct[k] ?? 0;
     }
   }
-  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct4[k] / 100));
+  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct5[k] / 100));
   out.spd += armorSpdPenalty(state, reg, unit2);
   const stacks = Math.min(unit2.injuries.length, TUNING.combat.injuryMaxStacks);
   const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
@@ -9139,7 +9139,7 @@ function unitStatSteps(state, reg, unit2, stat3) {
     total2 += grown;
     steps.push({ source: "level", label: `Level ${unit2.level}`, total: total2 });
   }
-  let pct4 = 0;
+  let pct5 = 0;
   for (const { inst } of wornItems(state, reg, unit2)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
@@ -9148,9 +9148,9 @@ function unitStatSteps(state, reg, unit2, stat3) {
       total2 += flat2;
       steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total: total2 });
     }
-    pct4 += it.statPct[stat3] ?? 0;
+    pct5 += it.statPct[stat3] ?? 0;
   }
-  const scaled2 = Math.round(total2 * (1 + pct4 / 100));
+  const scaled2 = Math.round(total2 * (1 + pct5 / 100));
   if (scaled2 !== total2) {
     total2 = scaled2;
     steps.push({ source: "gear", label: "Gear bonuses", total: total2 });
@@ -9192,16 +9192,16 @@ function enemyStats(reg, enemyId, level, affixes, difficulty) {
   if (!tpl) throw new Error(`Unknown enemy "${enemyId}"`);
   const { base, growth } = tpl.stats;
   const diff = TUNING.combat.difficultyMult[difficulty];
-  const pct4 = { ...ZERO };
+  const pct5 = { ...ZERO };
   for (const id of affixes) {
     const sp = reg.affixes.get(id)?.statPct;
-    if (sp) for (const k of STATS) pct4[k] += sp[k] ?? 0;
+    if (sp) for (const k of STATS) pct5[k] += sp[k] ?? 0;
   }
   const out = { ...ZERO };
   for (const k of STATS) {
     const scaled2 = base[k] + growth[k] * (level - 1);
     const d = k === "hp" || k === "atk" || k === "def" ? diff : 1;
-    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct4[k] / 100)));
+    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct5[k] / 100)));
   }
   return out;
 }
@@ -9281,8 +9281,8 @@ function place(state, reg, rooms, unit2) {
   const here = (room2, reason) => room2 ? { unitId: unit2.id, roomId: room2.id, reason } : null;
   if (state.expedition?.party.includes(unit2.id)) return { unitId: unit2.id, roomId: null, reason: "expedition" };
   const held2 = activeRestrictions(state, unit2.id);
-  const found2 = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
-  if (found2) return found2;
+  const found = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  if (found) return found;
   const booked = state.personal?.bookings?.find((b) => b.unitId === unit2.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
   const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
   if (bookedRoom) return { unitId: unit2.id, roomId: bookedRoom.id, reason: "routine" };
@@ -9497,8 +9497,8 @@ function applyWorldStartEffects(draft, reg) {
 // src/engine/worldOptions/stances.ts
 var INDIFFERENT = { stance: "indifferent", strength: 1, reason: "" };
 function stanceOf(state, reg, unit2, optionId) {
-  const found2 = worldChoice(state, reg, optionId);
-  if (!found2 || found2.option.squadStance !== true || isNeutralChoice(found2.choice)) return null;
+  const found = worldChoice(state, reg, optionId);
+  if (!found || found.option.squadStance !== true || isNeutralChoice(found.choice)) return null;
   return unit2.worldStances?.[optionId] ?? INDIFFERENT;
 }
 function stanceEffects(state, reg, unit2, type) {
@@ -9546,9 +9546,9 @@ var DEFAULT_RANK = 2;
 var clamp5 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function levelByRank(reg, rank2) {
   const levels = [...reg.dispositionLevels.values()];
-  const found2 = levels.find((l) => l.rank === rank2) ?? levels.find((l) => l.rank === DEFAULT_RANK) ?? levels[0];
-  if (!found2) throw new Error("The content has no disposition levels.");
-  return found2;
+  const found = levels.find((l) => l.rank === rank2) ?? levels.find((l) => l.rank === DEFAULT_RANK) ?? levels[0];
+  if (!found) throw new Error("The content has no disposition levels.");
+  return found;
 }
 function worldDispositionLevel(state, reg) {
   const id = worldEffects(state, reg, "disposition")[0]?.levelId;
@@ -9665,15 +9665,15 @@ function enterState(draft, unitId, stateId, why) {
   return { type: "relation_state_changed", unitId, from, to: stateId, why };
 }
 function platonicThresholds(state, reg, stateId, cond) {
-  const pct4 = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
-  if (pct4 === 0) return cond;
+  const pct5 = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct5 === 0) return cond;
   const scale = (c) => {
     const out = { ...c };
     if (c.axes) {
       out.axes = {};
       for (const axis of ["trust", "affinity", "attraction"]) {
         const r = c.axes[axis];
-        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct4 / 100)), r[1]];
+        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct5 / 100)), r[1]];
       }
     }
     if (c.anyOf) out.anyOf = c.anyOf.map(scale);
@@ -11062,9 +11062,9 @@ function removeAppraisals(draft, list5) {
   for (const { unitId, id } of list5) {
     const dev = draft.squad.find((u) => u.id === unitId)?.development;
     if (!dev) continue;
-    const found2 = dev.pending.find((a) => a.id === id) ?? dev.misread?.find((a) => a.id === id);
-    if (!found2) continue;
-    for (const p of found2.pushes) {
+    const found = dev.pending.find((a) => a.id === id) ?? dev.misread?.find((a) => a.id === id);
+    if (!found) continue;
+    for (const p of found.pushes) {
       const next = (dev.acc[p.axis] ?? 0) - p.amount;
       if (Math.abs(next) < 1e-9) delete dev.acc[p.axis];
       else dev.acc[p.axis] = next;
@@ -11194,8 +11194,8 @@ function computeDeltas(state, reg, unitId, event) {
   affinity *= image;
   attraction *= image;
   if (trust > 0 && daysKnown(state, unitId) < TUNING.commander.earlyDays) {
-    const pct4 = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
-    trust *= Math.max(0, 1 + pct4 / 100);
+    const pct5 = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
+    trust *= Math.max(0, 1 + pct5 / 100);
   }
   for (const fx2 of traitEffects(state, reg, "relation_event_mult")) {
     if (fx2.event !== event.type || fx2.ifTrigger !== void 0 && !unit2.triggers.includes(fx2.ifTrigger)) continue;
@@ -11205,9 +11205,9 @@ function computeDeltas(state, reg, unitId, event) {
   }
   if (event.actor === "commander") {
     const distance = normDistance(state, reg) ?? 0;
-    const pct4 = stanceEffects(state, reg, unit2, "gain_damp").reduce((n, fx2) => n + fx2.pctPerStep, 0);
-    if (distance > 0 && pct4 > 0) {
-      const damp = 1 - Math.min(TUNING.disposition.gainDampMax, pct4 / 100 * distance) * firstImpressionWeight(state, unitId);
+    const pct5 = stanceEffects(state, reg, unit2, "gain_damp").reduce((n, fx2) => n + fx2.pctPerStep, 0);
+    if (distance > 0 && pct5 > 0) {
+      const damp = 1 - Math.min(TUNING.disposition.gainDampMax, pct5 / 100 * distance) * firstImpressionWeight(state, unitId);
       if (trust > 0) trust *= damp;
       if (affinity > 0) affinity *= damp;
     }
@@ -12545,10 +12545,10 @@ function rollRewards(draft, ctx2, m) {
   const amount = tier?.faction ?? 0;
   if (factionId !== void 0 && amount > 0) rewards.faction = { id: factionId, amount };
   if (typeof tpl?.clearance === "number") rewards.clearance = tpl.clearance;
-  const pct4 = worldEffects(draft, reg, "mission_reward_pct").reduce((n, fx2) => n + fx2.pct, 0);
-  if (pct4 !== 0) {
-    rewards.credits = Math.max(0, Math.round(rewards.credits * (1 + pct4 / 100)));
-    rewards.plyx = Math.max(0, Math.round(rewards.plyx * (1 + pct4 / 100)));
+  const pct5 = worldEffects(draft, reg, "mission_reward_pct").reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct5 !== 0) {
+    rewards.credits = Math.max(0, Math.round(rewards.credits * (1 + pct5 / 100)));
+    rewards.plyx = Math.max(0, Math.round(rewards.plyx * (1 + pct5 / 100)));
   }
   for (const d of drops) {
     if (d.kind === "item") rewards.items.push(String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId));
@@ -13310,8 +13310,8 @@ function scarCommander(draft, rng) {
   const c = draft.commander;
   const profile = commanderProfile(draft);
   c.body = { ...profile.body };
-  const candidates4 = SCAR_STATS.filter((k) => profile.body[k] > 1);
-  const stat3 = candidates4.length > 0 ? rng.pick(candidates4) : null;
+  const candidates3 = SCAR_STATS.filter((k) => profile.body[k] > 1);
+  const stat3 = candidates3.length > 0 ? rng.pick(candidates3) : null;
   if (stat3) c.body[stat3] -= 1;
   c.archetype = archetypeOf(c.body);
   c.seasoning = Math.min(5, profile.seasoning + 1);
@@ -13573,12 +13573,12 @@ function makeBreakdown(reg, defectId, level) {
 function enterBreakdown(ctx2, cid) {
   const c = byCid(ctx2.cs, cid);
   if (c.breakdown || c.side !== "squad") return;
-  const found2 = defectBreakdown(ctx2, c);
-  const spec = found2?.spec ?? FALLBACK;
-  const defectId = found2?.defectId ?? "unknown";
+  const found = defectBreakdown(ctx2, c);
+  const spec = found?.spec ?? FALLBACK;
+  const defectId = found?.defectId ?? "unknown";
   c.stress = 100;
-  c.breakdown = makeBreakdown(ctx2.reg, found2 ? defectId : "unknown", levelOf(ctx2, c));
-  if (!found2) c.breakdown = { defectId, policy: "skip", ignoresOrders: true, actionEffects: [] };
+  c.breakdown = makeBreakdown(ctx2.reg, found ? defectId : "unknown", levelOf(ctx2, c));
+  if (!found) c.breakdown = { defectId, policy: "skip", ignoresOrders: true, actionEffects: [] };
   ctx2.log({ kind: "breakdown", target: cid });
   const name = ctx2.reg.defects.get(defectId)?.breakdown?.name ?? "BREAKDOWN";
   ctx2.emit({ type: "combat_cutin", kind: "breakdown", unitId: c.unitId, cid, text: name });
@@ -13793,18 +13793,18 @@ function activePassives(ctx2, cid, type, targetCid, skillId) {
 function effectiveStat(ctx2, cid, stat3) {
   const c = byCid(ctx2.cs, cid);
   if (stat3 === "hp") return c.maxHp;
-  let pct4 = 0;
-  for (const m of c.mods) if (m.stat === stat3) pct4 += m.pct;
+  let pct5 = 0;
+  for (const m of c.mods) if (m.stat === stat3) pct5 += m.pct;
   for (const s of c.statuses) {
     const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat3];
-    if (v) pct4 += v * s.stacks;
+    if (v) pct5 += v * s.stacks;
   }
   for (const e of activePassives(ctx2, cid, "stat")) {
-    if (e.stat === stat3 || e.stat === "all" && stat3 !== "crit") pct4 += e.pct + scaleValue(ctx2, cid, e.scale);
+    if (e.stat === stat3 || e.stat === "all" && stat3 !== "crit") pct5 += e.pct + scaleValue(ctx2, cid, e.scale);
   }
   const base = c.base[stat3];
-  if (stat3 === "crit") return Math.max(0, base + pct4);
-  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base * (1 + pct4 / 100)));
+  if (stat3 === "crit") return Math.max(0, base + pct5);
+  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base * (1 + pct5 / 100)));
 }
 function outgoingPct(ctx2, cid, targetCid) {
   const c = byCid(ctx2.cs, cid);
@@ -13929,11 +13929,11 @@ function resolveTargets(ctx2, owner, e, ev) {
 function applyEffects(ctx2, ownerCid, effects2, ev, source = "effect") {
   effects2.forEach((e, i) => runEffect2(ctx2, ownerCid, e, ev, `${source}:${i}`));
 }
-function heal(ctx2, targetCid, pct4, ownerCid) {
+function heal(ctx2, targetCid, pct5, ownerCid) {
   const t = byCid(ctx2.cs, targetCid);
   if (t.downed || t.hp <= 0) return;
   const bonus = ownerCid !== void 0 ? Math.max(0, 1 + healBonusPct(ctx2, ownerCid) / 100) : 1;
-  const amount = Math.max(1, Math.round(t.maxHp * pct4 * bonus / 100));
+  const amount = Math.max(1, Math.round(t.maxHp * pct5 * bonus / 100));
   const gained = Math.min(amount, t.maxHp - t.hp);
   t.hp += gained;
   if (gained > 0) ctx2.log({ kind: "heal", target: targetCid, amount: gained, ...ownerCid !== void 0 ? { actor: ownerCid } : {} });
@@ -14016,11 +14016,11 @@ function runEffect2(ctx2, ownerCid, effect, ev, keyBase) {
     case "stat":
       for (const t of targets) {
         const c = byCid(ctx2.cs, t);
-        const pct4 = e.pct + scaleValue(ctx2, ownerCid, e.scale);
+        const pct5 = e.pct + scaleValue(ctx2, ownerCid, e.scale);
         const stats = e.stat === "all" ? ["atk", "def", "spd"] : [e.stat];
         for (const stat3 of stats) {
           if (stat3 === "hp") continue;
-          c.mods.push({ stat: stat3, pct: pct4, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
+          c.mods.push({ stat: stat3, pct: pct5, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
         }
       }
       break;
@@ -14460,8 +14460,8 @@ function reputationDayStep(draft, ctx2) {
     const e = lookup(id);
     return e !== void 0 && patternHolds(draft, e);
   };
-  const candidates4 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
-  for (const c of candidates4) {
+  const candidates3 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
+  for (const c of candidates3) {
     const sameGroup = active.find((a) => lookup(a.id)?.group === c.group);
     let replaces;
     if (!sameGroup) {
@@ -15324,8 +15324,8 @@ function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   if (!ls || !wardenOf(draft)) return [];
   ls.intrigue.suspicion = clamp15(ls.intrigue.suspicion + noise2, 0, 100);
   const s = ls.intrigue.suspicion;
-  const found2 = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
-  return found2 ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
+  const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
+  return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
   const A = TUNING.warden.intrigue.ally;
@@ -15475,14 +15475,14 @@ function hackStep(draft, ctx2, allyId) {
   const events = [];
   ls.intrigue.hack.step += 1;
   const pain = painBurstId(ctx2.registries);
-  const found2 = addSuspicion(draft, ctx2, H.noise, "hack", pain !== void 0 ? { punishmentId: pain } : {});
-  if (found2.some((e) => e.type === "intrigue_discovered")) return [{ type: "hack_step", step: 0, failed: true }, ...found2, ...spendSlot(draft, ctx2, day, slot2)];
+  const found = addSuspicion(draft, ctx2, H.noise, "hack", pain !== void 0 ? { punishmentId: pain } : {});
+  if (found.some((e) => e.type === "intrigue_discovered")) return [{ type: "hack_step", step: 0, failed: true }, ...found, ...spendSlot(draft, ctx2, day, slot2)];
   events.unshift({ type: "hack_step", step: ls.intrigue.hack.step, failed: false });
   if (ls.intrigue.hack.step >= H.steps) {
     if (!draft.commander.flags.includes("commander_implant_dark")) draft.commander.flags.push("commander_implant_dark");
     events.push({ type: "controller_dark" }, ...removalStarter(draft, ctx2, "hack"));
   }
-  return [...events, ...found2, ...spendSlot(draft, ctx2, day, slot2)];
+  return [...events, ...found, ...spendSlot(draft, ctx2, day, slot2)];
 }
 
 // src/engine/special/frequency/fragments.ts
@@ -16355,8 +16355,8 @@ function arcDayStep(draft, ctx2) {
   for (const u of draft.squad) {
     const rel = draft.relations[u.id];
     if (u.kind !== "named" || !isLiving(u) || !rel || rel.flags.includes("arc_raised")) continue;
-    const found2 = u.defects.find((d) => arcPaths(draft, ctx2.registries, u.id, d.id).some((p) => p.reason === null || p.reason.startsWith("Not enough")));
-    if (!found2) continue;
+    const found = u.defects.find((d) => arcPaths(draft, ctx2.registries, u.id, d.id).some((p) => p.reason === null || p.reason.startsWith("Not enough")));
+    if (!found) continue;
     rel.flags.push("arc_raised");
     enqueueNight(draft, {
       id: nextId(draft, "n"),
@@ -16367,7 +16367,7 @@ function arcDayStep(draft, ctx2) {
       ignore: { event: "dismissed", severity: "moderate" },
       expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
     });
-    events.push({ type: "arc_unlocked", unitId: u.id, defectId: found2.id });
+    events.push({ type: "arc_unlocked", unitId: u.id, defectId: found.id });
   }
   return events;
 }
@@ -16598,14 +16598,14 @@ var SEVERITY_RANK = { minor: 0, moderate: 1, major: 2, extreme: 3 };
 var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
 function mutinyTrigger(state, unitId, minSeverity = "major") {
   const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
-  const found2 = [];
+  const found = [];
   const rec = loyaltyOf(state, unitId);
-  if (rec?.trigger && within(rec.trigger.day)) found2.push({ kind: rec.trigger.kind, day: rec.trigger.day });
+  if (rec?.trigger && within(rec.trigger.day)) found.push({ kind: rec.trigger.kind, day: rec.trigger.day });
   for (const h2 of state.relations[unitId]?.history ?? []) {
     if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
-    if (SEVERITY_RANK[h2.severity] >= SEVERITY_RANK[minSeverity] && within(h2.day)) found2.push({ kind: "betrayal", day: h2.day });
+    if (SEVERITY_RANK[h2.severity] >= SEVERITY_RANK[minSeverity] && within(h2.day)) found.push({ kind: "betrayal", day: h2.day });
   }
-  return found2.sort((a, b) => b.day - a.day)[0] ?? null;
+  return found.sort((a, b) => b.day - a.day)[0] ?? null;
 }
 var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
 function mutinyRules(state, reg, unitId) {
@@ -17026,11 +17026,11 @@ var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => 
 function rawRefusalChance(state, reg, unitId, orderId) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   if (!unit2) return 0;
-  const found2 = [0];
+  const found = [0];
   const take = (e) => {
     const limited = e.orders !== void 0 && e.orders.length > 0;
     if (limited && (orderId === void 0 || !e.orders.includes(orderId))) return;
-    found2.push(e.chance ?? 0);
+    found.push(e.chance ?? 0);
   };
   for (const { synergyId } of getSynergies(state, reg, [unitId])) {
     for (const e of refusalsOf(reg.synergies.get(synergyId)?.effects)) take(e);
@@ -17040,7 +17040,7 @@ function rawRefusalChance(state, reg, unitId, orderId) {
     const downside = reg.defects.get(d.id)?.combat?.downside;
     for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
   }
-  return Math.max(...found2);
+  return Math.max(...found);
 }
 function refusalChance(state, reg, unitId, orderId) {
   if (unitObeys(state, unitId)) return 0;
@@ -18204,10 +18204,10 @@ function applyOrder(ctx2, order, targetCid) {
   if (PROTECTIVE_ORDERS.includes(order.id)) {
     const covered2 = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
     for (const cid of covered2) {
-      const pct4 = woundedBefore.get(cid);
-      if (pct4 !== void 0 && pct4 < 0.3) {
+      const pct5 = woundedBefore.get(cid);
+      if (pct5 !== void 0 && pct5 < 0.3) {
         const unitId = byCid(cs, cid).unitId;
-        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct4) });
+        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct5) });
       }
     }
   }
@@ -19109,14 +19109,14 @@ function herCallOdds(state, reg, unitId, spec) {
   return clamp25(T4.base + T4.perPoint * (score("good") - score("bad")) + tilt, T4.min, T4.max);
 }
 function rollHerCall(state, reg, rng, spec, partyIds) {
-  const candidates4 = herCallCandidates(state, reg, spec, partyIds);
-  if (candidates4.length === 0) return null;
+  const candidates3 = herCallCandidates(state, reg, spec, partyIds);
+  if (candidates3.length === 0) return null;
   if (rng.float() >= herCallChance(state, reg)) return null;
-  const weights = candidates4.map((id) => actorWeight(state, reg, id));
+  const weights = candidates3.map((id) => actorWeight(state, reg, id));
   const total2 = weights.reduce((s, w) => s + w, 0);
   let r = rng.float() * total2;
   const index2 = weights.findIndex((w) => (r -= w) < 0);
-  const unitId = candidates4[index2 === -1 ? candidates4.length - 1 : index2];
+  const unitId = candidates3[index2 === -1 ? candidates3.length - 1 : index2];
   const odds = herCallOdds(state, reg, unitId, spec);
   return { unitId, outcome: rng.float() < odds ? "good" : "bad", odds };
 }
@@ -19322,9 +19322,9 @@ function buildCombat(state, reg, rng, p) {
   }
   const ctx2 = makeCtx(cs, state, reg, rng);
   for (const c of cs.combatants.filter((x) => x.side === "squad")) {
-    const pct4 = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
-    if (pct4 !== 0) {
-      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct4 / 100)));
+    const pct5 = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
+    if (pct5 !== 0) {
+      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct5 / 100)));
       c.hp = Math.max(1, Math.min(maxHp, Math.round(c.hp * (maxHp / c.maxHp))));
       c.maxHp = maxHp;
       c.base = { ...c.base, hp: maxHp };
@@ -20731,10 +20731,10 @@ function optionsOf(state, reg) {
   return fixed ? { templateId: pending4.templateId, title: fixed.title, options: fixed.options } : null;
 }
 function eventOptions(state, reg) {
-  const found2 = optionsOf(state, reg);
-  if (!found2) return [];
+  const found = optionsOf(state, reg);
+  if (!found) return [];
   const exp = state.expedition;
-  return found2.options.map((o, index2) => {
+  return found.options.map((o, index2) => {
     let disabled = null;
     if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) {
       disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
@@ -20770,11 +20770,11 @@ function acknowledgeHerCall(draft) {
 }
 function chooseOption(draft, ctx2, index2, route) {
   const exp = draft.expedition;
-  const found2 = optionsOf(draft, ctx2.registries);
+  const found = optionsOf(draft, ctx2.registries);
   if (!exp || exp.phase !== "event" || exp.pending?.kind !== "event") throw new Error("There is no event to answer.");
   if (draft.dilemmas?.open?.context === "expedition_event") throw new Error("A decision is waiting: answer it first.");
   if (exp.pending.herCall) throw new Error("She has already decided: acknowledge it.");
-  if (!found2) {
+  if (!found) {
     finishEventNode(draft, exp.pending.nodeId, "Nothing here.");
     return [];
   }
@@ -20782,7 +20782,7 @@ function chooseOption(draft, ctx2, index2, route) {
   if (!Number.isInteger(index2) || !option) throw new Error(`There is no option ${String(index2)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const { nodeId, templateId } = exp.pending;
-  const chosen = found2.options[index2];
+  const chosen = found.options[index2];
   let effects2 = chosen.effects;
   const routeEvents = [];
   if (chosen.routeCheck) {
@@ -20791,8 +20791,8 @@ function chooseOption(draft, ctx2, index2, route) {
     routeEvents.push(...taken.events);
     if (!taken.passed) effects2 = afterFailedRoute(effects2);
   }
-  const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: templateId, label: found2.title })];
-  finishEventNode(draft, nodeId, `${found2.title}: ${option.label}.`, { templateId, option: option.label });
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: templateId, label: found.title })];
+  finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
   events.push({ type: "expedition_choice", nodeId, templateId, option: index2, label: option.label });
   return events;
 }
@@ -21457,11 +21457,11 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
 function rollDemands(draft, ctx2) {
   const reg = ctx2.registries;
   if ((draft.discipline?.demands.length ?? 0) >= TUNING.demands.maxOpen) return [];
-  const candidates4 = namedLiving6(draft).filter((u) => !hasOpen(draft, u.id) && openedThisWeek(draft, u.id) < TUNING.demands.perWeek && !inAcquaintance(draft, reg, u.id) && demandChance(draft, reg, u.id) > 0);
-  if (candidates4.length === 0) return [];
-  const start = ctx2.rng.int(0, candidates4.length - 1);
-  for (let k = 0; k < candidates4.length; k++) {
-    const u = candidates4[(start + k) % candidates4.length];
+  const candidates3 = namedLiving6(draft).filter((u) => !hasOpen(draft, u.id) && openedThisWeek(draft, u.id) < TUNING.demands.perWeek && !inAcquaintance(draft, reg, u.id) && demandChance(draft, reg, u.id) > 0);
+  if (candidates3.length === 0) return [];
+  const start = ctx2.rng.int(0, candidates3.length - 1);
+  for (let k = 0; k < candidates3.length; k++) {
+    const u = candidates3[(start + k) % candidates3.length];
     if (!ctx2.rng.chance(demandChance(draft, reg, u.id))) continue;
     const opened = openDemand(draft, ctx2, u.id);
     if (opened) return opened.events;
@@ -24359,12 +24359,12 @@ function relationHints(cs, unitIdOf5) {
   return out;
 }
 function injuryDaysFor(c) {
-  let pct4 = 0;
+  let pct5 = 0;
   for (const p of c.passives) {
     if (p.type !== "injury_days") continue;
-    pct4 += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
+    pct5 += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
   }
-  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct4 / 100)));
+  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct5 / 100)));
 }
 function finalizeCombat(draft, reg, rng, outcome) {
   const cs = draft.combat;
@@ -27422,8 +27422,8 @@ function createPersonal(deps) {
       return true;
     },
     reopenSecrets() {
-      const found2 = state()?.personal?.secrets?.find((x) => x.status === "found");
-      if (found2 && deps.onSecretFound) deps.onSecretFound(found2.id);
+      const found = state()?.personal?.secrets?.find((x) => x.status === "found");
+      if (found && deps.onSecretFound) deps.onSecretFound(found.id);
     },
     onEvents(events) {
       let refresh = false;
@@ -27936,7 +27936,7 @@ function createOnboarding(deps) {
     dispatch2("onboarding/guide_dm_sent", {}, chatId());
     void deps.initiateDm(guideId);
   }
-  function candidates4(s) {
+  function candidates3(s) {
     return livingNamed(s).filter((u) => restrictionReason(s, u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
   }
   async function open3(step, participants) {
@@ -27953,7 +27953,7 @@ function createOnboarding(deps) {
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== "scene" || step.perUnit === true || s.scene) return false;
       const warden = step.participants === "warden" ? wardenUnitId(s) : null;
-      const who = step.participants === "warden" ? candidates4(s).filter((id) => id === warden) : candidates4(s);
+      const who = step.participants === "warden" ? candidates3(s).filter((id) => id === warden) : candidates3(s);
       if (who.length === 0) {
         deps.toast("warn", step.participants === "warden" ? "The warden is not free right now." : "Nobody is free for the line-up right now.");
         return false;
@@ -31675,10 +31675,10 @@ registerCallType({
   json: false,
   system: (raw) => {
     const i = raw;
-    const door = i.mode === "door";
+    const door2 = i.mode === "door";
     return [
-      door ? `You are ${i.unitName}, a soldier in a penal squad. It is night and you stand outside the closed door of your commander ${i.commanderName}'s quarters; ${i.commanderName} has just spoken to you through it.` : `You are ${i.unitName}, a soldier in a penal squad, replying on the PDA messenger to your commander ${i.commanderName}.`,
-      door ? "Write ONE spoken reply: one or two sentences, plain text, in English, in her voice." : i.mode === "curt" ? "Write ONE very short PDA text message: one or two words, no more, plain text, in English, in her voice." : "Write ONE short PDA text message: 1-3 sentences, plain text, in English, in her voice.",
+      door2 ? `You are ${i.unitName}, a soldier in a penal squad. It is night and you stand outside the closed door of your commander ${i.commanderName}'s quarters; ${i.commanderName} has just spoken to you through it.` : `You are ${i.unitName}, a soldier in a penal squad, replying on the PDA messenger to your commander ${i.commanderName}.`,
+      door2 ? "Write ONE spoken reply: one or two sentences, plain text, in English, in her voice." : i.mode === "curt" ? "Write ONE very short PDA text message: one or two words, no more, plain text, in English, in her voice." : "Write ONE short PDA text message: 1-3 sentences, plain text, in English, in her voice.",
       "No actions, no narration, no asterisks, no speaker label, no quotation marks.",
       MODE_TEXT[i.mode],
       "Play her exactly as the relationship description says; do not become warmer or more cooperative than it allows."
@@ -32487,7 +32487,7 @@ function createMemoryController(deps) {
   const inflight = /* @__PURE__ */ new Set();
   let folding = false;
   let digesting = false;
-  let tried2 = /* @__PURE__ */ new Set();
+  let tried = /* @__PURE__ */ new Set();
   let triedChat;
   const track = (p) => {
     inflight.add(p);
@@ -32556,15 +32556,15 @@ function createMemoryController(deps) {
   });
   async function retell(expect) {
     if (triedChat !== expect) {
-      tried2 = /* @__PURE__ */ new Set();
+      tried = /* @__PURE__ */ new Set();
       triedChat = expect;
     }
     for (let n = 0; n < RETELLS_PER_RUN; n++) {
       const s = state();
       if (!s || memoryConfig(s).rumorMode !== "model" || chatId() !== expect) return;
-      const fact = s.memory.facts.find((f) => f.spread !== void 0 && f.rumor === void 0 && !tried2.has(f.id));
+      const fact = s.memory.facts.find((f) => f.spread !== void 0 && f.rumor === void 0 && !tried.has(f.id));
       if (!fact) return;
-      tried2.add(fact.id);
+      tried.add(fact.id);
       await deps.generations.generate("memory.rumor", fact.id);
     }
   }
@@ -37460,8 +37460,8 @@ function leashMenu(unit2, ctx2) {
   );
 }
 function disciplineLine(unit2, state, ctx2) {
-  const found2 = impunityOf(state, ctx2.registries, unit2.id);
-  if (!found2) return null;
+  const found = impunityOf(state, ctx2.registries, unit2.id);
+  if (!found) return null;
   const live = { unitId: unit2.id };
   const stance = commandStance(state, ctx2.registries, unit2.id);
   const entry = stance === null ? void 0 : stanceEntry(ctx2.registries, stance);
@@ -37470,7 +37470,7 @@ function disciplineLine(unit2, state, ctx2) {
   if (stance !== null && entry) {
     parts.push(h("span", { class: "alius-chip", "data-stance": unit2.id, ...analyzeAttrs(`commandStances:${stance}`, live) }, `STANCE: ${String(entry.name).toUpperCase()}`));
   }
-  parts.push(h("span", { class: "alius-chip", "data-impunity": unit2.id, ...analyzeAttrs("glossary:impunity", live) }, `IMPUNITY: ${impunityBand(found2.value).toUpperCase()}${raw ? ` (${found2.value})` : ""}`));
+  parts.push(h("span", { class: "alius-chip", "data-impunity": unit2.id, ...analyzeAttrs("glossary:impunity", live) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
   return h("p", { class: "alius-stance-line" }, ...joinWith(parts, " \xB7 "));
 }
 function hierarchyBlock(unit2, state, ctx2) {
@@ -38268,46 +38268,6 @@ function renderStatusHeader(host, state) {
   host.append(...parts.filter((p) => p !== null));
 }
 
-// src/ui/hub/art.ts
-var tried = /* @__PURE__ */ new Map();
-var found = /* @__PURE__ */ new Map();
-function loads(url) {
-  let p = tried.get(url);
-  if (!p) {
-    p = new Promise((resolve) => {
-      if (typeof Image === "undefined") return resolve(false);
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = url;
-    }).then((ok) => {
-      found.set(url, ok);
-      return ok;
-    });
-    tried.set(url, p);
-  }
-  return p;
-}
-function candidates3(assetUrl, slot2, declared) {
-  const named3 = (name) => declared.find((p) => p.split("/").pop() === name);
-  return [named3(`base_${slot2}.png`), named3("base.png")].filter((p) => p !== void 0).map((p) => assetUrl(p));
-}
-function peekHubArt(assetUrl, slot2, declared) {
-  if (!assetUrl) return null;
-  let unknown2 = false;
-  for (const url of candidates3(assetUrl, slot2, declared)) {
-    const ok = found.get(url);
-    if (ok === true) return url;
-    if (ok === void 0) unknown2 = true;
-  }
-  return unknown2 ? void 0 : null;
-}
-async function probeHubArt(assetUrl, slot2, declared) {
-  if (!assetUrl) return null;
-  for (const url of candidates3(assetUrl, slot2, declared)) if (await loads(url)) return url;
-  return null;
-}
-
 // src/ui/hub/model.ts
 var TONE_GLYPH = { danger: "!", bond: "\u2665", trust: "+", affinity: "*", warn: "~", neutral: "\xB7" };
 var TONE_LABEL = { danger: "danger", bond: "bond", trust: "trust", affinity: "affinity", warn: "warning", neutral: "steady" };
@@ -38439,10 +38399,13 @@ function talkBlock(state, reg, unit2, room2) {
 }
 function renderRoomPanel(room2, state, ctx2, here, opts) {
   const reg = ctx2.registries;
-  const people = here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
+  const view = opts.view;
+  const people = view ? view.people : here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
+  const locationId = view?.sceneLocationId ?? String(room2.sceneLocationId);
+  const talkRoom = { ...room2, sceneLocationId: locationId };
   const talk = talkActivity(reg);
   const rows = people.map((unit2) => {
-    const reason = opts.readOnly || unit2.kind !== "named" || !talk ? null : talkBlock(state, reg, unit2, room2);
+    const reason = opts.readOnly || unit2.kind !== "named" || !talk ? null : talkBlock(state, reg, unit2, talkRoom);
     const canTalk = !opts.readOnly && unit2.kind === "named" && talk !== void 0;
     const avatar = ctx2.avatar(unit2);
     const button2 = canTalk ? h("button", {
@@ -38452,7 +38415,7 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
       "aria-disabled": reason !== null ? "true" : null,
       ...analyzeNative(`activities:${String(talk.id)}`),
       onclick: () => {
-        if (reason === null) ctx2.onTalk(unit2.id, String(room2.sceneLocationId));
+        if (reason === null) ctx2.onTalk(unit2.id, locationId);
       }
     }, "[ TALK ]") : null;
     return h(
@@ -38465,16 +38428,17 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
       reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
     );
   });
-  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
-  const noteCards = room2.commanderCell === true ? quartersNotes(state, reg, ctx2) : [];
+  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  const noteCards = room2.commanderCell === true && (view === void 0 || view.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
+  const title = view?.title ?? String(room2.label);
   return h(
     "section",
-    { class: "alius-room-panel", "data-room": String(room2.id), role: "region", "aria-label": `${String(room2.label)} room` },
+    { class: "alius-room-panel", "data-room": String(room2.id), ...view ? { "data-plan": view.planRoomId } : {}, role: "region", "aria-label": `${title} room` },
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`hubRooms:${String(room2.id)}`) }, String(room2.label))),
-      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${String(room2.label)}`, onclick: opts.onClose }, "[X]")
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : `hubRooms:${String(room2.id)}`) }, title)),
+      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title}`, onclick: opts.onClose }, "[X]")
     ),
     h("p", { class: "alius-dim" }, String(room2.description)),
     h("h3", {}, "HERE"),
@@ -38499,15 +38463,755 @@ function quartersNotes(state, reg, ctx2) {
   return cards;
 }
 
+// src/engine/basePlan.ts
+var rectOf = (e) => e.rect;
+var doorsOf = (e) => e.doors ?? [];
+function planRoomsOn(reg, floor) {
+  return [...reg.planRooms.values()].filter((e) => e.floor === floor);
+}
+function isOpenSpace(e) {
+  return PLAN_OPEN_KINDS.includes(String(e.kind)) || e.kind === "stair" && doorsOf(e).length === 0;
+}
+function isClosed(reg, e) {
+  if (typeof e.hubRoomId === "string" && reg.hubRooms.has(e.hubRoomId)) return false;
+  return !isOpenSpace(e) && e.kind !== "stair";
+}
+var unitCabins = (reg) => [...reg.planRooms.values()].filter((e) => e.cabin === "unit");
+var commanderCabin = (reg) => [...reg.planRooms.values()].find((e) => e.cabin === "commander");
+function cabinMap(state, reg) {
+  const cabins = unitCabins(reg);
+  const out = /* @__PURE__ */ new Map();
+  if (cabins.length === 0) return out;
+  const taken = /* @__PURE__ */ new Set();
+  state.squad.forEach((u, k) => {
+    if (!isLiving(u)) return;
+    const start = k % cabins.length;
+    let pick2 = cabins[start];
+    for (let i = 0; i < cabins.length; i++) {
+      const c = cabins[(start + i) % cabins.length];
+      if (!taken.has(String(c.id))) {
+        pick2 = c;
+        break;
+      }
+    }
+    taken.add(String(pick2.id));
+    out.set(u.id, pick2);
+  });
+  return out;
+}
+function cabinOf(state, reg, unitId) {
+  return cabinMap(state, reg).get(unitId) ?? null;
+}
+function cabinOwner(state, reg, cabinId) {
+  for (const [unitId, c] of cabinMap(state, reg)) if (c.id === cabinId) return unitId;
+  return null;
+}
+function roomOfPerson(state, reg, here, personId) {
+  if (personId === "commander") return commanderCabin(reg) ?? null;
+  const w = here.find((x) => x.unitId === personId);
+  if (!w || w.roomId === null) return null;
+  const plan = [...reg.planRooms.values()].filter((e) => e.hubRoomId === w.roomId);
+  if (plan.some((e) => e.cabin === "unit")) {
+    const own = cabinOf(state, reg, personId);
+    if (own && own.hubRoomId === w.roomId) return own;
+  }
+  return plan.find((e) => e.cabin === void 0) ?? plan[0] ?? null;
+}
+function litRooms(state, reg, here) {
+  const lit = /* @__PURE__ */ new Set();
+  for (const w of here) {
+    const r = roomOfPerson(state, reg, here, w.unitId);
+    if (r) lit.add(String(r.id));
+  }
+  const cmdr = roomOfPerson(state, reg, here, "commander");
+  if (cmdr) lit.add(String(cmdr.id));
+  return lit;
+}
+var markProviders = [];
+function planMarks(state, reg) {
+  return markProviders.flatMap((p) => p(state, reg)).filter((m) => reg.planRooms.has(m.planRoomId));
+}
+
+// src/ui/hub/plan/furnish.ts
+var F = "p-f";
+var OUT = "p-fl p-thin";
+var THIN_F = "p-f p-thin";
+function furnish(pen, kind, r, variant = "plain") {
+  const { x, y, w, h: h2 } = r;
+  const draw2 = FURNITURE[kind];
+  if (kind === "cabin") return cabin(pen, r, variant);
+  if (draw2) draw2(pen, x, y, w, h2);
+}
+function cabin(pen, r, variant) {
+  const { x, y, w, h: h2 } = r;
+  if (variant === "vacant") {
+    pen.rect(x + 5, y + 5, w * 0.42, h2 * 0.62, OUT);
+    return;
+  }
+  if (variant === "tatami") {
+    pen.rect(x + 5, y + 5, w * 0.5, h2 * 0.4, "p-bed p-thin");
+    pen.rect(x + w * 0.55, y + h2 * 0.45, w * 0.3, h2 * 0.28, OUT);
+    pen.rect(x + w - 15, y + 5, 10, h2 * 0.32, F);
+    return;
+  }
+  const bedW = variant === "rich" ? w * 0.55 : w * 0.42;
+  pen.rect(x + 5, y + 5, bedW, h2 * 0.62, F);
+  pen.rect(x + 7, y + 7, bedW - 4, h2 * 0.14, "p-bed p-thin");
+  if (variant === "rich") pen.line(x + 5, y + 5, x + 5 + bedW, y + 5, "p-accent");
+  pen.rect(x + w - 15, y + 5, 10, h2 * 0.32, F);
+  pen.rect(x + w * 0.5, y + h2 - 18, w * 0.42, 9, F);
+}
+var FURNITURE = {
+  cabin: () => {
+  },
+  commander: (pen, x, y, w, h2) => {
+    pen.rect(x + 4, y + 4, 20, h2 - 10, F);
+    pen.rect(x + 6, y + 6, 16, 8, "p-bed p-thin");
+    pen.rect(x + w - 26, y + 4, 22, 12, F);
+    pen.rect(x + w - 21, y + 6, 12, 7, "p-screen p-thin");
+    pen.circle(x + w - 15, y + 23, 4.5, F);
+    pen.path(`M ${x + 28} ${y + 22} h 8 v 7 h -8 Z M ${x + 29.5} ${y + 22} v -3 a 2.5 2.5 0 0 1 5 0 v 3`, "p-accent p-lock");
+  },
+  map: (pen, x, y) => {
+    pen.rect(x + 20, y + 14, 62, 30, OUT);
+    pen.line(x + 24, y + 20, x + 78, y + 38, "p-fl p-thin p-dash");
+    pen.line(x + 30, y + 40, x + 70, y + 18, "p-fl p-thin p-dash");
+    pen.circle(x + 51, y + 29, 3, "p-accent p-thin");
+  },
+  mess: (pen, x, y, w, h2) => {
+    for (const ty of [y + 22, y + 72]) {
+      pen.rect(x + 40, ty, w - 70, 14, F);
+      pen.rect(x + 42, ty - 9, w - 74, 5, THIN_F);
+      pen.rect(x + 42, ty + 18, w - 74, 5, THIN_F);
+    }
+    pen.rect(x + 8, y + 8, 14, h2 - 40, F);
+    for (let i = 0; i < 4; i++) pen.circle(x + 15, y + 20 + i * 24, 4.5, OUT);
+  },
+  kitchen: (pen, x, y, w) => {
+    pen.rect(x + 6, y + 6, w - 12, 14, F);
+    for (let i = 0; i < 4; i++) pen.circle(x + 20 + i * 22, y + 13, 4.5, OUT);
+    pen.rect(x + 30, y + 34, 50, 16, F);
+  },
+  storage: (pen, x, y, w, h2) => {
+    const n = Math.max(1, Math.min(3, Math.floor((h2 - 14) / 18)));
+    const pad = w > 60 ? 10 : 5;
+    for (let i = 0; i < n; i++) pen.rect(x + pad, y + 8 + i * (h2 - 22) / n, w - 2 * pad, w <= 60 ? 6 : 9, OUT);
+  },
+  laundry: (pen, x, y, w) => {
+    for (let i = 0; i < 3; i++) {
+      pen.rect(x + 10 + i * 26, y + 10, 22, 22, OUT);
+      pen.circle(x + 21 + i * 26, y + 21, 7, OUT);
+    }
+    pen.line(x + 10, y + 56, x + w - 10, y + 56, "p-fl p-thin p-dash");
+  },
+  stair: (pen, x, y, w, h2) => {
+    const n = Math.max(4, Math.floor(h2 / 7));
+    for (let i = 0; i < n; i++) pen.line(x + 4, y + 4 + i * (h2 - 8) / n, x + w - 4, y + 4 + i * (h2 - 8) / n, OUT);
+  },
+  gym: (pen, x, y) => {
+    pen.rect(x + 14, y + 14, 60, 40, OUT);
+    for (let i = 0; i < 3; i++) pen.rect(x + 90 + i * 20, y + 16, 12, 40, F);
+    pen.line(x + 20, y + 80, x + 130, y + 80, "p-fl");
+    pen.circle(x + 20, y + 80, 5, F);
+    pen.circle(x + 130, y + 80, 5, F);
+  },
+  armory: (pen, x, y, w) => {
+    for (let i = 0; i < 3; i++) {
+      pen.line(x + 10, y + 14 + i * 18, x + w - 10, y + 14 + i * 18, "p-fl");
+      for (let j = 0; j < 5; j++) pen.line(x + 14 + j * 10, y + 10 + i * 18, x + 14 + j * 10, y + 18 + i * 18, OUT);
+    }
+  },
+  medbay: (pen, x, y, w, h2) => {
+    for (const bx of [x + 14, x + 70]) {
+      pen.rect(bx, y + 14, 26, 54, F);
+      pen.rect(bx + 3, y + 16, 20, 10, "p-bed p-thin");
+      pen.path(`M ${bx - 6} ${y + 8} q 10 4 0 14 q -10 10 0 20 q 10 8 0 20`, "p-fl p-thin p-dash");
+    }
+    pen.rect(x + w - 24, y + 14, 16, 40, F);
+    pen.circle(x + 54, y + 22, 2.4, OUT);
+    pen.rect(x + 20, y + h2 - 30, 60, 14, THIN_F);
+  },
+  workshop: (pen, x, y, w) => {
+    pen.rect(x + 8, y + 8, w - 16, 16, F);
+    for (let i = 0; i < 10; i++) pen.line(x + 14 + i * 11, y + 11, x + 14 + i * 11, y + 21, OUT);
+    pen.rect(x + w - 54, y + 50, 44, 44, F);
+    pen.rect(x + w - 44, y + 60, 24, 24, "p-screen p-thin");
+    pen.circle(x + w - 14, y + 56, 2.4, "p-led");
+    pen.rect(x + 10, y + 50, 50, 26, F);
+  },
+  lockers: (pen, x, y) => {
+    for (let i = 0; i < 8; i++) pen.rect(x + 8 + i * 13, y + 8, 11, 18, OUT);
+    pen.rect(x + 20, y + 40, 80, 8, OUT);
+  },
+  generator: (pen, x, y) => {
+    pen.rect(x + 12, y + 12, 50, 36, F);
+    pen.circle(x + 74, y + 22, 8, OUT);
+  },
+  garage: (pen, x, y, w, h2) => {
+    for (const vx of [x + 8, x + 58]) {
+      pen.rect(vx, y + 30, 44, 110, F);
+      pen.rect(vx + 5, y + 40, 34, 24, "p-screen p-thin");
+      pen.rect(vx + 5, y + 74, 34, 56, OUT);
+      for (const wy of [y + 42, y + 116]) {
+        pen.rect(vx - 4, wy, 4, 16, "p-solid");
+        pen.rect(vx + 44, wy, 4, 16, "p-solid");
+      }
+    }
+    pen.rect(x + 60, y + 170, 40, 30, F);
+    pen.ellipse(x + 30, y + 182, 22, 8, "p-stain");
+    pen.line(x + 6, y + h2, x + w - 6, y + h2, "p-baydoor");
+  },
+  lobby: (pen, x, y) => {
+    pen.rect(x + 110, y + 30, 56, 14, F);
+    pen.circle(x + 138, y + 52, 5.5, F);
+    pen.rect(x + 110, y + 70, 56, 7, THIN_F);
+    pen.rect(x + 76, y + 68, 32, 18, "p-rug p-thin");
+  },
+  showers: (pen, x, y) => {
+    for (let i = 0; i < 6; i++) {
+      pen.rect(x + 6 + i * 23, y + 6, 20, 24, OUT);
+      pen.circle(x + 16 + i * 23, y + 18, 3, OUT);
+    }
+  },
+  comms: (pen, x, y, w) => {
+    for (let i = 0; i < 3; i++) {
+      pen.rect(x + w - 20, y + 8 + i * 30, 14, 26, F);
+      pen.circle(x + w - 13, y + 14 + i * 30, 1.8, "p-led");
+    }
+    pen.rect(x + 8, y + 40, 30, 60, F);
+    for (let i = 0; i < 3; i++) pen.rect(x + 10, y + 44 + i * 19, 8, 15, "p-screen p-thin");
+    pen.circle(x + 48, y + 70, 7, F);
+  },
+  briefing: (pen, x, y, w, h2) => {
+    pen.rect(x + 20, y + 30, 30, 70, OUT);
+    for (let i = 0; i < 3; i++) {
+      pen.circle(x + 12, y + 42 + i * 22, 4, OUT);
+      pen.circle(x + 58, y + 42 + i * 22, 4, OUT);
+    }
+    pen.line(x + 15, y + h2 - 10, x + w - 15, y + h2 - 10, "p-fl");
+  },
+  library: (pen, x, y, w, h2) => {
+    for (let i = 0; i < 3; i++) pen.rect(x + 6, y + 8 + i * 18, w - 30, 6, OUT);
+    pen.circle(x + w - 14, y + h2 - 20, 6, F);
+  },
+  rec: (pen, x, y) => {
+    pen.rect(x + 10, y + 10, 34, 20, OUT);
+    pen.circle(x + 27, y + 20, 3, OUT);
+    pen.rect(x + 50, y + 8, 22, 40, OUT);
+  },
+  office: (pen, x, y, w) => {
+    pen.rect(x + 4, y + 6, w - 8, 12, OUT);
+    pen.circle(x + w / 2, y + 26, 4, OUT);
+  },
+  lookout: (pen, x, y, w, h2) => {
+    pen.line(x + 8, y + h2 - 4, x + w - 8, y + h2 - 4, "p-accent");
+    for (let i = 0; i < 4; i++) pen.circle(x + w * (i + 1) / 5, y + h2 - 18, 6, OUT);
+    pen.rect(x + 20, y + 10, 40, 20, OUT);
+  },
+  yard: (pen, x, y) => {
+    pen.path(`M ${x + 50} ${y + 26} L ${x + 140} ${y + 26} A 30 30 0 0 1 ${x + 140} ${y + 86} L ${x + 50} ${y + 86} A 30 30 0 0 1 ${x + 50} ${y + 26} Z`, "p-fl");
+    pen.path(`M ${x + 50} ${y + 36} L ${x + 140} ${y + 36} A 20 20 0 0 1 ${x + 140} ${y + 76} L ${x + 50} ${y + 76} A 20 20 0 0 1 ${x + 50} ${y + 36} Z`, "p-fl p-thin p-dash");
+    pen.rect(x + 20, y + 106, 70, 70, F);
+    pen.rect(x + 26, y + 112, 58, 58, OUT);
+    for (let i = 0; i < 4; i++) {
+      const tx = x + 120 + i * 30;
+      pen.line(tx, y + 110, tx, y + 168, "p-fl p-thin p-dash");
+      pen.rect(tx - 7, y + 172, 14, 4, "p-solid");
+    }
+    pen.rect(x + 200, y + 26, 24, 50, THIN_F);
+    for (let i = 0; i < 3; i++) pen.circle(x + 212, y + 34 + i * 16, 6, OUT);
+  }
+};
+var FURNISHED_KINDS = Object.keys(FURNITURE);
+
+// src/ui/hub/plan/geometry.ts
+var Cover = class {
+  cells = new Uint8Array(PLAN_W * PLAN_H);
+  constructor(rects) {
+    for (const r of rects) {
+      for (let y = Math.max(0, Math.floor(r.y)); y < Math.min(PLAN_H, Math.ceil(r.y + r.h)); y++) {
+        this.cells.fill(1, y * PLAN_W + Math.max(0, Math.floor(r.x)), y * PLAN_W + Math.min(PLAN_W, Math.ceil(r.x + r.w)));
+      }
+    }
+  }
+  has(x, y) {
+    return x >= 0 && y >= 0 && x < PLAN_W && y < PLAN_H && this.cells[y * PLAN_W + x] === 1;
+  }
+  /** Whether every cell of a rect is covered. */
+  covers(r) {
+    for (let y = Math.floor(r.y); y < Math.ceil(r.y + r.h); y++) {
+      for (let x = Math.floor(r.x); x < Math.ceil(r.x + r.w); x++) if (!this.has(x, y)) return false;
+    }
+    return true;
+  }
+};
+function outline(rects) {
+  if (rects.length === 0) return [];
+  const cover = new Cover(rects);
+  const x0 = Math.max(0, Math.floor(Math.min(...rects.map((r) => r.x))));
+  const y0 = Math.max(0, Math.floor(Math.min(...rects.map((r) => r.y))));
+  const x1 = Math.min(PLAN_W, Math.ceil(Math.max(...rects.map((r) => r.x + r.w))));
+  const y1 = Math.min(PLAN_H, Math.ceil(Math.max(...rects.map((r) => r.y + r.h))));
+  const segs = [];
+  for (let y = y0; y <= y1; y++) {
+    let run = null;
+    for (let x = x0; x <= x1 + 1; x++) {
+      const edge = x <= x1 && cover.has(x, y - 1) !== cover.has(x, y);
+      if (edge && run === null) run = x;
+      if (!edge && run !== null) {
+        segs.push([run, y, x, y]);
+        run = null;
+      }
+    }
+  }
+  for (let x = x0; x <= x1; x++) {
+    let run = null;
+    for (let y = y0; y <= y1 + 1; y++) {
+      const edge = y <= y1 && cover.has(x - 1, y) !== cover.has(x, y);
+      if (edge && run === null) run = y;
+      if (!edge && run !== null) {
+        segs.push([x, run, x, y]);
+        run = null;
+      }
+    }
+  }
+  return segs;
+}
+
+// src/ui/hub/plan/svg.ts
+var SVG_NS4 = "http://www.w3.org/2000/svg";
+var fmt = (v) => typeof v === "number" ? String(Math.round(v * 10) / 10) : v;
+function svgEl(tag2, attrs = {}) {
+  const el = document.createElementNS(SVG_NS4, tag2);
+  for (const [k, v] of Object.entries(attrs)) if (v !== void 0) el.setAttribute(k, fmt(v));
+  return el;
+}
+var Pen = class _Pen {
+  constructor(g) {
+    this.g = g;
+  }
+  static group(cls) {
+    return new _Pen(svgEl("g", { class: cls }));
+  }
+  add(el) {
+    this.g.append(el);
+    return el;
+  }
+  rect(x, y, w, h2, cls) {
+    return this.add(svgEl("rect", { x, y, width: Math.max(0, w), height: Math.max(0, h2), class: cls }));
+  }
+  line(x1, y1, x2, y2, cls) {
+    return this.add(svgEl("line", { x1, y1, x2, y2, class: cls }));
+  }
+  circle(cx, cy, r, cls) {
+    return this.add(svgEl("circle", { cx, cy, r, class: cls }));
+  }
+  ellipse(cx, cy, rx, ry, cls) {
+    return this.add(svgEl("ellipse", { cx, cy, rx, ry, class: cls }));
+  }
+  path(d, cls) {
+    return this.add(svgEl("path", { d, class: cls }));
+  }
+  polygon(points, cls) {
+    return this.add(svgEl("polygon", { points: points.map(([x, y]) => `${fmt(x)},${fmt(y)}`).join(" "), class: cls }));
+  }
+  child(cls) {
+    const pen = _Pen.group(cls);
+    this.g.append(pen.g);
+    return pen;
+  }
+};
+function scatter(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = Math.imul(s, 1664525) + 1013904223 >>> 0;
+    return s / 4294967296;
+  };
+}
+
+// src/ui/hub/plan/draw.ts
+var FENCE = { x: 14, y: 14, w: 972, h: 597 };
+var GATE = [432, 502];
+function drawSite(pen) {
+  pen.rect(0, 0, PLAN_W, PLAN_H, "p-outside");
+  const rnd = scatter(11);
+  const specks = pen.child("p-specks");
+  for (let i = 0; i < 300; i++) {
+    const x = rnd() * PLAN_W;
+    const y = rnd() * PLAN_H;
+    if (x > 10 && x < 990 && y > 10 && y < 615) continue;
+    specks.circle(x, y, 0.4 + rnd() * 0.8, "p-speck");
+  }
+  pen.rect(FENCE.x, FENCE.y, FENCE.w, FENCE.h, "p-compound");
+  for (let i = 0; i < 260; i++) specks.circle(20 + rnd() * 960, 20 + rnd() * 585, 0.3 + rnd() * 0.5, "p-speck p-speck-in");
+  pen.rect(445, 470, 44, 141, "p-road");
+  pen.rect(445, 530, 515, 40, "p-road");
+  pen.rect(860, 520, 90, 10, "p-road");
+  pen.path("M 700 241 L 740 241 L 780 230", "p-path");
+  for (let y = 478; y < 605; y += 16) pen.line(467, y, 467, y + 8, "p-roadline");
+  for (let x = 500; x < 950; x += 18) pen.line(x, 550, x + 9, 550, "p-roadline");
+  for (let i = 0; i < 4; i++) {
+    pen.rect(40 + i * 28, 470, 22, 60, "p-bed p-thin");
+    for (let j = 0; j < 5; j++) pen.circle(51 + i * 28, 478 + j * 11, 2.2, "p-leaf");
+  }
+  pen.line(60, 350, 150, 330, "p-fl p-thin p-dash");
+  for (let i = 0; i < 5; i++) pen.rect(70 + i * 16, 336 - i * 3.6, 6, 9, "p-solid");
+  pen.circle(90, 110, 26, "p-f");
+  pen.circle(90, 110, 18, "p-fl p-thin");
+  for (const ang of [45, 135, 225, 315]) {
+    const a = ang * Math.PI / 180;
+    pen.line(90 + 26 * Math.cos(a), 110 + 26 * Math.sin(a), 90 + 34 * Math.cos(a), 110 + 34 * Math.sin(a), "p-fl");
+  }
+  pen.rect(128, 150, 30, 8, "p-f p-thin");
+  for (const [cx, cy, r] of [[800, 455, 13], [826, 462, 11]]) {
+    pen.circle(cx, cy, r, "p-f");
+    pen.line(cx - r + 3, cy, cx + r - 3, cy, "p-fl p-thin");
+  }
+  pen.path("M 120 560 l 60 -10 l 8 26 l -60 10 Z M 140 556 l 4 24 M 162 552 l 4 24", "p-fl p-thin p-dash");
+  const { x: fx2, y: fy, w: fw, h: fh } = FENCE;
+  const runs = [
+    [fx2, fy, fx2 + fw, fy],
+    [fx2 + fw, fy, fx2 + fw, fy + fh],
+    [fx2, fy, fx2, fy + fh],
+    [fx2, fy + fh, GATE[0], fy + fh],
+    [GATE[1], fy + fh, fx2 + fw, fy + fh]
+  ];
+  for (const [x1, y1, x2, y2] of runs) {
+    pen.line(x1, y1, x2, y2, "p-fence");
+    const n = Math.floor(Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 20);
+    for (let i = 0; i <= n; i++) pen.rect(x1 + (x2 - x1) * i / Math.max(n, 1) - 1.5, y1 + (y2 - y1) * i / Math.max(n, 1) - 1.5, 3, 3, "p-post");
+  }
+  pen.path(`M ${GATE[0]} ${fy + fh} L ${GATE[0] + 33} ${fy + fh - 10} M ${GATE[1]} ${fy + fh} L ${GATE[1] - 33} ${fy + fh - 10}`, "p-fence");
+  pen.rect(512, 584, 30, 22, "p-booth");
+  for (const [tx, ty] of [[fx2, fy], [fx2 + fw, fy], [fx2, fy + fh], [fx2 + fw, fy + fh]]) {
+    pen.rect(tx - 14, ty - 14, 28, 28, "p-tower");
+    pen.line(tx - 9, ty - 9, tx + 9, ty + 9, "p-wall-thin");
+    pen.line(tx + 9, ty - 9, tx - 9, ty + 9, "p-wall-thin");
+    const dx = tx < 500 ? 1 : -1;
+    const dy = ty < 300 ? 1 : -1;
+    pen.polygon([[tx, ty], [tx + dx * 150, ty + dy * 60], [tx + dx * 60, ty + dy * 150]], "p-cone");
+  }
+}
+function door(pen, d) {
+  const { x, y, side, size } = d;
+  if (side === "n" || side === "s") {
+    pen.line(x, y, x + size, y, "p-doorcut");
+    const sy = side === "n" ? -1 : 1;
+    pen.path(`M ${x} ${y} L ${x} ${y + sy * size} A ${size} ${size} 0 0 ${side === "n" ? 0 : 1} ${x + size} ${y}`, "p-fl p-thin");
+  } else {
+    pen.line(x, y, x, y + size, "p-doorcut");
+    const sx = side === "w" ? -1 : 1;
+    pen.path(`M ${x} ${y} L ${x + sx * size} ${y} A ${size} ${size} 0 0 ${side === "w" ? 1 : 0} ${x} ${y + size}`, "p-fl p-thin");
+  }
+}
+function hatch(pen, r, step = 12) {
+  const { x, y, w, h: h2 } = { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4 };
+  for (let t = -h2; t < w; t += step) {
+    const a = Math.max(t, 0);
+    const b = Math.min(t + h2, w);
+    pen.line(x + a, y + (a - t), x + b, y + (b - t), "p-hatch");
+  }
+}
+function emergencyLights(pen, corridors, segs, doors) {
+  const wallOk = (horizontal, at, pos) => {
+    const onWall = segs.some(([x1, y1, x2, y2]) => horizontal ? y1 === y2 && y1 === at && Math.min(x1, x2) <= pos - 9 && pos + 9 <= Math.max(x1, x2) : x1 === x2 && x1 === at && Math.min(y1, y2) <= pos - 9 && pos + 9 <= Math.max(y1, y2));
+    if (!onWall) return false;
+    return !doors.some((d) => horizontal ? (d.side === "n" || d.side === "s") && Math.abs(d.y - at) < 1 && d.x - 10 < pos && pos < d.x + d.size + 10 : (d.side === "e" || d.side === "w") && Math.abs(d.x - at) < 1 && d.y - 10 < pos && pos < d.y + d.size + 10);
+  };
+  const lights = pen.child("p-elights");
+  for (const c of corridors) {
+    const horizontal = c.w > c.h;
+    const n = Math.max(1, Math.floor(Math.max(c.w, c.h) / 70));
+    for (let i = 0; i < n; i++) {
+      const base = horizontal ? c.x + c.w * (i + 0.5) / n : c.y + c.h * (i + 0.5) / n;
+      let placed = null;
+      for (const off of [0, 12, -12, 24, -24, 36, -36]) {
+        const walls = horizontal ? [[c.y, 1], [c.y + c.h, -1]] : [[c.x, 1], [c.x + c.w, -1]];
+        const hit = walls.find(([at2]) => wallOk(horizontal, at2, base + off));
+        if (hit) {
+          placed = [base + off, hit[0], hit[1]];
+          break;
+        }
+      }
+      if (!placed) continue;
+      const [pos, at, inward] = placed;
+      if (horizontal) {
+        lights.path(`M ${pos - 7} ${at + 1.2 * inward} A 7 7 0 0 ${inward > 0 ? 0 : 1} ${pos + 7} ${at + 1.2 * inward} Z`, "p-elight-glow");
+        lights.circle(pos, at + 2 * inward, 1.4, "p-elight");
+      } else {
+        lights.path(`M ${at + 1.2 * inward} ${pos - 7} A 7 7 0 0 ${inward > 0 ? 1 : 0} ${at + 1.2 * inward} ${pos + 7} Z`, "p-elight-glow");
+        lights.circle(at + 2 * inward, pos, 1.4, "p-elight");
+      }
+    }
+  }
+}
+function drawFloor(pen, reg, floor, look) {
+  const rooms = planRoomsOn(reg, floor);
+  const opens = rooms.filter(isOpenSpace);
+  for (const e of opens) {
+    const r = rectOf(e);
+    pen.rect(r.x, r.y, r.w, r.h, "p-corridor");
+  }
+  const segs = outline(opens.map(rectOf));
+  for (const [x1, y1, x2, y2] of segs) pen.line(x1, y1, x2, y2, "p-wall");
+  for (const e of opens.filter((o) => o.kind === "corridor")) {
+    const { x, y, w, h: h2 } = rectOf(e);
+    if (w > h2) for (let cx = x + 6; cx < x + w - 6; cx += 16) pen.line(cx, y + h2 / 2, cx + 7, y + h2 / 2, "p-corrline");
+    else for (let cy = y + 6; cy < y + h2 - 6; cy += 16) pen.line(x + w / 2, cy, x + w / 2, cy + 7, "p-corrline");
+  }
+  for (const e of rooms) {
+    const r = rectOf(e);
+    if (isOpenSpace(e)) {
+      if (e.kind === "stair") pen.rect(r.x, r.y, r.w, r.h, "p-fl p-thin");
+      if (e.kind !== "corridor") furnish(pen, String(e.kind), r);
+      continue;
+    }
+    const closed = isClosed(reg, e);
+    const lit = look.lit.has(String(e.id));
+    const variant = e.cabin === "unit" ? look.cabinVariant(e) : "plain";
+    const fill6 = closed || variant === "vacant" ? "p-closed" : e.kind === "stair" ? "p-corridor" : variant === "dark" ? "p-room p-room-dark" : "p-room";
+    pen.rect(r.x, r.y, r.w, r.h, `${fill6} p-wall${lit ? " p-room-lit" : ""}`);
+    if (lit) {
+      pen.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w * 0.44, r.h * 0.44, "p-glow p-glow-a");
+      pen.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w * 0.24, r.h * 0.24, "p-glow p-glow-b");
+    }
+    if (closed || variant === "vacant") hatch(pen, r);
+    furnish(pen, e.cabin === "commander" ? "commander" : String(e.kind), r, variant);
+  }
+  const doors = rooms.flatMap(doorsOf);
+  for (const d of doors) door(pen, d);
+  emergencyLights(pen, opens.filter((o) => o.kind === "corridor").map(rectOf), segs, doors);
+}
+var inRoof = (cover, x, y) => cover.has(Math.floor(x), Math.floor(y));
+function drawRoofs(pen, reg) {
+  const upper2 = planRoomsOn(reg, "upper").map(rectOf);
+  const high = new Cover(upper2);
+  for (const e of planRoomsOn(reg, "ground")) {
+    if (e.kind === "yard") continue;
+    const r = rectOf(e);
+    if (high.covers(r)) continue;
+    pen.rect(r.x, r.y, r.w, r.h, "p-roof-low");
+    if (e.kind === "gym" || e.kind === "garage") for (let i = 1; i < 8; i++) pen.line(r.x + i * r.w / 8, r.y + 4, r.x + i * r.w / 8, r.y + r.h - 4, "p-wall-thin");
+  }
+  for (const r of upper2) pen.rect(r.x, r.y, r.w, r.h, "p-roof-high");
+  for (const [x1, y1, x2, y2] of outline(upper2)) {
+    pen.line(x1, y1, x2, y2, "p-roof-edge");
+    if (y1 === y2) {
+      const dy = high.has(Math.floor((x1 + x2) / 2), y1) ? 5 : -5;
+      pen.line(x1 + 5, y1 + dy, x2 - 5, y2 + dy, "p-parapet");
+    } else {
+      const dx = high.has(x1, Math.floor((y1 + y2) / 2)) ? 5 : -5;
+      pen.line(x1 + dx, y1 + 5, x2 + dx, y2 - 5, "p-parapet");
+    }
+  }
+  const roofRooms = planRoomsOn(reg, "roof");
+  const hatch2 = roofRooms.find((e) => e.kind === "stair");
+  if (hatch2) {
+    const h2 = rectOf(hatch2);
+    pen.rect(h2.x - 50, h2.y - 15, h2.w + 50, h2.h + 10, "p-canopy");
+    for (let i = 1; i < 6; i++) pen.line(h2.x - 50 + i * (h2.w + 50) / 6, h2.y - 15, h2.x - 50 + i * (h2.w + 50) / 6, h2.y + h2.h - 5, "p-wall-thin");
+    pen.rect(h2.x + 6, h2.y + 12, h2.w - 12, h2.h - 38, "p-hatchbox");
+    pen.rect(h2.x - 32, h2.y + 36, 12, 12, "p-f p-thin");
+    pen.path(`M ${h2.x - 16} ${h2.y + 30} l 12 0 l 0 12 l -12 0 z`, "p-fl p-thin");
+    for (let i = 0; i < 5; i++) pen.circle(h2.x - 30 + i * 3, h2.y + 54, 0.9, "p-solid");
+  }
+  const deck = roofRooms.find((e) => typeof e.hubRoomId === "string");
+  if (deck) {
+    const d = rectOf(deck);
+    pen.line(d.x + 6, d.y + 6, d.x + d.w - 6, d.y + 6, "p-fl");
+    for (let px = d.x + 10; px < d.x + d.w - 6; px += 14) pen.line(px, d.y + 3, px, d.y + 9, "p-fl p-thin");
+  }
+  const line2 = planRoomsOn(reg, "upper").find((e) => (e.affordances ?? []).includes("line"));
+  if (line2) {
+    const r = rectOf(line2);
+    const [ax, ay] = [r.x + 42, r.y + 60];
+    pen.rect(ax - 12, ay - 12, 24, 24, "p-f");
+    pen.line(ax - 12, ay - 12, ax + 12, ay + 12, "p-fl p-thin");
+    pen.line(ax + 12, ay - 12, ax - 12, ay + 12, "p-fl p-thin");
+    for (const [gx, gy] of [[-58, -50], [52, -50], [-58, 108], [52, 108]]) {
+      if (inRoof(high, ax + gx, ay + gy)) pen.line(ax, ay, ax + gx, ay + gy, "p-fl p-thin p-dash");
+    }
+    pen.circle(ax, ay, 3, "p-warnlight");
+    if (inRoof(high, ax - 52, ay - 12)) pen.circle(ax - 52, ay - 12, 26, "p-f");
+  }
+  for (const [ux, uy] of [[220, 330], [290, 330], [730, 280]]) {
+    if (!inRoof(high, ux, uy) || !inRoof(high, ux + 48, uy + 38)) continue;
+    pen.rect(ux, uy, 48, 38, "p-f");
+    pen.circle(ux + 24, uy + 19, 13, "p-fl p-thin");
+  }
+  for (let i = 0; i < 5; i++) {
+    const [sx, sy] = [400 + i * 34, 420];
+    if (inRoof(high, sx, sy) && inRoof(high, sx + 30, sy + 36)) pen.rect(sx, sy, 30, 36, "p-screen p-thin");
+  }
+  if (inRoof(high, 300, 420)) pen.ellipse(300, 420, 40, 12, "p-puddle");
+}
+
+// src/ui/hub/plan/planView.ts
+var FLOOR_LABEL = { ground: "1F", upper: "2F", roof: "ROOF" };
+var FLOOR_NAME = { ground: "GROUND FLOOR", upper: "UPPER FLOOR", roof: "ROOFS" };
+var pct3 = (r) => `left:${r.x / 10}%;top:${r.y / 6.25}%;width:${r.w / 10}%;height:${r.h / 6.25}%`;
+function cabinVariant(state, reg, cabin2) {
+  const owner = cabinOwner(state, reg, String(cabin2.id));
+  if (owner === null) return "vacant";
+  const style = quartersOf(state, reg, owner);
+  if (!style) return "plain";
+  if (style.floor === "tatami") return "tatami";
+  if (style.ceiling === "rich") return "rich";
+  if (style.ceiling === "dark") return "dark";
+  return "plain";
+}
+function peopleIn(state, reg, here, planRoomId) {
+  return state.squad.filter((u) => roomOfPerson(state, reg, here, u.id)?.id === planRoomId);
+}
+function svgLayers(reg, state, here) {
+  const svg3 = svgEl("svg", { class: "alius-plan-svg", viewBox: "0 0 1000 625", preserveAspectRatio: "none", "aria-hidden": "true", focusable: "false" });
+  const lit = litRooms(state, reg, here);
+  const look = { lit, cabinVariant: (c) => cabinVariant(state, reg, c) };
+  const site = Pen.group("p-layer p-layer-site");
+  drawSite(site);
+  const ground = Pen.group("p-layer p-layer-ground");
+  drawFloor(ground, reg, "ground", look);
+  const upper2 = Pen.group("p-layer p-layer-upper");
+  drawFloor(upper2, reg, "upper", look);
+  const roofs = Pen.group("p-layer p-layer-roof");
+  drawRoofs(roofs, reg);
+  svg3.append(site.g, ground.g, upper2.g, roofs.g);
+  return svg3;
+}
+function markChips(marks) {
+  const shown = marks.filter((m) => m.label !== void 0);
+  if (shown.length === 0) return null;
+  return h("span", { class: "alius-plan-marks" }, ...shown.map((m) => h("span", {
+    class: "alius-chip alius-plan-mark",
+    "data-mark": m.kind,
+    ...analyzeAttrs(m.analyze ?? "glossary:base_floor")
+  }, String(m.label))));
+}
+function roomLayer(ctx2, e, marks) {
+  const { registries: reg, state, here } = ctx2;
+  const r = rectOf(e);
+  const markAttr = marks.length > 0 ? { "data-marks": marks.map((m) => m.kind).join(" ") } : {};
+  if (e.kind === "stair" && typeof e.stairTo === "string") {
+    const to = e.stairTo;
+    const up = PLAN_FLOORS.indexOf(to) > PLAN_FLOORS.indexOf(e.floor);
+    return h(
+      "div",
+      { class: "alius-plan-stair", "data-plan": String(e.id), style: pct3(r), ...markAttr },
+      h("button", {
+        type: "button",
+        class: "alius-chip alius-plan-stair-btn",
+        "data-stair-to": to,
+        "aria-label": `${up ? "Up" : "Down"} to the ${FLOOR_NAME[to].toLowerCase()}`,
+        ...analyzeNative("glossary:base_floor"),
+        onclick: (ev) => {
+          ev.stopPropagation();
+          ctx2.onFloor(to);
+        }
+      }, `${up ? "\u2191" : "\u2193"} ${FLOOR_LABEL[to]}`)
+    );
+  }
+  if (e.kind === "corridor") return null;
+  if (isOpenSpace(e) || isClosed(reg, e)) {
+    const closed = isClosed(reg, e);
+    const small = r.w < 60 || r.h < 40;
+    const at = e.labelAt;
+    const place2 = at ? { style: `position:absolute;left:${(at.x - r.x) / r.w * 100}%;top:${(at.y - r.y) / r.h * 100}%` } : {};
+    return h(
+      "div",
+      { class: `alius-plan-closed${closed ? "" : " alius-plan-open-space"}${small ? " alius-plan-small" : ""}`, "data-plan": String(e.id), style: pct3(r), ...markAttr },
+      h("span", { class: "alius-chip alius-plan-label", ...analyzeAttrs(`planRooms:${String(e.id)}`), "data-short": String(e.shortLabel ?? ""), ...place2 }, String(e.label)),
+      markChips(marks)
+    );
+  }
+  const hub = reg.hubRooms.get(String(e.hubRoomId));
+  const inside = peopleIn(state, reg, here, String(e.id));
+  const owner = e.cabin === "unit" ? cabinOwner(state, reg, String(e.id)) : null;
+  const ownerName = owner ? state.squad.find((u) => u.id === owner)?.displayName ?? "" : "";
+  const label2 = e.cabin === "unit" ? owner ? ownerName.toUpperCase() : "VACANT" : String(e.label);
+  const analyze = e.cabin === "unit" ? analyzeNative("glossary:cabin", owner ? { unitId: owner } : void 0) : e.cabin === "commander" ? analyzeNative(`planRooms:${String(e.id)}`) : analyzeNative(`hubRooms:${String(hub?.id ?? e.hubRoomId)}`);
+  const ariaName = e.cabin === "unit" ? owner ? `${ownerName}'s cabin` : "Vacant cabin" : String(e.label);
+  return h(
+    "div",
+    {
+      class: `alius-room alius-plan-room${e.cabin ? " alius-plan-cabin" : ""}${owner === null && e.cabin === "unit" ? " alius-plan-vacant" : ""}`,
+      "data-room": String(hub?.id ?? e.hubRoomId),
+      "data-plan": String(e.id),
+      ...e.cabin ? { "data-cabin": String(e.cabin) } : {},
+      role: "group",
+      "aria-label": ariaName,
+      style: pct3(r),
+      ...markAttr,
+      onclick: () => ctx2.onRoom(String(e.id))
+    },
+    h(
+      "div",
+      { class: "alius-room-head" },
+      h("button", {
+        type: "button",
+        class: "alius-room-label alius-chip",
+        "data-short": String(e.shortLabel ?? ""),
+        "aria-label": inside.length > 0 ? `${ariaName}, ${inside.length} here` : ariaName,
+        ...analyze
+      }, label2),
+      inside.length > 0 ? h("span", { class: "alius-room-count", "aria-hidden": "true" }, String(inside.length)) : null
+    ),
+    h("div", { class: "alius-room-markers" }, ...inside.map((u) => renderMarker(state, reg, u))),
+    markChips(marks)
+  );
+}
+function renderPlanStage(ctx2) {
+  const { registries: reg, state, here } = ctx2;
+  const marks = planMarks(state, reg);
+  const marksOf = (id) => marks.filter((m) => m.planRoomId === id);
+  const layers = /* @__PURE__ */ new Map();
+  for (const floor of PLAN_FLOORS) {
+    const layer = h(
+      "div",
+      { class: "alius-plan-layer", "data-floor": floor, role: "group", "aria-label": FLOOR_NAME[floor] },
+      ...planRoomsOn(reg, floor).map((e) => roomLayer(ctx2, e, marksOf(String(e.id))))
+    );
+    layers.set(floor, layer);
+  }
+  const counts = new Map(PLAN_FLOORS.map((f) => [f, 0]));
+  for (const u of state.squad) {
+    const f = roomOfPerson(state, reg, here, u.id)?.floor;
+    if (f) counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  const buttons = /* @__PURE__ */ new Map();
+  const floorBar = h(
+    "div",
+    { class: "alius-plan-floors", role: "group", "aria-label": "Floors" },
+    ...PLAN_FLOORS.map((f) => {
+      const n = counts.get(f) ?? 0;
+      const b = h("button", {
+        type: "button",
+        class: "alius-btn alius-plan-floor-btn",
+        "data-floor": f,
+        "aria-label": `${FLOOR_NAME[f].toLowerCase()}${n > 0 ? `, ${n} here` : ""}`,
+        ...analyzeNative("glossary:base_floor"),
+        onclick: () => ctx2.onFloor(f)
+      }, FLOOR_LABEL[f], n > 0 ? h("span", { class: "alius-plan-floor-count" }, ` \xB7 ${n}`) : null);
+      buttons.set(f, b);
+      return b;
+    })
+  );
+  const caption = h("span", { class: "alius-hub-caption", "aria-hidden": "true" });
+  const stage = h("div", { class: "alius-hub-stage alius-hub-plan" }, svgLayers(reg, state, here), ...layers.values(), caption);
+  const setFloor = (f) => {
+    stage.dataset.floor = f;
+    caption.textContent = `CCP OUTPOST \xB7 ${FLOOR_NAME[f]} \xB7 NOT TO SCALE`;
+    for (const [floor, layer] of layers) layer.hidden = floor !== f;
+    for (const [floor, b] of buttons) b.setAttribute("aria-pressed", String(floor === f));
+  };
+  setFloor(ctx2.floor);
+  return { stage, floorBar, setFloor };
+}
+
 // src/ui/hub/hubScreen.ts
 var openRoom = /* @__PURE__ */ new WeakMap();
+var shownFloor = /* @__PURE__ */ new WeakMap();
 var teardown = /* @__PURE__ */ new WeakMap();
 var LEGEND_TONES = ["danger", "bond", "trust", "affinity", "warn"];
-function roomRect(reg, room2) {
-  const plan = [...reg.planRooms.values()].find((p) => p.hubRoomId === room2.id);
-  const r = plan?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
-  return { x: r.x / 10, y: r.y / 6.25, w: r.w / 10, h: r.h / 6.25 };
-}
 var stat2 = (cls, address, ...children) => h("div", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, ...children);
 var dueText = (days) => days === null ? "NO DEADLINE" : days < 0 ? "OVERDUE" : days === 0 ? "DUE TODAY" : `DUE IN ${days} DAY${days === 1 ? "" : "S"}`;
 function topBar(ctx2, state) {
@@ -38530,66 +39234,28 @@ function strip(cls, address, label2, state, reg, units) {
     ...units.map((u) => renderMarker(state, reg, u))
   );
 }
-function crossSection(ctx2, state, here, onRoom) {
+function cabinTitle(state, reg, cabinId) {
+  const owner = cabinOwner(state, reg, cabinId);
+  const name = owner ? state.squad.find((u) => u.id === owner)?.displayName : void 0;
+  return name ? `${name.toUpperCase()}'S CABIN` : "VACANT CABIN";
+}
+function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const reg = ctx2.registries;
-  const slot2 = state.slot;
-  const bg = h("div", { class: "alius-hub-bg alius-hub-blueprint", "aria-hidden": "true" });
-  const caption = h("span", { class: "alius-hub-caption", "aria-hidden": "true" }, "SECTION A-A \xB7 NOT TO SCALE");
-  const showArt = (url) => {
-    bg.className = "alius-hub-bg alius-hub-art";
-    bg.style.backgroundImage = cssUrl(url);
-    caption.remove();
-  };
-  const declared = ctx2.art?.hub ?? [];
-  const known = declared.length > 0 ? peekHubArt(ctx2.assetUrl, slot2, declared) : null;
-  if (typeof known === "string") showArt(known);
-  else if (known === void 0) {
-    void probeHubArt(ctx2.assetUrl, slot2, declared).then((url) => {
-      if (url && bg.isConnected) showArt(url);
-    });
-  }
   const unitOf11 = (id) => state.squad.find((u) => u.id === id);
-  const rooms = [...reg.hubRooms.values()].map((room2) => {
-    const r = roomRect(reg, room2);
-    const inside = here.filter((w) => w.roomId === room2.id).map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
-    const el = h(
-      "div",
-      {
-        class: "alius-room",
-        "data-room": String(room2.id),
-        role: "group",
-        "aria-label": String(room2.label),
-        style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%`,
-        onclick: () => onRoom(String(room2.id))
-      },
-      h(
-        "div",
-        { class: "alius-room-head" },
-        h("button", {
-          type: "button",
-          class: "alius-room-label alius-chip",
-          "aria-label": inside.length > 0 ? `${String(room2.label)}, ${inside.length} here` : String(room2.label),
-          ...analyzeNative(`hubRooms:${String(room2.id)}`)
-        }, String(room2.label)),
-        // a small room can hold more markers than fit: it scrolls, and the count keeps the number in view
-        inside.length > 0 ? h("span", { class: "alius-room-count", "aria-hidden": "true" }, String(inside.length)) : null
-      ),
-      h("div", { class: "alius-room-markers" }, ...inside.map((u) => renderMarker(state, reg, u)))
-    );
-    return el;
-  });
-  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
-  const elsewhere = here.filter((w) => w.reason === "nowhere").map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
+  const { stage, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
-  const stage = h("div", { class: "alius-hub-stage", "data-slot": slot2 }, bg, ...rooms, caption, panelHost);
+  const frame = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage), floorBar, panelHost);
+  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
+  const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
+  const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
   const section = h(
     "section",
-    { class: "alius-hub-main", "aria-label": "Outpost cross-section" },
-    stage,
+    { class: "alius-hub-main", "aria-label": "Plan of the outpost" },
+    frame,
     away.length > 0 ? strip("alius-away", "glossary:away", "AWAY", state, reg, away) : null,
     elsewhere.length > 0 ? strip("alius-elsewhere", "glossary:whereabouts", "ELSEWHERE", state, reg, elsewhere) : null
   );
-  return { section, panelHost };
+  return { section, panelHost, setFloor };
 }
 function oversightCard(ctx2, state, no, what) {
   const corp = state.commander.corporationId ? ctx2.registries.corporations.get(state.commander.corporationId) : void 0;
@@ -38708,12 +39374,23 @@ function renderHub(host, device, ctx2) {
   const showPanel = () => {
     panelHost.replaceChildren();
     const id = openRoom.get(host);
-    const room2 = id !== void 0 ? ctx2.registries.hubRooms.get(id) : void 0;
-    if (!room2) return;
-    const r = roomRect(ctx2.registries, room2);
-    const panel = renderRoomPanel(room2, state, ctx2, here, { readOnly, onClose: close });
-    panel.style.setProperty("--panel-x", `${r.x}%`);
-    panel.style.setProperty("--panel-y", `${Math.min(r.y + r.h * 0.25, 60)}%`);
+    const plan = id !== void 0 ? ctx2.registries.planRooms.get(id) : void 0;
+    const room2 = plan ? ctx2.registries.hubRooms.get(String(plan.hubRoomId)) : void 0;
+    if (!plan || !room2) return;
+    const r = plan.rect;
+    const panel = renderRoomPanel(room2, state, ctx2, here, {
+      readOnly,
+      onClose: close,
+      view: {
+        planRoomId: String(plan.id),
+        people: peopleIn(state, ctx2.registries, here, String(plan.id)),
+        sceneLocationId: typeof plan.sceneLocationId === "string" ? plan.sceneLocationId : void 0,
+        cabin: plan.cabin,
+        title: plan.cabin === "unit" ? cabinTitle(state, ctx2.registries, String(plan.id)) : String(plan.label)
+      }
+    });
+    panel.style.setProperty("--panel-x", `${r.x / 10}%`);
+    panel.style.setProperty("--panel-y", `${Math.min((r.y + r.h * 0.25) / 6.25, 60)}%`);
     panelHost.append(panel);
   };
   const open3 = (id) => {
@@ -38724,12 +39401,31 @@ function renderHub(host, device, ctx2) {
     openRoom.delete(host);
     showPanel();
   }
-  const { section, panelHost } = crossSection(ctx2, state, here, open3);
+  const floor = shownFloor.get(host) ?? "ground";
+  let setFloor = () => {
+  };
+  const onFloor = (f) => {
+    shownFloor.set(host, f);
+    if (openRoom.has(host) && ctx2.registries.planRooms.get(openRoom.get(host))?.floor !== f) close();
+    setFloor(f);
+  };
+  const built = planSection(ctx2, state, here, floor, onFloor, open3);
+  const { section, panelHost } = built;
+  setFloor = built.setFloor;
   root.append(h("div", { class: "alius-hub-body" }, section, sideColumn(ctx2, state, readOnly)));
   showPanel();
   const onKey = (ev) => {
     const e = ev;
     if (!host.isConnected) return teardown.get(host)?.();
+    if ((e.key === "PageUp" || e.key === "PageDown") && device.dataset.up !== "true" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const el2 = e.target;
+      if (el2 && ["INPUT", "TEXTAREA", "SELECT"].includes(el2.tagName)) return;
+      const i = PLAN_FLOORS.indexOf(shownFloor.get(host) ?? "ground");
+      const next = PLAN_FLOORS[Math.max(0, Math.min(PLAN_FLOORS.length - 1, i + (e.key === "PageUp" ? 1 : -1)))];
+      e.preventDefault();
+      onFloor(next);
+      return;
+    }
     if (e.key !== "Escape" || !openRoom.has(host)) return;
     if (device.dataset.up === "true") return;
     const el = e.target;
@@ -38755,10 +39451,10 @@ function renderHub(host, device, ctx2) {
 }
 
 // src/ui/map/mapTab.ts
-var SVG_NS4 = "http://www.w3.org/2000/svg";
+var SVG_NS5 = "http://www.w3.org/2000/svg";
 var SOURCE_TAG2 = { command: "COMMAND", story: "STORY", rumor: "RUMOR", side: "SIDE" };
 function svg2(tag2, attrs) {
-  const el = document.createElementNS(SVG_NS4, tag2);
+  const el = document.createElementNS(SVG_NS5, tag2);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
@@ -39123,10 +39819,10 @@ function renderReport(host, ctx2) {
   }
   for (const line2 of lines.slice(1)) root.append(h("p", { class: "alius-report-line" }, line2));
   if (state.slot !== "night" && !report.debriefed) {
-    const candidates4 = report.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+    const candidates3 = report.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
     const full = ctx2.debriefPick.length >= DEBRIEF_MAX;
     const section = h("div", { class: "alius-debrief" }, h("h3", {}, "DEBRIEF"));
-    for (const u of candidates4) {
+    for (const u of candidates3) {
       const on = ctx2.debriefPick.includes(u.id);
       const box = h("input", { type: "checkbox", "data-debrief": u.id, checked: on, disabled: !on && full });
       box.checked = on;
@@ -40193,7 +40889,7 @@ function drawDemandChips(host, state, reg, pick2, on) {
 
 // src/ui/comms/living.ts
 var TYPING_MS = 2500;
-var SVG_NS5 = "http://www.w3.org/2000/svg";
+var SVG_NS6 = "http://www.w3.org/2000/svg";
 var stampText = (day, slot2) => `DAY ${String(day).padStart(3, "0")} // ${slot2.toUpperCase()}`;
 function kindsOf(reg, msg) {
   return new Set((msg.behaviours ?? []).flatMap((id) => {
@@ -40217,13 +40913,13 @@ function meta(msg, kinds2) {
   );
 }
 function waveform(id) {
-  const svg3 = document.createElementNS(SVG_NS5, "svg");
+  const svg3 = document.createElementNS(SVG_NS6, "svg");
   svg3.setAttribute("viewBox", "0 0 64 16");
   svg3.setAttribute("class", "alius-wave");
   svg3.setAttribute("aria-hidden", "true");
   for (let i = 0; i < 16; i++) {
     const height = 3 + fnv1a(`${id}|${i}`) % 11;
-    const bar2 = document.createElementNS(SVG_NS5, "rect");
+    const bar2 = document.createElementNS(SVG_NS6, "rect");
     bar2.setAttribute("x", String(i * 4));
     bar2.setAttribute("y", String((16 - height) / 2));
     bar2.setAttribute("width", "2");
@@ -41185,24 +41881,24 @@ function renderSceneScreen(host, ctx2) {
     caption.textContent = locationName(s, present2(s)).toUpperCase();
     const owner = present2(s)[0]?.id ?? null;
     const resolve = ctx2.assetUrl ?? ((p) => p);
-    const candidates4 = sceneBackdrop(s, registries, s.scene.locationId, owner).map((c) => ({ url: resolve(c.file), light: c.slotted ? null : slotLight(s.slot) }));
-    const key = `${s.slot}|${candidates4.map((c) => c.url).join("|")}`;
+    const candidates3 = sceneBackdrop(s, registries, s.scene.locationId, owner).map((c) => ({ url: resolve(c.file), light: c.slotted ? null : slotLight(s.slot) }));
+    const key = `${s.slot}|${candidates3.map((c) => c.url).join("|")}`;
     if (key === backdropKey) return;
     backdropKey = key;
     const token = ++backdropToken;
-    if (candidates4.length === 0) {
+    if (candidates3.length === 0) {
       showAscii(s);
       return;
     }
     const own = ctx2.loadImage !== void 0;
     const load = ctx2.loadImage ?? defaultLoadImage;
-    const known = own ? void 0 : candidates4.find((c) => loaded.get(c.url) !== false);
+    const known = own ? void 0 : candidates3.find((c) => loaded.get(c.url) !== false);
     if (known && loaded.get(known.url) === true) {
       showImage(known.url, known.light);
       return;
     }
     void (async () => {
-      for (const c of candidates4) {
+      for (const c of candidates3) {
         const ok = await tryLoad(c.url, load, own);
         if (token !== backdropToken || disposed) return;
         if (ok) {
@@ -41702,7 +42398,7 @@ var WHERE_USED = {
   reflexes: "Used by: the chance to dodge a hit that reaches the commander in Commander Crisis."
 };
 var PRESENCE_LABEL = { unnoticed: ["presence_unnoticed", "Unnoticed"], steady_voice: ["presence_steady_voice", "Steady Voice"], rally: ["presence_rally", "Rally"] };
-var pct3 = (n) => Math.round(n * 100);
+var pct4 = (n) => Math.round(n * 100);
 function bodyProvider(stat3) {
   return (_subject, env, k) => {
     const state = env.state;
@@ -41719,7 +42415,7 @@ function bodyProvider(stat3) {
     }
     lines.push(WHERE_USED[stat3]);
     if (stat3 === "endurance" && k.showRaw) lines.push(`Crisis HP: ${k.raw(commanderMaxHp(state, env.registries))}`);
-    if (stat3 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct3(dodgeChance(state)))}%`);
+    if (stat3 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct4(dodgeChance(state)))}%`);
     return { lines };
   };
 }
@@ -41745,7 +42441,7 @@ function presenceProvider(subject, env, k) {
   if (unit2) {
     const w = firstImpressionWeight(state, unit2.id);
     const word = w > 0.5 ? "fresh" : w >= 0.1 ? "fading" : "faded";
-    lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct3(w))}%)` : ""}`);
+    lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct4(w))}%)` : ""}`);
     const tastes = matchedTastes(state, env.registries, unit2);
     if (tastes.length > 0) lines.push(`Her tastes that fit the commander: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(", ")}`);
   }
@@ -41794,30 +42490,30 @@ function impunityProvider(subject, env, k) {
   const state = env.state;
   const id = unitIdOf2(subject);
   if (!state || id === null) return null;
-  const found2 = impunityOf(state, env.registries, id);
-  if (!found2) return null;
+  const found = impunityOf(state, env.registries, id);
+  if (!found) return null;
   const stance = commandStance(state, env.registries, id);
   const entry = stance === null ? void 0 : stanceEntry(env.registries, stance);
   const lines = [];
   if (entry) lines.push(`Stance: ${String(entry.name)}`);
-  lines.push(k.showRaw ? `Impunity: ${k.raw(found2.value)}` : `Impunity: ${impunityBand(found2.value)}`);
-  lines.push(...termLines(found2.terms, k));
+  lines.push(k.showRaw ? `Impunity: ${k.raw(found.value)}` : `Impunity: ${impunityBand(found.value)}`);
+  lines.push(...termLines(found.terms, k));
   return { lines };
 }
 function stanceProvider(subject, env, k) {
   const state = env.state;
   const id = unitIdOf2(subject);
   if (!state || id === null) return null;
-  const found2 = impunityOf(state, env.registries, id);
+  const found = impunityOf(state, env.registries, id);
   const rel = state.relations[id];
   const stance = commandStance(state, env.registries, id);
-  if (!found2 || !rel || stance === null) return null;
+  if (!found || !rel || stance === null) return null;
   const entry = stanceEntry(env.registries, stance);
   return {
     lines: [
       `Her stance now: ${String(entry?.name ?? stance)}`,
       `Trust: ${trustBand(rel.trust)}${k.showRaw ? ` (${k.raw(rel.trust)})` : ""}`,
-      k.showRaw ? `Impunity: ${k.raw(found2.value)}` : `Impunity: ${impunityBand(found2.value)}`
+      k.showRaw ? `Impunity: ${k.raw(found.value)}` : `Impunity: ${impunityBand(found.value)}`
     ]
   };
 }
@@ -42227,11 +42923,11 @@ function oddsLine(state, reg, k, gameId, unitId, pick2) {
   if (kind === "sparring") {
     if (pick2 === void 0) return null;
     const odds = sparringOdds(state, reg, unitId, pick2);
-    const pct5 = k.raw(Math.round(odds * 100));
-    return `The commander's chance in the bout: ${bandWord(odds)}${pct5 !== null ? ` (about ${pct5} %)` : ""}.`;
+    const pct6 = k.raw(Math.round(odds * 100));
+    return `The commander's chance in the bout: ${bandWord(odds)}${pct6 !== null ? ` (about ${pct6} %)` : ""}.`;
   }
-  const pct4 = GAME_ODDS[kind] !== void 0 ? k.raw(GAME_ODDS[kind]) : null;
-  return pct4 !== null ? `The commander wins about ${pct4} % of the time.` : null;
+  const pct5 = GAME_ODDS[kind] !== void 0 ? k.raw(GAME_ODDS[kind]) : null;
+  return pct5 !== null ? `The commander wins about ${pct5} % of the time.` : null;
 }
 function tokenProvider(subject, env, k) {
   const state = env.state;
@@ -42287,8 +42983,8 @@ function gameProvider(subject, env, k) {
     expedition_bet: "She bets on the next run with her: killing blows, no damage taken or the objective. It is void after a week."
   };
   const lines = [HOW[String(game.kind)] ?? ""];
-  const pct4 = GAME_ODDS[String(game.kind)] !== void 0 ? k.raw(GAME_ODDS[String(game.kind)]) : null;
-  if (pct4 !== null) lines.push(`The commander wins about ${pct4} % of the time.`);
+  const pct5 = GAME_ODDS[String(game.kind)] !== void 0 ? k.raw(GAME_ODDS[String(game.kind)]) : null;
+  if (pct5 !== null) lines.push(`The commander wins about ${pct5} % of the time.`);
   return { lines: lines.filter((l) => l !== "") };
 }
 function stakeProvider(subject, env) {
@@ -42908,9 +43604,9 @@ function unitOf10(state, data) {
 var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
 var axisProvider2 = (axis) => (subject, env, knowledge) => {
   const state = env.state;
-  const found2 = unitOf10(state, subject.data);
-  if (!found2) return null;
-  const { unit: unit2, relation } = found2;
+  const found = unitOf10(state, subject.data);
+  if (!found) return null;
+  const { unit: unit2, relation } = found;
   if (axis !== "trust" && unit2.kind === "grunt") return { lines: ["Grunts track Trust only."] };
   if (axis === "attraction" && !intimacyOf(state).romance) return { lines: ["Romance is off."] };
   const value = relation[axis];
@@ -42940,9 +43636,9 @@ function liveStress(state, unit2) {
 }
 var stressProvider = (subject, env, knowledge) => {
   const state = env.state;
-  const found2 = unitOf10(state, subject.data);
-  if (!found2) return null;
-  const { unit: unit2 } = found2;
+  const found = unitOf10(state, subject.data);
+  if (!found) return null;
+  const { unit: unit2 } = found;
   const stress = liveStress(state, unit2);
   const lines = [`${unit2.displayName}: ${stressBand2(stress).toUpperCase()}${rawSuffix(knowledge, stress)}`];
   const groups = /* @__PURE__ */ new Map();

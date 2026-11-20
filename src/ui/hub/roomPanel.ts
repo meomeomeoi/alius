@@ -33,20 +33,35 @@ export function talkBlock(state: CampaignState, reg: Registries, unit: Unit, roo
 }
 
 /**
+ * P10d: which plan room the panel is for. A cabin lists only who is in it and talks in its own location; the commander's
+ * cabin carries the quarters notes and the room's activities; a unit cabin carries neither.
+ */
+export interface RoomPanelView {
+  planRoomId: string;
+  people: Unit[];
+  sceneLocationId?: string;
+  cabin?: 'unit' | 'commander';
+  title?: string;
+}
+
+/**
  * The panel of one room: who is there (with a TALK button for each named soldier) and the activities the room offers,
  * as the same cards the OPS tab shows. A read-only campaign gets the list and nothing to press.
  */
 export function renderRoomPanel(
-  room: Entry, state: CampaignState, ctx: HubCtx, here: Whereabout[], opts: { readOnly: boolean; onClose: () => void },
+  room: Entry, state: CampaignState, ctx: HubCtx, here: Whereabout[], opts: { readOnly: boolean; onClose: () => void; view?: RoomPanelView },
 ): HTMLElement {
   const reg = ctx.registries;
-  const people = here.filter((w) => w.roomId === room.id)
+  const view = opts.view;
+  const people = view ? view.people : here.filter((w) => w.roomId === room.id)
     .map((w) => state.squad.find((u) => u.id === w.unitId))
     .filter((u): u is Unit => u !== undefined);
+  const locationId = view?.sceneLocationId ?? String(room.sceneLocationId);
+  const talkRoom: Entry = { ...room, sceneLocationId: locationId };
   const talk = talkActivity(reg);
 
   const rows = people.map((unit) => {
-    const reason = opts.readOnly || unit.kind !== 'named' || !talk ? null : talkBlock(state, reg, unit, room);
+    const reason = opts.readOnly || unit.kind !== 'named' || !talk ? null : talkBlock(state, reg, unit, talkRoom);
     const canTalk = !opts.readOnly && unit.kind === 'named' && talk !== undefined;
     const avatar = ctx.avatar(unit);
     const button = canTalk
@@ -54,7 +69,7 @@ export function renderRoomPanel(
         type: 'button', class: 'alius-btn alius-option', 'data-talk': unit.id, 'aria-disabled': reason !== null ? 'true' : null,
         ...analyzeNative(`activities:${String(talk!.id)}`),
         onclick: () => {
-          if (reason === null) ctx.onTalk(unit.id, String(room.sceneLocationId));
+          if (reason === null) ctx.onTalk(unit.id, locationId);
         },
       }, '[ TALK ]')
       : null;
@@ -69,21 +84,22 @@ export function renderRoomPanel(
   });
 
   // P11: the activity cards are the OPS module's; while it is offline the room offers talk and nothing else
-  const cards = opts.readOnly || lockedTabs(state, reg).has('ops')
+  const cards = opts.readOnly || lockedTabs(state, reg).has('ops') || view?.cabin === 'unit'
     ? []
     : ((room.activityIds ?? []) as string[]).map((id) => reg.activities.get(id)).filter((a): a is Entry => a !== undefined)
       .map((a) => activityCard(a, state, ctx.ops));
 
   // P10b: in the room with the commander's cell the notes wait: what soldiers left in the quarters, and what they pinned (P9c)
-  const noteCards = room.commanderCell === true ? quartersNotes(state, reg, ctx) : [];
+  const noteCards = room.commanderCell === true && (view === undefined || view.cabin === 'commander') ? quartersNotes(state, reg, ctx) : [];
+  const title = view?.title ?? String(room.label);
 
   return h(
     'section',
-    { class: 'alius-room-panel', 'data-room': String(room.id), role: 'region', 'aria-label': `${String(room.label)} room` },
+    { class: 'alius-room-panel', 'data-room': String(room.id), ...(view ? { 'data-plan': view.planRoomId } : {}), role: 'region', 'aria-label': `${title} room` },
     h(
       'div', { class: 'alius-room-panel-head' },
-      h('h2', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(`hubRooms:${String(room.id)}`) }, String(room.label))),
-      h('button', { type: 'button', class: 'alius-btn', 'data-close-room': '', 'aria-label': `Close ${String(room.label)}`, onclick: opts.onClose }, '[X]'),
+      h('h2', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(view?.cabin === 'unit' ? 'glossary:cabin' : `hubRooms:${String(room.id)}`) }, title)),
+      h('button', { type: 'button', class: 'alius-btn', 'data-close-room': '', 'aria-label': `Close ${title}`, onclick: opts.onClose }, '[X]'),
     ),
     h('p', { class: 'alius-dim' }, String(room.description)),
     h('h3', {}, 'HERE'),

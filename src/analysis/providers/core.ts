@@ -315,6 +315,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'generation_failed', 'generation_reroll', 'generation_record', 'generation_reasons',
   // P10c (the QUARTERS select in the dossier)
   'quarters',
+  // P10d (cabins, floor buttons and staircases, closed rooms on the plan)
+  'cabin', 'base_floor', 'closed_room',
 ];
 
 let registered = false;
