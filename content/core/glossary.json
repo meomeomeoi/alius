@@ -739,7 +739,7 @@
     "id": "delegate",
     "term": "Ask a unit",
     "short": "Someone else does it for you. She agrees if she trusts you enough, and it costs her warmth and stress.",
-    "long": "The soldier you ask answers by her Trust in you. Enough Trust and she does it, perhaps with a remark. One band short, she names a price (not yet in the game, so she refuses). Much less, or a breaking loyalty, and she refuses. Only an agreement is paid for.",
+    "long": "The soldier you ask answers by her Trust in you. Enough Trust and she does it, perhaps with a remark. Less than that, or a breaking loyalty, and she refuses. Only an agreement is paid for.",
     "see": [
       "trust",
       "check_routes"
@@ -819,7 +819,7 @@
     "id": "disposition_offset",
     "term": "Disposition offset",
     "short": "How far one soldier sits from the world's disposition, from two steps kinder to two steps harder, proposed from her character card.",
-    "long": "The offset is proposed when the card is imported, with a one-line reason, and the player can change it. A soldier two steps kinder than a hazardous world reads as a prickly one. The offset moves only her own rules, never another soldier's.",
+    "long": "The offset is proposed when the card is imported, with a one-line reason, and you can change it. A soldier two steps kinder than a hazardous world reads as a prickly one. The offset moves only her own rules, never another soldier's.",
     "see": [
       "disposition"
     ]
@@ -1348,7 +1348,7 @@
   {
     "id": "rations",
     "term": "Rations",
-    "short": "How a shortage is shared out: evenly, reserve soldiers first, or the commander going without first.",
+    "short": "How a shortage is shared out: evenly, fighters first (the reserve goes without), or the commander going without first.",
     "long": "AUTHOR TO WRITE: While supplies cover the day's upkeep the mode changes nothing. In a shortage, Equal spreads the missing supplies over everyone. Fighters first lets the reserve soldiers go without before the active roster feels it. Commander short lets the commander go without, up to the commander's own share, at the cost of sleeping through the next morning. While the world has squad votes on, a change of mode in a shortage goes to a [[vote]].",
     "see": [
       "vote",
@@ -1997,7 +1997,7 @@
     "id": "warden",
     "term": "Warden",
     "short": "The soldier who holds the commander's controller for the corporation.",
-    "long": "The warden is one soldier of the squad. She has an agenda of expectations, can override the commander's orders and can punish. She is outside the squad's hierarchy: she sits above it. She is picked at setup, by the player or by the corporation (the unit most loyal to it).",
+    "long": "The warden is one soldier of the squad. She has an agenda of expectations, can override the commander's orders and can punish. She is outside the squad's hierarchy: she sits above it. She is picked at setup, by you or by the corporation (the unit most loyal to it).",
     "see": [
       "leashswap",
       "death_rule"

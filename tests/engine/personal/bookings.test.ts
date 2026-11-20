@@ -65,7 +65,7 @@ describe('the roll', () => {
     ]);
     const dm = booked!.t.dms[ANN].at(-1)!;
     expect(dm).toMatchObject({ from: ANN, read: false, initiated: true });
-    expect(dm.text).toContain('this evening');
+    expect(dm.text).toContain('This evening');
     expect(dm.text).not.toContain('{name}');
   });
 

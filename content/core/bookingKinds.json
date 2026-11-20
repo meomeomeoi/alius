@@ -5,7 +5,7 @@
     "description": "She books the evening in her quarters. AUTHOR TO WRITE: the long text.",
     "slot": "evening",
     "locationId": "quarters_unit",
-    "text": "AUTHOR TO WRITE: {name}: this evening is mine. My quarters. Do not be late.",
+    "text": "AUTHOR TO WRITE: This evening is mine. My quarters. Do not be late. — {name}",
     "wantRelief": 20,
     "weight": 15
   },
@@ -15,7 +15,7 @@
     "description": "She books the afternoon in the training yard. AUTHOR TO WRITE: the long text.",
     "slot": "afternoon",
     "locationId": "training_yard",
-    "text": "AUTHOR TO WRITE: {name}: afternoon, the yard. Bring something to prove.",
+    "text": "AUTHOR TO WRITE: Afternoon, the yard. Bring something to prove. — {name}",
     "wantRelief": 10,
     "weight": 5
   },
@@ -26,7 +26,7 @@
     "slot": "evening",
     "locationId": "roof",
     "tier": "romantic",
-    "text": "AUTHOR TO WRITE: {name}: the roof, this evening. Just the two of us.",
+    "text": "AUTHOR TO WRITE: The roof, this evening. Just the two of us. — {name}",
     "wantRelief": 20,
     "weight": 15
   }
