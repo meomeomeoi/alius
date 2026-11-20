@@ -158,12 +158,20 @@ describe('remote control', () => {
 
   it('a mission failed in the day that ends costs a pain burst', () => {
     const s = swap();
+    s.content = { enabled: ['physical_discipline_shown'] };
     startRemoval(s, real(), 'death');
     s.missions.completed.push(mission('failed', s.day));
     const stress = s.commander.stress ?? 0;
     const events = remoteDayStep(s, real());
     expect(events.find((e) => e.type === 'commander_punished')).toMatchObject({ severity: 3, remote: true });
     expect((s.commander.stress ?? 0)).toBeGreaterThan(stress);
+  });
+
+  it('with physical discipline switched off a failed mission costs no pain burst (P9d gate)', () => {
+    const s = swap();
+    startRemoval(s, real(), 'death');
+    s.missions.completed.push(mission('failed', s.day));
+    expect(remoteDayStep(s, real()).filter((e) => e.type === 'commander_punished')).toEqual([]);
   });
 
   it('a quota window of 7 days with no mission completed costs a reprimand, once per window', () => {

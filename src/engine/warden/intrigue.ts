@@ -246,7 +246,7 @@ export function hackStep(draft: CampaignState, ctx: EngineCtx, allyId: string): 
   draft.resources.plyx -= H.plyx;
   const events: EngineEvent[] = [];
   ls.intrigue.hack.step += 1;
-  const pain = painBurstId(ctx.registries);
+  const pain = painBurstId(draft, ctx.registries);
   const found = addSuspicion(draft, ctx, H.noise, 'hack', pain !== undefined ? { punishmentId: pain } : {}); // a discovery resets the progress itself
   if (found.some((e) => e.type === 'intrigue_discovered')) return [{ type: 'hack_step', step: 0, failed: true }, ...found, ...spendSlot(draft, ctx, day, slot)];
   events.unshift({ type: 'hack_step', step: ls.intrigue.hack.step, failed: false });

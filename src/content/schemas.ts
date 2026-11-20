@@ -1999,6 +1999,8 @@ export const CommanderPunishmentSchema = BaseEntrySchema.extend({
   defianceDelta: int.max(0),
   satisfactionDelta: int.min(0),
   effects: z.array(CommanderPunishmentEffectSchema).min(1),
+  /** P9d gate: the warden never picks it while a tag is switched off or among her own limits (`pickPunishment`). */
+  contentTags,
 }).strict().superRefine((p, ctx) => {
   p.effects.forEach((e, i) => {
     if (e.type === 'lose_slots' && e.min > e.max) ctx.addIssue({ code: 'custom', path: ['effects', i], message: 'min is at most max' });

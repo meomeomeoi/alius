@@ -50,6 +50,7 @@
   },
   {
     "id": "public_humiliation",
+    "contentTags": ["public_humiliation"],
     "label": "Public humiliation",
     "description": "AUTHOR TO WRITE: A reprimand in front of the squad. It costs standing with every soldier.",
     "severity": 3,
@@ -68,6 +69,7 @@
   },
   {
     "id": "pain_burst",
+    "contentTags": ["physical_discipline_shown"],
     "label": "Pain burst",
     "description": "AUTHOR TO WRITE: A burst through the implant. It hurts, and a weak body may not take it well.",
     "severity": 3,

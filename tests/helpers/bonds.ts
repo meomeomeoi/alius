@@ -14,6 +14,9 @@ import { eventPool } from '../../src/engine/world/expedition';
 import { seedWorld } from '../../src/engine/world/state';
 import { allowedHabits } from '../../src/engine/development/habits';
 import { allowedRules } from '../../src/engine/development/rules';
+import { buildCampaign } from '../../src/engine/setup';
+import { pickPunishment, wardenOf } from '../../src/engine/warden';
+import { unitSetup } from './world';
 
 // Importing this registers the P9d actions under test.
 import '../../src/engine/actions/bonds';
@@ -38,6 +41,7 @@ export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> =
   wagerStakes: { ids: ['gate_stake'], category: 'restraint' },
   developmentRules: { ids: ['gate_dev_rule'], category: 'restraint' },
   habits: { ids: ['gate_habit'], category: 'restraint' },
+  commanderPunishments: { ids: ['gate_cmd_punish'], category: 'humiliation' },
 };
 
 /** Turns categories on in place (and returns the state). */
@@ -104,6 +108,22 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
   // P14b: the rules and habits the development code would use (matchRules and checkHabits start from these)
   developmentRules: (state, reg) => allowedRules(state, reg).map((r) => r.id),
   habits: (state, reg) => allowedHabits(state, reg).map((h) => h.id),
+  // P13: what the warden would pick, at every severity and every turn of the rotation (a LEASHSWAP campaign with this state's consent)
+  commanderPunishments: (state, reg) => {
+    const out = buildCampaign({
+      commanderName: 'Vale', startId: 'start_vesper', crimeId: 'mutiny', units: ['Ann', 'Bea', 'Cat'].map((n) => unitSetup(n)),
+      mode: { kind: 'leashswap', deathRule: 'rewind_day', warden: { by: 'player', index: 1 } },
+    }, reg, { desireBondDefects: false, seed: 9 });
+    if (!out.ok) throw new Error(out.errors.join('; '));
+    const s = out.state;
+    if (state.content) s.content = structuredClone(state.content);
+    const seen = new Set<string>();
+    for (let n = 0; n < 8; n++) {
+      wardenOf(s)!.punishLog = Array.from({ length: n }, () => ({ punishmentId: 'reprimand', day: 1, severity: 1 }));
+      for (let sev = 1; sev <= 4; sev++) { const id = pickPunishment(s, reg, sev); if (id) seen.add(id); }
+    }
+    return [...seen];
+  },
   clocks: (state, reg) => {
     const s = structuredClone(state);
     s.world.seeded = false;

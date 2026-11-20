@@ -111,7 +111,7 @@ describe('hackStep', () => {
   });
 
   it('a discovered step costs a pain burst, resets the progress and carries the discovery consequences', () => {
-    const s = swap((x) => { x.leashswap!.intrigue.hack.step = 2; wardenOf(x)!.satisfaction = 70; });
+    const s = swap((x) => { x.leashswap!.intrigue.hack.step = 2; wardenOf(x)!.satisfaction = 70; x.content = { enabled: ['physical_discipline_shown'] }; });
     const stress = s.commander.stress ?? 0;
     const events = step(s, chancing(true));
     expect(types(events)).toEqual(expect.arrayContaining(['intrigue_discovered', 'warden_betrayed', 'commander_punished']));
@@ -127,8 +127,16 @@ describe('hackStep', () => {
   });
 
   it('the pain burst is applied even with no Leash authorization left', () => {
-    const s = swap((x) => { wardenOf(x)!.leashLeft = 0; });
+    const s = swap((x) => { wardenOf(x)!.leashLeft = 0; x.content = { enabled: ['physical_discipline_shown'] }; });
     expect(types(step(s, chancing(true)))).toContain('commander_punished');
+  });
+
+  it('with physical discipline switched off the discovery costs another punishment, never the pain burst (P9d gate)', () => {
+    const s = swap((x) => { x.leashswap!.intrigue.hack.step = 2; });
+    const events = step(s, chancing(true));
+    const punished = events.filter((e) => e.type === 'commander_punished');
+    expect(punished).toHaveLength(1);
+    expect(punished[0]).not.toMatchObject({ punishmentId: 'pain_burst' });
   });
 
   it('throws with the problem and changes nothing', () => {

@@ -173,6 +173,32 @@ describe('pickPunishment and punishRoll', () => {
     expect(pickPunishment(s, reg, 0)).toBeNull();
   });
 
+  it('a punishment tagged with a switched-off category, or with one of her own limits, is never picked (P9d gate)', () => {
+    expect(reg.commanderPunishments.get('public_humiliation')!.contentTags).toEqual(['public_humiliation']);
+    expect(reg.commanderPunishments.get('pain_burst')!.contentTags).toEqual(['physical_discipline_shown']);
+    const picks = (s: CampaignState): string[] => {
+      const seen = new Set<string>();
+      for (let n = 0; n < 6; n++) {
+        wardenOf(s)!.punishLog = Array.from({ length: n }, () => ({ punishmentId: 'reprimand', day: 1, severity: 1 }));
+        for (let sev = 1; sev <= 4; sev++) { const id = pickPunishment(s, reg, sev); if (id) seen.add(id); }
+      }
+      return [...seen];
+    };
+    const off = picks(swap());
+    expect(off).not.toContain('public_humiliation');
+    expect(off).not.toContain('pain_burst');
+    expect(off).toContain('confinement'); // severity 3 still has a punishment
+    const on = picks(swap((x) => { x.content = { enabled: ['public_humiliation', 'physical_discipline_shown'] }; }));
+    expect(on).toEqual(expect.arrayContaining(['public_humiliation', 'pain_burst']));
+    // her own limits hold even with the category on
+    const limited = picks(swap((x) => {
+      x.content = { enabled: ['public_humiliation', 'physical_discipline_shown'] };
+      x.squad.find((u) => u.id === wardenOf(x)!.unitId)!.bond = { leadStyle: 'balanced', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: ['public_humiliation'] }, publicity: 'known' };
+    }));
+    expect(limited).not.toContain('public_humiliation');
+    expect(limited).toContain('pain_burst');
+  });
+
   it('severity follows the defiance bands', () => {
     const pick = (defiance: number): string => {
       for (let seed = 1; seed < 200; seed++) {

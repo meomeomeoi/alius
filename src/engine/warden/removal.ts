@@ -190,7 +190,7 @@ export function remoteDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent
   const events: EngineEvent[] = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === 'failed' && m.outcomeDay === draft.day)) {
-    const id = painBurstId(ctx.registries);
+    const id = painBurstId(draft, ctx.registries);
     if (id !== undefined) events.push(...applyRemotePunishment(draft, ctx, id));
   }
   const since = draft.day - ls.remote.sinceDay;

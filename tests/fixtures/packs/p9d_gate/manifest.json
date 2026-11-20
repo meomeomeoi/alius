@@ -12,6 +12,7 @@
     "relationshipRuleTemplates": "relationshipRuleTemplates.json",
     "wagerStakes": "wagerStakes.json",
     "developmentRules": "developmentRules.json",
-    "habits": "habits.json"
+    "habits": "habits.json",
+    "commanderPunishments": "commanderPunishments.json"
   }
 }

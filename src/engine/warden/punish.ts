@@ -7,6 +7,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { injureCommander } from '../calendar';
 import { addCommanderStress } from '../special/commanderStress';
+import { contentAllowed } from '../bonds/content';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { wardenOf, type WardenState } from './state';
@@ -26,14 +27,16 @@ const isSuppress = (entry: Entry): boolean => effectsOf(entry).some((e) => e.typ
 
 /**
  * The punishment of this severity: entries of one severity take turns in registry order (by the number of punishments so far). A Leash
- * punishment needs an authorization (`leashLeft ≥ 1`); without one the next lower severity is tried. Null when nothing is left. Draws nothing.
+ * punishment needs an authorization (`leashLeft ≥ 1`); without one the next lower severity is tried. An entry tagged with a content category
+ * the player switched off, or with one of the warden's own limits, is skipped the same way (P9d). Null when nothing is left. Draws nothing.
  */
 export function pickPunishment(state: CampaignState, reg: Registries, severity: number): string | null {
   const w = wardenOf(state);
   const busy = state.scene !== undefined || state.combat !== undefined || state.expedition !== undefined;
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
     // a Leash punishment needs an authorization, and a suppression (the rest of the day) cannot be spent inside a scene, a fight or a run
-    const eligible = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy));
+    // P9d: never one tagged with a category the player switched off or with one of her own limits
+    const eligible = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy) && contentAllowed(state, reg, e, w?.unitId));
     // several entries of one severity take turns, by how many punishments there already are (no draw)
     if (eligible.length > 0) return String(eligible[(w?.punishLog.length ?? 0) % eligible.length].id);
   }
@@ -130,9 +133,13 @@ export function punishRoll(draft: CampaignState, ctx: EngineCtx, weight: number)
   return id === null ? [] : applyCommanderPunishment(draft, ctx, id);
 }
 
-/** The pain burst: the registry's punishment with an injury effect (read by effect, never by id). */
-export function painBurstId(reg: Registries): string | undefined {
-  return entries(reg).find((e) => effectsOf(e).some((x) => x.type === 'injury'))?.id as string | undefined;
+/**
+ * The pain burst: the registry's punishment with an injury effect (read by effect, never by id). Undefined while it is gated off
+ * (a switched-off category, or one of the warden's own limits): the caller then picks another punishment or none.
+ */
+export function painBurstId(state: CampaignState, reg: Registries): string | undefined {
+  const entry = entries(reg).find((e) => effectsOf(e).some((x) => x.type === 'injury'));
+  return entry && contentAllowed(state, reg, entry, wardenOf(state)?.unitId) ? (entry.id as string) : undefined;
 }
 
 /**
