@@ -192,6 +192,8 @@ export interface Unit {
   bond?: Bond;
   /** P10b: the `handFonts` entry her notes are written in (absent = the hashed default of her id; set by `squad/set_hand`). */
   hand?: string;
+  /** P10c: the `quartersStyles` entry of her quarters (absent = the hashed default of her id; set by `squad/set_quarters`). */
+  quarters?: string;
   /** P14b: what she has become since joining, on top of the imported profile (absent = nothing yet). Read through `development/profile`. */
   development?: Development;
   /** P14b: how well she reads what happens around her (from the import; absent = `mid`). A profile field. */

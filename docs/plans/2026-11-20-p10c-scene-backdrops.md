@@ -94,14 +94,14 @@
 
 **Files:** `src/content/{types,schemas}.ts`, `src/engine/state/types.ts`, `src/engine/backdrops.ts`, `src/engine/actions/immersion.ts`, `src/engine/dispatch.ts`, `tests/engine/backdrops.test.ts`.
 
-- [ ] Write failing tests (`tests/engine/backdrops.test.ts`, registries built in the test):
+- [x] Write failing tests (`tests/engine/backdrops.test.ts`, registries built in the test):
   - `quartersOf`: the hashed default is stable and in range; a stored valid `unit.quarters` wins; an unknown stored id falls back to the default; a grunt or unknown unit → `null`; an empty registry → `null`.
   - `sceneBackdrop`: slot mapping (morning/afternoon → `background`; evening → `backgroundEvening` slot-specific, else `background` not slot-specific; night likewise); a `perUnit` location with an owner puts her style first and the location's files after; no owner → the location's files; nothing declared → `[]`; duplicates removed.
   - `squad/set_quarters`: sets `unit.quarters`; rejects an unknown style, an unknown unit, a grunt, a bad payload; it is allowed during an expedition.
   - Schemas: a location with `backgroundEvening`, `floor`, `ceiling` parses; a `quartersStyles` and a `backdrops` entry parse; a surface without `surface`/`finish` is rejected.
-- [ ] Run them, see them fail.
-- [ ] Implement: `LocationSchema` gains `backgroundEvening`, `floor`, `ceiling` (strings); `QuartersStyleSchema` `{ id, name, summary, background, floor?, ceiling?, description? }`; `BackdropSchema` `{ id, kind: 'surface' | 'frame' | 'place', file, surface?, finish?, slots? }` with a refine (a surface needs `surface` and `finish`); both registries added to the registry list and `registrySchemas`; `Unit.quarters?: string`; `src/engine/backdrops.ts` exports `quartersOf`, `sceneBackdrop` → `Array<{ file: string; slotted: boolean }>`, `slotLight(slot)` → `'day' | 'evening' | 'night'`; `squad/set_quarters { unitId, styleId }` beside `squad/set_hand`, and its prefix in `EXPEDITION_OPEN_PREFIXES`.
-- [ ] Tests pass, `npm run typecheck` clean. Tick, commit.
+- [x] Run them, see them fail.
+- [x] Implement: `LocationSchema` gains `backgroundEvening`, `floor`, `ceiling` (strings); `QuartersStyleSchema` `{ id, name, summary, background, floor?, ceiling?, description? }`; `BackdropSchema` `{ id, kind: 'surface' | 'frame' | 'place', file, surface?, finish?, slots? }` with a refine (a surface needs `surface` and `finish`); both registries added to the registry list and `registrySchemas`; `Unit.quarters?: string`; `src/engine/backdrops.ts` exports `quartersOf`, `sceneBackdrop` → `Array<{ file: string; slotted: boolean }>`, `slotLight(slot)` → `'day' | 'evening' | 'night'`; `squad/set_quarters { unitId, styleId }` beside `squad/set_hand`, and its prefix in `EXPEDITION_OPEN_PREFIXES`.
+- [x] Tests pass, `npm run typecheck` clean. Tick, commit.
 
 ### Task 2: The assets and the data
 

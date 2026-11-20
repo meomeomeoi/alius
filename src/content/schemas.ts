@@ -495,7 +495,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P14b
   'appraisal_recorded', 'appraisal_revised', 'development_review', 'development_shift', 'development_moment', 'development_fact', 'habit_formed',
   // P10b
-  'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
+  'door_said', 'door_replied', 'hand_set', 'quarters_set', 'note_left', 'note_read', 'notes_expired',
   // P13
   'leashswap_started', 'warden_assigned', 'warden_revealed', 'warden_agenda_set', 'expectation_learned',
   'warden_override', 'override_answered', 'override_compromise', 'override_argue_roll',
@@ -758,9 +758,13 @@ export const LocationSchema = BaseEntrySchema.extend({
   name: str,
   summary: str,
   ascii: z.array(z.string()).min(1).max(12),
-  /** Asset paths relative to the extension folder; v1 ships none. */
+  /** Asset paths relative to the extension folder (P10c: `background` is the day file, the others the slot's own; read through `sceneBackdrop`). */
   background: str.optional(),
+  backgroundEvening: str.optional(),
   backgroundNight: str.optional(),
+  /** P10c: the floor and ceiling finish (a `backdrops` surface `finish`), for P17c's low and high views. */
+  floor: str.optional(),
+  ceiling: str.optional(),
   /** One location per unit (`quarters_unit`). */
   perUnit: z.boolean().optional(),
   /** Slots the location is available in; absent = all. */
@@ -2166,6 +2170,32 @@ export const HandFontSchema = BaseEntrySchema.extend({
 export type HandFontEntry = z.infer<typeof HandFontSchema>;
 registrySchemas.handFonts = HandFontSchema;
 
+// ---------------------------------------------------------------------------------------------
+// P10c: scene backdrops
+
+/** A room style of a soldier's quarters: her quarters scene shows `background`; the model reads `summary`. Read by registry order (`quartersOf`), never by id. */
+export const QuartersStyleSchema = BaseEntrySchema.extend({
+  name: str.max(40),
+  /** One line of what the room looks like, for the scene header the model reads. */
+  summary: str.max(200),
+  description: str.max(DESCRIPTION_MAX),
+  background: str,
+  floor: str.optional(),
+  ceiling: str.optional(),
+}).strict();
+registrySchemas.quartersStyles = QuartersStyleSchema;
+
+/** Art with no reader in 0.1 (P17c reads it): floor and ceiling surfaces by `finish`, cut-out frames, places of their own. Hidden. */
+export const BackdropSchema = BaseEntrySchema.extend({
+  kind: z.enum(['surface', 'frame', 'place']),
+  file: str,
+  surface: z.enum(['floor', 'ceiling']).optional(),
+  finish: str.optional(),
+  /** Slots a surface suits (a night sky); absent = all. */
+  slots: z.array(slotEnum).min(1).optional(),
+}).strict().refine((e) => e.kind !== 'surface' || (e.surface !== undefined && e.finish !== undefined), 'a surface needs `surface` and `finish`');
+registrySchemas.backdrops = BackdropSchema;
+
 /** P10b §4: when a stored hand note may be written. All optional, all must hold; `trigger` is when it is considered (default `daily`). */
 export const HandNoteWhenSchema = z.object({
   /** The device access level she has (P9c, 0–4) at least. */
@@ -2234,6 +2264,8 @@ export const DESCRIBED_REGISTRIES = [
   'headStartMoments',
   // P14b
   'developmentAxes', 'developmentRules', 'habits',
+  // P10c
+  'quartersStyles',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------

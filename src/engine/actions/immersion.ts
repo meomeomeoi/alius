@@ -15,6 +15,16 @@ registerAction('squad/set_hand', (draft, payload, ctx) => {
   return [{ type: 'hand_set', unitId: unit.id, handId: payload.handId }];
 });
 
+// P10c: the room style of her quarters (cosmetic: nothing is remembered).
+registerAction('squad/set_quarters', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || typeof payload.styleId !== 'string') throw new Error('squad/set_quarters needs { unitId, styleId }');
+  const unit = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit || unit.kind !== 'named') throw new Error('Only a named soldier has quarters of her own.');
+  if (!ctx.registries.quartersStyles.has(payload.styleId)) throw new Error(`squad/set_quarters: unknown style "${payload.styleId}"`);
+  unit.quarters = payload.styleId;
+  return [{ type: 'quarters_set', unitId: unit.id, styleId: payload.styleId }];
+});
+
 // Her daily note: after the personal step (the import order decides: `app.ts` imports `actions/personal` first).
 registerDayEndStep('dm_rumors', notesDayStep);
 
