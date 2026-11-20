@@ -1,6 +1,6 @@
 # P16 — Practices: Tasks, Her Discipline, Demonstrations, Service, Denial, Holding
 
-**Status: spec.** Release 0.2 (post-release). **Depends on:** P15a (blocking, moments, contact physics), P15 (the dynamic: hold, frames, domains, tracks, compromat), P14 (generation envelope), P9 (demands, refuse path, punishments as data), P9b (audience standing, outside perception), P9c (bookings, intercepts, obedience), P9d (rules, Want, content gate), P10 (hub whereabouts, voices, `visualFlags`), P7 (non-body routes), P7a. **Read:** overview; P15; this file; the **Implemented as** of P9, P9c, P9d; `docs/content/lore.md`.
+**Status: spec.** Release 0.2 (post-release). **Depends on:** P14c (temperament), P15a (blocking, moments, contact physics), P15 (the dynamic: hold, frames, domains, tracks, compromat), P14 (generation envelope), P9 (demands, refuse path, punishments as data), P9b (audience standing, outside perception), P9c (bookings, intercepts, obedience), P9d (rules, Want, content gate), P10 (hub whereabouts, voices, `visualFlags`), P7 (non-body routes), P7a. **Read:** overview; P15; this file; the **Implemented as** of P9, P9c, P9d; `docs/content/lore.md`.
 
 **Analysis tool (P7a):** every new stat, chip, option and card carries `data-analyze` with a glossary entry or registry `description`; live values get a provider through `Knowledge`. **P14:** every generation registers a site.
 
@@ -85,7 +85,7 @@ Category `service`.
 
 ## 7. Denial
 
-Category `denial`. The commander's inner state is **not** a meter (ruling E): denial lives as a **rule** and as **scene conditions** (P17).
+Category `denial`. The commander's feelings are **not** a meter (ruling E as revised in P15 §16.1): denial lives as a **rule** and as **scene conditions** (P17).
 - Rule template `ask_permission` (tagged `denial`) and variants; while it holds, scenes with her and DMs show a chip **`[ASK PERMISSION]`**; her answer is decided by the engine from style, favour, Want and frame (`grant` / `deny` / `make you wait` (a deadline) / `earn it` (a task)) and sent as a directive.
 - A slip (`intent_extract`: **`denial_broken`**) → her discipline (§4).
 - Denying relieves part of **her** Want (it satisfies her too: `TUNING.practice.denialRelief`).
@@ -128,6 +128,109 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 - **§8 (holding)**: `practices.held.sensory` and the hold's whereabouts become P15a blocking (`anchor`, `worn` with `perception` effects); "forgot" generalises to P15a §9.2.
 - **Memory check:** speech-option slips and posture slips are bookkeeping that feeds her discipline (§4), which already writes its own facts; nothing new is remembered.
 
+## Revision of 2026-11-20 (design session)
+
+Added after the 2026-11-20 design session (the player who mostly accepts). Where it conflicts with the sections above and the 2026-11-19 depth revision, this section wins. The commander's disciplines, postures, mini-games and training are **P16b**; Regard, motives, the new styles and `fairness` are P15 §16.
+
+### R.1 The consent ladder
+
+The **form** of an accept scales with the practice's `stakes`, so that the hardest accepts are also the heaviest to give:
+
+| Stakes | Form of the accept |
+|---|---|
+| `trivial` | the button |
+| `minor` | the button, with the cost shown on the card before accepting (slots, resources, what lapses), in bands |
+| `major` | a yes in the commander's own words in the scene or DM (`intent_extract` reports `practice_accepted { taskId }`; the card's ACCEPT only opens the input), the cost, and who will know (visibility shown) |
+| `severe` | all of the above, plus what it closes for good (irreversibility) or what it hands over (R.6), plus the drawn signature (P17e §4) |
+| sealed | blind: accepted before the terms are read (R.8) |
+
+- The cost is always visible before the accept, except for a sealed card, where not knowing is the price.
+- **The record (a mirror, not a judgment).** Every `severe` and sealed accept writes a dated line in her hand into the CMDR file ("Signed blank. Day 34."; wording `AUTHOR TO WRITE`, generated from the practice summary, never her text). The game comments on nothing; it remembers.
+- Refusing keeps the costs of §3–§4; the ladder changes nothing for a refusal.
+
+### R.2 Physical discipline
+
+Her discipline gains an interactive form for physical punishments (gate: `physical_discipline_shown` to show it at all; `pain_rough` for implements at severity ≥ 4):
+
+- **Implement** (registry `implements`: `{ id, tags, force, mark: { kind, slots }, sound, description }`): her palm, her slipper or the sole of her boot, a belt, a ruler, a riding crop, a cane, her glove.
+- **Target:** face (the slap, R.3), palms, soles, thighs, back, buttocks (registry tags gate each).
+- **Posture** (P16b presets): `bent_over`, `chest_down_hips_up`, `over_her_knee` (contact), `kneel_present` (palms), `kneel_upright` (the slap).
+- **Count:** announced, hidden (R.9), or **aloud**: the player types the numbers in her rhythm; a miscount restarts the count with `ritual` and `drill`, adds strokes with `cruel` and `vindictive`.
+- **Rules of conduct** set by her: do not flinch, keep the posture, thank after each, eyes on her.
+- **How it plays.** Strokes come in her rhythm with cues from the cue pool (P15a §16.1). Each stroke gives the posture's points a **flinch impulse** (like the gaze's temptation, P16b §7) to be damped with a correction before it crosses the threshold; plus the count and the thanks typed. Pain is a discipline of the commander (P16b §2) and grows with experience; the commander's `endurance` body stat adds to it (P7), and practice is the explicit non-body route.
+- **Marks:** `her_marks` with a duration by implement; seen by the squad (P15 §15.13: +30).
+- **Style:** `ritual` names the number, a ceremony before and after (R.4); `cold` fast and silent, no count; `cruel` hides the number and resets it at a fault; `affectionate` rare, then holds the commander; `clinical` changes implements and writes down reactions; `playful` warms up, teases, may add one; `drill` counts with the commander, corrects the posture between strokes; `regal` has the commander ask for it and thank in praise; `vindictive` names it a sentence and counts it against the "term".
+
+### R.3 The slap (a QTE)
+
+- **Telegraph:** she raises her hand (a cut-in and a sound); a short window by style (`TUNING.practice.slapWindow`, 300–700 ms).
+- **Input:** one key, "brace".
+- **Outcomes:**
+  - **no reaction in time** — normal and realistic: a full mark, she is content;
+  - **braced and still** (pressed inside the window, the posture holds) — the ideal: a full mark, favour +, Regard + (dignity, P15 §16.3);
+  - **flinched** (too early, moved, turned away, pressed on a feint) — a smaller mark or none, and her displeasure.
+- **Feints** come with her `swing` skill (P15a §16.10).
+- **Style:** `cold` repeats it in silence; `cruel` feints and slaps again after a flinch; `ritual` demands stillness and a flinch resets the count; `affectionate` slaps softer after a flinch; `playful` laughs and feints; `clinical` notes the reaction; `drill` names the fault; `regal` expects thanks; `vindictive` adds it to the sentence.
+- Often unannounced, as an answer to a wrong word under a speech rule (P17b §3). A slap before subordinates needs `public_humiliation`, lowers Regard (P15 §16.3) and feeds the nickname (P15 §16.5).
+
+### R.4 Ceremony, self-punishment, the count
+
+- **Ceremony** (optional; often with `ritual`, `drill`, `regal`, `vindictive`; never with `cold`): fetch the implement, ask for the punishment formally, **name the number** (a number she finds too low is doubled by `cruel` and `vindictive`), take the posture, the execution, corner time (`facing_wall`), the thanks, the reconciliation. Each step is a scene beat with a check (posture, typed lines).
+- **Self-punishment** on her order: "write it a hundred times" (typed under dictation, P17c §1; errors count), "hold it for N minutes" (a P16b posture hold without her).
+- **The number** is announced or hidden by style (R.9).
+
+### R.5 Anticipation
+
+The highest service: doing it before she asks. A service activity started (or offered in a scene) while her current activity has a need it fits (her activity's tags, her tells, her expectation profile: the coffee before she asks for it, the boots unlaced as she sits) counts as **anticipated**: her verdict rises one step, favour +, Regard +1, motive `her` +. It is read by the engine from the blocking and the activity pair (P15a), not from the model. Unasked care in general (a free slot spent on her unseen) is P16b §10.
+
+### R.6 Voluntary handover
+
+A chip in scenes and DMs with a holder, **`[GIVE HER …]`**, with a composer like the offer of P15 §15.7:
+- **the device** for a day: every DM goes through her (a standing P9c level-4 intercept for that day);
+- **the key** to the commander's quarters: she may enter at any slot (a whereabouts reason, P10);
+- **rations** (P17b §5) or **sleep**;
+- **the calendar** for N days: she fills the commander's slots (her hand on HOME); the player lives them.
+
+It is the commander's initiative and a `severe` rung of the ladder (R.1). Her reading decides what it means (P15 §16.3–§16.4): "it cost a lot, and it was done; I respect that" after resistance, "cannot do anything without me" after a commander who always yields; Regard by her style. Taking it back before the term is a refusal at the handover's stakes.
+
+### R.7 The choice to her; she speaks for the commander
+
+- **`[ASK HER]`** on every choice card the commander decides (P6 dilemmas, P9b ballots the commander casts, expedition choices): her pick comes back and the commander confirms it. At `rule` with the `command` domain she pre-selects and the commander can only confirm or defy (P13 machinery).
+- **She speaks for the commander.** In a demonstration (§5), and when her `talkativeness` is not `silent`, others address her and she answers for the commander; the commander's input turns to gestures (P17c §1).
+
+### R.8 Sealed practices
+
+A task or a punishment may come **sealed**: the card shows an envelope (with `cruel` and `vindictive` nothing else; with others the stakes band); accepting opens it; refusing refuses the envelope at stakes `major`. `practice_generate` runs as usual; the card hides `text` and `summary` until the accept. Often with `cruel`, `playful`, `regal`, `vindictive`; rarely `ritual`; `affectionate` adds a hint.
+
+### R.9 No duration
+
+Holds, tasks and punishments may run "until I decide": no timer, no count; she alone knows `untilSlot` or the number (a hidden sentinel). It works with the moved goal (R.10) and with the marathon (P15a §16.3). Depends on her: `cruel`, `possessive`, `vindictive` often; `ritual` and `drill` almost never (they name terms).
+
+### R.10 Unfairness
+
+Read by `fairness` (P15 §16.7), weighted by style and mood (`volatility`, P14c):
+- **Punishment without guilt:** she lost at cards, another soldier failed, a rule was changed in secret, or a rule that does not exist was "broken". Accepting it knowing it is unfair is read by her (motive, Regard by style).
+- **Double standards:** she breaks what she demands (late, rude, in the commander's seat); pointing it out is a moment with its cost; silence is noticed too.
+- **A cancelled reward:** "good. Not good enough": she really disliked the result, or she enjoys it (by style).
+- **The moved goal:** "one more minute" at the end of a hold; works with R.9.
+
+### R.11 Memory check
+
+- Physical discipline executed: the marks are the existing `knows_dynamic` / suspicion sites; a slap before subordinates → a `memoryRules` entry (audience: those present; spread none; importance mid).
+- A handover → a `memoryRules` entry (audience: the pair, plus whoever sees it: the key used, a DM read).
+- Sealed opened, the count, the cancelled reward, the moved goal: bookkeeping. A punishment without guilt → her fact (`hiddenFromCommander: true`: she knows it was unfair).
+- The CMDR record lines of R.1 are a P3b fact about the commander (audience: the holder), not a chronicle line.
+
+### R.12 TUNING draft (2026-11-20)
+
+| what | value |
+|---|---|
+| slap window (ms) | `affectionate` 700, `regal` 650, `ritual` 550, `drill` 550, `cold` 500, `clinical` 500, `possessive` 450, `playful` 450, `obsessive` 300–700, `vindictive` 350, `cruel` 300; feints from `swing` 2: 10 % per level |
+| flinch impulse | stroke force × 10 points of drift on the posture's points, minus pain discipline × 2 |
+| unfairness per day-step (a holder at ≥ `play`) | `fair` 0, `strict` 0.02, `capricious` 0.08, `unfair` 0.15 |
+| sealed share of issued practices | `cruel`, `vindictive` 0.25, `playful`, `regal` 0.15, others 0.05, `ritual` 0.02 |
+| no duration share | `cruel`, `possessive`, `vindictive` 0.3, others 0.1, `ritual`, `drill` 0 |
+
 ## Acceptance criteria
 
 1. Without an eligible holder at frame ≥ `play`, nothing runs and seeded tests stay byte-identical.
@@ -139,6 +242,7 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 7. Service protocol, routine, verdicts and favour; denial rule, permission answers, slips; the hold with whereabouts, lapses, sensory mode, the alarm decision and its three outcomes.
 8. The commander's initiative: all three answers by profile.
 9. Every new element carries `data-analyze`.
+10. (R, 2026-11-20) The consent ladder sets the form of every accept by stakes, shows the cost before it (except sealed) and writes the CMDR record for severe and sealed accepts; physical discipline and the slap QTE play as specified with marks and style reactions; ceremony, self-punishment and the count work; anticipation is read by the engine; the handover, `[ASK HER]` and speaking for the commander work; sealed practices and unknown durations hide what they hide (sentinels); unfairness follows `fairness`.
 
 ## Open decisions (author)
 

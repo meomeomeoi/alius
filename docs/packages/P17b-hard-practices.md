@@ -28,7 +28,7 @@ The harder end of the dynamic, for players who enable it: four new content categ
 
 **Object time:** a state with a timer (part of a scene to several slots): the player's free text is limited to **actions without speech** (the rule shows above the input; P17c gestures), each exchange moves Strain (pose, stillness, silence), a slip goes to her discipline, the POV directive limits narration to what the commander perceives, and everyone present gets "treat the commander as an object".
 
-**Why she does it, by style:** `cold` (indifference), `clinical` (an endurance test, noted in her journal), `cruel` (mockery before others), `ritual` (a formal place for the object), `affectionate` (a strange intimacy: "you are my thing, and that is tender"), `obsessive` (her thing that nobody else may touch).
+**Why she does it, by style:** `cold` (indifference), `clinical` (an endurance test, noted in her journal), `cruel` (mockery before others), `ritual` (a formal place for the object), `affectionate` (a strange intimacy: "you are my thing, and that is tender"), `obsessive` (her thing that nobody else may touch), `drill` (a drill of stillness, timed), `regal` (the furniture of her court, before visitors), `vindictive` (part of the sentence).
 
 **Return to a person:** a ritual in which she acknowledges the commander again: stress relief, favour, sometimes a privilege. Object time without a return accumulates stress and wears Trust: the practice has an arc, not only a cost.
 
@@ -103,6 +103,19 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
   - the `gulp` physics (P15a §9.1) with the chain "spilled → `tongue_work` on the floor and her check".
 - **Order is never fixed.** Summons, rituals and their sequence are per pair (profile, style, appetite); "boots → sweat → mark after every run" is an example of what *may* grow into a habit (P17e), never a scripted sequence.
 - **Memory check:** these events are strong compromat (P15 §11, high `importance`); rumours outside the squad only with `public_humiliation`; `memoryRules` entries for marking seen by others (audience: witnesses) and for a blackout (P15a §13).
+
+## Revision of 2026-11-20 (design session)
+
+Added after the 2026-11-20 design session. Where it conflicts with the sections above, this section wins. Each entry is gated by its categories and offered by holders whose profile fits; none is a default.
+
+- **Her socks in the commander's boots.** A day task: the commander wears her worn items under the uniform all day (her socks inside the boots, her training shirt under the jacket; `worship`, `bodily_fluids` for sweat). Every briefing and every meal is a P17d noticing roll ("you smell of her"); the stimulus layer (P15a §16.8) runs all day at low intensity. A risk the commander carries, not her.
+- **Air for answers** (interrogation under smothering; `worship` + `restraint`, deeper with `breath_play`). She questions the commander under her armpit or thighs; air only for an answer. A minimal lie check without a separate interrogation engine (the general mechanic stays on the roadmap, overview §10): `intent_extract` marks an answer `evasive` or `contradicts { factId }` against facts **she** knows (P3b `Knowledge` for her); an evasion or a contradiction costs air (the next window shut) and goes on her list. Air becomes the currency of truth.
+- **The squad's boots.** A rare outcome of serving the squad (§8): after a run the commander cleans every woman's boots; each has her own scent and her own dirt (stimulus kinds per woman, P15a §16.8), so the stimulus stages are tested on each; the Regard of the whole squad moves at once (P15 §16.3).
+- **Rare turns of a deep dynamic** (by the story, her style and how far the dynamic has gone; never scheduled):
+  - **Field gear stays on.** After a run she stays in her field clothes for days on purpose (the "did not wash on purpose" term of P17d, extended to days); the daily service is boots, socks, feet and armpits without her shower; scent bands climb day by day to `overwhelming`.
+  - **The pillow.** For a week the commander sleeps face in her boots or her worn socks. Afterwards the conditioned reaction (P17d, revision of 2026-11-20) is literal: without her scent sleep does not come (a sleepless status, P7; commander stress, P12).
+- **Breath by her rhythm** (`breath_play`). For a whole session there are no taps (`holdsUntil` ≥ `limit`): the commander breathes only when she lifts or breathes out onto the face; her `seal` skill is high (P15a §16.10); blackout is a real risk (P15a §9.5). The stop word always ends it (P15a §9.4).
+- **Memory check:** the socks day noticed by someone → P17d's existing discovery site; an `evasive` / `contradicts` answer → her fact (`hiddenFromCommander: true`); the squad's boots → a `memoryRules` entry (audience: the squad present; importance mid); the rare turns → a `memoryRules` entry each (audience: the pair; importance high); breath by her rhythm → P15a §13 (blackout).
 
 ## Acceptance criteria
 

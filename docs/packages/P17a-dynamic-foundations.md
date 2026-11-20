@@ -19,7 +19,7 @@ v1 has no unit-to-unit axes (overview §2). The dynamic needs a narrow version: 
 
 ## 2. The contract
 
-- **Who writes one:** not everyone. A holder with `leadStyle: dominant` and a style pair containing `ritual`, `cold`, `possessive` or `obsessive`, at frame ≥ `play`. Others never propose it.
+- **Who writes one:** not everyone. A holder with `leadStyle: dominant` and a style pair containing `ritual`, `cold`, `possessive`, `obsessive`, `drill` or `vindictive` (2026-11-20; `regal` too, with `leadStyle: dominant`), at frame ≥ `play`. Others never propose it.
 - **Content:** clauses from a closed vocabulary, generated in her words (`practice_generate`, `kind: 'contract'`): duties (protocol, routines, reports), prohibitions (others, places, words), rewards (privileges, §3), penalties (her discipline ladder, P16 §4, with a fixed severity per clause), limits (what she promises not to do; recorded as facts the directive enforces), term (until revoked / a date / the vow).
 - **Signing** is a scene; `[SIGN] [NEGOTIATE] [REFUSE]`; negotiation changes clauses through `compromise_reached`. A signed contract can be the `play → role` milestone or the vow itself (P15 §4, data decides).
 - **Amendments** are proposed by either side and signed again (a scene). **Breaking a clause** costs exactly its stated penalty: no surprise numbers.

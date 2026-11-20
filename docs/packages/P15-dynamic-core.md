@@ -1,6 +1,6 @@
 # P15 — The Dynamic: Hold, Frames, Domains, Exit
 
-**Status: spec.** Release 0.2 (post-release). **Depends on:** P15a (blocking, moments, contact physics), P11b (head start: §15.14), P3 (relationship graph, facts, intents), P9 (Impunity, demands, punishments), P9b (hierarchy, outside perception), P9c (device access, bookings, secrets), P9d (bond profile, content categories, lead, Want, rules), P13 (LEASHSWAP: the countermand and co-sign machinery reused by the command domain), P14 (generation envelope), P7a. **Read:** overview; this file; the **Implemented as** of P9, P9b, P9c, P9d and P13; `docs/content/lore.md` (§0).
+**Status: spec.** Release 0.2 (post-release). **Depends on:** P14c (temperament, the women's own lives: §16), P15a (blocking, moments, contact physics), P11b (head start: §15.14), P3 (relationship graph, facts, intents), P9 (Impunity, demands, punishments), P9b (hierarchy, outside perception), P9c (device access, bookings, secrets), P9d (bond profile, content categories, lead, Want, rules), P13 (LEASHSWAP: the countermand and co-sign machinery reused by the command domain), P14 (generation envelope), P7a. **Read:** overview; this file; the **Implemented as** of P9, P9b, P9c, P9d and P13; `docs/content/lore.md` (§0).
 
 **Analysis tool (P7a):** every new stat, chip, option and choice card carries `data-analyze`, has a glossary entry or registry `description`, and live values get an analyze provider that reads through `Knowledge`. **P14:** every new generation registers a site.
 
@@ -36,7 +36,7 @@ bond.practice {
   style:    { primary: Style, secondary?: Style }
   audience: 'private_only' | 'select_few' | 'show_off' | 'indifferent'
 }
-Style = 'cold' | 'playful' | 'cruel' | 'ritual' | 'possessive' | 'affectionate' | 'clinical' | 'obsessive'
+Style = 'cold' | 'playful' | 'cruel' | 'ritual' | 'possessive' | 'affectionate' | 'clinical' | 'obsessive' | 'drill' | 'regal' | 'vindictive'   // the last three: §16.6
 ```
 
 - **`as` vs `witness` are independent**: she can crave a practice and still despise seeing another woman do it (jealousy of the practice, not only of the person; this works without NPC↔NPC axes because the reaction lands on the commander and on her own standing).
@@ -418,6 +418,118 @@ Agreed in the design session 2026-11-19. P11b lets a campaign begin as if the co
 
 State: P11b's `SetupResult.headStart.dynamicUnderway` (`true` = all eligible, or a list of unit ids). Memory check: the probe-like recap moments use P11b's `head_start_moment` rule; nothing else is remembered.
 
+## 16. Revision of 2026-11-20 (design session)
+
+Added after the 2026-11-20 design session. Where it conflicts with §1–§15, this section wins. The commander's craft (disciplines, postures, training, records) is **P16b**; the women's own lives and temperament are **P14c**; the physics revision is P15a §16; the practice revision is P16 §R.
+
+### 16.1 Ruling E, revised
+
+The old ruling ("no engine meter for the commander's inner state") becomes:
+
+> **No meter of the commander's feelings.** The engine tracks the commander's bodily responses (tolerance, reflex, skills: P15a §16.8, P16b) and a record of deeds (choices, the stages of a trajectory, records, accepts); thoughts and feelings are written by the player alone; the game only shifts the language of perception (P15a §16.8).
+
+Every reference to "ruling E" or "no inner meter" (P15a §9, P16 §7, P17c §3, P17e §6) reads this wording. The engine never writes a line that tells the player or the model what the commander feels.
+
+### 16.2 Design stance: the player who accepts
+
+The dynamic is built for a player who mostly accepts. Weight comes from what an accept costs and how it is carried out, never from a pressure to refuse:
+
+- **An accept is paid, never punished.** Its currencies: free time (slots), control (P16 §R.6–R.7), knowledge (sealed practices, no duration: P16 §R.8–R.9), reversibility, authorship (own words, the drawn signature), visibility (who will know).
+- **The consent ladder** (P16 §R.1) scales the form of an accept with its stakes; the hardest accepts are blind, irreversible, signed by hand, before witnesses, with the calendar handed over, and the record keeps them.
+- **The effort lives in execution** (P16b): the player learns together with the commander; difficulty grows with skill at a pace set by her style.
+- **Shame without a narrator** (§16.5): the world reacts through people and documents, never through a voice of the game.
+
+### 16.3 Regard
+
+Respect for the commander **as a person**, separate from Trust (the commander as commander), Affinity (warmth) and hold (how much she holds). Low Regard is not hatred: it is another form of relating to the commander (§ forms below).
+
+- **State:** `Relation.regard?: number` 0–100, for **every named unit** toward the commander (non-holders read the dynamic too). Absent = the start value, computed once: 50 + the first-impression offset (P7 presence × her tastes, scaled) − 10 when she `knows_crime` and the crime's `valueReactions` are negative for her.
+- **Hidden.** Bands (draft names `AUTHOR TO WRITE`: *esteem* 80+, *respect* 60–79, *neutral* 40–59, *low* 20–39, *none* < 20) are never shown as a meter; the player reads her tone and behaviour. Analyze answers through `Knowledge` with what the commander could notice; immersive mode hides even that. A sentinel in `tests/fixtures/analyze/hidden.ts`.
+- **What lowers it — the depth of an act.** Almost always and for almost everyone: each act she takes part in or sees lowers it by the act's humiliation level (P16b posture humiliation with its situational modifiers; a practice's tier and stakes; a contact's tags) × her style factor, down to her style's floor. A collar and "sit on me" for the sake of discipline does not raise the commander in a `ritual` or `cold` holder's eyes; it lowers it.
+- **What raises it:**
+  - **cost** — an act that came after resistance on that axis (her reading's `readiness` ≤ 0: "it cost a lot, and it was done; I respect that"); the same act from a commander who always yields at once reads "cannot do anything without me";
+  - **mastery** — a record in fiction time, a `pleased` verdict at a high tier, "held an hour" (even `cold` respects it);
+  - **dignity** — composure under the practice: a braced slap, no begging before the end, no slip, no cheat caught;
+  - **value outside the dynamic** — won runs under the commander's orders, P9b feats, help with her own goal and quiet meetings (P14c), a kept promise.
+- **Form, not size: style and motive.** Her style (and her reading of the motive, §16.4) decide the **form** of low Regard, which her directive carries as a tone:
+
+| Style | Form of low Regard | Speed | Floor |
+|---|---|---|---|
+| `ritual` | a thing in its proper place | normal | 0 |
+| `cold` | indifference | fast | 0 |
+| `cruel` | contempt, enjoyed | fast | 0 |
+| `playful` | a toy | normal | 10 |
+| `clinical` | a specimen | slow | 10 |
+| `affectionate` | tender condescension, a pet | slow | 30 |
+| `possessive` / `obsessive` | "mine" — Regard barely matters | very slow | 35 |
+| `drill` | a recruit who must improve (rises strongly with growth, falls with stagnation) | normal | 0 |
+| `regal` | a courtier at her feet (praise matters) | normal | 0 |
+| `vindictive` | a convict serving a sentence (rises slowly as the sentence is served with dignity) | slow | 0 |
+
+- **Effects.** The tone line of `dynamic:<unitId>` and of every named unit's block; the weights of aftermaths (low → `cold_contempt`, `blackmail`; high → `return_offer`, `grief`); witness reactions and the shame mechanisms (§16.5); the nickname's tone. **Regard does not change hold gains or frame transitions.**
+- Events: `regard_changed` (bookkeeping), `regard_band_changed`.
+
+### 16.4 Motive, extended
+
+The motive part of the commander's position (§15.2) grows from three weights to five, read from tone, what the commander asks in return, declarations and deeds:
+
+| Motive | Read from |
+|---|---|
+| `order` | belief in hierarchy and discipline: keeping protocol unasked, "rules are rules", tone `sincere` on duty |
+| `fear` | yielding right after a threat, an enforcement or a slap; tone `flat` under pressure |
+| `her` | love: unasked care (P16b), yielding to her mood, declarations about her |
+| `process` | the act itself: asking for practices, the stimulus trajectory toward `craving` (P15a §16.8) |
+| `gain` | what is asked in return, tone `transactional` |
+
+The region table of §15.2 reads `m.dynamic` as the larger of `order` and `process`: `dutiful` needs `order` largest, `hungry` needs `process` largest; a new region **`cowed`** (draft name) is tested after `elusive`: `fear` is the largest weight. `cold` and `ritual` despise `cowed`; `cruel` and `vindictive` enjoy it without respect; `affectionate` worries.
+
+### 16.5 Shame without a narrator
+
+Principles: no voice of the game ever judges; shame comes from a particular person or a document; profiles keep it ambivalent (a `drawn` witness envies or is curious); the harder the act, the quieter the reaction; shame is not a penalty (it moves Regard and tone, almost no numbers).
+
+- **Disappointment instead of anger.** A named woman who is not the holder, whose Trust was ≥ 60 (the one who believed in the commander) and whose Regard falls a band: she does not argue; she stops coming for advice (her small habits of respect, P14b habits tagged `respect`, lapse quietly), and in scenes with both she addresses the holder rather than the commander. The directive forbids a lecture. Event `disappointed` (memory: §16.8).
+- **The question without a good answer.** A `her_question` moment (P15a) from a woman whose Regard is falling but above *none*, or who `knows_dynamic` with `witness: dislikes`: "why do you let her?". Options honest / what she wants to hear / silent; none is scored as right; her Regard moves a little by her own profile (`clinical` values the honest answer, `affectionate` the gentle one). Cooldown 14 days per woman.
+- **The nickname.** P9 deeds and reputations gain deed kinds from the dynamic (protocol seen in public, a demonstration, public worship, being spoken for, a slap before subordinates, kneeling at a door); the nickname the squad gives (P9 `reputations`) takes its tone from the squad's average Regard: respectful, mocking or pitying (candidates `AUTHOR TO WRITE`). It reaches the directives as P9 nicknames do (triggered, P14c §0).
+
+### 16.6 Three new styles
+
+`practiceStyles` gains (descriptions `AUTHOR TO WRITE`):
+
+- **`drill`** — the instructor: holds so that the commander improves. Norms, weekly exams (P16b §11), explains mistakes most willingly, values growth. The most natural character for a military base.
+- **`regal`** — the vain: wants to be admired. Worship is central; she demands praise in the commander's own words and holds audiences (P16b §11).
+- **`vindictive`** — retribution: holds because the commander deserves it (the crime, being an officer, a former squad); her hold is a sentence with a term (P16b §11).
+
+Where each enters:
+- **Surfacing conditions** (§15.4): `drill` when the commander slips or stagnates (no skill growth in 7 days) and at the start of a training; `regal` before others and when she is praised or ignored; `vindictive` when the crime is mentioned, after a failed run under the commander's orders, and on the anniversary of the commander's arrival.
+- **Preference points** (§15.2): `drill` → dutiful, and compatibility also grows with P16b skill growth; `regal` → devoted, motive `her`; `vindictive` → reluctant or proud (a resistance she breaks as a sentence).
+- **Aftermaths** (§9): `drill` → `cold_contempt` or `return_offer` ("after a punishment"); `regal` → `revenge` or `pursuit`; `vindictive` → `blackmail` (the crime, compromat) or `revenge`.
+- Physics (P15a §16.12), tactics (P17 §6), severity and ceremony (P16), contracts (P17a §2), her weakness (P17e §3), the "why" of objectification (P17b §2), the rhythm of her typing (P17d §5) list them in their own sections.
+
+### 16.7 New holder fields
+
+`bond.practice` gains two fields (proposed by `profile_import`, edited in the wizard and the dossier, lockable like the expectation profile; no drift in 0.2):
+
+- **`fairness: fair | strict | capricious | unfair`** — independent of style (a fair `cruel` and a capricious `affectionate` both exist). Read by P16 §R.10: punishment without guilt, double standards, cancelled rewards, moved goals.
+- **`hintStyle: offers | hints | expects`** — how she invites: `offers` says it, `hints` hints (P17d rev. 2026-11-20 armpit hints and every `her_offer` moment), `expects` waits to be understood; a missed hint at `expects` is a quiet disappointment, a caught one is a mood-reading bonus.
+
+Temperament for every named unit (`talkativeness`, `volatility`, `humor`) is P14c §1; this package reads `talkativeness` for silent use and `humor` for her mock answers.
+
+### 16.8 State, events, memory check
+
+- State: `Relation.regard?`; the five motive weights in `Relation.dynamic.readOf`; region `cowed`; `bond.practice.fairness`, `bond.practice.hintStyle`; `practiceStyles` rows `drill`, `regal`, `vindictive`.
+- Events: `regard_changed`, `regard_band_changed`, `disappointed`, `regard_question_asked` (the moment), `nickname_given` (P9's, with new deed kinds).
+- Memory check: `disappointed` → a `memoryRules` entry (audience: her; `hiddenFromCommander: true`; importance mid; the commander sees only the behaviour); the question moment → P15a §13 (`her_question` is tagged `remember`); Regard changes and bands → bookkeeping (hidden); the nickname → P9's existing site.
+
+### 16.9 TUNING draft (2026-11-20)
+
+| what | value |
+|---|---|
+| Regard fall per act | humiliation (0–5) × 1.5 × style factor: `cruel` 1.3, `cold` 1.2, `ritual` 1.0, `regal` 1.0, `playful` 0.9, `drill` 0.8, `clinical` 0.8, `vindictive` 0.7, `affectionate` 0.5, `possessive` 0.4, `obsessive` 0.3; a witness who is not the holder × 0.7 |
+| Regard rises | cost +3, a record +2, `pleased` at tier ≥ 4 +1, dignity +2, value outside the dynamic +1…+4; `drill` doubles mastery, `regal` doubles praise kept, `vindictive` +1 per 7 days of the sentence served without a slip |
+| disappointment | Trust ≥ 60 at the time and a fall across a band within 14 days |
+| the question | cooldown 14 days per woman; at most one a week overall |
+| motive weights | moving average 0.15; `fear` reading after a threat or a slap within the same exchange |
+
 ## Acceptance criteria
 
 1. With no practice category enabled, or holders `0`, nothing in this package runs, and every seeded test stays byte-identical (no new draw unless someone is eligible).
@@ -432,12 +544,14 @@ State: P11b's `SetupResult.headStart.dynamicUnderway` (`true` = all eligible, or
 10. Immersive mode hides the section and bands and keeps the events.
 11. Every new stat, chip and card carries `data-analyze`; every generation goes through P14.
 12. (§15) Probes run on the engine's schedule as directives, never all women at once (inclination, may-hold, queue, back-off); the position is per holder, moved by answers, shown in her words; the expectation profile is generated, editable and lockable before the game and revealed in play; the style pair follows the three rules; the dynamic gives combat and squad effects; equals use the general layer; offering composes from the vocabularies and can become a claim; the body map shows only what the commander knows.
+13. (§16, 2026-11-20) Ruling E reads in its revised wording everywhere; Regard exists for every named unit, starts from first impression and crime knowledge, falls with the depth of acts and rises with cost, mastery, dignity and value outside the dynamic, never changes hold or frames, and stays hidden (sentinel); the five motive weights and the `cowed` region work; disappointment, the question and the nickname follow §16.5 with no narrator line; `drill`, `regal`, `vindictive`, `fairness` and `hintStyle` import, validate, edit, lock and are read by type.
 
 ## Open decisions (author)
 
 - Names of the hold bands, frames and domains in the UI; milestone texts; aftermath texts; style descriptions.
 - Every number in `TUNING.dynamic`: drafts agreed in §15.12 and §15.13 (squad knowledge).
 - Whether `rule` without the command domain is possible (draft: yes; `rule` over the private domains only).
+- (§16) Regard band names, the forms-of-low-Regard wording per style, the `cowed` region name, nickname candidates by tone, descriptions of `drill`, `regal`, `vindictive`, `fairness` and `hintStyle` values.
 
 ## Interfaces already provided by P9d (implemented — use, do not rebuild)
 

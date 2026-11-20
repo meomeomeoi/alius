@@ -1,6 +1,6 @@
 # P15a — Scene Blocking, Moments and Contact Physics
 
-**Status: spec.** Release 0.2 (post-release), **first package of 0.2** (before P15). **Depends on:** P3 (scenes, participants, intents, the scene controller), P3b (memory rules), P7 (commander body, quiet night, non-body routes), P9c (sparring, device access, bookings), P9d (bond profile, content categories, `contentAllowed`, lead), P10 (hub, whereabouts, voices, portraits, `visualFlags`, sound), P10b (VITALS, handwriting, device marks), P14 (generation envelope), P7a. **Read:** overview; this file; P15–P17e (the packages built on it); the **Implemented as** of P3, P3b, P9c, P9d, P10 and P10b; `docs/content/lore.md` (§0); `docs/content/blocking.md` (the vocabulary).
+**Status: spec.** Release 0.2 (post-release), **the first package of the dynamic** (after P14c, before P15). **Depends on:** P3 (scenes, participants, intents, the scene controller), P3b (memory rules), P7 (commander body, quiet night, non-body routes), P9c (sparring, device access, bookings), P9d (bond profile, content categories, `contentAllowed`, lead), P10 (hub, whereabouts, voices, portraits, `visualFlags`, sound), P10b (VITALS, handwriting, device marks), P14 (generation envelope), P7a. **Read:** overview; this file; P15–P17e (the packages built on it); the **Implemented as** of P3, P3b, P9c, P9d, P10 and P10b; `docs/content/lore.md` (§0); `docs/content/blocking.md` (the vocabulary).
 
 **Analysis tool (P7a):** every new stat, chip, option and card carries `data-analyze`, has a glossary entry or registry `description`, and live values get a provider that reads through `Knowledge`. **P14:** every generation registers a site. **Lore §0:** no pronoun for the commander in any registry text, `promptHint`, directive or label (`tests/content/pronouns.test.ts`).
 
@@ -246,7 +246,7 @@ Each blocking value and each source declares effects per channel; each system re
 
 A **template** for contacts that have a physical gauge. Registry `contactPhysics`: `{ id, gauge, rhythm, skill, signal, limitPref, visual, interaction, chains? }`.
 
-1. **Gauge** — what drains or fills (air, strength, saturation, cleanliness, her activity's progress, jaw fatigue). It is the physical state of the contact, like Strain, not an inner meter of the commander (P15 ruling holds).
+1. **Gauge** — what drains or fills (air, strength, saturation, cleanliness, her activity's progress, jaw fatigue). It is the physical state of the contact, like Strain, not a meter of the commander's feelings (revised ruling E, P15 §16.1; the commander's bodily responses are §16.8).
 2. **Her rhythm** — by style: `cold` even, `playful` fakes the windows, `cruel` shortens them, `obsessive` irregular, `ritual` measured; numbers blend primary/secondary (P15).
 3. **The commander's skill** — grows (§9.3).
 4. **Signal in the fiction** and her attitude to it (§9.4).
@@ -277,7 +277,7 @@ A **template** for contacts that have a physical gauge. Registry `contactPhysics
 
 ### 9.3 The commander's endurance
 
-A **skill of the commander's body**, common to all holders (P7 "weakness is a playstyle": a weaker commander really endures less). It grows from: experience (each hold endured gives xp per physics); **training at base** (breath drills and similar as a slot activity in the training room, alone or with someone); **the player's mastery** in the moment (a caught window returns more air; a good streak gives xp faster). Skill raises the gauge's capacity; it never removes her rhythm.
+A **skill of the commander's body**, common to all holders (P7 "weakness is a playstyle": a weaker commander really endures less). P16b §2 makes it one of the commander's disciplines (`endurance:<physics>`). It grows from: experience (each hold endured gives xp per physics); **training at base** (breath drills and similar as a slot activity in the training room, alone or with someone); **the player's mastery** in the moment (a caught window returns more air; a good streak gives xp faster). Skill raises the gauge's capacity; it never removes her rhythm.
 
 ### 9.4 Two signals
 
@@ -377,6 +377,135 @@ Draft balance values agreed with the author; the plan copies them into `TUNING` 
 | `her_marks` | 2 slots; under a no-washing rule until she allows, at most 3 days |
 | remote toy (P17c) | pulse chance per exchange: `playful` 0.4, `cruel` 0.35, `cold` 0.2, others 0.25; 2–4 characters jolted; others notice: 0.2 per jolted message |
 
+## 16. Revision of 2026-11-20 (design session)
+
+Added after the 2026-11-20 design session (the player who mostly accepts: weight comes from execution and cost, not from refusing). Where it conflicts with §1–§15 and the 2026-11-19 TUNING draft, this section wins. The commander's disciplines, postures, training and records are **P16b**; the revised ruling E is P15 §16.1; temperament (`talkativeness`, `volatility`, `humor`) is P14c §1.
+
+### 16.1 Timing belongs to the engine (the latency rule)
+
+The physics is a real-time layer; the model answers in one second or in a minute, never predictably. So the real-time layer **never waits for the model**, and the model always works at boundaries:
+
+- **The cue pool.** When a physics starts, one mechanic call (P14 site `physics.cues`, budget 250) returns her lines per cue kind in her voice: `window_open`, `window_false`, `shift`, `press`, `lift`, `count`, `warning`, 3–5 each. Fallback: the authored registry `physicsCues` (`AUTHOR TO WRITE`). The engine fires them **locally**, at the moment it decided, as short lines in the scene frame (and the sensory layer of P17d). Cue honesty follows her style: `cold` honest and even; `ritual` and `drill` count; `playful` sends false cues (`window_false`); `cruel` gives none or a trap; `clinical` changes the cue language to test whether the commander learns; `regal` announces; `vindictive` sparse.
+- **Segments.** Sending a message (or, in silent use, the start of the physics) starts a **segment** of fixed length (`TUNING.physics.segment`, 20–40 s by physics; turn-based: a fixed number of beats). The generation runs behind it. A reply that arrives inside the segment is shown at once (read under load: fair, because the segment's length does not depend on the model). A reply that arrives after the segment ended finds the body **held in a neutral state** (no drain, no windows; a P17d §6 "she takes her time" line) until it does. Latency never changes the difficulty.
+- **The engine decides, the model narrates, the next segment applies.** At each segment boundary the engine decides her next move (press harder, lift, change rhythm, fall asleep, let go) and writes it into `physics:<id>` together with a **segment summary** (windows missed, a gasp, a slip, noise). The reply narrates what happened and what she does; the change takes effect in the next segment.
+- **Silent use.** When she does not talk (her `talkativeness` is `silent`, or her activity occupies her), segments run back to back on the cue pool and the model is called only at the phase boundaries of a marathon (§16.3) or at the end.
+
+### 16.2 Every word costs the body (split attention)
+
+While a physics runs, typing occupies the hands: while the scene input has focus and keys are typed, the maintenance inputs (the hold key, window taps, posture corrections of P16b) lapse; drift and drain go on. The player chooses: answer short, type between windows, answer with a moment chip (one click, generic), or stay silent. Turn-based: a message consumes beats in proportion to its length (`TUNING.physics.charsPerBeat`).
+
+It applies only when there is talk: she asks something or the commander has something to say (`own_want`). It is an occasional extra challenge, not a layer of every hold: many holders use the commander in silence (§16.1). Style: `cruel` asks questions that need long answers exactly under load; `affectionate` asks only yes / no; `clinical` tests how many words the commander can manage; `drill` demands a full report.
+
+### 16.3 The marathon (long holds)
+
+For holds of an hour of fiction time or more (a footrest through her evening, a night under her arm, "until I decide"):
+
+- **Phases.** 2–8 active phases of a few segments each, each anchored to a fiction time and carrying an event from the live sources: her check, a comms call, a visitor (always possible), her provocation, she falls asleep, a cramp, an itch, a sound at the door.
+- **Skips are not empty.** Between phases the fiction time passes and is resolved: the player picks a strategy for the stretch (endure / spare strength / cheat, §16.4 / ask for rest) and the engine resolves it with draws on the commander's skills (P16b) into a summary ("the second hour: the legs went numb at forty minutes; one shift of weight; she did not notice").
+- **Attrition.** Body resources (strength, air, focus, stiffness) drain by fiction time less endurance; each phase starts weaker than the last, so the sixth hour is heavier under the hands, not in words.
+- **Visible time.** A fiction clock in the scene frame ("17:40 … 19:15 … 21:30"), her activity's progress (pages of the report), the slot light (P10c), the base's sounds by slot (P17d).
+- **Calendar.** The hold consumes every slot it spans (P2): the honest price in free time. Unknown duration (P16 §R.9) hides the end, so the resources cannot be planned, only held.
+- **After.** Status `stiff` for the next slot (P7 statuses), her verdict, a record in fiction time (P16b §4).
+- **Setting** `marathonPace` (SYS › Scene): short 1–2, **normal 3–4 (default)**, long 5–6 real minutes per fiction hour. Pure difficulty, nothing rewards it: records and consequences counted in fiction time are identical at every setting.
+
+### 16.4 Her gaze: endure honestly or cheat
+
+Her attention cycles between watching and busy, by style and by her activity's `attention` (P15a §4): `clinical` watches almost always; `cold` rarely but suddenly; `playful` pretends to look away; `affectionate` looks away on purpose to give a rest and is hurt if the rest is not taken. The player reads it from signs only (her lines, the rhythm of her replies, the camera), never from a meter.
+
+While she does not watch, **relief inputs** are open: shift the weight, lower the arms, breathe through the mouth, ease the posture, breathe through a gap (§16.7). Each restores a resource and makes noise (§16.5). **Caught** (a hashed draw on her attention band and her `reading` skill, §16.10) is a `physics_cheat` slip, worse than weakness: her reading of the motive moves away from `her` (P15 §16.4), Regard falls (P15 §16.3), her discipline follows (P16). Cheating pays most when a hard phase lies ahead.
+
+### 16.5 Noise: the body gives the commander away
+
+Every slip of the body makes a sound: a missed window, a loud breath; a weight slip, a creak; a posture correction, a rustle; a missed swallow or a reflex, a cough. Loudness = the slip × (1 − the commander's stillness skill, P16b). With an unaware other present, noise feeds P17 Strain and that person's suspicion; with nobody, it is her reaction alone. Her staging tactics work with it (P17 §6): composed covers it with her voice, `cruel` makes noise unavoidable and watches, cautious locks the door.
+
+### 16.6 Combined physics
+
+Two physics at once, by rule rather than by authored combos: each physics declares its input and its gauge; when two run, the inputs merge and conflicts become decisions: holding the breath steadies the weight; breathing through the mouth lowers saturation but she notices; a posture correction is noise and can cost a window. Her escalation by track level **adds a second physics** to the first instead of a new mini-game. Style: `cruel` and `clinical` combine often, `affectionate` almost never, `ritual` and `drill` by rule ("while you hold, you recite"). Drafts: weight + breath (she sits on the face), saturation + `tongue_work` (a sweaty foot), posture + stillness (tickling in a posture), breath + kisses ("a kiss for a breath", P17b rev. 2026-11-20).
+
+### 16.7 Smothering by seal
+
+`contactPhysics.breath` gains `seal: tight | firm | leaky` and `pressure` per contact (hand over the mouth, thighs, her seat, armpit, breasts, feet, a palm with the nose pinched). `leaky` lets a share of air through each beat; breathing through a gap is a relief input (§16.4). Her mood and style move seal and pressure inside the contact's range; her `seal` skill (§16.10) tightens it.
+
+### 16.8 The body layer: tolerance, reflex, trajectory, the language of perception
+
+The revised ruling E (P15 §16.1): the engine tracks the commander's **bodily** responses and a record of **deeds**; thoughts and feelings are the player's.
+
+**Stimulus kinds** (registry `stimulusKinds`, `AUTHOR TO WRITE`): `sweat_exertion`, `sweat_heat`, `sweat_fear`, `sweat_stale`, `scent_feet`, `scent_armpit`, `scent_body`, `scent_worn` (her worn items), `taste_salt`, `taste_skin`, `taste_dirt` (boots, the region's dirt), `taste_polish`.
+
+**1. The body (engine).** Per kind, on the commander: `Commander.stimuli[kind] { tolerance, reflex, exposure, lastDay }`.
+- **Tolerance** is the saturation capacity; **reflex** is the threshold where the body protests (cough, watering eyes, a gag).
+- Exposure raises tolerance and pushes the reflex back. Habituation has a second side: **faint stops registering** — sensory lines at `faint` fade as tolerance grows ("the faint scent no longer reaches you"); to feel, it takes more.
+- Absence (her cold shoulder, a long run, separate quarters) lets tolerance slip back slowly and sensitivity return: the first meeting after a separation hits harder.
+- A reflex shows in the interface (the screen swims, the input stutters), makes noise (§16.5), and she notices.
+
+**2. The choice (player).** In every contact with a stimulus the player answers one way:
+
+| Way | What it is | Risk |
+|---|---|---|
+| avoid | breathe through the mouth, turn the face | she notices; an insult when her worship meaning is `intimacy` |
+| quick sniff | a test | — |
+| **deep inhale** | worship | the reflex, when the stimulus is above tolerance |
+| nuzzle | press the face in; continuous | `saturation` runs |
+| on her order | "smell it" | refusing is a slip |
+| in secret | her worn item while she does not look | caught: `cruel` delights, most despise it (Regard); a cheat in reverse, a secret indulgence |
+| taste | lick | the kisses-and-tongue category (§16.9) |
+
+**Deep inhale as a mini-game.** Hold a key to inhale; an intensity bar rises; release inside the green zone, set by the stimulus band and tolerance. Overshoot = the reflex (cough, slip, noise); release early = shallow (she is displeased if she expected worship). Tolerance widens the zone and moves it up; at `reading` ≥ 3 she presses the face in on the inhale.
+
+**3. The trajectory (record of deeds).** The share of avoiding vs seeking per stimulus kind over time gives a stage: `aversion → enduring → accustomed → craving → adoring` (a deed statistic like the position axes of P15 §15.2, with the same hysteresis). It feeds her reading of the motive (`process` vs `her`), her reactions (`cruel` likes craving and not adoring; `affectionate` is glad of adoring; `ritual` values enduring), and the conditioned reactions (P17d rev. 2026-11-20) from `craving` on.
+
+**4. The language of perception (instead of thoughts).** The sensory lines and the `physics:` directive carry the stage: aversion "sharp, sour, hits the nose"; accustomed "familiar, hers"; adoring "warm, thick, hers"; after a separation "like the first time". The model narrates perception, never the commander's feelings or thoughts.
+
+**Consequences:** at `craving` the commander more often carries her scent (unless washed): squad suspicion (P15 §15.13); deprivation brings "something is missing" lines and commander stress (P12); her reactions follow her worship meaning.
+
+### 16.9 Kisses and the tongue (a category of acts)
+
+Separate from inhaling: a direct act of the mouth with its own body side.
+- **Body:** taste tolerance and reflex (§16.8 taste kinds); the `jaw` physics; a `dryness` gauge for long licking.
+- **Kinds:** a kiss (a discrete act: protocol, greeting, thanks after a punishment); counted kisses ("a hundred", a ritual; a miscount starts again); a long pressed kiss (devotion: stillness); licking (continuous: `tongue_work` and the tempo mini-game of P16b); as a pet (`pet_play`, a quick rhythm); taking in the mouth (toes, fingers: `jaw`).
+- **Mini-game:** mostly one — **tempo and pressure** against her "how" (P15 §15.3); single kisses are acts with her reaction, no mini-game.
+- **Trajectory** per taste kind (salt can grow familiar long before the dirt of a sole). **Language of perception** by taste: "salty, bitter, want to spit" toward "her taste".
+- **Meaning** follows her worship meaning (`duty` protocol, `humiliation`, `intimacy`). Gate: `worship` (+ `explicit_scenes` for the targets that need it).
+
+### 16.10 Her skills
+
+The commander learns her, and she learns the commander. Per pair: `Relation.dynamic.herSkill { seal, weight, reading, swing, rhythm }` (0–5), growing with practice on this commander:
+- `seal` — how tightly she presses in a smother;
+- `weight` — where to put her weight so it is heavier;
+- `reading` — she learns the commander's tells: at 3+ she knows the beat before a tap (`affectionate` lets go just before it; `cruel` holds just past it);
+- `swing` — a slap's accuracy and marks, and feints in the slap QTE (P16 §R.3);
+- `rhythm` — her window patterns grow more varied.
+
+Her style decides how she uses them. The player sees them only through their effects and her lines ("I'm getting better at this"). Difficulty thus rises inside the fiction at a pace set by her style.
+
+### 16.11 Her personal rhythm
+
+Each holder's windows follow a **personal pattern** (`fnv1a(<seed>|<unitId>|rhythm)`) on top of her style; knowing it is a pair skill of the commander (P16b `rhythm` mastery per pair): with another woman it has to be learned again. Changing the pattern is a punishment or a test.
+
+### 16.12 New styles in the physics
+
+P15 §16.6 adds `drill`, `regal`, `vindictive`. Rhythm: `drill` even and counted; `regal` slow, she takes her time; `vindictive` sparse and long. Breath window widths (ms, real time): `drill` 500, `regal` 600, `vindictive` 300 (blend 0.65 / 0.35 as before).
+
+### 16.13 Settings, events, sites, memory check
+
+- Settings: `marathonPace` (§16.3); the interaction-type toggles of §15 grow by `inhale`, `tempo`, `posture`, `qte` (P16b); switched off, only text and moment options remain.
+- Events: `physics_segment`, `physics_cheat`, `physics_caught`, `marathon_phase`, `marathon_done`, `reflex`, `stimulus_stage_changed`, `her_skill_gained`. Sites: `physics.cues`.
+- Memory check: `physics_caught` → a `memoryRules` entry (audience: the pair; importance mid; spread none); `stimulus_stage_changed` into `craving` or `adoring` while she was present → a `memoryRules` entry (audience: the pair; importance mid); `marathon_done` → the record fact of P16b §4 (written there); segments, summaries, cues, gauges: bookkeeping.
+
+### 16.14 TUNING draft (2026-11-20)
+
+| what | value |
+|---|---|
+| segment length | breath 20 s, weight 30, saturation 30, `tongue_work` 40, `jaw` 30, posture 30; turn-based 4 beats |
+| typing under load | maintenance lapses while keys are typed; turn-based 1 beat per 40 characters |
+| marathon | phases: 2 per 2 h, up to 8; skip draws by skill: endure 0.5 + 0.1 × level, spare +0.2 next phase, cheat as §16.4 |
+| caught cheating | her attention: watching 0.6, glancing 0.25, busy 0.08; × (1 + 0.1 × `reading`) |
+| relief | shift weight +15 strength, lower arms +10, mouth-breath −20 saturation, a gap +5 air per beat (`leaky`) |
+| seal | air per beat through `leaky` +4, `firm` +1, `tight` 0; `seal` skill shifts one step every 2 levels |
+| stimuli | tolerance +2 per session of exposure, −1 per 7 days apart (floor: half of the best); reflex at tolerance × 1.2; `faint` lines fade from tolerance 40 |
+| trajectory | moving average 0.15 per contact; stage boundaries at seek share 0.2 / 0.4 / 0.6 / 0.8; hysteresis 3 updates |
+| her skills | +1 level per 8 practices of that kind with the commander, cap 5; `drill`, `clinical` ×1.5, `affectionate` ×0.7 |
+
 ## Acceptance criteria
 
 1. With none of the new or gated categories enabled and no close relation present, nothing here runs and every seeded test stays byte-identical (no new RNG draw unless a moment or physics is live).
@@ -390,6 +519,7 @@ Draft balance values agreed with the author; the plan copies them into `TUNING` 
 9. `content/local` loads when present, is ignored when absent, and overrides by id.
 10. `scope: dynamic` entries never appear below P15 frame `play`; disabled categories never reach a prompt, a label or a chip.
 11. Every new element carries `data-analyze`; every generation goes through P14; the memory verdicts of §13 are implemented.
+12. (§16, 2026-11-20) The real-time layer never waits for the model: cues fire locally from the pool, segments have a fixed length, a late reply holds the body neutral, and a seeded test with a slow and a fast fake model gives the same physics outcome. Typing under load lapses maintenance only when there is talk. Marathons run in phases with resolved skips, attrition, a visible clock and the calendar cost, at every `marathonPace` with the same fiction-time results. Cheating, noise, combined physics, seal, the stimulus body layer (tolerance, reflex, choices, deep inhale, trajectory, the language of perception), kisses and the tongue, her skills and her personal rhythm work as specified, each interaction type can be switched off, and the model never receives a line that states the commander's feelings.
 
 ## Open decisions (author)
 

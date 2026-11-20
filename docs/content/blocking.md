@@ -88,6 +88,7 @@ Meanings per target (her profile): `reward | duty | humiliation | intimacy | pla
 | `standing_on` | ← | pain_rough, objectification | C `lying` face down; H `standing` `on_person` | she stands on the commander's back | `physics weight`; `escalation shift_weight` |
 | `straddled` | ← | restraint | C `lying` on the back; H astride the chest, `on_person` | she sits astride the chest pinning the arms | `mobility none`; `camera from_below`; `escalation shift_weight` |
 | `boot_on_chest` | ← | humiliation, pain_rough | C `lying` on the back; H `standing` | her boot on the commander's chest | `camera from_below` (ceiling surface + `pose_shot from_below`); `physics weight`; rising only with her leave |
+| `on_hands` | ← | humiliation, pain_rough | C `kneel_present`; H `standing` | her foot on the commander's open palms | `physics weight` (light); `escalation shift_weight`; occasional, by style (P16b §8) |
 | `between_thighs` | ← | restraint, pain_rough | C head between her thighs; H `sitting` | head locked between her thighs | `mobility none`; `input muffled`; `physics breath` (light) / `weight`; `escalation squeeze`; `pose_shot legs_seated` |
 | `held_by_hair` | ← | pain_rough | C `kneeling`; H `standing` | she holds the commander by the hair, face up to hers | `camera face_close` / `from_below`; `escalation tug_hair`; "look away" options cost more |
 | `pinned_to_wall` | ← | restraint | both `standing`, C `by_wall` | she pins the commander to the wall | `mobility none`; `camera face_close`; `escalation press_harder` |
@@ -269,6 +270,145 @@ contact:   human_chair (she → commander)
 | `curled` | curled up | — |
 
 **Posture modifiers** (optional fields used by P16's named postures and by protocol): `arms: at_sides | behind_back | behind_head | on_knees | on_thighs | open`, `gaze: down | at_her | straight | closed`. A **named posture** of her protocol = a base posture + arms + gaze + her name for it (generated, stored on the pair). Changing a modifier is a blocking change the extractor may report.
+
+**Revision of 2026-11-20 (P16b §7).** The table above lists the **base positions** (`base`). The commander's postures inside a dynamic are **presets** built on a base with target states for several **points**; the old "posture modifiers" (`arms`, `gaze`) become two of those points. A named posture of her protocol = a preset + her name for it (generated, stored on the pair) + at most the 1–2 points the preset's `variants` let her set. There is no free composition.
+
+### 7.1 Points
+
+| Point | States | Drifts toward | Faster with |
+|---|---|---|---|
+| `torso` | `upright` / `forward` / `arched` | slumping, sagging | fatigue, a load on the back |
+| `hips` | `raised` (kneeling upright) / `on_heels` / `to_floor` | sinking onto the heels | long kneeling |
+| `knees` | `together` / `apart` | sliding apart or together | a hard floor, a spreader bar |
+| `arms` | `at_sides` / `behind_back` / `behind_head` / `on_thighs_down` / `on_thighs_up` / `forward_palms_up` / `out_sideways` / `raised` / `holding` / `on_floor` / `on_ankles` / `under_knees` / `bound` | dropping, unclasping | `raised`, `behind_head`, `out_sideways` drift fastest |
+| `head` | `up` / `bowed` / `back` (throat offered) / `to_floor` | rising or falling | fatigue drops it, curiosity raises it |
+| `gaze` | `down` / `at_her` / `straight` / `closed` | **up** — by temptation, not fatigue: each event (a visitor, her undressing, a sound) is an impulse | events in the scene |
+| `feet` (optional) | `flat` / `on_toes` | down onto the heels | — |
+
+### 7.2 Preset fields
+
+```
+posture {
+  id, base,                                   // a base position from the table above
+  points: { torso?, hips?, knees?, arms?, head?, gaze?, feet? },
+  variants?: { [point]: State[] },            // what she may set in this preset (1–2 points)
+  meaning: Meaning[],                         // attention, waiting, rest, casual, work, sleep, display, offering,
+                                              // request, apology, gratitude, worship, submission, punishment,
+                                              // endurance_test, object, pet
+  humiliation: 0..5,                          // base weight of the posture itself
+  tags: ContentCategoryId[],                  // the content gate
+  requires?: { track?, frame?, affordances?, anchor?, items? },
+  drift: { [point]: rate },                   // how hard each point is to hold (P16b TUNING)
+  supports?: PhysicsId[] | ContactId[],       // what the posture can carry (a footrest, a load, her foot)
+  signal: 'none' | 'odd' | 'telling' | 'exposing',   // what a person walking in reads (P15 §15.13)
+  noise: 'low' | 'mid' | 'high'               // how loud corrections are (P15a §16.5)
+}
+```
+
+**Situational humiliation** added to the base: a friend of the holder present +1, the leader +1, anyone in the mess +2, a subordinate the commander gives orders to +2; a common room +1, the mess or a briefing +2; held long +1; her `audience: show_off` +1. The sum feeds Regard (P15 §16.3) and the squad's suspicion.
+
+**Modifiers while holding** (P16b): a load (adds a balance point), her weight (a P15a `weight` physics through `supports`), holding her thing in the hands or the mouth (dropping it is a slip), restraints (a point fixed, its neighbours drift faster), the surface (hard, cold, rough), the term (known / counted / none), her stimuli (tickling, touch, words, gaze traps), the commander's state (the day's fatigue, stiffness after a marathon, an injury), a visitor (noise matters, the gaze gets a strong impulse), darkness or a blindfold (the schematic is hidden).
+
+### 7.3 Presets (48)
+
+Tags in the last column are content gates (besides the category of the practice that calls the posture). Everyday presets have `scope: any` and no drift outside a dynamic.
+
+**Everyday** (humiliation 0)
+
+| id | base | points | meaning |
+|---|---|---|---|
+| `at_ease` | `standing` | torso upright, arms at_sides | casual |
+| `leaning_wall` | `standing` | anchor `by_wall`, arms at_sides or crossed | casual, waiting |
+| `seated_desk` | `sitting` | anchor `at_desk`, torso forward | work |
+| `cross_legged` | `sitting_floor` | — | casual, rest |
+| `lying_bunk` | `lying_back` / `lying_side` | anchor `on_bunk` | rest, sleep |
+
+**Protocol and waiting**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `attention` | `standing_attention` | torso upright, arms at_sides, head up, gaze straight | attention | 0 | |
+| `parade_rest` | `standing` | arms behind_back, gaze down | waiting | 0 | |
+| `at_her_side` | `standing` | anchor `behind_her_chair` or `beside_her`, arms clasped front, gaze down | waiting, display | 1 | signal `telling` |
+| `facing_wall` | `standing` | anchor `corner` / `by_wall`, arms behind_back | punishment | 2 | requires a wall or corner |
+| `wall_sit` | `crouching` | back to the wall, thighs level, arms at_sides | endurance_test, punishment | 1 | |
+| `arms_out` | `standing` / `kneeling_upright` | arms out_sideways (may hold things) | endurance_test, punishment | 2 | variants: base |
+
+**Kneeling**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `kneel_upright` | `kneeling_upright` | hips raised, knees together, arms on_thighs_down, head up, gaze down | waiting | 1 | |
+| `kneel_rest` | `kneeling_sitting` | hips on_heels, arms on_thighs_down, gaze down | rest, waiting | 1 | |
+| `kneel_open` | `kneeling_upright` | knees apart, arms on_thighs_up, head up, gaze down | offering, display | 3 | |
+| `kneel_hands_behind` | `kneeling_upright` | arms behind_back (wrists crossed), torso forward | submission, display | 2 | |
+| `kneel_hands_behind_head` | `kneeling_upright` | arms behind_head, elbows out | endurance_test, display | 2 | arms drift fast |
+| `kneel_present` | `kneeling_upright` | arms forward_palms_up | request, offering | 1 | supports `on_hands` |
+| `kneel_throat` | `kneeling_upright` | head back, gaze closed | offering | 2 | |
+| `kneel_at_door` | `kneeling_sitting` | anchor `at_door`, facing in | waiting | 2 | signal `exposing` |
+| `kneel_at_feet` | `kneeling_sitting` | anchor `at_her_feet`, cheek on her knee if allowed | waiting, worship | 2 | |
+| `kneel_holding` | `kneeling_upright` | arms holding (a tray or her thing, level) | object | 2 | a balance point |
+
+**Lower**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `bow` | `bowing` | head to_floor, arms on_floor | apology, gratitude, submission | 3 | |
+| `bow_to_feet` | `bowing` | anchor `at_her_feet`, forehead to her foot or boot | worship, apology | 4 | `worship` |
+| `all_fours` | `all_fours` | torso level, head bowed | object, pet | 3 | supports `footrest` |
+| `table` | `all_fours` | torso perfectly level | object | 4 | `objectification`; a balance point |
+| `prostrate` | `lying_front` | arms forward_palms_up | apology, submission | 4 | |
+| `lying_back_open` | `lying_back` | arms out_sideways, gaze at_her | offering, submission | 3 | supports `boot_on_chest` |
+
+**Pet** (`pet_play`)
+
+| id | base | points | meaning | hum. |
+|---|---|---|---|---|
+| `pet_sit` | `kneeling_sitting` | arms on_floor between the knees | pet, waiting | 3 |
+| `beg` | `kneeling_upright` | arms raised as paws at the chest | pet, request | 4 |
+| `curled_at_feet` | `curled` | anchor `at_her_feet` | pet, rest | 3 |
+
+**Rest and display**
+
+| id | base | points | meaning | hum. |
+|---|---|---|---|---|
+| `sit_floor_beside` | `sitting_floor` | anchor `beside_her`, head may lean on her | rest | 1 |
+| `presented` | `standing` | arms behind_head, knees apart (feet apart), gaze down | display | 3 |
+
+**Hard: kneeling variations**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `kneel_on_hands` | `kneeling_sitting` | arms under_knees | punishment, endurance_test | 3 | pressure grows with time |
+| `kneel_forehead_wall` | `kneeling_upright` | anchor `by_wall`, forehead to the wall, arms behind_back | punishment | 3 | requires a wall or corner |
+| `kneel_arched` | `kneeling_upright` | torso arched, arms on_ankles, head back | display, endurance_test | 4 | torso and head drift fast |
+| `kneel_mouth_hold` | `kneeling_upright` | holds her thing in the teeth (a glove, the leash's end, a note) | object, pet | 4 | `jaw` physics; dropping it is a slip |
+| `light_bearer` | `kneeling_upright` / `standing` | arms raised, holding a lamp over her work | object, endurance_test | 4 | `objectification`; the fastest arms |
+| `tiptoe_hands_head` | `standing` | feet on_toes, arms behind_head, gaze down | punishment, endurance_test | 3 | |
+
+**Hard: below the floor**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `bow_hands_behind` | `bowing` | head to_floor, arms behind_back (no support) | submission, endurance_test | 4 | the torso holds itself |
+| `chest_down_hips_up` | `bowing` | torso to the floor, hips raised, arms forward or behind_back | punishment, display | 5 | `humiliation`, `physical_discipline_shown` |
+| `bent_over` | `standing` | torso forward over the edge of a desk or bunk, palms flat | punishment | 4 | requires `desk` or `bunk`; `physical_discipline_shown` |
+| `head_offered` | `lying_side` | cheek on the floor, the head offered | submission, worship | 5 | supports `foot_on_head`; `humiliation` |
+
+**Hard: object**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `doormat` | `lying_front` / `lying_back` | across the threshold of her quarters | object | 5 | `objectification`; anchor `at_door`; signal `exposing`; supports `standing_on` |
+| `ottoman_curl` | `curled` | curled tight on the knees, the back as a rest | object | 4 | supports `footrest`; the torso must stay level under her weight |
+
+**Hard: pet and restraint**
+
+| id | base | points | meaning | hum. | notes |
+|---|---|---|---|---|---|
+| `pet_belly_up` | `lying_back` | arms and legs bent as paws | pet, offering | 5 | `pet_play` |
+| `hogtied` | `lying_side` | arms bound to the ankles behind | submission, endurance_test | 4 | `restraint`; requires a binding item; `mobility none`; points fixed: numbness and stillness instead of drift |
+| `cage_curl` | `curled` | inside the cage | pet, rest | 4 | `restraint`; the cage (P17b §6); a quiet night that costs stress |
 
 ## 8. Anchors (`blockingAnchors`)
 

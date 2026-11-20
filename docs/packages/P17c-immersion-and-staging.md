@@ -26,7 +26,7 @@ Blur the line between the player and the commander **inside the fiction**: the i
 
 ## 3. The body in the interface
 
-Visible results of **statuses** set by the engine (not an inner meter; P15 ruling): sleeplessness darkens and blurs the screen edges slightly; hunger makes input stutter now and then; the shock collar flashes a glitch and a sound. All respect `motionReduced` / `visualFlags`.
+Visible results of **statuses** set by the engine (not a meter of feelings; ruling E as revised in P15 §16.1): sleeplessness darkens and blurs the screen edges slightly; hunger makes input stutter now and then; the shock collar flashes a glitch and a sound. All respect `motionReduced` / `visualFlags`.
 
 ## 4. Scene staging with the existing art
 
@@ -84,6 +84,16 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
   A missing file is **never an error**: no toast, no blocked action, at most one line in the SYS debug panel. A staging, contact, moment, practice or physics is **never withheld** because its art is missing. A test runs the P15a–P17d flows with an empty asset set and expects every scene to start and finish.
 
 - **Memory check:** typed slips under jolts feed P17 suspicion and her discipline at their own sites; nothing new is remembered.
+
+## Revision of 2026-11-20 (design session)
+
+Added after the 2026-11-20 design session. Where it conflicts with the sections above, this section wins.
+
+- **Her protocol with others.** With the `others` domain (P15 §5) and a profile that fits (not every holder does it), her speech rules also hold in scenes with other women: forbidden words are struck through while typing there too, and her whispers (P17d §3) tell the commander what to say to them.
+- **Hesitation shows.** When the player deletes and retypes a lot in the scene input before sending, she notices ("you hesitated"): a short line above the input, a reading for her (P15 §16.4) and a small Regard move by style. Local only: the engine counts deletions in the input field of this scene and stores nothing typed; nothing outside the input is observed (author ruling: nothing reaches into the player's real life).
+- **Dark nights.** In a `held_night` or the cage (P17a §5, P17b §6) the night theme (P10b) deepens to near black: no portraits, sounds and her lines only, the sensory layer louder; the night ends with a wake-up card (where the commander woke, her first line).
+- **Conditioned reactions in the interface.** When a cue the commander has been conditioned to (P17d rev. 2026-11-20) fires anywhere — her scent line on the hub, her bell, her word in a DM — the interface gives a micro-reaction: a vignette pulse, a stutter in the input, a sound. **The player's text is never altered or written for the player**; the reaction is the screen's, the commander's behaviour stays the player's to write.
+- **Memory check:** hesitation, dark nights and conditioned reactions are bookkeeping (the reactions' sources write their own facts in P17d).
 
 ## Acceptance criteria
 

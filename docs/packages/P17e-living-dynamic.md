@@ -18,7 +18,7 @@ A practice repeated N times and well received (P14b counters, P16 verdicts) **be
 
 ## 3. Her weakness
 
-After a hard practice, an `affectionate` or `clinical` holder (and others, rarely, by stress and appraisal, P14b) may crack: doubt, "did I go too far?". A short scene beat in which the commander can comfort her (`comforted` intent): roles soften for a moment and return. Outcome: her stress, trust and development (P14b) move; neglecting the moment has its own cost.
+After a hard practice, an `affectionate` or `clinical` holder (rarely `drill`, after pushing too hard, and `vindictive`, doubting whether the sentence is just; others rarely too, by stress and appraisal, P14b) may crack: doubt, "did I go too far?". A short scene beat in which the commander can comfort her (`comforted` intent): roles soften for a moment and return. Outcome: her stress, trust and development (P14b) move; neglecting the moment has its own cost.
 
 ## 4. The signature
 
@@ -32,7 +32,7 @@ The player chooses the form of address (ma'am, mistress, her name, a nickname, f
 
 ## 6. "What do you feel?"
 
-After strong moments she sometimes asks. The player answers in free text; the answer is stored as a memory fact (P3b, the commander's words) and she may bring it back later ("you said you were afraid"). The commander's inner life is the player's to write; the world reacts to it (consistent with P15's ruling: no engine meter for the commander's state).
+After strong moments she sometimes asks. The player answers in free text; the answer is stored as a memory fact (P3b, the commander's words) and she may bring it back later ("you said you were afraid"). The commander's inner life is the player's to write; the world reacts to it (consistent with ruling E as revised in P15 §16.1: no meter of the commander's feelings; the bodily layer and the record of deeds are P15a §16.8).
 
 ## Depth revision (design session 2026-11-19)
 

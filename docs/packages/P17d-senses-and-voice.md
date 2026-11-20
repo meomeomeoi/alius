@@ -36,7 +36,7 @@ At a high hold, with `cold` / `cruel` (or by the situation), she may **cut the c
 
 ## 5. Rhythm and distance
 
-- **Rhythm:** her typing speed (P3's fixed 60 chars/s) varies with emotion and style: `cold` even, with a pause before the key word; `playful` quick; `obsessive` in bursts; an ellipsis lingers when she is testing.
+- **Rhythm:** her typing speed (P3's fixed 60 chars/s) varies with emotion and style: `cold` even, with a pause before the key word; `playful` quick; `obsessive` in bursts; `drill` clipped; `regal` slow and deliberate; `vindictive` even and cold with the weight on one word; an ellipsis lingers when she is testing. Her `volatility` (P14c) makes the rhythm swing.
 - **Distance:** close and quiet lines (beside a `face_close` shot) render small and italic; orders larger; a visitor behind the door or in a low view (P17c) faint and partly blurred through the obscured layer.
 
 ## 6. "She thinks"
@@ -54,6 +54,19 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 - **Her body follows the game state** (derived, nothing stored): after a run (stronger scent, dirty boots, sore feet), after training, after the shower (her soap), wounded (worship turns into care).
 - **Her absence smells of her**: after `warming_her_bed` or a night with her, her scent stays in the commander's quarters; visitors may notice (the rule above).
 - **Memory check:** a noticed scent that reveals a secret relation or dynamic is the existing discovery path (P9d publicity, P17 complicity) and writes its fact there; learning a scent is a `Knowledge` fact for the commander (`scent_known:<unitId>`), not a squad memory.
+
+## Revision of 2026-11-20 (design session)
+
+Added after the 2026-11-20 design session. Where it conflicts with the sections above, this section wins. The commander's bodily responses to sweat and scent (tolerance, reflex, the ways of inhaling, the trajectory, the language of perception) are P15a §16.8.
+
+- **Sweat as the diary of her body.** Sweat has a kind: `exertion` (training, a run, sparring), `heat` (the garage, the boiler, a hot bunk at night), `fear` (before a mission, after a nightmare), `night`, `stale` (days without a shower). Each smells and reads differently; the commander learns to read her day from it. **Fear sweat is a tell** (P15 §15.8) of her anxiety and makes the `her_weakness` source live. Her hygiene trait and her intention not to wash (the 2026-11-19 depth revision above) still apply.
+- **Her worn things carry her.** Socks, gloves, insoles, the training shirt, wraps: each item has its own scent state that fades over days. Her laundry (`doing_her_laundry`, P15a) becomes a practice; a worn item may be a gift, a reward or a task ("keep it on you", "sleep with it"; P17b rev. 2026-11-20 for the harder forms). The squad may notice it on the commander (the noticing roll).
+- **"Do not wash my sweat off your face"** — a rule (P16 rule templates) until a time she sets; breaking it is a slip; a visitor's noticing roll applies.
+- **Armpit hints** (`hintStyle`, P15 §16.7). Each holder draws a few hints from a pool by style and mood: stretching with her arms up, wiping sweat in front of the commander, "I'm soaked", taking off her jacket in the heat, raising an arm near the commander's face, sending the commander for a towel, a teasing headlock. `offers` says it outright; `hints` hints; `expects` waits to be understood: a missed hint is a quiet disappointment, a caught one a mood-reading bonus. Small details: "I stopped using deodorant for you" as an intention term and a visible item in her quarters; armpit saturation is its own stimulus kind (P15a §16.8); after her training a scent line appears on the hub as she passes.
+- **The blind chronicle.** Scenes under a blindfold, a hood or in the dark are written into the journal and the chronicle as **what was perceived**, not the omniscient truth: sounds, scents, touch, her words; `scene_summary` receives a perception-only directive for them.
+- **Conditioned reactions.** A cue (a registry `cues` entry: her scent, her bell, a word she uses, the collar's click) that has been paired with practices often enough (`TUNING.senses.conditionAt` pairings within 30 days) becomes conditioned for the commander: when it fires outside a scene, the interface reacts (P17c rev. 2026-11-20) and the P15a `own_slip` source may become live. Without pairings it fades. Stored as `Commander.conditioned[cueId] { pairings, since }`; a deed record, not a feeling (ruling E as revised, P15 §16.1).
+- **Memory check:** a conditioned cue formed → a `memoryRules` entry (audience: the holder who formed it; importance low); fear sweat read correctly → bookkeeping; worn items given → a `memoryRules` entry (audience: the pair); a missed hint at `expects` → bookkeeping (her disappointment is a Regard and favour move).
+- **TUNING draft:** `conditionAt` 12 pairings within 30 days; a conditioned cue fades after 21 days without a pairing; worn item scent: one band down per 2 days.
 
 ## Acceptance criteria
 

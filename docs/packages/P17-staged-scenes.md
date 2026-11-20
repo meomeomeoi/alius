@@ -76,10 +76,10 @@ The intent extractor reads free text against the mode (`staging_mode` intent wit
 ## 6. Her tactics
 
 Registry `stagingTactics`, picked from her style pair and frame, re-picked when Strain or suspicion jumps:
-- **Composed** (`cold`, `ritual`, `clinical`): she freezes too and behaves as if nothing were happening; suspicion falls, Strain holds.
-- **Taunting** (`playful`, `cruel`): a nudge with her foot to make the commander go on; Strain rises, her satisfaction and favour rise, the risk is hers too.
+- **Composed** (`cold`, `ritual`, `clinical`, `drill`, `regal` without an audience): she freezes too and behaves as if nothing were happening; suspicion falls, Strain holds.
+- **Taunting** (`playful`, `cruel`, `vindictive`): a nudge with her foot to make the commander go on; Strain rises, her satisfaction and favour rise, the risk is hers too.
 - **Cautious** (`affectionate`, `possessive` at low frame): she locks the door if the place has `lock` (a visitor cannot arrive, or knocks and waits), or sends the visitor away early (expected exchanges −1).
-- **Reckless** (`show_off` audience, `cruel`): she courts discovery (suspicion rises); at `role`+ with `public_humiliation` she may let it happen.
+- **Reckless** (`show_off` audience, `cruel`, `regal` with `show_off`): she courts discovery (suspicion rises); at `role`+ with `public_humiliation` she may let it happen.
 
 Her tactic is a directive to her for the next exchange; the player sees it in her behaviour, and an analyze line on the scene header says what her tactic is when the commander could know it.
 
