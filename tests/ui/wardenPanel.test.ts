@@ -53,6 +53,17 @@ describe('the WARDEN panel', () => {
     expect(host.textContent).toContain('WARNING — day 2');
   });
 
+  it('the meter width is a clamped number: a crafted defiance cannot inject CSS (0.1 audit)', () => {
+    const s = swap();
+    wardenOf(s)!.defiance = '0;background:url(https://example.invalid/p)' as unknown as number;
+    const fill = draw(s).querySelector<HTMLElement>('.alius-defiance-fill')!;
+    expect(fill.getAttribute('style') ?? '').not.toContain('url(');
+    expect(fill.style.width).toBe('0%');
+    const t = swap();
+    wardenOf(t)!.defiance = 250;
+    expect(draw(t).querySelector<HTMLElement>('.alius-defiance-fill')!.style.width).toBe('100%');
+  });
+
   it('shows the active restrictions, the Leash left and the punishment log', () => {
     const host = draw(swap());
     expect(host.querySelector('[data-restriction="no_dms"]')!.textContent).toMatch(/NO MESSAGES until day/);

@@ -52,8 +52,10 @@ export function renderWardenPanel(host: HTMLElement, state: CampaignState, reg: 
   const unknown = w.expectations.length - known.length;
   const raw = deps.showRaw === true;
 
-  const meter = h('div', { class: 'alius-defiance alius-stat', role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(w.defiance), ...analyzeAttrs('glossary:warden_defiance') },
-    h('div', { class: 'alius-defiance-fill', style: `width:${w.defiance}%` }),
+  // a number from the save goes into a style attribute: clamp it, so a crafted value can never carry CSS (a remote url) with it
+  const defiance = Math.max(0, Math.min(100, Number.isFinite(Number(w.defiance)) ? Number(w.defiance) : 0));
+  const meter = h('div', { class: 'alius-defiance alius-stat', role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(defiance), ...analyzeAttrs('glossary:warden_defiance') },
+    h('div', { class: 'alius-defiance-fill', style: `width:${defiance}%` }),
     h('span', { class: 'alius-defiance-mark', style: `left:${E.warning1}%`, 'aria-hidden': 'true' }),
     h('span', { class: 'alius-defiance-mark', style: `left:${E.warning2}%`, 'aria-hidden': 'true' }));
   const active = w.restrictions.filter((r) => state.day <= r.untilDay);
