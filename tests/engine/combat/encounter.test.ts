@@ -117,3 +117,16 @@ describe('defaultEnemyName', () => {
     expect(defaultEnemyName(reg, 'ghost', ['nothing'])).toBe('ghost');
   });
 });
+
+describe('the level of an encounter (0.1 audit)', () => {
+  it('reads the living fielded units only: a dead unit left on the roster does not raise it', () => {
+    const s = structuredClone(state);
+    for (const u of s.squad) u.level = 2;
+    const levelOf = (x: CampaignState) => Math.max(...gen(5, { danger: 2 }, x).enemies.map((e) => e.level));
+    const before = levelOf(s);
+    const dead = s.squad.find((u) => s.roster.activeIds.includes(u.id))!;
+    dead.level = 30;
+    dead.status = 'dead';
+    expect(levelOf(s)).toBe(before);
+  });
+});

@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
+import { isLiving } from '../economy';
 import { enemyStats, statPower } from './stats';
 import type { Encounter } from './types';
 
@@ -17,9 +18,11 @@ export function defaultEnemyName(reg: Registries, enemyId: string, affixes: stri
   return [...words, (reg.enemies.get(enemyId)?.name as string | undefined) ?? enemyId].join(' ');
 }
 
+/** The average level of the living fielded units (the living squad when none is fielded): a dead unit left on the roster counts for nothing. */
 function averageLevel(state: CampaignState): number {
-  const fielded = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== undefined);
-  const pool = fielded.length > 0 ? fielded : state.squad;
+  const living = state.squad.filter(isLiving);
+  const fielded = state.roster.activeIds.map((id) => living.find((u) => u.id === id)).filter((u) => u !== undefined);
+  const pool = fielded.length > 0 ? fielded : living;
   if (pool.length === 0) return 1;
   return pool.reduce((s, u) => s + u!.level, 0) / pool.length;
 }
