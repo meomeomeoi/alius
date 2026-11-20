@@ -44,7 +44,7 @@ describe('the override chip', () => {
     const { host } = draw(overridden());
     expect(host.textContent).toContain('WARDEN OVERRIDE — Train with Bea');
     expect(host.textContent).toContain('She expects: Keep her close');
-    expect(['comply', 'argue', 'defy'].map((a) => button(host, a).textContent)).toEqual(['[COMPLY]', '[ARGUE]', '[DEFY]']);
+    expect(['comply', 'argue', 'defy'].map((a) => button(host, a).textContent)).toEqual(['[ COMPLY ]', '[ ARGUE ]', '[ DEFY ]']);
     expect(markedWithout(host)).toEqual([]);
     expect(unreachable(host)).toEqual([]);
     expect(host.textContent).not.toMatch(/\b(he|him|his)\b/i);

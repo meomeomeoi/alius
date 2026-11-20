@@ -20,8 +20,8 @@ export function drawCountermandChips(host: HTMLElement, state: CampaignState, re
   host.append(h('p', { class: 'alius-countermand', 'data-countermand-line': '' },
     h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:countermand') }, `${nameOf(c.leaderId)} COUNTERMANDS`),
     ` ${activity} with ${nameOf(c.unitId)}. `,
-    h('button', { type: 'button', class: 'alius-btn alius-option', 'data-countermand': 'accept', ...analyzeNative('glossary:countermand'), onclick: () => onAnswer('accept') }, '[ACCEPT]'), ' ',
-    h('button', { type: 'button', class: 'alius-btn alius-option', 'data-countermand': 'overrule', ...analyzeNative('glossary:countermand'), onclick: () => onAnswer('overrule') }, '[OVERRULE]')));
+    h('button', { type: 'button', class: 'alius-btn alius-option', 'data-countermand': 'accept', ...analyzeNative('glossary:countermand'), onclick: () => onAnswer('accept') }, '[ ACCEPT ]'), ' ',
+    h('button', { type: 'button', class: 'alius-btn alius-option', 'data-countermand': 'overrule', ...analyzeNative('glossary:countermand'), onclick: () => onAnswer('overrule') }, '[ OVERRULE ]')));
 }
 
 /** `ON HER CALL: {Name}` while a soldier's her-call mark stands on the mission (a squad vote's mark shows nothing). */

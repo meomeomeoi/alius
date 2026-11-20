@@ -33,8 +33,8 @@ export function drawProposalChips(
       continue;
     }
     const buttons: Array<[string, ProposalAnswer]> = p.needsDisclosure
-      ? [['[OPENLY]', 'accept'], ['[SECRETLY]', 'accept_secret'], ['[NOT NOW]', 'not_now']]
-      : p.from === 'commander' ? [['[NOT NOW]', 'not_now']] : [['[ACCEPT]', 'accept'], ['[DECLINE]', 'decline'], ['[NOT NOW]', 'not_now']];
+      ? [['[ OPENLY ]', 'accept'], ['[ SECRETLY ]', 'accept_secret'], ['[ NOT NOW ]', 'not_now']]
+      : p.from === 'commander' ? [['[ NOT NOW ]', 'not_now']] : [['[ ACCEPT ]', 'accept'], ['[ DECLINE ]', 'decline'], ['[ NOT NOW ]', 'not_now']];
     const group = h('div', { class: 'alius-chip-group', 'data-proposal': p.id }, label,
       ...buttons.map(([text, answer]) => h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, answer) }, text)));
     pickForObedience(state, p, group);
@@ -48,9 +48,9 @@ function courtingGroup(p: PendingProposal, label: HTMLElement, onAnswer: (id: st
   const badge = h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:courtship', { unitId: p.unitId }) }, 'COURTING');
   const draw = (): void => {
     group.replaceChildren(label, badge,
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, 'accept') }, '[ACCEPT]'),
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, 'deflect') }, '[DEFLECT]'),
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: drawCondition }, '[SET A CONDITION]'));
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, 'accept') }, '[ ACCEPT ]'),
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, 'deflect') }, '[ DEFLECT ]'),
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: drawCondition }, '[ SET A CONDITION ]'));
   };
   function drawCondition(): void {
     const input = h('input', { type: 'text', name: 'condition', class: 'alius-input', maxlength: String(CONDITION_MAX), autocomplete: 'off', 'aria-label': 'Your condition' }) as HTMLInputElement;
@@ -60,8 +60,8 @@ function courtingGroup(p: PendingProposal, label: HTMLElement, onAnswer: (id: st
     };
     input.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') confirm(); });
     group.replaceChildren(label, badge, h('span', { class: 'alius-condition' }, input,
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'condition-ok', onclick: confirm }, '[ACCEPT ON THIS]'),
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'condition-back', onclick: draw }, '[BACK]')));
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'condition-ok', onclick: confirm }, '[ ACCEPT ON THIS ]'),
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'condition-back', onclick: draw }, '[ BACK ]')));
     input.focus();
   }
   draw();
@@ -73,7 +73,7 @@ function pickForObedience(state: CampaignState, p: PendingProposal, group: HTMLE
   const obeyed = p.from === 'unit' ? obeyedBy(state, p.unitId) : null;
   if (obeyed === null) return;
   for (const b of group.querySelectorAll<HTMLElement>('button')) {
-    if (b.textContent === '[ACCEPT]') markPick(b);
+    if (b.textContent === '[ ACCEPT ]') markPick(b);
   }
   group.append(defiesHint(obeyed));
 }

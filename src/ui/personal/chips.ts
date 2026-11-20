@@ -17,8 +17,8 @@ export interface EditView {
 export function editChip(edit: EditView, name: string, onKeep: () => void, onRevert: () => void): HTMLElement {
   const group = h('div', { class: 'alius-edit alius-chip-group', 'data-edit': edit.id },
     h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:device_access', { unitId: edit.editorId }) }, `EDITED BY ${name.toUpperCase()}`),
-    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'keep', onclick: onKeep }, '[KEEP]'),
-    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'revert', onclick: onRevert }, '[REVERT]'));
+    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'keep', onclick: onKeep }, '[ KEEP ]'),
+    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'revert', onclick: onRevert }, '[ REVERT ]'));
   group.style.setProperty('--unit-accent', unitAccent(edit.editorId));
   return group;
 }
@@ -53,7 +53,7 @@ export function drawPersonalChips(host: HTMLElement, state: CampaignState, reg: 
   const offer = state.personal?.tokens?.offer;
   if (offer && pick(offer.giverId)) {
     host.append(group(offer.giverId, 'glossary:token', { unitId: offer.giverId }, `${nameOf(offer.giverId)} OFFERS: ${offer.label.toUpperCase()}`,
-      button('[ACCEPT]', 'accept', () => on.onAnswerToken(offer.id, true)), button('[DECLINE]', 'decline', () => on.onAnswerToken(offer.id, false))));
+      button('[ ACCEPT ]', 'accept', () => on.onAnswerToken(offer.id, true)), button('[ DECLINE ]', 'decline', () => on.onAnswerToken(offer.id, false))));
   }
   for (const w of state.personal?.wagers?.open ?? []) {
     if (!pick(w.unitId)) continue;
@@ -63,13 +63,13 @@ export function drawPersonalChips(host: HTMLElement, state: CampaignState, reg: 
     const live = { wagerId: w.id, unitId: w.unitId };
     if (w.status === 'offered') {
       host.append(group(w.unitId, 'glossary:wager', live, `${nameOf(w.unitId)} CHALLENGES: ${what}`,
-        button('[ACCEPT]', 'accept', () => on.onAnswerWager(w.id, true)), button('[DECLINE]', 'decline', () => on.onAnswerWager(w.id, false))));
+        button('[ ACCEPT ]', 'accept', () => on.onAnswerWager(w.id, true)), button('[ DECLINE ]', 'decline', () => on.onAnswerWager(w.id, false))));
     } else if (w.status === 'pending_run') {
       host.append(group(w.unitId, 'glossary:wager', live, `WAGER WITH ${nameOf(w.unitId)}: ${what} — WAITS FOR THE NEXT RUN`));
     } else if (game?.kind === 'rps') {
-      host.append(group(w.unitId, 'glossary:wager', live, `WAGER WITH ${nameOf(w.unitId)}: ${what}`, ...HANDS.map((hand) => button(`[${hand.toUpperCase()}]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
+      host.append(group(w.unitId, 'glossary:wager', live, `WAGER WITH ${nameOf(w.unitId)}: ${what}`, ...HANDS.map((hand) => button(`[ ${hand.toUpperCase()} ]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
     } else {
-      host.append(group(w.unitId, 'glossary:wager', live, `WAGER WITH ${nameOf(w.unitId)}: ${what}`, button(game?.kind === 'sparring' ? '[FIGHT]' : '[PLAY]', 'play', () => on.onPlayWager(w.id, undefined))));
+      host.append(group(w.unitId, 'glossary:wager', live, `WAGER WITH ${nameOf(w.unitId)}: ${what}`, button(game?.kind === 'sparring' ? '[ FIGHT ]' : '[ PLAY ]', 'play', () => on.onPlayWager(w.id, undefined))));
     }
   }
   const q = state.personal?.pendingQuestion;
@@ -82,6 +82,6 @@ export function drawPersonalChips(host: HTMLElement, state: CampaignState, reg: 
     };
     input.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') send(); });
     host.append(group(q.unitId, 'glossary:wager', { unitId: q.unitId }, asks ? `YOU WON A QUESTION: ASK ${nameOf(q.unitId)}` : `${nameOf(q.unitId)} WON A QUESTION: ANSWER TRUTHFULLY`,
-      h('span', { class: 'alius-condition' }, input, button(asks ? '[ASK]' : '[ANSWER]', 'question-ok', send))));
+      h('span', { class: 'alius-condition' }, input, button(asks ? '[ ASK ]' : '[ ANSWER ]', 'question-ok', send))));
   }
 }

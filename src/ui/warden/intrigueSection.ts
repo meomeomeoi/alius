@@ -37,7 +37,7 @@ export function renderIntrigueSection(host: HTMLElement, state: CampaignState, r
       h('button', {
         type: 'button', class: 'alius-btn alius-option', 'data-action': `intrigue-${label.toLowerCase().replace(/\s+/g, '-')}`, 'aria-disabled': why === null ? null : 'true',
         title: why, ...analyzeNative(`glossary:${glossary}`), onclick: () => { if (why === null) run(); },
-      }, `[${label}]`),
+      }, `[ ${label} ]`),
       why === null ? null : h('span', { class: 'alius-dim alius-intrigue-why' }, why));
 
   host.append(h('div', { class: 'alius-warden-intrigue' },

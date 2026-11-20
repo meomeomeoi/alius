@@ -92,7 +92,7 @@ function roster(state: CampaignState, ctx: BaseTabCtx): HTMLElement {
             title: full ? `The active roster is full (${TUNING.rosterActiveMax})` : '',
             onclick: () => ctx.onSetRoster(on ? active.filter((id) => id !== u.id) : [...active, u.id]),
           },
-          on ? '[ACTIVE]' : '[RESERVE]',
+          on ? '[ ACTIVE ]' : '[ RESERVE ]',
         ),
       ),
     );

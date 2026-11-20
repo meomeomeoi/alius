@@ -426,8 +426,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           else if (k.key === 'Enter' && (k.ctrlKey || k.metaKey)) saveEdit(s);
         });
         return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''} is-editing`, 'data-index': m.index }, speaker, ' ', h('div', { class: 'alius-edit-form' }, box,
-          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-save', onclick: () => saveEdit(s) }, '[SAVE]'),
-          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => cancelEdit(s) }, '[CANCEL]')));
+          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-save', onclick: () => saveEdit(s) }, '[ SAVE ]'),
+          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => cancelEdit(s) }, '[ CANCEL ]')));
       }
       const text = h('span', { class: 'alius-text' });
       fillText(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
@@ -448,8 +448,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (messages.length === 0) {
       const prologue = s.scene?.origin === 'prologue';
       log.append(h('p', { class: 'alius-dim alius-scene-hint' }, prologue
-        ? 'The squad is about to speak first. Answer them below (Enter sends); ‹ ↻ › above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [END TRANSMISSION] closes the scene whenever you like.'
-        : 'Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [END TRANSMISSION] closes the scene.'));
+        ? 'The squad is about to speak first. Answer them below (Enter sends); ‹ ↻ › above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like.'
+        : 'Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene.'));
     }
     const box = log.querySelector<HTMLTextAreaElement>('textarea.alius-edit-box');
     if (box && (editing?.focus || boxHadFocus)) {
@@ -508,7 +508,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     busyStarted = Date.now();
     const text = h('span', { class: 'alius-busy-text' }, 'AWAITING REPLY… 0s');
     busyHost.append(h('div', { class: 'alius-busy', role: 'status' }, text,
-      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'stop', 'aria-label': 'Stop the generation', onclick: () => controller.stop() }, '[STOP]')));
+      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'stop', 'aria-label': 'Stop the generation', onclick: () => controller.stop() }, '[ STOP ]')));
     busyTimer = setInterval(() => {
       text.textContent = `AWAITING REPLY… ${Math.floor((Date.now() - busyStarted) / 1000)}s`;
       const s = state();
@@ -587,7 +587,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         type: 'button', class: 'alius-btn', 'data-action': 'order', 'aria-pressed': 'false',
         title: 'Give the next message as an order: the rules decide whether she complies.',
         onclick: () => { orderOn = !orderOn; syncOrder(); },
-      }, '[ORDER]') as HTMLButtonElement;
+      }, '[ ORDER ]') as HTMLButtonElement;
       orderWho = units.length > 1
         ? (h('select', { name: 'order-unit', class: 'alius-select', 'aria-label': 'Order for' }, ...units.map((u) => h('option', { value: u.id }, u.displayName))) as HTMLSelectElement)
         : null;
@@ -610,7 +610,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           act('regenerate', '↻', () => ignore(st.regenerateLast()), 'Regenerate the last reply'),
           genTools,
           act('swipe-right', '›', () => ignore(st.swipeLast('right')), 'Next reply'),
-          act('end', '[END TRANSMISSION]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
+          act('end', '[ END TRANSMISSION ]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
       ),
       banner,
       busyHost,

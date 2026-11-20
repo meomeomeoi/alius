@@ -31,7 +31,7 @@ export function renderTokens(state: CampaignState, reg: Registries, handlers: To
         if (t.worn) handlers.onTakeOff(t.id);
         else if (problem === null) handlers.onWear(t.id);
       },
-    }, t.worn ? '[TAKE OFF]' : '[WEAR]');
+    }, t.worn ? '[ TAKE OFF ]' : '[ WEAR ]');
     block.append(h('div', { class: 'alius-token', 'data-token': t.id, 'data-worn': String(t.worn) },
       h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:token', { tokenId: t.id }) }, `${t.label.toUpperCase()}${t.worn ? ' — WORN' : ''}${locked ? ` — LOCKED UNTIL DAY ${t.lockedUntil}` : ''}`),
       ' ', wear));

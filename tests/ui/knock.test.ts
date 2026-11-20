@@ -17,7 +17,7 @@ describe('night knock', () => {
     const onIgnore = vi.fn();
     renderKnock(host, { entry, unitName: 'Ann', onOpen, onIgnore });
     expect(host.textContent).toContain('Ann knocks on your door, late.');
-    expect([...host.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['[OPEN]', '[IGNORE]']);
+    expect([...host.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['[ OPEN ]', '[ IGNORE ]']);
     host.querySelectorAll('button')[0].click();
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onIgnore).not.toHaveBeenCalled();

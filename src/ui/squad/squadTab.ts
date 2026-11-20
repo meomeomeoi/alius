@@ -219,7 +219,7 @@ function progressionBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
       ? h('button', {
         type: 'button', class: 'alius-btn', 'data-respec': unit.id, disabled: unit.unlockedNodes.length === 0 || !canPay,
         onclick: () => ctx.onRespec!(unit.id),
-      }, `[RESPEC — ${cost.credits} CR / ${cost.plyx} PLYX]`)
+      }, `[ RESPEC — ${cost.credits} CR / ${cost.plyx} PLYX ]`)
       : null);
 }
 
@@ -310,7 +310,7 @@ function publicityLine(unit: Unit, level: Publicity, pref: Publicity, ctx: Squad
       ? PUBLICITY_LEVELS.flatMap((l) => [' ', h('button', {
         type: 'button', class: 'alius-btn alius-option', 'data-publicity-set': l, 'aria-pressed': String(l === level), ...analyzeNative('glossary:publicity', live),
         onclick: () => ctx.onSetPublicity!(unit.id, l),
-      }, `[${l.toUpperCase()}]`)])
+      }, `[ ${l.toUpperCase()} ]`)])
       : []));
 }
 

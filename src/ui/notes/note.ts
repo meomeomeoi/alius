@@ -42,7 +42,7 @@ export function renderNote(o: NoteOpts): HTMLElement {
         used = true;
         o.onRead!();
       },
-    }, '[GOT IT]'));
+    }, '[ GOT IT ]'));
   }
   return note;
 }

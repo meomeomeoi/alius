@@ -92,7 +92,7 @@ describe('REROLL', () => {
     const host = h('div');
     const onReroll = vi.fn();
     const btn = drawReroll(host, { enabled: true }, onReroll);
-    expect(btn.textContent).toBe('[REROLL]');
+    expect(btn.textContent).toBe('[ REROLL ]');
     btn.click();
     expect(onReroll).toHaveBeenCalledOnce();
     const pending = drawReroll(h('div'), { enabled: true }, onReroll, true);

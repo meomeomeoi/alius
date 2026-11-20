@@ -145,11 +145,11 @@ describe('renderPanel', () => {
   it('pin toggles the label', () => {
     const open = render(view({ pinned: false }));
     const btn = open.host.querySelector<HTMLButtonElement>('.alius-analyze-pin')!;
-    expect(btn.textContent).toBe('[PIN]');
+    expect(btn.textContent).toBe('[ PIN ]');
     btn.click();
     expect(open.on.pin).toHaveBeenCalledTimes(1);
     const pinned = render(view({ pinned: true }));
-    expect(pinned.host.querySelector('.alius-analyze-pin')!.textContent).toBe('[PINNED]');
+    expect(pinned.host.querySelector('.alius-analyze-pin')!.textContent).toBe('[ PINNED ]');
   });
 
   it('rendering again replaces the previous content', () => {

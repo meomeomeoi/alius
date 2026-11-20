@@ -110,15 +110,15 @@ describe('courtship chips', () => {
 
   it("a courting unit's proposal shows ACCEPT / DEFLECT / SET A CONDITION; another's shows P3's chips", () => {
     const court = proposal('assertive');
-    expect(qa(court.host, 'button').map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DEFLECT]', '[SET A CONDITION]']);
+    expect(qa(court.host, 'button').map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DEFLECT ]', '[ SET A CONDITION ]']);
     expect(q(court.host, '.alius-chip')!.textContent).toBe('COURTING');
     const plainOne = proposal('balanced');
-    expect(qa(plainOne.host, 'button').map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DECLINE]', '[NOT NOW]']);
+    expect(qa(plainOne.host, 'button').map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DECLINE ]', '[ NOT NOW ]']);
     expect(q(plainOne.host, '.alius-chip')).toBeNull();
     // and without the registries, P3's chips whatever the unit is
     const host = mount();
     drawProposalChips(host, court.s, () => true, vi.fn());
-    expect(qa(host, 'button').map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DECLINE]', '[NOT NOW]']);
+    expect(qa(host, 'button').map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DECLINE ]', '[ NOT NOW ]']);
   });
 
   it('ACCEPT and DEFLECT answer at once; SET A CONDITION opens a one-line input and answers with its text', () => {
@@ -244,12 +244,12 @@ describe('the SCHEDULE of the OPS tab', () => {
     host.append(renderSchedule(s, reg, hs)!);
     expect(qa(host, '[data-conflict="true"]')).toHaveLength(2);
     const keeps = qa(host, '[data-action="keep"]');
-    expect(keeps.map((b) => b.textContent)).toEqual(['[KEEP HERS]', '[KEEP HERS]']);
+    expect(keeps.map((b) => b.textContent)).toEqual(['[ KEEP HERS ]', '[ KEEP HERS ]']);
     keeps[1].click();
     expect(hs.onKeep).toHaveBeenCalledWith('bk_2');
     const settle = qa(host, '[data-action="settle"]');
     expect(settle).toHaveLength(1);
-    expect(settle[0].textContent).toBe('[LET THEM SETTLE IT]');
+    expect(settle[0].textContent).toBe('[ LET THEM SETTLE IT ]');
     settle[0].click();
     expect(hs.onSettle).toHaveBeenCalledWith(6, 'evening');
   });
@@ -287,9 +287,9 @@ describe('the claim card', () => {
 
   it('offers REFUSE PUBLICLY only with public_humiliation on', () => {
     const off = card([]);
-    expect(qa(off.host, 'button').map((b) => b.textContent)).toEqual(['[LET IT STAND]']);
+    expect(qa(off.host, 'button').map((b) => b.textContent)).toEqual(['[ LET IT STAND ]']);
     const on = card(['public_humiliation']);
-    expect(qa(on.host, 'button').map((b) => b.textContent)).toEqual(['[LET IT STAND]', '[REFUSE PUBLICLY]']);
+    expect(qa(on.host, 'button').map((b) => b.textContent)).toEqual(['[ LET IT STAND ]', '[ REFUSE PUBLICLY ]']);
     (qa(on.host, 'button')[1]).click();
     expect(on.onRefuse).toHaveBeenCalledWith(ANN);
     (qa(on.host, 'button')[0]).click();
@@ -302,7 +302,7 @@ describe('the claim card', () => {
     s.squad.find((u) => u.id === ANN)!.bond!.ownLimits = { categories: ['public_humiliation'] };
     const host = mount();
     host.append(renderClaimCard(s, reg, { unitId: ANN, day: s.day }, { onLetStand: vi.fn(), onRefuse: vi.fn() }));
-    expect(qa(host, 'button').map((b) => b.textContent)).toEqual(['[LET IT STAND]']);
+    expect(qa(host, 'button').map((b) => b.textContent)).toEqual(['[ LET IT STAND ]']);
   });
 
   it('carries data-analyze and resolves', () => {

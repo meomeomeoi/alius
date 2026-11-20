@@ -463,7 +463,7 @@ describe('P4 progression views', () => {
     s.resources.plyx = 100;
     const { host, calls } = view(s);
     const btn = host.querySelector<HTMLButtonElement>('[data-respec]')!;
-    expect(btn.textContent).toBe('[RESPEC — 40 CR / 20 PLYX]');
+    expect(btn.textContent).toBe('[ RESPEC — 40 CR / 20 PLYX ]');
     expect(btn.disabled).toBe(false);
     btn.click();
     expect(calls.onRespec).toHaveBeenCalledWith('unit_rhea');
@@ -693,7 +693,7 @@ describe('the dossier publicity block (P9d)', () => {
     expect(host.querySelector('.alius-bond [data-publicity-pref]')!.textContent).toBe('SHE PREFERS: SECRET');
     const buttons = [...host.querySelectorAll<HTMLButtonElement>('.alius-bond button[data-publicity-set]')];
     expect(buttons.map((b) => [b.dataset.publicitySet, b.textContent, b.getAttribute('aria-pressed')])).toEqual([
-      ['secret', '[SECRET]', 'false'], ['known', '[KNOWN]', 'true'], ['public', '[PUBLIC]', 'false'],
+      ['secret', '[ SECRET ]', 'false'], ['known', '[ KNOWN ]', 'true'], ['public', '[ PUBLIC ]', 'false'],
     ]);
     document.body.innerHTML = '';
     expect(renderBond(romantic(undefined, 'friend'), vi.fn()).querySelector('[data-publicity]')).toBeNull();

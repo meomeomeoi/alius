@@ -51,7 +51,7 @@ describe('the prologue card', () => {
     expect(m.controller.skipStep).toHaveBeenCalledTimes(1);
   });
 
-  it('first words shows one row per unit with [TALK] and [SKIP], spoken ones ticked', () => {
+  it('first words shows one row per unit with [ TALK ] and [ SKIP ], spoken ones ticked', () => {
     const m = mount((s) => { s.onboarding!.stepId = 'first_words'; s.onboarding!.spoken = ['unit_ann']; });
     const rows = [...m.host.querySelectorAll<HTMLElement>('[data-unit]')];
     expect(rows.map((r) => r.dataset.unit)).toEqual(['unit_ann', 'unit_bea', 'unit_cat', 'unit_dee']);
@@ -106,7 +106,7 @@ describe('the prologue card', () => {
     expect(byText(m.host, 'SKIP')).toBeDefined();
   });
 
-  it('the first evening shows who wants to talk, with [TALK]', () => {
+  it('the first evening shows who wants to talk, with [ TALK ]', () => {
     const m = mount((s) => { s.onboarding!.stepId = 'first_evening'; s.onboarding!.guideUnitId = 'unit_bea'; });
     expect(m.host.textContent).toContain('Bea wants to talk.');
     byText(m.host, 'TALK')!.click();

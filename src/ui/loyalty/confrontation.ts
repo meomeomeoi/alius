@@ -46,18 +46,18 @@ export function renderConfrontation(host: HTMLElement, ctx: ConfrontationCtx): v
 
   if (ctx.kind === 'desertion') {
     if (!ctx.talkTried) {
-      add(actions, `[TALK HER DOWN — AUTHORITY ${ctx.ranks.authority}]`, () => ctx.onTalk('authority'));
-      add(actions, `[TALK HER DOWN — EMPATHY ${ctx.ranks.empathy}]`, () => ctx.onTalk('empathy'));
+      add(actions, `[ TALK HER DOWN — AUTHORITY ${ctx.ranks.authority} ]`, () => ctx.onTalk('authority'));
+      add(actions, `[ TALK HER DOWN — EMPATHY ${ctx.ranks.empathy} ]`, () => ctx.onTalk('empathy'));
     }
-    add(actions, '[LET HER GO]', ctx.onLetGo);
-    add(actions, '[SUPPRESS]', ctx.onSuppress, noLeash);
+    add(actions, '[ LET HER GO ]', ctx.onLetGo);
+    add(actions, '[ SUPPRESS ]', ctx.onSuppress, noLeash);
   } else if (ctx.kind === 'mutiny') {
-    if (ctx.canFight) add(actions, '[FIGHT]', ctx.onFight);
-    else add(actions, '[YIELD]', ctx.onYield);
-    add(actions, '[SUPPRESS]', ctx.onSuppress, noLeash);
+    if (ctx.canFight) add(actions, '[ FIGHT ]', ctx.onFight);
+    else add(actions, '[ YIELD ]', ctx.onYield);
+    add(actions, '[ SUPPRESS ]', ctx.onSuppress, noLeash);
   } else {
-    add(actions, '[TAKE HER BACK]', ctx.onTakeBack, ctx.canTakeBack);
-    add(actions, '[TURN HER AWAY]', ctx.onTurnAway);
+    add(actions, '[ TAKE HER BACK ]', ctx.onTakeBack, ctx.canTakeBack);
+    add(actions, '[ TURN HER AWAY ]', ctx.onTurnAway);
   }
   host.append(h('div', { class: 'alius-confrontation' },
     h('h3', {}, `${TITLE[ctx.kind]} // ${ctx.unitName}`),

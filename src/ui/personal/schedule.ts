@@ -38,7 +38,7 @@ export function renderSchedule(state: CampaignState, reg: Registries, handlers: 
       if (b.conflict && !settled.has(key) && rows.filter((x) => x.slot === b.slot && x.conflict).at(-1) === b) {
         settled.add(key);
         section.append(h('p', { class: 'alius-schedule-row' },
-          h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'settle', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onSettle(b.day, b.slot) }, '[LET THEM SETTLE IT]')));
+          h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'settle', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onSettle(b.day, b.slot) }, '[ LET THEM SETTLE IT ]')));
       }
     }
   }
@@ -50,10 +50,10 @@ function row(state: CampaignState, reg: Registries, b: Booking, handlers: Schedu
   const chip = h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:booking', { bookingId: b.id, unitId: b.unitId }) }, `${name.toUpperCase()} · ${SLOT_WORD[b.slot]}`);
   chip.style.setProperty('--unit-accent', unitAccent(b.unitId));
   const keep = b.conflict
-    ? h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'keep', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onKeep(b.id) }, '[KEEP HERS]')
+    ? h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'keep', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onKeep(b.id) }, '[ KEEP HERS ]')
     : null;
   return h('div', { class: 'alius-schedule-row', 'data-booking': b.id, ...(b.conflict ? { 'data-conflict': 'true' } : {}) },
     chip, h('span', { class: 'alius-dim' }, String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId)), keep,
-    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onCancel(b.id) }, '[CANCEL]'),
+    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onCancel(b.id) }, '[ CANCEL ]'),
     obeyedBy(state, b.unitId) !== null ? defiesHint(obeyedBy(state, b.unitId)!) : null); // P9c: a day the commander obeys her: cancelling defies her
 }

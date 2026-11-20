@@ -2022,7 +2022,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const answer = await shell.modal({
       title: `PEEL HER ${part.toUpperCase()}?`,
       body: `${name} put it there. She will notice it is gone.`,
-      actions: [{ label: '[PEEL]', value: 'peel' }, { label: '[KEEP]', value: 'keep' }],
+      actions: [{ label: '[ PEEL ]', value: 'peel' }, { label: '[ KEEP ]', value: 'keep' }],
     });
     if (answer !== 'peel' || st.getActiveChat()?.chatId !== chatId) return;
     act({ type: 'device/remove_decor', payload: { unitId, part } });

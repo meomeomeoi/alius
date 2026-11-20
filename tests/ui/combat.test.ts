@@ -183,8 +183,8 @@ describe('combat screen', () => {
     s.combat!.awaitingCid = undefined;
     const { host, calls } = mount(s);
     const retry = host.querySelector<HTMLButtonElement>('[data-act="retry"]')!;
-    expect(retry.textContent).toBe('[RETRY]');
-    expect(host.querySelector('[data-act="accept"]')!.textContent).toBe('[ACCEPT DEFEAT]');
+    expect(retry.textContent).toBe('[ RETRY ]');
+    expect(host.querySelector('[data-act="accept"]')!.textContent).toBe('[ ACCEPT DEFEAT ]');
     expect(host.querySelector('[data-act="guard"]')).toBeNull();
     retry.click();
     (host.querySelector('[data-act="accept"]') as HTMLElement).click();

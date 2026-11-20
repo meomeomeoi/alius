@@ -36,7 +36,7 @@ describe('the door: options', () => {
   it('three options, each an .alius-option with data-analyze glossary:night_door', () => {
     const { host } = mount();
     const options = [...host.querySelectorAll<HTMLElement>('.alius-option')];
-    expect(options.map((b) => b.textContent)).toEqual(['[OPEN]', '[SAY SOMETHING THROUGH THE DOOR]', '[STAY SILENT]']);
+    expect(options.map((b) => b.textContent)).toEqual(['[ OPEN ]', '[ SAY SOMETHING THROUGH THE DOOR ]', '[ STAY SILENT ]']);
     for (const o of options) expect(o.getAttribute('data-analyze')).toBe('glossary:night_door');
     expect(markedWithout(host)).toEqual([]);
     expect(unreachable(host)).toEqual([]);
@@ -241,7 +241,7 @@ describe('the door: one exchange', () => {
     tick(12);
     entry.door = { said: 'Who is it?', reply: 'Open the door.' };
     again();
-    expect([...host.querySelectorAll('.alius-option')].map((b) => b.textContent)).toEqual(['[OPEN]', '[STAY SILENT]']);
+    expect([...host.querySelectorAll('.alius-option')].map((b) => b.textContent)).toEqual(['[ OPEN ]', '[ STAY SILENT ]']);
     expect(host.textContent).toContain('Who is it?');
     expect(host.textContent).toContain('Open the door.');
     expect(host.querySelector('input')).toBeNull();

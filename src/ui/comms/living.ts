@@ -93,7 +93,7 @@ export function renderHerMessage(_state: CampaignState, reg: Registries, _unitId
     const voice = h(
       'div', { class: 'alius-msg alius-voicemsg is-unit', 'data-voice-message': msg.id },
       meta(msg, kinds), 'VOICE MESSAGE ', waveform(msg.id), ' ',
-      h('button', { type: 'button', class: 'alius-btn alius-option', 'data-play': msg.id, ...analyzeNative('glossary:voice_message'), onclick: () => opts.onReveal(msg.id) }, '[PLAY]'),
+      h('button', { type: 'button', class: 'alius-btn alius-option', 'data-play': msg.id, ...analyzeNative('glossary:voice_message'), onclick: () => opts.onReveal(msg.id) }, '[ PLAY ]'),
     );
     voice.style.setProperty('--bubble-accent', opts.accent);
     out.push(voice);

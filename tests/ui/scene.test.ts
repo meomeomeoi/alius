@@ -311,7 +311,7 @@ describe('scene screen', () => {
     setState(a.state);
     screen.handle({ type: 'chips', proposal: a.state.proposals![0] });
     expect(q('.alius-chips')!.textContent).toContain('ANN PROPOSES: DATE');
-    expect(qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[ACCEPT]', '[DECLINE]', '[NOT NOW]']);
+    expect(qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ DECLINE ]', '[ NOT NOW ]']);
     qa('.alius-chips button')[0].click();
     expect(controller.answer).toHaveBeenCalledWith(a.state.proposals![0].id, 'accept');
     qa('.alius-chips button')[1].click();
@@ -330,7 +330,7 @@ describe('scene screen', () => {
     const a = run(state(), reg, { type: 'intents/apply', payload: { channel: 'scene', intents: { proposals: [{ from: ANN, to: 'commander', kind: 'date', evidence: 'x' }] } } });
     setState(a.state);
     screen.handle({ type: 'transcript' });
-    expect(qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[OPENLY]', '[SECRETLY]', '[NOT NOW]']);
+    expect(qa('.alius-chips button').map((b) => b.textContent)).toEqual(['[ OPENLY ]', '[ SECRETLY ]', '[ NOT NOW ]']);
     qa('.alius-chips button')[1].click();
     expect(controller.answer).toHaveBeenCalledWith(a.state.proposals![0].id, 'accept_secret');
   });
@@ -683,7 +683,7 @@ describe('lead chips (P9d Task 8)', () => {
     expect(none.qa('[data-lead-chip]')).toHaveLength(0);
     const t = draw();
     expect(t.qa('button[data-lead-chip]').map((b) => b.dataset.leadChip)).toEqual(['follow', 'ask', 'limit']);
-    expect(t.qa('button[data-lead-chip]').map((b) => b.textContent)).toEqual(['[FOLLOW]', '[ASK]', '[SET A LIMIT]']);
+    expect(t.qa('button[data-lead-chip]').map((b) => b.textContent)).toEqual(['[ FOLLOW ]', '[ ASK ]', '[ SET A LIMIT ]']);
     for (const b of t.qa('button[data-lead-chip]')) expect(b.getAttribute('data-analyze'), b.textContent).toBe('glossary:lead');
   });
 

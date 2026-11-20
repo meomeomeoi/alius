@@ -39,12 +39,12 @@ export function drawGenerationChip(host: HTMLElement, rec: GenerationRecord, hd:
     ...analyzeNative('glossary:generation_failed', { recordId: rec.id }), onclick,
   }, label);
   if (expired) {
-    if (hd.onDrop) chip.append(' ', button('drop', '[DROP]', `Remove this note about ${hd.label}`, hd.onDrop));
+    if (hd.onDrop) chip.append(' ', button('drop', '[ DROP ]', `Remove this note about ${hd.label}`, hd.onDrop));
   } else {
-    chip.append(' ', button('retry', '[RETRY]', `Retry ${hd.label}`, hd.onRetry));
-    if (hd.onUseFallback) chip.append(' ', button('fallback', '[USE FALLBACK]', `Use the plain version of ${hd.label}`, hd.onUseFallback));
+    chip.append(' ', button('retry', '[ RETRY ]', `Retry ${hd.label}`, hd.onRetry));
+    if (hd.onUseFallback) chip.append(' ', button('fallback', '[ USE FALLBACK ]', `Use the plain version of ${hd.label}`, hd.onUseFallback));
     chip.append(' ', button('menu', '[⋯]', `More ways to retry ${hd.label}`, hd.onMenu));
-    if (hd.showDrop && hd.onDrop) chip.append(' ', button('drop', '[DROP]', `Give up ${hd.label}`, hd.onDrop));
+    if (hd.showDrop && hd.onDrop) chip.append(' ', button('drop', '[ DROP ]', `Give up ${hd.label}`, hd.onDrop));
   }
   host.append(chip);
   return chip;
@@ -63,7 +63,7 @@ export function drawReroll(
     type: 'button', class: 'alius-btn alius-option alius-reroll', 'data-action': 'generation-reroll', 'aria-label': 'Reroll: ask the model again',
     disabled: pending, 'aria-disabled': off ? 'true' : null, title: off ? state.reason : null,
     ...analyzeNative('glossary:generation_reroll', ctx), onclick: () => { if (!off) onReroll(); },
-  }, '[REROLL]');
+  }, '[ REROLL ]');
   host.append(btn);
   return btn;
 }

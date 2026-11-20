@@ -103,7 +103,7 @@ describe('HOME: the wallpaper', () => {
 });
 
 describe('HOME: peel and change wallpaper', () => {
-  it('[CHANGE WALLPAPER] asks the app to peel the owner\'s wallpaper part; [PEEL STICKER] her sticker', () => {
+  it('[ CHANGE WALLPAPER ] asks the app to peel the owner\'s wallpaper part; [ PEEL STICKER ] her sticker', () => {
     const { q, ctx } = mount(decorated());
     q('button[data-action="change-wallpaper"]')!.click();
     expect(ctx.onPeel).toHaveBeenCalledWith(ANN, 'wallpaper');
@@ -161,7 +161,7 @@ describe('HOME: the notes', () => {
     expect(host.querySelectorAll('.alius-note').length).toBeGreaterThanOrEqual(5); // + at least one pinned line
   });
 
-  it('[GOT IT] on a stored note calls onReadNote; a rule note answers through the rule handlers', () => {
+  it('[ GOT IT ] on a stored note calls onReadNote; a rule note answers through the rule handlers', () => {
     const s = decorated();
     s.notes = { seq: 1, list: [{ id: 'hn1', unitId: ANN, noteId: 'door_plain', where: 'door', text: 'I came by.', day: 5 }] };
     s.bonds = { rules: [{ id: 'r1', unitId: ANN, templateId: 'report_evening', text: 'Report.', status: 'proposed', day: 3, brokenCount: 0, delivered: true }] };

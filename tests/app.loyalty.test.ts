@@ -276,10 +276,10 @@ describe('confrontations', () => {
     const host = t.mount('scene');
     expect(host.textContent).toContain('DESERTION');
     expect(host.textContent).toContain('Rhea is about to walk out.');
-    expect(btn(host, '[LET HER GO]')).toBeDefined();
+    expect(btn(host, '[ LET HER GO ]')).toBeDefined();
     expect(host.textContent).not.toContain('[ OPEN ]');
     // answering lets her go and returns to the PDA
-    btn(host, '[LET HER GO]')!.click();
+    btn(host, '[ LET HER GO ]')!.click();
     expect(t.state().squad.find((u) => u.id === RHEA)!.status).toBe('deserted');
     expect(t.state().slot).toBe('morning');
     expect(t.sh.screens.at(-1)).toBe('hub');
@@ -300,7 +300,7 @@ describe('confrontations', () => {
     expect(t.state().disloyalty!.open!.talkTried).toBe(true);
     host = t.mount('scene');
     expect(btn(host, 'TALK HER DOWN')).toBeUndefined();
-    expect(btn(host, '[LET HER GO]')).toBeDefined();
+    expect(btn(host, '[ LET HER GO ]')).toBeDefined();
   });
 
   it('reload with an open confrontation shows it again', async () => {
@@ -309,7 +309,7 @@ describe('confrontations', () => {
     await settle();
     const again = await boot({ st: t.st, deploy: false });
     expect(again.state().disloyalty!.open!.kind).toBe('desertion');
-    expect(again.mount('scene').textContent).toContain('[LET HER GO]');
+    expect(again.mount('scene').textContent).toContain('[ LET HER GO ]');
     expect(again.initialScreens).toContain('scene');
   });
 
@@ -331,7 +331,7 @@ describe('confrontations', () => {
     expect(t.state().disloyalty!.open).toMatchObject({ kind: 'desertion', at: 'mission_start' });
     const modal = t.sh.modals.at(-1)!;
     expect(modal.title).toMatch(/DESERTION/);
-    expect((modal.body as HTMLElement).textContent).toContain('[LET HER GO]');
+    expect((modal.body as HTMLElement).textContent).toContain('[ LET HER GO ]');
   });
 
   it('fight starts a combat against her and its end resolves the mutiny once', async () => {
@@ -347,8 +347,8 @@ describe('confrontations', () => {
       s.disloyalty.open = { kind: 'mutiny', unitId: RHEA, day: s.day, at: 'night', nightEntryId: 'n_m', sympathizers: [] };
     });
     const host = t.mount('scene');
-    expect(btn(host, '[FIGHT]')).toBeDefined();
-    btn(host, '[FIGHT]')!.click();
+    expect(btn(host, '[ FIGHT ]')).toBeDefined();
+    btn(host, '[ FIGHT ]')!.click();
     const cs = t.state().combat!;
     expect(cs.encounter.mutineers).toEqual([{ unitId: RHEA }]);
     expect(t.state().disloyalty!.open!.combatId).toBe(cs.id);
@@ -548,11 +548,11 @@ describe('final review fixes', () => {
     await missionStartDesertion(t);
     expect(desertionModals(t)).toHaveLength(1);
     t.sh.script.push(async () => null); // the oversight form is withdrawn
-    btn((t.sh.modals.at(-1)!.body as HTMLElement), '[SUPPRESS]')!.click();
+    btn((t.sh.modals.at(-1)!.body as HTMLElement), '[ SUPPRESS ]')!.click();
     await settle();
     expect(t.state().disloyalty!.open).toBeDefined();
     expect(desertionModals(t)).toHaveLength(2);
-    expect(btn(t.sh.modals.at(-1)!.body as HTMLElement, '[LET HER GO]')!.disabled).toBe(false);
+    expect(btn(t.sh.modals.at(-1)!.body as HTMLElement, '[ LET HER GO ]')!.disabled).toBe(false);
   });
 
   it('I1: a departure refused because of the open desertion brings the panel back', async () => {

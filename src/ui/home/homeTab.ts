@@ -93,7 +93,7 @@ export function renderHomeTab(host: HTMLElement, ctx: HomeCtx): void {
         ? h('button', {
           type: 'button', class: 'alius-btn alius-option', 'data-action': 'peel-sticker', 'data-unit': u.id, 'aria-label': `Peel ${u.displayName}'s sticker`,
           ...analyzeNative('glossary:device_marks'), onclick: () => ctx.onPeel!(u.id, 'sticker'),
-        }, '[PEEL STICKER]')
+        }, '[ PEEL STICKER ]')
         : null,
     )];
   });
@@ -101,7 +101,7 @@ export function renderHomeTab(host: HTMLElement, ctx: HomeCtx): void {
     ? h('button', {
       type: 'button', class: 'alius-btn alius-option', 'data-action': 'change-wallpaper', 'data-unit': owner, ...analyzeNative('glossary:device_marks'),
       onclick: () => ctx.onPeel!(owner, 'wallpaper'),
-    }, '[CHANGE WALLPAPER]')
+    }, '[ CHANGE WALLPAPER ]')
     : null;
 
   // ---- the notes, each in her hand
