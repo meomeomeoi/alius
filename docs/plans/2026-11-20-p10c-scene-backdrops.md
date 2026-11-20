@@ -118,15 +118,15 @@
 
 **Files:** `src/ui/scene/sceneScreen.ts`, `css/60-scene-comms.css`, `tests/ui/sceneBackdrop.test.ts` (the old background test in `tests/ui/scene.test.ts` is updated to the new loader).
 
-- [ ] Write failing tests (jsdom, `loadImage` injected):
+- [x] Write failing tests (jsdom, `loadImage` injected):
   - the first candidate that loads is shown and the scene root gets `data-backdrop="image"`; a failing first candidate falls to the second; all failing → the ASCII stage, `data-backdrop="ascii"`, no toast;
   - a slot-specific file gets no `data-light`; a base file at evening / night gets `data-light="evening"` / `"night"`;
   - her quarters use her style's file; changing the style and redrawing swaps the image; a redraw with the same candidates does not reload;
   - pointer movement sets `--alius-pan`; under reduced motion it stays `0.5` and no listener is attached.
-- [ ] Run, see them fail.
-- [ ] Implement: `SceneScreenCtx.loadImage?`; the background element moves to the scene root (behind everything), the stage keeps the sprites and caption; the CSS for `[data-backdrop="image"]` (cover, gradient, translucent transcript, borderless stage, light filters from palette variables, `transition` on the pan only when motion is allowed).
-- [ ] Look at it: screenshots at 1920×1080 and 2560×1440 of a bright and a dark room, day and night, all three palettes and readable mode; text contrast holds.
-- [ ] Tests pass. Tick, commit (with `style.css` and `dist/`).
+- [x] Run, see them fail.
+- [x] Implement: `SceneScreenCtx.loadImage?`; the background element moves to the scene root (behind everything), the stage keeps the sprites and caption; the CSS for `[data-backdrop="image"]` (cover, gradient, translucent transcript, borderless stage, light filters from palette variables, `transition` on the pan only when motion is allowed).
+- [x] Look at it: screenshots at 1920×1080 and 2560×1440 of a bright and a dark room, day and night, all three palettes and readable mode; text contrast holds.
+- [x] Tests pass. Tick, commit (with `style.css` and `dist/`).
 
 ### Task 4: QUARTERS in the dossier, the glossary, the model's view of her room
 

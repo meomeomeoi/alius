@@ -399,3 +399,83 @@
 @media (prefers-reduced-motion: reduce) {
   #alius-shell .alius-busy-text::after { animation: none; }
 }
+
+/*
+ * P10c: the full-bleed backdrop. Only while an image is shown (`data-backdrop="image"`); without one the scene is the
+ * bordered ASCII stage above. The scene spreads under the view's side padding, the image covers it (a 21:9 file at
+ * 16:9 leaves ~25 % of its width to pan, `--alius-pan` 0…1), the palette background darkens the top (header) and the
+ * bottom (transcript, input), and the transcript sits on a translucent panel. Colours come from the palette only.
+ */
+#alius-shell .alius-scene-backdrop {
+  display: none;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] {
+  margin: 0 -12px;
+  padding: 0 12px;
+  isolation: isolate;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] > .alius-scene-backdrop {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: calc(var(--alius-pan, 0.5) * 100%) center;
+  transition: background-position 0.8s ease-out, filter 0.6s;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] > .alius-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--alius-bg) 82%, transparent) 0,
+    color-mix(in srgb, var(--alius-bg) 10%, transparent) 9%,
+    transparent 20%,
+    transparent 46%,
+    color-mix(in srgb, var(--alius-bg) 70%, transparent) 64%,
+    color-mix(in srgb, var(--alius-bg) 90%, transparent) 100%
+  );
+}
+
+/* P17c §4: the light of the slot over a file that was not drawn for it (night: warm and dark) */
+#alius-shell .alius-scene[data-light="evening"] > .alius-scene-backdrop {
+  filter: brightness(0.82) sepia(0.18) saturate(1.05);
+}
+
+#alius-shell .alius-scene[data-light="night"] > .alius-scene-backdrop {
+  filter: brightness(0.5) sepia(0.25) saturate(0.85);
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] .alius-stage {
+  flex: 1 1 52%;
+  border: none;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] .alius-scene-bg {
+  display: none;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] .alius-transcript {
+  flex: 1 1 30%;
+  background: color-mix(in srgb, var(--alius-bg) 74%, transparent);
+  border-color: color-mix(in srgb, var(--alius-dim) 70%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] .alius-scene-header {
+  border-bottom-color: color-mix(in srgb, var(--alius-dim) 60%, transparent);
+}
+
+#alius-shell.alius-readable .alius-scene[data-backdrop="image"] .alius-transcript {
+  background: color-mix(in srgb, var(--alius-bg) 92%, transparent);
+  backdrop-filter: none;
+}
+
+#alius-shell.alius-reduced-motion .alius-scene-backdrop {
+  transition: none;
+}

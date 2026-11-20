@@ -6256,7 +6256,10 @@ var REGISTRY_NAMES = [
   // P14b
   "developmentAxes",
   "developmentRules",
-  "habits"
+  "habits",
+  // P10c
+  "quartersStyles",
+  "backdrops"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6922,6 +6925,7 @@ var RESERVED_EVENT_TYPES = [
   "door_said",
   "door_replied",
   "hand_set",
+  "quarters_set",
   "note_left",
   "note_read",
   "notes_expired",
@@ -7187,9 +7191,13 @@ var LocationSchema = BaseEntrySchema.extend({
   name: str,
   summary: str,
   ascii: external_exports.array(external_exports.string()).min(1).max(12),
-  /** Asset paths relative to the extension folder; v1 ships none. */
+  /** Asset paths relative to the extension folder (P10c: `background` is the day file, the others the slot's own; read through `sceneBackdrop`). */
   background: str.optional(),
+  backgroundEvening: str.optional(),
   backgroundNight: str.optional(),
+  /** P10c: the floor and ceiling finish (a `backdrops` surface `finish`), for P17c's low and high views. */
+  floor: str.optional(),
+  ceiling: str.optional(),
   /** One location per unit (`quarters_unit`). */
   perUnit: external_exports.boolean().optional(),
   /** Slots the location is available in; absent = all. */
@@ -8340,6 +8348,25 @@ var HandFontSchema = BaseEntrySchema.extend({
   description: str.max(DESCRIPTION_MAX)
 }).strict();
 registrySchemas.handFonts = HandFontSchema;
+var QuartersStyleSchema = BaseEntrySchema.extend({
+  name: str.max(40),
+  /** One line of what the room looks like, for the scene header the model reads. */
+  summary: str.max(200),
+  description: str.max(DESCRIPTION_MAX),
+  background: str,
+  floor: str.optional(),
+  ceiling: str.optional()
+}).strict();
+registrySchemas.quartersStyles = QuartersStyleSchema;
+var BackdropSchema = BaseEntrySchema.extend({
+  kind: external_exports.enum(["surface", "frame", "place"]),
+  file: str,
+  surface: external_exports.enum(["floor", "ceiling"]).optional(),
+  finish: str.optional(),
+  /** Slots a surface suits (a night sky); absent = all. */
+  slots: external_exports.array(slotEnum).min(1).optional()
+}).strict().refine((e) => e.kind !== "surface" || e.surface !== void 0 && e.finish !== void 0, "a surface needs `surface` and `finish`");
+registrySchemas.backdrops = BackdropSchema;
 var HandNoteWhenSchema = external_exports.object({
   /** The device access level she has (P9c, 0–4) at least. */
   minAccess: int.min(1).max(4).optional(),
@@ -8434,7 +8461,9 @@ var DESCRIBED_REGISTRIES = [
   // P14b
   "developmentAxes",
   "developmentRules",
-  "habits"
+  "habits",
+  // P10c
+  "quartersStyles"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -22669,7 +22698,7 @@ function rememberEvents(draft, events, reg) {
 // src/engine/dispatch.ts
 var handlers = /* @__PURE__ */ new Map();
 var ONBOARDING_HINT = "onboarding/hint_seen";
-var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand"];
+var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand", "squad/set_quarters"];
 var ENDED_OK_PREFIXES = ["debug/", "campaign/epilogue", "generation/"];
 var ALWAYS_OPEN = ["warden/no_snapshot", "campaign/epilogue", "warden/answer", "generation/failed", "generation/close", "generation/expire"];
 var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start", "intrigue/act"];
@@ -25163,6 +25192,14 @@ registerAction("squad/set_hand", (draft, payload, ctx2) => {
   if (!ctx2.registries.handFonts.has(payload.handId)) throw new Error(`squad/set_hand: unknown hand "${payload.handId}"`);
   unit2.hand = payload.handId;
   return [{ type: "hand_set", unitId: unit2.id, handId: payload.handId }];
+});
+registerAction("squad/set_quarters", (draft, payload, ctx2) => {
+  if (!isObj24(payload) || typeof payload.unitId !== "string" || typeof payload.styleId !== "string") throw new Error("squad/set_quarters needs { unitId, styleId }");
+  const unit2 = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit2 || unit2.kind !== "named") throw new Error("Only a named soldier has quarters of her own.");
+  if (!ctx2.registries.quartersStyles.has(payload.styleId)) throw new Error(`squad/set_quarters: unknown style "${payload.styleId}"`);
+  unit2.quarters = payload.styleId;
+  return [{ type: "quarters_set", unitId: unit2.id, styleId: payload.styleId }];
 });
 registerDayEndStep("dm_rumors", notesDayStep);
 registerAction("notes/read", (draft, payload) => {
@@ -34245,27 +34282,27 @@ function stanceOptionIds(registries, world) {
   return worldChoices({ world: { options: world } }, registries).filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option }) => option.id);
 }
 function worldImportInfo(registries, world) {
-  const str4 = (v) => typeof v === "string" ? v : "";
+  const str5 = (v) => typeof v === "string" ? v : "";
   const level = worldDispositionLevel({ world: { options: world } }, registries);
   const picked = worldChoices({ world: { options: world } }, registries);
   return {
-    disposition: { name: str4(level.name), description: str4(level.description) },
-    options: picked.filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option, choice }) => ({ id: option.id, label: str4(option.label), choice: str4(choice.label), description: str4(choice.description) }))
+    disposition: { name: str5(level.name), description: str5(level.description) },
+    options: picked.filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option, choice }) => ({ id: option.id, label: str5(option.label), choice: str5(choice.label), description: str5(choice.description) }))
   };
 }
 function buildImportInput(card2, registries, settings, sections, world, bond) {
-  const str4 = (v) => typeof v === "string" ? v : "";
+  const str5 = (v) => typeof v === "string" ? v : "";
   const info = world ? worldImportInfo(registries, world) : void 0;
   const asked = sections.filter((s) => s !== "disposition" && s !== "stances" || info !== void 0 && (s === "disposition" || info.options.length > 0));
   return {
     card: card2,
     sections: asked,
     ...info ? { world: info } : {},
-    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str4(r.summary) })),
-    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str4(s.fits) })),
-    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str4(d.lore) })),
-    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str4(t.description) })),
-    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str4(c.label) })) } : {},
+    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str5(r.summary) })),
+    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str5(s.fits) })),
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str5(d.lore) })),
+    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str5(t.description) })),
+    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str5(c.label) })) } : {},
     ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries) } } : {}
   };
 }
@@ -34445,9 +34482,9 @@ var noUsable = (m) => `no usable ${criticalOf(m).join(" / ")} in the model's ans
 async function importProfile(avatar, sections, deps) {
   const { st, settings, registries } = deps;
   try {
-    const loaded = await st.loadCharacterCard(avatar);
-    if (!loaded) return { kind: "manual", reason: "card not found" };
-    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
+    const loaded2 = await st.loadCharacterCard(avatar);
+    if (!loaded2) return { kind: "manual", reason: "card not found" };
+    const input = buildImportInput(truncateCard(loaded2, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
     const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
     const key = `${avatar}:${input.sections.join(",")}`;
     inFlight.set(key, { input, ctx: ctx2 });
@@ -40909,6 +40946,33 @@ async function pickLocation(modal, ctx2) {
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
 }
 
+// src/engine/backdrops.ts
+function quartersOf(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  if (!unit2 || unit2.kind !== "named") return null;
+  const chosen = unit2.quarters === void 0 ? void 0 : reg.quartersStyles.get(unit2.quarters);
+  if (chosen) return chosen;
+  const all = [...reg.quartersStyles.values()];
+  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+}
+function slotLight(slot2) {
+  return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
+}
+var str4 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
+function sceneBackdrop(state, reg, locationId, ownerId) {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return [];
+  const out = [];
+  const add = (file, slotted) => {
+    if (file && !out.some((c) => c.file === file)) out.push({ file, slotted });
+  };
+  if (loc.perUnit === true && ownerId !== null) add(str4(quartersOf(state, reg, ownerId)?.background), false);
+  if (state.slot === "evening") add(str4(loc.backgroundEvening), true);
+  if (state.slot === "night") add(str4(loc.backgroundNight), true);
+  add(str4(loc.background), false);
+  return out;
+}
+
 // src/ui/special/freqChip.ts
 function renderFreqChip(host, state, reg, unitId) {
   const f = state.special?.frequency;
@@ -40921,6 +40985,32 @@ function renderFreqChip(host, state, reg, unitId) {
 }
 
 // src/ui/scene/sceneScreen.ts
+var loaded = /* @__PURE__ */ new Map();
+var loading = /* @__PURE__ */ new Map();
+function defaultLoadImage(url) {
+  if (typeof Image === "undefined") return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+function tryLoad(url, load, own) {
+  if (own) return load(url);
+  const known = loaded.get(url);
+  if (known !== void 0) return Promise.resolve(known);
+  let p = loading.get(url);
+  if (!p) {
+    p = load(url).catch(() => false).then((ok) => {
+      loaded.set(url, ok);
+      loading.delete(url);
+      return ok;
+    });
+    loading.set(url, p);
+  }
+  return p;
+}
 var PULSE_MS = 1500;
 var TICK_MS2 = 50;
 var NON_ROMANTIC_KINDS = ["friendship_deepen", "confide", "rivalry", "reconcile", "break_up"];
@@ -40971,6 +41061,7 @@ function renderSceneScreen(host, ctx2) {
   host.replaceChildren();
   const root = h("div", { class: "alius-scene" });
   host.append(root);
+  attachPan();
   let pacing = false;
   let pending4 = false;
   let disposed = false;
@@ -40985,6 +41076,9 @@ function renderSceneScreen(host, ctx2) {
   const labels = /* @__PURE__ */ new Map();
   const timeouts = /* @__PURE__ */ new Set();
   let bg;
+  let backdrop;
+  let backdropKey = "";
+  let backdropToken = 0;
   let spriteHost;
   let hud;
   let log;
@@ -41011,19 +41105,63 @@ function renderSceneScreen(host, ctx2) {
     const loc = registries.locations.get(s.scene.locationId);
     return loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters` : String(loc?.name ?? s.scene.locationId);
   }
-  function drawBackground(s) {
+  function showAscii(s) {
     const loc = registries.locations.get(s.scene.locationId);
-    caption.textContent = locationName(s, present2(s)).toUpperCase();
+    root.dataset.backdrop = "ascii";
+    delete root.dataset.light;
+    backdrop.style.backgroundImage = "";
+    const art2 = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
+    art2.textContent = (loc?.ascii ?? []).join("\n");
+    bg.replaceChildren(art2);
+  }
+  function showImage(url, light) {
+    root.dataset.backdrop = "image";
+    if (light) root.dataset.light = light;
+    else delete root.dataset.light;
+    backdrop.style.backgroundImage = `url("${url}")`;
     bg.replaceChildren();
-    bg.style.backgroundImage = "";
-    const night = s.slot === "night" ? loc?.backgroundNight : void 0;
-    const image = night ?? loc?.background;
-    if (image) bg.style.backgroundImage = `url("${(ctx2.assetUrl ?? ((p) => p))(image)}")`;
-    else {
-      const art2 = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
-      art2.textContent = (loc?.ascii ?? []).join("\n");
-      bg.append(art2);
+  }
+  function drawBackground(s) {
+    caption.textContent = locationName(s, present2(s)).toUpperCase();
+    const owner = present2(s)[0]?.id ?? null;
+    const resolve = ctx2.assetUrl ?? ((p) => p);
+    const candidates4 = sceneBackdrop(s, registries, s.scene.locationId, owner).map((c) => ({ url: resolve(c.file), light: c.slotted ? null : slotLight(s.slot) }));
+    const key = `${s.slot}|${candidates4.map((c) => c.url).join("|")}`;
+    if (key === backdropKey) return;
+    backdropKey = key;
+    const token = ++backdropToken;
+    if (candidates4.length === 0) {
+      showAscii(s);
+      return;
     }
+    const own = ctx2.loadImage !== void 0;
+    const load = ctx2.loadImage ?? defaultLoadImage;
+    const known = own ? void 0 : candidates4.find((c) => loaded.get(c.url) !== false);
+    if (known && loaded.get(known.url) === true) {
+      showImage(known.url, known.light);
+      return;
+    }
+    void (async () => {
+      for (const c of candidates4) {
+        const ok = await tryLoad(c.url, load, own);
+        if (token !== backdropToken || disposed) return;
+        if (ok) {
+          showImage(c.url, c.light);
+          return;
+        }
+      }
+      showAscii(s);
+    })();
+  }
+  function attachPan() {
+    root.style.setProperty("--alius-pan", "0.5");
+    if (motionReduced(ctx2.settings())) return;
+    root.addEventListener("pointermove", (ev) => {
+      const box = root.getBoundingClientRect();
+      if (box.width <= 0) return;
+      const f = Math.min(1, Math.max(0, (ev.clientX - box.left) / box.width));
+      root.style.setProperty("--alius-pan", String(Math.round(f * 100) / 100));
+    });
   }
   function setSprite(unit2, labelText) {
     const img = spriteHost.querySelector(`.alius-sprite[data-unit="${unit2.id}"] img`);
@@ -41251,6 +41389,8 @@ function renderSceneScreen(host, ctx2) {
     const units = present2(s);
     sceneKey = s.scene.id;
     bg = h("div", { class: "alius-scene-bg" });
+    backdrop = h("div", { class: "alius-scene-backdrop", "aria-hidden": "true" });
+    backdropKey = "";
     spriteHost = h("div", { class: "alius-sprites" });
     hud = h("div", { class: "alius-hud" });
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
@@ -41326,6 +41466,7 @@ function renderSceneScreen(host, ctx2) {
     const ignore = (p) => void p.catch(() => {
     });
     root.replaceChildren(
+      backdrop,
       h(
         "div",
         { class: "alius-scene-header" },

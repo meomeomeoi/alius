@@ -75,9 +75,9 @@ describe('scene screen', () => {
     }
   });
 
-  it('uses the background image when the location has one', () => {
+  it('a location with a background does not draw the ASCII stage (P10c: the loader decides; tests/ui/sceneBackdrop.test.ts)', () => {
     const { q } = setup();
-    expect(q('.alius-scene-bg')!.style.backgroundImage).toContain('loc_mess_hall.webp');
+    expect(q('.alius-scene-backdrop')).not.toBeNull();
     expect(q('pre.alius-ascii')).toBeNull();
   });
 

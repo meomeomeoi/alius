@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { sceneBackdrop, slotLight } from '../../engine/backdrops';
 import { intimacyOf } from '../../engine/relations/gain';
 import { ROMANTIC_PROPOSALS } from '../../engine/relations/vocab';
 import type { CampaignState, Unit } from '../../engine/state/types';
@@ -27,6 +28,8 @@ export interface SceneScreenCtx {
   onEnded: () => void;
   /** Resolves an asset path of a location background against the extension folder. */
   assetUrl?: (path: string) => string;
+  /** P10c: whether an image URL loads (default: an `Image`); a failure falls to the next candidate. Injected by tests. */
+  loadImage?: (url: string) => Promise<boolean>;
   /** P6: rolls a unit's refusal before the next message goes out (the ORDER toggle). Returns whether she refused. */
   onOrder?: (unitId: string) => boolean;
   /** P6: forces her refused order through the Leash. */
@@ -47,6 +50,37 @@ export interface SceneScreen {
   handle(e: SceneUiEvent): void;
   refresh(): void;
   dispose(): void;
+}
+
+/** P10c: what each backdrop URL did when it was tried, for the session (a redraw shows a known image at once). */
+const loaded = new Map<string, boolean>();
+const loading = new Map<string, Promise<boolean>>();
+
+function defaultLoadImage(url: string): Promise<boolean> {
+  if (typeof Image === 'undefined') return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
+/** Tries a URL once per session with the given loader (a result is remembered; a test loader is not shared with the default). */
+function tryLoad(url: string, load: (url: string) => Promise<boolean>, own: boolean): Promise<boolean> {
+  if (own) return load(url);
+  const known = loaded.get(url);
+  if (known !== undefined) return Promise.resolve(known);
+  let p = loading.get(url);
+  if (!p) {
+    p = load(url).catch(() => false).then((ok) => {
+      loaded.set(url, ok);
+      loading.delete(url);
+      return ok;
+    });
+    loading.set(url, p);
+  }
+  return p;
 }
 
 const PULSE_MS = 1500;
@@ -99,6 +133,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   host.replaceChildren();
   const root = h('div', { class: 'alius-scene' });
   host.append(root);
+  attachPan();
 
   let pacing = false;
   let pending = false;
@@ -115,6 +150,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
   let bg: HTMLElement;
+  /** P10c: the full-bleed image layer behind the whole scene (the ASCII art stays in `bg`, inside the stage). */
+  let backdrop: HTMLElement;
+  let backdropKey = '';
+  let backdropToken = 0;
   let spriteHost: HTMLElement;
   let hud: HTMLElement;
   let log: HTMLElement;
@@ -144,19 +183,72 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     return loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters` : String(loc?.name ?? s.scene!.locationId);
   }
 
-  function drawBackground(s: CampaignState): void {
+  function showAscii(s: CampaignState): void {
     const loc = registries.locations.get(s.scene!.locationId);
-    caption.textContent = locationName(s, present(s)).toUpperCase();
+    root.dataset.backdrop = 'ascii';
+    delete root.dataset.light;
+    backdrop.style.backgroundImage = '';
+    const art = h('pre', { class: 'alius-ascii', 'aria-hidden': 'true' });
+    art.textContent = ((loc?.ascii as string[] | undefined) ?? []).join('\n');
+    bg.replaceChildren(art);
+  }
+
+  function showImage(url: string, light: string | null): void {
+    root.dataset.backdrop = 'image';
+    if (light) root.dataset.light = light;
+    else delete root.dataset.light;
+    backdrop.style.backgroundImage = `url("${url}")`;
     bg.replaceChildren();
-    bg.style.backgroundImage = '';
-    const night = s.slot === 'night' ? (loc?.backgroundNight as string | undefined) : undefined;
-    const image = night ?? (loc?.background as string | undefined);
-    if (image) bg.style.backgroundImage = `url("${(ctx.assetUrl ?? ((p) => p))(image)}")`;
-    else {
-      const art = h('pre', { class: 'alius-ascii', 'aria-hidden': 'true' });
-      art.textContent = ((loc?.ascii as string[] | undefined) ?? []).join('\n');
-      bg.append(art);
+  }
+
+  /**
+   * P10c: the candidates of `sceneBackdrop`, tried in order (art never gates anything: all failing ends at the ASCII stage,
+   * with no toast). A redraw with the same candidates and slot does nothing.
+   */
+  function drawBackground(s: CampaignState): void {
+    caption.textContent = locationName(s, present(s)).toUpperCase();
+    const owner = present(s)[0]?.id ?? null;
+    const resolve = ctx.assetUrl ?? ((p: string) => p);
+    const candidates = sceneBackdrop(s, registries, s.scene!.locationId, owner).map((c) => ({ url: resolve(c.file), light: c.slotted ? null : slotLight(s.slot) }));
+    const key = `${s.slot}|${candidates.map((c) => c.url).join('|')}`;
+    if (key === backdropKey) return;
+    backdropKey = key;
+    const token = ++backdropToken;
+    if (candidates.length === 0) {
+      showAscii(s);
+      return;
     }
+    const own = ctx.loadImage !== undefined;
+    const load = ctx.loadImage ?? defaultLoadImage;
+    // a known image is shown at once (no flash on a redraw); otherwise the stage waits for the first that loads
+    const known = own ? undefined : candidates.find((c) => loaded.get(c.url) !== false);
+    if (known && loaded.get(known.url) === true) {
+      showImage(known.url, known.light);
+      return;
+    }
+    void (async () => {
+      for (const c of candidates) {
+        const ok = await tryLoad(c.url, load, own);
+        if (token !== backdropToken || disposed) return;
+        if (ok) {
+          showImage(c.url, c.light);
+          return;
+        }
+      }
+      showAscii(s);
+    })();
+  }
+
+  /** P10c: the pointer pans the wide background over its extra width (0 = left edge, 1 = right); centred under reduced motion. */
+  function attachPan(): void {
+    root.style.setProperty('--alius-pan', '0.5');
+    if (motionReduced(ctx.settings())) return;
+    root.addEventListener('pointermove', (ev) => {
+      const box = root.getBoundingClientRect();
+      if (box.width <= 0) return;
+      const f = Math.min(1, Math.max(0, ((ev as PointerEvent).clientX - box.left) / box.width));
+      root.style.setProperty('--alius-pan', String(Math.round(f * 100) / 100));
+    });
   }
 
   function setSprite(unit: Unit, labelText: string): void {
@@ -382,6 +474,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const units = present(s);
     sceneKey = s.scene!.id;
     bg = h('div', { class: 'alius-scene-bg' });
+    backdrop = h('div', { class: 'alius-scene-backdrop', 'aria-hidden': 'true' });
+    backdropKey = '';
     spriteHost = h('div', { class: 'alius-sprites' });
     hud = h('div', { class: 'alius-hud' });
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
@@ -456,6 +550,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const ignore = (p: Promise<void>): void => void p.catch(() => {});
 
     root.replaceChildren(
+      backdrop,
       h('div', { class: 'alius-scene-header' },
         h('span', {}, locationName(s, units)),
         h('span', { class: 'alius-dim' }, ` // DAY ${String(s.day).padStart(3, '0')} // ${s.slot.toUpperCase()} // ${s.scene!.mode === 'group' ? 'GROUP' : 'PRIVATE'}`),
