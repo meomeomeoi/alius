@@ -13065,11 +13065,13 @@ var entries = (reg) => [...reg.commanderPunishments.values()];
 var effectsOf2 = (entry) => entry.effects ?? [];
 var isLeash = (entry) => effectsOf2(entry).some((e) => e.type === "leash");
 var isSuppress = (entry) => effectsOf2(entry).some((e) => e.type === "leash" && e.kind === "suppress");
+var takesSlots = (entry) => effectsOf2(entry).some((e) => e.type === "lose_slots");
+var busyNow = (state) => state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0 || state.calendar.pendingScene !== void 0;
 function pickPunishment(state, reg, severity) {
   const w = wardenOf(state);
-  const busy = state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0;
+  const busy = busyNow(state);
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    const eligible3 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy) && contentAllowed(state, reg, e, w?.unitId));
+    const eligible3 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !((isSuppress(e) || takesSlots(e)) && busy) && contentAllowed(state, reg, e, w?.unitId));
     if (eligible3.length > 0) return String(eligible3[(w?.punishLog.length ?? 0) % eligible3.length].id);
   }
   return null;
@@ -13098,6 +13100,7 @@ function runEffect(draft, ctx2, w, fx2, events) {
       return;
     }
     case "lose_slots": {
+      if (busyNow(draft)) return;
       const wanted = ctx2.rng.int(fx2.min, fx2.max);
       const count = Math.min(wanted, slotsLeftToday2(draft.slot));
       if (count > 0) events.push(...consumeSlots(draft, count, ctx2));
@@ -19484,6 +19487,14 @@ var respecCost = (unit2) => ({
   credits: TUNING.progression.respec.creditsPerLevel * unit2.level,
   plyx: TUNING.progression.respec.plyxPerLevel * unit2.level
 });
+function refundTree(reg, unit2) {
+  const owned = new Set(unit2.unlockedNodes);
+  const refund = treeOf2(reg, unit2).filter((n) => owned.has(n.id)).reduce((sum, n) => sum + n.cost, 0);
+  unit2.skillPoints += refund;
+  unit2.unlockedNodes = [];
+  delete unit2.loadout;
+  return refund;
+}
 function respec(draft, reg, unitId) {
   const unit2 = draft.squad.find((u) => u.id === unitId);
   if (!unit2 || !isLiving(unit2)) throw new Error("Unknown or unavailable unit.");
@@ -19492,13 +19503,9 @@ function respec(draft, reg, unitId) {
   if (draft.resources.credits < cost.credits || draft.resources.plyx < cost.plyx) {
     throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} plyx.`);
   }
-  const owned = new Set(unit2.unlockedNodes);
-  const refund = treeOf2(reg, unit2).filter((n) => owned.has(n.id)).reduce((s, n) => s + n.cost, 0);
   draft.resources.credits -= cost.credits;
   draft.resources.plyx -= cost.plyx;
-  unit2.skillPoints += refund;
-  unit2.unlockedNodes = [];
-  delete unit2.loadout;
+  const refund = refundTree(reg, unit2);
   return [
     { type: "resource_changed", resource: "credits", amount: -cost.credits },
     { type: "resource_changed", resource: "plyx", amount: -cost.plyx },
@@ -21191,6 +21198,11 @@ function showFallback(draft, reg, open3) {
   open3.source = "fallback";
   return [{ type: "dilemma_presented", id: open3.id, templateId: open3.templateId, title: open3.title, source: "fallback" }];
 }
+function settleBlockedDilemma(draft, ctx2) {
+  const open3 = draft.dilemmas?.open;
+  if (!open3 || open3.status !== "presented" || !open3.options || !nothingChoosable(draft, ctx2.registries, open3.options)) return [];
+  return open3.source === "fallback" ? resolveNothing(draft, open3) : showFallback(draft, ctx2.registries, open3);
+}
 function fallbackDilemma(draft, ctx2, requestId) {
   return showFallback(draft, ctx2.registries, openRequest2(draft, requestId));
 }
@@ -22767,6 +22779,10 @@ function registerAction(type, handler2) {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
   handlers.set(type, handler2);
 }
+var afterActions = [];
+function registerAfterAction(step) {
+  afterActions.push(step);
+}
 var gates = /* @__PURE__ */ new Map();
 function registerVoteGate(actionType, gate) {
   if (gates.has(actionType)) throw new Error(`Duplicate vote gate: ${actionType}`);
@@ -22816,6 +22832,7 @@ function dispatch(state, action, registries) {
   try {
     const events = handler2(draft, action.payload, { registries, rng });
     if (voteId !== void 0) events.push(...carryVote(draft, voteId, { registries }));
+    for (const step of afterActions) events.push(...step(draft, { registries, rng }));
     draft.rng = rng.state;
     try {
       rememberEvents(draft, events, registries);
@@ -22987,7 +23004,12 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     desireBondDefects: draft.settings.desireBondDefects === true
   });
   if (errors.length > 0) throw new Error(errors.join("; "));
+  const extra = [];
   if (patch.roleId !== void 0 && patch.roleId !== unit2.roleId) {
+    if (unit2.unlockedNodes.length > 0 || unit2.loadout !== void 0) {
+      const refunded = refundTree(ctx2.registries, unit2);
+      extra.push({ type: "unit_respec", unitId: unit2.id, refunded });
+    }
     const stats = ctx2.registries.roles.get(patch.roleId).baseStats;
     unit2.roleId = patch.roleId;
     unit2.baseStats = { ...stats };
@@ -23031,7 +23053,7 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     });
   }
   const sections = RESYNC_SECTIONS.filter((s) => keys.some((k) => SECTION_OF[k] === s));
-  return [{ type: "unit_resynced", unitId: unit2.id, sections }];
+  return [{ type: "unit_resynced", unitId: unit2.id, sections }, ...extra];
 });
 function checkIncoming(state) {
   if ((state.world.incomingUnits ?? 0) < 1) return "No unit is waiting for intake.";
@@ -25372,6 +25394,7 @@ registerVoteGate("dilemma/choose", (state, payload) => {
 // src/engine/actions/dilemma.ts
 var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerDayEndStep("director_tick", pacingStep);
+registerAfterAction(settleBlockedDilemma);
 registerAction("dilemma/request", (draft, payload, ctx2) => {
   const p = isObj26(payload) ? payload : {};
   if (typeof p.templateId !== "string" || typeof p.context !== "string") throw new Error("dilemma/request needs { templateId, context }");
@@ -27779,6 +27802,26 @@ function sanitize(cur) {
   return { ...cur, memory: runs.length > 0 ? { ...rest, hidden: runs } : rest };
 }
 var invalid = (detail) => ({ ok: false, reason: "invalid", detail });
+var PROTO_WORDS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
+var ID_KEY = /^(id|about)$|Id$|Ids$|By$/;
+function protoPath(v, path, idKey) {
+  if (typeof v === "string") return idKey && PROTO_WORDS.has(v) ? path : null;
+  if (Array.isArray(v)) {
+    for (let i = 0; i < v.length; i++) {
+      const hit = protoPath(v[i], `${path}[${i}]`, idKey);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (typeof v !== "object" || v === null) return null;
+  for (const key of Object.keys(v)) {
+    const at = path ? `${path}.${key}` : key;
+    if (PROTO_WORDS.has(key)) return at;
+    const hit = protoPath(v[key], at, ID_KEY.test(key));
+    if (hit) return hit;
+  }
+  return null;
+}
 function migrate(raw) {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return invalid("campaign state must be an object");
@@ -27796,6 +27839,8 @@ function migrate(raw) {
       detail: `state version ${from} is newer than supported version ${CURRENT_VERSION}`
     };
   }
+  const proto = protoPath(cur, "", false);
+  if (proto !== null) return invalid(`${proto}: a prototype key or id is not allowed`);
   for (let v = from; v < CURRENT_VERSION; v++) cur = migrations[v](cur);
   const checked = v1Shape.safeParse(cur);
   if (!checked.success) {
@@ -29284,7 +29329,7 @@ function bondsDirectives(builder, state, reg) {
   const hold = smotherActive(state);
   const holder = hold ? state.squad.find((u) => u.id === hold.unitId) : void 0;
   if (hold && holder && state.scene.participants.includes(holder.id)) {
-    builder.setDirective({ id: `smother:${holder.id}`, expiresAfter: "scene", text: `${holder.displayName} has locked the hangar to keep the commander at base; she wants them close and safe.` });
+    builder.setDirective({ id: `smother:${holder.id}`, expiresAfter: "scene", text: `${holder.displayName} has locked the hangar to keep the commander at base; she wants the commander close and safe.` });
   }
   for (const id of state.scene.participants) {
     const unit2 = state.squad.find((u) => u.id === id);
@@ -30876,7 +30921,7 @@ function renderCombatScreen(host, ctx2) {
       case "downed":
         return `R${l.round} ${name(l.target)} is down`;
       case "revived":
-        return `R${l.round} ${name(l.target)} is back on their feet`;
+        return `R${l.round} ${name(l.target)} is back up`;
       case "order":
         return `R${l.round} ORDER ${order}${l.target ? ` \u2192 ${name(l.target)}` : ""}`;
       case "order_refused":
@@ -33424,7 +33469,18 @@ function createSceneController(deps) {
   let extracting = false;
   const swipedWhileExtracting = /* @__PURE__ */ new Set();
   let awaitingReextract = false;
-  let pending4 = false;
+  const busyChats = /* @__PURE__ */ new Map();
+  const chatKey = () => st.getActiveChat()?.chatId ?? "";
+  const begin = (chat) => {
+    busyChats.set(chat, (busyChats.get(chat) ?? 0) + 1);
+    return chat;
+  };
+  const finish2 = (chat) => {
+    const n = (busyChats.get(chat) ?? 1) - 1;
+    if (n <= 0) busyChats.delete(chat);
+    else busyChats.set(chat, n);
+  };
+  const busyHere = () => (busyChats.get(chatKey()) ?? 0) > 0;
   let inflight = null;
   let openingRun = null;
   let openedScene = null;
@@ -33702,7 +33758,7 @@ function createSceneController(deps) {
       }
     }
   }
-  async function sendNow(t) {
+  async function sendNow(t, chat) {
     const expect = chatId();
     awaitingReextract = false;
     try {
@@ -33711,13 +33767,13 @@ function createSceneController(deps) {
         await st.sendUserMessage(t);
       } catch (e) {
         deps.toast("error", `Could not send: ${e instanceof Error ? e.message : String(e)}`);
-        return;
+        return false;
       }
-      if (disposed || chatId() !== expect || !state()?.scene) return;
+      if (disposed || chatId() !== expect || !state()?.scene) return true;
       if (!st.getChatMessages(before).some((m) => !m.isUser)) {
         deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
         deps.onUi({ type: "transcript" });
-        return;
+        return true;
       }
       const events = dispatch2({ type: "scene/exchange", payload: {} }, expect);
       const exchanges = Number(events.find((e) => e.type === "scene_exchange")?.exchanges ?? 0);
@@ -33730,8 +33786,9 @@ function createSceneController(deps) {
       });
       if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
       deps.onUi({ type: "transcript" });
+      return true;
     } finally {
-      pending4 = false;
+      finish2(chat);
     }
   }
   let selfEdit = null;
@@ -33868,22 +33925,23 @@ function createSceneController(deps) {
       return true;
     },
     send(text2) {
-      if (text2.trim() !== "" && pending4 && openingRun) return openingRun.then(() => controller.send(text2));
-      if (text2.trim() === "" || pending4 || !state()?.scene) return Promise.resolve();
-      pending4 = true;
-      const run = sendNow(text2.trim());
-      inflight = run;
+      const here = chatKey();
+      if (text2.trim() !== "" && openingRun?.chat === here) return openingRun.run.then(() => controller.send(text2));
+      if (text2.trim() === "" || busyHere() || !state()?.scene) return Promise.resolve(false);
+      const run = sendNow(text2.trim(), begin(here));
+      const mine = { chat: here, run };
+      inflight = mine;
       void run.finally(() => {
-        if (inflight === run) inflight = null;
+        if (inflight === mine) inflight = null;
       });
       return run;
     },
     opening() {
       const scene = state()?.scene;
-      if (pending4 || !scene) return Promise.resolve();
+      if (busyHere() || !scene) return Promise.resolve();
       if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      pending4 = true;
+      const chat = begin(chatKey());
       const run = (async () => {
         const expect = chatId();
         try {
@@ -33904,14 +33962,15 @@ function createSceneController(deps) {
           await showSprites(replies, false);
           deps.onUi({ type: "transcript" });
         } finally {
-          pending4 = false;
+          finish2(chat);
         }
       })();
-      inflight = run;
-      openingRun = run;
+      const mine = { chat, run };
+      inflight = mine;
+      openingRun = mine;
       void run.finally(() => {
-        if (inflight === run) inflight = null;
-        if (openingRun === run) openingRun = null;
+        if (inflight === mine) inflight = null;
+        if (openingRun === mine) openingRun = null;
       });
       return run;
     },
@@ -33960,19 +34019,19 @@ function createSceneController(deps) {
       reflect(events);
     },
     async end() {
-      await inflight?.catch(() => {
+      if (inflight?.chat === chatKey()) await inflight.run.catch(() => {
       });
       await deps.memory?.idle();
       const expect = chatId();
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      pending4 = true;
+      const chat = begin(expect ?? "");
       try {
         if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         await deps.generations.generate("scene.summary", scene.id);
       } finally {
-        pending4 = false;
+        finish2(chat);
         lastApply = null;
         awaitingReextract = false;
         await afterEnd(expect);
@@ -33992,11 +34051,11 @@ function createSceneController(deps) {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      pending4 = true;
+      const chat = begin(expect ?? "");
       try {
         await deps.generations.reroll("scene.summary", key);
       } finally {
-        pending4 = false;
+        finish2(chat);
         const now = state();
         if (now?.scene) controller.resume();
         else await afterEnd(expect);
@@ -42292,7 +42351,11 @@ function renderSceneScreen(host, ctx2) {
       editing = null;
       lock(true);
       setBusy(true);
-      void controller.send(text2).finally(() => {
+      let sent = false;
+      void controller.send(text2).then((ok) => {
+        sent = ok;
+      }, () => {
+      }).finally(() => {
         pending4 = false;
         if (disposed) return;
         orderOn = false;
@@ -42300,7 +42363,7 @@ function renderSceneScreen(host, ctx2) {
         setBusy(false);
         lock(false);
         input.disabled = false;
-        input.value = "";
+        if (sent) input.value = "";
         input.focus();
       });
     });
@@ -42508,7 +42571,7 @@ function readingFor2(subject, env) {
 // src/analysis/providers/commander.ts
 var WHERE_USED = {
   strength: "Used by: an Authority talk-down (together with seasoning), body routes of physical checks.",
-  endurance: "Used by: Crisis HP (the commander's HP if a fight reaches them); with low endurance a three-slot expedition exhausts the commander.",
+  endurance: "Used by: Crisis HP (the commander's HP if a fight reaches the commander); with low endurance a three-slot expedition exhausts the commander.",
   reflexes: "Used by: the chance to dodge a hit that reaches the commander in Commander Crisis."
 };
 var PRESENCE_LABEL = { unnoticed: ["presence_unnoticed", "Unnoticed"], steady_voice: ["presence_steady_voice", "Steady Voice"], rally: ["presence_rally", "Rally"] };
@@ -45977,7 +46040,6 @@ function createApp(st, deps) {
     onboarding.onLoaded();
     warden.onLoaded();
     headStart.onLoaded();
-    personal.reopenSecrets();
     void personal.onLoaded().then((ok) => {
       if (ok) shell.open();
     }).catch((e) => console.warn("[Alius] booking failed", e));
@@ -46615,6 +46677,7 @@ function createApp(st, deps) {
       if (st.getActiveChat()?.chatId === chatId) {
         openDilemmaModal();
         openConfrontationModal();
+        reopenSecretIfFree();
       }
     }
   }
@@ -46624,6 +46687,7 @@ function createApp(st, deps) {
   }
   function afterLoad() {
     resetDoor();
+    context.clearMatching((d) => d.expiresAfter !== "manual");
     if (load.kind === "ok" && state && state.world.seeded !== true) {
       api.dispatch({ type: "world/seed", payload: {} }, { expectChatId: load.chatId });
     }
@@ -46654,6 +46718,12 @@ function createApp(st, deps) {
     }
     openConfrontationModal();
     showOverrideModal();
+    reopenSecretIfFree();
+  }
+  function reopenSecretIfFree() {
+    if (reviewOpen || dilemmaModalOpen || overrideModalOpen) return;
+    if (state?.disloyalty?.open?.at === "mission_start") return;
+    personal.reopenSecrets();
   }
   function replaceState(next) {
     const chat = st.getActiveChat();
@@ -46667,10 +46737,19 @@ function createApp(st, deps) {
     load = { kind: "ok", state: next, chatId: chat.chatId };
     state = next;
     saver.save(next);
-    void saver.flush();
+    void saver.flush().catch((e) => console.warn("[Alius] saving the replaced campaign failed", e));
     carryOverContent();
     applyContext();
     syncBadges();
+    shell.refresh();
+  }
+  function adoptState(next) {
+    replaceState(next);
+    if (state !== next) return;
+    expedition.cancelPlan();
+    seenOffers.clear();
+    generations.clearSnapshots();
+    afterLoad();
     shell.refresh();
   }
   const TEST_DIRECTIVE = { id: "debug_test", text: "TEST DIRECTIVE: this line must appear in the prompt.", expiresAfter: "manual" };
@@ -47236,7 +47315,8 @@ function createApp(st, deps) {
     st,
     getState: () => state,
     getLoad: () => load,
-    replaceState,
+    replaceState: adoptState,
+    // SYS import and the state editor: a replaced campaign is picked up like a load (0.1 audit)
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
     lastBuild: () => context.lastBuild(),
