@@ -38,9 +38,9 @@ Grunts have none. A reader `temperamentOf(state, unitId)` with defaults (`terse`
 
 ## 2. Her days off-screen
 
-Registry `lifeEvents` (draft list in `docs/content/life.md` §2): `{ id, size: 'small' | 'notable', tags, requires?: { activity?, defectTag?, relation?, world?, slot? }, share: 'close' | 'anyone' | 'keeps', becomes?: { hobbyMilestone? | opinionTopic? }, cooldownDays, description }`.
+Registry `lifeEvents` (draft: 51 events with wording in `docs/content/life.md` §2): `{ id, size: 'small' | 'notable', tags, requires?: { activity?, defectTag?, relation?, world?, slot? }, share: 'close' | 'anyone' | 'keeps', becomes?: { hobbyMilestone? | opinionTopic? }, cooldownDays, description, hub, lines: string[] }`. `description` is the model's hint, `hub` the hover line, `lines` her fallback words when the share text cannot be generated.
 
-- **Day step:** per named unit at base, a hash pick (`fnv1a(<seed>|<unitId>|life|<day>)`, no rng draw) chooses at most one event a day (cap 3 a week, at most one `notable`), from those whose `requires` hold (her activities that day, her defect, a relation event, the world state).
+- **Day step:** per named unit at base, a hash pick (`fnv1a(<seed>|<unitId>|life|<day>)`, no rng draw) chooses at most one event a day (cap 2 a week, at most one `notable`), from those whose `requires` hold (her activities that day, her defect, a relation event, the world state) and whose cooldown has passed: per woman per kind (`cooldownDays`: small 21, notable 45, `vat_day` once a fiction year) and per kind across the squad (5 days), so that no kind repeats for one woman within a month and the commander does not hear the same news from two women in a row.
 - **It becomes a fact** about her (audience = her; `hiddenFromCommander: true` until she shares it; P3b `Knowledge`).
 - **Sharing**, by her `talkativeness`, Affinity and the event's `share`:
   - a **DM** from her (P10b living DM; the text is a `flavor` line from the event and her card, site `life.share`, budget 120; fallback the event's description line);
@@ -51,7 +51,7 @@ Registry `lifeEvents` (draft list in `docs/content/life.md` §2): `{ id, size: '
 
 ## 3. Hobbies as projects
 
-Registry `hobbies` (draft list: `docs/content/life.md` §3): `{ id, activityIds (her blocking activities, P15a), milestones: [{ at, id, trace?: 'note' | 'prop' | 'opinion' }], teachable: boolean, description }`.
+Registry `hobbies` (draft: 27 hobbies with wording in `docs/content/life.md` §3): `{ id, activityIds (her blocking activities, P15a), milestones: [{ at, id, line, trace?: 'note' | 'prop' | 'opinion' }], teachable: boolean, description, traceText? }`. A milestone's `line` is her fallback words; the model words the moment.
 
 - `Unit.hobbies`: 1–3 ids proposed by `profile_import` from the card, editable.
 - **Progress:** whereabouts that put her in a hobby activity (leisure slots) add to a counter (P14b `Development.counters`, key kind `hobby:<id>`; a new `counter.kind`). Milestones fire at thresholds (`TUNING.life.hobbyStep`).
@@ -88,7 +88,7 @@ Registry `opinionTopics` (draft: 65 topics and 302 positions in five groups, wit
 
 A slot activity **`time_together`** (P2 `activities`, `companion: 'required'`), and the same choice inside a free scene with her ("let's …"):
 
-- **Pastime** (registry `pastimes`, draft 10 in `docs/content/life.md` §4): `{ id, requires: { affordances?, locationId?, slot?, weather? }, herActivity, commanderActivity, sensoryTag, momentSources (general sources only), effects, description }`: cooking in the mess kitchen, the roof in the rain, fixing gear in the workshop, cards, music, the perimeter walk, reading together, training together, tea at night, her hobby (§3).
+- **Pastime** (registry `pastimes`, draft 18 with wording in `docs/content/life.md` §4): `{ id, requires: { affordances?, locationId?, slot?, weather? }, herActivity, commanderActivity, sensoryTag, momentSources (general sources only), effects, description, opening, lines }`: cooking, the roof in the rain, fixing gear, cards, music, the perimeter walk, reading together, training together, tea at night, her hobby (§3), laundry, patching each other up, an old film, sunrise on the roof, tidying her quarters, the shooting range, caring for her stray, a haircut. `opening` always sets the scene in the directive; `lines` are fallbacks.
 - The pastime sets the scene: location, her activity and the commander's (P15a pair activities once P15a lands; until then a directive line), the sensory pool of the room (P17d when it lands).
 - **No stakes:** small effects (Affinity, her stress −, Want relief for a bond profile that has one), her hobby progress when the pastime is her hobby, and the commander's hobby skill.
 - **Moments:** only general sources (`her_affection`, `her_question`, `her_weakness`, `memory_surfaces`, `her_mood_shift`); never a `scope: dynamic` source, whatever the relation's frame.
@@ -127,7 +127,7 @@ A line or a situation from an earlier scene that both remember can become a runn
 
 | what | value |
 |---|---|
-| life events | at most 1 a day, 3 a week, 1 `notable` a week per woman; share chance: `talkative` 0.7, `terse` 0.4, `silent` 0.15, × (Affinity ≥ 40 ? 1 : 0.5) |
+| life events | at most 1 a day, 2 a week (about 8–9 a month), 1 `notable` a week per woman; cooldown per kind per woman: small 21 days, notable 45, `vat_day` a fiction year; the same kind across the squad: 5 days; share chance: `talkative` 0.7, `terse` 0.4, `silent` 0.15, × (Affinity ≥ 40 ? 1 : 0.5) |
 | news directive | lives until her next scene or 3 days |
 | hobby | +1 per leisure slot in a hobby activity; milestones at 5 / 15 / 30 / 60 |
 | opinions | one voiced per scene at most; cooldown 21 days per topic; `persuadeAt` 3 major or 6 minor challenges (×2 for `strong`); hardening chance for `strong` 0.5 |

@@ -760,76 +760,499 @@ That is 65 topics and 302 positions; the author may cut or regroup.
 
 ## 2. Life events (`lifeEvents`)
 
-| id | size | requires (draft) | share | becomes |
-|---|---|---|---|---|
-| `letter_received` | notable | — | close | opinion: `cities_outside` |
-| `letter_none` | small | another got a letter | keeps | — |
-| `broke_favourite_thing` | small | — | anyone | — |
-| `found_something` | small | slot in perimeter / garage | anyone | — |
-| `finished_book` | small | hobby `reading` | anyone | hobby milestone, opinion: `books` |
-| `plant_progress` | small | hobby `plants` | anyone | hobby milestone |
-| `argued_with_unit` | small | another named unit at base | close | — |
-| `made_up_with_unit` | small | an earlier `argued_with_unit` | close | — |
-| `nightmare` | small | stress ≥ 40 or defect tag `night` | close | opinion: `the_vat` |
-| `good_sleep` | small | stress < 20 | keeps | — |
-| `vat_day` | notable | a fixed day per unit (hash) | close | opinion: `being_construct` |
-| `firmware_glitch` | small | defect category implant | close | — |
-| `sick_day` | small | — | anyone | — |
-| `new_scar` | small | after a run with injury | anyone | — |
-| `learned_trick` | small | hobby any | anyone | hobby milestone |
-| `won_at_cards` | small | — | anyone | opinion: `gambling` |
-| `lost_at_cards` | small | — | close | — |
-| `cooked_something` | small | hobby `cooking` | anyone | hobby milestone |
-| `song_stuck` | small | hobby `music` | anyone | — |
-| `memory_flash` | notable | defect tag memory, or Trust ≥ 60 | close | opinion: `memory` |
-| `rumour_heard` | small | P5/P3b rumour exists | anyone | — |
-| `grunt_lost` | notable | a grunt died this week | close | opinion: `death_in_battle` |
-| `anniversary_of_loss` | notable | a named or grunt death ≥ 30 days ago (hash) | close | opinion: `grief` |
-| `praise_from_leader` | small | P9b leader exists, not her | anyone | opinion: `rank` |
-| `snubbed` | small | — | keeps | — |
-| `weather_mood` | small | weather (rain, heat) | anyone | opinion: `weather_rain` |
-| `bored` | small | no run for 5 days | anyone | — |
-| `restless_before_run` | small | a mission is booked | close | opinion: `fear_in_combat` |
-| `gift_from_unit` | small | another named unit with Affinity ≥ 50 toward her (narrow, P17a-like) | anyone | — |
-| `outfit_change` | small | — | anyone | opinion: `clothes` |
-| `wrote_journal` | small | hobby `journal` | keeps | hobby milestone |
+Each event: `size` (`small` / `notable`), `requires` (draft conditions), `share` (`anyone` / `close` / `keeps`), `becomes` (a hobby milestone or an opinion topic it opens), `cooldownDays`, and wording:
+- `description` — neutral, what happened: the hint the model receives;
+- `hub` — a short third-person line shown when hovering her on the hub;
+- `lines` — two fallback lines in her voice for her DM or her news. **The model writes the real line** (site `life.share`) from the event, her card and the moment; these lines are used only when generation is off or fails, and serve the model as examples of tone.
+
+**Frequency** (P14c TUNING): at most 2 events a week per woman (one of them `notable` at most), so about 8–9 a month; each kind has a cooldown per woman (small 21 days, notable 45, `vat_day` once a fiction year), so no kind repeats for the same woman within a month; the same kind is not picked for two women within 5 days; `requires` keeps many events rare (they need a run, a death, a hobby, a defect). With 51 kinds, five women see about 40–45 events a month, of which roughly half are shared, and the wording is generated each time.
+
+### 2.1 Her things and her days
+
+#### `broke_favourite_thing` — small · anyone · cooldown 21
+- description: *She broke something small that mattered to her: a mug, a charm, a cracked mirror.*
+- hub: *She is gluing something back together, badly.*
+- lines: "My mug. The chipped one. It finally gave up." / "Don't laugh. It was the only thing I owned that wasn't issued."
+
+#### `found_something` — small · anyone · requires: a slot at the perimeter, the garage or after a run · becomes: hobby `collecting`
+- description: *She found something odd and kept it: a pre-Bloom coin, a toy soldier, a key to nothing.*
+- hub: *She is turning a small object over in her fingers.*
+- lines: "Found this in the garage wall. A coin. Older than the company." / "It's a key. To what, I don't know. I like that."
+
+#### `things_touched` — small · close · requires: another unit shares her floor · becomes: opinion `trust`
+- description: *Someone went through her things while she was out.*
+- hub: *She is checking her locker, item by item.*
+- lines: "Someone's been in my locker. Nothing's missing. That's worse." / "I fold my shirts a certain way. Someone didn't."
+
+#### `old_photo` — notable · close · requires: after a run in a ruined district · becomes: opinion `memory`
+- description: *She brought back a photograph or a data chip from before the Bloom: strangers smiling in a world that is gone.*
+- hub: *A faded photograph is propped against her lamp.*
+- lines: "A family at a beach. Before. Look how bored they are. Look how safe." / "I don't know who they are. I can't throw them away."
+
+#### `music_found` — small · anyone · becomes: hobby `music`
+- description: *She found an old recording that still plays.*
+- hub: *A tinny old song leaks from her quarters.*
+- lines: "Found a music chip in a dead terminal. Ninety years old. Still works." / "The singer's probably dust. Her voice isn't."
+
+#### `outfit_change` — small · anyone · becomes: opinion `clothes`
+- description: *She changed something about how she looks: a scarf, a patch, an earring.*
+- hub: *There is something new about her uniform.*
+- lines: "Traded two ration cards for this scarf. Worth it." / "It's a small thing. It's mine."
+
+#### `hair_cut` — small · anyone
+- description: *She cut her hair, or had it cut, or let it down for once.*
+- hub: *Her hair is different today.*
+- lines: "Cut it myself. Don't say anything." / "Felt like being someone slightly different. Hair's the cheap way."
+
+#### `bored` — small · anyone · requires: no run for 5 days
+- description: *Nothing has happened for days and she is climbing the walls.*
+- hub: *She is bouncing a ball against the wall, over and over.*
+- lines: "If nothing happens soon, I'm going to start a fight for fun." / "I've cleaned my rifle four times today. Four."
+
+#### `weather_mood` — small · anyone · requires: rain or heat · becomes: opinion `weather_rain`
+- description: *The weather has got into her mood.*
+- hub: *She watches the weather from the window.*
+- lines: "Rain all day. Either I sleep or I scream." / "It's so hot the walls are sweating."
+
+#### `wrote_journal` — small · keeps · requires: hobby `journal`
+- description: *She wrote in her journal tonight, longer than usual.*
+- hub: *She closes a notebook as soon as anyone looks.*
+- lines: "Writing. No, you can't read it." / "Some things only make sense on paper."
+
+### 2.2 Her body and her health
+
+#### `nightmare` — small · close · requires: stress ≥ 40 or a defect tagged night · becomes: opinion `the_vat`
+- description: *She had a nightmare and has not shaken it off.*
+- hub: *She looks like she slept badly.*
+- lines: "Bad night. The tank again." / "I woke up with my hand on my knife. Don't ask."
+
+#### `good_sleep` — small · keeps · requires: stress < 20
+- description: *For once she slept through the night.*
+- hub: *She seems rested, almost cheerful.*
+- lines: "Eight hours. No dreams. I feel new." / "I don't know what happened, but I slept like the dead. The nice dead."
+
+#### `sick_day` — small · anyone
+- description: *She is ill: a fever, a bad stomach, a construct cold.*
+- hub: *She is wrapped in a blanket, sniffing.*
+- lines: "Even off-spec bodies catch colds. Who knew." / "Medbay says rest. Medbay is boring."
+
+#### `new_scar` — small · anyone · requires: a run in which she was hurt
+- description: *A wound from the last run has closed into a new scar.*
+- hub: *She is studying a fresh scar in the mirror.*
+- lines: "New scar. Left shoulder. It'll go with the others." / "Medic says it'll fade. I hope it doesn't. I earned it."
+
+#### `hurt_in_training` — small · anyone · requires: a training slot
+- description: *She pulled something or bruised herself in training.*
+- hub: *She is walking a little stiffly.*
+- lines: "Twisted my ankle on the yard. My own fault." / "Don't make me laugh. Ribs."
+
+#### `body_ache` — small · anyone · requires: an old injury, cold weather
+- description: *An old wound aches in the cold.*
+- hub: *She rubs an old scar absently.*
+- lines: "The old one's acting up. Rain's coming." / "My knee is a better weather forecast than oversight."
+
+#### `firmware_glitch` — small · close · requires: a defect of the implant category
+- description: *Her implants misbehaved: a stutter, a lost minute, a flicker in her vision.*
+- hub: *She keeps blinking, as if clearing her eyes.*
+- lines: "Lost about ninety seconds this morning. Just... gone." / "My HUD said I was underwater. I was in the shower."
+
+#### `firmware_update` — notable · close · requires: a med scan or a corporate update scheduled · becomes: opinion `memory`
+- description: *She had a corporate firmware update or a deep scan and does not feel quite the same.*
+- hub: *She sits very still, as if listening to something inside.*
+- lines: "They patched me last night. Everything feels a little to the left." / "I keep checking my memories, like pockets after a pickpocket."
+
+#### `cried_alone` — small · keeps · requires: stress ≥ 60 or a loss
+- description: *She cried alone, where nobody would see.*
+- hub: *Her eyes are a little red.*
+- lines: "Allergies." / "I'm fine. Really."
+
+### 2.3 Her construct life
+
+#### `vat_day` — notable · close · once a fiction year (hash) · becomes: opinion `being_construct`
+- description: *Today is the anniversary of her decanting, the closest thing she has to a birthday.*
+- hub: *She is quieter than usual today.*
+- lines: "Some people have birthdays. I have a batch date. It's today." / "Seven years out of the tank. Nobody brought cake. I'm not hinting. I'm hinting."
+
+#### `memory_flash` — notable · close · requires: a defect tagged memory, or Trust ≥ 60 · becomes: opinion `memory`
+- description: *A memory surfaced that she cannot place: a room, a voice, a song from before.*
+- hub: *She stops mid-step, staring at nothing.*
+- lines: "I remembered a kitchen. I've never been in a kitchen like that." / "There was a woman humming. I don't know who she was. I think she knew me."
+
+#### `corp_news` — notable · close · becomes: opinion `own_corporation`
+- description: *News reached her about the corporation that made her: a recall, a scrapped batch, a new model.*
+- hub: *She is reading the same corporate bulletin again and again.*
+- lines: "They retired my batch. All of them. I'm a discontinued model now." / "New line of units out. Faster than us. Of course."
+
+### 2.4 Her people
+
+#### `letter_received` — notable · close · becomes: opinion `cities_outside`
+- description: *A letter reached her through the corporate post: rare, censored, from someone outside.*
+- hub: *She keeps rereading a folded letter.*
+- lines: "Got a letter. Half of it's blacked out. The other half I've read forty times." / "Someone out there still knows my number. Weird feeling."
+
+#### `letter_none` — small · keeps · requires: another woman received a letter this week
+- description: *Another woman got a letter; nobody wrote to her.*
+- hub: *She watches the mail drop and walks away.*
+- lines: "Who'd write to me? I was born in a tank." / "It's fine. I don't need letters."
+
+#### `argued_with_unit` — small · close · requires: another named unit at the base
+- description: *She argued with another woman of the squad.*
+- hub: *She is avoiding someone and making a point of it.*
+- lines: "Don't put me next to her at dinner." / "She's wrong and she knows it. I'm waiting for her to say it."
+
+#### `made_up_with_unit` — small · close · requires: an earlier argument
+- description: *She made peace with the woman she argued with.*
+- hub: *She is laughing with someone she was avoiding yesterday.*
+- lines: "We talked. We're fine. Don't make a thing of it." / "She brought me coffee. I'm not made of stone."
+
+#### `late_night_talk` — small · close · becomes: opinion `friendship`
+- description: *She sat up half the night talking with another woman of the squad.*
+- hub: *She yawns, looking oddly content.*
+- lines: "We talked until the generators switched. About nothing. It was good." / "I learned more about her in one night than in a year of patrols."
+
+#### `gift_from_unit` — small · anyone · requires: another named unit with Affinity ≥ 50 toward her
+- description: *Another woman gave her a small gift.*
+- hub: *She is wearing something new that someone gave her.*
+- lines: "She made me a bracelet out of wire. It's terrible. I love it." / "Got a present. For no reason. Suspicious. Nice."
+
+#### `snubbed` — small · keeps
+- description: *Someone brushed her off or forgot her, and it stung more than it should.*
+- hub: *She is short with everyone today.*
+- lines: "Nothing. It's nothing." / "Some people only remember you when they need something."
+
+#### `praise_from_leader` — small · anyone · requires: a P9b leader who is not her · becomes: opinion `rank`
+- description: *The squad's leader praised her in front of the others.*
+- hub: *She stands a little straighter today.*
+- lines: "She said I did well. In front of everyone." / "Don't tell anyone it got to me. It got to me."
+
+#### `quartermaster_row` — small · anyone
+- description: *She had a row with the quartermaster over supplies.*
+- hub: *She is muttering about requisition forms.*
+- lines: "Three forms for a pair of socks. Three." / "I'm going to requisition the quartermaster's head."
+
+#### `rumour_heard` — small · anyone · requires: a rumour exists (P5, P3b)
+- description: *She heard a rumour and cannot stop turning it over.*
+- hub: *She is whispering with someone in the corridor.*
+- lines: "Did you hear? No? Then I didn't tell you." / "Probably nonsense. Probably."
+
+### 2.5 Her service
+
+#### `restless_before_run` — small · close · requires: a mission booked · becomes: opinion `fear_in_combat`
+- description: *A mission is coming and she cannot settle.*
+- hub: *She checks her gear for the third time.*
+- lines: "I've packed and unpacked twice. Normal. Totally normal." / "Day before a drop, I can't eat. Day after, I can't stop."
+
+#### `grunt_lost` — notable · close · requires: a grunt died this week · becomes: opinion `death_in_battle`
+- description: *A grunt died and she cannot let it go.*
+- hub: *She is sitting alone near the vehicle bay.*
+- lines: "Nobody even knew her name. I did. I asked." / "They'll print a new one. Same face. It's not the same."
+
+#### `anniversary_of_loss` — notable · close · requires: a death ≥ 30 days ago (hash) · becomes: opinion `grief`
+- description: *Today marks the day someone she lost died.*
+- hub: *She has set out two cups instead of one.*
+- lines: "A month today. Feels like a year and a minute." / "I keep her tag in my pocket. Today I'm holding it."
+
+#### `reprimand` — small · close · becomes: opinion `oversight`
+- description: *She received a formal reprimand.*
+- hub: *She is glaring at a printed form.*
+- lines: "Written up. For being late to a briefing about punctuality." / "Another mark in my file. They can frame it."
+
+#### `promotion_rumour` — small · close · becomes: opinion `freedom`
+- description: *She heard that a transfer or a reduced contract might be possible for her.*
+- hub: *She seems distracted, hopeful, trying not to be.*
+- lines: "There's talk of a transfer list. I'm not getting my hopes up. I'm getting my hopes up." / "If it's true, I could be out in a year. If."
+
+#### `weapon_broke` — small · anyone · becomes: opinion `weapons`
+- description: *Her weapon jammed or broke on the range.*
+- hub: *She has her rifle in pieces and a scowl.*
+- lines: "Jammed three times on the range. If it does that in the field, I'm dead." / "Workshop says two days. Two days naked."
+
+#### `sparring_win` — small · anyone · requires: a P9c sparring bout won · becomes: opinion `strength`
+- description: *She won a sparring bout and is pleased with herself.*
+- hub: *She is grinning and rolling her shoulders.*
+- lines: "Put her on the mat in ten seconds. A new record." / "I'm not bragging. I'm reporting."
+
+#### `sparring_loss` — small · close · requires: a P9c sparring bout lost
+- description: *She lost a sparring bout and it rankles.*
+- hub: *She is replaying a move in the air, scowling.*
+- lines: "She got me with the hip throw. Again." / "Rematch. Tomorrow. I'm not asking."
+
+#### `bloom_sighting` — small · anyone · requires: a Bloom clock above half in the region · becomes: opinion `the_bloom`
+- description: *She saw Bloom growth closer to the fence than it should be.*
+- hub: *She keeps glancing toward the perimeter.*
+- lines: "There's growth on the east fence post. It wasn't there last week." / "It's creeping closer. Nobody's mentioned it. So I am."
+
+#### `ration_cut` — small · anyone · requires: rations below standard (P9b ration modes) or low supplies · becomes: opinion `food`
+- description: *Rations were short or bad today.*
+- hub: *She is staring at her tray with loathing.*
+- lines: "Today's protein is grey. Not grey-brown. Grey." / "Half rations again. My stomach has filed a complaint."
+
+### 2.6 Her hobbies and her luck
+
+#### `finished_book` — small · anyone · requires: hobby `reading` · becomes: hobby milestone, opinion `books`
+- description: *She finished a book and is still inside it.*
+- hub: *She is holding a closed book, not ready to put it down.*
+- lines: "Finished it. The ending was wrong. I want to argue with someone." / "Done. Now I don't know what to do with my evenings."
+
+#### `plant_progress` — small · anyone · requires: hobby `plants` · becomes: hobby milestone
+- description: *Her plant did something new.*
+- hub: *She is crouched by her window, looking at a tin of soil.*
+- lines: "New leaf. Don't laugh." / "It's leaning toward the light. Smart plant."
+
+#### `learned_trick` — small · anyone · requires: any hobby · becomes: hobby milestone
+- description: *She got something right in her hobby that she has been trying for weeks.*
+- hub: *She looks quietly proud of something.*
+- lines: "I finally got it. Three weeks. Finally." / "Want to see? No, really, watch."
+
+#### `cooked_something` — small · anyone · requires: hobby `cooking` · becomes: hobby milestone
+- description: *She cooked something from almost nothing.*
+- hub: *The smell of something actually good drifts from the mess.*
+- lines: "Made soup out of ration powder and spite. It's edible. It's good, even." / "Come taste this before I lose my nerve."
+
+#### `song_stuck` — small · anyone · requires: hobby `music`
+- description: *A song is stuck in her head and she is humming it all day.*
+- hub: *She is humming under her breath.*
+- lines: "It's been in my head since dawn. Make it stop. Don't make it stop." / "You'll have it too by tonight. Sorry."
+
+#### `stray_found` — small · anyone · becomes: hobby `animals`, opinion `animals`
+- description: *She found an animal near the base: a stray cat, a bird with a hurt wing.*
+- hub: *She has crumbs in her pocket and a secret.*
+- lines: "There's a cat by the east fence. Don't tell supply." / "Found a bird with a bad wing. I'm calling her Sergeant."
+
+#### `won_at_cards` — small · anyone · becomes: opinion `gambling`
+- description: *She won at cards and is insufferable about it.*
+- hub: *She is counting a small pile of cigarettes and ration chits.*
+- lines: "Cleaned them out. Ask me how. Skill." / "I'm rich. In cigarettes. I don't smoke."
+
+#### `lost_at_cards` — small · close
+- description: *She lost at cards and owes someone a chore.*
+- hub: *She is scrubbing something that is not her job.*
+- lines: "I owe a week of latrine duty. Don't ask." / "Never bet against a medic. They count everything."
+
+#### `dreamt_of_commander` — small · close (Affinity ≥ 60 or a romantic tier; otherwise keeps)
+- description: *She dreamt of the commander and is not sure what to do with it.*
+- hub: *She glances away when the commander looks at her.*
+- lines: "I had a dream. You were in it. That's all I'm saying." / "Weird night. Never mind."
 
 ## 3. Hobbies (`hobbies`)
 
-| id | her activities (P15a) | teachable | traces |
-|---|---|---|---|
-| `reading` | `reading_book` | no | prop (a shelf), opinion (books) |
-| `sketching` | `sketching` | yes | note (a drawing; at the last milestone, of the commander) |
-| `plants` | `caring_for_plant` | yes | prop (the plant grows, flowers) |
-| `music` | `music`, `playing_instrument` | yes | note (lyrics), prop (an instrument) |
-| `cooking` | `eating` + mess kitchen | yes | — (a pastime) |
-| `tinkering` | `tinkering`, `repairing_gear` | yes | prop (a gadget) |
-| `journal` | `writing_journal` | no | note (a page, rarely shared) |
-| `cards` | `playing_cards` | yes | — |
-| `training` | `working_out`, `stretching` | yes | — |
-| `mending` | `mending_clothes` | yes | prop |
-| `weapons_care` | `cleaning_weapon` | yes (a privilege) | — |
-| `poetry` | `writing_journal` | no | note (a poem) |
-| `stargazing` | the roof at night | yes | — |
-| `languages` | `reading_book` | yes | note |
-| `puzzles` | `idle` | yes | — |
-| `collecting` | after runs | no | prop (a shelf of finds) |
-| `dancing` | `music` | yes | — |
-| `hair_and_makeup` | `doing_hair` | yes | — |
-| `games_on_pda` | `chatting_on_pda` | no | — |
-| `animals` | the perimeter (a stray, a bird) | no | prop |
+Each hobby: her activities (P15a), `teachable`, four milestones at 5 / 15 / 30 / 60 (P14c TUNING), each with an id and a line, and the text of its trace when it has one. **Milestone lines are fallbacks:** the model words the moment in a scene or a DM (site `life.trace`, or the news directive of P14c §2); the line is used when generation is off or fails and shows the model the tone.
+
+#### `reading` — `reading_book` · not teachable · trace: prop (a shelf), opinion `books`
+- description: *She reads whatever paper reaches the base, slowly and completely.*
+- `first_book` "Found a book in a crate of manuals. It has a dragon in it." · `shelf` "Five now. I've made a shelf out of an ammo box." · `favourite` "This one. I've read it three times. I'll lend it to you if you swear on your life." · `library` "The others borrow from me now. I keep a ledger."
+- trace: *A shelf made of an ammo box, lined with worn paperbacks.*
+
+#### `sketching` — `sketching` · teachable · trace: note (a drawing)
+- description: *She draws in a battered notebook: faces, gear, the view from the roof.*
+- `first_page` "Don't look. It's just lines." · `faces` "I'm getting the eyes right now. The eyes are the hard part." · `the_squad` "I drew all of us. Even the ones who're gone." · `the_commander` "Here. Don't make it weird. You had a face worth drawing."
+- trace: *A pencil sketch on torn notebook paper, signed with her unit number.*
+
+#### `plants` — `caring_for_plant` · teachable · trace: prop (the plant)
+- description: *She keeps something green alive in a ration tin by her window.*
+- `sprout` "It came up. Look. It actually came up." · `leaves` "Three leaves. I talk to it. Shut up." · `repotted` "It needed a bigger tin. Growing things need room." · `flowered` "It flowered. Out here. In this. I almost cried."
+- trace: *A small plant in a dented tin, carefully watered.*
+
+#### `music` — `music`, `playing_instrument` · teachable · trace: note (lyrics), prop (an instrument)
+- description: *She plays an instrument she scavenged and repaired, badly at first.*
+- `first_chord` "Three chords. That's all music is, apparently." · `a_song` "I can play one whole song now. Don't request anything." · `own_tune` "I made this one up. It doesn't have words yet." · `plays_for_squad` "They asked me to play at dinner. My hands were shaking."
+- trace: *A sheet of lyrics in her hand, crossed out and rewritten.*
+
+#### `cooking` — the mess kitchen · teachable · trace: — (a pastime)
+- description: *She cooks real food out of rations and whatever she can trade for.*
+- `edible` "It's edible. That's the first step." · `spices` "Traded a magazine for salt and pepper. Worth it." · `signature_dish` "My stew. Ask anyone. Actually don't, they'll fight over it." · `feeds_the_squad` "I cooked for everyone. Nobody complained. Nobody."
+
+#### `tinkering` — `tinkering`, `repairing_gear` · teachable · trace: prop (a gadget)
+- description: *She takes broken things apart and makes them do something new.*
+- `fixed_it` "The kettle works. You're welcome." · `upgrade` "My scope has night mode now. It didn't before." · `invention` "I built a thing. I'm not sure what it's for yet." · `for_someone` "Made this for you. It's a lamp that doesn't flicker. You're the only one with a steady light now."
+- trace: *A small gadget of salvaged parts with her initials scratched on it.*
+
+#### `journal` — `writing_journal` · not teachable · trace: note (a page, rarely shared)
+- description: *She keeps a journal and writes in it most nights.*
+- `first_entry` "Started writing things down. In case I forget." · `habit` "Every night. Even the bad ones." · `full_book` "Filled the first notebook. Started the second." · `shares_a_page` "Read this one page. Only this one."
+- trace: *A torn-out journal page, a few lines in her hand.*
+
+#### `cards` — `playing_cards` · teachable · trace: —
+- description: *She plays cards whenever she can find someone to beat.*
+- `knows_the_rules` "I know all the rules now. Including the ones they made up." · `wins_often` "I'm winning more than I lose. Statistically suspicious." · `own_game` "I invented a game. The rules are complicated. I always win." · `house_champion` "Undefeated for a month. Someone challenge me."
+
+#### `training` — `working_out`, `stretching` · teachable · trace: —
+- description: *She trains beyond what is required, every spare hour.*
+- `routine` "Same routine every morning. My body expects it now." · `stronger` "New max on the bar. Write it down." · `flexible` "I can touch my toes. I couldn't, out of the tank." · `trains_others` "The rookies ask me for programmes now."
+
+#### `mending` — `mending_clothes` · teachable · trace: prop
+- description: *She mends uniforms and anything torn, with tidy stitches.*
+- `patch` "Patched my sleeve. You can barely see it." · `for_others` "I'm mending half the squad's socks now. Bring yours." · `embroidery` "I stitched a little flower inside my collar. Nobody can see it. I know it's there." · `made_something` "Made a pouch from old canvas. It's the nicest thing I own."
+- trace: *A patched jacket hung neatly, with a small embroidered mark inside the collar.*
+
+#### `weapons_care` — `cleaning_weapon` · teachable (a privilege) · trace: —
+- description: *She tends weapons the way others tend gardens.*
+- `spotless` "Look at that. You could eat off the bolt." · `tuned` "Trigger's lighter now. Half a kilo. Perfect." · `custom` "New grip, wrapped by hand. She fits me now." · `armourer` "The others bring me their rifles. I'm the unofficial armourer."
+
+#### `poetry` — `writing_journal` · not teachable · trace: note (a poem)
+- description: *She writes short poems and hides them.*
+- `first_poem` "It's four lines. It's terrible. I wrote it." · `rhymes` "I can rhyme now. That's dangerous." · `reads_aloud` "I read one at the funeral. I don't know why." · `gives_one` "This one's for you. Don't read it in front of me."
+- trace: *A short poem in her hand, folded small.*
+
+#### `stargazing` — the roof at night · teachable · trace: —
+- description: *She goes up to the roof on clear nights and maps the stars.*
+- `first_clear_night` "No spore haze tonight. Look up." · `names_them` "That's the Hook. I named it myself. The old names are lost." · `star_chart` "I've drawn a chart. Nobody's made one in decades." · `shares_the_sky` "This one's mine. I'm giving it to you."
+
+#### `languages` — `reading_book` · teachable · trace: note
+- description: *She is teaching herself an old language from scraps of books.*
+- `first_words` "I know twenty words of a language nobody speaks." · `sentences` "I can make sentences now. Mostly rude ones." · `reads_a_page` "I read a whole page. It was a recipe." · `teaches_it` "Want to learn? We'll have a secret language."
+- trace: *A page of careful vocabulary, two columns, in her hand.*
+
+#### `puzzles` — `idle` · teachable · trace: —
+- description: *She does puzzles: wire knots, logic grids, an old cube.*
+- `stuck` "This knot has beaten me for three days." · `solved` "Solved it. Don't touch it, I'm admiring it." · `makes_them` "I make my own now. Try this one." · `unbeatable` "Bring me anything. I'll have it open by dinner."
+
+#### `collecting` — after runs · not teachable · trace: prop (a shelf of finds)
+- description: *She collects small finds from the ruins.*
+- `first_find` "A button from before. I'm keeping it." · `collection` "Twelve things now. Each has a story." · `display` "Built a little shelf for them. Don't dust it." · `prize` "This is the best one. I'll never find another."
+- trace: *A shelf of small ruins-finds, each with a paper label in her hand.*
+
+#### `dancing` — `music` · teachable · trace: —
+- description: *She dances when she thinks nobody is looking.*
+- `alone` "You didn't see that." · `steps` "I learned steps from an old film. They're harder than combat drills." · `with_someone` "It's better with two. Obviously." · `at_a_party` "Everyone danced. Even the quartermaster. Even me."
+
+#### `hair_and_makeup` — `doing_hair` · teachable · trace: —
+- description: *She does hair, hers and other women's, and hoards bits of makeup.*
+- `braids` "Learned a new braid. Took an hour." · `for_others` "I did her hair for the night out. She cried. Good crying." · `kit` "I have a whole kit now. Don't ask what I traded." · `transformation` "Sit down. Trust me. Ten minutes."
+
+#### `games_on_pda` — `chatting_on_pda` · not teachable · trace: —
+- description: *She plays old games on her PDA late at night.*
+- `hooked` "One more level. Then sleep. One more." · `high_score` "Top of the base leaderboard. There are four people on it." · `secret_level` "Found a hidden level nobody knew about." · `beat_it` "Finished it. Felt empty after. Weird."
+
+#### `animals` — the perimeter · not teachable · trace: prop
+- description: *She looks after a stray at the fence: a cat, a bird, a dog that won't come in.*
+- `first_contact` "It ate from my hand. Just once." · `named` "She has a name now. Sergeant." · `trusts_her` "She waits for me at the fence every evening." · `inside` "I smuggled her in. Don't tell anyone. She sleeps on my feet."
+- trace: *A food dish and a scrap of blanket by her bunk.*
+
+#### `photography` — after runs, the roof · teachable · trace: note (a print)
+- description: *She takes photographs with an old camera and develops them herself.*
+- `first_roll` "Twelve shots. Three came out. That's a good ratio." · `darkroom` "Made a darkroom in a supply closet. Smells awful. Worth it." · `portraits` "Hold still. Don't smile. Real faces." · `the_commander` "Here. I took this when you weren't looking."
+- trace: *A small black-and-white print, curled at the edges.*
+
+#### `woodcarving` — `tinkering` · teachable · trace: prop (a carving)
+- description: *She carves small figures from scrap wood with her knife.*
+- `first_figure` "It's a bird. Or a fish. Depends on the light." · `better` "This one has feathers. Look, real feathers." · `set` "I've carved the whole squad. Tiny. Don't lose yours." · `for_someone` "For you. It took a week. Don't drop it."
+- trace: *A small wooden figure, smoothed by a thumb.*
+
+#### `running` — the perimeter · teachable · trace: —
+- description: *She runs laps of the perimeter, alone, before anyone is up.*
+- `first_laps` "Five laps. My lungs hate me." · `distance` "Ten kilometres. Every morning now." · `personal_best` "New best. I'll beat it next week." · `run_together` "Run with me tomorrow. I'll go slow. I won't."
+
+#### `chess` — `idle`, `playing_cards` · teachable · trace: —
+- description: *She plays chess on a board with half the pieces replaced by bolts and bullets.*
+- `learning` "The horse moves funny. I hate the horse." · `openings` "I know three openings now. Don't tell anyone which." · `beats_someone` "Beat the medic. She's still angry." · `teaches_it` "Sit. I'll teach you. You'll lose, but beautifully."
+
+#### `tattoos` — her quarters · teachable · trace: — (a mark, P9c-style, only with consent)
+- description: *She does tattoos with a home-made needle, on herself and on whoever asks.*
+- `first_line` "One line on my wrist. Straight. Mostly." · `own_design` "Designed this one myself. It's a map of nowhere." · `others_ask` "Half the squad wants one now. I have a waiting list." · `offers` "I have one design left in me. Want it?"
+
+#### `ration_alchemy` — the mess kitchen · teachable · trace: —
+- description: *She experiments with rations, turning bars and powders into something else.*
+- `first_experiment` "Fried ration bar. Don't. Don't try it." · `discovery` "Powdered eggs and coffee. Trust me." · `recipe_book` "I'm writing them down. Recipes from the end of the world." · `feast` "Tonight I'm making a three-course dinner out of nothing."
+
+#### `knitting` — `mending_clothes` · teachable · trace: prop (a scarf)
+- description: *She knits with yarn unravelled from old sweaters.*
+- `first_rows` "It's a rectangle. It's meant to be a rectangle." · `scarf` "A whole scarf. Lumpy. Warm." · `patterns` "I can do stripes now. Stripes!" · `gift` "Here. Winter's coming. Don't say anything about the lumps."
+- trace: *A lumpy, warm scarf in two colours.*
 
 ## 4. Pastimes (`pastimes`, quiet meetings)
 
-| id | place (affordances / location) | her activity | the commander's | slot |
-|---|---|---|---|---|
-| `cook_together` | `mess_hall` | `eating` (cooking) | helping | evening |
-| `rain_on_the_roof` | `roof`, weather rain | `idle` | `idle` | any |
-| `fix_gear` | `workshop` | `repairing_gear` | `holding_for_her` | morning, afternoon |
-| `cards` | `mess_hall`, her quarters | `playing_cards` | playing | evening, night |
-| `music` | her quarters, `roof` | `music` | listening | evening |
-| `perimeter_walk` | `perimeter` | walking | walking | afternoon, evening |
-| `read_together` | her quarters, `medbay` | `reading_book` | `reading_aloud` or reading | any |
-| `train_together` | `training_yard` | `working_out` | training | morning, afternoon |
-| `tea_at_night` | `mess_hall`, her quarters | `drinking` | `drinking` | night |
-| `her_hobby` | by the hobby | the hobby's activity | learning | by the hobby |
+Each pastime: the place, her activity and the commander's, the slots, and wording:
+- `description` — what the meeting is;
+- `opening` — the scene directive's opening line (always used: it sets the scene for the model; never a pronoun for the commander);
+- `lines` — two fallback opening lines in her voice (used only when generation fails; examples of tone).
+
+#### `cook_together` — `mess_hall` · her: cooking · commander: helping · evening
+- description: *Cooking something real in the mess kitchen after hours.*
+- opening: *The mess is empty; she has a pot on the burner and a second knife laid out on the board.*
+- lines: "Chop those. Smaller. Smaller than that." / "If it's terrible, we eat it anyway. That's the rule."
+
+#### `rain_on_the_roof` — `roof`, rain · both idle · any slot
+- description: *Sitting under the overhang on the roof while it rains, saying little.*
+- opening: *Rain drums on the sheet metal; she has a spot under the overhang and has kept half of it free.*
+- lines: "Sit. Don't talk yet. Listen to it first." / "Rain washes the spores out. Best air on the base, for an hour."
+
+#### `fix_gear` — `workshop` · her: `repairing_gear` · commander: `holding_for_her` · morning, afternoon
+- description: *She repairs gear at the workbench; the commander holds parts and passes tools.*
+- opening: *Her rifle lies in pieces on the bench, every part in a row; she points at the one she needs without looking up.*
+- lines: "Hold this. No, by the edge. There." / "You're useless with a wrench. Stay anyway."
+
+#### `cards` — `mess_hall` or her quarters · both playing · evening, night
+- description: *A game of cards, with small stakes and a lot of talk.*
+- opening: *She shuffles a soft, worn deck and deals two hands without asking.*
+- lines: "Stakes are chores. Loser does the dishes." / "I'll go easy on you. That's a lie."
+
+#### `music` — her quarters or the `roof` · her: `music` · commander: listening · evening
+- description: *She plays or puts on music and the commander listens.*
+- opening: *She tunes her instrument with her ear close to the strings, then glances up to see if the commander is staying.*
+- lines: "Sit. This one's short. I think." / "Don't clap. Just listen."
+
+#### `perimeter_walk` — `perimeter` · both walking · afternoon, evening
+- description: *Walking the fence line together, checking posts, talking or not.*
+- opening: *The fence hums faintly; she sets a slow pace along the wire, rifle slung, not in a hurry.*
+- lines: "Same posts every day. Feels different with company." / "If something moves out there, we pretend we didn't see it. Just for tonight."
+
+#### `read_together` — her quarters or the `medbay` · her: `reading_book` · commander: `reading_aloud` or reading · any slot
+- description: *Reading in the same room, or one reading aloud to the other.*
+- opening: *She is curled up with a book and moves her boots to make room, without a word.*
+- lines: "Read me a page. Any page. I like your voice on paper." / "Shh. I'm at the good part."
+
+#### `train_together` — `training_yard` · both training · morning, afternoon
+- description: *Training together on the yard: drills, stretches, a little sparring.*
+- opening: *She is already warm, sleeves rolled, and tosses the commander a towel.*
+- lines: "Twenty more. I'll count. I'll cheat in your favour." / "Hold the pad. Higher. Brace."
+
+#### `tea_at_night` — `mess_hall` or her quarters · both drinking · night
+- description: *Something hot to drink late at night, when neither can sleep.*
+- opening: *Two mugs steam on the table; she has wrapped both hands around hers and is watching the dark window.*
+- lines: "Couldn't sleep either? Sit." / "It's not real tea. It's warm. That's enough."
+
+#### `her_hobby` — by the hobby · her: the hobby's activity · commander: learning · by the hobby
+- description: *She shows the commander her hobby and lets the commander try.*
+- opening: *She has laid out her things for the hobby and pushes one set across: an invitation.*
+- lines: "Your turn. Don't be careful. Careful is boring." / "No one's ever asked me to show them. Sit."
+
+#### `laundry_together` — the laundry or the washroom · both washing · morning, afternoon
+- description: *Doing laundry together: the most boring chore, made bearable.*
+- opening: *The machines thump and rattle; she sits on one, swinging her legs, a basket at her feet.*
+- lines: "Fold. Corners first. Who taught you to fold?" / "This is the only place on base where nobody comes looking for you."
+
+#### `patch_each_other` — `medbay` or her quarters · both tending · after a run
+- description: *Cleaning and bandaging each other's small wounds after a run.*
+- opening: *She has the med kit open on her knees and nods at the stool in front of her: the commander's turn first.*
+- lines: "Hold still. This will sting. I'm not sorry." / "Your turn. My shoulder. Gently. Gently!"
+
+#### `old_film` — her quarters or the briefing room · both watching · evening, night
+- description: *Watching an old film on a cracked projector.*
+- opening: *A wall flickers with grainy light; she has dragged two cushions in front of it and is hunting for the sound.*
+- lines: "It's from before. Everyone in it is dead. It's a comedy." / "Shh, this is the part. Watch her face."
+
+#### `sunrise_roof` — the `roof` · both idle · morning (first slot, early)
+- description: *Watching the sun come up over the dead city from the roof.*
+- opening: *The sky over the ruins is going grey to pink; she is sitting on the parapet with her knees up.*
+- lines: "Shh. Thirty seconds. Then it comes over the tower." / "Every morning it does this, and every morning nobody watches."
+
+#### `tidy_her_quarters` — her quarters · both tidying · any slot
+- description: *Tidying her quarters together, which turns into going through her things.*
+- opening: *Her quarters are half chaos; she hands the commander a box and points at a shelf.*
+- lines: "Don't judge. Just put it where it looks like it goes." / "That? Keep it. No, I don't know why either."
+
+#### `shooting_range` — `training_yard` · both shooting · morning, afternoon
+- description: *Target practice together at the range, with a little betting.*
+- opening: *She sets up cans on a beam and offers the commander the first shot.*
+- lines: "Breathe out, then squeeze. Don't pull." / "Loser cleans both rifles."
+
+#### `care_for_animal` — the `perimeter` · both feeding · afternoon, evening
+- description: *Feeding the stray she looks after at the fence.*
+- opening: *She crouches by the fence with a ration tin, clicking her tongue at something in the grass.*
+- lines: "Slowly. She doesn't know you yet." / "She likes you. She doesn't like anyone."
+
+#### `haircut` — her quarters or the washroom · one cuts, the other sits · any slot
+- description: *Cutting each other's hair, or one cutting the other's.*
+- opening: *She sits on an upturned crate with a towel over her shoulders and holds out the scissors.*
+- lines: "Just the ends. If you ruin it, I ruin yours." / "Sit. I've done half the squad. Mostly they still talk to me."
