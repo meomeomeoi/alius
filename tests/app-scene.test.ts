@@ -256,6 +256,21 @@ describe('scenes in the app', () => {
     expect(text).not.toContain('LEAKED');
   });
 
+  it('SYS import / apply state (the shell\'s replaceState) runs the load: an imported open scene resumes, an unseeded world is seeded (0.1 audit)', async () => {
+    const t = await boot();
+    await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
+    const withScene = structuredClone(t.state());
+    expect(withScene.scene).toBeDefined();
+    t.setState((s) => { delete s.scene; });
+    expect(t.state().scene).toBeUndefined();
+    t.screens.length = 0;
+    withScene.world.seeded = false;
+    t.deps().replaceState!(withScene);
+    expect(t.state().scene).toBeDefined();
+    expect(t.screens.at(-1)).toBe('scene');
+    expect(t.state().world.seeded).toBe(true);
+  });
+
   it('switching to a chat without a scene leaves the scene screen', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'talk', companionId: RHEA });

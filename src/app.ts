@@ -1442,10 +1442,25 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     load = { kind: 'ok', state: next, chatId: chat.chatId };
     state = next;
     saver!.save(next);
-    void saver!.flush();
+    void saver!.flush().catch((e) => console.warn('[Alius] saving the replaced campaign failed', e));
     carryOverContent();
     applyContext();
     syncBadges();
+    shell.refresh();
+  }
+
+  /**
+   * SYS › Import and the state editor's Apply: the state replaces the campaign and is then picked up like a load, so an imported open
+   * scene, fight or run resumes, an unseeded older export is seeded, and nothing of the replaced campaign (a plan, offers seen, revert
+   * snapshots, its directives and modals) carries over. `replaceState` alone stays the plain setter.
+   */
+  function adoptState(next: CampaignState): void {
+    replaceState(next);
+    if (state !== next) return; // refused (no chat, not a group, read-only)
+    expedition.cancelPlan();
+    seenOffers.clear();
+    generations.clearSnapshots();
+    afterLoad();
     shell.refresh();
   }
 
@@ -2034,7 +2049,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     st,
     getState: () => state,
     getLoad: () => load,
-    replaceState,
+    replaceState: adoptState, // SYS import and the state editor: a replaced campaign is picked up like a load (0.1 audit)
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
     lastBuild: () => context.lastBuild(), // P3b: the fill indicator of SYS › MEMORY
