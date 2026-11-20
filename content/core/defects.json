@@ -168,7 +168,6 @@
     },
     "social": "Needs schedules; reacts badly to the commander being late or breaking routine; values kept promises highly.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "A shared daily routine.",
       "embrace": "Perfect drill: the squad syncs to her rhythm."
     },
@@ -289,7 +288,6 @@
     },
     "social": "Fights with squadmates and the commander; apologizes badly; values directness.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "A sparring outlet in the Training Yard.",
       "embrace": "Controlled fury, terrifying."
     },
@@ -406,8 +404,6 @@
     },
     "social": "Food is a love language; cooking and meal activities give her extra Affinity.",
     "arc": {
-      "cure": "Not yet written.",
-      "manage": "Not yet written.",
       "embrace": "She feeds on what she kills (unsettling)."
     },
     "socialHooks": [
@@ -456,7 +452,6 @@
     },
     "social": "Worries others; scenes about care and checking on her.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "The commander checks on her after each expedition.",
       "embrace": "A wall that will not fall."
     },
@@ -517,7 +512,6 @@
     "social": "Dependence on the commander's access to the medbay; pride vs need.",
     "arc": {
       "cure": "Losing the augments (changes role stats).",
-      "manage": "Not yet written.",
       "embrace": "A full organic rebuild (rare, expensive)."
     },
     "socialHooks": [
@@ -581,7 +575,6 @@
     },
     "social": "Restless, never sits still; rest activities with someone raise Affinity more.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "Cooling mods via the Workshop.",
       "embrace": "Permanent burst mode."
     },
@@ -641,7 +634,6 @@
     },
     "social": "Unsure what is real; asks the commander to confirm things; truth matters to her.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "Calibration sessions.",
       "embrace": "She sees anomalies others cannot."
     },
@@ -688,7 +680,6 @@
     "social": "Haunted by who she was; possible link to the commander's crime (liquidation).",
     "arc": {
       "cure": "Her old self is deleted.",
-      "manage": "Not yet written.",
       "embrace": "She integrates both selves."
     },
     "combat": {
@@ -731,8 +722,6 @@
     },
     "social": "Fixates on goals and people; stubborn.",
     "arc": {
-      "cure": "Not yet written.",
-      "manage": "Not yet written.",
       "embrace": "The lock persists across expeditions (nemesis enemies)."
     },
     "combat": {
@@ -774,7 +763,6 @@
     },
     "social": "The imprint target can be the commander or a squadmate; drives night visits.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "Agreed rituals.",
       "embrace": "Deep dependency (feeds the dependent state)."
     },
@@ -841,11 +829,7 @@
       "text": "Attacks whoever is near the chosen person."
     },
     "social": "Feeds the obsessed state; conflicts with a second romance.",
-    "arc": {
-      "cure": "Not yet written.",
-      "manage": "Not yet written.",
-      "embrace": "Not yet written."
-    },
+    "arc": {},
     "dmChanceBonus": 0.1,
     "combat": {
       "upside": [
@@ -886,11 +870,7 @@
       "text": "Abandons the objective for the nearest reward (loot node, etc.)."
     },
     "social": "Flirtatious and impulsive; boundaries are a recurring theme in scenes.",
-    "arc": {
-      "cure": "Not yet written.",
-      "manage": "Not yet written.",
-      "embrace": "Not yet written."
-    },
+    "arc": {},
     "combat": {
       "upside": [
         {
@@ -931,11 +911,7 @@
       "text": "Passes her turns until given an order."
     },
     "social": "The moral trap is explicit: easy to exploit, harder to help her want things for herself.",
-    "arc": {
-      "cure": "Not yet written.",
-      "manage": "Not yet written.",
-      "embrace": "Not yet written."
-    },
+    "arc": {},
     "socialHooks": [
       {
         "activity": "medbay",
@@ -987,7 +963,6 @@
     },
     "social": "AUTHOR TO WRITE: friction over who decides; feeds how she leads in intimate scenes.",
     "arc": {
-      "cure": "Not yet written.",
       "manage": "Agreed domains of authority.",
       "embrace": "Formal co-command (stand-in: an open agreement flag until the hierarchy arrives)."
     },
@@ -1062,9 +1037,7 @@
     },
     "social": "AUTHOR TO WRITE: tenderness that turns into control; fusses over every scratch.",
     "arc": {
-      "cure": "Not yet written.",
-      "manage": "Agreed limits on how far the care goes.",
-      "embrace": "Not yet written."
+      "manage": "Agreed limits on how far the care goes."
     },
     "requiresBond": {
       "caretaker": true

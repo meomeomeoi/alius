@@ -131,6 +131,18 @@ describe('SQUAD tab', () => {
     }
   });
 
+  it('a defect card shows only the written arc paths, and no arc line when none is written', () => {
+    const s = campaign();
+    s.squad[0].defects = [{ id: 'hunger_loop' }];
+    const one = render({ state: s }).host.textContent!;
+    expect(one).toContain(`Arc: Embrace: ${String((reg.defects.get('hunger_loop')!.arc as { embrace: string }).embrace)}`);
+    expect(one).not.toContain('Cure:');
+    expect(one).not.toContain('Not yet written');
+    s.squad[0].defects = [{ id: 'reward_loop' }];
+    const none = render({ state: s }).host.textContent!;
+    expect(none).not.toContain('Arc:');
+  });
+
   it('values show bands by default and raw numbers with showRawValues', () => {
     const bands = render().host.textContent!;
     expect(bands).toContain('MERCY: HIGH');

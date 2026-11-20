@@ -562,6 +562,8 @@ After the authored prologue (spine beats 1–5) the model builds story arcs from
 - **Gifts** as a separate mechanic for every relation (loot offered instead of sold, her taste, a place for them in her quarters).
 - **Lore note (author):** biopunk. The soldiers' enhancements are in the head and under the skin; to the eye and to the touch they cannot be told from a human, though an ordinary human loses to them in a fight. Visible metal augmentations are the exception, not the rule.
 
+**Unwritten defect arc paths (from the 0.1 release audit, not scheduled):** a path without text in `defects.json` is hidden (`writtenArcPaths` in `src/engine/arcs.ts`: never offered, never on the defect card, never raises an arc talk) until the author writes it. Missing at 0.1: `possessive_protocol`, `reward_loop`, `compliance_craving` (all three, so they have no arc at all); `hunger_loop`, `target_lock` (cure, manage); `caretaker_overdrive` (cure, embrace); `graft_rejection`, `firmware_rollback` (manage); `compulsive_protocol`, `rage_governor`, `pain_inversion`, `overclock_bias`, `sensor_ghosting`, `imprint_hunger`, `dominance_drive` (cure). Writing the text is enough: the path appears with the tuning every path already has.
+
 **Mission mechanics beyond 0.3** (textual in 0.3): `escort` (a protected NPC in combat), `hold` (waves), `survive` (a round goal), `capture_alive` (non-lethal takedowns).
 
 **Special traits beyond P12** — `former_off_spec`, `bound_elsewhere`, `voice_synth` (on P7's trait framework). The **LEASHSWAP mode** (P13) replaces the earlier `collared` idea.

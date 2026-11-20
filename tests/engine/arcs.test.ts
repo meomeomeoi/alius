@@ -336,8 +336,8 @@ describe('arc scaling in combat', () => {
 });
 
 describe('end to end', () => {
-  it('the flow works end to end for echo_bleed, imprint_fracture and hunger_loop', () => {
-    for (const [defectId, path] of [['echo_bleed', 'manage'], ['imprint_fracture', 'embrace'], ['hunger_loop', 'cure']] as const) {
+  it('the flow works end to end for echo_bleed, imprint_fracture and threat_saturation', () => {
+    for (const [defectId, path] of [['echo_bleed', 'manage'], ['imprint_fracture', 'embrace'], ['threat_saturation', 'cure']] as const) {
       let s = withState('confidant', 5);
       unit(s).defects = [{ id: defectId }];
       s.resources = { credits: 500, supplies: 50, plyx: 50 };
@@ -401,3 +401,27 @@ describe('the unlock', () => {
     expect(errors(visit(s).events)).toEqual([]);
   });
 });
+
+describe('paths without text (hidden until written)', () => {
+  const withDefect = (id: string): CampaignState => withState('confidant', 5, (s) => { for (const u of s.squad) u.defects = [{ id }]; });
+
+  it('only the written paths are offered; a defect with none offers nothing', () => {
+    expect(reg.defects.get('hunger_loop')!.arc).toEqual({ embrace: expect.any(String) });
+    expect(paths(withDefect('hunger_loop'), reg, 'hunger_loop').map((p) => p.path)).toEqual(['embrace']);
+    expect(paths(withDefect('reward_loop'), reg, 'reward_loop')).toEqual([]);
+    for (const p of paths(withDefect('caretaker_overdrive'), reg, 'caretaker_overdrive')) expect(p.text).not.toBe('');
+  });
+
+  it('a path without text cannot be decided', () => {
+    const s = withDefect('hunger_loop');
+    expect(errors(decide(s, 'cure', {}, reg, 'hunger_loop').events)).toHaveLength(1);
+    expect(errors(decide(s, 'manage', {}, reg, 'hunger_loop').events)).toHaveLength(1);
+  });
+
+  it('a defect with no written path never raises an arc talk', () => {
+    const s = withDefect('reward_loop');
+    expect(ofType(loyaltyDayStep(s, ctxOf(s, reg)), 'arc_unlocked')).toEqual([]);
+    expect(s.calendar.nightEventsQueue.filter((n) => n.kind === 'arc_talk')).toEqual([]);
+  });
+});
+

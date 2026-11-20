@@ -9,6 +9,7 @@ import { ALL_SECTIONS, type ImportSection } from '../../llm/calls/profileImport'
 import { manualOptions, type StartPreview, type UnitDraft } from '../../setup/wizard';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { arcLine } from '../../engine/arcs';
 
 type Choice = UnitDraft['choice'];
 export type CalibrationPatch = Partial<Choice> & { secondDefect?: boolean };
@@ -394,14 +395,14 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
 function defectLines(d: Entry): HTMLElement[] {
   const line = (label: string, text: unknown) => h('p', { class: 'alius-defect-line' }, `${label}: ${String(text)}`);
   const bd = d.breakdown as { name: string; text: string };
-  const arc = d.arc as { cure: string; manage: string; embrace: string };
+  const arc = arcLine(d);
   return [
     line('Lore', d.lore),
     line('Upside', d.upside),
     line('Downside', d.downside),
     line('Breakdown', `${bd.name} — ${bd.text}`),
     line('Social', d.social),
-    line('Arc', `Cure: ${arc.cure} · Manage: ${arc.manage} · Embrace: ${arc.embrace}`),
+    ...(arc === null ? [] : [line('Arc', arc)]),
   ];
 }
 

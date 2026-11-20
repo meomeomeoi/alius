@@ -67,8 +67,30 @@ const afford = (state: CampaignState, cost: Cost): string | null => {
   return null;
 };
 
-/** The three paths of one defect with what is on offer right now, what she wants and what she refuses. Never throws. */
+/** The paths a defect has text for. A path the author has not written yet is hidden: never offered, never shown. */
+export function writtenArcPaths(def: Readonly<Record<string, unknown>> | undefined): ArcPath[] {
+  const texts = isObj(def?.arc) ? def.arc : {};
+  return ARC_PATHS.filter((p) => typeof texts[p] === 'string' && (texts[p] as string).trim() !== '');
+}
+
+/** `Arc: Cure: … · Manage: … · Embrace: …` with only the written paths; null when none is written (see `writtenArcPaths`). */
+export function arcLine(def: Readonly<Record<string, unknown>>): string | null {
+  const texts = def.arc as Partial<Record<ArcPath, string>> | undefined;
+  const label: Record<ArcPath, string> = { cure: 'Cure', manage: 'Manage', embrace: 'Embrace' };
+  const parts = (['cure', 'manage', 'embrace'] as const).filter((p) => writtenArcPaths(def).includes(p)).map((p) => `${label[p]}: ${texts![p]}`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+/**
+ * The written paths of one defect (see `writtenArcPaths`) with what is on offer right now, what she wants and what she refuses.
+ * Never throws.
+ */
 export function arcPaths(state: CampaignState, reg: Registries, unitId: string, defectId: string): ArcPathInfo[] {
+  const written = writtenArcPaths(reg.defects.get(defectId));
+  return allArcPaths(state, reg, unitId, defectId, written).filter((p) => written.includes(p.path));
+}
+
+function allArcPaths(state: CampaignState, reg: Registries, unitId: string, defectId: string, written: ArcPath[]): ArcPathInfo[] {
   const unit = state.squad.find((u) => u.id === unitId);
   const inst = unit?.defects.find((d) => d.id === defectId);
   const def = reg.defects.get(defectId);
@@ -95,7 +117,7 @@ export function arcPaths(state: CampaignState, reg: Registries, unitId: string, 
     else if (TUNING.arc.stage[path] > cap) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
     return { path, reason };
   });
-  const offered = structural.filter((s) => s.reason === null).map((s) => s.path);
+  const offered = structural.filter((s) => s.reason === null && written.includes(s.path)).map((s) => s.path);
   const wanted = offered.length > 0 ? wantedPath(unit!, offered) : undefined;
   return structural.map(({ path, reason }) => {
     const cost = base(path).cost;
@@ -120,7 +142,8 @@ export function decideArc(
   if (!(ARC_PATHS as readonly string[]).includes(p.path)) throw new Error(`Unknown path "${String(p.path)}".`);
   const unit = draft.squad.find((u) => u.id === p.unitId);
   if (!unit || !isLiving(unit)) throw new Error(`Unknown unit "${p.unitId}".`);
-  const info = arcPaths(draft, reg, p.unitId, p.defectId).find((x) => x.path === p.path)!;
+  const info = arcPaths(draft, reg, p.unitId, p.defectId).find((x) => x.path === p.path);
+  if (!info) throw new Error('That path is not open for this defect.');
   if (!info.available) throw new Error(info.reason ?? 'That path is not available.');
   const events: EngineEvent[] = [];
   let forced = false;

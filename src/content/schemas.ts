@@ -781,7 +781,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   downside: str,
   breakdown: z.object({ name: str, text: str }),
   social: str,
-  arc: z.object({ cure: str, manage: str, embrace: str }),
+  /** A path without text is hidden (not offered, not shown) until it is written. */
+  arc: z.object({ cure: str.optional(), manage: str.optional(), embrace: str.optional() }),
   /** P3: multipliers applied after state modifiers; `events` multiplies the whole delta of one event type. */
   relationModifiers: gainLoss.extend({ events: z.record(z.number().min(0)).optional() }).strict().optional(),
   /** P3: activity-driven social effects (e.g. Hunger Loop meals give Affinity). */

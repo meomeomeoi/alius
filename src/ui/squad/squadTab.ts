@@ -21,6 +21,7 @@ import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
 import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
+import { arcLine } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
 import { portraitOptions, unitPortrait } from '../portrait/portrait';
@@ -91,7 +92,7 @@ function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
   const def = reg.defects.get(d.id);
   if (!def) return h('div', { class: 'alius-defect' }, h('strong', {}, unknown(d.id)));
   const bd = def.breakdown as { name: string; text: string };
-  const arc = def.arc as { cure: string; manage: string; embrace: string };
+  const arc = arcLine(def);
   const line = (label: string, text: string) => h('p', { class: 'alius-defect-line' }, `${label}: ${text}`);
   return h(
     'div',
@@ -104,7 +105,7 @@ function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
     line('Downside', String(def.downside)),
     line('Breakdown', `${bd.name} — ${bd.text}`),
     line('Social', String(def.social)),
-    d.lite ? null : line('Arc', `Cure: ${arc.cure} · Manage: ${arc.manage} · Embrace: ${arc.embrace}`),
+    d.lite || arc === null ? null : line('Arc', arc),
   );
 }
 
