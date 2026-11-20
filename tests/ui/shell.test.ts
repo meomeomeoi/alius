@@ -103,6 +103,21 @@ describe('shell', () => {
     expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toBe('ROSTER HERE');
   });
 
+  it('a tab or a screen whose renderer throws shows a fault line, and the other tabs still work (0.1 audit)', () => {
+    const { shell } = setup();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    shell.open();
+    shell.showTab('squad');
+    shell.registerTab('squad', () => { throw new Error('broken roster'); });
+    expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toContain('MODULE FAULT');
+    expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toContain('broken roster');
+    shell.showTab('sys');
+    expect(document.querySelector('#alius-shell .alius-screen')!.textContent).not.toContain('MODULE FAULT');
+    shell.registerScreen('combat', () => { throw new Error('broken fight'); });
+    shell.showScreen('combat');
+    expect(document.querySelector('#alius-shell .alius-view')!.textContent).toContain('MODULE FAULT');
+  });
+
   it('other screens show an offline stub; pda brings the tabs back', () => {
     const { shell } = setup();
     shell.open();

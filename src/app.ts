@@ -1301,6 +1301,32 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (load.kind === 'readonly') toast('warn', `Alius campaign in this chat is read-only: ${load.reason}`);
   }
 
+  /**
+   * `reload()` + `afterLoad()` for the open chat. A save that passes `migrate` (a shape check only) can still break the load deep inside;
+   * then the campaign opens read-only with the reason (nothing is written back, the next chat opens normally) instead of leaving
+   * Alius broken in this chat.
+   */
+  function openCampaign(): void {
+    try {
+      reload();
+      afterLoad();
+    } catch (e) {
+      console.error('[Alius] opening the campaign failed', e);
+      saver?.dispose();
+      saver = null;
+      state = null;
+      const chat = st.getActiveChat();
+      load = chat ? { kind: 'readonly', reason: `the campaign could not be opened (${errText(e)})`, chatId: chat.chatId } : { kind: 'none' };
+      context.clearMatching(() => true);
+      try {
+        applyContext();
+      } catch {
+        // nothing of the broken campaign may reach the prompt; a failure here leaves the cleared context
+      }
+      toast('error', `Alius could not open this campaign: ${errText(e)}. It stays read-only; nothing is overwritten.`);
+    }
+  }
+
   /** The chat whose "commander file incomplete" modal was already shown in this session (it never loops). */
   let reviewShownFor: string | null = null;
   /** The review modal is on screen: the decision and confrontation modals wait (a new modal cancels the open one). */
@@ -2466,8 +2492,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         toast('warn', `Content: ${contentErrors.length} error(s) — see SYS › debug`);
       }
 
-      reload();
-      afterLoad();
+      openCampaign();
 
       if (!started) {
         started = true;
@@ -2476,8 +2501,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           expedition.cancelPlan();
           seenOffers.clear();
           generations.clearSnapshots(); // a revert snapshot belongs to one campaign
-          reload();
-          afterLoad();
+          openCampaign();
           shell.refresh();
         });
         st.on('message_received', () => {

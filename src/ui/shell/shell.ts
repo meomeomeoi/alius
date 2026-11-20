@@ -18,6 +18,7 @@ import { createRouter, type ScreenId } from './router';
 import { renderStatusHeader } from './status';
 import type { BuildStats } from '../../llm/context';
 import { renderSysTab } from './sysTab';
+import { guarded } from './guard';
 import type { GenerationUi } from '../generation/surface';
 import { KEY_TABS, TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
 import { createToasts, type ToastKind, type ToastOpts } from './toast';
@@ -225,7 +226,7 @@ export function createShell(deps: ShellDeps): ShellApi {
       return;
     }
     const render = tabRenderers.get(tab);
-    if (render) render(panel);
+    if (render) guarded(panel, `tab ${tab}`, render);
     else panel.append(tabStub(tab));
   }
 
@@ -311,7 +312,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     // a redraw must not drop the keyboard focus (the next Tab would then toggle the device by surprise)
     renderKeepingFocus(target, () => {
       target.replaceChildren();
-      hubRender(target, dev);
+      guarded(target, 'hub', (host) => hubRender(host, dev));
     });
   }
 

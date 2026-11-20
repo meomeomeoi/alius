@@ -1,4 +1,5 @@
 import { h } from '../dom';
+import { guarded } from './guard';
 
 export type ScreenId = 'hub' | 'pda' | 'scene' | 'combat' | 'expedition' | 'setup';
 
@@ -26,7 +27,7 @@ export function createRouter() {
     render(host: HTMLElement): void {
       host.replaceChildren();
       const render = renderers.get(current);
-      if (render) render(host);
+      if (render) guarded(host, `screen ${current}`, render);
       else host.append(h('pre', { class: 'alius-stub' }, stubText(current.toUpperCase())));
     },
   };
