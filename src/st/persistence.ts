@@ -91,16 +91,19 @@ export async function writeNewCampaign(
 }
 
 /**
- * Debounced writer bound to one chat. A pending write is dropped (never redirected)
- * if the open chat changed, and a campaign that failed to load is never overwritten.
+ * Writer bound to one chat. Every save puts the state into that chat's metadata at once (an assignment in memory, which ST keeps with the
+ * chat, so a change made just before a chat switch is not lost); only `saveMetadata()` is debounced. A save or a debounced write after
+ * the open chat changed goes nowhere (never redirected), and a campaign that failed to load is never overwritten.
  */
 export function createSaver(
   st: StAdapter,
   chatId: string,
   debounceMs = 500,
 ): { save(state: CampaignState): void; flush(): Promise<void>; dispose(): void } {
-  let pending: CampaignState | null = null;
+  let dirty = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  /** Checked once, on the first save: the saver's own writes keep the metadata loadable afterwards. */
+  let readonly: boolean | null = null;
 
   const clearTimer = () => {
     if (timer !== null) {
@@ -111,24 +114,28 @@ export function createSaver(
 
   const flush = async (): Promise<void> => {
     clearTimer();
-    const state = pending;
-    pending = null;
-    if (!state) return;
+    if (!dirty) return;
+    dirty = false;
     if (st.getActiveChat()?.chatId !== chatId) {
-      console.warn(`[Alius] dropped pending save: chat ${chatId} is no longer open`);
+      console.warn(`[Alius] chat ${chatId} is no longer open: its state stays in that chat's metadata for SillyTavern to save with it`);
       return;
     }
-    if (loadCampaign(st).kind === 'readonly') {
-      console.warn('[Alius] refused to save: campaign metadata is read-only (corrupt or from a newer version)');
-      return;
-    }
-    st.writeMetadata(METADATA_KEY, state);
     await st.saveMetadata();
   };
 
   return {
     save(state) {
-      pending = structuredClone(state);
+      if (st.getActiveChat()?.chatId !== chatId) {
+        console.warn(`[Alius] dropped a save: chat ${chatId} is no longer open`);
+        return;
+      }
+      readonly ??= loadCampaign(st).kind === 'readonly';
+      if (readonly) {
+        console.warn('[Alius] refused to save: campaign metadata is read-only (corrupt or from a newer version)');
+        return;
+      }
+      st.writeMetadata(METADATA_KEY, structuredClone(state));
+      dirty = true;
       clearTimer();
       timer = setTimeout(() => {
         flush().catch((e) => console.warn('[Alius] save failed', e));
@@ -137,7 +144,7 @@ export function createSaver(
     flush,
     dispose() {
       clearTimer();
-      pending = null;
+      dirty = false;
     },
   };
 }

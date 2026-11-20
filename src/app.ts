@@ -1307,6 +1307,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
    * Alius broken in this chat.
    */
   function openCampaign(): void {
+    const stored = st.readMetadata(METADATA_KEY); // what the chat held before the load wrote anything (a seed, a sync)
     try {
       reload();
       afterLoad();
@@ -1314,6 +1315,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       console.error('[Alius] opening the campaign failed', e);
       saver?.dispose();
       saver = null;
+      if (st.readMetadata(METADATA_KEY) !== stored) st.writeMetadata(METADATA_KEY, stored); // the failed load leaves the save as it was
       state = null;
       const chat = st.getActiveChat();
       load = chat ? { kind: 'readonly', reason: `the campaign could not be opened (${errText(e)})`, chatId: chat.chatId } : { kind: 'none' };

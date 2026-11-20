@@ -86,30 +86,34 @@ describe('persistence', () => {
     expect((st.readMetadata(METADATA_KEY) as { day: number }).day).toBe(4);
   });
 
-  it('flush writes immediately and dispose drops pending writes', async () => {
+  it('the state goes into the chat metadata at once; only saving it is debounced, and dispose cancels that save (0.1 audit)', async () => {
     const st = new FakeStAdapter(GROUP_A);
     const saver = createSaver(st, 'chat-a');
     saver.save(createCampaign(opts));
     await saver.flush();
     expect(st.metadataSaves).toBe(1);
     saver.save({ ...createCampaign(opts), day: 5 });
+    expect((st.readMetadata(METADATA_KEY) as { day: number }).day).toBe(5); // in the chat's metadata already
     saver.dispose();
     await vi.advanceTimersByTimeAsync(1000);
     expect(st.metadataSaves).toBe(1);
-    expect((st.readMetadata(METADATA_KEY) as { day: number }).day).toBe(1);
   });
 
-  it('saver drops pending write after chat change', async () => {
+  it('a change made just before a chat switch stays in its own chat (ST saves it with that chat) and never reaches the other (0.1 audit)', async () => {
     const st = new FakeStAdapter(GROUP_A);
-    const init = initCampaign(st, opts);
+    initCampaign(st, opts);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const saver = createSaver(st, 'chat-a');
+    const saves = st.metadataSaves;
     saver.save({ ...createCampaign(opts), day: 7 });
     st.switchChat(GROUP_B);
     await vi.advanceTimersByTimeAsync(1000);
     expect(st.readMetadata(METADATA_KEY)).toBeUndefined();
+    expect(st.metadataSaves).toBe(saves); // the debounced save would have saved the other chat's metadata: it is skipped
+    saver.save({ ...createCampaign(opts), day: 8 }); // a late save after the switch goes nowhere
+    expect(st.readMetadata(METADATA_KEY)).toBeUndefined();
     st.switchChat(GROUP_A);
-    if (init.ok) expect(st.readMetadata(METADATA_KEY)).toEqual(init.state);
+    expect((st.readMetadata(METADATA_KEY) as { day: number }).day).toBe(7);
     expect(warn).toHaveBeenCalled();
   });
 
