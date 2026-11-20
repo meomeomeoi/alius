@@ -26,6 +26,8 @@ export function attachCombatKeys(h: CombatKeyHandlers): () => void {
     // the screen lives inside the open shell: with the shell closed the keys belong to SillyTavern
     if (!document.getElementById('alius-shell')) return;
     if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    // a modal over the fight (a warden override, the Leash form, a decision) owns the keys: Enter belongs to its button
+    if (document.querySelector('.alius-modal-backdrop') || (e.target as Element | null)?.closest?.('[role="dialog"]')) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     let handled = true;
     if (k >= '1' && k <= '6') h.skill(Number(k) - 1);
