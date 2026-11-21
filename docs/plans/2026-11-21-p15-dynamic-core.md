@@ -1012,16 +1012,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `ensureDynamic(draft, reg, unitId): EngineEvent[]`;
   - `dynamicOf(state, unitId): DynamicRelation | undefined`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `off without state.dynamic, with holders 0, or with no practice category on`.
   - `canHold reasons`: no profile; `mayHold: 'no'`; inclination `none` not seeded; no category at `enjoys`+; `tolerates` + `dominant` passes; lead `balanced` with Impunity 39 fails and with 40 passes; cap 1 reached by another unit at `play` fails; `any` never caps.
   - `set_setup creates the state only while a practice category is on`, and `set_setup { holders: 0 }` on a campaign with two holders ends nothing (both keep `frame`).
   - `dynamicHash is stable for the same day and key and differs across days`.
   - `ensureDynamic emits dynamic_started once`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/gate.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R2–R3 and R7.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): dynamic state, the gate and eligibility`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/gate.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R2–R3 and R7.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): dynamic state, the gate and eligibility`
 
 ---
 

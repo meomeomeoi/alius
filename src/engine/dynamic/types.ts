@@ -33,6 +33,18 @@ export type HintStyle = (typeof HINT_STYLE)[number];
 export const DRIVE = ['low', 'moderate', 'high'] as const;
 export type Drive = (typeof DRIVE)[number];
 
+/** The campaign setup of the dynamic (R3): how many may hold at once, how fast hold moves, how often something comes, and how sensitive each unit is. */
+export const HOLDER_CAPS = [0, 1, 2, 3, 'any'] as const;
+export type HolderCap = (typeof HOLDER_CAPS)[number];
+export const PACES = ['slow', 'normal', 'fast'] as const;
+export type Pace = (typeof PACES)[number];
+export const FREQUENCIES = ['rare', 'normal', 'often'] as const;
+export type Frequency = (typeof FREQUENCIES)[number];
+export const SENSITIVITIES = ['sluggish', 'normal', 'lively'] as const;
+export type Sensitivity = (typeof SENSITIVITIES)[number];
+export const START_FRAMES = ['play', 'role'] as const;
+export type StartFrame = (typeof START_FRAMES)[number];
+
 /** What a claimed domain lets her do. Code reads these, never a domain id (R12). */
 export const CAPABILITIES = [
   'booking_uncapped', 'book_ahead', 'body_conditions', 'device_floor', 'leash_block', 'household_protocol',

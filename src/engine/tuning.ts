@@ -706,5 +706,39 @@ export const TUNING = Object.freeze({
    */
   dynamic: Object.freeze({
     profile: Object.freeze({ tellMax: 80, howMax: 60, traitsMax: 6, traitMax: 40, offsetMax: 0.3 }),
+    /** What a campaign gets when the DYNAMIC block is shown and nothing was changed (R3). */
+    defaults: Object.freeze({ holders: 1, pace: 'normal', frequency: 'normal' } as const),
+    /** The Impunity at which a unit of a lower lead style may still hold (R2). */
+    impunityRoute: 40,
+    /** The hold a seed starts with (R8); a starting frame's floor counts if it is higher. */
+    seedHold: 25,
+    /** Hold gains and losses are scaled by the pace (R8), and a probe answer by her sensitivity. */
+    pace: Object.freeze({ slow: 0.7, normal: 1, fast: 1.4 }),
+    sensitivity: Object.freeze({ sluggish: 0.5, normal: 1, lively: 1.6 }),
+    /** How often something comes (probes, claims): a multiplier on the daily chance. */
+    frequency: Object.freeze({ rare: 0.5, normal: 1, often: 1.6 }),
+    /** A `probe_observed` counts this much of a probe answer. */
+    observedFactor: 0.5,
+    /** Compatibility with her style point (R10): `max − perDistance × distance(0…2)`, clamped to [min, max]; a gain only. */
+    compatibility: Object.freeze({ max: 1.2, min: 0.8, perDistance: 0.2 }),
+    /** A gain in a romantic pair (R8): `affectionate` / `possessive` primary, and `cold` primary. */
+    romanticTier: Object.freeze({ warm: 1.2, cold: 0.8 }),
+    /** Hold per cause (R8, R1). The P16 rows are reserved: nothing in P15 produces those events. */
+    gains: Object.freeze({
+      probe_yielded: 4, probe_returned: 3, probe_returned_playful: 5, probe_deflected: -1, probe_resisted: -3,
+      followed_lead: 1, rule_accepted: 2, desire_granted: 2, witness_drawn: 5, successor: 10,
+      override_comply: 3, override_defy: -6,
+      refusal: -4, rule_broken: -5, overrode_her: -6, commander_enforced: -10,
+      offer_craves: 6, offer_enjoys: 3, offer_refused: -3,
+      task_kept: 3, punishment_accepted: 4, service_rated_pleased: 2, staging_held: 5, task_broken: -5,
+    } as const),
+    /** The slow term per day at frame ≥ `play` (R8): while her Impunity is at `impunityRoute`, and while she is the squad's leader. */
+    slow: Object.freeze({ impunity: 0.5, leader: 0.3 }),
+    /** Decay after `idleDays` without a gain, per day, by frame (R8). Nothing at `equal`. */
+    decay: Object.freeze({ idleDays: 3, play: 1, role: 0.5, rule: 0.3 }),
+    /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
+    contestAt: 3,
+    contestWindowDays: 14,
+    contestImpunity: 5,
   }),
 });

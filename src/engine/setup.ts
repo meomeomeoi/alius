@@ -21,6 +21,8 @@ import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } f
 import { seedSpecialTraits } from './special/traits';
 import { corporateWardenPick, seedWarden } from './warden/select';
 import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
+import type { UnitDynamicSetup } from './dynamic/state';
+import type { Frequency, HolderCap, Pace } from './dynamic/types';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Insight, type LifeMode, type Relation, type SignatureInstance, type Temperament, type Unit, type WorldStance,
@@ -111,6 +113,11 @@ export interface SetupResult {
   characterDevelopment?: DevelopmentMode;
   /** P14c: the setting `lifeEvents`; absent = off (the key is not written into `settings`). The wizard sends the player's choice (default `normal`). */
   lifeEvents?: LifeMode;
+  /**
+   * P15: the DYNAMIC block of WORLD PARAMETERS (`units` is keyed by `cardRef`). It counts only while a practice category is enabled in
+   * `content`; absent, or with no category, the campaign has no `state.dynamic` and is byte-identical to one without P15.
+   */
+  dynamic?: { holders: HolderCap; pace: Pace; frequency: Frequency; units: Record<string, UnitDynamicSetup> };
 }
 
 export type HeadStartDays = 0 | 7 | 14 | 30;

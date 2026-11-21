@@ -1,6 +1,7 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
 import type { Attitude, ExpectationProfile } from '../dynamic/expectations';
 import type { Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
+import type { DynamicCampaign, DynamicRelation } from '../dynamic/state';
 import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
 import type { PhysicsRun } from '../physics/state';
@@ -454,6 +455,12 @@ export interface HistoryEntry {
 export interface Relation {
   /** P15a: what she has learned of the commander in a hold (levels 0–5 and the practice behind them). Lives here, not in P15's `dynamic` (plan ruling). */
   herSkill?: { seal: number; weight: number; reading: number; swing: number; rhythm: number; practice: Record<string, number> };
+  /** P15: what she holds over the commander (hold, frame, domains…). Written only by the dynamic, only while it is on (`ensureDynamic`). */
+  dynamic?: DynamicRelation;
+  /** P15: how much she thinks of the commander (hers; never shown as a number). Written only while the dynamic is on. */
+  regard?: number;
+  /** P15: what the commander has learned of each of her targets, as points (levels at 20 / 60 / 120 / 200 / 320). */
+  mastery?: Record<string, number>;
   trust: number;
   affinity: number;
   attraction: number;
@@ -1268,6 +1275,8 @@ export interface CampaignState {
   onboarding?: OnboardingState;
   /** P14c: her days off-screen, the news queue and the running jokes. Created when the setting is turned on; absent = nothing. */
   life?: LifeState;
+  /** P15: the dynamic (holders, probes, claims, knowledge). Written by the setup or `dynamic/set_setup` while a practice category is on; absent = off. */
+  dynamic?: DynamicCampaign;
   /** P11b: set only when the campaign began with a head start (`days > 0`); absent = 0. World time never moves: `day` is still 1 at the start. */
   headStart?: HeadStartState;
   /**

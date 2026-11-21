@@ -30,6 +30,11 @@ export function practiceCategories(reg: Registries): string[] {
   return out;
 }
 
+/** Whether one of the categories the dynamic is about is among `enabled` (the content categories switched on). */
+export function practiceEnabled(reg: Registries, enabled: readonly string[] | undefined): boolean {
+  return enabled !== undefined && practiceCategories(reg).some((c) => enabled.includes(c));
+}
+
 /**
  * Reads a practice section from untrusted data. A field that is not legal falls back and is named in `issues`; an unknown category is
  * dropped (named in `dropped` as `practice:<id>` and in `issues`); a `secondary` equal to the `primary` is dropped; a missing or illegal

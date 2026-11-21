@@ -1,9 +1,14 @@
 import { MODEST_BOND } from '../bonds/profile';
-import { registerAction } from '../dispatch';
+import { registerAction, type EngineEvent } from '../dispatch';
 import { EXPECTATION_FIELDS, lockedExpectation, mergeExpectations, validateExpectations, type ExpectationProfile } from '../dynamic/expectations';
 import { mergePractice, validatePractice } from '../dynamic/profile';
 import { contentAllowed } from '../bonds/content';
-import { PRACTICE_LOCK_FIELDS } from '../dynamic/types';
+import { holdReason } from '../dynamic/gate';
+import { practiceEnabled } from '../dynamic/profile';
+import { seedHold } from '../dynamic/seeds';
+import { dynamicSaltOf, newDynamicCampaign } from '../dynamic/state';
+import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES } from '../dynamic/types';
+import { TUNING } from '../tuning';
 import type { Unit } from '../state/types';
 
 // Importing this module registers the actions of the dynamic (P15): the practice and expectation profile edits first, the dynamic's own later.
@@ -113,5 +118,74 @@ registerAction('profile/lock_expectation', (draft, payload, ctx) => {
   if (p.on) locks.push(field);
   if (locks.length > 0) unit.expectationLocks = locks;
   else delete unit.expectationLocks;
+  return [];
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// The campaign setup of the dynamic (R3)
+
+/**
+ * `dynamic/set_setup { holders?, pace?, frequency?, seeds? }`: SYS, mid-campaign. The block is created here (a salt from the rng as it stands,
+ * nothing drawn) while a practice category is on; with none on and no block, the call is refused. Lowering `holders` ends nothing: a holder
+ * keeps her place, and only new probes, offers and milestones out of `equal` are gated by it. `seeds` is the full list of seeded units: a unit
+ * newly in it must be able to hold (the cap aside) and gets the head start once; one that leaves it keeps what she has. Never a frame.
+ */
+registerAction('dynamic/set_setup', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { holders?: unknown; pace?: unknown; frequency?: unknown; seeds?: unknown };
+  if (p.holders !== undefined && !(HOLDER_CAPS as readonly unknown[]).includes(p.holders)) throw new Error('Holders must be 0, 1, 2, 3 or any.');
+  if (p.pace !== undefined && !(PACES as readonly unknown[]).includes(p.pace)) throw new Error('The pace must be slow, normal or fast.');
+  if (p.frequency !== undefined && !(FREQUENCIES as readonly unknown[]).includes(p.frequency)) throw new Error('The frequency must be rare, normal or often.');
+  if (p.seeds !== undefined && (!Array.isArray(p.seeds) || p.seeds.some((id) => typeof id !== 'string'))) throw new Error('Seeds must be a list of unit ids.');
+  const reg = ctx.registries;
+  if (draft.dynamic === undefined) {
+    if (!practiceEnabled(reg, draft.content?.enabled)) throw new Error('Switch a practice category on first: the dynamic needs one.');
+    const d = TUNING.dynamic.defaults;
+    draft.dynamic = newDynamicCampaign(dynamicSaltOf(draft.rng), { holders: d.holders, pace: d.pace, frequency: d.frequency, units: {} });
+  }
+  const setup = draft.dynamic.setup;
+  if (p.holders !== undefined) setup.holders = p.holders as typeof setup.holders;
+  if (p.pace !== undefined) setup.pace = p.pace as typeof setup.pace;
+  if (p.frequency !== undefined) setup.frequency = p.frequency as typeof setup.frequency;
+  const events: EngineEvent[] = [];
+  if (p.seeds !== undefined) {
+    const seeds = [...new Set(p.seeds as string[])];
+    if (setup.holders !== 'any' && seeds.length > setup.holders) throw new Error(`At most ${setup.holders} seeded units (has ${seeds.length}).`);
+    for (const id of seeds) {
+      const unit = namedUnit(draft, id, 'dynamic/set_setup');
+      const was = setup.units[id]?.seeded === true;
+      const why = was ? null : holdReason(draft, reg, id, { ignoreCap: true, seeded: true });
+      if (why !== null) throw new Error(`${unit.displayName} cannot hold: ${why}.`);
+    }
+    for (const [id, entry] of Object.entries(setup.units)) if (!seeds.includes(id) && entry.seeded) { delete entry.seeded; delete entry.startFrame; }
+    for (const id of seeds) {
+      const first = setup.units[id]?.seeded !== true;
+      setup.units[id] = { ...setup.units[id], seeded: true };
+      if (first) events.push(...seedHold(draft, reg, id));
+    }
+    for (const [id, entry] of Object.entries(setup.units)) if (Object.keys(entry).length === 0) delete setup.units[id];
+  }
+  return events;
+});
+
+/** `dynamic/set_unit { unitId, mayHold?, sensitivity? }`: what the setup says about one named unit (the spec's `dynamic/set_may_hold`, widened). Needs the block. */
+registerAction('dynamic/set_unit', (draft, payload) => {
+  const p = (payload ?? {}) as { unitId?: unknown; mayHold?: unknown; sensitivity?: unknown };
+  const unit = namedUnit(draft, p.unitId, 'dynamic/set_unit');
+  if (p.mayHold === undefined && p.sensitivity === undefined) throw new Error('dynamic/set_unit needs mayHold or sensitivity.');
+  if (p.mayHold !== undefined && !(MAY_HOLD as readonly unknown[]).includes(p.mayHold)) throw new Error('May hold must be yes, no or auto.');
+  if (p.sensitivity !== undefined && !(SENSITIVITIES as readonly unknown[]).includes(p.sensitivity)) throw new Error('Sensitivity must be sluggish, normal or lively.');
+  if (draft.dynamic === undefined) throw new Error('The dynamic is not set up: use dynamic/set_setup first.');
+  const entry = { ...draft.dynamic.setup.units[unit.id] };
+  if (p.mayHold !== undefined) {
+    if (p.mayHold === 'auto') delete entry.mayHold;
+    else entry.mayHold = p.mayHold as typeof entry.mayHold;
+  }
+  if (p.sensitivity !== undefined) {
+    if (p.sensitivity === 'normal') delete entry.sensitivity;
+    else entry.sensitivity = p.sensitivity as typeof entry.sensitivity;
+  }
+  if (Object.keys(entry).length === 0) delete draft.dynamic.setup.units[unit.id];
+  else draft.dynamic.setup.units[unit.id] = entry;
   return [];
 });
