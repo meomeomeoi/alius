@@ -1,9 +1,9 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { Registries } from '../../content/types';
-import type { CampaignState } from '../state/types';
+import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyLifeEvent, pickLifeEvent } from './events';
-import { practise, practiceSlots } from './hobbies';
+import { friendHobbies, interestTick, practise, practiceSlots } from './hobbies';
 import { busySlot, takesPart, type DayPlaces } from './places';
 import { ensureLife, lifeMode } from './state';
 
@@ -37,24 +37,35 @@ export function recordDeaths(draft: CampaignState, old = false): void {
 
 /**
  * Each woman practises in the slots `practiceSlots` lists. A slot shared with another woman who has the same hobby in the same room is a push
- * for both (they practise together); the plans are all made before anyone practises.
+ * for both (they practise together); the plans are all made before anyone practises. Returns what was planned too, for the friends' hobbies.
  */
-function practicePass(draft: CampaignState, reg: Registries, day: number, places: DayPlaces): EngineEvent[] {
-  const plans = draft.squad.map((u) => ({ unitId: u.id, slots: practiceSlots(draft, reg, u.id, day, places) })).filter((p) => p.slots.length > 0);
+function practicePass(draft: CampaignState, reg: Registries, day: number, places: DayPlaces): { events: EngineEvent[]; plans: Map<string, Array<{ slot: Slot; hobbyId: string; roomId: string }>> } {
+  const plans = new Map(draft.squad.map((u) => [u.id, practiceSlots(draft, reg, u.id, day, places)] as const).filter(([, slots]) => slots.length > 0));
   const events: EngineEvent[] = [];
-  for (const { unitId, slots } of plans) {
+  for (const [unitId, slots] of plans) {
     for (const p of slots) {
-      const together = plans.some((o) => o.unitId !== unitId && o.slots.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      const together = [...plans].some(([o, theirs]) => o !== unitId && theirs.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
       events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot, together ? { push: true } : {}));
     }
   }
+  return { events, plans };
+}
+
+/**
+ * The day of her hobbies: practice, the hobbies friends pass on, then the tick of every hobby (interest, cooling, dropping, decay). Exported
+ * so the cycle can be run without the life events (the simulation of the hobby cycle does).
+ */
+export function hobbyPass(draft: CampaignState, reg: Registries, day: number, places: DayPlaces = new Map()): EngineEvent[] {
+  const practice = practicePass(draft, reg, day, places);
+  const events = [...practice.events, ...friendHobbies(draft, reg, day, places, practice.plans)];
+  for (const unit of draft.squad) events.push(...interestTick(draft, reg, unit.id, day));
   return events;
 }
 
 /**
  * The day-end step of her life (the `dm_rumors` hook, after development's). It runs for the day that is ending and does nothing while life is
- * off. In order: a shortage noted, the deaths, then for each named soldier at the base (squad order) the life event of her day. Practice and
- * interest, and the delivery of the news, follow in their own tasks. No rng is drawn.
+ * off. In order: a shortage noted, the deaths, then for each named soldier at the base (squad order) the life event of her day, the practice
+ * of the day, the hobbies friends pass on, and the weekly tick of every hobby (interest, cooling, dropping, decay). The delivery of the news follows in its own task. No rng is drawn.
  */
 export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   if (lifeMode(draft) === 'off') return [];
@@ -71,7 +82,7 @@ export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
     const entry = pickLifeEvent(draft, reg, unit.id, day, places);
     if (entry) events.push(...applyLifeEvent(draft, reg, unit.id, entry, day));
   }
-  events.push(...practicePass(draft, reg, day, places));
+  events.push(...hobbyPass(draft, reg, day, places));
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }

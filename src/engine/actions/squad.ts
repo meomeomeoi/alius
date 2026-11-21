@@ -8,7 +8,7 @@ import { livingUnits } from '../economy';
 import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
-import { seedLife, takeUpHobby } from '../life/hobbies';
+import { seedLife, takeUpHobbies } from '../life/hobbies';
 import { TUNING } from '../tuning';
 import { refundTree } from '../progression';
 import { temperamentOf } from '../life/state';
@@ -84,6 +84,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
+    inactiveHobbies: (unit.hobbies ?? []).filter((h) => h.state !== 'active').map((h) => h.id),
   });
   if (errors.length > 0) throw new Error(errors.join('; '));
 
@@ -150,7 +151,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   if (patch.hobbies !== undefined && unit.kind === 'named') {
     // a re-sync adds starting hobbies (past three active the coolest goes to cooling); it never deletes a hobby or its progress
     const added = patch.hobbies.filter((id) => !(unit.hobbies ?? []).some((h) => h.id === id));
-    for (const id of added) extra.push(...takeUpHobby(unit, id, draft.day));
+    extra.push(...takeUpHobbies(unit, added, draft.day));
     if (added.length > 0) seedLife(draft, ctx.registries, { unitId: unit.id, hobbyIds: added });
   }
   if (patch.opinions !== undefined && unit.kind === 'named') {

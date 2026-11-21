@@ -13109,19 +13109,25 @@ function milestoneAt(salt, unitId, hobbyId, n) {
 function newHobby(id, day) {
   return { id, skill: 0, interest: TUNING.life.interest.start, state: "active", since: day, milestones: [] };
 }
-function takeUpHobby(unit2, id, day) {
-  const list5 = unit2.hobbies ??= [];
-  list5.push(newHobby(id, day));
+function coolExcess(unit2, keep, day) {
   const events = [];
-  const active = list5.filter((h2) => h2.state === "active");
-  if (active.length > TUNING.life.maxActive) {
-    const least = active.filter((h2) => h2.id !== id).sort((a, b) => a.interest - b.interest)[0];
+  for (; ; ) {
+    const active = (unit2.hobbies ?? []).filter((h2) => h2.state === "active");
+    if (active.length <= TUNING.life.maxActive) return events;
+    const older = active.filter((h2) => !keep.includes(h2.id));
+    const least = (older.length > 0 ? older : active).sort((a, b) => a.interest - b.interest || a.since - b.since)[0];
     least.state = "cooling";
     least.coolingSince = day;
     events.push({ type: "hobby_cooling", unitId: unit2.id, hobbyId: least.id });
   }
-  return events;
 }
+function takeUpHobbies(unit2, ids, day) {
+  if (ids.length === 0) return [];
+  const list5 = unit2.hobbies ??= [];
+  for (const id of ids) list5.push(newHobby(id, day));
+  return coolExcess(unit2, ids, day);
+}
+var takeUpHobby = (unit2, id, day) => takeUpHobbies(unit2, [id], day);
 function seedLife(draft, reg, only) {
   if (lifeMode(draft) === "off" || !draft.life) return [];
   const salt = draft.life.salt;
@@ -13147,11 +13153,22 @@ function practiceGain(unit2, h2) {
   const t = TUNING.life;
   return t.aptitude[aptitudeOf(unit2, h2.id)] * Math.min(h2.interest / t.interestDiv, t.interestCap);
 }
-function bumpInterest(draft, unitId, hobbyId, amount, _day) {
-  const h2 = unitOf2(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
-  if (!h2) return [];
+function bumpInterest(draft, unitId, hobbyId, amount, day) {
+  const unit2 = unitOf2(draft, unitId);
+  const h2 = unit2?.hobbies?.find((x) => x.id === hobbyId);
+  if (!unit2 || !h2) return [];
+  const t = TUNING.life.interest;
   h2.interest = Math.max(0, Math.min(100, h2.interest + amount));
-  return [];
+  if (h2.state === "active") {
+    if (h2.interest >= t.cooling) return [];
+    h2.state = "cooling";
+    h2.coolingSince = day;
+    return [{ type: "hobby_cooling", unitId, hobbyId }];
+  }
+  if (h2.interest < t.active) return [];
+  h2.state = "active";
+  delete h2.coolingSince;
+  return [{ type: "hobby_rekindled", unitId, hobbyId }, ...coolExcess(unit2, [hobbyId], day)];
 }
 function openTopic(draft, reg, unitId, topicId) {
   const unit2 = unitOf2(draft, unitId);
@@ -13284,6 +13301,84 @@ function practise(draft, reg, unitId, hobbyId, day, slot2, opts = {}) {
     events.push({ type: "hobby_progress", unitId, hobbyId });
   }
   if (opts.push === true) events.push(...bumpInterest(draft, unitId, hobbyId, t.interest.push, day));
+  return events;
+}
+function floorOf(salt, unitId, h2, entry) {
+  let floor = 0;
+  for (const [i, m] of entry.milestones.entries()) if (h2.milestones.includes(m.id)) floor = milestoneAt(salt, unitId, h2.id, i);
+  return floor;
+}
+var weekDay = (h2, day) => day > h2.since && (day - h2.since) % 7 === 6;
+function decay(draft, reg, unitId, day) {
+  const unit2 = unitOf2(draft, unitId);
+  const life = draft.life;
+  if (!unit2 || !life) return [];
+  for (const h2 of unit2.hobbies ?? []) {
+    const entry = reg.hobbies.get(h2.id);
+    if (h2.state !== "dropped" || !entry || !weekDay(h2, day)) continue;
+    h2.skill = Math.max(floorOf(life.salt, unitId, h2, entry), h2.skill - TUNING.life.decayPerWeek);
+  }
+  return [];
+}
+function dropHobby(draft, reg, unit2, h2, day) {
+  const entry = reg.hobbies.get(h2.id);
+  h2.state = "dropped";
+  delete h2.coolingSince;
+  const events = [{ type: "hobby_dropped", unitId: unit2.id, hobbyId: h2.id }];
+  if (!entry) return events;
+  const fact = writeLifeFact(draft, unit2.id, `${unit2.displayName} has put ${entry.label} away.`, ["hobby", h2.id, "dropped"], 1);
+  events.push(...enqueue(draft, { unitId: unit2.id, kind: "hobby", ref: h2.id, what: "dropped", factId: fact.id, category: "hobby", day }));
+  return events;
+}
+function interestTick(draft, reg, unitId, day) {
+  const unit2 = unitOf2(draft, unitId);
+  if (lifeMode(draft) === "off" || !draft.life || !unit2 || unit2.kind !== "named" || !isLiving(unit2)) return [];
+  const t = TUNING.life.interest;
+  const events = [];
+  for (const h2 of [...unit2.hobbies ?? []]) {
+    if (h2.state === "active" && weekDay(h2, day)) {
+      const novel = Math.floor((day - h2.since) / 7) < t.noveltyWeeks;
+      const newer = (unit2.hobbies ?? []).some((o) => o.state === "active" && o.since > h2.since);
+      const delta = (novel ? t.novelty : 0) + (h2.plateau ? t.plateau : 0) + (unit2.stress >= t.stressAt ? t.stress : 0) + (newer ? t.newer : 0);
+      if (delta !== 0) events.push(...bumpInterest(draft, unitId, h2.id, delta, day));
+    } else if (h2.state === "cooling" && h2.coolingSince !== void 0 && day - h2.coolingSince >= t.dropAfterDays) {
+      events.push(...dropHobby(draft, reg, unit2, h2, day));
+    }
+  }
+  events.push(...decay(draft, reg, unitId, day));
+  return events;
+}
+function startHobby(draft, reg, unitId, hobbyId, day, source) {
+  const unit2 = unitOf2(draft, unitId);
+  const entry = reg.hobbies.get(hobbyId);
+  if (!unit2 || unit2.kind !== "named" || !entry || (unit2.hobbies ?? []).some((h2) => h2.id === hobbyId)) return [];
+  const events = [{ type: "hobby_started", unitId, hobbyId }, ...takeUpHobby(unit2, hobbyId, day)];
+  if (source === "import") return events;
+  const fact = writeLifeFact(draft, unitId, `${unit2.displayName} has taken up ${entry.label}.`, ["hobby", hobbyId, "started"], 1);
+  if (source === "friend") events.push(...enqueue(draft, { unitId, kind: "hobby", ref: hobbyId, what: "started", factId: fact.id, category: "hobby", day }));
+  return events;
+}
+function friendHobbies(draft, reg, day, places = /* @__PURE__ */ new Map(), plans) {
+  const life = draft.life;
+  if (lifeMode(draft) === "off" || !life) return [];
+  const events = [];
+  const learned = /* @__PURE__ */ new Set();
+  const planOf = (id) => plans?.get(id) ?? practiceSlots(draft, reg, id, day, places);
+  for (const teacher of draft.squad) {
+    for (const p of planOf(teacher.id)) {
+      const i = DAY_SLOTS.indexOf(p.slot);
+      for (const other of draft.squad) {
+        if (other.id === teacher.id || learned.has(other.id) || !takesPart(draft, other.id)) continue;
+        const w = placesOf(draft, reg, other.id, day, places)[i];
+        if (w.reason !== "routine" || w.roomId !== p.roomId) continue;
+        if (life.busy.some((b) => b.unitId === other.id && b.slot === busySlot(day, p.slot))) continue;
+        if ((other.hobbies ?? []).some((h2) => h2.id === p.hobbyId)) continue;
+        if (!lifeChance(life, `${other.id}|friend|${p.hobbyId}|${day}|${p.slot}`, TUNING.life.friendHobby)) continue;
+        learned.add(other.id);
+        events.push(...startHobby(draft, reg, other.id, p.hobbyId, day, "friend"));
+      }
+    }
+  }
   return events;
 }
 
@@ -22634,7 +22729,7 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
   validateDisposition(u, label2, reg, out);
   validateDevelopmentProfile(u, label2, reg, out);
   validateTemperament(u, label2, out);
-  validateLifeProfile(u, label2, reg, out);
+  validateLifeProfile(u, label2, reg, out, opts.inactiveHobbies);
   if (u.bond !== void 0) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label2}: bond: ${issue}`);
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
   for (const [field2, cap7] of Object.entries(tagCaps)) {
@@ -22668,12 +22763,13 @@ function validateTemperament(u, label2, out) {
   if (!Array.isArray(u.temperamentLocks)) return void out.push(`${label2}: temperament locks must be a list of fields`);
   for (const f of u.temperamentLocks) if (!TEMPERAMENT_FIELDS.includes(f)) out.push(`${label2}: cannot lock "${String(f)}": a temperament field is ${TEMPERAMENT_FIELDS.join(", ")}`);
 }
-function validateLifeProfile(u, label2, reg, out) {
+function validateLifeProfile(u, label2, reg, out, inactive = []) {
   const t = TUNING.life;
   if (u.hobbies !== void 0) {
     if (!Array.isArray(u.hobbies)) out.push(`${label2}: hobbies must be a list`);
     else {
-      if (u.hobbies.length > t.maxActive) out.push(`${label2}: at most ${t.maxActive} hobbies (has ${u.hobbies.length})`);
+      const active = u.hobbies.filter((id) => !inactive.includes(id)).length;
+      if (active > t.maxActive) out.push(`${label2}: at most ${t.maxActive} hobbies (has ${active})`);
       const seen = /* @__PURE__ */ new Set();
       for (const h2 of u.hobbies) {
         if (!reg.hobbies.has(h2)) out.push(`${label2}: unknown hobby "${String(h2)}"`);
@@ -23604,7 +23700,8 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     opinions: patch.opinions
   };
   const errors = validateUnitProfile(next, unit2.displayName, ctx2.registries, {
-    desireBondDefects: draft.settings.desireBondDefects === true
+    desireBondDefects: draft.settings.desireBondDefects === true,
+    inactiveHobbies: (unit2.hobbies ?? []).filter((h2) => h2.state !== "active").map((h2) => h2.id)
   });
   if (errors.length > 0) throw new Error(errors.join("; "));
   const extra = [];
@@ -23665,7 +23762,7 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   }
   if (patch.hobbies !== void 0 && unit2.kind === "named") {
     const added = patch.hobbies.filter((id) => !(unit2.hobbies ?? []).some((h2) => h2.id === id));
-    for (const id of added) extra.push(...takeUpHobby(unit2, id, draft.day));
+    extra.push(...takeUpHobbies(unit2, added, draft.day));
     if (added.length > 0) seedLife(draft, ctx2.registries, { unitId: unit2.id, hobbyIds: added });
   }
   if (patch.opinions !== void 0 && unit2.kind === "named") {
@@ -24252,7 +24349,7 @@ function applyBecomes(draft, reg, unitId, entry, day) {
   if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
     const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
     if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
-    else events.push({ type: "hobby_started", unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit2, becomes.hobby, day));
+    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, "event"));
   }
   if (becomes.milestone === true) {
     const id = milestoneHobby(draft, reg, unitId, entry, day);
@@ -24313,14 +24410,20 @@ function recordDeaths(draft, old = false) {
   }
 }
 function practicePass(draft, reg, day, places) {
-  const plans = draft.squad.map((u) => ({ unitId: u.id, slots: practiceSlots(draft, reg, u.id, day, places) })).filter((p) => p.slots.length > 0);
+  const plans = new Map(draft.squad.map((u) => [u.id, practiceSlots(draft, reg, u.id, day, places)]).filter(([, slots]) => slots.length > 0));
   const events = [];
-  for (const { unitId, slots } of plans) {
+  for (const [unitId, slots] of plans) {
     for (const p of slots) {
-      const together = plans.some((o) => o.unitId !== unitId && o.slots.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      const together = [...plans].some(([o, theirs]) => o !== unitId && theirs.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
       events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot, together ? { push: true } : {}));
     }
   }
+  return { events, plans };
+}
+function hobbyPass(draft, reg, day, places = /* @__PURE__ */ new Map()) {
+  const practice = practicePass(draft, reg, day, places);
+  const events = [...practice.events, ...friendHobbies(draft, reg, day, places, practice.plans)];
+  for (const unit2 of draft.squad) events.push(...interestTick(draft, reg, unit2.id, day));
   return events;
 }
 function lifeDayStep(draft, ctx2) {
@@ -24338,7 +24441,7 @@ function lifeDayStep(draft, ctx2) {
     const entry = pickLifeEvent(draft, reg, unit2.id, day, places);
     if (entry) events.push(...applyLifeEvent(draft, reg, unit2.id, entry, day));
   }
-  events.push(...practicePass(draft, reg, day, places));
+  events.push(...hobbyPass(draft, reg, day, places));
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }

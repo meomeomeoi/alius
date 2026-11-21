@@ -6,7 +6,7 @@ import { rationsOf } from '../power/state';
 import { TUNING } from '../tuning';
 import type { CampaignState } from '../state/types';
 import { writeLifeFact, plainText } from './facts';
-import { grantMilestone, openTopic, pushHobby, takeUpHobby } from './hobbies';
+import { grantMilestone, openTopic, pushHobby, startHobby } from './hobbies';
 import { enqueue } from './news';
 import { SLOTS_PER_DAY, placesOf, takesPart, unitOf, type DayPlaces } from './places';
 import { lifeChance, lifeHash, lifeMode, temperamentOf } from './state';
@@ -190,7 +190,7 @@ function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, ent
   if (becomes.hobby !== undefined && reg.hobbies.has(becomes.hobby)) {
     const have = (unit.hobbies ??= []).find((h) => h.id === becomes.hobby);
     if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
-    else events.push({ type: 'hobby_started', unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit, becomes.hobby, day));
+    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, 'event'));
   }
   if (becomes.milestone === true) {
     const id = milestoneHobby(draft, reg, unitId, entry, day);

@@ -150,7 +150,7 @@ function validateDisposition(u: Partial<UnitSetup>, label: string, reg: Registri
 }
 
 function validateUnit(
-  u: UnitSetup, label: string, reg: Registries, opts: { desireBondDefects: boolean }, out: string[],
+  u: UnitSetup, label: string, reg: Registries, opts: { desireBondDefects: boolean; inactiveHobbies?: readonly string[] }, out: string[],
   withBaseline = true,
 ): void {
   if (typeof u.displayName !== 'string' || u.displayName.trim() === '') out.push(`${label}: display name is empty`);
@@ -205,7 +205,7 @@ function validateUnit(
   validateDisposition(u, label, reg, out);
   validateDevelopmentProfile(u, label, reg, out);
   validateTemperament(u, label, out);
-  validateLifeProfile(u, label, reg, out);
+  validateLifeProfile(u, label, reg, out, opts.inactiveHobbies);
   if (u.bond !== undefined) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label}: bond: ${issue}`);
 
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers } as const;
@@ -252,12 +252,16 @@ function validateTemperament(u: Pick<UnitSetup, 'temperament' | 'temperamentLock
  * P14c: her starting hobbies, aptitudes and opinions (a re-sync patch may give some of them). The import asks the model for 2 or 3 aptitudes
  * in each list, but the dossier lets the player rate fewer, so the rule here is the cap, the registry and the disjoint lists.
  */
-function validateLifeProfile(u: Pick<UnitSetup, 'hobbies' | 'aptitudes' | 'opinions'>, label: string, reg: Registries, out: string[]): void {
+function validateLifeProfile(
+  u: Pick<UnitSetup, 'hobbies' | 'aptitudes' | 'opinions'>, label: string, reg: Registries, out: string[], inactive: readonly string[] = [],
+): void {
   const t = TUNING.life;
   if (u.hobbies !== undefined) {
     if (!Array.isArray(u.hobbies)) out.push(`${label}: hobbies must be a list`);
     else {
-      if (u.hobbies.length > t.maxActive) out.push(`${label}: at most ${t.maxActive} hobbies (has ${u.hobbies.length})`);
+      // only the active ones count: a re-sync lists the hobbies she has, and one she has put aside (cooling, dropped) is not one of the three
+      const active = u.hobbies.filter((id) => !inactive.includes(id)).length;
+      if (active > t.maxActive) out.push(`${label}: at most ${t.maxActive} hobbies (has ${active})`);
       const seen = new Set<string>();
       for (const h of u.hobbies) {
         if (!reg.hobbies.has(h)) out.push(`${label}: unknown hobby "${String(h)}"`);
@@ -307,7 +311,7 @@ export function opinionProblems(o: unknown, reg: Pick<Registries, 'opinionTopics
 
 /** The per-unit rules of `validateSetup`, minus the baseline (re-sync never touches relationship axes). */
 export function validateUnitProfile(
-  u: Omit<UnitSetup, 'baseline'>, label: string, reg: Registries, opts: { desireBondDefects: boolean },
+  u: Omit<UnitSetup, 'baseline'>, label: string, reg: Registries, opts: { desireBondDefects: boolean; /** Hobbies she has put aside (cooling, dropped): they are not among the three. */ inactiveHobbies?: readonly string[] },
 ): string[] {
   const out: string[] = [];
   validateUnit(u as UnitSetup, label, reg, opts, out, false);

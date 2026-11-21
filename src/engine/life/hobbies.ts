@@ -35,22 +35,35 @@ export function newHobby(id: string, day: number): HobbyState {
 }
 
 /**
- * She takes up a hobby: skill 0, the novelty interest, active. Past `maxActive` the active one she cares least about (the older on a tie)
- * goes to cooling. Every way of taking one up (an event, a re-sync) goes through here, so she never has more than three active.
+ * While more than three of her hobbies are active, the one she cares least about goes to cooling: the ones in `keep` last (the hobbies just
+ * taken up or taken up again are cooled only when every older one already is). A tie goes to the older. Returns the `hobby_cooling` events.
  */
-export function takeUpHobby(unit: Pick<Unit, 'hobbies'>, id: string, day: number): EngineEvent[] {
-  const list = (unit.hobbies ??= []);
-  list.push(newHobby(id, day));
+function coolExcess(unit: Pick<Unit, 'id' | 'hobbies'>, keep: readonly string[], day: number): EngineEvent[] {
   const events: EngineEvent[] = [];
-  const active = list.filter((h) => h.state === 'active');
-  if (active.length > TUNING.life.maxActive) {
-    const least = active.filter((h) => h.id !== id).sort((a, b) => a.interest - b.interest)[0];
+  for (;;) {
+    const active = (unit.hobbies ?? []).filter((h) => h.state === 'active');
+    if (active.length <= TUNING.life.maxActive) return events;
+    const older = active.filter((h) => !keep.includes(h.id));
+    const least = (older.length > 0 ? older : active).sort((a, b) => a.interest - b.interest || a.since - b.since)[0];
     least.state = 'cooling';
     least.coolingSince = day;
-    events.push({ type: 'hobby_cooling', unitId: (unit as Unit).id, hobbyId: least.id });
+    events.push({ type: 'hobby_cooling', unitId: unit.id, hobbyId: least.id });
   }
-  return events;
 }
+
+/**
+ * She takes up several hobbies at once: each is skill 0, the novelty interest, active. Past `maxActive` the excess is cooled once, after all
+ * are added, and from the hobbies she already had first (the least keen, the older on a tie): a new one is cooled only when no older one is left.
+ */
+export function takeUpHobbies(unit: Pick<Unit, 'id' | 'hobbies'>, ids: readonly string[], day: number): EngineEvent[] {
+  if (ids.length === 0) return [];
+  const list = (unit.hobbies ??= []);
+  for (const id of ids) list.push(newHobby(id, day));
+  return coolExcess(unit, ids, day);
+}
+
+/** She takes up a hobby (see `takeUpHobbies`). */
+export const takeUpHobby = (unit: Pick<Unit, 'id' | 'hobbies'>, id: string, day: number): EngineEvent[] => takeUpHobbies(unit, [id], day);
 
 /**
  * Gives each starting hobby (skill 0, no milestone) the skill she brings: a hash of the salt, her id and the hobby, below her second
@@ -92,14 +105,25 @@ export function practiceGain(unit: Pick<Unit, 'aptitudes'>, h: Pick<HobbyState, 
 }
 
 /**
- * Moves her interest in a hobby by `amount` (kept between 0 and 100). The cycle of cooling, dropping and taking it up again is the weekly
- * tick's and the next task's: for now this only moves the number.
+ * Moves her interest in a hobby by `amount` (kept between 0 and 100) and follows the cycle: an active hobby under 25 goes to cooling; a cooling
+ * or dropped one at 40 or more is taken up again (the least keen of the others cools if that makes four).
  */
-export function bumpInterest(draft: Pick<CampaignState, 'squad'>, unitId: string, hobbyId: string, amount: number, _day: number): EngineEvent[] {
-  const h = unitOf(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
-  if (!h) return [];
+export function bumpInterest(draft: Pick<CampaignState, 'squad'>, unitId: string, hobbyId: string, amount: number, day: number): EngineEvent[] {
+  const unit = unitOf(draft, unitId);
+  const h = unit?.hobbies?.find((x) => x.id === hobbyId);
+  if (!unit || !h) return [];
+  const t = TUNING.life.interest;
   h.interest = Math.max(0, Math.min(100, h.interest + amount));
-  return [];
+  if (h.state === 'active') {
+    if (h.interest >= t.cooling) return [];
+    h.state = 'cooling';
+    h.coolingSince = day;
+    return [{ type: 'hobby_cooling', unitId, hobbyId }];
+  }
+  if (h.interest < t.active) return [];
+  h.state = 'active';
+  delete h.coolingSince;
+  return [{ type: 'hobby_rekindled', unitId, hobbyId }, ...coolExcess(unit, [hobbyId], day)];
 }
 
 /** The topic a trace opens for her, waiting to be formed (once, and not when she already has a view). */
@@ -260,5 +284,111 @@ export function practise(
     events.push({ type: 'hobby_progress', unitId, hobbyId });
   }
   if (opts.push === true) events.push(...bumpInterest(draft, unitId, hobbyId, t.interest.push, day));
+  return events;
+}
+
+/** What a milestone-less or reached hobby cannot lose: the threshold of the last milestone she reached (0 with none). */
+function floorOf(salt: number, unitId: string, h: HobbyState, entry: HobbyEntry): number {
+  let floor = 0;
+  for (const [i, m] of entry.milestones.entries()) if (h.milestones.includes(m.id)) floor = milestoneAt(salt, unitId, h.id, i as 0 | 1 | 2 | 3);
+  return floor;
+}
+
+/** The week of a hobby falls on its seventh day, and every seventh day after. */
+const weekDay = (h: HobbyState, day: number): boolean => day > h.since && (day - h.since) % 7 === 6;
+
+/** A dropped hobby loses 1 a week (on its week day), never below the last milestone she reached. */
+export function decay(draft: CampaignState, reg: Registries, unitId: string, day: number): EngineEvent[] {
+  const unit = unitOf(draft, unitId);
+  const life = draft.life;
+  if (!unit || !life) return [];
+  for (const h of unit.hobbies ?? []) {
+    const entry = reg.hobbies.get(h.id) as HobbyEntry | undefined;
+    if (h.state !== 'dropped' || !entry || !weekDay(h, day)) continue;
+    h.skill = Math.max(floorOf(life.salt, unitId, h, entry), h.skill - TUNING.life.decayPerWeek);
+  }
+  return [];
+}
+
+/** The hobby she put away: a fact the commander has not been told (hidden, `untold`) and an item for the queue. */
+function dropHobby(draft: CampaignState, reg: Registries, unit: Unit, h: HobbyState, day: number): EngineEvent[] {
+  const entry = reg.hobbies.get(h.id) as HobbyEntry | undefined;
+  h.state = 'dropped';
+  delete h.coolingSince;
+  const events: EngineEvent[] = [{ type: 'hobby_dropped', unitId: unit.id, hobbyId: h.id }];
+  if (!entry) return events;
+  const fact = writeLifeFact(draft, unit.id, `${unit.displayName} has put ${entry.label} away.`, ['hobby', h.id, 'dropped'], 1);
+  events.push(...enqueue(draft, { unitId: unit.id, kind: 'hobby', ref: h.id, what: 'dropped', factId: fact.id, category: 'hobby', day }));
+  return events;
+}
+
+/**
+ * The tick of her hobbies for `day` (the day step runs it every day; a hobby's week falls every seventh day from the day she took it up).
+ * An active hobby's interest moves by the week: novelty +3 for the first three, a plateau -4, stress of 50 or more -3, a newer active hobby -2.
+ * A hobby that has been cooling for 30 days is dropped; a dropped one decays. Nothing is drawn from the rng; nothing happens while life is off.
+ */
+export function interestTick(draft: CampaignState, reg: Registries, unitId: string, day: number): EngineEvent[] {
+  const unit = unitOf(draft, unitId);
+  if (lifeMode(draft) === 'off' || !draft.life || !unit || unit.kind !== 'named' || !isLiving(unit)) return [];
+  const t = TUNING.life.interest;
+  const events: EngineEvent[] = [];
+  for (const h of [...(unit.hobbies ?? [])]) {
+    if (h.state === 'active' && weekDay(h, day)) {
+      const novel = Math.floor((day - h.since) / 7) < t.noveltyWeeks;
+      const newer = (unit.hobbies ?? []).some((o) => o.state === 'active' && o.since > h.since);
+      const delta = (novel ? t.novelty : 0) + (h.plateau ? t.plateau : 0) + (unit.stress >= t.stressAt ? t.stress : 0) + (newer ? t.newer : 0);
+      if (delta !== 0) events.push(...bumpInterest(draft, unitId, h.id, delta, day));
+    } else if (h.state === 'cooling' && h.coolingSince !== undefined && day - h.coolingSince >= t.dropAfterDays) {
+      events.push(...dropHobby(draft, reg, unit, h, day));
+    }
+  }
+  events.push(...decay(draft, reg, unitId, day));
+  return events;
+}
+
+/**
+ * She takes up a hobby she does not have: skill 0, the novelty interest, active (the least keen of the others cools past three). From an
+ * `event` the life event is the news; from a `friend` it is news of its own (a hidden fact and a queue item); an `import` is a starting hobby
+ * and silent.
+ */
+export function startHobby(draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number, source: 'event' | 'friend' | 'import'): EngineEvent[] {
+  const unit = unitOf(draft, unitId);
+  const entry = reg.hobbies.get(hobbyId) as HobbyEntry | undefined;
+  if (!unit || unit.kind !== 'named' || !entry || (unit.hobbies ?? []).some((h) => h.id === hobbyId)) return [];
+  const events: EngineEvent[] = [{ type: 'hobby_started', unitId, hobbyId }, ...takeUpHobby(unit, hobbyId, day)];
+  if (source === 'import') return events;
+  const fact = writeLifeFact(draft, unitId, `${unit.displayName} has taken up ${entry.label}.`, ['hobby', hobbyId, 'started'], 1);
+  if (source === 'friend') events.push(...enqueue(draft, { unitId, kind: 'hobby', ref: hobbyId, what: 'started', factId: fact.id, category: 'hobby', day }));
+  return events;
+}
+
+/**
+ * A friend's hobby: a woman who stands on routine in the room where another practised a hobby she lacks, in a slot she is free, picks it up
+ * with a 2 percent hash roll (at most one a day). `plans` are the slots already planned (the day step's); without them they are derived.
+ */
+export function friendHobbies(
+  draft: CampaignState, reg: Registries, day: number, places: DayPlaces = new Map(),
+  plans?: ReadonlyMap<string, ReadonlyArray<{ slot: Slot; hobbyId: string; roomId: string }>>,
+): EngineEvent[] {
+  const life = draft.life;
+  if (lifeMode(draft) === 'off' || !life) return [];
+  const events: EngineEvent[] = [];
+  const learned = new Set<string>();
+  const planOf = (id: string) => plans?.get(id) ?? practiceSlots(draft, reg, id, day, places);
+  for (const teacher of draft.squad) {
+    for (const p of planOf(teacher.id)) {
+      const i = DAY_SLOTS.indexOf(p.slot);
+      for (const other of draft.squad) {
+        if (other.id === teacher.id || learned.has(other.id) || !takesPart(draft, other.id)) continue;
+        const w = placesOf(draft, reg, other.id, day, places)[i];
+        if (w.reason !== 'routine' || w.roomId !== p.roomId) continue;
+        if (life.busy.some((b) => b.unitId === other.id && b.slot === busySlot(day, p.slot))) continue;
+        if ((other.hobbies ?? []).some((h) => h.id === p.hobbyId)) continue;
+        if (!lifeChance(life, `${other.id}|friend|${p.hobbyId}|${day}|${p.slot}`, TUNING.life.friendHobby)) continue;
+        learned.add(other.id);
+        events.push(...startHobby(draft, reg, other.id, p.hobbyId, day, 'friend'));
+      }
+    }
+  }
   return events;
 }
