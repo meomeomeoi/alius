@@ -299,6 +299,26 @@ registerMemoryResolver('opinion_changed', (draft, event, reg) => {
 }, { ids: ['her'], vars: ['name', 'topic'] });
 
 // ---------------------------------------------------------------------------------------------
+// moments (P15a): what is said at a point of tension is remembered by those who were there
+
+registerMemoryResolver('moment_answered', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  if (!her) return null;
+  const present = strs(event.present);
+  const visitorId = str(event.visitorId);
+  const type = str(event.responseType) ?? '';
+  const key = str(event.key) ?? '';
+  return {
+    ids: { her: [her.id], present: present.length > 0 ? present : [her.id], visitor: visitorId !== undefined ? [visitorId] : [] },
+    vars: {
+      name: her.name, source: str(event.sourceId) ?? '', key, type, visitor: visitorId !== undefined ? nameOf(draft, visitorId) : 'someone',
+      // she was seen: the commander did not hide (a locked door is not being seen)
+      exposed: yes(type !== 'yielded' && key !== 'lock'),
+    },
+  };
+}, { ids: ['her', 'present', 'visitor'], vars: ['name', 'source', 'key', 'type', 'visitor', 'exposed'] });
+
+// ---------------------------------------------------------------------------------------------
 // what she taught the commander (P14c): the first time a hobby is taught; her other hobby events are facts written at their sites
 
 registerMemoryResolver('hobby_taught', (draft, event, reg) => {

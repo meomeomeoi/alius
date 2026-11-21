@@ -24860,6 +24860,26 @@ registerMemoryResolver("opinion_changed", (draft, event, reg) => {
   const topic = reg.opinionTopics.get(String(event.topicId));
   return her && topic ? { ids: { her: [her.id] }, vars: { name: her.name, topic: String(topic.label) } } : null;
 }, { ids: ["her"], vars: ["name", "topic"] });
+registerMemoryResolver("moment_answered", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  if (!her) return null;
+  const present2 = strs(event.present);
+  const visitorId = str2(event.visitorId);
+  const type = str2(event.responseType) ?? "";
+  const key = str2(event.key) ?? "";
+  return {
+    ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id], visitor: visitorId !== void 0 ? [visitorId] : [] },
+    vars: {
+      name: her.name,
+      source: str2(event.sourceId) ?? "",
+      key,
+      type,
+      visitor: visitorId !== void 0 ? nameOf7(draft, visitorId) : "someone",
+      // she was seen: the commander did not hide (a locked door is not being seen)
+      exposed: yes(type !== "yielded" && key !== "lock")
+    }
+  };
+}, { ids: ["her", "present", "visitor"], vars: ["name", "source", "key", "type", "visitor", "exposed"] });
 registerMemoryResolver("hobby_taught", (draft, event, reg) => {
   const her = subjectOf2(draft, event.unitId);
   const hobby = reg.hobbies.get(String(event.hobbyId));
@@ -46735,6 +46755,41 @@ function renderBlockingStrip(host, ctx2) {
   ));
 }
 
+// src/ui/scene/momentCard.ts
+function renderMomentCard(host, ctx2) {
+  const { state, registries: reg } = ctx2;
+  const open3 = state?.scene && blockingLive(state, reg) ? momentsOf(state.scene).open : void 0;
+  if (!state || !open3) {
+    host.replaceChildren();
+    return;
+  }
+  if (ctx2.chips === "immersive") {
+    host.replaceChildren(h("p", { class: "alius-moment-dim alius-dim", role: "note", "data-moment": open3.id, ...analyzeAttrs("glossary:moment") }, "Something is at stake."));
+    return;
+  }
+  const wording2 = (key) => {
+    const i = ["0", "1", "2"].indexOf(key);
+    return i >= 0 ? open3.labels?.[i] ?? genericWord(reg, open3.sourceId, key) : ADDITION_WORDS[key] ?? key;
+  };
+  const options2 = open3.options.map((o) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-moment-option",
+    "data-action": "moment-answer",
+    "data-key": o.key,
+    "data-moment": open3.id,
+    ...analyzeNative(`momentSources:${open3.sourceId}`, { key: o.key }),
+    onclick: () => ctx2.onStage({ type: "moment/answer", payload: { momentId: open3.id, key: o.key } })
+  }, `[ ${wording2(o.key).toUpperCase()} ]`));
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-moment", role: "group", "aria-label": "A moment", "data-moment": open3.id, "data-source": open3.sourceId, ...analyzeAttrs("glossary:moment_card") },
+    h("div", { class: "alius-moment-title" }, "[ A MOMENT ]"),
+    ...open3.exposing !== void 0 ? [h("p", { class: "alius-moment-exposing alius-dim" }, `${open3.exposing} could give the commander away.`)] : [],
+    h("div", { class: "alius-moment-options" }, ...options2),
+    h("p", { class: "alius-moment-hint alius-dim" }, "Or answer in your own words.")
+  ));
+}
+
 // src/ui/scene/sceneScreen.ts
 var loaded = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
@@ -46858,6 +46913,7 @@ function renderSceneScreen(host, ctx2) {
   let banner;
   let deviceHost;
   let blockingHost;
+  let momentHost;
   let busyHost;
   let caption;
   let input;
@@ -47167,6 +47223,17 @@ function renderSceneScreen(host, ctx2) {
       }
     });
   }
+  function drawMoment(s) {
+    renderMomentCard(momentHost, {
+      state: s,
+      registries,
+      chips: ctx2.settings().momentChips,
+      onStage: (action) => {
+        (ctx2.onStage ?? ((a) => void controller.stage(a)))(action);
+        if (!disposed) refresh();
+      }
+    });
+  }
   function drawBanner() {
     banner.replaceChildren();
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
@@ -47219,6 +47286,7 @@ function renderSceneScreen(host, ctx2) {
     banner = h("div", { class: "alius-pacing-host" });
     deviceHost = h("div", { class: "alius-device-host" });
     blockingHost = h("div", { class: "alius-blocking-host" });
+    momentHost = h("div", { class: "alius-moment-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
@@ -47311,6 +47379,7 @@ function renderSceneScreen(host, ctx2) {
       log,
       genChips,
       blockingHost,
+      momentHost,
       chips,
       leadChips,
       ruleChips,
@@ -47360,6 +47429,7 @@ function renderSceneScreen(host, ctx2) {
     drawBanner();
     drawDevice(s);
     drawBlocking(s);
+    drawMoment(s);
     placeSprites();
   }
   function pulse(e) {
@@ -47834,12 +47904,30 @@ function reading(kind) {
     return { lines: [`In the scene: ${parts.join("; ")}.`] };
   };
 }
+var ANSWER_KIND = {
+  yielded: "goes along with her",
+  resisted: "pushes back",
+  returned: "takes the lead back",
+  deflected: "turns it aside"
+};
+function momentOption2(subject, env) {
+  const open3 = momentsOf(env.state?.scene).open;
+  const key = typeof subject.data.key === "string" ? subject.data.key : void 0;
+  if (!open3 || open3.sourceId !== subject.id || key === void 0) return null;
+  const option2 = open3.options.find((o) => o.key === key);
+  if (!option2) return null;
+  const lines = [`This answer ${ANSWER_KIND[option2.type]}.`];
+  const remember = env.registries.momentSources.get(open3.sourceId)?.remember;
+  if (["0", "1", "2"].includes(key) && remember?.some((r) => String(r.option) === key)) lines.push("Those present will remember it.");
+  return { lines };
+}
 function registerBlockingProviders() {
   registerAnalyzeProvider("blockingPostures", reading(FIELD.postures));
   registerAnalyzeProvider("blockingAnchors", reading(FIELD.anchors));
   registerAnalyzeProvider("blockingContacts", reading(FIELD.contacts));
   registerAnalyzeProvider("blockingItems", reading(FIELD.items));
   registerAnalyzeProvider("blockingActivities", reading(FIELD.activities));
+  registerAnalyzeProvider("momentSources", momentOption2);
 }
 
 // src/analysis/providers/memory.ts

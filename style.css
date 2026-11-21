@@ -2710,6 +2710,30 @@
   align-items: flex-start;
 }
 
+/* The moment card (P15a): three answers and the additions; the answers read as buttons, never by colour alone. */
+#alius-shell .alius-moment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+  padding: 4px 6px;
+  border: var(--alius-line);
+}
+
+#alius-shell .alius-moment-title {
+  letter-spacing: 0.08em;
+}
+
+#alius-shell .alius-moment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+#alius-shell .alius-moment-dim {
+  margin: 2px 6px;
+}
+
 /* World parameters and disposition controls (P8). Palette variables only. */
 #alius-shell .alius-world-option {
   margin: 0 0 14px;

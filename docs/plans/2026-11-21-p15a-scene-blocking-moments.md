@@ -1086,17 +1086,17 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - a free-text hint line; the additions;
   - in immersive mode, no card but one dim line "something is at stake" (`glossary:moment`).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `generic words, then labels`.
   - `immersive hides the chips`.
   - `a click stages moment/answer`.
   - `every option resolves and no reading names her expected option` (hidden sentinel).
   - `remembered moments`: `her_weakness` → a fact known by the present; `third_party` answered "as is" → known by the present and the visitor; `her_question` key 1 → the lie rule; `her_offer` → nothing.
   - `the SYS fields have their glossary`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/momentCard.test.ts tests/engine/moments/memory.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** both files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the moment card, scene settings and the moments worth remembering`
+- [x] **Step 2: Run** `npx vitest run tests/ui/momentCard.test.ts tests/engine/moments/memory.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** both files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the moment card, scene settings and the moments worth remembering`
 
 ---
 

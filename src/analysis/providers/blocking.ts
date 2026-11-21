@@ -1,4 +1,6 @@
 import { COMMANDER, WORN_SLOTS, type StagingSnapshot } from '../../engine/blocking';
+import type { ResponseType } from '../../engine/blocking';
+import { momentsOf } from '../../engine/moments/state';
 import type { CampaignState } from '../../engine/state/types';
 import type { Subject } from '../subject';
 import type { AnalyzeEnv } from '../model';
@@ -58,6 +60,31 @@ function reading(kind: Kind) {
   };
 }
 
+/** What each kind of answer to a moment is, in words (never which one she expects, and never a number). */
+const ANSWER_KIND: Record<ResponseType, string> = {
+  yielded: 'goes along with her',
+  resisted: 'pushes back',
+  returned: 'takes the lead back',
+  deflected: 'turns it aside',
+};
+
+/**
+ * The reading of a moment's option while that moment is open (`data-analyze-ctx` carries the option's key): what kind of answer it is, and
+ * whether those present will remember it. It reads only the open moment and the source's static `remember` list; her expected option, the gap
+ * and the escalation never reach it (they are the engine's own).
+ */
+function momentOption(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const open = momentsOf(env.state?.scene).open;
+  const key = typeof subject.data.key === 'string' ? subject.data.key : undefined;
+  if (!open || open.sourceId !== subject.id || key === undefined) return null;
+  const option = open.options.find((o) => o.key === key);
+  if (!option) return null;
+  const lines = [`This answer ${ANSWER_KIND[option.type]}.`];
+  const remember = env.registries.momentSources.get(open.sourceId)?.remember as Array<{ option: number }> | undefined;
+  if (['0', '1', '2'].includes(key) && remember?.some((r) => String(r.option) === key)) lines.push('Those present will remember it.');
+  return { lines };
+}
+
 /** Registers the P15a readings (called from `registerCoreProviders`). */
 export function registerBlockingProviders(): void {
   registerAnalyzeProvider('blockingPostures', reading(FIELD.postures));
@@ -65,5 +92,6 @@ export function registerBlockingProviders(): void {
   registerAnalyzeProvider('blockingContacts', reading(FIELD.contacts));
   registerAnalyzeProvider('blockingItems', reading(FIELD.items));
   registerAnalyzeProvider('blockingActivities', reading(FIELD.activities));
+  registerAnalyzeProvider('momentSources', momentOption);
 }
 

@@ -2503,5 +2503,15 @@
     "term": "Marathon pace",
     "short": "How long a marathon takes in play: short, normal or long.",
     "long": "It sets how many phases a marathon has and how quickly the hours pass in the fiction."
+  },
+  {
+    "id": "moment_card",
+    "term": "Moment card",
+    "short": "The three ways to answer a moment, shown as buttons under the chat. Each can be examined; typing your own answer works too.",
+    "long": "AUTHOR TO WRITE: When a moment comes up the card lists its answers. The words are the story's own once they arrive; until then plain words stand in. Some scenes add a fourth: asking her to lock the door, asking her with a look, or looking at a friend. The game reads what you choose, and what she makes of it is for the story to show. In immersive mode only a dim line remains and your own words are read instead.",
+    "see": [
+      "moment",
+      "blocking"
+    ]
   }
 ]

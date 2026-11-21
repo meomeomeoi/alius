@@ -756,5 +756,108 @@
       "first",
       "asked_about_commander"
     ]
+  },
+  {
+    "id": "moment_weakness",
+    "event": "moment_answered",
+    "when": {
+      "source": "her_weakness"
+    },
+    "text": "{name} showed the commander her weak side.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "moment",
+      "weakness"
+    ]
+  },
+  {
+    "id": "moment_question_lie",
+    "event": "moment_answered",
+    "when": {
+      "source": "her_question",
+      "key": "1"
+    },
+    "text": "{name} asked the commander a straight question and was told what she wanted to hear.",
+    "importance": 2,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "moment",
+      "question"
+    ]
+  },
+  {
+    "id": "moment_slip_confessed",
+    "event": "moment_answered",
+    "when": {
+      "source": "own_slip",
+      "key": "0"
+    },
+    "text": "The commander owned up to a slip in front of {name}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "moment",
+      "slip"
+    ]
+  },
+  {
+    "id": "moment_slip_hidden",
+    "event": "moment_answered",
+    "when": {
+      "source": "own_slip",
+      "key": "1"
+    },
+    "text": "The commander hid a slip from {name}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "moment",
+      "slip"
+    ]
+  },
+  {
+    "id": "moment_exposed",
+    "event": "moment_answered",
+    "when": {
+      "source": "third_party",
+      "exposed": "yes"
+    },
+    "text": "{visitor} saw the commander with {name}.",
+    "importance": 3,
+    "about": "her",
+    "audience": [
+      "present",
+      "visitor"
+    ],
+    "spread": "none",
+    "tags": [
+      "moment",
+      "seen"
+    ]
+  },
+  {
+    "id": "moment_memory",
+    "event": "moment_answered",
+    "when": {
+      "source": "memory_surfaces"
+    },
+    "text": "{name} brought up something she had kept to herself, and the commander answered.",
+    "importance": 2,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "moment",
+      "memory"
+    ]
   }
 ]

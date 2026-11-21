@@ -22,6 +22,7 @@ import { analyzeAttrs } from '../analyze/mark';
 import { deviceLocked } from '../../engine/blocking';
 import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
+import { renderMomentCard } from './momentCard';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -207,6 +208,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let deviceHost: HTMLElement;
   /** P15a: the BLOCKING strip (drawn only while the blocking is live). */
   let blockingHost: HTMLElement;
+  let momentHost: HTMLElement;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
   let input: HTMLInputElement;
@@ -534,6 +536,14 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     });
   }
 
+  /** P15a: the open moment as chips (or one dim line in immersive mode); a chip answers through `stage`. */
+  function drawMoment(s: CampaignState): void {
+    renderMomentCard(momentHost, {
+      state: s, registries, chips: ctx.settings().momentChips,
+      onStage: (action) => { (ctx.onStage ?? ((a) => void controller.stage(a)))(action); if (!disposed) refresh(); },
+    });
+  }
+
   function drawBanner(): void {
     banner.replaceChildren();
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
@@ -587,6 +597,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     banner = h('div', { class: 'alius-pacing-host' });
     deviceHost = h('div', { class: 'alius-device-host' });
     blockingHost = h('div', { class: 'alius-blocking-host' });
+    momentHost = h('div', { class: 'alius-moment-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
@@ -668,6 +679,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       log,
       genChips,
       blockingHost,
+      momentHost,
       chips,
       leadChips,
       ruleChips,
@@ -719,6 +731,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawBanner();
     drawDevice(s);
     drawBlocking(s);
+    drawMoment(s);
     placeSprites();
   }
 
