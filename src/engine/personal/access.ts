@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { DeviceAccessBranch } from '../../content/schemas';
 import { bondOf, bondTierOf, leadRank } from '../bonds/profile';
+import { hasCapability } from '../dynamic/capabilities';
 import { impunityOf } from '../discipline/impunity';
 import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
@@ -47,10 +48,12 @@ export function deviceAccess(state: CampaignState, reg: Registries, unitId: stri
   let cached: number | undefined;
   const impunity = (): number => (cached ??= impunityOf(state, reg, unitId)?.value ?? 0);
   const rules = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
+  let level: AccessLevel = 0;
   for (const rule of rules) {
-    if ((rule.anyOf as DeviceAccessBranch[]).some((b) => branchHolds(state, reg, unitId, b, impunity))) return Number(rule.level) as AccessLevel;
+    if ((rule.anyOf as DeviceAccessBranch[]).some((b) => branchHolds(state, reg, unitId, b, impunity))) { level = Number(rule.level) as AccessLevel; break; }
   }
-  return 0;
+  // P15: a holder of the device domain has at least the floor (derived, nothing stored; the gate above is still needed)
+  return hasCapability(state, reg, unitId, 'device_floor') ? (Math.max(level, TUNING.dynamic.deviceFloor) as AccessLevel) : level;
 }
 
 /** May she do this inside the device? A capability needs its own level or a higher one, never a lower one. */

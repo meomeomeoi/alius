@@ -1518,7 +1518,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Consumes: `hasCapability`, `holderWith` (Task 22).
 - Produces: `consentProblem(state, reg, booking): string | null`; `Hierarchy.coLeaderId?`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a holder with booking_uncapped books a third time in a week`; `book_ahead books day + 2`.
   - `deviceAccess is 4 for a device_floor holder whose rules give 2`, and back to 2 when she loses the domain.
   - `the hub places the commander in her quarters on her booked evening` (and nowhere new without the capability).
@@ -1526,10 +1526,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `co_leader adds 15 standing and marks coLeaderId`.
   - `possessive booking_consent refuses another holder's booking with a fact for both`.
   - `without any domain every reader is unchanged` (the existing P9c / P9b / hub suites stay green).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/capabilities.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): domain capabilities reach bookings, device, hub, rules and standing`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/capabilities.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): domain capabilities reach bookings, device, hub, rules and standing`
 
 ---
 

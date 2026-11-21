@@ -750,9 +750,9 @@ export const TUNING = Object.freeze({
     /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
-     * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing. `AUTHOR TO TUNE`.
+     * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing; `deviceFloor` is the device access `device_floor` guarantees. `AUTHOR TO TUNE`.
      */
-    claimChance: 0.2, claimCooldownDays: 7, partialDays: 7, contestedLoss: 10, bookAhead: 3, coLeaderStanding: 15,
+    claimChance: 0.2, claimCooldownDays: 7, partialDays: 7, contestedLoss: 10, bookAhead: 3, coLeaderStanding: 15, deviceFloor: 4,
     /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
     contestAt: 3,
     contestWindowDays: 14,

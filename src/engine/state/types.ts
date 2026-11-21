@@ -950,6 +950,8 @@ export interface Hierarchy {
   /** Standing of every named living unit at `computedDay`. */
   standings: Record<string, number>;
   leaderId?: string;
+  /** P15: the holder whose domains grant `co_leader` (the command): the squad addresses her as the one in command. Derived each time the hierarchy is computed. */
+  coLeaderId?: string;
   /** The commander has formally made the leader second-in-command. */
   endorsed: boolean;
   challengeCooldownUntil?: number;

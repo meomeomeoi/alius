@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import { bondOf, leadRank } from '../bonds/profile';
 import type { CombatState } from '../combat/types';
+import { hasCapability, holderWith } from '../dynamic/capabilities';
 import { impunityOf } from '../discipline/impunity';
 import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -91,7 +92,8 @@ export function standingOf(state: CampaignState, reg: Registries, unitId: string
   const raw = S.merit * meritOf(state, unitId) + S.respect * respectOf(state, unitId) + S.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
-  return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra;
+  const coLeader = hasCapability(state, reg, unitId, 'co_leader') ? TUNING.dynamic.coLeaderStanding : 0; // P15: addressed as the one in command
+  return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra + coLeader;
 }
 
 /**
@@ -118,6 +120,9 @@ export function computeHierarchy(draft: CampaignState, reg: Registries): EngineE
   const earned = top !== undefined && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
   if (top && next && earned && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit)!.leadStyle) >= 2 && h.deposed?.unitId !== top.unit.id) leader = top.unit.id;
 
+  const coLeader = holderWith(draft, reg, 'co_leader'); // P15: the holder of the command is marked, whether or not she leads
+  if (coLeader === null) delete h.coLeaderId;
+  else h.coLeaderId = coLeader;
   const from = old?.leaderId;
   if (leader === undefined) delete h.leaderId;
   else h.leaderId = leader;

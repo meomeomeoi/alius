@@ -7,6 +7,10 @@ import { refuseLikeDemand } from '../discipline/demands';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { pushMessage } from '../dms';
+import { holdersAtPlay } from '../dynamic/gate';
+import { hasCapability, holderWith } from '../dynamic/capabilities';
+import { dynamicHash } from '../dynamic/state';
+import { addFact } from '../memory';
 import { assertiveness } from '../power/options';
 import { evaluateAutomatic } from '../relations/graph';
 import type { Booking, BookingSource, CampaignState, Slot } from '../state/types';
@@ -31,6 +35,20 @@ export function bookingChance(state: CampaignState, reg: Registries, unitId: str
   const raw = T.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50)
     * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
   return Math.min(T.cap, raw);
+}
+
+/**
+ * P15 (`booking_consent`): why another holder's booking is held, or `null` when nothing holds it. While some holder keeps the say over the
+ * commander's other relations (the capability), a booking by another holder (frame `play` or beyond) needs her consent: it is granted at once
+ * unless her primary style is `possessive` or `obsessive`, in which case it is refused. Her own booking is never held. Reads only.
+ */
+export function consentProblem(state: CampaignState, reg: Registries, booking: { unitId: string }): string | null {
+  const keeper = holderWith(state, reg, 'booking_consent');
+  if (keeper === null || keeper === booking.unitId || !holdersAtPlay(state).includes(booking.unitId)) return null;
+  const keeperUnit = state.squad.find((u) => u.id === keeper);
+  const style = keeperUnit?.bond?.practice?.style.primary;
+  if (style !== 'possessive' && style !== 'obsessive') return null;
+  return `${unitName(state, keeper)} would not allow ${unitName(state, booking.unitId)} to book the commander's time.`;
 }
 
 /** The first booking due this slot (today, this slot, `booked`); one she can still keep comes first. `null` when none. */
@@ -110,13 +128,22 @@ export function rollBookings(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
     const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
     if (mine.some((b) => b.status === 'booked')) continue;
-    if (mine.filter((b) => b.source === 'roll' && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
+    if (!hasCapability(draft, reg, u.id, 'booking_uncapped') && mine.filter((b) => b.source === 'roll' && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue; // P15: her domain lifts the cap
     if (!ctx.rng.chance(bookingChance(draft, reg, u.id))) continue;
     const kinds = bookingKindsFor(draft, reg, u.id);
     if (kinds.length === 0) continue;
     let pick = ctx.rng.int(0, kinds.reduce((n, k) => n + Number(k.weight), 0) - 1);
     const kind = kinds.find((k) => (pick -= Number(k.weight)) < 0) ?? kinds[0];
-    events.push(...book(draft, ctx, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot as Slot, source: 'roll' }));
+    const problem = consentProblem(draft, reg, { unitId: u.id });
+    if (problem !== null) {
+      // P15: another holder keeps the say over the commander's time: the booking is refused (the draws above are spent, as for any other), and both know it
+      const keeper = holderWith(draft, reg, 'booking_consent')!;
+      addFact(draft, { about: [keeper, u.id], text: problem, tags: ['dynamic', 'booking_consent'], importance: 2, day: draft.day, knownBy: [keeper, u.id] });
+      continue;
+    }
+    // P15: `book_ahead` lets her book up to `bookAhead` days ahead, the day a hash picks (nothing drawn)
+    const ahead = hasCapability(draft, reg, u.id, 'book_ahead') ? 1 + Math.floor(dynamicHash(draft, u.id, 'book_ahead') * TUNING.dynamic.bookAhead) : 1;
+    events.push(...book(draft, ctx, { unitId: u.id, kindId: String(kind.id), day: draft.day + ahead, slot: kind.slot as Slot, source: 'roll' }));
     pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll('{name}', u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
   }
   return events;

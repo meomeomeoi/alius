@@ -1,5 +1,8 @@
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { hasCapability } from '../dynamic/capabilities';
+import { dynamicOn } from '../dynamic/gate';
+import { dynamicOf } from '../dynamic/state';
 import { isLiving } from '../economy';
 import { pushMessage } from '../dms';
 import { addFact, nextId } from '../memory';
@@ -9,10 +12,13 @@ import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { intimacyOf } from '../relations/gain';
 import type { CampaignState, Rule } from '../state/types';
 import { TUNING } from '../tuning';
-import { contentAllowed } from './content';
+import { frameRank } from '../blocking/state';
+import { contentAllowed, tagsOf } from './content';
 import { bondOf, bondTierOf, leadRank } from './profile';
 
 const R = TUNING.bonds.rules;
+/** The content tags of the rules a holder may set only with `relation_rules` (spec §5). */
+const RELATION_RULE_TAGS: readonly string[] = ['jealousy_games', 'service'];
 
 export const rulesOf = (state: Pick<CampaignState, 'bonds'>): Rule[] => state.bonds?.rules ?? [];
 /** The rules she lives by now (suspended ones are hidden and not tracked). */
@@ -33,6 +39,9 @@ function offerable(state: CampaignState, reg: Registries, unitId: string, tpl: T
   if (!bond || (c.minLead !== undefined && leadRank(bond.leadStyle) < leadRank(c.minLead as 'assertive' | 'dominant'))) return false;
   if (c.tiers !== undefined && (tier === null || !c.tiers.includes(tier))) return false;
   if (rulesOf(state).some((r) => r.unitId === unitId && r.templateId === tpl.id)) return false;
+  // P15: a holder (at play or beyond) sets rules about the commander's other relations only with that domain (`relation_rules`)
+  const held = dynamicOf(state, unitId);
+  if (held !== undefined && frameRank(held.frame) >= frameRank('play') && dynamicOn(state, reg) && tagsOf(tpl).some((t) => RELATION_RULE_TAGS.includes(t)) && !hasCapability(state, reg, unitId, 'relation_rules')) return false;
   return contentAllowed(state, reg, tpl, unitId);
 }
 
