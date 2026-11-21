@@ -27,6 +27,11 @@ type Ctx = Pick<EngineCtx, 'registries'>;
 const milestoneRows = (reg: Registries): DynamicMilestoneEntry[] => [...reg.dynamicMilestones.values()] as unknown as DynamicMilestoneEntry[];
 const milestoneEntry = (reg: Registries, id: string): DynamicMilestoneEntry | undefined => reg.dynamicMilestones.get(id) as unknown as DynamicMilestoneEntry | undefined;
 
+/** The milestone a return re-kindles (R15b), read by what it asks: one that needs a former holder and leads out of `equal`. The pack's own id is not read. */
+export function rekindleMilestone(reg: Registries): string | undefined {
+  return milestoneRows(reg).find((m) => m.requires.formerHolder === true && m.from === 'equal' && m.to !== 'equal')?.id;
+}
+
 /**
  * Whether every `requires` of the milestone holds right now for her: the hold band (at least), track levels (a closed track reads 0),
  * the capabilities her domains grant, the practice categories she does and that are on, her primary style, the romantic tier, the days

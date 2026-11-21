@@ -9,7 +9,9 @@ import { holdFeed } from '../dynamic/feed';
 import { signsFromEvents } from '../dynamic/knowledge';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
+import { answerReturn, commandKeptEnforced } from '../dynamic/aftermath';
 import { answerClaim } from '../dynamic/domains';
+import { registerEnforced } from '../discipline/record';
 import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
@@ -44,6 +46,8 @@ registerAfterAction(readMoments);
 registerAfterAction(noteEvents);
 // What the squad sees on the stage (an item or a contact of the dynamic, a visitor who walks in): instant knowledge for the witnesses (R14); nothing while off.
 registerAfterAction(signsFromEvents);
+// A severe enforcement on the one who kept the command (a bench, a brig, the Leash) ends the struggle for it (R15a); nothing for anyone else.
+registerEnforced(commandKeptEnforced);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -289,4 +293,19 @@ registerAction('dynamic/exit', (draft, payload, ctx) => {
     ...(p.toUnitId !== undefined ? { toUnitId: p.toUnitId as string } : {}), ...(p.means !== undefined ? { means: p.means as (typeof EXIT_MEANS)[number] } : {}),
     ...(p.measure !== undefined ? { measure: p.measure as string } : {}),
   });
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Her return offer (R15b)
+
+/**
+ * `dynamic/answer_return { answer }`: the card's ACCEPT or REFUSE on her return offer (the only one open). Accepting re-kindles the dynamic (the
+ * frame is `play` again, her hold at the band the terms name); refusing ends the aftermath and the pair remembers it. Nothing open is refused with
+ * nothing changed. Draws nothing.
+ */
+registerAction('dynamic/answer_return', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { answer?: unknown };
+  if (p.answer !== 'accept' && p.answer !== 'refuse') throw new Error('The answer must be accept or refuse.');
+  return answerReturn(draft, ctx, p.answer);
 });

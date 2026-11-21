@@ -5,6 +5,7 @@ import { isLiving } from '../economy';
 import { addRecord } from '../discipline/record';
 import { applyPunishment } from '../discipline/punish';
 import { compel } from '../leash/use';
+import { countStruggleVote } from '../dynamic/aftermath';
 import { missionById } from '../world/missions';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
@@ -85,6 +86,7 @@ export function openVote(draft: CampaignState, ctx: EngineCtx, kind: VoteKind, s
   const vote: Vote = { id: `v${power.votes.seq}`, kind, subject, day: draft.day, ...tally, status: tally.passed ? 'passed' : 'failed' };
   power.votes.open = vote;
   events.push({ type: 'vote_opened', voteId: vote.id, kind, subject, passed: vote.passed, forWeight: vote.forWeight, againstWeight: vote.againstWeight });
+  events.push(...countStruggleVote(draft, ctx, vote)); // P15: a vote the commander's side carried against the one who kept the command
   return events;
 }
 

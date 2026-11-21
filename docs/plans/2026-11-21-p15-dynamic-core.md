@@ -1767,16 +1767,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `answerReturn(draft, ctx, answer: 'accept' | 'refuse'): EngineEvent[]`; `commandStruggleOf(state): { unitId; wins: number } | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `command_kept keeps countermand rolling after exit`; `two lost votes end it and drop the domain`; `an enforcement of severity 3 ends it`; `nothing else returns command`.
   - `return_offer accept re-kindles at testing; after_punishment at keeping with refusal_noted`; `refuse ends it with the memory fact`.
   - `successor raises the next eligible unit by 10 and puts her first in the queue`.
   - `habits offers protocol_slip with others present, and a slip adds the R14 sign`.
   - jsdom: `the return card carries data-analyze`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/aftermathKinds.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): command kept, return offers, successors and habits`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/aftermathKinds.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): command kept, return offers, successors and habits`
 
 ---
 

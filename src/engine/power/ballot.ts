@@ -7,8 +7,10 @@ import { BALLOT_TERMS, VALUE_AXES, VOTE_KINDS, type Ballot, type BallotTerm, typ
 import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
 import { missionById } from '../world/missions';
+import { sabotagesVotes } from '../dynamic/struggle';
 import { leaderVoteWeight } from './leader';
 import { assertiveness } from './options';
+import { standingOf } from './standing';
 import { leaderOf } from './state';
 import { valuesOf } from '../development/profile';
 
@@ -115,7 +117,12 @@ export function ballotFor(state: CampaignState, reg: Registries, unit: Unit, kin
   let term: BallotTerm = 'values';
   for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
   const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
-  return { unitId: unit.id, vote: score >= 0 ? 'for' : 'against', weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult, score, term };
+  const weight = leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult;
+  // P15: she who sabotages the squad's votes (the command she kept, a revenge) votes against the commander's side and adds her standing to it
+  if (sabotagesVotes(state, reg, unit.id)) {
+    return { unitId: unit.id, vote: 'against', weight: weight + TUNING.dynamic.commandKeptVoteWeight * Math.max(0, standingOf(state, reg, unit.id) ?? 0), score: Math.min(score, -1), term };
+  }
+  return { unitId: unit.id, vote: score >= 0 ? 'for' : 'against', weight, score, term };
 }
 
 /**

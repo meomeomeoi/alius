@@ -756,6 +756,13 @@ export const TUNING = Object.freeze({
     /** Aftermaths (R15): every weight is multiplied by `forceMult` after a forced exit. `AUTHOR TO TUNE`. */
     aftermath: Object.freeze({ forceMult: 1.5 }),
     /**
+     * The struggle for the command (R15a): the commander's side must win `commandBackVotes` votes against her; her ballot adds `commandKeptVoteWeight`
+     * per point of her standing; her override rolls with at least `commandKeptAuthority` while it lasts (her hold is 0). `AUTHOR TO TUNE`.
+     */
+    commandBackVotes: 2, commandKeptVoteWeight: 0.03, commandKeptAuthority: 0.4,
+    /** Where a return re-kindles her (R15b): the index of the hold band (0 = the lowest) the hold is lifted to, by the terms of the offer. */
+    returnBand: Object.freeze({ lower_band: 1, after_punishment: 2 }),
+    /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
      * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing; `deviceFloor` is the device access `device_floor` guarantees. `AUTHOR TO TUNE`.

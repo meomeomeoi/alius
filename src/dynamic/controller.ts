@@ -16,6 +16,8 @@ export interface DynamicController {
   answerMilestone(milestoneId: string, answer: 'accept' | 'refuse'): boolean;
   /** `[ YIELD ]` or `[ REFUSE ]` on her open claim (the open id). Toasts the reason and returns false when the engine refuses. */
   answerClaim(claimId: string, answer: 'yield' | 'refuse'): boolean;
+  /** `[ ACCEPT ]` or `[ REFUSE ]` on her return offer (the only one open). Toasts the reason and returns false when the engine refuses. */
+  answerReturn(answer: 'accept' | 'refuse'): boolean;
   /** `[ TALK ]` on her open claim: opens a one-to-one scene with her (her quarters) while the claim stays open. False when it is not open or no scene can open. */
   talk(claimId: string): Promise<boolean>;
 }
@@ -54,6 +56,16 @@ export function createDynamic(deps: DynamicDeps): DynamicController {
     },
     answerClaim(claimId, answer) {
       const events = deps.app.dispatch({ type: 'dynamic/answer_claim', payload: { claimId, answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
+    answerReturn(answer) {
+      const events = deps.app.dispatch({ type: 'dynamic/answer_return', payload: { answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
       const bad = events.find((e) => e.type === 'error');
       if (bad) {
         deps.toast('error', String(bad.message ?? bad.code));

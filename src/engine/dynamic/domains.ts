@@ -16,6 +16,7 @@ import { bandMin, capabilitiesOf, domainEntry, domainRows, dropVoidOverride, has
 import { dynamicOn } from './gate';
 import { addHold } from './hold';
 import { refusalCost } from './milestones';
+import { keptByStruggle } from './struggle';
 import { dynamicOf, type DynamicRelation } from './state';
 import type { Capability, DynamicDomainEntry } from './types';
 
@@ -51,7 +52,7 @@ export function reconcileDomains(draft: CampaignState, reg: Registries, unitId: 
   const events: EngineEvent[] = [];
   for (const d of [...dyn.domains]) {
     const entry = domainEntry(reg, d.id);
-    if (entry !== undefined && dyn.hold < bandMin(reg, entry)) events.push(loseDomain(draft, unitId, d.id, 'band'));
+    if (entry !== undefined && dyn.hold < bandMin(reg, entry) && !keptByStruggle(dyn, entry)) events.push(loseDomain(draft, unitId, d.id, 'band')); // the command kept through a struggle is not a matter of her band
   }
   dropVoidOverride(draft, reg, unitId);
   const x = draft.dynamic;

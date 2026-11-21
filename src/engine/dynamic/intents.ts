@@ -17,6 +17,7 @@ import { slipSeen } from './knowledge';
 import { answerMilestone } from './milestones';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
 import { threatIn } from './reading';
+import { slipsOpen } from './struggle';
 import { dynamicOf } from './state';
 import type { DynamicMilestoneEntry, DynamicOffer, ProbeAxisEntry } from './types';
 
@@ -63,7 +64,7 @@ export function dynamicIntentInput(
   const slips = participants.length >= 2
     ? present.filter((id) => {
       const dyn = dynamicOf(state, id);
-      return dyn !== undefined && (frameRank(dyn.frame) >= frameRank('role') || dyn.aftermath?.kind === 'habits');
+      return dyn !== undefined && (frameRank(dyn.frame) >= frameRank('role') || slipsOpen(state, reg, id)); // a stage with `protocol_slips` (habits) lets it slip for its days
     })
     : [];
   const types = [

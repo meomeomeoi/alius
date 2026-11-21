@@ -60,6 +60,8 @@ export interface AftermathState {
   chain?: AftermathKind;
   /** The exit was forced (every weight ×1.5 at the pick; kept for the stage effects). */
   forced?: true;
+  /** `command_kept`: the votes the commander's side has won so far (`TUNING.dynamic.commandBackVotes` ends the struggle). */
+  struggleWins?: number;
 }
 
 /** What a holder's relation carries (R7). Her `herSkill` lives on the relation itself (P15a). */
@@ -94,7 +96,8 @@ export interface DynamicRelation {
   contest: number[];
   aftermath?: AftermathState;
   leashBlock?: { since: number; held: number };
-  formerHolder?: { endedDay: number; frame: Frame; sworn: boolean };
+  /** `successor`: who the squad's reaction raised (an empty string when nobody could be); absent until the day step has looked. */
+  formerHolder?: { endedDay: number; frame: Frame; sworn: boolean; successor?: string };
   /** Milestone, domain and return ids → the day it may come again. */
   cooldowns: Record<string, number>;
 }

@@ -2817,6 +2817,16 @@
     ]
   },
   {
+    "id": "aftermath",
+    "term": "What follows",
+    "short": "What she does once the commander has left what she held: grieves, pursues, turns cold, offers to take the commander back. It runs its course or is answered.",
+    "long": "AUTHOR TO WRITE: An aftermath is picked by her manner, her values, how far it had gone and how she was left, and runs in stages. A return offer waits for an answer: accepting begins again at a lower step, refusing ends it and is remembered.",
+    "see": [
+      "milestone",
+      "claim"
+    ]
+  },
+  {
     "id": "capability_booking_uncapped",
     "term": "No limit on her evenings",
     "short": "Her bookings are not held to the weekly limit.",

@@ -41,7 +41,7 @@ function left(primary: ProfileStyle, over: { secondary?: ProfileStyle; frame?: F
   const d = dynamicOf(s, ANN)!;
   d.frame = 'equal';
   d.hold = 0;
-  d.formerHolder = { endedDay: s.day, frame: over.frame ?? 'role', sworn: over.sworn === true };
+  d.formerHolder = { endedDay: s.day, frame: over.frame ?? 'role', sworn: over.sworn === true, successor: '' }; // the squad has reacted already (Task 31's step is not under test here)
   return s;
 }
 const dyn = (s: CampaignState, id = ANN) => dynamicOf(s, id)!;

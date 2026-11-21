@@ -29,6 +29,12 @@ export function bandIndex(reg: Registries, hold: number): number {
   return at;
 }
 
+/** The hold a band starts at, by its position (0 = the lowest); the highest band's for a position past the end. */
+export function bandMinAt(reg: Registries, index: number): number {
+  const bands = bandsOf(reg);
+  return bands[Math.min(Math.max(0, index), bands.length - 1)]?.min ?? 0;
+}
+
 /** The id of the band a hold stands in (R8). */
 export function holdBandOf(reg: Registries, hold: number): string {
   return bandsOf(reg)[bandIndex(reg, hold)]?.id ?? '';

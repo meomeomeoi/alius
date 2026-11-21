@@ -1065,5 +1065,21 @@
       "dynamic",
       "dynamic_ended"
     ]
+  },
+  {
+    "id": "aftermath_return_refused",
+    "event": "aftermath_ended",
+    "when": {
+      "reason": "refused"
+    },
+    "text": "{name} offered to take the commander back, and was refused.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "aftermath_return_refused"
+    ]
   }
 ]

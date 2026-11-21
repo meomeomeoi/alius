@@ -12,6 +12,7 @@ import type { CampaignState } from '../state/types';
 import { fallbackAgenda } from '../warden/agenda';
 import { OPEN_FIRST_HOLDER, rollOverride, type OverrideSource } from '../warden/override';
 import { openOverrideOf, overrideOpen, wardenUnitId, type Expectation, type WardenOrder } from '../warden/state';
+import { TUNING } from '../tuning';
 import { hasCapability } from './capabilities';
 import { dynamicOn } from './gate';
 import { dynamicOf } from './state';
@@ -45,7 +46,9 @@ export function holderSource(state: CampaignState, reg: Registries, unitId: stri
   const unit = state.squad.find((u) => u.id === unitId);
   if (dyn === undefined || unit === undefined || !isLiving(unit) || !hasCapability(state, reg, unitId, 'countermand')) return null;
   const affinity = state.relations[unitId]?.affinity ?? 0;
-  return { kind: 'holder', unitId, authority: dyn.hold / 100, leniency: 1 - (0.5 * Math.max(0, affinity)) / 100, expectations: holderAgenda(state, reg, unitId) };
+  // the command she kept through a struggle rolls with an authority of its own while it lasts: her hold is 0 once she is no longer the holder
+  const authority = dyn.aftermath?.kind === 'command_kept' ? Math.max(dyn.hold / 100, TUNING.dynamic.commandKeptAuthority) : dyn.hold / 100;
+  return { kind: 'holder', unitId, authority, leniency: 1 - (0.5 * Math.max(0, affinity)) / 100, expectations: holderAgenda(state, reg, unitId) };
 }
 
 /** The holders who may countermand, by hold, highest first (squad order breaks a tie). */

@@ -231,6 +231,14 @@ function keepsThreat(reg: Registries, threat: PendingThreat, e: { measure: strin
   return threatSeverity !== null && threatSeverity <= e.severity;
 }
 
+/** What else an enforcement does (P15: a severe one ends the struggle for the command). A hook, so the discipline layer imports nothing of the dynamic's. */
+export type EnforcedHook = (draft: CampaignState, ctx: EngineCtx, unitId: string, e: { measure: string; severity: 1 | 2 | 3 | 4; recordDelta: number }) => EngineEvent[];
+const enforcedHooks: EnforcedHook[] = [];
+/** Registers a hook that runs after every enforcement on a named living unit; its events are returned with the enforcement's. Registering the same function twice is a no-op. */
+export function registerEnforced(hook: EnforcedHook): void {
+  if (!enforcedHooks.includes(hook)) enforcedHooks.push(hook);
+}
+
 /**
  * The commander carried out a consequence on her (a punishment, a Leash use): `R` moves by `recordDelta`, her held defiance
  * is removed with no gain, and a pending threat that this enforcement carries out is kept (`threat_kept`). Returns copies
@@ -252,6 +260,7 @@ export function enforce(
     countDeed(draft, 'threats_kept');
     events.push({ type: 'threat_kept', threatId: threat.id, unitId, measure: threat.measure });
   }
+  for (const hook of enforcedHooks) events.push(...hook(draft, ctx, unitId, e));
   return { events, removed };
 }
 

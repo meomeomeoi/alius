@@ -380,6 +380,12 @@ registerMemoryResolver('dynamic_exit', (draft, event) => {
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
 }, { ids: ['her'], vars: ['name', 'sworn'] });
 
+// the dynamic (P15): an aftermath ended; the reason says how (a return offer refused is the pair's to remember)
+registerMemoryResolver('aftermath_ended', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, reason: String(event.reason ?? ''), kind: String(event.kind ?? '') } } : null;
+}, { ids: ['her'], vars: ['name', 'reason', 'kind'] });
+
 // the dynamic (P15): the commander let her have a domain (a claim yielded, or the command at the handover); the pair's own. The submit card is no domain and writes nothing.
 registerMemoryResolver('domain_yielded', (draft, event, reg) => {
   const her = subjectOf(draft, event.unitId);

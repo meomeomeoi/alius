@@ -1,6 +1,6 @@
 import type { Registries } from '../../content/types';
 import { dynamicOn } from '../../engine/dynamic/gate';
-import type { OpenClaim, OpenMilestone } from '../../engine/dynamic/state';
+import type { OpenClaim, OpenMilestone, OpenReturn } from '../../engine/dynamic/state';
 import type { DynamicDomainEntry, DynamicMilestoneEntry } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -108,4 +108,56 @@ export function drawClaimCards(
   for (const claim of state.dynamic?.open.claims ?? []) {
     if (pick({ unitId: claim.unitId })) renderClaimCard(host, { state, reg, claim, onAnswer: (a) => onAnswer(claim.id, a) });
   }
+}
+
+
+export type ReturnAnswer = 'accept' | 'refuse';
+
+export interface ReturnCardCtx {
+  state: CampaignState;
+  reg: Registries;
+  offer: OpenReturn;
+  onAnswer: (answer: ReturnAnswer) => void;
+}
+
+/** Her words on the card, by the terms of the offer (no number, no frame, no pronoun for the commander). */
+const RETURN_WORDS: Readonly<Record<OpenReturn['terms'], string>> = {
+  lower_band: 'AUTHOR TO WRITE: {name} offers to begin again, from a smaller step than before.',
+  after_punishment: 'AUTHOR TO WRITE: {name} offers to begin again, once the commander has paid for what ended it.',
+};
+
+/**
+ * Her return offer as a card in her voice (P15, plan R15b): what she offers, in her words by the terms, and `[ ACCEPT ]` `[ REFUSE ]`. Appends one
+ * card to `host`. It shows nothing of the numbers behind it. Every part is addressed by the glossary's aftermath.
+ */
+export function renderReturnCard(host: HTMLElement, ctx: ReturnCardCtx): void {
+  const { state, offer } = ctx;
+  const unit = state.squad.find((u) => u.id === offer.unitId);
+  if (unit === undefined) return;
+  const live = { unitId: unit.id };
+  const button = (kind: ReturnAnswer, text: string): HTMLElement => h('button', {
+    type: 'button', class: 'alius-btn alius-tagchip', 'data-return-answer': kind, 'data-return': offer.id,
+    ...analyzeNative('glossary:aftermath', live),
+    onclick: () => ctx.onAnswer(kind),
+  }, text);
+  const body = h('div', { class: 'alius-return-body' },
+    h('p', { class: 'alius-return-text' }, RETURN_WORDS[offer.terms].replaceAll('{name}', unit.displayName)),
+    h('div', { class: 'alius-return-answers' }, button('accept', '[ ACCEPT ]'), button('refuse', '[ REFUSE ]')));
+  const card = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit.displayName, body, accent: unitAccent(unit.id) });
+  card.classList.add('alius-return');
+  card.setAttribute('data-return', offer.id);
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', `${unit.displayName} offers to begin again`);
+  for (const [k, v] of Object.entries(analyzeAttrs('glossary:aftermath', live))) card.setAttribute(k, v);
+  host.append(card);
+}
+
+/** Draws her return offer when `pick` chooses her (a scene's participants, one thread), replacing what `host` held. */
+export function drawReturnCards(
+  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (answer: ReturnAnswer) => void,
+): void {
+  host.replaceChildren();
+  const offer = state.dynamic?.open.returnOffer;
+  if (!dynamicOn(state, reg) || offer === undefined || !pick({ unitId: offer.unitId })) return;
+  renderReturnCard(host, { state, reg, offer, onAnswer });
 }

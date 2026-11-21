@@ -1017,6 +1017,15 @@ var TUNING = Object.freeze({
     /** Aftermaths (R15): every weight is multiplied by `forceMult` after a forced exit. `AUTHOR TO TUNE`. */
     aftermath: Object.freeze({ forceMult: 1.5 }),
     /**
+     * The struggle for the command (R15a): the commander's side must win `commandBackVotes` votes against her; her ballot adds `commandKeptVoteWeight`
+     * per point of her standing; her override rolls with at least `commandKeptAuthority` while it lasts (her hold is 0). `AUTHOR TO TUNE`.
+     */
+    commandBackVotes: 2,
+    commandKeptVoteWeight: 0.03,
+    commandKeptAuthority: 0.4,
+    /** Where a return re-kindles her (R15b): the index of the hold band (0 = the lowest) the hold is lifted to, by the terms of the offer. */
+    returnBand: Object.freeze({ lower_band: 1, after_punishment: 2 }),
+    /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
      * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing; `deviceFloor` is the device access `device_floor` guarantees. `AUTHOR TO TUNE`.
@@ -12102,9 +12111,9 @@ function leashWeekly(state, reg) {
   n += traitEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   n += worldEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   if (id !== null) {
-    const standing2 = factionStanding(state, id);
-    if (standing2 >= TUNING.leash.standingStep) n += 1;
-    else if (standing2 <= -TUNING.leash.standingStep) n -= 1;
+    const standing3 = factionStanding(state, id);
+    if (standing3 >= TUNING.leash.standingStep) n += 1;
+    else if (standing3 <= -TUNING.leash.standingStep) n -= 1;
   }
   return Math.max(0, Math.min(TUNING.leash.weeklyMax, n));
 }
@@ -13629,6 +13638,10 @@ function keepsThreat(reg, threat, e) {
   const threatSeverity = measureSeverity(reg, threat.measure);
   return threatSeverity !== null && threatSeverity <= e.severity;
 }
+var enforcedHooks = [];
+function registerEnforced(hook) {
+  if (!enforcedHooks.includes(hook)) enforcedHooks.push(hook);
+}
 function enforce(draft, ctx2, unitId, e) {
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (!unit3 || unit3.kind !== "named" || !isLiving(unit3)) return { events: [], removed: {} };
@@ -13643,6 +13656,7 @@ function enforce(draft, ctx2, unitId, e) {
     countDeed(draft, "threats_kept");
     events.push({ type: "threat_kept", threatId: threat.id, unitId, measure: threat.measure });
   }
+  for (const hook of enforcedHooks) events.push(...hook(draft, ctx2, unitId, e));
   return { events, removed };
 }
 function forgetUnit(draft, unitId) {
@@ -14933,9 +14947,9 @@ function staleSweep(draft, day) {
     events.push(...drop(life, item.id, item.unitId));
   }
   for (const n of [...life.news]) if (day >= n.until) events.push(...drop(life, n.itemId, n.unitId));
-  const standing2 = held(life);
+  const standing3 = held(life);
   for (const item of life.queue) {
-    if (standing2.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
+    if (standing3.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
     life.news.push({ itemId: item.id, unitId: item.unitId, until: day + TUNING.life.newsDays, passing: true });
   }
   return events;
@@ -14978,8 +14992,8 @@ function deliverNews(draft, reg, day) {
   const t = TUNING.life;
   const events = [];
   const inQueue = () => {
-    const standing2 = held(life);
-    return life.queue.filter((i) => !standing2.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
+    const standing3 = held(life);
+    return life.queue.filter((i) => !standing3.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
   };
   const told = () => life.delivered.filter((r) => r.caused !== true);
   const lastIndex = (category) => told().map((r) => r.category).lastIndexOf(category);
@@ -15941,7 +15955,8 @@ function holderSource(state, reg, unitId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
   if (dyn === void 0 || unit3 === void 0 || !isLiving(unit3) || !hasCapability(state, reg, unitId, "countermand")) return null;
   const affinity = state.relations[unitId]?.affinity ?? 0;
-  return { kind: "holder", unitId, authority: dyn.hold / 100, leniency: 1 - 0.5 * Math.max(0, affinity) / 100, expectations: holderAgenda(state, reg, unitId) };
+  const authority = dyn.aftermath?.kind === "command_kept" ? Math.max(dyn.hold / 100, TUNING.dynamic.commandKeptAuthority) : dyn.hold / 100;
+  return { kind: "holder", unitId, authority, leniency: 1 - 0.5 * Math.max(0, affinity) / 100, expectations: holderAgenda(state, reg, unitId) };
 }
 function countermanders(state, reg) {
   if (state.dynamic === void 0 || !dynamicOn(state, reg)) return [];
@@ -16737,7 +16752,7 @@ function resolveTargets(ctx2, owner, e, ev) {
   const { cs } = ctx2;
   const kind = e.target ?? (ev.targets ? "target" : "self");
   const side = owner.side;
-  const standing2 = (s) => living(cs, s);
+  const standing3 = (s) => living(cs, s);
   switch (kind) {
     case "self":
       return [owner.cid];
@@ -16746,26 +16761,26 @@ function resolveTargets(ctx2, owner, e, ev) {
     case "source":
       return ev.sourceCid ? [ev.sourceCid] : [];
     case "allies":
-      return standing2(side).map((c) => c.cid);
+      return standing3(side).map((c) => c.cid);
     case "allies_other":
-      return standing2(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
+      return standing3(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
     case "allies_front":
-      return standing2(side).filter((c) => c.row === "front").map((c) => c.cid);
+      return standing3(side).filter((c) => c.row === "front").map((c) => c.cid);
     case "enemies":
-      return standing2(opposite(side)).map((c) => c.cid);
+      return standing3(opposite(side)).map((c) => c.cid);
     case "own_row":
-      return standing2(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
+      return standing3(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
     case "target_row": {
       const ref = ev.targetCid ?? ev.sourceCid;
       const r = ref && ref !== "commander" ? cs.combatants.find((c) => c.cid === ref) : void 0;
       return r ? cs.combatants.filter((c) => c.side === r.side && c.row === r.row && isStanding(c)).map((c) => c.cid) : [];
     }
     case "random_enemy": {
-      const pool = standing2(opposite(side));
+      const pool = standing3(opposite(side));
       return pool.length > 0 ? [ctx2.rng.pick(pool).cid] : [];
     }
     case "lowest_hp_ally": {
-      const pool = standing2(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
+      const pool = standing3(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
       return pool.length > 0 ? [pool[0].cid] : [];
     }
     case "commander":
@@ -17698,6 +17713,9 @@ function trackCap(state, reg, unitId, trackId) {
 // src/engine/dynamic/milestones.ts
 var milestoneRows = (reg) => [...reg.dynamicMilestones.values()];
 var milestoneEntry = (reg, id) => reg.dynamicMilestones.get(id);
+function rekindleMilestone(reg) {
+  return milestoneRows(reg).find((m) => m.requires.formerHolder === true && m.from === "equal" && m.to !== "equal")?.id;
+}
 function requiresMet(state, reg, unitId, m) {
   const dyn = dynamicOf(state, unitId);
   if (dyn === void 0 || !contentAllowed(state, reg, m, unitId)) return false;
@@ -18026,6 +18044,10 @@ function bandIndex(reg, hold) {
   for (let i = 0; i < bands.length; i++) if (hold >= bands[i].min) at = i;
   return at;
 }
+function bandMinAt(reg, index2) {
+  const bands = bandsOf(reg);
+  return bands[Math.min(Math.max(0, index2), bands.length - 1)]?.min ?? 0;
+}
 function holdBandOf(reg, hold) {
   return bandsOf(reg)[bandIndex(reg, hold)]?.id ?? "";
 }
@@ -18100,6 +18122,33 @@ function addFavour(draft, unitId, n) {
   dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
 }
 
+// src/engine/dynamic/struggle.ts
+function runningStage(state, reg, unitId) {
+  const a = dynamicOf(state, unitId)?.aftermath;
+  if (a === void 0) return void 0;
+  const row3 = [...reg.aftermaths.values()].find((r) => r.kind === a.kind);
+  const stage = row3?.stages[a.stage];
+  return stage === void 0 ? void 0 : { stage, startDay: (a.stageUntil ?? state.day) - stage.days };
+}
+var hasEffect2 = (effects2, type) => effects2.some((e) => e.type === type);
+function sabotagesVotes(state, reg, unitId) {
+  const running2 = runningStage(state, reg, unitId);
+  return running2 !== void 0 && hasEffect2(running2.stage.effects, "vote_sabotage");
+}
+function slipsOpen(state, reg, unitId) {
+  const running2 = runningStage(state, reg, unitId);
+  const fx2 = running2?.stage.effects.find((e) => e.type === "protocol_slips");
+  return running2 !== void 0 && fx2 !== void 0 && state.day <= running2.startDay + fx2.days;
+}
+function commandStruggleOf(state) {
+  for (const u of state.squad) {
+    const a = state.relations[u.id]?.dynamic?.aftermath;
+    if (a?.kind === "command_kept") return { unitId: u.id, wins: a.struggleWins ?? 0 };
+  }
+  return null;
+}
+var keptByStruggle = (dyn, entry) => dyn.aftermath?.kind === "command_kept" && entry.grants.includes("countermand");
+
 // src/engine/dynamic/domains.ts
 function holderOfDomain(state, domainId, except) {
   return state.squad.find((u) => u.id !== except && u.kind === "named" && isLiving(u) && dynamicOf(state, u.id)?.domains.some((d) => d.id === domainId && standing(d, state.day)) === true)?.id ?? null;
@@ -18116,7 +18165,7 @@ function reconcileDomains(draft, reg, unitId) {
   const events = [];
   for (const d of [...dyn.domains]) {
     const entry = domainEntry(reg, d.id);
-    if (entry !== void 0 && dyn.hold < bandMin(reg, entry)) events.push(loseDomain(draft, unitId, d.id, "band"));
+    if (entry !== void 0 && dyn.hold < bandMin(reg, entry) && !keptByStruggle(dyn, entry)) events.push(loseDomain(draft, unitId, d.id, "band"));
   }
   dropVoidOverride(draft, reg, unitId);
   const x = draft.dynamic;
@@ -18770,8 +18819,14 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
       const applied = applyRelationDelta(draft, unitId, "trust", fx2.amount, "aftermath");
       return applied === 0 ? [] : [{ type: "relation_changed", unitId, axis: "trust", delta: applied, applied }];
     }
-    case "return_offer":
+    case "return_offer": {
+      const x = draft.dynamic;
+      if (x === void 0 || x.open.returnOffer !== void 0) return [];
+      x.open.returnOffer = { id: `dr${x.seq++}`, unitId, terms: unit3.bond?.practice?.style.primary === "drill" ? "after_punishment" : "lower_band", day: draft.day };
+      return [];
+    }
     case "successor":
+      return raiseSuccessor(draft, ctx2, unitId);
     case "protocol_slips":
       return [];
   }
@@ -18819,6 +18874,11 @@ function advance(draft, ctx2, unitId, dyn, row3) {
       events.push(...enterStage(draft, ctx2, unitId, row3, a.stage));
       continue;
     }
+    if (row3.weights.needsCommand === true && hasCapability(draft, ctx2.registries, unitId, "countermand")) {
+      a.stageUntil += row3.stages[a.stage].days;
+      a.untilDay = a.stageUntil;
+      continue;
+    }
     events.push(endAftermath(draft, unitId, "time"));
     events.push(...chain(draft, ctx2, unitId, row3, a.forced === true));
   }
@@ -18846,6 +18906,75 @@ function aftermathDayStep(draft, ctx2) {
     }
     events.push(...advance(draft, ctx2, unit3.id, dyn, row3));
   }
+  events.push(...successorsDue(draft, ctx2));
+  return events;
+}
+function endCommandKept(draft, ctx2, unitId, reason) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn?.aftermath?.kind !== "command_kept") return [];
+  const reg = ctx2.registries;
+  const events = [];
+  for (const d of [...dyn.domains]) if (domainEntry(reg, d.id)?.grants.includes("countermand")) events.push(loseDomain(draft, unitId, d.id, reason));
+  dropVoidOverride(draft, reg, unitId);
+  events.push(endAftermath(draft, unitId, "resolved"));
+  return events;
+}
+function countStruggleVote(draft, ctx2, vote) {
+  const struggle = commandStruggleOf(draft);
+  if (struggle === null || !vote.passed || !vote.ballots.some((b) => b.unitId === struggle.unitId && b.vote === "against")) return [];
+  const a = dynamicOf(draft, struggle.unitId).aftermath;
+  a.struggleWins = struggle.wins + 1;
+  return a.struggleWins >= TUNING.dynamic.commandBackVotes ? endCommandKept(draft, ctx2, struggle.unitId, "contest") : [];
+}
+function commandKeptEnforced(draft, ctx2, unitId, e) {
+  return e.severity >= 3 ? endCommandKept(draft, ctx2, unitId, "force") : [];
+}
+function raiseSuccessor(draft, ctx2, formerId) {
+  const reg = ctx2.registries;
+  const former = dynamicOf(draft, formerId);
+  const x = draft.dynamic;
+  if (former?.formerHolder === void 0 || x === void 0) return [];
+  const best = draft.squad.map((u, order) => ({ u, order })).filter(({ u }) => u.kind === "named" && isLiving(u) && u.id !== formerId && canHold(draft, reg, u.id) === null).sort((a, b) => (dynamicOf(draft, b.u.id)?.hold ?? 0) - (dynamicOf(draft, a.u.id)?.hold ?? 0) || a.order - b.order)[0]?.u;
+  former.formerHolder.successor = best?.id ?? "";
+  if (best === void 0) return [];
+  const events = addHold(draft, ctx2, best.id, TUNING.dynamic.gains.successor, "successor");
+  x.queue = [best.id, ...x.queue.filter((id) => id !== best.id)].slice(0, TUNING.probes.queueMax);
+  return events;
+}
+function successorsDue(draft, ctx2) {
+  if (aftermathRowOf(ctx2.registries, "successor") === void 0) return [];
+  const events = [];
+  for (const unit3 of draft.squad) {
+    const dyn = unit3.kind === "named" && isLiving(unit3) ? dynamicOf(draft, unit3.id) : void 0;
+    if (dyn?.formerHolder === void 0 || dyn.formerHolder.successor !== void 0 || dyn.aftermath?.kind === "command_kept") continue;
+    if (frameRank(dyn.frame) >= frameRank("play")) dyn.formerHolder.successor = "";
+    else events.push(...raiseSuccessor(draft, ctx2, unit3.id));
+  }
+  return events;
+}
+function answerReturn(draft, ctx2, answer) {
+  const reg = ctx2.registries;
+  const offer = draft.dynamic?.open.returnOffer;
+  const unit3 = offer === void 0 ? void 0 : draft.squad.find((u) => u.id === offer.unitId);
+  const dyn = offer === void 0 ? void 0 : dynamicOf(draft, offer.unitId);
+  if (!dynamicOn(draft, reg) || offer === void 0 || unit3 === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("There is no return offer to answer.");
+  if (answer !== "accept" && answer !== "refuse") throw new Error("The answer must be accept or refuse.");
+  delete draft.dynamic.open.returnOffer;
+  const events = [];
+  if (answer === "refuse") {
+    if (dyn.aftermath !== void 0) events.push(endAftermath(draft, offer.unitId, "refused"));
+    return events;
+  }
+  if (dyn.aftermath !== void 0) events.push(endAftermath(draft, offer.unitId, "returned"));
+  const rekindle = rekindleMilestone(reg);
+  if (rekindle !== void 0) events.push(...applyMilestone(draft, ctx2, offer.unitId, rekindle));
+  const to = bandMinAt(reg, TUNING.dynamic.returnBand[offer.terms]);
+  if (dyn.hold < to) {
+    events.push({ type: "hold_changed", unitId: offer.unitId, from: dyn.hold, to, cause: "return" });
+    dyn.hold = to;
+  }
+  dyn.lastPracticeDay = draft.day;
+  if (offer.terms === "after_punishment") events.push({ type: "refusal_noted", unitId: offer.unitId, what: "return" });
   return events;
 }
 
@@ -19298,7 +19427,7 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   const exits = (open3.exits ?? []).filter((e) => present2.includes(e.unitId)).map((e) => e.id);
   const slips2 = participants.length >= 2 ? present2.filter((id) => {
     const dyn = dynamicOf(state, id);
-    return dyn !== void 0 && (frameRank(dyn.frame) >= frameRank("role") || dyn.aftermath?.kind === "habits");
+    return dyn !== void 0 && (frameRank(dyn.frame) >= frameRank("role") || slipsOpen(state, reg, id));
   }) : [];
   const types = [
     ...probes2.length > 0 ? ["probe_answered"] : [],
@@ -21047,7 +21176,11 @@ function ballotFor(state, reg, unit3, kind, subject) {
   let term = "values";
   for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
   const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
-  return { unitId: unit3.id, vote: score >= 0 ? "for" : "against", weight: leaderOf(state)?.id === unit3.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult, score, term };
+  const weight = leaderOf(state)?.id === unit3.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult;
+  if (sabotagesVotes(state, reg, unit3.id)) {
+    return { unitId: unit3.id, vote: "against", weight: weight + TUNING.dynamic.commandKeptVoteWeight * Math.max(0, standingOf(state, reg, unit3.id) ?? 0), score: Math.min(score, -1), term };
+  }
+  return { unitId: unit3.id, vote: score >= 0 ? "for" : "against", weight, score, term };
 }
 function tallyVote(state, reg, kind, subject) {
   const ballots = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u)).map((u) => ballotFor(state, reg, u, kind, subject));
@@ -21193,8 +21326,8 @@ var CHALLENGE_STATS = ["authority", "empathy", "strength", "endurance", "reflexe
 var isSocial = (stat3) => stat3 === "authority" || stat3 === "empathy";
 function leaderRank(state, reg) {
   const leader = leaderOf(state);
-  const standing2 = leader ? standingOf(state, reg, leader.id) ?? 0 : 0;
-  return Math.min(5, Math.max(1, Math.round(standing2 / TUNING.power.challenge.standingPerRank)));
+  const standing3 = leader ? standingOf(state, reg, leader.id) ?? 0 : 0;
+  return Math.min(5, Math.max(1, Math.round(standing3 / TUNING.power.challenge.standingPerRank)));
 }
 function challengeChance(state, reg, stat3) {
   const C = TUNING.power.challenge;
@@ -22744,6 +22877,7 @@ function openVote(draft, ctx2, kind, subject) {
   const vote = { id: `v${power.votes.seq}`, kind, subject, day: draft.day, ...tally, status: tally.passed ? "passed" : "failed" };
   power.votes.open = vote;
   events.push({ type: "vote_opened", voteId: vote.id, kind, subject, passed: vote.passed, forWeight: vote.forWeight, againstWeight: vote.againstWeight });
+  events.push(...countStruggleVote(draft, ctx2, vote));
   return events;
 }
 function dropVote(draft, voteId) {
@@ -23352,7 +23486,7 @@ function heaviest(opts) {
   for (const o of opts) if (o.damage > 0 && (!best || o.damage > best.damage)) best = o;
   return best;
 }
-var hasEffect2 = (skill, ...types) => skill.effects.some((e) => types.includes(e.type));
+var hasEffect3 = (skill, ...types) => skill.effects.some((e) => types.includes(e.type));
 var grantsProtection = (skill) => skill.effects.some((e) => e.type === "status" && ["guard", "shield", "taunt"].includes(e.statusId));
 function aggressive(ctx2, cid, opts) {
   const best = heaviest(opts);
@@ -23392,11 +23526,11 @@ function chooseAction(ctx2, cid) {
       const allies2 = living(cs, c.side);
       const hurt = allies2.filter((a) => a.hp / a.maxHp < 0.5).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
       const downed = cs.combatants.filter((a) => a.side === c.side && a.downed);
-      const revive = usable3.find((u) => hasEffect2(u.skill, "revive") && downed.length > 0);
+      const revive = usable3.find((u) => hasEffect3(u.skill, "revive") && downed.length > 0);
       if (revive) return { kind: "skill", skillId: revive.skill.id, targetCid: first(downed.filter((d) => revive.targets.includes(d.cid)))?.cid ?? revive.targets[0] };
       if (hurt.length > 0) {
         for (const u of usable3) {
-          if (!hasEffect2(u.skill, "heal") && !grantsProtection(u.skill)) continue;
+          if (!hasEffect3(u.skill, "heal") && !grantsProtection(u.skill)) continue;
           const target = first(hurt.filter((h2) => u.targets.includes(h2.cid)))?.cid ?? (u.targets.length > 0 && u.skill.targets?.count !== "one" ? u.targets[0] : void 0);
           if (target) return { kind: "skill", skillId: u.skill.id, targetCid: target };
         }
@@ -28007,6 +28141,10 @@ registerMemoryResolver("dynamic_exit", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
 }, { ids: ["her"], vars: ["name", "sworn"] });
+registerMemoryResolver("aftermath_ended", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, reason: String(event.reason ?? ""), kind: String(event.kind ?? "") } } : null;
+}, { ids: ["her"], vars: ["name", "reason", "kind"] });
 registerMemoryResolver("domain_yielded", (draft, event, reg) => {
   const her = subjectOf2(draft, event.unitId);
   const domain = reg.dynamicDomains.get(String(event.domainId));
@@ -34444,6 +34582,7 @@ installDynamicHooks();
 registerAfterAction(readMoments);
 registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
+registerEnforced(commandKeptEnforced);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);
@@ -34611,6 +34750,11 @@ registerAction("dynamic/exit", (draft, payload, ctx2) => {
     ...p.means !== void 0 ? { means: p.means } : {},
     ...p.measure !== void 0 ? { measure: p.measure } : {}
   });
+});
+registerAction("dynamic/answer_return", (draft, payload, ctx2) => {
+  const p = payload ?? {};
+  if (p.answer !== "accept" && p.answer !== "refuse") throw new Error("The answer must be accept or refuse.");
+  return answerReturn(draft, ctx2, p.answer);
 });
 
 // src/llm/callTypes.ts
@@ -37449,6 +37593,16 @@ function createDynamic(deps) {
     },
     answerClaim(claimId, answer) {
       const events = deps.app.dispatch({ type: "dynamic/answer_claim", payload: { claimId, answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
+    answerReturn(answer) {
+      const events = deps.app.dispatch({ type: "dynamic/answer_return", payload: { answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
       const bad = events.find((e) => e.type === "error");
       if (bad) {
         deps.toast("error", String(bad.message ?? bad.code));
@@ -47246,8 +47400,8 @@ var standingBand2 = (n) => n < 40 ? "low" : n < 70 ? "notable" : "dominant";
 var oddsWord = (p) => p < 0.35 ? "UNLIKELY" : p < 0.65 ? "EVEN" : "LIKELY";
 function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   host.replaceChildren();
-  const standing2 = standingOf(state, reg, unitId);
-  if (standing2 === null) return;
+  const standing3 = standingOf(state, reg, unitId);
+  if (standing3 === null) return;
   const raw = opts.raw === true;
   const live3 = { unitId };
   const leader = leaderOf(state);
@@ -47256,7 +47410,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   const line2 = h(
     "p",
     { class: "alius-hierarchy-line" },
-    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live3) }, `STANDING: ${standingBand2(standing2).toUpperCase()}${raw ? ` (${standing2})` : ""}`)
+    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live3) }, `STANDING: ${standingBand2(standing3).toUpperCase()}${raw ? ` (${standing3})` : ""}`)
   );
   if (isLeader) {
     line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live3) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));

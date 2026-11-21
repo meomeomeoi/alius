@@ -18,20 +18,25 @@ import { addRecord, applyDisciplineEvent } from '../discipline/record';
 import { restrictionReason } from '../discipline/restrictions';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { pushMessage } from '../dms';
+import { frameRank } from '../blocking/state';
 import { isLiving } from '../economy';
 import { addFact } from '../memory';
 import { queueNightSpec } from '../night';
 import { book, bookingKindsFor } from '../personal/bookings';
 import { pressureGate } from '../personal/gates';
 import { applyRelationDelta } from '../relationGain';
-import type { CampaignState, Slot } from '../state/types';
+import type { CampaignState, Slot, Vote } from '../state/types';
 import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
-import { hasCapability } from './capabilities';
-import { dynamicOn } from './gate';
-import { nextFreeEvening } from './milestones';
+import { domainEntry, dropVoidOverride, hasCapability, standing } from './capabilities';
+import { loseDomain } from './domains';
+import { canHold, dynamicOn } from './gate';
+import { addHold, bandMinAt } from './hold';
+import { applyMilestone, nextFreeEvening, rekindleMilestone } from './milestones';
 import { hashedCtx } from './reactions';
 import { dynamicOf, type DynamicRelation } from './state';
+import { commandStruggleOf } from './struggle';
+export { commandStruggleOf };
 import { AFTERMATH_KINDS, type AftermathEffect, type AftermathEntry, type AftermathKind, type ExitRoute } from './types';
 import { dynamicRoll } from './witness';
 import type { AftermathRequest } from './exit';
@@ -131,8 +136,8 @@ function pickKind(weights: Record<AftermathKind, number>, roll: number): Afterma
  * `stress` and `want` move her numbers; `night_knock` queues the visit Want makes; `demand` opens a P9 demand of that kind (`desire` is Want's);
  * `booking` books her the next free evening; `rule_interfere` proposes a rule in her name; `rumor` writes a spreading fact; `squad_impunity` raises
  * the Impunity record of everyone who knows of the dynamic; `defiance` is a moderate `defied`; `trust` is a Trust change. `vote_sabotage`
- * is read by the ballots while the stage stands and `threaten_tell` waits for compromat, so neither writes anything here; `return_offer`, `successor`
- * and `protocol_slips` are Task 31's. Nothing for a unit who is not a living named unit. Draws nothing.
+ * is read by the ballots while the stage stands and `threaten_tell` waits for compromat, so neither writes anything here; `return_offer` opens the card
+ * `answerReturn` answers, `successor` raises the next unit (`raiseSuccessor`) and `protocol_slips` is read by the intent offer. Nothing for a unit who is not a living named unit. Draws nothing.
  */
 export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'> & Partial<Pick<EngineCtx, 'rng'>>, unitId: string, fx: AftermathEffect): EngineEvent[] {
   const reg = ctx.registries;
@@ -194,10 +199,17 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
       const applied = applyRelationDelta(draft, unitId, 'trust', fx.amount, 'aftermath');
       return applied === 0 ? [] : [{ type: 'relation_changed', unitId, axis: 'trust', delta: applied, applied }];
     }
-    case 'return_offer':
+    case 'return_offer': {
+      // she offers to take the commander back: one card at a time, on terms by her manner (`drill`: after a punishment)
+      const x = draft.dynamic;
+      if (x === undefined || x.open.returnOffer !== undefined) return [];
+      x.open.returnOffer = { id: `dr${x.seq++}`, unitId, terms: unit.bond?.practice?.style.primary === 'drill' ? 'after_punishment' : 'lower_band', day: draft.day };
+      return [];
+    }
     case 'successor':
+      return raiseSuccessor(draft, ctx, unitId);
     case 'protocol_slips':
-      return []; // Task 31
+      return []; // read by the intent offer (`slipsOpen`) while the stage stands
   }
 }
 
@@ -269,6 +281,12 @@ function advance(draft: CampaignState, ctx: Ctx, unitId: string, dyn: DynamicRel
       events.push(...enterStage(draft, ctx, unitId, row, a.stage));
       continue;
     }
+    if (row.weights.needsCommand === true && hasCapability(draft, ctx.registries, unitId, 'countermand')) {
+      // the struggle for the command has no end of its own: while she holds it, the stage starts over (only a vote, a severe enforcement or the Leash decide it)
+      a.stageUntil += row.stages[a.stage].days;
+      a.untilDay = a.stageUntil;
+      continue;
+    }
     events.push(endAftermath(draft, unitId, 'time'));
     events.push(...chain(draft, ctx, unitId, row, a.forced === true));
   }
@@ -304,5 +322,112 @@ export function aftermathDayStep(draft: CampaignState, ctx: Ctx): EngineEvent[] 
     }
     events.push(...advance(draft, ctx, unit.id, dyn, row));
   }
+  events.push(...successorsDue(draft, ctx));
+  return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The struggle for the command (R15a)
+
+/**
+ * The commander wins the command back: the domain that grants it is lost (`domain_lost`, with `reason`), her override is void and the aftermath
+ * ends `resolved`. Nothing when she has no `command_kept` aftermath.
+ */
+export function endCommandKept(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, reason: 'contest' | 'force'): EngineEvent[] {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn?.aftermath?.kind !== 'command_kept') return [];
+  const reg = ctx.registries;
+  const events: EngineEvent[] = [];
+  for (const d of [...dyn.domains]) if (domainEntry(reg, d.id)?.grants.includes('countermand')) events.push(loseDomain(draft, unitId, d.id, reason));
+  dropVoidOverride(draft, reg, unitId);
+  events.push(endAftermath(draft, unitId, 'resolved'));
+  return events;
+}
+
+/**
+ * A squad vote was opened (called by `openVote`): when the commander's side carried it over her ballot against it, the struggle counts one win; at
+ * `commandBackVotes` it is over. A vote that failed, or one she has no ballot in, counts nothing. Draws nothing.
+ */
+export function countStruggleVote(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, vote: Pick<Vote, 'ballots' | 'passed'>): EngineEvent[] {
+  const struggle = commandStruggleOf(draft);
+  if (struggle === null || !vote.passed || !vote.ballots.some((b) => b.unitId === struggle.unitId && b.vote === 'against')) return [];
+  const a = dynamicOf(draft, struggle.unitId)!.aftermath!;
+  a.struggleWins = struggle.wins + 1;
+  return a.struggleWins >= TUNING.dynamic.commandBackVotes ? endCommandKept(draft, ctx, struggle.unitId, 'contest') : [];
+}
+
+/** An enforcement on her (registered on `enforce`): one of severity 3 or more, a bench, a brig or the Leash, ends the struggle. */
+export function commandKeptEnforced(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, e: { severity: number }): EngineEvent[] {
+  return e.severity >= 3 ? endCommandKept(draft, ctx, unitId, 'force') : [];
+}
+
+// ---------------------------------------------------------------------------------------------
+// The squad's reaction: a successor (R15c)
+
+/**
+ * The squad reacts to a commander who is unclaimed (not by her weights): the eligible unit (`canHold`) other than the former holder with the highest hold
+ * (squad order breaks a tie) gets the hold gain of `successor` and the first place in the probe queue. The former holder's record keeps who it was
+ * (`formerHolder.successor`, an empty string when nobody could be) so it happens once. Nothing for a former holder who left the service.
+ */
+export function raiseSuccessor(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, formerId: string): EngineEvent[] {
+  const reg = ctx.registries;
+  const former = dynamicOf(draft, formerId);
+  const x = draft.dynamic;
+  if (former?.formerHolder === undefined || x === undefined) return [];
+  const best = draft.squad
+    .map((u, order) => ({ u, order }))
+    .filter(({ u }) => u.kind === 'named' && isLiving(u) && u.id !== formerId && canHold(draft, reg, u.id) === null)
+    .sort((a, b) => (dynamicOf(draft, b.u.id)?.hold ?? 0) - (dynamicOf(draft, a.u.id)?.hold ?? 0) || a.order - b.order)[0]?.u;
+  former.formerHolder.successor = best?.id ?? '';
+  if (best === undefined) return [];
+  const events = addHold(draft, ctx, best.id, TUNING.dynamic.gains.successor, 'successor');
+  x.queue = [best.id, ...x.queue.filter((id) => id !== best.id)].slice(0, TUNING.probes.queueMax);
+  return events;
+}
+
+/** Day end: each former holder the squad has not reacted to yet, who is not in a struggle for the command, and who does not hold again, draws her successor (once). */
+function successorsDue(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>): EngineEvent[] {
+  if (aftermathRowOf(ctx.registries, 'successor') === undefined) return [];
+  const events: EngineEvent[] = [];
+  for (const unit of draft.squad) {
+    const dyn = unit.kind === 'named' && isLiving(unit) ? dynamicOf(draft, unit.id) : undefined;
+    if (dyn?.formerHolder === undefined || dyn.formerHolder.successor !== undefined || dyn.aftermath?.kind === 'command_kept') continue;
+    if (frameRank(dyn.frame) >= frameRank('play')) dyn.formerHolder.successor = ''; // she holds again: nobody replaces her
+    else events.push(...raiseSuccessor(draft, ctx, unit.id));
+  }
+  return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The return offer (R15b)
+
+/**
+ * The commander answers her return offer (`dynamic/answer_return`): ACCEPT re-kindles it (`rekindle`: the frame is `play` again) with her hold lifted
+ * to the band the terms name (`lower_band`: the second band; `after_punishment`: the third, and `refusal_noted` for P16), and the aftermath ends
+ * `returned`; REFUSE ends it `refused` (remembered by the pair). Throws, changing nothing, when no offer is open. Draws nothing.
+ */
+export function answerReturn(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, answer: 'accept' | 'refuse'): EngineEvent[] {
+  const reg = ctx.registries;
+  const offer = draft.dynamic?.open.returnOffer;
+  const unit = offer === undefined ? undefined : draft.squad.find((u) => u.id === offer.unitId);
+  const dyn = offer === undefined ? undefined : dynamicOf(draft, offer.unitId);
+  if (!dynamicOn(draft, reg) || offer === undefined || unit === undefined || dyn === undefined || !isLiving(unit)) throw new Error('There is no return offer to answer.');
+  if (answer !== 'accept' && answer !== 'refuse') throw new Error('The answer must be accept or refuse.');
+  delete draft.dynamic!.open.returnOffer;
+  const events: EngineEvent[] = [];
+  if (answer === 'refuse') {
+    if (dyn.aftermath !== undefined) events.push(endAftermath(draft, offer.unitId, 'refused'));
+    return events;
+  }
+  if (dyn.aftermath !== undefined) events.push(endAftermath(draft, offer.unitId, 'returned'));
+  const rekindle = rekindleMilestone(reg);
+  if (rekindle !== undefined) events.push(...applyMilestone(draft, ctx, offer.unitId, rekindle));
+  const to = bandMinAt(reg, TUNING.dynamic.returnBand[offer.terms]);
+  if (dyn.hold < to) {
+    events.push({ type: 'hold_changed', unitId: offer.unitId, from: dyn.hold, to, cause: 'return' });
+    dyn.hold = to;
+  }
+  dyn.lastPracticeDay = draft.day;
+  if (offer.terms === 'after_punishment') events.push({ type: 'refusal_noted', unitId: offer.unitId, what: 'return' });
   return events;
 }
