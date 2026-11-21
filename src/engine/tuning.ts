@@ -113,6 +113,46 @@ export const TUNING = Object.freeze({
     maxPerScene: Object.freeze({ rare: 2, normal: 4, often: 6 }),
     explicitMult: 0.5, sourceGap: 8, answerConfidence: 0.55, labelMax: 40, lapseExchanges: 2, escalation: 0.5, moodyMult: 2, noiseBoost: 1,
   }),
+  /**
+   * P15a: contact physics (plan R12, R13; AUTHOR TO TUNE). A beat is one player step turn-based and `beatMs` in real time; a segment is
+   * `turnBeats` beats. `style` rows hold the opening width in ms (`windowMs`), the share of false openings, the share of openings with no cue
+   * (turn-based), how her cues are honest (`cues`) and how tightly she seals (`seal`); the pair blends 0.65 / 0.35 (`blend`).
+   */
+  physics: Object.freeze({
+    beatMs: 1500, turnBeats: 4, warning: 30, releaseAt: Object.freeze({ signal: 0.15, limit: 0.05 }),
+    breath: Object.freeze({ drain: 14, caught: 30, missed: 8, cruelMissed: 4, windowEvery: Object.freeze([2, 4] as const), seal: Object.freeze({ leaky: 4, firm: 1, tight: 0 }), gapRelief: 5 }),
+    weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5] as const), shift: Object.freeze([15, 25] as const), relief: 15 }),
+    saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
+    tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6 }),
+    jaw: Object.freeze({ per: 8, degradeAt: 70 }), gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
+    asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3] as const) }),
+    forget: Object.freeze({ base: 0.10, cruel: 0.15, perImpunity: 0.002, from: 50 }), slipExtend: 1,
+    blackout: Object.freeze({ slots: 1, stress: 5 }),
+    endurance: Object.freeze({ hold: 10, streakFrom: 3, streak: 2, training: 15, thresholds: Object.freeze([30, 80, 150, 250, 400] as const), capacityPerLevel: 0.1 }),
+    herSkill: Object.freeze({ practices: 8, cap: 5, mult: Object.freeze({ drill: 1.5, clinical: 1.5, affectionate: 0.7 } as Record<string, number>) }),
+    typing: Object.freeze({ charsPerBeat: 40, lapseMs: 400 }), blend: Object.freeze([0.65, 0.35] as const),
+    /** The gaze of R13: her attention per beat by the activity's attention, and the chance a relief input on that beat is caught. */
+    gaze: Object.freeze({
+      attention: Object.freeze({ on_commander: [0.7, 0.3, 0], divided: [0.35, 0.4, 0.25], elsewhere: [0.1, 0.3, 0.6], none: [0, 0, 1] } as Record<string, readonly number[]>),
+      caught: Object.freeze({ watching: 0.6, glancing: 0.25, busy: 0.08 }), readingMult: 0.1,
+    }),
+    style: Object.freeze({
+      neutral: Object.freeze({ windowMs: 600, falseShare: 0, noCueShare: 0, cues: 'honest', seal: 'middle', skillMult: 1 }),
+      affectionate: Object.freeze({ windowMs: 700, falseShare: 0, noCueShare: 0, cues: 'honest', seal: 'loosest', skillMult: 0.7 }),
+      cold: Object.freeze({ windowMs: 550, falseShare: 0, noCueShare: 0, cues: 'honest', seal: 'middle', skillMult: 1 }),
+      ritual: Object.freeze({ windowMs: 500, falseShare: 0, noCueShare: 0, cues: 'count', seal: 'middle', skillMult: 1 }),
+      clinical: Object.freeze({ windowMs: 500, falseShare: 0, noCueShare: 0, cues: 'shift', seal: 'middle', skillMult: 1.5 }),
+      possessive: Object.freeze({ windowMs: 450, falseShare: 0, noCueShare: 0, cues: 'honest', seal: 'tightest', skillMult: 1 }),
+      playful: Object.freeze({ windowMs: 450, falseShare: 0.35, noCueShare: 0, cues: 'false', seal: 'middle', skillMult: 1 }),
+      cruel: Object.freeze({ windowMs: 250, falseShare: 0, noCueShare: 0.4, cues: 'none', seal: 'tightest', skillMult: 1 }),
+      obsessive: Object.freeze({ windowMs: 450, falseShare: 0, noCueShare: 0, cues: 'honest', seal: 'tightest', skillMult: 1 }),
+      drill: Object.freeze({ windowMs: 500, falseShare: 0, noCueShare: 0, cues: 'count', seal: 'middle', skillMult: 1.5 }),
+      regal: Object.freeze({ windowMs: 600, falseShare: 0, noCueShare: 0, cues: 'announce', seal: 'middle', skillMult: 1 }),
+      vindictive: Object.freeze({ windowMs: 300, falseShare: 0, noCueShare: 0, cues: 'sparse', seal: 'tightest', skillMult: 1 }),
+    } as Record<string, Readonly<{ windowMs: number; falseShare: number; noCueShare: number; cues: string; seal: string; skillMult: number }>>),
+    /** `obsessive` draws its width at random between these; `clinical` measures with a half-width opening every 3rd–4th. */
+    obsessiveMs: Object.freeze([200, 700] as const), clinicalEvery: Object.freeze([3, 4] as const),
+  }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */

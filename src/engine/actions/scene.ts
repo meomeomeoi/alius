@@ -21,6 +21,7 @@ import { applyReading, blockingLive } from '../blocking';
 import { startBlocking } from '../blocking/defaults';
 import { applyReadingAnswer, lapseMoments, setLabels } from '../moments/answer';
 import { momentPass } from '../moments/fire';
+import '../physics/run'; // a contact set by a reading may start a physics run
 import { noteBusy } from '../life/dayStep';
 import { finishMeeting } from '../life/meetings';
 import { endSceneNews } from '../life/news';

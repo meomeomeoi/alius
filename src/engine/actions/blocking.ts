@@ -2,6 +2,7 @@ import { blockingLive, rollbackAfter, setBlocking, type BlockingChange } from '.
 import { registerWithdrawal } from '../bonds/content';
 import { stripTagged } from '../blocking/blocking';
 import { registerAction } from '../dispatch';
+import '../physics/run'; // keeps a physics run in step with the blocking
 import { parseSceneSettings } from '../moments/settings';
 
 // Importing this module registers `blocking/set` (P15a) and lets a switched-off content category strip the blocking quietly.

@@ -24,6 +24,14 @@ export interface BlockingChange {
 }
 export type BlockingSource = 'engine' | 'chip' | 'reading';
 
+type AfterChange = (draft: CampaignState, reg: Registries, change: BlockingChange) => EngineEvent[];
+const afterChange: AfterChange[] = [];
+
+/** The physics layer registers here: what a change of the blocking sets in motion (a run starts or ends). Its events follow `blocking_changed`. */
+export function registerAfterChange(fn: AfterChange): void {
+  if (!afterChange.includes(fn)) afterChange.push(fn);
+}
+
 const NONE: Readonly<Blocking> = Object.freeze({});
 
 /** What is stored for one person (nothing set = an empty record). */
@@ -350,7 +358,7 @@ export function setBlocking(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   if (problem !== null) throw new Error(problem);
   pushLog(draft, opts.at, { person: change.person, field: change.field, ...(change.value !== undefined ? { value: change.value } : {}), source: opts.source });
   apply(draft, ctx.registries, change);
-  return [{ type: 'blocking_changed', person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
+  return [{ type: 'blocking_changed', person: change.person, field: change.field, value: change.value ?? null, source: opts.source }, ...afterChange.flatMap((fn) => fn(draft, ctx.registries, change))];
 }
 
 /**
@@ -404,4 +412,35 @@ export function stripTagged(draft: CampaignState, reg: Registries, removed: stri
     if (rec.activity !== undefined && hit(reg.blockingActivities.get(rec.activity))) delete rec.activity;
   }
   tidy(draft);
+}
+
+/**
+ * Takes a contact or a worn item out of the scene quietly (no gate, no log, no event): what the stop word and the end of a physics do. For an
+ * item, every person who wears it; for a contact, the record that holds it (the anchors it moved go back). Returns whether anything went.
+ */
+export function removeSource(draft: CampaignState, kind: 'contact' | 'item', id: string): boolean {
+  const scene = draft.scene;
+  if (!scene?.blocking) return false;
+  let any = false;
+  for (const [person, rec] of Object.entries(scene.blocking)) {
+    if (kind === 'item') {
+      for (const [slot, w] of Object.entries(rec.worn ?? {})) {
+        if (w?.id === id) {
+          delete rec.worn![slot as WornSlot];
+          any = true;
+        }
+      }
+      if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
+    } else if (rec.contact?.id === id) {
+      clearContact(draft, person);
+      any = true;
+    }
+  }
+  tidy(draft);
+  return any;
+}
+
+/** Whether a contact or an item is in the scene now (who holds it does not matter). */
+export function hasSource(scene: Pick<SceneRecord, 'blocking'> | undefined, kind: 'contact' | 'item', id: string): boolean {
+  return Object.values(scene?.blocking ?? {}).some((b) => (kind === 'contact' ? b.contact?.id === id : Object.values(b.worn ?? {}).some((w) => w?.id === id)));
 }

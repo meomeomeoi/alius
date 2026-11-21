@@ -337,7 +337,14 @@ describe('a content category going off mid-scene', () => {
     expect(r.state.scene).toBeUndefined();
   });
 
-  it.todo('ends a physics that depends on the tagged contact (physics_outcome stopped): completed in Task 18');
+  it('ends a physics that depends on the tagged contact (physics_outcome stopped)', () => {
+    registerFrameReader(() => 'play');
+    const s = set(scene({ on: ['worship', 'humiliation'] }), { person: ANN, field: 'contact', value: 'boot_worship', with: COMMANDER });
+    expect(s.scene!.physics).toMatchObject({ physicsId: 'tongue_work' });
+    const r = run(s, reg, { type: 'content/set_categories', payload: { enabled: ['humiliation'] } });
+    expect(r.state.scene!.physics).toBeUndefined();
+    expect(r.events.find((e) => e.type === 'physics_outcome')).toMatchObject({ result: 'stopped', physicsId: 'tongue_work' });
+  });
 });
 
 describe('no rng draw', () => {

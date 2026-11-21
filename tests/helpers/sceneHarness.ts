@@ -1,5 +1,6 @@
 import '../../src/engine/actions/blocking'; // P15a: blocking/set and blocking/rollback
 import '../../src/engine/actions/moments'; // P15a: moment/answer
+import '../../src/engine/actions/physics'; // P15a: the physics actions
 import { dispatch as engineDispatch, type Action, type EngineEvent } from '../../src/engine/dispatch';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { Registries } from '../../src/content/types';

@@ -1144,16 +1144,16 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
     }
     ```
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a contact with physics starts a run` with the stand-ins (neutral, `signal`); an interaction switched off → no run.
   - `signal releases a signal holder`, `limit ignores the first tap`, `blackout without breath_play acts as limit`.
   - `stop word at every point`: running, held, mid-segment, during a marathon skip (stubbed), at each `holdsUntil` → the run ends (`physics_outcome stopped`), the source contact or item is removed and `blocking:stop` is set.
   - `category off ends the run` (completes Task 7's todo).
   - `no draw before a run`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/run.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): physics runs, the tap and the stop word`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/run.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): physics runs, the tap and the stop word`
 
 ---
 

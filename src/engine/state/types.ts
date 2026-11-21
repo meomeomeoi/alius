@@ -1,5 +1,6 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
 import type { MomentsState } from '../moments/state';
+import type { PhysicsRun } from '../physics/state';
 import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
 import type { RngState } from '../rng';
@@ -621,6 +622,12 @@ export interface SceneRecord {
   stagingLog?: StagingSnapshot[];
   /** P15a: the open moment, the ones fired, what she looked like at the last pass and the last answer; part of the staging snapshots. */
   moments?: MomentsState;
+  /** P15a: the contact physics that runs in this scene (one at a time); never rolled back by a swipe. Gone with the scene. */
+  physics?: PhysicsRun;
+  /** P15a: how many runs this scene had (the next run's id). */
+  physicsCount?: number;
+  /** P15a: slots this scene spent beyond its own (a blackout, a marathon), consumed when it ends. */
+  extraSlots?: number;
 }
 
 export interface PendingProposal {
@@ -740,6 +747,8 @@ export interface Commander {
   stress?: number;
   /** P9: counters of the commander's deeds (absent = all 0). Reputations are read from them. */
   deeds?: Partial<Record<DeedCounter, number>>;
+  /** P15a: the commander's endurance per contact physics (xp and level 0–5); read through `commanderSkill`. */
+  endurance?: Record<string, { xp: number; level: number; trainedDay?: number }>;
   /** P14c: how well the commander has learned each hobby from her (0..100, by hobby id); shown only as a descriptor, no mechanical value. */
   hobbySkill?: Record<string, number>;
   /** P9: the nicknames the squad gives the commander (at most 2 active) and the one waiting for its scene. */
