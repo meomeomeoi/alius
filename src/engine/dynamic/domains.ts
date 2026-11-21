@@ -12,7 +12,7 @@ import { isLiving } from '../economy';
 import { settleOrder } from '../personal/bookings';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { bandMin, capabilitiesOf, domainEntry, domainRows, hasCapability, holderWith, standing } from './capabilities';
+import { bandMin, capabilitiesOf, domainEntry, domainRows, dropVoidOverride, hasCapability, holderWith, standing } from './capabilities';
 import { dynamicOn } from './gate';
 import { addHold } from './hold';
 import { refusalCost } from './milestones';
@@ -53,6 +53,7 @@ export function reconcileDomains(draft: CampaignState, reg: Registries, unitId: 
     const entry = domainEntry(reg, d.id);
     if (entry !== undefined && dyn.hold < bandMin(reg, entry)) events.push(loseDomain(draft, unitId, d.id, 'band'));
   }
+  dropVoidOverride(draft, reg, unitId);
   const x = draft.dynamic;
   if (x !== undefined) {
     x.open.claims = x.open.claims.filter((c) => {
@@ -125,6 +126,7 @@ export function settleDomainConflict(draft: CampaignState, ctx: Pick<EngineCtx, 
   const claimant = dynamicOf(draft, claimantId);
   if (winnerId === claimantId && claimant !== undefined) {
     events.push(loseDomain(draft, holderId, domainId, 'contest'));
+    dropVoidOverride(draft, ctx.registries, holderId);
     claimant.domains = [...claimant.domains.filter((d) => d.id !== domainId), { id: domainId, since: draft.day }];
   }
   events.push({ type: 'domain_contested', domainId, winnerId, loserId, claimantId, holderId });

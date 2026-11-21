@@ -1,5 +1,6 @@
 import { negotiationHolds, noteFeat } from '../power/outside';
-import { judgedOf, plainPayload, rollOverride } from '../warden/override';
+import { judgedOf, plainPayload } from '../warden/override';
+import { rollOverrides } from '../dynamic/command';
 import { herPick, overrideHer } from '../personal/obedience';
 import { obedienceOf } from '../personal/state';
 import { isCostEffect } from '../../content/schemas';
@@ -285,9 +286,9 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
   if (typeof index !== 'number' || !Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const chosen = open.options[index];
-  // P13: the warden may override a major or defining decision she does not want (it stays open); draws rng only on a conflict
+  // P13 / P15: the warden, then a holder of the command, may override a major or defining decision she does not want (it stays open); draws rng only on a conflict
   if (!wardenChecked) {
-    const overridden = rollOverride(draft, ctx, { kind: 'dilemma', index }, { payload: { ...plainPayload(raw), id, index }, judged: judgedOf(raw) });
+    const overridden = rollOverrides(draft, ctx, { kind: 'dilemma', index }, { payload: { ...plainPayload(raw), id, index }, judged: judgedOf(raw) });
     if (overridden) return overridden;
   }
   // P9c: a day the commander obeys her: choosing another option than the one she would pick is choosing against her

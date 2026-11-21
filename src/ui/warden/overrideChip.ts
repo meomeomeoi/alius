@@ -1,5 +1,5 @@
 import type { Registries } from '../../content/types';
-import { argueAvailable, overrideOpen, wardenOf, type Expectation } from '../../engine/warden';
+import { argueAvailable, wardenOf, wardenOverrideOpen, type Expectation } from '../../engine/warden';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
@@ -19,7 +19,7 @@ export function expectationLabel(reg: Registries, x: Expectation): string {
  * no override is open.
  */
 export function renderOverrideChip(host: HTMLElement, state: CampaignState, reg: Registries, onAnswer: (answer: OverrideAnswer) => void): void {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w) return;
   const cited = w.expectations.find((x) => x.id === o.expectationId);

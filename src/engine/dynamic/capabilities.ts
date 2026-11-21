@@ -38,3 +38,8 @@ export function holderWith(state: CampaignState, reg: Registries, cap: Capabilit
   return state.squad.find((u) => u.kind === 'named' && hasCapability(state, reg, u.id, cap))?.id ?? null;
 }
 
+
+/** Without the command her open override is void (nothing runs, nothing is owed): called after a domain of hers is lost. */
+export function dropVoidOverride(draft: CampaignState, reg: Registries, unitId: string): void {
+  if (draft.dynamic?.override?.unitId === unitId && !hasCapability(draft, reg, unitId, 'countermand')) delete draft.dynamic.override;
+}

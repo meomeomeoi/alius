@@ -16,6 +16,8 @@ import { wardenOf, type Expectation, type ExpectationKind, type WardenOrder } fr
 
 /** The model's reading of a `personal` expectation (the optional judge): `minor` counts half, `major` the full weight. */
 export interface Judged { expectationId: string; conflict: 'none' | 'minor' | 'major' }
+/** Whose expectations an order is checked against: the warden's (the default) or a holder's (P15). Only these two fields are read. */
+export interface ConflictSource { unitId: string; expectations: Expectation[] }
 export interface Conflict { expectationId: string; weight: number }
 
 const SEVERITY_RANK: Severity[] = ['minor', 'moderate', 'major', 'extreme'];
@@ -98,25 +100,32 @@ const RULES: Record<Exclude<ExpectationKind, 'personal'>, Rule> = {
   no_romance_with_others: (c, o) => o.kind === 'activity' && o.companionId !== undefined && o.companionId !== c.warden && bondTierOf(c.state, c.reg, o.companionId) === 'romantic',
 };
 
+/** The source an order is checked against: the one given (a holder's), else the warden's while she holds the leash. */
+const sourceOf = (state: CampaignState, source?: ConflictSource): ConflictSource | null => {
+  if (source) return source;
+  const w = wardenOf(state);
+  return w ? { unitId: w.unitId, expectations: w.expectations } : null;
+};
+
 /**
  * The expectation an order cuts across, and its weight: the highest weight among the rule matches (the first listed wins a tie) and,
  * for a `personal` expectation of hers, the judge's reading (`minor` half the weight, `major` all of it; an id that is not a personal
  * expectation of the current warden is ignored). Null when nobody holds the leash or nothing conflicts.
  */
-export function conflictOf(state: CampaignState, reg: Registries, order: WardenOrder, judged?: Judged): Conflict | null {
-  const w = wardenOf(state);
-  if (!w) return null;
-  const c: Ctx = { state, reg, warden: w.unitId };
+export function conflictOf(state: CampaignState, reg: Registries, order: WardenOrder, judged?: Judged, source?: ConflictSource): Conflict | null {
+  const src = sourceOf(state, source);
+  if (!src) return null;
+  const c: Ctx = { state, reg, warden: src.unitId };
   let best: Conflict | null = null;
   const offer = (x: Expectation, weight: number): void => {
     if (weight > 0 && (best === null || weight > best.weight)) best = { expectationId: x.id, weight };
   };
-  for (const x of w.expectations) {
+  for (const x of src.expectations) {
     if (x.kind === 'personal') continue; // by rule never: only the judge can name it
     if (RULES[x.kind](c, order)) offer(x, x.weight);
   }
   if (judged && judged.conflict !== 'none') {
-    const x = w.expectations.find((e) => e.id === judged.expectationId);
+    const x = src.expectations.find((e) => e.id === judged.expectationId);
     if (x && x.kind === 'personal') offer(x, Math.round(x.weight * (judged.conflict === 'major' ? 1 : 0.5) * 100) / 100);
   }
   return best;
@@ -158,23 +167,23 @@ function listAlt(c: Ctx, ids: string[], kind: ExpectationKind | undefined, make:
  * What she wants instead, as an order the engine can run (or `null`: hold, nothing happens and no slot is spent) and its label for the
  * chip. An activity: the same one with her as companion, or the quota activity; a roster or an expedition: her in place of the last
  * unit, or without the units who are hurt; a dilemma: her pick, else the first enabled option that does not conflict; a combat order:
- * hold. No warden or an unknown expectation: hold. Draws nothing.
+ * hold. No warden (or source) or an unknown expectation: hold. `source` is a holder's (P15); without it the warden's. Draws nothing.
  */
-export function herAlternative(state: CampaignState, reg: Registries, order: WardenOrder, expectationId: string): Alternative {
-  const w = wardenOf(state);
-  if (!w) return HOLD();
-  const c: Ctx = { state, reg, warden: w.unitId };
-  const kind = w.expectations.find((x) => x.id === expectationId)?.kind;
+export function herAlternative(state: CampaignState, reg: Registries, order: WardenOrder, expectationId: string, source?: ConflictSource): Alternative {
+  const src = sourceOf(state, source);
+  if (!src) return HOLD();
+  const c: Ctx = { state, reg, warden: src.unitId };
+  const kind = src.expectations.find((x) => x.id === expectationId)?.kind;
   switch (order.kind) {
     case 'activity': return activityAlt(c, order, kind);
     case 'roster': return listAlt(c, order.activeIds, kind, (activeIds) => ({ kind: 'roster', activeIds }));
     case 'expedition': return listAlt(c, order.unitIds, kind, (unitIds) => ({ kind: 'expedition', ...(order.missionId !== undefined ? { missionId: order.missionId } : {}), unitIds }));
     case 'dilemma': {
       const options = dilemmaOptions(state, reg);
-      const hers = herPick(state, reg, w.unitId);
+      const hers = herPick(state, reg, src.unitId);
       // an option that asks how it is done (a route check) cannot be chosen for the commander
       const plain = (i: number): boolean => options[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === undefined;
-      const ok = (i: number): boolean => i !== order.index && plain(i) && conflictOf(state, reg, { kind: 'dilemma', index: i }) === null;
+      const ok = (i: number): boolean => i !== order.index && plain(i) && conflictOf(state, reg, { kind: 'dilemma', index: i }, undefined, source) === null;
       const index = hers !== null && hers !== order.index && plain(hers) ? hers : options.findIndex((_, i) => ok(i));
       return index >= 0 ? { order: { kind: 'dilemma', index }, label: options[index].label } : HOLD();
     }

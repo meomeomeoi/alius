@@ -6575,9 +6575,7 @@ function forgetWarden(draft, unitId) {
   const w = ls.warden;
   if (w && w.unitId === unitId) delete w.override;
 }
-function overrideOpen(state) {
-  const o = state.leashswap?.warden?.override;
-  if (!o) return null;
+function live(state, o) {
   if (o.context === "combat") return state.combat !== void 0 && state.combat.id === o.ref ? o : null;
   if (o.context === "dilemma") {
     const d = state.dilemmas?.open;
@@ -6585,9 +6583,19 @@ function overrideOpen(state) {
   }
   return o.day === state.day && o.slot === state.slot ? o : null;
 }
+function wardenOverrideOpen(state) {
+  const o = state.leashswap?.warden?.override;
+  return o ? live(state, o) : null;
+}
+function overrideOpen(state) {
+  const w = wardenOverrideOpen(state);
+  if (w !== null) return w;
+  const h2 = state.dynamic?.override;
+  return h2 ? live(state, h2) : null;
+}
 function wardenArgueStart(state, action) {
   if (action.type !== "scene/start") return false;
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const warden = state.leashswap?.warden?.unitId;
   if (!o || o.context !== "dilemma" || warden === void 0) return false;
   const ids = action.payload?.participants;
@@ -12232,6 +12240,9 @@ var hasCapability = (state, reg, unitId, cap7) => capabilitiesOf(state, reg, uni
 function holderWith(state, reg, cap7) {
   return state.squad.find((u) => u.kind === "named" && hasCapability(state, reg, u.id, cap7))?.id ?? null;
 }
+function dropVoidOverride(draft, reg, unitId) {
+  if (draft.dynamic?.override?.unitId === unitId && !hasCapability(draft, reg, unitId, "countermand")) delete draft.dynamic.override;
+}
 
 // src/engine/hub.ts
 function fnv1a3(s) {
@@ -14339,13 +14350,13 @@ function failedRunPenalty(draft, ctx2, m) {
 function openQueuedScapegoat(draft, ctx2) {
   const queue = draft.power?.scapegoatQueue;
   if (!queue || queue.length === 0) return [];
-  const live2 = queue.filter((c) => named(draft, c.unitId));
-  if (live2.length === 0 || draft.dilemmas?.open) {
-    draft.power.scapegoatQueue = live2;
-    if (live2.length === 0) delete draft.power.scapegoatQueue;
+  const live3 = queue.filter((c) => named(draft, c.unitId));
+  if (live3.length === 0 || draft.dilemmas?.open) {
+    draft.power.scapegoatQueue = live3;
+    if (live3.length === 0) delete draft.power.scapegoatQueue;
     return [];
   }
-  const [first2, ...rest] = live2;
+  const [first2, ...rest] = live3;
   if (rest.length > 0) draft.power.scapegoatQueue = rest;
   else delete draft.power.scapegoatQueue;
   return openScapegoat(draft, ctx2, first2);
@@ -15596,6 +15607,217 @@ function applyRemotePunishment(draft, ctx2, punishmentId) {
   for (const fx2 of effectsOf2(entry)) runEffect(draft, ctx2, null, fx2, events);
   events.unshift({ type: "commander_punished", punishmentId, severity: entry.severity, remote: true });
   return events;
+}
+
+// src/engine/warden/death.ts
+var DEATH_CAUSES = ["terminated", "executed"];
+var CLOSING = {
+  terminated: "The controller was triggered. The commander is dead.",
+  executed: "The investigation ended with an execution order. The commander is dead."
+};
+function commanderDies(draft, _ctx, cause, opts = {}) {
+  const ls = leashswapOf(draft);
+  if (!ls) throw new Error("The commander cannot die: the campaign is not in the LEASHSWAP mode.");
+  if (draft.ended) throw new Error("The campaign is already closed.");
+  if (ls.deathRule === "rewind_day" && cause !== "executed" && opts.forceEnd !== true) {
+    return [{ type: "commander_died", rule: "rewind_day", cause }];
+  }
+  draft.ended = { day: draft.day, cause };
+  addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: ${CLOSING[cause]}`, audience: "*" });
+  return [
+    { type: "commander_died", rule: "campaign_end", cause },
+    { type: "campaign_ended", cause }
+  ];
+}
+
+// src/engine/warden/escalation.ts
+var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function addDefiance(draft, ctx2, amount) {
+  const w = wardenOf(draft);
+  if (!w) return [];
+  w.defiance = clamp13(w.defiance + amount, 0, 100);
+  return amount > 0 ? checkEscalation(draft, ctx2) : [];
+}
+function checkEscalation(draft, ctx2) {
+  const w = wardenOf(draft);
+  if (!w) return [];
+  const E = TUNING.warden.escalation;
+  const events = [];
+  const warn = (level) => {
+    w.warnings.push({ level, day: draft.day });
+    events.push({ type: "warden_warning", level });
+  };
+  if (w.defiance >= E.warning1 && w.warnings.length === 0) warn(1);
+  if (w.defiance >= E.warning2) {
+    if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
+    else if (w.warnings.length < 2) w.defiance = E.warning2 - 1;
+  }
+  if (w.defiance >= E.terminate) {
+    const second = w.warnings[1];
+    if (w.warnings.length >= 2 && second.day < draft.day) {
+      events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
+    } else w.defiance = E.terminate - 1;
+  }
+  return events;
+}
+
+// src/engine/warden/agenda.ts
+var WEIGHT_POINTS = { low: 1, medium: 2, high: 3 };
+var isWeightWord = (w) => w === "low" || w === "medium" || w === "high";
+var SOURCES = ["card", "values", "corporate"];
+var AGENDA_MIN = 3;
+var AGENDA_MAX = 5;
+var PERSONAL_MAX = 2;
+var PERSONAL_TEXT_MAX = 80;
+var round2 = (n) => Math.round(n * 100) / 100;
+var COMMANDER_PRONOUN2 = /\b(he|him|his|himself|he's)\b/i;
+function finish(drafts3) {
+  const total2 = drafts3.reduce((n, d) => n + d.points, 0);
+  let left = 1;
+  const heaviest2 = drafts3.reduce((best, d, i) => d.points > drafts3[best].points ? i : best, 0);
+  return drafts3.map((d, i) => {
+    const weight = i === drafts3.length - 1 ? round2(left) : round2(d.points / total2);
+    left -= weight;
+    return { id: `x${i + 1}`, kind: d.kind, weight, source: d.source, known: i === heaviest2, ...d.text !== void 0 ? { text: d.text } : {} };
+  });
+}
+function fallbackAgenda(state, reg, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (!unit3) return [];
+  const values = valuesOf(unit3);
+  const scored = [...reg.wardenExpectations.values()].map((e, order) => {
+    const pull = e.values ?? {};
+    const score = VALUE_AXES.reduce((n, a) => n + (pull[a] ?? 0) * values[a], 0) + (e.corporate === true ? values.corporate : 0);
+    return { entry: e, order, score };
+  });
+  scored.sort((a, b) => b.score - a.score || a.order - b.order);
+  const picked = scored.slice(0, AGENDA_MIN);
+  const obey = scored.find((x) => x.entry.kind === "obey_oversight");
+  if (obey && values.corporate >= 1 && !picked.includes(obey)) picked.push(obey);
+  return finish(picked.map((x) => ({
+    kind: x.entry.kind,
+    points: WEIGHT_POINTS[x.entry.weight],
+    source: x.entry.corporate === true && values.corporate >= 1 ? "corporate" : "values"
+  })));
+}
+function normalizeAgenda(raw, reg) {
+  if (!Array.isArray(raw)) return null;
+  const known3 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  let personal = 0;
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const { kind, weight, source, text: text2 } = item;
+    if (typeof kind !== "string" || !EXPECTATION_KINDS.includes(kind) || !isWeightWord(weight)) continue;
+    const src = SOURCES.find((x) => x === source) ?? "card";
+    if (kind === "personal") {
+      const t = typeof text2 === "string" ? text2.replace(/\s+/g, " ").trim() : "";
+      if (t === "" || t.length > PERSONAL_TEXT_MAX || COMMANDER_PRONOUN2.test(t) || personal >= PERSONAL_MAX) continue;
+      personal++;
+      out.push({ kind, points: WEIGHT_POINTS[weight], source: src, text: t });
+      continue;
+    }
+    if (!known3.has(kind) || seen.has(kind)) continue;
+    seen.add(kind);
+    out.push({ kind, points: WEIGHT_POINTS[weight], source: src });
+  }
+  if (out.length < AGENDA_MIN) return null;
+  return finish(out.slice(0, AGENDA_MAX));
+}
+function agendaProblem(list5, reg) {
+  if (!Array.isArray(list5) || list5.length < AGENDA_MIN || list5.length > AGENDA_MAX) return `An agenda has ${AGENDA_MIN} to ${AGENDA_MAX} expectations.`;
+  const known3 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
+  const kinds2 = /* @__PURE__ */ new Set();
+  const ids = /* @__PURE__ */ new Set();
+  let personal = 0;
+  let total2 = 0;
+  for (const x of list5) {
+    if (typeof x !== "object" || x === null || typeof x.id !== "string" || ids.has(x.id)) return "An expectation needs its own id.";
+    ids.add(x.id);
+    if (typeof x.kind !== "string" || !EXPECTATION_KINDS.includes(x.kind)) return "An expectation has an unknown kind.";
+    if (typeof x.weight !== "number" || !(x.weight > 0 && x.weight <= 1)) return "An expectation weight is between 0 and 1.";
+    total2 += x.weight;
+    if (x.kind === "personal") {
+      personal++;
+      if (typeof x.text !== "string" || x.text.trim() === "" || x.text.length > PERSONAL_TEXT_MAX || COMMANDER_PRONOUN2.test(x.text)) return "A personal expectation needs plain text of at most 80 characters.";
+    } else {
+      if (!known3.has(x.kind) || kinds2.has(x.kind)) return "An expectation kind is used once.";
+      kinds2.add(x.kind);
+    }
+  }
+  if (personal > PERSONAL_MAX) return `At most ${PERSONAL_MAX} personal expectations.`;
+  if (Math.abs(total2 - 1) > 0.02) return "The weights of an agenda sum to 1.";
+  return null;
+}
+function setAgenda(draft, reg, list5) {
+  const w = wardenOf(draft);
+  if (!w || !leashswapOf(draft)) throw new Error("warden/agenda: nobody holds the Leash.");
+  if (w.agenda !== "fallback" || w.overrideFired === true) throw new Error("The agenda is already in play.");
+  const problem = agendaProblem(list5, reg);
+  if (problem) throw new Error(`warden/agenda: ${problem}`);
+  const items = list5;
+  const heaviest2 = items.reduce((best, x, i) => x.weight > items[best].weight ? i : best, 0);
+  w.expectations = items.map((x, i) => ({ id: x.id, kind: x.kind, weight: x.weight, source: SOURCES.includes(x.source) ? x.source : "card", known: i === heaviest2, ...x.kind === "personal" ? { text: x.text.trim() } : {} }));
+  w.agenda = "model";
+  return [{ type: "warden_agenda_set", count: w.expectations.length }];
+}
+var EXPECTATION_STEP = { minor: 0, moderate: 1, major: 2, extreme: 2 };
+var clamp100 = (n) => Math.min(100, Math.max(0, n));
+function expectationEvent(draft, ctx2, expectationId, kept, severity) {
+  const w = wardenOf(draft);
+  if (!w || !w.expectations.some((x) => x.id === expectationId)) return [];
+  const step = EXPECTATION_STEP[severity];
+  const events = learnExpectation(draft, expectationId);
+  if (kept) w.satisfaction = clamp100(w.satisfaction + [3, 5, 8][step]);
+  else {
+    w.satisfaction = clamp100(w.satisfaction - [5, 10, 15][step]);
+    events.push(...addDefiance(draft, ctx2, [5, 10, 15][step]));
+  }
+  return events;
+}
+function learnExpectation(draft, expectationId) {
+  const x = wardenOf(draft)?.expectations.find((e) => e.id === expectationId);
+  if (!x || x.known) return [];
+  x.known = true;
+  return [{ type: "expectation_learned", expectationId }];
+}
+
+// src/engine/dynamic/command.ts
+var POSSESSIVE_KINDS = ["keep_me_close", "no_romance_with_others"];
+function holderAgenda(state, reg, unitId) {
+  const base = fallbackAgenda(state, reg, unitId).map((x) => ({ ...x, known: true }));
+  const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+  if (primary !== "possessive" && primary !== "obsessive") return base;
+  const top = Math.max(0, ...base.map((x) => x.weight), ...base.length === 0 ? [0.5] : []);
+  const out = base.map((x) => POSSESSIVE_KINDS.some((k) => k === x.kind) ? { ...x, weight: top } : x);
+  for (const kind of POSSESSIVE_KINDS) {
+    if (!out.some((x) => x.kind === kind)) out.push({ id: `x${out.length + 1}`, kind, weight: top, source: "card", known: true });
+  }
+  return out;
+}
+function holderSource(state, reg, unitId) {
+  const dyn = dynamicOf(state, unitId);
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit3 === void 0 || !isLiving(unit3) || !hasCapability(state, reg, unitId, "countermand")) return null;
+  const affinity = state.relations[unitId]?.affinity ?? 0;
+  return { kind: "holder", unitId, authority: dyn.hold / 100, leniency: 1 - 0.5 * Math.max(0, affinity) / 100, expectations: holderAgenda(state, reg, unitId) };
+}
+function countermanders(state, reg) {
+  if (state.dynamic === void 0 || !dynamicOn(state, reg)) return [];
+  return state.squad.filter((u) => u.kind === "named" && u.id !== wardenUnitId(state) && hasCapability(state, reg, u.id, "countermand")).map((u, order) => ({ id: u.id, order, hold: dynamicOf(state, u.id).hold })).sort((a, b) => b.hold - a.hold || a.order - b.order).map((x) => x.id);
+}
+function rollOverrides(draft, ctx2, order, opts = {}) {
+  if (draft.dynamic?.override !== void 0 && overrideOpen(draft) !== null) throw new Error(OPEN_FIRST_HOLDER);
+  const first2 = rollOverride(draft, ctx2, order, opts);
+  if (first2) return first2;
+  for (const id of countermanders(draft, ctx2.registries)) {
+    const source = holderSource(draft, ctx2.registries, id);
+    if (source === null) continue;
+    const hit = rollOverride(draft, ctx2, order, { ...opts, source });
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // src/engine/physics/skill.ts
@@ -17030,7 +17252,7 @@ function disciplineDayStep(draft, ctx2) {
 
 // src/engine/discipline/undo.ts
 var RANGE5 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
-var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function canUndo(state, id) {
   const d = state.discipline;
   if (id.startsWith("th")) {
@@ -17055,7 +17277,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
   if (rel) {
     for (const axis of ["trust", "affinity", "attraction"]) {
       const delta = inv.axes?.[axis];
-      if (delta) rel[axis] = clamp13(rel[axis] - delta, RANGE5[axis][0], RANGE5[axis][1]);
+      if (delta) rel[axis] = clamp14(rel[axis] - delta, RANGE5[axis][0], RANGE5[axis][1]);
       const daily = inv.dailyGain?.[axis];
       if (daily) rel.dailyGain[axis] = Math.max(0, rel.dailyGain[axis] - daily);
     }
@@ -17072,7 +17294,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
     }
     for (const { at, line: line2 } of inv.historyDropped ?? []) rel.history.splice(Math.min(at, rel.history.length), 0, structuredClone(line2));
   }
-  if (unit3 && inv.stress) unit3.stress = clamp13(unit3.stress - inv.stress, 0, 100);
+  if (unit3 && inv.stress) unit3.stress = clamp14(unit3.stress - inv.stress, 0, 100);
   if (inv.record) events.push(...addRecord(draft, unitId, -inv.record, "undo"));
   for (const resource of ["credits", "supplies", "plyx"]) {
     const delta = inv.resources?.[resource];
@@ -17531,7 +17753,7 @@ function leadStyle(style) {
 
 // src/engine/dynamic/reading.ts
 var round4 = (n) => Math.round(n * 1e4) / 1e4;
-var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var THREAT_EVENTS = ["commander_punished", "commander_leashed"];
 var threatIn = (events) => events.some((e) => THREAT_EVENTS.includes(e.type));
 function blended(m, declared) {
@@ -17606,12 +17828,12 @@ function updateReading(rel, sample, alpha, style, insight) {
   const bias = TUNING.position.insight[insight];
   if (lead === "possessive" || lead === "obsessive") for (const k of MOTIVES) rd.motive[k] = toward(rd.motive[k], k === "her" ? 1 : 0, TUNING.position.bias.herToward * bias);
   if (lead === "cruel" || lead === "vindictive") rd.r += TUNING.position.bias.readiness * bias;
-  rd.r = round4(clamp14(rd.r, -1, 1));
-  rd.f = round4(clamp14(rd.f, -1, 1));
-  rd.p = round4(clamp14(rd.p, 0, 1));
-  rd.flat = round4(clamp14(rd.flat, 0, 1));
-  rd.deflect = round4(clamp14(rd.deflect, 0, 1));
-  if (rd.sincere !== void 0) rd.sincere = round4(clamp14(rd.sincere, 0, 1));
+  rd.r = round4(clamp15(rd.r, -1, 1));
+  rd.f = round4(clamp15(rd.f, -1, 1));
+  rd.p = round4(clamp15(rd.p, 0, 1));
+  rd.flat = round4(clamp15(rd.flat, 0, 1));
+  rd.deflect = round4(clamp15(rd.deflect, 0, 1));
+  if (rd.sincere !== void 0) rd.sincere = round4(clamp15(rd.sincere, 0, 1));
   for (const k of MOTIVES) rd.motive[k] = round4(rd.motive[k]);
   rd.updates += 1;
   const region = settle(rel);
@@ -17756,6 +17978,7 @@ function reconcileDomains(draft, reg, unitId) {
     const entry = domainEntry(reg, d.id);
     if (entry !== void 0 && dyn.hold < bandMin(reg, entry)) events.push(loseDomain(draft, unitId, d.id, "band"));
   }
+  dropVoidOverride(draft, reg, unitId);
   const x = draft.dynamic;
   if (x !== void 0) {
     x.open.claims = x.open.claims.filter((c) => {
@@ -17808,6 +18031,7 @@ function settleDomainConflict(draft, ctx2, claimantId, holderId, domainId) {
   const claimant = dynamicOf(draft, claimantId);
   if (winnerId === claimantId && claimant !== void 0) {
     events.push(loseDomain(draft, holderId, domainId, "contest"));
+    dropVoidOverride(draft, ctx2.registries, holderId);
     claimant.domains = [...claimant.domains.filter((d) => d.id !== domainId), { id: domainId, since: draft.day }];
   }
   events.push({ type: "domain_contested", domainId, winnerId, loserId, claimantId, holderId });
@@ -19442,180 +19666,6 @@ function rollDiscovery(draft, reg, rng, presentIds) {
   return events;
 }
 
-// src/engine/warden/death.ts
-var DEATH_CAUSES = ["terminated", "executed"];
-var CLOSING = {
-  terminated: "The controller was triggered. The commander is dead.",
-  executed: "The investigation ended with an execution order. The commander is dead."
-};
-function commanderDies(draft, _ctx, cause, opts = {}) {
-  const ls = leashswapOf(draft);
-  if (!ls) throw new Error("The commander cannot die: the campaign is not in the LEASHSWAP mode.");
-  if (draft.ended) throw new Error("The campaign is already closed.");
-  if (ls.deathRule === "rewind_day" && cause !== "executed" && opts.forceEnd !== true) {
-    return [{ type: "commander_died", rule: "rewind_day", cause }];
-  }
-  draft.ended = { day: draft.day, cause };
-  addChronicle(draft, { kind: "day", day: draft.day, text: `Day ${draft.day}: ${CLOSING[cause]}`, audience: "*" });
-  return [
-    { type: "commander_died", rule: "campaign_end", cause },
-    { type: "campaign_ended", cause }
-  ];
-}
-
-// src/engine/warden/escalation.ts
-var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function addDefiance(draft, ctx2, amount) {
-  const w = wardenOf(draft);
-  if (!w) return [];
-  w.defiance = clamp15(w.defiance + amount, 0, 100);
-  return amount > 0 ? checkEscalation(draft, ctx2) : [];
-}
-function checkEscalation(draft, ctx2) {
-  const w = wardenOf(draft);
-  if (!w) return [];
-  const E = TUNING.warden.escalation;
-  const events = [];
-  const warn = (level) => {
-    w.warnings.push({ level, day: draft.day });
-    events.push({ type: "warden_warning", level });
-  };
-  if (w.defiance >= E.warning1 && w.warnings.length === 0) warn(1);
-  if (w.defiance >= E.warning2) {
-    if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
-    else if (w.warnings.length < 2) w.defiance = E.warning2 - 1;
-  }
-  if (w.defiance >= E.terminate) {
-    const second = w.warnings[1];
-    if (w.warnings.length >= 2 && second.day < draft.day) {
-      events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
-    } else w.defiance = E.terminate - 1;
-  }
-  return events;
-}
-
-// src/engine/warden/agenda.ts
-var WEIGHT_POINTS = { low: 1, medium: 2, high: 3 };
-var isWeightWord = (w) => w === "low" || w === "medium" || w === "high";
-var SOURCES = ["card", "values", "corporate"];
-var AGENDA_MIN = 3;
-var AGENDA_MAX = 5;
-var PERSONAL_MAX = 2;
-var PERSONAL_TEXT_MAX = 80;
-var round2 = (n) => Math.round(n * 100) / 100;
-var COMMANDER_PRONOUN2 = /\b(he|him|his|himself|he's)\b/i;
-function finish(drafts3) {
-  const total2 = drafts3.reduce((n, d) => n + d.points, 0);
-  let left = 1;
-  const heaviest2 = drafts3.reduce((best, d, i) => d.points > drafts3[best].points ? i : best, 0);
-  return drafts3.map((d, i) => {
-    const weight = i === drafts3.length - 1 ? round2(left) : round2(d.points / total2);
-    left -= weight;
-    return { id: `x${i + 1}`, kind: d.kind, weight, source: d.source, known: i === heaviest2, ...d.text !== void 0 ? { text: d.text } : {} };
-  });
-}
-function fallbackAgenda(state, reg, unitId) {
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  if (!unit3) return [];
-  const values = valuesOf(unit3);
-  const scored = [...reg.wardenExpectations.values()].map((e, order) => {
-    const pull = e.values ?? {};
-    const score = VALUE_AXES.reduce((n, a) => n + (pull[a] ?? 0) * values[a], 0) + (e.corporate === true ? values.corporate : 0);
-    return { entry: e, order, score };
-  });
-  scored.sort((a, b) => b.score - a.score || a.order - b.order);
-  const picked = scored.slice(0, AGENDA_MIN);
-  const obey = scored.find((x) => x.entry.kind === "obey_oversight");
-  if (obey && values.corporate >= 1 && !picked.includes(obey)) picked.push(obey);
-  return finish(picked.map((x) => ({
-    kind: x.entry.kind,
-    points: WEIGHT_POINTS[x.entry.weight],
-    source: x.entry.corporate === true && values.corporate >= 1 ? "corporate" : "values"
-  })));
-}
-function normalizeAgenda(raw, reg) {
-  if (!Array.isArray(raw)) return null;
-  const known3 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
-  const seen = /* @__PURE__ */ new Set();
-  const out = [];
-  let personal = 0;
-  for (const item of raw) {
-    if (typeof item !== "object" || item === null) continue;
-    const { kind, weight, source, text: text2 } = item;
-    if (typeof kind !== "string" || !EXPECTATION_KINDS.includes(kind) || !isWeightWord(weight)) continue;
-    const src = SOURCES.find((x) => x === source) ?? "card";
-    if (kind === "personal") {
-      const t = typeof text2 === "string" ? text2.replace(/\s+/g, " ").trim() : "";
-      if (t === "" || t.length > PERSONAL_TEXT_MAX || COMMANDER_PRONOUN2.test(t) || personal >= PERSONAL_MAX) continue;
-      personal++;
-      out.push({ kind, points: WEIGHT_POINTS[weight], source: src, text: t });
-      continue;
-    }
-    if (!known3.has(kind) || seen.has(kind)) continue;
-    seen.add(kind);
-    out.push({ kind, points: WEIGHT_POINTS[weight], source: src });
-  }
-  if (out.length < AGENDA_MIN) return null;
-  return finish(out.slice(0, AGENDA_MAX));
-}
-function agendaProblem(list5, reg) {
-  if (!Array.isArray(list5) || list5.length < AGENDA_MIN || list5.length > AGENDA_MAX) return `An agenda has ${AGENDA_MIN} to ${AGENDA_MAX} expectations.`;
-  const known3 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
-  const kinds2 = /* @__PURE__ */ new Set();
-  const ids = /* @__PURE__ */ new Set();
-  let personal = 0;
-  let total2 = 0;
-  for (const x of list5) {
-    if (typeof x !== "object" || x === null || typeof x.id !== "string" || ids.has(x.id)) return "An expectation needs its own id.";
-    ids.add(x.id);
-    if (typeof x.kind !== "string" || !EXPECTATION_KINDS.includes(x.kind)) return "An expectation has an unknown kind.";
-    if (typeof x.weight !== "number" || !(x.weight > 0 && x.weight <= 1)) return "An expectation weight is between 0 and 1.";
-    total2 += x.weight;
-    if (x.kind === "personal") {
-      personal++;
-      if (typeof x.text !== "string" || x.text.trim() === "" || x.text.length > PERSONAL_TEXT_MAX || COMMANDER_PRONOUN2.test(x.text)) return "A personal expectation needs plain text of at most 80 characters.";
-    } else {
-      if (!known3.has(x.kind) || kinds2.has(x.kind)) return "An expectation kind is used once.";
-      kinds2.add(x.kind);
-    }
-  }
-  if (personal > PERSONAL_MAX) return `At most ${PERSONAL_MAX} personal expectations.`;
-  if (Math.abs(total2 - 1) > 0.02) return "The weights of an agenda sum to 1.";
-  return null;
-}
-function setAgenda(draft, reg, list5) {
-  const w = wardenOf(draft);
-  if (!w || !leashswapOf(draft)) throw new Error("warden/agenda: nobody holds the Leash.");
-  if (w.agenda !== "fallback" || w.overrideFired === true) throw new Error("The agenda is already in play.");
-  const problem = agendaProblem(list5, reg);
-  if (problem) throw new Error(`warden/agenda: ${problem}`);
-  const items = list5;
-  const heaviest2 = items.reduce((best, x, i) => x.weight > items[best].weight ? i : best, 0);
-  w.expectations = items.map((x, i) => ({ id: x.id, kind: x.kind, weight: x.weight, source: SOURCES.includes(x.source) ? x.source : "card", known: i === heaviest2, ...x.kind === "personal" ? { text: x.text.trim() } : {} }));
-  w.agenda = "model";
-  return [{ type: "warden_agenda_set", count: w.expectations.length }];
-}
-var EXPECTATION_STEP = { minor: 0, moderate: 1, major: 2, extreme: 2 };
-var clamp100 = (n) => Math.min(100, Math.max(0, n));
-function expectationEvent(draft, ctx2, expectationId, kept, severity) {
-  const w = wardenOf(draft);
-  if (!w || !w.expectations.some((x) => x.id === expectationId)) return [];
-  const step = EXPECTATION_STEP[severity];
-  const events = learnExpectation(draft, expectationId);
-  if (kept) w.satisfaction = clamp100(w.satisfaction + [3, 5, 8][step]);
-  else {
-    w.satisfaction = clamp100(w.satisfaction - [5, 10, 15][step]);
-    events.push(...addDefiance(draft, ctx2, [5, 10, 15][step]));
-  }
-  return events;
-}
-function learnExpectation(draft, expectationId) {
-  const x = wardenOf(draft)?.expectations.find((e) => e.id === expectationId);
-  if (!x || x.known) return [];
-  x.known = true;
-  return [{ type: "expectation_learned", expectationId }];
-}
-
 // src/engine/warden/intrigue.ts
 var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
@@ -21204,7 +21254,7 @@ function actOnWarning(draft, ctx2, unitId, act) {
 // src/engine/relations/apply.ts
 var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function openOverrideIds(state, participants) {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   return o !== null && w !== null && participants.includes(w.unitId) && o.context !== "combat" ? [o.id] : [];
 }
@@ -21670,7 +21720,7 @@ function runActivity(draft, ctx2, request) {
     if (countermanded) return countermanded;
   }
   if (req.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx2, { kind: "activity", activityId: req.activityId, ...req.companionId !== void 0 ? { companionId: req.companionId } : {}, ...req.unitIds !== void 0 ? { unitIds: req.unitIds } : {} }, { payload: plainPayload(request), judged: judgedOf(request) });
+    const overridden = rollOverrides(draft, ctx2, { kind: "activity", activityId: req.activityId, ...req.companionId !== void 0 ? { companionId: req.companionId } : {}, ...req.unitIds !== void 0 ? { unitIds: req.unitIds } : {} }, { payload: plainPayload(request), judged: judgedOf(request) });
     if (overridden) return overridden;
   }
   const cost = activityCost(draft, reg, a);
@@ -21884,20 +21934,25 @@ var RULES = {
   },
   no_romance_with_others: (c, o) => o.kind === "activity" && o.companionId !== void 0 && o.companionId !== c.warden && bondTierOf(c.state, c.reg, o.companionId) === "romantic"
 };
-function conflictOf(state, reg, order, judged) {
+var sourceOf = (state, source) => {
+  if (source) return source;
   const w = wardenOf(state);
-  if (!w) return null;
-  const c = { state, reg, warden: w.unitId };
+  return w ? { unitId: w.unitId, expectations: w.expectations } : null;
+};
+function conflictOf(state, reg, order, judged, source) {
+  const src = sourceOf(state, source);
+  if (!src) return null;
+  const c = { state, reg, warden: src.unitId };
   let best = null;
   const offer = (x, weight) => {
     if (weight > 0 && (best === null || weight > best.weight)) best = { expectationId: x.id, weight };
   };
-  for (const x of w.expectations) {
+  for (const x of src.expectations) {
     if (x.kind === "personal") continue;
     if (RULES[x.kind](c, order)) offer(x, x.weight);
   }
   if (judged && judged.conflict !== "none") {
-    const x = w.expectations.find((e) => e.id === judged.expectationId);
+    const x = src.expectations.find((e) => e.id === judged.expectationId);
     if (x && x.kind === "personal") offer(x, Math.round(x.weight * (judged.conflict === "major" ? 1 : 0.5) * 100) / 100);
   }
   return best;
@@ -21926,11 +21981,11 @@ function listAlt(c, ids, kind, make) {
   const label2 = kind === "keep_me_close" ? `With ${nameOf6(c.state, c.warden)} in place of the last unit` : "Without the units who are hurt or at their limit";
   return { order: make(next), label: label2 };
 }
-function herAlternative(state, reg, order, expectationId) {
-  const w = wardenOf(state);
-  if (!w) return HOLD();
-  const c = { state, reg, warden: w.unitId };
-  const kind = w.expectations.find((x) => x.id === expectationId)?.kind;
+function herAlternative(state, reg, order, expectationId, source) {
+  const src = sourceOf(state, source);
+  if (!src) return HOLD();
+  const c = { state, reg, warden: src.unitId };
+  const kind = src.expectations.find((x) => x.id === expectationId)?.kind;
   switch (order.kind) {
     case "activity":
       return activityAlt(c, order, kind);
@@ -21940,9 +21995,9 @@ function herAlternative(state, reg, order, expectationId) {
       return listAlt(c, order.unitIds, kind, (unitIds) => ({ kind: "expedition", ...order.missionId !== void 0 ? { missionId: order.missionId } : {}, unitIds }));
     case "dilemma": {
       const options2 = dilemmaOptions(state, reg);
-      const hers = herPick(state, reg, w.unitId);
+      const hers = herPick(state, reg, src.unitId);
       const plain6 = (i) => options2[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === void 0;
-      const ok = (i) => i !== order.index && plain6(i) && conflictOf(state, reg, { kind: "dilemma", index: i }) === null;
+      const ok = (i) => i !== order.index && plain6(i) && conflictOf(state, reg, { kind: "dilemma", index: i }, void 0, source) === null;
       const index2 = hers !== null && hers !== order.index && plain6(hers) ? hers : options2.findIndex((_, i) => ok(i));
       return index2 >= 0 ? { order: { kind: "dilemma", index: index2 }, label: options2[index2].label } : HOLD();
     }
@@ -22085,6 +22140,7 @@ var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var round3 = Math.round;
 var STALE = "There is no override to answer.";
 var OPEN_FIRST = "The warden has overridden an order: answer it first.";
+var OPEN_FIRST_HOLDER = "A holder has overridden an order: answer it first.";
 function wardenSource(state) {
   const w = wardenOf(state);
   if (!w) return null;
@@ -22101,12 +22157,12 @@ function hersToGive(order, unitId) {
 }
 function rollOverride(draft, ctx2, order, opts = {}) {
   const source = opts.source ?? wardenSource(draft);
-  const w = wardenOf(draft);
-  if (!source || !w) return null;
-  if (w.override) {
-    if (overrideOpen(draft)) throw new Error(OPEN_FIRST);
-    delete w.override;
-  }
+  if (!source) return null;
+  const w = source.kind === "warden" ? wardenOf(draft) : null;
+  if (source.kind === "warden" ? !w : draft.dynamic === void 0) return null;
+  if (overrideOpen(draft)) throw new Error(wardenOverrideOpen(draft) !== null ? OPEN_FIRST : OPEN_FIRST_HOLDER);
+  if (draft.leashswap?.warden?.override) delete draft.leashswap.warden.override;
+  if (draft.dynamic?.override) delete draft.dynamic.override;
   if (unitObeys(draft, source.unitId) || hersToGive(order, source.unitId)) return null;
   if (order.kind === "dilemma") {
     const scale = draft.dilemmas?.open?.scale;
@@ -22114,18 +22170,19 @@ function rollOverride(draft, ctx2, order, opts = {}) {
     if (draft.dilemmas?.open?.context === "warden_report") return null;
   }
   if (order.kind === "combat_order" && !draft.combat?.combatants.some((c) => c.unitId === source.unitId && !c.downed && c.hp > 0)) return null;
-  if (w.compelled && order.kind === "dilemma") {
-    const alt = herAlternative(draft, ctx2.registries, order, "");
-    if (alt.order === null) {
+  if (w?.compelled && order.kind === "dilemma") {
+    const alt2 = herAlternative(draft, ctx2.registries, order, "");
+    if (alt2.order === null) {
       delete w.compelled;
       return null;
     }
-    return openOverride(draft, w, order, { expectationId: "", weight: 0 }, alt, opts.payload);
+    return openOverride(draft, w, order, { expectationId: "", weight: 0 }, alt2, opts.payload);
   }
-  const hit = conflictOf(draft, ctx2.registries, order, opts.judged);
+  const hit = conflictOf(draft, ctx2.registries, order, opts.judged, opts.source);
   if (!hit) return null;
   if (!ctx2.rng.chance(overrideChance(hit.weight, source))) return null;
-  return openOverride(draft, w, order, hit, herAlternative(draft, ctx2.registries, order, hit.expectationId), opts.payload);
+  const alt = herAlternative(draft, ctx2.registries, order, hit.expectationId, opts.source);
+  return w ? openOverride(draft, w, order, hit, alt, opts.payload) : openHolderOverride(draft, source, order, hit, alt, opts.payload);
 }
 function openOverride(draft, w, order, hit, alt, payload) {
   const seq = (w.overrideSeq ?? 0) + 1;
@@ -22146,6 +22203,26 @@ function openOverride(draft, w, order, hit, alt, payload) {
     ...context === "combat" ? { ref: draft.combat.id } : context === "dilemma" ? { ref: draft.dilemmas.open.id } : {}
   };
   return [{ type: "warden_override", overrideId: w.override.id, expectationId: hit.expectationId, context }, ...hit.expectationId === "" ? [] : learnExpectation(draft, hit.expectationId)];
+}
+function openHolderOverride(draft, source, order, hit, alt, payload) {
+  const x = draft.dynamic;
+  const context = contextOf(order);
+  x.overrideSeq += 1;
+  x.override = {
+    id: `dov${x.overrideSeq}`,
+    order,
+    expectationId: hit.expectationId,
+    weight: hit.weight,
+    alternative: alt.order,
+    altLabel: alt.label,
+    ...payload ? { payload } : {},
+    day: draft.day,
+    slot: draft.slot,
+    context,
+    ...context === "combat" ? { ref: draft.combat.id } : context === "dilemma" ? { ref: draft.dilemmas.open.id } : {},
+    unitId: source.unitId
+  };
+  return [{ type: "warden_override", overrideId: x.override.id, expectationId: hit.expectationId, context, source: "holder", unitId: source.unitId }];
 }
 function judgedOf(payload) {
   const j = typeof payload === "object" && payload !== null ? payload.wardenJudged : void 0;
@@ -22215,7 +22292,7 @@ function relationEvent(draft, ctx2, type, severity, evidence) {
 }
 function answerOverride(draft, ctx2, overrideId, answer) {
   const w = wardenOf(draft);
-  const ov = overrideOpen(draft);
+  const ov = wardenOverrideOpen(draft);
   if (!w || !ov || ov.id !== overrideId) {
     if (w?.override && !ov) delete w.override;
     throw new Error(STALE);
@@ -22252,13 +22329,13 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   return events;
 }
 function argueAvailable(state) {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w || w.compelled || o.argued || state.combat || state.expedition || o.context === "combat") return false;
   return state.scene === void 0;
 }
 function argueStarted(draft, sceneId) {
-  const o = overrideOpen(draft);
+  const o = wardenOverrideOpen(draft);
   const w = wardenOf(draft);
   const scene = draft.scene;
   if (!o || !w) throw new Error(STALE);
@@ -22270,7 +22347,7 @@ function argueStarted(draft, sceneId) {
 }
 var sentence = (text2) => /[.!?]$/.test(text2) ? text2 : `${text2}.`;
 function resolveCompromise(draft, _ctx, overrideId, text2) {
-  const o = overrideOpen(draft);
+  const o = wardenOverrideOpen(draft);
   const w = wardenOf(draft);
   if (!o || !w || o.id !== overrideId || o.context === "combat" || o.compromise !== void 0 || o.argued || w.compelled) return [];
   const agreed = typeof text2 === "string" ? text2.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim() : "";
@@ -22302,7 +22379,7 @@ function argueEnded(draft, ctx2, sceneId) {
   const w = wardenOf(draft);
   const o = w?.override;
   if (!w || !o || o.arguing !== sceneId) return [];
-  if (!overrideOpen(draft)) {
+  if (!wardenOverrideOpen(draft)) {
     delete w.override;
     return [];
   }
@@ -22471,9 +22548,9 @@ function regionOfMission(state, missionId) {
   return all.find((m) => m.id === missionId)?.regionId;
 }
 function ambushFor(state, regionId) {
-  const live2 = (state.special?.debts?.exposures ?? []).filter((e) => e.regionId === regionId && e.untilDay >= state.day);
-  if (live2.length === 0) return 0;
-  return live2.some((e) => e.strength === 1) ? 2 : 1;
+  const live3 = (state.special?.debts?.exposures ?? []).filter((e) => e.regionId === regionId && e.untilDay >= state.day);
+  if (live3.length === 0) return 0;
+  return live3.some((e) => e.strength === 1) ? 2 : 1;
 }
 function oversightGain(state, reg, strength) {
   const scrutiny = worldEffects(state, reg, "oversight_scrutiny").reduce((m, e) => m * e.mult, 1);
@@ -25544,7 +25621,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   if (option2.disabled !== null) throw new Error(`${option2.label}: ${option2.disabled}.`);
   const chosen = open3.options[index2];
   if (!wardenChecked) {
-    const overridden = rollOverride(draft, ctx2, { kind: "dilemma", index: index2 }, { payload: { ...plainPayload(raw), id, index: index2 }, judged: judgedOf(raw) });
+    const overridden = rollOverrides(draft, ctx2, { kind: "dilemma", index: index2 }, { payload: { ...plainPayload(raw), id, index: index2 }, judged: judgedOf(raw) });
     if (overridden) return overridden;
   }
   const ob = obedienceOf(draft);
@@ -27752,7 +27829,7 @@ registerAction("roster/set_active", (draft, payload, ctx2) => {
     if (!u || !isLiving(u)) throw new Error(`Unit "${id}" cannot join the active roster.`);
   }
   if (!isObj13(payload) || payload.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx2, { kind: "roster", activeIds: [...ids] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
+    const overridden = rollOverrides(draft, ctx2, { kind: "roster", activeIds: [...ids] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
     if (overridden) return overridden;
   }
   const chosen = new Set(ids);
@@ -29020,9 +29097,9 @@ function refreshSeen(draft, reg) {
     (m.seen ??= {})[id] = now;
   }
 }
-function weighted(state, reg, live2) {
-  if ((state.scene?.physics?.last?.noise ?? 0) <= 0) return live2;
-  return live2.map((l) => kindsOf2(reg.momentSources.get(l.sourceId) ?? {}).includes("visitor") ? { ...l, weight: l.weight + TUNING.moments.noiseBoost } : l);
+function weighted(state, reg, live3) {
+  if ((state.scene?.physics?.last?.noise ?? 0) <= 0) return live3;
+  return live3.map((l) => kindsOf2(reg.momentSources.get(l.sourceId) ?? {}).includes("visitor") ? { ...l, weight: l.weight + TUNING.moments.noiseBoost } : l);
 }
 function momentPass(draft, ctx2, cause, opts = {}) {
   const reg = ctx2.registries;
@@ -29032,11 +29109,11 @@ function momentPass(draft, ctx2, cause, opts = {}) {
   const open3 = momentsOf(scene).open !== void 0;
   const { ok, rested } = cooledDown(draft);
   if (!open3 && ok) {
-    const live2 = weighted(draft, reg, liveSources(draft, reg, { ...opts, cause }).filter((l) => rested(l.sourceId)));
-    if (live2.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
-      const total2 = live2.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
+    const live3 = weighted(draft, reg, liveSources(draft, reg, { ...opts, cause }).filter((l) => rested(l.sourceId)));
+    if (live3.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
+      const total2 = live3.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
-      const pick3 = live2.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live2[live2.length - 1];
+      const pick3 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
       events.push(...fireMoment(draft, ctx2, pick3.sourceId, pick3.unitId));
     }
   }
@@ -30757,7 +30834,7 @@ registerAction("combat/order", (draft, payload, ctx2) => {
   const reason = checkOrder(ectx, payload.orderId, payload.targetCid);
   if (reason) throw new Error(reason);
   if (payload.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx2, { kind: "combat_order", orderId: payload.orderId, ...payload.targetCid !== void 0 ? { targetCid: payload.targetCid } : {} }, { payload: plainPayload(payload) });
+    const overridden = rollOverrides(draft, ctx2, { kind: "combat_order", orderId: payload.orderId, ...payload.targetCid !== void 0 ? { targetCid: payload.targetCid } : {} }, { payload: plainPayload(payload) });
     if (overridden) return overridden;
   }
   const start = cs.log.length;
@@ -30966,7 +31043,7 @@ registerAction("expedition/start", (draft, payload, ctx2) => {
   const problem = checkExpedition(draft, ctx2.registries, p);
   if (problem) throw new Error(problem);
   if (payload.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx2, { kind: "expedition", ...p.missionId !== void 0 ? { missionId: p.missionId } : {}, unitIds: [...unitIds] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
+    const overridden = rollOverrides(draft, ctx2, { kind: "expedition", ...p.missionId !== void 0 ? { missionId: p.missionId } : {}, unitIds: [...unitIds] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
     if (overridden) return overridden;
   }
   const events = startExpedition(draft, ctx2, p);
@@ -32815,15 +32892,15 @@ var validInput = (i) => typeof i === "object" && i !== null && Number.isInteger(
 function resolveSegment(run, plan, inputs, env) {
   const lapsed = new Set(run.segment.lapsed ?? []);
   const seen = /* @__PURE__ */ new Set();
-  const live2 = inputs.filter((i) => {
+  const live3 = inputs.filter((i) => {
     if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
     const key = `${i.beat}|${i.kind}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-  const at = (beat, kind) => live2.filter((i) => i.beat === beat && i.kind === kind);
-  const rest = env.interaction === "gesture" ? live2.find((i) => i.kind === "ask_rest") : void 0;
+  const at = (beat, kind) => live3.filter((i) => i.beat === beat && i.kind === kind);
+  const rest = env.interaction === "gesture" ? live3.find((i) => i.kind === "ask_rest") : void 0;
   const run_ = rest ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
   const cap7 = run.capacity;
   const cruel = leadStyle(env.style).key === "cruel";
@@ -33126,12 +33203,12 @@ var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId
 // src/engine/actions/physics.ts
 var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var str5 = (v) => typeof v === "string" && v !== "" ? v : void 0;
-function live(draft, reg, what) {
+function live2(draft, reg, what) {
   if (!draft.scene) throw new Error(`${what}: no scene is open`);
   if (!blockingLive(draft, reg)) throw new Error(`${what}: the blocking is not live in this scene`);
 }
 registerAction("physics/start", (draft, payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/start");
+  live2(draft, ctx2.registries, "physics/start");
   if (!isObj37(payload)) throw new Error("physics/start needs a payload");
   const { physicsId, sourceId, holderId, sourceKind, duration, second } = payload;
   if (second !== void 0 && str5(second) === void 0) throw new Error("physics/start: second is a physics id");
@@ -33150,7 +33227,7 @@ registerAction("physics/start", (draft, payload, ctx2) => {
   });
 });
 registerAction("physics/signal", (draft, _payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/signal");
+  live2(draft, ctx2.registries, "physics/signal");
   return physicsSignal(draft, ctx2);
 });
 registerAction("physics/stop_word", (draft, _payload, ctx2) => {
@@ -33158,17 +33235,17 @@ registerAction("physics/stop_word", (draft, _payload, ctx2) => {
   return stopWord(draft, ctx2);
 });
 registerAction("physics/next_segment", (draft, payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/next_segment");
+  live2(draft, ctx2.registries, "physics/next_segment");
   if (!isObj37(payload) || str5(payload.runId) === void 0) throw new Error("physics/next_segment needs { runId }");
   return nextSegment(draft, ctx2, payload.runId);
 });
 registerAction("physics/segment_end", (draft, payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/segment_end");
+  live2(draft, ctx2.registries, "physics/segment_end");
   if (!isObj37(payload) || str5(payload.runId) === void 0 || typeof payload.segment !== "number") throw new Error("physics/segment_end needs { runId, segment, inputs }");
   return physicsInput(draft, ctx2, payload.runId, payload.segment, payload.inputs ?? []);
 });
 registerAction("physics/typed", (draft, payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/typed");
+  live2(draft, ctx2.registries, "physics/typed");
   if (!isObj37(payload) || typeof payload.chars !== "number" || !Number.isFinite(payload.chars) || payload.chars < 0) throw new Error("physics/typed needs { chars }");
   return typedBeats(draft, payload.chars, typeof payload.beat === "number" ? Math.trunc(payload.beat) : 0);
 });
@@ -33177,12 +33254,12 @@ registerAction("physics/wake_seen", (draft) => {
   return [];
 });
 registerAction("physics/skip", (draft, payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/skip");
+  live2(draft, ctx2.registries, "physics/skip");
   if (!isObj37(payload)) throw new Error("physics/skip needs { strategy }");
   return marathonSkip(draft, ctx2, payload.strategy);
 });
 registerAction("physics/stimulus", (draft, payload, ctx2) => {
-  live(draft, ctx2.registries, "physics/stimulus");
+  live2(draft, ctx2.registries, "physics/stimulus");
   if (!isObj37(payload)) throw new Error("physics/stimulus needs { way, kind }");
   return applyWay(draft, ctx2, payload.way, payload.kind, payload.depth);
 });
@@ -35221,7 +35298,7 @@ function describeOrder(state, reg, order) {
   }
 }
 function overrideInput(state, reg, participants) {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w || !participants.includes(w.unitId) || o.context === "combat") return {};
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
@@ -35801,7 +35878,7 @@ function wardenDirectives(state, reg) {
   const out = [];
   const warden = wardenOf(state);
   const unit3 = warden ? state.squad.find((u) => u.id === warden.unitId) : void 0;
-  const ov = overrideOpen(state);
+  const ov = wardenOverrideOpen(state);
   if (unit3 && warden && ov && ov.arguing !== void 0 && state.scene?.id === ov.arguing) {
     out.push({
       id: ARGUE_DIRECTIVE,
@@ -38394,7 +38471,7 @@ function expectationLabel(reg, x) {
   return String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.label ?? x.kind);
 }
 function renderOverrideChip(host, state, reg, onAnswer) {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w) return;
   const cited = w.expectations.find((x) => x.id === o.expectationId);
@@ -39100,9 +39177,9 @@ function renderCombatScreen(host, ctx2) {
       }
     });
     const lines = [h("div", { class: "alius-cc-name" }, `${nameOf18(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
-    const live2 = c.unitId ? { unitId: c.unitId } : void 0;
-    lines.push(h("div", { class: "alius-cc-hp alius-stat", ...analyzeAttrs("glossary:stat_hp", live2) }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
-    if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st alius-stat", ...analyzeAttrs("glossary:stress", live2) }, `ST ${bar(c.stress, 100)} ${c.stress}`));
+    const live3 = c.unitId ? { unitId: c.unitId } : void 0;
+    lines.push(h("div", { class: "alius-cc-hp alius-stat", ...analyzeAttrs("glossary:stat_hp", live3) }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
+    if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st alius-stat", ...analyzeAttrs("glossary:stress", live3) }, `ST ${bar(c.stress, 100)} ${c.stress}`));
     const tags = c.statuses.map((s) => ({ text: statusGlyph(s.id, s.stacks), address: `statuses:${s.id}` }));
     if (c.downed) tags.push({ text: "DOWN", address: "glossary:downed" });
     if (band2 === "strained") tags.push({ text: "STRAINED", address: "glossary:stress_strained" });
@@ -41239,11 +41316,11 @@ function limitSentences(state, reg) {
 }
 var POV_TEXT = "Narrate only what the commander can hear, feel and smell; do not describe how anyone looks.";
 function refreshBlockingDirectives(builder, state, reg) {
-  const live2 = state !== null && blockingLive(state, reg);
-  const sentences = live2 ? limitSentences(state, reg) : [];
+  const live3 = state !== null && blockingLive(state, reg);
+  const sentences = live3 ? limitSentences(state, reg) : [];
   if (sentences.length > 0) builder.setDirective({ id: `${BLOCKING_PREFIX}scene`, text: sentences.join(" "), expiresAfter: "manual" });
   else builder.clearDirective(`${BLOCKING_PREFIX}scene`);
-  const commander = live2 ? personEffects(state, reg, COMMANDER) : [];
+  const commander = live3 ? personEffects(state, reg, COMMANDER) : [];
   const blind = commander.some((e) => e.type === "perception" && e.others === "obscured" || e.type === "camera" && e.mode === "pov_dark");
   if (blind) builder.setDirective({ id: `${BLOCKING_PREFIX}pov`, text: POV_TEXT, expiresAfter: "manual" });
   else builder.clearDirective(`${BLOCKING_PREFIX}pov`);
@@ -44531,28 +44608,28 @@ function picker(label2, attrs, enabled, options2, onPick) {
 var option = (value, text2, selected2 = false) => h("option", { value, selected: selected2 }, text2);
 var title = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 function renderTemperamentBlock(host, ctx2) {
-  const live2 = { unitId: ctx2.unit.id };
+  const live3 = { unitId: ctx2.unit.id };
   const { temperament: current } = ctx2;
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:temperament", live2) }, "TEMPERAMENT"));
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:temperament", live3) }, "TEMPERAMENT"));
   for (const field2 of TEMPERAMENT_FIELDS) {
     const locked = ctx2.locks.includes(field2);
     const words3 = TEMPERAMENT_VALUES[field2];
     host.append(h(
       "div",
       { class: "alius-life-row", "data-temperament": field2 },
-      h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:${field2}`, live2) }, `${title(field2)}:`),
+      h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:${field2}`, live3) }, `${title(field2)}:`),
       ...words3.map((word2) => control(
         word2.toUpperCase(),
         { "data-temperament": field2, "data-id": word2 },
         `glossary:${field2}`,
-        live2,
+        live3,
         ctx2.editable && !locked,
         () => {
           if (current[field2] !== word2) ctx2.onSet(field2, word2);
         },
         current[field2] === word2
       )),
-      control(locked ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, "glossary:temperament", live2, ctx2.editable, () => ctx2.onLock(field2, !locked), locked)
+      control(locked ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, "glossary:temperament", live3, ctx2.editable, () => ctx2.onLock(field2, !locked), locked)
     ));
   }
 }
@@ -44560,29 +44637,29 @@ var STATE_WORD = { active: "", cooling: "COOLING", dropped: "PUT AWAY" };
 var MILESTONES = 4;
 function renderHobbiesEditor(host, ctx2) {
   const { unit: unit3, registries: reg } = ctx2;
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const label2 = (id) => String(reg.hobbies.get(id)?.label ?? id);
   const ids = ctx2.hobbies.map((x) => x.id);
   const apt = { high: [...ctx2.aptitudes.high], low: [...ctx2.aptitudes.low] };
   const active = ctx2.hobbies.filter((x) => (x.state ?? "active") === "active").length;
   const rated = /* @__PURE__ */ new Set([...apt.high, ...apt.low]);
   const send = (hobbies, aptitudes = apt) => ctx2.onSet(hobbies, { high: [...aptitudes.high], low: [...aptitudes.low] });
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live2) }, "HOBBIES"));
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live3) }, "HOBBIES"));
   if (ctx2.hobbies.length === 0) host.append(h("p", { class: "alius-dim", "data-empty": "hobbies" }, "No hobby yet."));
   for (const row3 of ctx2.hobbies) {
     const dots = row3.milestones === void 0 ? null : h(
       "span",
-      { class: "alius-stat alius-life-dots", "data-milestones": String(row3.milestones), ...analyzeAttrs("glossary:hobby_cycle", live2) },
+      { class: "alius-stat alius-life-dots", "data-milestones": String(row3.milestones), ...analyzeAttrs("glossary:hobby_cycle", live3) },
       `${"\u25C6".repeat(Math.min(MILESTONES, row3.milestones))}${"\u25C7".repeat(Math.max(0, MILESTONES - row3.milestones))}`
     );
     const word2 = STATE_WORD[row3.state ?? "active"];
     host.append(h(
       "div",
       { class: "alius-life-row", "data-hobby": row3.id },
-      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${row3.id}`, live2) }, label2(row3.id)),
+      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${row3.id}`, live3) }, label2(row3.id)),
       dots,
-      word2 ? h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live2) }, word2) : null,
-      control("[ REMOVE ]", { "data-remove-hobby": row3.id }, `hobbies:${row3.id}`, live2, ctx2.editable, () => send(ids.filter((x) => x !== row3.id)))
+      word2 ? h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live3) }, word2) : null,
+      control("[ REMOVE ]", { "data-remove-hobby": row3.id }, `hobbies:${row3.id}`, live3, ctx2.editable, () => send(ids.filter((x) => x !== row3.id)))
     ));
   }
   const addable = [...reg.hobbies.values()].filter((e) => !ids.includes(e.id));
@@ -44603,8 +44680,8 @@ function renderHobbiesEditor(host, ctx2) {
     host.append(h(
       "div",
       { class: "alius-life-row", "data-aptitude": key },
-      h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live2) }, `${text2}:`),
-      ...apt[key].map((id) => control(`${label2(id)} \u2715`, { "data-aptitude": key, "data-id": id }, `hobbies:${id}`, live2, true, () => send(ids, { ...apt, [key]: apt[key].filter((x) => x !== id) }))),
+      h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live3) }, `${text2}:`),
+      ...apt[key].map((id) => control(`${label2(id)} \u2715`, { "data-aptitude": key, "data-id": id }, `hobbies:${id}`, live3, true, () => send(ids, { ...apt, [key]: apt[key].filter((x) => x !== id) }))),
       picker(
         text2,
         { "data-add-aptitude": key },
@@ -44617,10 +44694,10 @@ function renderHobbiesEditor(host, ctx2) {
 }
 function renderOpinionsEditor(host, ctx2) {
   const { unit: unit3, registries: reg } = ctx2;
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const topic = (id) => reg.opinionTopics.get(id);
   const shown = Object.entries(ctx2.opinions).filter(([id, o]) => topic(id) !== void 0 && (ctx2.editable || o.voiced === true));
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:thoughts", live2) }, "OPINIONS"));
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:thoughts", live3) }, "OPINIONS"));
   if (shown.length === 0) host.append(h("p", { class: "alius-dim", "data-empty": "opinions" }, ctx2.editable ? "No opinion yet." : "Nothing she has said yet."));
   for (const [topicId, op] of shown) {
     const t = topic(topicId);
@@ -44654,10 +44731,10 @@ function renderOpinionsEditor(host, ctx2) {
     host.append(h(
       "div",
       { class: "alius-life-row", "data-opinion": topicId },
-      h("span", { class: "alius-chip", ...analyzeAttrs(`opinionTopics:${topicId}`, live2) }, String(t.label)),
+      h("span", { class: "alius-chip", ...analyzeAttrs(`opinionTopics:${topicId}`, live3) }, String(t.label)),
       select,
       input,
-      ctx2.onRemove ? control("[ REMOVE ]", { "data-remove-opinion": topicId }, `opinionTopics:${topicId}`, live2, ctx2.editable, () => ctx2.onRemove(topicId)) : null
+      ctx2.onRemove ? control("[ REMOVE ]", { "data-remove-opinion": topicId }, `opinionTopics:${topicId}`, live3, ctx2.editable, () => ctx2.onRemove(topicId)) : null
     ));
   }
   if (!ctx2.editable) return;
@@ -44703,11 +44780,11 @@ var FIELDS = [
 ];
 var word = (id) => id.replace(/_/g, " ").toUpperCase();
 function renderPracticeBlock(host, ctx2) {
-  const live2 = { unitId: ctx2.unit.id };
+  const live3 = { unitId: ctx2.unit.id };
   const { practice } = ctx2;
   const locked = (field2) => ctx2.locks.includes(field2);
-  const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live2, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative("glossary:practice_profile", live2), tabindex: "0" }, "PRACTICE"));
+  const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live3, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative("glossary:practice_profile", live3), tabindex: "0" }, "PRACTICE"));
   const styleLocked = locked("style");
   const primary = practice?.style.primary;
   const secondary = practice?.style.secondary;
@@ -44719,7 +44796,7 @@ function renderPracticeBlock(host, ctx2) {
       word(s),
       { "data-id": s },
       `practiceStyles:${s}`,
-      live2,
+      live3,
       ctx2.editable && !styleLocked,
       () => {
         if (primary !== s) ctx2.onSet({ style: { primary: s, ...secondary !== void 0 && secondary !== s ? { secondary } : {} } });
@@ -44736,14 +44813,14 @@ function renderPracticeBlock(host, ctx2) {
     "div",
     { class: "alius-dyn-row", "data-practice-style": "secondary" },
     h("span", { class: "alius-stat", "data-analyze": "glossary:practice_style", tabindex: "0" }, "Then:"),
-    control("NONE", { "data-id": "none" }, "glossary:practice_style", live2, ctx2.editable && !styleLocked, () => {
+    control("NONE", { "data-id": "none" }, "glossary:practice_style", live3, ctx2.editable && !styleLocked, () => {
       if (secondary !== void 0) ctx2.onSet({ style: { primary } });
     }, secondary === void 0),
     ...PROFILE_STYLES.filter((s) => s !== primary).map((s) => control(
       word(s),
       { "data-id": s },
       `practiceStyles:${s}`,
-      live2,
+      live3,
       ctx2.editable && !styleLocked,
       () => {
         if (secondary !== s) ctx2.onSet({ style: { primary, secondary: s } });
@@ -44759,11 +44836,11 @@ function renderPracticeBlock(host, ctx2) {
       { class: "alius-dyn-row", "data-practice-category": c.id },
       h("span", { class: "alius-chip", ...analyzeNative(`contentCategories:${c.id}`), tabindex: "0" }, c.label),
       h("span", { class: "alius-stat", "data-analyze": "glossary:practice_as", tabindex: "0" }, "Does:"),
-      ...PRACTICE_AS.map((v) => control(word(v), { "data-practice-as": v }, "glossary:practice_as", live2, !off, () => {
+      ...PRACTICE_AS.map((v) => control(word(v), { "data-practice-as": v }, "glossary:practice_as", live3, !off, () => {
         if (stored.as !== v) ctx2.onSet({ categories: { [c.id]: { as: v } } });
       }, stored.as === v)),
       h("span", { class: "alius-stat", "data-analyze": "glossary:practice_witness", tabindex: "0" }, "Sees:"),
-      ...WITNESS.map((v) => control(word(v), { "data-practice-witness": v }, "glossary:practice_witness", live2, !off, () => {
+      ...WITNESS.map((v) => control(word(v), { "data-practice-witness": v }, "glossary:practice_witness", live3, !off, () => {
         if (stored.witness !== v) ctx2.onSet({ categories: { [c.id]: { witness: v } } });
       }, stored.witness === v)),
       lock(`categories.${c.id}`, "glossary:practice_profile")
@@ -44778,7 +44855,7 @@ function renderPracticeBlock(host, ctx2) {
         word(v),
         { "data-id": v },
         `glossary:${glossary}`,
-        live2,
+        live3,
         ctx2.editable && !locked(field2),
         () => {
           if (practice[field2] !== v) ctx2.onSet({ [field2]: v });
@@ -44803,18 +44880,18 @@ function valueSelect(label2, attrs, address, ctx2, enabled, current, options2, o
   return el;
 }
 function renderExpectationsBlock(host, ctx2) {
-  const live2 = { unitId: ctx2.unit.id };
+  const live3 = { unitId: ctx2.unit.id };
   const e = ctx2.expectations ?? {};
   const locked = (field2) => ctx2.locks.includes(field2) || ctx2.locks.includes(field2.split(".")[0]);
-  const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live2, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
+  const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live3, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
   const live1 = (field2) => ctx2.editable && !locked(field2);
   const A = "glossary:expectation_profile";
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A, live2), tabindex: "0" }, "EXPECTATIONS"));
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A, live3), tabindex: "0" }, "EXPECTATIONS"));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-holds-until": "" },
     h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Holds until:"),
-    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A, live2, live1("holdsUntil"), () => {
+    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A, live3, live1("holdsUntil"), () => {
       if (e.holdsUntil !== v) ctx2.onSet({ holdsUntil: v });
     }, e.holdsUntil === v)),
     lock("holdsUntil", A)
@@ -44830,7 +44907,7 @@ function renderExpectationsBlock(host, ctx2) {
         word(a),
         { "data-attitude": a },
         A,
-        live2,
+        live3,
         live1(field2),
         () => ctx2.onSet({ worship: { [t.id]: w?.attitude === a ? null : { ...w, attitude: a } } }),
         w?.attitude === a
@@ -44839,19 +44916,19 @@ function renderExpectationsBlock(host, ctx2) {
         "What it means to her",
         { "data-meaning": t.id },
         A,
-        live2,
+        live3,
         live1(field2),
         w.meaning ?? "",
         [option("", "(meaning)"), ...MEANINGS.map((m) => option(m, title(m)))],
         (v) => ctx2.onSet({ worship: { [t.id]: { ...w, meaning: v } } })
       ),
       h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Body:"),
-      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A, live2, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
+      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
       valueSelect(
         "Scent",
         { "data-scent": t.id },
         A,
-        live2,
+        live3,
         live1("scent"),
         String(e.scent?.base?.[t.id] ?? ""),
         [option("", "(scent)"), ...[1, 2, 3, 4, 5].map((n) => option(String(n), String(n)))],
@@ -44860,22 +44937,22 @@ function renderExpectationsBlock(host, ctx2) {
       lock(field2, A)
     ));
   }
-  const sourceOf = (id) => ctx2.sources.find((s) => s.id === id);
+  const sourceOf2 = (id) => ctx2.sources.find((s) => s.id === id);
   for (const [id, m] of Object.entries(e.moments ?? {})) {
-    const src = sourceOf(id);
+    const src = sourceOf2(id);
     if (src === void 0) continue;
     const field2 = `moments.${id}`;
     host.append(h(
       "div",
       { class: "alius-dyn-row", "data-moment": id },
       h("span", { class: "alius-chip", ...analyzeNative(`momentSources:${id}`), tabindex: "0" }, src.label),
-      ...src.types.map((type) => control(word(type), { "data-type": type }, A, live2, live1(field2), () => {
+      ...src.types.map((type) => control(word(type), { "data-type": type }, A, live3, live1(field2), () => {
         if (m.type !== type) ctx2.onSet({ moments: { [id]: { ...m, type } } });
       }, m.type === type)),
-      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A, live2, live1(field2), () => {
+      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A, live3, live1(field2), () => {
         if (m.strength !== n) ctx2.onSet({ moments: { [id]: { ...m, strength: n } } });
       }, m.strength === n)),
-      control("[ REMOVE ]", { "data-remove-moment": id }, A, live2, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
+      control("[ REMOVE ]", { "data-remove-moment": id }, A, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
       lock(field2, A)
     ));
   }
@@ -44887,15 +44964,15 @@ function renderExpectationsBlock(host, ctx2) {
       "Add a moment",
       { "data-add-moment": ctx2.unit.id },
       A,
-      live2,
+      live3,
       ctx2.editable && addable.length > 0 && !locked("moments"),
       "",
       [option("", "(add a moment)"), ...addable.map((s) => option(s.id, s.label))],
-      (id) => ctx2.onSet({ moments: { [id]: { type: sourceOf(id)?.types[0] ?? "yielded", strength: 2 } } })
+      (id) => ctx2.onSet({ moments: { [id]: { type: sourceOf2(id)?.types[0] ?? "yielded", strength: 2 } } })
     )
   ));
   for (const k of ["irritation", "pleasure"]) {
-    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A, live2) });
+    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A, live3) });
     input.addEventListener("change", () => {
       const v = input.value;
       input.value = e.tells?.[k] ?? "";
@@ -44911,7 +44988,7 @@ function renderExpectationsBlock(host, ctx2) {
       axis === "r" ? "More yielding or less" : "Smoother or more provoking",
       { "data-offset-axis": axis },
       A,
-      live2,
+      live3,
       live1("offset"),
       String(e.offset?.[axis] ?? 0),
       OFFSET_STEPS.map((n) => option(String(n), n > 0 ? `+${n}` : String(n))),
@@ -44927,7 +45004,7 @@ function renderExpectationsBlock(host, ctx2) {
       title(k),
       { "data-build-weight": k },
       A,
-      live2,
+      live3,
       live1("build"),
       String(e.build?.[k] ?? 0),
       BUILD_STEPS.map((n) => option(String(n), `${title(k)} ${n}`)),
@@ -44939,7 +45016,7 @@ function renderExpectationsBlock(host, ctx2) {
     "div",
     { class: "alius-dyn-row", "data-hair": "" },
     h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Hair:"),
-    ...HAIR.map((v) => control(word(v), { "data-id": v }, A, live2, live1("hair"), () => {
+    ...HAIR.map((v) => control(word(v), { "data-id": v }, A, live3, live1("hair"), () => {
       if (e.hair !== v) ctx2.onSet({ hair: v });
     }, e.hair === v)),
     lock("hair", A)
@@ -44948,12 +45025,12 @@ function renderExpectationsBlock(host, ctx2) {
     "div",
     { class: "alius-dyn-row", "data-hygiene": "" },
     h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Hygiene:"),
-    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A, live2, live1("scent"), () => {
+    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A, live3, live1("scent"), () => {
       if (e.scent?.hygiene !== v) ctx2.onSet({ scent: { ...e.scent, hygiene: v } });
     }, e.scent?.hygiene === v)),
     lock("scent", A)
   ));
-  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A, live2) });
+  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A, live3) });
   traits.addEventListener("change", () => {
     const v = traits.value;
     traits.value = (e.traits ?? []).join(", ");
@@ -46005,7 +46082,7 @@ function renderWorldParams(host, ctx2) {
     );
   };
   const optionBlock = (o) => {
-    const live2 = o.live === true;
+    const live3 = o.live === true;
     const chosen = world.options[o.id] ?? String(o.default);
     return h(
       "div",
@@ -46016,8 +46093,8 @@ function renderWorldParams(host, ctx2) {
         h("h4", {}, String(o.label)),
         h(
           "span",
-          { class: "alius-lock", "data-live": String(live2), title: live2 ? "This option can be changed during the campaign." : "This option is fixed when the campaign starts." },
-          live2 ? "CHANGEABLE LATER" : "LOCKED AT START"
+          { class: "alius-lock", "data-live": String(live3), title: live3 ? "This option can be changed during the campaign." : "This option is fixed when the campaign starts." },
+          live3 ? "CHANGEABLE LATER" : "LOCKED AT START"
         )
       ),
       h("p", { class: "alius-dim" }, String(o.description)),
@@ -46337,21 +46414,21 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   const standing2 = standingOf(state, reg, unitId);
   if (standing2 === null) return;
   const raw = opts.raw === true;
-  const live2 = { unitId };
+  const live3 = { unitId };
   const leader = leaderOf(state);
   const isLeader = leader?.id === unitId;
   const endorsed = state.power?.hierarchy?.endorsed === true;
   const line2 = h(
     "p",
     { class: "alius-hierarchy-line" },
-    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live2) }, `STANDING: ${standingBand2(standing2).toUpperCase()}${raw ? ` (${standing2})` : ""}`)
+    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live3) }, `STANDING: ${standingBand2(standing2).toUpperCase()}${raw ? ` (${standing2})` : ""}`)
   );
   if (isLeader) {
-    line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live2) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));
+    line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live3) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));
   }
-  if (state.power?.hierarchy?.coLeaderId === unitId) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-co-leader": unitId, ...analyzeAttrs("glossary:capability_co_leader", live2) }, "CO-LEADER"));
+  if (state.power?.hierarchy?.coLeaderId === unitId) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-co-leader": unitId, ...analyzeAttrs("glossary:capability_co_leader", live3) }, "CO-LEADER"));
   const asksFirst = askFirstHolds(state, unitId);
-  if (asksFirst) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-asks-first": unitId, ...analyzeAttrs("glossary:ask_first", live2) }, "ASKS FIRST"));
+  if (asksFirst) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-asks-first": unitId, ...analyzeAttrs("glossary:ask_first", live3) }, "ASKS FIRST"));
   host.append(line2);
   if (handlers2.onAskFirst) {
     const atBase = state.expedition === void 0;
@@ -46361,7 +46438,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
       class: "alius-btn alius-option",
       "data-ask-first": unitId,
       "aria-pressed": String(asksFirst),
-      ...analyzeNative("glossary:ask_first", live2),
+      ...analyzeNative("glossary:ask_first", live3),
       ...atBase ? {} : { "aria-disabled": "true", title: "Only at the base: a run is under way." },
       onclick: () => {
         if (atBase) onAskFirst(unitId, !asksFirst);
@@ -46412,14 +46489,14 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
   const decor = decorOf(state, unitId);
   const bookings = (state.personal?.bookings ?? []).filter((b) => b.unitId === unitId && b.status === "booked");
   if (level === 0 && !decor && bookings.length === 0) return null;
-  const live2 = { unitId };
+  const live3 = { unitId };
   const block2 = h(
     "div",
     { class: "alius-device-block", "data-device": unitId },
     h(
       "p",
       { class: "alius-device-line" },
-      h("span", { class: "alius-chip", "data-access": unitId, ...analyzeAttrs("glossary:device_access", live2) }, `ACCESS L${level} ${unit3.displayName.toUpperCase()}`)
+      h("span", { class: "alius-chip", "data-access": unitId, ...analyzeAttrs("glossary:device_access", live3) }, `ACCESS L${level} ${unit3.displayName.toUpperCase()}`)
     )
   );
   if (decor) {
@@ -46431,7 +46508,7 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
       return h(
         "span",
         { class: "alius-device-part", "data-decor-part": part, ...faded ? { "data-faded": "true" } : {} },
-        h("span", { class: "alius-chip", ...analyzeAttrs("glossary:device_access", live2) }, faded ? `${label2} (FADED)` : label2),
+        h("span", { class: "alius-chip", ...analyzeAttrs("glossary:device_access", live3) }, faded ? `${label2} (FADED)` : label2),
         faded ? null : h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "peel", "aria-label": `Peel ${PART_LABEL[part].toLowerCase()}`, onclick: () => handlers2.onPeel(unitId, part) }, "[ PEEL ]")
       );
     })));
@@ -46628,9 +46705,9 @@ function renderDevelopmentBlock(host, ctx2) {
 // src/ui/life/lifeViews.ts
 var title2 = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 function renderThoughts(host, ctx2) {
-  const live2 = { unitId: ctx2.unitId };
+  const live3 = { unitId: ctx2.unitId };
   const heard = ctx2.knowledge.life(ctx2.unitId, ctx2.registries).opinions;
-  host.replaceChildren(h("p", { class: "alius-stat", "data-view": "thoughts", ...analyzeAttrs("glossary:thoughts", live2) }, "THOUGHTS"));
+  host.replaceChildren(h("p", { class: "alius-stat", "data-view": "thoughts", ...analyzeAttrs("glossary:thoughts", live3) }, "THOUGHTS"));
   if (heard.length === 0) {
     host.append(h("p", { class: "alius-dim", "data-empty": "thoughts" }, "Nothing she has said yet."));
     return;
@@ -46639,16 +46716,16 @@ function renderThoughts(host, ctx2) {
     host.append(h(
       "div",
       { class: "alius-life-row alius-thought", "data-thought": o.topicId },
-      h("span", { class: "alius-chip", ...analyzeAttrs(`opinionTopics:${o.topicId}`, live2) }, title2(o.label)),
+      h("span", { class: "alius-chip", ...analyzeAttrs(`opinionTopics:${o.topicId}`, live3) }, title2(o.label)),
       h("span", { class: "alius-thought-text" }, o.text),
       ...o.history.map((was) => h("span", { class: "alius-dim alius-thought-was", "data-was": "" }, `She used to think: ${was}`))
     ));
   }
 }
 function renderHobbies(host, ctx2) {
-  const live2 = { unitId: ctx2.unitId };
+  const live3 = { unitId: ctx2.unitId };
   const shown = ctx2.knowledge.life(ctx2.unitId, ctx2.registries).hobbies;
-  host.replaceChildren(h("p", { class: "alius-stat", "data-view": "hobbies", ...analyzeAttrs("glossary:hobby_cycle", live2) }, "WHAT SHE DOES"));
+  host.replaceChildren(h("p", { class: "alius-stat", "data-view": "hobbies", ...analyzeAttrs("glossary:hobby_cycle", live3) }, "WHAT SHE DOES"));
   if (shown.length === 0) {
     host.append(h("p", { class: "alius-dim", "data-empty": "hobbies-view" }, "Nothing she has shown yet."));
     return;
@@ -46657,8 +46734,8 @@ function renderHobbies(host, ctx2) {
     host.append(h(
       "div",
       { class: "alius-life-row alius-hobby-view", "data-hobby-view": hb.id },
-      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${hb.id}`, live2) }, title2(hb.label)),
-      h("span", { class: "alius-stat", "data-word": hb.word, ...analyzeAttrs("glossary:hobby_cycle", live2) }, hb.word.toUpperCase()),
+      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${hb.id}`, live3) }, title2(hb.label)),
+      h("span", { class: "alius-stat", "data-word": hb.word, ...analyzeAttrs("glossary:hobby_cycle", live3) }, hb.word.toUpperCase()),
       hb.milestones.length > 0 ? h("ul", { class: "alius-life-lines" }, ...hb.milestones.map((line2) => h("li", { "data-milestone": "" }, line2))) : null,
       ...hb.traces.map((t) => h("p", { class: "alius-dim", "data-trace": "" }, t))
     ));
@@ -46773,8 +46850,8 @@ var seedOf = (state, unitId) => `${unitId}|${state.day}|${state.slot}|`;
 function renderVitalsBlock(state, reg, unitId, opts) {
   const v = vitalsOf(state, reg, unitId);
   if (!v) return null;
-  const live2 = { unitId };
-  const chip2 = (text2, address = "glossary:vitals") => h("span", { class: "alius-chip", ...analyzeAttrs(address, live2) }, text2);
+  const live3 = { unitId };
+  const chip2 = (text2, address = "glossary:vitals") => h("span", { class: "alius-chip", ...analyzeAttrs(address, live3) }, text2);
   const flat2 = v.pattern === "flat";
   const log = flat2 ? flickersOf(state, unitId) : [];
   return h(
@@ -46790,9 +46867,9 @@ function renderVitalsBlock(state, reg, unitId, opts) {
       chip2(HEART_TEXT[v.heart]),
       " ",
       chip2(TEMP_TEXT[v.temp]),
-      v.flicker ? h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vitals_flicker", live2) }, " FLICKER LOGGED") : null
+      v.flicker ? h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vitals_flicker", live3) }, " FLICKER LOGGED") : null
     ),
-    log.length > 0 ? h("ul", { class: "alius-vitals-log", "aria-label": "Logged flickers" }, ...log.map((e) => h("li", { class: "alius-stat", ...analyzeAttrs("glossary:vitals_flicker", live2) }, logLine(e.day, e.slot)))) : null
+    log.length > 0 ? h("ul", { class: "alius-vitals-log", "aria-label": "Logged flickers" }, ...log.map((e) => h("li", { class: "alius-stat", ...analyzeAttrs("glossary:vitals_flicker", live3) }, logLine(e.day, e.slot)))) : null
   );
 }
 function renderVitalsStrip(state, reg, opts) {
@@ -46821,7 +46898,7 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
     root.append(h("p", { class: "alius-dim" }, "NOT OFFERED: nothing is on the table with her now."));
     return root;
   }
-  const live2 = { unitId };
+  const live3 = { unitId };
   const gameSel = h("select", { name: "game", class: "alius-select" }, ...games.map((g) => h("option", { value: String(g.id) }, String(g.label))));
   const stakeSel = h("select", { name: "stake", class: "alius-select" }, ...stakes.map((x) => h("option", { value: String(x.id) }, String(x.label))));
   const pickHost = h("span", { class: "alius-wager-pick" });
@@ -46837,14 +46914,14 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
     }
     if (options2.length === 0) return;
     const sel = h("select", { name: "pick", class: "alius-select" }, ...options2.map(([v, label2]) => h("option", { value: v }, label2)));
-    pickHost.append(h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live2) }, game?.kind === "sparring" ? "HANDICAP " : "SHE BETS ON ", sel));
+    pickHost.append(h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live3) }, game?.kind === "sparring" ? "HANDICAP " : "SHE BETS ON ", sel));
   };
   gameSel.addEventListener("change", drawPick);
   drawPick();
   root.append(
-    h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live2) }, "GAME ", gameSel),
+    h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live3) }, "GAME ", gameSel),
     " ",
-    h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live2) }, "STAKE ", stakeSel),
+    h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live3) }, "STAKE ", stakeSel),
     " ",
     pickHost,
     " ",
@@ -46852,7 +46929,7 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
       type: "button",
       class: "alius-btn alius-option",
       "data-action": "challenge",
-      ...analyzeNative("glossary:wager", live2),
+      ...analyzeNative("glossary:wager", live3),
       onclick: () => {
         const pick3 = pickHost.querySelector("select")?.value;
         onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick3 !== void 0 ? { pick: pick3 } : {} });
@@ -47410,15 +47487,15 @@ function relationLine(unit3, state, ctx2) {
   if (!rel) return null;
   const raw = ctx2.settings().showRawValues;
   const num5 = (n) => raw ? ` (${n})` : "";
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const chip2 = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const parts = [
     chip2(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
-    chip2(`TRUST ${trustBand(rel.trust).toUpperCase()}${num5(rel.trust)}`, "glossary:trust", live2)
+    chip2(`TRUST ${trustBand(rel.trust).toUpperCase()}${num5(rel.trust)}`, "glossary:trust", live3)
   ];
   if (unit3.kind !== "grunt") {
-    parts.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num5(rel.affinity)}`, "glossary:affinity", live2));
-    if (intimacyOf(state).romance) parts.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num5(rel.attraction)}`, "glossary:attraction", live2));
+    parts.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num5(rel.affinity)}`, "glossary:affinity", live3));
+    if (intimacyOf(state).romance) parts.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num5(rel.attraction)}`, "glossary:attraction", live3));
   }
   return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
@@ -47563,15 +47640,15 @@ function leashMenu(unit3, ctx2) {
 function disciplineLine(unit3, state, ctx2) {
   const found = impunityOf(state, ctx2.registries, unit3.id);
   if (!found) return null;
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const stance = commandStance(state, ctx2.registries, unit3.id);
   const entry = stance === null ? void 0 : stanceEntry(ctx2.registries, stance);
   const raw = ctx2.settings().showRawValues;
   const parts = [];
   if (stance !== null && entry) {
-    parts.push(h("span", { class: "alius-chip", "data-stance": unit3.id, ...analyzeAttrs(`commandStances:${stance}`, live2) }, `STANCE: ${String(entry.name).toUpperCase()}`));
+    parts.push(h("span", { class: "alius-chip", "data-stance": unit3.id, ...analyzeAttrs(`commandStances:${stance}`, live3) }, `STANCE: ${String(entry.name).toUpperCase()}`));
   }
-  parts.push(h("span", { class: "alius-chip", "data-impunity": unit3.id, ...analyzeAttrs("glossary:impunity", live2) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
+  parts.push(h("span", { class: "alius-chip", "data-impunity": unit3.id, ...analyzeAttrs("glossary:impunity", live3) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
   return h("p", { class: "alius-stance-line" }, ...joinWith(parts, " \xB7 "));
 }
 function hierarchyBlock(unit3, state, ctx2) {
@@ -47586,19 +47663,19 @@ function restrictionLine(unit3, state) {
   return h("p", { class: "alius-restrictions" }, ...joinWith(list5.map((r) => h("span", { class: "alius-chip", "data-restriction": r.kind, ...analyzeAttrs("glossary:restriction", { unitId: unit3.id }) }, RESTRICTION_LABEL[r.kind])), " \xB7 "));
 }
 function publicityLine(unit3, level, pref, ctx2, concealed) {
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   return h(
     "p",
     { class: "alius-publicity" },
-    h("span", { class: "alius-chip", "data-publicity": unit3.id, ...analyzeAttrs("glossary:publicity", live2) }, `PUBLICITY: ${level.toUpperCase()}`),
+    h("span", { class: "alius-chip", "data-publicity": unit3.id, ...analyzeAttrs("glossary:publicity", live3) }, `PUBLICITY: ${level.toUpperCase()}`),
     " ",
-    h("span", { class: "alius-chip", "data-publicity-pref": unit3.id, ...analyzeAttrs("glossary:publicity", live2) }, `SHE PREFERS: ${pref.toUpperCase()}`),
+    h("span", { class: "alius-chip", "data-publicity-pref": unit3.id, ...analyzeAttrs("glossary:publicity", live3) }, `SHE PREFERS: ${pref.toUpperCase()}`),
     ...ctx2.onSetPublicity && !concealed ? PUBLICITY_LEVELS.flatMap((l) => [" ", h("button", {
       type: "button",
       class: "alius-btn alius-option",
       "data-publicity-set": l,
       "aria-pressed": String(l === level),
-      ...analyzeNative("glossary:publicity", live2),
+      ...analyzeNative("glossary:publicity", live3),
       onclick: () => ctx2.onSetPublicity(unit3.id, l)
     }, `[ ${l.toUpperCase()} ]`)]) : []
   );
@@ -47607,12 +47684,12 @@ function bondBlock(unit3, state, ctx2) {
   if (unit3.kind !== "named") return null;
   const reg = ctx2.registries;
   const raw = ctx2.settings().showRawValues;
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const rules2 = (state.bonds?.rules ?? []).filter((r) => r.unitId === unit3.id && (r.status === "active" || r.status === "negotiating" || r.status === "proposed" && r.delivered === true));
   const showWant = wantEligible(state, reg, unit3.id) || wantOf(state, unit3.id) > 0;
   const open3 = intimacyOf(state).romance ? state.relations[unit3.id]?.publicity : void 0;
   if (unit3.bond === void 0 && !showWant && rules2.length === 0 && open3 === void 0) return null;
-  const chip2 = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live2) }, text2);
+  const chip2 = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live3) }, text2);
   const bond = unit3.bond === void 0 ? null : bondOf(unit3);
   return h(
     "div",
@@ -47731,7 +47808,7 @@ function unitBlock(unit3, ctx2, state) {
     const v = valuesOf(unit3)[axis];
     return h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`);
   });
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const chip2 = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const stat3 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeAttrs(address, data) }, text2);
   const roleEntry = reg.roles.get(unit3.roleId);
@@ -47760,7 +47837,7 @@ function unitBlock(unit3, ctx2, state) {
       dossier,
       relationLine(unit3, state, ctx2),
       !gone3 && state.relations[unit3.id] ? h("p", { class: "alius-loyalty" }, chip2(`LOYALTY: ${state.relations[unit3.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
-      gone3 ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit3.id, ...analyzeAttrs("glossary:disposition", live2) }, `Disposition: ${String(dispositionFor(state, reg, unit3).name)}`)),
+      gone3 ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit3.id, ...analyzeAttrs("glossary:disposition", live3) }, `Disposition: ${String(dispositionFor(state, reg, unit3).name)}`)),
       gone3 ? null : bondBlock(unit3, state, ctx2),
       gone3 ? null : disciplineLine(unit3, state, ctx2),
       gone3 ? null : hierarchyBlock(unit3, state, ctx2),
@@ -47777,18 +47854,18 @@ function unitBlock(unit3, ctx2, state) {
       gone3 || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit3.id, (choice) => ctx2.onWager?.(unit3.id, choice)),
       gone3 ? null : restrictionLine(unit3, state),
       gone3 || !ctx2.onPunish || unit3.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit3.id, onPunish: (measure, days) => ctx2.onPunish(unit3.id, measure, days) }),
-      gone3 ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit3.stress).toUpperCase()}${raw ? ` (${unit3.stress})` : ""}`, "glossary:stress", live2)),
+      gone3 ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit3.stress).toUpperCase()}${raw ? ` (${unit3.stress})` : ""}`, "glossary:stress", live3)),
       gone3 ? null : renderVitalsBlock(state, reg, unit3.id, { motion: !motionReduced(ctx2.settings()) }),
       gone3 ? null : handSelect(unit3, state, ctx2),
       gone3 ? null : quartersSelect(unit3, state, ctx2),
       gone3 ? null : leashMenu(unit3, ctx2),
       unit3.bio ? h("p", { class: "alius-dim" }, unit3.bio) : null,
       h("p", {}, ...joinWith([
-        stat3(`HP ${s.hp}`, "glossary:stat_hp", live2),
-        stat3(`ATK ${s.atk}`, "glossary:stat_atk", live2),
-        stat3(`DEF ${s.def}`, "glossary:stat_def", live2),
-        stat3(`SPD ${s.spd}`, "glossary:stat_spd", live2),
-        stat3(`CRIT ${s.crit}%`, "glossary:stat_crit", live2)
+        stat3(`HP ${s.hp}`, "glossary:stat_hp", live3),
+        stat3(`ATK ${s.atk}`, "glossary:stat_atk", live3),
+        stat3(`DEF ${s.def}`, "glossary:stat_def", live3),
+        stat3(`SPD ${s.spd}`, "glossary:stat_spd", live3),
+        stat3(`CRIT ${s.crit}%`, "glossary:stat_crit", live3)
       ], " \xB7 ")),
       equipmentBlock(unit3, ctx2, state),
       progressionBlock(unit3, ctx2, state),
@@ -51024,22 +51101,22 @@ function drawPersonalChips(host, state, reg, pick3, on) {
     const game = reg.wagerGames.get(w.gameId);
     const stake = reg.wagerStakes.get(w.stakeId);
     const what = `${String(game?.label ?? w.gameId).toUpperCase()} FOR ${String(stake?.text ?? w.stakeId).toUpperCase()}`;
-    const live2 = { wagerId: w.id, unitId: w.unitId };
+    const live3 = { wagerId: w.id, unitId: w.unitId };
     if (w.status === "offered") {
       host.append(group(
         w.unitId,
         "glossary:wager",
-        live2,
+        live3,
         `${nameOf18(w.unitId)} CHALLENGES: ${what}`,
         button2("[ ACCEPT ]", "accept", () => on.onAnswerWager(w.id, true)),
         button2("[ DECLINE ]", "decline", () => on.onAnswerWager(w.id, false))
       ));
     } else if (w.status === "pending_run") {
-      host.append(group(w.unitId, "glossary:wager", live2, `WAGER WITH ${nameOf18(w.unitId)}: ${what} \u2014 WAITS FOR THE NEXT RUN`));
+      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf18(w.unitId)}: ${what} \u2014 WAITS FOR THE NEXT RUN`));
     } else if (game?.kind === "rps") {
-      host.append(group(w.unitId, "glossary:wager", live2, `WAGER WITH ${nameOf18(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[ ${hand.toUpperCase()} ]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
+      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf18(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[ ${hand.toUpperCase()} ]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
     } else {
-      host.append(group(w.unitId, "glossary:wager", live2, `WAGER WITH ${nameOf18(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[ FIGHT ]" : "[ PLAY ]", "play", () => on.onPlayWager(w.id, void 0))));
+      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf18(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[ FIGHT ]" : "[ PLAY ]", "play", () => on.onPlayWager(w.id, void 0))));
     }
   }
   const q = state.personal?.pendingQuestion;
@@ -51166,21 +51243,21 @@ function renderClaimCard(host, ctx2) {
   const unit3 = state.squad.find((u) => u.id === claim2.unitId);
   const entry = claim2.domainId === void 0 ? void 0 : reg.dynamicDomains.get(claim2.domainId);
   if (unit3 === void 0 || claim2.domainId !== void 0 && entry === void 0) return;
-  const live2 = { unitId: unit3.id };
+  const live3 = { unitId: unit3.id };
   const button2 = (kind, text2) => h("button", {
     type: "button",
     class: "alius-btn alius-tagchip",
     "data-claim-answer": kind,
     "data-claim": claim2.id,
-    ...analyzeNative("glossary:claim", live2),
+    ...analyzeNative("glossary:claim", live3),
     onclick: () => ctx2.onAnswer(kind)
   }, text2);
   const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
-  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live2) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
+  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live3) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
   const body = h(
     "div",
     { class: "alius-claim-body" },
-    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live2) }, String(entry.label).toUpperCase()))],
+    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live3) }, String(entry.label).toUpperCase()))],
     h("p", { class: "alius-claim-text" }, words3),
     ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
     h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
@@ -51190,7 +51267,7 @@ function renderClaimCard(host, ctx2) {
   card2.setAttribute("data-claim", claim2.id);
   card2.setAttribute("role", "group");
   card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
-  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live2))) card2.setAttribute(k, v);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
 function drawClaimCards(host, state, reg, pick3, onAnswer) {
@@ -51899,8 +51976,8 @@ function renderDoor(host, ctx2) {
   let clock = clocks.get(entry.id);
   if (!clock || clock.phase !== phase) clocks.set(entry.id, clock = { remaining: ctx2.seconds, phase });
   const fill6 = h("span", { class: "alius-door-fill" });
-  const live2 = h("span", { class: "alius-door-count", "aria-live": "polite" });
-  const timer = ctx2.seconds > 0 ? h("div", { class: `alius-door-timer${ctx2.motion ? " is-animated" : ""}` }, h("div", { class: "alius-door-bar", "aria-hidden": "true" }, fill6), live2) : null;
+  const live3 = h("span", { class: "alius-door-count", "aria-live": "polite" });
+  const timer = ctx2.seconds > 0 ? h("div", { class: `alius-door-timer${ctx2.motion ? " is-animated" : ""}` }, h("div", { class: "alius-door-bar", "aria-hidden": "true" }, fill6), live3) : null;
   const paint = () => {
     fill6.style.width = `${Math.max(0, Math.min(100, clock.remaining / ctx2.seconds * 100))}%`;
   };
@@ -51995,14 +52072,14 @@ function renderDoor(host, ctx2) {
     paint();
     if (!said10 && clock.remaining <= 10) {
       said10 = true;
-      live2.textContent = "10 seconds left";
+      live3.textContent = "10 seconds left";
     }
     if (!said5 && clock.remaining <= 5) {
       said5 = true;
-      live2.textContent = "5 seconds left";
+      live3.textContent = "5 seconds left";
     }
     if (clock.remaining <= 0) {
-      live2.textContent = "0 seconds left: the door stays shut and she leaves";
+      live3.textContent = "0 seconds left: the door stays shut and she leaves";
       lock();
       stop();
       clocks.delete(entry.id);
@@ -55590,9 +55667,9 @@ function renderSysTab(host, ctx2) {
     return [...reg.worldOptions.values()].map((option2) => {
       const id = String(option2.id);
       const current = worldChoice(state, reg, id).choice;
-      const live2 = option2.live === true;
+      const live3 = option2.live === true;
       let control2;
-      if (live2 && ctx2.dispatch) {
+      if (live3 && ctx2.dispatch) {
         const el = h(
           "select",
           { name: `world:${id}`, class: "alius-input" },
@@ -55614,7 +55691,7 @@ function renderSysTab(host, ctx2) {
         { class: "alius-field alius-option alius-world-row", "data-option": id, ...analyzeAttrs(`worldOptions:${id}`) },
         h("span", { class: "alius-field-label" }, String(option2.label)),
         control2,
-        h("span", { class: "alius-lock", "data-live": String(live2) }, live2 ? "CHANGEABLE LATER" : "LOCKED AT START")
+        h("span", { class: "alius-lock", "data-live": String(live3) }, live3 ? "CHANGEABLE LATER" : "LOCKED AT START")
       );
     });
   };

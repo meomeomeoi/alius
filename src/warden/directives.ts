@@ -1,6 +1,6 @@
 import { bondTierOf } from '../engine/bonds';
 import { TUNING } from '../engine/tuning';
-import { describeOrder, overrideOpen, revealPending, wardenOf } from '../engine/warden';
+import { describeOrder, revealPending, wardenOf, wardenOverrideOpen } from '../engine/warden';
 import type { Registries } from '../content/types';
 import type { CampaignState } from '../engine/state/types';
 import type { Directive } from '../llm/context';
@@ -36,7 +36,7 @@ export function wardenDirectives(state: CampaignState, reg: Registries): Directi
   const out: Directive[] = [];
   const warden = wardenOf(state);
   const unit = warden ? state.squad.find((u) => u.id === warden.unitId) : undefined;
-  const ov = overrideOpen(state);
+  const ov = wardenOverrideOpen(state);
   if (unit && warden && ov && ov.arguing !== undefined && state.scene?.id === ov.arguing) {
     out.push({
       id: ARGUE_DIRECTIVE, expiresAfter: 'scene',

@@ -1,6 +1,7 @@
 import { rollCountermand } from './power/leader';
 import { commanderRestriction } from './warden/punish';
-import { judgedOf, plainPayload, rollOverride } from './warden/override';
+import { judgedOf, plainPayload } from './warden/override';
+import { rollOverrides } from './dynamic/command';
 import type { Entry, Registries } from '../content/types';
 import type { ActivityEffect } from '../content/schemas';
 import { consumeSlots, isQuietNight } from './calendar';
@@ -171,9 +172,9 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
     if (countermanded) return countermanded;
   }
 
-  // P13: the warden may override an order that cuts across what she expects (nothing happens, no slot is spent); draws rng only on a conflict
+  // P13 / P15: the warden, then a holder of the command, may override an order that cuts across what she expects (nothing happens, no slot is spent); draws rng only on a conflict
   if (req.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx, { kind: 'activity', activityId: req.activityId, ...(req.companionId !== undefined ? { companionId: req.companionId } : {}), ...(req.unitIds !== undefined ? { unitIds: req.unitIds } : {}) }, { payload: plainPayload(request), judged: judgedOf(request) });
+    const overridden = rollOverrides(draft, ctx, { kind: 'activity', activityId: req.activityId, ...(req.companionId !== undefined ? { companionId: req.companionId } : {}), ...(req.unitIds !== undefined ? { unitIds: req.unitIds } : {}) }, { payload: plainPayload(request), judged: judgedOf(request) });
     if (overridden) return overridden;
   }
 

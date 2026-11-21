@@ -1,7 +1,7 @@
 import type { Registries } from '../../content/types';
 import { pastimeActivity } from '../life/types';
 import type { CampaignState } from '../state/types';
-import { overrideOpen, wardenOf, type WardenOrder } from './state';
+import { wardenOf, wardenOverrideOpen, type WardenOrder } from './state';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
@@ -26,7 +26,7 @@ export function describeOrder(state: CampaignState, reg: Registries, order: Ward
  * warden is among the participants. Nothing about an expectation she has not shown.
  */
 export function overrideInput(state: CampaignState, reg: Registries, participants: string[]): { overrides?: Array<{ id: string; order: string; alternative: string }> } {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w || !participants.includes(w.unitId) || o.context === 'combat') return {};
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };

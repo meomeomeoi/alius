@@ -15,4 +15,4 @@ export { INVESTIGATION_CLOCK, investigationDayStep, openQueuedReport, openReport
 export { addSuspicion, allies, allyChance, conspireInput, dig, digProblem, hackProblem, hackStep, intrigueBusy, intrigueDiscovered, kompromatOf, setRemovalStarter, slotActionBusy, tryAlly } from './intrigue';
 export { cosignChance, leashCommander, logCosignDenied, refreshWardenLeash, rollCosign } from './leash';
 export { conflictOf, herAlternative, type Alternative, type Conflict, type Judged } from './conflict';
-export { afterDefy, answerOverride, argueAvailable, argueEnded, argueStarted, resolveCompromise, argueChance, overrideChance, judgedOf, overrideOpen, plainPayload, rollOverride, runOrder, wardenSource, type OverrideSource } from './override';
+export { afterDefy, answerOverride, argueAvailable, argueEnded, argueStarted, resolveCompromise, argueChance, overrideChance, judgedOf, overrideOpen, wardenOverrideOpen, plainPayload, rollOverride, runOrder, wardenSource, type OverrideSource } from './override';

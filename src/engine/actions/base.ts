@@ -3,7 +3,8 @@ import { actOnWarning } from '../special/paranoia/accusations';
 import { activeRosterUnits, checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving, requisitionCost } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
-import { judgedOf, plainPayload, rollOverride } from '../warden/override';
+import { judgedOf, plainPayload } from '../warden/override';
+import { rollOverrides } from '../dynamic/command';
 
 // Importing this module registers the base and roster actions.
 
@@ -48,9 +49,9 @@ registerAction('roster/set_active', (draft, payload, ctx) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Unit "${id}" cannot join the active roster.`);
   }
-  // P13: the warden may override a roster she does not want (nothing changes)
+  // P13 / P15: the warden, then a holder of the command, may override a roster she does not want (nothing changes)
   if (!isObj(payload) || payload.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx, { kind: 'roster', activeIds: [...ids] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
+    const overridden = rollOverrides(draft, ctx, { kind: 'roster', activeIds: [...ids] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
     if (overridden) return overridden;
   }
   const chosen = new Set(ids);

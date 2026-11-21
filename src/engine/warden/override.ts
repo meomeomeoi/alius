@@ -14,19 +14,21 @@ import { conflictOf, herAlternative, type Judged } from './conflict';
 import { addDefiance } from './escalation';
 import { punishRoll } from './punish';
 import { carryIfRan } from '../power/votes';
-import { overrideOpen, wardenOf, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
+import { overrideOpen, wardenOf, wardenOverrideOpen, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
 
-export { overrideOpen };
+export { overrideOpen, wardenOverrideOpen };
 
 /**
  * The warden's override (P13 §3): when the commander gives an order that cuts across what she expects, she may countermand it. The
  * roll draws only when a conflict exists. A hit runs nothing and spends no slot; the commander answers COMPLY (her alternative runs),
- * ARGUE or DEFY (the order runs, at a price). Generic over the holder (`OverrideSource`) so a later package can pass its own.
+ * ARGUE or DEFY (the order runs, at a price). Generic over the holder (`OverrideSource`): P15's holder of the command passes its own, and her
+ * open override lives in `state.dynamic.override`, the warden's in `leashswap.warden.override`. One is open at a time, whoever's it is.
  */
 
 /** Who holds the authority an order is checked against. The warden's source is `wardenSource`. */
 export interface OverrideSource {
-  kind: string;
+  /** `warden` (P13: her slot is `leashswap.warden.override`) or `holder` (P15: `dynamic.override`). */
+  kind: 'warden' | 'holder';
   unitId: string;
   /** 0–1: how much the holder's word weighs right now. */
   authority: number;
@@ -39,6 +41,8 @@ const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.m
 const round = Math.round;
 const STALE = 'There is no override to answer.';
 export const OPEN_FIRST = 'The warden has overridden an order: answer it first.';
+/** The same refusal while a holder's override waits (the message names no one: it is the one the app shows the chip for). */
+export const OPEN_FIRST_HOLDER = 'A holder has overridden an order: answer it first.';
 
 /** `authority = (100 − satisfaction) / 100`, `leniency = 1 − 0.5 × max(0, her affinity) / 100`. Null while nobody holds the leash. */
 export function wardenSource(state: CampaignState): OverrideSource | null {
@@ -64,20 +68,21 @@ function hersToGive(order: WardenOrder, unitId: string): boolean {
 /**
  * Rolls the override for an order. Returns `null` when nothing happens (the order goes on) and the events of the override when it
  * hits. Draws nothing unless the order conflicts with an expectation: no mode, no warden in service, no conflict, a day on which she
- * obeys, an order that is hers to give, a dilemma below `major`, a warden not standing in the fight. A new order while one waits is
- * refused (answer it first); a stale one is dropped. `opts.payload` is the overridden action's payload, kept for COMPLY and DEFY.
+ * obeys, an order that is hers to give, a dilemma below `major`, a warden not standing in the fight. A new order while one waits (the
+ * warden's or a holder's) is refused (answer it first); a stale one is dropped. `opts.source` is a holder's (P15; absent: the warden's),
+ * `opts.payload` the overridden action's payload, kept for COMPLY and DEFY.
  */
 export function rollOverride(
   draft: CampaignState, ctx: EngineCtx, order: WardenOrder,
   opts: { judged?: Judged; source?: OverrideSource; payload?: Record<string, unknown> } = {},
 ): EngineEvent[] | null {
   const source = opts.source ?? wardenSource(draft);
-  const w = wardenOf(draft);
-  if (!source || !w) return null;
-  if (w.override) {
-    if (overrideOpen(draft)) throw new Error(OPEN_FIRST);
-    delete w.override; // stale
-  }
+  if (!source) return null;
+  const w = source.kind === 'warden' ? wardenOf(draft) : null; // her own state: the compulsion, the slot, the learned expectation
+  if (source.kind === 'warden' ? !w : draft.dynamic === undefined) return null;
+  if (overrideOpen(draft)) throw new Error(wardenOverrideOpen(draft) !== null ? OPEN_FIRST : OPEN_FIRST_HOLDER);
+  if (draft.leashswap?.warden?.override) delete draft.leashswap.warden.override; // stale
+  if (draft.dynamic?.override) delete draft.dynamic.override; // stale
   if (unitObeys(draft, source.unitId) || hersToGive(order, source.unitId)) return null;
   if (order.kind === 'dilemma') {
     const scale = draft.dilemmas?.open?.scale;
@@ -86,7 +91,7 @@ export function rollOverride(
   }
   if (order.kind === 'combat_order' && !draft.combat?.combatants.some((c) => c.unitId === source.unitId && !c.downed && c.hp > 0)) return null;
   // the Leash on the commander: at a major decision the choice is hers, whatever she expects; the compulsion is spent either way
-  if (w.compelled && order.kind === 'dilemma') {
+  if (w?.compelled && order.kind === 'dilemma') {
     const alt = herAlternative(draft, ctx.registries, order, '');
     if (alt.order === null) {
       delete w.compelled; // nothing else to choose: the choice stands and the compulsion is spent
@@ -94,10 +99,11 @@ export function rollOverride(
     }
     return openOverride(draft, w, order, { expectationId: '', weight: 0 }, alt, opts.payload);
   }
-  const hit = conflictOf(draft, ctx.registries, order, opts.judged);
+  const hit = conflictOf(draft, ctx.registries, order, opts.judged, opts.source);
   if (!hit) return null;
   if (!ctx.rng.chance(overrideChance(hit.weight, source))) return null;
-  return openOverride(draft, w, order, hit, herAlternative(draft, ctx.registries, order, hit.expectationId), opts.payload);
+  const alt = herAlternative(draft, ctx.registries, order, hit.expectationId, opts.source);
+  return w ? openOverride(draft, w, order, hit, alt, opts.payload) : openHolderOverride(draft, source, order, hit, alt, opts.payload);
 }
 
 /** Writes the open override and reports it. An override that cites no expectation (`''`, a compelled decision) teaches nothing. */
@@ -112,6 +118,20 @@ function openOverride(draft: CampaignState, w: WardenState, order: WardenOrder, 
     ...(context === 'combat' ? { ref: draft.combat!.id } : context === 'dilemma' ? { ref: draft.dilemmas!.open!.id } : {}),
   };
   return [{ type: 'warden_override', overrideId: w.override.id, expectationId: hit.expectationId, context }, ...(hit.expectationId === '' ? [] : learnExpectation(draft, hit.expectationId))];
+}
+
+/** Writes a holder's open override into `state.dynamic.override` (P15) and reports it. The id is `dov<n>`, from the dynamic's own sequence. */
+function openHolderOverride(draft: CampaignState, source: OverrideSource, order: WardenOrder, hit: { expectationId: string; weight: number }, alt: { order: WardenOrder | null; label: string }, payload?: Record<string, unknown>): EngineEvent[] {
+  const x = draft.dynamic!;
+  const context = contextOf(order);
+  x.overrideSeq += 1;
+  x.override = {
+    id: `dov${x.overrideSeq}`, order, expectationId: hit.expectationId, weight: hit.weight, alternative: alt.order, altLabel: alt.label,
+    ...(payload ? { payload } : {}), day: draft.day, slot: draft.slot, context,
+    ...(context === 'combat' ? { ref: draft.combat!.id } : context === 'dilemma' ? { ref: draft.dilemmas!.open!.id } : {}),
+    unitId: source.unitId,
+  };
+  return [{ type: 'warden_override', overrideId: x.override.id, expectationId: hit.expectationId, context, source: 'holder', unitId: source.unitId }];
 }
 
 /** The judge's reading carried in an action's payload (`wardenJudged`), or undefined when absent or malformed. The engine accepts it only for a personal expectation of the warden (`conflictOf`). */
@@ -203,7 +223,7 @@ function relationEvent(draft: CampaignState, ctx: EngineCtx, type: 'warden_compl
  */
 export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId: unknown, answer: unknown): EngineEvent[] {
   const w = wardenOf(draft);
-  const ov = overrideOpen(draft);
+  const ov = wardenOverrideOpen(draft);
   if (!w || !ov || ov.id !== overrideId) {
     if (w?.override && !ov) delete w.override;
     throw new Error(STALE);
@@ -248,7 +268,7 @@ export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId:
 
 /** Can the commander talk to her about it now? Not in a fight or a run (no scene can open there), nor once she has heard them out, nor while compelled. */
 export function argueAvailable(state: CampaignState): boolean {
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w || w.compelled || o.argued || state.combat || state.expedition || o.context === 'combat') return false;
   return state.scene === undefined;
@@ -256,7 +276,7 @@ export function argueAvailable(state: CampaignState): boolean {
 
 /** The scene with her alone is open: the override remembers which scene is the argument. */
 export function argueStarted(draft: CampaignState, sceneId: unknown): EngineEvent[] {
-  const o = overrideOpen(draft);
+  const o = wardenOverrideOpen(draft);
   const w = wardenOf(draft);
   const scene = draft.scene;
   if (!o || !w) throw new Error(STALE);
@@ -275,7 +295,7 @@ const sentence = (text: string): string => (/[.!?]$/.test(text) ? text : `${text
  * units present. A stale id, a compromise already reached, a combat override, an empty text: dropped (nothing changes).
  */
 export function resolveCompromise(draft: CampaignState, _ctx: EngineCtx, overrideId: unknown, text: unknown): EngineEvent[] {
-  const o = overrideOpen(draft);
+  const o = wardenOverrideOpen(draft);
   const w = wardenOf(draft);
   if (!o || !w || o.id !== overrideId || o.context === 'combat' || o.compromise !== undefined || o.argued || w.compelled) return [];
   const agreed = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
@@ -310,7 +330,7 @@ export function argueEnded(draft: CampaignState, ctx: EngineCtx, sceneId: string
   const w = wardenOf(draft);
   const o = w?.override;
   if (!w || !o || o.arguing !== sceneId) return [];
-  if (!overrideOpen(draft)) {
+  if (!wardenOverrideOpen(draft)) {
     delete w.override;
     return [];
   }

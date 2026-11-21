@@ -173,13 +173,11 @@ export function forgetWarden(draft: CampaignState, unitId: string): void {
   if (w && w.unitId === unitId) delete w.override;
 }
 
-/**
- * The override that waits for an answer, or null (none, or a stale one: another day or slot, a closed combat, an answered dilemma).
- * Lives in the leaf so `dispatch` can read it.
- */
-export function overrideOpen(state: Pick<CampaignState, 'leashswap' | 'day' | 'slot' | 'combat' | 'dilemmas'>): OpenOverride | null {
-  const o = state.leashswap?.warden?.override;
-  if (!o) return null;
+/** The parts of the state an override's validity reads (`dynamic` is P15's holder slot and may be absent). */
+type OverrideView = Pick<CampaignState, 'leashswap' | 'day' | 'slot' | 'combat' | 'dilemmas'> & Partial<Pick<CampaignState, 'dynamic'>>;
+
+/** Is this stored override still the one that waits (a stale one is another day or slot, a closed combat, an answered dilemma)? */
+function live(state: OverrideView, o: OpenOverride): OpenOverride | null {
   if (o.context === 'combat') return state.combat !== undefined && state.combat.id === o.ref ? o : null;
   if (o.context === 'dilemma') {
     const d = state.dilemmas?.open;
@@ -189,12 +187,32 @@ export function overrideOpen(state: Pick<CampaignState, 'leashswap' | 'day' | 's
 }
 
 /**
+ * The warden's override that waits for an answer, or null (none, or a stale one: another day or slot, a closed combat, an answered dilemma).
+ * Lives in the leaf so `dispatch` can read it. The warden's own slot only: P13's readers, which act for her, ask this.
+ */
+export function wardenOverrideOpen(state: OverrideView): OpenOverride | null {
+  const o = state.leashswap?.warden?.override;
+  return o ? live(state, o) : null;
+}
+
+/**
+ * The override that waits for an answer, or null: the warden's (`leashswap.warden.override`) or a holder's (`dynamic.override`, P15). One is open
+ * at a time (`rollOverride` refuses a second), so at most one slot is live; the warden's is read first.
+ */
+export function overrideOpen(state: OverrideView): OpenOverride | null {
+  const w = wardenOverrideOpen(state);
+  if (w !== null) return w;
+  const h = state.dynamic?.override;
+  return h ? live(state, h) : null;
+}
+
+/**
  * Is this action the start of the ARGUE scene with her alone, over a decision that waits (a dilemma override)? `dispatch` lets exactly
  * that scene through the "a decision is waiting" guard; no other scene, and no activity, is let through.
  */
 export function wardenArgueStart(state: Pick<CampaignState, 'leashswap' | 'day' | 'slot' | 'combat' | 'dilemmas'>, action: { type: string; payload?: unknown }): boolean {
   if (action.type !== 'scene/start') return false;
-  const o = overrideOpen(state);
+  const o = wardenOverrideOpen(state);
   const warden = state.leashswap?.warden?.unitId;
   if (!o || o.context !== 'dilemma' || warden === undefined) return false;
   const ids = (action.payload as { participants?: unknown } | null | undefined)?.participants;

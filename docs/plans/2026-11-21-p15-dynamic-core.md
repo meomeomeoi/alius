@@ -1568,17 +1568,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `rollOverrides(draft, ctx, order, opts): EngineEvent[] | null` (the warden first, then holders with `countermand` by hold, descending; the first override wins);
   - `openOverrideOf(state): (OpenOverride & { source: 'warden' | 'holder'; unitId: string }) | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `P13 unchanged`: every `tests/warden/*` file stays green; `tests/warden/unaffected.test.ts` golden unchanged.
   - `warden first, one open`: with a warden whose override fires, no holder rolls; with the warden's open, a holder's roll throws `OPEN_FIRST`.
   - `a holder overrides an activity that conflicts with keep_me_close` (a `possessive` holder, an activity with another companion), chance = `weight × hold/100 × leniency × 2.0` capped at 0.9.
   - `no countermand, no roll` and `no conflict, no draw`.
   - `the holder's slot is state.dynamic.override and the warden's slot is untouched`.
   - `holderAgenda equals fallbackAgenda plus the possessive pair`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/override.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R13. Keep P13's exports and signatures (new params are optional).
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the override generalised over its source`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/override.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R13. Keep P13's exports and signatures (new params are optional).
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the override generalised over its source`
 
 ---
 

@@ -7,7 +7,8 @@ import { addStress } from '../combat/stress';
 import { isStanding, living } from '../combat/targeting';
 import { TUNING } from '../tuning';
 import { logCosignDenied, rollCosign } from '../warden/leash';
-import { plainPayload, rollOverride } from '../warden/override';
+import { plainPayload } from '../warden/override';
+import { rollOverrides } from '../dynamic/command';
 import { isLiving } from '../economy';
 import { leashCost } from '../leash/use';
 import { finalizeCombat } from '../combat/outcome';
@@ -95,7 +96,7 @@ registerAction('combat/order', (draft, payload, ctx) => {
   if (reason) throw new Error(reason);
   // P13: the warden may hold an order she does not want (no CP is spent); combat never calls the judge (overview P7)
   if (payload.wardenChecked !== true) {
-    const overridden = rollOverride(draft, ctx, { kind: 'combat_order', orderId: payload.orderId, ...(payload.targetCid !== undefined ? { targetCid: payload.targetCid } : {}) }, { payload: plainPayload(payload) });
+    const overridden = rollOverrides(draft, ctx, { kind: 'combat_order', orderId: payload.orderId, ...(payload.targetCid !== undefined ? { targetCid: payload.targetCid } : {}) }, { payload: plainPayload(payload) });
     if (overridden) return overridden;
   }
   const start = cs.log.length;
