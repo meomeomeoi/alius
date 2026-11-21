@@ -21,11 +21,13 @@ import type { OpenMoment } from '../moments/state';
 import { registerHoldsUntil, registerPhysicsStyle } from '../physics/style';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
-import { registerCompromatCount } from './aftermath';
+import { registerCompromatCount, registerRegardBand } from './aftermath';
 import { compromatOf } from './compromat';
 import { holdsUntilOfUnit, expectationsOf } from './expectations';
 import { dynamicOn, herPracticeLive } from './gate';
 import { styleOf } from './profile';
+import { regardBandOf, regardBandRank, regardOf } from './regard';
+import { registerDislikeScale } from './witness';
 import { defaultExpectation, leadingStyle } from './style';
 import { dynamicOf, type DynamicRelation } from './state';
 import { TUNING } from '../tuning';
@@ -98,4 +100,7 @@ export function installDynamicHooks(): void {
   registerExpectation(expectation as Parameters<typeof registerExpectation>[0]);
   registerMomentTrigger('compromat_hint', compromatHint); // P15 (compromat): the one source of the dynamic that is live from the start
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length); // blackmail needs some
+  registerRegardBand((state, reg, unitId) => (dynamicOn(state, reg) ? regardBandOf(reg, regardOf(state, reg, unitId)) : null)); // the aftermath weights read her Regard band (R15, R18)
+  // a witness who dislikes what a holder has over the commander weighs more while her own Regard is low or none (R14, R18): the lowest two bands of the registry
+  registerDislikeScale((state, reg, unitId) => (regardBandRank(reg, regardOf(state, reg, unitId)) >= Math.max(0, reg.regardBands.size - 2) ? TUNING.regard.dislikes : 1));
 }

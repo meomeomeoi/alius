@@ -870,4 +870,31 @@ export const TUNING = Object.freeze({
     gossipCap: 15, gossipChance: 0.5, tellOneIn: 7, showOffEvery: 7,
     reaction: Object.freeze({ dislikesImpunity: 5, dislikesStanding: 5, standingMax: 20, demandOneIn: 3 }),
   }),
+  /**
+   * P15: Regard (R18, R19b, spec §16.3, §16.5, §16.9): her respect for the commander as a person, hidden, 0 to 100. `start` is where it begins; the first
+   * impression moves it by `impression` of the Presence times her tastes (at most `impressionMax`) and a crime she knows that her values read as
+   * bad takes `crime` off. A fall is `humiliation x fall x her style's factor x its speed (x witness when she only saw it)` down to the style's
+   * floor; `speed` turns the word of the style row into a number (the spec gives only the words). A rise is `rise[kind]`, a `value` one takes its
+   * amount from `value` (1 to 4); a style of `drill.styles` multiplies the rises that are mastery (`mastery`) by `drill.mult`, a style of `vindictive.styles` gets `vindictive.rise` for each
+   * `vindictive.days` she has served without a slip. `acts` are the humiliation of the acts P15 sees (a caught cheat, a slip; the Leash route found out is `dynamic.bypass.regardFall`). `disappointment`: Trust at least `trust` and a fall across a band within `days`. `question`: her question comes `cooldownDays` apart for one
+   * woman and `weekDays` apart overall; the answer her style values moves her Regard by `gain`. `tone`: the squad's average Regard from which a nickname is
+   * respectful or pitying (below `pitying` it is mocking). `AUTHOR TO TUNE` (the spec's drafts).
+   */
+  regard: Object.freeze({
+    start: 50, impression: 0.5, impressionMax: 15, crime: 10,
+    fall: 1.5, witness: 0.7,
+    speed: Object.freeze({ very_slow: 0.4, slow: 0.7, normal: 1, fast: 1.3 } as const),
+    rise: Object.freeze({ cost: 3, record: 2, pleased_high: 1, dignity: 2 } as const),
+    value: Object.freeze({ min: 1, max: 4, run: 2, feat: 3, meeting: 1, promise: 2, goal: 4 }),
+    mastery: Object.freeze(['record', 'pleased_high'] as const),
+    /** The styles (closed enum keys, as `dynamic.style.peakLeads`) whose rises double / that count served days. */
+    drill: Object.freeze({ styles: ['drill'] as readonly string[], mult: 2 }),
+    vindictive: Object.freeze({ styles: ['vindictive'] as readonly string[], days: 7, rise: 1 }),
+    acts: Object.freeze({ caught: 2, slip: 1 }),
+    /** A witness who dislikes what a holder has over the commander counts this much more while her own Regard is low or none (R14, R18). */
+    dislikes: 1.5,
+    disappointment: Object.freeze({ trust: 60, days: 14 }),
+    question: Object.freeze({ cooldownDays: 14, weekDays: 7, gain: 2 }),
+    tone: Object.freeze({ respectful: 60, pitying: 30 }),
+  }),
 });

@@ -19,6 +19,7 @@ import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
 import { frameRank } from '../blocking/state';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
+import { regardFeed, regardFromEvents } from '../dynamic/regard';
 import { dynamicOf } from '../dynamic/state';
 import { noteEvents } from '../dynamic/style';
 import { registerEventLanded } from '../relations/effects';
@@ -40,6 +41,8 @@ export function namedUnit(draft: { squad: Unit[] }, id: unknown, action: string)
 
 // A relation event that lands on a holder feeds her hold (R8); the hook is inert while the dynamic is off.
 registerEventLanded(holdFeed);
+// ... and a kept promise or a quiet meeting that lands on a woman is value outside the dynamic: her Regard rises (R18); nothing while off.
+registerEventLanded((draft, reg, unitId, event) => regardFeed(draft, reg, unitId, event));
 // Her days (R8): decay, the slow term, tracks and favour; after her life's step (this module is imported after `actions/life`), and nothing while off.
 registerDayEndStep('dm_rumors', dynamicDayStep);
 // Her place in the P15a stand-ins: frame, live scenes, physics style, what she holds until, what she expects (R10); every reader is null while off.
@@ -52,6 +55,8 @@ registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
 // What a woman knows turns known to the commander once she has shown it in a scene or a DM: the flag goes (the prompt and `Knowledge` read the same one) (R14).
 registerAfterAction((draft) => { revealKnown(draft); return []; });
+// What a hold, a record, a feat and a won run do to her Regard (R18); hidden, never changes hold or frame; nothing while off.
+registerAfterAction((draft, ctx, events) => regardFromEvents(draft, ctx.registries, events));
 // A Leash request the commander filed on a holder (done, denied or held by her own block) is something she saw and keeps (compromat); oversight's own is not the commander's doing.
 registerAfterAction((draft, ctx, events) => {
   if (!dynamicOn(draft, ctx.registries)) return [];

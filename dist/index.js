@@ -1151,6 +1151,37 @@ var TUNING = Object.freeze({
     tellOneIn: 7,
     showOffEvery: 7,
     reaction: Object.freeze({ dislikesImpunity: 5, dislikesStanding: 5, standingMax: 20, demandOneIn: 3 })
+  }),
+  /**
+   * P15: Regard (R18, R19b, spec §16.3, §16.5, §16.9): her respect for the commander as a person, hidden, 0 to 100. `start` is where it begins; the first
+   * impression moves it by `impression` of the Presence times her tastes (at most `impressionMax`) and a crime she knows that her values read as
+   * bad takes `crime` off. A fall is `humiliation x fall x her style's factor x its speed (x witness when she only saw it)` down to the style's
+   * floor; `speed` turns the word of the style row into a number (the spec gives only the words). A rise is `rise[kind]`, a `value` one takes its
+   * amount from `value` (1 to 4); a style of `drill.styles` multiplies the rises that are mastery (`mastery`) by `drill.mult`, a style of `vindictive.styles` gets `vindictive.rise` for each
+   * `vindictive.days` she has served without a slip. `acts` are the humiliation of the acts P15 sees (a caught cheat, a slip; the Leash route found out is `dynamic.bypass.regardFall`). `disappointment`: Trust at least `trust` and a fall across a band within `days`. `question`: her question comes `cooldownDays` apart for one
+   * woman and `weekDays` apart overall; the answer her style values moves her Regard by `gain`. `tone`: the squad's average Regard from which a nickname is
+   * respectful or pitying (below `pitying` it is mocking). `AUTHOR TO TUNE` (the spec's drafts).
+   */
+  regard: Object.freeze({
+    start: 50,
+    impression: 0.5,
+    impressionMax: 15,
+    crime: 10,
+    fall: 1.5,
+    witness: 0.7,
+    speed: Object.freeze({ very_slow: 0.4, slow: 0.7, normal: 1, fast: 1.3 }),
+    rise: Object.freeze({ cost: 3, record: 2, pleased_high: 1, dignity: 2 }),
+    value: Object.freeze({ min: 1, max: 4, run: 2, feat: 3, meeting: 1, promise: 2, goal: 4 }),
+    mastery: Object.freeze(["record", "pleased_high"]),
+    /** The styles (closed enum keys, as `dynamic.style.peakLeads`) whose rises double / that count served days. */
+    drill: Object.freeze({ styles: ["drill"], mult: 2 }),
+    vindictive: Object.freeze({ styles: ["vindictive"], days: 7, rise: 1 }),
+    acts: Object.freeze({ caught: 2, slip: 1 }),
+    /** A witness who dislikes what a holder has over the commander counts this much more while her own Regard is low or none (R14, R18). */
+    dislikes: 1.5,
+    disappointment: Object.freeze({ trust: 60, days: 14 }),
+    question: Object.freeze({ cooldownDays: 14, weekDays: 7, gain: 2 }),
+    tone: Object.freeze({ respectful: 60, pitying: 30 })
   })
 });
 
@@ -11367,6 +11398,11 @@ function dynamicRoll(state, unitId, key) {
   x ^= x >>> 16;
   return (x >>> 0) / 2 ** 32;
 }
+var dislikeScale = null;
+function registerDislikeScale(reader) {
+  dislikeScale = reader;
+}
+var scaleOf = (state, reg, unitId) => dislikeScale?.(state, reg, unitId) ?? 1;
 function dislikers(state, reg, holderId) {
   const rows = state.dynamic?.knowledge;
   if (rows === void 0) return [];
@@ -11377,12 +11413,13 @@ function dynamicTerm(state, reg, unitId) {
   if (x === void 0 || !dynamicLive(state, reg)) return 0;
   const row3 = x.knowledge[unitId];
   if (row3 === void 0) return 0;
-  return Object.entries(row3).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length * TUNING.squadKnowledge.reaction.dislikesImpunity;
+  const dislikes = Object.entries(row3).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
+  return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
 }
 function standingMalus(state, reg, holderId) {
   if (!dynamicLive(state, reg)) return 0;
-  const R2 = TUNING.squadKnowledge.reaction;
-  return Math.min(R2.standingMax, dislikers(state, reg, holderId).length * R2.dislikesStanding);
+  const R3 = TUNING.squadKnowledge.reaction;
+  return Math.min(R3.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R3.dislikesStanding));
 }
 
 // src/engine/discipline/impunity.ts
@@ -18078,19 +18115,19 @@ function blended(m, declared) {
 }
 var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
 function regionOf(reading2, declared) {
-  const R2 = TUNING.position.region;
+  const R3 = TUNING.position.region;
   const m = blended(reading2.motive, declared);
   const { r, f, p } = reading2;
-  if (reading2.flat >= R2.flat) return "hollow";
-  if (reading2.deflect >= R2.deflect) return "elusive";
+  if (reading2.flat >= R3.flat) return "hollow";
+  if (reading2.deflect >= R3.deflect) return "elusive";
   if (largest(m, "fear")) return "cowed";
-  if (f >= R2.friction && largest(m, "gain")) return "double_game";
-  if (f < R2.friction && largest(m, "gain")) return "calculating";
-  if (f >= R2.friction && p >= R2.play) return "bratty";
-  if (f >= R2.friction) return "proud";
-  if (r >= R2.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (f >= R3.friction && largest(m, "gain")) return "double_game";
+  if (f < R3.friction && largest(m, "gain")) return "calculating";
+  if (f >= R3.friction && p >= R3.play) return "bratty";
+  if (f >= R3.friction) return "proud";
+  if (r >= R3.ready && f >= 0 && largest(m, "process")) return "hungry";
   if (r < 0) return "reluctant";
-  if (r >= R2.ready && largest(m, "order")) return "dutiful";
+  if (r >= R3.ready && largest(m, "order")) return "dutiful";
   return "devoted";
 }
 function motiveOf(sample) {
@@ -18462,6 +18499,9 @@ function yieldPartial(draft, ctx2, claimId) {
 // src/engine/dynamic/aftermath.ts
 var bandReader = null;
 var compromatReader = null;
+function registerRegardBand(reader) {
+  bandReader = reader;
+}
 function registerCompromatCount(reader) {
   compromatReader = reader;
 }
@@ -31670,8 +31710,8 @@ function wardenGone(draft, ctx2, how) {
   return startRemoval(draft, ctx2, "death");
 }
 function reportChance(state, _reg) {
-  const R2 = TUNING.warden.verdict.report;
-  return clamp37(R2.base + R2.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R2.perCunning * (socialRank(state, "cunning") - 1), R2.min, R2.max);
+  const R3 = TUNING.warden.verdict.report;
+  return clamp37(R3.base + R3.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R3.perCunning * (socialRank(state, "cunning") - 1), R3.min, R3.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -31739,16 +31779,16 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
 }
 function remoteExpectations(state) {
   if (!state.leashswap?.remote) return [];
-  const R2 = TUNING.warden.remote;
+  const R3 = TUNING.warden.remote;
   return [
-    { id: "remote_quota", kind: "meet_quota", weight: R2.quota, source: "corporate", known: true },
-    { id: "remote_obey", kind: "obey_oversight", weight: R2.obey, source: "corporate", known: true }
+    { id: "remote_quota", kind: "meet_quota", weight: R3.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R3.obey, source: "corporate", known: true }
   ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
   if (!ls?.remote || wardenOf(draft)) return [];
-  const R2 = TUNING.warden.remote;
+  const R3 = TUNING.warden.remote;
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
@@ -31756,7 +31796,7 @@ function remoteDayStep(draft, ctx2) {
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
-  if (since > 0 && since % R2.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R2.missionDays && m.outcomeDay <= draft.day)) {
+  if (since > 0 && since % R3.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R3.missionDays && m.outcomeDay <= draft.day)) {
     const id = pickPunishment(draft, ctx2.registries, 1);
     if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
@@ -34808,6 +34848,174 @@ function requestTransfer(draft, unitId) {
   return [stage("transfer_requested", { unitId })];
 }
 
+// src/engine/dynamic/regard.ts
+var R2 = TUNING.regard;
+var clamp40 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var round44 = (n) => Math.round(n * 1e4) / 1e4;
+function holderOf4(state, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && state.relations[unitId] !== void 0 ? unit3 : void 0;
+}
+var bandsOf2 = (reg) => [...reg.regardBands.values()].sort((a, b) => b.min - a.min);
+function regardBandOf2(reg, n) {
+  const bands = bandsOf2(reg);
+  return (bands.find((b) => n >= b.min) ?? bands[bands.length - 1])?.id ?? "";
+}
+function regardBandRank(reg, n) {
+  const bands = bandsOf2(reg);
+  const i = bands.findIndex((b) => n >= b.min);
+  return i < 0 ? Math.max(0, bands.length - 1) : i;
+}
+function isLow(reg, n) {
+  const bands = bandsOf2(reg);
+  return bands.length >= 2 && regardBandRank(reg, n) >= bands.length - 2;
+}
+function styleRow(state, reg, unit3) {
+  const key = styleOf(unit3)?.primary;
+  const row3 = key === void 0 ? void 0 : reg.practiceStyles.get(key);
+  if (row3 === void 0) return { factor: 1, speed: R2.speed.normal, floor: 0, form: void 0, key };
+  return { factor: row3.regardFactor, speed: R2.speed[row3.regardSpeed] ?? R2.speed.normal, floor: row3.regardFloor, form: row3.regardForm, key };
+}
+function regardStart(state, reg, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0) return R2.start;
+  const mult = matchedTastes(state, reg, unit3).reduce((m, t) => m * (typeof t.presenceMult === "number" ? t.presenceMult : 1), 1);
+  let n = R2.start + clamp40(presenceOf(state, reg) * mult * R2.impression, -R2.impressionMax, R2.impressionMax);
+  if (state.relations[unitId]?.flags.includes("knows_crime") === true && state.commander.crimeId !== null) {
+    const reactions = reg.crimes.get(state.commander.crimeId)?.valueReactions ?? [];
+    const values = valuesOf(unit3);
+    const felt = reactions.filter((r) => r.sign === "+" ? values[r.axis] > 0 : values[r.axis] < 0).reduce((sum, r) => sum + r.weight, 0);
+    if (felt < 0) n -= R2.crime;
+  }
+  return round44(clamp40(n, 0, 100));
+}
+function regardOf(state, reg, unitId) {
+  return state.relations[unitId]?.regard ?? regardStart(state, reg, unitId);
+}
+function ensureRegard(draft, reg, unitId) {
+  const stored = draft.relations[unitId]?.regard;
+  if (stored !== void 0) return stored;
+  const start = regardStart(draft, reg, unitId);
+  if (dynamicOn(draft, reg) && holderOf4(draft, unitId) !== void 0) draft.relations[unitId].regard = start;
+  return start;
+}
+function regardTone(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return null;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named") return null;
+  const form = styleRow(state, reg, unit3).form;
+  return form !== void 0 && isLow(reg, regardOf(state, reg, unitId)) ? form : null;
+}
+var watchers = [];
+function write2(draft, reg, unitId, next, cause) {
+  const from = ensureRegard(draft, reg, unitId);
+  const to = round44(clamp40(next, 0, 100));
+  if (to === from) return [];
+  draft.relations[unitId].regard = to;
+  const events = [{ type: "regard_changed", unitId, from, to, cause }];
+  const was = regardBandOf2(reg, from);
+  const now = regardBandOf2(reg, to);
+  if (was !== now) events.push({ type: "regard_band_changed", unitId, from: was, to: now });
+  if (to < from) for (const watch of watchers) events.push(...watch(draft, reg, unitId, from, to));
+  return events;
+}
+function regardFall(draft, reg, unitId, humiliation, opts) {
+  const unit3 = dynamicOn(draft, reg) ? holderOf4(draft, unitId) : void 0;
+  if (unit3 === void 0 || !(humiliation > 0)) return [];
+  const row3 = styleRow(draft, reg, unit3);
+  const fall = humiliation * R2.fall * row3.factor * row3.speed * (opts.witness ? R2.witness : 1);
+  const now = ensureRegard(draft, reg, unitId);
+  return write2(draft, reg, unitId, Math.min(now, Math.max(row3.floor, now - fall)), opts.cause ?? "act");
+}
+function regardRise(draft, reg, unitId, kind, amount) {
+  const unit3 = dynamicOn(draft, reg) ? holderOf4(draft, unitId) : void 0;
+  if (unit3 === void 0) return [];
+  if (kind === "cost") {
+    const r = dynamicOf(draft, unitId)?.readOf.r;
+    if (r === void 0 || r > 0) return [];
+  }
+  const V = R2.value;
+  let gain2 = kind === "value" ? clamp40(amount ?? V.min, V.min, V.max) : amount ?? R2.rise[kind];
+  const key = styleRow(draft, reg, unit3).key;
+  if (R2.mastery.includes(kind) && key !== void 0 && R2.drill.styles.includes(key)) gain2 *= R2.drill.mult;
+  if (!(gain2 > 0)) return [];
+  return write2(draft, reg, unitId, ensureRegard(draft, reg, unitId) + gain2, kind);
+}
+function resetServed(draft, unitId) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn?.served !== void 0) dyn.served = { since: draft.day };
+}
+function regardDayStep(draft, reg, holders2) {
+  const T5 = R2.vindictive;
+  const events = [];
+  for (const id of holders2) {
+    const dyn = dynamicOf(draft, id);
+    const unit3 = holderOf4(draft, id);
+    if (dyn === void 0 || unit3 === void 0) continue;
+    const key = styleRow(draft, reg, unit3).key;
+    if (key === void 0 || !T5.styles.includes(key) || frameRank(dyn.frame) < frameRank("play")) continue;
+    if (dyn.served === void 0) {
+      dyn.served = { since: draft.day };
+      continue;
+    }
+    const served = draft.day - dyn.served.since;
+    if (served > 0 && served % T5.days === 0) events.push(...regardRise(draft, reg, id, "dignity", T5.rise));
+  }
+  return events;
+}
+var namedInService = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+var idOf = (v) => typeof v === "string" ? v : void 0;
+function regardFromEvents(draft, reg, events) {
+  if (!dynamicOn(draft, reg)) return [];
+  const V = R2.value;
+  const out = [];
+  const noted = () => draft.dynamic.noted ??= {};
+  for (const e of events) {
+    const holder2 = idOf(e.holderId);
+    const runId = idOf(e.runId);
+    switch (e.type) {
+      case "physics_started":
+        if (e.chained !== true && draft.dynamic.noted?.dirtyRun !== void 0) delete draft.dynamic.noted.dirtyRun;
+        break;
+      case "physics_caught":
+      case "physics_slip":
+        if (runId !== void 0) noted().dirtyRun = runId;
+        if (holder2 !== void 0) {
+          out.push(...regardFall(draft, reg, holder2, e.type === "physics_caught" ? R2.acts.caught : R2.acts.slip, { witness: false, cause: e.type }));
+          resetServed(draft, holder2);
+        }
+        break;
+      case "physics_outcome": {
+        const clean10 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
+        if (clean10 && holder2 !== void 0) out.push(...regardRise(draft, reg, holder2, "dignity"));
+        if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
+        break;
+      }
+      case "marathon_done": {
+        const unit3 = idOf(e.unitId);
+        if (e.result !== "stopped" && unit3 !== void 0) out.push(...regardRise(draft, reg, unit3, "record"));
+        break;
+      }
+      case "outside_feat":
+        for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V.feat));
+        break;
+      case "expedition_ended": {
+        const report = draft.lastExpedition;
+        if (e.outcome !== "success" || report === void 0 || report.id !== e.reportId) break;
+        for (const id of report.party) out.push(...regardRise(draft, reg, id, "value", V.run));
+        break;
+      }
+    }
+  }
+  return out;
+}
+function regardFeed(draft, reg, unitId, event) {
+  if (event.actor !== "commander") return [];
+  if (event.type === "kept_promise") return regardRise(draft, reg, unitId, "value", R2.value.promise);
+  if (event.type === "time_together") return regardRise(draft, reg, unitId, "value", R2.value.meeting);
+  return [];
+}
+
 // src/engine/dynamic/dayStep.ts
 var holdersOf2 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u) && dynamicOf(draft, u.id) !== void 0).map((u) => u.id);
 var decay3 = (draft, ctx2, holders2) => {
@@ -34860,7 +35068,8 @@ var claims = (draft, ctx2) => claimsDue(draft, ctx2);
 var knowledge = (draft, ctx2) => knowledgeDayStep(draft, ctx2);
 var aftermaths = (draft, ctx2) => aftermathDayStep(draft, ctx2);
 var oversight = (draft, ctx2) => oversightDayStep(draft, ctx2);
-var STEPS = [decay3, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight];
+var regard = (draft, ctx2, holders2) => regardDayStep(draft, ctx2.registries, holders2);
+var STEPS = [decay3, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight, regard];
 function dynamicDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   const holders2 = holdersOf2(draft);
@@ -35042,6 +35251,8 @@ function installDynamicHooks() {
   registerExpectation(expectation);
   registerMomentTrigger("compromat_hint", compromatHint);
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length);
+  registerRegardBand((state, reg, unitId) => dynamicOn(state, reg) ? regardBandOf2(reg, regardOf(state, reg, unitId)) : null);
+  registerDislikeScale((state, reg, unitId) => regardBandRank(reg, regardOf(state, reg, unitId)) >= Math.max(0, reg.regardBands.size - 2) ? TUNING.regard.dislikes : 1);
 }
 
 // src/engine/dynamic/bypass.ts
@@ -35103,6 +35314,8 @@ function bypassLeash(draft, ctx2, p) {
       if (applied !== 0) events.push({ type: "relation_changed", unitId: p.allyId, axis: "trust", delta: applied, applied });
     }
     addCompromat(draft, holderId, `AUTHOR TO WRITE: ${holder2.displayName} caught the commander going around her hold on the Leash requests.`, p.allyId !== void 0 ? [p.allyId] : []);
+    events.push(...regardFall(draft, reg, holderId, TUNING.dynamic.bypass.regardFall, { witness: false, cause: "bypass" }));
+    resetServed(draft, holderId);
   }
   const x = draft.dynamic;
   (x.oversight ??= { blocked: [] }).pass = { unitId: p.unitId, kind: p.kind };
@@ -35122,6 +35335,7 @@ function namedUnit3(draft, id, action) {
   return unit3;
 }
 registerEventLanded(holdFeed);
+registerEventLanded((draft, reg, unitId, event) => regardFeed(draft, reg, unitId, event));
 registerDayEndStep("dm_rumors", dynamicDayStep);
 installDynamicHooks();
 registerAfterAction(readMoments);
@@ -35131,6 +35345,7 @@ registerAfterAction((draft) => {
   revealKnown(draft);
   return [];
 });
+registerAfterAction((draft, ctx2, events) => regardFromEvents(draft, ctx2.registries, events));
 registerAfterAction((draft, ctx2, events) => {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   for (const e of events) {
@@ -38052,12 +38267,15 @@ function holderDirective(state, reg, unit3) {
   const milestone = waiting2 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting2.milestoneId);
   const override = state.dynamic?.override;
   const arguing = override !== void 0 && override.unitId === unit3.id && state.scene !== void 0 && override.arguing === state.scene.id ? override : void 0;
+  const regard2 = holds4 ? regardTone(state, reg, unit3.id) : null;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const kept = compromatOf(state, unit3.id).slice(-3).map((f) => sentence2(f.text.replace(/^AUTHOR TO WRITE:\s*/, ""))).filter((t) => t !== "");
   const parts = [
     ...holds4 ? [`${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`] : [],
     ...holds4 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit3),
+    ...regard2 !== null ? [`Her tone toward the commander: ${sentence2(regard2)}.`] : [],
+    // the tone word only: Regard is hers and never a number
     ...milestone !== void 0 ? [`${holds4 ? "She" : name} is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
     ...holds4 && asking !== void 0 ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === void 0 ? "that the commander give way to her" : sentence2(String(reg.dynamicDomains.get(asking.domainId)?.promptHint ?? "a part of the commander's life"))}.`] : [],
     ...arguing !== void 0 ? [`${name} has overridden the commander's order: ${sentence2(describeOrder(state, reg, arguing.order))}. She wants: ${sentence2(arguing.altLabel)}. She can be talked round only by a real compromise.`] : [],
@@ -46959,7 +47177,7 @@ function renderCalibration(host, ctx2) {
   if (shown.has("stances") && stanceIds.length > 0) {
     const holder3 = { world: { options: ctx2.world } };
     const current = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
-    const write2 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current(id), ...next } } });
+    const write3 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current(id), ...next } } });
     host.append(
       section(
         "stances",
@@ -46989,14 +47207,14 @@ function renderCalibration(host, ctx2) {
             h(
               "div",
               { class: "alius-stance-chips" },
-              ...["shares", "indifferent", "opposes"].map((st) => chip2({ "data-stance": st }, st === "shares" ? "Shares it" : st === "opposes" ? "Rejects it" : "Indifferent", cur.stance === st, false, () => write2(id, { stance: st }))),
-              ...[1, 2].map((n) => chip2({ "data-strength": String(n) }, n === 1 ? "Mild" : "Strong", cur.strength === n, cur.stance === "indifferent", () => write2(id, { strength: n })))
+              ...["shares", "indifferent", "opposes"].map((st) => chip2({ "data-stance": st }, st === "shares" ? "Shares it" : st === "opposes" ? "Rejects it" : "Indifferent", cur.stance === st, false, () => write3(id, { stance: st }))),
+              ...[1, 2].map((n) => chip2({ "data-strength": String(n) }, n === 1 ? "Mild" : "Strong", cur.strength === n, cur.stance === "indifferent", () => write3(id, { strength: n })))
             ),
             h(
               "label",
               { class: "alius-field" },
               h("span", { class: "alius-field-label" }, "Reason"),
-              textInput(`stance-reason-${id}`, cur.reason, 160, (v) => write2(id, { reason: v }))
+              textInput(`stance-reason-${id}`, cur.reason, 160, (v) => write3(id, { reason: v }))
             ),
             imported ? h("p", { class: "alius-dim" }, `From the card: ${imported}`) : null
           );
@@ -47006,7 +47224,7 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("bond")) {
     const bond = ch.bond ?? { ...MODEST_BOND, ownLimits: { categories: [] } };
-    const write2 = (next) => onUpdate({ bond: { ...bond, ...next, ownLimits: next.ownLimits ?? bond.ownLimits } });
+    const write3 = (next) => onUpdate({ bond: { ...bond, ...next, ownLimits: next.ownLimits ?? bond.ownLimits } });
     const group = (key, label2, ids) => h(
       "div",
       { class: "alius-bond-group" },
@@ -47018,18 +47236,18 @@ function renderCalibration(host, ctx2) {
         "data-id": id,
         "aria-pressed": String(bond[key] === id),
         ...analyzeNative("glossary:bond_profile"),
-        onclick: () => write2({ [key]: id })
+        onclick: () => write3({ [key]: id })
       }, id.toUpperCase())))
     );
     const care = h("input", { type: "checkbox", "data-bond": "caretaker", checked: bond.caretaker });
-    care.addEventListener("change", () => write2({ caretaker: care.checked }));
+    care.addEventListener("change", () => write3({ caretaker: care.checked }));
     const limited = bond.ownLimits.categories;
     const toggleLimit = (id) => {
       const set2 = new Set(limited);
       if (set2.has(id)) set2.delete(id);
       else set2.add(id);
       const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set2.has(x));
-      write2({ ownLimits: { categories, note: bond.ownLimits.note ?? "" } });
+      write3({ ownLimits: { categories, note: bond.ownLimits.note ?? "" } });
     };
     const fromCard = !manual && cand?.bondReason ? cand.bondReason : "";
     host.append(
@@ -47063,7 +47281,7 @@ function renderCalibration(host, ctx2) {
           "label",
           { class: "alius-field" },
           h("span", { class: "alius-field-label" }, "Note on her limits"),
-          textInput("bond-note", bond.ownLimits.note ?? "", TUNING.bonds.limits.noteMax, (v) => write2({ ownLimits: { categories: limited, note: v } }))
+          textInput("bond-note", bond.ownLimits.note ?? "", TUNING.bonds.limits.noteMax, (v) => write3({ ownLimits: { categories: limited, note: v } }))
         ),
         fromCard ? h("p", { class: "alius-dim" }, `From the card: ${fromCard}`) : null
       )
@@ -48427,7 +48645,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit2 = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
-var clamp40 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp41 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a2(seed) % n;
@@ -48451,7 +48669,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp40(v));
+    out.push(clamp41(v));
   }
   return out;
 }

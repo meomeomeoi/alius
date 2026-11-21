@@ -100,6 +100,8 @@ export interface DynamicRelation {
   formerHolder?: { endedDay: number; frame: Frame; sworn: boolean; successor?: string };
   /** Milestone, domain and return ids → the day it may come again. */
   cooldowns: Record<string, number>;
+  /** The day the run of days she has served without a slip began (the `vindictive` style's Regard rise counts weeks of it; Task 36). */
+  served?: { since: number };
 }
 
 /**
@@ -158,7 +160,17 @@ export interface DynamicCampaign {
   /** The probe queue (R9): unit ids, first in line first. */
   queue: string[];
   /** Days the dynamic noticed in passing (the style's surfacing reads them, T16): the last gain of the commander's endurance, the last time the crime was revealed. */
-  noted?: { enduranceDay?: number; crimeDay?: number; praisedDay?: number };
+  noted?: {
+    enduranceDay?: number; crimeDay?: number; praisedDay?: number;
+    /** Regard (Task 36, 37): per woman, the value her Regard had when the span of its recent fall began (disappointment and the question read it). */
+    regardMark?: Record<string, { day: number; value: number }>;
+    /** The day each woman was disappointed (her line lasts `TUNING.regard.disappointment.days`). */
+    disappointed?: Record<string, number>;
+    /** The question without a good answer: the day of the last one asked, and per woman. */
+    question?: { day?: number; by: Record<string, number> };
+    /** The physics run (`p<n>`) that had a slip or a caught cheat: its end is not clean (Regard's dignity rise). */
+    dirtyRun?: string;
+  };
   /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`, exits `dx<n>`. */
   seq: number;
   /** `exits` is optional: a save from before the exit routes has none. */

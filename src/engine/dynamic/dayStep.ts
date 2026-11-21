@@ -20,6 +20,7 @@ import { knowledgeDayStep } from './knowledge';
 import { milestonesDue } from './milestones';
 import { oversightDayStep } from './oversight';
 import { probeDayStep } from './probes';
+import { regardDayStep } from './regard';
 import { fadeDeclarations } from './reading';
 import { dynamicOf } from './state';
 import { levelOfXp } from './tracks';
@@ -102,8 +103,11 @@ const aftermaths: SubStep = (draft, ctx) => aftermathDayStep(draft, ctx);
 /** 10. Oversight (Task 34): the transfer threat's day, then the held and cancelled Leash requests are counted and the inquiry moves; on fill it acts. Draws nothing. */
 const oversight: SubStep = (draft, ctx) => oversightDayStep(draft, ctx);
 
+/** 11. Regard (Task 36): a holder whose style counts the days she has served gets a rise for each week without a slip. Draws nothing. */
+const regard: SubStep = (draft, ctx, holders) => regardDayStep(draft, ctx.registries, holders);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight, regard];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

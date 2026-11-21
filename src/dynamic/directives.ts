@@ -9,6 +9,7 @@ import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { dynamicOf } from '../engine/dynamic/state';
 import { reactionOf, type Reaction } from '../engine/dynamic/witness';
+import { regardTone } from '../engine/dynamic/regard';
 import { leadingStyle } from '../engine/dynamic/style';
 import type { DynamicDomainEntry, DynamicMilestoneEntry, PracticeStyleEntry, ProbeAxisEntry } from '../engine/dynamic/types';
 import { isLiving } from '../engine/economy';
@@ -65,6 +66,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
   const milestone = waiting === undefined ? undefined : (reg.dynamicMilestones.get(waiting.milestoneId) as unknown as DynamicMilestoneEntry | undefined);
   const override = state.dynamic?.override;
   const arguing = override !== undefined && override.unitId === unit.id && state.scene !== undefined && override.arguing === state.scene.id ? override : undefined;
+  const regard = holds ? regardTone(state, reg, unit.id) : null;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   // her compromat is hers: she knows it whether or not the commander does (the player's view, `Knowledge`, is not what this reads); the newest few, no count
   const kept = compromatOf(state, unit.id).slice(-3).map((f) => sentence(f.text.replace(/^AUTHOR TO WRITE:\s*/, ''))).filter((t) => t !== '');
@@ -72,6 +74,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
     ...(holds ? [`${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`] : []),
     ...(holds && claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
     styleLine(state, reg, unit),
+    ...(regard !== null ? [`Her tone toward the commander: ${sentence(regard)}.`] : []), // the tone word only: Regard is hers and never a number
     ...(milestone !== undefined ? [`${holds ? 'She' : name} is waiting for the commander's answer to something she asked: ${sentence(milestone.promptHint)}.`] : []),
     ...(holds && asking !== undefined ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === undefined ? 'that the commander give way to her' : sentence(String((reg.dynamicDomains.get(asking.domainId) as unknown as DynamicDomainEntry | undefined)?.promptHint ?? 'a part of the commander\'s life'))}.`] : []),
     ...(arguing !== undefined ? [`${name} has overridden the commander's order: ${sentence(describeOrder(state, reg, arguing.order))}. She wants: ${sentence(arguing.altLabel)}. She can be talked round only by a real compromise.`] : []),

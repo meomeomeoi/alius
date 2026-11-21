@@ -74,6 +74,15 @@ export function dynamicRoll(state: Pick<CampaignState, 'dynamic' | 'day'>, unitI
   return (x >>> 0) / 2 ** 32;
 }
 
+/**
+ * How much more her dislike weighs (R18): Regard (`regard.ts`) registers a reader that answers `TUNING.regard.dislikes` for a woman whose Regard is low or none and 1
+ * for the rest. This file stays a leaf, so the reader is injected; with none registered every dislike counts once.
+ */
+type ScaleReader = (state: CampaignState, reg: Registries, unitId: string) => number;
+let dislikeScale: ScaleReader | null = null;
+export function registerDislikeScale(reader: ScaleReader): void { dislikeScale = reader; }
+const scaleOf = (state: CampaignState, reg: Registries, unitId: string): number => dislikeScale?.(state, reg, unitId) ?? 1;
+
 /** The observers who `knows_dynamic` of this holder and whose `witness` is `dislikes`, in squad order. */
 export function dislikers(state: CampaignState, reg: Registries, holderId: string): string[] {
   const rows = state.dynamic?.knowledge;
@@ -91,12 +100,13 @@ export function dynamicTerm(state: CampaignState, reg: Registries, unitId: strin
   if (x === undefined || !dynamicLive(state, reg)) return 0;
   const row = x.knowledge[unitId];
   if (row === undefined) return 0;
-  return Object.entries(row).filter(([holderId, k]) => k.level === 'knows_dynamic' && reactionOf(state, reg, unitId, holderId) === 'dislikes').length * TUNING.squadKnowledge.reaction.dislikesImpunity;
+  const dislikes = Object.entries(row).filter(([holderId, k]) => k.level === 'knows_dynamic' && reactionOf(state, reg, unitId, holderId) === 'dislikes').length;
+  return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
 }
 
 /** What the holder's standing loses to the witnesses who dislike it (a positive number: `dislikesStanding` each, at most `standingMax`). 0 without the block. */
 export function standingMalus(state: CampaignState, reg: Registries, holderId: string): number {
   if (!dynamicLive(state, reg)) return 0;
   const R = TUNING.squadKnowledge.reaction;
-  return Math.min(R.standingMax, dislikers(state, reg, holderId).length * R.dislikesStanding);
+  return Math.min(R.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R.dislikesStanding));
 }

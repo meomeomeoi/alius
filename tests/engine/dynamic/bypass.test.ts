@@ -6,6 +6,7 @@ import '../../../src/engine/actions/scene';
 import '../../../src/engine/actions/calendar';
 import { bypassAllies, bypassChance, bypassRoutes } from '../../../src/engine/dynamic/bypass';
 import { leashBlockOf } from '../../../src/engine/dynamic/leashBlock';
+import { regardStart } from '../../../src/engine/dynamic/regard';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import { leashLog } from '../../../src/engine/leash/weekly';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -144,6 +145,8 @@ describe('a discovered bypass', () => {
     const hist = r!.state.relations[ANN].history.filter((h) => h.kind === 'event' && h.type === 'overrode_her');
     expect(hist.at(-1)).toMatchObject({ severity: 'major' });
     expect(dynamicOf(r!.state, ANN)!.hold).toBeLessThan(70);
+    expect(ofType(r!.events, 'regard_changed')[0]).toMatchObject({ unitId: ANN, cause: 'bypass' }); // Regard −2 (Task 36)
+    expect(r!.state.relations[ANN].regard!).toBeLessThan(regardStart(s!, reg, ANN));
     const fact = r!.state.memory.facts.find((f) => f.tags.includes('leash_bypass'));
     expect(fact).toMatchObject({ about: [ANN], knownBy: [ANN], importance: 4 });
     expect(fact!.text).not.toMatch(/\b(he|him|his)\b/i);

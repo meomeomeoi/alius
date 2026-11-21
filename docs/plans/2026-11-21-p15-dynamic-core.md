@@ -1917,17 +1917,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `regardBandOf(reg, n)`;
   - `regardTone(state, reg, unitId): string | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `start value`: 50 + impression offset; −10 with `knows_crime` and a negative reaction.
   - `fall by style`: humiliation 3 for a `cruel` holder = 3 × 1.5 × 1.3 × 1.3 = 7.605; a witness × 0.7; never below the floor (`possessive` 35).
   - `rises`: cost +3 only when her reading's r ≤ 0; record +2 on `marathon_done`; dignity +2 on a clean `released`; a P9b feat +3; a quiet meeting +1; `drill` doubles mastery rises.
   - `Regard never changes hold or frame` (no `hold_changed` from any Regard call).
   - `off: nothing is written` (no `regard` key anywhere).
   - `the tone word is the style's form at low or none and absent above`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/regard.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R18.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): Regard`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/regard.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R18.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): Regard`
 
 ---
 
