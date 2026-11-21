@@ -1396,7 +1396,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `applyMilestone(draft, ctx, unitId, milestoneId): EngineEvent[]` (**the only writer of `frame`**, apart from seeds);
   - `refusalCost(draft, ctx, unitId, what: 'claim' | 'milestone' | 'demand'): EngineEvent[]` (R11's frame-dependent cost, including `refusal_noted` and the contest).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `first_yes opens at testing in the scene form`: an `OpenMilestone` with `form: 'scene'` and `milestone_offered`.
   - `first_protocol books her next free evening` (a booking with `source: 'milestone'`, even with two `roll` bookings this week).
   - `first_night_held needs restraint ≥ 1` and stays closed at track 0 (user R1).
@@ -1405,10 +1405,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `private_rule` opens at possessing with `book_ahead`, `body_conditions` and `household_protocol`.
   - `refusal cost by frame`: −2 at `play`; −4 plus `refusal_noted` at `role`; at `rule`, a third refusal within 14 days opens the submit claim (R1).
   - `a gated milestone stays closed while its category is off`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/milestones.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R11.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): milestones and frame changes`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/milestones.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R11.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): milestones and frame changes`
 
 ---
 

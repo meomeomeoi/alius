@@ -1019,7 +1019,7 @@ export interface Intercept {
   status: 'open' | 'kept';
 }
 
-export type BookingSource = 'roll' | 'wager' | 'smother';
+export type BookingSource = 'roll' | 'wager' | 'smother' | 'milestone';
 
 /** A slot of the commander that a unit booked (P9c §2). */
 export interface Booking {

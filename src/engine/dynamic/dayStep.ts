@@ -14,6 +14,7 @@ import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
+import { milestonesDue } from './milestones';
 import { probeDayStep } from './probes';
 import { fadeDeclarations } from './reading';
 import { dynamicOf } from './state';
@@ -82,8 +83,11 @@ const probes: SubStep = (draft, ctx) => probeDayStep(draft, ctx);
 /** 5b. Declarations fade (Task 15): a declared motive loses weight each day and is gone at 0. Draws nothing. */
 const declarations: SubStep = (draft, _ctx, holders) => fadeDeclarations(draft, holders);
 
+/** 6. Milestones (Task 19): what time alone makes due (a cooling, a cooldown that ran out) applies or opens; the hold changes asked it already. Draws nothing. */
+const milestones: SubStep = (draft, ctx, holders) => holders.flatMap((id) => milestonesDue(draft, ctx, id));
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

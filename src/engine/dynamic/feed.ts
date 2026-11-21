@@ -11,6 +11,7 @@ import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { dynamicOn } from './gate';
 import { addHold } from './hold';
+import { refusalCost } from './milestones';
 import { dynamicOf } from './state';
 
 /**
@@ -21,7 +22,6 @@ export const FEED_CAUSE: Readonly<Record<string, keyof typeof TUNING.dynamic.gai
   followed_lead: 'followed_lead',
   rule_accepted: 'rule_accepted',
   rule_broken: 'rule_broken',
-  refused_demand: 'refusal',
   granted_demand: 'desire_granted',
   overrode_her: 'overrode_her',
   commander_enforced: 'commander_enforced',
@@ -50,6 +50,8 @@ export function holdFeed(draft: CampaignState, reg: Registries, unitId: string, 
   if (event.actor !== 'commander' || !dynamicOn(draft, reg) || dynamicOf(draft, unitId) === undefined) return [];
   // one break of one rule counts once a day: whichever of the engine's check and a report lands second finds it counted (`applyRuleEvent` stamps the day)
   if (event.type === 'rule_broken' && event.ruleId !== undefined && rulesOf(draft).some((r) => r.id === event.ruleId && r.lastBrokenDay === draft.day)) return [];
+  // a refusal costs by her frame (`refusalCost`); a desire demand that is put off is not one (she is asked to wait, not defied: `demands.ts`)
+  if (event.type === 'refused_demand') return event.templateId !== undefined && reg.demandTemplates.get(event.templateId)?.kind === 'desire' ? [] : refusalCost(draft, { registries: reg }, unitId, 'demand');
   const cause = causeOf(reg, event);
   if (cause === null) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause as keyof typeof TUNING.dynamic.gains], cause);

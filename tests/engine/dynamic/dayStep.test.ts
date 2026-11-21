@@ -72,8 +72,8 @@ describe('decay', () => {
   });
 
   it('reports the change with its cause', () => {
-    const s = world('play', 50);
-    expect(step(s)).toEqual([{ type: 'hold_changed', unitId: ANN, from: 50, to: 49, cause: 'decay' }]);
+    const s = world('play', 35); // (at keeping a milestone would be offered too: Task 19)
+    expect(step(s)).toEqual([{ type: 'hold_changed', unitId: ANN, from: 35, to: 34, cause: 'decay' }]);
   });
 
   it('scales by pace', () => {

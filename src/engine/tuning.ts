@@ -728,7 +728,7 @@ export const TUNING = Object.freeze({
       probe_yielded: 4, probe_returned: 3, probe_returned_playful: 5, probe_deflected: -1, probe_resisted: -3,
       followed_lead: 1, rule_accepted: 2, desire_granted: 2, witness_drawn: 5, successor: 10,
       override_comply: 3, override_defy: -6,
-      refusal: -4, rule_broken: -5, overrode_her: -6, commander_enforced: -10,
+      rule_broken: -5, overrode_her: -6, commander_enforced: -10,
       offer_craves: 6, offer_enjoys: 3, offer_refused: -3,
       task_kept: 3, punishment_accepted: 4, service_rated_pleased: 2, staging_held: 5, task_broken: -5,
     } as const),
@@ -736,6 +736,17 @@ export const TUNING = Object.freeze({
     slow: Object.freeze({ impunity: 0.5, leader: 0.3 }),
     /** Decay after `idleDays` without a gain, per day, by frame (R8). Nothing at `equal`. */
     decay: Object.freeze({ idleDays: 3, play: 1, role: 0.5, rule: 0.3 }),
+    /**
+     * What refusing her costs by the frame's `refusal` column (R11, `refusalCost`): `minor` at `play` (and `equal`), `moderate` at `role`
+     * (also noted), `major` (no frame uses it yet), `contest` at `rule` (and the contest). Hold only, a loss; `AUTHOR TO TUNE`.
+     */
+    refusalCost: Object.freeze({ minor: -2, moderate: -4, major: -6, contest: -4 }),
+    /**
+     * Milestones (R11): refusing one drops `refuseDrop` hold (one band; the frame's floor stops it) and keeps it from coming again for
+     * `refuseCooldownDays`; after a down-transition the milestones that lead back into the frame she left wait `afterDownDays`; a booking
+     * form looks `bookingSearchDays` ahead for a free evening. `AUTHOR TO TUNE`.
+     */
+    milestones: Object.freeze({ refuseDrop: 20, refuseCooldownDays: 7, afterDownDays: 14, bookingSearchDays: 14 }),
     /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
     contestAt: 3,
     contestWindowDays: 14,

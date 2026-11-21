@@ -40,8 +40,8 @@ describe('the hold feed', () => {
     expect(dynamicOf(s, ANN)!.lastPracticeDay).toBe(s.day);
   });
 
-  it('rule_accepted +2, rule_broken -5, commander_enforced on her -10, refused_demand -4, overrode_her -6', () => {
-    for (const [type, delta] of [['rule_accepted', 2], ['rule_broken', -5], ['commander_enforced', -10], ['refused_demand', -4], ['overrode_her', -6]] as const) {
+  it('rule_accepted +2, rule_broken -5, commander_enforced on her -10, refused_demand -2 at play (by her frame: Task 19), overrode_her -6', () => {
+    for (const [type, delta] of [['rule_accepted', 2], ['rule_broken', -5], ['commander_enforced', -10], ['refused_demand', -2], ['overrode_her', -6]] as const) {
       const s = world();
       applyEventToUnit(s, reg, ANN, event(type));
       expect(holdOf(s), type).toBe(50 + delta);
@@ -107,10 +107,12 @@ describe('the hold feed', () => {
 
   it('applyEventToUnit draws nothing new: the rng is untouched and everything outside the dynamic is as without the hook', () => {
     const withHook = world();
+    dynamicOf(withHook, ANN)!.hold = 30; // below keeping: no milestone comes due (Task 19)
     const rngBefore = structuredClone(withHook.rng);
     const a = applyEventToUnit(withHook, reg, ANN, event('rule_broken'));
     expect(withHook.rng).toEqual(rngBefore);
     const bare = world();
+    dynamicOf(bare, ANN)!.hold = 30;
     resetEventLanded();
     const b = applyEventToUnit(bare, reg, ANN, event('rule_broken'));
     registerEventLanded(holdFeed);
