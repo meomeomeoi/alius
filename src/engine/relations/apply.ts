@@ -9,7 +9,7 @@ import { applyDisciplineEvent } from '../discipline/record';
 import { recordWitnesses } from '../development/appraisal';
 import { measureList } from '../discipline';
 import { evaluateAutomatic } from './graph';
-import { applyLifeIntent, lifeIntentInput } from '../life/intents';
+import { applyLifeIntent, lifeIntentInput, ROW_IS_CONDITIONAL } from '../life/intents';
 import { validateIntents } from './intents';
 import { LIFE_EVENT_TYPES } from './vocab';
 import { commanderProposal, offerProposal } from './proposals';
@@ -86,7 +86,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     for (const id of believed) {
       events.push(...(DISCIPLINE_EVENTS.includes(e.type)
         ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
-        : applyEventToUnit(draft, reg, id, e)));
+        : ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'conspired') events.push(...tryAlly(draft, ctx, id)); // P13: the ally check

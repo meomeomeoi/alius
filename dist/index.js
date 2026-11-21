@@ -783,7 +783,7 @@ var TUNING = Object.freeze({
       dropAfterDays: 30
     }),
     friendHobby: 0.02,
-    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7 }),
+    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7, moodyHit: -1 }),
     meeting: Object.freeze({ affinityMin: -30 }),
     joke: Object.freeze({
       windowDays: 30,
@@ -15544,6 +15544,42 @@ function voiceOpinion(draft, reg, unitId, topicId) {
   });
   return [{ type: "life_noted", unitId, topicId }];
 }
+function challengeOpinion(draft, reg, unitId, topicId, weight, positionId) {
+  const life = draft.life;
+  const unit2 = unitOf2(draft, unitId);
+  const opinion = unit2?.opinions?.[topicId];
+  const topic = topicOf(reg, topicId);
+  if (!life || !unit2 || !opinion || !topic) return [];
+  const ids = topic.positions.map((p) => p.id);
+  const at = ids.indexOf(opinion.position);
+  if (at < 0) return [];
+  const asked = positionId === void 0 ? -1 : ids.indexOf(positionId);
+  const toward = asked >= 0 && asked !== at ? asked < at ? "first" : "last" : at > ids.length - 1 - at ? "first" : at < ids.length - 1 - at ? "last" : "first";
+  const before = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
+  const net = before + (toward === "first" ? weight : -weight);
+  if (net === 0) delete opinion.push;
+  else opinion.push = { toward: net > 0 ? "first" : "last", amount: Math.abs(net) };
+  const t = TUNING.life.opinion;
+  const strong = opinion.strength === "strong";
+  if (opinion.push === void 0 || opinion.push.amount < t.persuadeAt * (strong ? t.strongMult : 1)) return [];
+  const step = opinion.push.toward === "first" ? -1 : 1;
+  delete opinion.push;
+  if (strong && lifeChance(life, `${unitId}|${topicId}|harden|${draft.day}`, t.harden)) {
+    addFact(draft, { about: [unitId], text: `${unit2.displayName} will not change her mind about ${topic.label}.`, tags: ["opinion", "hardened", topicId], importance: 2, day: draft.day, knownBy: [unitId] });
+    return [{ type: "opinion_hardened", unitId, topicId }];
+  }
+  const to = ids[at + step];
+  if (to === void 0) return [];
+  (opinion.history ??= []).push({ day: draft.day, from: opinion.position, to });
+  opinion.position = to;
+  delete opinion.text;
+  return [{ type: "opinion_changed", unitId, topicId, from: ids[at], to }];
+}
+function agreeOpinion(draft, ctx2, unitId, topicId, ev) {
+  if (unitOf2(draft, unitId)?.opinions?.[topicId]?.strength !== "strong") return [];
+  const event = ev ?? { type: "opinion_agreed", actor: "commander", targets: [unitId], severity: "minor", evidence: "agreed", confidence: 1, topicId };
+  return applyEventToUnit(draft, ctx2.registries, unitId, event);
+}
 
 // src/engine/life/intents.ts
 function lifeIntentInput(state, reg, participants, scene, channel) {
@@ -15593,10 +15629,23 @@ function applyLifeIntent(draft, ctx2, unitId, ev) {
       return ev.hobbyId === void 0 ? [] : pushHobby(draft, reg, unitId, ev.hobbyId, draft.day, { caused: true });
     case "opinion_voiced":
       return ev.topicId === void 0 ? [] : voiceOpinion(draft, reg, unitId, ev.topicId);
+    case "opinion_challenged": {
+      if (ev.topicId === void 0) return [];
+      const heavy = ev.severity === "major" || ev.severity === "extreme";
+      const events = challengeOpinion(draft, reg, unitId, ev.topicId, heavy ? 2 : 1, ev.positionId);
+      if (heavy && temperamentOf(draft, unitId).volatility === "moody") {
+        const applied = applyRelationDelta(draft, unitId, "affinity", TUNING.life.opinion.moodyHit, "intent:opinion_challenged");
+        if (applied !== 0) events.push({ type: "relation_changed", unitId, axis: "affinity", delta: applied, applied });
+      }
+      return events;
+    }
+    case "opinion_agreed":
+      return ev.topicId === void 0 ? [] : agreeOpinion(draft, ctx2, unitId, ev.topicId, ev);
     default:
       return [];
   }
 }
+var ROW_IS_CONDITIONAL = ["opinion_agreed"];
 
 // src/engine/relations/intents.ts
 var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], stressHints: [] });
@@ -17980,7 +18029,7 @@ function applyIntents(draft, ctx2, p) {
   intents.events = judged.map((j) => j.e);
   for (const { e, believed } of judged) {
     for (const id of believed) {
-      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
+      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e));
       if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
       if (e.type === "conspired") events.push(...tryAlly(draft, ctx2, id));
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
@@ -23802,6 +23851,11 @@ registerMemoryResolver("head_start_moment", (draft, event) => {
     ...str2(event.kind) !== void 0 ? { tags: [momentTag(str2(event.kind))] } : {}
   };
 }, { ids: ["unit"], vars: ["text", "kind", "importance"] });
+registerMemoryResolver("opinion_changed", (draft, event, reg) => {
+  const her = subjectOf2(draft, event.unitId);
+  const topic = reg.opinionTopics.get(String(event.topicId));
+  return her && topic ? { ids: { her: [her.id] }, vars: { name: her.name, topic: String(topic.label) } } : null;
+}, { ids: ["her"], vars: ["name", "topic"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();

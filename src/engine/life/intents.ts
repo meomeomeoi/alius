@@ -6,9 +6,10 @@ import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { bumpInterest, pushHobby } from './hobbies';
 import { closeNews, pendingNews } from './news';
-import { voiceOpinion } from './opinions';
+import { agreeOpinion, challengeOpinion, voiceOpinion } from './opinions';
 import { unitOf } from './places';
-import { lifeMode } from './state';
+import { applyRelationDelta } from '../relationGain';
+import { lifeMode, temperamentOf } from './state';
 import type { HobbyEntry, LifeOffer, OpinionTopicEntry } from './types';
 
 export type { LifeOffer } from './types';
@@ -80,7 +81,23 @@ export function applyLifeIntent(draft: CampaignState, ctx: EngineCtx, unitId: st
     case 'opinion_voiced':
       // only the topic picked for this scene (the offer was rebuilt from it); a topic nothing triggered is never voiced
       return ev.topicId === undefined ? [] : voiceOpinion(draft, reg, unitId, ev.topicId);
+    case 'opinion_challenged': {
+      if (ev.topicId === undefined) return [];
+      // a minor or moderate challenge counts 1, a major or extreme one 2; a moody woman takes a major one to heart (-1 Affinity)
+      const heavy = ev.severity === 'major' || ev.severity === 'extreme';
+      const events = challengeOpinion(draft, reg, unitId, ev.topicId, heavy ? 2 : 1, ev.positionId);
+      if (heavy && temperamentOf(draft, unitId).volatility === 'moody') {
+        const applied = applyRelationDelta(draft, unitId, 'affinity', TUNING.life.opinion.moodyHit, 'intent:opinion_challenged');
+        if (applied !== 0) events.push({ type: 'relation_changed', unitId, axis: 'affinity', delta: applied, applied });
+      }
+      return events;
+    }
+    case 'opinion_agreed':
+      return ev.topicId === undefined ? [] : agreeOpinion(draft, ctx, unitId, ev.topicId, ev);
     default:
       return [];
   }
 }
+
+/** The events whose own row `applyIntents` leaves to `applyLifeIntent` (an agreement is worth something only on a strong opinion). */
+export const ROW_IS_CONDITIONAL: readonly string[] = ['opinion_agreed'];

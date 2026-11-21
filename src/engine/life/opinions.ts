@@ -1,13 +1,15 @@
 import type { Registries } from '../../content/types';
 import { valuesOf } from '../development/profile';
-import type { EngineEvent } from '../dispatch';
+import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addFact } from '../memory';
+import { applyEventToUnit } from '../relations/effects';
+import type { EventIntent } from '../relations/intents';
 import type { CampaignState, Opinion, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { plainText } from './facts';
 import { unitOf } from './places';
-import { ensureLife, lifeHash, lifeMode } from './state';
+import { ensureLife, lifeChance, lifeHash, lifeMode } from './state';
 import type { OpinionTopicEntry } from './types';
 
 /**
@@ -210,4 +212,53 @@ export function heardOpinions(state: Pick<CampaignState, 'squad'>, unitId: strin
     if (o.voicedDay !== undefined) out.push({ topicId, position: o.position, ...(o.text !== undefined ? { text: o.text } : {}), voicedDay: o.voicedDay });
   }
   return out.sort((a, b) => a.voicedDay - b.voicedDay || a.topicId.localeCompare(b.topicId));
+}
+
+/**
+ * The commander argues against what she has told (`weight` 1: a remark, 2: a full argument). The direction is toward `positionId` when it is a
+ * position of the topic other than hers, else toward the farther end of the list (a tie: the first). Pressure in the other direction
+ * subtracts. At `persuadeAt` (twice that for a `strong` opinion) her position moves ONE adjacent step (history, her old words dropped, the
+ * pressure reset, `opinion_changed`); a `strong` one first rolls a hash (`harden`): a hit keeps the position, resets the pressure, writes the
+ * fact "will not change her mind" and says `opinion_hardened`. Nothing for a view she does not hold.
+ */
+export function challengeOpinion(draft: CampaignState, reg: Registries, unitId: string, topicId: string, weight: 1 | 2, positionId?: string): EngineEvent[] {
+  const life = draft.life;
+  const unit = unitOf(draft, unitId);
+  const opinion = unit?.opinions?.[topicId];
+  const topic = topicOf(reg, topicId);
+  if (!life || !unit || !opinion || !topic) return [];
+  const ids = topic.positions.map((p) => p.id);
+  const at = ids.indexOf(opinion.position);
+  if (at < 0) return [];
+  const asked = positionId === undefined ? -1 : ids.indexOf(positionId);
+  const toward: 'first' | 'last' = asked >= 0 && asked !== at ? (asked < at ? 'first' : 'last') : at > ids.length - 1 - at ? 'first' : at < ids.length - 1 - at ? 'last' : 'first';
+  const before = opinion.push === undefined ? 0 : opinion.push.toward === 'first' ? opinion.push.amount : -opinion.push.amount;
+  const net = before + (toward === 'first' ? weight : -weight);
+  if (net === 0) delete opinion.push;
+  else opinion.push = { toward: net > 0 ? 'first' : 'last', amount: Math.abs(net) };
+  const t = TUNING.life.opinion;
+  const strong = opinion.strength === 'strong';
+  if (opinion.push === undefined || opinion.push.amount < t.persuadeAt * (strong ? t.strongMult : 1)) return [];
+  const step = opinion.push.toward === 'first' ? -1 : 1;
+  delete opinion.push;
+  if (strong && lifeChance(life, `${unitId}|${topicId}|harden|${draft.day}`, t.harden)) {
+    addFact(draft, { about: [unitId], text: `${unit.displayName} will not change her mind about ${topic.label}.`, tags: ['opinion', 'hardened', topicId], importance: 2, day: draft.day, knownBy: [unitId] });
+    return [{ type: 'opinion_hardened', unitId, topicId }];
+  }
+  const to = ids[at + step];
+  if (to === undefined) return [];
+  (opinion.history ??= []).push({ day: draft.day, from: opinion.position, to });
+  opinion.position = to;
+  delete opinion.text; // her old words were for the old position
+  return [{ type: 'opinion_changed', unitId, topicId, from: ids[at], to }];
+}
+
+/**
+ * The commander agrees with what she holds. On a `strong` opinion it is worth the event's row (a small Affinity gain, diminishing through
+ * the gain handler like any other); on any other opinion it is nothing. `ev` is the reported event (its severity and confidence are kept).
+ */
+export function agreeOpinion(draft: CampaignState, ctx: EngineCtx, unitId: string, topicId: string, ev?: EventIntent): EngineEvent[] {
+  if (unitOf(draft, unitId)?.opinions?.[topicId]?.strength !== 'strong') return [];
+  const event: EventIntent = ev ?? { type: 'opinion_agreed', actor: 'commander', targets: [unitId], severity: 'minor', evidence: 'agreed', confidence: 1, topicId };
+  return applyEventToUnit(draft, ctx.registries, unitId, event);
 }

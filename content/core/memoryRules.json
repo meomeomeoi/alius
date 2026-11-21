@@ -634,5 +634,18 @@
     "tags": [
       "head_start"
     ]
+  },
+  {
+    "id": "opinion_changed",
+    "event": "opinion_changed",
+    "text": "{name} changed her mind about {topic} after the commander made a case.",
+    "importance": 1,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "opinion",
+      "persuaded"
+    ]
   }
 ]

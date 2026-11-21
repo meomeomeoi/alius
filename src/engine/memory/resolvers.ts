@@ -288,3 +288,12 @@ registerMemoryResolver('head_start_moment', (draft, event) => {
     ...(str(event.kind) !== undefined ? { tags: [momentTag(str(event.kind)!)] } : {}),
   };
 }, { ids: ['unit'], vars: ['text', 'kind', 'importance'] });
+
+// ---------------------------------------------------------------------------------------------
+// her opinions (P14c): she changed her mind; her other opinion events are bookkeeping, or facts written at their sites
+
+registerMemoryResolver('opinion_changed', (draft, event, reg) => {
+  const her = subjectOf(draft, event.unitId);
+  const topic = reg.opinionTopics.get(String(event.topicId));
+  return her && topic ? { ids: { her: [her.id] }, vars: { name: her.name, topic: String(topic.label) } } : null;
+}, { ids: ['her'], vars: ['name', 'topic'] });
