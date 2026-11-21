@@ -320,6 +320,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'quarters',
   // P10d (cabins, floor buttons and staircases, closed rooms on the plan)
   'cabin', 'base_floor', 'closed_room',
+  // P15a (the strip, the moment card, the physics panel, the CMDR lines and the content toggles address these; later tasks add their own)
+  'moment', 'contact_physics', 'endurance_skill', 'commander_condition', 'stimulus', 'blocking', 'worship_target', 'escalation',
 ];
 
 let registered = false;

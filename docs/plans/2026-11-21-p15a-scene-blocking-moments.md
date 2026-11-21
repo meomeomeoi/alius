@@ -602,7 +602,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 - Consumes: Task 2 schemas.
 - Produces: the core rows, by blocking.md §1, §2, §7 (base table only), §8, §9.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `ids match blocking.md`: each id in the tables of §1, §2, §7 (the base table), §8 and §9 is a row, and the reverse. `on_bunk / beside_bunk` is two rows. The role-reversal verbs are absent. `strap` and the six `fem_*` items are present with no effects beyond the prompt.
   - `items carry the blocking.md tags as contentTags`.
   - `the reference effects` for a sample of items:
@@ -617,10 +617,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `postures have no scope`.
   - `every worship target has stimuli` (the R13 ruling: feet / toes / soles → `scent_feet`, `taste_salt`; armpits → `scent_armpit`; boots → `taste_dirt`, `taste_polish`, `scent_worn`; scent → `scent_body`, `scent_worn`; the rest → `scent_body`, `taste_skin`).
   - `no text gives the commander a pronoun`.
-- [ ] **Step 2: Run** `npx vitest run tests/content/blockingVocabulary.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The JSON is a faithful copy of blocking.md with the R4 mapping notes. `zone` coordinates are `AUTHOR TO TUNE` placeholders on a 0–100 body map. A throwaway converter outside `src/` may be used once; it is not committed.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): worship targets, postures, anchors, items and escalation verbs as data`
+- [x] **Step 2: Run** `npx vitest run tests/content/blockingVocabulary.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The JSON is a faithful copy of blocking.md with the R4 mapping notes. `zone` coordinates are `AUTHOR TO TUNE` placeholders on a 0–100 body map. A throwaway converter outside `src/` may be used once; it is not committed.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): worship targets, postures, anchors, items and escalation verbs as data`
 
 ---
 
@@ -687,7 +687,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   | `own_slip` | `physics_slip`, `extracted` |
   | `her_demand`, `her_test`, `permission`, `summons`, `rule_collision`, `compromat_hint`, `ritual_due` | `external` |
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `26 sources with blocking.md's frames and types`: the generic words are the table's words; `her_test`'s frame is `test option 1–3` with types Y / R / D, `AUTHOR TO WRITE`.
   - `the nine power-laden sources are dynamic`.
   - `the five general meeting sources`.
@@ -696,10 +696,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `every cue kind has 3–5 lines`.
   - `the conditions' effects`.
   - No commander pronoun anywhere.
-- [ ] **Step 2: Run** `npx vitest run tests/content/momentSources.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as data.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): moment sources, physics, cues, stimulus kinds and conditions as data`
+- [x] **Step 2: Run** `npx vitest run tests/content/momentSources.test.ts` → FAIL.
+- [x] **Step 3: Implement** as data.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): moment sources, physics, cues, stimulus kinds and conditions as data`
 
 ---
 

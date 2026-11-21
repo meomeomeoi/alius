@@ -1268,6 +1268,85 @@
     ]
   },
   {
+    "id": "moment",
+    "term": "Moment",
+    "short": "A point of tension in a scene with three ways to answer. The game decides when it comes and what each answer is; the words are written for the scene.",
+    "long": "AUTHOR TO WRITE: A moment comes when something in the scene tips: she asks, someone is at the door, a limit is near. There are always three answers: give way, hold out, or turn it. The labels are written to fit the scene, and you may type your own answer instead.",
+    "see": [
+      "blocking",
+      "contact_physics"
+    ]
+  },
+  {
+    "id": "contact_physics",
+    "term": "Contact physics",
+    "short": "The body side of a close contact: a gauge that drains or fills, and a way to play it. It runs in short segments that do not wait for the story.",
+    "long": "AUTHOR TO WRITE: Some contacts carry a gauge (air, strength, saturation, cleanliness, her task, the jaw). It runs in segments, one beat at a time or in real time, and the story only reports it. The stop word ends it at once, whatever she wants.",
+    "see": [
+      "endurance_skill",
+      "moment"
+    ]
+  },
+  {
+    "id": "endurance_skill",
+    "term": "Endurance",
+    "short": "How well the commander's body takes a hold. It grows with each hold endured and with drills, and it widens the gauge.",
+    "long": "AUTHOR TO WRITE: Endurance is kept per kind of hold: breath, weight, jaw. It rises by 10 for a hold endured, by 2 for each window caught after three in a row, and by 15 for a drill on TRAIN once a day. A weaker body endures less.",
+    "see": [
+      "contact_physics"
+    ]
+  },
+  {
+    "id": "commander_condition",
+    "term": "Condition",
+    "short": "A state the commander is in for a while, such as dizzy after a blackout or stiff after a long hold.",
+    "long": "AUTHOR TO WRITE: A condition lasts until the day ends or until the next slot. Dizzy lowers social rank and adds stress; stiff only shapes the story.",
+    "see": [
+      "contact_physics"
+    ]
+  },
+  {
+    "id": "stimulus",
+    "term": "Stimulus",
+    "short": "A scent, a sweat or a taste the commander meets in a contact. The body gets used to it, then seeks it, and the story words it as perception.",
+    "long": "AUTHOR TO WRITE: Each kind has a tolerance that grows with exposure and slips back apart, a reflex when it is too strong, and a trajectory from aversion to adoring. The story describes what is perceived, never what the commander feels.",
+    "see": [
+      "contact_physics"
+    ]
+  },
+  {
+    "id": "blocking",
+    "term": "Blocking",
+    "short": "Who is where in the scene: posture, place, contact, what is worn and what each person is doing. The game keeps it and tells the story every turn.",
+    "long": "AUTHOR TO WRITE: The blocking is the shape of the scene. Each person has a posture, a place, perhaps a contact with someone, things they wear and something they are doing. You set it with the chips under the chat, the story reports changes, and the game checks every one. Anything not set stays out of the story.",
+    "see": [
+      "moment",
+      "contact_physics",
+      "worship_target",
+      "escalation"
+    ]
+  },
+  {
+    "id": "worship_target",
+    "term": "Worship target",
+    "short": "A part of her, or something of hers, that the commander may be asked to worship: feet, hands, hair, boots and so on. Each is a content category toggle.",
+    "long": "AUTHOR TO WRITE: Targets are on a body map and each has its own scent and taste. Whether a target appears at all depends on the content categories you have switched on and on her own limits.",
+    "see": [
+      "blocking",
+      "stimulus"
+    ]
+  },
+  {
+    "id": "escalation",
+    "term": "Escalation",
+    "short": "How she answers when an answer is not the one she expected: a nudge, a look, a pull. The game picks the kind from what is in the scene.",
+    "long": "AUTHOR TO WRITE: When your answer is the opposite of what she expected, she may escalate. The kind follows the scene: a pull on the lead, a press, a nudge with her foot, a look. The story writes the act.",
+    "see": [
+      "moment",
+      "blocking"
+    ]
+  },
+  {
     "id": "lead",
     "term": "Lead",
     "short": "Who drives a romantic scene: the soldier, the commander or both. The game decides it from her style, her Impunity and what happened lately.",

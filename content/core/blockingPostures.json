@@ -1,1 +1,145 @@
-[]
+[
+  {
+    "id": "standing",
+    "label": "Standing",
+    "description": "AUTHOR TO WRITE: Standing.",
+    "promptHint": "standing"
+  },
+  {
+    "id": "standing_attention",
+    "label": "Standing to attention",
+    "description": "AUTHOR TO WRITE: Standing straight and still; it tires when held long.",
+    "promptHint": "standing straight and still",
+    "effects": [
+      {
+        "type": "strain",
+        "condition": "posture",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "sitting",
+    "label": "Sitting",
+    "description": "AUTHOR TO WRITE: On a chair, a bunk or a desk.",
+    "promptHint": "sitting"
+  },
+  {
+    "id": "sitting_floor",
+    "label": "Sitting on the floor",
+    "description": "AUTHOR TO WRITE: On the floor; the view is lower than hers.",
+    "promptHint": "sitting on the floor"
+  },
+  {
+    "id": "kneeling_upright",
+    "label": "Kneeling upright",
+    "description": "AUTHOR TO WRITE: On the knees, back straight; she looks down at the commander.",
+    "promptHint": "kneeling upright",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "from_below"
+      },
+      {
+        "type": "strain",
+        "condition": "posture",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "kneeling_sitting",
+    "label": "Kneeling, sitting back",
+    "description": "AUTHOR TO WRITE: On the knees, sitting back on the heels; lighter strain.",
+    "promptHint": "kneeling, sitting back on the heels",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "from_below"
+      },
+      {
+        "type": "strain",
+        "condition": "posture",
+        "rate": 0.5
+      }
+    ]
+  },
+  {
+    "id": "bowing",
+    "label": "Bowing",
+    "description": "AUTHOR TO WRITE: Kneeling with the forehead to the floor; the face is unseen.",
+    "promptHint": "bowing, forehead to the floor",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_floor"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "feet_floor"
+      }
+    ]
+  },
+  {
+    "id": "all_fours",
+    "label": "On all fours",
+    "description": "AUTHOR TO WRITE: On hands and knees.",
+    "promptHint": "on hands and knees",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_floor"
+      },
+      {
+        "type": "mobility",
+        "level": "crawl"
+      }
+    ]
+  },
+  {
+    "id": "crouching",
+    "label": "Crouching",
+    "description": "AUTHOR TO WRITE: Crouched.",
+    "promptHint": "crouching"
+  },
+  {
+    "id": "lying_back",
+    "label": "Lying on the back",
+    "description": "AUTHOR TO WRITE: On the back; the view is the ceiling.",
+    "promptHint": "lying on the back",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "ceiling"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "from_below"
+      }
+    ]
+  },
+  {
+    "id": "lying_front",
+    "label": "Lying face down",
+    "description": "AUTHOR TO WRITE: Face down.",
+    "promptHint": "lying face down",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_floor"
+      }
+    ]
+  },
+  {
+    "id": "lying_side",
+    "label": "Lying on the side",
+    "description": "AUTHOR TO WRITE: On the side.",
+    "promptHint": "lying on the side"
+  },
+  {
+    "id": "curled",
+    "label": "Curled up",
+    "description": "AUTHOR TO WRITE: Curled up.",
+    "promptHint": "curled up"
+  }
+]

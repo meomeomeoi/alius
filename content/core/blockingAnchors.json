@@ -1,1 +1,282 @@
-[]
+[
+  {
+    "id": "center",
+    "kind": "general",
+    "label": "In the middle",
+    "description": "AUTHOR TO WRITE: The middle of the room.",
+    "promptHint": "in the middle of the room"
+  },
+  {
+    "id": "corner",
+    "kind": "general",
+    "label": "In a corner",
+    "description": "AUTHOR TO WRITE: A corner; facing the wall, the view is ignored.",
+    "promptHint": "in a corner"
+  },
+  {
+    "id": "by_wall",
+    "kind": "general",
+    "label": "By the wall",
+    "description": "AUTHOR TO WRITE: Against a wall.",
+    "promptHint": "against a wall"
+  },
+  {
+    "id": "across_room",
+    "kind": "general",
+    "label": "Across the room",
+    "description": "AUTHOR TO WRITE: Far from her: the farthest line of the sensory distance.",
+    "promptHint": "across the room"
+  },
+  {
+    "id": "at_door",
+    "kind": "general",
+    "label": "At the door",
+    "description": "AUTHOR TO WRITE: Inside, by the door: the first thing anyone entering sees.",
+    "promptHint": "inside, by the door",
+    "effects": [
+      {
+        "type": "visibility",
+        "exposing": true
+      }
+    ]
+  },
+  {
+    "id": "outside_door",
+    "kind": "general",
+    "label": "Outside the door",
+    "description": "AUTHOR TO WRITE: Behind the door: the commander hears and does not see; others can hear too.",
+    "promptHint": "behind the door",
+    "effects": [
+      {
+        "type": "perception",
+        "others": "obscured"
+      }
+    ]
+  },
+  {
+    "id": "floor",
+    "kind": "general",
+    "label": "On the floor",
+    "description": "AUTHOR TO WRITE: On the floor.",
+    "promptHint": "on the floor",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_floor"
+      }
+    ]
+  },
+  {
+    "id": "at_her_feet",
+    "kind": "relative",
+    "label": "At her feet",
+    "description": "AUTHOR TO WRITE: At her feet; she can nudge with her foot.",
+    "promptHint": "at her feet",
+    "effects": [
+      {
+        "type": "pose_shot",
+        "kind": "feet_floor"
+      },
+      {
+        "type": "escalation",
+        "verb": "nudge_with_foot"
+      }
+    ]
+  },
+  {
+    "id": "beside_her",
+    "kind": "relative",
+    "label": "Beside her",
+    "description": "AUTHOR TO WRITE: Beside her: close enough for whispers.",
+    "promptHint": "beside her"
+  },
+  {
+    "id": "behind_her",
+    "kind": "relative",
+    "label": "Behind her",
+    "description": "AUTHOR TO WRITE: Behind her: the commander sees her back and she does not see the commander.",
+    "promptHint": "behind her",
+    "effects": [
+      {
+        "type": "pose_shot",
+        "kind": "back"
+      }
+    ]
+  },
+  {
+    "id": "in_front_of_her",
+    "kind": "relative",
+    "label": "In front of her",
+    "description": "AUTHOR TO WRITE: In front of her; close, the view fills with her face.",
+    "promptHint": "in front of her",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "face_close"
+      }
+    ]
+  },
+  {
+    "id": "behind_her_chair",
+    "kind": "relative",
+    "label": "Behind her chair",
+    "description": "AUTHOR TO WRITE: Standing behind her chair: a visitor sees the commander, and in what role.",
+    "promptHint": "standing behind her chair"
+  },
+  {
+    "id": "on_person",
+    "kind": "relative",
+    "label": "On her",
+    "description": "AUTHOR TO WRITE: On another person; set by a contact and it follows the other.",
+    "promptHint": "on top of her"
+  },
+  {
+    "id": "at_desk",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "desk"
+      ]
+    },
+    "label": "At the desk",
+    "description": "AUTHOR TO WRITE: At the desk.",
+    "promptHint": "at the desk"
+  },
+  {
+    "id": "under_desk",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "desk"
+      ]
+    },
+    "label": "Under the desk",
+    "description": "AUTHOR TO WRITE: Under the desk; a visitor sees only legs or hears a voice.",
+    "promptHint": "under the desk",
+    "effects": [
+      {
+        "type": "backdrop",
+        "id": "frame_under_desk"
+      },
+      {
+        "type": "visibility",
+        "hiddenFromDoor": true
+      }
+    ]
+  },
+  {
+    "id": "on_desk",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "desk"
+      ]
+    },
+    "label": "On the desk",
+    "description": "AUTHOR TO WRITE: Sitting on the desk, usually hers; whoever is lower looks up.",
+    "promptHint": "sitting on the desk",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "from_below"
+      }
+    ]
+  },
+  {
+    "id": "on_bunk",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "bunk"
+      ]
+    },
+    "label": "On the bunk",
+    "description": "AUTHOR TO WRITE: On the bunk.",
+    "promptHint": "on the bunk"
+  },
+  {
+    "id": "beside_bunk",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "bunk"
+      ]
+    },
+    "label": "Beside the bunk",
+    "description": "AUTHOR TO WRITE: Beside the bunk.",
+    "promptHint": "beside the bunk"
+  },
+  {
+    "id": "under_bunk",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "bunk"
+      ]
+    },
+    "label": "Under the bunk",
+    "description": "AUTHOR TO WRITE: Under the bunk: unseen from the door, and dark.",
+    "promptHint": "under the bunk",
+    "effects": [
+      {
+        "type": "visibility",
+        "hiddenFromDoor": true
+      },
+      {
+        "type": "camera",
+        "mode": "pov_dark"
+      }
+    ]
+  },
+  {
+    "id": "inside_cupboard",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "cupboard"
+      ]
+    },
+    "label": "Inside the cupboard",
+    "description": "AUTHOR TO WRITE: Inside the cupboard: unseen from the door, dark, and every sound counts.",
+    "promptHint": "inside the cupboard",
+    "effects": [
+      {
+        "type": "visibility",
+        "hiddenFromDoor": true
+      },
+      {
+        "type": "filter",
+        "kind": "sensory_dark"
+      },
+      {
+        "type": "strain",
+        "condition": "silence",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "behind_curtain",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "curtain"
+      ]
+    },
+    "label": "Behind the curtain",
+    "description": "AUTHOR TO WRITE: Behind a curtain: shadows and feet show.",
+    "promptHint": "behind the curtain"
+  },
+  {
+    "id": "at_console",
+    "kind": "furniture",
+    "requires": {
+      "affordances": [
+        "line"
+      ]
+    },
+    "label": "At the console",
+    "description": "AUTHOR TO WRITE: At the comms console, where a line can open.",
+    "promptHint": "at the comms console"
+  }
+]

@@ -169,8 +169,14 @@ export interface ConditionEntry extends Described {
   promptHint: string;
 }
 
-/** The effects an entry declares (absent = none). */
+/**
+ * The effects an entry has: the ones it declares, plus a `physics` effect for each id in its `physics` field (a contact or an item names
+ * its contact physics once, in that field, where the seal and the pressure are; readers by effect type still find them here).
+ */
 export function effectsOfEntry(entry: object | undefined): BlockingEffect[] {
-  const e = (entry as { effects?: unknown } | undefined)?.effects;
-  return Array.isArray(e) ? (e as BlockingEffect[]) : [];
+  const e = entry as { effects?: unknown; physics?: unknown } | undefined;
+  const declared = Array.isArray(e?.effects) ? (e!.effects as BlockingEffect[]) : [];
+  const named = Array.isArray(e?.physics) ? (e!.physics as Array<{ id: string }>) : [];
+  const extra = named.filter((p) => !declared.some((d) => d.type === 'physics' && d.id === p.id)).map((p): BlockingEffect => ({ type: 'physics', id: p.id }));
+  return [...declared, ...extra];
 }

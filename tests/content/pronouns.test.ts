@@ -115,6 +115,22 @@ describe('no pronoun for the commander in content', () => {
     expect(flagged.sort()).toEqual([...aboutOthers].sort()); // the exceptions are real: remove one from the list when its line changes
   });
 
+  it('the scene blocking, moment and physics content (P15a): the twelve registries and the glossary entries', () => {
+    const where: Array<[string, string]> = [];
+    const text = (path: string, v: unknown): void => {
+      if (typeof v === 'string') where.push([path, v]);
+      else if (Array.isArray(v)) v.forEach((x, i) => text(`${path}[${i}]`, x));
+      else if (typeof v === 'object' && v !== null) for (const [k, x] of Object.entries(v)) text(`${path}.${k}`, x);
+    };
+    const registries = ['worshipTargets', 'blockingPostures', 'blockingAnchors', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources', 'contactPhysics', 'physicsCues', 'stimulusKinds', 'escalationVerbs', 'commanderConditions'] as const;
+    for (const registry of registries) for (const e of reg[registry].values()) text(`${registry}:${e.id}`, { ...e, id: undefined });
+    for (const id of ['blocking', 'worship_target', 'escalation', 'moment', 'contact_physics', 'endurance_skill', 'commander_condition', 'stimulus', 'content_requires']) {
+      for (const k of ['term', 'short', 'long']) where.push([`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')]);
+    }
+    expect(where.length).toBeGreaterThan(300);
+    expect(where.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t)).map(([w]) => w)).toEqual([]);
+  });
+
   it('head start glossary entries (P11b)', () => {
     const texts = ['head_start', 'new_arrival', 'head_start_recap'].map((id): [string, string] => [`glossary:${id}`, String(reg.glossary.get(id)?.short ?? '')]);
     expect(texts.every(([, t]) => t.length > 0)).toBe(true);

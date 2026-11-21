@@ -1,1 +1,182 @@
-[]
+[
+  {
+    "id": "sweat_exertion",
+    "contentTags": [
+      "bodily_fluids"
+    ],
+    "family": "sweat",
+    "label": "Sweat of exertion",
+    "description": "AUTHOR TO WRITE: The commander meets the salt of hard work.",
+    "perception": {
+      "aversion": "the salt of hard work: sharp, sour, it hits the nose",
+      "enduring": "the salt of hard work: heavy; staying takes effort",
+      "accustomed": "the salt of hard work: familiar, hers",
+      "craving": "the salt of hard work: it pulls; more is wanted",
+      "adoring": "the salt of hard work: warm, thick, hers",
+      "separated": "the salt of hard work: like the first time"
+    }
+  },
+  {
+    "id": "sweat_heat",
+    "contentTags": [
+      "bodily_fluids"
+    ],
+    "family": "sweat",
+    "label": "Sweat of heat",
+    "description": "AUTHOR TO WRITE: The commander meets the damp of heat.",
+    "perception": {
+      "aversion": "the damp of heat: sharp, sour, it hits the nose",
+      "enduring": "the damp of heat: heavy; staying takes effort",
+      "accustomed": "the damp of heat: familiar, hers",
+      "craving": "the damp of heat: it pulls; more is wanted",
+      "adoring": "the damp of heat: warm, thick, hers",
+      "separated": "the damp of heat: like the first time"
+    }
+  },
+  {
+    "id": "sweat_fear",
+    "contentTags": [
+      "bodily_fluids"
+    ],
+    "family": "sweat",
+    "label": "Sweat of fear",
+    "description": "AUTHOR TO WRITE: The commander meets the cold edge of fear.",
+    "perception": {
+      "aversion": "the cold edge of fear: sharp, sour, it hits the nose",
+      "enduring": "the cold edge of fear: heavy; staying takes effort",
+      "accustomed": "the cold edge of fear: familiar, hers",
+      "craving": "the cold edge of fear: it pulls; more is wanted",
+      "adoring": "the cold edge of fear: warm, thick, hers",
+      "separated": "the cold edge of fear: like the first time"
+    }
+  },
+  {
+    "id": "sweat_stale",
+    "contentTags": [
+      "bodily_fluids"
+    ],
+    "family": "sweat",
+    "label": "Stale sweat",
+    "description": "AUTHOR TO WRITE: The commander meets the sourness of old sweat.",
+    "perception": {
+      "aversion": "the sourness of old sweat: sharp, sour, it hits the nose",
+      "enduring": "the sourness of old sweat: heavy; staying takes effort",
+      "accustomed": "the sourness of old sweat: familiar, hers",
+      "craving": "the sourness of old sweat: it pulls; more is wanted",
+      "adoring": "the sourness of old sweat: warm, thick, hers",
+      "separated": "the sourness of old sweat: like the first time"
+    }
+  },
+  {
+    "id": "scent_feet",
+    "family": "scent",
+    "label": "Scent of her feet",
+    "description": "AUTHOR TO WRITE: The commander meets the smell of her feet.",
+    "perception": {
+      "aversion": "the smell of her feet: sharp, sour, it hits the nose",
+      "enduring": "the smell of her feet: heavy; staying takes effort",
+      "accustomed": "the smell of her feet: familiar, hers",
+      "craving": "the smell of her feet: it pulls; more is wanted",
+      "adoring": "the smell of her feet: warm, thick, hers",
+      "separated": "the smell of her feet: like the first time"
+    }
+  },
+  {
+    "id": "scent_armpit",
+    "family": "scent",
+    "label": "Scent of her armpits",
+    "description": "AUTHOR TO WRITE: The commander meets the smell of her underarms.",
+    "perception": {
+      "aversion": "the smell of her underarms: sharp, sour, it hits the nose",
+      "enduring": "the smell of her underarms: heavy; staying takes effort",
+      "accustomed": "the smell of her underarms: familiar, hers",
+      "craving": "the smell of her underarms: it pulls; more is wanted",
+      "adoring": "the smell of her underarms: warm, thick, hers",
+      "separated": "the smell of her underarms: like the first time"
+    }
+  },
+  {
+    "id": "scent_body",
+    "family": "scent",
+    "label": "Her body scent",
+    "description": "AUTHOR TO WRITE: The commander meets her own scent.",
+    "perception": {
+      "aversion": "her own scent: sharp, sour, it hits the nose",
+      "enduring": "her own scent: heavy; staying takes effort",
+      "accustomed": "her own scent: familiar, hers",
+      "craving": "her own scent: it pulls; more is wanted",
+      "adoring": "her own scent: warm, thick, hers",
+      "separated": "her own scent: like the first time"
+    }
+  },
+  {
+    "id": "scent_worn",
+    "family": "scent",
+    "label": "Scent of her worn things",
+    "description": "AUTHOR TO WRITE: The commander meets her scent in worn cloth.",
+    "perception": {
+      "aversion": "her scent in worn cloth: sharp, sour, it hits the nose",
+      "enduring": "her scent in worn cloth: heavy; staying takes effort",
+      "accustomed": "her scent in worn cloth: familiar, hers",
+      "craving": "her scent in worn cloth: it pulls; more is wanted",
+      "adoring": "her scent in worn cloth: warm, thick, hers",
+      "separated": "her scent in worn cloth: like the first time"
+    }
+  },
+  {
+    "id": "taste_salt",
+    "family": "taste",
+    "label": "Salt taste",
+    "description": "AUTHOR TO WRITE: The commander meets the salt on her skin.",
+    "perception": {
+      "aversion": "the salt on her skin: sharp, bitter, it coats the tongue",
+      "enduring": "the salt on her skin: strong; swallowing takes effort",
+      "accustomed": "the salt on her skin: familiar, hers",
+      "craving": "the salt on her skin: it pulls; more is wanted",
+      "adoring": "the salt on her skin: warm, rich, hers",
+      "separated": "the salt on her skin: like the first time"
+    }
+  },
+  {
+    "id": "taste_skin",
+    "family": "taste",
+    "label": "Taste of her skin",
+    "description": "AUTHOR TO WRITE: The commander meets the taste of her skin.",
+    "perception": {
+      "aversion": "the taste of her skin: sharp, bitter, it coats the tongue",
+      "enduring": "the taste of her skin: strong; swallowing takes effort",
+      "accustomed": "the taste of her skin: familiar, hers",
+      "craving": "the taste of her skin: it pulls; more is wanted",
+      "adoring": "the taste of her skin: warm, rich, hers",
+      "separated": "the taste of her skin: like the first time"
+    }
+  },
+  {
+    "id": "taste_dirt",
+    "family": "taste",
+    "label": "Taste of dirt",
+    "description": "AUTHOR TO WRITE: The commander meets grit and dirt from the road.",
+    "perception": {
+      "aversion": "grit and dirt from the road: sharp, bitter, it coats the tongue",
+      "enduring": "grit and dirt from the road: strong; swallowing takes effort",
+      "accustomed": "grit and dirt from the road: familiar, hers",
+      "craving": "grit and dirt from the road: it pulls; more is wanted",
+      "adoring": "grit and dirt from the road: warm, rich, hers",
+      "separated": "grit and dirt from the road: like the first time"
+    }
+  },
+  {
+    "id": "taste_polish",
+    "family": "taste",
+    "label": "Taste of polish",
+    "description": "AUTHOR TO WRITE: The commander meets boot polish and leather.",
+    "perception": {
+      "aversion": "boot polish and leather: sharp, bitter, it coats the tongue",
+      "enduring": "boot polish and leather: strong; swallowing takes effort",
+      "accustomed": "boot polish and leather: familiar, hers",
+      "craving": "boot polish and leather: it pulls; more is wanted",
+      "adoring": "boot polish and leather: warm, rich, hers",
+      "separated": "boot polish and leather: like the first time"
+    }
+  }
+]

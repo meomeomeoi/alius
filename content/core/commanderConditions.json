@@ -1,1 +1,25 @@
-[]
+[
+  {
+    "id": "dizzy",
+    "effects": [
+      {
+        "type": "social_rank",
+        "delta": -1
+      },
+      {
+        "type": "stress",
+        "amount": 5
+      }
+    ],
+    "label": "Dizzy",
+    "description": "AUTHOR TO WRITE: Unsteady after a blackout, until the day ends.",
+    "promptHint": "The commander is dizzy until the day ends: unsteady and slow to answer."
+  },
+  {
+    "id": "stiff",
+    "effects": [],
+    "label": "Stiff",
+    "description": "AUTHOR TO WRITE: Stiff after a long hold, until the next slot.",
+    "promptHint": "The commander is stiff from a long hold."
+  }
+]

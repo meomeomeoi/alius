@@ -1,1 +1,92 @@
-[]
+[
+  {
+    "id": "remote_pulse",
+    "label": "Remote pulse",
+    "promptHint": "A pulse from her PDA runs the remote toy.",
+    "description": "AUTHOR TO WRITE: A pulse from her PDA; it works when she is not in the scene."
+  },
+  {
+    "id": "shock",
+    "label": "Shock",
+    "promptHint": "The collar delivers a shock at her command.",
+    "description": "AUTHOR TO WRITE: A discharge from the shock collar."
+  },
+  {
+    "id": "tug_leash",
+    "label": "Tug the lead",
+    "promptHint": "She tugs the lead.",
+    "description": "AUTHOR TO WRITE: A jerk of the lead."
+  },
+  {
+    "id": "tighten_hold",
+    "label": "Tighten the hold",
+    "promptHint": "She presses tighter.",
+    "description": "AUTHOR TO WRITE: She presses tighter."
+  },
+  {
+    "id": "shift_weight",
+    "label": "Shift her weight",
+    "promptHint": "She shifts her weight on the commander.",
+    "description": "AUTHOR TO WRITE: She moves her weight."
+  },
+  {
+    "id": "squeeze",
+    "label": "Squeeze",
+    "promptHint": "Her thighs squeeze.",
+    "description": "AUTHOR TO WRITE: Her thighs squeeze."
+  },
+  {
+    "id": "press",
+    "label": "Press",
+    "promptHint": "She presses down.",
+    "description": "AUTHOR TO WRITE: More pressure."
+  },
+  {
+    "id": "press_harder",
+    "label": "Press harder",
+    "promptHint": "She presses harder.",
+    "description": "AUTHOR TO WRITE: Still more pressure."
+  },
+  {
+    "id": "tug_hair",
+    "label": "Tug the hair",
+    "promptHint": "She pulls the hair.",
+    "description": "AUTHOR TO WRITE: A pull of the hair."
+  },
+  {
+    "id": "nudge_with_foot",
+    "label": "Nudge with a foot",
+    "promptHint": "She nudges with her foot.",
+    "description": "AUTHOR TO WRITE: A nudge with her foot."
+  },
+  {
+    "id": "whisper",
+    "label": "Whisper",
+    "promptHint": "She whispers close by, or into an earpiece.",
+    "description": "AUTHOR TO WRITE: A whisper, close or over an earpiece."
+  },
+  {
+    "id": "pda_message",
+    "label": "PDA message",
+    "promptHint": "A message arrives on the PDA from her.",
+    "description": "AUTHOR TO WRITE: A message on the PDA when she is elsewhere."
+  },
+  {
+    "id": "look",
+    "label": "Look",
+    "promptHint": "She gives a look.",
+    "description": "AUTHOR TO WRITE: A look."
+  },
+  {
+    "id": "cough",
+    "label": "Cough",
+    "promptHint": "She coughs.",
+    "description": "AUTHOR TO WRITE: A cough."
+  },
+  {
+    "id": "name_aloud",
+    "label": "Name aloud",
+    "promptHint": "She says the commander's name aloud.",
+    "description": "AUTHOR TO WRITE: The commander's name said aloud."
+  }
+]

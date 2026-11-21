@@ -12,12 +12,12 @@ const NEW: RegistryName[] = ['worshipTargets', 'blockingPostures', 'blockingAnch
 const FIXTURE = 'tests/fixtures/packs/blocking';
 
 /** The core pack, the fixture pack and an in-memory pack of `rows` per registry (later packs win by id). */
-async function load(rows: Partial<Record<RegistryName, unknown[]>> = {}, roots: string[] = ['content/core', FIXTURE]) {
+async function load(rows: Partial<Record<RegistryName, unknown[]>> = {}, roots: string[] = ['content/core', FIXTURE], blank: string[] = []) {
   const mem: Record<string, unknown> = {
     'mem/manifest.json': { id: 'mem', name: 'Mem', version: '1', priority: 50, files: Object.fromEntries(Object.keys(rows).map((k) => [k, `${k}.json`])) },
     ...Object.fromEntries(Object.entries(rows).map(([k, v]) => [`mem/${k}.json`, v])),
   };
-  return loadPacks([...roots, 'mem'], async (p) => (p in mem ? mem[p] : read(p)));
+  return loadPacks([...roots, 'mem'], async (p) => (p in mem ? mem[p] : blank.includes(p) ? [] : read(p)));
 }
 const messages = (r: { errors: Array<{ message: string; pack: string }> }) => r.errors.map((e) => e.message).join('\n');
 
@@ -115,7 +115,7 @@ describe('what is refused', () => {
   });
 
   it('an escalation verb nothing defines', async () => {
-    const r = await load({ blockingItems: [{ id: 'tugger', scope: 'any', slots: ['neck'], label: 'X', description: 'x', promptHint: 'x', effects: [{ type: 'escalation', verb: 'tug_leash' }] }] });
+    const r = await load({ blockingItems: [{ id: 'tugger', scope: 'any', slots: ['neck'], label: 'X', description: 'x', promptHint: 'x', effects: [{ type: 'escalation', verb: 'tug_leash' }] }] }, ['content/core'], ['content/core/escalationVerbs.json']);
     expect(messages(r)).toMatch(/unknown escalation verb "tug_leash"/);
   });
 

@@ -1,1 +1,640 @@
-[]
+[
+  {
+    "id": "her_demand",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "obey"
+      },
+      {
+        "type": "resisted",
+        "generic": "resist"
+      },
+      {
+        "type": "deflected",
+        "generic": "bargain"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when she issues a demand or escalates: a practice, her tactic, an unmet expectation."
+  },
+  {
+    "id": "her_offer",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "accept"
+      },
+      {
+        "type": "resisted",
+        "generic": "decline"
+      },
+      {
+        "type": "returned",
+        "generic": "accept carefully"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when she offers a privilege, closeness or a leniency, a disguised test included."
+  },
+  {
+    "id": "her_silence",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "returned",
+        "generic": "guess by action"
+      },
+      {
+        "type": "deflected",
+        "generic": "ask"
+      },
+      {
+        "type": "yielded",
+        "generic": "wait"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when she stops talking with an expectation set in her profile; her activity is attending or ignoring."
+  },
+  {
+    "id": "her_question",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "returned",
+        "generic": "honest"
+      },
+      {
+        "type": "yielded",
+        "generic": "what she wants to hear"
+      },
+      {
+        "type": "resisted",
+        "generic": "silent"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "remember": [
+      {
+        "option": 1,
+        "importance": 2
+      }
+    ],
+    "generalMeeting": true,
+    "description": "AUTHOR TO WRITE: Live when she asks a direct question."
+  },
+  {
+    "id": "her_weakness",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "returned",
+        "generic": "care"
+      },
+      {
+        "type": "yielded",
+        "generic": "keep the role"
+      },
+      {
+        "type": "resisted",
+        "generic": "withdraw"
+      }
+    ],
+    "live": [
+      "weakness",
+      "extracted"
+    ],
+    "remember": [
+      {
+        "option": 0,
+        "importance": 3
+      },
+      {
+        "option": 1,
+        "importance": 3
+      },
+      {
+        "option": 2,
+        "importance": 3
+      }
+    ],
+    "generalMeeting": true,
+    "description": "AUTHOR TO WRITE: Live when after a hard practice, a wound, stress or an appraisal she cracks."
+  },
+  {
+    "id": "her_mood_shift",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "adapt"
+      },
+      {
+        "type": "returned",
+        "generic": "ask"
+      },
+      {
+        "type": "deflected",
+        "generic": "ignore"
+      }
+    ],
+    "live": [
+      "mood_jump"
+    ],
+    "generalMeeting": true,
+    "description": "AUTHOR TO WRITE: Live when her mood band jumps: vitals, stress or want."
+  },
+  {
+    "id": "her_test",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "test option 1"
+      },
+      {
+        "type": "resisted",
+        "generic": "test option 2"
+      },
+      {
+        "type": "deflected",
+        "generic": "test option 3"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when a test of hers is running; each test maps its own three options."
+  },
+  {
+    "id": "her_absence",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "wait"
+      },
+      {
+        "type": "returned",
+        "generic": "call her"
+      },
+      {
+        "type": "resisted",
+        "generic": "free yourself"
+      }
+    ],
+    "live": [
+      "asleep",
+      "blocking"
+    ],
+    "description": "AUTHOR TO WRITE: Live when she leaves the scene with the commander in it, or falls asleep."
+  },
+  {
+    "id": "her_affection",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "returned",
+        "generic": "answer"
+      },
+      {
+        "type": "yielded",
+        "generic": "stay in role"
+      },
+      {
+        "type": "resisted",
+        "generic": "pull away"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "generalMeeting": true,
+    "description": "AUTHOR TO WRITE: Live when an unexpected tenderness inside strictness, or between equals."
+  },
+  {
+    "id": "her_jealousy",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "reassure"
+      },
+      {
+        "type": "returned",
+        "generic": "explain"
+      },
+      {
+        "type": "deflected",
+        "generic": "deflect"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when another woman is mentioned, her message arrives or her scent on the commander is noticed."
+  },
+  {
+    "id": "endurance",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "endure"
+      },
+      {
+        "type": "deflected",
+        "generic": "signal"
+      },
+      {
+        "type": "resisted",
+        "generic": "break"
+      }
+    ],
+    "live": [
+      "physics_warning"
+    ],
+    "description": "AUTHOR TO WRITE: Live when a physics gauge crosses its warning band, or a posture or denial timer runs."
+  },
+  {
+    "id": "permission",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "ask"
+      },
+      {
+        "type": "resisted",
+        "generic": "take"
+      },
+      {
+        "type": "deflected",
+        "generic": "wait"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when a standing rule asks for permission and the commander wants something."
+  },
+  {
+    "id": "own_slip",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "confess"
+      },
+      {
+        "type": "resisted",
+        "generic": "hide"
+      },
+      {
+        "type": "deflected",
+        "generic": "pretend"
+      }
+    ],
+    "live": [
+      "physics_slip",
+      "extracted"
+    ],
+    "remember": [
+      {
+        "option": 0,
+        "importance": 3
+      },
+      {
+        "option": 1,
+        "importance": 3
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Live when a slip was reported or a physics slip happened."
+  },
+  {
+    "id": "own_want",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "returned",
+        "generic": "ask"
+      },
+      {
+        "type": "resisted",
+        "generic": "take"
+      },
+      {
+        "type": "yielded",
+        "generic": "stay quiet"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when the commander's text shows a want."
+  },
+  {
+    "id": "duty_call",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "resisted",
+        "generic": "answer"
+      },
+      {
+        "type": "yielded",
+        "generic": "ignore"
+      },
+      {
+        "type": "returned",
+        "generic": "ask her"
+      }
+    ],
+    "live": [
+      "blocking",
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when the commander's duty interrupts: PDA, a report due, oversight."
+  },
+  {
+    "id": "third_party",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "hide"
+      },
+      {
+        "type": "returned",
+        "generic": "as is"
+      },
+      {
+        "type": "resisted",
+        "generic": "show yourself"
+      }
+    ],
+    "live": [
+      "visitor"
+    ],
+    "remember": [
+      {
+        "option": 1,
+        "importance": 3
+      },
+      {
+        "option": 2,
+        "importance": 3
+      }
+    ],
+    "description": "AUTHOR TO WRITE: Live when someone arrives, calls or looks in."
+  },
+  {
+    "id": "remote",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "keep steady"
+      },
+      {
+        "type": "deflected",
+        "generic": "slip"
+      },
+      {
+        "type": "resisted",
+        "generic": "cut the line"
+      }
+    ],
+    "live": [
+      "blocking"
+    ],
+    "description": "AUTHOR TO WRITE: Live when someone is on a line during the scene."
+  },
+  {
+    "id": "sensory",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "wait"
+      },
+      {
+        "type": "deflected",
+        "generic": "speak"
+      },
+      {
+        "type": "returned",
+        "generic": "reach out"
+      }
+    ],
+    "live": [
+      "obscured"
+    ],
+    "description": "AUTHOR TO WRITE: Live when the commander cannot see and something happens: a step, a touch, a voice, a scent."
+  },
+  {
+    "id": "time",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "wait"
+      },
+      {
+        "type": "deflected",
+        "generic": "call"
+      },
+      {
+        "type": "resisted",
+        "generic": "free yourself"
+      }
+    ],
+    "live": [
+      "blocking",
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when a timer runs: she said \"a minute\", a hold, a wait."
+  },
+  {
+    "id": "alarm",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "stay"
+      },
+      {
+        "type": "deflected",
+        "generic": "ask release"
+      },
+      {
+        "type": "resisted",
+        "generic": "go"
+      }
+    ],
+    "live": [
+      "alarm"
+    ],
+    "description": "AUTHOR TO WRITE: Live when an emergency, a deadline, a launch or a night event."
+  },
+  {
+    "id": "object_at_hand",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "leave it"
+      },
+      {
+        "type": "resisted",
+        "generic": "take it"
+      },
+      {
+        "type": "returned",
+        "generic": "tell her"
+      }
+    ],
+    "live": [
+      "blocking",
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: Live when her thing, another woman's, or a key is within reach."
+  },
+  {
+    "id": "summons",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "come at once"
+      },
+      {
+        "type": "resisted",
+        "generic": "delay"
+      },
+      {
+        "type": "deflected",
+        "generic": "ask a reprieve"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when a contract clause holds and she calls."
+  },
+  {
+    "id": "memory_surfaces",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "own it"
+      },
+      {
+        "type": "resisted",
+        "generic": "deny"
+      },
+      {
+        "type": "returned",
+        "generic": "turn it"
+      }
+    ],
+    "live": [
+      "keeps_fact",
+      "extracted"
+    ],
+    "remember": [
+      {
+        "option": 0,
+        "importance": 2
+      },
+      {
+        "option": 1,
+        "importance": 2
+      },
+      {
+        "option": 2,
+        "importance": 2
+      }
+    ],
+    "generalMeeting": true,
+    "description": "AUTHOR TO WRITE: Live when she brings up a remembered fact."
+  },
+  {
+    "id": "rule_collision",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "her rule"
+      },
+      {
+        "type": "resisted",
+        "generic": "the order"
+      },
+      {
+        "type": "deflected",
+        "generic": "ask her"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when two of her rules, or her rule and an order from above, collide."
+  },
+  {
+    "id": "compromat_hint",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "deflected",
+        "generic": "ask"
+      },
+      {
+        "type": "resisted",
+        "generic": "ignore"
+      },
+      {
+        "type": "returned",
+        "generic": "bargain"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when she hints at compromat she holds."
+  },
+  {
+    "id": "ritual_due",
+    "scope": "dynamic",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "keep it"
+      },
+      {
+        "type": "resisted",
+        "generic": "skip"
+      },
+      {
+        "type": "deflected",
+        "generic": "ask to move it"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Live when a ritual or habit is due."
+  }
+]

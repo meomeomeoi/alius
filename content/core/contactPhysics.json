@@ -1,1 +1,103 @@
-[]
+[
+  {
+    "id": "breath",
+    "gauge": {
+      "kind": "capacity",
+      "start": 100
+    },
+    "interaction": "timing",
+    "skill": true,
+    "segmentSeconds": 20,
+    "label": "Breath",
+    "description": "AUTHOR TO WRITE: Air is the gauge: it drains each beat and comes back when a breathing window is caught.",
+    "promptHint": "The commander is short of air; breathing is restricted by the contact."
+  },
+  {
+    "id": "weight",
+    "gauge": {
+      "kind": "capacity",
+      "start": 100
+    },
+    "interaction": "hold",
+    "skill": true,
+    "segmentSeconds": 30,
+    "label": "Weight",
+    "description": "AUTHOR TO WRITE: Strength is the gauge: it drains while a load is held, and letting go is a slip.",
+    "promptHint": "A load rests on the commander, who must hold still under it."
+  },
+  {
+    "id": "saturation",
+    "gauge": {
+      "kind": "fill",
+      "start": 0
+    },
+    "interaction": "decision",
+    "skill": true,
+    "segmentSeconds": 30,
+    "label": "Saturation",
+    "description": "AUTHOR TO WRITE: The air is thick with her scent or sweat; the gauge fills, and breathing through the mouth lowers it but is noticed.",
+    "promptHint": "The air is saturated with her scent; perception is crowded."
+  },
+  {
+    "id": "tongue_work",
+    "gauge": {
+      "kind": "dirt",
+      "start": 100
+    },
+    "interaction": "order",
+    "skill": false,
+    "segmentSeconds": 40,
+    "label": "Tongue work",
+    "description": "AUTHOR TO WRITE: Cleaning with the tongue: dirt falls as the right part is chosen next; at the end she checks.",
+    "promptHint": "The commander is cleaning with the tongue, part by part."
+  },
+  {
+    "id": "her_activity",
+    "gauge": {
+      "kind": "progress",
+      "start": 0
+    },
+    "interaction": "passive",
+    "skill": false,
+    "segmentSeconds": 30,
+    "label": "Her task",
+    "description": "AUTHOR TO WRITE: Her own task runs on: pages of the report, the time of the call. Only moments happen; endure until she finishes.",
+    "promptHint": "Her attention is on her own task; the contact goes on under it."
+  },
+  {
+    "id": "jaw",
+    "gauge": {
+      "kind": "fill",
+      "start": 0
+    },
+    "interaction": "gesture",
+    "skill": true,
+    "segmentSeconds": 30,
+    "label": "Jaw",
+    "description": "AUTHOR TO WRITE: Fatigue fills as the mouth is held open; speech and letters degrade, and a rest can be asked for.",
+    "promptHint": "The jaw is held open and tires; speech degrades."
+  },
+  {
+    "id": "gulp",
+    "contentTags": [
+      "watersports"
+    ],
+    "gauge": {
+      "kind": "fill",
+      "start": 0
+    },
+    "interaction": "timing",
+    "skill": true,
+    "segmentSeconds": 20,
+    "chains": [
+      {
+        "on": "slip",
+        "to": "tongue_work",
+        "start": 60
+      }
+    ],
+    "label": "Keeping up",
+    "description": "AUTHOR TO WRITE: Swallows have windows; a miss is a spill, and a spill chains to tongue work with dirt 60.",
+    "promptHint": "The commander must keep up with the flow, swallow by swallow."
+  }
+]

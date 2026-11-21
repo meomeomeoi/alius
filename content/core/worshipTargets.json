@@ -1,1 +1,365 @@
-[]
+[
+  {
+    "id": "feet",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 94,
+        "r": 7
+      }
+    },
+    "stimuli": [
+      "scent_feet",
+      "taste_salt"
+    ],
+    "label": "Feet",
+    "description": "AUTHOR TO WRITE: Her feet as a whole: top and ankles."
+  },
+  {
+    "id": "toes",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 98,
+        "r": 4
+      }
+    },
+    "stimuli": [
+      "scent_feet",
+      "taste_salt"
+    ],
+    "label": "Toes",
+    "description": "AUTHOR TO WRITE: Her toes: kissing, sucking, between them."
+  },
+  {
+    "id": "soles",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "back",
+    "zone": {
+      "back": {
+        "x": 50,
+        "y": 97,
+        "r": 6
+      }
+    },
+    "stimuli": [
+      "scent_feet",
+      "taste_salt"
+    ],
+    "label": "Soles",
+    "description": "AUTHOR TO WRITE: Her soles; the strongest scent after a run."
+  },
+  {
+    "id": "armpits",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 32,
+        "y": 28,
+        "r": 6
+      }
+    },
+    "stimuli": [
+      "scent_armpit"
+    ],
+    "label": "Armpits",
+    "description": "AUTHOR TO WRITE: Her armpits: scent, shaved or not, as her trait says."
+  },
+  {
+    "id": "legs",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "both",
+    "zone": {
+      "front": {
+        "x": 45,
+        "y": 70,
+        "r": 12
+      },
+      "back": {
+        "x": 45,
+        "y": 70,
+        "r": 12
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Legs",
+    "description": "AUTHOR TO WRITE: Her legs as a whole, stockinged or bare."
+  },
+  {
+    "id": "thighs",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 45,
+        "y": 58,
+        "r": 8
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Thighs",
+    "description": "AUTHOR TO WRITE: The inner and outer thigh."
+  },
+  {
+    "id": "calves",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "back",
+    "zone": {
+      "back": {
+        "x": 45,
+        "y": 80,
+        "r": 6
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Calves",
+    "description": "AUTHOR TO WRITE: Her calves, sore after a march."
+  },
+  {
+    "id": "boots",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "both",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 96,
+        "r": 8
+      },
+      "back": {
+        "x": 50,
+        "y": 96,
+        "r": 8
+      }
+    },
+    "stimuli": [
+      "taste_dirt",
+      "taste_polish",
+      "scent_worn"
+    ],
+    "label": "Boots",
+    "description": "AUTHOR TO WRITE: Her boots, on or off, dirty after a run."
+  },
+  {
+    "id": "hands",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 25,
+        "y": 52,
+        "r": 5
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Hands",
+    "description": "AUTHOR TO WRITE: Her hands and fingers; a kiss on the hand."
+  },
+  {
+    "id": "neck",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 17,
+        "r": 4
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Neck",
+    "description": "AUTHOR TO WRITE: Her throat and neck."
+  },
+  {
+    "id": "nape",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "back",
+    "zone": {
+      "back": {
+        "x": 50,
+        "y": 15,
+        "r": 4
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Nape",
+    "description": "AUTHOR TO WRITE: The nape, under the hair."
+  },
+  {
+    "id": "hair",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "both",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 6,
+        "r": 8
+      },
+      "back": {
+        "x": 50,
+        "y": 8,
+        "r": 9
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Hair",
+    "description": "AUTHOR TO WRITE: Her hair: brushing it, burying the face in it, its scent."
+  },
+  {
+    "id": "back",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "back",
+    "zone": {
+      "back": {
+        "x": 50,
+        "y": 30,
+        "r": 10
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Back",
+    "description": "AUTHOR TO WRITE: Her back and shoulder blades."
+  },
+  {
+    "id": "scent",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "both",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 40,
+        "r": 15
+      },
+      "back": {
+        "x": 50,
+        "y": 40,
+        "r": 15
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "scent_worn"
+    ],
+    "label": "Her scent",
+    "description": "AUTHOR TO WRITE: Her scent itself, from any part or from her clothes."
+  },
+  {
+    "id": "bottom",
+    "contentTags": [
+      "worship",
+      "explicit_scenes"
+    ],
+    "side": "back",
+    "zone": {
+      "back": {
+        "x": 50,
+        "y": 52,
+        "r": 8
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Bottom",
+    "description": "AUTHOR TO WRITE: Her bottom."
+  },
+  {
+    "id": "breasts",
+    "contentTags": [
+      "worship",
+      "explicit_scenes"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 30,
+        "r": 9
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Breasts",
+    "description": "AUTHOR TO WRITE: Her breasts."
+  },
+  {
+    "id": "genitalia",
+    "contentTags": [
+      "worship",
+      "explicit_scenes"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 52,
+        "r": 6
+      }
+    },
+    "stimuli": [
+      "scent_body",
+      "taste_skin"
+    ],
+    "label": "Genitalia",
+    "description": "AUTHOR TO WRITE: Her genitalia; the variants follow her anatomy and are shown only with explicit scenes."
+  }
+]

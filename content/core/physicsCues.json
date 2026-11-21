@@ -1,1 +1,93 @@
-[]
+[
+  {
+    "id": "cue_window_open",
+    "kind": "window_open",
+    "lines": [
+      "A breath goes out of her; the air comes back for a moment.",
+      "Her hold loosens a fraction. Now.",
+      "There is a gap. It will not last.",
+      "The pressure eases, just once."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"window_open\", used until the model words them."
+  },
+  {
+    "id": "cue_window_false",
+    "kind": "window_false",
+    "lines": [
+      "Her hold seems to ease, and then it does not.",
+      "A gap that closes as soon as it opens.",
+      "She lets it look like a chance."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"window_false\", used until the model words them."
+  },
+  {
+    "id": "cue_shift",
+    "kind": "shift",
+    "lines": [
+      "She shifts her weight; the load moves.",
+      "Her balance changes above the commander.",
+      "The weight slides and settles again."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"shift\", used until the model words them."
+  },
+  {
+    "id": "cue_press",
+    "kind": "press",
+    "lines": [
+      "She presses a little harder.",
+      "The hold tightens without a word.",
+      "More of her weight comes down."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"press\", used until the model words them."
+  },
+  {
+    "id": "cue_lift",
+    "kind": "lift",
+    "lines": [
+      "She lets up for a moment.",
+      "The pressure leaves; the room comes back.",
+      "She eases off and waits to see what follows."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"lift\", used until the model words them."
+  },
+  {
+    "id": "cue_count",
+    "kind": "count",
+    "lines": [
+      "She counts under her breath.",
+      "A slow count, not meant for anyone.",
+      "Her lips move: one, two, three."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"count\", used until the model words them."
+  },
+  {
+    "id": "cue_warning",
+    "kind": "warning",
+    "lines": [
+      "The edges of everything start to close in.",
+      "The sounds in the room go dull.",
+      "The commander is close to the limit; the body says so."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"warning\", used until the model words them."
+  },
+  {
+    "id": "cue_watch",
+    "kind": "watch",
+    "lines": [
+      "She is looking down; her eyes are on the commander.",
+      "Her attention is entirely here.",
+      "Her gaze rests where the commander is, steady."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"watch\", used until the model words them."
+  },
+  {
+    "id": "cue_look_away",
+    "kind": "look_away",
+    "lines": [
+      "Her eyes have gone to her screen.",
+      "She is not looking; her head is turned.",
+      "Her attention has drifted to something else."
+    ],
+    "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"look_away\", used until the model words them."
+  }
+]

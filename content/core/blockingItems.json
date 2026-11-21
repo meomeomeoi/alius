@@ -1,1 +1,666 @@
-[]
+[
+  {
+    "id": "blindfold",
+    "scope": "any",
+    "contentTags": [
+      "restraint"
+    ],
+    "slots": [
+      "eyes"
+    ],
+    "label": "Blindfold",
+    "description": "AUTHOR TO WRITE: The eyes are covered.",
+    "promptHint": "blindfolded",
+    "effects": [
+      {
+        "type": "filter",
+        "kind": "sensory_dark"
+      },
+      {
+        "type": "perception",
+        "others": "obscured"
+      },
+      {
+        "type": "sensory",
+        "kind": "touch",
+        "intensity": "high"
+      },
+      {
+        "type": "sensory",
+        "kind": "sound",
+        "intensity": "high"
+      }
+    ]
+  },
+  {
+    "id": "collar",
+    "scope": "any",
+    "slots": [
+      "neck"
+    ],
+    "label": "Collar",
+    "description": "AUTHOR TO WRITE: A plain collar, a sign.",
+    "promptHint": "collared",
+    "effects": [
+      {
+        "type": "notice",
+        "kind": "knows_dynamic"
+      }
+    ]
+  },
+  {
+    "id": "leash",
+    "scope": "any",
+    "contentTags": [
+      "pet_play"
+    ],
+    "slots": [
+      "neck"
+    ],
+    "label": "Lead",
+    "description": "AUTHOR TO WRITE: A lead clipped to the collar.",
+    "promptHint": "on a lead",
+    "effects": [
+      {
+        "type": "escalation",
+        "verb": "tug_leash"
+      },
+      {
+        "type": "mobility",
+        "level": "follows"
+      },
+      {
+        "type": "visibility",
+        "exposing": true
+      }
+    ]
+  },
+  {
+    "id": "ring_gag",
+    "scope": "any",
+    "contentTags": [
+      "restraint",
+      "humiliation"
+    ],
+    "slots": [
+      "mouth"
+    ],
+    "physics": [
+      {
+        "id": "jaw"
+      }
+    ],
+    "label": "Ring gag",
+    "description": "AUTHOR TO WRITE: The mouth is held open; she may smirk.",
+    "promptHint": "ring-gagged",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "garbled",
+        "strength": 3
+      },
+      {
+        "type": "camera",
+        "mode": "face_close"
+      }
+    ]
+  },
+  {
+    "id": "muzzle",
+    "scope": "any",
+    "contentTags": [
+      "pet_play"
+    ],
+    "slots": [
+      "mouth"
+    ],
+    "label": "Muzzle",
+    "description": "AUTHOR TO WRITE: A muzzle; speech is gone.",
+    "promptHint": "muzzled",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "no_speech"
+      },
+      {
+        "type": "gestures",
+        "variant": "pet"
+      }
+    ]
+  },
+  {
+    "id": "scent_gag",
+    "scope": "any",
+    "contentTags": [
+      "worship",
+      "humiliation"
+    ],
+    "slots": [
+      "mouth"
+    ],
+    "physics": [
+      {
+        "id": "saturation"
+      }
+    ],
+    "stimuli": [
+      "scent_worn"
+    ],
+    "label": "Scent gag",
+    "description": "AUTHOR TO WRITE: Something of hers worn serves as the gag; her scent clings longer after it is removed.",
+    "promptHint": "gagged with her worn item",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "garbled",
+        "strength": 2
+      },
+      {
+        "type": "sensory",
+        "kind": "scent",
+        "intensity": "overwhelming"
+      }
+    ]
+  },
+  {
+    "id": "hood",
+    "scope": "any",
+    "contentTags": [
+      "restraint"
+    ],
+    "slots": [
+      "eyes",
+      "ears"
+    ],
+    "slotMode": "all",
+    "label": "Hood",
+    "description": "AUTHOR TO WRITE: A full hood; touch lines dominate.",
+    "promptHint": "hooded",
+    "effects": [
+      {
+        "type": "filter",
+        "kind": "sensory_dark"
+      },
+      {
+        "type": "perception",
+        "others": "obscured"
+      },
+      {
+        "type": "sound",
+        "muffle": true
+      },
+      {
+        "type": "sensory",
+        "kind": "touch",
+        "intensity": "high"
+      }
+    ]
+  },
+  {
+    "id": "posture_collar",
+    "scope": "any",
+    "contentTags": [
+      "restraint"
+    ],
+    "slots": [
+      "neck"
+    ],
+    "label": "Posture collar",
+    "description": "AUTHOR TO WRITE: A stiff collar that keeps the chin up; looking down is no longer an option.",
+    "promptHint": "in a posture collar",
+    "effects": [
+      {
+        "type": "strain",
+        "condition": "posture",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "shock_collar",
+    "scope": "dynamic",
+    "contentTags": [
+      "pain_rough"
+    ],
+    "slots": [
+      "neck"
+    ],
+    "label": "Shock collar",
+    "description": "AUTHOR TO WRITE: A discipline module on the neck, answering to her.",
+    "promptHint": "in a shock collar",
+    "effects": [
+      {
+        "type": "escalation",
+        "verb": "shock"
+      }
+    ]
+  },
+  {
+    "id": "paw_mitts",
+    "scope": "any",
+    "contentTags": [
+      "pet_play"
+    ],
+    "slots": [
+      "hands"
+    ],
+    "label": "Paw mitts",
+    "description": "AUTHOR TO WRITE: Mitts with no fingers; the PDA only works with her help.",
+    "promptHint": "in paw mitts",
+    "effects": [
+      {
+        "type": "gestures",
+        "variant": "pet"
+      },
+      {
+        "type": "input",
+        "limit": "no_hands"
+      },
+      {
+        "type": "device",
+        "lock": "tabs"
+      }
+    ]
+  },
+  {
+    "id": "spreader_bar",
+    "scope": "any",
+    "contentTags": [
+      "restraint"
+    ],
+    "slots": [
+      "feet"
+    ],
+    "label": "Spreader bar",
+    "description": "AUTHOR TO WRITE: The ankles are held apart; standing up and stepping away are not options.",
+    "promptHint": "on a spreader bar",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "limited"
+      }
+    ]
+  },
+  {
+    "id": "chastity_device",
+    "scope": "dynamic",
+    "contentTags": [
+      "denial"
+    ],
+    "slots": [
+      "groin"
+    ],
+    "label": "Chastity device",
+    "description": "AUTHOR TO WRITE: A chastity device; a neutral name, since the commander's body is not assumed. The key becomes something at hand when she leaves it near.",
+    "promptHint": "locked in a chastity device",
+    "effects": [
+      {
+        "type": "rule",
+        "template": "ask_permission"
+      }
+    ]
+  },
+  {
+    "id": "property_tag",
+    "scope": "dynamic",
+    "contentTags": [
+      "objectification",
+      "public_humiliation"
+    ],
+    "slots": [
+      "body"
+    ],
+    "label": "Property tag",
+    "description": "AUTHOR TO WRITE: A tag that says whose property this is; \"hide\" is not available, only \"as is\" or \"cover with hands\".",
+    "promptHint": "wearing a property tag",
+    "effects": [
+      {
+        "type": "visibility",
+        "exposing": true,
+        "hideable": false
+      },
+      {
+        "type": "notice",
+        "kind": "knows_dynamic"
+      }
+    ]
+  },
+  {
+    "id": "bell_collar",
+    "scope": "any",
+    "contentTags": [
+      "pet_play"
+    ],
+    "slots": [
+      "neck"
+    ],
+    "label": "Bell collar",
+    "description": "AUTHOR TO WRITE: A bell on the collar; every move sounds, and under silence any action costs.",
+    "promptHint": "wearing a bell collar",
+    "effects": [
+      {
+        "type": "sound",
+        "id": "bell"
+      },
+      {
+        "type": "strain",
+        "condition": "silence",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "scarf_blindfold",
+    "scope": "any",
+    "contentTags": [
+      "restraint",
+      "worship"
+    ],
+    "slots": [
+      "eyes"
+    ],
+    "stimuli": [
+      "scent_worn"
+    ],
+    "label": "Scarf blindfold",
+    "description": "AUTHOR TO WRITE: Her scarf over the eyes: a blindfold with her scent.",
+    "promptHint": "blindfolded with her scarf",
+    "effects": [
+      {
+        "type": "filter",
+        "kind": "sensory_dark"
+      },
+      {
+        "type": "perception",
+        "others": "obscured"
+      },
+      {
+        "type": "sensory",
+        "kind": "touch",
+        "intensity": "high"
+      },
+      {
+        "type": "sensory",
+        "kind": "sound",
+        "intensity": "high"
+      },
+      {
+        "type": "sensory",
+        "kind": "scent",
+        "intensity": "overwhelming"
+      }
+    ]
+  },
+  {
+    "id": "cuffs_to_collar",
+    "scope": "any",
+    "contentTags": [
+      "restraint"
+    ],
+    "slots": [
+      "hands",
+      "neck"
+    ],
+    "slotMode": "all",
+    "label": "Cuffs to the collar",
+    "description": "AUTHOR TO WRITE: The wrists are cuffed to the collar; nothing can be held and only the head gestures.",
+    "promptHint": "cuffed to the collar",
+    "effects": [
+      {
+        "type": "gestures",
+        "variant": "head_only"
+      },
+      {
+        "type": "input",
+        "limit": "no_hands"
+      }
+    ]
+  },
+  {
+    "id": "remote_toy",
+    "scope": "dynamic",
+    "contentTags": [
+      "explicit_scenes",
+      "denial"
+    ],
+    "slots": [
+      "groin"
+    ],
+    "label": "Remote toy",
+    "description": "AUTHOR TO WRITE: A toy she drives from her own PDA; it works when she is not in the scene.",
+    "promptHint": "wearing a remote toy",
+    "effects": [
+      {
+        "type": "escalation",
+        "verb": "remote_pulse"
+      },
+      {
+        "type": "strain",
+        "condition": "endurance",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "nose_hook",
+    "scope": "dynamic",
+    "contentTags": [
+      "humiliation"
+    ],
+    "slots": [
+      "face"
+    ],
+    "label": "Nose hook",
+    "description": "AUTHOR TO WRITE: A nose hook; the face is distorted, hiding is impossible, and she may laugh.",
+    "promptHint": "wearing a nose hook",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "face_close"
+      },
+      {
+        "type": "visibility",
+        "hideable": false
+      }
+    ]
+  },
+  {
+    "id": "her_marks",
+    "scope": "dynamic",
+    "contentTags": [
+      "humiliation"
+    ],
+    "slots": [
+      "body"
+    ],
+    "label": "Her marks",
+    "description": "AUTHOR TO WRITE: Writing on the skin in her lipstick or marker; it lasts some slots, others notice, and washing it off needs her leave.",
+    "promptHint": "marked with her writing"
+  },
+  {
+    "id": "wearing_her_scent",
+    "scope": "any",
+    "contentTags": [
+      "worship"
+    ],
+    "slots": [
+      "body"
+    ],
+    "stimuli": [
+      "scent_body"
+    ],
+    "label": "Wearing her scent",
+    "description": "AUTHOR TO WRITE: Her perfume on the commander; it is noticed almost surely.",
+    "promptHint": "wearing her perfume"
+  },
+  {
+    "id": "earpiece",
+    "scope": "dynamic",
+    "contentTags": [
+      "exposure_risk"
+    ],
+    "slots": [
+      "ears"
+    ],
+    "label": "Earpiece",
+    "description": "AUTHOR TO WRITE: An earpiece on her line: her whispers reach the commander in any scene she is not in.",
+    "promptHint": "wearing her earpiece"
+  },
+  {
+    "id": "tail",
+    "scope": "any",
+    "contentTags": [
+      "pet_play",
+      "explicit_scenes"
+    ],
+    "slots": [
+      "body"
+    ],
+    "label": "Tail",
+    "description": "AUTHOR TO WRITE: A tail; under a third party, showing it is unavoidable in any posture but lying.",
+    "promptHint": "wearing a tail",
+    "effects": [
+      {
+        "type": "visibility",
+        "exposing": true,
+        "hideable": false,
+        "unlessPosture": [
+          "lying_back",
+          "lying_front",
+          "lying_side"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "food_bowl",
+    "scope": "dynamic",
+    "contentTags": [
+      "pet_play",
+      "deprivation"
+    ],
+    "slots": [
+      "prop"
+    ],
+    "label": "Food bowl",
+    "description": "AUTHOR TO WRITE: A bowl at her feet; food only from it.",
+    "promptHint": "a bowl at her feet"
+  },
+  {
+    "id": "strap",
+    "scope": "dynamic",
+    "contentTags": [
+      "strap",
+      "explicit_scenes"
+    ],
+    "slots": [
+      "groin"
+    ],
+    "wornBy": "her",
+    "label": "Strap",
+    "description": "AUTHOR TO WRITE: A strap she wears for the active role, any anatomy; its size has tiers and it is kept in her quarters as a prop others may notice.",
+    "promptHint": "wearing a strap"
+  },
+  {
+    "id": "fem_underwear",
+    "scope": "dynamic",
+    "contentTags": [
+      "feminization"
+    ],
+    "slots": [
+      "body"
+    ],
+    "label": "Feminine underwear",
+    "description": "AUTHOR TO WRITE: Feminine underwear under the uniform; hidden, with a noticing roll at undressing, in medbay and at the showers.",
+    "promptHint": "in feminine underwear"
+  },
+  {
+    "id": "fem_legwear",
+    "scope": "dynamic",
+    "contentTags": [
+      "feminization"
+    ],
+    "slots": [
+      "legs"
+    ],
+    "label": "Stockings",
+    "description": "AUTHOR TO WRITE: Stockings or tights; visible kneeling and sitting, with a noticing roll in public.",
+    "promptHint": "in stockings"
+  },
+  {
+    "id": "fem_dress",
+    "scope": "dynamic",
+    "contentTags": [
+      "feminization"
+    ],
+    "slots": [
+      "body"
+    ],
+    "label": "Skirt or dress",
+    "description": "AUTHOR TO WRITE: A skirt or dress of her choosing; visible.",
+    "promptHint": "in a skirt or dress of her choosing"
+  },
+  {
+    "id": "fem_makeup",
+    "scope": "dynamic",
+    "contentTags": [
+      "feminization"
+    ],
+    "slots": [
+      "face"
+    ],
+    "label": "Makeup",
+    "description": "AUTHOR TO WRITE: Makeup she applies; washing it off without leave is a slip.",
+    "promptHint": "wearing makeup"
+  },
+  {
+    "id": "fem_jewellery",
+    "scope": "dynamic",
+    "contentTags": [
+      "feminization"
+    ],
+    "slots": [
+      "ears",
+      "neck",
+      "hands"
+    ],
+    "slotMode": "one",
+    "label": "Jewelry",
+    "description": "AUTHOR TO WRITE: Earrings, a choker, rings: small and visible; a choker may double as a collar.",
+    "promptHint": "wearing jewelry"
+  },
+  {
+    "id": "fem_wig_or_hair",
+    "scope": "dynamic",
+    "contentTags": [
+      "feminization"
+    ],
+    "slots": [
+      "head"
+    ],
+    "label": "Styled hair or wig",
+    "description": "AUTHOR TO WRITE: Hair styled or a wig; visible, tied to the haircut pastime.",
+    "promptHint": "with styled hair"
+  },
+  {
+    "id": "plug",
+    "scope": "dynamic",
+    "contentTags": [
+      "explicit_scenes",
+      "restraint"
+    ],
+    "slots": [
+      "body"
+    ],
+    "label": "Plug",
+    "description": "AUTHOR TO WRITE: A plug; endurance suffers sitting or moving, and removing it is her privilege.",
+    "promptHint": "plugged",
+    "effects": [
+      {
+        "type": "strain",
+        "condition": "endurance",
+        "rate": 1
+      }
+    ]
+  }
+]
