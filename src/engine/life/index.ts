@@ -1,7 +1,7 @@
 export { applyLifeEvent, busySlot, effectiveShare, eventPool, pickLifeEvent, requiresHold, shareChance, takesPart } from './events';
 export { LIFE_TAG, plainText, revealFact, writeLifeFact } from './facts';
 export {
-  aptitudeOf, bumpInterest, breakthrough, decay, friendHobbies, grantMilestone, interestTick, milestoneAt, newHobby, practiceGain, practiceSlots, practise, pushHobby, seedLife, sharePractice, startHobby,
+  aptitudeOf, bumpInterest, breakthrough, plateauBreaks, decay, friendHobbies, grantMilestone, interestTick, milestoneAt, newHobby, practiceGain, practiceSlots, practise, pushHobby, seedLife, sharePractice, startHobby,
   takeUpHobbies, takeUpHobby,
 } from './hobbies';
 export { channelFor, closeNews, deliverNews, endSceneNews, enqueue, pendingNews, staleSweep } from './news';
@@ -11,3 +11,4 @@ export { applyLifeIntent, lifeIntentInput } from './intents';
 export {
   defaultPosition, endSceneLife, formOpinion, heardOpinions, recentEventTopics, startSceneLife, topicsAt, topicsInText, triggerTopics, unformedTopics, voiceOpinion,
 } from './opinions';
+export { availablePastimes, commanderHobbyWord, finishMeeting, keenestHobby, pastimeLocation, pastimeProblem } from './meetings';

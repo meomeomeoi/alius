@@ -647,5 +647,18 @@
       "opinion",
       "persuaded"
     ]
+  },
+  {
+    "id": "taught_commander",
+    "event": "hobby_taught",
+    "text": "{name} taught the commander something of {hobby}.",
+    "importance": 1,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "hobby",
+      "taught"
+    ]
   }
 ]

@@ -18,6 +18,7 @@ import { applyIntents } from '../relations/apply';
 import { showMoments, stampMoments, unstampMoments } from '../development/moments';
 import { countCompanions } from '../development/habits';
 import { noteBusy } from '../life/dayStep';
+import { finishMeeting } from '../life/meetings';
 import { endSceneNews } from '../life/news';
 import { endSceneLife, startSceneLife } from '../life/opinions';
 import { busySlot } from '../life/places';
@@ -100,6 +101,14 @@ registerAction('scene/start', (draft, payload, ctx) => {
     ...(typeof payload.nightEntryId === 'string' ? { nightEntryId: payload.nightEntryId } : {}),
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
+  // P14c: a quiet meeting waiting for its scene: this scene is it (or the wait was stale); either way the wait is over
+  const waiting = draft.life?.pending;
+  if (waiting) {
+    if (origin === 'activity' && participants.length === 1 && participants[0] === waiting.unitId && waiting.day === draft.day && waiting.slot === draft.slot) {
+      draft.scene.pastime = { id: waiting.pastimeId, unitId: waiting.unitId };
+    }
+    delete draft.life!.pending;
+  }
   stampMoments(draft, participants, sceneId); // P14b: a quiet change of hers shows in this scene
   noteBusy(draft, participants); // P14c: they are with the commander this slot (a no-op while life is off)
   const topics = startSceneLife(draft, reg, { id: sceneId, locationId: loc.id, participants }, (id) => (origin === 'activity' ? draft.life?.busy.find((b) => b.unitId === id && b.slot === busySlot(draft.day, draft.slot) && b.activityId !== undefined)?.activityId : undefined)); // P14c: what the place and her week bring up (nothing while life is off)
@@ -200,6 +209,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   // P9: a defiance nobody answered in this scene settles now
   events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id)); // P9d: a scene with her ends her hold
+  events.push(...finishMeeting(draft, ctx, scene)); // P14c: a quiet meeting applies now (an aborted scene applies nothing)
   events.push(...endSceneNews(draft, scene.participants)); // P14c: what she had to tell and did not is gone
   endSceneLife(draft, scene.participants); // P14c: what the scene triggered and picked is gone
   delete draft.scene;

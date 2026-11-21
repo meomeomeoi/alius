@@ -224,6 +224,19 @@ export function grantMilestone(
   return events;
 }
 
+/** Whether another woman reached the same milestone of the same hobby today: two women never do, so whoever comes second waits for another day. */
+function reachedToday(draft: Pick<CampaignState, 'squad' | 'day'>, unitId: string, hobbyId: string, n: number): boolean {
+  return draft.squad.some((u) => u.id !== unitId && u.hobbies?.some((o) => o.id === hobbyId && o.milestones.length > n && o.lastMilestoneDay === draft.day));
+}
+
+/** Whether a push would break her plateau in this hobby right now (she is on one, it is not her ceiling and nobody else reached that step today). */
+export function plateauBreaks(draft: Pick<CampaignState, 'squad' | 'day'>, unitId: string, hobbyId: string): boolean {
+  const unit = unitOf(draft, unitId);
+  const h = unit?.hobbies?.find((x) => x.id === hobbyId);
+  if (!unit || !h || h.plateau === undefined || h.ceiling === true || h.milestones.length >= 4) return false;
+  return !(aptitudeOf(unit, hobbyId) === 'low' && h.milestones.length >= 3) && !reachedToday(draft, unitId, hobbyId, h.milestones.length);
+}
+
 /** She gets past a plateau: skill is the milestone ahead and it is granted. Nothing at the ceiling or once all four are reached. */
 export function breakthrough(
   draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, _day: number, opts: { caused?: true } = {},
@@ -232,7 +245,7 @@ export function breakthrough(
   if (!h || h.ceiling === true || h.milestones.length >= 4) return [];
   // two women never reach the same milestone of the same hobby on one day: whoever comes second waits for another slot, another day
   const n = h.milestones.length;
-  if (draft.squad.some((u) => u.id !== unitId && u.hobbies?.some((o) => o.id === hobbyId && o.milestones.length > n && o.lastMilestoneDay === draft.day))) return [];
+  if (reachedToday(draft, unitId, hobbyId, n)) return [];
   const got = grantMilestone(draft, reg, unitId, hobbyId, h.milestones.length, opts);
   return got.length === 0 ? [] : [{ type: 'hobby_breakthrough', unitId, hobbyId }, ...got];
 }

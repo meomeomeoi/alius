@@ -1,5 +1,5 @@
 import { isLiving } from '../economy';
-import { registerActivityHook } from '../activities';
+import { registerActivityHook, runActivity } from '../activities';
 import { registerDayEndStep } from '../calendar';
 import { registerAction, runHandler } from '../dispatch';
 import { closeNews } from '../life/news';
@@ -7,8 +7,9 @@ import { leaveLifeNote } from '../notes/write';
 import { lifeDayStep, noteBusy, recordDeaths } from '../life/dayStep';
 import { newHobby, seedLife } from '../life/hobbies';
 import { LIFE_MODES, TEMPERAMENT_FIELDS, ensureLife, temperamentOf, temperamentProblems } from '../life/state';
+import { pastimeLocation, pastimeProblem } from '../life/meetings';
 import { formOpinion, triggerTopics } from '../life/opinions';
-import type { OpinionTopicEntry } from '../life/types';
+import { pastimeActivity, type OpinionTopicEntry, type PastimeEntry } from '../life/types';
 import { aptitudeProblems } from '../setup';
 import { TUNING } from '../tuning';
 import type { LifeMode, Opinion, Temperament, Unit } from '../state/types';
@@ -218,4 +219,43 @@ registerAction('life/topics_triggered', (draft, payload, ctx) => {
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string')) throw new Error('life/topics_triggered needs { topicIds } as a list of ids.');
   if (!draft.scene) throw new Error('life/topics_triggered: no scene is open');
   return triggerTopics(draft, ctx.registries, draft.scene.participants, ids as string[], draft.scene.id);
+});
+
+/**
+ * `life/time_together { unitId, pastimeId }`: a quiet hour with her. It refuses with `pastimeProblem`'s reason, runs the activity that carries
+ * `pastime: true` with her as the companion (which holds the slot until the scene ends, as a talk does) and stores the pastime for the scene
+ * the app opens next (`scene/start` copies it onto the scene). Nothing applies until `scene/end`. An order the squad leader countermands or the
+ * warden overrides spends nothing and stores nothing.
+ */
+registerAction('life/time_together', (draft, payload, ctx) => {
+  const p = payload as { unitId?: unknown; pastimeId?: unknown } | undefined;
+  if (typeof p?.unitId !== 'string' || typeof p.pastimeId !== 'string') throw new Error('life/time_together needs { unitId, pastimeId }.');
+  const reg = ctx.registries;
+  const why = pastimeProblem(draft, reg, p.unitId, p.pastimeId);
+  if (why) throw new Error(why);
+  const pastime = reg.pastimes.get(p.pastimeId) as unknown as PastimeEntry;
+  const locationId = pastimeLocation(draft, reg, pastime, p.unitId) as string; // `pastimeProblem` found one
+  const events = runActivity(draft, ctx, { activityId: String(pastimeActivity(reg)!.id), companionId: p.unitId });
+  if (!events.some((e) => e.type === 'activity_done')) return events;
+  ensureLife(draft).pending = { unitId: p.unitId, pastimeId: p.pastimeId, locationId, day: draft.day, slot: draft.slot };
+  return [...events, { type: 'pastime_set', unitId: p.unitId, pastimeId: p.pastimeId }];
+});
+
+/**
+ * `life/pastime_in_scene { pastimeId }`: the "let's ..." of an open private scene with one named woman. The same checks as `life/time_together`
+ * except that the slot and the place are the scene's; it sets the scene's pastime and spends no slot (the scene's own slot, if it has one,
+ * is spent when it ends).
+ */
+registerAction('life/pastime_in_scene', (draft, payload, ctx) => {
+  const pastimeId = (payload as { pastimeId?: unknown } | undefined)?.pastimeId;
+  if (typeof pastimeId !== 'string') throw new Error('life/pastime_in_scene needs { pastimeId }.');
+  const scene = draft.scene;
+  if (!scene) throw new Error('life/pastime_in_scene: no scene is open');
+  const unit = scene.participants.length === 1 ? draft.squad.find((u) => u.id === scene.participants[0]) : undefined;
+  if (scene.mode !== 'private' || !unit || unit.kind !== 'named') throw new Error('A quiet meeting is for a private scene with one named soldier.');
+  if (scene.pastime) throw new Error('The scene is already a quiet meeting.');
+  const why = pastimeProblem(draft, ctx.registries, unit.id, pastimeId, { locationId: scene.locationId, slot: scene.slot });
+  if (why) throw new Error(why);
+  scene.pastime = { id: pastimeId, unitId: unit.id };
+  return [{ type: 'pastime_set', unitId: unit.id, pastimeId }];
 });

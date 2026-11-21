@@ -47,5 +47,6 @@ registerAction('calendar/cancel_scene', (draft) => {
   const scene = draft.calendar.pendingScene;
   if (!scene) throw new Error('calendar/cancel_scene: no conversation is open');
   delete draft.calendar.pendingScene;
+  if (draft.life?.pending) delete draft.life.pending; // P14c: a quiet meeting that never got its scene
   return [{ type: 'scene_cancelled', unitId: scene.unitId }];
 });

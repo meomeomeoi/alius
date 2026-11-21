@@ -147,6 +147,7 @@ import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
 import { checkActivity, focusConfirm, type ActivityRequest } from './engine/activities';
 import { analyzeAttrs } from './ui/analyze/mark';
 import type { ResyncPatch, ResyncSection } from './engine/actions/squad';
+import { pastimeProblem } from './engine/life/meetings';
 import { temperamentOf } from './engine/life/state';
 import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
@@ -193,6 +194,11 @@ export interface AliusApp {
    * Refused (with a toast, spending nothing) while a restriction, an open scene or the like stands in the way.
    */
   talkAt(unitId: string, locationId: string): Promise<boolean>;
+  /**
+   * P14c: a quiet hour with her (`life/time_together`): the slot is held and the scene opens at the pastime's place (origin `activity`, like
+   * `talkAt`). Refused (with a toast, spending nothing) with `pastimeProblem`'s reason or while the slot cannot be spent.
+   */
+  life: { timeTogether(unitId: string, pastimeId: string): Promise<boolean> };
   /** The hub's END: after a confirmation, passes the slot (a quiet night is slept through instead). */
   endSlot(): Promise<void>;
   /** Recruits a grunt (BASE tab) and, if enabled, asks for a generated name and bio. */
@@ -2454,6 +2460,28 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       } finally {
         presetLocation = null;
       }
+    },
+
+    life: {
+      async timeTogether(unitId, pastimeId) {
+        const chatId = st.getActiveChat()?.chatId;
+        const s = state;
+        if (!s || load.kind !== 'ok') return false;
+        const why = endSlotBlock(s) ?? pastimeProblem(s, registries, unitId, pastimeId);
+        if (why) {
+          toast('warn', why);
+          return false;
+        }
+        const events = api.dispatch({ type: 'life/time_together', payload: { unitId, pastimeId } }, { expectChatId: chatId });
+        const failed = events.find((e) => e.type === 'error');
+        if (failed) {
+          toast('error', String(failed.message ?? failed.code));
+          return false;
+        }
+        const waiting = state?.life?.pending;
+        if (!events.some((e) => e.type === 'scene_requested') || !waiting || waiting.unitId !== unitId) return false; // the order was countermanded or overridden
+        return beginScene({ locationId: waiting.locationId, participants: [unitId], origin: 'activity' });
+      },
     },
 
     async endSlot() {

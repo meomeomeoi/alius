@@ -1,6 +1,6 @@
 import type { Registries } from '../content/types';
-import { lifeMode, pendingNews, plainText } from '../engine/life';
-import type { OpinionTopicEntry } from '../engine/life/types';
+import { keenestHobby, lifeMode, pendingNews, plainText, plateauBreaks } from '../engine/life';
+import type { HobbyEntry, OpinionTopicEntry, PastimeEntry } from '../engine/life/types';
 import type { CampaignState, Unit } from '../engine/state/types';
 import type { ContextBuilder, Directive } from '../llm/context';
 
@@ -19,6 +19,7 @@ export const LIFE_DERIVED = ['life:'] as const;
 export const NEWS_PREFIX = 'life:news:';
 export const OPINION_PREFIX = 'life:opinion:';
 export const JOKE_PREFIX = 'life:joke:';
+export const PASTIME_PREFIX = 'life:pastime:';
 
 /** The directive of the running joke she may bring back in this scene (picked at its start), or null. A fact that is gone leaves no line. */
 function jokeDirective(state: CampaignState, unit: Unit): Directive | null {
@@ -49,12 +50,32 @@ function opinionDirective(state: CampaignState, reg: Registries, unit: Unit): Di
 }
 
 /**
+ * The directive of a quiet meeting: this scene is a pastime with her (set when it started, until it ends). It carries the opening, what the
+ * meeting is, and what each of them does; the one that is her hobby names it, and says the step comes when she is on a plateau the push breaks.
+ */
+function pastimeDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
+  const meeting = state.scene?.pastime;
+  const pastime = meeting?.unitId === unit.id ? (reg.pastimes.get(meeting.id) as unknown as PastimeEntry | undefined) : undefined;
+  if (!pastime) return null;
+  const hobby = pastime.hobby === true ? keenestHobby(reg, unit) : undefined;
+  const label = hobby ? (reg.hobbies.get(hobby.id) as unknown as HobbyEntry | undefined)?.label : undefined;
+  const what = clean(plainText(pastime.description)).replace(/\.$/, '');
+  const hers = label !== undefined ? clean(label) : clean(pastime.herActivity);
+  const breaks = hobby !== undefined && plateauBreaks(state, unit.id, hobby.id) ? ' She gets it right for the first time today.' : '';
+  return {
+    id: `${PASTIME_PREFIX}${unit.id}`, expiresAfter: 'scene',
+    text: `${clean(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}. ${unit.displayName}: ${hers}; the commander: ${clean(pastime.commanderActivity)}.${breaks}`,
+  };
+}
+
+/**
  * Derived directives for the women in the scene (`present`):
  *  - `life:news:<unitId>`: the oldest thing she has to tell the commander and has not (an item the queue delivered as a directive). A
  *    stale item reads as a passing mention ("recently").
  *  - `life:opinion:<unitId>`: the one topic picked for her in this scene (a trigger fired, she has a view and it is off cooldown), until she
  *    voices it (`opinion_voiced` clears the pick). Never an opinion nothing triggered.
  *  - `life:joke:<unitId>`: the running joke she may bring back in this private scene (picked at its start), until a `joke_returned` uses it up.
+ *  - `life:pastime:<unitId>`: this scene is a quiet meeting with her (a pastime): the opening, what each does; gone when the scene ends.
  * Nothing while life is off.
  */
 export function lifeDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
@@ -79,6 +100,8 @@ export function lifeDirectives(state: CampaignState, reg: Registries, present: s
     if (opinion) out.push(opinion);
     const joke = jokeDirective(state, unit);
     if (joke) out.push(joke);
+    const pastime = pastimeDirective(state, reg, unit);
+    if (pastime) out.push(pastime);
   }
   return out;
 }

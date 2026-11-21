@@ -6305,6 +6305,9 @@ var LIFE_SHARES = ["anyone", "close", "keeps"];
 var TOPIC_GROUPS = ["lore", "service", "everyday", "people", "abstract"];
 var TRACE_KINDS = ["note", "prop", "opinion"];
 var TALK_LEVELS = ["quiet", "some"];
+function pastimeActivity(reg) {
+  return [...reg.activities.values()].find((a) => a.pastime === true);
+}
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -13389,11 +13392,20 @@ function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
   }
   return events;
 }
+function reachedToday(draft, unitId, hobbyId, n) {
+  return draft.squad.some((u) => u.id !== unitId && u.hobbies?.some((o) => o.id === hobbyId && o.milestones.length > n && o.lastMilestoneDay === draft.day));
+}
+function plateauBreaks(draft, unitId, hobbyId) {
+  const unit2 = unitOf2(draft, unitId);
+  const h2 = unit2?.hobbies?.find((x) => x.id === hobbyId);
+  if (!unit2 || !h2 || h2.plateau === void 0 || h2.ceiling === true || h2.milestones.length >= 4) return false;
+  return !(aptitudeOf(unit2, hobbyId) === "low" && h2.milestones.length >= 3) && !reachedToday(draft, unitId, hobbyId, h2.milestones.length);
+}
 function breakthrough(draft, reg, unitId, hobbyId, _day, opts = {}) {
   const h2 = unitOf2(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
   if (!h2 || h2.ceiling === true || h2.milestones.length >= 4) return [];
   const n = h2.milestones.length;
-  if (draft.squad.some((u) => u.id !== unitId && u.hobbies?.some((o) => o.id === hobbyId && o.milestones.length > n && o.lastMilestoneDay === draft.day))) return [];
+  if (reachedToday(draft, unitId, hobbyId, n)) return [];
   const got = grantMilestone(draft, reg, unitId, hobbyId, h2.milestones.length, opts);
   return got.length === 0 ? [] : [{ type: "hobby_breakthrough", unitId, hobbyId }, ...got];
 }
@@ -23920,6 +23932,11 @@ registerMemoryResolver("opinion_changed", (draft, event, reg) => {
   const topic = reg.opinionTopics.get(String(event.topicId));
   return her && topic ? { ids: { her: [her.id] }, vars: { name: her.name, topic: String(topic.label) } } : null;
 }, { ids: ["her"], vars: ["name", "topic"] });
+registerMemoryResolver("hobby_taught", (draft, event, reg) => {
+  const her = subjectOf2(draft, event.unitId);
+  const hobby = reg.hobbies.get(String(event.hobbyId));
+  return her && hobby ? { ids: { her: [her.id] }, vars: { name: her.name, hobby: String(hobby.label) } } : null;
+}, { ids: ["her"], vars: ["name", "hobby"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -24406,6 +24423,7 @@ registerAction("calendar/cancel_scene", (draft) => {
   const scene = draft.calendar.pendingScene;
   if (!scene) throw new Error("calendar/cancel_scene: no conversation is open");
   delete draft.calendar.pendingScene;
+  if (draft.life?.pending) delete draft.life.pending;
   return [{ type: "scene_cancelled", unitId: scene.unitId }];
 });
 
@@ -24991,6 +25009,95 @@ function lifeDayStep(draft, ctx2) {
   return events;
 }
 
+// src/engine/life/meetings.ts
+var hobbyEntry = (reg, id) => reg.hobbies.get(id);
+function keenestHobby(reg, unit2) {
+  const order = [...reg.hobbies.keys()];
+  const rank2 = (id) => {
+    const i = order.indexOf(id);
+    return i < 0 ? order.length : i;
+  };
+  return (unit2.hobbies ?? []).filter((h2) => h2.state === "active").sort((a, b) => b.interest - a.interest || rank2(a.id) - rank2(b.id))[0];
+}
+function openAt(reg, locationId, slot2) {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return false;
+  const slots = loc.slots;
+  return !slots || slots.includes(slot2);
+}
+function candidateLocations(reg, pastime, unit2) {
+  if (pastime.hobby !== true) return pastime.locations;
+  const h2 = unit2 ? keenestHobby(reg, unit2) : void 0;
+  return h2 ? hobbyEntry(reg, h2.id)?.locations ?? [] : [];
+}
+function pastimeLocation(state, reg, pastime, unitId) {
+  const unit2 = unitId !== void 0 ? unitOf2(state, unitId) : void 0;
+  return candidateLocations(reg, pastime, unit2).find((id) => openAt(reg, id, state.slot)) ?? null;
+}
+var deserting = (state, unitId) => state.disloyalty?.open?.kind === "desertion" && state.disloyalty.open.unitId === unitId;
+function pastimeProblem(state, reg, unitId, pastimeId, at) {
+  if (lifeMode(state) === "off" || !state.life) return "Her life is switched off.";
+  const pastime = reg.pastimes.get(pastimeId);
+  if (!pastime) return `Unknown pastime "${pastimeId}".`;
+  const unit2 = unitOf2(state, unitId);
+  if (!unit2 || unit2.kind !== "named") return "Only a named soldier has quiet meetings.";
+  const name = unit2.displayName;
+  if (unit2.status === "deserted" || deserting(state, unitId)) return `${name} is deserting.`;
+  if (!takesPart(state, unitId)) return `${name} is not at the base.`;
+  if ((state.relations[unitId]?.affinity ?? 0) <= TUNING.life.meeting.affinityMin) return `${name} wants nothing to do with the commander right now.`;
+  if (state.life.units[unitId]?.meetingDay === state.day) return `${name} has had a quiet hour with the commander today.`;
+  const slot2 = at?.slot ?? state.slot;
+  if (!pastime.slots.includes(slot2)) return `${pastime.label} is not for the ${slot2}.`;
+  if (at !== void 0) {
+    if (!candidateLocations(reg, pastime, unit2).includes(at.locationId)) return `${pastime.label} is not held here.`;
+  } else {
+    if (pastimeLocation(state, reg, pastime, unitId) === null) return `Nowhere is open for ${pastime.label} now.`;
+    const activity = pastimeActivity(reg);
+    if (!activity) return "This pack has no time together.";
+    const held3 = restrictionReason(state, unitId, "companion", String(activity.id));
+    if (held3) return held3;
+    const blocked = checkActivity(state, reg, { activityId: String(activity.id), companionId: unitId });
+    if (blocked) return blocked;
+  }
+  const req = pastime.requires;
+  if (req?.afterRun === true && !requiresHold(state, reg, unitId, { afterRun: {} }, state.day)) return `${pastime.label} is for after a run.`;
+  if (req?.firstSlot === true && slot2 !== "morning") return `${pastime.label} is for the first slot of the day.`;
+  if (req?.hobby !== void 0 && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
+  if (pastime.hobby === true && keenestHobby(reg, unit2) === void 0) return `${name} has no hobby to show.`;
+  return null;
+}
+function teachCommander(draft, hobby, entry) {
+  const t = TUNING.life.commanderSkill;
+  const gain = entry.teachable && hobby.milestones.length >= 2 ? t.taught : t.meeting;
+  const skill = draft.commander.hobbySkill ??= {};
+  skill[hobby.id] = Math.min(100, (skill[hobby.id] ?? 0) + gain);
+  return gain;
+}
+var meetingEvent = (unitId) => ({ type: "time_together", actor: "commander", targets: [unitId], severity: "minor", evidence: "a quiet meeting", confidence: 1 });
+function finishMeeting(draft, ctx2, scene) {
+  const meeting = scene.pastime;
+  const unit2 = meeting ? unitOf2(draft, meeting.unitId) : void 0;
+  const reg = ctx2.registries;
+  if (!meeting || !unit2 || unit2.kind !== "named" || !draft.life) return [];
+  const pastime = reg.pastimes.get(meeting.id);
+  const events = applyEventToUnit(draft, reg, unit2.id, meetingEvent(unit2.id));
+  const mine = draft.life.units[unit2.id] ??= { last: {} };
+  mine.meetingDay = draft.day;
+  if (pastime?.hobby !== true) return events;
+  const keen = keenestHobby(reg, unit2);
+  const entry = keen ? hobbyEntry(reg, keen.id) : void 0;
+  if (!keen || !entry) return events;
+  events.push(...practise(draft, reg, unit2.id, keen.id, draft.day, draft.slot, { push: true, caused: true }));
+  const gain = teachCommander(draft, keen, entry);
+  const taught = mine.taught ??= [];
+  if (gain === TUNING.life.commanderSkill.taught && !taught.includes(keen.id)) {
+    taught.push(keen.id);
+    events.push({ type: "hobby_taught", unitId: unit2.id, hobbyId: keen.id });
+  }
+  if (taught.length === 0) delete mine.taught;
+  return events;
+}
+
 // src/engine/actions/scene.ts
 installRelationAccounting();
 var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -25059,6 +25166,13 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     ...typeof payload.nightEntryId === "string" ? { nightEntryId: payload.nightEntryId } : {}
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
+  const waiting2 = draft.life?.pending;
+  if (waiting2) {
+    if (origin === "activity" && participants.length === 1 && participants[0] === waiting2.unitId && waiting2.day === draft.day && waiting2.slot === draft.slot) {
+      draft.scene.pastime = { id: waiting2.pastimeId, unitId: waiting2.unitId };
+    }
+    delete draft.life.pending;
+  }
   stampMoments(draft, participants, sceneId);
   noteBusy(draft, participants);
   const topics = startSceneLife(draft, reg, { id: sceneId, locationId: loc.id, participants }, (id) => origin === "activity" ? draft.life?.busy.find((b) => b.unitId === id && b.slot === busySlot(draft.day, draft.slot) && b.activityId !== void 0)?.activityId : void 0);
@@ -25159,6 +25273,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...expireSceneProposals(draft, scene.participants));
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id));
+  events.push(...finishMeeting(draft, ctx2, scene));
   events.push(...endSceneNews(draft, scene.participants));
   endSceneLife(draft, scene.participants);
   delete draft.scene;
@@ -27968,6 +28083,32 @@ registerAction("life/topics_triggered", (draft, payload, ctx2) => {
   if (!draft.scene) throw new Error("life/topics_triggered: no scene is open");
   return triggerTopics(draft, ctx2.registries, draft.scene.participants, ids, draft.scene.id);
 });
+registerAction("life/time_together", (draft, payload, ctx2) => {
+  const p = payload;
+  if (typeof p?.unitId !== "string" || typeof p.pastimeId !== "string") throw new Error("life/time_together needs { unitId, pastimeId }.");
+  const reg = ctx2.registries;
+  const why = pastimeProblem(draft, reg, p.unitId, p.pastimeId);
+  if (why) throw new Error(why);
+  const pastime = reg.pastimes.get(p.pastimeId);
+  const locationId = pastimeLocation(draft, reg, pastime, p.unitId);
+  const events = runActivity(draft, ctx2, { activityId: String(pastimeActivity(reg).id), companionId: p.unitId });
+  if (!events.some((e) => e.type === "activity_done")) return events;
+  ensureLife(draft).pending = { unitId: p.unitId, pastimeId: p.pastimeId, locationId, day: draft.day, slot: draft.slot };
+  return [...events, { type: "pastime_set", unitId: p.unitId, pastimeId: p.pastimeId }];
+});
+registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
+  const pastimeId = payload?.pastimeId;
+  if (typeof pastimeId !== "string") throw new Error("life/pastime_in_scene needs { pastimeId }.");
+  const scene = draft.scene;
+  if (!scene) throw new Error("life/pastime_in_scene: no scene is open");
+  const unit2 = scene.participants.length === 1 ? draft.squad.find((u) => u.id === scene.participants[0]) : void 0;
+  if (scene.mode !== "private" || !unit2 || unit2.kind !== "named") throw new Error("A quiet meeting is for a private scene with one named soldier.");
+  if (scene.pastime) throw new Error("The scene is already a quiet meeting.");
+  const why = pastimeProblem(draft, ctx2.registries, unit2.id, pastimeId, { locationId: scene.locationId, slot: scene.slot });
+  if (why) throw new Error(why);
+  scene.pastime = { id: pastimeId, unitId: unit2.id };
+  return [{ type: "pastime_set", unitId: unit2.id, pastimeId }];
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -30697,6 +30838,7 @@ var LIFE_DERIVED = ["life:"];
 var NEWS_PREFIX = "life:news:";
 var OPINION_PREFIX = "life:opinion:";
 var JOKE_PREFIX = "life:joke:";
+var PASTIME_PREFIX = "life:pastime:";
 function jokeDirective(state, unit2) {
   const sc = state.life?.units[unit2.id]?.scene;
   if (!sc || sc.sceneId !== state.scene?.id || sc.joke === void 0) return null;
@@ -30723,6 +30865,21 @@ function opinionDirective(state, reg, unit2) {
     text: `If it fits, ${unit2.displayName} may say what she thinks about ${clean4(topic.label)}: ${hint}${words3} Lightly, once.`
   };
 }
+function pastimeDirective(state, reg, unit2) {
+  const meeting = state.scene?.pastime;
+  const pastime = meeting?.unitId === unit2.id ? reg.pastimes.get(meeting.id) : void 0;
+  if (!pastime) return null;
+  const hobby = pastime.hobby === true ? keenestHobby(reg, unit2) : void 0;
+  const label2 = hobby ? reg.hobbies.get(hobby.id)?.label : void 0;
+  const what = clean4(plainText(pastime.description)).replace(/\.$/, "");
+  const hers = label2 !== void 0 ? clean4(label2) : clean4(pastime.herActivity);
+  const breaks = hobby !== void 0 && plateauBreaks(state, unit2.id, hobby.id) ? " She gets it right for the first time today." : "";
+  return {
+    id: `${PASTIME_PREFIX}${unit2.id}`,
+    expiresAfter: "scene",
+    text: `${clean4(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}. ${unit2.displayName}: ${hers}; the commander: ${clean4(pastime.commanderActivity)}.${breaks}`
+  };
+}
 function lifeDirectives(state, reg, present2) {
   if (lifeMode(state) === "off") return [];
   const out = [];
@@ -30744,6 +30901,8 @@ function lifeDirectives(state, reg, present2) {
     if (opinion) out.push(opinion);
     const joke = jokeDirective(state, unit2);
     if (joke) out.push(joke);
+    const pastime = pastimeDirective(state, reg, unit2);
+    if (pastime) out.push(pastime);
   }
   return out;
 }
@@ -50231,6 +50390,27 @@ function createApp(st, deps) {
         return events.some((e) => e.type === "scene_requested") && state?.scene !== void 0;
       } finally {
         presetLocation = null;
+      }
+    },
+    life: {
+      async timeTogether(unitId, pastimeId) {
+        const chatId = st.getActiveChat()?.chatId;
+        const s = state;
+        if (!s || load.kind !== "ok") return false;
+        const why = endSlotBlock(s) ?? pastimeProblem(s, registries, unitId, pastimeId);
+        if (why) {
+          toast("warn", why);
+          return false;
+        }
+        const events = api.dispatch({ type: "life/time_together", payload: { unitId, pastimeId } }, { expectChatId: chatId });
+        const failed = events.find((e) => e.type === "error");
+        if (failed) {
+          toast("error", String(failed.message ?? failed.code));
+          return false;
+        }
+        const waiting2 = state?.life?.pending;
+        if (!events.some((e) => e.type === "scene_requested") || !waiting2 || waiting2.unitId !== unitId) return false;
+        return beginScene({ locationId: waiting2.locationId, participants: [unitId], origin: "activity" });
       }
     },
     async endSlot() {

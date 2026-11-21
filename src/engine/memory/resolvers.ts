@@ -297,3 +297,12 @@ registerMemoryResolver('opinion_changed', (draft, event, reg) => {
   const topic = reg.opinionTopics.get(String(event.topicId));
   return her && topic ? { ids: { her: [her.id] }, vars: { name: her.name, topic: String(topic.label) } } : null;
 }, { ids: ['her'], vars: ['name', 'topic'] });
+
+// ---------------------------------------------------------------------------------------------
+// what she taught the commander (P14c): the first time a hobby is taught; her other hobby events are facts written at their sites
+
+registerMemoryResolver('hobby_taught', (draft, event, reg) => {
+  const her = subjectOf(draft, event.unitId);
+  const hobby = reg.hobbies.get(String(event.hobbyId));
+  return her && hobby ? { ids: { her: [her.id] }, vars: { name: her.name, hobby: String(hobby.label) } } : null;
+}, { ids: ['her'], vars: ['name', 'hobby'] });
