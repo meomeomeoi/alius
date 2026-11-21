@@ -59,7 +59,19 @@ function controlsOf(interaction: string, run: PhysicsRun): Control[] {
 
 /** Where each host stands in a turn-based segment: the run, the segment and the beat the next press lands on. */
 const pointers = new WeakMap<HTMLElement, { key: string; beat: number }>();
-const wired = new WeakSet<HTMLElement>();
+const keyHandlers = new WeakMap<HTMLElement, { down: (e: Event) => void; up: (e: Event) => void }>();
+/** Stops the interval of a hold that is kept down (a hold that ends, a panel that goes). */
+function letGoOf(host: HTMLElement): void {
+  const t = holding.get(host);
+  if (t !== undefined) clearInterval(t);
+  holding.delete(host);
+}
+
+/** The beat the next press of a turn-based segment lands on (0 when the host shows no segment): a typed message lapses beats from there. */
+export function panelBeat(host: HTMLElement): number {
+  return pointers.get(host)?.beat ?? 0;
+}
+
 /** Real time: a hold that is kept down registers again on every beat until it is let go. */
 const holding = new WeakMap<HTMLElement, ReturnType<typeof setInterval>>();
 
@@ -77,13 +89,14 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
   const exposures = state && !run ? exposedKinds(state, reg) : [];
   const acts = state && !run ? actsFor(state, reg) : [];
   if (state && !run && (exposures.length > 0 || acts.length > 0)) {
+    letGoOf(host);
+    unwireKeys(host);
     drawWays(host, ctx, exposures);
     return;
   }
   if (!state || !run) {
-    const t = holding.get(host);
-    if (t !== undefined) clearInterval(t);
-    holding.delete(host);
+    letGoOf(host);
+    unwireKeys(host);
     host.replaceChildren();
     pointers.delete(host);
     return;
@@ -159,25 +172,47 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
   root.style.setProperty('--alius-strain', String(Math.round(strain * 100) / 100));
   host.replaceChildren(root);
 
-  // Space is the main input (not while a text field has the keys)
-  if (!wired.has(host)) {
-    wired.add(host);
-    host.addEventListener('keydown', (e) => {
-      const ev = e as KeyboardEvent;
-      const t = ev.target as HTMLElement | null;
-      if (ev.key !== ' ' || (t && /^(input|textarea|select|button)$/i.test(t.tagName))) return;
-      const main = host.querySelector<HTMLElement>('.alius-physics-input[data-input]');
-      if (!main) return;
-      ev.preventDefault();
-      main.dispatchEvent(new Event(realtime ? 'pointerdown' : 'click', { bubbles: true }));
-    });
-    host.addEventListener('keyup', (e) => {
-      if ((e as KeyboardEvent).key !== ' ') return;
-      const t = holding.get(host);
-      if (t !== undefined) clearInterval(t);
-      holding.delete(host);
-    });
-  }
+  host.dataset.realtime = realtime ? '1' : '0';
+  wireKeys(host);
+}
+
+/**
+ * Space is the main input, from anywhere on the page (the host is a plain div that never has the focus): one pair of listeners on the document
+ * per host while a run is shown, removed when the panel goes or the host leaves the page. The mode is read when the key is pressed. A text
+ * field keeps its spaces; in turn-based play a focused button takes Space natively, so it is left alone there.
+ */
+function wireKeys(host: HTMLElement): void {
+  if (keyHandlers.has(host)) return;
+  const typing = (t: HTMLElement | null): boolean => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const down = (e: Event): void => {
+    if (!host.isConnected) { unwireKeys(host); return; }
+    const ev = e as KeyboardEvent;
+    const t = ev.target as HTMLElement | null;
+    const realtime = host.dataset.realtime === '1';
+    if (ev.key !== ' ' || typing(t) || (!realtime && t !== null && /^button$/i.test(t.tagName))) return;
+    const main = host.querySelector<HTMLElement>('.alius-physics-input[data-input]');
+    if (!main) return;
+    ev.preventDefault();
+    if (ev.repeat) return; // a held key is one press: the interval of the hold registers the rest
+    main.dispatchEvent(new Event(realtime ? 'pointerdown' : 'click', { bubbles: true }));
+  };
+  const up = (e: Event): void => {
+    if ((e as KeyboardEvent).key !== ' ') return;
+    const t = holding.get(host);
+    if (t !== undefined) clearInterval(t);
+    holding.delete(host);
+  };
+  keyHandlers.set(host, { down, up });
+  document.addEventListener('keydown', down);
+  document.addEventListener('keyup', up);
+}
+
+function unwireKeys(host: HTMLElement): void {
+  const k = keyHandlers.get(host);
+  if (!k) return;
+  document.removeEventListener('keydown', k.down);
+  document.removeEventListener('keyup', k.up);
+  keyHandlers.delete(host);
 }
 
 const WAY_BUTTONS: Array<{ way: string; text: string; family: 'body' | 'taste'; depth?: string }> = [

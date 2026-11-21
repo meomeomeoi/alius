@@ -644,7 +644,7 @@ The reversed form of "stop on her word" (P16b mini-games): the commander keeps *
 
 ## Implemented as
 
-Six chunks: (a) the vocabulary as data (13 categories, 12 registries, local packs); (b) the blocking in the scene (state, gate, snapshots, `[BLOCKING]`, the extractor's `staging`, the device, the strip); (c) moments (live sources, the pass, her answer, the card, memory rules); (d) contact physics (runs, segments, her moves, cues, the panel, endurance); (e) physics depth (gaze, combined, marathon, the stimulus layer, mouth acts); (f) coverage, the unaffected guard and docs. Automated tests at the end: **567 files, 8679 tests, all passing** (baseline before P15a: 533 files, 8166 tests). §16.15–§16.20 are **not built** and go to P17b.
+Six chunks: (a) the vocabulary as data (13 categories, 12 registries, local packs); (b) the blocking in the scene (state, gate, snapshots, `[BLOCKING]`, the extractor's `staging`, the device, the strip); (c) moments (live sources, the pass, her answer, the card, memory rules); (d) contact physics (runs, segments, her moves, cues, the panel, endurance); (e) physics depth (gaze, combined, marathon, the stimulus layer, mouth acts); (f) coverage, the unaffected guard and docs. Automated tests at the end: **569 files, 8700 tests, all passing** (baseline before P15a: 533 files, 8166 tests). §16.15–§16.20 are **not built** and go to P17b.
 
 ### The rulings (copied from the plan)
 
@@ -663,7 +663,7 @@ Six chunks: (a) the vocabulary as data (13 categories, 12 registries, local pack
 - **R13 — physics depth.** Her gaze (`attentionOf`, relief inputs and the cheat roll), noise (`physics_noise`), combined physics (`second`, the fixed pair rules), the marathon (phases, strategies with one draw per stretch, attrition, the fiction clock, extra slots, `stiff`, `marathon_done`), the stimulus layer (`Commander.stimuli`: tolerance, reflex, the ways, the trajectory with hysteresis, the language of perception, `scentBand`) and the mouth acts (`kiss`, `counted`, `long`, `lick`, `pet`, `mouth`) as in the spec.
 - **R14 — settings.** Global: `momentFrequency` (`normal`), `momentExplicit` (`rarer`), `momentChips` (`chips`; UI only), `physicsRealtime` (false), `physicsInteractions` (all true), `marathonPace` (`normal`). SYS › **Scene** is a new section after Conversations; each field has `setting_<key>` in the glossary. The engine reads a campaign mirror (`campaign/set_scene_settings`, synced by `syncSceneSettings`; a campaign that already holds the defaults gets no dispatch).
 - **R15 — memory check.** Eleven `memoryRules` rows with resolvers (`moment_weakness`, `moment_question_lie`, `moment_slip_confessed`, `moment_slip_hidden`, `moment_exposed`, `moment_memory`, `physics_blackout`, `physics_limit_broken`, `physics_caught`, `stimulus_craving`, `stimulus_adoring`). Blocking changes, labels, gauges, segments, summaries and cues are bookkeeping; no relation event is added.
-- **R16 — events and actions.** Events: `blocking_changed`, `blocking_rolled_back`, `moment_fired`, `moment_answered`, `moment_lapsed`, `moment_escalated`, `physics_started`, `physics_segment`, `physics_signal`, `physics_slip`, `physics_cheat`, `physics_caught`, `physics_noise`, `physics_outcome`, `blackout`, `endurance_gained`, `her_skill_gained`, `marathon_phase`, `marathon_done`, `reflex`, `stimulus_stage_changed`, `condition_set`, `condition_ended`. Actions: `blocking/set`, `blocking/rollback`, `moment/answer`, `physics/{start, next_segment, segment_end, typed, signal, stop_word, skip, stimulus, act, act_finish, wake_seen}`, `campaign/set_scene_settings`. All run during an open scene only.
+- **R16 — events and actions.** Events: `blocking_changed`, `blocking_rolled_back`, `moment_fired`, `moment_answered`, `moment_lapsed`, `moment_escalated`, `physics_started`, `physics_segment`, `physics_signal`, `physics_slip`, `physics_cheat`, `physics_caught`, `physics_noise`, `physics_outcome`, `blackout`, `endurance_gained`, `her_skill_gained`, `marathon_phase`, `marathon_done`, `reflex`, `stimulus_stage_changed`, `condition_set`, `condition_ended`. Actions: `blocking/set`, `blocking/rollback`, `moment/answer`, `physics/{start, next_segment, segment_end, typed, signal, stop_word, skip, stimulus, act, act_finish, wake_seen}`, `campaign/set_scene_settings`. All run during an open scene only, except `physics/wake_seen` and `campaign/set_scene_settings`.
 
 ### Rulings made while building
 
@@ -700,6 +700,18 @@ Six chunks: (a) the vocabulary as data (13 categories, 12 registries, local pack
 - **The pastime `commanderActivity` ids** (`reading_aloud`, `holding_for_her`…) are dynamic: set only at frame `play`; at `equal` the directive keeps the word.
 - **Numbers marked AUTHOR TO TUNE** (tolerance start, the cheat chances, the gap pairs, the marathon attrition) and every `AUTHOR TO WRITE` text are drafts.
 - **The in-SillyTavern checklist** `docs/MANUAL_TEST_P15a.md` has not been run by hand.
+
+### Fixed after the whole-branch review (2026-11-21)
+
+An Opus review of the whole branch found one Critical and nine Important issues; each was fixed with a test that failed first. What changed and what to know:
+
+- **A rollback never brings back what was taken away quietly** (C1). `removeSource` (the stop word, the end of a hold), `stripTagged` (a category switched off) and `unsetActivity` also take the value out of every `stagingLog` snapshot (`scrubLog` in `snapshots.ts`). A new quiet removal must call `scrubLog` too.
+- **The staging controller's keys carry the scene id** (I1): cue pools, the "asked" set and the scene-end guards are keyed `scene.id|run.id`, because run ids repeat in every scene.
+- **`physics/typed`** takes the panel's beat (`panelBeat(host)`) and does nothing in real time (I2). **The stop word and a removed mouth contact end the counted kisses** (I3).
+- **Her own limits count** in `actsFor`, `exposedKinds` and a worship target's own gate (I4). **A missed craved stimulus** costs stress only from `missingDays` to `separatedDays` apart and never for a kind whose category is off (I6; `decayStimuli(draft, reg)`).
+- **The `moment:` directive** names whose moment it is, the visitor and the fact (I5); `momentSources[].promptHint` is the clause the model gets and the description is the player's. **The perception lines of `stimulusKinds`** are sensation only (I7; a test lists the feeling words that may not appear).
+- **A swipe after a physics action** still takes back the chips staged after the reply (I8: `rollbackStaging` is the fallback when the extraction cannot be restored whole). **Real-time Space** is a pair of document listeners per panel host, read at key time and removed with the panel (I9).
+- Not built in play: nothing starts a marathon (`duration`) or a second physics (`second`) except `physics/start` with those fields; a later package (P15 / P16) must offer them.
 
 ### Interfaces provided to later packages
 

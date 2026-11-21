@@ -234,7 +234,7 @@ describe('the reading answers and labels the open moment (intents/apply)', () =>
 describe('the directive', () => {
   const pronoun = /\b(he|him|his|himself)\b/i;
 
-  it('lasts one reply, is at most two sentences and names the exposing element', () => {
+  it('lasts one reply, is at most three sentences and names the exposing element', () => {
     const s = set(scene(['pet_play']), { person: COMMANDER, field: 'worn', value: 'leash' });
     const fired = structuredClone(s);
     const events = fireMoment(fired, { registries: reg }, 'third_party', ANN);
@@ -242,10 +242,10 @@ describe('the directive', () => {
     expect(d.id).toBe('moment:third_party');
     expect(d.expiresAfter).toBe('next_reply');
     expect(d.text).toContain(`${String(reg.blockingItems.get('leash')!.label)} may give the commander away.`);
-    expect(d.text.startsWith('A moment of tension: ')).toBe(true);
+    expect(d.text.startsWith(`A moment of tension for ${String(fired.squad.find((u) => u.id === ANN)!.displayName)}: `)).toBe(true); // names whose moment it is (review I5)
     expect(d.text).not.toMatch(pronoun);
     expect(d.text).not.toContain('AUTHOR TO WRITE');
-    expect(d.text.split(/(?<=\.)\s/)).toHaveLength(2);
+    expect(d.text.split(/(?<=\.)\s/).length).toBeLessThanOrEqual(3); // the moment, the visitor the engine chose, the exposing element
     // answered: what was chosen, how she takes it
     const a = answer(fired, '1', 4);
     const ad = momentDirective(a.events[0]!, a.state, reg)!;

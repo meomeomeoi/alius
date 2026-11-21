@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { COMMANDER, registerFrameReader } from '../../src/engine/blocking';
+import { DEFAULT_SCENE_SETTINGS } from '../../src/engine/moments/settings';
 import { DEBUG_NOT_ROLLED_BACK } from '../../src/scene/sceneController';
 import { ANN, harness, intentJson, praised, reply, type Harness } from '../helpers/sceneHarness';
 import { loadCore } from '../helpers/world';
@@ -62,6 +63,20 @@ describe('a swipe takes back what was staged after the reply (R7)', () => {
     expect(h.state().relations[ANN]!.affinity).toBe(base); // the new reading (empty) replaced the first
     expect(h.state().scene!.stagingLog).toBeUndefined();
     expect(h.toasts.some((t) => t.text === DEBUG_NOT_ROLLED_BACK)).toBe(false);
+  });
+
+  it('a chip made after an action outside `stage` (a physics action, the settings mirror) is still taken back (review I8)', async () => {
+    const h = await setup();
+    h.st.mainReplies = [intentJson([praised()]), intentJson()];
+    await h.controller.send('Hello');
+    const moved = h.dispatch({ type: 'campaign/set_scene_settings', payload: { ...DEFAULT_SCENE_SETTINGS, momentFrequency: 'often' } }); // moves the state without moving `lastApply.after`
+    expect(moved.find((e) => e.type === 'error')).toBeUndefined();
+    posture(h, 'kneeling_upright');
+    expect(blocking(h)![COMMANDER]!.posture).toBe('kneeling_upright');
+    await h.st.swipeLast('right');
+    await h.controller.idle();
+    expect(blocking(h)).toBeUndefined();
+    expect(h.state().scene!.stagingLog).toBeUndefined();
   });
 
   it('a chip made before the reply stays', async () => {

@@ -96,6 +96,25 @@ describe('a kiss', () => {
   });
 });
 
+describe('an act that has no contact any more (review I3)', () => {
+  it('the stop word ends the counted kisses, and the model is told nothing of them', () => {
+    const a = act(worship(), 'counted');
+    expect(errors(a.events)).toEqual([]);
+    expect(a.state.scene!.act).toBeDefined();
+    const stopped = run(a.state, reg, { type: 'physics/stop_word', payload: {} });
+    expect(errors(stopped.events)).toEqual([]);
+    expect(stopped.state.scene!.act).toBeUndefined();
+    expect(actLines(stopped.state, reg)).toBeNull();
+  });
+
+  it('removing the mouth contact (a chip) ends them too', () => {
+    const a = act(worship(), 'counted').state;
+    const d = structuredClone(a);
+    setBlocking(d, { registries: reg }, { person: COMMANDER, field: 'removed', value: 'foot_worship' }, { at: 5, source: 'chip' });
+    expect(d.scene!.act).toBeUndefined();
+  });
+});
+
 describe('counted kisses', () => {
   it('she sets the number by a hash: ten to a hundred by tens, stable for the same scene and exchange', () => {
     const s = worship();

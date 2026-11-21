@@ -19,7 +19,8 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when she issues a demand or escalates: a practice, her tactic, an unmet expectation."
+    "description": "AUTHOR TO WRITE: Live when she issues a demand or escalates: a practice, her tactic, an unmet expectation.",
+    "promptHint": "she makes a demand, or presses on an expectation that has not been met"
   },
   {
     "id": "her_offer",
@@ -41,7 +42,8 @@
     "live": [
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when she offers a privilege, closeness or a leniency, a disguised test included."
+    "description": "AUTHOR TO WRITE: Live when she offers a privilege, closeness or a leniency, a disguised test included.",
+    "promptHint": "she offers a privilege, closeness or leniency, and it may be a test"
   },
   {
     "id": "her_silence",
@@ -63,7 +65,8 @@
     "live": [
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when she stops talking with an expectation set in her profile; her activity is attending or ignoring."
+    "description": "AUTHOR TO WRITE: Live when she stops talking with an expectation set in her profile; her activity is attending or ignoring.",
+    "promptHint": "she falls silent with an expectation unspoken between them"
   },
   {
     "id": "her_question",
@@ -92,7 +95,8 @@
       }
     ],
     "generalMeeting": true,
-    "description": "AUTHOR TO WRITE: Live when she asks a direct question."
+    "description": "AUTHOR TO WRITE: Live when she asks a direct question.",
+    "promptHint": "she asks the commander a direct question and waits"
   },
   {
     "id": "her_weakness",
@@ -130,7 +134,8 @@
       }
     ],
     "generalMeeting": true,
-    "description": "AUTHOR TO WRITE: Live when after a hard practice, a wound, stress or an appraisal she cracks."
+    "description": "AUTHOR TO WRITE: Live when after a hard practice, a wound, stress or an appraisal she cracks.",
+    "promptHint": "she cracks for a moment after a hard stretch"
   },
   {
     "id": "her_mood_shift",
@@ -153,7 +158,8 @@
       "mood_jump"
     ],
     "generalMeeting": true,
-    "description": "AUTHOR TO WRITE: Live when her mood band jumps: vitals, stress or want."
+    "description": "AUTHOR TO WRITE: Live when her mood band jumps: vitals, stress or want.",
+    "promptHint": "her mood turns sharply"
   },
   {
     "id": "her_test",
@@ -175,7 +181,8 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when a test of hers is running; each test maps its own three options."
+    "description": "AUTHOR TO WRITE: Live when a test of hers is running; each test maps its own three options.",
+    "promptHint": "she tests the commander and watches the answer"
   },
   {
     "id": "her_absence",
@@ -198,7 +205,8 @@
       "asleep",
       "blocking"
     ],
-    "description": "AUTHOR TO WRITE: Live when she leaves the scene with the commander in it, or falls asleep."
+    "description": "AUTHOR TO WRITE: Live when she leaves the scene with the commander in it, or falls asleep.",
+    "promptHint": "she leaves, or drifts off, with the commander still in the room"
   },
   {
     "id": "her_affection",
@@ -221,7 +229,8 @@
       "extracted"
     ],
     "generalMeeting": true,
-    "description": "AUTHOR TO WRITE: Live when an unexpected tenderness inside strictness, or between equals."
+    "description": "AUTHOR TO WRITE: Live when an unexpected tenderness inside strictness, or between equals.",
+    "promptHint": "a sudden tenderness shows through"
   },
   {
     "id": "her_jealousy",
@@ -243,7 +252,8 @@
     "live": [
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when another woman is mentioned, her message arrives or her scent on the commander is noticed."
+    "description": "AUTHOR TO WRITE: Live when another woman is mentioned, her message arrives or her scent on the commander is noticed.",
+    "promptHint": "another woman comes up, a message arrives, or her scent is noticed"
   },
   {
     "id": "endurance",
@@ -265,7 +275,8 @@
     "live": [
       "physics_warning"
     ],
-    "description": "AUTHOR TO WRITE: Live when a physics gauge crosses its warning band, or a posture or denial timer runs."
+    "description": "AUTHOR TO WRITE: Live when a physics gauge crosses its warning band, or a posture or denial timer runs.",
+    "promptHint": "the hold has reached its limit and the next move matters"
   },
   {
     "id": "permission",
@@ -287,7 +298,8 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when a standing rule asks for permission and the commander wants something."
+    "description": "AUTHOR TO WRITE: Live when a standing rule asks for permission and the commander has a request.",
+    "promptHint": "a standing rule calls for her permission and the commander has a request"
   },
   {
     "id": "own_slip",
@@ -320,7 +332,8 @@
         "importance": 3
       }
     ],
-    "description": "AUTHOR TO WRITE: Live when a slip was reported or a physics slip happened."
+    "description": "AUTHOR TO WRITE: Live when a slip was reported or a physics slip happened.",
+    "promptHint": "a slip has just happened and the commander must decide what to do about it"
   },
   {
     "id": "own_want",
@@ -342,7 +355,8 @@
     "live": [
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when the commander's text shows a want."
+    "description": "AUTHOR TO WRITE: Live when the commander's text shows a want.",
+    "promptHint": "something the commander asked for hangs in the air and she has noticed it"
   },
   {
     "id": "duty_call",
@@ -365,7 +379,8 @@
       "blocking",
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when the commander's duty interrupts: PDA, a report due, oversight."
+    "description": "AUTHOR TO WRITE: Live when the commander's duty interrupts: PDA, a report due, oversight.",
+    "promptHint": "duty cuts in: the PDA, a report that is due, or oversight"
   },
   {
     "id": "third_party",
@@ -398,7 +413,8 @@
         "importance": 3
       }
     ],
-    "description": "AUTHOR TO WRITE: Live when someone arrives, calls or looks in."
+    "description": "AUTHOR TO WRITE: Live when someone arrives, calls or looks in.",
+    "promptHint": "someone arrives, calls or looks in"
   },
   {
     "id": "remote",
@@ -421,7 +437,8 @@
       "blocking"
     ],
     "exposes": true,
-    "description": "AUTHOR TO WRITE: Live when someone is on a line during the scene."
+    "description": "AUTHOR TO WRITE: Live when someone is on a line during the scene.",
+    "promptHint": "someone is on a line during the scene"
   },
   {
     "id": "sensory",
@@ -443,7 +460,8 @@
     "live": [
       "obscured"
     ],
-    "description": "AUTHOR TO WRITE: Live when the commander cannot see and something happens: a step, a touch, a voice, a scent."
+    "description": "AUTHOR TO WRITE: Live when the commander cannot see and something happens: a step, a touch, a voice, a scent.",
+    "promptHint": "with sight gone, something happens: a step, a touch, a voice, a scent"
   },
   {
     "id": "time",
@@ -466,7 +484,8 @@
       "blocking",
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when a timer runs: she said \"a minute\", a hold, a wait."
+    "description": "AUTHOR TO WRITE: Live when a timer runs: she said \"a minute\", a hold, a wait.",
+    "promptHint": "a timer runs: a minute she named, a hold, a wait"
   },
   {
     "id": "alarm",
@@ -488,7 +507,8 @@
     "live": [
       "alarm"
     ],
-    "description": "AUTHOR TO WRITE: Live when an emergency, a deadline, a launch or a night event."
+    "description": "AUTHOR TO WRITE: Live when an emergency, a deadline, a launch or a night event.",
+    "promptHint": "an emergency, a deadline or a launch cuts in"
   },
   {
     "id": "object_at_hand",
@@ -511,7 +531,8 @@
       "blocking",
       "extracted"
     ],
-    "description": "AUTHOR TO WRITE: Live when her thing, another woman's, or a key is within reach."
+    "description": "AUTHOR TO WRITE: Live when her thing, another woman's, or a key is within reach.",
+    "promptHint": "something of hers, or another woman's, or a key, is within reach"
   },
   {
     "id": "summons",
@@ -533,7 +554,8 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when a contract clause holds and she calls."
+    "description": "AUTHOR TO WRITE: Live when a contract clause holds and she calls.",
+    "promptHint": "a clause of their agreement holds and she calls"
   },
   {
     "id": "memory_surfaces",
@@ -571,7 +593,8 @@
       }
     ],
     "generalMeeting": true,
-    "description": "AUTHOR TO WRITE: Live when she brings up a remembered fact."
+    "description": "AUTHOR TO WRITE: Live when she brings up a remembered fact.",
+    "promptHint": "she brings up something she has kept to herself"
   },
   {
     "id": "rule_collision",
@@ -593,7 +616,8 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when two of her rules, or her rule and an order from above, collide."
+    "description": "AUTHOR TO WRITE: Live when two of her rules, or her rule and an order from above, collide.",
+    "promptHint": "two of her rules, or her rule and an order from above, collide"
   },
   {
     "id": "compromat_hint",
@@ -615,7 +639,8 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when she hints at compromat she holds."
+    "description": "AUTHOR TO WRITE: Live when she hints at compromat she holds.",
+    "promptHint": "she hints at what she holds over the commander"
   },
   {
     "id": "ritual_due",
@@ -637,6 +662,7 @@
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Live when a ritual or habit is due."
+    "description": "AUTHOR TO WRITE: Live when a ritual or habit is due.",
+    "promptHint": "a ritual or a habit is due"
   }
 ]

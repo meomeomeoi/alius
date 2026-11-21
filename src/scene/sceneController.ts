@@ -872,6 +872,9 @@ export function createSceneController(deps: SceneDeps): SceneController {
       lastApply = null;
       const current = state();
       if (current !== la.after || !deps.restore(la.before, la.after)) {
+        // the state moved outside `stage` (a physics action, the settings mirror): the extraction cannot be restored whole, but what was
+        // staged after the reply still goes (review I8)
+        rollbackStaging(index);
         debug(DEBUG_NOT_ROLLED_BACK);
         return;
       }

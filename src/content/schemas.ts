@@ -2673,6 +2673,8 @@ export const MomentSourceSchema = BaseEntrySchema.extend({
   /** The moment names the commander's own giveaway (a leash, a posture) in its directive: someone could see it. */
   exposes: z.literal(true).optional(),
   description: str,
+  /** What the main model is told when the moment fires: one clause, no pronoun for the commander (the description is the player's, never sent). */
+  promptHint: blockHint.optional(),
 }).strict();
 
 export const ContactPhysicsSchema = BaseEntrySchema.extend({

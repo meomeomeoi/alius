@@ -7,7 +7,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { entryAllowed, sceneAffordances } from './gate';
-import { pushLog } from './snapshots';
+import { pushLog, scrubLog } from './snapshots';
 import { COMMANDER, INTIMACIES, NOTE_MAX, type Blocking, type BlockingContact } from './state';
 import { effectsOfEntry, type BlockingEffect, type WornSlot } from './types';
 
@@ -411,6 +411,7 @@ export function stripTagged(draft: CampaignState, reg: Registries, removed: stri
     if (rec.contact && hit(reg.blockingContacts.get(rec.contact.id))) clearContact(draft, id);
     if (rec.activity !== undefined && hit(reg.blockingActivities.get(rec.activity))) delete rec.activity;
   }
+  scrubLog(draft, (kind, id) => hit(kind === 'item' ? reg.blockingItems.get(id) : kind === 'contact' ? reg.blockingContacts.get(id) : reg.blockingActivities.get(id)));
   tidy(draft);
 }
 
@@ -436,6 +437,7 @@ export function removeSource(draft: CampaignState, kind: 'contact' | 'item', id:
       any = true;
     }
   }
+  scrubLog(draft, (k, sid) => k === kind && sid === id);
   tidy(draft);
   return any;
 }
@@ -450,5 +452,6 @@ export function unsetActivity(draft: CampaignState, personId: string): void {
   const rec = draft.scene?.blocking?.[personId];
   if (!rec) return;
   delete rec.activity;
+  scrubLog(draft, (kind, _id, person) => kind === 'activity' && person === personId);
   tidy(draft);
 }

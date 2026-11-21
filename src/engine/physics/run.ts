@@ -199,10 +199,15 @@ export function physicsSignal(draft: CampaignState, ctx: { registries: Registrie
 export function stopWord(draft: CampaignState, ctx: { registries: Registries }): EngineEvent[] {
   const scene = draft.scene;
   if (!scene) throw new Error('physics/stop_word: no scene is open');
-  if (scene.physics) return stopPhysics(draft, ctx.registries, 'stopped');
+  if (scene.physics) {
+    const events = stopPhysics(draft, ctx.registries, 'stopped');
+    dropOrphanAct(draft);
+    return events;
+  }
   const contact = contactOf(scene);
   if (!contact) throw new Error('physics/stop_word: there is nothing to stop');
   removeSource(draft, 'contact', contact.id);
+  dropOrphanAct(draft);
   return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: 'stopped', segments: 0, sourceKind: 'contact', sourceId: contact.id }];
 }
 
@@ -260,8 +265,15 @@ export function releaseCheck(state: CampaignState, reg: Registries, run: Physics
 
 const gone = (scene: SceneRecord | undefined, run: PhysicsRun): boolean => !hasSource(scene, run.sourceKind, run.sourceId);
 
+/** Counted kisses have no one to count for once the contact is gone (the stop word, a chip, a switched-off category): the act goes with it. */
+function dropOrphanAct(draft: CampaignState): void {
+  const scene = draft.scene;
+  if (scene?.act && !contactOf(scene)) delete scene.act;
+}
+
 registerAfterChange((draft: CampaignState, reg: Registries, change: BlockingChange): EngineEvent[] => {
   const events: EngineEvent[] = [];
+  dropOrphanAct(draft);
   const run = draft.scene?.physics;
   if (run && gone(draft.scene, run)) events.push(...stopPhysics(draft, reg, 'released'));
   if ((change.field !== 'contact' && change.field !== 'worn') || change.value === undefined || draft.scene?.physics) return events;
@@ -276,6 +288,7 @@ registerAfterChange((draft: CampaignState, reg: Registries, change: BlockingChan
 
 // a switched-off category ends the run whose source (or physics) it tags, or whose source is already gone (order-independent of `stripTagged`)
 registerWithdrawal((draft: CampaignState, reg: Registries, removed: string[]): EngineEvent[] => {
+  dropOrphanAct(draft);
   const run = draft.scene?.physics;
   if (!run) return [];
   const tags = (e: Entry | undefined): string[] => (Array.isArray(e?.contentTags) ? (e!.contentTags as string[]) : []);

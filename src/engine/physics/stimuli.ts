@@ -47,11 +47,13 @@ export function exposedKinds(state: CampaignState, reg: Registries): Exposure[] 
   if (!scene || !blockingLive(state, reg)) return [];
   const out = new Map<string, Exposure>();
   const first = scene.participants[0];
-  const add = (kinds: unknown, holderId: string | undefined, part?: string): void => {
+  /** `gate` is the entry the kinds come from (a worship target has tags of its own); her own limits count for it and for every kind (review I4). */
+  const add = (kinds: unknown, holderId: string | undefined, part?: string, gate?: object): void => {
     if (!Array.isArray(kinds) || holderId === undefined) return;
+    if (gate !== undefined && !contentAllowed(state, reg, gate, holderId)) return;
     for (const k of kinds as string[]) {
       const e = reg.stimulusKinds.get(k);
-      if (e && contentAllowed(state, reg, e) && !out.has(k)) out.set(k, { kind: k, holderId, ...(part !== undefined ? { part } : {}) });
+      if (e && contentAllowed(state, reg, e, holderId) && !out.has(k)) out.set(k, { kind: k, holderId, ...(part !== undefined ? { part } : {}) });
     }
   };
   const contact = contactOf(scene);
@@ -59,7 +61,8 @@ export function exposedKinds(state: CampaignState, reg: Registries): Exposure[] 
     const entry = reg.blockingContacts.get(contact.id);
     const holder = scene.participants.includes(contact.with) ? contact.with : Object.entries(scene.blocking ?? {}).find(([, b]) => b.contact === contact)?.[0] ?? first;
     add(entry?.stimuli, holder, contact.target);
-    if (contact.target !== undefined) add(reg.worshipTargets.get(contact.target)?.stimuli, holder, contact.target);
+    const target = contact.target !== undefined ? reg.worshipTargets.get(contact.target) : undefined;
+    if (target) add(target.stimuli, holder, contact.target, target);
   }
   for (const w of Object.values(blockingOf(scene, COMMANDER).worn ?? {})) add(w ? reg.blockingItems.get(w.id)?.stimuli : undefined, first);
   const run = state.lastExpedition;
@@ -114,15 +117,21 @@ export function perceptionWord(state: CampaignState, reg: Registries, kind: stri
   return words[row.stage] ?? null;
 }
 
-/** Each day: tolerance slips back (−1 per week apart, never below half the best) and a craved kind that is missed costs commander stress. */
-export function decayStimuli(draft: CampaignState): EngineEvent[] {
+/**
+ * Each day: tolerance slips back (−1 per week apart, never below half the best) and a craved kind that is missed costs commander stress, from
+ * `missingDays` apart until a week (`separatedDays`) has passed: then it wears off (review I6). With `reg` a kind whose category is switched off
+ * costs nothing.
+ */
+export function decayStimuli(draft: CampaignState, reg?: Registries): EngineEvent[] {
   const events: EngineEvent[] = [];
-  for (const row of Object.values(draft.commander.stimuli ?? {})) {
+  for (const [kind, row] of Object.entries(draft.commander.stimuli ?? {})) {
     if (draft.day - Math.max(row.lastDay, row.decayDay ?? row.lastDay) >= T.decayDays) {
       row.tolerance = Math.max(Math.min(row.tolerance, row.best / 2), row.tolerance - 1);
       row.decayDay = draft.day;
     }
-    if (stageIndex(row.stage) >= stageIndex('craving') && draft.day - row.lastDay >= T.missingDays && row.missedDay !== draft.day) {
+    const apart = draft.day - row.lastDay;
+    const allowed = reg === undefined || contentAllowed(draft, reg, reg.stimulusKinds.get(kind) ?? {});
+    if (allowed && stageIndex(row.stage) >= stageIndex('craving') && apart >= T.missingDays && apart < T.separatedDays && row.missedDay !== draft.day) {
       row.missedDay = draft.day;
       events.push(...addCommanderStress(draft, T.missingStress, 'stimulus'));
     }

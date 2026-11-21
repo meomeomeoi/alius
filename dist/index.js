@@ -223,7 +223,7 @@ var TUNING = Object.freeze({
    * P15a: the commander's body layer (plan R13, spec §16.8; AUTHOR TO TUNE). Tolerance starts at `startTolerance` and gains `tolerancePerSession` a
    * scene of exposure, loses 1 per `decayDays` apart (never below half the best). The reflex comes at tolerance × `reflexMult` in stimulus units
    * (scent level × 25). The trajectory is a moving average (`seekAlpha`) with stage boundaries and `hysteresis` updates. A kind at craving or above that
-   * is missed for `missingDays` costs `missingStress` commander stress a day.
+   * is missed for `missingDays` costs `missingStress` commander stress a day, until `separatedDays` apart (then it wears off).
    */
   stimuli: Object.freeze({
     startTolerance: 20,
@@ -9227,7 +9227,9 @@ var MomentSourceSchema = BaseEntrySchema.extend({
   generalMeeting: external_exports.literal(true).optional(),
   /** The moment names the commander's own giveaway (a leash, a posture) in its directive: someone could see it. */
   exposes: external_exports.literal(true).optional(),
-  description: str
+  description: str,
+  /** What the main model is told when the moment fires: one clause, no pronoun for the commander (the description is the player's, never sent). */
+  promptHint: blockHint.optional()
 }).strict();
 var ContactPhysicsSchema = BaseEntrySchema.extend({
   contentTags: tagList,
@@ -26044,6 +26046,17 @@ function pushLog(draft, at, meta2 = {}) {
   log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...scene.moments !== void 0 ? { moments: structuredClone(scene.moments) } : {}, ...meta2, exchange: scene.exchanges });
   if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
 }
+function scrubLog(draft, drop2) {
+  for (const snap of draft.scene?.stagingLog ?? []) {
+    for (const [person, rec] of Object.entries(snap.blocking)) {
+      for (const [slot2, w] of Object.entries(rec.worn ?? {})) if (w && drop2("item", w.id, person)) delete rec.worn[slot2];
+      if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
+      if (rec.contact && drop2("contact", rec.contact.id, person)) delete rec.contact;
+      if (rec.activity !== void 0 && drop2("activity", rec.activity, person)) delete rec.activity;
+      if (Object.keys(rec).length === 0) delete snap.blocking[person];
+    }
+  }
+}
 
 // src/engine/blocking/blocking.ts
 var afterChange = [];
@@ -26365,6 +26378,7 @@ function stripTagged(draft, reg, removed) {
     if (rec.contact && hit(reg.blockingContacts.get(rec.contact.id))) clearContact(draft, id);
     if (rec.activity !== void 0 && hit(reg.blockingActivities.get(rec.activity))) delete rec.activity;
   }
+  scrubLog(draft, (kind, id) => hit(kind === "item" ? reg.blockingItems.get(id) : kind === "contact" ? reg.blockingContacts.get(id) : reg.blockingActivities.get(id)));
   tidy2(draft);
 }
 function removeSource(draft, kind, id) {
@@ -26385,6 +26399,7 @@ function removeSource(draft, kind, id) {
       any = true;
     }
   }
+  scrubLog(draft, (k, sid) => k === kind && sid === id);
   tidy2(draft);
   return any;
 }
@@ -26395,6 +26410,7 @@ function unsetActivity(draft, personId) {
   const rec = draft.scene?.blocking?.[personId];
   if (!rec) return;
   delete rec.activity;
+  scrubLog(draft, (kind, _id, person) => kind === "activity" && person === personId);
   tidy2(draft);
 }
 
@@ -27192,10 +27208,15 @@ function physicsSignal(draft, ctx2) {
 function stopWord(draft, ctx2) {
   const scene = draft.scene;
   if (!scene) throw new Error("physics/stop_word: no scene is open");
-  if (scene.physics) return stopPhysics(draft, ctx2.registries, "stopped");
+  if (scene.physics) {
+    const events = stopPhysics(draft, ctx2.registries, "stopped");
+    dropOrphanAct(draft);
+    return events;
+  }
   const contact = contactOf(scene);
   if (!contact) throw new Error("physics/stop_word: there is nothing to stop");
   removeSource(draft, "contact", contact.id);
+  dropOrphanAct(draft);
   return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: "stopped", segments: 0, sourceKind: "contact", sourceId: contact.id }];
 }
 function remainingOf(reg, run) {
@@ -27230,8 +27251,13 @@ function releaseCheck(state, reg, run) {
   return all.reduce((w, r) => WORST.indexOf(r) > WORST.indexOf(w) ? r : w, "continue");
 }
 var gone = (scene, run) => !hasSource(scene, run.sourceKind, run.sourceId);
+function dropOrphanAct(draft) {
+  const scene = draft.scene;
+  if (scene?.act && !contactOf(scene)) delete scene.act;
+}
 registerAfterChange((draft, reg, change) => {
   const events = [];
+  dropOrphanAct(draft);
   const run = draft.scene?.physics;
   if (run && gone(draft.scene, run)) events.push(...stopPhysics(draft, reg, "released"));
   if (change.field !== "contact" && change.field !== "worn" || change.value === void 0 || draft.scene?.physics) return events;
@@ -27244,6 +27270,7 @@ registerAfterChange((draft, reg, change) => {
   return events;
 });
 registerWithdrawal((draft, reg, removed) => {
+  dropOrphanAct(draft);
   const run = draft.scene?.physics;
   if (!run) return [];
   const tags = (e) => Array.isArray(e?.contentTags) ? e.contentTags : [];
@@ -30327,11 +30354,12 @@ function exposedKinds(state, reg) {
   if (!scene || !blockingLive(state, reg)) return [];
   const out = /* @__PURE__ */ new Map();
   const first2 = scene.participants[0];
-  const add = (kinds2, holderId, part) => {
+  const add = (kinds2, holderId, part, gate) => {
     if (!Array.isArray(kinds2) || holderId === void 0) return;
+    if (gate !== void 0 && !contentAllowed(state, reg, gate, holderId)) return;
     for (const k of kinds2) {
       const e = reg.stimulusKinds.get(k);
-      if (e && contentAllowed(state, reg, e) && !out.has(k)) out.set(k, { kind: k, holderId, ...part !== void 0 ? { part } : {} });
+      if (e && contentAllowed(state, reg, e, holderId) && !out.has(k)) out.set(k, { kind: k, holderId, ...part !== void 0 ? { part } : {} });
     }
   };
   const contact = contactOf(scene);
@@ -30339,7 +30367,8 @@ function exposedKinds(state, reg) {
     const entry = reg.blockingContacts.get(contact.id);
     const holder2 = scene.participants.includes(contact.with) ? contact.with : Object.entries(scene.blocking ?? {}).find(([, b]) => b.contact === contact)?.[0] ?? first2;
     add(entry?.stimuli, holder2, contact.target);
-    if (contact.target !== void 0) add(reg.worshipTargets.get(contact.target)?.stimuli, holder2, contact.target);
+    const target = contact.target !== void 0 ? reg.worshipTargets.get(contact.target) : void 0;
+    if (target) add(target.stimuli, holder2, contact.target, target);
   }
   for (const w of Object.values(blockingOf(scene, COMMANDER).worn ?? {})) add(w ? reg.blockingItems.get(w.id)?.stimuli : void 0, first2);
   const run = state.lastExpedition;
@@ -30381,14 +30410,16 @@ function perceptionWord(state, reg, kind, band2) {
   if (apart >= T4.separatedDays) return words3.separated ?? null;
   return words3[row3.stage] ?? null;
 }
-function decayStimuli(draft) {
+function decayStimuli(draft, reg) {
   const events = [];
-  for (const row3 of Object.values(draft.commander.stimuli ?? {})) {
+  for (const [kind, row3] of Object.entries(draft.commander.stimuli ?? {})) {
     if (draft.day - Math.max(row3.lastDay, row3.decayDay ?? row3.lastDay) >= T4.decayDays) {
       row3.tolerance = Math.max(Math.min(row3.tolerance, row3.best / 2), row3.tolerance - 1);
       row3.decayDay = draft.day;
     }
-    if (stageIndex(row3.stage) >= stageIndex("craving") && draft.day - row3.lastDay >= T4.missingDays && row3.missedDay !== draft.day) {
+    const apart = draft.day - row3.lastDay;
+    const allowed = reg === void 0 || contentAllowed(draft, reg, reg.stimulusKinds.get(kind) ?? {});
+    if (allowed && stageIndex(row3.stage) >= stageIndex("craving") && apart >= T4.missingDays && apart < T4.separatedDays && row3.missedDay !== draft.day) {
       row3.missedDay = draft.day;
       events.push(...addCommanderStress(draft, T4.missingStress, "stimulus"));
     }
@@ -30475,8 +30506,9 @@ function actsFor(state, reg) {
   const scene = state.scene;
   const contact = scene && blockingLive(state, reg) ? contactOf(scene) : void 0;
   if (!scene || !contact || reg.blockingContacts.get(contact.id)?.mouth !== true) return [];
-  if (!contentAllowed(state, reg, { contentTags: ["worship"] })) return [];
-  return ACT_KINDS.filter((k) => k !== "pet" || contentAllowed(state, reg, { contentTags: ["pet_play"] }));
+  const holder2 = holderOf3(state);
+  if (!contentAllowed(state, reg, { contentTags: ["worship"] }, holder2)) return [];
+  return ACT_KINDS.filter((k) => k !== "pet" || contentAllowed(state, reg, { contentTags: ["pet_play"] }, holder2));
 }
 function countedTarget(state) {
   const scene = state.scene;
@@ -30903,6 +30935,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
 function typedBeats(draft, chars, from) {
   const run = draft.scene?.physics;
   if (!run || run.segment.state !== "running" || !run.segment.plan) return [];
+  if (draft.settings.physicsRealtime === true) return [];
   const n = Math.max(0, Math.ceil(chars / TUNING.physics.typing.charsPerBeat));
   const total2 = run.segment.plan.beats.length;
   const set2 = new Set(run.segment.lapsed ?? []);
@@ -31022,7 +31055,7 @@ registerAction("physics/stimulus", (draft, payload, ctx2) => {
   if (!isObj35(payload)) throw new Error("physics/stimulus needs { way, kind }");
   return applyWay(draft, ctx2, payload.way, payload.kind, payload.depth);
 });
-registerDayEndStep("director_tick", (draft) => decayStimuli(draft));
+registerDayEndStep("director_tick", (draft, ctx2) => decayStimuli(draft, ctx2.registries));
 registerAction("physics/act", (draft, payload, ctx2) => {
   if (!draft.scene) throw new Error("physics/act: no scene is open");
   if (!isObj35(payload)) throw new Error("physics/act needs { kind }");
@@ -38534,8 +38567,12 @@ function momentDirective2(event, state, reg) {
   if (event.type === "moment_fired" && open3 !== void 0 && open3.id === event.momentId) {
     const source = reg.momentSources.get(open3.sourceId);
     if (!source) return null;
+    const hint = typeof source.promptHint === "string" && source.promptHint.trim() !== "" ? `: ${plain4(source.promptHint)}` : "";
+    const visitor = open3.visitorId !== void 0 ? ` ${name(open3.visitorId)} is the one who comes in.` : "";
+    const fact = open3.factId !== void 0 ? state.memory.facts.find((f) => f.id === open3.factId) : void 0;
+    const brings = fact ? ` What she brings up: ${plain4(fact.text)}.` : "";
     const exposing = open3.exposing !== void 0 ? ` ${open3.exposing} may give the commander away.` : "";
-    return { id: `${MOMENT_PREFIX}${open3.sourceId}`, expiresAfter: "next_reply", text: `A moment of tension: ${plain4(String(source.description))}.${exposing}` };
+    return { id: `${MOMENT_PREFIX}${open3.sourceId}`, expiresAfter: "next_reply", text: `A moment of tension for ${name(open3.unitId)}${hint}.${visitor}${brings}${exposing}` };
   }
   if (event.type === "moment_answered" && a !== void 0 && a.momentId === event.momentId) {
     const word = genericWord(reg, a.sourceId, a.key);
@@ -38771,9 +38808,11 @@ function createStaging(deps) {
     work.add(p);
     void p.finally(() => work.delete(p));
   };
-  function cuesInput(s, runId) {
+  const keyOf = (sceneId, runId) => `${sceneId}|${runId}`;
+  const runKey = (s) => s?.scene?.physics ? keyOf(s.scene.id, s.scene.physics.id) : null;
+  function cuesInput(s, key) {
     const r = s.scene?.physics;
-    if (!r || r.id !== runId) return { expired: "The hold is over." };
+    if (!r || runKey(s) !== key) return { expired: "The hold is over." };
     const reg = deps.registries();
     const unit2 = s.squad.find((u) => u.id === r.holderId);
     const card2 = String(unit2?.card ?? "").slice(0, CARD_MAX4);
@@ -38794,13 +38833,13 @@ function createStaging(deps) {
     },
     parse: (raw) => sanitizeCues(raw),
     apply(key, value, input) {
-      if (!active || run()?.id !== key) return { stale: true };
+      if (!active || runKey(state()) !== key) return { stale: true };
       pools.set(key, completeCues(value, deps.registries(), input.physicsId));
       return "ok";
     },
     fallback(key, input) {
       const r = run();
-      if (!r || r.id !== key) return false;
+      if (!r || runKey(state()) !== key) return false;
       pools.set(key, completeCues(null, deps.registries(), input?.physicsId ?? r.physicsId));
       return true;
     }
@@ -38809,7 +38848,7 @@ function createStaging(deps) {
     if (!active) return;
     for (const e of events) {
       if (e.type === "physics_started" && e.chained !== true) {
-        const id = String(e.runId);
+        const id = keyOf(state()?.scene?.id ?? "", String(e.runId));
         if (!asked.has(id)) {
           asked.add(id);
           const mine = generation;
@@ -38824,14 +38863,14 @@ function createStaging(deps) {
         startedAt = null;
       }
       if (e.type === "marathon_done" && e.result !== "stopped") {
-        const id = `marathon:${String(e.unitId)}:${String(e.hours)}`;
+        const id = `marathon:${state()?.scene?.id ?? ""}:${String(e.unitId)}:${String(e.hours)}`;
         if (!ended.has(id)) {
           ended.add(id);
           track(deps.scene.end().catch((err) => deps.toast("error", `Could not end the scene: ${err instanceof Error ? err.message : String(err)}`)));
         }
       }
       if (e.type === "blackout") {
-        const id = String(e.runId);
+        const id = keyOf(state()?.scene?.id ?? "", String(e.runId));
         if (!ended.has(id)) {
           ended.add(id);
           track(deps.scene.end().catch((err) => deps.toast("error", `Could not end the scene: ${err instanceof Error ? err.message : String(err)}`)));
@@ -38911,7 +38950,7 @@ function createStaging(deps) {
     cue(kind, beat) {
       const r = run();
       if (!active || !r) return null;
-      const pool = pools.get(r.id) ?? completeCues(null, deps.registries(), r.physicsId);
+      const pool = pools.get(runKey(state()) ?? r.id) ?? completeCues(null, deps.registries(), r.physicsId);
       return pickCue(pool, kind, `${r.id}|${r.segment.n}|${beat}`);
     },
     reset() {
@@ -40241,6 +40280,7 @@ function createSceneController(deps) {
       lastApply = null;
       const current = state();
       if (current !== la.after || !deps.restore(la.before, la.after)) {
+        rollbackStaging(index2);
         debug(DEBUG_NOT_ROLLED_BACK);
         return;
       }
@@ -48806,7 +48846,15 @@ function controlsOf(interaction, run) {
   }
 }
 var pointers = /* @__PURE__ */ new WeakMap();
-var wired = /* @__PURE__ */ new WeakSet();
+var keyHandlers = /* @__PURE__ */ new WeakMap();
+function letGoOf(host) {
+  const t = holding.get(host);
+  if (t !== void 0) clearInterval(t);
+  holding.delete(host);
+}
+function panelBeat(host) {
+  return pointers.get(host)?.beat ?? 0;
+}
 var holding = /* @__PURE__ */ new WeakMap();
 function renderPhysicsPanel(host, ctx2) {
   const { state, registries: reg, staging } = ctx2;
@@ -48814,13 +48862,14 @@ function renderPhysicsPanel(host, ctx2) {
   const exposures = state && !run ? exposedKinds(state, reg) : [];
   const acts = state && !run ? actsFor(state, reg) : [];
   if (state && !run && (exposures.length > 0 || acts.length > 0)) {
+    letGoOf(host);
+    unwireKeys(host);
     drawWays(host, ctx2, exposures);
     return;
   }
   if (!state || !run) {
-    const t = holding.get(host);
-    if (t !== void 0) clearInterval(t);
-    holding.delete(host);
+    letGoOf(host);
+    unwireKeys(host);
     host.replaceChildren();
     pointers.delete(host);
     return;
@@ -48909,24 +48958,43 @@ function renderPhysicsPanel(host, ctx2) {
   root.style.setProperty("--alius-air", String(Math.round(remaining * 100) / 100));
   root.style.setProperty("--alius-strain", String(Math.round(strain2 * 100) / 100));
   host.replaceChildren(root);
-  if (!wired.has(host)) {
-    wired.add(host);
-    host.addEventListener("keydown", (e) => {
-      const ev = e;
-      const t = ev.target;
-      if (ev.key !== " " || t && /^(input|textarea|select|button)$/i.test(t.tagName)) return;
-      const main2 = host.querySelector(".alius-physics-input[data-input]");
-      if (!main2) return;
-      ev.preventDefault();
-      main2.dispatchEvent(new Event(realtime ? "pointerdown" : "click", { bubbles: true }));
-    });
-    host.addEventListener("keyup", (e) => {
-      if (e.key !== " ") return;
-      const t = holding.get(host);
-      if (t !== void 0) clearInterval(t);
-      holding.delete(host);
-    });
-  }
+  host.dataset.realtime = realtime ? "1" : "0";
+  wireKeys(host);
+}
+function wireKeys(host) {
+  if (keyHandlers.has(host)) return;
+  const typing = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const down2 = (e) => {
+    if (!host.isConnected) {
+      unwireKeys(host);
+      return;
+    }
+    const ev = e;
+    const t = ev.target;
+    const realtime = host.dataset.realtime === "1";
+    if (ev.key !== " " || typing(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
+    const main2 = host.querySelector(".alius-physics-input[data-input]");
+    if (!main2) return;
+    ev.preventDefault();
+    if (ev.repeat) return;
+    main2.dispatchEvent(new Event(realtime ? "pointerdown" : "click", { bubbles: true }));
+  };
+  const up = (e) => {
+    if (e.key !== " ") return;
+    const t = holding.get(host);
+    if (t !== void 0) clearInterval(t);
+    holding.delete(host);
+  };
+  keyHandlers.set(host, { down: down2, up });
+  document.addEventListener("keydown", down2);
+  document.addEventListener("keyup", up);
+}
+function unwireKeys(host) {
+  const k = keyHandlers.get(host);
+  if (!k) return;
+  document.removeEventListener("keydown", k.down);
+  document.removeEventListener("keyup", k.up);
+  keyHandlers.delete(host);
 }
 var WAY_BUTTONS = [
   { way: "avoid", text: "[ AVOID ]", family: "body" },
@@ -49553,7 +49621,7 @@ function renderSceneScreen(host, ctx2) {
       const text2 = input.value.trim();
       if (text2 === "") return;
       const order = orderOn && ctx2.onOrder !== void 0 ? ctx2.onOrder(orderWho?.value || present2(state())[0]?.id || "") : false;
-      ctx2.physics?.typed(text2.length);
+      ctx2.physics?.typed(text2.length, panelBeat(physicsHost));
       pending4 = true;
       input.disabled = true;
       editing = null;

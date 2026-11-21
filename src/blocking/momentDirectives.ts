@@ -34,8 +34,12 @@ export function momentDirective(event: EngineEvent, state: CampaignState, reg: R
   if (event.type === 'moment_fired' && open !== undefined && open.id === event.momentId) {
     const source = reg.momentSources.get(open.sourceId);
     if (!source) return null;
+    const hint = typeof source.promptHint === 'string' && source.promptHint.trim() !== '' ? `: ${plain(source.promptHint)}` : '';
+    const visitor = open.visitorId !== undefined ? ` ${name(open.visitorId)} is the one who comes in.` : '';
+    const fact = open.factId !== undefined ? state.memory.facts.find((f) => f.id === open.factId) : undefined;
+    const brings = fact ? ` What she brings up: ${plain(fact.text)}.` : '';
     const exposing = open.exposing !== undefined ? ` ${open.exposing} may give the commander away.` : '';
-    return { id: `${MOMENT_PREFIX}${open.sourceId}`, expiresAfter: 'next_reply', text: `A moment of tension: ${plain(String(source.description))}.${exposing}` };
+    return { id: `${MOMENT_PREFIX}${open.sourceId}`, expiresAfter: 'next_reply', text: `A moment of tension for ${name(open.unitId)}${hint}.${visitor}${brings}${exposing}` };
   }
   if (event.type === 'moment_answered' && a !== undefined && a.momentId === event.momentId) {
     const word = genericWord(reg, a.sourceId, a.key);

@@ -11,7 +11,7 @@ import type { CampaignState } from '../../src/engine/state/types';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
 import { h } from '../../src/ui/dom';
-import { renderPhysicsPanel, type PhysicsPanelStaging } from '../../src/ui/scene/physicsPanel';
+import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from '../../src/ui/scene/physicsPanel';
 import { analyze, markedWithout, unreachable, unresolved } from '../helpers/analyzeCoverage';
 import { enable } from '../helpers/bonds';
 import { campaign, errors, loadCore, run, setRelation } from '../helpers/loyalty';
@@ -101,6 +101,17 @@ describe('the physics panel', () => {
     for (const w of [v, weight, tongue, jaw]) expect(w.host.innerHTML).not.toMatch(/\b(he|him|his)\b/i);
   });
 
+  it('the panel says which beat the next press lands on (turn-based), so a typed message lapses from there (review I2)', () => {
+    const v = draw(hold('footrest'));
+    expect(panelBeat(v.host)).toBe(0);
+    v.qa('button.alius-option').find((b) => b.textContent === '[ HOLD STILL ]')!.click();
+    expect(panelBeat(v.host)).toBe(1);
+    v.render();
+    v.qa('button.alius-option').find((b) => b.textContent === '[ WAIT ]')!.click();
+    expect(panelBeat(v.host)).toBe(2);
+    expect(panelBeat(document.createElement('div'))).toBe(0); // no panel: the start
+  });
+
   it('a leaky seal offers breathing through the gap; a tight one does not', () => {
     const s = hold('smothered_armpit');
     s.scene!.physics!.seal = 'leaky';
@@ -169,6 +180,51 @@ describe('the physics panel', () => {
     v.host.append(field);
     field.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     expect(f.calls).toHaveLength(2); // a space typed in a text field is a space
+  });
+});
+
+describe('Space reaches the panel from the page (review I9)', () => {
+  const press = (target: EventTarget = document.body, key = ' ') => target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+  it('a key press anywhere on the page (the host is not focusable) registers the main input in real time', () => {
+    const f = fake();
+    f.staging.beat = () => 2;
+    const state = hold('footrest');
+    state.settings.physicsRealtime = true;
+    const v = draw(state, { staging: f.staging, settings: { physicsRealtime: true } });
+    press();
+    expect(f.calls).toEqual([['input', { beat: 2, kind: 'hold' }]]);
+    press(document.body, 'a');
+    expect(f.calls).toHaveLength(1); // only Space
+    const field = h('input', { type: 'text' });
+    document.body.append(field);
+    press(field);
+    expect(f.calls).toHaveLength(1); // a space typed in a text field is a space
+    v.render(null); // the hold ended: the listener goes with the panel
+    press();
+    expect(f.calls).toHaveLength(1);
+  });
+
+  it('reads the mode when the key is pressed: a panel redrawn turn-based takes Space as one beat, not a held input', () => {
+    const f = fake();
+    f.staging.beat = () => 0;
+    const state = hold('footrest');
+    const v = draw(state, { staging: f.staging, settings: { physicsRealtime: true } });
+    state.settings.physicsRealtime = false;
+    const host = v.host;
+    renderPhysicsPanel(host, { state, registries: reg, settings: settings({ physicsRealtime: false }), staging: f.staging, onTap: vi.fn() });
+    press();
+    expect(f.calls).toEqual([['input', { beat: 0, kind: 'hold' }]]); // the pointer's beat 0, once
+  });
+
+  it('a host that left the page stops listening', () => {
+    const f = fake();
+    const state = hold('footrest');
+    state.settings.physicsRealtime = true;
+    const v = draw(state, { staging: f.staging, settings: { physicsRealtime: true } });
+    v.host.remove();
+    press();
+    expect(f.calls).toEqual([]);
   });
 });
 

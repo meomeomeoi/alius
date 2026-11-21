@@ -213,6 +213,21 @@ describe('the cue pool', () => {
     expect(reg.physicsCues.get('cue_lift')!.lines).toContain(w.staging.cue('lift', 0));
   });
 
+  it('run ids repeat in every scene: the second scene\'s first hold asks for its own pool (review I1)', async () => {
+    const second = JSON.stringify({ cues: { shift: ['Another hold, another sway.', 'She leans a little.', 'The weight moves.'] } });
+    const w = await world({ mainReplies: [answer, '{}', '{}', second] }); // the ending of the first scene takes two replies in between
+    await w.staging.idle();
+    expect(w.staging.cue('shift', 0)).not.toBeNull();
+    w.staging.stopWord();
+    await w.h.controller.end();
+    expect(await w.h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'event' })).toBe(true);
+    w.staging.onEvents(w.h.controller.stage({ type: 'blocking/set', payload: { person: ANN, field: 'contact', value: 'footrest', with: COMMANDER } }));
+    expect(run(w)!.id).toBe('p1'); // the same run id as the first scene's
+    await w.staging.idle();
+    expect(w.h.st.calls.filter((c) => (c.system ?? '').startsWith('You word the short lines')).length).toBe(2);
+    expect(['Her weight moves one way.', 'She rolls her hip.', 'A slow shift.']).not.toContain(w.staging.cue('shift', 0)); // never the first scene's lines
+  });
+
   it('a hostile or failed answer leaves the fallback lines in use', async () => {
     const w = await world({ mainReplies: ['nonsense'] });
     await w.staging.idle();

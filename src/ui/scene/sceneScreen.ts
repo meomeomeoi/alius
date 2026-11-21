@@ -23,7 +23,7 @@ import { deviceLocked } from '../../engine/blocking';
 import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
-import { renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
+import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -620,7 +620,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       if (text === '') return;
       const order = orderOn && ctx.onOrder !== undefined ? ctx.onOrder(orderWho?.value || present(state()!)[0]?.id || '') : false;
       void order; // the engine rolled her answer and set her directive: the message goes out either way
-      ctx.physics?.typed(text.length); // P15a: a long message uses up beats of a running hold (turn-based)
+      ctx.physics?.typed(text.length, panelBeat(physicsHost)); // P15a: a long message uses up beats of a running hold (turn-based)
       pending = true;
       input.disabled = true;
       editing = null;

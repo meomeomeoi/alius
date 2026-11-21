@@ -373,6 +373,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
 export function typedBeats(draft: CampaignState, chars: number, from: number): EngineEvent[] {
   const run = draft.scene?.physics;
   if (!run || run.segment.state !== 'running' || !run.segment.plan) return [];
+  if (draft.settings.physicsRealtime === true) return []; // real time: the keystroke rule of the panel already lapses what needs steady hands
   const n = Math.max(0, Math.ceil(chars / TUNING.physics.typing.charsPerBeat));
   const total = run.segment.plan.beats.length;
   const set = new Set(run.segment.lapsed ?? []);

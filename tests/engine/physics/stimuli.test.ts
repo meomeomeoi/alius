@@ -3,6 +3,7 @@ import { perceptionLines } from '../../../src/blocking/physicsDirectives';
 import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { rememberEvents } from '../../../src/engine/memory/remember';
+import { actsFor } from '../../../src/engine/physics/acts';
 import { bandOfLevel, scentBand, scentLevel } from '../../../src/engine/physics/scent';
 import {
   decayStimuli, exposedKinds, inhaleZone, perceptionWord, reflexAt, stageOf, toleranceOf, updateTrajectory, applyWay, type Way,
@@ -71,6 +72,55 @@ describe('the scent band', () => {
     const t = worship();
     t.life = { salt: 1, nextId: 0, units: {}, queue: [], delivered: [], busy: [{ unitId: ANN, slot: t.day * 4 + 0, activityId: 'train' }] } as never;
     expect(scentLevel(t, reg, ANN, 'armpits')).toBeCloseTo(1.5 * 1.5, 6);
+  });
+});
+
+describe('her own limits and the target\'s gate (review I4)', () => {
+  const limited = (s: CampaignState, ...cats: string[]): CampaignState => {
+    const u = s.squad.find((x) => x.id === ANN)!;
+    u.bond = { leadStyle: 'balanced', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: cats }, publicity: 'known' } as never;
+    return s;
+  };
+
+  it('a kind she has set as her own limit is not exposed, and a kind of an allowed family still is', () => {
+    const s = limited(worship(), 'bodily_fluids');
+    const kinds = exposedKinds(s, reg).map((e) => e.kind);
+    expect(kinds).toContain('scent_feet'); // a plain scent is not tagged
+    for (const k of kinds) expect(reg.stimulusKinds.get(k)!.contentTags ?? []).not.toContain('bodily_fluids');
+    const after = structuredClone(s);
+    after.lastExpedition = { day: after.day, party: [ANN] } as never;
+    expect(exposedKinds(after, reg).map((e) => e.kind)).not.toContain('sweat_exertion'); // tagged `bodily_fluids`
+  });
+
+  it('a worship target\'s own tags gate its stimuli (worship off: nothing of the body part comes through a contact that has the target)', () => {
+    registerFrameReader(() => 'play');
+    const base = campaign(reg, 4);
+    setRelation(base, ANN, { stateId: 'confidant' });
+    enable(base, 'objectification', 'restraint', 'explicit_scenes', 'bodily_fluids', 'humiliation'); // worship is OFF
+    const s = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    setBlocking(s, { registries: reg }, { person: ANN, field: 'contact', value: 'under_her_seat', with: COMMANDER, direction: 'from' }, { at: 4, source: 'chip' });
+    const target = reg.worshipTargets.get('bottom')!;
+    expect(target.contentTags).toContain('worship');
+    expect(contactRecord(s).id).toBe('under_her_seat');
+    for (const e of exposedKinds(s, reg)) expect(target.stimuli as string[]).not.toContain(e.kind);
+  });
+
+  it('actsFor offers nothing at a contact she has limited (worship), and no pet act when pet play is her limit', () => {
+    const base = worship([...ON, 'pet_play']);
+    expect(actsFor(base, reg)).toContain('pet');
+    expect(actsFor(limited(structuredClone(base), 'pet_play'), reg)).not.toContain('pet');
+    expect(actsFor(limited(structuredClone(base), 'worship'), reg)).toEqual([]);
+  });
+});
+
+describe('perception is sensation only (review I7, acceptance 12)', () => {
+  const FEELING = /\b(want|wants|wanted|wish|crave|craves|craving|love|loves|enjoy|enjoys|effort|ashamed|afraid|need|needs|hunger)\b/i;
+
+  it('no line the main model gets about a stimulus states what the commander feels or wants', () => {
+    for (const e of reg.stimulusKinds.values()) {
+      for (const [stage, line] of Object.entries(e.perception as Record<string, string>)) expect(line, `${e.id}.${stage}`).not.toMatch(FEELING);
+    }
+    for (const e of reg.momentSources.values()) expect(String(e.description), String(e.id)).not.toMatch(/commander (wants|feels|likes|loves)/i);
   });
 });
 
@@ -266,6 +316,28 @@ describe('perception, not feeling', () => {
     s.day += 7;
     expect(perceptionWord(s, reg, 'scent_feet')).toBe(w.separated);
     expect(perceptionWord(s, reg, 'nonsense')).toBeNull();
+  });
+
+  it('the missing has an end and a gate: no stress from the week apart on, none once the category is off (review I6)', () => {
+    const craved = (): CampaignState => {
+      const s = campaign(reg, 4);
+      enable(s, ...ON);
+      s.commander.stress = 0;
+      s.commander.stimuli = { scent_feet: { tolerance: 30, exposure: 9, lastDay: 10, best: 30, seek: 0.7, stage: 'craving' } };
+      return s;
+    };
+    const s = craved();
+    for (let day = 13; day <= 16; day++) { s.day = day; decayStimuli(s, reg); } // days 3 to 6 apart: four charges
+    expect(s.commander.stress).toBe(12);
+    for (let day = 17; day <= 40; day++) { s.day = day; decayStimuli(s, reg); } // a week apart: it wears off
+    expect(s.commander.stress).toBe(12);
+    const off = craved();
+    off.content = { enabled: [] }; // the kind is gated by its category
+    const tagged = [...reg.stimulusKinds.values()].find((e) => Array.isArray(e.contentTags) && e.contentTags.length > 0)!;
+    off.commander.stimuli = { [tagged.id]: { tolerance: 30, exposure: 9, lastDay: 10, best: 30, seek: 0.7, stage: 'craving' } };
+    off.day = 13;
+    expect(decayStimuli(off, reg)).toEqual([]);
+    expect(off.commander.stress).toBe(0);
   });
 
   it('something is missing: a craved kind with no exposure for three days costs 3 stress, once a day, and the word says so until the next exposure', () => {

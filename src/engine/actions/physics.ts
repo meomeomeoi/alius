@@ -86,7 +86,7 @@ registerAction('physics/stimulus', (draft, payload, ctx) => {
 });
 
 // the body layer: tolerance slips back with days apart and a craved kind that is missed costs a little stress (once a day)
-registerDayEndStep('director_tick', (draft) => decayStimuli(draft));
+registerDayEndStep('director_tick', (draft, ctx) => decayStimuli(draft, ctx.registries));
 
 /** `physics/act { kind }`: an act of the mouth on a contact that has one (kiss, counted, long, lick, pet, mouth). Draws no rng. */
 registerAction('physics/act', (draft, payload, ctx) => {

@@ -984,5 +984,6 @@ Your own content goes in `content/local/` (next to `content/core/`); the folder 
 - **Adding:** a row with a new `id` is added to its registry.
 - **Overriding by id:** a row with the id of an existing entry replaces it whole (every required field must be there). To change only a field or two, write the id and `"extends": "<the same id>"` and the fields to change, as the other packs do.
 - **Errors:** a row that does not validate is reported in SYS › debug › Content warnings with its pack (`local`), file and path, and is left out; core and the rest of the local pack still load. A manifest that is there but invalid is reported too. Only a missing folder is silent.
+- **A moment source** has two texts: `description` is the player's (the analysis panel) and is never sent to the model; `promptHint` is the clause the main model gets when the moment fires (one sentence, at most 120 characters, no pronoun for the commander, never a feeling of the commander). A source without one is sent as "A moment of tension for <her name>" and nothing else. The directive adds whose moment it is, the visitor the engine chose and the fact a kept-fact moment brings up.
 - **Content gates still apply:** a local item or contact tagged with a content category (`contentTags`) is hidden while that category is off, and by every soldier's own limits.
 

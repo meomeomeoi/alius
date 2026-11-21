@@ -3,7 +3,7 @@
  * (plan R7). Physics is never rolled back; only `blocking` (and, from Task 13, `moments`).
  */
 import type { CampaignState } from '../state/types';
-import type { StagingSnapshot } from './state';
+import type { StagingSnapshot, WornSlot } from './state';
 import { TUNING } from '../tuning';
 
 /**
@@ -34,4 +34,21 @@ export function pushLog(draft: CampaignState, at: number, meta: Pick<StagingSnap
   const log = (scene.stagingLog ??= []);
   log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...(scene.moments !== undefined ? { moments: structuredClone(scene.moments) } : {}), ...meta, exchange: scene.exchanges });
   if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
+}
+
+/**
+ * Takes a value out of every snapshot of the log: what the engine removed quietly (the stop word, the end of a hold, a category switched
+ * off, her waking) must not come back when a later swipe, edit or delete restores an older snapshot whole (review finding C1). `drop` says
+ * which worn item, contact or activity goes.
+ */
+export function scrubLog(draft: CampaignState, drop: (kind: 'item' | 'contact' | 'activity', id: string, person: string) => boolean): void {
+  for (const snap of draft.scene?.stagingLog ?? []) {
+    for (const [person, rec] of Object.entries(snap.blocking)) {
+      for (const [slot, w] of Object.entries(rec.worn ?? {})) if (w && drop('item', w.id, person)) delete rec.worn![slot as WornSlot];
+      if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
+      if (rec.contact && drop('contact', rec.contact.id, person)) delete rec.contact;
+      if (rec.activity !== undefined && drop('activity', rec.activity, person)) delete rec.activity;
+      if (Object.keys(rec).length === 0) delete snap.blocking[person];
+    }
+  }
 }

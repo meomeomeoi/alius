@@ -352,6 +352,14 @@ describe('the segment actions', () => {
     expect(errors(run(withContact(setUp()), reg, { type: 'physics/typed', payload: { chars: 10 } }).events)).toEqual([]); // held: nothing to lapse, no error
   });
 
+  it('typed lapses nothing in real time (the keystroke rule of the panel covers it), review I2', () => {
+    const s = next(withContact(setUp())).state;
+    s.settings.physicsRealtime = true;
+    const typed = run(s, reg, { type: 'physics/typed', payload: { chars: 81, beat: 0 } });
+    expect(errors(typed.events)).toEqual([]);
+    expect(typed.state.scene!.physics!.segment.lapsed).toBeUndefined();
+  });
+
   it('a chain: a gulp that spills opens tongue_work at dirt 60', () => {
     const s = withContact(setUp(0, ON), { value: 'smothered_armpit' });
     const g = structuredClone(s);

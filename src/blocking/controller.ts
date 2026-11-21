@@ -99,9 +99,13 @@ export function createStaging(deps: StagingDeps): StagingController {
     void p.finally(() => work.delete(p));
   };
 
-  function cuesInput(s: CampaignState, runId: string): PhysicsCuesInput | { expired: string } {
+  /** Run ids repeat in every scene (`p1`), so every key here carries the scene's id (review I1). */
+  const keyOf = (sceneId: string, runId: string): string => `${sceneId}|${runId}`;
+  const runKey = (s: CampaignState | null | undefined): string | null => (s?.scene?.physics ? keyOf(s.scene.id, s.scene.physics.id) : null);
+
+  function cuesInput(s: CampaignState, key: string): PhysicsCuesInput | { expired: string } {
     const r = s.scene?.physics;
-    if (!r || r.id !== runId) return { expired: 'The hold is over.' };
+    if (!r || runKey(s) !== key) return { expired: 'The hold is over.' };
     const reg = deps.registries();
     const unit = s.squad.find((u) => u.id === r.holderId);
     const card = String((unit as { card?: unknown } | undefined)?.card ?? '').slice(0, CARD_MAX);
@@ -115,13 +119,13 @@ export function createStaging(deps: StagingDeps): StagingController {
     build: (key) => { const s = state(); return s ? cuesInput(s, key) : { expired: 'No campaign is open.' }; },
     parse: (raw) => sanitizeCues(raw),
     apply(key, value, input) {
-      if (!active || run()?.id !== key) return { stale: true };
+      if (!active || runKey(state()) !== key) return { stale: true };
       pools.set(key, completeCues(value, deps.registries(), input.physicsId));
       return 'ok';
     },
     fallback(key, input) {
       const r = run();
-      if (!r || r.id !== key) return false;
+      if (!r || runKey(state()) !== key) return false;
       pools.set(key, completeCues(null, deps.registries(), input?.physicsId ?? r.physicsId));
       return true;
     },
@@ -132,7 +136,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     if (!active) return;
     for (const e of events) {
       if (e.type === 'physics_started' && e.chained !== true) {
-        const id = String(e.runId);
+        const id = keyOf(state()?.scene?.id ?? '', String(e.runId));
         if (!asked.has(id)) {
           asked.add(id);
           const mine = generation;
@@ -146,14 +150,14 @@ export function createStaging(deps: StagingDeps): StagingController {
       }
       if (e.type === 'marathon_done' && e.result !== 'stopped') {
         // the hold ran its fiction time out: the scene ends (the slots it cost are spent when it does)
-        const id = `marathon:${String(e.unitId)}:${String(e.hours)}`;
+        const id = `marathon:${state()?.scene?.id ?? ''}:${String(e.unitId)}:${String(e.hours)}`;
         if (!ended.has(id)) {
           ended.add(id);
           track(deps.scene.end().catch((err) => deps.toast('error', `Could not end the scene: ${err instanceof Error ? err.message : String(err)}`)));
         }
       }
       if (e.type === 'blackout') {
-        const id = String(e.runId);
+        const id = keyOf(state()?.scene?.id ?? '', String(e.runId));
         if (!ended.has(id)) {
           ended.add(id);
           track(deps.scene.end().catch((err) => deps.toast('error', `Could not end the scene: ${err instanceof Error ? err.message : String(err)}`)));
@@ -238,7 +242,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     cue(kind, beat) {
       const r = run();
       if (!active || !r) return null;
-      const pool = pools.get(r.id) ?? completeCues(null, deps.registries(), r.physicsId);
+      const pool = pools.get(runKey(state()) ?? r.id) ?? completeCues(null, deps.registries(), r.physicsId);
       return pickCue(pool, kind, `${r.id}|${r.segment.n}|${beat}`);
     },
     reset() {

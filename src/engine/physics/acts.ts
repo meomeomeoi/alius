@@ -35,8 +35,9 @@ export function actsFor(state: CampaignState, reg: Registries): ActKind[] {
   const scene = state.scene;
   const contact = scene && blockingLive(state, reg) ? contactOf(scene) : undefined;
   if (!scene || !contact || reg.blockingContacts.get(contact.id)?.mouth !== true) return [];
-  if (!contentAllowed(state, reg, { contentTags: ['worship'] })) return [];
-  return ACT_KINDS.filter((k) => k !== 'pet' || contentAllowed(state, reg, { contentTags: ['pet_play'] }));
+  const holder = holderOf(state); // her own limits count too (review I4)
+  if (!contentAllowed(state, reg, { contentTags: ['worship'] }, holder)) return [];
+  return ACT_KINDS.filter((k) => k !== 'pet' || contentAllowed(state, reg, { contentTags: ['pet_play'] }, holder));
 }
 
 /** The number she sets for counted kisses: ten to a hundred by tens, a hash of the scene and the exchange (no draw; a swipe sets the same). */

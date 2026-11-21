@@ -179,7 +179,7 @@ export const TUNING = Object.freeze({
    * P15a: the commander's body layer (plan R13, spec §16.8; AUTHOR TO TUNE). Tolerance starts at `startTolerance` and gains `tolerancePerSession` a
    * scene of exposure, loses 1 per `decayDays` apart (never below half the best). The reflex comes at tolerance × `reflexMult` in stimulus units
    * (scent level × 25). The trajectory is a moving average (`seekAlpha`) with stage boundaries and `hysteresis` updates. A kind at craving or above that
-   * is missed for `missingDays` costs `missingStress` commander stress a day.
+   * is missed for `missingDays` costs `missingStress` commander stress a day, until `separatedDays` apart (then it wears off).
    */
   stimuli: Object.freeze({
     startTolerance: 20, tolerancePerSession: 2, decayDays: 7, reflexMult: 1.2, unitsPerLevel: 25, faintFadeAt: 40, seekAlpha: 0.15,
