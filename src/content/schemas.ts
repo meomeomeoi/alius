@@ -724,6 +724,8 @@ export const RelationshipStateSchema = BaseEntrySchema.extend({
   priority: int,
   /** Available to grunts (Trust-only units); default false. */
   grunts: z.boolean().optional(),
+  /** P15: the state a romantic one falls to when the commander leaves a dynamic she held (R17): one rung down, never out of romance. Refs-checked; a romantic state without one stays where it is. */
+  stepDown: str.optional(),
   /** P9: how much of her Impunity this state takes away (she needs the commander). */
   dependency: int.min(0).max(40).optional(),
   /** P7: only a commander with this trait can reach the state. */

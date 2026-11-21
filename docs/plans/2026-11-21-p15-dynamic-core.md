@@ -1701,7 +1701,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `romanceStepDown(draft, reg, unitId): EngineEvent[]`;
   - `exitCostWord(state, reg, unitId, route): string` (for the UI).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `play with hold 30: minor`; `role with two domains: major`; `sworn: extreme and a pinned fact` (a break).
   - `negotiated then compromise: one step down and a clean exit flag`.
   - `transfer runs the conflict and moves the domains to the winner`.
@@ -1709,10 +1709,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `every domain is dropped except countermand`, which starts `command_kept` (Task 31 builds it; here: the flag `commandKept` on the aftermath request).
   - `romance steps down devoted → lover, never to comrade`.
   - `formerHolder is set and the dynamic resets to equal, hold 0, tracks kept`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/exit.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R15 and R17.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): exit routes and their cost`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/exit.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R15 and R17.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): exit routes and their cost`
 
 ---
 

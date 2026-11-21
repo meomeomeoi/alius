@@ -748,6 +748,12 @@ export const TUNING = Object.freeze({
      */
     milestones: Object.freeze({ refuseDrop: 20, refuseCooldownDays: 7, afterDownDays: 14, bookingSearchDays: 14 }),
     /**
+     * Leaving (R15): the cost is `minor` while she is at `play` with a hold under `freeHold` ("nearly free"); otherwise it starts there and rises one
+     * step per frame above `play`, per `domainsPerStep` domains held, and a vow is a break (`extreme`). A clean exit (a compromise) is `cleanSteps` lighter,
+     * a forced one `forceSteps` heavier. At `play` with `freeHold` or more it is at least one step (not free). `AUTHOR TO TUNE`.
+     */
+    exit: Object.freeze({ freeHold: 40, domainsPerStep: 2, cleanSteps: 1, forceSteps: 2 }),
+    /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
      * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing; `deviceFloor` is the device access `device_floor` guarantees. `AUTHOR TO TUNE`.

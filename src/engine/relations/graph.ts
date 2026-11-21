@@ -91,6 +91,27 @@ export function enterState(draft: CampaignState, unitId: string, stateId: string
 }
 
 /**
+ * P15 (R17): the commander left a dynamic: a romantic bond falls one rung (`stepDown` of her state: devoted to lover, lover and casual to
+ * flirting), never to comrade and never out of romance. In a secret affair the state stays (the concealment is kept) and the rung she really
+ * stands on (`affair.as`) falls instead. A state with no step (flirting, anything not romantic) stays. Draws nothing.
+ */
+export function romanceStepDown(draft: CampaignState, reg: Registries, unitId: string): EngineEvent[] {
+  const rel = draft.relations[unitId];
+  if (rel === undefined) return [];
+  const stepOf = (id: string): string | undefined => {
+    const row = reg.relationshipStates.get(id) as unknown as { romance?: boolean; stepDown?: string } | undefined;
+    return row?.romance === true && row.stepDown !== undefined && row.stepDown !== id ? row.stepDown : undefined;
+  };
+  if (rel.affair !== undefined && rel.stateId === 'secret_affair') {
+    const next = stepOf(rel.affair.as);
+    if (next !== undefined) rel.affair = { ...rel.affair, as: next };
+    return [];
+  }
+  const next = stepOf(rel.stateId);
+  return next === undefined ? [] : [enterState(draft, unitId, next, 'dynamic_exit'), ...syncPublicity(draft, reg, unitId)];
+}
+
+/**
  * P7 platonic thresholds: the lower bounds of the axis ranges of an entry condition are lowered by `pct` percent (rounded
  * to the nearest integer) for the states a trait names (`platonic_threshold`: confidant, kindred). Upper bounds and a lower
  * bound of 0 stay; nested `anyOf` alternatives are scaled too. Returns a copy.

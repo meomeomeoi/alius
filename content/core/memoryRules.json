@@ -1032,5 +1032,38 @@
       "dynamic",
       "domain"
     ]
+  },
+  {
+    "id": "dynamic_break",
+    "event": "dynamic_exit",
+    "when": {
+      "sworn": true
+    },
+    "text": "The commander broke the vow {name} was given; it is over, and it was a break.",
+    "importance": 5,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "pinned": true,
+    "tags": [
+      "dynamic",
+      "dynamic_break"
+    ]
+  },
+  {
+    "id": "dynamic_ended",
+    "event": "dynamic_exit",
+    "when": {
+      "sworn": false
+    },
+    "text": "The commander left what {name} held, and it is over.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "dynamic_ended"
+    ]
   }
 ]

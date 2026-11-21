@@ -113,6 +113,8 @@ export interface OpenOffer {
   conditions?: true;
   sceneId?: string;
 }
+/** A negotiated exit that waits for a compromise in a scene with her (R15): `dx<n>`. ABRUPT on its card ends it now. */
+export interface OpenExit { id: string; unitId: string; day: number }
 export interface OpenReturn { id: string; unitId: string; terms: 'lower_band' | 'after_punishment'; day: number }
 
 /** What one observer knows of one holder's dynamic (R14). */
@@ -133,9 +135,10 @@ export interface DynamicCampaign {
   queue: string[];
   /** Days the dynamic noticed in passing (the style's surfacing reads them, T16): the last gain of the commander's endurance, the last time the crime was revealed. */
   noted?: { enduranceDay?: number; crimeDay?: number; praisedDay?: number };
-  /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`. */
+  /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`, exits `dx<n>`. */
   seq: number;
-  open: { claims: OpenClaim[]; milestones: OpenMilestone[]; returnOffer?: OpenReturn; offers: OpenOffer[] };
+  /** `exits` is optional: a save from before the exit routes has none. */
+  open: { claims: OpenClaim[]; milestones: OpenMilestone[]; returnOffer?: OpenReturn; offers: OpenOffer[]; exits?: OpenExit[] };
 }
 
 /** `state.dynamic` is where the campaign keeps it, `undefined` while there is none. The layer above (`dynamicOn`) decides whether it counts. */

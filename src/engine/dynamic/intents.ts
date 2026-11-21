@@ -32,7 +32,7 @@ export type DynamicIntentInput = DynamicOffer & { probeAxes: Record<string, stri
  * The offer for the units in `participants` (named, living, who practise something that is switched on). `{}` while the dynamic is off or nothing
  * is offered. At most one probe a scene. `probe_observed` is offered for a unit who could start to hold (eligible, at `equal` or with no block yet)
  * with a lead style of assertive or more and no probe of hers pending; `protocol_slip` for a unit at `role` or beyond (or in a `habits` aftermath)
- * when another unit is present. Exits and compromat are offered by their own tasks.
+ * when another unit is present. An open negotiated exit (`compromise_reached { exitId }`) is offered while she is present; compromat is offered by its own task.
  */
 export function dynamicIntentInput(
   state: CampaignState, reg: Registries, participants: readonly string[], _channel: 'scene' | 'dm',
@@ -59,6 +59,7 @@ export function dynamicIntentInput(
   for (const m of milestoneRows) milestoneLabels[m.id] = String((reg.dynamicMilestones.get(m.milestoneId) as unknown as DynamicMilestoneEntry | undefined)?.promptHint ?? m.milestoneId);
   const claims = open.claims.filter((c) => present.includes(c.unitId)).map((c) => c.id);
   const offers = open.offers.filter((o) => present.includes(o.unitId)).map((o) => o.id);
+  const exits = (open.exits ?? []).filter((e) => present.includes(e.unitId)).map((e) => e.id);
   const slips = participants.length >= 2
     ? present.filter((id) => {
       const dyn = dynamicOf(state, id);
@@ -67,12 +68,12 @@ export function dynamicIntentInput(
     : [];
   const types = [
     ...(probes.length > 0 ? ['probe_answered'] : []), ...(observed.length > 0 ? ['probe_observed'] : []),
-    ...(milestoneRows.length > 0 ? ['milestone_accepted', 'milestone_refused'] : []), ...(claims.length > 0 ? ['compromise_reached'] : []),
+    ...(milestoneRows.length > 0 ? ['milestone_accepted', 'milestone_refused'] : []), ...(claims.length > 0 || exits.length > 0 ? ['compromise_reached'] : []),
     ...(offers.length > 0 ? ['offer_answered'] : []), ...(slips.length > 0 ? ['protocol_slip'] : []),
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits: [], offers, compromat: [], slips, probeAxes, milestoneLabels },
+    dynamic: { types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits, offers, compromat: [], slips, probeAxes, milestoneLabels },
   };
 }
 

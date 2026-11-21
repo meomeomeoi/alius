@@ -124,6 +124,7 @@ registerRefs('relationshipStates', (entry) => {
   });
   nightRefs((entry.unlocks as { nightEvents?: unknown } | undefined)?.nightEvents, 'unlocks.nightEvents', out);
   if (typeof entry.requiresTrait === 'string') out.push({ registry: 'commanderTraits', id: entry.requiresTrait, path: 'requiresTrait' });
+  if (typeof entry.stepDown === 'string') out.push({ registry: 'relationshipStates', id: entry.stepDown, path: 'stepDown' }); // P15
   return out;
 });
 
@@ -816,6 +817,14 @@ for (const registry of ['glossary', ...DESCRIBED_REGISTRIES] as RegistryName[]) 
 
 registerChecks('defects', (entry, regs) => nightTagChecks('nightEvents', entry.nightEvents, regs));
 registerChecks('relationshipStates', (entry, regs) => nightTagChecks('unlocks.nightEvents', (entry.unlocks as { nightEvents?: unknown } | undefined)?.nightEvents, regs));
+// P15 (R17): a step down stays in romance and never names the state itself
+registerChecks('relationshipStates', (entry, regs) => {
+  if (typeof entry.stepDown !== 'string') return [];
+  const target = regs.relationshipStates.get(entry.stepDown);
+  if (target === undefined) return []; // the ref check says so
+  if (entry.stepDown === entry.id) return [{ path: 'stepDown', message: 'a step down cannot name its own state' }];
+  return target.romance === true && entry.romance === true ? [] : [{ path: 'stepDown', message: 'a step down must stay in romance' }];
+});
 
 function nightTagChecks(path: string, specs: unknown, regs: Record<RegistryName, Map<string, Entry>>): RegistryCheck[] {
   if (!Array.isArray(specs)) return [];

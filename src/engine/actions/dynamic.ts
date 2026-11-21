@@ -10,6 +10,7 @@ import { signsFromEvents } from '../dynamic/knowledge';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
 import { answerClaim } from '../dynamic/domains';
+import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
@@ -18,7 +19,7 @@ import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
 import { seedHold } from '../dynamic/seeds';
 import { dynamicSaltOf, newDynamicCampaign } from '../dynamic/state';
-import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, MOTIVES, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES, type Motive } from '../dynamic/types';
+import { EXIT_ROUTES, FREQUENCIES, HOLDER_CAPS, MAY_HOLD, MOTIVES, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES, type Motive } from '../dynamic/types';
 import { TUNING } from '../tuning';
 import type { Unit } from '../state/types';
 
@@ -265,4 +266,27 @@ registerAction('dynamic/answer_claim', (draft, payload, ctx) => {
   if (typeof p.claimId !== 'string') throw new Error('dynamic/answer_claim needs a claimId.');
   if (p.answer !== 'yield' && p.answer !== 'refuse' && p.answer !== 'talk') throw new Error('The answer must be yield, refuse or talk.');
   return answerClaim(draft, ctx, p.claimId, p.answer);
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Leaving (R15)
+
+/**
+ * `dynamic/exit { unitId, route, toUnitId?, means?, measure? }`: the commander ends what she holds with her, by `abrupt`, `negotiated` (a scene; it
+ * waits for a compromise, or ends abruptly from the same card), `transfer` (to another holder: `toUnitId`) or `force` (`means`: `discipline` with
+ * the `measure` of a punishment, `leash`, or `transfer_request`, which oversight takes up later). Always allowed for a dynamic at `play` or beyond; a
+ * refusal changes nothing. The only way to make an exit clean is a compromise in the scene (`compromise_reached { exitId }`), never a payload.
+ */
+registerAction('dynamic/exit', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { unitId?: unknown; route?: unknown; toUnitId?: unknown; means?: unknown; measure?: unknown };
+  const unit = namedUnit(draft, p.unitId, 'dynamic/exit');
+  if (!(EXIT_ROUTES as readonly unknown[]).includes(p.route)) throw new Error(`An exit is ${EXIT_ROUTES.join(', ')}.`);
+  if (p.toUnitId !== undefined && typeof p.toUnitId !== 'string') throw new Error('toUnitId must be a unit id.');
+  if (p.means !== undefined && !(EXIT_MEANS as readonly unknown[]).includes(p.means)) throw new Error(`A means is ${EXIT_MEANS.join(', ')}.`);
+  if (p.measure !== undefined && typeof p.measure !== 'string') throw new Error('measure must be a punishment id.');
+  return exitDynamic(draft, ctx, unit.id, p.route as (typeof EXIT_ROUTES)[number], {
+    ...(p.toUnitId !== undefined ? { toUnitId: p.toUnitId as string } : {}), ...(p.means !== undefined ? { means: p.means as (typeof EXIT_MEANS)[number] } : {}),
+    ...(p.measure !== undefined ? { measure: p.measure as string } : {}),
+  });
 });

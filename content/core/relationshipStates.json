@@ -416,6 +416,7 @@
     "glyph": "^",
     "priority": 42,
     "bondTier": "romantic",
+    "stepDown": "flirting",
     "entry": {
       "via": [
         "proposal"
@@ -491,6 +492,7 @@
     "priority": 50,
     "bondTier": "romantic",
     "leadBonus": 10,
+    "stepDown": "flirting",
     "entry": {
       "via": [
         "proposal"
@@ -582,6 +584,7 @@
     "priority": 55,
     "bondTier": "romantic",
     "leadBonus": 10,
+    "stepDown": "lover",
     "entry": {
       "via": [
         "proposal"
@@ -664,6 +667,7 @@
     "glyph": "x",
     "priority": 45,
     "bondTier": "romantic",
+    "stepDown": "flirting",
     "entry": {
       "via": [
         "proposal"

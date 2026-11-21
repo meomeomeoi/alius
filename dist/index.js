@@ -1009,6 +1009,12 @@ var TUNING = Object.freeze({
      */
     milestones: Object.freeze({ refuseDrop: 20, refuseCooldownDays: 7, afterDownDays: 14, bookingSearchDays: 14 }),
     /**
+     * Leaving (R15): the cost is `minor` while she is at `play` with a hold under `freeHold` ("nearly free"); otherwise it starts there and rises one
+     * step per frame above `play`, per `domainsPerStep` domains held, and a vow is a break (`extreme`). A clean exit (a compromise) is `cleanSteps` lighter,
+     * a forced one `forceSteps` heavier. At `play` with `freeHold` or more it is at least one step (not free). `AUTHOR TO TUNE`.
+     */
+    exit: Object.freeze({ freeHold: 40, domainsPerStep: 2, cleanSteps: 1, forceSteps: 2 }),
+    /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
      * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing; `deviceFloor` is the device access `device_floor` guarantees. `AUTHOR TO TUNE`.
@@ -6685,8 +6691,8 @@ var SCOPES = ["any", "dynamic"];
 function effectsOfEntry(entry) {
   const e = entry;
   const declared = Array.isArray(e?.effects) ? e.effects : [];
-  const named3 = Array.isArray(e?.physics) ? e.physics : [];
-  const extra = named3.filter((p) => !declared.some((d) => d.type === "physics" && d.id === p.id)).map((p) => ({ type: "physics", id: p.id }));
+  const named4 = Array.isArray(e?.physics) ? e.physics : [];
+  const extra = named4.filter((p) => !declared.some((d) => d.type === "physics" && d.id === p.id)).map((p) => ({ type: "physics", id: p.id }));
   return [...declared, ...extra];
 }
 
@@ -6761,6 +6767,7 @@ var MOTIVES = ["order", "fear", "her", "process", "gain"];
 var REGION_RANKS = ["hollow", "elusive", "cowed", "double_game", "calculating", "bratty", "proud", "hungry", "reluctant", "dutiful", "devoted"];
 var AFTERMATH_KINDS = ["grief", "pursuit", "blackmail", "revenge", "command_kept", "cold_contempt", "return_offer", "successor", "habits"];
 var AFTERMATH_DEMAND_KINDS = ["desire", "exclusion", "information", "interpersonal", "item", "privilege", "resource"];
+var EXIT_ROUTES = ["abrupt", "negotiated", "transfer", "force"];
 var SIGN_KINDS = [
   "step_behind",
   "protocol_public",
@@ -7891,6 +7898,8 @@ var RelationshipStateSchema = BaseEntrySchema.extend({
   priority: int,
   /** Available to grunts (Trust-only units); default false. */
   grunts: external_exports.boolean().optional(),
+  /** P15: the state a romantic one falls to when the commander leaves a dynamic she held (R17): one rung down, never out of romance. Refs-checked; a romantic state without one stays where it is. */
+  stepDown: str.optional(),
   /** P9: how much of her Impunity this state takes away (she needs the commander). */
   dependency: int.min(0).max(40).optional(),
   /** P7: only a commander with this trait can reach the state. */
@@ -10870,6 +10879,21 @@ function enterState(draft, unitId, stateId, why) {
   pushHistory(draft, unitId, { day: draft.day, kind: "state", type: stateId, detail: why });
   return { type: "relation_state_changed", unitId, from, to: stateId, why };
 }
+function romanceStepDown(draft, reg, unitId) {
+  const rel = draft.relations[unitId];
+  if (rel === void 0) return [];
+  const stepOf = (id) => {
+    const row3 = reg.relationshipStates.get(id);
+    return row3?.romance === true && row3.stepDown !== void 0 && row3.stepDown !== id ? row3.stepDown : void 0;
+  };
+  if (rel.affair !== void 0 && rel.stateId === "secret_affair") {
+    const next2 = stepOf(rel.affair.as);
+    if (next2 !== void 0) rel.affair = { ...rel.affair, as: next2 };
+    return [];
+  }
+  const next = stepOf(rel.stateId);
+  return next === void 0 ? [] : [enterState(draft, unitId, next, "dynamic_exit"), ...syncPublicity(draft, reg, unitId)];
+}
 function platonicThresholds(state, reg, stateId, cond) {
   const pct5 = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
   if (pct5 === 0) return cond;
@@ -12094,8 +12118,8 @@ function rollCountermand(draft, ctx2, req) {
   const leader = leaderOf(draft);
   if (!leader || unitObeys(draft, leader.id)) return null;
   if (ctx2.registries.activities.get(req.activityId)?.countermandable !== true) return null;
-  const named3 = (id) => draft.squad.some((u) => u.id === id && u.kind === "named") && id !== leader.id;
-  const unitId = (req.companionId !== void 0 ? [req.companionId] : req.unitIds ?? []).find(named3);
+  const named4 = (id) => draft.squad.some((u) => u.id === id && u.kind === "named") && id !== leader.id;
+  const unitId = (req.companionId !== void 0 ? [req.companionId] : req.unitIds ?? []).find(named4);
   if (unitId === void 0) return null;
   if (!ctx2.rng.chance(countermandChance(draft, ctx2.registries))) return null;
   const { countermandChecked: _skip, ...payload } = req;
@@ -12219,13 +12243,13 @@ function concealedAffairs(state, reg) {
 function leverageOf(state, reg, unitId) {
   const rel = state.relations[unitId];
   if (!rel) return [];
-  const named3 = namedLiving(state);
+  const named4 = namedLiving(state);
   const out = [];
   const crime = state.commander.crimeId === null ? void 0 : reg.crimes.get(state.commander.crimeId);
   for (const flag of rel.flags) {
     if (reg.flags.get(flag)?.leverage !== true) continue;
     if (flag === CRIME_FLAG && crime?.damaging === false) continue;
-    const others = named3.filter((u) => u.id !== unitId);
+    const others = named4.filter((u) => u.id !== unitId);
     if (others.length > 0 && others.every((u) => state.relations[u.id]?.flags.includes(flag))) continue;
     out.push(flag);
   }
@@ -13763,8 +13787,8 @@ function raiseTone(draft, reg, tone) {
   const scene = draft.scene;
   if (!scene || tone !== "romantic" && tone !== "intimate") return [];
   if (!intimacyOf(draft).romance) return [];
-  const named3 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
-  if (named3 > 1) return [];
+  const named4 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
+  if (named4 > 1) return [];
   if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone]) return [];
   scene.tone = tone;
   return [{ type: "scene_tone", tone }, ...decideSceneLead(draft, reg)];
@@ -18191,6 +18215,485 @@ function yieldPartial(draft, ctx2, claimId) {
   return [{ type: "domain_yielded", ...base, domainId: claim2.domainId }];
 }
 
+// src/engine/bonds/smother.ts
+function smotherActive(state) {
+  const s = state.bonds?.smother;
+  if (!s || s.untilDay < state.day) return null;
+  const unit3 = state.squad.find((u) => u.id === s.unitId);
+  return unit3 && isLiving(unit3) ? s : null;
+}
+var isSmotherDefect = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown?.kind === "smother";
+function startSmother(draft, unitId, reg) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (!unit3 || !isLiving(unit3) || smotherActive(draft)) return [];
+  const bonds = draft.bonds ??= { rules: [] };
+  bonds.smother = { unitId, untilDay: draft.day + 1 };
+  const events = [{ type: "smother_started", unitId, untilDay: draft.day + 1 }];
+  if (reg) {
+    const next = nextSlotAfter(draft.day, draft.slot);
+    const kinds2 = [...reg.bookingKinds.values()];
+    const kind = kinds2.find((k) => k.slot === next.slot) ?? kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
+    if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: "smother" }));
+  }
+  return events;
+}
+function clearSmother(draft, unitId) {
+  const s = draft.bonds?.smother;
+  if (!s || unitId !== void 0 && s.unitId !== unitId) return [];
+  delete draft.bonds.smother;
+  return [{ type: "smother_ended", unitId: s.unitId }];
+}
+function expireSmother(draft) {
+  const s = draft.bonds?.smother;
+  return s && s.untilDay < draft.day ? clearSmother(draft) : [];
+}
+function smotherRefusal(state) {
+  const s = smotherActive(state);
+  if (!s) return null;
+  const name = state.squad.find((u) => u.id === s.unitId)?.displayName ?? "She";
+  return `${name} has locked the hangar: the commander stays at base today.`;
+}
+
+// src/engine/loyalty/state.ts
+var blank = () => ({ signs: [], attempts: 0 });
+function loyaltyRecord(draft, unitId) {
+  const d = draft.disloyalty ??= { units: {} };
+  return d.units[unitId] ??= blank();
+}
+function loyaltyOf(state, unitId) {
+  return state.disloyalty?.units[unitId];
+}
+var CONFRONTATION_KINDS = ["desertion", "mutiny", "deserter_return"];
+function emitSign(draft, ctx2, unitId, about2, level) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (!unit3) return [];
+  const rec = loyaltyRecord(draft, unitId);
+  const lines = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about2 && (about2 !== "mutiny" || s.level === level) && (unit3.kind === "named" || s.kind === "fact"));
+  const fresh = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
+  const pool = fresh.length > 0 ? fresh : lines;
+  if (pool.length === 0) return [];
+  const line2 = ctx2.rng.pick(pool);
+  const kind = line2.kind;
+  const text2 = String(line2.text).replaceAll("{name}", unit3.displayName);
+  if (kind === "dm") {
+    pushMessage(draft, unitId, { from: unitId, text: text2, day: draft.day, slot: draft.slot, read: false });
+  } else if (kind === "fact") {
+    addFact(draft, { about: [unitId], text: text2, tags: ["loyalty", about2], importance: 3, day: draft.day, knownBy: ["*"] });
+  } else {
+    enqueueNight(draft, {
+      id: nextId(draft, "n"),
+      unitId,
+      kind: "we_need_to_talk",
+      priority: TUNING.disloyalty.night.talk,
+      framing: text2,
+      ignore: { event: "dismissed", severity: "moderate" },
+      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+    });
+  }
+  rec.signs.push({ day: draft.day, about: about2, kind, signId: String(line2.id) });
+  if (rec.signs.length > TUNING.disloyalty.signsMax) rec.signs.splice(0, rec.signs.length - TUNING.disloyalty.signsMax);
+  return [{ type: "loyalty_sign", unitId, about: about2, kind }];
+}
+function requireOpen(draft, kind) {
+  const open3 = draft.disloyalty?.open;
+  if (!open3 || open3.kind !== kind) {
+    throw new Error(kind === "return" ? "Nobody is waiting at the gate." : "Nobody is about to walk out.");
+  }
+  return open3;
+}
+function closeNight(draft, ctx2, open3) {
+  return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
+}
+
+// src/engine/notes/state.ts
+function notesOf(draft) {
+  return draft.notes ??= { seq: 0, list: [] };
+}
+function nextNoteId(draft) {
+  const notes = notesOf(draft);
+  notes.seq += 1;
+  return `hn${notes.seq}`;
+}
+function forgetNotes(draft, unitId) {
+  if (draft.notes) draft.notes.list = draft.notes.list.filter((n) => n.unitId !== unitId);
+}
+
+// src/engine/dynamic/forget.ts
+function holdsDynamic(state, unitId) {
+  const x = state.dynamic;
+  const rel = state.relations[unitId]?.dynamic;
+  if (rel !== void 0 && (rel.domains.length > 0 || rel.aftermath !== void 0 || rel.probes.pending !== void 0 || rel.leashBlock !== void 0)) return true;
+  if (x === void 0) return false;
+  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.open.exits?.some((e) => e.unitId === unitId) === true || x.queue.includes(unitId) || x.override?.unitId === unitId || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row3) => row3[unitId] !== void 0);
+}
+function forgetDynamic(draft, unitId) {
+  const events = [];
+  const x = draft.dynamic;
+  if (x !== void 0) {
+    x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
+    x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
+    x.open.offers = x.open.offers.filter((o) => o.unitId !== unitId);
+    if (x.open.returnOffer?.unitId === unitId) delete x.open.returnOffer;
+    if (x.open.exits !== void 0) x.open.exits = x.open.exits.filter((e) => e.unitId !== unitId);
+    delete x.knowledge[unitId];
+    for (const [observer, row3] of Object.entries(x.knowledge)) {
+      delete row3[unitId];
+      if (Object.keys(row3).length === 0) delete x.knowledge[observer];
+    }
+    x.queue = x.queue.filter((id) => id !== unitId);
+    if (x.override?.unitId === unitId) delete x.override;
+  }
+  const rel = draft.relations[unitId]?.dynamic;
+  if (rel !== void 0) {
+    rel.domains = [];
+    delete rel.probes.pending;
+    delete rel.leashBlock;
+    if (rel.aftermath !== void 0) {
+      events.push({ type: "aftermath_ended", unitId, id: rel.aftermath.id, kind: rel.aftermath.kind, reason: "gone" });
+      delete rel.aftermath;
+    }
+  }
+  return events;
+}
+
+// src/engine/leash/use.ts
+var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
+function leashCost(state, reg, unitId, kind) {
+  const unit3 = unitOf4(state, unitId);
+  let mult = 1;
+  let failChance = 0;
+  if (kind === "compel") {
+    for (const d of unit3?.defects ?? []) {
+      const lz = reg.defects.get(d.id)?.leash;
+      if (!lz) continue;
+      mult *= lz.costMult;
+      failChance = Math.max(failChance, lz.failChance ?? 0);
+    }
+  }
+  const base = TUNING.leash[kind];
+  const baseAffinity = kind === "compel" ? TUNING.leash.compel.affinity : 0;
+  return {
+    trust: roundAway(base.trust * mult) + crimeEffectAmount(reg, state.commander.crimeId, "leash_trust_cost"),
+    affinity: unit3?.kind === "grunt" ? 0 : roundAway(baseAffinity * mult),
+    stress: base.stress,
+    failChance
+  };
+}
+function witnessesOf(state, unitId) {
+  const pool = state.scene?.participants.includes(unitId) ? state.scene.participants : state.expedition ? state.expedition.party : state.roster.activeIds;
+  return pool.filter((id) => {
+    const u = unitOf4(state, id);
+    return id !== unitId && u !== void 0 && u.kind === "named" && isLiving(u);
+  });
+}
+function checkLeash(state, _reg, kind, unitId) {
+  const unit3 = unitOf4(state, unitId);
+  if (!unit3) return `Unknown unit "${unitId}".`;
+  if (!isLiving(unit3)) return `${unit3.displayName} is no longer in service.`;
+  if (state.leash.authorizationsLeft < 1) return "No Leash authorization is left this week.";
+  if (kind === "terminate") {
+    const rec = loyaltyOf(state, unitId);
+    if (!rec?.cause) return `There is no cause to terminate ${unit3.displayName}: oversight needs an attack or repeated desertion.`;
+    if (rec.deniedDay === state.day) return `Oversight already denied ${unit3.displayName}'s termination today.`;
+    if (state.scene || state.combat || state.expedition) return "Finish the scene, fight or expedition before filing a termination.";
+  }
+  return null;
+}
+function nextNo(draft) {
+  const n = (draft.leash.seq ?? Math.max(0, ...leashLog(draft).map((e) => e.no))) + 1;
+  draft.leash.seq = n;
+  return n;
+}
+function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
+  const events = [];
+  const no = nextNo(draft);
+  const entry = { no, unitId, kind, day: draft.day, context, outcome };
+  if (cc !== void 0) entry.cc = cc;
+  else if (outsideActive(draft)) entry.cc = leaderOf(draft).id;
+  draft.leash.log.push(entry);
+  if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
+  events.push({ type: "leash_used", kind, unitId, no, outcome });
+  if (outcome !== "denied") {
+    draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft - 1);
+    events.push({ type: "leash_changed", amount: -1, left: draft.leash.authorizationsLeft });
+  }
+  if (outcome === "done") countDeed(draft, kind === "compel" ? "leash_compel" : kind === "suppress" ? "leash_suppress" : "leash_terminate");
+  if (outcome === "done") events.push(...enforce(draft, ctx2, unitId, { measure: "leash", severity: 4, recordDelta: TUNING.impunity.leashEnforced }).events);
+  return events;
+}
+function addStress2(draft, unitId, amount) {
+  const u = unitOf4(draft, unitId);
+  if (!u || amount === 0) return [];
+  const next = clamp16(u.stress + amount, 0, 100);
+  const delta = next - u.stress;
+  u.stress = next;
+  return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
+}
+function payCost(draft, reg, unitId, cost, opts = {}) {
+  const events = [];
+  for (const axis of ["trust", "affinity"]) {
+    if (cost[axis] === 0) continue;
+    const applied = applyRelationDelta(draft, unitId, axis, -cost[axis], "leash");
+    if (applied !== 0) events.push({ type: "relation_changed", unitId, axis, delta: applied, applied });
+  }
+  if (!opts.skipStress) events.push(...addStress2(draft, unitId, cost.stress));
+  const rel = draft.relations[unitId];
+  if (rel && !rel.flags.includes("leashed")) rel.flags.push("leashed");
+  pushHistory(draft, unitId, { day: draft.day, kind: "event", type: "coerced", severity: "extreme" });
+  events.push(...evaluateEvent(draft, reg, unitId, "coerced"));
+  loyaltyRecord(draft, unitId).trigger = { kind: "leash", day: draft.day };
+  return events;
+}
+var witnessScale = (u) => {
+  const w = TUNING.leash.witness;
+  return clamp16(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
+};
+var COERCED = { type: "coerced", actor: "commander", evidence: "witnessed the Leash", confidence: 1 };
+function compel(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const why = checkLeash(draft, reg, "compel", p.unitId);
+  if (why) throw new Error(why);
+  const cost = leashCost(draft, reg, p.unitId, "compel");
+  const forced = !(p.roll !== false && cost.failChance > 0 && ctx2.rng.chance(cost.failChance));
+  const events = [];
+  events.push(...payCost(draft, reg, p.unitId, cost, { skipStress: p.skipStress }));
+  const witnesses = witnessesOf(draft, p.unitId);
+  for (const w of witnesses) {
+    const unit3 = unitOf4(draft, w);
+    events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: "moderate" }, { scale: witnessScale(unit3), witnessOf: p.unitId }));
+  }
+  events.push(...recordAppraisal(draft, reg, p.unitId, { ...COERCED, targets: [p.unitId], severity: "moderate" }, "subject"));
+  for (const id of [p.unitId, ...witnesses]) events.push(...evaluateAutomatic(draft, reg, id));
+  events.push(...bookUse(draft, ctx2, p.unitId, "compel", p.context, forced ? "done" : "failed"));
+  return { forced, events };
+}
+function settleCompels(draft, ctx2, unitIds) {
+  const events = [];
+  for (const unitId of unitIds) {
+    if (draft.leash.authorizationsLeft < 1) break;
+    const unit3 = unitOf4(draft, unitId);
+    if (!unit3 || !isLiving(unit3)) events.push(...bookUse(draft, ctx2, unitId, "compel", "combat", "done"));
+    else events.push(...compel(draft, ctx2, { unitId, context: "combat", skipStress: true, roll: false }).events);
+  }
+  return events;
+}
+function suppress(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const why = checkLeash(draft, reg, "suppress", p.unitId);
+  if (why) throw new Error(why);
+  const events = [];
+  events.push(...payCost(draft, reg, p.unitId, leashCost(draft, reg, p.unitId, "suppress")));
+  for (const u of draft.squad) {
+    if (u.id !== p.unitId && isLiving(u)) events.push(...addStress2(draft, u.id, TUNING.leash.suppress.squadStress));
+  }
+  events.push(...evaluateAutomatic(draft, reg, p.unitId));
+  if (draft.disloyalty?.open?.unitId === p.unitId) delete draft.disloyalty.open;
+  loyaltyRecord(draft, p.unitId).nextCheckDay = draft.day + TUNING.disloyalty.desertion.pauseDays;
+  events.push(...clearSmother(draft, p.unitId));
+  events.push(...bookUse(draft, ctx2, p.unitId, "suppress", p.context, "done"));
+  return events;
+}
+function removeFromService(draft, unitId, status, ctx2) {
+  const unit3 = unitOf4(draft, unitId);
+  if (!unit3) throw new Error(`Unknown unit "${unitId}".`);
+  if (draft.scene?.participants.includes(unitId)) throw new Error(`${unit3.displayName} is in the open scene: end it first.`);
+  if (draft.combat?.combatants.some((c) => c.unitId === unitId)) throw new Error(`${unit3.displayName} is in the open combat: finish it first.`);
+  if (draft.expedition?.party.includes(unitId)) throw new Error(`${unit3.displayName} is on the expedition: finish it first.`);
+  const wasWarden = wardenUnitId(draft) === unitId;
+  unit3.status = status;
+  unit3.equipment = {};
+  delete unit3.breakdown;
+  draft.roster.activeIds = draft.roster.activeIds.filter((id) => id !== unitId);
+  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => n.unitId !== unitId);
+  if (draft.calendar.pendingScene?.unitId === unitId) delete draft.calendar.pendingScene;
+  if (draft.proposals) draft.proposals = draft.proposals.filter((x) => x.unitId !== unitId);
+  if (draft.disloyalty?.open?.unitId === unitId) delete draft.disloyalty.open;
+  if (draft.calendar.nightEvent?.unitId === unitId) delete draft.calendar.nightEvent;
+  const waiting2 = draft.dilemmas?.open;
+  if (waiting2) waiting2.units = waiting2.units.filter((id) => id !== unitId);
+  forgetUnit(draft, unitId);
+  forgetBonds(draft, unitId);
+  forgetPower(draft, unitId);
+  forgetPersonal(draft, unitId);
+  const gone3 = forgetDynamic(draft, unitId);
+  forgetNotes(draft, unitId);
+  forgetSpecial(draft, unitId);
+  forgetWarden(draft, unitId);
+  if (!wasWarden) return gone3;
+  if (!ctx2) throw new Error("The warden leaves the service: removeFromService needs the engine context to open the investigation.");
+  return [...gone3, ...notifyWardenGone(draft, ctx2, status)];
+}
+function forgetBonds(draft, unitId) {
+  if (draft.bonds) {
+    draft.bonds.rules = draft.bonds.rules.filter((r) => r.unitId !== unitId);
+    if (draft.bonds.smother?.unitId === unitId) delete draft.bonds.smother;
+  }
+  const rel = draft.relations[unitId];
+  if (rel) {
+    delete rel.want;
+    delete rel.wantBreakDay;
+    delete rel.publicity;
+  }
+}
+function terminateChance(state, reg) {
+  const own = state.commander.corporationId;
+  const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
+  const t = TUNING.leash.terminate;
+  const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
+  return clamp16(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+}
+function terminate(draft, ctx2, unitId) {
+  const reg = ctx2.registries;
+  const why = checkLeash(draft, reg, "terminate", unitId);
+  if (why) throw new Error(why);
+  const unit3 = unitOf4(draft, unitId);
+  const chance = terminateChance(draft, reg);
+  if (!ctx2.rng.chance(chance)) {
+    loyaltyRecord(draft, unitId).deniedDay = draft.day;
+    return { approved: false, events: bookUse(draft, ctx2, unitId, "terminate", "desertion", "denied") };
+  }
+  const events = [];
+  const herNight = draft.slot === "night" && draft.calendar.nightEvent?.unitId === unitId;
+  events.push(...removeFromService(draft, unitId, "terminated", ctx2));
+  events.push(...bookUse(draft, ctx2, unitId, "terminate", "desertion", "done"));
+  if (herNight) events.push(...consumeSlots(draft, 1, ctx2));
+  const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
+  for (const u of reactors) {
+    events.push(...applyEventToUnit(draft, reg, u.id, {
+      type: "decision_violated",
+      actor: "commander",
+      targets: [u.id],
+      severity: "extreme",
+      evidence: "a termination was filed",
+      valueAxes: [{ axis: "mercy", direction: -1 }, { axis: "ingroup", direction: -1 }],
+      confidence: 1
+    }));
+  }
+  for (const u of reactors) events.push(...evaluateAutomatic(draft, reg, u.id));
+  addFact(draft, {
+    about: [unitId],
+    text: `${unit3.displayName} was terminated by corporate order on the commander's request.`,
+    tags: ["leash", "terminated"],
+    importance: 5,
+    day: draft.day,
+    knownBy: ["*"]
+  });
+  addChronicle(draft, { kind: "scene", day: draft.day, text: `Day ${draft.day}: ${unit3.displayName} was terminated through the Leash.`, audience: "*" });
+  events.push({ type: "unit_terminated", unitId });
+  return { approved: true, events };
+}
+
+// src/engine/dynamic/exit.ts
+var EXIT_MEANS = ["discipline", "leash", "transfer_request"];
+var named2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var clampSteps = (n) => Math.min(SEVERITIES.length - 1, Math.max(0, n));
+var keepsCommand = (state, reg, domainId) => domainEntry(reg, domainId)?.grants.includes("countermand") === true;
+function exitSeverity(state, _reg, unitId, route, clean10 = false) {
+  const dyn = dynamicOf(state, unitId);
+  const T5 = TUNING.dynamic.exit;
+  if (dyn === void 0) return "minor";
+  const domains = dyn.domains.filter((d) => standing(d, state.day)).length;
+  let steps = Math.max(0, frameRank(dyn.frame) - frameRank("play")) + Math.floor(domains / T5.domainsPerStep);
+  if (steps === 0 && dyn.hold >= T5.freeHold) steps = 1;
+  if (dyn.sworn !== void 0) steps = SEVERITIES.length - 1;
+  if (route === "force") steps += T5.forceSteps;
+  if (clean10) steps -= T5.cleanSteps;
+  return SEVERITIES[clampSteps(steps)];
+}
+var pendingExit = (state, unitId) => state.dynamic?.open.exits?.find((e) => e.unitId === unitId);
+function exitDynamic(draft, ctx2, unitId, route, opts = {}) {
+  const reg = ctx2.registries;
+  if (!EXIT_ROUTES.includes(route)) throw new Error(`An exit is ${EXIT_ROUTES.join(", ")}.`);
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  const dyn = dynamicOf(draft, unitId);
+  if (!dynamicOn(draft, reg) || draft.dynamic === void 0) throw new Error("The dynamic is off.");
+  if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || dyn === void 0 || frameRank(dyn.frame) < frameRank("play")) {
+    throw new Error(`${named2(draft, unitId)} holds nothing of the commander to leave.`);
+  }
+  const x = draft.dynamic;
+  if (route === "transfer") {
+    const to = opts.toUnitId === void 0 ? void 0 : draft.squad.find((u) => u.id === opts.toUnitId);
+    const toDyn = to === void 0 ? void 0 : dynamicOf(draft, to.id);
+    if (to === void 0 || to.id === unitId || to.kind !== "named" || !isLiving(to) || toDyn === void 0 || frameRank(toDyn.frame) < frameRank("play")) {
+      throw new Error("A transfer goes to another holder, at play or beyond.");
+    }
+  }
+  if (route === "force") {
+    if (opts.means === void 0 || !EXIT_MEANS.includes(opts.means)) throw new Error(`A forced exit names its means: ${EXIT_MEANS.join(", ")}.`);
+    if (opts.means === "discipline") {
+      if (typeof opts.measure !== "string" || opts.measure === "") throw new Error("Name the punishment.");
+      const why = checkPunish(draft, reg, unitId, opts.measure);
+      if (why !== null) throw new Error(why);
+    }
+  }
+  if (route === "negotiated" && opts.clean !== true) {
+    if (pendingExit(draft, unitId) === void 0) (x.open.exits ??= []).push({ id: `dx${x.seq++}`, unitId, day: draft.day });
+    return [];
+  }
+  const severity = exitSeverity(draft, reg, unitId, route, opts.clean === true);
+  const sworn = dyn.sworn !== void 0;
+  const from = dyn.frame;
+  const events = [];
+  if (route === "force" && opts.means === "leash") events.push(...compel(draft, ctx2, { unitId, context: "pda", roll: false }).events);
+  else if (route === "force" && opts.means === "discipline") events.push(...applyPunishment(draft, ctx2, { unitId, measure: opts.measure, source: "menu", channel: "pda" }));
+  if (route === "transfer") for (const d of [...dyn.domains]) events.push(...settleDomainConflict(draft, ctx2, opts.toUnitId, unitId, d.id));
+  const commandKept = dyn.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
+  for (const d of [...dyn.domains]) {
+    if (commandKept && keepsCommand(draft, reg, d.id)) {
+      delete d.partialUntil;
+      continue;
+    }
+    events.push(loseDomain(draft, unitId, d.id, "exit"));
+  }
+  dropVoidOverride(draft, reg, unitId);
+  dyn.frame = "equal";
+  dyn.hold = 0;
+  dyn.milestones = [];
+  dyn.refusals = [];
+  dyn.contest = [];
+  delete dyn.sworn;
+  delete dyn.leashBlock;
+  delete dyn.probes.pending;
+  dyn.formerHolder = { endedDay: draft.day, frame: from, sworn };
+  x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
+  x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
+  x.open.exits = (x.open.exits ?? []).filter((e) => e.unitId !== unitId);
+  events.push(...applyEventToUnit(draft, reg, unitId, {
+    type: "dynamic_exit",
+    actor: "commander",
+    targets: [unitId],
+    severity,
+    evidence: "the commander left what she held",
+    confidence: 1
+  }), ...evaluateAutomatic(draft, reg, unitId), ...romanceStepDown(draft, reg, unitId));
+  const request = { unitId, route, clean: opts.clean === true, force: route === "force", commandKept };
+  events.push({
+    type: "dynamic_exit",
+    unitId,
+    route,
+    severity,
+    sworn,
+    clean: request.clean,
+    force: request.force,
+    commandKept,
+    ...route === "transfer" ? { toUnitId: opts.toUnitId } : {},
+    ...route === "force" ? { means: opts.means } : {},
+    frame: from
+  });
+  return events;
+}
+function compromiseExit(draft, ctx2, unitId) {
+  const x = draft.dynamic;
+  if (x === void 0 || pendingExit(draft, unitId) === void 0) return [];
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0 || frameRank(dyn.frame) < frameRank("play")) {
+    x.open.exits = (x.open.exits ?? []).filter((e) => e.unitId !== unitId);
+    return [];
+  }
+  return exitDynamic(draft, ctx2, unitId, "negotiated", { clean: true });
+}
+
 // src/engine/dynamic/reactions.ts
 var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function reactionFact(draft, observerId, holderId, text2) {
@@ -18561,6 +19064,7 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   for (const m of milestoneRows2) milestoneLabels[m.id] = String(reg.dynamicMilestones.get(m.milestoneId)?.promptHint ?? m.milestoneId);
   const claims2 = open3.claims.filter((c) => present2.includes(c.unitId)).map((c) => c.id);
   const offers = open3.offers.filter((o) => present2.includes(o.unitId)).map((o) => o.id);
+  const exits = (open3.exits ?? []).filter((e) => present2.includes(e.unitId)).map((e) => e.id);
   const slips2 = participants.length >= 2 ? present2.filter((id) => {
     const dyn = dynamicOf(state, id);
     return dyn !== void 0 && (frameRank(dyn.frame) >= frameRank("role") || dyn.aftermath?.kind === "habits");
@@ -18569,13 +19073,13 @@ function dynamicIntentInput(state, reg, participants, _channel) {
     ...probes2.length > 0 ? ["probe_answered"] : [],
     ...observed.length > 0 ? ["probe_observed"] : [],
     ...milestoneRows2.length > 0 ? ["milestone_accepted", "milestone_refused"] : [],
-    ...claims2.length > 0 ? ["compromise_reached"] : [],
+    ...claims2.length > 0 || exits.length > 0 ? ["compromise_reached"] : [],
     ...offers.length > 0 ? ["offer_answered"] : [],
     ...slips2.length > 0 ? ["protocol_slip"] : []
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims2, exits: [], offers, compromat: [], slips: slips2, probeAxes, milestoneLabels }
+    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims2, exits, offers, compromat: [], slips: slips2, probeAxes, milestoneLabels }
   };
 }
 function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
@@ -18648,10 +19152,10 @@ function countJoke(draft, reg, unitId, factId) {
 }
 function countCompanions(draft, reg, ids) {
   if (developmentMode(draft) === "off") return [];
-  const named3 = [...new Set(ids)].filter((id) => draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+  const named4 = [...new Set(ids)].filter((id) => draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
   const events = [];
-  for (const a of named3) {
-    for (const b of named3) if (a !== b) bump(draft, a, `companion:${b}`);
+  for (const a of named4) {
+    for (const b of named4) if (a !== b) bump(draft, a, `companion:${b}`);
     events.push(...checkHabits(draft, reg, a));
   }
   return events;
@@ -18990,45 +19494,6 @@ function markDmViolation(draft, reg, unitId, messageRef, raw) {
   if (message) message.violation = categories;
 }
 
-// src/engine/bonds/smother.ts
-function smotherActive(state) {
-  const s = state.bonds?.smother;
-  if (!s || s.untilDay < state.day) return null;
-  const unit3 = state.squad.find((u) => u.id === s.unitId);
-  return unit3 && isLiving(unit3) ? s : null;
-}
-var isSmotherDefect = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown?.kind === "smother";
-function startSmother(draft, unitId, reg) {
-  const unit3 = draft.squad.find((u) => u.id === unitId);
-  if (!unit3 || !isLiving(unit3) || smotherActive(draft)) return [];
-  const bonds = draft.bonds ??= { rules: [] };
-  bonds.smother = { unitId, untilDay: draft.day + 1 };
-  const events = [{ type: "smother_started", unitId, untilDay: draft.day + 1 }];
-  if (reg) {
-    const next = nextSlotAfter(draft.day, draft.slot);
-    const kinds2 = [...reg.bookingKinds.values()];
-    const kind = kinds2.find((k) => k.slot === next.slot) ?? kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
-    if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: "smother" }));
-  }
-  return events;
-}
-function clearSmother(draft, unitId) {
-  const s = draft.bonds?.smother;
-  if (!s || unitId !== void 0 && s.unitId !== unitId) return [];
-  delete draft.bonds.smother;
-  return [{ type: "smother_ended", unitId: s.unitId }];
-}
-function expireSmother(draft) {
-  const s = draft.bonds?.smother;
-  return s && s.untilDay < draft.day ? clearSmother(draft) : [];
-}
-function smotherRefusal(state) {
-  const s = smotherActive(state);
-  if (!s) return null;
-  const name = state.squad.find((u) => u.id === s.unitId)?.displayName ?? "She";
-  return `${name} has locked the hangar: the commander stays at base today.`;
-}
-
 // src/engine/bonds/breakdown.ts
 var wantBreakdownSpec = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown ?? null;
 function startWantBreakdown(draft, ctx2, unitId, defectId) {
@@ -19269,9 +19734,9 @@ function shareChance(state, reg, unitId, entry) {
 }
 function milestoneHobby(draft, reg, unitId, entry, day) {
   const unit3 = unitOf2(draft, unitId);
-  const named3 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
+  const named4 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
   const movable = (unit3?.hobbies ?? []).filter((h2) => h2.state === "active" && h2.mastered !== true && h2.ceiling !== true && h2.milestones.length < 4 && reg.hobbies.has(h2.id));
-  if (named3 !== void 0) return movable.some((h2) => h2.id === named3) ? named3 : null;
+  if (named4 !== void 0) return movable.some((h2) => h2.id === named4) ? named4 : null;
   return movable.length === 0 ? null : movable[lifeHash(draft.life, `${unitId}|${day}|milestone`) % movable.length].id;
 }
 function applyBecomes(draft, reg, unitId, entry, day, facts) {
@@ -19977,8 +20442,8 @@ function rollDiscovery(draft, reg, rng, presentIds) {
 }
 
 // src/engine/warden/intrigue.ts
-var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
+var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
 var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ?? false;
 function allies(state) {
   const holder2 = wardenOf(state)?.unitId;
@@ -19987,21 +20452,21 @@ function allies(state) {
 function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp16(ls.intrigue.suspicion + noise2, 0, 100);
+  ls.intrigue.suspicion = clamp17(ls.intrigue.suspicion + noise2, 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
   const A = TUNING.warden.intrigue.ally;
-  const unit3 = unitOf4(state, unitId);
+  const unit3 = unitOf5(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp16(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit3 ? valuesOf(unit3).autonomy : 0) - A.corporate * (unit3 ? valuesOf(unit3).corporate : 0), A.min, A.max);
+  return clamp17(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit3 ? valuesOf(unit3).autonomy : 0) - A.corporate * (unit3 ? valuesOf(unit3).corporate : 0), A.min, A.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
   const w = wardenOf(draft);
-  const unit3 = unitOf4(draft, unitId);
+  const unit3 = unitOf5(draft, unitId);
   if (!ls || !w || !unit3 || unit3.kind !== "named" || !isLiving(unit3) || unitId === w.unitId || hasFlag3(draft, unitId, "warden_ally")) return [];
   if (ls.intrigue.lastAllyDay[unitId] === draft.day) return [];
   ls.intrigue.lastAllyDay[unitId] = draft.day;
@@ -20018,7 +20483,7 @@ function conspireInput(state, _reg, participants) {
   const w = wardenOf(state);
   if (!ls || !w || participants.includes(w.unitId)) return {};
   const ids = participants.filter((id) => {
-    const u = unitOf4(state, id);
+    const u = unitOf5(state, id);
     return u !== void 0 && u.kind === "named" && isLiving(u) && !hasFlag3(state, id, "warden_ally") && ls.intrigue.lastAllyDay[id] !== state.day;
   });
   return ids.length > 0 ? { conspire: ids } : {};
@@ -20029,7 +20494,7 @@ function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   if (!ls || !w) return [];
   const D3 = TUNING.warden.intrigue.discovered;
   const events = [{ type: "intrigue_discovered", cause }];
-  w.satisfaction = clamp16(w.satisfaction + D3.satisfaction, 0, 100);
+  w.satisfaction = clamp17(w.satisfaction + D3.satisfaction, 0, 100);
   const rose = addDefiance(draft, ctx2, D3.defiance);
   events.push(...rose);
   events.push({ type: "warden_betrayed", unitId: w.unitId, severity: "extreme" });
@@ -20274,335 +20739,6 @@ function decayFrequency(draft) {
     syncStatic(draft, null, id);
   }
   for (const id of f.staticFired ?? []) if (suspicionOf(draft, id) <= TUNING.special.frequency.staticAbove) syncStatic(draft, null, id);
-}
-
-// src/engine/loyalty/state.ts
-var blank = () => ({ signs: [], attempts: 0 });
-function loyaltyRecord(draft, unitId) {
-  const d = draft.disloyalty ??= { units: {} };
-  return d.units[unitId] ??= blank();
-}
-function loyaltyOf(state, unitId) {
-  return state.disloyalty?.units[unitId];
-}
-var CONFRONTATION_KINDS = ["desertion", "mutiny", "deserter_return"];
-function emitSign(draft, ctx2, unitId, about2, level) {
-  const unit3 = draft.squad.find((u) => u.id === unitId);
-  if (!unit3) return [];
-  const rec = loyaltyRecord(draft, unitId);
-  const lines = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about2 && (about2 !== "mutiny" || s.level === level) && (unit3.kind === "named" || s.kind === "fact"));
-  const fresh = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
-  const pool = fresh.length > 0 ? fresh : lines;
-  if (pool.length === 0) return [];
-  const line2 = ctx2.rng.pick(pool);
-  const kind = line2.kind;
-  const text2 = String(line2.text).replaceAll("{name}", unit3.displayName);
-  if (kind === "dm") {
-    pushMessage(draft, unitId, { from: unitId, text: text2, day: draft.day, slot: draft.slot, read: false });
-  } else if (kind === "fact") {
-    addFact(draft, { about: [unitId], text: text2, tags: ["loyalty", about2], importance: 3, day: draft.day, knownBy: ["*"] });
-  } else {
-    enqueueNight(draft, {
-      id: nextId(draft, "n"),
-      unitId,
-      kind: "we_need_to_talk",
-      priority: TUNING.disloyalty.night.talk,
-      framing: text2,
-      ignore: { event: "dismissed", severity: "moderate" },
-      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-    });
-  }
-  rec.signs.push({ day: draft.day, about: about2, kind, signId: String(line2.id) });
-  if (rec.signs.length > TUNING.disloyalty.signsMax) rec.signs.splice(0, rec.signs.length - TUNING.disloyalty.signsMax);
-  return [{ type: "loyalty_sign", unitId, about: about2, kind }];
-}
-function requireOpen(draft, kind) {
-  const open3 = draft.disloyalty?.open;
-  if (!open3 || open3.kind !== kind) {
-    throw new Error(kind === "return" ? "Nobody is waiting at the gate." : "Nobody is about to walk out.");
-  }
-  return open3;
-}
-function closeNight(draft, ctx2, open3) {
-  return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
-}
-
-// src/engine/notes/state.ts
-function notesOf(draft) {
-  return draft.notes ??= { seq: 0, list: [] };
-}
-function nextNoteId(draft) {
-  const notes = notesOf(draft);
-  notes.seq += 1;
-  return `hn${notes.seq}`;
-}
-function forgetNotes(draft, unitId) {
-  if (draft.notes) draft.notes.list = draft.notes.list.filter((n) => n.unitId !== unitId);
-}
-
-// src/engine/dynamic/forget.ts
-function holdsDynamic(state, unitId) {
-  const x = state.dynamic;
-  const rel = state.relations[unitId]?.dynamic;
-  if (rel !== void 0 && (rel.domains.length > 0 || rel.aftermath !== void 0 || rel.probes.pending !== void 0 || rel.leashBlock !== void 0)) return true;
-  if (x === void 0) return false;
-  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.queue.includes(unitId) || x.override?.unitId === unitId || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row3) => row3[unitId] !== void 0);
-}
-function forgetDynamic(draft, unitId) {
-  const events = [];
-  const x = draft.dynamic;
-  if (x !== void 0) {
-    x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
-    x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
-    x.open.offers = x.open.offers.filter((o) => o.unitId !== unitId);
-    if (x.open.returnOffer?.unitId === unitId) delete x.open.returnOffer;
-    delete x.knowledge[unitId];
-    for (const [observer, row3] of Object.entries(x.knowledge)) {
-      delete row3[unitId];
-      if (Object.keys(row3).length === 0) delete x.knowledge[observer];
-    }
-    x.queue = x.queue.filter((id) => id !== unitId);
-    if (x.override?.unitId === unitId) delete x.override;
-  }
-  const rel = draft.relations[unitId]?.dynamic;
-  if (rel !== void 0) {
-    rel.domains = [];
-    delete rel.probes.pending;
-    delete rel.leashBlock;
-    if (rel.aftermath !== void 0) {
-      events.push({ type: "aftermath_ended", unitId, id: rel.aftermath.id, kind: rel.aftermath.kind, reason: "gone" });
-      delete rel.aftermath;
-    }
-  }
-  return events;
-}
-
-// src/engine/leash/use.ts
-var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
-function leashCost(state, reg, unitId, kind) {
-  const unit3 = unitOf5(state, unitId);
-  let mult = 1;
-  let failChance = 0;
-  if (kind === "compel") {
-    for (const d of unit3?.defects ?? []) {
-      const lz = reg.defects.get(d.id)?.leash;
-      if (!lz) continue;
-      mult *= lz.costMult;
-      failChance = Math.max(failChance, lz.failChance ?? 0);
-    }
-  }
-  const base = TUNING.leash[kind];
-  const baseAffinity = kind === "compel" ? TUNING.leash.compel.affinity : 0;
-  return {
-    trust: roundAway(base.trust * mult) + crimeEffectAmount(reg, state.commander.crimeId, "leash_trust_cost"),
-    affinity: unit3?.kind === "grunt" ? 0 : roundAway(baseAffinity * mult),
-    stress: base.stress,
-    failChance
-  };
-}
-function witnessesOf(state, unitId) {
-  const pool = state.scene?.participants.includes(unitId) ? state.scene.participants : state.expedition ? state.expedition.party : state.roster.activeIds;
-  return pool.filter((id) => {
-    const u = unitOf5(state, id);
-    return id !== unitId && u !== void 0 && u.kind === "named" && isLiving(u);
-  });
-}
-function checkLeash(state, _reg, kind, unitId) {
-  const unit3 = unitOf5(state, unitId);
-  if (!unit3) return `Unknown unit "${unitId}".`;
-  if (!isLiving(unit3)) return `${unit3.displayName} is no longer in service.`;
-  if (state.leash.authorizationsLeft < 1) return "No Leash authorization is left this week.";
-  if (kind === "terminate") {
-    const rec = loyaltyOf(state, unitId);
-    if (!rec?.cause) return `There is no cause to terminate ${unit3.displayName}: oversight needs an attack or repeated desertion.`;
-    if (rec.deniedDay === state.day) return `Oversight already denied ${unit3.displayName}'s termination today.`;
-    if (state.scene || state.combat || state.expedition) return "Finish the scene, fight or expedition before filing a termination.";
-  }
-  return null;
-}
-function nextNo(draft) {
-  const n = (draft.leash.seq ?? Math.max(0, ...leashLog(draft).map((e) => e.no))) + 1;
-  draft.leash.seq = n;
-  return n;
-}
-function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
-  const events = [];
-  const no = nextNo(draft);
-  const entry = { no, unitId, kind, day: draft.day, context, outcome };
-  if (cc !== void 0) entry.cc = cc;
-  else if (outsideActive(draft)) entry.cc = leaderOf(draft).id;
-  draft.leash.log.push(entry);
-  if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
-  events.push({ type: "leash_used", kind, unitId, no, outcome });
-  if (outcome !== "denied") {
-    draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft - 1);
-    events.push({ type: "leash_changed", amount: -1, left: draft.leash.authorizationsLeft });
-  }
-  if (outcome === "done") countDeed(draft, kind === "compel" ? "leash_compel" : kind === "suppress" ? "leash_suppress" : "leash_terminate");
-  if (outcome === "done") events.push(...enforce(draft, ctx2, unitId, { measure: "leash", severity: 4, recordDelta: TUNING.impunity.leashEnforced }).events);
-  return events;
-}
-function addStress2(draft, unitId, amount) {
-  const u = unitOf5(draft, unitId);
-  if (!u || amount === 0) return [];
-  const next = clamp17(u.stress + amount, 0, 100);
-  const delta = next - u.stress;
-  u.stress = next;
-  return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
-}
-function payCost(draft, reg, unitId, cost, opts = {}) {
-  const events = [];
-  for (const axis of ["trust", "affinity"]) {
-    if (cost[axis] === 0) continue;
-    const applied = applyRelationDelta(draft, unitId, axis, -cost[axis], "leash");
-    if (applied !== 0) events.push({ type: "relation_changed", unitId, axis, delta: applied, applied });
-  }
-  if (!opts.skipStress) events.push(...addStress2(draft, unitId, cost.stress));
-  const rel = draft.relations[unitId];
-  if (rel && !rel.flags.includes("leashed")) rel.flags.push("leashed");
-  pushHistory(draft, unitId, { day: draft.day, kind: "event", type: "coerced", severity: "extreme" });
-  events.push(...evaluateEvent(draft, reg, unitId, "coerced"));
-  loyaltyRecord(draft, unitId).trigger = { kind: "leash", day: draft.day };
-  return events;
-}
-var witnessScale = (u) => {
-  const w = TUNING.leash.witness;
-  return clamp17(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
-};
-var COERCED = { type: "coerced", actor: "commander", evidence: "witnessed the Leash", confidence: 1 };
-function compel(draft, ctx2, p) {
-  const reg = ctx2.registries;
-  const why = checkLeash(draft, reg, "compel", p.unitId);
-  if (why) throw new Error(why);
-  const cost = leashCost(draft, reg, p.unitId, "compel");
-  const forced = !(p.roll !== false && cost.failChance > 0 && ctx2.rng.chance(cost.failChance));
-  const events = [];
-  events.push(...payCost(draft, reg, p.unitId, cost, { skipStress: p.skipStress }));
-  const witnesses = witnessesOf(draft, p.unitId);
-  for (const w of witnesses) {
-    const unit3 = unitOf5(draft, w);
-    events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: "moderate" }, { scale: witnessScale(unit3), witnessOf: p.unitId }));
-  }
-  events.push(...recordAppraisal(draft, reg, p.unitId, { ...COERCED, targets: [p.unitId], severity: "moderate" }, "subject"));
-  for (const id of [p.unitId, ...witnesses]) events.push(...evaluateAutomatic(draft, reg, id));
-  events.push(...bookUse(draft, ctx2, p.unitId, "compel", p.context, forced ? "done" : "failed"));
-  return { forced, events };
-}
-function settleCompels(draft, ctx2, unitIds) {
-  const events = [];
-  for (const unitId of unitIds) {
-    if (draft.leash.authorizationsLeft < 1) break;
-    const unit3 = unitOf5(draft, unitId);
-    if (!unit3 || !isLiving(unit3)) events.push(...bookUse(draft, ctx2, unitId, "compel", "combat", "done"));
-    else events.push(...compel(draft, ctx2, { unitId, context: "combat", skipStress: true, roll: false }).events);
-  }
-  return events;
-}
-function suppress(draft, ctx2, p) {
-  const reg = ctx2.registries;
-  const why = checkLeash(draft, reg, "suppress", p.unitId);
-  if (why) throw new Error(why);
-  const events = [];
-  events.push(...payCost(draft, reg, p.unitId, leashCost(draft, reg, p.unitId, "suppress")));
-  for (const u of draft.squad) {
-    if (u.id !== p.unitId && isLiving(u)) events.push(...addStress2(draft, u.id, TUNING.leash.suppress.squadStress));
-  }
-  events.push(...evaluateAutomatic(draft, reg, p.unitId));
-  if (draft.disloyalty?.open?.unitId === p.unitId) delete draft.disloyalty.open;
-  loyaltyRecord(draft, p.unitId).nextCheckDay = draft.day + TUNING.disloyalty.desertion.pauseDays;
-  events.push(...clearSmother(draft, p.unitId));
-  events.push(...bookUse(draft, ctx2, p.unitId, "suppress", p.context, "done"));
-  return events;
-}
-function removeFromService(draft, unitId, status, ctx2) {
-  const unit3 = unitOf5(draft, unitId);
-  if (!unit3) throw new Error(`Unknown unit "${unitId}".`);
-  if (draft.scene?.participants.includes(unitId)) throw new Error(`${unit3.displayName} is in the open scene: end it first.`);
-  if (draft.combat?.combatants.some((c) => c.unitId === unitId)) throw new Error(`${unit3.displayName} is in the open combat: finish it first.`);
-  if (draft.expedition?.party.includes(unitId)) throw new Error(`${unit3.displayName} is on the expedition: finish it first.`);
-  const wasWarden = wardenUnitId(draft) === unitId;
-  unit3.status = status;
-  unit3.equipment = {};
-  delete unit3.breakdown;
-  draft.roster.activeIds = draft.roster.activeIds.filter((id) => id !== unitId);
-  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => n.unitId !== unitId);
-  if (draft.calendar.pendingScene?.unitId === unitId) delete draft.calendar.pendingScene;
-  if (draft.proposals) draft.proposals = draft.proposals.filter((x) => x.unitId !== unitId);
-  if (draft.disloyalty?.open?.unitId === unitId) delete draft.disloyalty.open;
-  if (draft.calendar.nightEvent?.unitId === unitId) delete draft.calendar.nightEvent;
-  const waiting2 = draft.dilemmas?.open;
-  if (waiting2) waiting2.units = waiting2.units.filter((id) => id !== unitId);
-  forgetUnit(draft, unitId);
-  forgetBonds(draft, unitId);
-  forgetPower(draft, unitId);
-  forgetPersonal(draft, unitId);
-  const gone3 = forgetDynamic(draft, unitId);
-  forgetNotes(draft, unitId);
-  forgetSpecial(draft, unitId);
-  forgetWarden(draft, unitId);
-  if (!wasWarden) return gone3;
-  if (!ctx2) throw new Error("The warden leaves the service: removeFromService needs the engine context to open the investigation.");
-  return [...gone3, ...notifyWardenGone(draft, ctx2, status)];
-}
-function forgetBonds(draft, unitId) {
-  if (draft.bonds) {
-    draft.bonds.rules = draft.bonds.rules.filter((r) => r.unitId !== unitId);
-    if (draft.bonds.smother?.unitId === unitId) delete draft.bonds.smother;
-  }
-  const rel = draft.relations[unitId];
-  if (rel) {
-    delete rel.want;
-    delete rel.wantBreakDay;
-    delete rel.publicity;
-  }
-}
-function terminateChance(state, reg) {
-  const own = state.commander.corporationId;
-  const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
-  const t = TUNING.leash.terminate;
-  const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
-  return clamp17(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
-}
-function terminate(draft, ctx2, unitId) {
-  const reg = ctx2.registries;
-  const why = checkLeash(draft, reg, "terminate", unitId);
-  if (why) throw new Error(why);
-  const unit3 = unitOf5(draft, unitId);
-  const chance = terminateChance(draft, reg);
-  if (!ctx2.rng.chance(chance)) {
-    loyaltyRecord(draft, unitId).deniedDay = draft.day;
-    return { approved: false, events: bookUse(draft, ctx2, unitId, "terminate", "desertion", "denied") };
-  }
-  const events = [];
-  const herNight = draft.slot === "night" && draft.calendar.nightEvent?.unitId === unitId;
-  events.push(...removeFromService(draft, unitId, "terminated", ctx2));
-  events.push(...bookUse(draft, ctx2, unitId, "terminate", "desertion", "done"));
-  if (herNight) events.push(...consumeSlots(draft, 1, ctx2));
-  const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
-  for (const u of reactors) {
-    events.push(...applyEventToUnit(draft, reg, u.id, {
-      type: "decision_violated",
-      actor: "commander",
-      targets: [u.id],
-      severity: "extreme",
-      evidence: "a termination was filed",
-      valueAxes: [{ axis: "mercy", direction: -1 }, { axis: "ingroup", direction: -1 }],
-      confidence: 1
-    }));
-  }
-  for (const u of reactors) events.push(...evaluateAutomatic(draft, reg, u.id));
-  addFact(draft, {
-    about: [unitId],
-    text: `${unit3.displayName} was terminated by corporate order on the commander's request.`,
-    tags: ["leash", "terminated"],
-    importance: 5,
-    day: draft.day,
-    knownBy: ["*"]
-  });
-  addChronicle(draft, { kind: "scene", day: draft.day, text: `Day ${draft.day}: ${unit3.displayName} was terminated through the Leash.`, audience: "*" });
-  events.push({ type: "unit_terminated", unitId });
-  return { approved: true, events };
 }
 
 // src/engine/power/ballot.ts
@@ -21617,6 +21753,7 @@ function applyIntents(draft, ctx2, p) {
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
       else if (e.type === "compromise_reached" && (e.claimId !== void 0 || e.exitId !== void 0)) {
         if (e.claimId !== void 0 && draft.dynamic?.open.claims.some((c) => c.id === e.claimId && c.unitId === id)) events.push(...yieldPartial(draft, ctx2, e.claimId));
+        if (e.exitId !== void 0 && draft.dynamic?.open.exits?.some((x) => x.id === e.exitId && x.unitId === id)) events.push(...compromiseExit(draft, ctx2, id));
       } else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
       if (e.type === "knowledge_leak" && e.itemId !== void 0) events.push(...frequencyLeak(draft, ctx2, id, e.itemId, e.severity));
@@ -26365,7 +26502,7 @@ function demandDayStep(draft, ctx2) {
 var T3 = () => TUNING.special.debts;
 var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
-var named2 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
+var named3 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
 function templateOf2(ctx2, context) {
   return [...ctx2.registries.dilemmaTemplates.values()].find((t) => t.contexts.includes(context) && t.fixed !== void 0);
 }
@@ -26407,7 +26544,7 @@ function openOversightCase(draft, ctx2) {
 }
 function openUnitCase(draft, ctx2, unitId) {
   const d = draft.special?.debts;
-  if (!d || !named2(draft, unitId)) return [];
+  if (!d || !named3(draft, unitId)) return [];
   if (draft.dilemmas?.open) {
     queueOf(d).push({ kind: "unit", unitId });
     return [];
@@ -26417,7 +26554,7 @@ function openUnitCase(draft, ctx2, unitId) {
 function openQueuedCases(draft, ctx2) {
   const d = draft.special?.debts;
   if (!d?.caseQueue || d.caseQueue.length === 0) return [];
-  d.caseQueue = d.caseQueue.filter((c) => c.kind === "oversight" || named2(draft, c.unitId));
+  d.caseQueue = d.caseQueue.filter((c) => c.kind === "oversight" || named3(draft, c.unitId));
   if (d.caseQueue.length === 0 || draft.dilemmas?.open) {
     if (d.caseQueue.length === 0) delete d.caseQueue;
     return [];
@@ -26517,9 +26654,9 @@ function intelOf(state, reg) {
   if (beats) add("spine", beats.id, `A story step was reached: ${String(beats.title ?? beats.id)}.`);
   const plan = state.missions.active.find((m) => !seen2.has(`plan:${m.id}`)) ?? state.missions.offered.find((m) => !seen2.has(`plan:${m.id}`));
   if (plan) add("plan", plan.id, `The squad plans "${plan.title}".`);
-  const named3 = state.squad.filter((u) => u.kind === "named" && isLiving(u) && !seen2.has(`squad:${u.id}`));
-  if (named3.length > 0) {
-    const u = named3[fnv1a3(`intel|${state.day}`) % named3.length];
+  const named4 = state.squad.filter((u) => u.kind === "named" && isLiving(u) && !seen2.has(`squad:${u.id}`));
+  if (named4.length > 0) {
+    const u = named4[fnv1a3(`intel|${state.day}`) % named4.length];
     const role = String(reg.roles.get(u.roleId)?.name ?? u.roleId);
     const defect = u.defects[0] ? String(reg.defects.get(u.defects[0].id)?.name ?? u.defects[0].id) : null;
     add("squad", u.id, `${u.displayName} is a ${role.toLowerCase()}${defect ? ` with ${defect}` : ""}.`);
@@ -26542,9 +26679,9 @@ function paymentFor(answers, pressure) {
   return { credits, supplies, plyx };
 }
 function leak(draft, ctx2, d) {
-  const named3 = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
-  const events = [...revealCrime(draft, ctx2.registries, named3)];
-  for (const id of named3) {
+  const named4 = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+  const events = [...revealCrime(draft, ctx2.registries, named4)];
+  for (const id of named4) {
     const flags = draft.relations[id]?.flags;
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
@@ -27635,6 +27772,10 @@ registerMemoryResolver("sworn", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ["her"], vars: ["name"] });
+registerMemoryResolver("dynamic_exit", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
+}, { ids: ["her"], vars: ["name", "sworn"] });
 registerMemoryResolver("domain_yielded", (draft, event, reg) => {
   const her = subjectOf2(draft, event.unitId);
   const domain = reg.dynamicDomains.get(String(event.domainId));
@@ -27765,8 +27906,8 @@ function dispatch(state, action, registries) {
   if (gate2 && votingOn(state, registries)) {
     const decision = gate2(state, action.payload, registries);
     if (decision) {
-      const named3 = action.payload?.voteId;
-      if (!voteFor(state, decision.kind, decision.subject, named3)) {
+      const named4 = action.payload?.voteId;
+      if (!voteFor(state, decision.kind, decision.subject, named4)) {
         try {
           handler2(structuredClone(state), action.payload, { registries, rng: new Rng(state.rng) });
         } catch (e) {
@@ -27774,7 +27915,7 @@ function dispatch(state, action, registries) {
         }
         return { state, events: [{ type: "error", code: "vote_needed", kind: decision.kind, subject: decision.subject }] };
       }
-      voteId = named3;
+      voteId = named4;
     }
   }
   const draft = structuredClone(state);
@@ -34225,6 +34366,19 @@ registerAction("dynamic/answer_claim", (draft, payload, ctx2) => {
   if (typeof p.claimId !== "string") throw new Error("dynamic/answer_claim needs a claimId.");
   if (p.answer !== "yield" && p.answer !== "refuse" && p.answer !== "talk") throw new Error("The answer must be yield, refuse or talk.");
   return answerClaim(draft, ctx2, p.claimId, p.answer);
+});
+registerAction("dynamic/exit", (draft, payload, ctx2) => {
+  const p = payload ?? {};
+  const unit3 = namedUnit3(draft, p.unitId, "dynamic/exit");
+  if (!EXIT_ROUTES.includes(p.route)) throw new Error(`An exit is ${EXIT_ROUTES.join(", ")}.`);
+  if (p.toUnitId !== void 0 && typeof p.toUnitId !== "string") throw new Error("toUnitId must be a unit id.");
+  if (p.means !== void 0 && !EXIT_MEANS.includes(p.means)) throw new Error(`A means is ${EXIT_MEANS.join(", ")}.`);
+  if (p.measure !== void 0 && typeof p.measure !== "string") throw new Error("measure must be a punishment id.");
+  return exitDynamic(draft, ctx2, unit3.id, p.route, {
+    ...p.toUnitId !== void 0 ? { toUnitId: p.toUnitId } : {},
+    ...p.means !== void 0 ? { means: p.means } : {},
+    ...p.measure !== void 0 ? { measure: p.measure } : {}
+  });
 });
 
 // src/llm/callTypes.ts
@@ -48612,12 +48766,12 @@ function activityCard(a, state, ctx2) {
   );
 }
 function pastimeCard(a, state, ctx2) {
-  const named3 = state.squad.filter((u) => isLiving(u) && u.kind === "named");
+  const named4 = state.squad.filter((u) => isLiving(u) && u.kind === "named");
   const sel = h(
     "select",
     { name: "companion", "aria-label": `Companion for ${String(a.name)}` },
     h("option", { value: "" }, "\u2014 choose \u2014"),
-    ...named3.map((u) => h("option", { value: u.id }, u.displayName))
+    ...named4.map((u) => h("option", { value: u.id }, u.displayName))
   );
   const picker2 = h("div", { class: "alius-pastime-picker" });
   const draw2 = () => {
@@ -52147,8 +52301,8 @@ function renderHomeTab(host, ctx2) {
       }
     }
   }
-  const named3 = state.squad.filter((u) => u.kind === "named" && isLiving(u));
-  const lines = named3.flatMap((u) => {
+  const named4 = state.squad.filter((u) => u.kind === "named" && isLiving(u));
+  const lines = named4.flatMap((u) => {
     const level = deviceAccess(state, reg, u.id);
     if (level < 1) return [];
     const decor = decorOf(state, u.id);
@@ -53286,9 +53440,9 @@ function renderSceneScreen(host, ctx2) {
     const open3 = letsHost.querySelector("details[open]") !== null;
     letsHost.replaceChildren();
     const sc = s.scene;
-    const named3 = present2(s).filter((u) => u.kind === "named");
-    if (!sc || !ctx2.onPastime || lifeMode(s) === "off" || sc.mode !== "private" || named3.length !== 1) return;
-    const unit3 = named3[0];
+    const named4 = present2(s).filter((u) => u.kind === "named");
+    if (!sc || !ctx2.onPastime || lifeMode(s) === "off" || sc.mode !== "private" || named4.length !== 1) return;
+    const unit3 = named4[0];
     if (sc.pastime) {
       const p = registries.pastimes.get(sc.pastime.id);
       if (p) letsHost.append(h("span", { class: "alius-chip", "data-quiet-hour": sc.pastime.id, ...analyzeAttrs(`pastimes:${p.id}`) }, `TIME TOGETHER: ${String(p.label).toUpperCase()}`));
@@ -57468,8 +57622,8 @@ function createApp(st, deps) {
     const chatId = st.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
-    const named3 = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, u.id, "scene") === null);
-    const ids = [...new Set(named3(s.roster.activeIds).map((u) => u.id))].slice(0, TUNING.scene.maxParticipants);
+    const named4 = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, u.id, "scene") === null);
+    const ids = [...new Set(named4(s.roster.activeIds).map((u) => u.id))].slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const answer = await shell.modal({
       title: "Linger at the table?",
@@ -59455,6 +59609,7 @@ registerRefs("relationshipStates", (entry) => {
   });
   nightRefs(entry.unlocks?.nightEvents, "unlocks.nightEvents", out);
   if (typeof entry.requiresTrait === "string") out.push({ registry: "commanderTraits", id: entry.requiresTrait, path: "requiresTrait" });
+  if (typeof entry.stepDown === "string") out.push({ registry: "relationshipStates", id: entry.stepDown, path: "stepDown" });
   return out;
 });
 registerRefs("defects", (entry) => {
@@ -60032,6 +60187,13 @@ for (const registry2 of ["glossary", ...DESCRIBED_REGISTRIES]) {
 }
 registerChecks("defects", (entry, regs) => nightTagChecks("nightEvents", entry.nightEvents, regs));
 registerChecks("relationshipStates", (entry, regs) => nightTagChecks("unlocks.nightEvents", entry.unlocks?.nightEvents, regs));
+registerChecks("relationshipStates", (entry, regs) => {
+  if (typeof entry.stepDown !== "string") return [];
+  const target = regs.relationshipStates.get(entry.stepDown);
+  if (target === void 0) return [];
+  if (entry.stepDown === entry.id) return [{ path: "stepDown", message: "a step down cannot name its own state" }];
+  return target.romance === true && entry.romance === true ? [] : [{ path: "stepDown", message: "a step down must stay in romance" }];
+});
 function nightTagChecks(path, specs, regs) {
   if (!Array.isArray(specs)) return [];
   return specs.flatMap((spec, i) => tagChecks(`${path}[${i}].contentTags`, spec?.contentTags, regs));
