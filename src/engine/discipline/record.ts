@@ -231,12 +231,26 @@ function keepsThreat(reg: Registries, threat: PendingThreat, e: { measure: strin
   return threatSeverity !== null && threatSeverity <= e.severity;
 }
 
+/** What a hook of an enforcement did: its events, and (P15) what it took, for the enforcement's `Inverse`. */
+export interface EnforcedOutcome { events: EngineEvent[]; undo?: Inverse['dynamic'] }
+
 /** What else an enforcement does (P15: a severe one ends the struggle for the command). A hook, so the discipline layer imports nothing of the dynamic's. */
-export type EnforcedHook = (draft: CampaignState, ctx: EngineCtx, unitId: string, e: { measure: string; severity: 1 | 2 | 3 | 4; recordDelta: number }) => EngineEvent[];
+export type EnforcedHook = (draft: CampaignState, ctx: EngineCtx, unitId: string, e: { measure: string; severity: 1 | 2 | 3 | 4; recordDelta: number }) => EnforcedOutcome;
 const enforcedHooks: EnforcedHook[] = [];
 /** Registers a hook that runs after every enforcement on a named living unit; its events are returned with the enforcement's. Registering the same function twice is a no-op. */
 export function registerEnforced(hook: EnforcedHook): void {
   if (!enforcedHooks.includes(hook)) enforcedHooks.push(hook);
+}
+
+/** What puts back what an enforcement hook took (UNDO of an application): runs with the `Inverse.dynamic` the hook returned. */
+export type UndoneHook = (draft: CampaignState, ctx: EngineCtx, unitId: string, undo: NonNullable<Inverse['dynamic']>) => EngineEvent[];
+const undoneHooks: UndoneHook[] = [];
+export function registerUndone(hook: UndoneHook): void {
+  if (!undoneHooks.includes(hook)) undoneHooks.push(hook);
+}
+/** UNDO of an application whose enforcement a hook acted on: the hooks give back what they took. */
+export function runUndone(draft: CampaignState, ctx: EngineCtx, unitId: string, undo: NonNullable<Inverse['dynamic']>): EngineEvent[] {
+  return undoneHooks.flatMap((hook) => hook(draft, ctx, unitId, undo));
 }
 
 /**
@@ -246,11 +260,11 @@ export function registerEnforced(hook: EnforcedHook): void {
  */
 export function enforce(
   draft: CampaignState, ctx: EngineCtx, unitId: string, e: { measure: string; severity: 1 | 2 | 3 | 4; recordDelta: number },
-): { events: EngineEvent[]; removed: { defiance?: PendingDefiance; threat?: PendingThreat } } {
+): { events: EngineEvent[]; removed: { defiance?: PendingDefiance; threat?: PendingThreat; dynamic?: Inverse['dynamic'] } } {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit)) return { events: [], removed: {} };
   const events = addRecord(draft, unitId, e.recordDelta, `enforced:${e.measure}`);
-  const removed: { defiance?: PendingDefiance; threat?: PendingThreat } = {};
+  const removed: { defiance?: PendingDefiance; threat?: PendingThreat; dynamic?: Inverse['dynamic'] } = {};
   const defiance = dropDefiance(draft, unitId);
   if (defiance) removed.defiance = defiance;
   const threat = unitThreat(draft, unitId);
@@ -260,7 +274,11 @@ export function enforce(
     countDeed(draft, 'threats_kept');
     events.push({ type: 'threat_kept', threatId: threat.id, unitId, measure: threat.measure });
   }
-  for (const hook of enforcedHooks) events.push(...hook(draft, ctx, unitId, e));
+  for (const hook of enforcedHooks) {
+    const done = hook(draft, ctx, unitId, e);
+    events.push(...done.events);
+    if (done.undo !== undefined) removed.dynamic = done.undo;
+  }
   return { events, removed };
 }
 

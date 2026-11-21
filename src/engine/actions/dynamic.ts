@@ -9,9 +9,9 @@ import { holdFeed } from '../dynamic/feed';
 import { signsFromEvents } from '../dynamic/knowledge';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
-import { answerReturn, commandKeptEnforced } from '../dynamic/aftermath';
+import { answerReturn, commandKeptEnforced, restoreCommandKept } from '../dynamic/aftermath';
 import { answerClaim } from '../dynamic/domains';
-import { registerEnforced } from '../discipline/record';
+import { registerEnforced, registerUndone } from '../discipline/record';
 import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
@@ -48,6 +48,8 @@ registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
 // A severe enforcement on the one who kept the command (a bench, a brig, the Leash) ends the struggle for it (R15a); nothing for anyone else.
 registerEnforced(commandKeptEnforced);
+// ... and UNDO of that enforcement (a punishment read from dialogue) gives the struggle back (the Inverse carries what it took).
+registerUndone(restoreCommandKept);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

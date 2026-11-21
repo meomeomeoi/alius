@@ -95,6 +95,7 @@ export function applyPunishment(draft: CampaignState, ctx: EngineCtx, p: PunishP
     countDeed(draft, `punish_${severity}` as 'punish_1');
     if (enforced.removed.defiance) extra.defiance = enforced.removed.defiance;
     if (enforced.removed.threat) extra.threat = enforced.removed.threat;
+    if (enforced.removed.dynamic) extra.dynamic = enforced.removed.dynamic;
     // the side effects
     for (const fx of effectsOf(reg, p.measure)) {
       const kind = restrictionKind(fx);

@@ -12111,9 +12111,9 @@ function leashWeekly(state, reg) {
   n += traitEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   n += worldEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   if (id !== null) {
-    const standing3 = factionStanding(state, id);
-    if (standing3 >= TUNING.leash.standingStep) n += 1;
-    else if (standing3 <= -TUNING.leash.standingStep) n -= 1;
+    const standing2 = factionStanding(state, id);
+    if (standing2 >= TUNING.leash.standingStep) n += 1;
+    else if (standing2 <= -TUNING.leash.standingStep) n -= 1;
   }
   return Math.max(0, Math.min(TUNING.leash.weeklyMax, n));
 }
@@ -13403,6 +13403,7 @@ function applyPunishment(draft, ctx2, p) {
     countDeed(draft, `punish_${severity}`);
     if (enforced.removed.defiance) extra.defiance = enforced.removed.defiance;
     if (enforced.removed.threat) extra.threat = enforced.removed.threat;
+    if (enforced.removed.dynamic) extra.dynamic = enforced.removed.dynamic;
     for (const fx2 of effectsOf(reg, p.measure)) {
       const kind = restrictionKind(fx2);
       if (kind) {
@@ -13642,6 +13643,13 @@ var enforcedHooks = [];
 function registerEnforced(hook) {
   if (!enforcedHooks.includes(hook)) enforcedHooks.push(hook);
 }
+var undoneHooks = [];
+function registerUndone(hook) {
+  if (!undoneHooks.includes(hook)) undoneHooks.push(hook);
+}
+function runUndone(draft, ctx2, unitId, undo) {
+  return undoneHooks.flatMap((hook) => hook(draft, ctx2, unitId, undo));
+}
 function enforce(draft, ctx2, unitId, e) {
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (!unit3 || unit3.kind !== "named" || !isLiving(unit3)) return { events: [], removed: {} };
@@ -13656,7 +13664,11 @@ function enforce(draft, ctx2, unitId, e) {
     countDeed(draft, "threats_kept");
     events.push({ type: "threat_kept", threatId: threat.id, unitId, measure: threat.measure });
   }
-  for (const hook of enforcedHooks) events.push(...hook(draft, ctx2, unitId, e));
+  for (const hook of enforcedHooks) {
+    const done = hook(draft, ctx2, unitId, e);
+    events.push(...done.events);
+    if (done.undo !== void 0) removed.dynamic = done.undo;
+  }
   return { events, removed };
 }
 function forgetUnit(draft, unitId) {
@@ -14947,9 +14959,9 @@ function staleSweep(draft, day) {
     events.push(...drop(life, item.id, item.unitId));
   }
   for (const n of [...life.news]) if (day >= n.until) events.push(...drop(life, n.itemId, n.unitId));
-  const standing3 = held(life);
+  const standing2 = held(life);
   for (const item of life.queue) {
-    if (standing3.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
+    if (standing2.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
     life.news.push({ itemId: item.id, unitId: item.unitId, until: day + TUNING.life.newsDays, passing: true });
   }
   return events;
@@ -14992,8 +15004,8 @@ function deliverNews(draft, reg, day) {
   const t = TUNING.life;
   const events = [];
   const inQueue = () => {
-    const standing3 = held(life);
-    return life.queue.filter((i) => !standing3.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
+    const standing2 = held(life);
+    return life.queue.filter((i) => !standing2.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
   };
   const told = () => life.delivered.filter((r) => r.caused !== true);
   const lastIndex = (category) => told().map((r) => r.category).lastIndexOf(category);
@@ -16752,7 +16764,7 @@ function resolveTargets(ctx2, owner, e, ev) {
   const { cs } = ctx2;
   const kind = e.target ?? (ev.targets ? "target" : "self");
   const side = owner.side;
-  const standing3 = (s) => living(cs, s);
+  const standing2 = (s) => living(cs, s);
   switch (kind) {
     case "self":
       return [owner.cid];
@@ -16761,26 +16773,26 @@ function resolveTargets(ctx2, owner, e, ev) {
     case "source":
       return ev.sourceCid ? [ev.sourceCid] : [];
     case "allies":
-      return standing3(side).map((c) => c.cid);
+      return standing2(side).map((c) => c.cid);
     case "allies_other":
-      return standing3(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
+      return standing2(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
     case "allies_front":
-      return standing3(side).filter((c) => c.row === "front").map((c) => c.cid);
+      return standing2(side).filter((c) => c.row === "front").map((c) => c.cid);
     case "enemies":
-      return standing3(opposite(side)).map((c) => c.cid);
+      return standing2(opposite(side)).map((c) => c.cid);
     case "own_row":
-      return standing3(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
+      return standing2(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
     case "target_row": {
       const ref = ev.targetCid ?? ev.sourceCid;
       const r = ref && ref !== "commander" ? cs.combatants.find((c) => c.cid === ref) : void 0;
       return r ? cs.combatants.filter((c) => c.side === r.side && c.row === r.row && isStanding(c)).map((c) => c.cid) : [];
     }
     case "random_enemy": {
-      const pool = standing3(opposite(side));
+      const pool = standing2(opposite(side));
       return pool.length > 0 ? [ctx2.rng.pick(pool).cid] : [];
     }
     case "lowest_hp_ally": {
-      const pool = standing3(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
+      const pool = standing2(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
       return pool.length > 0 ? [pool[0].cid] : [];
     }
     case "commander":
@@ -17461,6 +17473,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
   const d = disciplineOf(draft);
   if (inv.defiance && !d.defiance.some((x) => x.unitId === unitId)) d.defiance.push(structuredClone(inv.defiance));
   if (inv.threat && !d.threats.some((x) => x.unitId === unitId)) d.threats.push(structuredClone(inv.threat));
+  if (inv.dynamic) events.push(...runUndone(draft, ctx2, unitId, inv.dynamic));
   return events;
 }
 function tidy(draft, created) {
@@ -18572,7 +18585,26 @@ function countStruggleVote(draft, ctx2, vote) {
   return a.struggleWins >= TUNING.dynamic.commandBackVotes ? endCommandKept(draft, ctx2, struggle.unitId, "contest") : [];
 }
 function commandKeptEnforced(draft, ctx2, unitId, e) {
-  return e.severity >= 3 ? endCommandKept(draft, ctx2, unitId, "force") : [];
+  const dyn = dynamicOf(draft, unitId);
+  if (e.severity < 3 || dyn?.aftermath?.kind !== "command_kept") return { events: [] };
+  const aftermath = structuredClone(dyn.aftermath);
+  const before = structuredClone(dyn.domains);
+  const override = draft.dynamic?.override?.unitId === unitId ? structuredClone(draft.dynamic.override) : void 0;
+  const events = endCommandKept(draft, ctx2, unitId, "force");
+  const kept = new Set(dyn.domains.map((d) => d.id));
+  return { events, undo: { domains: before.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
+}
+function restoreCommandKept(draft, ctx2, unitId, undo) {
+  const reg = ctx2.registries;
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0 || dyn.aftermath !== void 0 || !dynamicOn(draft, reg)) return [];
+  for (const d of undo.domains) {
+    const heldElsewhere = draft.squad.some((u) => u.id !== unitId && dynamicOf(draft, u.id)?.domains.some((x) => x.id === d.id && standing(x, draft.day)) === true);
+    if (!heldElsewhere && !dyn.domains.some((x) => x.id === d.id)) dyn.domains.push(structuredClone(d));
+  }
+  dyn.aftermath = structuredClone(undo.aftermath);
+  if (undo.override !== void 0 && draft.dynamic?.override === void 0 && hasCapability(draft, reg, unitId, "countermand")) draft.dynamic.override = structuredClone(undo.override);
+  return [];
 }
 function raiseSuccessor(draft, ctx2, formerId) {
   const reg = ctx2.registries;
@@ -21355,8 +21387,8 @@ var CHALLENGE_STATS = ["authority", "empathy", "strength", "endurance", "reflexe
 var isSocial = (stat3) => stat3 === "authority" || stat3 === "empathy";
 function leaderRank(state, reg) {
   const leader = leaderOf(state);
-  const standing3 = leader ? standingOf(state, reg, leader.id) ?? 0 : 0;
-  return Math.min(5, Math.max(1, Math.round(standing3 / TUNING.power.challenge.standingPerRank)));
+  const standing2 = leader ? standingOf(state, reg, leader.id) ?? 0 : 0;
+  return Math.min(5, Math.max(1, Math.round(standing2 / TUNING.power.challenge.standingPerRank)));
 }
 function challengeChance(state, reg, stat3) {
   const C = TUNING.power.challenge;
@@ -34612,6 +34644,7 @@ registerAfterAction(readMoments);
 registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
 registerEnforced(commandKeptEnforced);
+registerUndone(restoreCommandKept);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);
@@ -47427,8 +47460,8 @@ var standingBand2 = (n) => n < 40 ? "low" : n < 70 ? "notable" : "dominant";
 var oddsWord = (p) => p < 0.35 ? "UNLIKELY" : p < 0.65 ? "EVEN" : "LIKELY";
 function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   host.replaceChildren();
-  const standing3 = standingOf(state, reg, unitId);
-  if (standing3 === null) return;
+  const standing2 = standingOf(state, reg, unitId);
+  if (standing2 === null) return;
   const raw = opts.raw === true;
   const live3 = { unitId };
   const leader = leaderOf(state);
@@ -47437,7 +47470,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   const line2 = h(
     "p",
     { class: "alius-hierarchy-line" },
-    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live3) }, `STANDING: ${standingBand2(standing3).toUpperCase()}${raw ? ` (${standing3})` : ""}`)
+    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live3) }, `STANDING: ${standingBand2(standing2).toUpperCase()}${raw ? ` (${standing2})` : ""}`)
   );
   if (isLeader) {
     line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live3) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));

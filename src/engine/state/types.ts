@@ -1,7 +1,7 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
 import type { Attitude, ExpectationProfile } from '../dynamic/expectations';
 import type { Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
-import type { DynamicCampaign, DynamicRelation } from '../dynamic/state';
+import type { DynamicCampaign, DynamicRelation, DynamicUndo } from '../dynamic/state';
 import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
 import type { PhysicsRun } from '../physics/state';
@@ -854,6 +854,8 @@ export interface Inverse {
   factId?: string;
   /** P14b: the appraisals the application recorded for her (UNDO removes them and takes their pushes back out of the accumulators). */
   appraisals?: Array<{ unitId: string; id: string }>;
+  /** P15: what the enforcement took from her struggle for the command (UNDO puts it back, while she has no other aftermath). */
+  dynamic?: DynamicUndo;
   /** Copies of what the application removed. */
   defiance?: PendingDefiance;
   threat?: PendingThreat;

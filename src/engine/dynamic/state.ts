@@ -102,6 +102,16 @@ export interface DynamicRelation {
   cooldowns: Record<string, number>;
 }
 
+/**
+ * What an enforcement of severity 3 or more took from a struggle for the command, kept in the enforcement's `Inverse` so UNDO gives it back
+ * (P9: UNDO reverts an `Inverse`; review I11): the domain(s) that granted the command, the aftermath with its count, and her open override.
+ */
+export interface DynamicUndo {
+  domains: DynamicDomain[];
+  aftermath: AftermathState;
+  override?: OpenOverride & { unitId: string };
+}
+
 /** A domain she asks the commander for, or a submit card at `rule` (`domainId` absent, `submit: true`). */
 export interface OpenClaim { id: string; unitId: string; domainId?: string; submit?: true; day: number }
 export interface OpenMilestone { id: string; unitId: string; milestoneId: string; day: number; form: MilestoneOffer }

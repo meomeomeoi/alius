@@ -14,7 +14,7 @@ import { raiseWant } from '../bonds/want';
 import { WANT_VISIT_KIND } from '../bonds/scene';
 import { proposeRuleHashed } from '../bonds/rules';
 import { openDemand } from '../discipline/demands';
-import { addRecord, applyDisciplineEvent } from '../discipline/record';
+import { addRecord, applyDisciplineEvent, type EnforcedOutcome } from '../discipline/record';
 import { restrictionReason } from '../discipline/restrictions';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { pushMessage } from '../dms';
@@ -34,7 +34,7 @@ import { canHold, dynamicOn } from './gate';
 import { addHold, bandMinAt } from './hold';
 import { applyMilestone, nextFreeEvening, rekindleMilestone } from './milestones';
 import { hashedCtx } from './reactions';
-import { dynamicOf, type DynamicRelation } from './state';
+import { dynamicOf, type DynamicRelation, type DynamicUndo } from './state';
 import { commandStruggleOf } from './struggle';
 export { commandStruggleOf };
 import { AFTERMATH_KINDS, type AftermathEffect, type AftermathEntry, type AftermathKind, type ExitRoute } from './types';
@@ -356,9 +356,38 @@ export function countStruggleVote(draft: CampaignState, ctx: Pick<EngineCtx, 're
   return a.struggleWins >= TUNING.dynamic.commandBackVotes ? endCommandKept(draft, ctx, struggle.unitId, 'contest') : [];
 }
 
-/** An enforcement on her (registered on `enforce`): one of severity 3 or more, a bench, a brig or the Leash, ends the struggle. */
-export function commandKeptEnforced(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, e: { severity: number }): EngineEvent[] {
-  return e.severity >= 3 ? endCommandKept(draft, ctx, unitId, 'force') : [];
+/**
+ * An enforcement on her (registered on `enforce`): one of severity 3 or more, a bench, a brig or the Leash, ends the struggle. What it took (the
+ * domain that granted the command, the aftermath with its count, her open override) goes back in the enforcement's `Inverse`, so UNDO of a punishment
+ * read from dialogue gives the struggle back (`restoreCommandKept`; P9: UNDO reverts an `Inverse`, and `enforce` is the one place an enforcement acts).
+ */
+export function commandKeptEnforced(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, e: { severity: number }): EnforcedOutcome {
+  const dyn = dynamicOf(draft, unitId);
+  if (e.severity < 3 || dyn?.aftermath?.kind !== 'command_kept') return { events: [] };
+  const aftermath = structuredClone(dyn.aftermath);
+  const before = structuredClone(dyn.domains);
+  const override = draft.dynamic?.override?.unitId === unitId ? structuredClone(draft.dynamic.override) : undefined;
+  const events = endCommandKept(draft, ctx, unitId, 'force');
+  const kept = new Set(dyn.domains.map((d) => d.id));
+  return { events, undo: { domains: before.filter((d) => !kept.has(d.id)), aftermath, ...(override !== undefined ? { override } : {}) } };
+}
+
+/**
+ * UNDO of an enforcement that ended her struggle for the command: the aftermath comes back with its count, the domains it took go back to her (one
+ * that another unit holds today stays with her), and so does her open override while she has the command again. Only while she has no aftermath of
+ * her own now (another one has started since: nothing is brought back over it). Draws nothing.
+ */
+export function restoreCommandKept(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, undo: DynamicUndo): EngineEvent[] {
+  const reg = ctx.registries;
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === undefined || dyn.aftermath !== undefined || !dynamicOn(draft, reg)) return [];
+  for (const d of undo.domains) {
+    const heldElsewhere = draft.squad.some((u) => u.id !== unitId && dynamicOf(draft, u.id)?.domains.some((x) => x.id === d.id && standing(x, draft.day)) === true);
+    if (!heldElsewhere && !dyn.domains.some((x) => x.id === d.id)) dyn.domains.push(structuredClone(d));
+  }
+  dyn.aftermath = structuredClone(undo.aftermath);
+  if (undo.override !== undefined && draft.dynamic?.override === undefined && hasCapability(draft, reg, unitId, 'countermand')) draft.dynamic!.override = structuredClone(undo.override);
+  return [];
 }
 
 // ---------------------------------------------------------------------------------------------

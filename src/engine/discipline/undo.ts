@@ -3,7 +3,7 @@ import type { CampaignState, Inverse } from '../state/types';
 import { syncPublicity } from '../bonds/publicitySync';
 import { removeAppraisals } from '../development/appraisal';
 import { countDeed } from './deeds';
-import { addRecord, disciplineOf } from './record';
+import { addRecord, disciplineOf, runUndone } from './record';
 import { removeRestrictions } from './restrictions';
 
 const RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] } as const;
@@ -73,6 +73,7 @@ function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, app
   const d = disciplineOf(draft);
   if (inv.defiance && !d.defiance.some((x) => x.unitId === unitId)) d.defiance.push(structuredClone(inv.defiance));
   if (inv.threat && !d.threats.some((x) => x.unitId === unitId)) d.threats.push(structuredClone(inv.threat));
+  if (inv.dynamic) events.push(...runUndone(draft, ctx, unitId, inv.dynamic)); // P15: the struggle for the command the enforcement ended
   return events;
 }
 

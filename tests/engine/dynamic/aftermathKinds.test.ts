@@ -129,6 +129,50 @@ describe('command_kept', () => {
     expect(dyn(heavy.state).aftermath).toBeUndefined();
   });
 
+  it('undo of a severity-3 enforcement restores command_kept', () => {
+    const s = struggle();
+    withOptions(s, { voting: 'off' });
+    dyn(s).aftermath!.struggleWins = 1;
+    const before = structuredClone(dyn(s));
+    const talk = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    const said = run(talk, reg, {
+      type: 'intents/apply',
+      payload: { channel: 'scene', intents: { events: [{ type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'a quote', confidence: 0.8, measure: 'bench' }] } },
+    });
+    expect(errors(said.events)).toEqual([]);
+    expect(dyn(said.state).aftermath).toBeUndefined(); // the enforcement ended the struggle
+    expect(hasCapability(said.state, reg, ANN, 'countermand')).toBe(false);
+    const app = said.state.discipline!.applications.at(-1)!;
+    expect(app.inverse.dynamic).toBeDefined();
+    const undone = run(said.state, reg, { type: 'discipline/undo', payload: { id: app.id } });
+    expect(errors(undone.events)).toEqual([]);
+    // the struggle is back as it was: the aftermath with its count, and the domain that grants the command
+    expect(dyn(undone.state).aftermath).toEqual(before.aftermath);
+    expect(commandStruggleOf(undone.state)).toEqual({ unitId: ANN, wins: 1 });
+    expect(dyn(undone.state).domains.map((d) => d.id).sort()).toEqual(before.domains.map((d) => d.id).sort());
+    expect(hasCapability(undone.state, reg, ANN, 'countermand')).toBe(true);
+    // an enforcement that ended nothing leaves nothing to restore
+    const light = run(talk, reg, {
+      type: 'intents/apply',
+      payload: { channel: 'scene', intents: { events: [{ type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'a quote', confidence: 0.8, measure: 'verbal' }] } },
+    });
+    expect(light.state.discipline!.applications.at(-1)!.inverse.dynamic).toBeUndefined();
+  });
+
+  it('undo does not bring the struggle back over a new aftermath of hers', () => {
+    const s = struggle();
+    withOptions(s, { voting: 'off' });
+    const talk = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    const said = run(talk, reg, {
+      type: 'intents/apply',
+      payload: { channel: 'scene', intents: { events: [{ type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'a quote', confidence: 0.8, measure: 'bench' }] } },
+    }).state;
+    startAftermath(said, ctxOf(said, reg), ANN, 'revenge');
+    const undone = run(said, reg, { type: 'discipline/undo', payload: { id: said.discipline!.applications.at(-1)!.id } });
+    expect(errors(undone.events)).toEqual([]);
+    expect(dyn(undone.state).aftermath?.kind).toBe('revenge');
+  });
+
   it('the Leash on her ends it (severity 4)', () => {
     const s = struggle();
     withOptions(s, { voting: 'off' });
