@@ -514,7 +514,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'life_event', 'life_shared', 'life_noted', 'life_frequency_set', 'news_queued', 'news_delivered', 'news_stale',
   'hobby_started', 'hobby_progress', 'hobby_plateau', 'hobby_breakthrough', 'hobby_milestone', 'hobby_cooling', 'hobby_dropped',
   'hobby_rekindled', 'hobby_mastered', 'hobby_taught', 'opinion_formed', 'opinion_changed', 'opinion_hardened', 'first_moment_kept',
-  'joke_counted', 'pastime_set', 'temperament_set',
+  'joke_counted', 'pastime_set', 'temperament_set', 'hobbies_set', 'opinion_set',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

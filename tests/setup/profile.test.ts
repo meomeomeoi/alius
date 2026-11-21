@@ -318,7 +318,7 @@ describe('sanitizeProfile', () => {
   it('missing lists each requested section with nothing usable', () => {
     // the taste list is optional by nature: an empty answer is a valid one, so it is never "missing"
     // the world sections (offset, stances) are optional too: a missing one means offset 0 / indifferent
-    expect(run({}).missing.sort()).toEqual(ALL_SECTIONS.filter((x) => x !== 'tastes' && x !== 'disposition' && x !== 'stances' && x !== 'development').sort()); // P14b: development is optional too
+    expect(run({}).missing.sort()).toEqual(ALL_SECTIONS.filter((x) => x !== 'tastes' && x !== 'disposition' && x !== 'stances' && x !== 'development' && x !== 'temperament' && x !== 'hobbies' && x !== 'opinions').sort()); // P14b: development is optional too; so are the three of P14c
     expect(run({}, { sections: ['signature'] }).missing).toEqual(['signature']);
     expect(run({ values: 'high', likes: 'tea', emotionalBaseline: [] }, { sections: ['values', 'tags', 'baseline'] }).missing.sort())
       .toEqual(['baseline', 'tags', 'values']);

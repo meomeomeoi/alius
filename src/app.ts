@@ -107,7 +107,7 @@ import { renderHandlerPanel } from './ui/special/handlerPanel';
 import { HANDLER_VISIT_KIND } from './engine/special/state';
 import { renderCommanderFile } from './ui/commander/commanderFile';
 import { importCommander } from './setup/commander';
-import { importProfile, stanceOptionIds } from './setup/profile';
+import { importProfile, resyncSectionsOffered } from './setup/profile';
 import { defaultWorldOptions } from './engine/worldOptions';
 import { Wizard, type WizardState } from './setup/wizard';
 import { TUNING } from './engine/tuning';
@@ -144,7 +144,8 @@ import { pickLocation } from './ui/scene/locationPicker';
 import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
 import { checkActivity, focusConfirm, type ActivityRequest } from './engine/activities';
 import { analyzeAttrs } from './ui/analyze/mark';
-import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
+import type { ResyncPatch, ResyncSection } from './engine/actions/squad';
+import { temperamentOf } from './engine/life/state';
 import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
 import { renderKeepingFocus } from './ui/focus';
@@ -1656,6 +1657,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     bond: 'Bond profile: how she leads, bonds and what she will not do',
     development: 'What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)',
     temperament: 'Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)',
+    hobbies: 'Hobbies and aptitudes: what she does for herself and what she is gifted or hopeless at (a hobby she has keeps its progress)',
+    opinions: 'Strong opinions: the stands her card takes (one she has voiced or changed her mind about is kept)',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1664,22 +1667,25 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (!state || !unit?.cardRef) return;
     const startChatId = st.getActiveChat()?.chatId;
     const desireBond = state.settings.desireBondDefects === true;
+    const temperament = temperamentOf(state, unitId); // P14c: read now, the state can change while the player chooses
 
     // P8: the world the unit lives in; the stances section only makes sense while some norm is not neutral
     const world = state.world.options ?? defaultWorldOptions(registries);
-    // P14c: the temperament section is offered once the profile import reads it (the import task); until then the card has nothing to give
-    const offered = RESYNC_SECTIONS.filter((s): s is Exclude<ResyncSection, 'temperament'> => s !== 'temperament' && (s !== 'stances' || stanceOptionIds(registries, world).length > 0));
+    const offered = resyncSectionsOffered(registries, world);
 
     // 1. which sections
     const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
     // P14b: a re-sync keeps what she has become; this resets it (off by default)
     const resetBox = h('input', { type: 'checkbox', 'data-reset-development': unitId }) as HTMLInputElement;
+    // P14c: the same for her life: her hobbies, her opinions and what is kept of her days
+    const resetLifeBox = h('input', { type: 'checkbox', 'data-reset-life': unitId }) as HTMLInputElement;
     const picker = await shell.modal({
       title: 'Re-sync from card',
       body: h('div', {},
         h('p', {}, 'Choose what to re-import from the character card. Relationship numbers are never changed.'),
         ...offered.map((s, i) => h('label', { class: 'alius-check' }, boxes[i], ` ${RESYNC_LABELS[s]}`)),
-        h('label', { class: 'alius-check', ...analyzeAttrs('glossary:character_development') }, resetBox, ' Reset development: forget what she has become since joining')),
+        h('label', { class: 'alius-check', ...analyzeAttrs('glossary:character_development') }, resetBox, ' Reset development: forget what she has become since joining'),
+        h('label', { class: 'alius-check', ...analyzeAttrs('glossary:life_events') }, resetLifeBox, ' Reset life: forget her hobbies, her opinions and what happened off-screen')),
       actions: [{ label: 'Import', value: 'go' }, { label: 'Cancel', value: 'cancel' }],
     });
     if (picker !== 'go') return;
@@ -1715,6 +1721,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       ...(unit.dispositionReason !== undefined ? { dispositionReason: unit.dispositionReason } : {}),
       ...(unit.worldStances !== undefined ? { worldStances: structuredClone(unit.worldStances) } : {}),
       ...(unit.bond !== undefined ? { bond: structuredClone(unit.bond) } : {}),
+      temperament, // P14c: the words she has now (the defaults when none is stored)
+      ...(unit.hobbies !== undefined ? { hobbies: unit.hobbies.map((x) => x.id) } : {}), // P14c: raw profile
+      ...(unit.aptitudes !== undefined ? { aptitudes: structuredClone(unit.aptitudes) } : {}), // P14c: raw profile
+      ...(unit.opinions !== undefined ? { opinions: Object.fromEntries(Object.entries(unit.opinions).map(([t, o]) => [t, { position: o.position, ...(o.text ? { text: o.text } : {}) }])) } : {}), // P14c: raw profile
     });
     wizard.calibrate(0);
 
@@ -1762,6 +1772,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       patch.anchors = c.anchors ?? [];
       patch.insight = c.insight ?? 'mid';
     }
+    if (sections.includes('temperament') && c.temperament) patch.temperament = c.temperament; // P14c: raw temperament (the setup choice, not a unit)
+    if (sections.includes('hobbies')) {
+      patch.hobbies = c.hobbies ?? [];
+      if (c.aptitudes) patch.aptitudes = c.aptitudes;
+    }
+    if (sections.includes('opinions')) patch.opinions = c.opinions ?? {};
     const current: ResyncPatch = {
       ...(unit.bond !== undefined ? { bond: unit.bond } : {}),
       dispositionOffset: unit.dispositionOffset ?? 0, dispositionReason: unit.dispositionReason ?? '', worldStances: unit.worldStances ?? {},
@@ -1769,12 +1785,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
       commanderTastes: unit.commanderTastes ?? [], // P14b: raw profile
       anchors: unit.development?.anchors ?? [], insight: unit.insight ?? 'mid',
+      temperament, // P14c
+      hobbies: (unit.hobbies ?? []).map((x) => x.id), // P14c: raw profile
+      ...(unit.aptitudes !== undefined ? { aptitudes: unit.aptitudes } : {}),
+      opinions: Object.fromEntries(Object.entries(unit.opinions ?? {}).map(([t, o]) => [t, { position: o.position, ...(o.text ? { text: o.text } : {}) }])), // P14c: raw profile
     };
     const unchanged = (Object.keys(patch) as Array<keyof ResyncPatch>).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k]),
     );
-    if (unchanged && !resetBox.checked) return toast('info', `Nothing changed${draft.notice ? ` (${draft.notice})` : ''}.`);
-    const events = api.dispatch({ type: 'squad/resync', payload: { unitId, patch, ...(resetBox.checked ? { resetDevelopment: true } : {}) } }, { expectChatId: startChatId });
+    if (unchanged && !resetBox.checked && !resetLifeBox.checked) return toast('info', `Nothing changed${draft.notice ? ` (${draft.notice})` : ''}.`);
+    const events = api.dispatch({ type: 'squad/resync', payload: { unitId, patch, ...(resetBox.checked ? { resetDevelopment: true } : {}), ...(resetLifeBox.checked ? { resetLife: true } : {}) } }, { expectChatId: startChatId });
     const failed = events.find((e) => e.type === 'error');
     if (failed) toast('error', String(failed.message ?? failed.code));
     else toast('info', `${unit.displayName} re-synced from the card.`);

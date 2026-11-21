@@ -8,6 +8,7 @@ import { livingUnits } from '../economy';
 import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
+import { newHobby, seedLife } from '../life/hobbies';
 import { TUNING } from '../tuning';
 import { refundTree } from '../progression';
 import { temperamentOf } from '../life/state';
@@ -17,7 +18,7 @@ import type { DefectInstance } from '../state/types';
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament', 'hobbies', 'opinions'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
 export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
@@ -34,6 +35,11 @@ export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' 
   insight?: Insight;
   /** P14c: replaces her temperament fields (some or all); a field she has locked keeps its word. */
   temperament?: Partial<Temperament>;
+  /** P14c: hobbies she should have (the missing ones are added at skill 0; a hobby she has keeps all its progress) and her aptitudes (replaced). */
+  hobbies?: string[];
+  aptitudes?: { high: string[]; low: string[] };
+  /** P14c: the card's strong opinions; they replace only a `strong` opinion she never voiced and never moved. */
+  opinions?: Record<string, { position: string; text?: string }>;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -41,6 +47,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
   commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond', anchors: 'development', insight: 'development', temperament: 'temperament',
+  hobbies: 'hobbies', aptitudes: 'hobbies', opinions: 'opinions',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -71,6 +78,9 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     anchors: patch.anchors ?? unit.development?.anchors,
     insight: patch.insight ?? unit.insight,
     temperament: patch.temperament as Temperament | undefined, // P14c: only the patch is checked (the words); a partial block is fine here
+    hobbies: patch.hobbies, // P14c: only the patch is checked
+    aptitudes: patch.aptitudes,
+    opinions: patch.opinions,
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
@@ -127,6 +137,34 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     const kept = Object.fromEntries(Object.entries(patch.temperament).filter(([f]) => !locked.includes(f as keyof Temperament)));
     unit.temperament = { ...temperamentOf(draft, unit.id), ...kept };
   }
+  // P14c: "Reset life" starts her life over (her hobbies, her opinions and what is kept of her days); the card still says who she is
+  if (payload.resetLife === true) {
+    delete unit.hobbies;
+    delete unit.opinions;
+    delete draft.life?.units[unit.id];
+  }
+  if (patch.aptitudes !== undefined) {
+    if (patch.aptitudes.high.length > 0 || patch.aptitudes.low.length > 0) unit.aptitudes = { high: [...patch.aptitudes.high], low: [...patch.aptitudes.low] };
+    else delete unit.aptitudes;
+  }
+  if (patch.hobbies !== undefined && unit.kind === 'named') {
+    const have = unit.hobbies ?? [];
+    const added = patch.hobbies.filter((id) => !have.some((h) => h.id === id)).map((id) => newHobby(id, draft.day));
+    // a re-sync adds starting hobbies; it never deletes a hobby or its progress
+    if (have.length + added.length > 0) unit.hobbies = [...have, ...added];
+    if (added.length > 0) seedLife(draft, ctx.registries);
+  }
+  if (patch.opinions !== undefined && unit.kind === 'named') {
+    // only a strong opinion that was never voiced and never moved is the card's to replace; the rest is hers now
+    const mine = unit.opinions ?? {};
+    const kept = Object.fromEntries(Object.entries(mine).filter(([, o]) => o.strength !== 'strong' || o.voicedDay !== undefined || (o.history?.length ?? 0) > 0));
+    for (const [topicId, o] of Object.entries(patch.opinions)) {
+      if (topicId in kept) continue;
+      kept[topicId] = { position: o.position, strength: 'strong', ...(o.text ? { text: o.text } : {}), formedDay: draft.day };
+    }
+    if (Object.keys(kept).length > 0) unit.opinions = kept;
+    else delete unit.opinions;
+  }
   if (patch.defects) {
     unit.defects = patch.defects.map((d): DefectInstance => {
       const kept = unit.defects.find((x) => x.id === d.id); // keeps arc progress of a defect that stays
@@ -158,7 +196,7 @@ registerAction('squad/add_named', (draft, payload, ctx) => {
   if (problems.length > 0) throw new Error(problems.join('; '));
 
   const reg = ctx.registries;
-  const unit = makeNamedUnit(u as UnitSetup, reg, new Set(draft.squad.map((x) => x.id)));
+  const unit = makeNamedUnit(u as UnitSetup, reg, new Set(draft.squad.map((x) => x.id)), draft.day);
   const crime = reg.crimes.get(draft.commander.crimeId ?? '');
   const start = reg.starts.get(draft.world.startId ?? '');
   const setup = u as UnitSetup;
@@ -180,6 +218,7 @@ registerAction('squad/add_named', (draft, payload, ctx) => {
   }
   draft.roster.activeIds = active;
   draft.squad.push(unit);
+  seedLife(draft, reg); // P14c: her starting skills, when life is on (a no-op otherwise)
   draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
   return [{ type: 'unit_joined', unitId: unit.id, kind: 'named' }];
 });

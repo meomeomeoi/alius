@@ -103,7 +103,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   mechanicFallbackToMain: true,
   requestFloor: 2000,
   budgets: {
-    profile_import: 1500,
+    profile_import: 1800,
     intent_extract: 600,
     scene_summary: 800,
     dilemma_generate: 1000,

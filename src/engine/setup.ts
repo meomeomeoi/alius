@@ -6,6 +6,7 @@ import { defectAllowedFor, validateBond } from './bonds/profile';
 import { TUNING } from './tuning';
 import { DEVELOPMENT_MODES } from './development/state';
 import { LIFE_MODES, TEMPERAMENT_FIELDS, newLife, temperamentProblems } from './life/state';
+import { newHobby, seedLife } from './life/hobbies';
 import { anchorKey } from './development/axes';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
@@ -71,6 +72,10 @@ export interface UnitSetup {
   /** P14c: how she talks and carries herself, and the fields the player locked (absent = the defaults, nothing locked). */
   temperament?: Temperament;
   temperamentLocks?: Array<keyof Temperament>;
+  /** P14c: up to 3 ids of registry `hobbies` she starts with, her aptitudes (at most 3 gifted and 3 hopeless, none in both) and her views (at most 12; they start `strong`). */
+  hobbies?: string[];
+  aptitudes?: { high: string[]; low: string[] };
+  opinions?: Record<string, { position: string; text?: string }>;
 }
 
 export interface SetupResult {
@@ -200,6 +205,7 @@ function validateUnit(
   validateDisposition(u, label, reg, out);
   validateDevelopmentProfile(u, label, reg, out);
   validateTemperament(u, label, out);
+  validateLifeProfile(u, label, reg, out);
   if (u.bond !== undefined) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label}: bond: ${issue}`);
 
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers } as const;
@@ -240,6 +246,63 @@ function validateTemperament(u: Pick<UnitSetup, 'temperament' | 'temperamentLock
   if (u.temperamentLocks === undefined) return;
   if (!Array.isArray(u.temperamentLocks)) return void out.push(`${label}: temperament locks must be a list of fields`);
   for (const f of u.temperamentLocks) if (!(TEMPERAMENT_FIELDS as readonly unknown[]).includes(f)) out.push(`${label}: cannot lock "${String(f)}": a temperament field is ${TEMPERAMENT_FIELDS.join(', ')}`);
+}
+
+/**
+ * P14c: her starting hobbies, aptitudes and opinions (a re-sync patch may give some of them). The import asks the model for 2 or 3 aptitudes
+ * in each list, but the dossier lets the player rate fewer, so the rule here is the cap, the registry and the disjoint lists.
+ */
+function validateLifeProfile(u: Pick<UnitSetup, 'hobbies' | 'aptitudes' | 'opinions'>, label: string, reg: Registries, out: string[]): void {
+  const t = TUNING.life;
+  if (u.hobbies !== undefined) {
+    if (!Array.isArray(u.hobbies)) out.push(`${label}: hobbies must be a list`);
+    else {
+      if (u.hobbies.length > t.maxActive) out.push(`${label}: at most ${t.maxActive} hobbies (has ${u.hobbies.length})`);
+      const seen = new Set<string>();
+      for (const h of u.hobbies) {
+        if (!reg.hobbies.has(h)) out.push(`${label}: unknown hobby "${String(h)}"`);
+        if (seen.has(h)) out.push(`${label}: hobby "${String(h)}" is chosen twice`);
+        seen.add(h);
+      }
+    }
+  }
+  if (u.aptitudes !== undefined) out.push(...aptitudeProblems(u.aptitudes, reg).map((p) => `${label}: ${p}`));
+  if (u.opinions !== undefined) out.push(...opinionProblems(u.opinions, reg).map((p) => `${label}: ${p}`));
+}
+
+/** P14c: one line per problem of an aptitudes block: lists of known hobbies, at most 3 each, none repeated, none in both. */
+export function aptitudeProblems(a: unknown, reg: Pick<Registries, 'hobbies'>): string[] {
+  const o = a as { high?: unknown; low?: unknown } | null;
+  if (typeof o !== 'object' || o === null || !Array.isArray(o.high) || !Array.isArray(o.low)) return ['aptitudes must be { high: [...], low: [...] }'];
+  const out: string[] = [];
+  const seen = new Set<unknown>();
+  for (const [name, list] of [['high', o.high], ['low', o.low]] as const) {
+    if (list.length > 3) out.push(`at most 3 ${name} aptitudes (has ${list.length})`);
+    for (const h of list) {
+      if (!reg.hobbies.has(h)) out.push(`unknown hobby "${String(h)}" in the ${name} aptitudes`);
+      else if (seen.has(h)) out.push(`hobby "${String(h)}" is rated twice`);
+      seen.add(h);
+    }
+  }
+  return out;
+}
+
+/** P14c: one line per problem of a set of opinions: known topics and positions, text of at most 200 characters, at most 12 of them. */
+export function opinionProblems(o: unknown, reg: Pick<Registries, 'opinionTopics'>): string[] {
+  if (typeof o !== 'object' || o === null || Array.isArray(o)) return ['opinions must be an object of topics'];
+  const out: string[] = [];
+  const entries = Object.entries(o as Record<string, { position?: unknown; text?: unknown }>);
+  if (entries.length > TUNING.life.opinion.importMax) out.push(`at most ${TUNING.life.opinion.importMax} opinions (has ${entries.length})`);
+  for (const [topicId, op] of entries) {
+    const topic = reg.opinionTopics.get(topicId);
+    if (!topic) {
+      out.push(`unknown opinion topic "${topicId}"`);
+      continue;
+    }
+    if (!(topic.positions as Array<{ id: string }>).some((p) => p.id === op?.position)) out.push(`topic "${topicId}" has no position "${String(op?.position)}"`);
+    if (op?.text !== undefined && (typeof op.text !== 'string' || op.text.length > TUNING.life.opinion.textMax)) out.push(`the opinion on "${topicId}" must be text of at most ${TUNING.life.opinion.textMax} characters`);
+  }
+  return out;
 }
 
 /** The per-unit rules of `validateSetup`, minus the baseline (re-sync never touches relationship axes). */
@@ -383,7 +446,7 @@ export function initialRelation(o: { trust: number; affinity: number; attraction
  * A fresh named unit at level 1 from a validated profile. Its id follows the `unit_<slug>` rule and is made unique
  * against `usedIds`, which this call extends. Relationship data is the caller's business.
  */
-export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string>): Unit {
+export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string>, day = 1): Unit {
   const base = `unit_${slug(u.displayName)}`;
   let id = base;
   for (let n = 2; usedIds.has(id); n++) id = `${base}_${n}`;
@@ -419,6 +482,11 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     ...(u.insight !== undefined && u.insight !== 'mid' ? { insight: u.insight } : {}),
     ...(u.temperament ? { temperament: { ...u.temperament } } : {}),
     ...(u.temperamentLocks && u.temperamentLocks.length > 0 ? { temperamentLocks: [...new Set(u.temperamentLocks)] } : {}),
+    ...(u.hobbies && u.hobbies.length > 0 ? { hobbies: u.hobbies.map((h) => newHobby(h, day)) } : {}),
+    ...(u.aptitudes && (u.aptitudes.high.length > 0 || u.aptitudes.low.length > 0) ? { aptitudes: { high: [...u.aptitudes.high], low: [...u.aptitudes.low] } } : {}),
+    ...(u.opinions && Object.keys(u.opinions).length > 0
+      ? { opinions: Object.fromEntries(Object.entries(u.opinions).map(([t, o]) => [t, { position: o.position, strength: 'strong' as const, ...(o.text ? { text: o.text } : {}), formedDay: day }])) }
+      : {}),
     ...(u.anchors && u.anchors.length > 0 ? { development: { drift: {}, acc: {}, anchors: [...u.anchors], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 } } : {}),
   };
 }
@@ -501,6 +569,7 @@ export function buildCampaign(
   // P11b: after every unit joined (disposition and first impression done) and before the world, the warden and the prologue read the relations
   if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days: days as 7 | 14 | 30, impressions });
   state.roster.activeIds = state.squad.map((u) => u.id);
+  seedLife(state, reg); // P14c: the starting skills, from the salt written above (a no-op while life is off; nothing draws)
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set
   seedSpecialTraits(state, { registries: reg, rng: new Rng(state.rng) }); // P12: no draw, the rng stays as it is

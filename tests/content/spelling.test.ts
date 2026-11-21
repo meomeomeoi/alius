@@ -16,7 +16,8 @@ function strings(): Array<{ where: string; text: string }> {
   const walk = (v: unknown, where: string): void => {
     if (typeof v === 'string') out.push({ where, text: v });
     else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${where}[${i}]`));
-    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, `${where}.${k}`);
+    // an `id` keeps its own spelling (the draft's `favourite` milestone, `armourer`), like every key
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) if (k !== 'id') walk(x, `${where}.${k}`);
   };
   for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json'))) walk(JSON.parse(readFileSync(join(DIR, file), 'utf8')), file);
   return out;

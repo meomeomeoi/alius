@@ -20,7 +20,7 @@
         "trace": "prop"
       },
       {
-        "id": "favorite",
+        "id": "favourite",
         "line": "This one. I've read it three times. I'll lend it to you if you swear on your life.",
         "trace": "opinion"
       },
@@ -345,7 +345,7 @@
         "line": "New grip, wrapped by hand. She fits me now."
       },
       {
-        "id": "armorer",
+        "id": "armourer",
         "line": "The others bring me their rifles. I'm the unofficial armorer."
       }
     ],

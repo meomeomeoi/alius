@@ -170,7 +170,7 @@ describe('the event vocabulary', () => {
   it('the engine events of her life are reserved', () => {
     for (const t of ['life_event', 'life_shared', 'life_noted', 'life_frequency_set', 'news_queued', 'news_delivered', 'news_stale', 'hobby_started', 'hobby_progress', 'hobby_plateau',
       'hobby_breakthrough', 'hobby_milestone', 'hobby_cooling', 'hobby_dropped', 'hobby_rekindled', 'hobby_mastered', 'hobby_taught', 'opinion_formed', 'opinion_changed',
-      'opinion_hardened', 'first_moment_kept', 'joke_counted', 'pastime_set', 'temperament_set']) {
+      'opinion_hardened', 'first_moment_kept', 'joke_counted', 'pastime_set', 'temperament_set', 'hobbies_set', 'opinion_set']) {
       expect(RESERVED_EVENT_TYPES, t).toContain(t);
     }
   });

@@ -7084,7 +7084,9 @@ var RESERVED_EVENT_TYPES = [
   "first_moment_kept",
   "joke_counted",
   "pastime_set",
-  "temperament_set"
+  "temperament_set",
+  "hobbies_set",
+  "opinion_set"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -13025,6 +13027,36 @@ function fnv1a2(s) {
     h2 = Math.imul(h2, 16777619) >>> 0;
   }
   return h2 >>> 0;
+}
+function lifeHash(life, key) {
+  return fnv1a2(`${life.salt}|${key}`);
+}
+
+// src/engine/life/hobbies.ts
+function milestoneAt(salt, unitId, hobbyId, n) {
+  const t = TUNING.life;
+  const spread2 = Math.round(t.milestoneShift * 1e3);
+  const shift = lifeHash({ salt }, `${unitId}|hobby|${hobbyId}|${n}`) % (2 * spread2 + 1) - spread2;
+  return Math.min(100, Math.round(t.milestones[n] * (1 + shift / 1e3)));
+}
+function newHobby(id, day) {
+  return { id, skill: 0, interest: TUNING.life.interest.start, state: "active", since: day, milestones: [] };
+}
+function seedLife(draft, reg) {
+  if (lifeMode(draft) === "off" || !draft.life) return [];
+  const salt = draft.life.salt;
+  for (const unit2 of draft.squad) {
+    if (unit2.kind !== "named") continue;
+    for (const h2 of unit2.hobbies ?? []) {
+      if (h2.skill !== 0 || h2.milestones.length > 0 || !reg.hobbies.has(h2.id)) continue;
+      const entry = reg.hobbies.get(h2.id);
+      h2.skill = lifeHash({ salt }, `${unit2.id}|hobby|${h2.id}`) % milestoneAt(salt, unit2.id, h2.id, 1);
+      for (const [i, m] of entry.milestones.entries()) {
+        if (i < 2 && milestoneAt(salt, unit2.id, h2.id, i) <= h2.skill) h2.milestones.push(m.id);
+      }
+    }
+  }
+  return [];
 }
 
 // src/engine/headStart/hash.ts
@@ -22374,6 +22406,7 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
   validateDisposition(u, label2, reg, out);
   validateDevelopmentProfile(u, label2, reg, out);
   validateTemperament(u, label2, out);
+  validateLifeProfile(u, label2, reg, out);
   if (u.bond !== void 0) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label2}: bond: ${issue}`);
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
   for (const [field2, cap7] of Object.entries(tagCaps)) {
@@ -22406,6 +22439,54 @@ function validateTemperament(u, label2, out) {
   if (u.temperamentLocks === void 0) return;
   if (!Array.isArray(u.temperamentLocks)) return void out.push(`${label2}: temperament locks must be a list of fields`);
   for (const f of u.temperamentLocks) if (!TEMPERAMENT_FIELDS.includes(f)) out.push(`${label2}: cannot lock "${String(f)}": a temperament field is ${TEMPERAMENT_FIELDS.join(", ")}`);
+}
+function validateLifeProfile(u, label2, reg, out) {
+  const t = TUNING.life;
+  if (u.hobbies !== void 0) {
+    if (!Array.isArray(u.hobbies)) out.push(`${label2}: hobbies must be a list`);
+    else {
+      if (u.hobbies.length > t.maxActive) out.push(`${label2}: at most ${t.maxActive} hobbies (has ${u.hobbies.length})`);
+      const seen = /* @__PURE__ */ new Set();
+      for (const h2 of u.hobbies) {
+        if (!reg.hobbies.has(h2)) out.push(`${label2}: unknown hobby "${String(h2)}"`);
+        if (seen.has(h2)) out.push(`${label2}: hobby "${String(h2)}" is chosen twice`);
+        seen.add(h2);
+      }
+    }
+  }
+  if (u.aptitudes !== void 0) out.push(...aptitudeProblems(u.aptitudes, reg).map((p) => `${label2}: ${p}`));
+  if (u.opinions !== void 0) out.push(...opinionProblems(u.opinions, reg).map((p) => `${label2}: ${p}`));
+}
+function aptitudeProblems(a, reg) {
+  const o = a;
+  if (typeof o !== "object" || o === null || !Array.isArray(o.high) || !Array.isArray(o.low)) return ["aptitudes must be { high: [...], low: [...] }"];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const [name, list5] of [["high", o.high], ["low", o.low]]) {
+    if (list5.length > 3) out.push(`at most 3 ${name} aptitudes (has ${list5.length})`);
+    for (const h2 of list5) {
+      if (!reg.hobbies.has(h2)) out.push(`unknown hobby "${String(h2)}" in the ${name} aptitudes`);
+      else if (seen.has(h2)) out.push(`hobby "${String(h2)}" is rated twice`);
+      seen.add(h2);
+    }
+  }
+  return out;
+}
+function opinionProblems(o, reg) {
+  if (typeof o !== "object" || o === null || Array.isArray(o)) return ["opinions must be an object of topics"];
+  const out = [];
+  const entries2 = Object.entries(o);
+  if (entries2.length > TUNING.life.opinion.importMax) out.push(`at most ${TUNING.life.opinion.importMax} opinions (has ${entries2.length})`);
+  for (const [topicId, op] of entries2) {
+    const topic = reg.opinionTopics.get(topicId);
+    if (!topic) {
+      out.push(`unknown opinion topic "${topicId}"`);
+      continue;
+    }
+    if (!topic.positions.some((p) => p.id === op?.position)) out.push(`topic "${topicId}" has no position "${String(op?.position)}"`);
+    if (op?.text !== void 0 && (typeof op.text !== "string" || op.text.length > TUNING.life.opinion.textMax)) out.push(`the opinion on "${topicId}" must be text of at most ${TUNING.life.opinion.textMax} characters`);
+  }
+  return out;
 }
 function validateUnitProfile(u, label2, reg, opts) {
   const out = [];
@@ -22523,7 +22604,7 @@ function initialRelation(o) {
     metDay: o.since ?? 1
   };
 }
-function makeNamedUnit(u, reg, usedIds) {
+function makeNamedUnit(u, reg, usedIds, day = 1) {
   const base = `unit_${slug2(u.displayName)}`;
   let id = base;
   for (let n = 2; usedIds.has(id); n++) id = `${base}_${n}`;
@@ -22559,6 +22640,9 @@ function makeNamedUnit(u, reg, usedIds) {
     ...u.insight !== void 0 && u.insight !== "mid" ? { insight: u.insight } : {},
     ...u.temperament ? { temperament: { ...u.temperament } } : {},
     ...u.temperamentLocks && u.temperamentLocks.length > 0 ? { temperamentLocks: [...new Set(u.temperamentLocks)] } : {},
+    ...u.hobbies && u.hobbies.length > 0 ? { hobbies: u.hobbies.map((h2) => newHobby(h2, day)) } : {},
+    ...u.aptitudes && (u.aptitudes.high.length > 0 || u.aptitudes.low.length > 0) ? { aptitudes: { high: [...u.aptitudes.high], low: [...u.aptitudes.low] } } : {},
+    ...u.opinions && Object.keys(u.opinions).length > 0 ? { opinions: Object.fromEntries(Object.entries(u.opinions).map(([t, o]) => [t, { position: o.position, strength: "strong", ...o.text ? { text: o.text } : {}, formedDay: day }])) } : {},
     ...u.anchors && u.anchors.length > 0 ? { development: { drift: {}, acc: {}, anchors: [...u.anchors], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 } } : {}
   };
 }
@@ -22627,6 +22711,7 @@ function buildCampaign(r, reg, opts) {
   }
   if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days, impressions });
   state.roster.activeIds = state.squad.map((u) => u.id);
+  seedLife(state, reg);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg);
   seedSpecialTraits(state, { registries: reg, rng: new Rng(state.rng) });
@@ -23235,7 +23320,7 @@ function gruntRelation(state, reg, grunt) {
 }
 
 // src/engine/actions/squad.ts
-var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development", "temperament"];
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions"];
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
@@ -23252,7 +23337,10 @@ var SECTION_OF = {
   bond: "bond",
   anchors: "development",
   insight: "development",
-  temperament: "temperament"
+  temperament: "temperament",
+  hobbies: "hobbies",
+  aptitudes: "hobbies",
+  opinions: "opinions"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
   if (!isObj8(payload) || typeof payload.unitId !== "string" || !isObj8(payload.patch)) {
@@ -23280,8 +23368,12 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     bond: patch.bond ?? unit2.bond,
     anchors: patch.anchors ?? unit2.development?.anchors,
     insight: patch.insight ?? unit2.insight,
-    temperament: patch.temperament
+    temperament: patch.temperament,
     // P14c: only the patch is checked (the words); a partial block is fine here
+    hobbies: patch.hobbies,
+    // P14c: only the patch is checked
+    aptitudes: patch.aptitudes,
+    opinions: patch.opinions
   };
   const errors = validateUnitProfile(next, unit2.displayName, ctx2.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true
@@ -23334,6 +23426,31 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     const kept = Object.fromEntries(Object.entries(patch.temperament).filter(([f]) => !locked.includes(f)));
     unit2.temperament = { ...temperamentOf(draft, unit2.id), ...kept };
   }
+  if (payload.resetLife === true) {
+    delete unit2.hobbies;
+    delete unit2.opinions;
+    delete draft.life?.units[unit2.id];
+  }
+  if (patch.aptitudes !== void 0) {
+    if (patch.aptitudes.high.length > 0 || patch.aptitudes.low.length > 0) unit2.aptitudes = { high: [...patch.aptitudes.high], low: [...patch.aptitudes.low] };
+    else delete unit2.aptitudes;
+  }
+  if (patch.hobbies !== void 0 && unit2.kind === "named") {
+    const have = unit2.hobbies ?? [];
+    const added = patch.hobbies.filter((id) => !have.some((h2) => h2.id === id)).map((id) => newHobby(id, draft.day));
+    if (have.length + added.length > 0) unit2.hobbies = [...have, ...added];
+    if (added.length > 0) seedLife(draft, ctx2.registries);
+  }
+  if (patch.opinions !== void 0 && unit2.kind === "named") {
+    const mine = unit2.opinions ?? {};
+    const kept = Object.fromEntries(Object.entries(mine).filter(([, o]) => o.strength !== "strong" || o.voicedDay !== void 0 || (o.history?.length ?? 0) > 0));
+    for (const [topicId, o] of Object.entries(patch.opinions)) {
+      if (topicId in kept) continue;
+      kept[topicId] = { position: o.position, strength: "strong", ...o.text ? { text: o.text } : {}, formedDay: draft.day };
+    }
+    if (Object.keys(kept).length > 0) unit2.opinions = kept;
+    else delete unit2.opinions;
+  }
   if (patch.defects) {
     unit2.defects = patch.defects.map((d) => {
       const kept = unit2.defects.find((x) => x.id === d.id);
@@ -23357,7 +23474,7 @@ registerAction("squad/add_named", (draft, payload, ctx2) => {
   if (draft.squad.some((x) => x.cardRef !== void 0 && x.cardRef === u.cardRef)) problems.push(`Card "${String(u.cardRef)}" is already in the squad`);
   if (problems.length > 0) throw new Error(problems.join("; "));
   const reg = ctx2.registries;
-  const unit2 = makeNamedUnit(u, reg, new Set(draft.squad.map((x) => x.id)));
+  const unit2 = makeNamedUnit(u, reg, new Set(draft.squad.map((x) => x.id)), draft.day);
   const crime = reg.crimes.get(draft.commander.crimeId ?? "");
   const start = reg.starts.get(draft.world.startId ?? "");
   const setup = u;
@@ -23378,6 +23495,7 @@ registerAction("squad/add_named", (draft, payload, ctx2) => {
   }
   draft.roster.activeIds = active;
   draft.squad.push(unit2);
+  seedLife(draft, reg);
   draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
   return [{ type: "unit_joined", unitId: unit2.id, kind: "named" }];
 });
@@ -26555,11 +26673,13 @@ registerAction("development/remove_fact", (draft, payload) => {
 });
 
 // src/engine/actions/life.ts
-registerAction("life/set_frequency", (draft, payload) => {
+registerAction("life/set_frequency", (draft, payload, ctx2) => {
   const mode = payload?.mode;
   if (typeof mode !== "string" || !LIFE_MODES.includes(mode)) throw new Error("Life events must be off, rare, normal or often.");
+  const wasOff = lifeMode(draft) === "off";
   draft.settings.lifeEvents = mode;
   if (mode !== "off") ensureLife(draft);
+  if (wasOff && mode !== "off") seedLife(draft, ctx2.registries);
   return [{ type: "life_frequency_set", mode }];
 });
 function namedUnit2(draft, id, action) {
@@ -26591,6 +26711,53 @@ registerAction("profile/lock_temperament", (draft, payload) => {
   if (locks.length > 0) unit2.temperamentLocks = locks;
   else delete unit2.temperamentLocks;
   return [{ type: "temperament_set", unitId: unit2.id, temperament: temperamentOf(draft, unit2.id), locks: [...locks] }];
+});
+registerAction("profile/set_hobbies", (draft, payload, ctx2) => {
+  const p = payload;
+  const unit2 = namedUnit2(draft, p?.unitId, "profile/set_hobbies");
+  if (!Array.isArray(p?.hobbies)) throw new Error("profile/set_hobbies needs a list of hobbies.");
+  const ids = p.hobbies;
+  for (const id of ids) if (typeof id !== "string" || !ctx2.registries.hobbies.has(id)) throw new Error(`Unknown hobby "${String(id)}".`);
+  if (new Set(ids).size !== ids.length) throw new Error("A hobby is listed twice.");
+  const have = unit2.hobbies ?? [];
+  const next = ids.map((id) => have.find((h2) => h2.id === id) ?? newHobby(id, draft.day));
+  if (next.filter((h2) => h2.state === "active").length > TUNING.life.maxActive) throw new Error(`At most ${TUNING.life.maxActive} hobbies can be active at once.`);
+  if (p.aptitudes !== void 0) {
+    const problems = aptitudeProblems(p.aptitudes, ctx2.registries);
+    if (problems.length > 0) throw new Error(problems.join("; "));
+  }
+  if (next.length > 0) unit2.hobbies = next;
+  else delete unit2.hobbies;
+  if (p.aptitudes !== void 0) {
+    const a = p.aptitudes;
+    if (a.high.length > 0 || a.low.length > 0) unit2.aptitudes = { high: [...a.high], low: [...a.low] };
+    else delete unit2.aptitudes;
+  }
+  return [{ type: "hobbies_set", unitId: unit2.id, hobbies: next.map((h2) => h2.id) }];
+});
+var STRENGTHS = ["strong", "held", "loose"];
+registerAction("profile/set_opinion", (draft, payload, ctx2) => {
+  const p = payload;
+  const unit2 = namedUnit2(draft, p?.unitId, "profile/set_opinion");
+  const topic = typeof p?.topicId === "string" ? ctx2.registries.opinionTopics.get(p.topicId) : void 0;
+  if (!topic) throw new Error(`Unknown opinion topic "${String(p?.topicId)}".`);
+  if (typeof p?.position !== "string" || !topic.positions.some((x) => x.id === p.position)) throw new Error(`Topic "${topic.id}" has no position "${String(p?.position)}".`);
+  if (p.text !== void 0 && typeof p.text !== "string") throw new Error("The opinion text must be text.");
+  if (p.strength !== void 0 && !STRENGTHS.includes(p.strength)) throw new Error("An opinion is strong, held or loose.");
+  const opinions = unit2.opinions ??= {};
+  const old = opinions[topic.id];
+  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.life.opinion.textMax) : old?.text;
+  const next = {
+    ...old,
+    position: p.position,
+    strength: p.strength ?? old?.strength ?? "strong",
+    formedDay: old?.formedDay ?? draft.day
+  };
+  if (text2) next.text = text2;
+  else delete next.text;
+  delete next.push;
+  opinions[topic.id] = next;
+  return [{ type: "opinion_set", unitId: unit2.id, topicId: topic.id, position: next.position }];
 });
 
 // src/llm/callTypes.ts
@@ -26635,7 +26802,7 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
-var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond", "development"];
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -26650,6 +26817,10 @@ var ProfileImportRawSchema = external_exports.object({
   worldStances: external_exports.unknown().optional(),
   bond: external_exports.unknown().optional(),
   development: external_exports.unknown().optional(),
+  temperament: external_exports.unknown().optional(),
+  hobbies: external_exports.unknown().optional(),
+  aptitudes: external_exports.unknown().optional(),
+  opinions: external_exports.unknown().optional(),
   notes: external_exports.unknown().optional()
 }).passthrough();
 var VALUE_AXES_TEXT = [
@@ -26671,6 +26842,9 @@ var SCHEMA_PART = {
   stances: '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
   bond: '  "bond": { "leadStyle": "dominant|assertive|balanced|yielding", "attachment": "slow|steady|intense|avoidant", "desire": "low|medium|high", "caretaker": bool, "ownLimits": { "categories": [<ids from CONTENT CATEGORIES>], "note": "<=160" }, "publicity": "secret|known|public", "reason": "<=160" }',
   development: '  "development": { "anchors": ["<key from DEVELOPMENT AXES>"], "insight": "low"|"mid"|"high" },   // anchors: at most 4 traits the card states strongly; insight: how perceptive she is',
+  temperament: '  "temperament": { "talkativeness": "silent"|"terse"|"talkative", "volatility": "steady"|"moody", "humor": "none"|"dry"|"mocking"|"warm" }',
+  hobbies: '  "hobbies": ["<id from HOBBIES>"],   // 1 to 3: what she does for herself, only if the card suggests it\n  "aptitudes": { "high": ["<id from HOBBIES>"], "low": ["<id from HOBBIES>"] },   // 2 to 3 ids in each list, none in both: what she is gifted at and what she is hopeless at',
+  opinions: `  "opinions": [{ "topic": "<id from OPINION TOPICS>", "position": "<one of that topic's positions>", "text": "<her view in her own voice, one sentence, at most 200 characters>" }],   // 8 to 12 views the card states or strongly implies, one per topic`,
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20'
 };
 var has = (i, s) => i.sections.includes(s);
@@ -26704,6 +26878,15 @@ function system(raw) {
   if (has(input, "development")) {
     lines.push("", 'Anchors are the traits the card states strongly ("fiercely loyal", "despises weakness"): name the axis each one sits on, at most 4, and none when the card is not that firm. Write "like:<tag>" or "dislike:<tag>" for something she plainly loves or hates (a short lowercase tag). Insight is how well she reads other people: "low" when the card shows her naive, hot-headed or distracted, "high" when sharp, calm and observant, "mid" when it does not say.');
   }
+  if (has(input, "temperament")) {
+    lines.push("", "Temperament is how she carries herself day to day, read from the card; never invent. talkativeness: silent (rarely speaks unprompted), terse (few words), talkative (fills a silence). volatility: moody when her mood swings or flares, steady otherwise. humor: none, dry, mocking (at others' expense) or warm. A card that does not say is terse, steady and dry.");
+  }
+  if (has(input, "hobbies")) {
+    lines.push("", "Hobbies are what she does for herself in her free hours, from HOBBIES; name one only when the card shows it, and pick at least one if the card gives any hint. Aptitudes rate hobbies from the whole list: high for what the card says she is naturally good at or drawn to, low for what she is clumsy at or has no patience for. An id in neither list is average.");
+  }
+  if (has(input, "opinions")) {
+    lines.push("", "An opinion is a stand she takes on one of the topics under OPINION TOPICS: pick the position (listed in order, roughly from one end of the argument to the other) that fits the card best, and write her view in her own voice. Choose the topics the card speaks to most, 8 to 12 in all; skip a topic the card does not touch.");
+  }
   if (has(input, "values")) lines.push("", "Value axes:", VALUE_AXES_TEXT);
   lines.push("", "Output JSON shape:", "{", parts.join(",\n"), "}");
   return lines.join("\n");
@@ -26727,6 +26910,8 @@ function prompt(raw) {
   if (has(input, "tastes")) out.push("", "TASTES (id: what it means):", ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
   if (has(input, "bond") && input.categories) out.push("", "CONTENT CATEGORIES (id: label):", ...input.categories.map((c2) => `- ${c2.id}: ${c2.label}`));
   if (has(input, "development") && input.development) out.push("", "DEVELOPMENT AXES (keys an anchor may name):", input.development.axes.join(", "));
+  if (has(input, "hobbies") && input.hobbies) out.push("", "HOBBIES (id: what it is):", ...input.hobbies.map((x) => `- ${x.id}: ${x.description}`));
+  if (has(input, "opinions") && input.topics) out.push("", "OPINION TOPICS (id: positions in order):", ...input.topics.map((t) => `- ${t.id}: ${t.positions.join(", ")}`));
   if (has(input, "disposition") && input.world) out.push("", `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has(input, "stances") && input.world) out.push("", "WORLD OPTIONS (id: current choice, what it means):", ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push("", `Produce the requested sections: ${input.sections.join(", ")}.`);
@@ -30410,7 +30595,7 @@ var DEFAULT_SETTINGS = {
   mechanicFallbackToMain: true,
   requestFloor: 2e3,
   budgets: {
-    profile_import: 1500,
+    profile_import: 1800,
     intent_extract: 600,
     scene_summary: 800,
     dilemma_generate: 1e3,
@@ -34809,8 +34994,13 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str5(d.lore) })),
     tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str5(t.description) })),
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str5(c.label) })) } : {},
-    ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries) } } : {}
+    ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries) } } : {},
+    ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str5(h2.description) })) } : {},
+    ...sections.includes("opinions") ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: t.positions.map((p) => p.id) })) } : {}
   };
+}
+function resyncSectionsOffered(registries, world) {
+  return RESYNC_SECTIONS.filter((s) => s !== "stances" || stanceOptionIds(registries, world).length > 0);
 }
 function developmentAxisKeys(registries) {
   const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any"));
@@ -34967,6 +35157,59 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.anchors = anchors;
     profile.insight = dev.insight === "low" || dev.insight === "high" ? dev.insight : "mid";
+  }
+  if (want("temperament") && isObj38(src.temperament)) {
+    const given = src.temperament;
+    const t = { ...TEMPERAMENT_DEFAULTS };
+    for (const field2 of Object.keys(TEMPERAMENT_VALUES)) {
+      const word = given[field2];
+      if (typeof word === "string" && TEMPERAMENT_VALUES[field2].includes(word)) t[field2] = word;
+      else dropped.push(`temperament:${field2}`);
+    }
+    profile.temperament = t;
+  }
+  if (want("hobbies")) {
+    const hobby = (raw2, where) => {
+      if (typeof raw2 === "string" && ctx2.registries.hobbies.has(raw2)) return raw2;
+      dropped.push(`${where}:${typeof raw2 === "string" ? raw2 : "(invalid)"}`);
+      return null;
+    };
+    const list5 = (raw2, where, max) => {
+      const out = [];
+      for (const item of Array.isArray(raw2) ? raw2 : []) {
+        const id = hobby(item, where);
+        if (id === null) continue;
+        if (out.includes(id) || out.length >= max) dropped.push(`${where}:${id}`);
+        else out.push(id);
+      }
+      return out;
+    };
+    profile.hobbies = list5(src.hobbies, "hobbies", TUNING.life.maxActive);
+    if (isObj38(src.aptitudes)) {
+      const high = list5(src.aptitudes.high, "aptitudes", 3);
+      const low = list5(src.aptitudes.low, "aptitudes", 3);
+      const both = high.filter((h2) => low.includes(h2));
+      for (const h2 of both) dropped.push(`aptitudes:${h2}`);
+      const apt = { high: high.filter((h2) => !both.includes(h2)), low: low.filter((h2) => !both.includes(h2)) };
+      if (apt.high.length >= 2 && apt.low.length >= 2) profile.aptitudes = apt;
+      else if (apt.high.length + apt.low.length > 0) dropped.push("aptitudes:(too few)");
+    }
+  }
+  if (want("opinions")) {
+    const out = {};
+    const max = TUNING.life.opinion.importMax;
+    for (const item of Array.isArray(src.opinions) ? src.opinions : []) {
+      const topicId = isObj38(item) && typeof item.topic === "string" ? item.topic : null;
+      const topic = topicId === null ? void 0 : ctx2.registries.opinionTopics.get(topicId);
+      const position = isObj38(item) && typeof item.position === "string" ? item.position : null;
+      if (topicId === null || !topic || !topic.positions.some((p) => p.id === position) || topicId in out || Object.keys(out).length >= max) {
+        dropped.push(`opinions:${topicId ?? "(invalid)"}`);
+        continue;
+      }
+      const text2 = cap4(item.text, TUNING.life.opinion.textMax);
+      out[topicId] = { position, ...text2 !== "" ? { text: text2 } : {} };
+    }
+    profile.opinions = out;
   }
   if (want("baseline")) {
     if (isObj38(src.emotionalBaseline)) {
@@ -35646,6 +35889,16 @@ var Wizard = class {
       case "development":
         if (p.anchors) ch.anchors = [...p.anchors];
         if (p.insight) ch.insight = p.insight;
+        break;
+      case "temperament":
+        if (p.temperament) ch.temperament = { ...p.temperament };
+        break;
+      case "hobbies":
+        if (p.hobbies) ch.hobbies = [...p.hobbies];
+        if (p.aptitudes) ch.aptitudes = { high: [...p.aptitudes.high], low: [...p.aptitudes.low] };
+        break;
+      case "opinions":
+        if (p.opinions) ch.opinions = structuredClone(p.opinions);
         break;
     }
   }
@@ -47278,17 +47531,21 @@ function createApp(st, deps) {
     stances: "Her stance toward the world's norms",
     bond: "Bond profile: how she leads, bonds and what she will not do",
     development: "What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)",
-    temperament: "Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)"
+    temperament: "Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)",
+    hobbies: "Hobbies and aptitudes: what she does for herself and what she is gifted or hopeless at (a hobby she has keeps its progress)",
+    opinions: "Strong opinions: the stands her card takes (one she has voiced or changed her mind about is kept)"
   };
   async function resyncUnit(unitId) {
     const unit2 = state?.squad.find((u) => u.id === unitId);
     if (!state || !unit2?.cardRef) return;
     const startChatId = st.getActiveChat()?.chatId;
     const desireBond = state.settings.desireBondDefects === true;
+    const temperament = temperamentOf(state, unitId);
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered2 = RESYNC_SECTIONS.filter((s) => s !== "temperament" && (s !== "stances" || stanceOptionIds(registries, world).length > 0));
+    const offered2 = resyncSectionsOffered(registries, world);
     const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
     const resetBox = h("input", { type: "checkbox", "data-reset-development": unitId });
+    const resetLifeBox = h("input", { type: "checkbox", "data-reset-life": unitId });
     const picker = await shell.modal({
       title: "Re-sync from card",
       body: h(
@@ -47296,7 +47553,8 @@ function createApp(st, deps) {
         {},
         h("p", {}, "Choose what to re-import from the character card. Relationship numbers are never changed."),
         ...offered2.map((s, i) => h("label", { class: "alius-check" }, boxes[i], ` ${RESYNC_LABELS[s]}`)),
-        h("label", { class: "alius-check", ...analyzeAttrs("glossary:character_development") }, resetBox, " Reset development: forget what she has become since joining")
+        h("label", { class: "alius-check", ...analyzeAttrs("glossary:character_development") }, resetBox, " Reset development: forget what she has become since joining"),
+        h("label", { class: "alius-check", ...analyzeAttrs("glossary:life_events") }, resetLifeBox, " Reset life: forget her hobbies, her opinions and what happened off-screen")
       ),
       actions: [{ label: "Import", value: "go" }, { label: "Cancel", value: "cancel" }]
     });
@@ -47339,7 +47597,15 @@ function createApp(st, deps) {
       ...unit2.dispositionOffset !== void 0 ? { dispositionOffset: unit2.dispositionOffset } : {},
       ...unit2.dispositionReason !== void 0 ? { dispositionReason: unit2.dispositionReason } : {},
       ...unit2.worldStances !== void 0 ? { worldStances: structuredClone(unit2.worldStances) } : {},
-      ...unit2.bond !== void 0 ? { bond: structuredClone(unit2.bond) } : {}
+      ...unit2.bond !== void 0 ? { bond: structuredClone(unit2.bond) } : {},
+      temperament,
+      // P14c: the words she has now (the defaults when none is stored)
+      ...unit2.hobbies !== void 0 ? { hobbies: unit2.hobbies.map((x) => x.id) } : {},
+      // P14c: raw profile
+      ...unit2.aptitudes !== void 0 ? { aptitudes: structuredClone(unit2.aptitudes) } : {},
+      // P14c: raw profile
+      ...unit2.opinions !== void 0 ? { opinions: Object.fromEntries(Object.entries(unit2.opinions).map(([t, o]) => [t, { position: o.position, ...o.text ? { text: o.text } : {} }])) } : {}
+      // P14c: raw profile
     });
     wizard.calibrate(0);
     const body = h("div", { class: "alius-calibration" });
@@ -47382,6 +47648,12 @@ function createApp(st, deps) {
       patch.anchors = c.anchors ?? [];
       patch.insight = c.insight ?? "mid";
     }
+    if (sections.includes("temperament") && c.temperament) patch.temperament = c.temperament;
+    if (sections.includes("hobbies")) {
+      patch.hobbies = c.hobbies ?? [];
+      if (c.aptitudes) patch.aptitudes = c.aptitudes;
+    }
+    if (sections.includes("opinions")) patch.opinions = c.opinions ?? {};
     const current = {
       ...unit2.bond !== void 0 ? { bond: unit2.bond } : {},
       dispositionOffset: unit2.dispositionOffset ?? 0,
@@ -47398,13 +47670,20 @@ function createApp(st, deps) {
       commanderTastes: unit2.commanderTastes ?? [],
       // P14b: raw profile
       anchors: unit2.development?.anchors ?? [],
-      insight: unit2.insight ?? "mid"
+      insight: unit2.insight ?? "mid",
+      temperament,
+      // P14c
+      hobbies: (unit2.hobbies ?? []).map((x) => x.id),
+      // P14c: raw profile
+      ...unit2.aptitudes !== void 0 ? { aptitudes: unit2.aptitudes } : {},
+      opinions: Object.fromEntries(Object.entries(unit2.opinions ?? {}).map(([t, o]) => [t, { position: o.position, ...o.text ? { text: o.text } : {} }]))
+      // P14c: raw profile
     };
     const unchanged = Object.keys(patch).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k])
     );
-    if (unchanged && !resetBox.checked) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
-    const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch, ...resetBox.checked ? { resetDevelopment: true } : {} } }, { expectChatId: startChatId });
+    if (unchanged && !resetBox.checked && !resetLifeBox.checked) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
+    const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch, ...resetBox.checked ? { resetDevelopment: true } : {}, ...resetLifeBox.checked ? { resetLife: true } : {} } }, { expectChatId: startChatId });
     const failed = events.find((e) => e.type === "error");
     if (failed) toast("error", String(failed.message ?? failed.code));
     else toast("info", `${unit2.displayName} re-synced from the card.`);

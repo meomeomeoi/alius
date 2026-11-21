@@ -821,6 +821,16 @@ export class Wizard {
         if (p.anchors) ch.anchors = [...p.anchors];
         if (p.insight) ch.insight = p.insight;
         break;
+      case 'temperament':
+        if (p.temperament) ch.temperament = { ...p.temperament };
+        break;
+      case 'hobbies':
+        if (p.hobbies) ch.hobbies = [...p.hobbies];
+        if (p.aptitudes) ch.aptitudes = { high: [...p.aptitudes.high], low: [...p.aptitudes.low] };
+        break;
+      case 'opinions':
+        if (p.opinions) ch.opinions = structuredClone(p.opinions);
+        break;
     }
   }
 

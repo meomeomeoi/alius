@@ -3,7 +3,10 @@ import { SETUP_LIMITS, normalizeTag } from '../engine/setup';
 import { TUNING } from '../engine/tuning';
 import { defectAllowedFor, validateBond } from '../engine/bonds';
 import { anchorKey } from '../engine/development/axes';
-import type { Bond, Insight, Unit, WorldStance } from '../engine/state/types';
+import { RESYNC_SECTIONS, type ResyncSection } from '../engine/actions/squad';
+import { TEMPERAMENT_DEFAULTS, TEMPERAMENT_VALUES } from '../engine/life/state';
+import type { OpinionTopicEntry } from '../engine/life/types';
+import type { Bond, Insight, Temperament, Unit, WorldStance } from '../engine/state/types';
 import { isNeutralChoice, worldChoices, worldDispositionLevel } from '../engine/worldOptions';
 import type { ImportSection, ProfileImportInput } from '../llm/calls/profileImport';
 import { describeFailure } from '../llm/describe';
@@ -87,7 +90,16 @@ export function buildImportInput(
       ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str(c.label) })) }
       : {}),
     ...(sections.includes('development') ? { development: { axes: developmentAxisKeys(registries) } } : {}),
+    ...(sections.includes('hobbies') ? { hobbies: [...registries.hobbies.values()].map((h) => ({ id: h.id, description: str(h.description) })) } : {}),
+    ...(sections.includes('opinions')
+      ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: (t.positions as Array<{ id: string }>).map((p) => p.id) })) }
+      : {}),
   };
+}
+
+/** The sections a re-sync offers: every section of `RESYNC_SECTIONS`, and the stances only while some norm of the world is not neutral. */
+export function resyncSectionsOffered(registries: Registries, world: Record<string, string> | undefined): ResyncSection[] {
+  return RESYNC_SECTIONS.filter((s) => s !== 'stances' || stanceOptionIds(registries, world).length > 0);
 }
 
 /** P14b: the axis keys an anchor may name: the registry's value and bond axes, and `taste:<id>` for each taste (the wildcards are not keys). */
@@ -117,6 +129,11 @@ export interface ImportedProfile {
   /** P14b: the axes her card states strongly (at most 4, validated) and how well she reads people. */
   anchors?: string[];
   insight?: Insight;
+  /** P14c: how she carries herself (every field a known word), up to 3 hobbies, her aptitudes (2 or 3 in each list, none in both) and up to 12 views. */
+  temperament?: Temperament;
+  hobbies?: string[];
+  aptitudes?: { high: string[]; low: string[] };
+  opinions?: Record<string, { position: string; text?: string }>;
   notes: string;
 }
 
@@ -290,6 +307,65 @@ export function sanitizeProfile(
     }
     profile.anchors = anchors;
     profile.insight = dev.insight === 'low' || dev.insight === 'high' ? dev.insight : 'mid';
+  }
+
+  // P14c: all three are optional by nature (a card that says nothing leaves them out); none is ever "missing"
+  if (want('temperament') && isObj(src.temperament)) {
+    const given = src.temperament;
+    const t: Temperament = { ...TEMPERAMENT_DEFAULTS };
+    for (const field of Object.keys(TEMPERAMENT_VALUES) as Array<keyof Temperament>) {
+      const word = given[field];
+      if (typeof word === 'string' && TEMPERAMENT_VALUES[field].includes(word)) (t[field] as string) = word;
+      else dropped.push(`temperament:${field}`);
+    }
+    profile.temperament = t;
+  }
+
+  if (want('hobbies')) {
+    const hobby = (raw: unknown, where: string): string | null => {
+      if (typeof raw === 'string' && ctx.registries.hobbies.has(raw)) return raw;
+      dropped.push(`${where}:${typeof raw === 'string' ? raw : '(invalid)'}`);
+      return null;
+    };
+    const list = (raw: unknown, where: string, max: number): string[] => {
+      const out: string[] = [];
+      for (const item of Array.isArray(raw) ? raw : []) {
+        const id = hobby(item, where);
+        if (id === null) continue;
+        if (out.includes(id) || out.length >= max) dropped.push(`${where}:${id}`);
+        else out.push(id);
+      }
+      return out;
+    };
+    profile.hobbies = list(src.hobbies, 'hobbies', TUNING.life.maxActive);
+    if (isObj(src.aptitudes)) {
+      const high = list(src.aptitudes.high, 'aptitudes', 3);
+      const low = list(src.aptitudes.low, 'aptitudes', 3);
+      // a hobby in both lists is the model contradicting itself: it is in neither
+      const both = high.filter((h) => low.includes(h));
+      for (const h of both) dropped.push(`aptitudes:${h}`);
+      const apt = { high: high.filter((h) => !both.includes(h)), low: low.filter((h) => !both.includes(h)) };
+      // two or three in each list is what the prompt asks for; less than that is not an answer
+      if (apt.high.length >= 2 && apt.low.length >= 2) profile.aptitudes = apt;
+      else if (apt.high.length + apt.low.length > 0) dropped.push('aptitudes:(too few)');
+    }
+  }
+
+  if (want('opinions')) {
+    const out: Record<string, { position: string; text?: string }> = {};
+    const max = TUNING.life.opinion.importMax;
+    for (const item of Array.isArray(src.opinions) ? src.opinions : []) {
+      const topicId = isObj(item) && typeof item.topic === 'string' ? item.topic : null;
+      const topic = topicId === null ? undefined : (ctx.registries.opinionTopics.get(topicId) as OpinionTopicEntry | undefined);
+      const position = isObj(item) && typeof item.position === 'string' ? item.position : null;
+      if (topicId === null || !topic || !topic.positions.some((p) => p.id === position) || topicId in out || Object.keys(out).length >= max) {
+        dropped.push(`opinions:${topicId ?? '(invalid)'}`);
+        continue;
+      }
+      const text = cap((item as Record<string, unknown>).text, TUNING.life.opinion.textMax);
+      out[topicId] = { position: position as string, ...(text !== '' ? { text } : {}) };
+    }
+    profile.opinions = out;
   }
 
   if (want('baseline')) {

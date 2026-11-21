@@ -118,6 +118,9 @@ describe('re-sync flow', () => {
     t.clickResync();
     await t.settle(2);
     expect((t.modals[0].body as HTMLElement).querySelector('input[data-section="bond"]')).not.toBeNull();
+    // P14c: the temperament, hobbies and opinions sections are offered too, with the Reset life checkbox
+    for (const section of ['temperament', 'hobbies', 'opinions']) expect((t.modals[0].body as HTMLElement).querySelector(`input[data-section="${section}"]`), section).not.toBeNull();
+    expect((t.modals[0].body as HTMLElement).querySelector('input[data-reset-life]')).not.toBeNull();
     const prompt = t.st.calls[0].prompt + (t.st.calls[0].system ?? '');
     expect(prompt).toContain('leadStyle');
     expect(prompt).not.toContain('roleCandidates');

@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { registerCallType } from '../callTypes';
 import type { CardInfo } from '../../st/adapter';
 
-export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances' | 'bond' | 'development';
-export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances', 'bond', 'development'];
+export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances' | 'bond' | 'development' | 'temperament' | 'hobbies' | 'opinions';
+export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament', 'hobbies', 'opinions'];
 
 export interface ProfileImportInput {
   card: CardInfo;
@@ -22,6 +22,10 @@ export interface ProfileImportInput {
   categories?: Array<{ id: string; label: string }>;
   /** P14b: the axis keys an anchor may name (value and bond axes, `taste:<id>`; `like:<tag>` and `dislike:<tag>` are free). Present only when the `development` section is asked for. */
   development?: { axes: string[] };
+  /** P14c: the hobbies a card may name or rate (registry `hobbies`). Present only when the `hobbies` section is asked for. */
+  hobbies?: Array<{ id: string; description: string }>;
+  /** P14c: the topics a card may take a view on, with their positions in order (registry `opinionTopics`). Present only when the `opinions` section is asked for. */
+  topics?: Array<{ id: string; positions: string[] }>;
 }
 
 /**
@@ -43,6 +47,10 @@ export const ProfileImportRawSchema = z
     worldStances: z.unknown().optional(),
     bond: z.unknown().optional(),
     development: z.unknown().optional(),
+    temperament: z.unknown().optional(),
+    hobbies: z.unknown().optional(),
+    aptitudes: z.unknown().optional(),
+    opinions: z.unknown().optional(),
     notes: z.unknown().optional(),
   })
   .passthrough();
@@ -75,6 +83,12 @@ const SCHEMA_PART: Record<ImportSection, string> = {
     '  "bond": { "leadStyle": "dominant|assertive|balanced|yielding", "attachment": "slow|steady|intense|avoidant", "desire": "low|medium|high", "caretaker": bool, "ownLimits": { "categories": [<ids from CONTENT CATEGORIES>], "note": "<=160" }, "publicity": "secret|known|public", "reason": "<=160" }',
   development:
     '  "development": { "anchors": ["<key from DEVELOPMENT AXES>"], "insight": "low"|"mid"|"high" },   // anchors: at most 4 traits the card states strongly; insight: how perceptive she is',
+  temperament:
+    '  "temperament": { "talkativeness": "silent"|"terse"|"talkative", "volatility": "steady"|"moody", "humor": "none"|"dry"|"mocking"|"warm" }',
+  hobbies:
+    '  "hobbies": ["<id from HOBBIES>"],   // 1 to 3: what she does for herself, only if the card suggests it\n  "aptitudes": { "high": ["<id from HOBBIES>"], "low": ["<id from HOBBIES>"] },   // 2 to 3 ids in each list, none in both: what she is gifted at and what she is hopeless at',
+  opinions:
+    '  "opinions": [{ "topic": "<id from OPINION TOPICS>", "position": "<one of that topic\'s positions>", "text": "<her view in her own voice, one sentence, at most 200 characters>" }],   // 8 to 12 views the card states or strongly implies, one per topic',
   baseline:
     '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20',
 };
@@ -111,6 +125,15 @@ function system(raw: unknown): string {
   if (has(input, 'development')) {
     lines.push('', 'Anchors are the traits the card states strongly ("fiercely loyal", "despises weakness"): name the axis each one sits on, at most 4, and none when the card is not that firm. Write "like:<tag>" or "dislike:<tag>" for something she plainly loves or hates (a short lowercase tag). Insight is how well she reads other people: "low" when the card shows her naive, hot-headed or distracted, "high" when sharp, calm and observant, "mid" when it does not say.');
   }
+  if (has(input, 'temperament')) {
+    lines.push('', 'Temperament is how she carries herself day to day, read from the card; never invent. talkativeness: silent (rarely speaks unprompted), terse (few words), talkative (fills a silence). volatility: moody when her mood swings or flares, steady otherwise. humor: none, dry, mocking (at others\' expense) or warm. A card that does not say is terse, steady and dry.');
+  }
+  if (has(input, 'hobbies')) {
+    lines.push('', 'Hobbies are what she does for herself in her free hours, from HOBBIES; name one only when the card shows it, and pick at least one if the card gives any hint. Aptitudes rate hobbies from the whole list: high for what the card says she is naturally good at or drawn to, low for what she is clumsy at or has no patience for. An id in neither list is average.');
+  }
+  if (has(input, 'opinions')) {
+    lines.push('', 'An opinion is a stand she takes on one of the topics under OPINION TOPICS: pick the position (listed in order, roughly from one end of the argument to the other) that fits the card best, and write her view in her own voice. Choose the topics the card speaks to most, 8 to 12 in all; skip a topic the card does not touch.');
+  }
   if (has(input, 'values')) lines.push('', 'Value axes:', VALUE_AXES_TEXT);
   lines.push('', 'Output JSON shape:', '{', parts.join(',\n'), '}');
   return lines.join('\n');
@@ -136,6 +159,8 @@ function prompt(raw: unknown): string {
   if (has(input, 'tastes')) out.push('', 'TASTES (id: what it means):', ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
   if (has(input, 'bond') && input.categories) out.push('', 'CONTENT CATEGORIES (id: label):', ...input.categories.map((c) => `- ${c.id}: ${c.label}`));
   if (has(input, 'development') && input.development) out.push('', 'DEVELOPMENT AXES (keys an anchor may name):', input.development.axes.join(', '));
+  if (has(input, 'hobbies') && input.hobbies) out.push('', 'HOBBIES (id: what it is):', ...input.hobbies.map((x) => `- ${x.id}: ${x.description}`));
+  if (has(input, 'opinions') && input.topics) out.push('', 'OPINION TOPICS (id: positions in order):', ...input.topics.map((t) => `- ${t.id}: ${t.positions.join(', ')}`));
   if (has(input, 'disposition') && input.world) out.push('', `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has(input, 'stances') && input.world) out.push('', 'WORLD OPTIONS (id: current choice, what it means):', ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push('', `Produce the requested sections: ${input.sections.join(', ')}.`);
