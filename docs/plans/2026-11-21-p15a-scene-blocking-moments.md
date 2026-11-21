@@ -1455,14 +1455,14 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Consumes: every provider registered in Tasks 12, 17, 20, 22 and 23.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `no reading shows`: her expected option, `herSkill`, her rhythm pattern, a segment plan's windows, her attention, or a `keeps` fact before it surfaced.
   - `a disabled category's entry is absent from every reading list`, and `a dynamic entry at frame equal` too.
   - `every scene element added by P15a resolves`.
-- [ ] **Step 2: Run** `npx vitest run tests/analysis/blockingHidden.test.ts` → FAIL (or PASS where the earlier tasks already did it; then add the missing sentinel until one fails, and fix it).
-- [ ] **Step 3: Implement** what is missing.
-- [ ] **Step 4: Run** `npm test` → PASS.
-- [ ] **Step 5: Commit** `test(P15a): analysis coverage and hidden sentinels`
+- [x] **Step 2: Run** `npx vitest run tests/analysis/blockingHidden.test.ts` → FAIL (or PASS where the earlier tasks already did it; then add the missing sentinel until one fails, and fix it).
+- [x] **Step 3: Implement** what is missing.
+- [x] **Step 4: Run** `npm test` → PASS.
+- [x] **Step 5: Commit** `test(P15a): analysis coverage and hidden sentinels`
 
 ---
 

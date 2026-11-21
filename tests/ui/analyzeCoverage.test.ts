@@ -20,6 +20,16 @@ import { renderExpeditionScreen } from '../../src/ui/expedition/expeditionScreen
 import { renderSysTab } from '../../src/ui/shell/sysTab';
 import { renderOpsTab } from '../../src/ui/ops/opsTab';
 import { renderHub, type HubCtx } from '../../src/ui/hub/hubScreen';
+import { renderBlockingStrip } from '../../src/ui/scene/blockingStrip';
+import { renderMomentCard } from '../../src/ui/scene/momentCard';
+import { renderPhysicsPanel } from '../../src/ui/scene/physicsPanel';
+import '../../src/engine/actions/blocking';
+import '../../src/engine/actions/moments';
+import '../../src/engine/actions/physics';
+import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../src/engine/blocking';
+import { fireMoment } from '../../src/engine/moments/fire';
+import { enable } from '../helpers/bonds';
+import { errors, run as runAction, setRelation } from '../helpers/loyalty';
 import { offerMission, postRumor } from '../../src/engine/world/missions';
 import { ctxOf } from '../helpers/world';
 import { run } from '../helpers/world';
@@ -791,3 +801,58 @@ describe('coverage: the prologue screens (P11)', () => {
   });
 });
 
+
+describe('coverage: the scene (P15a)', () => {
+  afterEach(() => resetBlockingHooks());
+
+  it('the strip, the moment card and the physics panel mark every element, and every one opens a panel with no network or model call', () => {
+    registerFrameReader(() => 'play');
+    const base = campaign(reg, 4);
+    setRelation(base, 'unit_ann', { stateId: 'confidant' });
+    enable(base, 'worship', 'restraint', 'service', 'objectification', 'humiliation');
+    const opened = runAction(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: ['unit_ann'], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(opened.events)).toEqual([]);
+    const s = opened.state;
+    setBlocking(s, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'hood' }, { at: 1, source: 'chip' });
+    setBlocking(s, { registries: reg }, { person: 'unit_ann', field: 'contact', value: 'smothered_armpit', with: COMMANDER }, { at: 2, source: 'chip' });
+    const held = runAction(s, reg, { type: 'physics/next_segment', payload: { runId: 'p1' } });
+    expect(errors(held.events)).toEqual([]);
+    const state = held.state;
+    fireMoment(state, { registries: reg }, 'third_party', 'unit_ann');
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    try {
+      const strip = h('div'), card = h('div'), panel = h('div');
+      root.append(strip, card, panel);
+      renderBlockingStrip(strip, { state, registries: reg, onStage: vi.fn() });
+      renderMomentCard(card, { state, registries: reg, chips: 'chips', onStage: vi.fn() });
+      renderPhysicsPanel(panel, {
+        state, registries: reg, settings: DEFAULT_SETTINGS, onTap: vi.fn(),
+        staging: { input: vi.fn(), endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0 },
+      });
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(state))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
+      const marked = [...root.querySelectorAll<HTMLElement>('[data-analyze]')];
+      expect(marked.length).toBeGreaterThan(20);
+      for (const el of marked) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});

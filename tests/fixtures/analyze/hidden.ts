@@ -144,11 +144,17 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     corporations: { position: 'necessary', strength: 'held', formedDay: 3, voicedDay: 6, push: { toward: 'last', amount: 5.13 } },
   };
 
+  // P15a: what a hold keeps from the commander: the xp behind the endurance words (83.77), her skills and the practice behind them (6.83), a tolerance, an
+  // exposure and the seeking share of a scent (the stage is a word, the numbers are not)
+  state.commander.endurance = { breath: { xp: 83.77, level: 2 } };
+  state.commander.stimuli = { scent_feet: { tolerance: 31.41, exposure: 8.86, lastDay: 7, best: 31.41, seek: 0.6174, stage: 'accustomed' } };
+  state.relations[unit.id]!.herSkill = { seal: 3, weight: 1, reading: 2, swing: 0, rhythm: 1, practice: { seal: 6.83 } };
+
   return {
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174],
       texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT'],
     },
   };
