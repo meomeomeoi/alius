@@ -3,6 +3,7 @@
  * included. A field that is unset is not shown and means nothing; `activity` reads as `attending` when unset but that default is
  * never rendered (plan R6).
  */
+import type { MomentsState } from '../moments/state';
 import type { WornSlot } from './types';
 
 export { WORN_SLOTS, type WornSlot } from './types';
@@ -47,7 +48,7 @@ export interface StagingSnapshot {
   /** The chat index the change was made at. */
   at: number;
   blocking: Record<string, Blocking>;
-  moments?: unknown;
+  moments?: MomentsState;
   /** What the change that followed was (the readings say who set a value, and when: the newest entry that names it). */
   person?: string;
   field?: string;

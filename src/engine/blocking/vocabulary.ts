@@ -37,11 +37,12 @@ export function blockingVocabulary(state: CampaignState, reg: Registries): Vocab
 
 /**
  * May this moment source come up in this scene? Its scope and content gate pass, and in a quiet meeting only the pastime's own sources
- * (or, when it lists none, the ones every meeting may have: `generalMeeting`).
+ * (or, when it lists none, the ones every meeting may have: `generalMeeting`). `unitIds` narrows the gate to some of the participants (a
+ * moment is one soldier's); it defaults to all of them.
  */
-export function sourceAllowed(state: CampaignState, reg: Registries, source: Entry): boolean {
+export function sourceAllowed(state: CampaignState, reg: Registries, source: Entry, unitIds?: string[]): boolean {
   const scene = state.scene;
-  if (!scene || !entryAllowed(state, reg, source, scene.participants)) return false;
+  if (!scene || !entryAllowed(state, reg, source, unitIds ?? scene.participants)) return false;
   if (scene.pastime === undefined) return true;
   const own = reg.pastimes.get(scene.pastime.id)?.momentSources;
   return Array.isArray(own) && own.length > 0 ? (own as string[]).includes(source.id) : source.generalMeeting === true;

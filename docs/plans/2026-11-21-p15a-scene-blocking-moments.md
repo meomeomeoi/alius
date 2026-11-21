@@ -951,7 +951,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
     }
     ```
 
-- [ ] **Step 1: Write the failing tests.** One test per live kind:
+- [x] **Step 1: Write the failing tests.** One test per live kind:
   - `blocking` (`on_comms` → `remote`);
   - `visitor`: a non-participant in a door neighbour plus a `hiddenFromDoor` anchor → `third_party`; nobody near → none; nothing at stake → none;
   - `obscured`;
@@ -966,10 +966,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `dynamic sources never at frame equal`;
   - `a quiet meeting allows only its sources or the general five`;
   - `ripe counts only for extracted kinds`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/moments/live.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): live moment sources`
+- [x] **Step 2: Run** `npx vitest run tests/engine/moments/live.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): live moment sources`
 
 ---
 

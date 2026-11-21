@@ -100,8 +100,19 @@ export const TUNING = Object.freeze({
   scene: Object.freeze({ maxParticipants: 4 }),
   /** P15a: the scene blocking (plan R6, R7, R9). `minConfidence`: a change the reading reports below it is dropped; `logMax`: snapshots kept for the swipe; `maxChanges`: per reading. */
   blocking: Object.freeze({ minConfidence: 0.6, logMax: 40, maxChanges: 4 }),
-  /** P15a: moments (plan R10; later tasks add the rest). `answerConfidence`: a reading's answer to an open moment needs at least this. */
-  moments: Object.freeze({ answerConfidence: 0.55 }),
+  /**
+   * P15a: moments (plan R10; AUTHOR TO TUNE). `chance`, `minGap`, `maxPerScene` by the frequency setting; `explicitMult` on the chance at
+   * intimacy `explicit`; `sourceGap`: exchanges before one source may come up again; `answerConfidence`: a reading's answer to an open
+   * moment needs at least this; `labelMax`: characters of a label; `lapseExchanges`: passes before an unanswered moment lapses; `escalation`:
+   * the chance of her escalating on an opposite answer, times her expectation's strength; `moodyMult`: the `mood_jump` weight of a moody
+   * soldier; `noiseBoost`: added to `third_party`'s weight after a noisy segment.
+   */
+  moments: Object.freeze({
+    chance: Object.freeze({ rare: 0.10, normal: 0.20, often: 0.35 }),
+    minGap: Object.freeze({ rare: 6, normal: 4, often: 2 }),
+    maxPerScene: Object.freeze({ rare: 2, normal: 4, often: 6 }),
+    explicitMult: 0.5, sourceGap: 8, answerConfidence: 0.55, labelMax: 40, lapseExchanges: 2, escalation: 0.5, moodyMult: 2, noiseBoost: 1,
+  }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */

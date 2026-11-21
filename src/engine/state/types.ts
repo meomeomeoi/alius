@@ -1,4 +1,5 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
+import type { MomentsState } from '../moments/state';
 import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
 import type { RngState } from '../rng';
@@ -618,8 +619,8 @@ export interface SceneRecord {
   activityId?: string;
   /** P15a: the state before each change to the blocking, newest last, so a swipe or an edit takes the change back (at most `TUNING.blocking.logMax`). */
   stagingLog?: StagingSnapshot[];
-  /** P15a: moments (Task 13 gives it its shape); part of the staging snapshots. */
-  moments?: unknown;
+  /** P15a: the open moment, the ones fired, what she looked like at the last pass and the last answer; part of the staging snapshots. */
+  moments?: MomentsState;
 }
 
 export interface PendingProposal {
