@@ -1507,6 +1507,6 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `docs/CONTENT.md` (done in Task 6; check it).
 - Test: none (docs). `npm test` must still pass.
 
-- [ ] **Step 1: Write the docs** as listed.
-- [ ] **Step 2: Run** `npm test` → PASS; `npx vitest run tests/content/pronouns.test.ts` → PASS.
-- [ ] **Step 3: Commit** `docs(P15a): implemented as, overview, hand-off notes`
+- [x] **Step 1: Write the docs** as listed.
+- [x] **Step 2: Run** `npm test` → PASS; `npx vitest run tests/content/pronouns.test.ts` → PASS.
+- [x] **Step 3: Commit** `docs(P15a): implemented as, overview, hand-off notes`

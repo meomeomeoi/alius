@@ -98,10 +98,11 @@ Added after the 2026-11-20 design session. Where it conflicts with the sections 
 - **A failure** is `refused`, `truncated`, `timeout`, `network`, `invalid_output`, `empty` or `no_profile`; the envelope writes a record (`CampaignState.generations`, at most 20, no prompt, no model text, `detail` never the model's words) unless the site's record mode is `none` or the reason is `no_profile`. Add the chip with `drawGenerationChips(host, ctx.generation, state, surface, filter)` and REROLL with `drawSiteReroll`; a screen draws neither without `generation` in its context. Labels are generic: never put a hidden value in one.
 - **The engine decides:** a retried or rerolled value goes through the same sanitizer and the same action as the first one; none of the new actions draws from the rng, so a new site must not either (a seeded test that moves stops and reports).
 
-## Left to this package by P15a (plan 2026-11-21, not implemented yet)
+## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
-Rulings of `docs/plans/2026-11-21-p15a-scene-blocking-moments.md` (R1). P15a builds the parts below as hooks or data only; this package completes them. When P15a is implemented this note becomes an **Interfaces already provided by P15a** section.
+P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.
 
 - **The sensory channel:** `sensory` is data in P15a, with no sensory-line reader.
 - **The scent model:** P15a's `scentBand(state, reg, unitId, part)` reads only base × hygiene (`normal`) × situation (after a run, after training). Washing, intention, clinging, noticing, rooms, nameless lines under a blindfold, the sweat layer that `tongue_work` lowers and the conditioned reactions from a stimulus stage of `craving` are yours.
 - **Two TUNING blocks to extend:** `TUNING.scent` and `TUNING.stimuli`.
+- **What exists:** `scentBand`, `scentLevel`, `exposedKinds`, `perceptionWord` and `updateTrajectory` (`src/engine/physics/stimuli.ts`, `scent.ts`), the directive `physics:perception`, the stage words of `stimulusKinds[].perception`. Tolerance starts at 20 (AUTHOR TO TUNE); `sweat_stale` and washing are not built.

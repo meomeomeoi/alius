@@ -206,12 +206,15 @@ The vocabulary (points, states, tags, modifiers and the 48 presets) is `docs/con
 
 - Every model call through `app.generations`; a new site is a `SiteDecl` with handlers bound by the owning controller.
 
-## Left to this package by P15a (plan 2026-11-21, not implemented yet)
+## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
-Rulings of `docs/plans/2026-11-21-p15a-scene-blocking-moments.md` (R1). P15a builds the parts below as hooks or data only; this package completes them. When P15a is implemented this note becomes an **Interfaces already provided by P15a** section.
+P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.
 
 - **Postures:** P15a ships the 13 base postures only (blocking.md §7). The 48 presets, points, drift and named postures are yours; extractor changes of a point are yours too.
 - **Endurance as a discipline:** the commander's endurance per physics is `Commander.endurance` (xp and level 0–5, TRAIN focus `endurance_breath` / `endurance_weight` / `endurance_jaw`). Fold it into `endurance:<physics>`.
 - **Stillness and rhythm mastery:** both read 0 in P15a (the noise loudness and her personal rhythm). Supply them.
 - **Mini-games and their toggles:** the tempo and pressure mini-game for licking and kisses, and the posture and QTE mini-games, with their SYS toggles (`tempo`, `posture`, `qte`). P15a has `inhale` and the six interaction types.
 - **Records in fiction time:** written from P15a's `marathon_done { hours, unitId, physicsId }`.
+- **Shape of the endurance book:** `Commander.endurance?: Record<physicsId, { xp, level 0–5, trainedDay? }>`; `commanderSkill(state, physicsId)` is the only reader; the drills are `train` focuses with the effect `commander_endurance_xp`, once a day per physics.
+- **Her skills:** `Relation.herSkill { seal, weight, reading, swing, rhythm, practice }`, read by `herSkillOf`; `practise` is the only writer.
+- **Hooks you may use:** `stillnessOf` (reads 0) and `rhythmOffset` (her personal rhythm, `fnv1a`) in `src/engine/physics/`.

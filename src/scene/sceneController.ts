@@ -540,7 +540,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
   }
 
   /** P15a: a physics run is open (it is never rolled back, so a swipe cannot undo the reading that came with it). */
-  const physicsOpen = (): boolean => (state()?.scene as { physics?: unknown } | undefined)?.physics !== undefined;
+  const physicsOpen = (): boolean => state()?.scene?.physics !== undefined;
 
   const lastIntentsKey = (): string | null => {
     const scene = state()?.scene;

@@ -79,8 +79,9 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 - **A failure** is `refused`, `truncated`, `timeout`, `network`, `invalid_output`, `empty` or `no_profile`; the envelope writes a record (`CampaignState.generations`, at most 20, no prompt, no model text, `detail` never the model's words) unless the site's record mode is `none` or the reason is `no_profile`. Add the chip with `drawGenerationChips(host, ctx.generation, state, surface, filter)` and REROLL with `drawSiteReroll`; a screen draws neither without `generation` in its context. Labels are generic: never put a hidden value in one.
 - **The engine decides:** a retried or rerolled value goes through the same sanitizer and the same action as the first one; none of the new actions draws from the rng, so a new site must not either (a seeded test that moves stops and reports).
 
-## Left to this package by P15a (plan 2026-11-21, not implemented yet)
+## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
-Rulings of `docs/plans/2026-11-21-p15a-scene-blocking-moments.md` (R1). P15a builds the parts below as hooks or data only; this package completes them. When P15a is implemented this note becomes an **Interfaces already provided by P15a** section.
+P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.
 
 - **Summons:** the `summons` source is live only through `registerMomentTrigger`. Privileges (for example removing a `plug`) are item descriptions only.
+- **Hook:** `registerMomentTrigger(sourceId, fn)` (`src/engine/moments/live.ts`).
