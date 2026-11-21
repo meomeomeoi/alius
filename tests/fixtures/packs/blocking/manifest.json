@@ -1,0 +1,20 @@
+{
+  "id": "blocking_fixture",
+  "name": "P15a blocking fixture",
+  "version": "1",
+  "priority": 10,
+  "files": {
+    "worshipTargets": "worshipTargets.json",
+    "blockingPostures": "blockingPostures.json",
+    "blockingAnchors": "blockingAnchors.json",
+    "blockingContacts": "blockingContacts.json",
+    "blockingItems": "blockingItems.json",
+    "blockingActivities": "blockingActivities.json",
+    "momentSources": "momentSources.json",
+    "contactPhysics": "contactPhysics.json",
+    "physicsCues": "physicsCues.json",
+    "stimulusKinds": "stimulusKinds.json",
+    "escalationVerbs": "escalationVerbs.json",
+    "commanderConditions": "commanderConditions.json"
+  }
+}

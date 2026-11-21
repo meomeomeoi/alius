@@ -6,6 +6,9 @@ import { BALLOT_TERMS, OUTSIDE_TRIGGERS, VALUE_AXES, VOTE_KINDS } from '../engin
 import { TUNING } from '../engine/tuning';
 import { EXPECTATION_KINDS } from '../engine/warden/state';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
+import {
+  ANCHOR_KINDS, ATTENTIONS, CONTACT_DIRS, CUE_KINDS, ESCALATION_ORDER, GAUGE_KINDS, INTERACTIONS, LIVE_KINDS, PAIR_TAGS, RESPONSE_TYPES, SCOPES, SEALS, STAGES, STIMULUS_FAMILIES, WORN_SLOTS,
+} from '../engine/blocking/types';
 import { LIFE_CATEGORIES, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
@@ -497,6 +500,10 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'appraisal_recorded', 'appraisal_revised', 'development_review', 'development_shift', 'development_moment', 'development_fact', 'habit_formed',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
+  // P15a (the scene blocking, moments and contact physics)
+  'blocking_changed', 'blocking_rolled_back', 'moment_fired', 'moment_answered', 'moment_lapsed', 'moment_escalated',
+  'physics_started', 'physics_segment', 'physics_signal', 'physics_slip', 'physics_cheat', 'physics_caught', 'physics_noise', 'physics_outcome', 'blackout',
+  'endurance_gained', 'her_skill_gained', 'marathon_phase', 'marathon_done', 'reflex', 'stimulus_stage_changed', 'condition_set', 'condition_ended',
   // P10c
   'quarters_set',
   // P13
@@ -2334,6 +2341,9 @@ export const DESCRIBED_REGISTRIES = [
   'planRooms',
   // P14c
   'lifeEvents', 'hobbies', 'opinionTopics', 'pastimes',
+  // P15a (every row carries a description; `physicsCues` and `escalationVerbs` are not shown to the player: `PLAYER_VISIBLE` leaves them out)
+  'worshipTargets', 'blockingPostures', 'blockingAnchors', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources',
+  'contactPhysics', 'physicsCues', 'stimulusKinds', 'escalationVerbs', 'commanderConditions',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -2530,6 +2540,181 @@ export const PastimeSchema = BaseEntrySchema.extend({
 });
 
 Object.assign(registrySchemas, { lifeEvents: LifeEventSchema, hobbies: HobbySchema, opinionTopics: OpinionTopicSchema, pastimes: PastimeSchema });
+
+// ---------------------------------------------------------------------------------------------
+// P15a: scene blocking, moments and contact physics (twelve registries). `AUTHOR TO WRITE`: every text is a draft. The engine reads them
+// by FIELD and by effect type, never by id (`engine/blocking/types.ts` holds the closed enums). Names that point into other registries
+// are checked in `refs.ts`.
+
+const blockLabel = str.max(40);
+const blockHint = str.max(120);
+const lowerId = z.string().regex(/^[a-z_]+$/, 'lower-case letters and underscores');
+const scopeEnum = z.enum(SCOPES);
+const tagList = z.array(str).min(1).optional();
+const sealEnum = z.enum(SEALS);
+const physicsLink = z.object({ id: str, seal: z.array(sealEnum).min(1).optional(), pressure: z.number().min(0).max(3).optional() }).strict();
+const sourceWeights = z.record(str, z.number().positive().max(5));
+const sideSchema = z.object({ posture: str.optional(), anchor: str.optional() }).strict();
+const bodyPoint = z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100), r: z.number().min(1).max(50) }).strict();
+
+/** The closed effect vocabulary (plan R5): an unknown `type`, an unknown key or a bad value is refused. */
+export const BlockingEffectSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('camera'), mode: z.enum(['from_below', 'face_close', 'ignored', 'pov_floor', 'pov_dark', 'ceiling']) }).strict(),
+  z.object({ type: z.literal('backdrop'), id: lowerId }).strict(),
+  z.object({ type: z.literal('pose_shot'), kind: lowerId }).strict(),
+  z.object({ type: z.literal('filter'), kind: z.enum(['sensory_dark', 'alarm']) }).strict(),
+  z.object({ type: z.literal('perception'), self: z.literal('obscured').optional(), others: z.literal('obscured').optional() }).strict(),
+  z.object({ type: z.literal('input'), limit: z.enum(['muffled', 'garbled', 'no_speech', 'gestures_only', 'no_hands', 'action_only']), strength: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional() }).strict(),
+  z.object({ type: z.literal('gestures'), variant: z.enum(['pet', 'head_only']) }).strict(),
+  z.object({ type: z.literal('device'), lock: z.literal('tabs') }).strict(),
+  z.object({ type: z.literal('sensory'), kind: z.enum(['scent', 'touch', 'sound', 'temp']), intensity: z.enum(['low', 'high', 'overwhelming']) }).strict(),
+  z.object({ type: z.literal('sound'), muffle: z.literal(true).optional(), id: lowerId.optional() }).strict(),
+  z.object({ type: z.literal('visibility'), hiddenFromDoor: z.literal(true).optional(), exposing: z.literal(true).optional(), hideable: z.literal(false).optional(), unlessPosture: z.array(str).min(1).optional() }).strict(),
+  z.object({ type: z.literal('mobility'), level: z.enum(['none', 'limited', 'crawl', 'follows']) }).strict(),
+  z.object({ type: z.literal('strain'), condition: z.enum(['stillness', 'silence', 'posture', 'endurance']), rate: z.number().positive().max(10) }).strict(),
+  z.object({ type: z.literal('escalation'), verb: z.enum(ESCALATION_ORDER) }).strict(),
+  z.object({ type: z.literal('physics'), id: str }).strict(),
+  z.object({ type: z.literal('rule'), template: lowerId }).strict(),
+  z.object({ type: z.literal('notice'), kind: z.enum(['knows_dynamic', 'seen']) }).strict(),
+  z.object({ type: z.literal('status_after'), id: str, afterExchanges: int.min(1).max(60) }).strict(),
+]).superRefine((fx, ctx) => {
+  if (fx.type === 'perception' && fx.self === undefined && fx.others === undefined) ctx.addIssue({ code: 'custom', message: 'a perception effect sets self, others or both' });
+  if (fx.type === 'sound' && (fx.muffle === undefined) === (fx.id === undefined)) ctx.addIssue({ code: 'custom', message: 'a sound effect is either muffle or an id, not both and not neither' });
+  if (fx.type === 'visibility' && fx.hiddenFromDoor === undefined && fx.exposing === undefined && fx.hideable === undefined && fx.unlessPosture === undefined) ctx.addIssue({ code: 'custom', message: 'a visibility effect sets at least one field' });
+  if (fx.type === 'visibility' && fx.unlessPosture !== undefined && fx.hideable !== false) ctx.addIssue({ code: 'custom', message: 'unlessPosture only qualifies hideable: false' });
+});
+const effectList = z.array(BlockingEffectSchema).optional();
+
+export const WorshipTargetSchema = BaseEntrySchema.extend({
+  contentTags: z.array(str).min(1),
+  side: z.enum(['front', 'back', 'both']),
+  /** Body-map coordinates (0–100) for each side the target is on; `AUTHOR TO TUNE`. */
+  zone: z.object({ front: bodyPoint.optional(), back: bodyPoint.optional() }).strict(),
+  /** The stimulus kinds a contact with it exposes (`stimulusKinds` ids). */
+  stimuli: z.array(str).min(1),
+  label: blockLabel,
+  description: str,
+}).strict().superRefine((t, ctx) => {
+  const need = t.side === 'both' ? ['front', 'back'] : [t.side];
+  for (const side of need) if (t.zone[side as 'front' | 'back'] === undefined) ctx.addIssue({ code: 'custom', path: ['zone', side], message: `a ${t.side}-side target needs a ${side} zone` });
+  for (const side of ['front', 'back'] as const) if (t.zone[side] !== undefined && !need.includes(side)) ctx.addIssue({ code: 'custom', path: ['zone', side], message: `a ${t.side}-side target has no ${side} zone` });
+});
+
+export const PostureSchema = BaseEntrySchema.extend({
+  label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
+}).strict();
+
+export const AnchorSchema = BaseEntrySchema.extend({
+  kind: z.enum(ANCHOR_KINDS),
+  requires: z.object({ affordances: z.array(lowerId).min(1) }).strict().optional(),
+  label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
+}).strict().superRefine((a, ctx) => {
+  if (a.kind === 'furniture' && a.requires === undefined) ctx.addIssue({ code: 'custom', path: ['requires'], message: 'a furniture anchor requires the affordance of its furniture' });
+});
+
+export const ContactSchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  dir: z.enum(CONTACT_DIRS),
+  target: z.array(str).min(1).optional(),
+  implies: z.object({ actor: sideSchema.optional(), receiver: sideSchema.optional() }).strict().optional(),
+  requires: z.object({ affordances: z.array(lowerId).min(1).optional() }).strict().optional(),
+  physics: z.array(physicsLink).min(1).max(2).optional(),
+  stimuli: z.array(str).min(1).optional(),
+  sources: sourceWeights.optional(),
+  mouth: z.literal(true).optional(),
+  label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
+}).strict();
+
+export const BlockingItemSchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  slots: z.array(z.enum(WORN_SLOTS)).min(1),
+  /** `all`: wearing it takes every slot (a hood: eyes and ears); `one`: it takes one of them. Default `all`. */
+  slotMode: z.enum(['all', 'one']).optional(),
+  wornBy: z.enum(['commander', 'her']).optional(),
+  physics: z.array(physicsLink).min(1).max(2).optional(),
+  stimuli: z.array(str).min(1).optional(),
+  sources: sourceWeights.optional(),
+  label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
+}).strict().superRefine((i, ctx) => {
+  if (new Set(i.slots).size !== i.slots.length) ctx.addIssue({ code: 'custom', path: ['slots'], message: 'a slot is listed twice' });
+});
+
+export const BlockingActivitySchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  actor: z.enum(['her', 'commander']),
+  attention: z.enum(ATTENTIONS).optional(),
+  interruptible: z.boolean().optional(),
+  impliedPosture: str.optional(),
+  pairTags: z.array(z.enum(PAIR_TAGS)).min(1).optional(),
+  /** Her pair tags this activity fits, or `any`. */
+  fits: z.array(z.enum([...PAIR_TAGS, 'any'])).min(1).optional(),
+  presence: z.enum(['unnoticed', 'felt']).optional(),
+  judged: z.literal(true).optional(),
+  sources: sourceWeights.optional(),
+  /** The P2 activity ids whose scene opens with this one (`scene.activityId`). */
+  fromActivities: z.array(str).min(1).optional(),
+  label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
+}).strict();
+
+const momentOption = z.object({ type: z.enum(RESPONSE_TYPES), generic: str.max(40) }).strict();
+export const MomentSourceSchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  /** Exactly three options: the frame's words are the generic labels shown until the reading words them. */
+  frame: z.tuple([momentOption, momentOption, momentOption]),
+  live: z.array(z.enum(LIVE_KINDS)).min(1),
+  remember: z.array(z.object({ option: z.union([z.literal(0), z.literal(1), z.literal(2)]), importance: int.min(1).max(5) }).strict()).optional(),
+  generalMeeting: z.literal(true).optional(),
+  description: str,
+}).strict();
+
+export const ContactPhysicsSchema = BaseEntrySchema.extend({
+  contentTags: tagList,
+  gauge: z.object({ kind: z.enum(GAUGE_KINDS), start: z.number().min(0).max(100) }).strict(),
+  interaction: z.enum(INTERACTIONS),
+  skill: z.boolean(),
+  segmentSeconds: int.min(5).max(300),
+  chains: z.array(z.object({ on: z.literal('slip'), to: str, start: z.number().min(0).max(100).optional() }).strict()).optional(),
+  label: blockLabel, description: str, promptHint: blockHint,
+}).strict();
+
+export const PhysicsCueSchema = BaseEntrySchema.extend({
+  kind: z.enum(CUE_KINDS),
+  physics: z.array(str).min(1).optional(),
+  lines: z.array(str.max(160)).min(3).max(5),
+  description: str,
+}).strict();
+
+export const StimulusKindSchema = BaseEntrySchema.extend({
+  contentTags: tagList,
+  family: z.enum(STIMULUS_FAMILIES),
+  label: blockLabel, description: str,
+  /** One short word or phrase per stage of the commander's trajectory, and the one after a week apart. */
+  perception: z.object(Object.fromEntries([...STAGES, 'separated'].map((k) => [k, str.max(80)])) as Record<(typeof STAGES)[number] | 'separated', z.ZodString>).strict(),
+}).strict();
+
+export const EscalationVerbSchema = BaseEntrySchema.extend({
+  id: z.enum(ESCALATION_ORDER),
+  label: blockLabel, promptHint: blockHint, description: str,
+}).strict();
+
+export const CommanderConditionSchema = BaseEntrySchema.extend({
+  effects: z.array(z.union([
+    z.object({ type: z.literal('social_rank'), delta: int.min(-3).max(3) }).strict(),
+    z.object({ type: z.literal('stress'), amount: int.min(-50).max(50) }).strict(),
+  ])),
+  label: blockLabel, description: str, promptHint: blockHint,
+}).strict();
+
+Object.assign(registrySchemas, {
+  worshipTargets: WorshipTargetSchema, blockingPostures: PostureSchema, blockingAnchors: AnchorSchema, blockingContacts: ContactSchema,
+  blockingItems: BlockingItemSchema, blockingActivities: BlockingActivitySchema, momentSources: MomentSourceSchema,
+  contactPhysics: ContactPhysicsSchema, physicsCues: PhysicsCueSchema, stimulusKinds: StimulusKindSchema,
+  escalationVerbs: EscalationVerbSchema, commanderConditions: CommanderConditionSchema,
+});
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "gate_source",
+    "scope": "any",
+    "contentTags": [
+      "jealousy_games"
+    ],
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "give way"
+      },
+      {
+        "type": "resisted",
+        "generic": "refuse"
+      },
+      {
+        "type": "deflected",
+        "generic": "deflect"
+      }
+    ],
+    "live": [
+      "extracted"
+    ],
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

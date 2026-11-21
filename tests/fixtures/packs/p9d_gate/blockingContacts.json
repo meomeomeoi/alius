@@ -1,0 +1,13 @@
+[
+  {
+    "id": "gate_contact",
+    "scope": "any",
+    "contentTags": [
+      "restraint"
+    ],
+    "dir": "her",
+    "label": "Gate contact",
+    "description": "AUTHOR TO WRITE: gate.",
+    "promptHint": "gate"
+  }
+]

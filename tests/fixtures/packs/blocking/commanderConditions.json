@@ -1,0 +1,1 @@
+[{ "id": "fx_dizzy", "effects": [{ "type": "social_rank", "delta": -1 }, { "type": "stress", "amount": 5 }], "label": "Dizzy", "description": "AUTHOR TO WRITE: dizzy.", "promptHint": "dizzy" }]

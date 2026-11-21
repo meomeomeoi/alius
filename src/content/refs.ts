@@ -1014,3 +1014,74 @@ registerChecks('habits', (entry) => {
   const counter = entry.counter as { kind?: string; id?: string } | undefined;
   return counter?.kind === 'joke' && counter.id !== undefined ? [{ path: 'counter.id', message: 'a joke habit counts every running joke; it names none' }] : [];
 });
+
+// ---------------------------------------------------------------------------------------------
+// P15a: the scene blocking, moment and physics registries point at each other by id (never by position). Every name must exist, a furniture
+// anchor needs an affordance some plan room has, and a pastime's `momentSources` are sources open to everyone (scope `any`).
+
+type Regs = Record<RegistryName, Map<string, Entry>>;
+const known = (regs: Regs, registry: RegistryName, id: unknown, path: string, label: string): RegistryCheck[] =>
+  typeof id === 'string' && !regs[registry].has(id) ? [{ path, message: `unknown ${label} "${id}"` }] : [];
+const knownEach = (regs: Regs, registry: RegistryName, ids: unknown, path: string, label: string): RegistryCheck[] =>
+  Array.isArray(ids) ? ids.flatMap((id, i) => known(regs, registry, id, `${path}[${i}]`, label)) : [];
+const planAffordances = (regs: Regs): Set<string> => new Set([...regs.planRooms.values()].flatMap((r) => (Array.isArray(r.affordances) ? r.affordances.map(String) : [])));
+const affordanceChecks = (regs: Regs, list: unknown, path: string): RegistryCheck[] => {
+  const have = planAffordances(regs);
+  return Array.isArray(list) ? list.filter((a) => !have.has(String(a))).map((a, i) => ({ path: `${path}[${i}]`, message: `no plan room offers the affordance "${String(a)}"` })) : [];
+};
+
+/** The names an entry's effects point at. */
+function effectChecks(entry: Entry, regs: Regs): RegistryCheck[] {
+  const effects = Array.isArray(entry.effects) ? (entry.effects as Array<Record<string, unknown>>) : [];
+  return effects.flatMap((fx, i) => {
+    const at = `effects[${i}]`;
+    switch (fx.type) {
+      case 'physics': return known(regs, 'contactPhysics', fx.id, `${at}.id`, 'contact physics');
+      case 'status_after': return known(regs, 'commanderConditions', fx.id, `${at}.id`, 'commander condition');
+      case 'escalation': return known(regs, 'escalationVerbs', fx.verb, `${at}.verb`, 'escalation verb');
+      case 'visibility': return knownEach(regs, 'blockingPostures', fx.unlessPosture, `${at}.unlessPosture`, 'posture');
+      default: return [];
+    }
+  });
+}
+
+const physicsLinkChecks = (entry: Entry, regs: Regs): RegistryCheck[] =>
+  Array.isArray(entry.physics) ? (entry.physics as Array<{ id?: unknown }>).flatMap((p, i) => known(regs, 'contactPhysics', p.id, `physics[${i}].id`, 'contact physics')) : [];
+const sourceChecks = (entry: Entry, regs: Regs): RegistryCheck[] =>
+  entry.sources !== null && typeof entry.sources === 'object' ? Object.keys(entry.sources).flatMap((id) => known(regs, 'momentSources', id, `sources.${id}`, 'moment source')) : [];
+
+registerChecks('worshipTargets', (entry, regs) => knownEach(regs, 'stimulusKinds', entry.stimuli, 'stimuli', 'stimulus kind'));
+registerChecks('blockingPostures', effectChecks);
+registerChecks('blockingAnchors', (entry, regs) => [...affordanceChecks(regs, (entry.requires as { affordances?: unknown } | undefined)?.affordances, 'requires.affordances'), ...effectChecks(entry, regs)]);
+registerChecks('blockingContacts', (entry, regs) => {
+  const implies = (entry.implies ?? {}) as { actor?: { posture?: string; anchor?: string }; receiver?: { posture?: string; anchor?: string } };
+  const out: RegistryCheck[] = [];
+  for (const who of ['actor', 'receiver'] as const) {
+    out.push(...known(regs, 'blockingPostures', implies[who]?.posture, `implies.${who}.posture`, 'posture'));
+    out.push(...known(regs, 'blockingAnchors', implies[who]?.anchor, `implies.${who}.anchor`, 'anchor'));
+  }
+  out.push(...knownEach(regs, 'worshipTargets', entry.target, 'target', 'worship target'));
+  out.push(...knownEach(regs, 'stimulusKinds', entry.stimuli, 'stimuli', 'stimulus kind'));
+  out.push(...affordanceChecks(regs, (entry.requires as { affordances?: unknown } | undefined)?.affordances, 'requires.affordances'));
+  return [...out, ...physicsLinkChecks(entry, regs), ...sourceChecks(entry, regs), ...effectChecks(entry, regs)];
+});
+registerChecks('blockingItems', (entry, regs) => [...knownEach(regs, 'stimulusKinds', entry.stimuli, 'stimuli', 'stimulus kind'), ...physicsLinkChecks(entry, regs), ...sourceChecks(entry, regs), ...effectChecks(entry, regs)]);
+registerChecks('blockingActivities', (entry, regs) => [
+  ...known(regs, 'blockingPostures', entry.impliedPosture, 'impliedPosture', 'posture'),
+  ...knownEach(regs, 'activities', entry.fromActivities, 'fromActivities', 'activity'),
+  ...sourceChecks(entry, regs), ...effectChecks(entry, regs),
+]);
+registerChecks('contactPhysics', (entry, regs) =>
+  Array.isArray(entry.chains) ? (entry.chains as Array<{ to?: unknown }>).flatMap((c, i) => known(regs, 'contactPhysics', c.to, `chains[${i}].to`, 'contact physics')) : []);
+registerChecks('physicsCues', (entry, regs) => knownEach(regs, 'contactPhysics', entry.physics, 'physics', 'contact physics'));
+
+// P14c hand-off: a pastime's `momentSources` are sources open to everyone (scope `any`). (The other one, a hobby's `activityIds` being her
+// activities, is checked from Task 4 on, when the core pack has them.)
+registerChecks('pastimes', (entry, regs) =>
+  Array.isArray(entry.momentSources)
+    ? (entry.momentSources as unknown[]).flatMap((id, i) => {
+      const s = regs.momentSources.get(String(id));
+      if (s === undefined) return [{ path: `momentSources[${i}]`, message: `unknown moment source "${String(id)}"` }];
+      return s.scope === 'any' ? [] : [{ path: `momentSources[${i}]`, message: `"${String(id)}" needs a dynamic frame; a quiet meeting only offers sources open to everyone` }];
+    })
+    : []);

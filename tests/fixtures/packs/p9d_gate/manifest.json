@@ -13,6 +13,13 @@
     "wagerStakes": "wagerStakes.json",
     "developmentRules": "developmentRules.json",
     "habits": "habits.json",
-    "commanderPunishments": "commanderPunishments.json"
+    "commanderPunishments": "commanderPunishments.json",
+    "worshipTargets": "worshipTargets.json",
+    "blockingContacts": "blockingContacts.json",
+    "blockingItems": "blockingItems.json",
+    "blockingActivities": "blockingActivities.json",
+    "momentSources": "momentSources.json",
+    "contactPhysics": "contactPhysics.json",
+    "stimulusKinds": "stimulusKinds.json"
   }
 }

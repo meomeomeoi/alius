@@ -570,7 +570,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: the entry types `PostureEntry`, `AnchorEntry`, `ContactEntry`, `ItemEntry`, `BlockingActivityEntry`, `MomentSourceEntry`, `PhysicsEntry`, `CueEntry`, `StimulusKindEntry`, `EscalationVerbEntry`, `ConditionEntry`, `WorshipTargetEntry`; `type BlockingEffect`; `effectsOfEntry(entry): BlockingEffect[]`.
 
-- [ ] **Step 1: Write the failing tests** (fixture pack under `tests/fixtures/packs/blocking/`):
+- [x] **Step 1: Write the failing tests** (fixture pack under `tests/fixtures/packs/blocking/`):
   - `each registry loads a valid row`;
   - `an unknown effect type is refused`;
   - `a furniture anchor with an affordance no plan room has is refused`;
@@ -581,10 +581,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `a pastime naming a dynamic source is refused`;
   - `contentTags on blockingItems are checked against categories`;
   - `an engine event cannot be emitted by an activity` (`emit_event` of `moment_fired` refused).
-- [ ] **Step 2: Run** `npx vitest run tests/content/blockingSchemas.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The schemas are `.strict()`. `label` ≤ 40, `promptHint` ≤ 120 and `generic` ≤ 40 characters.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): blocking, moment and physics registries with their checks`
+- [x] **Step 2: Run** `npx vitest run tests/content/blockingSchemas.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The schemas are `.strict()`. `label` ≤ 40, `promptHint` ≤ 120 and `generic` ≤ 40 characters.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): blocking, moment and physics registries with their checks`
 
 ---
 

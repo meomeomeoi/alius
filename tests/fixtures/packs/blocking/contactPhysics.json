@@ -1,0 +1,2 @@
+[{ "id": "fx_breath", "gauge": { "kind": "capacity", "start": 100 }, "interaction": "timing", "skill": true, "segmentSeconds": 20, "chains": [{ "on": "slip", "to": "fx_tongue", "start": 60 }], "label": "Breath", "description": "AUTHOR TO WRITE: breath.", "promptHint": "short of air" },
+ { "id": "fx_tongue", "gauge": { "kind": "dirt", "start": 60 }, "interaction": "order", "skill": false, "segmentSeconds": 30, "label": "Tongue work", "description": "AUTHOR TO WRITE: tongue work.", "promptHint": "cleaning" }]

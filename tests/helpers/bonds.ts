@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
-import type { Registries } from '../../src/content/types';
-import { CONTENT_GATED_REGISTRIES, rollRules } from '../../src/engine/bonds';
+import type { Registries, RegistryName } from '../../src/content/types';
+import { CONTENT_GATED_REGISTRIES, contentAllowed, rollRules } from '../../src/engine/bonds';
 import { offeredStakes } from '../../src/engine/personal/wagers';
 import { eligibleTemplates as dilemmaTemplates } from '../../src/engine/dilemma/flow';
 import { DILEMMA_CONTEXTS } from '../../src/engine/dilemma/types';
@@ -42,7 +42,20 @@ export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> =
   developmentRules: { ids: ['gate_dev_rule'], category: 'restraint' },
   habits: { ids: ['gate_habit'], category: 'restraint' },
   commanderPunishments: { ids: ['gate_cmd_punish'], category: 'humiliation' },
+  // P15a
+  worshipTargets: { ids: ['gate_target'], category: 'worship' },
+  blockingContacts: { ids: ['gate_contact'], category: 'restraint' },
+  blockingItems: { ids: ['gate_item'], category: 'pain_rough' },
+  blockingActivities: { ids: ['gate_activity'], category: 'humiliation' },
+  momentSources: { ids: ['gate_source'], category: 'jealousy_games' },
+  contactPhysics: { ids: ['gate_physics'], category: 'breath_play' },
+  stimulusKinds: { ids: ['gate_stimulus'], category: 'bodily_fluids' },
 };
+
+/** The ids of a registry the content gate lets through for `state` (the P15a registries until the blocking vocabulary reads them). */
+function vocabularyIds(state: CampaignState, reg: Registries, name: RegistryName): string[] {
+  return [...reg[name].values()].filter((e) => contentAllowed(state, reg, e)).map((e) => e.id);
+}
 
 /** Turns categories on in place (and returns the state). */
 export function enable(state: CampaignState, ...ids: string[]): CampaignState {
@@ -124,6 +137,14 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
     }
     return [...seen];
   },
+  // P15a: the vocabulary a live scene offers (Task 7 routes these through `blockingVocabulary`; until then every entry the gate lets through)
+  worshipTargets: (state, reg) => vocabularyIds(state, reg, 'worshipTargets'),
+  blockingContacts: (state, reg) => vocabularyIds(state, reg, 'blockingContacts'),
+  blockingItems: (state, reg) => vocabularyIds(state, reg, 'blockingItems'),
+  blockingActivities: (state, reg) => vocabularyIds(state, reg, 'blockingActivities'),
+  momentSources: (state, reg) => vocabularyIds(state, reg, 'momentSources'),
+  contactPhysics: (state, reg) => vocabularyIds(state, reg, 'contactPhysics'),
+  stimulusKinds: (state, reg) => vocabularyIds(state, reg, 'stimulusKinds'),
   clocks: (state, reg) => {
     const s = structuredClone(state);
     s.world.seeded = false;

@@ -50,6 +50,9 @@ export const REGISTRY_NAMES = [
   'planRooms',
   // P14c
   'lifeEvents', 'hobbies', 'opinionTopics', 'pastimes',
+  // P15a
+  'worshipTargets', 'blockingPostures', 'blockingAnchors', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources',
+  'contactPhysics', 'physicsCues', 'stimulusKinds', 'escalationVerbs', 'commanderConditions',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

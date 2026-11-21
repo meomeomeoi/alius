@@ -1,0 +1,18 @@
+[
+  {
+    "id": "gate_physics",
+    "contentTags": [
+      "breath_play"
+    ],
+    "gauge": {
+      "kind": "capacity",
+      "start": 100
+    },
+    "interaction": "timing",
+    "skill": true,
+    "segmentSeconds": 20,
+    "label": "Gate physics",
+    "description": "AUTHOR TO WRITE: gate.",
+    "promptHint": "gate"
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "gate_target",
+    "contentTags": [
+      "worship"
+    ],
+    "side": "front",
+    "zone": {
+      "front": {
+        "x": 50,
+        "y": 90,
+        "r": 8
+      }
+    },
+    "stimuli": [
+      "gate_stimulus"
+    ],
+    "label": "Gate target",
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

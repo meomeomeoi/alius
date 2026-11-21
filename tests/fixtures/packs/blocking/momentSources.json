@@ -1,0 +1,4 @@
+[{ "id": "fx_source", "scope": "any", "frame": [{ "type": "yielded", "generic": "give way" }, { "type": "resisted", "generic": "refuse" }, { "type": "deflected", "generic": "change the subject" }],
+   "live": ["extracted", "blocking"], "remember": [{ "option": 0, "importance": 2 }], "generalMeeting": true, "description": "AUTHOR TO WRITE: a source." },
+ { "id": "fx_dynamic_source", "scope": "dynamic", "frame": [{ "type": "yielded", "generic": "obey" }, { "type": "resisted", "generic": "refuse" }, { "type": "returned", "generic": "ask back" }],
+   "live": ["external"], "description": "AUTHOR TO WRITE: a dynamic source." }]

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "gate_stimulus",
+    "contentTags": [
+      "bodily_fluids"
+    ],
+    "family": "sweat",
+    "label": "Gate stimulus",
+    "description": "AUTHOR TO WRITE: gate.",
+    "perception": {
+      "aversion": "a",
+      "enduring": "b",
+      "accustomed": "c",
+      "craving": "d",
+      "adoring": "e",
+      "separated": "f"
+    }
+  }
+]

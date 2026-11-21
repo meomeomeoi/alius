@@ -1,0 +1,13 @@
+[
+  {
+    "id": "gate_activity",
+    "scope": "any",
+    "contentTags": [
+      "humiliation"
+    ],
+    "actor": "her",
+    "label": "Gate activity",
+    "description": "AUTHOR TO WRITE: gate.",
+    "promptHint": "gate"
+  }
+]

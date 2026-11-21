@@ -1,0 +1,3 @@
+[{ "id": "fx_on_comms", "scope": "any", "actor": "her", "attention": "elsewhere", "interruptible": true, "pairTags": ["focused"], "fits": ["any"], "presence": "felt", "sources": { "fx_source": 2 }, "fromActivities": ["train"],
+   "label": "On comms", "description": "AUTHOR TO WRITE: on comms.", "promptHint": "on comms" },
+ { "id": "fx_c_tidying", "scope": "any", "actor": "commander", "label": "Tidying", "description": "AUTHOR TO WRITE: tidying.", "promptHint": "tidying" }]

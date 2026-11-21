@@ -1,0 +1,15 @@
+[
+  {
+    "id": "gate_item",
+    "scope": "any",
+    "contentTags": [
+      "pain_rough"
+    ],
+    "slots": [
+      "neck"
+    ],
+    "label": "Gate item",
+    "description": "AUTHOR TO WRITE: gate.",
+    "promptHint": "gate"
+  }
+]

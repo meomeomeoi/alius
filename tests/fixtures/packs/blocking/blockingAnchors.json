@@ -1,0 +1,2 @@
+[{ "id": "fx_under_desk", "kind": "furniture", "requires": { "affordances": ["desk"] }, "label": "Under the desk", "description": "AUTHOR TO WRITE: under the desk.", "promptHint": "under the desk", "effects": [{ "type": "visibility", "hiddenFromDoor": true }, { "type": "backdrop", "id": "frame_under_desk" }] },
+ { "id": "fx_beside_her", "kind": "relative", "label": "Beside her", "description": "AUTHOR TO WRITE: beside her.", "promptHint": "beside her" }]

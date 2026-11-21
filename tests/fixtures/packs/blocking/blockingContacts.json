@@ -1,0 +1,5 @@
+[{ "id": "fx_foot_worship", "scope": "dynamic", "contentTags": ["worship"], "dir": "commander", "target": ["fx_feet"], "mouth": true,
+   "implies": { "actor": { "posture": "fx_sitting" }, "receiver": { "posture": "fx_kneeling", "anchor": "fx_beside_her" } },
+   "physics": [{ "id": "fx_breath", "seal": ["firm", "leaky"], "pressure": 1 }], "stimuli": ["fx_scent"], "sources": { "fx_source": 1 },
+   "label": "Foot worship", "description": "AUTHOR TO WRITE: foot worship.", "promptHint": "worshipping her feet",
+   "effects": [{ "type": "escalation", "verb": "nudge_with_foot" }, { "type": "physics", "id": "fx_breath" }] }]

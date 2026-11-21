@@ -1,0 +1,3 @@
+[{ "id": "fx_hood", "scope": "any", "contentTags": ["restraint"], "slots": ["eyes", "ears"], "slotMode": "all", "wornBy": "commander",
+   "label": "Hood", "description": "AUTHOR TO WRITE: a hood.", "promptHint": "hooded",
+   "effects": [{ "type": "filter", "kind": "sensory_dark" }, { "type": "perception", "others": "obscured" }, { "type": "sound", "muffle": true }, { "type": "status_after", "id": "fx_dizzy", "afterExchanges": 3 }] }]

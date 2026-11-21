@@ -1,0 +1,2 @@
+[{ "id": "fx_kneeling", "label": "Kneeling", "description": "AUTHOR TO WRITE: kneeling.", "promptHint": "kneeling", "effects": [{ "type": "mobility", "level": "limited" }] },
+ { "id": "fx_sitting", "label": "Sitting", "description": "AUTHOR TO WRITE: sitting.", "promptHint": "sitting" }]

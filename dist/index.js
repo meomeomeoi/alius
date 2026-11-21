@@ -1631,8 +1631,8 @@ function commanderLine(state) {
   const p = commanderProfile(state);
   const w = (kind, v) => descriptor(kind, v).toLowerCase();
   const names = (state.commander.reputation?.active ?? []).map((a) => `"${a.name}"`);
-  const known = names.length > 0 ? ` Known in the squad as ${names.join(" and ")}.` : "";
-  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.${known}`;
+  const known2 = names.length > 0 ? ` Known in the squad as ${names.join(" and ")}.` : "";
+  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.${known2}`;
 }
 
 // src/engine/ledger.ts
@@ -6305,6 +6305,52 @@ function wardenArgueStart(state, action) {
 // src/engine/dilemma/types.ts
 var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director", "scapegoat", "debts_oversight", "debts_unit", "warden_report"];
 
+// src/engine/blocking/types.ts
+var LIVE_KINDS = [
+  "extracted",
+  "blocking",
+  "visitor",
+  "obscured",
+  "mood_jump",
+  "weakness",
+  "asleep",
+  "alarm",
+  "keeps_fact",
+  "physics_warning",
+  "physics_slip",
+  "external"
+];
+var ESCALATION_ORDER = [
+  "remote_pulse",
+  "shock",
+  "tug_leash",
+  "tighten_hold",
+  "shift_weight",
+  "squeeze",
+  "press",
+  "press_harder",
+  "tug_hair",
+  "nudge_with_foot",
+  "whisper",
+  "pda_message",
+  "look",
+  "cough",
+  "name_aloud"
+];
+var INTERACTIONS = ["timing", "hold", "decision", "order", "passive", "gesture"];
+var CUE_KINDS = ["window_open", "window_false", "shift", "press", "lift", "count", "warning", "watch", "look_away"];
+var RESPONSE_TYPES = ["yielded", "resisted", "returned", "deflected"];
+var WORN_SLOTS = ["eyes", "ears", "mouth", "face", "head", "neck", "hands", "body", "legs", "groin", "feet", "prop"];
+var STAGES = ["aversion", "enduring", "accustomed", "craving", "adoring"];
+var SEALS = ["leaky", "firm", "tight"];
+var GAUGE_KINDS = ["capacity", "fill", "dirt", "progress"];
+var CONTACT_DIRS = ["her", "commander", "either", "none"];
+var ATTENTIONS = ["on_commander", "divided", "elsewhere", "none"];
+var PAIR_TAGS = ["focused", "relaxed", "body", "asleep", "eating"];
+var ANCHOR_KINDS = ["general", "relative", "furniture"];
+var STIMULUS_FAMILIES = ["scent", "sweat", "taste"];
+var SCOPES = ["any", "dynamic"];
+
 // src/engine/life/types.ts
 var LIFE_SIZES = ["small", "notable"];
 var LIFE_CATEGORIES = ["things", "body", "construct", "people", "service", "luck"];
@@ -6420,7 +6466,20 @@ var REGISTRY_NAMES = [
   "lifeEvents",
   "hobbies",
   "opinionTopics",
-  "pastimes"
+  "pastimes",
+  // P15a
+  "worshipTargets",
+  "blockingPostures",
+  "blockingAnchors",
+  "blockingContacts",
+  "blockingItems",
+  "blockingActivities",
+  "momentSources",
+  "contactPhysics",
+  "physicsCues",
+  "stimulusKinds",
+  "escalationVerbs",
+  "commanderConditions"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7089,6 +7148,30 @@ var RESERVED_EVENT_TYPES = [
   "note_left",
   "note_read",
   "notes_expired",
+  // P15a (the scene blocking, moments and contact physics)
+  "blocking_changed",
+  "blocking_rolled_back",
+  "moment_fired",
+  "moment_answered",
+  "moment_lapsed",
+  "moment_escalated",
+  "physics_started",
+  "physics_segment",
+  "physics_signal",
+  "physics_slip",
+  "physics_cheat",
+  "physics_caught",
+  "physics_noise",
+  "physics_outcome",
+  "blackout",
+  "endurance_gained",
+  "her_skill_gained",
+  "marathon_phase",
+  "marathon_done",
+  "reflex",
+  "stimulus_stage_changed",
+  "condition_set",
+  "condition_ended",
   // P10c
   "quarters_set",
   // P13
@@ -8698,7 +8781,20 @@ var DESCRIBED_REGISTRIES = [
   "lifeEvents",
   "hobbies",
   "opinionTopics",
-  "pastimes"
+  "pastimes",
+  // P15a (every row carries a description; `physicsCues` and `escalationVerbs` are not shown to the player: `PLAYER_VISIBLE` leaves them out)
+  "worshipTargets",
+  "blockingPostures",
+  "blockingAnchors",
+  "blockingContacts",
+  "blockingItems",
+  "blockingActivities",
+  "momentSources",
+  "contactPhysics",
+  "physicsCues",
+  "stimulusKinds",
+  "escalationVerbs",
+  "commanderConditions"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -8856,6 +8952,190 @@ var PastimeSchema = BaseEntrySchema.extend({
   if (p.locations.length === 0 && p.hobby !== true) ctx2.addIssue({ code: "custom", path: ["locations"], message: "a pastime needs a location (only the one that is her hobby uses her hobby's)" });
 });
 Object.assign(registrySchemas, { lifeEvents: LifeEventSchema, hobbies: HobbySchema, opinionTopics: OpinionTopicSchema, pastimes: PastimeSchema });
+var blockLabel = str.max(40);
+var blockHint = str.max(120);
+var lowerId = external_exports.string().regex(/^[a-z_]+$/, "lower-case letters and underscores");
+var scopeEnum = external_exports.enum(SCOPES);
+var tagList = external_exports.array(str).min(1).optional();
+var sealEnum = external_exports.enum(SEALS);
+var physicsLink = external_exports.object({ id: str, seal: external_exports.array(sealEnum).min(1).optional(), pressure: external_exports.number().min(0).max(3).optional() }).strict();
+var sourceWeights = external_exports.record(str, external_exports.number().positive().max(5));
+var sideSchema = external_exports.object({ posture: str.optional(), anchor: str.optional() }).strict();
+var bodyPoint = external_exports.object({ x: external_exports.number().min(0).max(100), y: external_exports.number().min(0).max(100), r: external_exports.number().min(1).max(50) }).strict();
+var BlockingEffectSchema = external_exports.discriminatedUnion("type", [
+  external_exports.object({ type: external_exports.literal("camera"), mode: external_exports.enum(["from_below", "face_close", "ignored", "pov_floor", "pov_dark", "ceiling"]) }).strict(),
+  external_exports.object({ type: external_exports.literal("backdrop"), id: lowerId }).strict(),
+  external_exports.object({ type: external_exports.literal("pose_shot"), kind: lowerId }).strict(),
+  external_exports.object({ type: external_exports.literal("filter"), kind: external_exports.enum(["sensory_dark", "alarm"]) }).strict(),
+  external_exports.object({ type: external_exports.literal("perception"), self: external_exports.literal("obscured").optional(), others: external_exports.literal("obscured").optional() }).strict(),
+  external_exports.object({ type: external_exports.literal("input"), limit: external_exports.enum(["muffled", "garbled", "no_speech", "gestures_only", "no_hands", "action_only"]), strength: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal(3)]).optional() }).strict(),
+  external_exports.object({ type: external_exports.literal("gestures"), variant: external_exports.enum(["pet", "head_only"]) }).strict(),
+  external_exports.object({ type: external_exports.literal("device"), lock: external_exports.literal("tabs") }).strict(),
+  external_exports.object({ type: external_exports.literal("sensory"), kind: external_exports.enum(["scent", "touch", "sound", "temp"]), intensity: external_exports.enum(["low", "high", "overwhelming"]) }).strict(),
+  external_exports.object({ type: external_exports.literal("sound"), muffle: external_exports.literal(true).optional(), id: lowerId.optional() }).strict(),
+  external_exports.object({ type: external_exports.literal("visibility"), hiddenFromDoor: external_exports.literal(true).optional(), exposing: external_exports.literal(true).optional(), hideable: external_exports.literal(false).optional(), unlessPosture: external_exports.array(str).min(1).optional() }).strict(),
+  external_exports.object({ type: external_exports.literal("mobility"), level: external_exports.enum(["none", "limited", "crawl", "follows"]) }).strict(),
+  external_exports.object({ type: external_exports.literal("strain"), condition: external_exports.enum(["stillness", "silence", "posture", "endurance"]), rate: external_exports.number().positive().max(10) }).strict(),
+  external_exports.object({ type: external_exports.literal("escalation"), verb: external_exports.enum(ESCALATION_ORDER) }).strict(),
+  external_exports.object({ type: external_exports.literal("physics"), id: str }).strict(),
+  external_exports.object({ type: external_exports.literal("rule"), template: lowerId }).strict(),
+  external_exports.object({ type: external_exports.literal("notice"), kind: external_exports.enum(["knows_dynamic", "seen"]) }).strict(),
+  external_exports.object({ type: external_exports.literal("status_after"), id: str, afterExchanges: int.min(1).max(60) }).strict()
+]).superRefine((fx2, ctx2) => {
+  if (fx2.type === "perception" && fx2.self === void 0 && fx2.others === void 0) ctx2.addIssue({ code: "custom", message: "a perception effect sets self, others or both" });
+  if (fx2.type === "sound" && fx2.muffle === void 0 === (fx2.id === void 0)) ctx2.addIssue({ code: "custom", message: "a sound effect is either muffle or an id, not both and not neither" });
+  if (fx2.type === "visibility" && fx2.hiddenFromDoor === void 0 && fx2.exposing === void 0 && fx2.hideable === void 0 && fx2.unlessPosture === void 0) ctx2.addIssue({ code: "custom", message: "a visibility effect sets at least one field" });
+  if (fx2.type === "visibility" && fx2.unlessPosture !== void 0 && fx2.hideable !== false) ctx2.addIssue({ code: "custom", message: "unlessPosture only qualifies hideable: false" });
+});
+var effectList = external_exports.array(BlockingEffectSchema).optional();
+var WorshipTargetSchema = BaseEntrySchema.extend({
+  contentTags: external_exports.array(str).min(1),
+  side: external_exports.enum(["front", "back", "both"]),
+  /** Body-map coordinates (0–100) for each side the target is on; `AUTHOR TO TUNE`. */
+  zone: external_exports.object({ front: bodyPoint.optional(), back: bodyPoint.optional() }).strict(),
+  /** The stimulus kinds a contact with it exposes (`stimulusKinds` ids). */
+  stimuli: external_exports.array(str).min(1),
+  label: blockLabel,
+  description: str
+}).strict().superRefine((t, ctx2) => {
+  const need = t.side === "both" ? ["front", "back"] : [t.side];
+  for (const side of need) if (t.zone[side] === void 0) ctx2.addIssue({ code: "custom", path: ["zone", side], message: `a ${t.side}-side target needs a ${side} zone` });
+  for (const side of ["front", "back"]) if (t.zone[side] !== void 0 && !need.includes(side)) ctx2.addIssue({ code: "custom", path: ["zone", side], message: `a ${t.side}-side target has no ${side} zone` });
+});
+var PostureSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint,
+  effects: effectList
+}).strict();
+var AnchorSchema = BaseEntrySchema.extend({
+  kind: external_exports.enum(ANCHOR_KINDS),
+  requires: external_exports.object({ affordances: external_exports.array(lowerId).min(1) }).strict().optional(),
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint,
+  effects: effectList
+}).strict().superRefine((a, ctx2) => {
+  if (a.kind === "furniture" && a.requires === void 0) ctx2.addIssue({ code: "custom", path: ["requires"], message: "a furniture anchor requires the affordance of its furniture" });
+});
+var ContactSchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  dir: external_exports.enum(CONTACT_DIRS),
+  target: external_exports.array(str).min(1).optional(),
+  implies: external_exports.object({ actor: sideSchema.optional(), receiver: sideSchema.optional() }).strict().optional(),
+  requires: external_exports.object({ affordances: external_exports.array(lowerId).min(1).optional() }).strict().optional(),
+  physics: external_exports.array(physicsLink).min(1).max(2).optional(),
+  stimuli: external_exports.array(str).min(1).optional(),
+  sources: sourceWeights.optional(),
+  mouth: external_exports.literal(true).optional(),
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint,
+  effects: effectList
+}).strict();
+var BlockingItemSchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  slots: external_exports.array(external_exports.enum(WORN_SLOTS)).min(1),
+  /** `all`: wearing it takes every slot (a hood: eyes and ears); `one`: it takes one of them. Default `all`. */
+  slotMode: external_exports.enum(["all", "one"]).optional(),
+  wornBy: external_exports.enum(["commander", "her"]).optional(),
+  physics: external_exports.array(physicsLink).min(1).max(2).optional(),
+  stimuli: external_exports.array(str).min(1).optional(),
+  sources: sourceWeights.optional(),
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint,
+  effects: effectList
+}).strict().superRefine((i, ctx2) => {
+  if (new Set(i.slots).size !== i.slots.length) ctx2.addIssue({ code: "custom", path: ["slots"], message: "a slot is listed twice" });
+});
+var BlockingActivitySchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  actor: external_exports.enum(["her", "commander"]),
+  attention: external_exports.enum(ATTENTIONS).optional(),
+  interruptible: external_exports.boolean().optional(),
+  impliedPosture: str.optional(),
+  pairTags: external_exports.array(external_exports.enum(PAIR_TAGS)).min(1).optional(),
+  /** Her pair tags this activity fits, or `any`. */
+  fits: external_exports.array(external_exports.enum([...PAIR_TAGS, "any"])).min(1).optional(),
+  presence: external_exports.enum(["unnoticed", "felt"]).optional(),
+  judged: external_exports.literal(true).optional(),
+  sources: sourceWeights.optional(),
+  /** The P2 activity ids whose scene opens with this one (`scene.activityId`). */
+  fromActivities: external_exports.array(str).min(1).optional(),
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint,
+  effects: effectList
+}).strict();
+var momentOption = external_exports.object({ type: external_exports.enum(RESPONSE_TYPES), generic: str.max(40) }).strict();
+var MomentSourceSchema = BaseEntrySchema.extend({
+  scope: scopeEnum,
+  contentTags: tagList,
+  /** Exactly three options: the frame's words are the generic labels shown until the reading words them. */
+  frame: external_exports.tuple([momentOption, momentOption, momentOption]),
+  live: external_exports.array(external_exports.enum(LIVE_KINDS)).min(1),
+  remember: external_exports.array(external_exports.object({ option: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2)]), importance: int.min(1).max(5) }).strict()).optional(),
+  generalMeeting: external_exports.literal(true).optional(),
+  description: str
+}).strict();
+var ContactPhysicsSchema = BaseEntrySchema.extend({
+  contentTags: tagList,
+  gauge: external_exports.object({ kind: external_exports.enum(GAUGE_KINDS), start: external_exports.number().min(0).max(100) }).strict(),
+  interaction: external_exports.enum(INTERACTIONS),
+  skill: external_exports.boolean(),
+  segmentSeconds: int.min(5).max(300),
+  chains: external_exports.array(external_exports.object({ on: external_exports.literal("slip"), to: str, start: external_exports.number().min(0).max(100).optional() }).strict()).optional(),
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint
+}).strict();
+var PhysicsCueSchema = BaseEntrySchema.extend({
+  kind: external_exports.enum(CUE_KINDS),
+  physics: external_exports.array(str).min(1).optional(),
+  lines: external_exports.array(str.max(160)).min(3).max(5),
+  description: str
+}).strict();
+var StimulusKindSchema = BaseEntrySchema.extend({
+  contentTags: tagList,
+  family: external_exports.enum(STIMULUS_FAMILIES),
+  label: blockLabel,
+  description: str,
+  /** One short word or phrase per stage of the commander's trajectory, and the one after a week apart. */
+  perception: external_exports.object(Object.fromEntries([...STAGES, "separated"].map((k) => [k, str.max(80)]))).strict()
+}).strict();
+var EscalationVerbSchema = BaseEntrySchema.extend({
+  id: external_exports.enum(ESCALATION_ORDER),
+  label: blockLabel,
+  promptHint: blockHint,
+  description: str
+}).strict();
+var CommanderConditionSchema = BaseEntrySchema.extend({
+  effects: external_exports.array(external_exports.union([
+    external_exports.object({ type: external_exports.literal("social_rank"), delta: int.min(-3).max(3) }).strict(),
+    external_exports.object({ type: external_exports.literal("stress"), amount: int.min(-50).max(50) }).strict()
+  ])),
+  label: blockLabel,
+  description: str,
+  promptHint: blockHint
+}).strict();
+Object.assign(registrySchemas, {
+  worshipTargets: WorshipTargetSchema,
+  blockingPostures: PostureSchema,
+  blockingAnchors: AnchorSchema,
+  blockingContacts: ContactSchema,
+  blockingItems: BlockingItemSchema,
+  blockingActivities: BlockingActivitySchema,
+  momentSources: MomentSourceSchema,
+  contactPhysics: ContactPhysicsSchema,
+  physicsCues: PhysicsCueSchema,
+  stimulusKinds: StimulusKindSchema,
+  escalationVerbs: EscalationVerbSchema,
+  commanderConditions: CommanderConditionSchema
+});
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -10302,8 +10582,8 @@ function seedWorld(draft, reg) {
   const startRegion = own === null ? void 0 : reg.corporations.get(own)?.startingRegionId;
   for (const region of reg.regions.values()) {
     const id = String(region.id);
-    const known = region.knownFromStart === true || id === startRegion;
-    world.regions[id] = { ...world.regions[id] ?? {}, known: known || (world.regions[id]?.known ?? false) };
+    const known2 = region.knownFromStart === true || id === startRegion;
+    world.regions[id] = { ...world.regions[id] ?? {}, known: known2 || (world.regions[id]?.known ?? false) };
   }
   world.seeded = true;
   return [{ type: "world_seeded" }];
@@ -10514,8 +10794,8 @@ function concealedAffairs(state, reg) {
       return h2 !== void 0 && isLiving(h2) && reg.relationshipStates.get(state.relations[id]?.stateId ?? "")?.romance === true;
     });
     if (hidden.length === 0) continue;
-    const known = state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(u.id) && (f.knownBy.includes("*") || hidden.some((h2) => f.knownBy.includes(h2))));
-    if (!known) out.push({ unitId: u.id });
+    const known2 = state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(u.id) && (f.knownBy.includes("*") || hidden.some((h2) => f.knownBy.includes(h2))));
+    if (!known2) out.push({ unitId: u.id });
   }
   return out;
 }
@@ -10985,7 +11265,26 @@ function syncRulesWithContent(draft, reg) {
 }
 
 // src/engine/bonds/content.ts
-var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks", "wagerStakes", "developmentRules", "habits", "commanderPunishments"];
+var CONTENT_GATED_REGISTRIES = [
+  "relationshipRuleTemplates",
+  "demandTemplates",
+  "punishments",
+  "dilemmaTemplates",
+  "missionTemplates",
+  "clocks",
+  "wagerStakes",
+  "developmentRules",
+  "habits",
+  "commanderPunishments",
+  // P15a
+  "worshipTargets",
+  "blockingContacts",
+  "blockingItems",
+  "blockingActivities",
+  "momentSources",
+  "contactPhysics",
+  "stimulusKinds"
+];
 var enabledCategories = (state) => state.content?.enabled ?? [];
 var tagsOf = (entry) => {
   const tags = entry.contentTags;
@@ -11015,8 +11314,8 @@ function withRequirements(reg, ids) {
   return next;
 }
 function setCategories(draft, reg, enabled) {
-  const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-  const next = withRequirements(reg, known.filter((id) => enabled.includes(id)));
+  const known2 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+  const next = withRequirements(reg, known2.filter((id) => enabled.includes(id)));
   const before = enabledCategories(draft);
   const added = next.filter((id) => !before.includes(id));
   const removed = before.filter((id) => !next.includes(id));
@@ -12551,8 +12850,8 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         events.push(...offerMissionEffect(draft, ctx2, fx2));
         break;
       case "squad_secret": {
-        const known = fx2.knownBy === "squad" ? draft.squad : partyUnits(draft);
-        events.push(...addSecret(draft, reg, { kindId: fx2.kindId, knownBy: known.map((u) => u.id) }));
+        const known2 = fx2.knownBy === "squad" ? draft.squad : partyUnits(draft);
+        events.push(...addSecret(draft, reg, { kindId: fx2.kindId, knownBy: known2.map((u) => u.id) }));
         break;
       }
     }
@@ -13711,15 +14010,15 @@ function headStartTransition(draft, reg, unitId) {
 function applyHeadStart(draft, reg, o) {
   const units = [];
   for (const unit2 of draft.squad) {
-    const known = o.impressions.get(unit2.id);
+    const known2 = o.impressions.get(unit2.id);
     const rel = draft.relations[unit2.id];
-    if (!known || !rel) continue;
-    developRelation(rel, known.delta, o.days, o.seed, unit2.id);
-    const impression = impressionOf(known.delta);
+    if (!known2 || !rel) continue;
+    developRelation(rel, known2.delta, o.days, o.seed, unit2.id);
+    const impression = impressionOf(known2.delta);
     rollCrime(draft, reg, unit2, o.days, o.seed);
     const moments = pickMoments(draft, reg, unit2, { days: o.days, seed: o.seed, impression, knowsCrime: rel.flags.includes("knows_crime") });
     for (const m of moments) applyMoment(draft, reg, unit2.id, m);
-    capTrust(rel, known.trustBefore);
+    capTrust(rel, known2.trustBefore);
     headStartTransition(draft, reg, unit2.id);
     units.push({ unitId: unit2.id, impression, moments: moments.map((m) => String(m.id)) });
   }
@@ -14253,9 +14552,9 @@ function loadoutSize(reg, unit2) {
   return TUNING.progression.loadoutSize + extra;
 }
 function activeLoadout(reg, unit2) {
-  const known = knownSkillIds(reg, unit2);
+  const known2 = knownSkillIds(reg, unit2);
   const starters = (reg.roles.get(unit2.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
-  const chosen = (unit2.loadout ?? []).filter((id, i, a) => known.includes(id) && a.indexOf(id) === i);
+  const chosen = (unit2.loadout ?? []).filter((id, i, a) => known2.includes(id) && a.indexOf(id) === i);
   return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit2));
 }
 function resolveSkill(reg, c, skillId) {
@@ -16706,8 +17005,8 @@ function lifeFields(type, e, intent, life) {
 function validateIntents(raw, ctx2) {
   const out = emptyIntents();
   if (!isObj4(raw)) return out;
-  const known = new Set(ctx2.squad.map((u) => u.id));
-  const present2 = new Set(ctx2.participants.filter((id) => known.has(id)));
+  const known2 = new Set(ctx2.squad.map((u) => u.id));
+  const present2 = new Set(ctx2.participants.filter((id) => known2.has(id)));
   const isUnit = (v) => typeof v === "string" && present2.has(v);
   const seenLife = /* @__PURE__ */ new Set();
   for (const e of arr(raw.events)) {
@@ -17085,7 +17384,7 @@ function fallbackAgenda(state, reg, unitId) {
 }
 function normalizeAgenda(raw, reg) {
   if (!Array.isArray(raw)) return null;
-  const known = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
+  const known2 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
   const seen = /* @__PURE__ */ new Set();
   const out = [];
   let personal = 0;
@@ -17101,7 +17400,7 @@ function normalizeAgenda(raw, reg) {
       out.push({ kind, points: WEIGHT_POINTS[weight], source: src, text: t });
       continue;
     }
-    if (!known.has(kind) || seen.has(kind)) continue;
+    if (!known2.has(kind) || seen.has(kind)) continue;
     seen.add(kind);
     out.push({ kind, points: WEIGHT_POINTS[weight], source: src });
   }
@@ -17110,7 +17409,7 @@ function normalizeAgenda(raw, reg) {
 }
 function agendaProblem(list5, reg) {
   if (!Array.isArray(list5) || list5.length < AGENDA_MIN || list5.length > AGENDA_MAX) return `An agenda has ${AGENDA_MIN} to ${AGENDA_MAX} expectations.`;
-  const known = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
+  const known2 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
   const kinds2 = /* @__PURE__ */ new Set();
   const ids = /* @__PURE__ */ new Set();
   let personal = 0;
@@ -17125,7 +17424,7 @@ function agendaProblem(list5, reg) {
       personal++;
       if (typeof x.text !== "string" || x.text.trim() === "" || x.text.length > PERSONAL_TEXT_MAX || COMMANDER_PRONOUN.test(x.text)) return "A personal expectation needs plain text of at most 80 characters.";
     } else {
-      if (!known.has(x.kind) || kinds2.has(x.kind)) return "An expectation kind is used once.";
+      if (!known2.has(x.kind) || kinds2.has(x.kind)) return "An expectation kind is used once.";
       kinds2.add(x.kind);
     }
   }
@@ -21342,12 +21641,12 @@ function setLoadout(draft, reg, unitId, skillIds) {
   const unit2 = draft.squad.find((u) => u.id === unitId);
   if (!unit2 || !isLiving(unit2)) throw new Error("Unknown or unavailable unit.");
   if (new Set(skillIds).size !== skillIds.length) throw new Error("A skill was listed twice.");
-  const known = knownSkills(reg, unit2);
+  const known2 = knownSkills(reg, unit2);
   for (const id of skillIds) {
     const sk = skillById(reg, id);
     if (!sk) throw new Error(`Unknown skill "${id}".`);
     if (sk.kind === "passive") throw new Error(`${sk.name} is a passive and cannot be equipped.`);
-    if (!known.includes(id)) throw new Error(`${sk.name} is not unlocked.`);
+    if (!known2.includes(id)) throw new Error(`${sk.name} is not unlocked.`);
   }
   if (skillIds.length > loadoutSize(reg, unit2)) throw new Error(`A loadout holds at most ${loadoutSize(reg, unit2)} skills.`);
   if (skillIds.length === 0) delete unit2.loadout;
@@ -21757,11 +22056,11 @@ function poiTemplates(reg) {
   return new Set([...reg.regions.values()].flatMap((r) => r.pointsOfInterest.map((p) => p.templateId)));
 }
 var pairs = (state, reg, source, accept) => {
-  const known = knownRegions(state, reg);
+  const known2 = knownRegions(state, reg);
   const out = [];
   for (const t of reg.missionTemplates.values()) {
     if (!accept(t)) continue;
-    for (const region of known) {
+    for (const region of known2) {
       const offer = { templateId: String(t.id), regionId: String(region.id), source };
       if (checkOffer(state, reg, offer) === null) out.push(offer);
     }
@@ -24126,8 +24425,8 @@ function buildCampaign(r, reg, opts) {
   state.settings = { desireBondDefects: opts.desireBondDefects, ...r.characterDevelopment !== void 0 ? { characterDevelopment: r.characterDevelopment } : {}, ...r.lifeEvents !== void 0 ? { lifeEvents: r.lifeEvents } : {} };
   if (r.lifeEvents !== void 0 && r.lifeEvents !== "off") state.life = newLife(opts.seed);
   if (r.content !== void 0) {
-    const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-    state.content = { enabled: known.filter((id) => r.content.enabled.includes(id)) };
+    const known2 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    state.content = { enabled: known2.filter((id) => r.content.enabled.includes(id)) };
   }
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
@@ -24200,9 +24499,9 @@ function foldPart(state, fact) {
 }
 function foldTargets(state, fact) {
   const living2 = livingNamed2(state);
-  const known = fact.knownBy.includes("*") ? living2 : living2.filter((id) => fact.knownBy.includes(id));
+  const known2 = fact.knownBy.includes("*") ? living2 : living2.filter((id) => fact.knownBy.includes(id));
   const aboutLiving = living2.filter((id) => fact.about.includes(id));
-  const hit = foldPart(state, fact) === "shared" ? aboutLiving : [aboutLiving.filter((id) => known.includes(id)), aboutLiving, known].find((l) => l.length > 0) ?? [];
+  const hit = foldPart(state, fact) === "shared" ? aboutLiving : [aboutLiving.filter((id) => known2.includes(id)), aboutLiving, known2].find((l) => l.length > 0) ?? [];
   return hit.length > 0 ? hit : [WORLD];
 }
 var folded = (fact, target) => fact.foldedInto?.includes(target) === true;
@@ -24265,7 +24564,7 @@ function nextId(draft, prefix) {
 }
 var normText = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
 var sameAbout = (a, b) => a.length === b.length && [...a].sort().join("\0") === [...b].sort().join("\0");
-var tagList = (tags) => [...new Set(tags.map((t) => normalizeTag(t)).filter((t) => t !== null))];
+var tagList2 = (tags) => [...new Set(tags.map((t) => normalizeTag(t)).filter((t) => t !== null))];
 function nextRememberId(draft) {
   const n = (draft.memory.nextRememberId ?? 0) + 1;
   draft.memory.nextRememberId = n;
@@ -24279,7 +24578,7 @@ function addFact(draft, f, opts = {}) {
     for (const k of f.knownBy) if (!dup.knownBy.includes(k)) dup.knownBy.push(k);
     return dup;
   }
-  const fact = { ...f, id: opts.remembered ? nextRememberId(draft) : nextId(draft, "f"), text: text2, about: about2, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
+  const fact = { ...f, id: opts.remembered ? nextRememberId(draft) : nextId(draft, "f"), text: text2, about: about2, tags: tagList2(f.tags), knownBy: [...new Set(f.knownBy)] };
   draft.memory.facts.push(fact);
   pruneFacts(draft);
   return fact;
@@ -24300,7 +24599,7 @@ function factsVisibleTo(state, viewers) {
 }
 function retrieveFacts(state, q, k = memoryConfig(state).retrievalK) {
   const { recencyBase } = memoryConfig(state);
-  const tags = new Set(tagList(q.tags));
+  const tags = new Set(tagList2(q.tags));
   const people = new Set(q.participants);
   const score = (f) => 3 * f.about.filter((a) => people.has(a)).length + 2 * f.tags.filter((t) => tags.has(t)).length + f.importance + 3 * recencyBase ** Math.max(0, state.day - f.day) + (f.pinned ? TUNING.memory.pinnedBonus : 0);
   const at = new Map(state.memory.facts.map((f, i) => [f.id, i]));
@@ -24556,14 +24855,14 @@ function holds2(when, res) {
 var fill3 = (text2, vars) => text2.replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => vars[k] ?? m);
 var livingNamed3 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
 function audienceOf(draft, parts, res, aboutIds) {
-  const known = /* @__PURE__ */ new Set();
+  const known2 = /* @__PURE__ */ new Set();
   for (const part of parts) {
     if (part === "public") return ["*"];
-    if (part === "squad") livingNamed3(draft).forEach((id) => known.add(id));
-    else if (part === "present") (draft.scene?.participants ?? aboutIds.filter((id) => id !== "world")).forEach((id) => known.add(id));
-    else (res.ids[part] ?? []).forEach((id) => known.add(id));
+    if (part === "squad") livingNamed3(draft).forEach((id) => known2.add(id));
+    else if (part === "present") (draft.scene?.participants ?? aboutIds.filter((id) => id !== "world")).forEach((id) => known2.add(id));
+    else (res.ids[part] ?? []).forEach((id) => known2.add(id));
   }
-  return [...known];
+  return [...known2];
 }
 function rememberEvents(draft, events, reg) {
   if (!reg.memoryRules || reg.memoryRules.size === 0) return;
@@ -27491,8 +27790,8 @@ registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   if (!isObj29(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
   const hintId = payload.hintId;
   const entry = ctx2.registries.prologues.get(o.prologueId);
-  const known = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
-  if (!known) throw new Error(`Unknown coach hint "${hintId}".`);
+  const known2 = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
+  if (!known2) throw new Error(`Unknown coach hint "${hintId}".`);
   if (!o.hintsSeen?.includes(hintId)) o.hintsSeen = [...o.hintsSeen ?? [], hintId];
   return [];
 });
@@ -30684,8 +30983,8 @@ var CARD_MAX2 = 600;
 function headStartOpening(state) {
   const hs = state.headStart;
   if (!hs) return "";
-  const known = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id) && isLiving(u)).map((u) => u.displayName);
+  const known2 = new Set(hs.units.map((u) => u.unitId));
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known2.has(u.id) && isLiving(u)).map((u) => u.displayName);
   const first2 = `The squad has known the commander for ${hs.days} days: no introductions, no first meeting.`;
   if (arrivals.length === 0) return first2;
   return `${first2} ${joinNames(arrivals)} arrived today and ${arrivals.length === 1 ? "meets" : "meet"} the commander for the first time.`;
@@ -37022,7 +37321,7 @@ var STANCE_REASON_MAX2 = 160;
 var STANCE_WORDS = ["shares", "indifferent", "opposes"];
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
 var VALUE_KEYS = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
-function tagList2(v, max) {
+function tagList3(v, max) {
   if (!Array.isArray(v)) return void 0;
   const out = [];
   for (const raw of v) {
@@ -37117,9 +37416,9 @@ function sanitizeProfile(raw, ctx2) {
     } else missing2.push("values");
   }
   if (want("tags")) {
-    const likes = tagList2(src.likes, SETUP_LIMITS.likes);
-    const dislikes = tagList2(src.dislikes, SETUP_LIMITS.dislikes);
-    const triggers = tagList2(src.triggers, SETUP_LIMITS.triggers);
+    const likes = tagList3(src.likes, SETUP_LIMITS.likes);
+    const dislikes = tagList3(src.dislikes, SETUP_LIMITS.dislikes);
+    const triggers = tagList3(src.triggers, SETUP_LIMITS.triggers);
     if (likes) profile.likes = likes;
     if (dislikes) profile.dislikes = dislikes;
     if (triggers) profile.triggers = triggers;
@@ -37324,8 +37623,8 @@ var Wizard = class {
   }
   /** P9d: sets the content categories (unknown ids dropped, registry order). */
   setContent(enabled) {
-    const known = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-    this.s.content = { enabled: known.filter((id) => enabled.includes(id)) };
+    const known2 = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    this.s.content = { enabled: known2.filter((id) => enabled.includes(id)) };
     this.emit();
   }
   /** P13: the campaign mode (the default mode writes no `mode` into the setup). */
@@ -40071,14 +40370,14 @@ function unitPortrait(st, unit2, o) {
   const avatar = st.getAvatarUrl(card2);
   let cache = spriteCache.get(st);
   if (!cache) spriteCache.set(st, cache = /* @__PURE__ */ new Map());
-  const known = cache.get(card2);
+  const known2 = cache.get(card2);
   const cached = o.dither ? dithered.get(key)?.url : void 0;
-  const img = h("img", { class: "alius-portrait", src: cached ?? known?.url ?? avatar, alt: unit2.displayName, width: String(size), height: String(size) });
+  const img = h("img", { class: "alius-portrait", src: cached ?? known2?.url ?? avatar, alt: unit2.displayName, width: String(size), height: String(size) });
   if (cached) {
     img.classList.add("alius-portrait-dithered");
     return img;
   }
-  let usingAvatar = !known?.url;
+  let usingAvatar = !known2?.url;
   const settle5 = () => {
     if (o.dither) ditherWhenLoaded(img, key, o.palette, size);
   };
@@ -40087,7 +40386,7 @@ function unitPortrait(st, unit2, o) {
     usingAvatar = true;
     img.setAttribute("src", avatar);
   });
-  if (known && (known.url || Date.now() - known.at < RETRY_MS)) {
+  if (known2 && (known2.url || Date.now() - known2.at < RETRY_MS)) {
     settle5();
     return img;
   }
@@ -40438,7 +40737,7 @@ function equipmentBlock(unit2, ctx2, state) {
 }
 function loadoutBlock(unit2, ctx2) {
   const reg = ctx2.registries;
-  const known = knownSkills(reg, unit2);
+  const known2 = knownSkills(reg, unit2);
   const size = loadoutSize(reg, unit2);
   const chosen = new Set(activeLoadout(reg, unit2));
   const boxes = [];
@@ -40446,7 +40745,7 @@ function loadoutBlock(unit2, ctx2) {
     const count = boxes.filter((b) => b.checked).length;
     for (const b of boxes) b.disabled = !b.checked && count >= size;
   };
-  const rows = known.map((id) => {
+  const rows = known2.map((id) => {
     const box = h("input", { type: "checkbox", "data-skill": id, checked: chosen.has(id) });
     boxes.push(box);
     box.addEventListener("change", () => {
@@ -40617,12 +40916,12 @@ function lifeProfileBlock(unit2, ctx2, state) {
     // only the changed field: a locked one in the patch refuses it all
     onLock: (field2, on) => send({ type: "profile/lock_temperament", payload: { unitId: unit2.id, field: field2, on } })
   });
-  const known = new Set(buildKnowledge(state, ctx2.settings()).life(unit2.id, ctx2.registries).hobbies.map((x) => x.id));
+  const known2 = new Set(buildKnowledge(state, ctx2.settings()).life(unit2.id, ctx2.registries).hobbies.map((x) => x.id));
   renderHobbiesEditor(part("alius-life-hobbies"), {
     unit: who,
     registries: ctx2.registries,
     editable,
-    hobbies: (unit2.hobbies ?? []).filter((x) => editable || known.has(x.id)).map((x) => ({ id: x.id, state: x.state, milestones: editable ? x.milestones.length : toldMilestones(state, unit2.id, x).length })),
+    hobbies: (unit2.hobbies ?? []).filter((x) => editable || known2.has(x.id)).map((x) => ({ id: x.id, state: x.state, milestones: editable ? x.milestones.length : toldMilestones(state, unit2.id, x).length })),
     aptitudes: unit2.aptitudes ?? { high: [], low: [] },
     onSet: (hobbies, aptitudes) => send({ type: "profile/set_hobbies", payload: { unitId: unit2.id, hobbies, aptitudes } })
   });
@@ -42141,8 +42440,8 @@ var floorGeometry = /* @__PURE__ */ new WeakMap();
 function geometryOf(reg, floor) {
   let byFloor = floorGeometry.get(reg);
   if (!byFloor) floorGeometry.set(reg, byFloor = /* @__PURE__ */ new Map());
-  const known = byFloor.get(floor);
-  if (known) return known;
+  const known2 = byFloor.get(floor);
+  if (known2) return known2;
   const rooms = planRoomsOn(reg, floor);
   const opens = rooms.filter(isOpenSpace);
   const segs = outline(opens.map(rectOf));
@@ -42684,11 +42983,11 @@ function svg2(tag2, attrs) {
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
-function selectedRegion(host, state, reg, known) {
-  const remembered2 = known.find((r) => r.id === host.dataset.selected);
+function selectedRegion(host, state, reg, known2) {
+  const remembered2 = known2.find((r) => r.id === host.dataset.selected);
   if (remembered2) return remembered2;
   const startRegion = reg.corporations.get(state.commander.corporationId ?? "")?.startingRegionId;
-  return known.find((r) => r.id === startRegion) ?? known[0];
+  return known2.find((r) => r.id === startRegion) ?? known2[0];
 }
 function regionPanel(state, region, ctx2) {
   const reg = ctx2.registries;
@@ -42758,10 +43057,10 @@ function renderMapTab(host, ctx2) {
     return;
   }
   const reg = ctx2.registries;
-  const known = knownRegions(state, reg);
-  const knownIds = new Set(known.map((r) => String(r.id)));
+  const known2 = knownRegions(state, reg);
+  const knownIds = new Set(known2.map((r) => String(r.id)));
   const regions = [...reg.regions.values()];
-  let current = selectedRegion(host, state, reg, known);
+  let current = selectedRegion(host, state, reg, known2);
   const select = (id) => {
     if (!knownIds.has(id)) return;
     host.dataset.selected = id;
@@ -42833,7 +43132,7 @@ function renderMapTab(host, ctx2) {
   drawMap();
   host.append(mapBox);
   if (current) {
-    current = known.find((r) => r.id === current.id);
+    current = known2.find((r) => r.id === current.id);
     if (current) host.append(regionPanel(state, current, ctx2));
   }
 }
@@ -42871,11 +43170,11 @@ function renderNodeMap(host, view) {
     if (i > 0) root.append(h("span", { class: "alius-nodelink", "aria-hidden": "true" }, "\u2500\u2500"));
     const col = h("div", { class: "alius-nodecol" });
     for (const cell of column) {
-      const known = cell.text !== "[ ]";
-      const name = known ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
+      const known2 = cell.text !== "[ ]";
+      const name = known2 ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
       const status = cell.state === "option" ? "reachable" : cell.state === "ahead" ? "ahead" : cell.state;
       const classes = ["alius-node", cell.state === "option" ? "alius-reachable" : `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
-      const address = known && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : "glossary:unknown_node";
+      const address = known2 && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : "glossary:unknown_node";
       const attrs = { class: classes, "data-node": cell.nodeId, "aria-label": `${name}, ${status}` };
       col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
     }
@@ -44422,8 +44721,8 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     return;
   }
   const E = TUNING.warden.escalation;
-  const known = w.expectations.filter((x) => x.known);
-  const unknown2 = w.expectations.length - known.length;
+  const known2 = w.expectations.filter((x) => x.known);
+  const unknown2 = w.expectations.length - known2.length;
   const raw = deps.showRaw === true;
   const defiance = Math.max(0, Math.min(100, Number.isFinite(Number(w.defiance)) ? Number(w.defiance) : 0));
   const meter = h(
@@ -44439,7 +44738,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     h("div", {}, h("span", { class: "alius-dim" }, `DEFIANCE${raw ? ` ${w.defiance}` : ""}`), meter),
     ...w.warnings.map((x) => h("p", { class: "alius-chip alius-stat alius-warning", "data-warning": String(x.level), ...analyzeAttrs("glossary:lethal_escalation") }, `${x.level === 2 ? "FINAL WARNING" : "WARNING"} \u2014 day ${x.day}`)),
     h("h4", {}, "EXPECTATIONS"),
-    ...known.map((x) => {
+    ...known2.map((x) => {
       const id = entryIdFor(reg, x);
       return h("p", { class: "alius-chip alius-stat alius-expectation", ...analyzeAttrs(id ? `wardenExpectations:${id}` : "glossary:warden_expectation") }, `${expectationLabel(reg, x)} \u2014 ${weightBand(x.weight)}`);
     }),
@@ -44985,8 +45284,8 @@ function defaultLoadImage(url) {
   });
 }
 function tryLoad(url, load) {
-  const known = knownResult(url);
-  if (known !== void 0) return Promise.resolve(known);
+  const known2 = knownResult(url);
+  if (known2 !== void 0) return Promise.resolve(known2);
   let p = loading.get(url);
   if (!p) {
     p = Promise.resolve().then(() => load(url)).catch(() => false).then((ok) => {
@@ -45128,9 +45427,9 @@ function renderSceneScreen(host, ctx2) {
       return;
     }
     const load = ctx2.loadImage ?? defaultLoadImage;
-    const known = candidates3.find((c) => knownResult(c.url) !== false);
-    if (known && knownResult(known.url) === true) {
-      showImage(known.url, known.light);
+    const known2 = candidates3.find((c) => knownResult(c.url) !== false);
+    if (known2 && knownResult(known2.url) === true) {
+      showImage(known2.url, known2.light);
       return;
     }
     showAscii(s);
@@ -46285,10 +46584,10 @@ function obedienceProvider(_subject, env) {
 function squadSecretProvider(_subject, env) {
   const state = env.state;
   if (!state) return null;
-  const known = (state.personal?.secrets ?? []).filter((x) => x.status !== "kept");
-  if (known.length === 0) return { lines: ["The commander knows of nothing the squad keeps back."] };
+  const known2 = (state.personal?.secrets ?? []).filter((x) => x.status !== "kept");
+  if (known2.length === 0) return { lines: ["The commander knows of nothing the squad keeps back."] };
   return {
-    lines: known.map((x) => {
+    lines: known2.map((x) => {
       if (x.status === "found") {
         let masked = x.text;
         for (const id of x.knownBy) masked = masked.replace(new RegExp(`\\b${nameOf14(state, id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"), "\u2588\u2588\u2588\u2588\u2588");
@@ -46509,8 +46808,8 @@ function headStartProvider(_s, env, _k) {
   if (!state) return null;
   const hs = state.headStart;
   if (!hs) return { lines: ["No head start."] };
-  const known = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === "named" && !known.has(u.id) && isLiving(u)).map((u) => u.displayName);
+  const known2 = new Set(hs.units.map((u) => u.unitId));
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known2.has(u.id) && isLiving(u)).map((u) => u.displayName);
   return { lines: [`The squad has known the commander for ${hs.days} days.`, ...arrivals.length > 0 ? [`New arrivals: ${arrivals.join(", ")}.`] : []] };
 }
 function registerHeadStartProviders() {
@@ -47129,7 +47428,8 @@ function registerCoreProviders() {
 }
 
 // src/analysis/describe.ts
-var PLAYER_VISIBLE = [...DESCRIBED_REGISTRIES, "glossary"];
+var HIDDEN_DESCRIBED = ["physicsCues", "escalationVerbs"];
+var PLAYER_VISIBLE = [...DESCRIBED_REGISTRIES.filter((n) => !HIDDEN_DESCRIBED.includes(n)), "glossary"];
 var text = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
 function entryTitle(_registry, entry) {
   return text(entry.term) ?? text(entry.name) ?? text(entry.label) ?? entry.id;
@@ -51935,6 +52235,62 @@ registerChecks("habits", (entry) => {
   const counter = entry.counter;
   return counter?.kind === "joke" && counter.id !== void 0 ? [{ path: "counter.id", message: "a joke habit counts every running joke; it names none" }] : [];
 });
+var known = (regs, registry2, id, path, label2) => typeof id === "string" && !regs[registry2].has(id) ? [{ path, message: `unknown ${label2} "${id}"` }] : [];
+var knownEach = (regs, registry2, ids, path, label2) => Array.isArray(ids) ? ids.flatMap((id, i) => known(regs, registry2, id, `${path}[${i}]`, label2)) : [];
+var planAffordances = (regs) => new Set([...regs.planRooms.values()].flatMap((r) => Array.isArray(r.affordances) ? r.affordances.map(String) : []));
+var affordanceChecks = (regs, list5, path) => {
+  const have = planAffordances(regs);
+  return Array.isArray(list5) ? list5.filter((a) => !have.has(String(a))).map((a, i) => ({ path: `${path}[${i}]`, message: `no plan room offers the affordance "${String(a)}"` })) : [];
+};
+function effectChecks(entry, regs) {
+  const effects2 = Array.isArray(entry.effects) ? entry.effects : [];
+  return effects2.flatMap((fx2, i) => {
+    const at = `effects[${i}]`;
+    switch (fx2.type) {
+      case "physics":
+        return known(regs, "contactPhysics", fx2.id, `${at}.id`, "contact physics");
+      case "status_after":
+        return known(regs, "commanderConditions", fx2.id, `${at}.id`, "commander condition");
+      case "escalation":
+        return known(regs, "escalationVerbs", fx2.verb, `${at}.verb`, "escalation verb");
+      case "visibility":
+        return knownEach(regs, "blockingPostures", fx2.unlessPosture, `${at}.unlessPosture`, "posture");
+      default:
+        return [];
+    }
+  });
+}
+var physicsLinkChecks = (entry, regs) => Array.isArray(entry.physics) ? entry.physics.flatMap((p, i) => known(regs, "contactPhysics", p.id, `physics[${i}].id`, "contact physics")) : [];
+var sourceChecks = (entry, regs) => entry.sources !== null && typeof entry.sources === "object" ? Object.keys(entry.sources).flatMap((id) => known(regs, "momentSources", id, `sources.${id}`, "moment source")) : [];
+registerChecks("worshipTargets", (entry, regs) => knownEach(regs, "stimulusKinds", entry.stimuli, "stimuli", "stimulus kind"));
+registerChecks("blockingPostures", effectChecks);
+registerChecks("blockingAnchors", (entry, regs) => [...affordanceChecks(regs, entry.requires?.affordances, "requires.affordances"), ...effectChecks(entry, regs)]);
+registerChecks("blockingContacts", (entry, regs) => {
+  const implies = entry.implies ?? {};
+  const out = [];
+  for (const who of ["actor", "receiver"]) {
+    out.push(...known(regs, "blockingPostures", implies[who]?.posture, `implies.${who}.posture`, "posture"));
+    out.push(...known(regs, "blockingAnchors", implies[who]?.anchor, `implies.${who}.anchor`, "anchor"));
+  }
+  out.push(...knownEach(regs, "worshipTargets", entry.target, "target", "worship target"));
+  out.push(...knownEach(regs, "stimulusKinds", entry.stimuli, "stimuli", "stimulus kind"));
+  out.push(...affordanceChecks(regs, entry.requires?.affordances, "requires.affordances"));
+  return [...out, ...physicsLinkChecks(entry, regs), ...sourceChecks(entry, regs), ...effectChecks(entry, regs)];
+});
+registerChecks("blockingItems", (entry, regs) => [...knownEach(regs, "stimulusKinds", entry.stimuli, "stimuli", "stimulus kind"), ...physicsLinkChecks(entry, regs), ...sourceChecks(entry, regs), ...effectChecks(entry, regs)]);
+registerChecks("blockingActivities", (entry, regs) => [
+  ...known(regs, "blockingPostures", entry.impliedPosture, "impliedPosture", "posture"),
+  ...knownEach(regs, "activities", entry.fromActivities, "fromActivities", "activity"),
+  ...sourceChecks(entry, regs),
+  ...effectChecks(entry, regs)
+]);
+registerChecks("contactPhysics", (entry, regs) => Array.isArray(entry.chains) ? entry.chains.flatMap((c, i) => known(regs, "contactPhysics", c.to, `chains[${i}].to`, "contact physics")) : []);
+registerChecks("physicsCues", (entry, regs) => knownEach(regs, "contactPhysics", entry.physics, "physics", "contact physics"));
+registerChecks("pastimes", (entry, regs) => Array.isArray(entry.momentSources) ? entry.momentSources.flatMap((id, i) => {
+  const s = regs.momentSources.get(String(id));
+  if (s === void 0) return [{ path: `momentSources[${i}]`, message: `unknown moment source "${String(id)}"` }];
+  return s.scope === "any" ? [] : [{ path: `momentSources[${i}]`, message: `"${String(id)}" needs a dynamic frame; a quiet meeting only offers sources open to everyone` }];
+}) : []);
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);

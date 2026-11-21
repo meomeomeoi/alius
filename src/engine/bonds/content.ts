@@ -6,7 +6,9 @@ import { bondOf } from './profile';
 import { syncRulesWithContent } from './rules';
 
 /** Registries whose entries may carry `contentTags` (and the night specs of defects and relationship states do too). */
-export const CONTENT_GATED_REGISTRIES = ['relationshipRuleTemplates', 'demandTemplates', 'punishments', 'dilemmaTemplates', 'missionTemplates', 'clocks', 'wagerStakes', 'developmentRules', 'habits', 'commanderPunishments'] as const satisfies readonly RegistryName[];
+export const CONTENT_GATED_REGISTRIES = ['relationshipRuleTemplates', 'demandTemplates', 'punishments', 'dilemmaTemplates', 'missionTemplates', 'clocks', 'wagerStakes', 'developmentRules', 'habits', 'commanderPunishments',
+  // P15a
+  'worshipTargets', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources', 'contactPhysics', 'stimulusKinds'] as const satisfies readonly RegistryName[];
 
 /** Anything the gate can read: a campaign, or a holder with only some of it (a wizard's world choices carry neither). */
 export type ContentHolder = { content?: { enabled: string[] }; squad?: ReadonlyArray<Pick<Unit, 'id' | 'kind' | 'bond'>> };
