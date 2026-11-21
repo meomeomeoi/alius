@@ -7,6 +7,9 @@ import { linkTargets } from '../../src/content/links';
 import type { Registries } from '../../src/content/types';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 
+/** P15: settings of the campaign (SYS › Dynamic goes through the engine), like `lifeEvents`: they have a glossary entry but are no key of the global settings. */
+const DYNAMIC_CAMPAIGN_KEYS = ['dynamicHolders', 'dynamicPace', 'dynamicFrequency'];
+
 let reg: Registries;
 beforeAll(async () => {
   const r = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
@@ -20,7 +23,7 @@ describe('core glossary and descriptions', () => {
   });
 
   it('every glossary id the code addresses exists', () => {
-    const wanted = [...CORE_GLOSSARY_IDS, ...Object.keys(DEFAULT_SETTINGS).map(settingGlossaryId), settingGlossaryId('difficulty'), settingGlossaryId('lifeEvents')];
+    const wanted = [...CORE_GLOSSARY_IDS, ...Object.keys(DEFAULT_SETTINGS).map(settingGlossaryId), settingGlossaryId('difficulty'), settingGlossaryId('lifeEvents'), ...DYNAMIC_CAMPAIGN_KEYS.map(settingGlossaryId)];
     expect(wanted.filter((id) => !reg.glossary.has(id))).toEqual([]);
     expect(new Set(CORE_GLOSSARY_IDS).size).toBe(CORE_GLOSSARY_IDS.length);
   });
@@ -30,7 +33,7 @@ describe('core glossary and descriptions', () => {
     expect(concepts.length).toBeGreaterThanOrEqual(30);
     expect([...concepts].sort()).toEqual([...CORE_GLOSSARY_IDS].sort());
     const settings = [...reg.glossary.keys()].filter((id) => id.startsWith('setting_'));
-    expect(settings.sort()).toEqual([...Object.keys(DEFAULT_SETTINGS), 'difficulty', 'lifeEvents'].map(settingGlossaryId).sort());
+    expect(settings.sort()).toEqual([...Object.keys(DEFAULT_SETTINGS), 'difficulty', 'lifeEvents', ...DYNAMIC_CAMPAIGN_KEYS].map(settingGlossaryId).sort());
   });
 
   it('every glossary entry has a term and a short text, concepts about numbers carry a long text', () => {

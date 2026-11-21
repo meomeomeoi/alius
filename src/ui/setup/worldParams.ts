@@ -5,6 +5,7 @@ import { renderContentSection } from '../bonds/content';
 import { renderModeSection } from '../warden/modeSection';
 import { renderDevelopmentSection } from './developmentStep';
 import { renderLifeSection } from './lifeStep';
+import { renderDynamicStep } from './dynamicStep';
 import { renderHeadStartSection } from './headStart';
 import { h } from '../dom';
 
@@ -69,6 +70,8 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
   renderLifeSection(lifeHost, wizard); // P14c: how often her days off-screen bring something
   const contentHost = h('div', { class: 'alius-section alius-world-content' });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
+  const dynamicHost = h('div', { class: 'alius-world-dynamic' });
+  renderDynamicStep(dynamicHost, { wizard, registries: reg }); // P15: only while a practice category is on
   const summary = wizard.worldSummary();
   host.append(h('div', { class: 'alius-setup-body alius-world' },
     h('h3', {}, 'WORLD PARAMETERS'),
@@ -87,6 +90,7 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
     developmentHost,
     lifeHost,
     contentHost,
+    dynamicHost,
     h('section', { class: 'alius-section alius-world-summary' },
       h('h3', {}, 'WHAT THIS CHANGES'),
       summary.length === 0

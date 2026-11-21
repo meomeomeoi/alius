@@ -18,6 +18,9 @@ import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
 import { developmentMode } from '../../engine/development/state';
 import { LIFE_MODES, lifeMode } from '../../engine/life/state';
+import { practiceEnabled } from '../../engine/dynamic/profile';
+import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES } from '../../engine/dynamic/types';
+import { isLiving } from '../../engine/economy';
 import { INTERACTION_TOGGLES, type InteractionToggle } from '../../engine/moments/settings';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
@@ -179,6 +182,53 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     return el;
   };
 
+  /**
+   * P15: the DYNAMIC rows. Holders, pace and frequency go through `dynamic/set_setup` (it creates the block while a practice category is on);
+   * each named soldier gets her may-hold and sensitivity through `dynamic/set_unit`. Lowering the holders below the count ends nothing and says nothing.
+   */
+  const dynamicHost = h('div', { class: 'alius-dynamic-host' });
+  const drawDynamic = (): void => {
+    const state = ctx.getState();
+    const reg = ctx.getRegistries?.();
+    dynamicHost.replaceChildren();
+    if (!state || !reg || !ctx.dispatch) {
+      dynamicHost.append(h('p', { class: 'alius-dim' }, 'The dynamic is set up with a campaign.'));
+      return;
+    }
+    if (state.dynamic === undefined && !practiceEnabled(reg, state.content?.enabled)) {
+      dynamicHost.append(h('p', { class: 'alius-dim' }, 'Switch a practice category on under Content to use the dynamic.'));
+      return;
+    }
+    const setup = state.dynamic?.setup;
+    const send = (type: string, payload: Record<string, unknown>): void => {
+      const events = ctx.dispatch?.({ type, payload }) ?? [];
+      const err = events.find((e) => e.type === 'error');
+      if (err) ctx.toast('warn', String(err.message ?? 'The setting could not be changed.'));
+      drawDynamic(); // the selects read the engine's answer again, and the per-unit rows follow a block that was just created
+    };
+    const pick = (name: string, options: Array<[string, string]>, value: string, address: string, label: string, commit: (v: string) => void): HTMLElement => {
+      const el = h('select', { name, class: 'alius-input' }, ...options.map(([v, text]) => h('option', { value: v, selected: v === value }, text))) as HTMLSelectElement;
+      el.value = value;
+      el.addEventListener('change', () => commit(el.value));
+      return h('label', { class: 'alius-field alius-option', ...analyzeNative(address) }, h('span', { class: 'alius-field-label' }, label), el);
+    };
+    const setSetup = (patch: Record<string, unknown>): void => send('dynamic/set_setup', patch);
+    dynamicHost.append(
+      pick('dynamicHolders', HOLDER_CAPS.map((v): [string, string] => [String(v), v === 0 ? '0 (off)' : String(v)]), String(setup?.holders ?? 1), 'glossary:setting_dynamic_holders', 'Holders (this campaign)', (v) => setSetup({ holders: v === 'any' ? 'any' : Number(v) })),
+      pick('dynamicPace', PACES.map((v): [string, string] => [v, v]), setup?.pace ?? 'normal', 'glossary:setting_dynamic_pace', 'Pace (this campaign)', (v) => setSetup({ pace: v })),
+      pick('dynamicFrequency', FREQUENCIES.map((v): [string, string] => [v, v]), setup?.frequency ?? 'normal', 'glossary:setting_dynamic_frequency', 'Frequency (this campaign)', (v) => setSetup({ frequency: v })),
+    );
+    if (state.dynamic === undefined) return;
+    for (const u of state.squad.filter((x) => x.kind === 'named' && isLiving(x))) {
+      const mine = state.dynamic.setup.units[u.id] ?? {};
+      dynamicHost.append(h('div', { class: 'alius-dynamic-row', 'data-unit': u.id },
+        h('span', { class: 'alius-field-label' }, u.displayName),
+        pick(`mayHold:${u.id}`, MAY_HOLD.map((v): [string, string] => [v, v]), mine.mayHold ?? 'auto', 'glossary:dynamic_may_hold', 'May hold', (v) => send('dynamic/set_unit', { unitId: u.id, mayHold: v })),
+        pick(`sensitivity:${u.id}`, SENSITIVITIES.map((v): [string, string] => [v, v]), mine.sensitivity ?? 'normal', 'glossary:dynamic_sensitivity', 'Sensitivity', (v) => send('dynamic/set_unit', { unitId: u.id, sensitivity: v }))));
+    }
+  };
+  drawDynamic();
+
   /** P8: every world option read-only with its lock; a live one is a select that goes through the engine. */
   const worldOptionRows = (): HTMLElement[] => {
     const state = ctx.getState();
@@ -275,6 +325,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Reduce motion (also follows the system setting)', checkbox('reducedMotion', settings.reducedMotion), 'reducedMotion'),
     field('Dithered portraits (PDA)', checkbox('ditheredPortraits', settings.ditheredPortraits), 'ditheredPortraits'),
     field('Door timer (seconds a night knock waits, 0 = no timer)', numberInput('doorTimer', settings.doorTimer, (n) => apply({ doorTimer: n }).doorTimer, { min: '0', max: '60', step: '1' }), 'doorTimer'),
+    field('Hide the dynamic\'s numbers (feel it rather than read it)', checkbox('dynamicHidden', settings.dynamicHidden), 'dynamicHidden'), // P15
     field('Device skin', select('deviceSkin', skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ''), 'deviceSkin'),
     h('h3', {}, 'Sound'),
     field('Volume (0–100)', numberInput('soundVolume', settings.soundVolume, (n) => apply({ soundVolume: n }).soundVolume, { min: '0', max: '100', step: '5' }), 'soundVolume'),
@@ -322,6 +373,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('The mechanic model words the fragments of the secret frequency', checkbox('fragmentWording', settings.fragmentWording), 'fragmentWording'),
     field('The mechanic model judges orders against the warden\'s personal expectations', checkbox('wardenJudge', settings.wardenJudge), 'wardenJudge'),
     field('First impression fades (days, 1–30)', numberInput('firstImpressionTau', settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: '1', max: '30' }), 'firstImpressionTau'),
+    h('h3', {}, 'Dynamic'),
+    dynamicHost,
     h('h3', {}, 'Decisions'),
     field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled), 'dilemmasEnabled'),
     h('h3', {}, 'Analysis'),

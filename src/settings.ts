@@ -79,6 +79,8 @@ export interface AliusSettings {
   analyzeHoverDelay: number;
   /** P10: a `deviceSkins` id for the PDA casing; empty follows the campaign (an id the pack lost reads as empty at use). */
   deviceSkin: string;
+  /** P15: hold, frame and the dynamic's other numbers read as feelings, never as values (UI only; the engine is unchanged). */
+  dynamicHidden: boolean;
   /** P10: no scanlines, flicker, dithering or glitch; text one step larger. */
   readableMode: boolean;
   /** P10: nothing slides, fades, boots or types out (also on when the system asks for reduced motion). */
@@ -178,6 +180,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   analyzeHoverDelay: 250,
   firstImpressionTau: 7,
   deviceSkin: '',
+  dynamicHidden: false,
   readableMode: false,
   reducedMotion: false,
   ditheredPortraits: true,
@@ -239,6 +242,7 @@ const fieldSchemas = {
   analyzeHoverDelay: z.number().int().min(100).max(1500),
   firstImpressionTau: z.number().int().min(1).max(30),
   deviceSkin: z.string(),
+  dynamicHidden: z.boolean(),
   readableMode: z.boolean(),
   reducedMotion: z.boolean(),
   ditheredPortraits: z.boolean(),

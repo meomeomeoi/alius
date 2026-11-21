@@ -6,7 +6,9 @@ import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
 import { defectAllowedFor, validateBond } from '../engine/bonds';
 import { keepLockedExpectations } from '../engine/dynamic/expectations';
-import { keepLockedPractice } from '../engine/dynamic/profile';
+import { keepLockedPractice, practiceEnabled } from '../engine/dynamic/profile';
+import type { UnitDynamicSetup } from '../engine/dynamic/state';
+import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES, START_FRAMES, type Frequency, type HolderCap, type Pace, type StartFrame } from '../engine/dynamic/types';
 import type { Bond, DevelopmentMode, LifeMode, SignatureInstance, Unit } from '../engine/state/types';
 import { EXPLICIT_CATEGORY } from '../bonds/directives';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
@@ -71,6 +73,19 @@ export interface CampaignModeDraft {
   warden: { by: 'player'; index: number } | { by: 'corporation' };
 }
 
+/** P15: what the DYNAMIC block of WORLD PARAMETERS holds for one chosen unit (`underway` only with a head start). */
+export type UnitDynamicDraft = UnitDynamicSetup & { underway?: true };
+
+/** P15: the DYNAMIC block of WORLD PARAMETERS; `units` is keyed by the card (`avatar`). Sent as `SetupResult.dynamic` only while a practice category is on. */
+export interface DynamicDraft {
+  holders: HolderCap;
+  pace: Pace;
+  frequency: Frequency;
+  units: Record<string, UnitDynamicDraft>;
+  /** The dynamic is already underway for every unit (only with a head start). */
+  underway: boolean;
+}
+
 export interface WizardState {
   step: WizardStep;
   /** P11: `prologue` while the chosen start has one (the default), else `veteran`. */
@@ -93,6 +108,8 @@ export interface WizardState {
   development: DevelopmentMode;
   /** P14c: how often her days off-screen bring something (default normal); sent as `SetupResult.lifeEvents`. */
   lifeEvents: LifeMode;
+  /** P15: the DYNAMIC block (shown only while a practice category is on in CONTENT). */
+  dynamic: DynamicDraft;
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -174,6 +191,7 @@ export class Wizard {
       headStart: { days: 0, newArrivals: [] },
       development: 'normal',
       lifeEvents: 'normal',
+      dynamic: { holders: TUNING.dynamic.defaults.holders, pace: TUNING.dynamic.defaults.pace, frequency: TUNING.dynamic.defaults.frequency, units: {}, underway: false },
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
@@ -223,6 +241,66 @@ export class Wizard {
   setHeadStart(days: HeadStartDays): void {
     if (!(TUNING.headStart.days as readonly number[]).includes(days)) return;
     this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    if (days === 0) this.clearUnderway(); // P15: no head start, nothing to be underway in
+    this.emit();
+  }
+
+  /** P15: whether the DYNAMIC block applies: a category the dynamic is about is switched on in CONTENT. */
+  get dynamicAvailable(): boolean {
+    return practiceEnabled(this.deps.registries, this.s.content.enabled);
+  }
+
+  private clearUnderway(): void {
+    this.s.dynamic.underway = false;
+    for (const d of Object.values(this.s.dynamic.units)) delete d.underway;
+  }
+
+  private seedCount(): number {
+    return Object.values(this.s.dynamic.units).filter((d) => d.seeded === true).length;
+  }
+
+  /** P15: the global fields of the DYNAMIC block; an unknown value is ignored. Lowering holders below the seeds drops the last seeds. `underway` needs a head start. */
+  setDynamic(patch: { holders?: HolderCap; pace?: Pace; frequency?: Frequency; underway?: boolean }): void {
+    const d = this.s.dynamic;
+    if (patch.holders !== undefined && (HOLDER_CAPS as readonly unknown[]).includes(patch.holders)) {
+      d.holders = patch.holders;
+      if (typeof d.holders === 'number') {
+        let extra = this.seedCount() - d.holders;
+        for (const avatar of [...Object.keys(d.units)].reverse()) {
+          if (extra <= 0) break;
+          if (d.units[avatar].seeded === true) {
+            delete d.units[avatar].seeded;
+            delete d.units[avatar].startFrame;
+            if (Object.keys(d.units[avatar]).length === 0) delete d.units[avatar];
+            extra -= 1;
+          }
+        }
+      }
+    }
+    if (patch.pace !== undefined && (PACES as readonly unknown[]).includes(patch.pace)) d.pace = patch.pace;
+    if (patch.frequency !== undefined && (FREQUENCIES as readonly unknown[]).includes(patch.frequency)) d.frequency = patch.frequency;
+    if (typeof patch.underway === 'boolean') d.underway = patch.underway && this.s.headStart.days > 0;
+    this.emit();
+  }
+
+  /**
+   * P15: what the DYNAMIC block says about one chosen unit; a card that is not chosen, or an unknown value, is ignored. Seeding past the
+   * number of holders is ignored; un-seeding drops the starting frame; `startFrame: null` clears it, and a frame needs a seed.
+   */
+  setDynamicUnit(avatar: string, patch: { mayHold?: UnitDynamicSetup['mayHold']; sensitivity?: UnitDynamicSetup['sensitivity']; seeded?: boolean; startFrame?: StartFrame | null; underway?: boolean }): void {
+    if (!this.s.units.some((u) => u.avatar === avatar)) return;
+    const d = this.s.dynamic;
+    const unit: UnitDynamicDraft = { ...d.units[avatar] };
+    if (patch.mayHold !== undefined && (MAY_HOLD as readonly unknown[]).includes(patch.mayHold)) { if (patch.mayHold === 'auto') delete unit.mayHold; else unit.mayHold = patch.mayHold; }
+    if (patch.sensitivity !== undefined && (SENSITIVITIES as readonly unknown[]).includes(patch.sensitivity)) { if (patch.sensitivity === 'normal') delete unit.sensitivity; else unit.sensitivity = patch.sensitivity; }
+    if (patch.seeded === true && unit.seeded !== true && (d.holders === 'any' || this.seedCount() < d.holders)) unit.seeded = true;
+    if (patch.seeded === false) { delete unit.seeded; delete unit.startFrame; }
+    if (patch.startFrame === null) delete unit.startFrame;
+    else if (patch.startFrame !== undefined && (START_FRAMES as readonly unknown[]).includes(patch.startFrame) && unit.seeded === true) unit.startFrame = patch.startFrame;
+    if (patch.underway === true && this.s.headStart.days > 0) unit.underway = true;
+    if (patch.underway === false) delete unit.underway;
+    if (Object.keys(unit).length === 0) delete d.units[avatar];
+    else d.units[avatar] = unit;
     this.emit();
   }
 
@@ -538,6 +616,7 @@ export class Wizard {
     if (i >= 0) {
       this.s.units.splice(i, 1);
       this.s.headStart.newArrivals = this.s.headStart.newArrivals.filter((a) => a !== c.avatar);
+      delete this.s.dynamic.units[c.avatar]; // P15: per-unit picks are keyed by card, so nothing else shifts
       const w = this.s.campaign.warden;
       if (w.by === 'player') this.s.campaign.warden = w.index === i ? { by: 'corporation' } : w.index > i ? { by: 'player', index: w.index - 1 } : w;
       this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
@@ -876,6 +955,21 @@ export class Wizard {
     result.characterDevelopment = this.s.development; // P14b: normal unless the player chose otherwise (SYS changes it later)
     result.lifeEvents = this.s.lifeEvents; // P14c: normal unless the player chose otherwise (SYS › World changes it later)
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
+    if (this.dynamicAvailable) {
+      // P15: only while a practice category is on; a pick for a card that is no longer chosen is dropped, and every entry keeps only the setup's fields
+      const d = this.s.dynamic;
+      const chosen = new Set(units.map((u) => u.cardRef));
+      const entries = Object.entries(d.units).filter(([card]) => chosen.has(card));
+      result.dynamic = {
+        holders: d.holders, pace: d.pace, frequency: d.frequency,
+        units: Object.fromEntries(entries.map(([card, { underway: _underway, ...setup }]) => [card, setup]).filter(([, setup]) => Object.keys(setup as object).length > 0)),
+      };
+      if (this.s.headStart.days > 0 && result.headStart !== undefined) {
+        const some = entries.filter(([, e]) => e.underway === true).map(([card]) => card);
+        if (d.underway) result.headStart.dynamicUnderway = true;
+        else if (some.length > 0) result.headStart.dynamicUnderway = some;
+      }
+    }
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };

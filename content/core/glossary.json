@@ -2469,6 +2469,78 @@
     "long": "AUTHOR TO WRITE: Off, nothing happens to her when you are not there. A running campaign can switch it on at any time; what already happened stays."
   },
   {
+    "id": "dynamic_may_hold",
+    "term": "May hold",
+    "short": "Whether she may ever come to hold authority over the commander: yes, no, or auto (it follows her profile).",
+    "long": "AUTHOR TO WRITE: No keeps her out of the dynamic whatever her profile says. Yes lets her in if her profile allows it. Auto lets her profile decide. This is a switch of the campaign, not hers.",
+    "see": [
+      "setting_dynamic_holders",
+      "dynamic_seeded"
+    ]
+  },
+  {
+    "id": "dynamic_sensitivity",
+    "term": "Sensitivity",
+    "short": "How fast she takes to the dynamic: sluggish, normal or lively. It scales how much each probe moves her.",
+    "long": "AUTHOR TO WRITE: A sluggish soldier takes half of what a probe would give; a lively one takes it and more. It changes the pace for her alone, not what she wants."
+  },
+  {
+    "id": "dynamic_seeded",
+    "term": "Seeded",
+    "short": "She starts with a head start in the dynamic: her hold begins a little above zero.",
+    "long": "AUTHOR TO WRITE: A seed is checked against her profile when the campaign starts. A seeded soldier does not need an inclination, and she can start already in a frame. At most as many seeds as holders.",
+    "see": [
+      "dynamic_start_frame",
+      "setting_dynamic_holders"
+    ]
+  },
+  {
+    "id": "dynamic_start_frame",
+    "term": "Starting frame",
+    "short": "The frame a seeded soldier begins in: none (equal), play or role. The hold of that frame comes with it.",
+    "long": "AUTHOR TO WRITE: Equal is the default: nothing is settled. Play and role begin the campaign after the first steps were already taken. No milestone is played for it.",
+    "see": [
+      "dynamic_seeded"
+    ]
+  },
+  {
+    "id": "dynamic_underway",
+    "term": "Already underway",
+    "short": "With a head start, the dynamic has had its first probes behind the scenes: she has already been tested.",
+    "long": "AUTHOR TO WRITE: Only with a head start above zero. The answers are decided by the setup alone, hold stays inside the testing band, and a moment or two may be remembered. Without this option the head start leaves the dynamic at zero.",
+    "see": [
+      "head_start"
+    ]
+  },
+  {
+    "id": "setting_dynamic_hidden",
+    "term": "Hide the dynamic's numbers",
+    "short": "The dynamic's hold, frame and readings are shown as feelings and words, never as values.",
+    "long": "AUTHOR TO WRITE: Only what is displayed changes. The engine counts exactly as before."
+  },
+  {
+    "id": "setting_dynamic_holders",
+    "term": "Holders",
+    "short": "How many soldiers may hold authority over the commander at once: none, one, two, three or any number.",
+    "long": "AUTHOR TO WRITE: None switches the dynamic off. Lowering the number later ends nothing: a holder keeps her place, and only new probes, offers and milestones are held back.",
+    "see": [
+      "dynamic_may_hold",
+      "dynamic_seeded"
+    ]
+  },
+  {
+    "id": "setting_dynamic_pace",
+    "term": "Dynamic pace",
+    "short": "How fast hold moves: slow, normal or fast.",
+    "long": "AUTHOR TO WRITE: Pace scales every gain and loss of hold. It does not change what she wants or which frames exist."
+  },
+  {
+    "id": "setting_dynamic_frequency",
+    "term": "Dynamic frequency",
+    "short": "How often something comes of it: rare, normal or often. It scales the daily chance of a probe or a claim.",
+    "long": "AUTHOR TO WRITE: Only the chance moves; what a probe is, and what it can give, does not."
+  },
+  {
     "id": "setting_moment_frequency",
     "term": "Moment frequency",
     "short": "How often a moment of tension comes up in a scene while something is live: rare, normal or often.",

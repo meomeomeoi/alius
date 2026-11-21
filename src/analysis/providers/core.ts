@@ -325,6 +325,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'moment', 'moment_card', 'contact_physics', 'wake_up', 'tap_signal', 'stop_word', 'physics_panel', 'endurance_training', 'marathon', 'marathon_strategy', 'mouth_act', 'counted_kisses', 'endurance_skill', 'commander_condition', 'stimulus', 'blocking', 'worship_target', 'escalation', 'device_out_of_reach', 'blocking_strip',
   // P15 (the PRACTICE and EXPECTATIONS editors; later tasks add their own)
   'practice_profile', 'practice_as', 'practice_witness', 'practice_style', 'practice_audience', 'inclination', 'fairness', 'hint_style', 'drive', 'expectation_profile',
+  // P15 (the DYNAMIC block of WORLD PARAMETERS; `setting_dynamic_*` are settings, checked with the settings)
+  'dynamic_may_hold', 'dynamic_sensitivity', 'dynamic_seeded', 'dynamic_start_frame', 'dynamic_underway',
 ];
 
 let registered = false;

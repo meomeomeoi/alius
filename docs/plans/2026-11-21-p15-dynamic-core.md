@@ -1043,15 +1043,15 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Consumes: Task 7.
 - Produces: `applySeeds(draft, reg, r: SetupResult): EngineEvent[]`; `renderDynamicStep(host, ctx: DynamicStepCtx)`; `seedProblem(reg, unit: UnitSetup): string | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a build without dynamic is byte-identical` (`tests/engine/setup.test.ts` stays green; a new assertion: `state.dynamic === undefined` when no practice category is on, even with `r.dynamic` set).
   - `more seeds than holders is an error`; `a seeded unit that cannot hold is an error naming the reason`; `startFrame without a seed is an error`.
   - `a seed gets hold 25`, and `startFrame: 'role'` gives frame `role`, hold `max(25, 40)` and `milestones: ['seeded:role']`, with no rng draw (`state.rng` equal to a build without seeds).
   - jsdom: `the DYNAMIC block shows only while a practice category is enabled`; `the underway option shows only with a head start > 0`; `every control carries data-analyze`; `SYS shows holders, pace, frequency and per-unit rows; lowering holders below the count shows no warning that something ends`.
-- [ ] **Step 2: Run** both files → FAIL.
-- [ ] **Step 3: Implement** as in R3.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): dynamic setup, seeds and settings`
+- [x] **Step 2: Run** both files → FAIL.
+- [x] **Step 3: Implement** as in R3.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): dynamic setup, seeds and settings`
 
 ---
 

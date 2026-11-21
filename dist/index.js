@@ -6590,6 +6590,7 @@ var HOLDER_CAPS = [0, 1, 2, 3, "any"];
 var PACES = ["slow", "normal", "fast"];
 var FREQUENCIES = ["rare", "normal", "often"];
 var SENSITIVITIES = ["sluggish", "normal", "lively"];
+var START_FRAMES = ["play", "role"];
 var CAPABILITIES = [
   "booking_uncapped",
   "book_ahead",
@@ -25140,6 +25141,118 @@ function seedWarden(draft, ctx2, p) {
   return [{ type: "warden_assigned", unitId: unit3.id, assignedBy: p.assignedBy }];
 }
 
+// src/engine/dynamic/state.ts
+function fnv1a3(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+var dynamicSaltOf = (rng) => fnv1a3(JSON.stringify(rng));
+function newDynamicCampaign(salt, setup) {
+  return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
+}
+function blankReading() {
+  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: "reluctant", updates: 0 };
+}
+function blankDynamic(day) {
+  return {
+    hold: 0,
+    frame: "equal",
+    domains: [],
+    tracks: {},
+    milestones: [],
+    lastPracticeDay: day,
+    recent: [],
+    favour: 0,
+    readOf: blankReading(),
+    probes: { answers: [], issued: 0 },
+    refusals: [],
+    contest: [],
+    cooldowns: {}
+  };
+}
+
+// src/engine/dynamic/gate.ts
+function dynamicOn(state, reg) {
+  return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
+}
+function mayHoldOf(state, unitId) {
+  return state.dynamic?.setup.units[unitId]?.mayHold ?? "auto";
+}
+function holderCap(state) {
+  const h2 = state.dynamic?.setup.holders;
+  return h2 === void 0 ? 0 : h2 === "any" ? Infinity : h2;
+}
+function holdersAtPlay(state) {
+  const play = frameRank("play");
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play).map((u) => u.id);
+}
+function holdReason(state, reg, unitId, opts) {
+  if (!dynamicOn(state, reg)) return "the dynamic is off";
+  const view = practiceOf(state, reg, unitId);
+  if (view === null) return "she has no practice profile";
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const may = mayHoldOf(state, unitId);
+  if (may === "no") return "the setup says she may not hold";
+  if (view.inclination === "none" && !opts.seeded) return "her inclination is none";
+  const lead = bondOf(unit3)?.leadStyle ?? "balanced";
+  const leads = Object.values(view.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
+  if (!leads) return "no enabled practice she would lead in";
+  if (leadRank(lead) < leadRank("assertive") && (impunityOf(state, reg, unitId)?.value ?? 0) < TUNING.dynamic.impunityRoute) return "her lead style is too weak for her Impunity";
+  if (!opts.ignoreCap && holdersAtPlay(state).filter((id) => id !== unitId).length >= holderCap(state)) return "the holder cap is reached";
+  return null;
+}
+function ensureDynamic(draft, reg, unitId) {
+  const rel = draft.relations[unitId];
+  if (!rel || rel.dynamic !== void 0 || !dynamicOn(draft, reg)) return [];
+  rel.dynamic = blankDynamic(draft.day);
+  return [{ type: "dynamic_started", unitId }];
+}
+
+// src/engine/dynamic/seeds.ts
+function seedProblem(reg, unit3, opts = {}) {
+  const practice = unit3.bond?.practice;
+  if (practice === void 0) return "she has no practice profile";
+  if (opts.mayHold === "no") return "the setup says she may not hold";
+  const on = opts.enabled ?? practiceCategories(reg);
+  const limits = unit3.bond?.ownLimits.categories ?? [];
+  const lead = unit3.bond?.leadStyle ?? "balanced";
+  const leads = Object.entries(practice.categories).some(([id, c]) => on.includes(id) && !limits.includes(id) && (c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && leadRank(lead) === leadRank("dominant")));
+  return leads ? null : "no enabled practice she would lead in";
+}
+function seedHold(draft, reg, unitId, floor = 0) {
+  const events = ensureDynamic(draft, reg, unitId);
+  const dyn = draft.relations[unitId]?.dynamic;
+  if (dyn === void 0) return events;
+  const to = Math.max(dyn.hold, TUNING.dynamic.seedHold, floor);
+  if (to !== dyn.hold) {
+    events.push({ type: "hold_changed", unitId, from: dyn.hold, to, cause: "seed" });
+    dyn.hold = to;
+  }
+  return events;
+}
+function applySeeds(draft, reg, r) {
+  const events = [];
+  if (draft.dynamic === void 0 || r.dynamic === void 0) return events;
+  r.units.forEach((u, i) => {
+    const setup = r.dynamic.units[u.cardRef];
+    const id = draft.squad[i]?.id;
+    if (setup?.seeded !== true || id === void 0) return;
+    const frame = setup.startFrame;
+    const floor = frame === void 0 ? 0 : Number(reg.dynamicFrames.get(frame)?.holdFloor ?? 0);
+    events.push(...seedHold(draft, reg, id, floor));
+    const dyn = draft.relations[id]?.dynamic;
+    if (dyn !== void 0 && frame !== void 0) {
+      dyn.frame = frame;
+      dyn.milestones.push(`seeded:${frame}`);
+    }
+  });
+  return events;
+}
+
 // src/engine/setup.ts
 var SETUP_LIMITS = {
   maxUnits: 4,
@@ -25344,6 +25457,38 @@ function validateUnitProfile(u, label2, reg, opts) {
   validateUnit(u, label2, reg, opts, out, false);
   return out;
 }
+function validateDynamicSetup(r, units, reg) {
+  const d = r.dynamic;
+  const out = [];
+  if (!HOLDER_CAPS.includes(d.holders)) out.push("Holders must be 0, 1, 2, 3 or any");
+  if (!PACES.includes(d.pace)) out.push("The dynamic pace must be slow, normal or fast");
+  if (!FREQUENCIES.includes(d.frequency)) out.push("The dynamic frequency must be rare, normal or often");
+  if (typeof d.units !== "object" || d.units === null || Array.isArray(d.units)) return [...out, "The dynamic units must be an object keyed by card"];
+  const byCard = new Map(units.map((u) => [u.cardRef, u]));
+  let seeds = 0;
+  for (const [card2, setup] of Object.entries(d.units)) {
+    const unit3 = byCard.get(card2);
+    if (unit3 === void 0) {
+      out.push(`The dynamic names "${card2}", which is not a chosen unit`);
+      continue;
+    }
+    const label2 = `Unit ${unit3.displayName}`;
+    if (setup.mayHold !== void 0 && !MAY_HOLD.includes(setup.mayHold)) out.push(`${label2}: may hold must be yes, no or auto`);
+    if (setup.sensitivity !== void 0 && !SENSITIVITIES.includes(setup.sensitivity)) out.push(`${label2}: sensitivity must be sluggish, normal or lively`);
+    if (setup.seeded !== void 0 && setup.seeded !== true) out.push(`${label2}: seeded must be true or absent`);
+    if (setup.startFrame !== void 0 && (setup.seeded !== true || !START_FRAMES.includes(setup.startFrame))) out.push(`${label2}: a starting frame (play or role) needs a seeded unit`);
+    if (setup.seeded === true) seeds += 1;
+  }
+  if (!practiceEnabled(reg, r.content?.enabled)) return out;
+  if (typeof d.holders === "number" && seeds > d.holders) out.push(`At most ${d.holders} seeded units (has ${seeds})`);
+  for (const [card2, setup] of Object.entries(d.units)) {
+    const unit3 = byCard.get(card2);
+    if (unit3 === void 0 || setup.seeded !== true) continue;
+    const why = seedProblem(reg, unit3, { enabled: r.content?.enabled, mayHold: setup.mayHold });
+    if (why !== null) out.push(`${unit3.displayName} cannot hold: ${why}`);
+  }
+  return out;
+}
 function validateHeadStart(h2, units) {
   if (!TUNING.headStart.days.includes(h2.days)) return ["The head start must be 0, 7, 14 or 30 days"];
   const out = [];
@@ -25408,6 +25553,7 @@ function validateSetup(r, reg, opts) {
     }
   }
   if (r.headStart !== void 0) out.push(...validateHeadStart(r.headStart, units));
+  if (r.dynamic !== void 0) out.push(...validateDynamicSetup(r, units, reg));
   if (r.characterDevelopment !== void 0 && !DEVELOPMENT_MODES.includes(r.characterDevelopment)) out.push("Character development must be off, slow or normal");
   if (r.lifeEvents !== void 0 && !LIFE_MODES.includes(r.lifeEvents)) out.push("Life events must be off, rare, normal or often");
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
@@ -25563,7 +25709,16 @@ function buildCampaign(r, reg, opts) {
       impressions.set(id, { delta: { trust: rel.trust - met.trust, affinity: rel.affinity - met.affinity, attraction: rel.attraction - met.attraction }, trustBefore: rel.trust });
     }
   }
+  if (r.dynamic !== void 0 && practiceEnabled(reg, state.content?.enabled)) {
+    const keyed = {};
+    r.units.forEach((u, i) => {
+      const entry = r.dynamic.units[u.cardRef];
+      if (entry !== void 0 && Object.keys(entry).length > 0) keyed[state.squad[i].id] = { ...entry };
+    });
+    state.dynamic = newDynamicCampaign(opts.seed, { holders: r.dynamic.holders, pace: r.dynamic.pace, frequency: r.dynamic.frequency, units: keyed });
+  }
   if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days, impressions });
+  applySeeds(state, reg, r);
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedLife(state, reg);
   seedWorld(state, reg);
@@ -32175,90 +32330,6 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
   return [{ type: "pastime_set", unitId: unit3.id, pastimeId }];
 });
 
-// src/engine/dynamic/state.ts
-function fnv1a3(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-var dynamicSaltOf = (rng) => fnv1a3(JSON.stringify(rng));
-function newDynamicCampaign(salt, setup) {
-  return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
-}
-function blankReading() {
-  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: "reluctant", updates: 0 };
-}
-function blankDynamic(day) {
-  return {
-    hold: 0,
-    frame: "equal",
-    domains: [],
-    tracks: {},
-    milestones: [],
-    lastPracticeDay: day,
-    recent: [],
-    favour: 0,
-    readOf: blankReading(),
-    probes: { answers: [], issued: 0 },
-    refusals: [],
-    contest: [],
-    cooldowns: {}
-  };
-}
-
-// src/engine/dynamic/gate.ts
-function dynamicOn(state, reg) {
-  return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
-}
-function mayHoldOf(state, unitId) {
-  return state.dynamic?.setup.units[unitId]?.mayHold ?? "auto";
-}
-function holderCap(state) {
-  const h2 = state.dynamic?.setup.holders;
-  return h2 === void 0 ? 0 : h2 === "any" ? Infinity : h2;
-}
-function holdersAtPlay(state) {
-  const play = frameRank("play");
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play).map((u) => u.id);
-}
-function holdReason(state, reg, unitId, opts) {
-  if (!dynamicOn(state, reg)) return "the dynamic is off";
-  const view = practiceOf(state, reg, unitId);
-  if (view === null) return "she has no practice profile";
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  const may = mayHoldOf(state, unitId);
-  if (may === "no") return "the setup says she may not hold";
-  if (view.inclination === "none" && !opts.seeded) return "her inclination is none";
-  const lead = bondOf(unit3)?.leadStyle ?? "balanced";
-  const leads = Object.values(view.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
-  if (!leads) return "no enabled practice she would lead in";
-  if (leadRank(lead) < leadRank("assertive") && (impunityOf(state, reg, unitId)?.value ?? 0) < TUNING.dynamic.impunityRoute) return "her lead style is too weak for her Impunity";
-  if (!opts.ignoreCap && holdersAtPlay(state).filter((id) => id !== unitId).length >= holderCap(state)) return "the holder cap is reached";
-  return null;
-}
-function ensureDynamic(draft, reg, unitId) {
-  const rel = draft.relations[unitId];
-  if (!rel || rel.dynamic !== void 0 || !dynamicOn(draft, reg)) return [];
-  rel.dynamic = blankDynamic(draft.day);
-  return [{ type: "dynamic_started", unitId }];
-}
-
-// src/engine/dynamic/seeds.ts
-function seedHold(draft, reg, unitId, floor = 0) {
-  const events = ensureDynamic(draft, reg, unitId);
-  const dyn = draft.relations[unitId]?.dynamic;
-  if (dyn === void 0) return events;
-  const to = Math.max(dyn.hold, TUNING.dynamic.seedHold, floor);
-  if (to !== dyn.hold) {
-    events.push({ type: "hold_changed", unitId, from: dyn.hold, to, cause: "seed" });
-    dyn.hold = to;
-  }
-  return events;
-}
-
 // src/engine/actions/dynamic.ts
 function namedUnit3(draft, id, action) {
   const unit3 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
@@ -36709,6 +36780,7 @@ var DEFAULT_SETTINGS = {
   analyzeHoverDelay: 250,
   firstImpressionTau: 7,
   deviceSkin: "",
+  dynamicHidden: false,
   readableMode: false,
   reducedMotion: false,
   ditheredPortraits: true,
@@ -36769,6 +36841,7 @@ var fieldSchemas = {
   analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
   firstImpressionTau: external_exports.number().int().min(1).max(30),
   deviceSkin: external_exports.string(),
+  dynamicHidden: external_exports.boolean(),
   readableMode: external_exports.boolean(),
   reducedMotion: external_exports.boolean(),
   ditheredPortraits: external_exports.boolean(),
@@ -42138,6 +42211,7 @@ var Wizard = class {
       headStart: { days: 0, newArrivals: [] },
       development: "normal",
       lifeEvents: "normal",
+      dynamic: { holders: TUNING.dynamic.defaults.holders, pace: TUNING.dynamic.defaults.pace, frequency: TUNING.dynamic.defaults.frequency, units: {}, underway: false },
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -42188,6 +42262,70 @@ var Wizard = class {
   setHeadStart(days) {
     if (!TUNING.headStart.days.includes(days)) return;
     this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    if (days === 0) this.clearUnderway();
+    this.emit();
+  }
+  /** P15: whether the DYNAMIC block applies: a category the dynamic is about is switched on in CONTENT. */
+  get dynamicAvailable() {
+    return practiceEnabled(this.deps.registries, this.s.content.enabled);
+  }
+  clearUnderway() {
+    this.s.dynamic.underway = false;
+    for (const d of Object.values(this.s.dynamic.units)) delete d.underway;
+  }
+  seedCount() {
+    return Object.values(this.s.dynamic.units).filter((d) => d.seeded === true).length;
+  }
+  /** P15: the global fields of the DYNAMIC block; an unknown value is ignored. Lowering holders below the seeds drops the last seeds. `underway` needs a head start. */
+  setDynamic(patch) {
+    const d = this.s.dynamic;
+    if (patch.holders !== void 0 && HOLDER_CAPS.includes(patch.holders)) {
+      d.holders = patch.holders;
+      if (typeof d.holders === "number") {
+        let extra = this.seedCount() - d.holders;
+        for (const avatar of [...Object.keys(d.units)].reverse()) {
+          if (extra <= 0) break;
+          if (d.units[avatar].seeded === true) {
+            delete d.units[avatar].seeded;
+            delete d.units[avatar].startFrame;
+            if (Object.keys(d.units[avatar]).length === 0) delete d.units[avatar];
+            extra -= 1;
+          }
+        }
+      }
+    }
+    if (patch.pace !== void 0 && PACES.includes(patch.pace)) d.pace = patch.pace;
+    if (patch.frequency !== void 0 && FREQUENCIES.includes(patch.frequency)) d.frequency = patch.frequency;
+    if (typeof patch.underway === "boolean") d.underway = patch.underway && this.s.headStart.days > 0;
+    this.emit();
+  }
+  /**
+   * P15: what the DYNAMIC block says about one chosen unit; a card that is not chosen, or an unknown value, is ignored. Seeding past the
+   * number of holders is ignored; un-seeding drops the starting frame; `startFrame: null` clears it, and a frame needs a seed.
+   */
+  setDynamicUnit(avatar, patch) {
+    if (!this.s.units.some((u) => u.avatar === avatar)) return;
+    const d = this.s.dynamic;
+    const unit3 = { ...d.units[avatar] };
+    if (patch.mayHold !== void 0 && MAY_HOLD.includes(patch.mayHold)) {
+      if (patch.mayHold === "auto") delete unit3.mayHold;
+      else unit3.mayHold = patch.mayHold;
+    }
+    if (patch.sensitivity !== void 0 && SENSITIVITIES.includes(patch.sensitivity)) {
+      if (patch.sensitivity === "normal") delete unit3.sensitivity;
+      else unit3.sensitivity = patch.sensitivity;
+    }
+    if (patch.seeded === true && unit3.seeded !== true && (d.holders === "any" || this.seedCount() < d.holders)) unit3.seeded = true;
+    if (patch.seeded === false) {
+      delete unit3.seeded;
+      delete unit3.startFrame;
+    }
+    if (patch.startFrame === null) delete unit3.startFrame;
+    else if (patch.startFrame !== void 0 && START_FRAMES.includes(patch.startFrame) && unit3.seeded === true) unit3.startFrame = patch.startFrame;
+    if (patch.underway === true && this.s.headStart.days > 0) unit3.underway = true;
+    if (patch.underway === false) delete unit3.underway;
+    if (Object.keys(unit3).length === 0) delete d.units[avatar];
+    else d.units[avatar] = unit3;
     this.emit();
   }
   /** P14c: how often her days off-screen bring something; an unknown value is ignored. */
@@ -42470,6 +42608,7 @@ var Wizard = class {
     if (i >= 0) {
       this.s.units.splice(i, 1);
       this.s.headStart.newArrivals = this.s.headStart.newArrivals.filter((a) => a !== c.avatar);
+      delete this.s.dynamic.units[c.avatar];
       const w = this.s.campaign.warden;
       if (w.by === "player") this.s.campaign.warden = w.index === i ? { by: "corporation" } : w.index > i ? { by: "player", index: w.index - 1 } : w;
       this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
@@ -42784,6 +42923,22 @@ var Wizard = class {
     result.characterDevelopment = this.s.development;
     result.lifeEvents = this.s.lifeEvents;
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
+    if (this.dynamicAvailable) {
+      const d = this.s.dynamic;
+      const chosen = new Set(units.map((u) => u.cardRef));
+      const entries2 = Object.entries(d.units).filter(([card2]) => chosen.has(card2));
+      result.dynamic = {
+        holders: d.holders,
+        pace: d.pace,
+        frequency: d.frequency,
+        units: Object.fromEntries(entries2.map(([card2, { underway: _underway, ...setup }]) => [card2, setup]).filter(([, setup]) => Object.keys(setup).length > 0))
+      };
+      if (this.s.headStart.days > 0 && result.headStart !== void 0) {
+        const some = entries2.filter(([, e]) => e.underway === true).map(([card2]) => card2);
+        if (d.underway) result.headStart.dynamicUnderway = true;
+        else if (some.length > 0) result.headStart.dynamicUnderway = some;
+      }
+    }
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
@@ -44277,6 +44432,73 @@ function renderLifeSection(host, wizard) {
   ));
 }
 
+// src/ui/setup/dynamicStep.ts
+var HOLDER_LABEL = { 0: "NONE (the dynamic is off)", 1: "ONE", 2: "TWO", 3: "THREE", any: "ANY NUMBER" };
+var MAY_HOLD_LABEL = { yes: "yes", no: "no", auto: "auto (her profile decides)" };
+function selectField(label2, address, name, options2, value, commit) {
+  const select = h("select", { name, class: "alius-input" }, ...options2.map(([v, text2]) => h("option", { value: v, selected: v === value }, text2)));
+  select.value = value;
+  select.addEventListener("change", () => commit(select.value));
+  return h("label", { class: "alius-field alius-option", ...analyzeNative(address) }, h("span", { class: "alius-field-label" }, label2), select);
+}
+function renderDynamicStep(host, ctx2) {
+  const { wizard, registries: reg } = ctx2;
+  if (!wizard.dynamicAvailable) return;
+  const s = wizard.state;
+  const d = s.dynamic;
+  const headStart = s.headStart.days > 0;
+  const seeds = Object.values(d.units).filter((u) => u.seeded === true).length;
+  const full = d.holders !== "any" && seeds >= d.holders;
+  const unitRow = (u) => {
+    const pick3 = d.units[u.avatar] ?? {};
+    const seeded = pick3.seeded === true;
+    const problem = seeded && u.choice.bond !== void 0 ? seedProblem(reg, { bond: u.choice.bond }, { enabled: s.content.enabled, mayHold: pick3.mayHold }) : null;
+    return h(
+      "div",
+      { class: "alius-dynamic-unit", "data-avatar": u.avatar },
+      h("h4", {}, u.displayName),
+      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick3.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
+      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick3.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
+      h("button", {
+        type: "button",
+        class: "alius-btn alius-option alius-dynamic-seed",
+        "aria-pressed": String(seeded),
+        "aria-disabled": String(!seeded && full),
+        ...analyzeNative("glossary:dynamic_seeded"),
+        onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded })
+      }, seeded ? "SEEDED" : "SEED"),
+      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick3.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
+      headStart ? h("button", {
+        type: "button",
+        class: "alius-btn alius-option alius-dynamic-underway",
+        "data-scope": "unit",
+        "aria-pressed": String(pick3.underway === true),
+        ...analyzeNative("glossary:dynamic_underway"),
+        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick3.underway !== true })
+      }, "ALREADY UNDERWAY") : null,
+      problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot hold yet: ${problem}.`) : null
+    );
+  };
+  host.append(h(
+    "section",
+    { class: "alius-section alius-dynamic" },
+    h("h3", {}, "DYNAMIC"),
+    h("p", { class: "alius-hint" }, "Some soldiers may come to hold authority over the commander, slowly and by their own profile. Set how many may at once, how fast it goes and how often something comes of it. Nothing is announced."),
+    selectField("Holders", "glossary:setting_dynamic_holders", "dynamicHolders", HOLDER_CAPS.map((v) => [String(v), HOLDER_LABEL[String(v)]]), String(d.holders), (v) => wizard.setDynamic({ holders: v === "any" ? "any" : Number(v) })),
+    selectField("Pace", "glossary:setting_dynamic_pace", "dynamicPace", PACES.map((v) => [v, v]), d.pace, (v) => wizard.setDynamic({ pace: v })),
+    selectField("Frequency", "glossary:setting_dynamic_frequency", "dynamicFrequency", FREQUENCIES.map((v) => [v, v]), d.frequency, (v) => wizard.setDynamic({ frequency: v })),
+    headStart ? h("button", {
+      type: "button",
+      class: "alius-btn alius-option alius-dynamic-underway",
+      "data-scope": "all",
+      "aria-pressed": String(d.underway),
+      ...analyzeNative("glossary:dynamic_underway"),
+      onclick: () => wizard.setDynamic({ underway: !d.underway })
+    }, "THE DYNAMIC IS ALREADY UNDERWAY") : null,
+    s.units.length === 0 ? h("p", { class: "alius-dim" }, "Choose the squad first: each chosen soldier gets a row here (may hold, sensitivity, a seed).") : h("div", { class: "alius-dynamic-units" }, ...s.units.map(unitRow))
+  ));
+}
+
 // src/ui/setup/worldParams.ts
 var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
@@ -44339,6 +44561,8 @@ function renderWorldParams(host, ctx2) {
   renderLifeSection(lifeHost, wizard);
   const contentHost = h("div", { class: "alius-section alius-world-content" });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
+  const dynamicHost = h("div", { class: "alius-world-dynamic" });
+  renderDynamicStep(dynamicHost, { wizard, registries: reg });
   const summary = wizard.worldSummary();
   host.append(h(
     "div",
@@ -44363,6 +44587,7 @@ function renderWorldParams(host, ctx2) {
     developmentHost,
     lifeHost,
     contentHost,
+    dynamicHost,
     h(
       "section",
       { class: "alius-section alius-world-summary" },
@@ -53733,6 +53958,51 @@ function renderSysTab(host, ctx2) {
     });
     return el;
   };
+  const dynamicHost = h("div", { class: "alius-dynamic-host" });
+  const drawDynamic = () => {
+    const state = ctx2.getState();
+    const reg = ctx2.getRegistries?.();
+    dynamicHost.replaceChildren();
+    if (!state || !reg || !ctx2.dispatch) {
+      dynamicHost.append(h("p", { class: "alius-dim" }, "The dynamic is set up with a campaign."));
+      return;
+    }
+    if (state.dynamic === void 0 && !practiceEnabled(reg, state.content?.enabled)) {
+      dynamicHost.append(h("p", { class: "alius-dim" }, "Switch a practice category on under Content to use the dynamic."));
+      return;
+    }
+    const setup = state.dynamic?.setup;
+    const send = (type, payload) => {
+      const events = ctx2.dispatch?.({ type, payload }) ?? [];
+      const err = events.find((e) => e.type === "error");
+      if (err) ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
+      drawDynamic();
+    };
+    const pick3 = (name, options2, value, address, label2, commit) => {
+      const el = h("select", { name, class: "alius-input" }, ...options2.map(([v, text2]) => h("option", { value: v, selected: v === value }, text2)));
+      el.value = value;
+      el.addEventListener("change", () => commit(el.value));
+      return h("label", { class: "alius-field alius-option", ...analyzeNative(address) }, h("span", { class: "alius-field-label" }, label2), el);
+    };
+    const setSetup = (patch) => send("dynamic/set_setup", patch);
+    dynamicHost.append(
+      pick3("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 1), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
+      pick3("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
+      pick3("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
+    );
+    if (state.dynamic === void 0) return;
+    for (const u of state.squad.filter((x) => x.kind === "named" && isLiving(x))) {
+      const mine = state.dynamic.setup.units[u.id] ?? {};
+      dynamicHost.append(h(
+        "div",
+        { class: "alius-dynamic-row", "data-unit": u.id },
+        h("span", { class: "alius-field-label" }, u.displayName),
+        pick3(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
+        pick3(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
+      ));
+    }
+  };
+  drawDynamic();
   const worldOptionRows = () => {
     const state = ctx2.getState();
     const reg = ctx2.getRegistries?.();
@@ -53832,6 +54102,8 @@ function renderSysTab(host, ctx2) {
     field("Reduce motion (also follows the system setting)", checkbox("reducedMotion", settings.reducedMotion), "reducedMotion"),
     field("Dithered portraits (PDA)", checkbox("ditheredPortraits", settings.ditheredPortraits), "ditheredPortraits"),
     field("Door timer (seconds a night knock waits, 0 = no timer)", numberInput("doorTimer", settings.doorTimer, (n) => apply2({ doorTimer: n }).doorTimer, { min: "0", max: "60", step: "1" }), "doorTimer"),
+    field("Hide the dynamic's numbers (feel it rather than read it)", checkbox("dynamicHidden", settings.dynamicHidden), "dynamicHidden"),
+    // P15
     field("Device skin", select("deviceSkin", skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ""), "deviceSkin"),
     h("h3", {}, "Sound"),
     field("Volume (0\u2013100)", numberInput("soundVolume", settings.soundVolume, (n) => apply2({ soundVolume: n }).soundVolume, { min: "0", max: "100", step: "5" }), "soundVolume"),
@@ -53881,6 +54153,8 @@ function renderSysTab(host, ctx2) {
     field("The mechanic model words the fragments of the secret frequency", checkbox("fragmentWording", settings.fragmentWording), "fragmentWording"),
     field("The mechanic model judges orders against the warden's personal expectations", checkbox("wardenJudge", settings.wardenJudge), "wardenJudge"),
     field("First impression fades (days, 1\u201330)", numberInput("firstImpressionTau", settings.firstImpressionTau, (n) => apply2({ firstImpressionTau: n }).firstImpressionTau, { min: "1", max: "30" }), "firstImpressionTau"),
+    h("h3", {}, "Dynamic"),
+    dynamicHost,
     h("h3", {}, "Decisions"),
     field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled), "dilemmasEnabled"),
     h("h3", {}, "Analysis"),

@@ -21,8 +21,10 @@ import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } f
 import { seedSpecialTraits } from './special/traits';
 import { corporateWardenPick, seedWarden } from './warden/select';
 import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
-import type { UnitDynamicSetup } from './dynamic/state';
-import type { Frequency, HolderCap, Pace } from './dynamic/types';
+import { practiceEnabled } from './dynamic/profile';
+import { applySeeds, seedProblem } from './dynamic/seeds';
+import { newDynamicCampaign, type UnitDynamicSetup } from './dynamic/state';
+import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES, START_FRAMES, type Frequency, type HolderCap, type Pace } from './dynamic/types';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Insight, type LifeMode, type Relation, type SignatureInstance, type Temperament, type Unit, type WorldStance,
@@ -357,6 +359,40 @@ export function validateUnitProfile(
   return out;
 }
 
+/**
+ * P15: one readable line per problem of the DYNAMIC block. The shape is always checked; the seeds only while a practice category is on
+ * (otherwise the block is dormant and nothing is built from it).
+ */
+function validateDynamicSetup(r: SetupResult, units: UnitSetup[], reg: Registries): string[] {
+  const d = r.dynamic!;
+  const out: string[] = [];
+  if (!(HOLDER_CAPS as readonly unknown[]).includes(d.holders)) out.push('Holders must be 0, 1, 2, 3 or any');
+  if (!(PACES as readonly unknown[]).includes(d.pace)) out.push('The dynamic pace must be slow, normal or fast');
+  if (!(FREQUENCIES as readonly unknown[]).includes(d.frequency)) out.push('The dynamic frequency must be rare, normal or often');
+  if (typeof d.units !== 'object' || d.units === null || Array.isArray(d.units)) return [...out, 'The dynamic units must be an object keyed by card'];
+  const byCard = new Map(units.map((u) => [u.cardRef, u]));
+  let seeds = 0;
+  for (const [card, setup] of Object.entries(d.units)) {
+    const unit = byCard.get(card);
+    if (unit === undefined) { out.push(`The dynamic names "${card}", which is not a chosen unit`); continue; }
+    const label = `Unit ${unit.displayName}`;
+    if (setup.mayHold !== undefined && !(MAY_HOLD as readonly unknown[]).includes(setup.mayHold)) out.push(`${label}: may hold must be yes, no or auto`);
+    if (setup.sensitivity !== undefined && !(SENSITIVITIES as readonly unknown[]).includes(setup.sensitivity)) out.push(`${label}: sensitivity must be sluggish, normal or lively`);
+    if (setup.seeded !== undefined && setup.seeded !== true) out.push(`${label}: seeded must be true or absent`);
+    if (setup.startFrame !== undefined && (setup.seeded !== true || !(START_FRAMES as readonly unknown[]).includes(setup.startFrame))) out.push(`${label}: a starting frame (play or role) needs a seeded unit`);
+    if (setup.seeded === true) seeds += 1;
+  }
+  if (!practiceEnabled(reg, r.content?.enabled)) return out;
+  if (typeof d.holders === 'number' && seeds > d.holders) out.push(`At most ${d.holders} seeded units (has ${seeds})`);
+  for (const [card, setup] of Object.entries(d.units)) {
+    const unit = byCard.get(card);
+    if (unit === undefined || setup.seeded !== true) continue;
+    const why = seedProblem(reg, unit, { enabled: r.content?.enabled, mayHold: setup.mayHold });
+    if (why !== null) out.push(`${unit.displayName} cannot hold: ${why}`);
+  }
+  return out;
+}
+
 /** P11b: one readable line per problem of the head start option. */
 function validateHeadStart(h: NonNullable<SetupResult['headStart']>, units: UnitSetup[]): string[] {
   if (!(TUNING.headStart.days as readonly number[]).includes(h.days)) return ['The head start must be 0, 7, 14 or 30 days'];
@@ -426,6 +462,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
     }
   }
   if (r.headStart !== undefined) out.push(...validateHeadStart(r.headStart, units));
+  if (r.dynamic !== undefined) out.push(...validateDynamicSetup(r, units, reg));
   if (r.characterDevelopment !== undefined && !DEVELOPMENT_MODES.includes(r.characterDevelopment)) out.push('Character development must be off, slow or normal');
   if (r.lifeEvents !== undefined && !LIFE_MODES.includes(r.lifeEvents)) out.push('Life events must be off, rare, normal or often');
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
@@ -612,8 +649,15 @@ export function buildCampaign(
       impressions.set(id, { delta: { trust: rel.trust - met.trust, affinity: rel.affinity - met.affinity, attraction: rel.attraction - met.attraction }, trustBefore: rel.trust });
     }
   }
+  if (r.dynamic !== undefined && practiceEnabled(reg, state.content?.enabled)) {
+    // P15: the setup of the dynamic, keyed by unit id (the units are in `r.units` order); a block with no practice category on writes nothing
+    const keyed: Record<string, UnitDynamicSetup> = {};
+    r.units.forEach((u, i) => { const entry = r.dynamic!.units[u.cardRef]; if (entry !== undefined && Object.keys(entry).length > 0) keyed[state.squad[i].id] = { ...entry }; });
+    state.dynamic = newDynamicCampaign(opts.seed, { holders: r.dynamic.holders, pace: r.dynamic.pace, frequency: r.dynamic.frequency, units: keyed });
+  }
   // P11b: after every unit joined (disposition and first impression done) and before the world, the warden and the prologue read the relations
   if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days: days as 7 | 14 | 30, impressions });
+  applySeeds(state, reg, r); // P15: a seed's head start in hold, and a starting frame (no draw; a no-op without the block)
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedLife(state, reg); // P14c: the starting skills, from the salt written above (a no-op while life is off; nothing draws)
   seedWorld(state, reg);
