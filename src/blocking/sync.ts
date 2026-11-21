@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
 import { blockingLive, COMMANDER, deviceLocked, personEffects } from '../engine/blocking';
 import type { EngineEvent } from '../engine/dispatch';
+import { INTERACTION_TOGGLES, sceneSettingsOf, type SceneSettings } from '../engine/moments/settings';
 import type { CampaignState } from '../engine/state/types';
 
 /** The tabs the shell shows as locked: the ones already locked (the prologue's), and every tab while the device is out of reach (P15a). */
@@ -23,4 +24,12 @@ export function bellsFor(events: readonly EngineEvent[], state: CampaignState | 
     if (bell?.id !== undefined) out.push(bell.id);
   }
   return out;
+}
+
+/** The scene settings the campaign's mirror must take (`campaign/set_scene_settings`), or `null` when it already holds them. */
+export function sceneSettingsPatch(state: CampaignState, settings: SceneSettings): SceneSettings | null {
+  const mine = sceneSettingsOf(state);
+  const same = mine.momentFrequency === settings.momentFrequency && mine.momentExplicit === settings.momentExplicit && mine.physicsRealtime === settings.physicsRealtime
+    && mine.marathonPace === settings.marathonPace && INTERACTION_TOGGLES.every((k) => mine.physicsInteractions[k] === settings.physicsInteractions[k]);
+  return same ? null : { ...settings, physicsInteractions: { ...settings.physicsInteractions } };
 }

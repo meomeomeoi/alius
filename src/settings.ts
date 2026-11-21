@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CALL_TYPE_IDS, type CallTypeId } from './llm/callTypes';
+import { DEFAULT_SCENE_SETTINGS, INTERACTION_TOGGLES, MARATHON_PACES, MOMENT_EXPLICIT, MOMENT_FREQUENCIES, type InteractionToggle, type MarathonPace, type MomentExplicit, type MomentFrequency } from './engine/moments/settings';
 import type { StAdapter } from './st/adapter';
 
 export interface AliusSettings {
@@ -95,6 +96,18 @@ export interface AliusSettings {
   llmTimeoutMs: number;
   /** P14: automatic retries of a failed call before the failure is shown (0–2; a refusal is never retried). */
   autoRetry: 0 | 1 | 2;
+  /** P15a: how often a moment of tension comes up while something is live. The engine reads its mirror in the campaign. */
+  momentFrequency: MomentFrequency;
+  /** P15a: moments in a scene at `explicit` intimacy: rarer, as often, or none. Mirrored. */
+  momentExplicit: MomentExplicit;
+  /** P15a: a moment shows as chips, or not at all (free text only; the reading maps it). UI only. */
+  momentChips: 'chips' | 'immersive';
+  /** P15a: a contact physics runs in real time (off: a message uses up beats). Mirrored. */
+  physicsRealtime: boolean;
+  /** P15a: each interaction type of a physics, and the breath, can be switched off (then only text and moment options remain). Mirrored. */
+  physicsInteractions: Record<InteractionToggle, boolean>;
+  /** P15a: how long a marathon takes in play. Mirrored. */
+  marathonPace: MarathonPace;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -173,6 +186,12 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   doorTimer: 15,
   llmTimeoutMs: 120000,
   autoRetry: 1,
+  momentFrequency: 'normal',
+  momentExplicit: 'rarer',
+  momentChips: 'chips',
+  physicsRealtime: false,
+  physicsInteractions: { ...DEFAULT_SCENE_SETTINGS.physicsInteractions },
+  marathonPace: 'normal',
 };
 
 const fieldSchemas = {
@@ -228,6 +247,12 @@ const fieldSchemas = {
   doorTimer: z.number().int().min(0).max(60),
   llmTimeoutMs: z.number().int().min(10000).max(600000),
   autoRetry: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+  momentFrequency: z.enum(MOMENT_FREQUENCIES),
+  momentExplicit: z.enum(MOMENT_EXPLICIT),
+  momentChips: z.enum(['chips', 'immersive']),
+  physicsRealtime: z.boolean(),
+  physicsInteractions: z.object(Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, z.boolean().default(true)])) as Record<InteractionToggle, z.ZodDefault<z.ZodBoolean>>),
+  marathonPace: z.enum(MARATHON_PACES),
 };
 const budgetSchema = z.number().int().min(1);
 

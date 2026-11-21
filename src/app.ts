@@ -100,7 +100,7 @@ import { registerMemoryContext } from './scene/memoryContext';
 import { registerDevelopmentContext } from './scene/developmentContext';
 import { registerBlockingContext } from './scene/blockingContext';
 import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
-import { bellsFor, deviceTabLocks, muffled } from './blocking/sync';
+import { bellsFor, deviceTabLocks, muffled, sceneSettingsPatch } from './blocking/sync';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
 import { createEnvelope, type Envelope } from './llm/envelope';
@@ -373,6 +373,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const days = getSettings(st).beatCooldownDays;
     if (state.settings.beatCooldownDays === days) return;
     api.dispatch({ type: 'campaign/set_beat_cooldown', payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
+  /** P15a: the scene settings (moment frequency, real-time physics, …) are global; the pure engine reads their mirror in the campaign. */
+  function syncSceneSettings(): void {
+    if (!state || load.kind !== 'ok') return;
+    const patch = sceneSettingsPatch(state, getSettings(st));
+    if (patch === null) return;
+    api.dispatch({ type: 'campaign/set_scene_settings', payload: patch }, { expectChatId: st.getActiveChat()?.chatId });
   }
 
   /** P14c: whether units may start DMs is a global setting; the engine decides the channel of her news with its mirror in the campaign. */
@@ -1481,6 +1489,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     adoptExpedition();
     syncIntimacy();
     syncBeatCooldown();
+    syncSceneSettings();
     syncUnitDms();
     syncFirstImpressionTau();
     syncMinConfidence();
@@ -2166,6 +2175,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onSettingsChanged: () => {
       syncIntimacy();
       syncBeatCooldown();
+      syncSceneSettings();
       syncUnitDms();
       syncFirstImpressionTau();
       syncMinConfidence();

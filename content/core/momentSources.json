@@ -387,6 +387,7 @@
     "live": [
       "visitor"
     ],
+    "exposes": true,
     "remember": [
       {
         "option": 1,
@@ -419,6 +420,7 @@
     "live": [
       "blocking"
     ],
+    "exposes": true,
     "description": "AUTHOR TO WRITE: Live when someone is on a line during the scene."
   },
   {

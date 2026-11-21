@@ -2467,5 +2467,41 @@
     "term": "Life events",
     "short": "How often things happen to her off-screen: off, rare, normal or often. Off keeps the days as they were.",
     "long": "AUTHOR TO WRITE: Off, nothing happens to her when you are not there. A running campaign can switch it on at any time; what already happened stays."
+  },
+  {
+    "id": "setting_moment_frequency",
+    "term": "Moment frequency",
+    "short": "How often a moment of tension comes up in a scene while something is live: rare, normal or often.",
+    "long": "A moment is a point where the commander gets an explicit choice. It comes only while the scene has something live (a visitor, a posture, her mood) and never twice in a row: rare, normal and often set the chance and the gap between two."
+  },
+  {
+    "id": "setting_moment_explicit",
+    "term": "Moments in explicit scenes",
+    "short": "How often moments come up when a scene is at explicit intimacy: rarer, as often, or none.",
+    "long": "At explicit intimacy the chance of a moment is halved by default, so moments do not interrupt. Same keeps the normal chance; off stops them there."
+  },
+  {
+    "id": "setting_moment_chips",
+    "term": "Moment choices",
+    "short": "Show a moment as three chips, or hide the chips and answer in your own words.",
+    "long": "In immersive mode the card is replaced by one dim line. What you type is read as an answer the same way."
+  },
+  {
+    "id": "setting_physics_realtime",
+    "term": "Real-time contact",
+    "short": "A held contact runs in real time. Off: each message uses up a number of beats.",
+    "long": "In real time the gauge moves on the clock and tapping out is holding a key; the stop word always works. Turn-based is the default."
+  },
+  {
+    "id": "setting_physics_interactions",
+    "term": "Contact interaction types",
+    "short": "Switch each kind of interaction of a held contact on or off. Off: only text and moment options remain.",
+    "long": "Timing, hold, decision, order, passive, gesture and the breath can each be switched off."
+  },
+  {
+    "id": "setting_marathon_pace",
+    "term": "Marathon pace",
+    "short": "How long a marathon takes in play: short, normal or long.",
+    "long": "It sets how many phases a marathon has and how quickly the hours pass in the fiction."
   }
 ]

@@ -2668,6 +2668,8 @@ export const MomentSourceSchema = BaseEntrySchema.extend({
   live: z.array(z.enum(LIVE_KINDS)).min(1),
   remember: z.array(z.object({ option: z.union([z.literal(0), z.literal(1), z.literal(2)]), importance: int.min(1).max(5) }).strict()).optional(),
   generalMeeting: z.literal(true).optional(),
+  /** The moment names the commander's own giveaway (a leash, a posture) in its directive: someone could see it. */
+  exposes: z.literal(true).optional(),
   description: str,
 }).strict();
 

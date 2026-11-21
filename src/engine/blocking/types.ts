@@ -146,6 +146,7 @@ export interface MomentSourceEntry {
   live: LiveKind[];
   remember?: Array<{ option: 0 | 1 | 2; importance: 1 | 2 | 3 | 4 | 5 }>;
   generalMeeting?: true;
+  exposes?: true;
   description: string;
 }
 export interface PhysicsEntry extends Described {

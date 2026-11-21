@@ -2,6 +2,7 @@ import { blockingLive, rollbackAfter, setBlocking, type BlockingChange } from '.
 import { registerWithdrawal } from '../bonds/content';
 import { stripTagged } from '../blocking/blocking';
 import { registerAction } from '../dispatch';
+import { parseSceneSettings } from '../moments/settings';
 
 // Importing this module registers `blocking/set` (P15a) and lets a switched-off content category strip the blocking quietly.
 
@@ -41,4 +42,16 @@ registerAction('blocking/set', (draft, payload, ctx) => {
 registerAction('blocking/rollback', (draft, payload) => {
   if (!isObj(payload) || typeof payload.after !== 'number' || !Number.isInteger(payload.after) || payload.after < 0) throw new Error('blocking/rollback needs { after } (a chat index)');
   return rollbackAfter(draft, payload.after) ? [{ type: 'blocking_rolled_back', after: payload.after }] : [];
+});
+
+/**
+ * `campaign/set_scene_settings { momentFrequency, momentExplicit, physicsRealtime, physicsInteractions, marathonPace }`: mirrors the global
+ * scene settings into the campaign, which is what the pure engine reads (like the beat cooldown). Draws no rng.
+ */
+registerAction('campaign/set_scene_settings', (draft, payload) => {
+  if (!isObj(payload)) throw new Error('campaign/set_scene_settings needs a payload');
+  const parsed = parseSceneSettings(payload);
+  if (typeof parsed === 'string') throw new Error(`campaign/set_scene_settings: ${parsed}`);
+  Object.assign(draft.settings, parsed);
+  return [];
 });

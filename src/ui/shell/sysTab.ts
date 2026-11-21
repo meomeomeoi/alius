@@ -18,6 +18,7 @@ import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
 import { developmentMode } from '../../engine/development/state';
 import { LIFE_MODES, lifeMode } from '../../engine/life/state';
+import { INTERACTION_TOGGLES, type InteractionToggle } from '../../engine/moments/settings';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -42,6 +43,10 @@ export interface SysCtx {
   /** P14: the GENERATIONS list; absent = the section is not drawn. */
   generation?: GenerationUi;
 }
+
+const INTERACTION_LABEL: Record<InteractionToggle, string> = {
+  timing: 'timing', hold: 'hold', decision: 'decision', order: 'order', passive: 'endure', gesture: 'gesture', inhale: 'the breath',
+};
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -99,6 +104,13 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
       const next = apply(Number.isFinite(n) ? ({ [name]: n } as Partial<AliusSettings>) : {});
       el.value = String(next[name]);
     });
+    return el;
+  };
+
+  /** P15a: one interaction type of a contact physics on or off (the setting is one record; the others keep their value). */
+  const interactionToggle = (key: InteractionToggle, checked: boolean) => {
+    const el = h('input', { type: 'checkbox', name: `physicsInteractions:${key}`, checked }) as HTMLInputElement;
+    el.addEventListener('change', () => apply({ physicsInteractions: { ...getSettings(st).physicsInteractions, [key]: el.checked } }));
     return el;
   };
 
@@ -282,6 +294,13 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Typing speed (chars/s, 0 = instant)', numberInput('typingSpeed', settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed), 'typingSpeed'),
     field('Units may start DMs', checkbox('unitDms', settings.unitDms), 'unitDms'),
     field('Compact the chronicle with the mechanic model', checkbox('chronicleCompaction', settings.chronicleCompaction), 'chronicleCompaction'),
+    h('h3', {}, 'Scene'),
+    field('Moment frequency', select('momentFrequency', [['rare', 'rare'], ['normal', 'normal'], ['often', 'often']], settings.momentFrequency), 'momentFrequency'),
+    field('Moments in explicit scenes', select('momentExplicit', [['rarer', 'rarer'], ['same', 'as often'], ['off', 'none']], settings.momentExplicit), 'momentExplicit'),
+    field('Moments as', select('momentChips', [['chips', 'chips'], ['immersive', 'immersive (no chips)']], settings.momentChips), 'momentChips'),
+    field('Real-time contact', checkbox('physicsRealtime', settings.physicsRealtime), 'physicsRealtime'),
+    ...INTERACTION_TOGGLES.map((k) => field(`Contact: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), 'physicsInteractions')),
+    field('Marathon pace', select('marathonPace', [['short', 'short'], ['normal', 'normal'], ['long', 'long']], settings.marathonPace), 'marathonPace'),
     h('h3', {}, 'Combat'),
     field('Easy retry (rewind a lost combat)', checkbox('easyRetry', settings.easyRetry), 'easyRetry'),
     field('Generated names for affixed enemies', checkbox('enemyFlavor', settings.enemyFlavor), 'enemyFlavor'),

@@ -990,7 +990,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `fireMoment(draft, ctx, sourceId, unitId): EngineEvent[]` (→ `moment_fired { momentId, sourceId, unitId, visitorId?, exposing? }`);
   - `sceneSettingsOf(state): SceneSettings`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `no live source draws nothing` (the rng is unchanged).
   - `the chance by frequency`: 1000 seeded passes at `normal` → 16–24 % fire.
   - `cooldowns`: minGap, maxPerScene and sourceGap hold.
@@ -1001,10 +1001,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `memory_surfaces reveals her keeps fact` (`revealFact`; the untold tag is gone).
   - `the same seed fires the same moment after a swipe` (restore, re-apply).
   - `the mirror syncs` (setting → campaign).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/moments/fire.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R10.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): moments fire from live sources with cooldowns and frequency`
+- [x] **Step 2: Run** `npx vitest run tests/engine/moments/fire.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R10.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): moments fire from live sources with cooldowns and frequency`
 
 ---
 
