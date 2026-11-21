@@ -204,6 +204,7 @@ Engine: `src/engine/warden/` — `state.ts` (a leaf: types, `leashswapOf`, `ward
 - **A warden in the squad's Leash pool.** A request against her is denied at the co-sign; she is outside the hierarchy (`computeHierarchy`, `standingOf`, `herCallCandidates` filter her) but is otherwise an ordinary unit for the Leash, the roster and expeditions.
 - **A reassigned warden may not return** (the spec's "may return hostile via director") — the director does not know the status.
 - **The author's:** every number in `TUNING.warden`, the expectation entries and weights, the punishment wording and numbers, the controller lore (`controller_implant` lorebook entry), the intake wording, every `AUTHOR TO WRITE` line (notices, directives, memory rules, the `warden_report_case` text, the kompromat lines beyond three), and the journal phrases.
+- **A scene-starting activity does not open its scene after an override (P14c review).** After COMPLY or DEFY of a scene-starting activity (a talk, a quiet hour) nothing opens the scene; the slot stays held.
 - **Not covered by an automated test:** the in-SillyTavern behaviour (rewind hiding the chat, the END screen) — `docs/MANUAL_TEST_P13.md`.
 
 Final counts after the review fixes, on the branch with P14b: 482 test files, 7427 tests, all passing (P13 alone ended at 419 files, 6780 tests; baseline before P13: 387 files, 6408 tests); `tsc` clean.
