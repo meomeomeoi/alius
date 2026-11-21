@@ -1475,12 +1475,12 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Consumes: `tests/helpers/unaffectedWeek.ts`.
 
-- [ ] **Step 1: Write the failing test** (it should pass at once if the gate holds; make it fail first by asserting against a deliberately wrong golden, then correct it):
+- [x] **Step 1: Write the failing test** (it should pass at once if the gate holds; make it fail first by asserting against a deliberately wrong golden, then correct it):
   - `unaffected week`: the seeded week of `unaffectedWeek` with scenes among comrades ends deep-equal to the pre-P15a golden in `state` minus the new optional keys, which must be absent, and in `state.rng`.
   - `the same week with every new category on and no close relation is still unaffected`.
   - `a confidant scene with nothing set adds no prompt line`.
-- [ ] **Step 2: Run** `npx vitest run tests/blocking/unaffected.test.ts`.
-- [ ] **Step 3: Write `docs/MANUAL_TEST_P15a.md`.** It is about 12 steps, in the style of `MANUAL_TEST_P14c.md`:
+- [x] **Step 2: Run** `npx vitest run tests/blocking/unaffected.test.ts`.
+- [x] **Step 3: Write `docs/MANUAL_TEST_P15a.md`.** It is about 12 steps, in the style of `MANUAL_TEST_P14c.md`:
   - a confidant scene: the strip, chips and `[BLOCKING]` in the prompt (SYS › debug);
   - a swipe after a chip; a blindfold and the POV;
   - paw mitts lock the PDA;
@@ -1491,8 +1491,8 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - endurance drills on TRAIN;
   - turning `restraint` off mid-scene;
   - a campaign with no close relation looks as before.
-- [ ] **Step 4: Run** `npm test` → PASS.
-- [ ] **Step 5: Commit** `test(P15a): the unaffected guard and the manual test`
+- [x] **Step 4: Run** `npm test` → PASS.
+- [x] **Step 5: Commit** `test(P15a): the unaffected guard and the manual test`
 
 ---
 
