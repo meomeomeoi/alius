@@ -9,3 +9,4 @@ export { forgetDynamic, holdsDynamic } from './forget';
 export { addFavour, addHold, bandIndex, compatibilityOf, frameEntry, holdBandOf } from './hold';
 export { addTrackXp, levelOfXp, trackCap, trackLevel, trackOpen } from './tracks';
 export { FEED_CAUSE, holdFeed } from './feed';
+export { dynamicDayStep } from './dayStep';

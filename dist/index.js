@@ -32409,7 +32409,7 @@ function frameEntry(reg, frame) {
 function compatibilityOf(_state, _reg, _unitId) {
   return 1;
 }
-function addHold(draft, ctx2, unitId, base, cause) {
+function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   const reg = ctx2.registries;
   if (base === 0 || !dynamicOn(draft, reg) || draft.relations[unitId] === void 0) return [];
   const events = [];
@@ -32436,13 +32436,76 @@ function addHold(draft, ctx2, unitId, base, cause) {
   let to = round42(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain && to < from) to = from;
   if (!gain && to > from) to = from;
-  if (gain) dyn.lastPracticeDay = draft.day;
+  if (gain && opts.practice !== false) dyn.lastPracticeDay = draft.day;
   if (to === from) return events;
   dyn.hold = to;
   events.push({ type: "hold_changed", unitId, from, to, cause });
   const was = holdBandOf(reg, from);
   const now = holdBandOf(reg, to);
   if (was !== now) events.push({ type: "hold_band_changed", unitId, from: was, to: now });
+  return events;
+}
+function addFavour(draft, unitId, n) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0) return;
+  const max = TUNING.dynamic.favour.max;
+  dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
+}
+
+// src/engine/dynamic/tracks.ts
+var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
+
+// src/engine/dynamic/dayStep.ts
+var holdersOf = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u) && dynamicOf(draft, u.id) !== void 0).map((u) => u.id);
+var decay2 = (draft, ctx2, holders2) => {
+  const T5 = TUNING.dynamic.decay;
+  const events = [];
+  for (const id of holders2) {
+    const dyn = dynamicOf(draft, id);
+    if (dyn.frame === "equal" || draft.day - dyn.lastPracticeDay <= T5.idleDays) continue;
+    events.push(...addHold(draft, ctx2, id, -T5[dyn.frame], "decay", { practice: false }));
+  }
+  return events;
+};
+var slowTerm = (draft, ctx2, holders2) => {
+  const T5 = TUNING.dynamic;
+  const leader = leaderOf(draft)?.id;
+  const events = [];
+  for (const id of holders2) {
+    if (frameRank(dynamicOf(draft, id).frame) < frameRank("play")) continue;
+    const base = ((impunityOf(draft, ctx2.registries, id)?.value ?? 0) >= T5.impunityRoute ? T5.slow.impunity : 0) + (id === leader ? T5.slow.leader : 0);
+    if (base > 0) events.push(...addHold(draft, ctx2, id, base, "standing", { practice: false }));
+  }
+  return events;
+};
+var trackDecay = (draft, ctx2, holders2) => {
+  const T5 = TUNING.dynamic.tracks;
+  for (const id of holders2) {
+    const dyn = dynamicOf(draft, id);
+    if (draft.day - dyn.lastPracticeDay <= T5.idleDays) continue;
+    for (const [trackId, track] of Object.entries(dyn.tracks)) {
+      if (track.xp <= 0) continue;
+      const entry = ctx2.registries.dynamicTracks.get(trackId);
+      track.xp = Math.max(0, Math.round((track.xp - T5.decayPerDay) * 1e4) / 1e4);
+      if (entry !== void 0) track.level = levelOfXp(entry.thresholds, track.xp);
+    }
+  }
+  return [];
+};
+var favourDecay = (draft, _ctx, holders2) => {
+  const step = TUNING.dynamic.favour.decayPerDay;
+  for (const id of holders2) {
+    const favour = dynamicOf(draft, id).favour;
+    if (favour !== 0) addFavour(draft, id, favour > 0 ? -Math.min(step, favour) : Math.min(step, -favour));
+  }
+  return [];
+};
+var STEPS = [decay2, slowTerm, trackDecay, favourDecay];
+function dynamicDayStep(draft, ctx2) {
+  if (!dynamicOn(draft, ctx2.registries)) return [];
+  const holders2 = holdersOf(draft);
+  const events = [];
+  for (const step of STEPS) events.push(...step(draft, ctx2, holders2));
   return events;
 }
 
@@ -32482,6 +32545,7 @@ function namedUnit3(draft, id, action) {
   return unit3;
 }
 registerEventLanded(holdFeed);
+registerDayEndStep("dm_rumors", dynamicDayStep);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);

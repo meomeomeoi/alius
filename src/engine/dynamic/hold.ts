@@ -47,10 +47,12 @@ export function compatibilityOf(_state: CampaignState, _reg: Registries, _unitId
  * Moves a holder's hold by `base` (negative for a loss) for `cause` (a key of `TUNING.dynamic.gains`, or free text for a seed). The pace
  * scales both ways; a gain is also scaled by compatibility and by the romantic tier (`affectionate` / `possessive` primary warm, `cold`
  * cold, only while the pair's state is romantic). The result is clamped to the frame's floor and ceiling and is never moved the wrong
- * way by the clamp. A gain starts the dynamic of an eligible unit who has none and sets `lastPracticeDay`; a loss on a unit with no
- * dynamic does nothing. Emits `hold_changed` and, across a band, `hold_band_changed`. Writes nothing while the dynamic is off.
+ * way by the clamp. A gain starts the dynamic of an eligible unit who has none and sets `lastPracticeDay` (unless `opts.practice` is
+ * false: the day step's slow term is a gain that is not practice); a loss on a unit with no dynamic does nothing. Emits `hold_changed` and, across a band, `hold_band_changed`. Writes nothing while the dynamic is off.
  */
-export function addHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, base: number, cause: string): EngineEvent[] {
+export function addHold(
+  draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, base: number, cause: string, opts: { practice?: boolean } = {},
+): EngineEvent[] {
   const reg = ctx.registries;
   if (base === 0 || !dynamicOn(draft, reg) || draft.relations[unitId] === undefined) return [];
   const events: EngineEvent[] = [];
@@ -77,7 +79,7 @@ export function addHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>
   let to = round4(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain && to < from) to = from; // the clamp never turns a gain into a loss (a hold above its ceiling stays)
   if (!gain && to > from) to = from;
-  if (gain) dyn.lastPracticeDay = draft.day;
+  if (gain && opts.practice !== false) dyn.lastPracticeDay = draft.day;
   if (to === from) return events;
   dyn.hold = to;
   events.push({ type: 'hold_changed', unitId, from, to, cause });

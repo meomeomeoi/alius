@@ -1163,16 +1163,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   11. Regard (Task 36);
   12. exchange (Task 38).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `decay after three idle days`: `play`, hold 50, `lastPracticeDay` = day − 4 → 49; `role` → 49.5; `rule` 70 → 69.7; `equal` → unchanged.
   - `never below the floor` (`role` at 40 stays 40).
   - `slow term`: Impunity 45 at `play` → +0.5; leader → +0.3; at `equal` → nothing.
   - `off: the step returns [] and changes nothing`.
   - `no rng draw in steps 1–4` (rng unchanged).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/dayStep.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the dynamic day step`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/dayStep.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the dynamic day step`
 
 ---
 
