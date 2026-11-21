@@ -43,6 +43,8 @@ export interface HubCtx {
   onTalk(unitId: string, locationId: string): void;
   onEndSlot(): void;
   onOpenPda(tab?: TabId): void;
+  /** P15: the OPEN button of a Tonight line of the dynamic (a milestone, claim or return offer waits): opens her thread in COMMS, where its card is. */
+  onOpenThread?(unitId: string): void;
   /** Her portrait for the room panel (`null` = none). */
   avatar(unit: Unit): HTMLElement | null;
   /** P10b: the commander read a note (the app dispatches `notes/read`). */
@@ -187,7 +189,13 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
       h('h2', {}, 'TONIGHT'),
       items.length === 0
         ? h('p', { class: 'alius-dim' }, 'Nothing is waiting.')
-        : h('ul', {}, ...items.map((i) => h('li', { class: 'alius-tonight-item alius-stat', 'data-tone': i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`))),
+        : h('ul', {}, ...items.map((i) => h('li', { class: 'alius-tonight-item alius-stat', 'data-tone': i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`,
+          i.kind === 'dynamic' && i.unitId !== undefined && ctx.onOpenThread !== undefined && !readOnly
+            ? h('button', {
+              type: 'button', class: 'alius-btn alius-option alius-tonight-open', 'data-open-thread': i.unitId, ...analyzeNative(i.analyze),
+              onclick: (e: Event) => { e.stopPropagation(); ctx.onOpenThread!(i.unitId!); },
+            }, ' OPEN ▸')
+            : null))),
     ),
     failedBlock(ctx, state),
     renderVitalsStrip(state, ctx.registries, { motion: !motionReduced(ctx.settings()) }),

@@ -144,7 +144,7 @@ import { clearWorldDirectives, registerWorldOptionsContext, worldDirectives } fr
 import { createDirector, type DirectorController } from './world/directorController';
 import { createExpedition, type ExpeditionController } from './world/expeditionController';
 import { renderBaseTab } from './ui/base/baseTab';
-import { renderCommsTab } from './ui/comms/commsTab';
+import { renderCommsTab, requestThread } from './ui/comms/commsTab';
 import { renderHomeTab } from './ui/home/homeTab';
 import { unreadNotes } from './engine/notes';
 import { motionReduced } from './ui/motion';
@@ -933,6 +933,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
         onAnswerClaim: (id, answer) => answerClaim(id, answer), // P15: her claim
+        onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
         physics: { // P15a: the hold panel's inputs go to the staging controller, never through `stage` (a hold is not rolled back by a swipe)
@@ -2394,6 +2395,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
       onEndSlot: () => void api.endSlot(),
       onOpenPda: (tab) => (tab ? shell.showTab(tab) : shell.setDevice(true)),
+      onOpenThread: (unitId) => { requestThread(unitId); shell.showTab('comms'); }, // P15: the Tonight line of a milestone, claim or return offer
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 40)),
       onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }), // P10b
     });
@@ -2440,6 +2442,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
       onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
       onAnswerClaim: (id, answer) => answerClaim(id, answer), // P15: her claim
+      onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onAnswerRule: answerRule,
       onRead: (unitId) => {

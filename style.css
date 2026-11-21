@@ -498,6 +498,9 @@
   white-space: nowrap;
 }
 
+#alius-shell .alius-marker-commander { --alius-ring: var(--alius-accent); }
+#alius-shell .alius-marker-commander .alius-marker-ring { border-style: double; border-width: 3px; }
+#alius-shell .alius-hub-plan .alius-marker-commander .alius-marker-ring { border-width: 2.5px; }
 #alius-shell .alius-marker[data-tone="danger"] { --alius-ring: var(--alius-danger, var(--alius-err)); }
 #alius-shell .alius-marker[data-tone="bond"] { --alius-ring: var(--alius-bond, var(--alius-accent)); }
 #alius-shell .alius-marker[data-tone="trust"] { --alius-ring: var(--alius-trust, var(--alius-fg)); }
@@ -1543,6 +1546,23 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
+}
+
+/* Her return offer (P15): her words, then the two answers side by side; the Tonight line that opens her thread. */
+#alius-shell .alius-return-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-return-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+#alius-shell .alius-tonight-open {
+  margin-left: 6px;
+  padding: 0 6px;
 }
 
 /*

@@ -11,7 +11,7 @@ import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
-import { drawClaimCards, drawMilestoneCards, type ClaimAnswer } from '../dynamic/cards';
+import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
 import { armTyping, clearTyping, renderHerMessage, renderReceipt, renderTyping, stampText, typingPlayed } from './living';
@@ -36,6 +36,8 @@ export interface CommsTabCtx {
   onAnswerMilestone?: (milestoneId: string, answer: 'accept' | 'refuse') => void;
   /** P15: [YIELD] / [REFUSE] / [TALK] on her open claim (the open id). */
   onAnswerClaim?: (claimId: string, answer: ClaimAnswer) => void;
+  /** P15: [ACCEPT] / [REFUSE] on her return offer (the only one open). */
+  onAnswerReturn?: (answer: ReturnAnswer) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule she proposed. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P10: a small portrait for each contact row (absent = none). */
@@ -53,6 +55,11 @@ export interface CommsTabCtx {
 
 /** The open thread and the half-typed text survive a re-render (the tab redraws after every action). */
 const selected = new WeakMap<HTMLElement, string>();
+/** P15: a thread asked for from outside the tab (the Tonight chip of the hub): the next draw opens it, once. */
+let wanted: string | undefined;
+export function requestThread(unitId: string): void {
+  wanted = unitId;
+}
 const drafts = new WeakMap<HTMLElement, string>();
 /** P10b: the voice messages played in a host; kept until the host is built anew (the tab itself is rebuilt on a chat switch). */
 const revealed = new WeakMap<HTMLElement, Set<string>>();
@@ -74,6 +81,10 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
   if (contacts.length === 0) {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO CONTACTS')));
     return;
+  }
+  if (wanted !== undefined) {
+    if (contacts.some((u) => u.id === wanted)) selected.set(host, wanted);
+    wanted = undefined;
   }
   let current = selected.get(host);
   if (current && !contacts.some((u) => u.id === current)) {
@@ -179,6 +190,8 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     drawMilestoneCards(milestoneCards, state, ctx.registries, (c) => c.unitId === current, (id, answer) => ctx.onAnswerMilestone?.(id, answer)); // P15: her step, under the thread
     const claimCards = h('div', { class: 'alius-claim-cards' });
     drawClaimCards(claimCards, state, ctx.registries, (c) => c.unitId === current, (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim, under the thread
+    const returnCards = h('div', { class: 'alius-return-cards' });
+    drawReturnCards(returnCards, state, ctx.registries, (c) => c.unitId === current, (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again, under the thread
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
     const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse'), generation: ctx.generation };
@@ -190,7 +203,7 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       ? editChip(waiting, editor?.displayName ?? waiting.editorId, () => ctx.onAnswerEdit?.(true), () => ctx.onAnswerEdit?.(false))
       : null;
     const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', ...(waiting ? { 'aria-disabled': 'true' } : {}), onclick: send }, '[ SEND ]');
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }
