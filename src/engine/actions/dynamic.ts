@@ -7,7 +7,7 @@ import { registerDayEndStep } from '../calendar';
 import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
 import { installDynamicHooks } from '../dynamic/hooks';
-import { holdReason } from '../dynamic/gate';
+import { dynamicOn, holdReason } from '../dynamic/gate';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
 import { noteEvents } from '../dynamic/style';
@@ -218,8 +218,9 @@ registerAction('dynamic/set_unit', (draft, payload) => {
  * feel?" question). It needs her block; it sets her `declared` motive at weight `declaration.start`, and the weight fades each day, so deeds outweigh
  * it over time. Her region settles with the same hysteresis (no new sample).
  */
-registerAction('dynamic/declare', (draft, payload) => {
+registerAction('dynamic/declare', (draft, payload, ctx) => {
   const p = (payload ?? {}) as { unitId?: unknown; motive?: unknown };
+  if (!dynamicOn(draft, ctx.registries)) throw new Error('The dynamic is off.');
   const unit = namedUnit(draft, p.unitId, 'dynamic/declare');
   if (!(MOTIVES as readonly unknown[]).includes(p.motive)) throw new Error(`A motive is ${MOTIVES.join(', ')}.`);
   const dyn = dynamicOf(draft, unit.id);

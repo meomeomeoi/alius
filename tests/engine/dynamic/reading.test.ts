@@ -2,12 +2,13 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import '../../../src/engine/actions/moments';
+import { answerProbe } from '../../../src/engine/dynamic/probes';
 import { applyDynamicIntent } from '../../../src/engine/dynamic/intents';
 import type { EventIntent } from '../../../src/engine/relations/intents';
 import { dynamicDayStep } from '../../../src/engine/dynamic/dayStep';
 import { addHold, compatibilityOf } from '../../../src/engine/dynamic/hold';
 import { newReading, readMoments, regionOf, resettleReading, updateReading, distanceToPoint, type ReadingSample } from '../../../src/engine/dynamic/reading';
-import { blankDynamic, dynamicOf, newDynamicCampaign, type HerReading } from '../../../src/engine/dynamic/state';
+import { blankDynamic, blankReading, dynamicOf, newDynamicCampaign, type HerReading } from '../../../src/engine/dynamic/state';
 import type { Frame, Motive, ProfileStyle, RegionRank } from '../../../src/engine/dynamic/types';
 import { fireMoment } from '../../../src/engine/moments/fire';
 import { momentsOf } from '../../../src/engine/moments/state';
@@ -133,6 +134,15 @@ describe('updates', () => {
     expect(shifts).toHaveLength(1);
   });
 
+  it('a fresh reading starts at the region of its own values: no phantom shift after the first updates', () => {
+    expect(blankReading().region).toBe(regionOf(blankReading()));
+    const rel = blankDynamic(1);
+    const shifts: unknown[] = [];
+    for (let i = 0; i < 4; i += 1) shifts.push(updateReading(rel, { response: 'deflected' }, 0.01, { primary: 'clinical' }, 'mid').region); // too small to move any axis
+    expect(shifts.filter((x) => x !== undefined)).toEqual([]);
+    expect(rel.readOf.region).toBe('devoted');
+  });
+
   it('a shift carries from and to and clears the pending count', () => {
     const rel = blankDynamic(1);
     rel.readOf = reading({ region: 'devoted', r: -0.5, f: 0 });
@@ -195,6 +205,19 @@ describe('declarations', () => {
   it('dynamic/declare needs her block and a motive', () => {
     expect(errors(run(world({ started: false }), reg, { type: 'dynamic/declare', payload: { unitId: ANN, motive: 'her' } }).events)).not.toEqual([]);
     expect(errors(run(world(), reg, { type: 'dynamic/declare', payload: { unitId: ANN, motive: 'love' } }).events)).not.toEqual([]);
+  });
+
+  it('dynamic/declare is refused while the dynamic is off', () => {
+    const declare = (s: CampaignState) => run(s, reg, { type: 'dynamic/declare', payload: { unitId: ANN, motive: 'her' } });
+    expect(errors(declare(world()).events)).toEqual([]);
+    const zero = world();
+    zero.dynamic!.setup.holders = 0; // set to 0 later: the block stays, the dynamic is off
+    const r = declare(zero);
+    expect(errors(r.events)).not.toEqual([]);
+    expect(dynamicOf(r.state, ANN)!.declared).toBeUndefined();
+    const dark = world();
+    dark.content = { enabled: [] };
+    expect(errors(declare(dark).events)).not.toEqual([]);
   });
 });
 
@@ -322,6 +345,25 @@ describe('moment answers', () => {
     applyDynamicIntent(plain, { registries: reg }, ANN, ev, []);
     expect(dynamicOf(threatened, ANN)!.readOf.motive.fear).toBeGreaterThan(dynamicOf(plain, ANN)!.readOf.motive.fear);
     expect(dynamicOf(plain, ANN)!.readOf.motive.fear).toBe(0.2);
+  });
+
+  it('the leading style colours the reading: a secondary that has surfaced is the one that misreads', () => {
+    const answered = [{ type: 'moment_answered', unitId: ANN, responseType: 'yielded' }];
+    const read = (defiantToday: boolean): number => {
+      const s = world({ style: 'clinical', secondary: 'cruel' }); // clinical reads exactly; cruel sees defiance, and surfaces after a defiance
+      if (defiantToday) dynamicOf(s, ANN)!.refusals = [s.day];
+      readMoments(s, { registries: reg }, answered);
+      return dynamicOf(s, ANN)!.readOf.r;
+    };
+    expect(read(true)).toBeLessThan(read(false)); // the secondary leads: the cruel misreading takes something off r
+    // the probe answer takes the same path
+    const probe = (defiantToday: boolean): number => {
+      const s = world({ style: 'clinical', secondary: 'cruel' });
+      if (defiantToday) dynamicOf(s, ANN)!.refusals = [s.day];
+      answerProbe(s, { registries: reg }, ANN, 'yielded', undefined, 0.5);
+      return dynamicOf(s, ANN)!.readOf.r;
+    };
+    expect(probe(true)).toBeLessThan(probe(false));
   });
 
   it('a unit with no block, and the dynamic off, are not read', () => {

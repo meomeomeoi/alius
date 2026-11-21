@@ -132,3 +132,23 @@ describe('validateIntents', () => {
     expect(Object.keys(e).sort()).toEqual(['actor', 'confidence', 'evidence', 'severity', 'targets', 'type']);
   });
 });
+
+describe('a rule compromise and a stray claim or exit id', () => {
+  const rules = [{ id: 'r1', unitId: ANN }];
+  const compromise = (over: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+    validateIntents({ events: [ev({ type: 'compromise_reached', text: 'Evenings, then', ...over })] }, { ...ctx(), rules, ...extra }).events;
+
+  it('a valid ruleId compromise is never dropped by a stray claimId or exitId', () => {
+    for (const over of [{ claimId: 'c9' }, { exitId: 'x9' }, { claimId: 'c9', exitId: 'x9' }]) {
+      expect(compromise({ ruleId: 'r1', ...over }), JSON.stringify(over)).toMatchObject([{ type: 'compromise_reached', ruleId: 'r1', text: 'Evenings, then' }]);
+      // the same while the dynamic offers something: an id that was not shown does not take the claim branch either
+      expect(compromise({ ruleId: 'r1', ...over }, { dynamic: { types: ['compromise_reached'], probes: [], observed: [], milestones: [], claims: ['c1'], exits: [], offers: [], compromat: [], slips: [], probeAxes: {}, milestoneLabels: {} } }), JSON.stringify(over)).toHaveLength(1);
+    }
+    // a claim it was shown still settles the claim
+    const claim = compromise({ claimId: 'c1' }, { dynamic: { types: ['compromise_reached'], probes: [], observed: [], milestones: [], claims: ['c1'], exits: [], offers: [], compromat: [], slips: [], probeAxes: {}, milestoneLabels: {} } });
+    expect(claim).toMatchObject([{ claimId: 'c1' }]);
+    expect(claim[0].ruleId).toBeUndefined();
+    // and a claim id with nothing offered and no rule is still dropped
+    expect(compromise({ claimId: 'c1' })).toEqual([]);
+  });
+});

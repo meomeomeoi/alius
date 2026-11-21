@@ -100,18 +100,33 @@ describe('the eleven registries (P15)', () => {
       for (const s of req.styles ?? []) expect(base.registries.practiceStyles.has(s), `${m.id} style ${s}`).toBe(true);
     }
     for (const t of rows('dynamicTracks')) if (t.category !== undefined) expect(base.registries.contentCategories.has(String(t.category)), `${t.id} category`).toBe(true);
-    for (const s of rows('practiceStyles')) for (const k of s.aftermathBias as string[]) expect(AFTERMATH_KINDS).toContain(k);
     for (const a of rows('aftermaths')) for (const k of (a.chainsTo as string[] | undefined) ?? []) expect(AFTERMATH_KINDS).toContain(k);
     for (const s of rows('dynamicSigns')) for (const t of (s.contentTags as string[] | undefined) ?? []) expect(base.registries.contentCategories.has(t), `${s.id} tag ${t}`).toBe(true);
   });
 
-  it('a style\'s aftermath bias and the aftermath weights agree', () => {
+  it('the aftermath bias of a style is held once, in the aftermath weights', () => {
     for (const s of rows('practiceStyles')) {
-      for (const kind of s.aftermathBias as string[]) {
-        const a = rows('aftermaths').find((x) => x.kind === kind)!;
-        expect((a.weights as { styles?: Record<string, number> }).styles?.[String(s.id)], `${s.id} -> ${kind}`).toBeGreaterThan(0);
-      }
+      expect('aftermathBias' in s, `${s.id} has no bias of its own`).toBe(false);
+      const pulls = rows('aftermaths').filter((a) => ((a.weights as { styles?: Record<string, number> }).styles?.[String(s.id)] ?? 0) > 0);
+      expect(pulls.length, `${s.id} is the bias of some aftermath`).toBeGreaterThan(0);
+      for (const a of pulls) expect(AFTERMATH_KINDS).toContain(a.kind);
     }
+  });
+
+  it('an aftermath\'s value weights say which side of the value counts', async () => {
+    const a = rows('aftermaths').find((x) => x.id === 'revenge')!;
+    const w = a.weights as Record<string, unknown>;
+    const ok = await load({ aftermaths: [{ ...a, id: 'merciless', weights: { ...w, values: { mercy: { low: 3 }, autonomy: { high: 1, low: 0.5 } } } }] });
+    expect(ok.errors).toEqual([]);
+    expect(ok.registries.aftermaths.get('merciless')!.weights).toMatchObject({ values: { mercy: { low: 3 }, autonomy: { high: 1, low: 0.5 } } });
+    const bare = await load({ aftermaths: [{ ...a, id: 'bare', weights: { ...w, values: { mercy: 3 } } }] }); // a number cannot say which side
+    expect(bare.registries.aftermaths.has('bare')).toBe(false);
+    const empty = await load({ aftermaths: [{ ...a, id: 'empty', weights: { ...w, values: { mercy: {} } } }] });
+    expect(empty.registries.aftermaths.has('empty')).toBe(false);
+    const neither = await load({ aftermaths: [{ ...a, id: 'neither', weights: { ...w, values: { mercy: { middle: 1 } } } }] });
+    expect(neither.registries.aftermaths.has('neither')).toBe(false);
+    const own = await load({ practiceStyles: [{ ...rows('practiceStyles')[0], id: 'with_bias', aftermathBias: ['revenge'] }] });
+    expect(own.registries.practiceStyles.has('with_bias')).toBe(false); // the second source is gone
   });
 
   it('every engine event of the package is reserved', () => {

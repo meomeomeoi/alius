@@ -172,7 +172,7 @@ export function answerProbe(
   // her reading takes the answer after the hold: a gain is scaled by how she read the commander until now
   const unit = draft.squad.find((u) => u.id === unitId)!;
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, alpha, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
+  const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, alpha, physicsStyleOf(draft, unitId, reg), unit.insight ?? 'mid').region;
   if (shift !== undefined) events.push({ type: 'position_shifted', unitId, from: shift.from, to: shift.to });
   if (weight === 1) {
     delete dyn.probes.pending;

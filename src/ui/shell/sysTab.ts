@@ -214,7 +214,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     };
     const setSetup = (patch: Record<string, unknown>): void => send('dynamic/set_setup', patch);
     dynamicHost.append(
-      pick('dynamicHolders', HOLDER_CAPS.map((v): [string, string] => [String(v), v === 0 ? '0 (off)' : String(v)]), String(setup?.holders ?? 1), 'glossary:setting_dynamic_holders', 'Holders (this campaign)', (v) => setSetup({ holders: v === 'any' ? 'any' : Number(v) })),
+      pick('dynamicHolders', HOLDER_CAPS.map((v): [string, string] => [String(v), v === 0 ? '0 (off)' : String(v)]), String(setup?.holders ?? 0), 'glossary:setting_dynamic_holders', 'Holders (this campaign)', (v) => setSetup({ holders: v === 'any' ? 'any' : Number(v) })),
       pick('dynamicPace', PACES.map((v): [string, string] => [v, v]), setup?.pace ?? 'normal', 'glossary:setting_dynamic_pace', 'Pace (this campaign)', (v) => setSetup({ pace: v })),
       pick('dynamicFrequency', FREQUENCIES.map((v): [string, string] => [v, v]), setup?.frequency ?? 'normal', 'glossary:setting_dynamic_frequency', 'Frequency (this campaign)', (v) => setSetup({ frequency: v })),
     );

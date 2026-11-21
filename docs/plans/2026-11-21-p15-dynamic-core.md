@@ -174,7 +174,7 @@ All 11 are in `REGISTRY_NAMES` (`// P15`) and `DESCRIBED_REGISTRIES`. All except
 ```
 practiceStyles     { id: StyleKey≠neutral, label, description, surfacesWhen: SurfaceCondition[], point: { r, f, motive: Motive, notWith?: 'other_women' } | null,
                      regardForm: string, regardSpeed: 'very_slow'|'slow'|'normal'|'fast', regardFloor: number, regardFactor: number,
-                     aftermathBias: string[] /* aftermath kinds */, likesRegion?: RegionRank[], despisesRegion?: RegionRank[] }
+                     /* the style's pull on an aftermath is written once, in aftermaths[].weights.styles (fix round 1, M10) */ likesRegion?: RegionRank[], despisesRegion?: RegionRank[] }
 holdBands          { id, label, min, max, description }                                    // 5 rows, R8
 dynamicFrames      { id: Frame, label, rank, holdFloor, holdCeiling?, refusal: 'minor'|'moderate'|'major'|'contest', outside: 'none'|'scenes'|'all_day'|'domains', description }
 dynamicMilestones  { id, from: Frame, to: Frame, requires: { holdBand?, tracks?: Record<trackId, level>, capabilities?: Capability[], categories?: string[],
@@ -817,7 +817,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - [x] **Step 1: Write the failing tests.**
   - `the core pack loads the eleven registries`: 11 `practiceStyles` (no `neutral`), 5 `holdBands` covering 0–100 without gaps, 4 `dynamicFrames` with floors 0 / 20 / 40 / 60 and `equal.holdCeiling === 39`, 9 `dynamicMilestones`, 6 `dynamicDomains`, 10 `dynamicTracks`, 10 `probeAxes` (tiers 1 and 2), 11 `positionRegions` (each rank once), 9 `aftermaths` (each kind once), 5 `regardBands`, and the §15.13 `dynamicSigns` rows.
   - `domains grant only known capabilities and every capability is granted once`.
-  - `refs`: a milestone's `requires.tracks` names tracks, `capabilities` are in `CAPABILITIES`, `styles` are style ids, `categories` are content categories; a track's `category` exists; `practiceStyles[].aftermathBias` are aftermath kinds; `aftermaths[].chainsTo` are kinds; a sign's `contentTags` exist.
+  - `refs`: a milestone's `requires.tracks` names tracks, `capabilities` are in `CAPABILITIES`, `styles` are style ids, `categories` are content categories; a track's `category` exists; `aftermaths[].chainsTo` are kinds; a sign's `contentTags` exist.
   - `an unknown capability, a band gap or a duplicate region rank is a content error` (fixture packs).
   - `every new engine event is reserved` (R22 list ⊆ `RESERVED_EVENT_TYPES`).
 - [x] **Step 2: Run** `npx vitest run tests/content/dynamicSchemas.test.ts` → FAIL.

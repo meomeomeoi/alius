@@ -220,6 +220,16 @@ describe('SYS: Dynamic', () => {
     expect(on.host.querySelectorAll('.alius-dynamic-row')).toHaveLength(3); // the rows follow the new block
   });
 
+  it('with no block the holders select reads off, so choosing 1 creates the block', () => {
+    const on = sys(withDynamic());
+    const holders = on.host.querySelector<HTMLSelectElement>('[name="dynamicHolders"]')!;
+    expect(holders.value).toBe('0');
+    change(holders, '1');
+    expect(on.state().dynamic!.setup.holders).toBe(1);
+    expect(on.host.querySelector<HTMLSelectElement>('[name="dynamicHolders"]')!.value).toBe('1');
+    expect(on.host.querySelectorAll('.alius-dynamic-row')).toHaveLength(3);
+  });
+
   it('per-unit rows go through the engine', () => {
     const s = withDynamic();
     const { host, state } = sys(s);

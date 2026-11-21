@@ -132,7 +132,7 @@ export interface DynamicCampaign {
   /** The probe queue (R9): unit ids, first in line first. */
   queue: string[];
   /** Days the dynamic noticed in passing (the style's surfacing reads them, T16): the last gain of the commander's endurance, the last time the crime was revealed. */
-  noted?: { enduranceDay?: number; crimeDay?: number };
+  noted?: { enduranceDay?: number; crimeDay?: number; praisedDay?: number };
   /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`. */
   seq: number;
   open: { claims: OpenClaim[]; milestones: OpenMilestone[]; returnOffer?: OpenReturn; offers: OpenOffer[] };
@@ -170,9 +170,9 @@ export function newDynamicCampaign(salt: number, setup: DynamicSetup): DynamicCa
   return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
 }
 
-/** A fresh reading: nobody's idea of the commander yet. `reluctant` is the neutral mid-table region until the first update decides. */
+/** A fresh reading: nobody's idea of the commander yet. Its region is the one its own (blank) values give, `devoted` (`regionOf(blankReading())`; a test pins it), so no shift is announced from a picture nobody read. */
 export function blankReading(): HerReading {
-  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: 'reluctant', updates: 0 };
+  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: 'devoted', updates: 0 };
 }
 
 /** What a holder starts with (`ensureDynamic`). */

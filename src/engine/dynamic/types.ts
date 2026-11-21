@@ -170,8 +170,6 @@ export interface PracticeStyleEntry {
   regardSpeed: RegardSpeed;
   regardFloor: number;
   regardFactor: number;
-  /** The aftermath kinds this style leans toward. */
-  aftermathBias: AftermathKind[];
   likesRegion?: RegionRank[];
   despisesRegion?: RegionRank[];
 }
@@ -240,14 +238,15 @@ export interface PositionRegionEntry { id: string; rank: RegionRank; label: stri
 
 /**
  * How likely an aftermath is for a holder (R15). `base` is the starting weight (0 = never picked by the exit: `successor` is a squad
- * reaction). `styles` adds per style (primary ×1, secondary ×0.5), `values` per value axis she holds; `regard` (by band id), `frames`, `sworn`
+ * reaction). `styles` adds per style (primary ×1, secondary ×0.5) and is the only place a style's pull on an aftermath is written; `values` adds
+ * per value axis, for the side she holds it on (`high`: above 0, `low`: below 0; one side may count and the other not); `regard` (by band id), `frames`, `sworn`
  * and `command` multiply the sum. `needsCompromat` and `needsCommand` are conditions (blackmail needs compromat; `command_kept` is forced
  * while she holds the command). `mild` marks the end of the table a clean exit picks from.
  */
 export interface AftermathWeights {
   base: number;
   styles?: Partial<Record<ProfileStyle, number>>;
-  values?: Record<string, number>;
+  values?: Record<string, { high?: number; low?: number }>;
   regard?: Record<string, number>;
   frames?: Partial<Record<Frame, number>>;
   sworn?: number;

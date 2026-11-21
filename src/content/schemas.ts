@@ -2759,7 +2759,6 @@ export const PracticeStyleSchema = BaseEntrySchema.extend({
   regardSpeed: z.enum(REGARD_SPEEDS),
   regardFloor: int.min(0).max(100),
   regardFactor: unit(0, 3),
-  aftermathBias: z.array(aftermathKind),
   likesRegion: z.array(z.enum(REGION_RANKS)).optional(),
   despisesRegion: z.array(z.enum(REGION_RANKS)).optional(),
 }).strict();
@@ -2863,10 +2862,13 @@ const aftermathEffect = z.discriminatedUnion('type', [
 ]);
 
 const multiplier = z.number().min(0).max(5);
+/** A value axis runs from low to high: the weight a side adds when she holds the axis on that side (at least one side). */
+const valueSides = z.object({ high: z.number().min(0).max(20).optional(), low: z.number().min(0).max(20).optional() }).strict()
+  .refine((v) => v.high !== undefined || v.low !== undefined, { message: 'a value weight names a side: high or low' });
 export const AftermathWeightsSchema = z.object({
   base: z.number().min(0).max(20),
   styles: z.record(profileStyle, z.number().min(0).max(20)).optional(),
-  values: z.record(z.enum(VALUE_AXES), z.number().min(0).max(20)).optional(),
+  values: z.record(z.enum(VALUE_AXES), valueSides).optional(),
   regard: z.record(str, multiplier).optional(),
   frames: z.record(frameEnum, multiplier).optional(),
   sworn: multiplier.optional(),

@@ -337,11 +337,12 @@ export function validateIntents(
       if (text === '') continue;
       intent.overrideId = e.overrideId;
       intent.text = text;
-    } else if (type === 'compromise_reached' && (typeof e.claimId === 'string' || typeof e.exitId === 'string')) {
+    } else if (type === 'compromise_reached' && ctx.dynamic !== undefined
+      && ((typeof e.claimId === 'string' && ctx.dynamic.claims.includes(e.claimId)) || (typeof e.exitId === 'string' && ctx.dynamic.exits.includes(e.exitId)))) {
       // P15: a compromise settles one of her open claims or an exit she was offered; only an id it was shown, and only the commander reaches it
-      const claim = typeof e.claimId === 'string' && (ctx.dynamic?.claims ?? []).includes(e.claimId) ? e.claimId : undefined;
-      const exit = typeof e.exitId === 'string' && (ctx.dynamic?.exits ?? []).includes(e.exitId) ? e.exitId : undefined;
-      if (actor !== 'commander' || (claim === undefined && exit === undefined)) continue;
+      const claim = typeof e.claimId === 'string' && ctx.dynamic.claims.includes(e.claimId) ? e.claimId : undefined;
+      const exit = typeof e.exitId === 'string' && ctx.dynamic.exits.includes(e.exitId) ? e.exitId : undefined;
+      if (actor !== 'commander') continue;
       if (claim !== undefined) intent.claimId = claim;
       if (exit !== undefined) intent.exitId = exit;
       if (typeof e.text === 'string') intent.text = e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim();

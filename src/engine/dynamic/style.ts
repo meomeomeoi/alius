@@ -82,7 +82,7 @@ export function surfaceHolds(state: CampaignState, reg: Registries, unitId: stri
       return scene !== undefined && inScene(state, unitId) && trains(reg, scene.activityId);
     case 'praised_or_ignored': {
       const contact = state.relations[unitId]?.contactDay;
-      return contact !== undefined && state.day - contact >= S.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || (contact !== undefined && state.day - contact >= S.ignoredDays);
     }
     case 'crime_mentioned':
       return state.dynamic?.noted?.crimeDay === state.day;
@@ -138,7 +138,7 @@ export function defaultExpectation(state: CampaignState, reg: Registries, moment
 
 /**
  * After every action: notes what the surfacing reads and no state keeps, from the events (the commander's endurance gained, the crime revealed
- * in an intents report). Writes only while the dynamic is on; draws nothing.
+ * or the commander praised, or agreed with, in an intents report). Writes only while the dynamic is on; draws nothing.
  */
 export function noteEvents(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, events: readonly EngineEvent[]): EngineEvent[] {
   if (draft.dynamic === undefined || !dynamicOn(draft, ctx.registries)) return [];
@@ -146,6 +146,7 @@ export function noteEvents(draft: CampaignState, ctx: Pick<EngineCtx, 'registrie
   for (const e of events) {
     if (e.type === 'endurance_gained') noted()!.enduranceDay = draft.day;
     if (e.type === 'intents_applied' && Array.isArray(e.landed) && e.landed.includes('crime_revealed')) noted()!.crimeDay = draft.day;
+    if (e.type === 'intents_applied' && Array.isArray(e.landed) && (e.landed.includes('praised') || e.landed.includes('opinion_agreed'))) noted()!.praisedDay = draft.day;
   }
   return [];
 }

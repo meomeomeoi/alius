@@ -180,7 +180,7 @@ export function readMoments(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
     const rel = dynamicOf(draft, unitId);
     if (unit === undefined || rel === undefined || !isLiving(unit) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
-    const region = updateReading(rel, { response: e.responseType as ResponseType, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
+    const region = updateReading(rel, { response: e.responseType as ResponseType, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx.registries), unit.insight ?? 'mid').region;
     if (region !== undefined) out.push({ type: 'position_shifted', unitId, from: region.from, to: region.to });
   }
   return out;

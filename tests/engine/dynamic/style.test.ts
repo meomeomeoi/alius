@@ -228,6 +228,24 @@ describe('the conditions, one pure check each', () => {
     expect(holds(s, 'praised_or_ignored')).toBe(true);
   });
 
+  it('praised_or_ignored reads both halves: praised or agreed with today, as well as ignored for three days', () => {
+    for (const landed of ['praised', 'opinion_agreed']) {
+      const s = world();
+      s.relations[ANN].contactDay = s.day; // she is not being ignored
+      expect(holds(s, 'praised_or_ignored'), landed).toBe(false);
+      noteEvents(s, { registries: reg }, [{ type: 'intents_applied', landed: [landed] }]);
+      expect(s.dynamic!.noted).toEqual({ praisedDay: s.day });
+      expect(holds(s, 'praised_or_ignored'), landed).toBe(true);
+      s.day += 1; // only today
+      s.relations[ANN].contactDay = s.day;
+      expect(holds(s, 'praised_or_ignored'), landed).toBe(false);
+    }
+    const off = world();
+    off.content = { enabled: [] };
+    noteEvents(off, { registries: reg }, [{ type: 'intents_applied', landed: ['praised'] }]);
+    expect(off.dynamic!.noted).toBeUndefined();
+  });
+
   it('crime_mentioned: the crime was revealed today; failed_run: the last expedition failed within two days', () => {
     const s = world();
     expect(holds(s, 'crime_mentioned')).toBe(false);
@@ -321,9 +339,9 @@ describe('what the surfacing notes from the events', () => {
   it('an endurance gain and a revealed crime are noted by day, only while the dynamic is on', () => {
     const s = world();
     noteEvents(s, { registries: reg }, [{ type: 'endurance_gained', physicsId: 'breath' }, { type: 'intents_applied', landed: ['praised', 'crime_revealed'] }]);
-    expect(s.dynamic!.noted).toEqual({ enduranceDay: s.day, crimeDay: s.day });
+    expect(s.dynamic!.noted).toEqual({ enduranceDay: s.day, crimeDay: s.day, praisedDay: s.day });
     const quiet = world();
-    noteEvents(quiet, { registries: reg }, [{ type: 'intents_applied', landed: ['praised'] }]);
+    noteEvents(quiet, { registries: reg }, [{ type: 'intents_applied', landed: ['protected'] }]);
     expect(quiet.dynamic!.noted).toBeUndefined();
     const off = world();
     delete off.dynamic;
