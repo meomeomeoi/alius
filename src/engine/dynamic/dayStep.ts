@@ -18,6 +18,7 @@ import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
 import { knowledgeDayStep } from './knowledge';
 import { milestonesDue } from './milestones';
+import { oversightDayStep } from './oversight';
 import { probeDayStep } from './probes';
 import { fadeDeclarations } from './reading';
 import { dynamicOf } from './state';
@@ -98,8 +99,11 @@ const knowledge: SubStep = (draft, ctx) => knowledgeDayStep(draft, ctx);
 /** 9. Aftermaths (Task 30): a stage whose day has come gives way to the next, the last one ends (and may chain, one draw). */
 const aftermaths: SubStep = (draft, ctx) => aftermathDayStep(draft, ctx);
 
+/** 10. Oversight (Task 34): the transfer threat's day, then the held and cancelled Leash requests are counted and the inquiry moves; on fill it acts. Draws nothing. */
+const oversight: SubStep = (draft, ctx) => oversightDayStep(draft, ctx);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

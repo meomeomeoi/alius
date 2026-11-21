@@ -29,7 +29,7 @@ import { EXIT_ROUTES, type ExitRoute } from './types';
 
 type Ctx = Pick<EngineCtx, 'registries'> & Partial<Pick<EngineCtx, 'rng'>>;
 
-/** What a forced exit needs done first, through its own path (the exit never runs it). The oversight request is chunk (i)'s: here it is accepted and costs the same. */
+/** What a forced exit needs done first, through its own path (the exit never runs it). */
 export const EXIT_MEANS = ['discipline', 'leash', 'transfer_request'] as const;
 export type ExitMeans = (typeof EXIT_MEANS)[number];
 
@@ -44,13 +44,13 @@ export interface ExitOpts {
 
 /**
  * Whether the means of a forced exit was done on her today, read from state (R15, review I1): a punishment is an application of hers dated today
- * (`discipline.applications`), the Leash a `done` entry of hers in the log. The oversight request is accepted as today (chunk (i) builds it).
+ * (`discipline.applications`), the Leash a `done` entry of hers in the log (also oversight's own, copied `cc: 'oversight'`), the oversight request one filed today (`oversight.requests`).
  * The exit never runs a means itself: that would go around the squad's vote, the warden's co-sign and the warnings.
  */
 export function meansDone(state: CampaignState, unitId: string, means: ExitMeans): boolean {
   if (means === 'discipline') return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day);
   if (means === 'leash') return leashLog(state).some((e) => e.unitId === unitId && e.day === state.day && e.outcome === 'done');
-  return true;
+  return (state.dynamic?.oversight?.requests ?? []).some((r) => r.unitId === unitId && r.day === state.day); // the oversight request, filed through `dynamic/request_transfer`
 }
 
 /** Whether the means done on her today was an enforcement of severity 3 or more (a bench, a brig): it wins the command back, as the Leash does (R15a). */

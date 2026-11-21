@@ -90,7 +90,7 @@ export function checkLeash(state: CampaignState, _reg: Registries, kind: LeashKi
   return null;
 }
 
-function nextNo(draft: CampaignState): number {
+export function nextNo(draft: CampaignState): number {
   const n = (draft.leash.seq ?? Math.max(0, ...leashLog(draft).map((e) => e.no))) + 1;
   draft.leash.seq = n;
   return n;

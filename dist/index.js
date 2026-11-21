@@ -8222,6 +8222,8 @@ var ClockSchema = BaseEntrySchema.extend({
   repeat: external_exports.boolean().optional(),
   /** P8: the entry exists only while some world choice enables this family. */
   family: str.optional(),
+  /** P15: the engine makes this clock up when it needs it (the oversight inquiry): the world does not seed it and the director never moves it. */
+  engine: external_exports.literal(true).optional(),
   contentTags
 }).superRefine((c, ctx2) => {
   if (c.startFilled >= c.segments) ctx2.addIssue({ code: "custom", path: ["startFilled"], message: "startFilled must be below segments" });
@@ -11096,7 +11098,7 @@ function seedWorld(draft, reg) {
   const world = draft.world;
   if (world.seeded === true) return [];
   for (const def of reg.clocks.values()) {
-    if (world.clocks.some((c) => c.id === def.id) || !familyEnabled(draft, reg, def)) continue;
+    if (world.clocks.some((c) => c.id === def.id) || def.engine === true || !familyEnabled(draft, reg, def)) continue;
     const clock = {
       id: String(def.id),
       label: String(def.label),
@@ -15689,6 +15691,20 @@ function injureCommander(draft, days) {
   return [{ type: "commander_injured", days, until }];
 }
 
+// src/engine/dynamic/cover.ts
+var coverOf = (frame) => frame === "role" ? TUNING.dynamic.cover.role : frame === "rule" ? TUNING.dynamic.cover.rule : 0;
+function coverMult(state, reg) {
+  if (!dynamicOn(state, reg)) return 1;
+  let best = 0;
+  for (const u of state.squad) {
+    const dyn = u.kind === "named" && isLiving(u) ? dynamicOf(state, u.id) : void 0;
+    if (dyn === void 0) continue;
+    const base = coverOf(dyn.frame);
+    best = Math.max(best, styleOf(u)?.primary === "cruel" ? base * TUNING.dynamic.cover.cruelHalf : base);
+  }
+  return 1 - best;
+}
+
 // src/engine/power/outside.ts
 function outsideActive(state) {
   if (!leaderOf(state)) return false;
@@ -18196,8 +18212,8 @@ function runningStage(state, reg, unitId) {
   const a = dynamicOf(state, unitId)?.aftermath;
   if (a === void 0) return void 0;
   const row3 = [...reg.aftermaths.values()].find((r) => r.kind === a.kind);
-  const stage = row3?.stages[a.stage];
-  return stage === void 0 ? void 0 : { stage, startDay: (a.stageUntil ?? state.day) - stage.days };
+  const stage2 = row3?.stages[a.stage];
+  return stage2 === void 0 ? void 0 : { stage: stage2, startDay: (a.stageUntil ?? state.day) - stage2.days };
 }
 var hasEffect2 = (effects2, type) => effects2.some((e) => e.type === type);
 function sabotagesVotes(state, reg, unitId) {
@@ -18508,8 +18524,8 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
       return [];
   }
 }
-function enterStage(draft, ctx2, unitId, row3, stage) {
-  return (row3.stages[stage]?.effects ?? []).flatMap((fx2) => runAftermathEffect(draft, ctx2, unitId, fx2));
+function enterStage(draft, ctx2, unitId, row3, stage2) {
+  return (row3.stages[stage2]?.effects ?? []).flatMap((fx2) => runAftermathEffect(draft, ctx2, unitId, fx2));
 }
 function endAftermath(draft, unitId, reason) {
   const dyn = dynamicOf(draft, unitId);
@@ -18688,7 +18704,7 @@ var EXIT_MEANS = ["discipline", "leash", "transfer_request"];
 function meansDone(state, unitId, means) {
   if (means === "discipline") return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day);
   if (means === "leash") return leashLog(state).some((e) => e.unitId === unitId && e.day === state.day && e.outcome === "done");
-  return true;
+  return (state.dynamic?.oversight?.requests ?? []).some((r) => r.unitId === unitId && r.day === state.day);
 }
 function heavyEnforcement(state, reg, unitId) {
   return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day && Number(punishmentFor(reg, a.measure)?.severity ?? 0) >= 3);
@@ -20641,7 +20657,7 @@ function allies(state) {
 function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp16(ls.intrigue.suspicion + noise2, 0, 100);
+  ls.intrigue.suspicion = clamp16(ls.intrigue.suspicion + noise2 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
@@ -21000,7 +21016,7 @@ function holdsDynamic(state, unitId) {
   const rel = state.relations[unitId]?.dynamic;
   if (rel !== void 0 && (rel.domains.length > 0 || rel.aftermath !== void 0 || rel.probes.pending !== void 0 || rel.leashBlock !== void 0)) return true;
   if (x === void 0) return false;
-  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.open.exits?.some((e) => e.unitId === unitId) === true || x.queue.includes(unitId) || x.override?.unitId === unitId || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row3) => row3[unitId] !== void 0);
+  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.open.exits?.some((e) => e.unitId === unitId) === true || x.queue.includes(unitId) || x.override?.unitId === unitId || x.oversight?.threat?.unitId === unitId || x.oversight?.holderId === unitId || x.oversight?.requests?.some((r) => r.unitId === unitId) === true || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row3) => row3[unitId] !== void 0);
 }
 function forgetDynamic(draft, unitId) {
   const events = [];
@@ -21008,7 +21024,7 @@ function forgetDynamic(draft, unitId) {
   if (x !== void 0) {
     x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
     x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
-    x.open.offers = x.open.offers.filter((o) => o.unitId !== unitId);
+    x.open.offers = x.open.offers.filter((o2) => o2.unitId !== unitId);
     if (x.open.returnOffer?.unitId === unitId) delete x.open.returnOffer;
     if (x.open.exits !== void 0) x.open.exits = x.open.exits.filter((e) => e.unitId !== unitId);
     delete x.knowledge[unitId];
@@ -21018,6 +21034,14 @@ function forgetDynamic(draft, unitId) {
     }
     x.queue = x.queue.filter((id) => id !== unitId);
     if (x.override?.unitId === unitId) delete x.override;
+    const o = x.oversight;
+    if (o !== void 0) {
+      if (o.threat?.unitId === unitId) delete o.threat;
+      if (o.holderId === unitId) delete o.holderId;
+      if (o.requests !== void 0) o.requests = o.requests.filter((r) => r.unitId !== unitId);
+      if (o.requests?.length === 0) delete o.requests;
+      if (o.pass?.unitId === unitId) delete o.pass;
+    }
   }
   const rel = draft.relations[unitId]?.dynamic;
   if (rel !== void 0) {
@@ -23585,7 +23609,7 @@ function ambushFor(state, regionId) {
 }
 function oversightGain(state, reg, strength) {
   const scrutiny = worldEffects(state, reg, "oversight_scrutiny").reduce((m, e) => m * e.mult, 1);
-  return Math.round(T2().oversightBase * strength * (1 - 0.1 * (socialRank(state, "cunning") - 1)) * scrutiny);
+  return Math.round(T2().oversightBase * strength * (1 - 0.1 * (socialRank(state, "cunning") - 1)) * scrutiny * coverMult(state, reg));
 }
 function sabotage(draft, x) {
   const upgrade = draft.base.upgrades?.find((u) => u.facilityId === x.refId);
@@ -27219,7 +27243,7 @@ function leak(draft, ctx2, d) {
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
   addFact(draft, { about: ["commander"], text: "The commander sold intel to a rival corporation, and the rival has made it public.", tags: ["debts"], importance: 5, day: draft.day, knownBy: ["*"] });
-  d.oversightSuspicion = clamp33(d.oversightSuspicion + 25, 0, 100);
+  d.oversightSuspicion = clamp33(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
   d.ended = "leaked";
   events.push({ type: "handler_leak" });
   return events;
@@ -33657,7 +33681,7 @@ var T4 = TUNING.stimuli;
 var WAYS = ["avoid", "sniff", "inhale", "nuzzle", "ordered", "secret", "taste"];
 var SEEKING = /* @__PURE__ */ new Set(["sniff", "inhale", "nuzzle", "ordered", "secret", "taste"]);
 var rowOf2 = (state, kind) => state.commander.stimuli?.[kind];
-var stageIndex = (stage) => STAGES.indexOf(stage);
+var stageIndex = (stage2) => STAGES.indexOf(stage2);
 var stageOf = (seek) => STAGES[T4.stages.filter((b) => seek >= b).length];
 function inhaleZone(band2, tolerance) {
   const b = BAND_INDEX[band2];
@@ -34569,6 +34593,129 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
   return [{ type: "pastime_set", unitId: unit3.id, pastimeId }];
 });
 
+// src/engine/dynamic/oversight.ts
+var OVERSIGHT_CLOCK = "oversight_inquiry";
+var THREAD = "oversight_inquiry";
+var OVERSIGHT_ACTS = ["reprimand", "transfer_threat", "forced_leash"];
+var clamp39 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var stage = (s, extra = {}) => ({ type: "oversight_inquiry", stage: s, ...extra });
+function oversightActOf(state, holderId) {
+  return OVERSIGHT_ACTS[Math.min(OVERSIGHT_ACTS.length - 1, Math.floor(dynamicRoll(state, holderId, "oversight_acts") * OVERSIGHT_ACTS.length))];
+}
+function ensureClock(draft, reg) {
+  const have = clockById(draft, OVERSIGHT_CLOCK);
+  if (have !== void 0) return have;
+  const def = reg.clocks.get(OVERSIGHT_CLOCK);
+  if (def === void 0) return void 0;
+  addClock(draft, { id: OVERSIGHT_CLOCK, label: String(def.label), segments: def.segments, filled: def.startFilled, visibleToPlayer: def.visibleToPlayer === true, engine: true });
+  return clockById(draft, OVERSIGHT_CLOCK);
+}
+function openThread(draft, reg) {
+  const title3 = String(reg.clocks.get(OVERSIGHT_CLOCK)?.label ?? "Oversight inquiry");
+  const have = draft.world.threads.find((t) => t.id === THREAD);
+  if (have !== void 0) {
+    if (have.status === "open") return false;
+    have.status = "open";
+    return true;
+  }
+  draft.world.threads.push({ id: THREAD, title: title3, status: "open", flags: [], relatedUnits: [], relatedRegions: [], createdDay: draft.day });
+  return true;
+}
+var NOTICE_TEXT = {
+  3: "AUTHOR TO WRITE: Oversight has started asking why so many Leash requests from the commander's device were never filed.",
+  5: "AUTHOR TO WRITE: Oversight has opened a formal inquiry into the commander's cancelled Leash requests."
+};
+function addStress3(draft, unitId, amount) {
+  const u = draft.squad.find((x) => x.id === unitId);
+  if (u === void 0 || amount === 0) return [];
+  const next = clamp39(u.stress + amount, 0, 100);
+  const delta = next - u.stress;
+  u.stress = next;
+  return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
+}
+function oversightActs(draft, ctx2, holderId) {
+  const dyn = dynamicOf(draft, holderId);
+  const unit3 = draft.squad.find((u) => u.id === holderId);
+  if (dyn === void 0 || unit3 === void 0 || !isLiving(unit3)) return [];
+  const O = TUNING.dynamic.oversight;
+  const act = oversightActOf(draft, holderId);
+  const events = [stage(act, { unitId: holderId })];
+  if (act === "reprimand") {
+    events.push(...addStress3(draft, holderId, O.reprimandStress), ...addHold(draft, ctx2, holderId, -O.reprimandHold, "oversight", { practice: false }));
+  } else if (act === "transfer_threat") {
+    (draft.dynamic.oversight ??= { blocked: [] }).threat = { unitId: holderId, untilDay: draft.day + O.threatDays };
+  } else {
+    const no = nextNo(draft);
+    draft.leash.log.push({ no, unitId: holderId, kind: "compel", day: draft.day, context: "pda", outcome: "done", cc: "oversight" });
+    if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
+    const rel = draft.relations[holderId];
+    if (rel !== void 0 && !rel.flags.includes("leashed")) rel.flags.push("leashed");
+    events.push({ type: "leash_used", kind: "compel", unitId: holderId, no, outcome: "done" }, ...addStress3(draft, holderId, TUNING.leash.compel.stress));
+  }
+  return events;
+}
+function threatDayStep(draft, ctx2) {
+  const o = draft.dynamic?.oversight;
+  const t = o?.threat;
+  if (o === void 0 || t === void 0) return [];
+  const unit3 = draft.squad.find((u) => u.id === t.unitId);
+  if (unit3 === void 0 || !isLiving(unit3)) {
+    delete o.threat;
+    return [];
+  }
+  if (draft.day < t.untilDay) return [];
+  if (leashBlockOf(draft, ctx2.registries) !== t.unitId) {
+    delete o.threat;
+    return [stage("lifted", { unitId: t.unitId })];
+  }
+  const busy = draft.scene?.participants.includes(t.unitId) || draft.combat?.combatants.some((c) => c.unitId === t.unitId) || draft.expedition?.party.includes(t.unitId);
+  if (busy) return [];
+  const events = removeFromService(draft, t.unitId, "reassigned", ctx2);
+  delete o.threat;
+  return [stage("reassigned", { unitId: t.unitId }), ...events];
+}
+function oversightDayStep(draft, ctx2) {
+  const x = draft.dynamic;
+  const o = x?.oversight;
+  if (x === void 0 || o === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
+  const O = TUNING.dynamic.oversight;
+  const events = threatDayStep(draft, ctx2);
+  o.requests = (o.requests ?? []).filter((r) => draft.day - r.day <= 3);
+  if (o.requests.length === 0) delete o.requests;
+  const span = Math.max(1, Math.round(O.spanDays * coverMult(draft, ctx2.registries)));
+  o.blocked = o.blocked.filter((d) => draft.day - d <= span);
+  if (o.blocked.length < O.blockedMax) return events;
+  o.blocked = [];
+  const clock = ensureClock(draft, ctx2.registries);
+  if (clock === void 0) return events;
+  const holder2 = leashBlockOf(draft, ctx2.registries) ?? o.holderId;
+  if (holder2 !== null && holder2 !== void 0) o.holderId = holder2;
+  const opened = openThread(draft, ctx2.registries);
+  if (opened) o.threadId = THREAD;
+  events.push(...advanceClock(draft, ctx2, OVERSIGHT_CLOCK, 1, "oversight"));
+  if (opened) events.push(stage("opened"));
+  const filled = clockById(draft, OVERSIGHT_CLOCK);
+  if (filled.filled >= filled.segments) {
+    if (o.holderId !== void 0) events.push(...oversightActs(draft, ctx2, o.holderId));
+    filled.filled = 0;
+    delete filled.filledDay;
+    const thread = draft.world.threads.find((t) => t.id === THREAD);
+    if (thread !== void 0) thread.status = "resolved";
+    return events;
+  }
+  if (O.notices.includes(filled.filled) && NOTICE_TEXT[filled.filled] !== void 0) {
+    events.push(stage("notice", { filled: filled.filled }));
+    addFact(draft, { about: [], text: NOTICE_TEXT[filled.filled], tags: ["world", "oversight_inquiry"], importance: 3, day: draft.day, knownBy: ["*"] });
+  }
+  return events;
+}
+function requestTransfer(draft, unitId) {
+  const o = draft.dynamic.oversight ??= { blocked: [] };
+  const requests = o.requests ??= [];
+  if (!requests.some((r) => r.unitId === unitId && r.day === draft.day)) requests.push({ unitId, day: draft.day });
+  return [stage("transfer_requested", { unitId })];
+}
+
 // src/engine/dynamic/dayStep.ts
 var holdersOf2 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u) && dynamicOf(draft, u.id) !== void 0).map((u) => u.id);
 var decay3 = (draft, ctx2, holders2) => {
@@ -34620,7 +34767,8 @@ var milestones = (draft, ctx2, holders2) => holders2.flatMap((id) => milestonesD
 var claims = (draft, ctx2) => claimsDue(draft, ctx2);
 var knowledge = (draft, ctx2) => knowledgeDayStep(draft, ctx2);
 var aftermaths = (draft, ctx2) => aftermathDayStep(draft, ctx2);
-var STEPS = [decay3, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths];
+var oversight = (draft, ctx2) => oversightDayStep(draft, ctx2);
+var STEPS = [decay3, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight];
 function dynamicDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   const holders2 = holdersOf2(draft);
@@ -35065,6 +35213,14 @@ registerAction("dynamic/bypass_leash", (draft, payload, ctx2) => {
   if (p.allyId !== void 0 && typeof p.allyId !== "string") throw new Error("allyId must be a unit id.");
   if (!dynamicOn(draft, ctx2.registries)) throw new Error("The dynamic is off.");
   return bypassLeash(draft, ctx2, { route: p.route, kind: p.kind, unitId: p.unitId, ...p.allyId !== void 0 ? { allyId: p.allyId } : {} });
+});
+registerAction("dynamic/request_transfer", (draft, payload, ctx2) => {
+  const p = payload ?? {};
+  const unit3 = namedUnit3(draft, p.unitId, "dynamic/request_transfer");
+  if (!dynamicOn(draft, ctx2.registries)) throw new Error("The dynamic is off.");
+  const dyn = dynamicOf(draft, unit3.id);
+  if (dyn === void 0 || frameRank(dyn.frame) < frameRank("play")) throw new Error(`${unit3.displayName} holds nothing over the commander that oversight could move her from.`);
+  return requestTransfer(draft, unit3.id);
 });
 
 // src/llm/callTypes.ts
@@ -37833,9 +37989,9 @@ function dynamicDirectives(state, reg, present2) {
 function aftermathDirective2(state, reg, unit3) {
   const a = dynamicOf(state, unit3.id)?.aftermath;
   const row3 = a === void 0 ? void 0 : aftermathRowOf(reg, a.kind);
-  const stage = a === void 0 ? void 0 : row3?.stages[a.stage];
-  if (stage === void 0) return null;
-  return { id: `${AFTERMATH_PREFIX}${unit3.id}`, expiresAfter: "scene", text: `${sentence2(stage.directive.replaceAll("{name}", unit3.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
+  const stage2 = a === void 0 ? void 0 : row3?.stages[a.stage];
+  if (stage2 === void 0) return null;
+  return { id: `${AFTERMATH_PREFIX}${unit3.id}`, expiresAfter: "scene", text: `${sentence2(stage2.directive.replaceAll("{name}", unit3.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
 }
 var REACTION_LINE = {
   drawn: (h2) => `AUTHOR TO WRITE: She is drawn to it: she watches ${h2} with interest and may ask about it.`,
@@ -39837,6 +39993,28 @@ function wardenNotice(e, state, reg) {
       return e.outcome === "cleared" ? { kind: "info", title: "OVERSIGHT", text: "AUTHOR TO WRITE: The investigation is closed. The commander is cleared and remains under watch." } : { kind: "warn", title: "OVERSIGHT", text: "AUTHOR TO WRITE: The investigation is closed. The commander is convicted.", cutIn: true };
     case "commander_terminated":
       return { kind: "warn", title: "THE CONTROLLER", text: "AUTHOR TO WRITE: The controller is triggered. The commander is dead.", cutIn: true };
+    default:
+      return null;
+  }
+}
+
+// src/ui/dynamic/notices.ts
+function oversightNotice(e, state) {
+  if (e.type !== "oversight_inquiry") return null;
+  const name = () => state.squad.find((u) => u.id === e.unitId)?.displayName ?? "The soldier";
+  switch (e.stage) {
+    case "notice":
+      return e.filled === 5 ? { kind: "warn", title: "OVERSIGHT", text: "AUTHOR TO WRITE: A formal inquiry into the commander's cancelled Leash requests is under way.", cutIn: true } : { kind: "info", title: "OVERSIGHT", text: "AUTHOR TO WRITE: Oversight has noticed how many Leash requests from the commander's device were never filed." };
+    case "reprimand":
+      return { kind: "warn", title: "OVERSIGHT", text: `AUTHOR TO WRITE: Oversight reprimands ${name()} for the requests held on the commander's device.` };
+    case "transfer_threat":
+      return { kind: "warn", title: "OVERSIGHT", text: `AUTHOR TO WRITE: Oversight threatens to transfer ${name()} unless the commander's Leash requests are released within the week.`, cutIn: true };
+    case "forced_leash":
+      return { kind: "warn", title: "OVERSIGHT", text: `AUTHOR TO WRITE: Oversight uses the controller on ${name()}. The Leash is theirs, not hers.`, cutIn: true };
+    case "reassigned":
+      return { kind: "warn", title: "OVERSIGHT", text: `AUTHOR TO WRITE: ${name()} is reassigned. She does not come back.`, cutIn: true };
+    case "lifted":
+      return { kind: "info", title: "OVERSIGHT", text: `AUTHOR TO WRITE: The threat of a transfer on ${name()} is withdrawn.` };
     default:
       return null;
   }
@@ -48139,7 +48317,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit2 = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
-var clamp39 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp40 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a2(seed) % n;
@@ -48163,7 +48341,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp39(v));
+    out.push(clamp40(v));
   }
   return out;
 }
@@ -50873,15 +51051,15 @@ function renderPlanStage(ctx2) {
     })
   );
   const caption = h("span", { class: "alius-hub-caption", "aria-hidden": "true" });
-  const stage = h("div", { class: "alius-hub-stage alius-hub-plan" }, svgLayers(reg, state, here), ...layers.values(), caption);
+  const stage2 = h("div", { class: "alius-hub-stage alius-hub-plan" }, svgLayers(reg, state, here), ...layers.values(), caption);
   const setFloor = (f) => {
-    stage.dataset.floor = f;
+    stage2.dataset.floor = f;
     caption.textContent = `CCP OUTPOST \xB7 ${FLOOR_NAME[f]} \xB7 NOT TO SCALE`;
     for (const [floor, layer] of layers) layer.hidden = floor !== f;
     for (const [floor, b] of buttons) b.setAttribute("aria-pressed", String(floor === f));
   };
   setFloor(ctx2.floor);
-  return { stage, floorBar, setFloor };
+  return { stage: stage2, floorBar, setFloor };
 }
 
 // src/ui/hub/hubScreen.ts
@@ -50919,9 +51097,9 @@ function cabinTitle(state, reg, cabinId) {
 function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const reg = ctx2.registries;
   const unitOf13 = (id) => state.squad.find((u) => u.id === id);
-  const { stage, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
+  const { stage: stage2, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
-  const frame = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage), floorBar, panelHost);
+  const frame = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
   const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
   const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
@@ -50963,7 +51141,7 @@ function failedBlock(ctx2, state) {
 function sideColumn(ctx2, state, readOnly) {
   const objective = currentObjective(state, ctx2.registries);
   const items = tonightItems(state, ctx2.registries);
-  const oversight = latestOversight(state);
+  const oversight2 = latestOversight(state);
   const block2 = readOnly ? "This campaign is read-only." : endSlotBlock(state);
   const slotName = state.slot.toUpperCase();
   const end = readOnly ? null : h("button", {
@@ -50976,7 +51154,7 @@ function sideColumn(ctx2, state, readOnly) {
       if (block2 === null) ctx2.onEndSlot();
     }
   }, `END ${slotName} \u25B8`);
-  const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : "";
+  const who = oversight2 ? state.squad.find((u) => u.id === oversight2.unitId)?.displayName ?? oversight2.unitId : "";
   const firstWeeks = h("div", { class: "alius-head-start-host" });
   ctx2.headStartCard?.(firstWeeks);
   const prologue = h("div", { class: "alius-onboarding-host" });
@@ -51021,7 +51199,7 @@ function sideColumn(ctx2, state, readOnly) {
     ),
     failedBlock(ctx2, state),
     renderVitalsStrip(state, ctx2.registries, { motion: !motionReduced(ctx2.settings()) }),
-    oversight ? oversightCard(ctx2, state, oversight.no, `${oversight.kind.toUpperCase()} ${who} \u2014 ${oversight.outcome}`) : null,
+    oversight2 ? oversightCard(ctx2, state, oversight2.no, `${oversight2.kind.toUpperCase()} ${who} \u2014 ${oversight2.outcome}`) : null,
     h(
       "div",
       { class: "alius-legend" },
@@ -54166,12 +54344,12 @@ function renderSceneScreen(host, ctx2) {
   }
   function placeSprites() {
     if (!spriteHost) return;
-    const stage = spriteHost.parentElement;
-    if (root.dataset.backdrop !== "image" || !stage || !log) {
+    const stage2 = spriteHost.parentElement;
+    if (root.dataset.backdrop !== "image" || !stage2 || !log) {
       spriteHost.style.bottom = "";
       return;
     }
-    const gap = Math.max(0, log.getBoundingClientRect().top - stage.getBoundingClientRect().bottom);
+    const gap = Math.max(0, log.getBoundingClientRect().top - stage2.getBoundingClientRect().bottom);
     spriteHost.style.bottom = `-${Math.round(gap + SPRITE_TUCK)}px`;
   }
   function attachPan() {
@@ -59674,6 +59852,13 @@ function createApp(st, deps) {
       toast("info", String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? "").replaceAll("{name}", name), { voice: VOICE_OF.dynamic, title: name });
       const root = document.getElementById("alius-shell");
       if (root) cutIn(root, "dynamic", (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
+    }
+    for (const e of events) {
+      const n = state ? oversightNotice(e, state) : null;
+      if (!n) continue;
+      toast(n.kind, n.text, { voice: VOICE_OF.warden_notice, title: n.title });
+      const root = document.getElementById("alius-shell");
+      if (n.cutIn && root) cutIn(root, "warden", n.title);
     }
     for (const e of events) {
       if (e.type !== "leash_blocked" || !state) continue;

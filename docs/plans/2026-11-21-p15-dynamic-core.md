@@ -1852,15 +1852,15 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `oversightDayStep(draft, ctx): EngineEvent[]`; `coverMult(state, reg): number`; `oversightActs(draft, ctx, holderId): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `three blocks within 14 days advance the clock by one and open the thread once`.
   - `notices at 3 and 5`.
   - `on fill oversight acts on her by hash`: reprimand, transfer threat (then `removeFromService(…, 'reassigned')` after 7 days if the block stands) or forced Leash (counts as the `force` exit).
   - `cover`: a `role` holder → ×0.8 on P13 suspicion and the debts gain; `rule` → ×0.65; a `cruel` holder at `rule` → ×0.825; no holder → ×1 and the P12/P13 suites unchanged.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/oversight.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R16 and R19.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): oversight's inquiry and the holder's cover`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/oversight.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R16 and R19.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): oversight's inquiry and the holder's cover`
 
 ---
 

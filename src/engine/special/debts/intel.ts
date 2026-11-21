@@ -5,6 +5,7 @@ import { isLiving } from '../../economy';
 import { fnv1a } from '../../hub';
 import { addFact, revealCrime } from '../../memory';
 import { postRumor, rumorPostedEvent } from '../../world/missions';
+import { coverMult } from '../../dynamic/cover';
 import { spineOf } from '../../world/spine';
 import type { CampaignState } from '../../state/types';
 import { TUNING } from '../../tuning';
@@ -85,7 +86,7 @@ function leak(draft: CampaignState, ctx: EngineCtx, d: DebtsState): EngineEvent[
     if (flags && !flags.includes('knows_debts')) flags.push('knows_debts');
   }
   addFact(draft, { about: ['commander'], text: 'The commander sold intel to a rival corporation, and the rival has made it public.', tags: ['debts'], importance: 5, day: draft.day, knownBy: ['*'] });
-  d.oversightSuspicion = clamp(d.oversightSuspicion + 25, 0, 100);
+  d.oversightSuspicion = clamp(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx.registries)), 0, 100); // P15: a holder's cover
   d.ended = 'leaked';
   events.push({ type: 'handler_leak' });
   return events;

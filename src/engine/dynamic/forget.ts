@@ -13,6 +13,7 @@ export function holdsDynamic(state: Pick<CampaignState, 'dynamic' | 'relations'>
   if (x === undefined) return false;
   return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId)
     || x.open.returnOffer?.unitId === unitId || x.open.exits?.some((e) => e.unitId === unitId) === true || x.queue.includes(unitId) || x.override?.unitId === unitId
+    || x.oversight?.threat?.unitId === unitId || x.oversight?.holderId === unitId || x.oversight?.requests?.some((r) => r.unitId === unitId) === true
     || x.knowledge[unitId] !== undefined || Object.values(x.knowledge).some((row) => row[unitId] !== undefined);
 }
 
@@ -38,6 +39,14 @@ export function forgetDynamic(draft: CampaignState, unitId: string): EngineEvent
     }
     x.queue = x.queue.filter((id) => id !== unitId);
     if (x.override?.unitId === unitId) delete x.override;
+    const o = x.oversight; // oversight's threat, requests and the block it was counting are hers
+    if (o !== undefined) {
+      if (o.threat?.unitId === unitId) delete o.threat;
+      if (o.holderId === unitId) delete o.holderId;
+      if (o.requests !== undefined) o.requests = o.requests.filter((r) => r.unitId !== unitId);
+      if (o.requests?.length === 0) delete o.requests;
+      if (o.pass?.unitId === unitId) delete o.pass;
+    }
   }
   const rel = draft.relations[unitId]?.dynamic;
   if (rel !== undefined) {

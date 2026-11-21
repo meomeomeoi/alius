@@ -1037,6 +1037,8 @@ export const ClockSchema = BaseEntrySchema.extend({
   repeat: z.boolean().optional(),
   /** P8: the entry exists only while some world choice enables this family. */
   family: str.optional(),
+  /** P15: the engine makes this clock up when it needs it (the oversight inquiry): the world does not seed it and the director never moves it. */
+  engine: z.literal(true).optional(),
   contentTags,
 }).superRefine((c, ctx) => {
   if (c.startFilled >= c.segments) ctx.addIssue({ code: 'custom', path: ['startFilled'], message: 'startFilled must be below segments' });

@@ -15,6 +15,7 @@ import { addDefiance } from './escalation';
 import { applyCommanderPunishment, painBurstId, pickPunishment } from './punish';
 import { leashswapOf, wardenOf } from './state';
 import { valuesOf } from '../development/profile';
+import { coverMult } from '../dynamic/cover';
 
 /**
  * Intrigue against the warden (P13 §4): the hidden suspicion clock, allies won in a scene and discovery. The suspicion value is the
@@ -39,7 +40,7 @@ export function allies(state: CampaignState): string[] {
 export function addSuspicion(draft: CampaignState, ctx: EngineCtx, noise: number, cause: string, opts: { punishmentId?: string } = {}): EngineEvent[] {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp(ls.intrigue.suspicion + noise, 0, 100);
+  ls.intrigue.suspicion = clamp(ls.intrigue.suspicion + noise * coverMult(draft, ctx.registries), 0, 100); // P15: a holder's cover takes some of the noise off
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx, cause, opts) : [];

@@ -1,3 +1,4 @@
+import { requestTransfer } from '../../../src/engine/dynamic/oversight';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { dynamicDirectives } from '../../../src/dynamic/directives';
@@ -166,6 +167,7 @@ describe('starting and ending', () => {
 
   it('a forced exit marks the aftermath forced', () => {
     const s = world('possessive');
+    requestTransfer(s, ANN); // the means, filed today
     exitDynamic(s, ctxOf(s, reg), ANN, 'force', { means: 'transfer_request' });
     expect(dyn(s).aftermath?.forced).toBe(true);
   });

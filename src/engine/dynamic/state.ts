@@ -148,6 +148,12 @@ export interface DynamicCampaign {
     threadId?: string;
     /** A bypass that was taken for one request (`bypass.ts`): that request (the unit it is on and its kind) is not held, once. */
     pass?: { unitId: string; kind: LeashKind };
+    /** The holder whose block the inquiry is about (set when it advances; oversight acts on her when it fills). */
+    holderId?: string;
+    /** Oversight's transfer threat on her: she has until `untilDay` to lift the block, else she is reassigned. */
+    threat?: { unitId: string; untilDay: number };
+    /** The transfer requests the commander filed (`dynamic/request_transfer`), the means of a forced exit; only today's count. */
+    requests?: Array<{ unitId: string; day: number }>;
   };
   /** The probe queue (R9): unit ids, first in line first. */
   queue: string[];

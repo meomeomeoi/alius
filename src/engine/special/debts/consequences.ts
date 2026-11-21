@@ -5,6 +5,7 @@ import { socialRank } from '../../social';
 import { applyWorldEffects } from '../../world/effects';
 import type { CampaignState } from '../../state/types';
 import { TUNING } from '../../tuning';
+import { coverMult } from '../../dynamic/cover';
 import type { IntelAnswer, IntelItem, Scheduled } from '../state';
 
 const T = () => TUNING.special.debts;
@@ -51,7 +52,7 @@ export function ambushFor(state: CampaignState, regionId: string): 0 | 1 | 2 {
  */
 export function oversightGain(state: CampaignState, reg: Registries, strength: number): number {
   const scrutiny = worldEffects(state, reg, 'oversight_scrutiny').reduce((m, e) => m * e.mult, 1);
-  return Math.round(T().oversightBase * strength * (1 - 0.1 * (socialRank(state, 'cunning') - 1)) * scrutiny);
+  return Math.round(T().oversightBase * strength * (1 - 0.1 * (socialRank(state, 'cunning') - 1)) * scrutiny * coverMult(state, reg)); // P15: a holder's cover
 }
 
 function sabotage(draft: CampaignState, x: Scheduled): void {

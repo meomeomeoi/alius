@@ -42,7 +42,7 @@ export function seedWorld(draft: CampaignState, reg: Registries): EngineEvent[] 
   const world: World = draft.world;
   if (world.seeded === true) return [];
   for (const def of reg.clocks.values()) {
-    if (world.clocks.some((c) => c.id === def.id) || !familyEnabled(draft, reg, def)) continue; // P8: a family clock only in a world that enables it
+    if (world.clocks.some((c) => c.id === def.id) || def.engine === true || !familyEnabled(draft, reg, def)) continue; // P8: a family clock only in a world that enables it
     const clock: Clock = {
       id: String(def.id), label: String(def.label), segments: def.segments as number, filled: def.startFilled as number,
       visibleToPlayer: def.visibleToPlayer === true,

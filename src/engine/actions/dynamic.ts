@@ -11,9 +11,11 @@ import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
 import { answerReturn, commandKeptEnforced, restoreCommandKept } from '../dynamic/aftermath';
 import { bypassLeash } from '../dynamic/bypass';
+import { requestTransfer } from '../dynamic/oversight';
 import { answerClaim } from '../dynamic/domains';
 import { registerEnforced, registerUndone } from '../discipline/record';
 import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
+import { frameRank } from '../blocking/state';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
@@ -331,4 +333,17 @@ registerAction('dynamic/bypass_leash', (draft, payload, ctx) => {
   if (p.allyId !== undefined && typeof p.allyId !== 'string') throw new Error('allyId must be a unit id.');
   if (!dynamicOn(draft, ctx.registries)) throw new Error('The dynamic is off.');
   return bypassLeash(draft, ctx, { route: p.route as (typeof BYPASS_ROUTES)[number], kind: p.kind, unitId: p.unitId, ...(p.allyId !== undefined ? { allyId: p.allyId } : {}) });
+});
+
+/**
+ * `dynamic/request_transfer { unitId }`: the commander files the oversight request to move her out, the means of a forced exit that spends no authorization
+ * (`dynamic/exit { route: 'force', means: 'transfer_request' }` reads it from the state, for today). Needs her dynamic at `play` or beyond. Draws nothing.
+ */
+registerAction('dynamic/request_transfer', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { unitId?: unknown };
+  const unit = namedUnit(draft, p.unitId, 'dynamic/request_transfer');
+  if (!dynamicOn(draft, ctx.registries)) throw new Error('The dynamic is off.');
+  const dyn = dynamicOf(draft, unit.id);
+  if (dyn === undefined || frameRank(dyn.frame) < frameRank('play')) throw new Error(`${unit.displayName} holds nothing over the commander that oversight could move her from.`);
+  return requestTransfer(draft, unit.id);
 });

@@ -371,8 +371,11 @@ describe('the routes', () => {
     expect(code).not.toMatch(/\b(applyPunishment|compel|checkPunish|suppress)\s*\(/);
   });
 
-  it('the transfer request is accepted as a means and costs the same (the oversight request is chunk (i)\'s)', () => {
-    const r = exit(world('role', 50, ['private_time']), { route: 'force', means: 'transfer_request' });
+  it('the transfer request is a means once it is filed (today): the exit costs two steps more', () => {
+    const s = world('role', 50, ['private_time']);
+    expect(errors(exit(s, { route: 'force', means: 'transfer_request' }).events)).not.toEqual([]); // nothing filed yet
+    const filed = run(s, reg, { type: 'dynamic/request_transfer', payload: { unitId: ANN } }).state;
+    const r = run(filed, reg, { type: 'dynamic/exit', payload: { unitId: ANN, route: 'force', means: 'transfer_request' } });
     expect(errors(r.events)).toEqual([]);
     expect(exitEvent(r.events)).toMatchObject({ severity: 'extreme', force: true, means: 'transfer_request' });
   });

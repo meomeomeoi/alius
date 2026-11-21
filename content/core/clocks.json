@@ -104,5 +104,14 @@
         "amount": -5
       }
     ]
+  },
+  {
+    "id": "oversight_inquiry",
+    "label": "Oversight inquiry",
+    "segments": 6,
+    "startFilled": 0,
+    "visibleToPlayer": true,
+    "engine": true,
+    "onFill": []
   }
 ]

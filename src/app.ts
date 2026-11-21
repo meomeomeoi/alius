@@ -88,6 +88,7 @@ import type { GenerationUi } from './ui/generation/surface';
 import { generationBadge } from './ui/shell/generationsSection';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
+import { oversightNotice } from './ui/dynamic/notices';
 import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
@@ -2102,6 +2103,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       toast('info', String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? '').replaceAll('{name}', name), { voice: VOICE_OF.dynamic, title: name });
       const root = document.getElementById('alius-shell');
       if (root) cutIn(root, 'dynamic', (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
+    }
+    // P15: oversight's inquiry into the cancelled Leash requests speaks in the corporation's voice
+    for (const e of events) {
+      const n = state ? oversightNotice(e, state) : null;
+      if (!n) continue;
+      toast(n.kind, n.text, { voice: VOICE_OF.warden_notice, title: n.title });
+      const root = document.getElementById('alius-shell');
+      if (n.cutIn && root) cutIn(root, 'warden', n.title);
     }
     // P15: a Leash request a holder held is her notice (nothing is spent; the chance she was given is hidden)
     for (const e of events) {
