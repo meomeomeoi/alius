@@ -62,6 +62,7 @@ describe('milestonesDue', () => {
 
   it('first_protocol books her next free evening, even with two roll bookings this week', () => {
     const s = world('play', 45);
+    dyn(s).domains.push({ id: 'device', since: 1 }); // the device floor: she may book (review M5: a milestone booking passes the gates of a booking)
     const mk = (id: string): Booking => ({ id, unitId: ANN, kindId: 'evening_with_me', day: 38, slot: 'evening', status: 'played', source: 'roll', made: 37 });
     s.personal = { ...(s.personal ?? {}), bookings: [mk('bk90'), mk('bk91')] } as CampaignState['personal'];
     const events = due(s);
@@ -74,9 +75,40 @@ describe('milestonesDue', () => {
 
   it('the next free evening skips an evening that is taken', () => {
     const s = world('play', 45);
+    dyn(s).domains.push({ id: 'device', since: 1 });
     s.personal = { bookings: [{ id: 'bk90', unitId: BEA, kindId: 'evening_with_me', day: 40, slot: 'evening', status: 'booked', source: 'roll', made: 39 }] } as CampaignState['personal'];
     due(s);
     expect(bookings(s).find((b) => b.source === 'milestone')).toMatchObject({ day: 41, slot: 'evening' });
+  });
+
+  it('a milestone booking passes the gates of any booking: access, restrictions, one open at a time, the keeper\'s consent (review M5); the offer itself still opens', () => {
+    const base = (): CampaignState => { const s = world('play', 45); dyn(s).domains.push({ id: 'device', since: 1 }); return s; };
+    const made = (s: CampaignState) => bookings(s).filter((b) => b.source === 'milestone');
+    const offered = (s: CampaignState) => { due(s); expect(open(s)[0]).toMatchObject({ milestoneId: 'first_protocol', form: 'booking' }); };
+    const ok = base();
+    offered(ok);
+    expect(made(ok)).toHaveLength(1);
+    // no access to the device: no booking
+    const noDevice = world('play', 45);
+    offered(noDevice);
+    expect(made(noDevice)).toEqual([]);
+    // in the brig (confined): she cannot be met, so nothing is booked
+    const confined = base();
+    disciplineOf(confined).restrictions.push({ unitId: ANN, kind: 'confined', untilDay: confined.day + 3 });
+    offered(confined);
+    expect(made(confined)).toEqual([]);
+    // she has a booking open already
+    const busy = base();
+    busy.personal = { ...(busy.personal ?? {}), bookings: [{ id: 'bk90', unitId: ANN, kindId: 'evening_with_me', day: 43, slot: 'evening', status: 'booked', source: 'roll', made: 39 }] } as CampaignState['personal'];
+    offered(busy);
+    expect(made(busy)).toEqual([]);
+    // another holder keeps the say over the commander's time and is possessive: refused, with a fact for both
+    const kept = base();
+    unitOf(kept, BEA).bond = { ...unitOf(kept, ANN).bond!, practice: { ...unitOf(kept, ANN).bond!.practice!, style: { primary: 'possessive' } } };
+    kept.relations[BEA].dynamic = { ...blankDynamic(kept.day), frame: 'role', hold: 70, domains: [{ id: 'others', since: 1 }] };
+    offered(kept);
+    expect(made(kept)).toEqual([]);
+    expect(kept.memory.facts.some((f) => f.tags.includes('booking_consent') && f.about.includes(ANN) && f.about.includes(BEA))).toBe(true);
   });
 
   it('first_night_held needs restraint >= 1 and stays closed at track 0', () => {

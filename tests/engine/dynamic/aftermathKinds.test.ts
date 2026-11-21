@@ -246,6 +246,23 @@ describe('command_kept', () => {
   });
 });
 
+describe('with the practice categories turned off mid-campaign (review M4)', () => {
+  it('the struggle, the vote sabotage and the struggle count go quiet', () => {
+    const s = struggle();
+    const was = ballotFor(s, reg, unitOf(s, ANN), 'upgrade', 'workshop');
+    expect(was.vote).toBe('against');
+    s.content = { enabled: [] }; // the dynamic is off: the block stays, nothing of it answers
+    expect(ballotFor(s, reg, unitOf(s, ANN), 'upgrade', 'workshop').vote).toBe('for');
+    const against = { unitId: ANN, vote: 'against' as const, weight: 2, score: -1, term: 'values' as const };
+    expect(countStruggleVote(s, { registries: reg }, { passed: true, ballots: [against] })).toEqual([]);
+    expect(dyn(s).aftermath?.struggleWins ?? 0).toBe(0);
+    expect(commandStruggleOf(s, reg)).toBeNull();
+    // on again: as before
+    s.content = { enabled: ['restraint'] };
+    expect(commandStruggleOf(s, reg)).toEqual({ unitId: ANN, wins: 0 });
+  });
+});
+
 describe('return_offer', () => {
   const offer = (primary: ProfileStyle) => {
     const s = left(primary);

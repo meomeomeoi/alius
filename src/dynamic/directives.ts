@@ -128,11 +128,11 @@ function aftermathDirective(state: CampaignState, reg: Registries, unit: Unit): 
 
 /** What she does about it, in her own words, once she knows (R14): by her reaction. No line states what the commander feels. */
 const REACTION_LINE: Readonly<Record<Reaction, (holder: string) => string>> = {
-  drawn: (h) => `She is drawn to it: she watches ${h} with interest and may ask about it.`,
-  indifferent: () => 'She does not care either way: it is no business of hers, and she treats it so.',
-  dislikes: (h) => `She dislikes it and lets it show in how she speaks to ${h} and to the commander; she may say it plainly.`,
-  respects: (h) => `She holds a place of her own and respects ${h}'s claim.`,
-  competes: (h) => `She holds a place of her own and resents ${h}'s; she competes for what ${h} holds.`,
+  drawn: (h) => `AUTHOR TO WRITE: She is drawn to it: she watches ${h} with interest and may ask about it.`,
+  indifferent: () => 'AUTHOR TO WRITE: She does not care either way: it is no business of hers, and she treats it so.',
+  dislikes: (h) => `AUTHOR TO WRITE: She dislikes it and lets it show in how she speaks to ${h} and to the commander; she may say it plainly.`,
+  respects: (h) => `AUTHOR TO WRITE: She holds a place of her own and respects ${h}'s claim.`,
+  competes: (h) => `AUTHOR TO WRITE: She holds a place of her own and resents ${h}'s; she competes for what ${h} holds.`,
 };
 
 /**
@@ -152,9 +152,9 @@ function witnessDirectives(state: CampaignState, reg: Registries, present: strin
       const holder = state.squad.find((u) => u.id === holderId);
       if (holder === undefined || !isLiving(holder) || dynamicOf(state, holderId) === undefined) continue;
       if (rec.level === 'suspects_dynamic') {
-        lines.push(`${unit.displayName} suspects that ${holder.displayName} has something over the commander and gives the orders when the two are alone. She is cautious: she hints and asks small questions, and says nothing outright.`);
+        lines.push(`AUTHOR TO WRITE: ${unit.displayName} suspects that ${holder.displayName} has something over the commander and gives the orders when the two are alone. She is cautious: she hints and asks small questions, and says nothing outright.`);
       } else if (rec.level === 'knows_dynamic') {
-        lines.push(`${unit.displayName} knows that ${holder.displayName} holds authority over the commander. ${REACTION_LINE[reactionOf(state, reg, id, holderId)](holder.displayName)}`);
+        lines.push(`AUTHOR TO WRITE: ${unit.displayName} knows that ${holder.displayName} holds authority over the commander. ${REACTION_LINE[reactionOf(state, reg, id, holderId)](holder.displayName)}`);
       }
     }
     if (lines.length > 0) out.push({ id: `${WITNESS_PREFIX}${id}`, expiresAfter: 'scene', text: [...lines, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') });

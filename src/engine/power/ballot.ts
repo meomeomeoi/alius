@@ -9,10 +9,10 @@ import { effectiveValues } from '../worldOptions/stances';
 import { missionById } from '../world/missions';
 import { sabotagesVotes } from '../dynamic/struggle';
 import { leaderVoteWeight } from './leader';
+import { compatibility } from './compatibility';
 import { assertiveness } from './options';
 import { standingOf } from './standing';
 import { leaderOf } from './state';
-import { valuesOf } from '../development/profile';
 
 /**
  * Ballots and the tally of a squad vote (P9b §2). Everything here is pure and draws no rng: a ballot is a score from the
@@ -21,17 +21,12 @@ import { valuesOf } from '../development/profile';
  */
 
 export { VOTE_KINDS, type VoteKind };
+export { compatibility }; // moved to a leaf (`compatibility.ts`) so `standing.ts` need not import this file (review M11)
 
 type Lean = Partial<Record<ValueAxis, number>>;
 
 const kindEntry = (reg: Registries, kind: VoteKind): VoteKindEntry | undefined => reg.voteKinds.get(kind) as unknown as VoteKindEntry | undefined;
 const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
-
-/** How alike two units are in values, 0 (opposite extremes on every axis) to 1 (equal): `1 − Σ|a − b| / (6 × 6)`. */
-export function compatibility(a: Pick<Unit, 'values'>, b: Pick<Unit, 'values'>): number {
-  const total = VALUE_AXES.reduce((sum, axis) => sum + Math.abs(valuesOf(a)[axis] - valuesOf(b)[axis]), 0);
-  return 1 - total / (VALUE_AXES.length * 6);
-}
 
 const addLean = (into: Lean, from: VoteLean | undefined, mult = 1): void => {
   if (!from || mult === 0) return;

@@ -2,6 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { AnalyzeEnv } from '../../src/analysis/model';
 import { registerCoreProviders } from '../../src/analysis/providers/core';
 import type { Registries } from '../../src/content/types';
+import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
+import { deviceAccess } from '../../src/engine/personal/access';
 import { personalDayStep } from '../../src/engine/personal/dayStep';
 import { addSecret } from '../../src/engine/personal/secrets';
 import type { CampaignState } from '../../src/engine/state/types';
@@ -35,6 +37,22 @@ describe('glossary:device_access', () => {
     expect(words).not.toMatch(/\b60\b/);
     const raw = read('glossary:device_access', s, { unitId: ANN }, true);
     expect(raw).toMatch(/Impunity 60/);
+  });
+
+  it('a holder of the device domain reads the floor: level 4, from the device she holds (review M12)', () => {
+    const s = bold(60);
+    expect(read('glossary:device_access', s, { unitId: ANN })).toContain('level 3');
+    s.content = { enabled: ['restraint'] };
+    s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+    s.squad.find((u) => u.id === ANN)!.bond = { ...s.squad.find((u) => u.id === ANN)!.bond!, practice: { categories: { restraint: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate' } };
+    s.relations[ANN].dynamic = { ...blankDynamic(s.day), frame: 'role', hold: 70, domains: [{ id: 'device', since: 1 }] };
+    expect(deviceAccess(s, reg, ANN)).toBe(4);
+    const words = read('glossary:device_access', s, { unitId: ANN });
+    expect(words).toContain('level 4');
+    expect(words).toMatch(/device she holds/i);
+    expect(words).not.toMatch(/how little she fears/);
+    // a unit with no gate has none, floor or not (the gate is still needed)
+    expect(read('glossary:device_access', plain(reg), { unitId: ANN })).toContain('no access');
   });
 
   it('a unit with no access says so; with no unit it lists who has some', () => {

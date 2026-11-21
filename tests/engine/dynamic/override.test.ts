@@ -12,7 +12,7 @@ import { Rng, seedRng } from '../../../src/engine/rng';
 import { buildCampaign } from '../../../src/engine/setup';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { fallbackAgenda, overrideChance, overrideOpen, rollOverride, wardenOf, type Expectation, type WardenOrder } from '../../../src/engine/warden';
-import { OPEN_FIRST } from '../../../src/engine/warden/override';
+import { OPEN_FIRST, wardenOverrideOpen } from '../../../src/engine/warden/override';
 import { campaign, errors, loadCore, unitSetup } from '../../helpers/world';
 
 let reg: Registries;
@@ -131,6 +131,15 @@ describe('the roll', () => {
     expect(openOverrideOf(s)).toMatchObject({ source: 'warden', unitId: BEA, id: 'ov1' });
     const source = holderSource(s, reg, ANN)!;
     expect(() => rollOverride(s, ctx as never, withBea, { source })).toThrow(OPEN_FIRST);
+    expect(() => rollOverrides(s, ctx as never, withBea)).toThrow(OPEN_FIRST);
+  });
+
+  it('both slots in a save (a stale holder\'s and the warden\'s open one): the message names the warden (review M14)', () => {
+    const s = holder(swap(1), ANN, 70);
+    const { ctx } = queue(true);
+    rollOverrides(s, ctx as never, { kind: 'activity', activityId: 'train', companionId: CAT }); // the warden overrides
+    expect(wardenOverrideOpen(s)).not.toBeNull();
+    s.dynamic!.override = { id: 'dov9', unitId: ANN, order: withBea, day: s.day } as never; // a stale holder slot beside it
     expect(() => rollOverrides(s, ctx as never, withBea)).toThrow(OPEN_FIRST);
   });
 

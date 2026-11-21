@@ -51,6 +51,24 @@ const asOpen = (s0: CampaignState, id: string, tpl: string, opts: { owed?: boole
   return { state: d.state, id: demand.id };
 };
 
+describe('openDemand with a roll (review M6)', () => {
+  it('a given roll picks the template instead of the stream: no rng is needed, 0 takes the first and the top of the range the last', () => {
+    const s = world();
+    const r = only('double_ration', 'own_room');
+    const pick = (roll: number): string => {
+      const t = structuredClone(s);
+      const res = openDemand(t, { registries: r }, ANN, { roll });
+      if (!res) throw new Error('no demand opened');
+      return res.demand.templateId;
+    };
+    expect(pick(0)).toBe('double_ration');
+    expect(pick(0.999999)).toBe('own_room');
+    expect(pick(0)).toBe(pick(0)); // the same roll, the same template
+    // without a roll and without a stream there is nothing to pick with
+    expect(() => openDemand(structuredClone(s), { registries: r }, ANN)).toThrow();
+  });
+});
+
 describe('the templates', () => {
   it('six core templates, one per example of the spec, plus the three of P9d', () => {
     expect([...base.demandTemplates.keys()]).toEqual(['double_ration', 'own_room', 'skip_next_run', 'claim_weapon', 'back_off', 'tell_crime', 'want_tonight', 'want_attention', 'publicity_talk']);

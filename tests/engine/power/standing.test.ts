@@ -5,7 +5,9 @@ import { finalizeCombat } from '../../../src/engine/combat/outcome';
 import type { CombatState, LogEntry } from '../../../src/engine/combat/types';
 import { impunityOf } from '../../../src/engine/discipline/impunity';
 import { removeFromService } from '../../../src/engine/leash/use';
+import { readFileSync } from 'node:fs';
 import { compatibility } from '../../../src/engine/power/ballot';
+import { compatibility as leafCompatibility } from '../../../src/engine/power/compatibility';
 import { powerDayStep } from '../../../src/engine/power/dayStep';
 import { computeHierarchy, leaderOf, meritOf, recordMerit, respectOf, standingOf } from '../../../src/engine/power/standing';
 import { Rng, seedRng } from '../../../src/engine/rng';
@@ -342,3 +344,13 @@ function margin7(): CampaignState {
   delete (s.power!.hierarchy as { computedDay?: number }).computedDay;
   return s;
 }
+
+
+describe('standing and ballot do not import each other (review M11)', () => {
+  it('compatibility lives in a leaf: ballot re-exports it and standing reads it from there', () => {
+    expect(leafCompatibility).toBe(compatibility);
+    const code = (file: string): string => readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code('src/engine/power/standing.ts')).not.toMatch(/from '\.\/ballot'/);
+    expect(code('src/engine/power/standing.ts')).toMatch(/from '\.\/compatibility'/);
+  });
+});

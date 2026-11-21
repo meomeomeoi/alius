@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
-import { refusalCost } from '../../../src/engine/dynamic/milestones';
+import { milestonesDue, refusalCost } from '../../../src/engine/dynamic/milestones';
 import { addHold } from '../../../src/engine/dynamic/hold';
 import { answerClaim, capabilitiesOf, claimsDue, hasCapability, holderWith, loseDomain, settleDomainConflict, yieldPartial } from '../../../src/engine/dynamic/domains';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
@@ -241,6 +241,29 @@ describe('losing a domain', () => {
     claimed(s);
     addHold(s, { registries: reg }, ANN, -10, 'decay');
     expect(s.dynamic!.open.claims).toEqual([]);
+  });
+
+  it('an open claim whose frame she has left is withdrawn at once by the down-transition (M1)', () => {
+    const s = world('role', 70);
+    dyn(s).domains.push({ id: 'private_time', since: 1 });
+    claimed(s);
+    expect(s.dynamic!.open.claims.map((c) => c.domainId)).toEqual(['body']); // a role domain
+    dyn(s).lastPracticeDay = s.day - 30; // a month without practice: she cools
+    const events = milestonesDue(s, never().ctx, ANN);
+    expect(events.map((e) => e.type)).toContain('frame_changed');
+    expect(dyn(s).frame).toBe('play');
+    expect(s.dynamic!.open.claims).toEqual([]); // no hold change in between: the transition itself reconciles
+  });
+
+  it('answering a claim she no longer meets leaves it closed instead of throwing the close away (M1)', () => {
+    const s = world('role', 70);
+    dyn(s).domains.push({ id: 'private_time', since: 1 });
+    claimed(s);
+    dyn(s).frame = 'play'; // the frame went by some road that reconciled nothing
+    const r = answer(s, 'yield');
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.dynamic!.open.claims).toEqual([]);
+    expect(dyn(r.state).domains.map((d) => d.id)).toEqual(['private_time']); // nothing was granted
   });
 
   it('loseDomain names its reason', () => {

@@ -13,17 +13,15 @@ import type { Registries } from '../../content/types';
 import { raiseWant } from '../bonds/want';
 import { WANT_VISIT_KIND } from '../bonds/scene';
 import { proposeRuleHashed } from '../bonds/rules';
-import { openDemand } from '../discipline/demands';
+import { mayAsk, openDemand } from '../discipline/demands';
 import { addRecord, applyDisciplineEvent, type EnforcedOutcome } from '../discipline/record';
-import { restrictionReason } from '../discipline/restrictions';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { pushMessage } from '../dms';
 import { frameRank } from '../blocking/state';
 import { isLiving } from '../economy';
 import { addFact } from '../memory';
 import { queueNightSpec } from '../night';
-import { book, bookingKindsFor } from '../personal/bookings';
-import { pressureGate } from '../personal/gates';
+import { book, bookingKindsFor, bookingProblem } from '../personal/bookings';
 import { applyRelationDelta } from '../relationGain';
 import type { CampaignState, Slot, Vote } from '../state/types';
 import { TUNING } from '../tuning';
@@ -33,7 +31,6 @@ import { loseDomain } from './domains';
 import { canHold, dynamicOn } from './gate';
 import { addHold, bandMinAt, holdBandOf } from './hold';
 import { applyMilestone, milestonesDue, nextFreeEvening, rekindleMilestone } from './milestones';
-import { hashedCtx } from './reactions';
 import { dynamicOf, type DynamicRelation, type DynamicUndo } from './state';
 import { commandStruggleOf } from './struggle';
 export { commandStruggleOf };
@@ -157,12 +154,12 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
       return queueNightSpec(draft, unit, { id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: 1, priority: TUNING.bonds.want.satisfyPriority, trigger: 'daily', framing: v.framing, ignore: { ...v.ignore }, contentTags: [] } as never);
     }
     case 'demand': {
+      if (!mayAsk(draft, reg, unitId)) return [];
       const roll = dynamicRoll(draft, unitId, `aftermath:demand:${fx.kind}`);
-      return openDemand(draft, hashedCtx(ctx, roll), unitId, fx.kind === 'desire' ? { desire: true } : { only: fx.kind })?.events ?? [];
+      return openDemand(draft, ctx, unitId, { roll, ...(fx.kind === 'desire' ? { desire: true } : { only: fx.kind }) })?.events ?? [];
     }
     case 'booking': {
-      if (pressureGate(draft, reg, unitId, 'booking') !== null || restrictionReason(draft, unitId, 'scene') !== null) return [];
-      if ((draft.personal?.bookings ?? []).some((b) => b.unitId === unitId && b.status === 'booked')) return [];
+      if (bookingProblem(draft, reg, unitId) !== null) return []; // the gates of any booking: access, restrictions, one open, consent (review M5)
       const day = nextFreeEvening(draft);
       const kind = bookingKindsFor(draft, reg, unitId).find((k) => k.slot === 'evening');
       if (day === null || kind === undefined) return [];
@@ -177,7 +174,7 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'rumor': {
       const name = unit.displayName;
       addFact(draft, {
-        about: [unitId], text: `${name} is telling anyone who will listen what went on between ${name} and the commander.`, tags: ['rumor', 'dynamic', 'aftermath'], importance: 3,
+        about: [unitId], text: `AUTHOR TO WRITE: ${name} is telling anyone who will listen what went on between ${name} and the commander.`, tags: ['rumor', 'dynamic', 'aftermath'], importance: 3,
         day: draft.day, knownBy: [unitId], spread: 'fast',
       });
       return [];
@@ -349,7 +346,7 @@ export function endCommandKept(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
  * `commandBackVotes` it is over. A vote that failed, or one she has no ballot in, counts nothing. Draws nothing.
  */
 export function countStruggleVote(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, vote: Pick<Vote, 'ballots' | 'passed'>): EngineEvent[] {
-  const struggle = commandStruggleOf(draft);
+  const struggle = commandStruggleOf(draft, ctx.registries);
   if (struggle === null || !vote.passed || !vote.ballots.some((b) => b.unitId === struggle.unitId && b.vote === 'against')) return [];
   const a = dynamicOf(draft, struggle.unitId)!.aftermath!;
   a.struggleWins = struggle.wins + 1;

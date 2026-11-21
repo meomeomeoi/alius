@@ -10,7 +10,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
 import { fallbackAgenda } from '../warden/agenda';
-import { OPEN_FIRST_HOLDER, rollOverride, type OverrideSource } from '../warden/override';
+import { OPEN_FIRST, OPEN_FIRST_HOLDER, rollOverride, wardenOverrideOpen, type OverrideSource } from '../warden/override';
 import { openOverrideOf, overrideOpen, wardenUnitId, type Expectation, type WardenOrder } from '../warden/state';
 import { TUNING } from '../tuning';
 import { hasCapability } from './capabilities';
@@ -70,7 +70,7 @@ function countermanders(state: CampaignState, reg: Registries): string[] {
 export function rollOverrides(
   draft: CampaignState, ctx: EngineCtx, order: WardenOrder, opts: { judged?: Judged; payload?: Record<string, unknown> } = {},
 ): EngineEvent[] | null {
-  if (draft.dynamic?.override !== undefined && overrideOpen(draft) !== null) throw new Error(OPEN_FIRST_HOLDER); // a holder's override waits, whoever else could roll
+  if (draft.dynamic?.override !== undefined && overrideOpen(draft) !== null) throw new Error(wardenOverrideOpen(draft) !== null ? OPEN_FIRST : OPEN_FIRST_HOLDER); // an override waits, whoever else could roll: the message names the one that does (the warden's is read first)
   const first = rollOverride(draft, ctx, order, opts);
   if (first) return first;
   for (const id of countermanders(draft, ctx.registries)) {

@@ -6,7 +6,7 @@
  * standing (a fact). Called by the knowledge when she reaches `knows_dynamic`. Draws nothing: the demand's pick and chance are hashed.
  */
 import type { Registries } from '../../content/types';
-import { openDemand } from '../discipline/demands';
+import { mayAsk, openDemand } from '../discipline/demands';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addFact } from '../memory/facts';
@@ -48,16 +48,11 @@ function contestableDomain(draft: CampaignState, reg: Registries, rivalId: strin
   return best?.id;
 }
 
-/**
- * `openDemand` picks a template with one `rng.float()`; this hands it the hashed number instead, so the real rng is never drawn (the one place the
- * discipline layer's picker is reused for a chance that is not the spec's roll).
- */
-export const hashedCtx = (ctx: Ctx & Partial<EngineCtx>, roll: number): EngineCtx => ({ ...ctx, rng: { float: () => roll } as unknown as EngineCtx['rng'] } as EngineCtx);
-
 /** She asks the commander about it: an interpersonal demand, hashed (one day in `demandOneIn`). Nothing when she has one open or cannot be asked. */
 function askAbout(draft: CampaignState, ctx: Ctx, observerId: string, holderId: string): EngineEvent[] {
   if (dynamicRoll(draft, observerId, `dislikes:${holderId}`) >= 1 / TUNING.squadKnowledge.reaction.demandOneIn) return [];
-  return openDemand(draft, hashedCtx(ctx, dynamicRoll(draft, observerId, `pick:${holderId}`)), observerId, { only: 'interpersonal' })?.events ?? [];
+  if (!mayAsk(draft, ctx.registries, observerId)) return []; // the roll's own limits: two open in the squad, her acquaintance period
+  return openDemand(draft, ctx, observerId, { only: 'interpersonal', roll: dynamicRoll(draft, observerId, `pick:${holderId}`) })?.events ?? [];
 }
 
 /**
@@ -73,12 +68,12 @@ export function reactToDynamic(draft: CampaignState, ctx: Ctx, observerId: strin
   const holder = nameOf(draft, holderId);
   if (reaction === 'drawn') events.push(...addHold(draft, ctx, observerId, TUNING.dynamic.gains.witness_drawn, 'witness_drawn'));
   else if (reaction === 'dislikes') events.push(...askAbout(draft, ctx, observerId, holderId));
-  else if (reaction === 'respects') reactionFact(draft, observerId, holderId, `${observer.displayName} respects what ${holder} holds and keeps out of its way.`);
+  else if (reaction === 'respects') reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} respects what ${holder} holds and keeps out of its way.`);
   else if (reaction === 'competes') {
     const domainId = contestableDomain(draft, reg, observerId, holderId);
-    reactionFact(draft, observerId, holderId, `${observer.displayName} wants what ${holder} holds and means to take it.`);
+    reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} wants what ${holder} holds and means to take it.`);
     if (domainId !== undefined && dynamicOf(draft, observerId) !== undefined) events.push(...settleDomainConflict(draft, ctx, observerId, holderId, domainId));
   }
-  if (leaderOf(draft)?.id === observerId) reactionFact(draft, observerId, holderId, `${observer.displayName} weighs what ${holder} holds against her own standing.`);
+  if (leaderOf(draft)?.id === observerId) reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} weighs what ${holder} holds against her own standing.`);
   return events;
 }

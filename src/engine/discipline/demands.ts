@@ -101,7 +101,18 @@ export function eligibleTemplates(state: CampaignState, reg: Registries, unitId:
  * It opens `undelivered`; the app words it and delivers it, or the day step delivers the template text. `null` when she is
  * not a named living unit, cannot take part in a scene (the brig, extra duty), already has an open demand, is over `perWeek` openings this week or nothing is eligible.
  */
-export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean; /** P9d: open a `desire` demand (Want's own cadence replaces the weekly cap). */ desire?: boolean; /** P15: only a template of this `kind` (the dynamic's reaction asks an `interpersonal` one). */ only?: string } = {}): { demand: Demand; events: EngineEvent[] } | null {
+export function openDemand(
+  draft: CampaignState, ctx: Pick<EngineCtx, 'registries'> & Partial<Pick<EngineCtx, 'rng'>>, unitId: string,
+  opts: {
+    owed?: boolean;
+    /** P9d: open a `desire` demand (Want's own cadence replaces the weekly cap). */
+    desire?: boolean;
+    /** P15: only a template of this `kind` (the dynamic's reaction asks an `interpersonal` one). */
+    only?: string;
+    /** P15: the pick of the template, a number in [0, 1) given by the caller (a hashed choice) in place of one draw of `ctx.rng` (review M6). */
+    roll?: number;
+  } = {},
+): { demand: Demand; events: EngineEvent[] } | null {
   const reg = ctx.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit) || unitObeys(draft, unitId) || hasOpen(draft, unitId) || (opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek)) return null;
@@ -112,7 +123,9 @@ export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string,
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
   const total = pool.reduce((s, t) => s + Number(t.weight), 0);
-  let r = ctx.rng.float() * total;
+  const pick = opts.roll ?? ctx.rng?.float();
+  if (pick === undefined) throw new Error('openDemand needs a roll or a stream to pick with.');
+  let r = pick * total;
   const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
   const stance = commandStance(draft, reg, unitId);
   const demand: Demand = {
@@ -124,6 +137,14 @@ export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string,
   d.demands.push(demand);
   d.demandLog.push({ unitId, day: draft.day, templateId: demand.templateId });
   return { demand, events: [{ type: 'demand_opened', demandId: demand.id, unitId, templateId: demand.templateId }] };
+}
+
+/**
+ * Whether the squad's own limits let her open a demand now: fewer than `maxOpen` are open in the squad and she is out of her acquaintance period.
+ * The daily roll checks both; a path that opens a demand by its own chance (the dynamic's reaction, an aftermath's stage) asks this first (review M6).
+ */
+export function mayAsk(state: CampaignState, reg: Registries, unitId: string): boolean {
+  return (state.discipline?.demands.length ?? 0) < TUNING.demands.maxOpen && !inAcquaintance(state, reg, unitId);
 }
 
 /** The daily roll: at most one new demand per roll, two open at a time; a unit in her acquaintance period never asks. */

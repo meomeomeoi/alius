@@ -61,17 +61,20 @@ export const accessCan = (state: CampaignState, reg: Registries, unitId: string,
   deviceAccess(state, reg, unitId) >= CAPABILITIES.indexOf(capability) + 1;
 
 /**
- * Why she has the access she has: the level and the branch of its rule that holds (the first one, in the rule's order), or
- * `null` at level 0. The panel words the branch; nothing here is stored.
+ * Why she has the access she has: the level and the branch of its rule that holds (the first one, in the rule's order), or `null` at level 0. The
+ * panel words the branch; nothing here is stored. P15: when the device domain lifts her to its floor (`device_floor`, above what her rules give) the
+ * level is the floor, `branch` is `null` and `floor` is `true` (review M12): the reading matches `deviceAccess`.
  */
-export function deviceAccessWhy(state: CampaignState, reg: Registries, unitId: string): { level: AccessLevel; branch: DeviceAccessBranch } | null {
+export function deviceAccessWhy(state: CampaignState, reg: Registries, unitId: string): { level: AccessLevel; branch: DeviceAccessBranch | null; floor?: true } | null {
   if (deviceGateReason(state, unitId) !== null) return null;
   let cached: number | undefined;
   const impunity = (): number => (cached ??= impunityOf(state, reg, unitId)?.value ?? 0);
   const rules = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
+  let natural: { level: AccessLevel; branch: DeviceAccessBranch } | null = null;
   for (const rule of rules) {
     const branch = (rule.anyOf as DeviceAccessBranch[]).find((b) => branchHolds(state, reg, unitId, b, impunity));
-    if (branch) return { level: Number(rule.level) as AccessLevel, branch };
+    if (branch) { natural = { level: Number(rule.level) as AccessLevel, branch }; break; }
   }
-  return null;
+  if (hasCapability(state, reg, unitId, 'device_floor') && TUNING.dynamic.deviceFloor > (natural?.level ?? 0)) return { level: TUNING.dynamic.deviceFloor as AccessLevel, branch: null, floor: true };
+  return natural;
 }

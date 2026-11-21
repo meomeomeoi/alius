@@ -7,7 +7,7 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { practiceCategories, practiceOf } from './profile';
+import { dynamicLive, practiceCategories, practiceOf } from './profile';
 import { dynamicHash, dynamicOf } from './state';
 import type { DynamicTrackEntry, Witness } from './types';
 
@@ -83,12 +83,12 @@ export function dislikers(state: CampaignState, reg: Registries, holderId: strin
 
 /**
  * The `dynamic` term of her Impunity (P9 §8, R14): `dislikesImpunity` for each holder she knows of and dislikes seeing. 0 without the block, with no
- * holders allowed, and for a woman who knows of none (so `impunityOf` is unchanged without a dynamic). Only the reaction half of R19's term: the
+ * holders allowed, with the practice categories off, and for a woman who knows of none (so `impunityOf` is unchanged without a dynamic). Only the reaction half of R19's term: the
  * protection a holder's standing gives the others is the exchange's (Task 38).
  */
 export function dynamicTerm(state: CampaignState, reg: Registries, unitId: string): number {
   const x = state.dynamic;
-  if (x === undefined || x.setup.holders === 0) return 0;
+  if (x === undefined || !dynamicLive(state, reg)) return 0;
   const row = x.knowledge[unitId];
   if (row === undefined) return 0;
   return Object.entries(row).filter(([holderId, k]) => k.level === 'knows_dynamic' && reactionOf(state, reg, unitId, holderId) === 'dislikes').length * TUNING.squadKnowledge.reaction.dislikesImpunity;
@@ -96,7 +96,7 @@ export function dynamicTerm(state: CampaignState, reg: Registries, unitId: strin
 
 /** What the holder's standing loses to the witnesses who dislike it (a positive number: `dislikesStanding` each, at most `standingMax`). 0 without the block. */
 export function standingMalus(state: CampaignState, reg: Registries, holderId: string): number {
-  if (state.dynamic === undefined || state.dynamic.setup.holders === 0) return 0;
+  if (!dynamicLive(state, reg)) return 0;
   const R = TUNING.squadKnowledge.reaction;
   return Math.min(R.standingMax, dislikers(state, reg, holderId).length * R.dislikesStanding);
 }

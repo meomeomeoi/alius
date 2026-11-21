@@ -77,9 +77,9 @@ const nameOf = (state: CampaignState, id: string): string => state.squad.find((u
 
 /** The fact each level writes: hers, hidden from the commander, about the pair. No pronoun for the commander. */
 const FACT_TEXT: Readonly<Record<KnowledgeLevel, (observer: string, holder: string) => string>> = {
-  suspects_close: (o, h) => `${o} has noticed that ${h} and the commander are close.`,
-  suspects_dynamic: (o, h) => `${o} suspects that ${h} gives the orders when the two are alone.`,
-  knows_dynamic: (o, h) => `${o} knows that ${h} holds authority over the commander.`,
+  suspects_close: (o, h) => `AUTHOR TO WRITE: ${o} has noticed that ${h} and the commander are close.`,
+  suspects_dynamic: (o, h) => `AUTHOR TO WRITE: ${o} suspects that ${h} gives the orders when the two are alone.`,
+  knows_dynamic: (o, h) => `AUTHOR TO WRITE: ${o} knows that ${h} holds authority over the commander.`,
 };
 
 /** Raises her level to `level` (never lowers it): the record, the fact and `dynamic_known`; `knows_dynamic` then runs her reaction (`reactToDynamic`); Nothing when she is there already. */

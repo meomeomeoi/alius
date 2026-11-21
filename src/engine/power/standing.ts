@@ -9,7 +9,7 @@ import { isLiving } from '../economy';
 import { addFact } from '../memory';
 import type { CampaignState, Hierarchy, Unit } from '../state/types';
 import { TUNING } from '../tuning';
-import { compatibility } from './ballot';
+import { compatibility } from './compatibility';
 import { wardenUnitId } from '../warden/state';
 import { CO_COMMAND, dropCoCommand, leaderOf, powerOf } from './state';
 

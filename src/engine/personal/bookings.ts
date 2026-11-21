@@ -51,6 +51,32 @@ export function consentProblem(state: CampaignState, reg: Registries, booking: {
   return `${unitName(state, keeper)} would not allow ${unitName(state, booking.unitId)} to book the commander's time.`;
 }
 
+/**
+ * Why the dynamic's own paths (a milestone's booking, an aftermath's) may not book the commander for her now, or `null`: the gates of the day step's
+ * roll without its chance and its weekly cap (review M5): the booking gate (device access), a restriction that keeps her from scenes, a day of
+ * obedience, a booking block of the commander's, a booking of hers that is still open, and the keeper's consent. A refusal for consent leaves the same
+ * fact as the roll does (`noteConsentRefusal`). Draws nothing.
+ */
+export function bookingProblem(draft: CampaignState, reg: Registries, unitId: string): string | null {
+  if (pressureGate(draft, reg, unitId, 'booking') !== null) return 'no device access';
+  if (restrictionReason(draft, unitId, 'scene') !== null || unitObeys(draft, unitId)) return 'she cannot be met';
+  if ((draft.personal?.noBookUntil?.[unitId] ?? 0) > draft.day) return 'no booking until later';
+  if (bookingsOf(draft).some((b) => b.unitId === unitId && b.status === 'booked')) return 'a booking is open';
+  const consent = consentProblem(draft, reg, { unitId });
+  if (consent !== null) {
+    noteConsentRefusal(draft, reg, unitId, consent);
+    return consent;
+  }
+  return null;
+}
+
+/** The fact a refused booking leaves, for the keeper and for her (P15: another holder keeps the say over the commander's time). */
+export function noteConsentRefusal(draft: CampaignState, reg: Registries, unitId: string, problem: string): void {
+  const keeper = holderWith(draft, reg, 'booking_consent');
+  if (keeper === null) return;
+  addFact(draft, { about: [keeper, unitId], text: problem, tags: ['dynamic', 'booking_consent'], importance: 2, day: draft.day, knownBy: [keeper, unitId] });
+}
+
 /** The first booking due this slot (today, this slot, `booked`); one she can still keep comes first. `null` when none. */
 export function dueBooking(state: CampaignState): Booking | null {
   const due = bookingsOf(state).filter((b) => b.status === 'booked' && b.day === state.day && b.slot === state.slot);
@@ -137,8 +163,7 @@ export function rollBookings(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     const problem = consentProblem(draft, reg, { unitId: u.id });
     if (problem !== null) {
       // P15: another holder keeps the say over the commander's time: the booking is refused (the draws above are spent, as for any other), and both know it
-      const keeper = holderWith(draft, reg, 'booking_consent')!;
-      addFact(draft, { about: [keeper, u.id], text: problem, tags: ['dynamic', 'booking_consent'], importance: 2, day: draft.day, knownBy: [keeper, u.id] });
+      noteConsentRefusal(draft, reg, u.id, problem);
       continue;
     }
     // P15: `book_ahead` lets her book up to `bookAhead` days ahead, the day a hash picks (nothing drawn)

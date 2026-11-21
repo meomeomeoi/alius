@@ -166,7 +166,7 @@ const closeClaim = (draft: CampaignState, claimId: string): void => { draft.dyna
 
 /**
  * The commander answers her open claim (`dynamic/answer_claim`): YIELD gives her the domain (a rival holder turns it into a conflict); REFUSE costs
- * by the frame (`refusalCost`), waits `claimCooldownDays` for that domain and takes back a domain she held only by compromise; TALK changes
+ * by the frame (`refusalCost`), waits `claimCooldownDays` for that domain and takes back a domain she held only by compromise; a claim she no longer meets is withdrawn and answers nothing; TALK changes
  * nothing here (the card opens a scene, and a compromise in it is `yieldPartial`). The submit claim (no domain, R1's contest) yields by clearing the contest
  * and, refused, clears it too, costs a band and raises the Impunity record of every unit who knows the dynamic. Throws for a claim that is not open.
  */
@@ -191,11 +191,8 @@ export function answerClaim(draft: CampaignState, ctx: Ctx, claimId: string, ans
     return events;
   }
   const entry = domainEntry(reg, claim.domainId);
-  if (entry === undefined || !meets(reg, dyn, entry)) {
-    closeClaim(draft, claimId);
-    throw new Error('That claim is not open.');
-  }
   closeClaim(draft, claimId);
+  if (entry === undefined || !meets(reg, dyn, entry)) return []; // she no longer meets it: the claim is withdrawn, which a throw would have rolled back (review M1)
   if (answer === 'yield') {
     const rival = holderOfDomain(draft, claim.domainId, claim.unitId);
     if (rival !== null) return settleDomainConflict(draft, ctx, claim.unitId, rival, claim.domainId);

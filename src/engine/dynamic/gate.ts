@@ -10,13 +10,13 @@ import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
-import { knownPracticeCategories, practiceEnabled, practiceOf } from './profile';
+import { dynamicLive, knownPracticeCategories, practiceOf } from './profile';
 import { blankDynamic } from './state';
 import type { Inclination, MayHold } from './types';
 
 /** The one gate: the campaign has the block, holders are not 0, and a practice category is switched on. */
 export function dynamicOn(state: Pick<CampaignState, 'dynamic' | 'content'>, reg: Registries): boolean {
-  return state.dynamic !== undefined && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
+  return dynamicLive(state, reg);
 }
 
 /**

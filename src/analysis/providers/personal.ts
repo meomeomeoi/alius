@@ -51,10 +51,10 @@ function deviceAccessProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): 
   const name = nameOf(state, unitId);
   const why = deviceAccessWhy(state, env.registries, unitId);
   if (!why) return { lines: [`${name} has no access to the commander's device.`] };
-  const lines = [`${name}: level ${why.level} (${LEVEL_WORD[why.level]}).`, `It comes from ${branchWords(why.branch)}.`];
+  const lines = [`${name}: level ${why.level} (${LEVEL_WORD[why.level]}).`, why.branch === null ? 'It comes from the device she holds for the commander.' : `It comes from ${branchWords(why.branch)}.`];
   lines.push(`She can: ${CAPABILITIES.slice(0, why.level).join(', ')}.`);
   const impunity = k.raw(impunityOf(state, env.registries, unitId)?.value ?? 0);
-  if (impunity !== null && why.branch.minImpunity !== undefined) lines.push(`Impunity ${impunity}.`);
+  if (impunity !== null && why.branch?.minImpunity !== undefined) lines.push(`Impunity ${impunity}.`);
   return { lines };
 }
 

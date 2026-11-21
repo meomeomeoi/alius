@@ -285,11 +285,26 @@ describe('every effect type', () => {
   it('a demand of the stage\'s kind', () => {
     for (const kind of ['interpersonal', 'desire'] as const) {
       const s = left('affectionate');
+      s.relations[ANN].metDay = s.day - 60; // out of her acquaintance period: the stage asks under the daily roll's own limits (review M6)
       const events = fx(s, { type: 'demand', kind });
       expect(events.map((e) => e.type), kind).toEqual(['demand_opened']);
       const d = s.discipline!.demands.find((x) => x.unitId === ANN)!;
       expect(reg.demandTemplates.get(d.templateId)!.kind, kind).toBe(kind);
     }
+  });
+
+  it('a stage\'s demand keeps the daily roll\'s limits: not in her acquaintance period, not while two are open (review M6)', () => {
+    const fresh = left('affectionate');
+    fresh.world.options = { ...(fresh.world.options ?? {}), acquaintance: 'd14' };
+    fresh.relations[ANN].metDay = fresh.day - 1;
+    expect(fx(fresh, { type: 'demand', kind: 'interpersonal' })).toEqual([]);
+    const crowded = left('affectionate');
+    crowded.relations[ANN].metDay = crowded.day - 60;
+    crowded.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [
+      { id: 'd90', unitId: BEA, templateId: 'double_ration', text: 't', day: crowded.day, expiresDay: crowded.day + 2, status: 'open', impunityDriven: false },
+      { id: 'd91', unitId: CAT, templateId: 'double_ration', text: 't', day: crowded.day, expiresDay: crowded.day + 2, status: 'open', impunityDriven: false },
+    ], demandLog: [] } as unknown as CampaignState['discipline'];
+    expect(fx(crowded, { type: 'demand', kind: 'interpersonal' })).toEqual([]);
   });
 
   it('a booking', () => {
@@ -313,6 +328,7 @@ describe('every effect type', () => {
     const s = left('cold');
     fx(s, { type: 'rumor' });
     const fact = s.memory.facts.find((f) => f.tags.includes('rumor') && f.about.includes(ANN))!;
+    expect(fact.text).toMatch(/^AUTHOR TO WRITE: /); // a draft text carries the marker (review M10)
     expect(fact).toMatchObject({ spread: 'fast', knownBy: [ANN] });
     expect(fact.text).not.toMatch(/\b(he|him|his)\b/i);
   });

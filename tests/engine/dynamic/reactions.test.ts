@@ -7,7 +7,7 @@ import { knowInstantly, addSign } from '../../../src/engine/dynamic/knowledge';
 import { reactToDynamic } from '../../../src/engine/dynamic/reactions';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Frame, ProfileStyle, Witness } from '../../../src/engine/dynamic/types';
-import { dynamicTerm } from '../../../src/engine/dynamic/witness';
+import { dynamicTerm, standingMalus } from '../../../src/engine/dynamic/witness';
 import { standingOf } from '../../../src/engine/power/standing';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign, ctxOf, loadCore } from '../../helpers/world';
@@ -89,6 +89,22 @@ describe('what a woman does when she knows', () => {
     expect(standingOf(s, reg, ANN)).toBe(standing - 10);
   });
 
+  it('with the practice categories turned off mid-campaign the term and the malus go quiet, and come back with them (review M4)', () => {
+    const s = world('role', 'dislikes');
+    know(s);
+    expect(dynamicTerm(s, reg, BEA)).toBe(5);
+    expect(standingMalus(s, reg, ANN)).toBe(5);
+    const impunity = impunityOf(s, reg, BEA)!.value;
+    const standing = standingOf(s, reg, ANN)!;
+    s.content = { enabled: [] };
+    expect(dynamicTerm(s, reg, BEA)).toBe(0);
+    expect(standingMalus(s, reg, ANN)).toBe(0);
+    expect(impunityOf(s, reg, BEA)!.value).toBe(impunity - 5);
+    expect(standingOf(s, reg, ANN)).toBe(standing + 5);
+    s.content = { enabled: ['restraint'] };
+    expect(dynamicTerm(s, reg, BEA)).toBe(5);
+  });
+
   it('the demand about it is hashed: one day in three, the same on the same day, no rng draw', () => {
     const asked: number[] = [];
     for (let day = 1; day <= 36; day++) {
@@ -109,6 +125,37 @@ describe('what a woman does when she knows', () => {
     }
     expect(asked.length).toBeGreaterThan(4);
     expect(asked.length).toBeLessThan(20);
+  });
+
+  it('the demand about it keeps the roll\'s own limits: not while two are open in the squad, not in her acquaintance period (review M6)', () => {
+    let day = 0;
+    for (let d = 1; d <= 36 && day === 0; d++) {
+      const s = world('role', 'dislikes');
+      s.day = d;
+      know(s);
+      if ((s.discipline?.demands ?? []).some((x) => x.unitId === BEA)) day = d;
+    }
+    expect(day).toBeGreaterThan(0); // a day she asks
+    const crowded = world('role', 'dislikes');
+    crowded.day = day;
+    crowded.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [
+      { id: 'd90', unitId: CAT, templateId: 'double_ration', text: 't', day, expiresDay: day + 2, status: 'open', impunityDriven: false },
+      { id: 'd91', unitId: DEE, templateId: 'double_ration', text: 't', day, expiresDay: day + 2, status: 'open', impunityDriven: false },
+    ], demandLog: [] } as unknown as CampaignState['discipline'];
+    know(crowded);
+    expect((crowded.discipline?.demands ?? []).some((x) => x.unitId === BEA)).toBe(false);
+    const fresh = world('role', 'dislikes');
+    fresh.day = day;
+    fresh.world.options = { ...(fresh.world.options ?? {}), acquaintance: 'd14' };
+    fresh.relations[BEA].metDay = day - 1; // she met the commander yesterday
+    know(fresh);
+    expect((fresh.discipline?.demands ?? []).some((x) => x.unitId === BEA)).toBe(false);
+    const known = world('role', 'dislikes');
+    known.day = day;
+    known.world.options = { ...(known.world.options ?? {}), acquaintance: 'd14' };
+    known.relations[BEA].metDay = day - 30; // a month ago: she asks as before
+    know(known);
+    expect((known.discipline?.demands ?? []).some((x) => x.unitId === BEA)).toBe(true);
   });
 
   it('a possessive holder who learns of another competes: a claim against a domain she could claim herself', () => {
@@ -219,5 +266,32 @@ describe('the witness directive', () => {
     know(s);
     s.dynamic!.setup.holders = 0;
     expect(witnessOf(s, [BEA, ANN])).toBeUndefined();
+  });
+});
+
+describe('draft texts carry the marker (review M10)', () => {
+  const MARK = /^AUTHOR TO WRITE: /;
+
+  it('the facts of what a woman knows and how she reacts, the witness directive and the memory rules of the dynamic are marked', () => {
+    // the three levels of knowledge, and a reaction fact of each kind
+    const s = world('role', 'indifferent');
+    for (let i = 0; i < 3; i++) addSign(s, ctxOf(s, reg), BEA, ANN, 'protocol_slip');
+    know(s);
+    expect(facts(s).length).toBeGreaterThanOrEqual(2);
+    for (const f of facts(s)) expect(f.text, f.text).toMatch(MARK);
+    const rival = world('role', 'indifferent', { hold: 70 });
+    rival.relations[ANN].dynamic!.domains = [{ id: 'private_time', since: 1 }];
+    practise(rival, BEA, { style: 'ritual', lead: 'dominant' });
+    rival.relations[BEA].dynamic = { ...blankDynamic(rival.day), frame: 'play', hold: 45 };
+    know(rival);
+    expect(facts(rival).filter((f) => f.tags.includes('reaction')).length).toBeGreaterThan(0);
+    for (const f of facts(rival)) expect(f.text, f.text).toMatch(MARK);
+    // the witness directive: every line of it
+    const d = dynamicDirectives(s, reg, [BEA, ANN]).find((x) => x.id === 'dynamic:witness:unit_bea')!;
+    expect(d.text).toMatch(MARK);
+    // the memory rules the dynamic added
+    for (const id of ['dynamic_frame_play', 'dynamic_frame_role', 'dynamic_frame_rule', 'dynamic_sworn', 'dynamic_domain_yielded', 'dynamic_break', 'dynamic_ended', 'aftermath_return_refused']) {
+      expect(String(reg.memoryRules.get(id)?.text), id).toMatch(MARK);
+    }
   });
 });

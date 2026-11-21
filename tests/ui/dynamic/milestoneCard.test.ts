@@ -38,7 +38,8 @@ function world(frame: Frame, hold: number): CampaignState {
   };
   s.content = { enabled: ['restraint'] };
   s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
-  s.relations[ANN].dynamic = { ...blankDynamic(s.day), frame, hold };
+  // the device floor: she may book (a milestone's booking passes the gates of any booking, review M5)
+  s.relations[ANN].dynamic = { ...blankDynamic(s.day), frame, hold, domains: [{ id: 'device', since: 1 }] };
   milestonesDue(s, ctxOf(s, reg), ANN);
   return s;
 }

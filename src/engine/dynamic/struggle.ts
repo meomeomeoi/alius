@@ -4,6 +4,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
+import { dynamicLive } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 import type { AftermathEffect, AftermathEntry, DynamicDomainEntry } from './types';
 
@@ -20,6 +21,7 @@ const hasEffect = (effects: readonly AftermathEffect[], type: AftermathEffect['t
 
 /** Whether the stage she is in sabotages the squad's votes (`vote_sabotage`): she votes against the commander's side and adds her standing to it. */
 export function sabotagesVotes(state: CampaignState, reg: Registries, unitId: string): boolean {
+  if (!dynamicLive(state, reg)) return false;
   const running = runningStage(state, reg, unitId);
   return running !== undefined && hasEffect(running.stage.effects, 'vote_sabotage');
 }
@@ -31,8 +33,12 @@ export function slipsOpen(state: CampaignState, reg: Registries, unitId: string)
   return running !== undefined && fx !== undefined && state.day <= running.startDay + fx.days;
 }
 
-/** The one struggle for the command there is, if any: the first unit (squad order) whose aftermath keeps it, and how many votes the commander's side has won. */
-export function commandStruggleOf(state: Pick<CampaignState, 'squad' | 'relations'>): { unitId: string; wins: number } | null {
+/**
+ * The one struggle for the command there is, if any: the first unit (squad order) whose aftermath keeps it, and how many votes the commander's side
+ * has won. Given the registries it answers `null` while the dynamic is off (the practice categories switched off mid-campaign, review M4).
+ */
+export function commandStruggleOf(state: Pick<CampaignState, 'squad' | 'relations' | 'dynamic' | 'content'>, reg?: Registries): { unitId: string; wins: number } | null {
+  if (reg !== undefined && !dynamicLive(state, reg)) return null;
   for (const u of state.squad) {
     const a = state.relations[u.id]?.dynamic?.aftermath;
     if (a?.kind === 'command_kept') return { unitId: u.id, wins: a.struggleWins ?? 0 };

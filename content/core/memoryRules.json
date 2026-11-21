@@ -962,7 +962,7 @@
       "to": "play",
       "up": true
     },
-    "text": "{name} and the commander have begun to play at her leading.",
+    "text": "AUTHOR TO WRITE: {name} and the commander have begun to play at her leading.",
     "importance": 3,
     "about": "her",
     "audience": "her",
@@ -979,7 +979,7 @@
       "to": "role",
       "up": true
     },
-    "text": "{name} leads and the commander keeps to the role she gave.",
+    "text": "AUTHOR TO WRITE: {name} leads and the commander keeps to the role she gave.",
     "importance": 4,
     "about": "her",
     "audience": "her",
@@ -996,7 +996,7 @@
       "to": "rule",
       "up": true
     },
-    "text": "{name}'s word stands over the commander's, across what she has claimed.",
+    "text": "AUTHOR TO WRITE: {name}'s word stands over the commander's, across what she has claimed.",
     "importance": 4,
     "about": "her",
     "audience": "her",
@@ -1009,7 +1009,7 @@
   {
     "id": "dynamic_sworn",
     "event": "sworn",
-    "text": "{name} and the commander said the status aloud, and it is kept.",
+    "text": "AUTHOR TO WRITE: {name} and the commander said the status aloud, and it is kept.",
     "importance": 5,
     "about": "her",
     "audience": "her",
@@ -1023,7 +1023,7 @@
   {
     "id": "dynamic_domain_yielded",
     "event": "domain_yielded",
-    "text": "{name} was given a say over the commander's life: {domain}.",
+    "text": "AUTHOR TO WRITE: {name} was given a say over the commander's life: {domain}.",
     "importance": 2,
     "about": "her",
     "audience": "her",
@@ -1039,7 +1039,7 @@
     "when": {
       "sworn": true
     },
-    "text": "The commander broke the vow {name} was given; it is over, and it was a break.",
+    "text": "AUTHOR TO WRITE: The commander broke the vow {name} was given; it is over, and it was a break.",
     "importance": 5,
     "about": "her",
     "audience": "her",
@@ -1056,7 +1056,7 @@
     "when": {
       "sworn": false
     },
-    "text": "The commander left what {name} held, and it is over.",
+    "text": "AUTHOR TO WRITE: The commander left what {name} held, and it is over.",
     "importance": 3,
     "about": "her",
     "audience": "her",
@@ -1072,7 +1072,7 @@
     "when": {
       "reason": "refused"
     },
-    "text": "{name} offered to take the commander back, and was refused.",
+    "text": "AUTHOR TO WRITE: {name} offered to take the commander back, and was refused.",
     "importance": 3,
     "about": "her",
     "audience": "her",

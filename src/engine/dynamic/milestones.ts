@@ -11,10 +11,10 @@ import { contentAllowed } from '../bonds/content';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { pushMessage } from '../dms';
 import { isLiving } from '../economy';
-import { book, bookingKindsFor } from '../personal/bookings';
+import { book, bookingKindsFor, bookingProblem } from '../personal/bookings';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
-import { capabilitiesOf, grantCapability } from './domains';
+import { capabilitiesOf, grantCapability, reconcileDomains } from './domains';
 import { canHold, dynamicOn } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
 import { practiceOf } from './profile';
@@ -95,7 +95,7 @@ function openMilestone(draft: CampaignState, ctx: Ctx, unitId: string, m: Dynami
   const id = `dm${x.seq++}`;
   x.open.milestones.push({ id, unitId, milestoneId: m.id, day: draft.day, form: m.offer });
   const events: EngineEvent[] = [{ type: 'milestone_offered', unitId, id, milestoneId: m.id, form: m.offer }];
-  if (m.offer === 'booking') {
+  if (m.offer === 'booking' && bookingProblem(draft, ctx.registries, unitId) === null) { // the offer opens either way; the evening is booked only when a booking may be made (review M5)
     const day = nextFreeEvening(draft);
     const kind = bookingKindsFor(draft, ctx.registries, unitId).find((k) => k.slot === 'evening');
     if (day !== null && kind !== undefined) events.push(...book(draft, ctx, { unitId, kindId: String(kind.id), day, slot: 'evening' as Slot, source: 'milestone' }));
@@ -134,6 +134,7 @@ export function applyMilestone(draft: CampaignState, ctx: Ctx, unitId: string, m
       }
       if (frameRank(m.to) < frameRank(from)) {
         for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
+        events.push(...reconcileDomains(draft, reg, unitId)); // a claim of a domain the lower frame does not meet is withdrawn now, not at the next hold change (review M1)
       }
     } else if (effect.type === 'sworn') {
       dyn.sworn = { day: draft.day };

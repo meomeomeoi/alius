@@ -43,6 +43,15 @@ export function practiceEnabled(reg: Registries, enabled: readonly string[] | un
 }
 
 /**
+ * The gate of the dynamic for a leaf (`dynamicOn`'s own definition, which calls this): the campaign has the block, holders are not 0, and a practice
+ * category is switched on. The leaves the power and discipline layers read (`witness.ts`, `struggle.ts`) ask this, so turning the practice categories
+ * off mid-campaign silences them too (review M4).
+ */
+export function dynamicLive(state: Pick<CampaignState, 'dynamic' | 'content'>, reg: Registries): boolean {
+  return state.dynamic !== undefined && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
+}
+
+/**
  * Reads a practice section from untrusted data. A field that is not legal falls back and is named in `issues`; an unknown category is
  * dropped (named in `dropped` as `practice:<id>` and in `issues`), and so is a content category that is not a practice category (`worship`: a
  * practice names only the categories a track names, R2); a `secondary` equal to the `primary` is dropped; a missing or illegal
