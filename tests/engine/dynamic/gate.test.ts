@@ -2,7 +2,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import { impunityOf } from '../../../src/engine/discipline/impunity';
-import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap, holdersAtPlay, mayHoldOf } from '../../../src/engine/dynamic/gate';
+import { frameOf } from '../../../src/engine/blocking';
+import { holdsUntilOf, physicsStyleOf } from '../../../src/engine/physics/style';
+import { practiceOf } from '../../../src/engine/dynamic/profile';
+import { canHold, dynamicOn, effectiveInclination, ensureDynamic, herPracticeLive, holderCap, holdersAtPlay, mayHoldOf } from '../../../src/engine/dynamic/gate';
 import { blankDynamic, dynamicHash, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Practice } from '../../../src/engine/dynamic/types';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -75,6 +78,21 @@ describe('canHold', () => {
     const off = world();
     off.content = { enabled: [] };
     expect(canHold(off, reg, ANN)).toMatch(/off/);
+  });
+
+  it('a unit whose only enjoyed category is worship is not eligible and the hook readers answer null', () => {
+    const s = world({ enabled: ['restraint', 'worship'], practice: { categories: { restraint: { as: 'none', witness: 'indifferent' }, worship: { as: 'enjoys', witness: 'indifferent' } } } });
+    expect(canHold(s, reg, ANN)).toMatch(/practice/);
+    expect(practiceOf(s, reg, ANN)!.categories.worship).toBeUndefined(); // not a practice category: the view does not carry it
+    expect(herPracticeLive(s, ANN)).toBe(false);
+    s.relations[ANN].dynamic = { ...blankDynamic(s.day), frame: 'role' }; // even with a block, the readers defer
+    expect(frameOf(s, ANN)).toBe('equal');
+    expect(physicsStyleOf(s, ANN)).toEqual({ primary: 'neutral' });
+    expect(holdsUntilOf(s, ANN)).toBe('signal');
+    const only = world({ enabled: ['worship'], practice: { categories: { worship: { as: 'craves', witness: 'indifferent' } } } });
+    only.relations[ANN].dynamic = { ...blankDynamic(only.day), frame: 'role' };
+    expect(herPracticeLive(only, ANN)).toBe(false);
+    expect(frameOf(only, ANN)).toBe('equal');
   });
 
   it('mayHold yes overrides inclination none', () => {

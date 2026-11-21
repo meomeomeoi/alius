@@ -10,7 +10,7 @@ import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
-import { practiceEnabled, practiceOf } from './profile';
+import { knownPracticeCategories, practiceEnabled, practiceOf } from './profile';
 import { blankDynamic } from './state';
 import type { Inclination, MayHold } from './types';
 
@@ -31,7 +31,8 @@ export function herPracticeLive(state: Pick<CampaignState, 'squad' | 'content'>,
   const on = state.content?.enabled ?? [];
   const limits = unit.bond?.ownLimits.categories ?? [];
   const drift = unit.development?.practice?.categories;
-  return Object.keys({ ...stored, ...drift }).some((id) => on.includes(id) && !limits.includes(id) && { ...stored[id], ...drift?.[id] }.as !== undefined && { ...stored[id], ...drift?.[id] }.as !== 'none');
+  const practised = knownPracticeCategories(); // a category that is not a practice category (`worship`) is no practice of hers (R2)
+  return Object.keys({ ...stored, ...drift }).some((id) => (practised === undefined || practised.includes(id)) && on.includes(id) && !limits.includes(id) && { ...stored[id], ...drift?.[id] }.as !== undefined && { ...stored[id], ...drift?.[id] }.as !== 'none');
 }
 
 /** What the setup says about her; `auto` leaves it to her inclination. */

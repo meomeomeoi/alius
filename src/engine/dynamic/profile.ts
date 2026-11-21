@@ -20,6 +20,12 @@ const NONE: PracticeCategory = Object.freeze({ as: 'none', witness: 'indifferent
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+/** The practice categories of the registries last read (a campaign has one registry set); the state-only readers have no registry and ask this. */
+let known: readonly string[] | undefined;
+export function knownPracticeCategories(): readonly string[] | undefined {
+  return known;
+}
+
 /** The categories the dynamic is about: the ones a track names, once each, in registry order (R2). */
 export function practiceCategories(reg: Registries): string[] {
   const out: string[] = [];
@@ -27,6 +33,7 @@ export function practiceCategories(reg: Registries): string[] {
     const c = t.category;
     if (typeof c === 'string' && !out.includes(c)) out.push(c);
   }
+  known = out;
   return out;
 }
 
@@ -37,7 +44,8 @@ export function practiceEnabled(reg: Registries, enabled: readonly string[] | un
 
 /**
  * Reads a practice section from untrusted data. A field that is not legal falls back and is named in `issues`; an unknown category is
- * dropped (named in `dropped` as `practice:<id>` and in `issues`); a `secondary` equal to the `primary` is dropped; a missing or illegal
+ * dropped (named in `dropped` as `practice:<id>` and in `issues`), and so is a content category that is not a practice category (`worship`: a
+ * practice names only the categories a track names, R2); a `secondary` equal to the `primary` is dropped; a missing or illegal
  * `style.primary` leaves no section at all (`practice` undefined: she never holds). Never throws.
  */
 export function validatePractice(raw: unknown, reg: Registries): { practice?: Practice; issues: string[]; dropped: string[] } {
@@ -68,9 +76,10 @@ export function validatePractice(raw: unknown, reg: Registries): { practice?: Pr
   if (raw.categories !== undefined) {
     if (!isObj(raw.categories)) issues.push('practice.categories must be an object');
     else {
+      const practised = practiceCategories(reg);
       for (const [id, c] of Object.entries(raw.categories)) {
-        if (!reg.contentCategories.has(id)) {
-          issues.push(`practice names unknown content category "${id}"`);
+        if (!reg.contentCategories.has(id) || !practised.includes(id)) {
+          issues.push(reg.contentCategories.has(id) ? `practice names "${id}", which is not a practice category` : `practice names unknown content category "${id}"`);
           dropped.push(`practice:${id}`);
           continue;
         }
@@ -113,7 +122,7 @@ export function practiceOf(state: Pick<CampaignState, 'squad' | 'content'>, reg:
   const drift = unit.development?.practice; // P14b: what she has become sits on top of the import, as in `bondOf`
   const on = state.content?.enabled ?? [];
   const limits = unit.bond?.ownLimits.categories ?? [];
-  const ids = [...new Set([...practiceCategories(reg), ...Object.keys(stored.categories)])];
+  const ids = practiceCategories(reg); // only the categories the dynamic is about, whatever else a stored section names
   const categories: Record<string, PracticeCategory> = {};
   const allowed: string[] = [];
   for (const id of ids) {

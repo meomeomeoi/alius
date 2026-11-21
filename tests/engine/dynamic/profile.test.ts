@@ -45,6 +45,15 @@ describe('validatePractice', () => {
     expect(r.issues.some((i) => /secondary/.test(i))).toBe(true);
   });
 
+  it('a non-practice category such as worship is dropped', () => {
+    const r = validatePractice({ style: { primary: 'cold' }, categories: { worship: { as: 'craves', witness: 'drawn' }, restraint: { as: 'enjoys', witness: 'drawn' } } }, reg);
+    expect(r.practice!.categories).toEqual({ restraint: { as: 'enjoys', witness: 'drawn' } });
+    expect(r.dropped).toEqual(['practice:worship']);
+    expect(r.issues.some((i) => /worship/.test(i))).toBe(true);
+    expect(reg.contentCategories.has('worship')).toBe(true); // a real content category, just not a practice one
+    expect(validateBond({ leadStyle: 'dominant', practice: { style: { primary: 'cold' }, categories: { worship: { as: 'craves' } } } }, reg).bond.practice!.categories).toEqual({});
+  });
+
   it('a missing or illegal style.primary leaves no section', () => {
     for (const raw of [{ categories: {} }, { style: {} }, { style: { primary: 'neutral' } }, { style: { primary: 'shouting' } }, 'cold', [], null]) {
       const r = validatePractice(raw, reg);

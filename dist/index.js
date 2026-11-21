@@ -1890,8 +1890,8 @@ function commanderLine(state) {
   const p = commanderProfile(state);
   const w = (kind, v) => descriptor(kind, v).toLowerCase();
   const names = (state.commander.reputation?.active ?? []).map((a) => `"${a.name}"`);
-  const known2 = names.length > 0 ? ` Known in the squad as ${names.join(" and ")}.` : "";
-  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.${known2}`;
+  const known3 = names.length > 0 ? ` Known in the squad as ${names.join(" and ")}.` : "";
+  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.${known3}`;
 }
 
 // src/engine/ledger.ts
@@ -9995,12 +9995,17 @@ var PRACTICE_DEFAULTS = Object.freeze({
 });
 var NONE = Object.freeze({ as: "none", witness: "indifferent" });
 var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var known;
+function knownPracticeCategories() {
+  return known;
+}
 function practiceCategories(reg) {
   const out = [];
   for (const t of reg.dynamicTracks.values()) {
     const c = t.category;
     if (typeof c === "string" && !out.includes(c)) out.push(c);
   }
+  known = out;
   return out;
 }
 function practiceEnabled(reg, enabled) {
@@ -10034,9 +10039,10 @@ function validatePractice(raw, reg) {
   if (raw.categories !== void 0) {
     if (!isObj(raw.categories)) issues.push("practice.categories must be an object");
     else {
+      const practised = practiceCategories(reg);
       for (const [id, c] of Object.entries(raw.categories)) {
-        if (!reg.contentCategories.has(id)) {
-          issues.push(`practice names unknown content category "${id}"`);
+        if (!reg.contentCategories.has(id) || !practised.includes(id)) {
+          issues.push(reg.contentCategories.has(id) ? `practice names "${id}", which is not a practice category` : `practice names unknown content category "${id}"`);
           dropped.push(`practice:${id}`);
           continue;
         }
@@ -10068,7 +10074,7 @@ function practiceOf(state, reg, unitId) {
   const drift = unit3.development?.practice;
   const on = state.content?.enabled ?? [];
   const limits = unit3.bond?.ownLimits.categories ?? [];
-  const ids = [.../* @__PURE__ */ new Set([...practiceCategories(reg), ...Object.keys(stored.categories)])];
+  const ids = practiceCategories(reg);
   const categories = {};
   const allowed = [];
   for (const id of ids) {
@@ -11354,8 +11360,8 @@ function seedWorld(draft, reg) {
   const startRegion = own === null ? void 0 : reg.corporations.get(own)?.startingRegionId;
   for (const region of reg.regions.values()) {
     const id = String(region.id);
-    const known2 = region.knownFromStart === true || id === startRegion;
-    world.regions[id] = { ...world.regions[id] ?? {}, known: known2 || (world.regions[id]?.known ?? false) };
+    const known3 = region.knownFromStart === true || id === startRegion;
+    world.regions[id] = { ...world.regions[id] ?? {}, known: known3 || (world.regions[id]?.known ?? false) };
   }
   world.seeded = true;
   return [{ type: "world_seeded" }];
@@ -11566,8 +11572,8 @@ function concealedAffairs(state, reg) {
       return h2 !== void 0 && isLiving(h2) && reg.relationshipStates.get(state.relations[id]?.stateId ?? "")?.romance === true;
     });
     if (hidden.length === 0) continue;
-    const known2 = state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(u.id) && (f.knownBy.includes("*") || hidden.some((h2) => f.knownBy.includes(h2))));
-    if (!known2) out.push({ unitId: u.id });
+    const known3 = state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(u.id) && (f.knownBy.includes("*") || hidden.some((h2) => f.knownBy.includes(h2))));
+    if (!known3) out.push({ unitId: u.id });
   }
   return out;
 }
@@ -12089,8 +12095,8 @@ function withRequirements(reg, ids) {
   return next;
 }
 function setCategories(draft, reg, enabled) {
-  const known2 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-  const next = withRequirements(reg, known2.filter((id) => enabled.includes(id)));
+  const known3 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+  const next = withRequirements(reg, known3.filter((id) => enabled.includes(id)));
   const before = enabledCategories(draft);
   const added = next.filter((id) => !before.includes(id));
   const removed = before.filter((id) => !next.includes(id));
@@ -13987,8 +13993,8 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         events.push(...offerMissionEffect(draft, ctx2, fx2));
         break;
       case "squad_secret": {
-        const known2 = fx2.knownBy === "squad" ? draft.squad : partyUnits(draft);
-        events.push(...addSecret(draft, reg, { kindId: fx2.kindId, knownBy: known2.map((u) => u.id) }));
+        const known3 = fx2.knownBy === "squad" ? draft.squad : partyUnits(draft);
+        events.push(...addSecret(draft, reg, { kindId: fx2.kindId, knownBy: known3.map((u) => u.id) }));
         break;
       }
     }
@@ -15153,15 +15159,15 @@ function headStartTransition(draft, reg, unitId) {
 function applyHeadStart(draft, reg, o) {
   const units = [];
   for (const unit3 of draft.squad) {
-    const known2 = o.impressions.get(unit3.id);
+    const known3 = o.impressions.get(unit3.id);
     const rel = draft.relations[unit3.id];
-    if (!known2 || !rel) continue;
-    developRelation(rel, known2.delta, o.days, o.seed, unit3.id);
-    const impression = impressionOf(known2.delta);
+    if (!known3 || !rel) continue;
+    developRelation(rel, known3.delta, o.days, o.seed, unit3.id);
+    const impression = impressionOf(known3.delta);
     rollCrime(draft, reg, unit3, o.days, o.seed);
     const moments = pickMoments(draft, reg, unit3, { days: o.days, seed: o.seed, impression, knowsCrime: rel.flags.includes("knows_crime") });
     for (const m of moments) applyMoment(draft, reg, unit3.id, m);
-    capTrust(rel, known2.trustBefore);
+    capTrust(rel, known3.trustBefore);
     headStartTransition(draft, reg, unit3.id);
     units.push({ unitId: unit3.id, impression, moments: moments.map((m) => String(m.id)) });
   }
@@ -15725,9 +15731,9 @@ function loadoutSize(reg, unit3) {
   return TUNING.progression.loadoutSize + extra;
 }
 function activeLoadout(reg, unit3) {
-  const known2 = knownSkillIds(reg, unit3);
+  const known3 = knownSkillIds(reg, unit3);
   const starters = (reg.roles.get(unit3.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
-  const chosen = (unit3.loadout ?? []).filter((id, i, a) => known2.includes(id) && a.indexOf(id) === i);
+  const chosen = (unit3.loadout ?? []).filter((id, i, a) => known3.includes(id) && a.indexOf(id) === i);
   return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit3));
 }
 function resolveSkill(reg, c, skillId) {
@@ -17016,7 +17022,8 @@ function herPracticeLive(state, unitId) {
   const on = state.content?.enabled ?? [];
   const limits = unit3.bond?.ownLimits.categories ?? [];
   const drift = unit3.development?.practice?.categories;
-  return Object.keys({ ...stored, ...drift }).some((id) => on.includes(id) && !limits.includes(id) && { ...stored[id], ...drift?.[id] }.as !== void 0 && { ...stored[id], ...drift?.[id] }.as !== "none");
+  const practised = knownPracticeCategories();
+  return Object.keys({ ...stored, ...drift }).some((id) => (practised === void 0 || practised.includes(id)) && on.includes(id) && !limits.includes(id) && { ...stored[id], ...drift?.[id] }.as !== void 0 && { ...stored[id], ...drift?.[id] }.as !== "none");
 }
 function mayHoldOf(state, unitId) {
   return state.dynamic?.setup.units[unitId]?.mayHold ?? "auto";
@@ -17327,8 +17334,8 @@ function probeQueueRoom(state) {
 }
 function latentCause(state, reg, unitId) {
   if ((impunityOf(state, reg, unitId)?.value ?? 0) >= TUNING.dynamic.impunityRoute) return true;
-  const known2 = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === "knows_dynamic");
-  if (!known2) return false;
+  const known3 = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === "knows_dynamic");
+  if (!known3) return false;
   const view = practiceOf(state, reg, unitId);
   return view !== null && Object.values(view.categories).some((c) => c.witness === "drawn");
 }
@@ -18749,8 +18756,8 @@ function dynamicFields(type, e, intent, offer) {
 function validateIntents(raw, ctx2) {
   const out = emptyIntents();
   if (!isObj6(raw)) return out;
-  const known2 = new Set(ctx2.squad.map((u) => u.id));
-  const present2 = new Set(ctx2.participants.filter((id) => known2.has(id)));
+  const known3 = new Set(ctx2.squad.map((u) => u.id));
+  const present2 = new Set(ctx2.participants.filter((id) => known3.has(id)));
   const isUnit = (v) => typeof v === "string" && present2.has(v);
   const seenLife = /* @__PURE__ */ new Set();
   for (const e of arr(raw.events)) {
@@ -19140,7 +19147,7 @@ function fallbackAgenda(state, reg, unitId) {
 }
 function normalizeAgenda(raw, reg) {
   if (!Array.isArray(raw)) return null;
-  const known2 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
+  const known3 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
   const seen = /* @__PURE__ */ new Set();
   const out = [];
   let personal = 0;
@@ -19156,7 +19163,7 @@ function normalizeAgenda(raw, reg) {
       out.push({ kind, points: WEIGHT_POINTS[weight], source: src, text: t });
       continue;
     }
-    if (!known2.has(kind) || seen.has(kind)) continue;
+    if (!known3.has(kind) || seen.has(kind)) continue;
     seen.add(kind);
     out.push({ kind, points: WEIGHT_POINTS[weight], source: src });
   }
@@ -19165,7 +19172,7 @@ function normalizeAgenda(raw, reg) {
 }
 function agendaProblem(list5, reg) {
   if (!Array.isArray(list5) || list5.length < AGENDA_MIN || list5.length > AGENDA_MAX) return `An agenda has ${AGENDA_MIN} to ${AGENDA_MAX} expectations.`;
-  const known2 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
+  const known3 = new Set([...reg.wardenExpectations.values()].map((e) => String(e.kind)));
   const kinds2 = /* @__PURE__ */ new Set();
   const ids = /* @__PURE__ */ new Set();
   let personal = 0;
@@ -19180,7 +19187,7 @@ function agendaProblem(list5, reg) {
       personal++;
       if (typeof x.text !== "string" || x.text.trim() === "" || x.text.length > PERSONAL_TEXT_MAX || COMMANDER_PRONOUN2.test(x.text)) return "A personal expectation needs plain text of at most 80 characters.";
     } else {
-      if (!known2.has(x.kind) || kinds2.has(x.kind)) return "An expectation kind is used once.";
+      if (!known3.has(x.kind) || kinds2.has(x.kind)) return "An expectation kind is used once.";
       kinds2.add(x.kind);
     }
   }
@@ -23446,12 +23453,12 @@ function setLoadout(draft, reg, unitId, skillIds) {
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (!unit3 || !isLiving(unit3)) throw new Error("Unknown or unavailable unit.");
   if (new Set(skillIds).size !== skillIds.length) throw new Error("A skill was listed twice.");
-  const known2 = knownSkills(reg, unit3);
+  const known3 = knownSkills(reg, unit3);
   for (const id of skillIds) {
     const sk = skillById(reg, id);
     if (!sk) throw new Error(`Unknown skill "${id}".`);
     if (sk.kind === "passive") throw new Error(`${sk.name} is a passive and cannot be equipped.`);
-    if (!known2.includes(id)) throw new Error(`${sk.name} is not unlocked.`);
+    if (!known3.includes(id)) throw new Error(`${sk.name} is not unlocked.`);
   }
   if (skillIds.length > loadoutSize(reg, unit3)) throw new Error(`A loadout holds at most ${loadoutSize(reg, unit3)} skills.`);
   if (skillIds.length === 0) delete unit3.loadout;
@@ -23861,11 +23868,11 @@ function poiTemplates(reg) {
   return new Set([...reg.regions.values()].flatMap((r) => r.pointsOfInterest.map((p) => p.templateId)));
 }
 var pairs = (state, reg, source, accept) => {
-  const known2 = knownRegions(state, reg);
+  const known3 = knownRegions(state, reg);
   const out = [];
   for (const t of reg.missionTemplates.values()) {
     if (!accept(t)) continue;
-    for (const region of known2) {
+    for (const region of known3) {
       const offer = { templateId: String(t.id), regionId: String(region.id), source };
       if (checkOffer(state, reg, offer) === null) out.push(offer);
     }
@@ -26043,8 +26050,8 @@ function validateDynamicProfile(u, label2, reg, out) {
     else {
       for (const f of u.expectationLocks) {
         const [head, id] = String(f).split(".");
-        const known2 = EXPECTATION_FIELDS.includes(head) && (id === void 0 || head === "worship" && reg.worshipTargets.has(id) || head === "moments" && reg.momentSources.has(id));
-        if (!known2) out.push(`${label2}: cannot lock "${String(f)}": an expectation field is ${EXPECTATION_FIELDS.join(", ")}`);
+        const known3 = EXPECTATION_FIELDS.includes(head) && (id === void 0 || head === "worship" && reg.worshipTargets.has(id) || head === "moments" && reg.momentSources.has(id));
+        if (!known3) out.push(`${label2}: cannot lock "${String(f)}": an expectation field is ${EXPECTATION_FIELDS.join(", ")}`);
       }
     }
   }
@@ -26330,8 +26337,8 @@ function buildCampaign(r, reg, opts) {
   state.settings = { desireBondDefects: opts.desireBondDefects, ...r.characterDevelopment !== void 0 ? { characterDevelopment: r.characterDevelopment } : {}, ...r.lifeEvents !== void 0 ? { lifeEvents: r.lifeEvents } : {} };
   if (r.lifeEvents !== void 0 && r.lifeEvents !== "off") state.life = newLife(opts.seed);
   if (r.content !== void 0) {
-    const known2 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-    state.content = { enabled: known2.filter((id) => r.content.enabled.includes(id)) };
+    const known3 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    state.content = { enabled: known3.filter((id) => r.content.enabled.includes(id)) };
   }
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
@@ -26413,9 +26420,9 @@ function foldPart(state, fact) {
 }
 function foldTargets(state, fact) {
   const living2 = livingNamed3(state);
-  const known2 = fact.knownBy.includes("*") ? living2 : living2.filter((id) => fact.knownBy.includes(id));
+  const known3 = fact.knownBy.includes("*") ? living2 : living2.filter((id) => fact.knownBy.includes(id));
   const aboutLiving = living2.filter((id) => fact.about.includes(id));
-  const hit = foldPart(state, fact) === "shared" ? aboutLiving : [aboutLiving.filter((id) => known2.includes(id)), aboutLiving, known2].find((l) => l.length > 0) ?? [];
+  const hit = foldPart(state, fact) === "shared" ? aboutLiving : [aboutLiving.filter((id) => known3.includes(id)), aboutLiving, known3].find((l) => l.length > 0) ?? [];
   return hit.length > 0 ? hit : [WORLD];
 }
 var folded = (fact, target) => fact.foldedInto?.includes(target) === true;
@@ -26805,14 +26812,14 @@ function holds2(when, res) {
 var fill3 = (text2, vars) => text2.replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => vars[k] ?? m);
 var livingNamed4 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
 function audienceOf(draft, parts, res, aboutIds) {
-  const known2 = /* @__PURE__ */ new Set();
+  const known3 = /* @__PURE__ */ new Set();
   for (const part of parts) {
     if (part === "public") return ["*"];
-    if (part === "squad") livingNamed4(draft).forEach((id) => known2.add(id));
-    else if (part === "present") (draft.scene?.participants ?? aboutIds.filter((id) => id !== "world")).forEach((id) => known2.add(id));
-    else (res.ids[part] ?? []).forEach((id) => known2.add(id));
+    if (part === "squad") livingNamed4(draft).forEach((id) => known3.add(id));
+    else if (part === "present") (draft.scene?.participants ?? aboutIds.filter((id) => id !== "world")).forEach((id) => known3.add(id));
+    else (res.ids[part] ?? []).forEach((id) => known3.add(id));
   }
-  return [...known2];
+  return [...known3];
 }
 function rememberEvents(draft, events, reg) {
   if (!reg.memoryRules || reg.memoryRules.size === 0) return;
@@ -27592,8 +27599,8 @@ function roomAt(rooms, x, y) {
 }
 var graphs = /* @__PURE__ */ new WeakMap();
 function planGraph(reg) {
-  const known2 = graphs.get(reg);
-  if (known2) return known2;
+  const known3 = graphs.get(reg);
+  if (known3) return known3;
   const g = /* @__PURE__ */ new Map();
   const add = (a, b, via, length) => {
     if (a === b) return;
@@ -31293,8 +31300,8 @@ registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   if (!isObj31(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
   const hintId = payload.hintId;
   const entry = ctx2.registries.prologues.get(o.prologueId);
-  const known2 = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
-  if (!known2) throw new Error(`Unknown coach hint "${hintId}".`);
+  const known3 = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
+  if (!known3) throw new Error(`Unknown coach hint "${hintId}".`);
   if (!o.hintsSeen?.includes(hintId)) o.hintsSeen = [...o.hintsSeen ?? [], hintId];
   return [];
 });
@@ -33269,8 +33276,8 @@ registerAction("profile/lock_expectation", (draft, payload, ctx2) => {
   const unit3 = namedUnit3(draft, p?.unitId, "profile/lock_expectation");
   const field2 = typeof p?.field === "string" ? p.field : "";
   const [head, id] = field2.split(".");
-  const known2 = EXPECTATION_FIELDS.includes(head) && (id === void 0 || head === "worship" && ctx2.registries.worshipTargets.has(id) || head === "moments" && ctx2.registries.momentSources.has(id));
-  if (!known2) throw new Error(`An expectation field is ${EXPECTATION_FIELDS.join(", ")}, worship.<target> or moments.<source>.`);
+  const known3 = EXPECTATION_FIELDS.includes(head) && (id === void 0 || head === "worship" && ctx2.registries.worshipTargets.has(id) || head === "moments" && ctx2.registries.momentSources.has(id));
+  if (!known3) throw new Error(`An expectation field is ${EXPECTATION_FIELDS.join(", ")}, worship.<target> or moments.<source>.`);
   if (typeof p?.on !== "boolean") throw new Error("profile/lock_expectation needs on: true or false.");
   const locks = (unit3.expectationLocks ?? []).filter((f) => f !== field2);
   if (p.on) locks.push(field2);
@@ -35725,8 +35732,8 @@ var CARD_MAX2 = 600;
 function headStartOpening(state) {
   const hs = state.headStart;
   if (!hs) return "";
-  const known2 = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === "named" && !known2.has(u.id) && isLiving(u)).map((u) => u.displayName);
+  const known3 = new Set(hs.units.map((u) => u.unitId));
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known3.has(u.id) && isLiving(u)).map((u) => u.displayName);
   const first2 = `The squad has known the commander for ${hs.days} days: no introductions, no first meeting.`;
   if (arrivals.length === 0) return first2;
   return `${first2} ${joinNames(arrivals)} arrived today and ${arrivals.length === 1 ? "meets" : "meet"} the commander for the first time.`;
@@ -43243,8 +43250,8 @@ var Wizard = class {
   }
   /** P9d: sets the content categories (unknown ids dropped, registry order). */
   setContent(enabled) {
-    const known2 = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-    this.s.content = { enabled: known2.filter((id) => enabled.includes(id)) };
+    const known3 = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    this.s.content = { enabled: known3.filter((id) => enabled.includes(id)) };
     this.emit();
   }
   /** P13: the campaign mode (the default mode writes no `mode` into the setup). */
@@ -46479,14 +46486,14 @@ function unitPortrait(st, unit3, o) {
   const avatar = st.getAvatarUrl(card2);
   let cache = spriteCache.get(st);
   if (!cache) spriteCache.set(st, cache = /* @__PURE__ */ new Map());
-  const known2 = cache.get(card2);
+  const known3 = cache.get(card2);
   const cached = o.dither ? dithered.get(key)?.url : void 0;
-  const img = h("img", { class: "alius-portrait", src: cached ?? known2?.url ?? avatar, alt: unit3.displayName, width: String(size), height: String(size) });
+  const img = h("img", { class: "alius-portrait", src: cached ?? known3?.url ?? avatar, alt: unit3.displayName, width: String(size), height: String(size) });
   if (cached) {
     img.classList.add("alius-portrait-dithered");
     return img;
   }
-  let usingAvatar = !known2?.url;
+  let usingAvatar = !known3?.url;
   const settle6 = () => {
     if (o.dither) ditherWhenLoaded(img, key, o.palette, size);
   };
@@ -46495,7 +46502,7 @@ function unitPortrait(st, unit3, o) {
     usingAvatar = true;
     img.setAttribute("src", avatar);
   });
-  if (known2 && (known2.url || Date.now() - known2.at < RETRY_MS)) {
+  if (known3 && (known3.url || Date.now() - known3.at < RETRY_MS)) {
     settle6();
     return img;
   }
@@ -47001,7 +47008,7 @@ function equipmentBlock(unit3, ctx2, state) {
 }
 function loadoutBlock(unit3, ctx2) {
   const reg = ctx2.registries;
-  const known2 = knownSkills(reg, unit3);
+  const known3 = knownSkills(reg, unit3);
   const size = loadoutSize(reg, unit3);
   const chosen = new Set(activeLoadout(reg, unit3));
   const boxes = [];
@@ -47009,7 +47016,7 @@ function loadoutBlock(unit3, ctx2) {
     const count2 = boxes.filter((b) => b.checked).length;
     for (const b of boxes) b.disabled = !b.checked && count2 >= size;
   };
-  const rows = known2.map((id) => {
+  const rows = known3.map((id) => {
     const box = h("input", { type: "checkbox", "data-skill": id, checked: chosen.has(id) });
     boxes.push(box);
     box.addEventListener("change", () => {
@@ -47180,12 +47187,12 @@ function lifeProfileBlock(unit3, ctx2, state) {
     // only the changed field: a locked one in the patch refuses it all
     onLock: (field2, on) => send({ type: "profile/lock_temperament", payload: { unitId: unit3.id, field: field2, on } })
   });
-  const known2 = new Set(buildKnowledge(state, ctx2.settings()).life(unit3.id, ctx2.registries).hobbies.map((x) => x.id));
+  const known3 = new Set(buildKnowledge(state, ctx2.settings()).life(unit3.id, ctx2.registries).hobbies.map((x) => x.id));
   renderHobbiesEditor(part("alius-life-hobbies"), {
     unit: who,
     registries: ctx2.registries,
     editable,
-    hobbies: (unit3.hobbies ?? []).filter((x) => editable || known2.has(x.id)).map((x) => ({ id: x.id, state: x.state, milestones: editable ? x.milestones.length : toldMilestones(state, unit3.id, x).length })),
+    hobbies: (unit3.hobbies ?? []).filter((x) => editable || known3.has(x.id)).map((x) => ({ id: x.id, state: x.state, milestones: editable ? x.milestones.length : toldMilestones(state, unit3.id, x).length })),
     aptitudes: unit3.aptitudes ?? { high: [], low: [] },
     onSet: (hobbies, aptitudes) => send({ type: "profile/set_hobbies", payload: { unitId: unit3.id, hobbies, aptitudes } })
   });
@@ -48670,8 +48677,8 @@ var floorGeometry = /* @__PURE__ */ new WeakMap();
 function geometryOf(reg, floor) {
   let byFloor = floorGeometry.get(reg);
   if (!byFloor) floorGeometry.set(reg, byFloor = /* @__PURE__ */ new Map());
-  const known2 = byFloor.get(floor);
-  if (known2) return known2;
+  const known3 = byFloor.get(floor);
+  if (known3) return known3;
   const rooms = planRoomsOn(reg, floor);
   const opens = rooms.filter(isOpenSpace);
   const segs = outline(opens.map(rectOf));
@@ -49213,11 +49220,11 @@ function svg2(tag2, attrs) {
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
-function selectedRegion(host, state, reg, known2) {
-  const remembered2 = known2.find((r) => r.id === host.dataset.selected);
+function selectedRegion(host, state, reg, known3) {
+  const remembered2 = known3.find((r) => r.id === host.dataset.selected);
   if (remembered2) return remembered2;
   const startRegion = reg.corporations.get(state.commander.corporationId ?? "")?.startingRegionId;
-  return known2.find((r) => r.id === startRegion) ?? known2[0];
+  return known3.find((r) => r.id === startRegion) ?? known3[0];
 }
 function regionPanel(state, region, ctx2) {
   const reg = ctx2.registries;
@@ -49287,10 +49294,10 @@ function renderMapTab(host, ctx2) {
     return;
   }
   const reg = ctx2.registries;
-  const known2 = knownRegions(state, reg);
-  const knownIds = new Set(known2.map((r) => String(r.id)));
+  const known3 = knownRegions(state, reg);
+  const knownIds = new Set(known3.map((r) => String(r.id)));
   const regions = [...reg.regions.values()];
-  let current = selectedRegion(host, state, reg, known2);
+  let current = selectedRegion(host, state, reg, known3);
   const select = (id) => {
     if (!knownIds.has(id)) return;
     host.dataset.selected = id;
@@ -49362,7 +49369,7 @@ function renderMapTab(host, ctx2) {
   drawMap();
   host.append(mapBox);
   if (current) {
-    current = known2.find((r) => r.id === current.id);
+    current = known3.find((r) => r.id === current.id);
     if (current) host.append(regionPanel(state, current, ctx2));
   }
 }
@@ -49400,11 +49407,11 @@ function renderNodeMap(host, view) {
     if (i > 0) root.append(h("span", { class: "alius-nodelink", "aria-hidden": "true" }, "\u2500\u2500"));
     const col = h("div", { class: "alius-nodecol" });
     for (const cell of column) {
-      const known2 = cell.text !== "[ ]";
-      const name = known2 ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
+      const known3 = cell.text !== "[ ]";
+      const name = known3 ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
       const status = cell.state === "option" ? "reachable" : cell.state === "ahead" ? "ahead" : cell.state;
       const classes = ["alius-node", cell.state === "option" ? "alius-reachable" : `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
-      const address = known2 && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : "glossary:unknown_node";
+      const address = known3 && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : "glossary:unknown_node";
       const attrs = { class: classes, "data-node": cell.nodeId, "aria-label": `${name}, ${status}` };
       col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
     }
@@ -50951,8 +50958,8 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     return;
   }
   const E = TUNING.warden.escalation;
-  const known2 = w.expectations.filter((x) => x.known);
-  const unknown2 = w.expectations.length - known2.length;
+  const known3 = w.expectations.filter((x) => x.known);
+  const unknown2 = w.expectations.length - known3.length;
   const raw = deps.showRaw === true;
   const defiance = Math.max(0, Math.min(100, Number.isFinite(Number(w.defiance)) ? Number(w.defiance) : 0));
   const meter = h(
@@ -50968,7 +50975,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     h("div", {}, h("span", { class: "alius-dim" }, `DEFIANCE${raw ? ` ${w.defiance}` : ""}`), meter),
     ...w.warnings.map((x) => h("p", { class: "alius-chip alius-stat alius-warning", "data-warning": String(x.level), ...analyzeAttrs("glossary:lethal_escalation") }, `${x.level === 2 ? "FINAL WARNING" : "WARNING"} \u2014 day ${x.day}`)),
     h("h4", {}, "EXPECTATIONS"),
-    ...known2.map((x) => {
+    ...known3.map((x) => {
       const id = entryIdFor(reg, x);
       return h("p", { class: "alius-chip alius-stat alius-expectation", ...analyzeAttrs(id ? `wardenExpectations:${id}` : "glossary:warden_expectation") }, `${expectationLabel(reg, x)} \u2014 ${weightBand(x.weight)}`);
     }),
@@ -51934,8 +51941,8 @@ function defaultLoadImage(url) {
   });
 }
 function tryLoad(url, load) {
-  const known2 = knownResult(url);
-  if (known2 !== void 0) return Promise.resolve(known2);
+  const known3 = knownResult(url);
+  if (known3 !== void 0) return Promise.resolve(known3);
   let p = loading.get(url);
   if (!p) {
     p = Promise.resolve().then(() => load(url)).catch(() => false).then((ok) => {
@@ -52081,9 +52088,9 @@ function renderSceneScreen(host, ctx2) {
       return;
     }
     const load = ctx2.loadImage ?? defaultLoadImage;
-    const known2 = candidates3.find((c) => knownResult(c.url) !== false);
-    if (known2 && knownResult(known2.url) === true) {
-      showImage(known2.url, known2.light);
+    const known3 = candidates3.find((c) => knownResult(c.url) !== false);
+    if (known3 && knownResult(known3.url) === true) {
+      showImage(known3.url, known3.light);
       return;
     }
     showAscii(s);
@@ -53249,10 +53256,10 @@ function obedienceProvider(_subject, env) {
 function squadSecretProvider(_subject, env) {
   const state = env.state;
   if (!state) return null;
-  const known2 = (state.personal?.secrets ?? []).filter((x) => x.status !== "kept");
-  if (known2.length === 0) return { lines: ["The commander knows of nothing the squad keeps back."] };
+  const known3 = (state.personal?.secrets ?? []).filter((x) => x.status !== "kept");
+  if (known3.length === 0) return { lines: ["The commander knows of nothing the squad keeps back."] };
   return {
-    lines: known2.map((x) => {
+    lines: known3.map((x) => {
       if (x.status === "found") {
         let masked = x.text;
         for (const id of x.knownBy) masked = masked.replace(new RegExp(`\\b${nameOf15(state, id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"), "\u2588\u2588\u2588\u2588\u2588");
@@ -53473,8 +53480,8 @@ function headStartProvider(_s, env, _k) {
   if (!state) return null;
   const hs = state.headStart;
   if (!hs) return { lines: ["No head start."] };
-  const known2 = new Set(hs.units.map((u) => u.unitId));
-  const arrivals = state.squad.filter((u) => u.kind === "named" && !known2.has(u.id) && isLiving(u)).map((u) => u.displayName);
+  const known3 = new Set(hs.units.map((u) => u.unitId));
+  const arrivals = state.squad.filter((u) => u.kind === "named" && !known3.has(u.id) && isLiving(u)).map((u) => u.displayName);
   return { lines: [`The squad has known the commander for ${hs.days} days.`, ...arrivals.length > 0 ? [`New arrivals: ${arrivals.join(", ")}.`] : []] };
 }
 function registerHeadStartProviders() {
@@ -59069,8 +59076,8 @@ registerChecks("habits", (entry) => {
   const counter = entry.counter;
   return counter?.kind === "joke" && counter.id !== void 0 ? [{ path: "counter.id", message: "a joke habit counts every running joke; it names none" }] : [];
 });
-var known = (regs, registry2, id, path, label2) => typeof id === "string" && !regs[registry2].has(id) ? [{ path, message: `unknown ${label2} "${id}"` }] : [];
-var knownEach = (regs, registry2, ids, path, label2) => Array.isArray(ids) ? ids.flatMap((id, i) => known(regs, registry2, id, `${path}[${i}]`, label2)) : [];
+var known2 = (regs, registry2, id, path, label2) => typeof id === "string" && !regs[registry2].has(id) ? [{ path, message: `unknown ${label2} "${id}"` }] : [];
+var knownEach = (regs, registry2, ids, path, label2) => Array.isArray(ids) ? ids.flatMap((id, i) => known2(regs, registry2, id, `${path}[${i}]`, label2)) : [];
 var planAffordances = (regs) => new Set([...regs.planRooms.values()].flatMap((r) => Array.isArray(r.affordances) ? r.affordances.map(String) : []));
 var affordanceChecks = (regs, list5, path) => {
   const have = planAffordances(regs);
@@ -59082,13 +59089,13 @@ function effectChecks(entry, regs) {
     const at = `effects[${i}]`;
     switch (fx2.type) {
       case "physics":
-        return known(regs, "contactPhysics", fx2.id, `${at}.id`, "contact physics");
+        return known2(regs, "contactPhysics", fx2.id, `${at}.id`, "contact physics");
       case "sound":
-        return known(regs, "uiSounds", fx2.id, `${at}.id`, "UI sound");
+        return known2(regs, "uiSounds", fx2.id, `${at}.id`, "UI sound");
       case "status_after":
-        return known(regs, "commanderConditions", fx2.id, `${at}.id`, "commander condition");
+        return known2(regs, "commanderConditions", fx2.id, `${at}.id`, "commander condition");
       case "escalation":
-        return known(regs, "escalationVerbs", fx2.verb, `${at}.verb`, "escalation verb");
+        return known2(regs, "escalationVerbs", fx2.verb, `${at}.verb`, "escalation verb");
       case "visibility":
         return knownEach(regs, "blockingPostures", fx2.unlessPosture, `${at}.unlessPosture`, "posture");
       default:
@@ -59096,8 +59103,8 @@ function effectChecks(entry, regs) {
     }
   });
 }
-var physicsLinkChecks = (entry, regs) => Array.isArray(entry.physics) ? entry.physics.flatMap((p, i) => known(regs, "contactPhysics", p.id, `physics[${i}].id`, "contact physics")) : [];
-var sourceChecks = (entry, regs) => entry.sources !== null && typeof entry.sources === "object" ? Object.keys(entry.sources).flatMap((id) => known(regs, "momentSources", id, `sources.${id}`, "moment source")) : [];
+var physicsLinkChecks = (entry, regs) => Array.isArray(entry.physics) ? entry.physics.flatMap((p, i) => known2(regs, "contactPhysics", p.id, `physics[${i}].id`, "contact physics")) : [];
+var sourceChecks = (entry, regs) => entry.sources !== null && typeof entry.sources === "object" ? Object.keys(entry.sources).flatMap((id) => known2(regs, "momentSources", id, `sources.${id}`, "moment source")) : [];
 registerChecks("worshipTargets", (entry, regs) => knownEach(regs, "stimulusKinds", entry.stimuli, "stimuli", "stimulus kind"));
 registerChecks("blockingPostures", effectChecks);
 registerChecks("blockingAnchors", (entry, regs) => [...affordanceChecks(regs, entry.requires?.affordances, "requires.affordances"), ...effectChecks(entry, regs)]);
@@ -59105,8 +59112,8 @@ registerChecks("blockingContacts", (entry, regs) => {
   const implies = entry.implies ?? {};
   const out = [];
   for (const who of ["actor", "receiver"]) {
-    out.push(...known(regs, "blockingPostures", implies[who]?.posture, `implies.${who}.posture`, "posture"));
-    out.push(...known(regs, "blockingAnchors", implies[who]?.anchor, `implies.${who}.anchor`, "anchor"));
+    out.push(...known2(regs, "blockingPostures", implies[who]?.posture, `implies.${who}.posture`, "posture"));
+    out.push(...known2(regs, "blockingAnchors", implies[who]?.anchor, `implies.${who}.anchor`, "anchor"));
   }
   out.push(...knownEach(regs, "worshipTargets", entry.target, "target", "worship target"));
   out.push(...knownEach(regs, "stimulusKinds", entry.stimuli, "stimuli", "stimulus kind"));
@@ -59115,12 +59122,12 @@ registerChecks("blockingContacts", (entry, regs) => {
 });
 registerChecks("blockingItems", (entry, regs) => [...knownEach(regs, "stimulusKinds", entry.stimuli, "stimuli", "stimulus kind"), ...physicsLinkChecks(entry, regs), ...sourceChecks(entry, regs), ...effectChecks(entry, regs)]);
 registerChecks("blockingActivities", (entry, regs) => [
-  ...known(regs, "blockingPostures", entry.impliedPosture, "impliedPosture", "posture"),
+  ...known2(regs, "blockingPostures", entry.impliedPosture, "impliedPosture", "posture"),
   ...knownEach(regs, "activities", entry.fromActivities, "fromActivities", "activity"),
   ...sourceChecks(entry, regs),
   ...effectChecks(entry, regs)
 ]);
-registerChecks("contactPhysics", (entry, regs) => Array.isArray(entry.chains) ? entry.chains.flatMap((c, i) => known(regs, "contactPhysics", c.to, `chains[${i}].to`, "contact physics")) : []);
+registerChecks("contactPhysics", (entry, regs) => Array.isArray(entry.chains) ? entry.chains.flatMap((c, i) => known2(regs, "contactPhysics", c.to, `chains[${i}].to`, "contact physics")) : []);
 registerChecks("physicsCues", (entry, regs) => knownEach(regs, "contactPhysics", entry.physics, "physics", "contact physics"));
 registerChecks("hobbies", (entry, regs) => {
   if (!Array.isArray(entry.activityIds)) return [];
@@ -59156,9 +59163,9 @@ var duplicateOf = (regs, registry2, entry, field2) => {
   return ids.slice(0, ids.indexOf(String(entry.id))).some((id) => regs[registry2].get(id)[field2] === entry[field2]);
 };
 registerChecks("positionRegions", (entry, regs) => duplicateOf(regs, "positionRegions", entry, "rank") ? [{ path: "rank", message: `a second region has the rank "${String(entry.rank)}"` }] : []);
-registerChecks("aftermaths", (entry, regs) => Object.keys(entry.weights?.regard ?? {}).flatMap((id) => known(regs, "regardBands", id, `weights.regard.${id}`, "regard band")));
+registerChecks("aftermaths", (entry, regs) => Object.keys(entry.weights?.regard ?? {}).flatMap((id) => known2(regs, "regardBands", id, `weights.regard.${id}`, "regard band")));
 registerChecks("dynamicDomains", (entry, regs) => {
-  const out = known(regs, "holdBands", entry.requires?.holdBand, "requires.holdBand", "hold band");
+  const out = known2(regs, "holdBands", entry.requires?.holdBand, "requires.holdBand", "hold band");
   const ids = [...regs.dynamicDomains.keys()];
   const earlier = ids.slice(0, ids.indexOf(String(entry.id))).flatMap((id) => regs.dynamicDomains.get(id).grants ?? []);
   entry.grants?.forEach((cap7, i) => {
@@ -59169,12 +59176,12 @@ registerChecks("dynamicDomains", (entry, regs) => {
 registerChecks("dynamicMilestones", (entry, regs) => {
   const req = entry.requires ?? {};
   return [
-    ...known(regs, "holdBands", req.holdBand, "requires.holdBand", "hold band"),
-    ...Object.keys(req.tracks ?? {}).flatMap((id) => known(regs, "dynamicTracks", id, `requires.tracks.${id}`, "practice track")),
+    ...known2(regs, "holdBands", req.holdBand, "requires.holdBand", "hold band"),
+    ...Object.keys(req.tracks ?? {}).flatMap((id) => known2(regs, "dynamicTracks", id, `requires.tracks.${id}`, "practice track")),
     ...knownEach(regs, "contentCategories", req.categories, "requires.categories", "content category")
   ];
 });
-registerChecks("dynamicTracks", (entry, regs) => known(regs, "contentCategories", entry.category, "category", "content category"));
+registerChecks("dynamicTracks", (entry, regs) => known2(regs, "contentCategories", entry.category, "category", "content category"));
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
