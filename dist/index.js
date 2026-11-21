@@ -12882,6 +12882,10 @@ function computeDeltas(state, reg, unitId, event) {
 
 // src/engine/relations/effects.ts
 var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var landedHooks = [];
+function registerEventLanded(fn) {
+  landedHooks.push(fn);
+}
 function defectEventStress(reg, unit3, rel, eventType) {
   let sum = 0;
   for (const d of unit3.defects) {
@@ -12925,6 +12929,7 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
   }
   events.push(...evaluateEvent(draft, reg, unitId, event.type));
   events.push(...opts.witnessOf !== void 0 ? recordWitnessOf(draft, reg, unitId, event, opts.witnessOf) : recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? "actor" : "subject"));
+  if (opts.witnessOf === void 0) for (const hook of landedHooks) events.push(...hook(draft, reg, unitId, event, d.severity));
   return events;
 }
 
@@ -25184,6 +25189,9 @@ function seedWarden(draft, ctx2, p) {
 }
 
 // src/engine/dynamic/state.ts
+function dynamicOf(state, unitId) {
+  return state.relations[unitId]?.dynamic;
+}
 function fnv1a3(s) {
   let h2 = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -25236,6 +25244,9 @@ function holderCap(state) {
 function holdersAtPlay(state) {
   const play = frameRank("play");
   return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play).map((u) => u.id);
+}
+function canHold(state, reg, unitId, opts = {}) {
+  return holdReason(state, reg, unitId, { ...opts, seeded: state.dynamic?.setup.units[unitId]?.seeded === true });
 }
 function holdReason(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return "the dynamic is off";
@@ -32378,12 +32389,99 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
   return [{ type: "pastime_set", unitId: unit3.id, pastimeId }];
 });
 
+// src/engine/dynamic/hold.ts
+var round42 = (n) => Math.round(n * 1e4) / 1e4;
+function bandsOf(reg) {
+  return [...reg.holdBands.values()].map((b) => b).sort((a, b) => a.min - b.min);
+}
+function bandIndex(reg, hold) {
+  const bands = bandsOf(reg);
+  let at = 0;
+  for (let i = 0; i < bands.length; i++) if (hold >= bands[i].min) at = i;
+  return at;
+}
+function holdBandOf(reg, hold) {
+  return bandsOf(reg)[bandIndex(reg, hold)]?.id ?? "";
+}
+function frameEntry(reg, frame) {
+  return reg.dynamicFrames.get(frame);
+}
+function compatibilityOf(_state, _reg, _unitId) {
+  return 1;
+}
+function addHold(draft, ctx2, unitId, base, cause) {
+  const reg = ctx2.registries;
+  if (base === 0 || !dynamicOn(draft, reg) || draft.relations[unitId] === void 0) return [];
+  const events = [];
+  if (dynamicOf(draft, unitId) === void 0) {
+    if (base < 0 || canHold(draft, reg, unitId) !== null) return [];
+    events.push(...ensureDynamic(draft, reg, unitId));
+  }
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0) return events;
+  const gain = base > 0;
+  let delta = base * TUNING.dynamic.pace[draft.dynamic.setup.pace];
+  if (gain) {
+    delta *= compatibilityOf(draft, reg, unitId);
+    if (bondTierOf(draft, reg, unitId) === "romantic") {
+      const primary = draft.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+      if (primary === "affectionate" || primary === "possessive") delta *= TUNING.dynamic.romanticTier.warm;
+      else if (primary === "cold") delta *= TUNING.dynamic.romanticTier.cold;
+    }
+  }
+  const frame = frameEntry(reg, dyn.frame);
+  const floor = frame?.holdFloor ?? 0;
+  const ceiling = frame?.holdCeiling ?? 100;
+  const from = dyn.hold;
+  let to = round42(Math.min(ceiling, Math.max(floor, from + delta)));
+  if (gain && to < from) to = from;
+  if (!gain && to > from) to = from;
+  if (gain) dyn.lastPracticeDay = draft.day;
+  if (to === from) return events;
+  dyn.hold = to;
+  events.push({ type: "hold_changed", unitId, from, to, cause });
+  const was = holdBandOf(reg, from);
+  const now = holdBandOf(reg, to);
+  if (was !== now) events.push({ type: "hold_band_changed", unitId, from: was, to: now });
+  return events;
+}
+
+// src/engine/dynamic/feed.ts
+var FEED_CAUSE = Object.freeze({
+  followed_lead: "followed_lead",
+  rule_accepted: "rule_accepted",
+  rule_broken: "rule_broken",
+  refused_demand: "refusal",
+  granted_demand: "desire_granted",
+  overrode_her: "overrode_her",
+  commander_enforced: "commander_enforced",
+  task_kept: "task_kept",
+  punishment_accepted: "punishment_accepted",
+  service_rated: "service_rated_pleased",
+  staging_held: "staging_held",
+  task_broken: "task_broken"
+});
+function causeOf(reg, event) {
+  const cause = FEED_CAUSE[event.type];
+  if (cause === void 0) return null;
+  if (event.type === "granted_demand") return event.templateId !== void 0 && reg.demandTemplates.get(event.templateId)?.kind === "desire" ? cause : null;
+  if (event.type === "service_rated") return event.kind === "pleased" ? cause : null;
+  return cause;
+}
+function holdFeed(draft, reg, unitId, event, _severity) {
+  if (event.actor !== "commander" || !dynamicOn(draft, reg) || dynamicOf(draft, unitId) === void 0) return [];
+  const cause = causeOf(reg, event);
+  if (cause === null) return [];
+  return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);
+}
+
 // src/engine/actions/dynamic.ts
 function namedUnit3(draft, id, action) {
   const unit3 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
   if (!unit3 || unit3.kind !== "named") throw new Error(`${action} needs a named unit.`);
   return unit3;
 }
+registerEventLanded(holdFeed);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);

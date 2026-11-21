@@ -3,7 +3,9 @@ import { registerAction, type EngineEvent } from '../dispatch';
 import { EXPECTATION_FIELDS, lockedExpectation, mergeExpectations, validateExpectations, type ExpectationProfile } from '../dynamic/expectations';
 import { mergePractice, validatePractice } from '../dynamic/profile';
 import { contentAllowed } from '../bonds/content';
+import { holdFeed } from '../dynamic/feed';
 import { holdReason } from '../dynamic/gate';
+import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
 import { seedHold } from '../dynamic/seeds';
 import { dynamicSaltOf, newDynamicCampaign } from '../dynamic/state';
@@ -19,6 +21,9 @@ export function namedUnit(draft: { squad: Unit[] }, id: unknown, action: string)
   if (!unit || unit.kind !== 'named') throw new Error(`${action} needs a named unit.`);
   return unit;
 }
+
+// A relation event that lands on a holder feeds her hold (R8); the hook is inert while the dynamic is off.
+registerEventLanded(holdFeed);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

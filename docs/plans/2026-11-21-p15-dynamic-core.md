@@ -1128,16 +1128,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `holdFeed(draft, reg, unitId, event, severity): EngineEvent[]`;
   - the cause map `FEED_CAUSE: Record<string, string>` (`followed_lead`, `rule_accepted`, `rule_broken`, `refused_demand`, `granted_demand`, `overrode_her`, `commander_enforced`, and P16's types for later).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `followed_lead lands +1 on a holder`; `commander_enforced on her −10`; `rule_broken −5`.
   - `a granted demand counts only for a desire template` (an `item` template gives 0).
   - `an event on a unit without a dynamic, or with the dynamic off, changes nothing and returns []`.
   - `P16's task_kept, if it ever lands, gives +3` (a synthetic `applyEventToUnit` with that type; the row is ready).
   - `applyEventToUnit draws nothing new` (`rng` state unchanged across the call with and without the hook).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/feed.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): relation events feed hold`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/feed.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): relation events feed hold`
 
 ---
 

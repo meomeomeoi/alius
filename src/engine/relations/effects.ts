@@ -3,13 +3,29 @@ import type { EngineEvent } from '../dispatch';
 import { countDeed } from '../discipline/deeds';
 import { recordAppraisal, recordWitnessOf } from '../development/appraisal';
 import { applyRelationDelta } from '../relationGain';
-import type { CampaignState, Relation, Unit } from '../state/types';
+import type { CampaignState, Relation, Severity, Unit } from '../state/types';
 import { computeDeltas } from './deltas';
 import { roundAway } from './gain';
 import { evaluateEvent, pushHistory } from './graph';
 import type { EventIntent } from './intents';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/** What lands after an event has landed on one unit (P15's hold feed): it may change state and returns events; it must draw nothing. */
+export type EventLandedHook = (draft: CampaignState, reg: Registries, unitId: string, event: EventIntent, severity: Severity) => EngineEvent[];
+const landedHooks: EventLandedHook[] = [];
+
+/**
+ * P15 plugs in here (an engine-internal hook, not a content one): `fn` runs at the very end of `applyEventToUnit`, for an event that
+ * landed on the unit itself (a bystander's appraisal is not a landing). Several may be registered; they run in registration order.
+ */
+export function registerEventLanded(fn: EventLandedHook): void {
+  landedHooks.push(fn);
+}
+/** Tests: forget every registered hook. */
+export function resetEventLanded(): void {
+  landedHooks.length = 0;
+}
 
 /**
  * The stress her defects add when this event lands on her (P9d `eventStress`); a negative value relieves. A defect that names an
@@ -70,5 +86,6 @@ export function applyEventToUnit(
   events.push(...(opts.witnessOf !== undefined
     ? recordWitnessOf(draft, reg, unitId, event, opts.witnessOf)
     : recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? 'actor' : 'subject')));
+  if (opts.witnessOf === undefined) for (const hook of landedHooks) events.push(...hook(draft, reg, unitId, event, d.severity)); // P15: hold
   return events;
 }
