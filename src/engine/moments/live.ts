@@ -118,9 +118,10 @@ function blockingWeight(state: CampaignState, reg: Registries, sourceId: string,
   return sum;
 }
 
-/** Task 19 (physics segments) answers this: the last segment crossed the warning gauge, or slipped. No physics runs yet, so neither. */
-function physicsLive(_state: CampaignState, _kind: 'physics_warning' | 'physics_slip'): boolean {
-  return false;
+/** The last segment of a running hold: it crossed the warning gauge (`physics_warning`), or it slipped (`physics_slip`). */
+function physicsLive(state: CampaignState, kind: 'physics_warning' | 'physics_slip'): boolean {
+  const last = state.scene?.physics?.last;
+  return kind === 'physics_warning' ? last?.warning === true : (last?.slips ?? 0) > 0;
 }
 
 /**

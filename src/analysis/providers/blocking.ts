@@ -1,6 +1,7 @@
 import { COMMANDER, WORN_SLOTS, type StagingSnapshot } from '../../engine/blocking';
 import type { ResponseType } from '../../engine/blocking';
 import { momentsOf } from '../../engine/moments/state';
+import { commanderSkill } from '../../engine/physics/skill';
 import type { CampaignState } from '../../engine/state/types';
 import type { Subject } from '../subject';
 import type { AnalyzeEnv } from '../model';
@@ -85,6 +86,32 @@ function momentOption(subject: Subject, env: AnalyzeEnv): { lines: string[] } | 
   return { lines };
 }
 
+/** The words of the commander's endurance level (0–5); the xp behind them is never shown. */
+export const ENDURANCE_WORDS = ['not yet', 'first steps', 'steady', 'seasoned', 'enduring', 'hardened'] as const;
+const INPUT_TEXT: Record<string, string> = {
+  breathe: 'Catch the gap she gives: the air comes back when you catch it.',
+  hold: 'Keep still while she presses; letting go costs strength.',
+  gap_breath: 'Breathe through a gap in her seal: a little air, but she may notice.',
+  shift_weight: 'Shift her weight back: a little strength, but she may notice.',
+  mouth_breath: 'Breathe through the mouth: less of it, but she may notice.',
+  part: 'Choose the next part to work.',
+  ask_rest: 'Ask for a rest.',
+  wait: 'Let the beat pass.',
+};
+
+/**
+ * The reading of a contact physics (a hold): what a button of it does and, for a physics the body can train, the commander's OWN endurance
+ * for it in words. Never her rhythm, her expectations, her skills or the plan of the segment.
+ */
+function contactPhysicsReading(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const phys = env.registries.contactPhysics.get(subject.id);
+  const lines: string[] = [];
+  const input = typeof subject.data.input === 'string' ? INPUT_TEXT[subject.data.input] : undefined;
+  if (input !== undefined) lines.push(input);
+  if (phys?.skill === true && env.state) lines.push(`Your endurance for this: ${ENDURANCE_WORDS[commanderSkill(env.state, subject.id)]}.`);
+  return lines.length > 0 ? { lines } : null;
+}
+
 /** Registers the P15a readings (called from `registerCoreProviders`). */
 export function registerBlockingProviders(): void {
   registerAnalyzeProvider('blockingPostures', reading(FIELD.postures));
@@ -93,5 +120,6 @@ export function registerBlockingProviders(): void {
   registerAnalyzeProvider('blockingItems', reading(FIELD.items));
   registerAnalyzeProvider('blockingActivities', reading(FIELD.activities));
   registerAnalyzeProvider('momentSources', momentOption);
+  registerAnalyzeProvider('contactPhysics', contactPhysicsReading);
 }
 

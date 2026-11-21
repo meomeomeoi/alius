@@ -108,8 +108,8 @@ describe('her moves at the boundary', () => {
   });
 
   it('draws nothing when no move can be made (day, attentive, nothing due)', () => {
-    const s = running({ gauge: 90 });
-    const r = endSeg(s, 5);
+    const s = running({ contact: 'footrest', gauge: 90 });
+    const r = endSeg(s, 5, holds);
     expect(r.state.rng).toEqual(seedRng(5));
   });
 

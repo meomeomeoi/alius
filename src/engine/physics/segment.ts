@@ -13,6 +13,7 @@ import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
+import { momentPass } from '../moments/fire';
 import { decideBoundary } from './boundary';
 import { chainRun } from './run';
 import { addEnduranceXp, herSkillOf } from './skill';
@@ -285,6 +286,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   const boundary = decideBoundary(draft, ctx, run, result);
   if (boundary.move !== undefined) (events[0] as { move?: string }).move = boundary.move;
   events.push(...boundary.events);
+  events.push(...momentPass(draft, ctx, 'segment')); // a warning or a slip of this segment may bring a moment up (a no-op, and no draw, unless one is live)
   return events;
 }
 

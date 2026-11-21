@@ -917,6 +917,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
+        physics: { // P15a: the hold panel's inputs go to the staging controller, never through `stage` (a hold is not rolled back by a swipe)
+          input: (i) => staging.input(i), endSegment: () => staging.endSegment(), stopWord: () => staging.stopWord(), cue: (k, b) => staging.cue(k, b), beat: () => staging.beat(),
+          keystroke: () => staging.keystroke(), typed: (chars, beat) => staging.typed(chars, beat),
+          onTap: () => { const failed = api.dispatch({ type: 'physics/signal', payload: {} }, { expectChatId: st.getActiveChat()?.chatId }).find((e) => e.type === 'error'); if (failed) toast('warn', String(failed.message ?? failed.code)); },
+        },
         onPastime: (_unitId, pastimeId) => { // P14c: the "let's ..." of the scene; the pastime's own checks refuse what does not fit
           const events = api.dispatch({ type: 'life/pastime_in_scene', payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
           const failed = events.find((e) => e.type === 'error');

@@ -73,3 +73,41 @@
 #alius-shell .alius-moment-dim {
   margin: 2px 6px;
 }
+
+/* The physics panel (P15a): the air and the strain narrow and shake the screen; reduced motion and the readable mode get a static tint. */
+#alius-shell .alius-physics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+  padding: 4px 6px;
+  border: var(--alius-line);
+  /* the vignette closes as the air runs low (--alius-air 1 → 0); no number is ever drawn */
+  box-shadow: inset 0 0 calc((1 - var(--alius-air, 1)) * 60px) calc((1 - var(--alius-air, 1)) * 14px) rgba(0, 0, 0, 0.6);
+}
+
+#alius-shell .alius-physics-tremor {
+  animation: alius-tremor 0.18s linear infinite;
+}
+
+#alius-shell .alius-physics-tint {
+  border-color: var(--alius-warn, currentColor);
+  border-width: 3px;
+}
+
+#alius-shell .alius-physics-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+#alius-shell .alius-physics-cue {
+  font-style: italic;
+}
+
+@keyframes alius-tremor {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(calc(var(--alius-strain, 0) * 1.5px), 0); }
+  75% { transform: translate(calc(var(--alius-strain, 0) * -1.5px), 0); }
+  100% { transform: translate(0, 0); }
+}

@@ -35,6 +35,18 @@
       {
         "id": "body_reflexes",
         "label": "Body: reflexes"
+      },
+      {
+        "id": "endurance_breath",
+        "label": "Endurance: breath drill"
+      },
+      {
+        "id": "endurance_weight",
+        "label": "Endurance: weight drill"
+      },
+      {
+        "id": "endurance_jaw",
+        "label": "Endurance: jaw drill"
       }
     ],
     "effects": [
@@ -73,6 +85,27 @@
         "stat": "reflexes",
         "when": {
           "focus": "body_reflexes"
+        }
+      },
+      {
+        "type": "commander_endurance_xp",
+        "physics": "breath",
+        "when": {
+          "focus": "endurance_breath"
+        }
+      },
+      {
+        "type": "commander_endurance_xp",
+        "physics": "weight",
+        "when": {
+          "focus": "endurance_weight"
+        }
+      },
+      {
+        "type": "commander_endurance_xp",
+        "physics": "jaw",
+        "when": {
+          "focus": "endurance_jaw"
         }
       }
     ],

@@ -1149,6 +1149,9 @@ function summarizeActivityEffect(effect, _reg, focus) {
     case "commander_body_xp":
       s = `Body training: ${String(e.stat)}`;
       break;
+    case "commander_endurance_xp":
+      s = `Endurance drill: ${String(e.physics)} (once a day)`;
+      break;
     case "commander_injury_days":
       s = `Commander ${signed(Number(e.amount))} injury days`;
       break;
@@ -7347,6 +7350,8 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("commander_injury_days"), amount: int, ...amountFields }).strict(),
   /** P7: one body training session (tenths of XP come from `TUNING.commander`); the amount is not authored. */
   external_exports.object({ type: external_exports.literal("commander_body_xp"), stat: external_exports.enum(["strength", "endurance", "reflexes"]), ...amountFields }).strict(),
+  /** P15a: one endurance drill of the commander for a contact physics (the xp is `TUNING.physics.endurance.training`, once a day per physics); the amount is not authored. */
+  external_exports.object({ type: external_exports.literal("commander_endurance_xp"), physics: external_exports.string().min(1), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
   /** P12: moves the commander's own stress (a negative amount relieves it). */
@@ -14433,6 +14438,46 @@ function applyRemotePunishment(draft, ctx2, punishmentId) {
   return events;
 }
 
+// src/engine/physics/skill.ts
+var levelForXp = (xp) => TUNING.physics.endurance.thresholds.filter((t) => xp >= t).length;
+function commanderSkill(state, physicsId) {
+  return state.commander.endurance?.[physicsId]?.level ?? 0;
+}
+function addEnduranceXp(draft, physicsId, xp) {
+  const book2 = draft.commander.endurance ??= {};
+  const row3 = book2[physicsId] ??= { xp: 0, level: 0 };
+  const before = row3.level;
+  row3.xp += xp;
+  row3.level = levelForXp(row3.xp);
+  return { type: "endurance_gained", physicsId, xp: row3.xp, gained: xp, level: row3.level, leveledUp: row3.level > before };
+}
+function trainEndurance(draft, physicsId) {
+  if (draft.commander.endurance?.[physicsId]?.trainedDay === draft.day) return null;
+  const event = addEnduranceXp(draft, physicsId, TUNING.physics.endurance.training);
+  draft.commander.endurance[physicsId].trainedDay = draft.day;
+  return event;
+}
+function herSkillOf(state, unitId) {
+  const s = state.relations[unitId]?.herSkill;
+  return { seal: s?.seal ?? 0, weight: s?.weight ?? 0, reading: s?.reading ?? 0, swing: s?.swing ?? 0, rhythm: s?.rhythm ?? 0 };
+}
+function practise2(draft, unitId, kinds2, styleKey) {
+  const rel = draft.relations[unitId];
+  if (!rel) return [];
+  const skill = rel.herSkill ??= { seal: 0, weight: 0, reading: 0, swing: 0, rhythm: 0, practice: {} };
+  const mult = TUNING.physics.herSkill.mult[styleKey] ?? 1;
+  const events = [];
+  for (const kind of kinds2) {
+    skill.practice[kind] = (skill.practice[kind] ?? 0) + mult;
+    const level = Math.min(TUNING.physics.herSkill.cap, Math.floor(skill.practice[kind] / TUNING.physics.herSkill.practices));
+    if (level > skill[kind]) {
+      skill[kind] = level;
+      events.push({ type: "her_skill_gained", unitId, skill: kind, level });
+    }
+  }
+  return events;
+}
+
 // src/engine/special/state.ts
 var newFrequency = () => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 var PREMONITION_ABOUT = ["doubt", "desertion", "mutiny", "defiance"];
@@ -15737,7 +15782,7 @@ function reputationDayStep(draft, ctx2) {
     delete rep.pending;
   }
   const active = rep?.active ?? [];
-  const holding = (id) => {
+  const holding2 = (id) => {
     const e = lookup(id);
     return e !== void 0 && patternHolds(draft, e);
   };
@@ -15748,13 +15793,13 @@ function reputationDayStep(draft, ctx2) {
     if (!sameGroup) {
       if (active.length < TUNING.reputation.maxActive) replaces = void 0;
       else {
-        const gone2 = active.find((a) => !holding(a.id));
+        const gone2 = active.find((a) => !holding2(a.id));
         if (!gone2) continue;
         replaces = gone2.id;
       }
     } else {
       const old = lookup(sameGroup.id);
-      if (holding(sameGroup.id) && old && patternScore(draft, c) <= patternScore(draft, old)) continue;
+      if (holding2(sameGroup.id) && old && patternScore(draft, c) <= patternScore(draft, old)) continue;
       replaces = sameGroup.id;
     }
     draft.commander.reputation = { active: rep?.active ?? [], pending: { id: String(c.id), queuedDay: draft.day, ...replaces !== void 0 ? { replaces } : {} } };
@@ -19562,6 +19607,9 @@ function checkActivity(state, reg, request) {
   if (req.focus !== void 0 && !focus) return `Unknown focus "${req.focus}" for ${name}.`;
   if (focus?.requires && !hasTraitEffect(state, reg, focus.requires.traitEffect)) return `${focus.label} is not available to this commander.`;
   if (focus && state.special?.frequency?.burnedDay !== void 0 && a.effects.some((fx2) => fx2.type === "burn_frequency_implant" && fx2.when?.focus === focus.id)) return "The implant is already burned.";
+  for (const fx2 of a.effects.filter((x) => x.type === "commander_endurance_xp" && focus !== void 0 && x.when?.focus === focus.id)) {
+    if (state.commander.endurance?.[String(fx2.physics)]?.trainedDay === state.day) return `${focus.label} was done today.`;
+  }
   if (focus?.units) {
     const ids = req.unitIds ?? [];
     if (ids.length < focus.units.min || ids.length > focus.units.max) {
@@ -19624,6 +19672,11 @@ function runActivity(draft, ctx2, request) {
       case "commander_stat": {
         const r = addSocialPoints(draft.commander, fx2.stat, Math.round(scaled(fx2.amount, draft, reg, fx2.scale) * socialGrowthMult(draft, reg, fx2.stat)));
         events.push({ type: "social_gained", stat: fx2.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
+        break;
+      }
+      case "commander_endurance_xp": {
+        const gained = trainEndurance(draft, String(fx2.physics));
+        if (gained) events.push(gained);
         break;
       }
       case "commander_body_xp": {
@@ -26547,8 +26600,9 @@ function blockingWeight(state, reg, sourceId, unitId) {
   }
   return sum;
 }
-function physicsLive(_state, _kind) {
-  return false;
+function physicsLive(state, kind) {
+  const last = state.scene?.physics?.last;
+  return kind === "physics_warning" ? last?.warning === true : (last?.slips ?? 0) > 0;
 }
 function liveSources(state, reg, opts = {}) {
   const scene = state.scene;
@@ -26820,40 +26874,6 @@ function blendedStyle(style, field2) {
 function leadStyle(style) {
   const { lead, leadKey } = styleRows(style);
   return { key: leadKey, cues: lead.cues, seal: lead.seal, skillMult: lead.skillMult };
-}
-
-// src/engine/physics/skill.ts
-var levelForXp = (xp) => TUNING.physics.endurance.thresholds.filter((t) => xp >= t).length;
-function commanderSkill(state, physicsId) {
-  return state.commander.endurance?.[physicsId]?.level ?? 0;
-}
-function addEnduranceXp(draft, physicsId, xp) {
-  const book2 = draft.commander.endurance ??= {};
-  const row3 = book2[physicsId] ??= { xp: 0, level: 0 };
-  const before = row3.level;
-  row3.xp += xp;
-  row3.level = levelForXp(row3.xp);
-  return { type: "endurance_gained", physicsId, xp: row3.xp, gained: xp, level: row3.level, leveledUp: row3.level > before };
-}
-function herSkillOf(state, unitId) {
-  const s = state.relations[unitId]?.herSkill;
-  return { seal: s?.seal ?? 0, weight: s?.weight ?? 0, reading: s?.reading ?? 0, swing: s?.swing ?? 0, rhythm: s?.rhythm ?? 0 };
-}
-function practise2(draft, unitId, kinds2, styleKey) {
-  const rel = draft.relations[unitId];
-  if (!rel) return [];
-  const skill = rel.herSkill ??= { seal: 0, weight: 0, reading: 0, swing: 0, rhythm: 0, practice: {} };
-  const mult = TUNING.physics.herSkill.mult[styleKey] ?? 1;
-  const events = [];
-  for (const kind of kinds2) {
-    skill.practice[kind] = (skill.practice[kind] ?? 0) + mult;
-    const level = Math.min(TUNING.physics.herSkill.cap, Math.floor(skill.practice[kind] / TUNING.physics.herSkill.practices));
-    if (level > skill[kind]) {
-      skill[kind] = level;
-      events.push({ type: "her_skill_gained", unitId, skill: kind, level });
-    }
-  }
-  return events;
 }
 
 // src/engine/physics/run.ts
@@ -30287,6 +30307,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   const boundary = decideBoundary(draft, ctx2, run, result);
   if (boundary.move !== void 0) events[0].move = boundary.move;
   events.push(...boundary.events);
+  events.push(...momentPass(draft, ctx2, "segment"));
   return events;
 }
 function typedBeats(draft, chars, from) {
@@ -38147,7 +38168,7 @@ function createStaging(deps) {
   }
   function endSegment() {
     const r = run();
-    if (!r || r.segment.state !== "running") return [];
+    if (!active || !r || r.segment.state !== "running") return [];
     const inputs = collected;
     collected = [];
     startedAt = null;
@@ -38163,6 +38184,11 @@ function createStaging(deps) {
       if (!active || !r || r.segment.state !== "running") return;
       if (MAINTENANCE.has(i.kind) && deps.now() < lapseUntil) return;
       collected.push(i);
+    },
+    beat() {
+      const r = run();
+      if (!r?.segment.plan || startedAt === null) return 0;
+      return Math.min(r.segment.plan.beats.length - 1, Math.max(0, Math.floor((deps.now() - startedAt) / TUNING.physics.beatMs)));
     },
     keystroke() {
       lapseUntil = deps.now() + TUNING.physics.typing.lapseMs;
@@ -43002,6 +43028,130 @@ function renderDisciplineMenu(ctx2) {
   return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
 }
 
+// src/analysis/providers.ts
+var providers = /* @__PURE__ */ new Map();
+var stateless = /* @__PURE__ */ new WeakSet();
+function registerAnalyzeProvider(key, fn, opts) {
+  if (opts?.stateless) stateless.add(fn);
+  const list5 = providers.get(key) ?? [];
+  list5.push(fn);
+  providers.set(key, list5);
+  return () => {
+    const cur = providers.get(key);
+    if (!cur) return;
+    const rest = cur.filter((p) => p !== fn);
+    if (rest.length > 0) providers.set(key, rest);
+    else providers.delete(key);
+  };
+}
+function readingFor2(subject, env) {
+  const knowledge = buildKnowledge(env.state, env.settings);
+  const lines = [];
+  const keys = subject.address === subject.source ? [subject.address] : [subject.address, subject.source];
+  let needsCampaign = false;
+  for (const key of keys) {
+    for (const provider of providers.get(key) ?? []) {
+      if (!env.state && !stateless.has(provider)) {
+        needsCampaign = true;
+        continue;
+      }
+      try {
+        const reading2 = provider(subject, env, knowledge);
+        if (reading2) lines.push(...reading2.lines);
+      } catch (e) {
+        console.warn(`analyze provider "${key}" failed`, e);
+      }
+    }
+  }
+  if (lines.length === 0 && needsCampaign) return { lines: ["No campaign loaded."] };
+  return lines.length > 0 ? { lines } : null;
+}
+
+// src/analysis/providers/blocking.ts
+var BY = { engine: "the game", chip: "a chip", reading: "the reading of the scene" };
+var FIELD = { postures: "posture", anchors: "anchor", contacts: "contact", items: "worn", activities: "activity" };
+var VERB = { posture: "is in it", anchor: "is there", contact: "is in it", worn: "wears it", activity: "is doing it" };
+function holders(state, kind, id) {
+  const blocking = state.scene?.blocking ?? {};
+  const out = [];
+  for (const person of [...state.scene?.participants ?? [], COMMANDER]) {
+    const b = blocking[person];
+    if (!b) continue;
+    const has2 = kind === "posture" ? b.posture === id : kind === "anchor" ? b.anchor?.id === id : kind === "activity" ? b.activity === id : kind === "contact" ? b.contact?.id === id : WORN_SLOTS.some((s) => b.worn?.[s]?.id === id);
+    if (has2) out.push(person);
+  }
+  return out;
+}
+function entryFor(state, kind, id, person) {
+  const log = state.scene?.stagingLog ?? [];
+  for (let i = log.length - 1; i >= 0; i--) {
+    const e = log[i];
+    if (e.field !== kind) continue;
+    if (kind === "posture" || kind === "anchor" ? e.person === person && e.value === id : kind === "activity" ? e.person === person && e.value === id : e.value === id) return e;
+  }
+  return void 0;
+}
+function reading(kind) {
+  return (subject, env) => {
+    const state = env.state;
+    if (!state?.scene) return null;
+    const who = holders(state, kind, subject.id);
+    if (who.length === 0) return null;
+    const name = (p) => p === COMMANDER ? "the commander" : state.squad.find((u) => u.id === p)?.displayName ?? p;
+    const parts = who.map((p) => {
+      const e = entryFor(state, kind, subject.id, p);
+      const how = e === void 0 ? "set by the game at the start" : `set by ${BY[e.source ?? "engine"]} in exchange ${e.exchange ?? 0}`;
+      return `${name(p)} ${VERB[kind]}, ${how}`;
+    });
+    return { lines: [`In the scene: ${parts.join("; ")}.`] };
+  };
+}
+var ANSWER_KIND = {
+  yielded: "goes along with her",
+  resisted: "pushes back",
+  returned: "takes the lead back",
+  deflected: "turns it aside"
+};
+function momentOption2(subject, env) {
+  const open3 = momentsOf(env.state?.scene).open;
+  const key = typeof subject.data.key === "string" ? subject.data.key : void 0;
+  if (!open3 || open3.sourceId !== subject.id || key === void 0) return null;
+  const option2 = open3.options.find((o) => o.key === key);
+  if (!option2) return null;
+  const lines = [`This answer ${ANSWER_KIND[option2.type]}.`];
+  const remember = env.registries.momentSources.get(open3.sourceId)?.remember;
+  if (["0", "1", "2"].includes(key) && remember?.some((r) => String(r.option) === key)) lines.push("Those present will remember it.");
+  return { lines };
+}
+var ENDURANCE_WORDS = ["not yet", "first steps", "steady", "seasoned", "enduring", "hardened"];
+var INPUT_TEXT = {
+  breathe: "Catch the gap she gives: the air comes back when you catch it.",
+  hold: "Keep still while she presses; letting go costs strength.",
+  gap_breath: "Breathe through a gap in her seal: a little air, but she may notice.",
+  shift_weight: "Shift her weight back: a little strength, but she may notice.",
+  mouth_breath: "Breathe through the mouth: less of it, but she may notice.",
+  part: "Choose the next part to work.",
+  ask_rest: "Ask for a rest.",
+  wait: "Let the beat pass."
+};
+function contactPhysicsReading(subject, env) {
+  const phys = env.registries.contactPhysics.get(subject.id);
+  const lines = [];
+  const input = typeof subject.data.input === "string" ? INPUT_TEXT[subject.data.input] : void 0;
+  if (input !== void 0) lines.push(input);
+  if (phys?.skill === true && env.state) lines.push(`Your endurance for this: ${ENDURANCE_WORDS[commanderSkill(env.state, subject.id)]}.`);
+  return lines.length > 0 ? { lines } : null;
+}
+function registerBlockingProviders() {
+  registerAnalyzeProvider("blockingPostures", reading(FIELD.postures));
+  registerAnalyzeProvider("blockingAnchors", reading(FIELD.anchors));
+  registerAnalyzeProvider("blockingContacts", reading(FIELD.contacts));
+  registerAnalyzeProvider("blockingItems", reading(FIELD.items));
+  registerAnalyzeProvider("blockingActivities", reading(FIELD.activities));
+  registerAnalyzeProvider("momentSources", momentOption2);
+  registerAnalyzeProvider("contactPhysics", contactPhysicsReading);
+}
+
 // src/ui/personal/tokens.ts
 function renderTokens(state, reg, handlers2) {
   const owned = state.personal?.tokens?.owned ?? [];
@@ -43108,6 +43258,7 @@ function renderCmdrCard(host, ctx2) {
   ];
   const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : void 0;
   const reputation = state.commander.reputation?.active ?? [];
+  const holds4 = [...reg.contactPhysics.values()].filter((e) => e.skill === true && ["breath", "weight", "jaw"].includes(String(e.id))).map((e) => String(e.id));
   const traitIds2 = [...p.traits.regular, ...p.traits.special !== void 0 ? [p.traits.special] : []];
   const learned = Object.entries(state.commander.hobbySkill ?? {}).filter(([id]) => reg.hobbies.has(id));
   const file = h(
@@ -43154,6 +43305,11 @@ function renderCmdrCard(host, ctx2) {
         )
       ];
     })),
+    // P15a: how long the commander lasts in each kind of hold, as words (never xp)
+    holds4.length === 0 ? null : h("p", { "data-commander-holds": "", ...analyzeAttrs("glossary:endurance_training") }, "HOLDS \u2014 ", ...holds4.flatMap((id, i) => [
+      i === 0 ? "" : " \xB7 ",
+      h("span", { class: "alius-chip", "data-commander-hold": id, ...analyzeAttrs(`contactPhysics:${id}`) }, `${String(reg.contactPhysics.get(id).label).toUpperCase()}: ${ENDURANCE_WORDS[commanderSkill(state, id)].toUpperCase()}`)
+    ])),
     // P15a: what the commander bears after a hold, as chips (until the day or the slot ends)
     conditionsOf(state).length === 0 ? null : h("p", { "data-commander-conditions": "" }, "CONDITION \u2014 ", ...conditionsOf(state).flatMap((c, i) => [
       i === 0 ? "" : " \xB7 ",
@@ -47902,6 +48058,133 @@ function renderMomentCard(host, ctx2) {
   ));
 }
 
+// src/ui/scene/physicsPanel.ts
+var PART_LABEL2 = (p) => p.toUpperCase();
+function controlsOf(interaction, run) {
+  switch (interaction) {
+    case "timing":
+      return [
+        { kind: "breathe", text: "[ BREATHE ]", main: true },
+        ...run.seal === "leaky" && run.physicsId === "breath" ? [{ kind: "gap_breath", text: "[ BREATHE THROUGH THE GAP ]", relief: true }] : []
+      ];
+    case "hold":
+      return [{ kind: "hold", text: "[ HOLD STILL ]", main: true }, { kind: "shift_weight", text: "[ SHIFT HER WEIGHT BACK ]", relief: true }];
+    case "decision":
+      return [{ kind: "mouth_breath", text: "[ BREATHE THROUGH THE MOUTH ]", relief: true }];
+    case "order":
+      return TUNING.physics.tongue.parts.map((p, i) => ({ kind: "part", text: `[ ${PART_LABEL2(p)} ]`, part: p, ...i === 0 ? { main: true } : {} }));
+    case "gesture":
+      return [{ kind: "ask_rest", text: "[ ASK FOR A REST ]" }];
+    default:
+      return [];
+  }
+}
+var pointers = /* @__PURE__ */ new WeakMap();
+var wired = /* @__PURE__ */ new WeakSet();
+var holding = /* @__PURE__ */ new WeakMap();
+function renderPhysicsPanel(host, ctx2) {
+  const { state, registries: reg, staging } = ctx2;
+  const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : void 0;
+  if (!state || !run) {
+    const t = holding.get(host);
+    if (t !== void 0) clearInterval(t);
+    holding.delete(host);
+    host.replaceChildren();
+    pointers.delete(host);
+    return;
+  }
+  const phys = reg.contactPhysics.get(run.physicsId);
+  const interaction = String(phys?.interaction ?? "");
+  const realtime = ctx2.settings.physicsRealtime === true;
+  const running2 = run.segment.state === "running" && run.segment.plan !== void 0;
+  const total2 = run.segment.plan?.beats.length ?? 0;
+  const key = `${run.id}|${run.segment.n}`;
+  if (pointers.get(host)?.key !== key) pointers.set(host, { key, beat: 0 });
+  const pointer = pointers.get(host);
+  const letGo2 = () => {
+    const t = holding.get(host);
+    if (t !== void 0) clearInterval(t);
+    holding.delete(host);
+  };
+  const stamp = (physics) => analyzeNative(`contactPhysics:${run.physicsId}`, { input: physics });
+  const press = (c) => {
+    if (!running2) return;
+    if (realtime) {
+      if (c.kind === "wait") return;
+      staging.input({ beat: staging.beat(), kind: c.kind });
+      if (c.kind === "hold" && !holding.has(host)) holding.set(host, setInterval(() => staging.input({ beat: staging.beat(), kind: "hold" }), TUNING.physics.beatMs));
+      return;
+    }
+    if (c.kind !== "wait") staging.input({ beat: pointer.beat, kind: c.kind, ...c.part !== void 0 ? { part: c.part } : {} });
+    pointer.beat += 1;
+    if (pointer.beat >= total2) {
+      pointers.set(host, { key, beat: 0 });
+      staging.endSegment();
+    }
+  };
+  const controls = running2 ? [...controlsOf(interaction, run), { kind: "wait", text: "[ WAIT ]" }] : [];
+  const button2 = (c) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-physics-input",
+    "data-input": c.kind,
+    ...c.part !== void 0 ? { "data-part": c.part } : {},
+    ...stamp(c.kind),
+    ...realtime ? { onpointerdown: () => press(c), onpointerup: () => letGo2(), onpointerleave: () => letGo2() } : { onclick: () => press(c) }
+  }, c.text);
+  const remaining = remainingOf(reg, run);
+  const reduced = motionReduced(ctx2.settings) || ctx2.settings.readableMode;
+  const strain2 = 1 - remaining;
+  const tremor = running2 && strain2 >= 0.7 && !reduced;
+  const tint = strain2 >= 0.7 && reduced;
+  const cue = running2 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
+  const cueLine = cue !== void 0 ? staging.cue(cue, pointer.beat) : null;
+  const gauge = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
+  const root = h(
+    "div",
+    {
+      class: `alius-physics${tremor ? " alius-physics-tremor" : ""}${tint ? " alius-physics-tint" : ""}`,
+      role: "group",
+      "aria-label": "A hold",
+      "data-run": run.id
+    },
+    h("div", { class: "alius-physics-title" }, `[ ${String(phys?.label ?? run.physicsId).toUpperCase()} ]`),
+    run.segment.state === "held" ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null,
+    cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null,
+    running2 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null,
+    ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
+    h(
+      "div",
+      { class: "alius-physics-controls" },
+      ...controls.map(button2),
+      h("button", { type: "button", class: "alius-btn alius-option alius-physics-tap", "data-action": "tap", ...analyzeNative("glossary:tap_signal"), onclick: () => ctx2.onTap() }, "[ TAP ]"),
+      h("button", { type: "button", class: "alius-btn alius-option alius-physics-stop", "data-action": "stop-word", ...analyzeNative("glossary:stop_word"), onclick: () => {
+        staging.stopWord();
+      } }, "[ STOP WORD ]")
+    )
+  );
+  root.style.setProperty("--alius-air", String(Math.round(remaining * 100) / 100));
+  root.style.setProperty("--alius-strain", String(Math.round(strain2 * 100) / 100));
+  host.replaceChildren(root);
+  if (!wired.has(host)) {
+    wired.add(host);
+    host.addEventListener("keydown", (e) => {
+      const ev = e;
+      const t = ev.target;
+      if (ev.key !== " " || t && /^(input|textarea|select|button)$/i.test(t.tagName)) return;
+      const main2 = host.querySelector(".alius-physics-input[data-input]");
+      if (!main2) return;
+      ev.preventDefault();
+      main2.dispatchEvent(new Event(realtime ? "pointerdown" : "click", { bubbles: true }));
+    });
+    host.addEventListener("keyup", (e) => {
+      if (e.key !== " ") return;
+      const t = holding.get(host);
+      if (t !== void 0) clearInterval(t);
+      holding.delete(host);
+    });
+  }
+}
+
 // src/ui/scene/sceneScreen.ts
 var loaded = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
@@ -48026,6 +48309,7 @@ function renderSceneScreen(host, ctx2) {
   let deviceHost;
   let blockingHost;
   let momentHost;
+  let physicsHost;
   let busyHost;
   let caption;
   let input;
@@ -48346,6 +48630,17 @@ function renderSceneScreen(host, ctx2) {
       }
     });
   }
+  function drawPhysics(s) {
+    if (!ctx2.physics) {
+      physicsHost.replaceChildren();
+      return;
+    }
+    const staging = ctx2.physics;
+    renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx2.settings(), staging, onTap: () => {
+      staging.onTap();
+      if (!disposed) refresh();
+    } });
+  }
   function drawBanner() {
     banner.replaceChildren();
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
@@ -48399,14 +48694,17 @@ function renderSceneScreen(host, ctx2) {
     deviceHost = h("div", { class: "alius-device-host" });
     blockingHost = h("div", { class: "alius-blocking-host" });
     momentHost = h("div", { class: "alius-moment-host" });
+    physicsHost = h("div", { class: "alius-physics-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
+    input.addEventListener("input", () => ctx2.physics?.keystroke());
     input.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter" || pending4) return;
       const text2 = input.value.trim();
       if (text2 === "") return;
       const order = orderOn && ctx2.onOrder !== void 0 ? ctx2.onOrder(orderWho?.value || present2(state())[0]?.id || "") : false;
+      ctx2.physics?.typed(text2.length);
       pending4 = true;
       input.disabled = true;
       editing = null;
@@ -48492,6 +48790,7 @@ function renderSceneScreen(host, ctx2) {
       genChips,
       blockingHost,
       momentHost,
+      physicsHost,
       chips,
       leadChips,
       ruleChips,
@@ -48542,6 +48841,7 @@ function renderSceneScreen(host, ctx2) {
     drawDevice(s);
     drawBlocking(s);
     drawMoment(s);
+    drawPhysics(s);
     placeSprites();
   }
   function pulse(e) {
@@ -48596,45 +48896,6 @@ function renderSceneScreen(host, ctx2) {
   };
   refresh();
   return screen;
-}
-
-// src/analysis/providers.ts
-var providers = /* @__PURE__ */ new Map();
-var stateless = /* @__PURE__ */ new WeakSet();
-function registerAnalyzeProvider(key, fn, opts) {
-  if (opts?.stateless) stateless.add(fn);
-  const list5 = providers.get(key) ?? [];
-  list5.push(fn);
-  providers.set(key, list5);
-  return () => {
-    const cur = providers.get(key);
-    if (!cur) return;
-    const rest = cur.filter((p) => p !== fn);
-    if (rest.length > 0) providers.set(key, rest);
-    else providers.delete(key);
-  };
-}
-function readingFor2(subject, env) {
-  const knowledge = buildKnowledge(env.state, env.settings);
-  const lines = [];
-  const keys = subject.address === subject.source ? [subject.address] : [subject.address, subject.source];
-  let needsCampaign = false;
-  for (const key of keys) {
-    for (const provider of providers.get(key) ?? []) {
-      if (!env.state && !stateless.has(provider)) {
-        needsCampaign = true;
-        continue;
-      }
-      try {
-        const reading2 = provider(subject, env, knowledge);
-        if (reading2) lines.push(...reading2.lines);
-      } catch (e) {
-        console.warn(`analyze provider "${key}" failed`, e);
-      }
-    }
-  }
-  if (lines.length === 0 && needsCampaign) return { lines: ["No campaign loaded."] };
-  return lines.length > 0 ? { lines } : null;
 }
 
 // src/analysis/providers/commander.ts
@@ -48975,71 +49236,6 @@ function registerBondsProviders() {
   registerAnalyzeProvider("glossary:want", wantProvider);
   registerAnalyzeProvider("glossary:publicity", publicityProvider);
   registerAnalyzeProvider("relationshipRuleTemplates", ruleProvider);
-}
-
-// src/analysis/providers/blocking.ts
-var BY = { engine: "the game", chip: "a chip", reading: "the reading of the scene" };
-var FIELD = { postures: "posture", anchors: "anchor", contacts: "contact", items: "worn", activities: "activity" };
-var VERB = { posture: "is in it", anchor: "is there", contact: "is in it", worn: "wears it", activity: "is doing it" };
-function holders(state, kind, id) {
-  const blocking = state.scene?.blocking ?? {};
-  const out = [];
-  for (const person of [...state.scene?.participants ?? [], COMMANDER]) {
-    const b = blocking[person];
-    if (!b) continue;
-    const has2 = kind === "posture" ? b.posture === id : kind === "anchor" ? b.anchor?.id === id : kind === "activity" ? b.activity === id : kind === "contact" ? b.contact?.id === id : WORN_SLOTS.some((s) => b.worn?.[s]?.id === id);
-    if (has2) out.push(person);
-  }
-  return out;
-}
-function entryFor(state, kind, id, person) {
-  const log = state.scene?.stagingLog ?? [];
-  for (let i = log.length - 1; i >= 0; i--) {
-    const e = log[i];
-    if (e.field !== kind) continue;
-    if (kind === "posture" || kind === "anchor" ? e.person === person && e.value === id : kind === "activity" ? e.person === person && e.value === id : e.value === id) return e;
-  }
-  return void 0;
-}
-function reading(kind) {
-  return (subject, env) => {
-    const state = env.state;
-    if (!state?.scene) return null;
-    const who = holders(state, kind, subject.id);
-    if (who.length === 0) return null;
-    const name = (p) => p === COMMANDER ? "the commander" : state.squad.find((u) => u.id === p)?.displayName ?? p;
-    const parts = who.map((p) => {
-      const e = entryFor(state, kind, subject.id, p);
-      const how = e === void 0 ? "set by the game at the start" : `set by ${BY[e.source ?? "engine"]} in exchange ${e.exchange ?? 0}`;
-      return `${name(p)} ${VERB[kind]}, ${how}`;
-    });
-    return { lines: [`In the scene: ${parts.join("; ")}.`] };
-  };
-}
-var ANSWER_KIND = {
-  yielded: "goes along with her",
-  resisted: "pushes back",
-  returned: "takes the lead back",
-  deflected: "turns it aside"
-};
-function momentOption2(subject, env) {
-  const open3 = momentsOf(env.state?.scene).open;
-  const key = typeof subject.data.key === "string" ? subject.data.key : void 0;
-  if (!open3 || open3.sourceId !== subject.id || key === void 0) return null;
-  const option2 = open3.options.find((o) => o.key === key);
-  if (!option2) return null;
-  const lines = [`This answer ${ANSWER_KIND[option2.type]}.`];
-  const remember = env.registries.momentSources.get(open3.sourceId)?.remember;
-  if (["0", "1", "2"].includes(key) && remember?.some((r) => String(r.option) === key)) lines.push("Those present will remember it.");
-  return { lines };
-}
-function registerBlockingProviders() {
-  registerAnalyzeProvider("blockingPostures", reading(FIELD.postures));
-  registerAnalyzeProvider("blockingAnchors", reading(FIELD.anchors));
-  registerAnalyzeProvider("blockingContacts", reading(FIELD.contacts));
-  registerAnalyzeProvider("blockingItems", reading(FIELD.items));
-  registerAnalyzeProvider("blockingActivities", reading(FIELD.activities));
-  registerAnalyzeProvider("momentSources", momentOption2);
 }
 
 // src/analysis/providers/memory.ts
@@ -52499,6 +52695,20 @@ function createApp(st, deps) {
           scene.stage(action);
         },
         // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
+        physics: {
+          // P15a: the hold panel's inputs go to the staging controller, never through `stage` (a hold is not rolled back by a swipe)
+          input: (i) => staging.input(i),
+          endSegment: () => staging.endSegment(),
+          stopWord: () => staging.stopWord(),
+          cue: (k, b) => staging.cue(k, b),
+          beat: () => staging.beat(),
+          keystroke: () => staging.keystroke(),
+          typed: (chars, beat) => staging.typed(chars, beat),
+          onTap: () => {
+            const failed = api.dispatch({ type: "physics/signal", payload: {} }, { expectChatId: st.getActiveChat()?.chatId }).find((e) => e.type === "error");
+            if (failed) toast("warn", String(failed.message ?? failed.code));
+          }
+        },
         onPastime: (_unitId, pastimeId) => {
           const events = api.dispatch({ type: "life/pastime_in_scene", payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
           const failed = events.find((e) => e.type === "error");

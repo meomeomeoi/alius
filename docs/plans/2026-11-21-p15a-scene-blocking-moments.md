@@ -1286,7 +1286,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - Typing in the scene input lapses maintenance (R12).
   - No number is shown unless "show raw values" is on.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `turn-based buttons stage nothing and dispatch segment_end after 4 beats` (physics is not staged).
   - `typing lapses holds in real time` (fake clock).
   - `the stop word is always present and enabled`.
@@ -1295,10 +1295,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `chat switch stops the clock`: the controller is reset, and a pending `segment_end` is dropped with `chat_changed`.
   - `TRAIN offers endurance drills, once a day`.
   - `every element resolves`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/physicsPanel.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the physics panel, endurance drills and the commander's endurance`
+- [x] **Step 2: Run** `npx vitest run tests/ui/physicsPanel.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the physics panel, endurance drills and the commander's endurance`
 
 ---
 

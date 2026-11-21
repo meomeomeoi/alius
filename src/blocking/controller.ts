@@ -21,7 +21,7 @@ const MAINTENANCE = new Set<SegmentInput['kind']>(['hold', 'breathe']);
 export interface StagingDeps {
   app: {
     dispatch(action: Action, opts?: { expectChatId?: string }): EngineEvent[];
-    current(): { state: CampaignState | null; load?: { chatId?: string } };
+    current(): { state: CampaignState | null; load?: unknown };
     context?: ContextBuilder;
     refreshContext?(): void;
   };
@@ -40,6 +40,8 @@ export interface StagingController {
   onEvents(events: readonly EngineEvent[]): void;
   /** The panel's input for the segment that is running. Maintenance inputs lapse while keys are typed (real time). */
   input(i: SegmentInput): void;
+  /** The beat of the running segment the clock is at (real time): where an input made now lands. */
+  beat(): number;
   /** A key was typed in the scene input (real time: maintenance lapses for `TUNING.physics.typing.lapseMs`). */
   keystroke(): void;
   /** A message was sent (turn-based: its length uses beats from `beat`). */
@@ -78,7 +80,7 @@ export function createStaging(deps: StagingDeps): StagingController {
   const work = new Set<Promise<unknown>>();
 
   const state = (): CampaignState | null => deps.app.current().state;
-  const chatId = (): string | undefined => deps.app.current().load?.chatId;
+  const chatId = (): string | undefined => (deps.app.current().load as { chatId?: string } | undefined)?.chatId;
   const run = () => state()?.scene?.physics;
   const dispatch = (action: Action): EngineEvent[] => {
     const events = deps.app.dispatch(action, { expectChatId: chatId() });
@@ -169,7 +171,7 @@ export function createStaging(deps: StagingDeps): StagingController {
 
   function endSegment(): EngineEvent[] {
     const r = run();
-    if (!r || r.segment.state !== 'running') return [];
+    if (!active || !r || r.segment.state !== 'running') return [];
     const inputs = collected;
     collected = [];
     startedAt = null;
@@ -186,6 +188,11 @@ export function createStaging(deps: StagingDeps): StagingController {
       if (!active || !r || r.segment.state !== 'running') return;
       if (MAINTENANCE.has(i.kind) && deps.now() < lapseUntil) return;
       collected.push(i);
+    },
+    beat() {
+      const r = run();
+      if (!r?.segment.plan || startedAt === null) return 0;
+      return Math.min(r.segment.plan.beats.length - 1, Math.max(0, Math.floor((deps.now() - startedAt) / TUNING.physics.beatMs)));
     },
     keystroke() {
       lapseUntil = deps.now() + TUNING.physics.typing.lapseMs;

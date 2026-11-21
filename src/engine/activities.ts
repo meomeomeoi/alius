@@ -11,6 +11,7 @@ import { addSocialPoints, socialGrowthMult, socialRank } from './social';
 import type { CampaignState, Unit } from './state/types';
 import { addBodyXp, bodyGrowthMult } from './commander/profile';
 import { hasTraitEffect, traitEffects } from './commander/traits';
+import { trainEndurance } from './physics/skill';
 import { TUNING } from './tuning';
 import { restrictionReason } from './discipline/restrictions';
 import { addCommanderStress } from './special/commanderStress';
@@ -131,6 +132,10 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   if (focus?.requires && !hasTraitEffect(state, reg, focus.requires.traitEffect as never)) return `${focus.label} is not available to this commander.`;
   if (focus && state.special?.frequency?.burnedDay !== undefined
     && (a.effects as Fx[]).some((fx) => fx.type === 'burn_frequency_implant' && fx.when?.focus === focus.id)) return 'The implant is already burned.';
+  // P15a: an endurance drill is done once a day for each physics
+  for (const fx of (a.effects as Fx[]).filter((x) => x.type === 'commander_endurance_xp' && focus !== undefined && x.when?.focus === focus.id)) {
+    if (state.commander.endurance?.[String((fx as { physics?: unknown }).physics)]?.trainedDay === state.day) return `${focus!.label} was done today.`;
+  }
   if (focus?.units) {
     const ids = req.unitIds ?? [];
     if (ids.length < focus.units.min || ids.length > focus.units.max) {
@@ -207,6 +212,11 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
       case 'commander_stat': {
         const r = addSocialPoints(draft.commander, fx.stat, Math.round(scaled(fx.amount, draft, reg, fx.scale) * socialGrowthMult(draft, reg, fx.stat)));
         events.push({ type: 'social_gained', stat: fx.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
+        break;
+      }
+      case 'commander_endurance_xp': {
+        const gained = trainEndurance(draft, String((fx as { physics?: unknown }).physics));
+        if (gained) events.push(gained);
         break;
       }
       case 'commander_body_xp': {

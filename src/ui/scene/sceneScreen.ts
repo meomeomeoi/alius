@@ -23,6 +23,7 @@ import { deviceLocked } from '../../engine/blocking';
 import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
+import { renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -55,6 +56,8 @@ export interface SceneScreenCtx {
   onPastime?: (unitId: string, pastimeId: string) => void;
   /** P15a: a BLOCKING chip's action (the app passes the scene controller's `stage`). Absent: the controller's own `stage`. */
   onStage?: (action: Action) => void;
+  /** P15a: the staging controller under the physics panel (its inputs, cues and stop word) and the tap. Absent: no panel is drawn. */
+  physics?: PhysicsPanelStaging & { keystroke(): void; typed(chars: number, beat?: number): unknown; onTap(): void };
 }
 
 export interface SceneScreen {
@@ -209,6 +212,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   /** P15a: the BLOCKING strip (drawn only while the blocking is live). */
   let blockingHost: HTMLElement;
   let momentHost: HTMLElement;
+  let physicsHost: HTMLElement;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
   let input: HTMLInputElement;
@@ -544,6 +548,13 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     });
   }
 
+  /** P15a: the hold panel (nothing without a run or without the staging controller). */
+  function drawPhysics(s: CampaignState): void {
+    if (!ctx.physics) { physicsHost.replaceChildren(); return; }
+    const staging = ctx.physics;
+    renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
+  }
+
   function drawBanner(): void {
     banner.replaceChildren();
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
@@ -598,15 +609,18 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     deviceHost = h('div', { class: 'alius-device-host' });
     blockingHost = h('div', { class: 'alius-blocking-host' });
     momentHost = h('div', { class: 'alius-moment-host' });
+    physicsHost = h('div', { class: 'alius-physics-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
+    input.addEventListener('input', () => ctx.physics?.keystroke()); // P15a: typing under load lets maintenance lapse (real time)
     input.addEventListener('keydown', (ev) => {
       if ((ev as KeyboardEvent).key !== 'Enter' || pending) return;
       const text = input.value.trim();
       if (text === '') return;
       const order = orderOn && ctx.onOrder !== undefined ? ctx.onOrder(orderWho?.value || present(state()!)[0]?.id || '') : false;
       void order; // the engine rolled her answer and set her directive: the message goes out either way
+      ctx.physics?.typed(text.length); // P15a: a long message uses up beats of a running hold (turn-based)
       pending = true;
       input.disabled = true;
       editing = null;
@@ -680,6 +694,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       genChips,
       blockingHost,
       momentHost,
+      physicsHost,
       chips,
       leadChips,
       ruleChips,
@@ -732,6 +747,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawDevice(s);
     drawBlocking(s);
     drawMoment(s);
+    drawPhysics(s);
     placeSprites();
   }
 

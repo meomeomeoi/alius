@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking, type BlockingChange } from '../../../src/engine/blocking';
+import { liveSources } from '../../../src/engine/moments/live';
 import { Rng, seedRng } from '../../../src/engine/rng';
 import { planSegment, rhythmOffset, resolveSegment, type ResolveEnv } from '../../../src/engine/physics/segment';
 import { registerHoldsUntil, registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
@@ -303,17 +304,17 @@ describe('the segment actions', () => {
   });
 
   it('segment_end resolves the inputs, writes the summary and holds the body', () => {
-    const s = next(withContact(setUp())).state;
+    const s = next(withContact(setUp(), { value: 'footrest' })).state;
     const plan = s.scene!.physics!.segment.plan!;
-    const open = plan.beats.findIndex((b) => b.opening);
+    expect(plan.beats).toHaveLength(4);
     const before = s.scene!.physics!.gauge;
-    const r = end(s, open >= 0 ? [input(open, 'breathe')] : []);
+    const r = end(s, [0, 1, 2, 3].map((b) => input(b, 'hold')));
     expect(errors(r.events)).toEqual([]);
     const p = r.state.scene!.physics!;
     expect(p.segment.state).toBe('held');
     expect(p.gauge).toBeLessThan(before);
     expect(p.last).toBeDefined();
-    expect(r.state.rng).toEqual(s.rng); // no draw here: no relief input, so no gaze roll
+    expect(r.state.rng).toEqual(s.rng); // no draw here: no relief input (no gaze roll), nothing live (no moment)
     expect(ofType(r.events, 'physics_segment')[0]).toMatchObject({ runId: p.id, n: 1, phase: 'end' });
   });
 
@@ -366,5 +367,35 @@ describe('the segment actions', () => {
     const w = next(s).state;
     const r = end(w, []); // no hold at all: slips
     expect(r.state.scene!.physics!.extend).toBe(TUNING.physics.slipExtend);
+  });
+});
+
+describe('a segment may bring a moment up', () => {
+  it('a warning makes `endurance` live and a slip `own_slip` (both dynamic: frame play); the pass after segment_end draws only then', () => {
+    const s = next(withContact(setUp())).state;
+    s.scene!.physics!.gauge = 80; // 80 → 24 %: under the warning, above her release
+    s.scene!.physics!.seal = 'tight';
+    s.scene!.physics!.segment.plan = beats({}, {}, {}, {});
+    const r = end(s, []);
+    expect(r.state.scene!.physics!.last!.warning).toBe(true);
+    expect(liveSources(r.state, reg).map((x) => x.sourceId)).toContain('endurance');
+    expect(r.state.rng).not.toEqual(s.rng); // the chance was drawn
+    const calm = next(withContact(setUp(), { value: 'footrest' })).state;
+    const c = end(calm, [0, 1, 2, 3].map((b) => input(b, 'hold')));
+    expect(c.state.scene!.physics!.last!.warning).toBeUndefined();
+    expect(c.state.rng).toEqual(calm.rng); // nothing live: nothing drawn
+    let opened = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const t = structuredClone(s);
+      t.rng = seedRng(seed);
+      if (ofType(run(t, reg, { type: 'physics/segment_end', payload: { runId: 'p1', segment: 1, inputs: [] } }).events, 'moment_fired').length > 0) opened++;
+    }
+    expect(opened).toBeGreaterThan(0);
+  });
+
+  it('a weight slip makes `own_slip` live', () => {
+    const w = next(withContact(setUp(), { value: 'footrest' })).state;
+    const r = end(w, []);
+    expect(liveSources(r.state, reg).map((x) => x.sourceId)).toContain('own_slip');
   });
 });

@@ -2543,5 +2543,25 @@
       "tap_signal",
       "blocking"
     ]
+  },
+  {
+    "id": "physics_panel",
+    "term": "Hold panel",
+    "short": "What the body does in a hold and what you can do about it: one button per move, the tap, and the stop word that always works.",
+    "long": "AUTHOR TO WRITE: Turn-based, each press is one beat and the segment ends when its beats are used up. In real time, a press lands on the beat the clock is at and Space is the main input. A cue line tells what she does before the beat comes; the screen narrows and shakes as the limit nears (a static tint when motion is reduced). Typing uses up beats, and the game never waits for the model.",
+    "see": [
+      "tap_signal",
+      "stop_word",
+      "endurance_training"
+    ]
+  },
+  {
+    "id": "endurance_training",
+    "term": "Endurance training",
+    "short": "A drill at base that raises how long the commander can last in one kind of hold: breath, weight or jaw. Once a day for each.",
+    "long": "AUTHOR TO WRITE: Endurance grows by holds endured, by catching her gaps in a row, and by drilling at base. It raises the capacity of the body for that hold and never widens her gaps or changes her rhythm. The file shows it as a word, never as a number.",
+    "see": [
+      "physics_panel"
+    ]
   }
 ]

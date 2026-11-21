@@ -2,6 +2,8 @@ import type { Registries } from '../../content/types';
 import { commanderProfile, descriptor } from '../../engine/commander/profile';
 import { commanderHobbyWord } from '../../engine/life/meetings';
 import { conditionsOf } from '../../engine/physics/conditions';
+import { commanderSkill } from '../../engine/physics/skill';
+import { ENDURANCE_WORDS } from '../../analysis/providers/blocking';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
@@ -36,6 +38,7 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
   ];
   const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : undefined;
   const reputation = state.commander.reputation?.active ?? [];
+  const holds = [...reg.contactPhysics.values()].filter((e) => e.skill === true && ['breath', 'weight', 'jaw'].includes(String(e.id))).map((e) => String(e.id));
   const traitIds = [...p.traits.regular, ...(p.traits.special !== undefined ? [p.traits.special] : [])];
 
   // P14c: what the commander has learned from her, as words (never a number: it has no mechanical value)
@@ -76,6 +79,13 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
               `${String(reg.hobbies.get(id)!.label).toUpperCase()}: ${word === 'none' ? 'NOT YET' : word.toUpperCase()}`),
           ];
         })),
+      // P15a: how long the commander lasts in each kind of hold, as words (never xp)
+      holds.length === 0
+        ? null
+        : h('p', { 'data-commander-holds': '', ...analyzeAttrs('glossary:endurance_training') }, 'HOLDS — ', ...holds.flatMap((id, i): Child[] => [
+          i === 0 ? '' : ' · ',
+          h('span', { class: 'alius-chip', 'data-commander-hold': id, ...analyzeAttrs(`contactPhysics:${id}`) }, `${String(reg.contactPhysics.get(id)!.label).toUpperCase()}: ${ENDURANCE_WORDS[commanderSkill(state, id)]!.toUpperCase()}`),
+        ])),
       // P15a: what the commander bears after a hold, as chips (until the day or the slot ends)
       conditionsOf(state).length === 0
         ? null
