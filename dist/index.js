@@ -18890,9 +18890,15 @@ function stageShowsDynamic(draft, reg) {
 }
 function signsFromEvents(draft, ctx2, events) {
   const reg = ctx2.registries;
-  if (!dynamicOn(draft, reg) || draft.scene === void 0) return [];
+  if (!dynamicOn(draft, reg)) return [];
   const out = [];
   for (const e of events) {
+    if (e.type === "booking_played") {
+      const booking = (draft.personal?.bookings ?? []).find((b) => b.id === e.bookingId);
+      if (booking?.source === "milestone") out.push(...seen(draft, ctx2, othersOf(draft, booking.unitId), [booking.unitId], "held_night"));
+      continue;
+    }
+    if (draft.scene === void 0) continue;
     if (e.type === "blocking_changed" && e.person === "commander" && typeof e.value === "string") {
       const scope = e.field === "worn" ? reg.blockingItems.get(e.value)?.scope : e.field === "contact" ? reg.blockingContacts.get(e.value)?.scope : void 0;
       if (scope !== "dynamic") continue;
@@ -18923,6 +18929,17 @@ function decay2(draft) {
 }
 var holdersOf = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u) && dynamicOf(draft, u.id) !== void 0).map((u) => u.id);
 var othersOf = (draft, holderId) => draft.squad.filter((u) => u.id !== holderId && u.kind === "named" && isLiving(u)).map((u) => u.id);
+function leavingQuarters(draft, ctx2, holders2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const h2 of holders2) {
+    if (!hasCapability(draft, reg, h2, "second_place")) continue;
+    if (!(draft.personal?.bookings ?? []).some((b) => b.unitId === h2 && b.day === draft.day && b.slot === "evening" && b.status === "played")) continue;
+    const here = othersOf(draft, h2).filter((o) => reg.hubRooms.size === 0 || whereaboutAt(draft, reg, o, draft.day + 1, "morning").roomId !== null);
+    events.push(...seen(draft, ctx2, here, [h2], "leaving_quarters"));
+  }
+  return events;
+}
 function background(draft, ctx2, holders2) {
   const events = [];
   for (const h2 of holders2) {
@@ -18970,9 +18987,10 @@ function gossip(draft, ctx2, holders2) {
 }
 function knowledgeDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries) || draft.dynamic === void 0) return [];
-  decay2(draft);
   const holders2 = holdersOf(draft);
-  return [...background(draft, ctx2, holders2), ...tells(draft, ctx2, holders2), ...gossip(draft, ctx2, holders2)];
+  const events = [...leavingQuarters(draft, ctx2, holders2), ...background(draft, ctx2, holders2), ...tells(draft, ctx2, holders2), ...gossip(draft, ctx2, holders2)];
+  decay2(draft);
+  return events;
 }
 
 // src/engine/dynamic/probes.ts

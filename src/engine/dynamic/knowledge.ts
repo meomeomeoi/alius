@@ -10,10 +10,12 @@ import { contentAllowed } from '../bonds/content';
 import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { whereaboutAt } from '../hub';
 import { addFact } from '../memory/facts';
 import { leaderOf } from '../power/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { hasCapability } from './capabilities';
 import { dynamicOn } from './gate';
 import { practiceOf } from './profile';
 import { reactToDynamic } from './reactions';
@@ -167,13 +169,21 @@ function stageShowsDynamic(draft: CampaignState, reg: Registries): boolean {
 /**
  * The instant signs the scene's events carry (an after-action step): the commander wears an item of the dynamic, or takes a contact of it, with
  * others present (they know of each holder present, or of every holder when none is); and a visitor who walks in (`moment_fired` with a
- * `visitorId`) while the stage shows one. Nothing while the dynamic is off or when nobody holds. Draws nothing.
+ * `visitorId`) while the stage shows one; and a played milestone booking (`booking_played`), a `held_night` for every named unit. Nothing while the
+ * dynamic is off or when nobody holds. Draws nothing.
  */
 export function signsFromEvents(draft: CampaignState, ctx: Ctx, events: readonly EngineEvent[]): EngineEvent[] {
   const reg = ctx.registries;
-  if (!dynamicOn(draft, reg) || draft.scene === undefined) return [];
+  if (!dynamicOn(draft, reg)) return [];
   const out: EngineEvent[] = [];
   for (const e of events) {
+    if (e.type === 'booking_played') {
+      // a milestone booking that was played is a held night: everyone at base sees she was kept (R14, review I4); no scene is needed (`booking/play` opens none)
+      const booking = (draft.personal?.bookings ?? []).find((b) => b.id === e.bookingId);
+      if (booking?.source === 'milestone') out.push(...seen(draft, ctx, othersOf(draft, booking.unitId), [booking.unitId], 'held_night'));
+      continue;
+    }
+    if (draft.scene === undefined) continue;
     if (e.type === 'blocking_changed' && e.person === 'commander' && typeof e.value === 'string') {
       const scope = e.field === 'worn' ? reg.blockingItems.get(e.value)?.scope : e.field === 'contact' ? reg.blockingContacts.get(e.value)?.scope : undefined;
       if (scope !== 'dynamic') continue;
@@ -211,6 +221,23 @@ function decay(draft: CampaignState): void {
 const holdersOf = (draft: CampaignState): string[] => draft.squad.filter((u) => u.kind === 'named' && isLiving(u) && dynamicOf(draft, u.id) !== undefined).map((u) => u.id);
 
 const othersOf = (draft: CampaignState, holderId: string): string[] => draft.squad.filter((u) => u.id !== holderId && u.kind === 'named' && isLiving(u)).map((u) => u.id);
+
+/**
+ * The morning after a `second_place` evening (R14, review I4): a holder whose domain gives the second place and whose booking of the evening that is
+ * ending was played spent it away from her quarters, and the units who are at the hub the next morning (the hub's own derivation; every unit when the
+ * pack has no hub rooms) see her leave: `leaving_quarters` for each.
+ */
+function leavingQuarters(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[] {
+  const reg = ctx.registries;
+  const events: EngineEvent[] = [];
+  for (const h of holders) {
+    if (!hasCapability(draft, reg, h, 'second_place')) continue;
+    if (!(draft.personal?.bookings ?? []).some((b) => b.unitId === h && b.day === draft.day && b.slot === 'evening' && b.status === 'played')) continue;
+    const here = othersOf(draft, h).filter((o) => reg.hubRooms.size === 0 || whereaboutAt(draft, reg, o, draft.day + 1, 'morning').roomId !== null);
+    events.push(...seen(draft, ctx, here, [h], 'leaving_quarters'));
+  }
+  return events;
+}
 
 /** Background: a day of shared routine tells them something at `role` (3) and `rule` (6); at `play` and below there is none (the dynamic lives in scenes). */
 function background(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[] {
@@ -273,12 +300,14 @@ function gossip(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[
 }
 
 /**
- * The squad's day (step 8 of the dynamic's day): what has not been fed ages, then the background, what the holders tell and the gossip add. Draws
+ * The squad's day (step 8 of the dynamic's day): the background, what the holders tell and the gossip add, then what was not fed today ages. Draws
  * nothing. `[]` while the dynamic is off.
  */
 export function knowledgeDayStep(draft: CampaignState, ctx: Ctx): EngineEvent[] {
   if (!dynamicOn(draft, ctx.registries) || draft.dynamic === undefined) return [];
-  decay(draft);
   const holders = holdersOf(draft);
-  return [...background(draft, ctx, holders), ...tells(draft, ctx, holders), ...gossip(draft, ctx, holders)];
+  // the signs of the day come first: `decay` skips a pair that was fed today, so the background nets its full 3 / 6 a day (review I3)
+  const events = [...leavingQuarters(draft, ctx, holders), ...background(draft, ctx, holders), ...tells(draft, ctx, holders), ...gossip(draft, ctx, holders)];
+  decay(draft);
+  return events;
 }

@@ -12,7 +12,9 @@ import { applyDynamicIntent } from '../../../src/engine/dynamic/intents';
 import type { EventIntent } from '../../../src/engine/relations/intents';
 import type { Audience } from '../../../src/engine/dynamic/types';
 import type { CampaignState } from '../../../src/engine/state/types';
-import { campaign, ctxOf, errors, loadCore, run } from '../../helpers/world';
+import { personalOf } from '../../../src/engine/personal/state';
+import { campaign, ctxOf, errors, loadCore, run, stubExpedition } from '../../helpers/world';
+import '../../../src/engine/actions/personal';
 
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); });
@@ -168,6 +170,31 @@ describe('the day step', () => {
     expect(none.dynamic!.knowledge).toEqual({});
   });
 
+  it('background at role nets +3 a day over six days with no other sign, and decays 2 a day once the signs stop (I3)', () => {
+    const s = world('role');
+    s.day = 10;
+    const seen: number[] = [];
+    for (let day = 10; day <= 15; day++) {
+      s.day = day;
+      step(s);
+      seen.push(row(s, BEA)!.suspicion);
+    }
+    expect(seen).toEqual([3, 6, 9, 12, 15, 18]);
+    s.relations[ANN].dynamic!.frame = 'play'; // no more background
+    const after: number[] = [];
+    for (let day = 16; day <= 18; day++) {
+      s.day = day;
+      step(s);
+      after.push(row(s, BEA)!.suspicion);
+    }
+    expect(after).toEqual([16, 14, 12]);
+    const rule = world('rule');
+    rule.day = 10;
+    const ruleSeen: number[] = [];
+    for (let day = 10; day <= 12; day++) { rule.day = day; step(rule); ruleSeen.push(row(rule, BEA)!.suspicion); }
+    expect(ruleSeen).toEqual([6, 12, 18]);
+  });
+
   it('gossip capped at 15 a day', () => {
     let most = 0;
     for (let day = 1; day <= 60; day++) {
@@ -306,6 +333,60 @@ describe('instant knowledge from the scene', () => {
   });
 });
 
+describe('the producers of held_night and leaving_quarters (review I4)', () => {
+  const book = (s: CampaignState, over: Partial<import('../../../src/engine/state/types').Booking> = {}) => {
+    (personalOf(s).bookings ??= []).push({ id: `bk${personalOf(s).bookings?.length ?? 0}`, unitId: ANN, kindId: 'evening_with_me', day: s.day, slot: s.slot, status: 'booked', source: 'milestone', made: s.day - 1, ...over });
+  };
+  const suspicion = (s: CampaignState, id: string) => row(s, id)?.suspicion ?? 0;
+
+  it('a played milestone booking is a held_night (+5) for every named unit at base; a booking of the dice is none', () => {
+    const s = world('play');
+    book(s);
+    const r = run(s, reg, { type: 'booking/play', payload: {} });
+    expect(errors(r.events)).toEqual([]);
+    for (const id of [BEA, CAT, DEE, EVE]) expect(suspicion(r.state, id)).toBe(5);
+    expect(row(r.state, ANN)).toBeUndefined(); // the holder is nobody's observer
+    const dice = world('play');
+    book(dice, { source: 'roll' });
+    const r2 = run(dice, reg, { type: 'booking/play', payload: {} });
+    expect(errors(r2.events)).toEqual([]);
+    expect(r2.state.dynamic!.knowledge).toEqual({});
+    // she is met in a scene: the same booking is played there
+    const met = world('play');
+    book(met);
+    const r3 = run(met, reg, { type: 'scene/start', payload: { participants: [ANN], locationId: 'quarters_commander', origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(r3.events)).toEqual([]);
+    expect(suspicion(r3.state, CAT)).toBe(5);
+    // off: nothing
+    const off = world('play');
+    off.dynamic!.setup.holders = 0;
+    book(off);
+    expect(run(off, reg, { type: 'booking/play', payload: {} }).state.dynamic!.knowledge).toEqual({});
+  });
+
+  it('the morning after a second_place evening the units at the hub saw her leave her quarters (+5); no domain, no sign', () => {
+    const s = world('play');
+    s.slot = 'evening';
+    s.relations[ANN].dynamic!.domains = [{ id: 'household', since: 1 }];
+    book(s, { status: 'played', source: 'roll' });
+    s.expedition = stubExpedition(s, { party: [DEE] }); // Dee is out: nobody sees her
+    step(s);
+    for (const id of [BEA, CAT, EVE]) expect(suspicion(s, id)).toBe(5);
+    expect(suspicion(s, DEE)).toBe(0);
+    expect(row(s, ANN)).toBeUndefined();
+    // without the domain, with the booking unplayed, or on another slot: nothing
+    for (const tweak of [(x: CampaignState) => { x.relations[ANN].dynamic!.domains = []; }, (x: CampaignState) => { personalOf(x).bookings![0].status = 'lapsed'; }, (x: CampaignState) => { personalOf(x).bookings![0].slot = 'afternoon'; }]) {
+      const t = world('play');
+      t.slot = 'evening';
+      t.relations[ANN].dynamic!.domains = [{ id: 'household', since: 1 }];
+      book(t, { status: 'played', source: 'roll' });
+      tweak(t);
+      step(t);
+      expect(t.dynamic!.knowledge).toEqual({});
+    }
+  });
+});
+
 describe('the expected pace (spec §15.13)', () => {
   /**
    * Days until each woman first suspects and first knows: five named units, Ann holding at `role` and telling a few (`select_few`), a protocol slip
@@ -329,11 +410,13 @@ describe('the expected pace (spec §15.13)', () => {
     return { ordinary: { suspects: got[CAT].suspects ?? 99, knows: got[CAT].knows ?? 99 }, friend: { suspects: got[BEA].suspects ?? 99, knows: got[BEA].knows ?? 99 } };
   }
 
-  it('an ordinary woman suspects between day 8 and 11 and knows between day 14 and 21; the holder\'s friend about twice as fast', () => {
-    const runs = Array.from({ length: 12 }, (_, i) => pace(i + 1, 5));
+  it('an ordinary woman suspects between day 8 and 12 and knows between day 14 and 21; the holder\'s friend about twice as fast', () => {
+    // review I3: the background now nets its full +3 a day (decay no longer cancels it), so the same pace needs fewer slips than the every-5-days
+    // the first version of this test used to make up for the bug: one slip a week and a half (8 days) gives suspects day 8-12 and knows day 14-16
+    const runs = Array.from({ length: 12 }, (_, i) => pace(i + 1, 8));
     for (const r of runs) {
       expect(r.ordinary.suspects).toBeGreaterThanOrEqual(8);
-      expect(r.ordinary.suspects).toBeLessThanOrEqual(11);
+      expect(r.ordinary.suspects).toBeLessThanOrEqual(12);
       expect(r.ordinary.knows).toBeGreaterThanOrEqual(14);
       expect(r.ordinary.knows).toBeLessThanOrEqual(21);
       expect(r.friend.suspects).toBeLessThanOrEqual(r.ordinary.suspects); // never slower
