@@ -53,7 +53,7 @@ export function dynamicIntentInput(
   });
   const milestoneRows = open.milestones.filter((m) => present.includes(m.unitId));
   const milestoneLabels: Record<string, string> = {};
-  for (const m of milestoneRows) milestoneLabels[m.id] = String((reg.dynamicMilestones.get(m.milestoneId) as unknown as DynamicMilestoneEntry | undefined)?.text ?? m.milestoneId);
+  for (const m of milestoneRows) milestoneLabels[m.id] = String((reg.dynamicMilestones.get(m.milestoneId) as unknown as DynamicMilestoneEntry | undefined)?.promptHint ?? m.milestoneId);
   const claims = open.claims.filter((c) => present.includes(c.unitId)).map((c) => c.id);
   const offers = open.offers.filter((o) => present.includes(o.unitId)).map((o) => o.id);
   const slips = participants.length >= 2

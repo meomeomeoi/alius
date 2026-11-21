@@ -1362,17 +1362,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `DYNAMIC_PREFIX = 'dynamic:'`;
   - `DynamicController`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `dynamic:<unitId> for a present holder at play`: it carries the frame's `promptHint`, the style line and, with a claimed `household_protocol`, its words, and has no digit.
   - `dynamic:probe:<unitId> while her probe is pending and she is present`, and gone after the answer.
   - `nothing while off`.
   - `no pronoun for the commander and no feeling word` (a list: `feels`, `wants to`, `ashamed`, `aroused`, `loves`, `fears` applied to "the commander").
   - `the prefix is not reserved by another package` (every id starts with `dynamic:`, and none starts with `life:`, `blocking:`, `moment:`, `physics:`, `power:`, `personal:`, `prologue:`, `development:`, `world:`, `stance:`, `friction:`).
   - `a chat switch clears them` (controller test with the fake adapter).
-- [ ] **Step 2: Run** `npx vitest run tests/dynamic/directives.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R23.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): dynamic directives and controller`
+- [x] **Step 2: Run** `npx vitest run tests/dynamic/directives.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R23.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): dynamic directives and controller`
 
 ---
 

@@ -366,7 +366,7 @@ describe('no pronoun for the commander in the text modules the main model and th
     // P14c
     'src/ui/life/profileBlocks.ts', 'src/ui/life/lifeViews.ts', 'src/ui/setup/lifeStep.ts', 'src/engine/life/known.ts', 'src/engine/life/meetings.ts', 'src/life/directives.ts', 'src/life/controller.ts',
     // P15
-    'src/ui/dynamic/profileBlocks.ts',
+    'src/ui/dynamic/profileBlocks.ts', 'src/dynamic/directives.ts', 'src/dynamic/controller.ts',
   ];
   it.each(FILES)('%s', async (file) => {
     const { readFile } = await import('node:fs/promises');

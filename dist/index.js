@@ -1006,6 +1006,8 @@ var TUNING = Object.freeze({
     favour: Object.freeze({ max: 20, decayPerDay: 1 }),
     /** Track xp (spec §6: tracks decay much slower than hold): after `idleDays` without a practice, `decayPerDay` xp a day. `AUTHOR TO TUNE`. */
     tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
+    /** Days a refusal of hers stays in her directive ("she has not forgotten it"). */
+    directives: Object.freeze({ refusalDays: 3 }),
     /** The longest texts a model-reported dynamic event keeps: a compromat summary and an offer's correction. */
     intents: Object.freeze({ summaryMax: 160, correctionMax: 80 }),
     /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
@@ -13545,14 +13547,14 @@ function followLead(draft, ctx2) {
 }
 function setSceneLimit(draft, text2) {
   const { unitId, name } = leadPartner(draft);
-  const clean9 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
-  if (clean9 === "") throw new Error("A limit needs some text.");
+  const clean10 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean10 === "") throw new Error("A limit needs some text.");
   const scene = draft.scene;
   const limits = scene.limits ?? [];
   if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
-  scene.limits = [...limits, clean9];
-  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean9}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
-  return [{ type: "scene_limit_set", unitId, text: clean9 }];
+  scene.limits = [...limits, clean10];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean10}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean10 }];
 }
 
 // src/engine/night.ts
@@ -17454,7 +17456,7 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   });
   const milestoneRows = open3.milestones.filter((m) => present2.includes(m.unitId));
   const milestoneLabels = {};
-  for (const m of milestoneRows) milestoneLabels[m.id] = String(reg.dynamicMilestones.get(m.milestoneId)?.text ?? m.milestoneId);
+  for (const m of milestoneRows) milestoneLabels[m.id] = String(reg.dynamicMilestones.get(m.milestoneId)?.promptHint ?? m.milestoneId);
   const claims = open3.claims.filter((c) => present2.includes(c.unitId)).map((c) => c.id);
   const offers = open3.offers.filter((o) => present2.includes(o.unitId)).map((o) => o.id);
   const slips2 = participants.length >= 2 ? present2.filter((id) => {
@@ -33744,11 +33746,11 @@ registerFlavorKind("ballot", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean9 = (t) => String(t).replace(/[<>]/g, "");
+    const clean10 = (t) => String(t).replace(/[<>]/g, "");
     return [
       `<vote>`,
-      `Decision (${clean9(i.voteKind)}): ${clean9(i.subjectLabel)}`,
-      ...i.ballots.map((b) => `${clean9(b.name)}: voted ${b.vote}; what moved her most: ${clean9(b.term)}`),
+      `Decision (${clean10(i.voteKind)}): ${clean10(i.subjectLabel)}`,
+      ...i.ballots.map((b) => `${clean10(b.name)}: voted ${b.vote}; what moved her most: ${clean10(b.term)}`),
       `</vote>`,
       "Give each soldier her line."
     ].join("\n");
@@ -33777,12 +33779,12 @@ registerFlavorKind("dm_edit", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean9 = (t) => String(t).replace(/<\/?dm>/gi, "");
+    const clean10 = (t) => String(t).replace(/<\/?dm>/gi, "");
     return [
-      `Soldier who edits: ${clean9(i.unitName)}`,
-      `How she feels about the commander: ${clean9(i.stateHint) || "unclear"}`,
-      `Recipient: ${clean9(i.recipientName) || "none"}`,
-      `<dm>${clean9(i.original)}</dm>`,
+      `Soldier who edits: ${clean10(i.unitName)}`,
+      `How she feels about the commander: ${clean10(i.stateHint) || "unclear"}`,
+      `Recipient: ${clean10(i.recipientName) || "none"}`,
+      `<dm>${clean10(i.original)}</dm>`,
       "Rewrite the message."
     ].join("\n");
   }
@@ -33826,10 +33828,10 @@ registerFlavorKind("frequency_fragment", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean9 = (t) => String(t).replace(/<\/?gist>/gi, "");
+    const clean10 = (t) => String(t).replace(/<\/?gist>/gi, "");
     return [
-      `Soldier: ${clean9(i.name)}`,
-      `<gist>${clean9(i.gist)}</gist>`,
+      `Soldier: ${clean10(i.name)}`,
+      `<gist>${clean10(i.gist)}</gist>`,
       i.partial ? "The fragment is cut off: give only the subject (her name and what it is about), not the conclusion." : "Give the fragment."
     ].join("\n");
   }
@@ -36038,6 +36040,89 @@ function createDevelopment(deps) {
   };
 }
 
+// src/dynamic/directives.ts
+var clean5 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var sentence2 = (text2) => clean5(text2).replace(/[.\s]+$/, "");
+var DYNAMIC_PREFIX = "dynamic:";
+var PROBE_PREFIX = "dynamic:probe:";
+function styleLine(state, reg, unit3) {
+  const pair = unit3.bond?.practice?.style;
+  if (pair === void 0) return "";
+  const label2 = (key) => clean5(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
+  const lead = leadingStyle(state, reg, unit3.id);
+  const base = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}.` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak.`;
+  return lead.phaseLead === "secondary" ? `${base} Her ${label2(lead.key)} side comes through now.` : base;
+}
+function holderDirective(state, reg, unit3) {
+  const dyn = dynamicOf(state, unit3.id);
+  const frame = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
+  if (dyn === void 0 || frame === void 0 || frameRank(dyn.frame) < frameRank("play")) return null;
+  const name = unit3.displayName;
+  const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
+  const waiting2 = state.dynamic?.open.milestones.find((m) => m.unitId === unit3.id);
+  const milestone = waiting2 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting2.milestoneId);
+  const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
+  const parts = [
+    `${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`,
+    ...claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
+    styleLine(state, reg, unit3),
+    ...milestone !== void 0 ? [`She is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
+    ...refused ? ["She has not forgotten a recent refusal and will answer it in her own way."] : [],
+    "Show it in how she acts and speaks; never name it as a mechanic."
+  ];
+  return { id: `${DYNAMIC_PREFIX}${unit3.id}`, expiresAfter: "scene", text: parts.filter((p) => p !== "").join(" ") };
+}
+function probeDirective(reg, unit3, axisId) {
+  const axis = reg.probeAxes.get(axisId);
+  const label2 = clean5(String(axis?.label ?? axisId));
+  const hint = axis === void 0 ? "" : ` (she ${sentence2(axis.promptHint)})`;
+  return {
+    id: `${PROBE_PREFIX}${unit3.id}`,
+    expiresAfter: "scene",
+    text: `In this scene ${unit3.displayName} tests, small and deniable, whether the commander yields on ${label2}${hint}; never name it.`
+  };
+}
+function dynamicDirectives(state, reg, present2) {
+  if (!dynamicOn(state, reg)) return [];
+  const out = [];
+  const units = present2.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && isLiving(u) && herPracticeLive(state, u.id));
+  for (const unit3 of units) {
+    const holder2 = holderDirective(state, reg, unit3);
+    if (holder2 !== null) out.push(holder2);
+  }
+  const probe = sceneProbe(state, units.map((u) => u.id));
+  if (probe !== void 0) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId), probe.probe.axis));
+  return out;
+}
+function clearDynamicDirectives(builder) {
+  builder.clearMatching((d) => d.id.startsWith(DYNAMIC_PREFIX));
+}
+function refreshDynamicDirectives(builder, state, reg) {
+  clearDynamicDirectives(builder);
+  if (state === null) return;
+  for (const d of dynamicDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
+}
+
+// src/dynamic/controller.ts
+var OWN = DYNAMIC_EVENT_TYPES;
+function createDynamic(deps) {
+  const state = () => deps.app.current().state;
+  return {
+    onEvents(events) {
+      if (events.some((e) => OWN.includes(e.type))) deps.refreshContext();
+    },
+    onSceneOpened() {
+      const s = state();
+      if (s) refreshDynamicDirectives(deps.context, s, deps.registries());
+      deps.refreshContext();
+    },
+    onSceneClosed() {
+      clearDynamicDirectives(deps.context);
+      deps.refreshContext();
+    }
+  };
+}
+
 // src/llm/calls/opinionForm.ts
 var CARD_MAX3 = 600;
 var OpinionFormRawSchema = external_exports.object({ position: external_exports.unknown().optional(), text: external_exports.unknown().optional() }).passthrough();
@@ -36091,7 +36176,7 @@ registerCallType({
 });
 
 // src/life/directives.ts
-var clean5 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean6 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var LIFE_DERIVED = ["life:"];
 var NEWS_PREFIX = "life:news:";
 var OPINION_PREFIX = "life:opinion:";
@@ -36105,7 +36190,7 @@ function jokeDirective(state, unit3) {
   return {
     id: `${JOKE_PREFIX}${unit3.id}`,
     expiresAfter: "scene",
-    text: `If it fits, ${unit3.displayName} may bring back a running joke she shares with the commander: ${clean5(text2)} Lightly, once.`
+    text: `If it fits, ${unit3.displayName} may bring back a running joke she shares with the commander: ${clean6(text2)} Lightly, once.`
   };
 }
 function opinionDirective(state, reg, unit3) {
@@ -36115,12 +36200,12 @@ function opinionDirective(state, reg, unit3) {
   const topic = reg.opinionTopics.get(sc.topic);
   const position = topic?.positions.find((p) => p.id === opinion?.position);
   if (!opinion || !topic || !position) return null;
-  const hint = clean5(plainText(position.description));
-  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean5(opinion.text)}"` : "";
+  const hint = clean6(plainText(position.description));
+  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean6(opinion.text)}"` : "";
   return {
     id: `${OPINION_PREFIX}${unit3.id}`,
     expiresAfter: "scene",
-    text: `If it fits, ${unit3.displayName} may say what she thinks about ${clean5(topic.label)}: ${hint}${words3} Lightly, once.`
+    text: `If it fits, ${unit3.displayName} may say what she thinks about ${clean6(topic.label)}: ${hint}${words3} Lightly, once.`
   };
 }
 function pastimeDirective(state, reg, unit3) {
@@ -36129,19 +36214,19 @@ function pastimeDirective(state, reg, unit3) {
   if (!pastime) return null;
   const hobby = pastime.hobby === true ? keenestHobby(state, reg, unit3) : void 0;
   const label2 = hobby ? reg.hobbies.get(hobby.id)?.label : void 0;
-  const what = clean5(plainText(pastime.description)).replace(/\.$/, "");
-  const hers = label2 !== void 0 ? clean5(label2) : clean5(pastime.herActivity);
+  const what = clean6(plainText(pastime.description)).replace(/\.$/, "");
+  const hers = label2 !== void 0 ? clean6(label2) : clean6(pastime.herActivity);
   const breaks = hobby !== void 0 && plateauBreaks(state, unit3.id, hobby.id) ? " She gets it right for the first time today." : "";
   const blocking = state.scene?.blocking;
   const doing = [
     ...blocking?.[unit3.id]?.activity === void 0 ? [`${unit3.displayName}: ${hers}`] : [],
-    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean5(pastime.commanderActivity)}`] : []
+    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean6(pastime.commanderActivity)}`] : []
   ].join("; ");
   const activities = doing === "" ? "" : ` ${doing[0].toUpperCase()}${doing.slice(1)}.`;
   return {
     id: `${PASTIME_PREFIX}${unit3.id}`,
     expiresAfter: "scene",
-    text: `${clean5(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
+    text: `${clean6(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
   };
 }
 function lifeDirectives(state, reg, present2) {
@@ -36153,7 +36238,7 @@ function lifeDirectives(state, reg, present2) {
     const name = unit3.displayName;
     const first2 = pendingNews(state, id)[0];
     if (first2) {
-      const raw = clean5(first2.text);
+      const raw = clean6(first2.text);
       const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
       out.push({
         id: `${NEWS_PREFIX}${id}`,
@@ -36375,7 +36460,7 @@ function createLife(deps) {
 }
 
 // src/personal/directives.ts
-var clean6 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean7 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var DERIVED = [
   "personal:court:",
   "personal:claimed:",
@@ -36413,7 +36498,7 @@ function personalDirectives(state, reg, present2) {
     }
     const truth = state.personal?.truth;
     if (truth && truth.unitId === id) {
-      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean6(truth.question)}". She does not lie or dodge.` });
+      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean7(truth.question)}". She does not lie or dodge.` });
     }
     const mine = (state.personal?.bookings ?? []).filter((b) => b.unitId === id);
     const played2 = mine.some((b) => b.status === "played" && b.day === state.day && b.slot === state.slot);
@@ -36428,7 +36513,7 @@ function personalDirectives(state, reg, present2) {
     const names = x.knownBy.filter((id) => present2.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named").map((u) => u.displayName);
     if (names.length === 0) continue;
     const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-    const text2 = clean6(x.text);
+    const text2 = clean7(x.text);
     if (x.status === "kept" || x.status === "pretend") {
       out.push({
         id: `personal:secret:${x.id}`,
@@ -36789,7 +36874,7 @@ function refreshPowerDirectives(builder, state, reg) {
 // src/bonds/directives.ts
 var EXPLICIT_CATEGORY = "explicit_scenes";
 var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
-var clean7 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean8 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 function contentLine(state, reg) {
   if (state === null) return "";
   const on = enabledCategories(state);
@@ -36817,7 +36902,7 @@ function bondsDirectives(builder, state, reg) {
     if (!unit3 || !bond) continue;
     const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
     const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
-    const note = clean7(bond.ownLimits.note ?? "");
+    const note = clean8(bond.ownLimits.note ?? "");
     if (ordered.length === 0 && note === "") continue;
     const text2 = ordered.length > 0 ? `${unit3.displayName} will not take part in: ${ordered.map(labelOf2).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit3.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
@@ -36853,7 +36938,7 @@ function bondsDirectives(builder, state, reg) {
   for (const rule of state.bonds?.rules ?? []) {
     const unit3 = state.squad.find((u) => u.id === rule.unitId);
     if (!unit3 || !state.scene.participants.includes(unit3.id) || rule.status !== "negotiating" && !(rule.status === "proposed" && rule.delivered === true)) continue;
-    const text2 = clean7(rule.text);
+    const text2 = clean8(rule.text);
     builder.setDirective({
       id: `rule:${unit3.id}`,
       expiresAfter: "scene",
@@ -36868,7 +36953,7 @@ function bondsDirectives(builder, state, reg) {
     builder.setDirective({ id: "lead", expiresAfter: "scene", text: text2 });
   }
   (state.scene.limits ?? []).forEach((text2, i) => {
-    const t = clean7(text2);
+    const t = clean8(text2);
     if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
   });
 }
@@ -40878,7 +40963,7 @@ var CUE_LINES_MAX = 5;
 var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
 var isObj44 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PhysicsCuesRawSchema = external_exports.object({ cues: external_exports.unknown().optional() }).passthrough();
-var clean8 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
+var clean9 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
 function sanitizeCues(raw) {
   const cues = isObj44(raw) ? raw.cues : void 0;
   if (!isObj44(cues)) return null;
@@ -40889,7 +40974,7 @@ function sanitizeCues(raw) {
     const lines = [];
     for (const l of list5) {
       if (typeof l !== "string") continue;
-      const c = clean8(l);
+      const c = clean9(l);
       if (c === "" || COMMANDER_PRONOUN7.test(c) || lines.includes(c)) continue;
       if (lines.length < CUE_LINES_MAX) lines.push(c);
     }
@@ -55774,10 +55859,12 @@ function createApp(st, deps) {
       refreshLifeDirectives(context, state, registries);
       refreshBlockingDirectives(context, state, registries);
       refreshPhysicsDirectives(context, state, registries);
+      refreshDynamicDirectives(context, state, registries);
     } else {
       clearBlockingDirectives(context);
       clearMomentDirectives(context);
       clearPhysicsDirectives(context);
+      clearDynamicDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -56080,6 +56167,7 @@ function createApp(st, deps) {
   const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext });
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
+  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -56203,6 +56291,7 @@ function createApp(st, deps) {
     headStart.onSceneClosed();
     development.onSceneClosed();
     life.onSceneClosed();
+    dynamic.onSceneClosed();
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
@@ -56211,6 +56300,7 @@ function createApp(st, deps) {
       headStart.onSceneOpened();
       development.onSceneOpened();
       life.onSceneOpened();
+      dynamic.onSceneOpened();
       showScene();
     } else if (state && state.slot === "night" && state.calendar.nightEvent && confrontationNight(state)) {
       showScene();
@@ -56247,6 +56337,7 @@ function createApp(st, deps) {
     headStart.onSceneOpened();
     development.onSceneOpened();
     life.onSceneOpened();
+    dynamic.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -56319,6 +56410,7 @@ function createApp(st, deps) {
       warden.onEvents(events);
       development.onEvents(events);
       life.onEvents(events);
+      dynamic.onEvents(events);
       onboarding.onEvents(events);
       if (has3("campaign_ended")) {
         shell.showScreen("hub");
@@ -56334,6 +56426,7 @@ function createApp(st, deps) {
         headStart.onSceneClosed();
         development.onSceneClosed();
         life.onSceneClosed();
+        dynamic.onSceneClosed();
       }
       if (has3("commander_injured")) api.dispatch({ type: "relations/commander_injured", payload: {} }, { expectChatId: chatId });
       if (has3("night_started") && state?.slot === "night" && !state.scene) {
