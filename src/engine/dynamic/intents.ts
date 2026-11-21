@@ -13,6 +13,7 @@ import type { EventIntent } from '../relations/intents';
 import { DYNAMIC_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { canHold, dynamicOn, herPracticeLive } from './gate';
+import { slipSeen } from './knowledge';
 import { answerMilestone } from './milestones';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
 import { threatIn } from './reading';
@@ -94,6 +95,9 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
       const open = ev.milestoneId === undefined ? undefined : draft.dynamic?.open.milestones.find((m) => m.id === ev.milestoneId && m.unitId === unitId);
       return open === undefined ? [] : answerMilestone(draft, ctx, open.id, ev.type === 'milestone_accepted' ? 'accept' : 'refuse', 'text');
     }
+    case 'protocol_slip':
+      // the habit slips out with others in the room: each of them sees it (R14); in a DM, or alone, nobody does
+      return slipSeen(draft, ctx, unitId);
     default:
       return [];
   }

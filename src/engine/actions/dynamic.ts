@@ -6,6 +6,7 @@ import { contentAllowed } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
 import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
+import { signsFromEvents } from '../dynamic/knowledge';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
 import { answerClaim } from '../dynamic/domains';
@@ -40,6 +41,8 @@ installDynamicHooks();
 registerAfterAction(readMoments);
 // What the surfacing reads and no state keeps (an endurance gain, the crime revealed): noted from the events, only while on.
 registerAfterAction(noteEvents);
+// What the squad sees on the stage (an item or a contact of the dynamic, a visitor who walks in): instant knowledge for the witnesses (R14); nothing while off.
+registerAfterAction(signsFromEvents);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

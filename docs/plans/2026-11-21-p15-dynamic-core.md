@@ -1632,7 +1632,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `knowledgeDayStep(draft, ctx): EngineEvent[]`;
   - `levelOf(state, observerId, holderId): KnowledgeLevel | undefined`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `signs add by table with multipliers`: a `protocol_slip` seen by a `high`-insight friend of the holder → 20 × 1.3 × 1.5 = 39.
   - `background`: `role` +3 a day, `rule` +6, `play` 0.
   - `gossip capped at 15 a day`.
@@ -1642,10 +1642,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `an item with scope dynamic worn in front of her is instant knowledge`.
   - `the fact becomes known to the commander after a shared scene`.
   - `expected pace`: the §15.13 scenario (5 named units, `select_few`, `role`) → an ordinary woman suspects between day 8 and 11 and knows between day 14 and 21; the holder's friend about twice as fast (seeded, ±2 days).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/knowledge.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R14.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): how the squad learns of a dynamic`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/knowledge.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R14.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): how the squad learns of a dynamic`
 
 ---
 

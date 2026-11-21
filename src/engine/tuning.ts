@@ -816,4 +816,21 @@ export const TUNING = Object.freeze({
     skipRecent: 3,
     recentMax: 8,
   }),
+  /**
+   * P15: how the squad learns of a dynamic (R14, spec §15.13). `suspectsAt` / `knowsAt`: the gauge's two levels. `decayPerDay`: what suspicion
+   * loses on a day with no sign, never below `suspectsAt` within `floorDays` of reaching a level. `insight`, `close` (Trust or Affinity from
+   * `closeAt`) and `audience` multiply a sign. `gossipCap`: the most gossip adds to one woman in a day; `gossipChance`: the hashed chance one woman
+   * passes it to another on a day. `tellOneIn`: a `select_few` holder tells one such woman on one day in this many (hashed); `showOffEvery`:
+   * a `show_off` holder tells everyone once in this many days. `reaction`: what a witness who knows does (R14, spec §8): `drawn` adds `drawnHold`
+   * to her own hold; `dislikes` raises her Impunity term by `dislikesImpunity`, takes `dislikesStanding` off the holder's standing (at most `standingMax`)
+   * and asks a demand about it on one day in `demandOneIn` (hashed). `AUTHOR TO TUNE`.
+   */
+  squadKnowledge: Object.freeze({
+    suspectsAt: 60, knowsAt: 100, decayPerDay: 2, floorDays: 7,
+    insight: Object.freeze({ low: 0.7, mid: 1, high: 1.3 } as const),
+    close: 1.5, closeAt: 50,
+    audience: Object.freeze({ show_off: 1.5, private_only: 0.5 }) as Readonly<Record<string, number>>,
+    gossipCap: 15, gossipChance: 0.5, tellOneIn: 7, showOffEvery: 7,
+    reaction: Object.freeze({ drawnHold: 5, dislikesImpunity: 5, dislikesStanding: 5, standingMax: 20, demandOneIn: 3 }),
+  }),
 });

@@ -15,6 +15,7 @@ import { registerGenerationProviders } from './generation';
 import { registerImmersionProviders } from './immersion';
 import { registerBondsProviders } from './bonds';
 import { registerBlockingProviders } from './blocking';
+import { registerDynamicProviders } from './dynamic';
 import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
 import { registerSpecialProviders } from './special';
@@ -360,4 +361,5 @@ export function registerCoreProviders(): void {
   registerHeadStartProviders(); // P11b
   registerDevelopmentProviders(); // P14b
   registerLifeProviders(); // P14c
+  registerDynamicProviders(); // P15
 }

@@ -15,6 +15,7 @@ import { frameRank } from '../blocking/state';
 import { claimsDue } from './domains';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
+import { knowledgeDayStep } from './knowledge';
 import { milestonesDue } from './milestones';
 import { probeDayStep } from './probes';
 import { fadeDeclarations } from './reading';
@@ -90,8 +91,11 @@ const milestones: SubStep = (draft, ctx, holders) => holders.flatMap((id) => mil
 /** 7. Claims (Task 22): a holder who is due a domain draws once and may open her claim; a claim of a held domain is settled between the holders. */
 const claims: SubStep = (draft, ctx) => claimsDue(draft, ctx);
 
+/** 8. Knowledge (Task 27): what has not been fed ages, then the background, what the holders tell and the gossip add to what the squad suspects. Draws nothing. */
+const knowledge: SubStep = (draft, ctx) => knowledgeDayStep(draft, ctx);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

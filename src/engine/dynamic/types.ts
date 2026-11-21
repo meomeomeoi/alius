@@ -120,6 +120,8 @@ export const OFFER_ANSWERS = ['accepted', 'corrected', 'mocked', 'refused', 'ton
 export type OfferAnswer = (typeof OFFER_ANSWERS)[number];
 export const KNOWLEDGE_LEVELS = ['suspects_close', 'suspects_dynamic', 'knows_dynamic'] as const;
 export type KnowledgeLevel = (typeof KNOWLEDGE_LEVELS)[number];
+/** The tag of the facts a knowledge level writes (R14): they are `hiddenFromCommander` until the observer has shown them in a later scene or DM (the knowledge rule of `analysis/providers/dynamic.ts`). */
+export const DYNAMIC_KNOWLEDGE_TAG = 'dynamic_knowledge';
 
 /** The tones of a yielding the intent reader reports (P15a's `TONES` in `intentExtract.ts`; a test keeps the two lists equal). */
 export const TONES = ['sincere', 'ironic', 'transactional', 'flat'] as const;
