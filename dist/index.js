@@ -10004,8 +10004,13 @@ function practiceOf(state, reg, unitId) {
     if (open3) allowed.push(id);
     categories[id] = open3 ? { ...stored.categories[id] ?? NONE, ...drift?.categories?.[id] } : { ...NONE };
   }
-  const secondary = drift?.secondary ?? stored.style.secondary;
-  return { ...stored, categories, style: secondary === void 0 ? { primary: stored.style.primary } : { primary: stored.style.primary, secondary }, allowed };
+  return { ...stored, categories, style: styleOf(unit3), allowed };
+}
+function styleOf(unit3) {
+  const stored = unit3.bond?.practice?.style;
+  if (stored === void 0) return void 0;
+  const secondary = unit3.development?.practice?.secondary ?? stored.secondary;
+  return secondary === void 0 ? { primary: stored.primary } : { primary: stored.primary, secondary };
 }
 function keepLockedPractice(old, next, locks) {
   const out = structuredClone(next);
@@ -12251,6 +12256,28 @@ function validateExpectations(raw, reg, ctx2) {
     }
   }
   return { ...Object.keys(out).length > 0 ? { expectations: out } : {}, issues, dropped };
+}
+function holdsUntilOfUnit(unit3) {
+  const stored = unit3.kind === "named" ? unit3.expectations?.holdsUntil : void 0;
+  return stored === void 0 ? void 0 : unit3.development?.expect?.holdsUntil ?? stored;
+}
+function expectationsOf(state, reg, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const stored = unit3?.kind === "named" ? unit3.expectations : void 0;
+  if (stored === void 0) return {};
+  const out = structuredClone(stored);
+  const drift = unit3?.development?.expect;
+  if (out.holdsUntil !== void 0) out.holdsUntil = holdsUntilOfUnit(unit3);
+  for (const [id, attitude] of Object.entries(drift?.worship ?? {})) if (out.worship?.[id] !== void 0) out.worship[id] = { ...out.worship[id], attitude };
+  const open3 = (id) => {
+    const t = reg.worshipTargets.get(id);
+    return t !== void 0 && contentAllowed(state, reg, t, unitId);
+  };
+  const keep = (rec) => rec === void 0 ? void 0 : Object.fromEntries(Object.entries(rec).filter(([id]) => open3(id)));
+  if (out.worship !== void 0) out.worship = keep(out.worship);
+  if (out.body !== void 0) out.body = keep(out.body);
+  if (out.scent?.base !== void 0) out.scent = { ...out.scent, base: keep(out.scent.base) };
+  return out;
 }
 function lockedExpectation(unit3, field2) {
   const locks = unit3.expectationLocks ?? [];
@@ -26263,9 +26290,9 @@ function registerAfterAction(step) {
   afterActions.push(step);
 }
 var gates = /* @__PURE__ */ new Map();
-function registerVoteGate(actionType, gate) {
+function registerVoteGate(actionType, gate2) {
   if (gates.has(actionType)) throw new Error(`Duplicate vote gate: ${actionType}`);
-  gates.set(actionType, gate);
+  gates.set(actionType, gate2);
 }
 function dispatch(state, action, registries) {
   const handler2 = handlers.get(action.type);
@@ -26290,9 +26317,9 @@ function dispatch(state, action, registries) {
   const booked = bookingGuard(state, action);
   if (booked) return { state, events: [{ type: "error", ...booked }] };
   let voteId;
-  const gate = gates.get(action.type);
-  if (gate && votingOn(state, registries)) {
-    const decision = gate(state, action.payload, registries);
+  const gate2 = gates.get(action.type);
+  if (gate2 && votingOn(state, registries)) {
+    const decision = gate2(state, action.payload, registries);
     if (decision) {
       const named3 = action.payload?.voteId;
       if (!voteFor(state, decision.kind, decision.subject, named3)) {
@@ -27065,6 +27092,12 @@ function planMarks(state, reg) {
 // src/engine/blocking/gate.ts
 var frameReaders = [];
 var liveGates = [];
+function registerFrameReader(fn) {
+  frameReaders.push(fn);
+}
+function registerBlockingGate(fn) {
+  liveGates.push(fn);
+}
 function frameOf(state, unitId) {
   for (const read of frameReaders) {
     const f = read(state, unitId);
@@ -27532,6 +27565,9 @@ function momentsOf(scene) {
 
 // src/engine/moments/answer.ts
 var expectations = [];
+function registerExpectation(fn) {
+  expectations.push(fn);
+}
 var FRAME_KEYS = ["0", "1", "2"];
 var atOf = (scene) => scene.readIndex ?? scene.startIndex;
 function expectedOption(state, reg, moment) {
@@ -28013,6 +28049,12 @@ function momentPass(draft, ctx2, cause, opts = {}) {
 // src/engine/physics/style.ts
 var styleReaders = [];
 var holdsReaders = [];
+function registerPhysicsStyle(fn) {
+  styleReaders.push(fn);
+}
+function registerHoldsUntil(fn) {
+  holdsReaders.push(fn);
+}
 function physicsStyleOf(state, unitId) {
   for (const read of styleReaders) {
     const s = read(state, unitId);
@@ -28189,8 +28231,8 @@ function whyNotStart(state, reg, o) {
   if (!scene.participants.includes(o.holderId)) return `${o.holderId} is not in the scene.`;
   if (!hasSource(scene, o.sourceKind, o.sourceId)) return `Nothing in the scene is "${o.sourceId}".`;
   if (o.act === void 0 && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
-  const gate = whyNotAllowed(state, reg, phys, o.holderId);
-  if (gate !== null) return gate;
+  const gate2 = whyNotAllowed(state, reg, phys, o.holderId);
+  if (gate2 !== null) return gate2;
   if (o.second !== void 0) {
     if (o.second === o.physicsId || !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
     const second = reg.contactPhysics.get(o.second);
@@ -31488,9 +31530,9 @@ function exposedKinds(state, reg) {
   if (!scene || !blockingLive(state, reg)) return [];
   const out = /* @__PURE__ */ new Map();
   const first2 = scene.participants[0];
-  const add = (kinds2, holderId, part, gate) => {
+  const add = (kinds2, holderId, part, gate2) => {
     if (!Array.isArray(kinds2) || holderId === void 0) return;
-    if (gate !== void 0 && !contentAllowed(state, reg, gate, holderId)) return;
+    if (gate2 !== void 0 && !contentAllowed(state, reg, gate2, holderId)) return;
     for (const k of kinds2) {
       const e = reg.stimulusKinds.get(k);
       if (e && contentAllowed(state, reg, e, holderId) && !out.has(k)) out.set(k, { kind: k, holderId, ...part !== void 0 ? { part } : {} });
@@ -32538,6 +32580,43 @@ function holdFeed(draft, reg, unitId, event, _severity) {
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);
 }
 
+// src/engine/dynamic/hooks.ts
+function liveDynamic(state, unitId) {
+  if (state.dynamic === void 0 || state.dynamic.setup.holders === 0) return void 0;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) ? dynamicOf(state, unitId) : void 0;
+}
+function frameReader(state, unitId) {
+  return liveDynamic(state, unitId)?.frame ?? null;
+}
+function styleReader(state, unitId) {
+  if (liveDynamic(state, unitId) === void 0) return null;
+  const style = styleOf(state.squad.find((u) => u.id === unitId));
+  return style === void 0 ? null : { primary: style.primary, ...style.secondary !== void 0 ? { secondary: style.secondary } : {}, phaseLead: "primary" };
+}
+function holdsReader(state, unitId) {
+  return liveDynamic(state, unitId) === void 0 ? null : holdsUntilOfUnit(state.squad.find((u) => u.id === unitId)) ?? null;
+}
+function gate(state, reg) {
+  if (!dynamicOn(state, reg)) return false;
+  return (state.scene?.participants ?? []).some((id) => liveDynamic(state, id) !== void 0 && frameRank(dynamicOf(state, id).frame) >= frameRank("play"));
+}
+function expectation(state, reg, moment) {
+  if (!dynamicOn(state, reg) || dynamicOf(state, moment.unitId) === void 0) return null;
+  const wanted = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
+  if (wanted === void 0) return null;
+  const options2 = moment.options.filter((o) => o.type === wanted.type);
+  const pick3 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
+  return pick3 === void 0 ? null : { key: pick3.key, strength: wanted.strength };
+}
+function installDynamicHooks() {
+  registerFrameReader(frameReader);
+  registerBlockingGate(gate);
+  registerPhysicsStyle(styleReader);
+  registerHoldsUntil(holdsReader);
+  registerExpectation(expectation);
+}
+
 // src/engine/actions/dynamic.ts
 function namedUnit3(draft, id, action) {
   const unit3 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
@@ -32546,6 +32625,7 @@ function namedUnit3(draft, id, action) {
 }
 registerEventLanded(holdFeed);
 registerDayEndStep("dm_rumors", dynamicDayStep);
+installDynamicHooks();
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);

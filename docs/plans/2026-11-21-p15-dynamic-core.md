@@ -1187,7 +1187,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Consumes: P15a `registerFrameReader`, `registerBlockingGate`, `registerPhysicsStyle`, `registerHoldsUntil`, `registerExpectation`.
 - Produces: `installDynamicHooks(): void` (idempotent in effect: double registration gives the same answers).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `readers answer null when off`: with no `state.dynamic`, `frameOf` is `'equal'`, `physicsStyleOf` is `neutral`, `holdsUntilOf` is `signal`, and `expectedOption` is P15a's default, even for a unit with a full practice and expectations.
   - `frame reader`: a unit at `role` → `frameOf` is `role`, and a `scope: 'dynamic'` blocking entry passes `entryAllowed`.
   - `blocking gate`: a scene with a holder at `play` and no close tier is live.
@@ -1195,10 +1195,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `holdsUntil` from her expectations; `blackout` without `breath_play` acts as `limit`.
   - `expectation`: her profile `moments.her_affection = { type: 'yielded', strength: 3 }` gives that option, strength 3.
   - `installing twice changes nothing`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/hooks.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS (`tests/blocking/unaffected.test.ts` unchanged).
-- [ ] **Step 5: Commit** `feat(P15): plug the dynamic into the P15a hooks`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/hooks.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS (`tests/blocking/unaffected.test.ts` unchanged).
+- [x] **Step 5: Commit** `feat(P15): plug the dynamic into the P15a hooks`
 
 ---
 

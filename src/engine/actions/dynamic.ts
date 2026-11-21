@@ -6,6 +6,7 @@ import { contentAllowed } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
 import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
+import { installDynamicHooks } from '../dynamic/hooks';
 import { holdReason } from '../dynamic/gate';
 import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
@@ -28,6 +29,8 @@ export function namedUnit(draft: { squad: Unit[] }, id: unknown, action: string)
 registerEventLanded(holdFeed);
 // Her days (R8): decay, the slow term, tracks and favour; after her life's step (this module is imported after `actions/life`), and nothing while off.
 registerDayEndStep('dm_rumors', dynamicDayStep);
+// Her place in the P15a stand-ins: frame, live scenes, physics style, what she holds until, what she expects (R10); every reader is null while off.
+installDynamicHooks();
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

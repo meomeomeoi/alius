@@ -10,3 +10,4 @@ export { addFavour, addHold, bandIndex, compatibilityOf, frameEntry, holdBandOf 
 export { addTrackXp, levelOfXp, trackCap, trackLevel, trackOpen } from './tracks';
 export { FEED_CAUSE, holdFeed } from './feed';
 export { dynamicDayStep } from './dayStep';
+export { installDynamicHooks } from './hooks';

@@ -216,6 +216,12 @@ export function validateExpectations(
   return { ...(Object.keys(out).length > 0 ? { expectations: out } : {}), issues, dropped };
 }
 
+/** What she holds the commander until, as the campaign reads it (drift sits on top of the import); `undefined` when her profile has no value. Needs no registry. */
+export function holdsUntilOfUnit(unit: Pick<Unit, 'kind' | 'expectations' | 'development'>): HoldsUntil | undefined {
+  const stored = unit.kind === 'named' ? unit.expectations?.holdsUntil : undefined;
+  return stored === undefined ? undefined : unit.development?.expect?.holdsUntil ?? stored;
+}
+
 /**
  * Her profile as the engine reads it: what is stored, minus the worship, body and scent entries of targets whose content gate is closed
  * (a category switched off, or one of her limits), with what she has become folded in (`development.expect`). `{}` when nothing is stored or she is not a named unit. Nothing is rewritten, so a
@@ -227,7 +233,7 @@ export function expectationsOf(state: Pick<CampaignState, 'squad' | 'content'>, 
   if (stored === undefined) return {};
   const out = structuredClone(stored);
   const drift = unit?.development?.expect; // P14b: what she has become sits on top of the import
-  if (drift?.holdsUntil !== undefined && out.holdsUntil !== undefined) out.holdsUntil = drift.holdsUntil;
+  if (out.holdsUntil !== undefined) out.holdsUntil = holdsUntilOfUnit(unit!)!;
   for (const [id, attitude] of Object.entries(drift?.worship ?? {})) if (out.worship?.[id] !== undefined) out.worship[id] = { ...out.worship[id], attitude };
   const open = (id: string): boolean => {
     const t = reg.worshipTargets.get(id);

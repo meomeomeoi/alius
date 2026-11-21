@@ -36,7 +36,7 @@ function causeOf(reg: Registries, event: EventIntent): string | null {
   const cause = FEED_CAUSE[event.type];
   if (cause === undefined) return null;
   if (event.type === 'granted_demand') return event.templateId !== undefined && reg.demandTemplates.get(event.templateId)?.kind === 'desire' ? cause : null;
-  if (event.type === 'service_rated') return event.kind === 'pleased' ? cause : null;
+  if ((event.type as string) === 'service_rated') return event.kind === 'pleased' ? cause : null;
   return cause;
 }
 

@@ -121,8 +121,18 @@ export function practiceOf(state: Pick<CampaignState, 'squad' | 'content'>, reg:
     if (open) allowed.push(id);
     categories[id] = open ? { ...(stored.categories[id] ?? NONE), ...drift?.categories?.[id] } : { ...NONE };
   }
-  const secondary = drift?.secondary ?? stored.style.secondary;
-  return { ...stored, categories, style: secondary === undefined ? { primary: stored.style.primary } : { primary: stored.style.primary, secondary }, allowed };
+  return { ...stored, categories, style: styleOf(unit)!, allowed };
+}
+
+/**
+ * Her style pair as the campaign reads it (what she has become sits on top of the import): `undefined` without a practice section. It
+ * needs no registry, so the physics reader of the dynamic can use it.
+ */
+export function styleOf(unit: Pick<Unit, 'bond' | 'development'>): Practice['style'] | undefined {
+  const stored = unit.bond?.practice?.style;
+  if (stored === undefined) return undefined;
+  const secondary = unit.development?.practice?.secondary ?? stored.secondary;
+  return secondary === undefined ? { primary: stored.primary } : { primary: stored.primary, secondary };
 }
 
 /**

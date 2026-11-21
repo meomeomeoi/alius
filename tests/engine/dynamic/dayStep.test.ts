@@ -91,12 +91,12 @@ describe('the slow term', () => {
     step(imp);
     expect(holdOf(imp)).toBeCloseTo(50.5, 6);
     const lead = world('play', 50, 0);
-    lead.power = { votes: { log: [], seq: 0 }, hierarchy: { leaderId: ANN } } as CampaignState['power'];
+    lead.power = { votes: { log: [], seq: 0 }, hierarchy: { leaderId: ANN } } as unknown as CampaignState['power'];
     impunity(lead, 30);
     step(lead);
     expect(holdOf(lead)).toBeCloseTo(50.3, 6);
     const both = world('role', 50, 0);
-    both.power = { votes: { log: [], seq: 0 }, hierarchy: { leaderId: ANN } } as CampaignState['power'];
+    both.power = { votes: { log: [], seq: 0 }, hierarchy: { leaderId: ANN } } as unknown as CampaignState['power'];
     impunity(both, 45);
     step(both);
     expect(holdOf(both)).toBeCloseTo(50.8, 6);
