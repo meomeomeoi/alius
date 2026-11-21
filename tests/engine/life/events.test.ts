@@ -386,8 +386,9 @@ describe('cooldowns', () => {
     const notable = free().find((x) => x.size === 'notable');
     const other = all.find((x) => x.size === 'notable' && x !== notable && x.requires === undefined);
     const day = 7 * 6;
-    if (!notable || !other) return; // the pack has two unrequired notables, or this test says nothing
-    applyLifeEvent(s, reg, ANN, notable, day);
+    expect(notable, 'the pack has an unrequired notable').toBeDefined();
+    expect(other, 'the pack has a second unrequired notable').toBeDefined();
+    applyLifeEvent(s, reg, ANN, notable!, day);
     expect(eventPool(s, reg, ANN, day + 1).some((x) => x.size === 'notable')).toBe(false);
     expect(eventPool(s, reg, ANN, day + 7).some((x) => x.size === 'notable')).toBe(true);
   });

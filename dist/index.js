@@ -9556,7 +9556,13 @@ function routineWeight(state, reg, room2, unit2) {
   if (!open3) return 0;
   if (typeof room2.facilityId === "string" && facilityLevel2(state, room2.facilityId) < 1) return 0;
   const liked = (room2.likeTags ?? []).some((t) => likesOf(unit2).some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0);
+  return base + (liked ? 2 : 0) + hobbyWeight(state, reg, room2, unit2);
+}
+function hobbyWeight(state, reg, room2, unit2) {
+  if (!unit2.hobbies || unit2.hobbies.length === 0 || lifeMode(state) === "off") return 0;
+  const here = room2.sceneLocationId;
+  const hosted = unit2.hobbies.some((h2) => h2.state === "active" && (reg.hobbies.get(h2.id)?.locations ?? []).includes(here));
+  return hosted ? TUNING.life.hobbyRoomWeight : 0;
 }
 function place(state, reg, rooms, unit2) {
   const here = (room2, reason) => room2 ? { unitId: unit2.id, roomId: room2.id, reason } : null;
@@ -9580,6 +9586,11 @@ function place(state, reg, rooms, unit2) {
 function whereabouts(state, reg) {
   const rooms = roomsOf(reg);
   return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+function whereaboutAt(state, reg, unitId, day, slot2) {
+  const unit2 = livingUnits(state).find((u) => u.id === unitId);
+  if (!unit2) return { unitId, roomId: null, reason: "nowhere" };
+  return place(state.day === day && state.slot === slot2 ? state : { ...state, day, slot: slot2 }, reg, roomsOf(reg), unit2);
 }
 
 // src/engine/relations/gain.ts
@@ -13047,6 +13058,47 @@ function objectiveList(state, reg) {
   return out;
 }
 
+// src/engine/life/facts.ts
+var LIFE_TAG = "life";
+var plainText = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
+function writeLifeFact(draft, unitId, text2, tags, importance) {
+  return addFact(draft, {
+    about: [unitId],
+    text: text2,
+    tags: [LIFE_TAG, UNTOLD_TAG, ...tags],
+    importance,
+    day: draft.day,
+    knownBy: [unitId],
+    hiddenFromCommander: true
+  });
+}
+
+// src/engine/life/news.ts
+function enqueue(draft, item) {
+  const life = ensureLife(draft);
+  const queued = { id: nextLifeId(life, "ln"), ...item };
+  life.queue.push(queued);
+  return [{ type: "news_queued", itemId: queued.id, unitId: queued.unitId }];
+}
+
+// src/engine/life/places.ts
+var DAY_SLOTS = ["morning", "afternoon", "evening"];
+var SLOTS_PER_DAY = 4;
+var busySlot = (day, slot2) => day * SLOTS_PER_DAY + ["morning", "afternoon", "evening", "night"].indexOf(slot2);
+var unitOf2 = (state, id) => state.squad.find((u) => u.id === id);
+function takesPart(state, unitId) {
+  const u = unitOf2(state, unitId);
+  return u !== void 0 && u.kind === "named" && isLiving(u) && state.expedition?.party.includes(u.id) !== true;
+}
+function placesOf(state, reg, unitId, day, cache) {
+  const key = `${unitId}|${day}`;
+  const kept = cache?.get(key);
+  if (kept) return kept;
+  const places = DAY_SLOTS.map((slot2) => whereaboutAt(state, reg, unitId, day, slot2));
+  cache?.set(key, places);
+  return places;
+}
+
 // src/engine/life/hobbies.ts
 function milestoneAt(salt, unitId, hobbyId, n) {
   const t = TUNING.life;
@@ -13086,6 +13138,153 @@ function seedLife(draft, reg, only) {
     }
   }
   return [];
+}
+function aptitudeOf(unit2, hobbyId) {
+  if (unit2.aptitudes?.high.includes(hobbyId)) return "high";
+  return unit2.aptitudes?.low.includes(hobbyId) ? "low" : "standard";
+}
+function practiceGain(unit2, h2) {
+  const t = TUNING.life;
+  return t.aptitude[aptitudeOf(unit2, h2.id)] * Math.min(h2.interest / t.interestDiv, t.interestCap);
+}
+function bumpInterest(draft, unitId, hobbyId, amount, _day) {
+  const h2 = unitOf2(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
+  if (!h2) return [];
+  h2.interest = Math.max(0, Math.min(100, h2.interest + amount));
+  return [];
+}
+function openTopic(draft, reg, unitId, topicId) {
+  const unit2 = unitOf2(draft, unitId);
+  if (!unit2 || !draft.life || !reg.opinionTopics.has(topicId) || unit2.opinions?.[topicId] !== void 0) return;
+  const pending4 = (draft.life.units[unitId] ??= { last: {} }).pendingTopics ??= [];
+  if (!pending4.includes(topicId)) pending4.push(topicId);
+}
+function practiceSlots(state, reg, unitId, day, cache) {
+  const unit2 = unitOf2(state, unitId);
+  const life = state.life;
+  if (lifeMode(state) === "off" || !life || !unit2 || !unit2.hobbies?.some((h2) => h2.state === "active") || !takesPart(state, unitId)) return [];
+  if (unit2.stress >= TUNING.life.practiceStressMax) return [];
+  if (state.lastExpedition?.day === day && state.lastExpedition.party.includes(unitId)) return [];
+  const order = [...reg.hobbies.keys()];
+  const out = [];
+  const places = placesOf(state, reg, unitId, day, cache);
+  for (const [i, slot2] of DAY_SLOTS.entries()) {
+    const w = places[i];
+    if (w.reason !== "routine" || w.roomId === null) continue;
+    if (life.busy.some((b) => b.unitId === unitId && b.slot === busySlot(day, slot2))) continue;
+    if (activeRestrictions({ ...state, day, slot: slot2 }, unitId).some((r) => r.kind !== "benched")) continue;
+    const here = reg.hubRooms.get(w.roomId)?.sceneLocationId;
+    const choice = unit2.hobbies.filter((h2) => h2.state === "active" && (reg.hobbies.get(h2.id)?.locations ?? []).includes(here)).sort((a, b) => b.interest - a.interest || order.indexOf(a.id) - order.indexOf(b.id))[0];
+    if (choice) out.push({ slot: slot2, hobbyId: choice.id, roomId: w.roomId });
+  }
+  return out;
+}
+var factsMax = () => TUNING.development.factsMax;
+function masterHobby(draft, unit2, h2, entry) {
+  h2.mastered = true;
+  const text2 = `${unit2.displayName} is the base's ${entry.label} hand.`;
+  addFact(draft, {
+    about: [unit2.id],
+    text: text2,
+    tags: ["life", "hobby", "mastered", h2.id],
+    importance: 2,
+    day: draft.day,
+    knownBy: draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id)
+  });
+  if (developmentMode(draft) !== "off") {
+    const dev = ensureDevelopment(unit2);
+    const fact = { id: nextDevId(dev, "df"), text: text2, kind: "skill", day: draft.day, source: "life" };
+    dev.facts.push(fact);
+    while (dev.facts.length > factsMax()) {
+      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== fact.id);
+      if (i < 0) break;
+      dev.facts.splice(i, 1);
+    }
+  }
+  return [{ type: "hobby_mastered", unitId: unit2.id, hobbyId: h2.id }];
+}
+function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
+  const unit2 = unitOf2(draft, unitId);
+  const life = draft.life;
+  const h2 = unit2?.hobbies?.find((x) => x.id === hobbyId);
+  const entry = reg.hobbies.get(hobbyId);
+  const m = entry?.milestones[n];
+  if (!unit2 || !life || !h2 || !entry || !m || h2.milestones.includes(m.id)) return [];
+  const low = aptitudeOf(unit2, hobbyId) === "low";
+  if (h2.ceiling === true || low && n >= 3) return [];
+  const idx = n;
+  h2.milestones.push(m.id);
+  h2.skill = Math.max(h2.skill, milestoneAt(life.salt, unitId, hobbyId, idx));
+  delete h2.plateau;
+  const events = [{ type: "hobby_milestone", unitId, hobbyId, milestoneId: m.id }];
+  const fact = writeLifeFact(draft, unitId, `${unit2.displayName} (${entry.label}): ${plainText(m.line)}`, ["hobby", hobbyId, m.id], n === 3 ? 2 : 1);
+  if (opts.caused === true) life.delivered.push({ day: draft.day, unitId, category: "hobby", hobby: true, caused: true });
+  else if (opts.told !== true) {
+    events.push(...enqueue(draft, {
+      unitId,
+      kind: "hobby",
+      ref: hobbyId,
+      what: n === 3 ? "mastered" : "milestone",
+      milestoneId: m.id,
+      factId: fact.id,
+      category: "hobby",
+      day: draft.day,
+      ...n === 3 ? { notable: true } : {}
+    }));
+  }
+  events.push(...bumpInterest(draft, unitId, hobbyId, TUNING.life.interest.milestone, draft.day));
+  if (m.trace === "opinion" && entry.opinionTopic !== void 0) openTopic(draft, reg, unitId, entry.opinionTopic);
+  if (n === 2 && low) {
+    h2.ceiling = true;
+    events.push(...bumpInterest(draft, unitId, hobbyId, temperamentOf(draft, unitId).volatility === "moody" ? TUNING.life.interest.ceilingMoody : TUNING.life.interest.ceiling, draft.day));
+  }
+  if (n === 3) events.push(...masterHobby(draft, unit2, h2, entry));
+  return events;
+}
+function breakthrough(draft, reg, unitId, hobbyId, _day, opts = {}) {
+  const h2 = unitOf2(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
+  if (!h2 || h2.ceiling === true || h2.milestones.length >= 4) return [];
+  const got = grantMilestone(draft, reg, unitId, hobbyId, h2.milestones.length, opts);
+  return got.length === 0 ? [] : [{ type: "hobby_breakthrough", unitId, hobbyId }, ...got];
+}
+function pushHobby(draft, reg, unitId, hobbyId, day, opts = {}) {
+  const h2 = unitOf2(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
+  if (!h2) return [];
+  return [...h2.plateau ? breakthrough(draft, reg, unitId, hobbyId, day, opts) : [], ...bumpInterest(draft, unitId, hobbyId, TUNING.life.interest.push, day)];
+}
+function practise(draft, reg, unitId, hobbyId, day, slot2, opts = {}) {
+  const unit2 = unitOf2(draft, unitId);
+  const life = draft.life;
+  const h2 = unit2?.hobbies?.find((x) => x.id === hobbyId);
+  if (!unit2 || !life || !h2 || !reg.hobbies.has(hobbyId)) return [];
+  const t = TUNING.life;
+  const events = [];
+  const n = h2.milestones.length;
+  const low = aptitudeOf(unit2, hobbyId) === "low";
+  h2.lastPracticeDay = day;
+  if (h2.plateau) {
+    const roll = lifeChance(life, `${unitId}|${hobbyId}|${day}|${slot2}`, t.breakthrough * t.aptitude[aptitudeOf(unit2, hobbyId)]);
+    if (opts.push === true || roll) events.push(...breakthrough(draft, reg, unitId, hobbyId, day, { ...opts.caused === true ? { caused: true } : {} }));
+  } else if (h2.ceiling === true || low && n >= 3) {
+  } else if (n >= 4) {
+    h2.skill = Math.min(100, h2.skill + practiceGain(unit2, h2));
+    events.push({ type: "hobby_progress", unitId, hobbyId });
+  } else {
+    const prev = n === 0 ? 0 : milestoneAt(life.salt, unitId, hobbyId, n - 1);
+    const next = milestoneAt(life.salt, unitId, hobbyId, n);
+    const stop = prev + t.plateauAt * (next - prev);
+    const skill = h2.skill + practiceGain(unit2, h2);
+    if (skill >= stop) {
+      h2.skill = Math.max(stop, h2.skill);
+      h2.plateau = { at: h2.skill, since: day };
+      events.push({ type: "hobby_plateau", unitId, hobbyId });
+    } else {
+      h2.skill = skill;
+    }
+    events.push({ type: "hobby_progress", unitId, hobbyId });
+  }
+  if (opts.push === true) events.push(...bumpInterest(draft, unitId, hobbyId, t.interest.push, day));
+  return events;
 }
 
 // src/engine/headStart/hash.ts
@@ -14047,9 +14246,9 @@ function amplify(e, factor) {
 function strain(c, e) {
   return e.downside === true && c.side === "squad" && c.stress >= 50 ? amplify(e, TUNING.combat.strainedMult) : e;
 }
-var unitOf2 = (ctx2, c) => c.unitId ? ctx2.state.squad.find((u) => u.id === c.unitId) : void 0;
+var unitOf3 = (ctx2, c) => c.unitId ? ctx2.state.squad.find((u) => u.id === c.unitId) : void 0;
 function upkeepAge(ctx2, c) {
-  const days = (unitOf2(ctx2, c)?.defects ?? []).map((d) => d.upkeepDay).filter((d) => typeof d === "number");
+  const days = (unitOf3(ctx2, c)?.defects ?? []).map((d) => d.upkeepDay).filter((d) => typeof d === "number");
   return days.length > 0 ? ctx2.state.day - Math.max(...days) : Infinity;
 }
 function checkCondition(ctx2, cid, when, targetCid, skillId) {
@@ -15640,7 +15839,7 @@ function metAtScene(draft, reg, participants) {
 
 // src/engine/warden/intrigue.ts
 var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var unitOf3 = (state, id) => state.squad.find((u) => u.id === id);
+var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
 var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ?? false;
 function allies(state) {
   const holder = wardenOf(state)?.unitId;
@@ -15656,14 +15855,14 @@ function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
 }
 function allyChance(state, _reg, unitId) {
   const A = TUNING.warden.intrigue.ally;
-  const unit2 = unitOf3(state, unitId);
+  const unit2 = unitOf4(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
   return clamp15(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit2 ? valuesOf(unit2).autonomy : 0) - A.corporate * (unit2 ? valuesOf(unit2).corporate : 0), A.min, A.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
   const w = wardenOf(draft);
-  const unit2 = unitOf3(draft, unitId);
+  const unit2 = unitOf4(draft, unitId);
   if (!ls || !w || !unit2 || unit2.kind !== "named" || !isLiving(unit2) || unitId === w.unitId || hasFlag3(draft, unitId, "warden_ally")) return [];
   if (ls.intrigue.lastAllyDay[unitId] === draft.day) return [];
   ls.intrigue.lastAllyDay[unitId] = draft.day;
@@ -15680,7 +15879,7 @@ function conspireInput(state, _reg, participants) {
   const w = wardenOf(state);
   if (!ls || !w || participants.includes(w.unitId)) return {};
   const ids = participants.filter((id) => {
-    const u = unitOf3(state, id);
+    const u = unitOf4(state, id);
     return u !== void 0 && u.kind === "named" && isLiving(u) && !hasFlag3(state, id, "warden_ally") && ls.intrigue.lastAllyDay[id] !== state.day;
   });
   return ids.length > 0 ? { conspire: ids } : {};
@@ -16043,9 +16242,9 @@ function forgetNotes(draft, unitId) {
 
 // src/engine/leash/use.ts
 var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
+var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
 function leashCost(state, reg, unitId, kind) {
-  const unit2 = unitOf4(state, unitId);
+  const unit2 = unitOf5(state, unitId);
   let mult = 1;
   let failChance = 0;
   if (kind === "compel") {
@@ -16068,12 +16267,12 @@ function leashCost(state, reg, unitId, kind) {
 function witnessesOf(state, unitId) {
   const pool = state.scene?.participants.includes(unitId) ? state.scene.participants : state.expedition ? state.expedition.party : state.roster.activeIds;
   return pool.filter((id) => {
-    const u = unitOf4(state, id);
+    const u = unitOf5(state, id);
     return id !== unitId && u !== void 0 && u.kind === "named" && isLiving(u);
   });
 }
 function checkLeash(state, _reg, kind, unitId) {
-  const unit2 = unitOf4(state, unitId);
+  const unit2 = unitOf5(state, unitId);
   if (!unit2) return `Unknown unit "${unitId}".`;
   if (!isLiving(unit2)) return `${unit2.displayName} is no longer in service.`;
   if (state.leash.authorizationsLeft < 1) return "No Leash authorization is left this week.";
@@ -16108,7 +16307,7 @@ function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
   return events;
 }
 function addStress2(draft, unitId, amount) {
-  const u = unitOf4(draft, unitId);
+  const u = unitOf5(draft, unitId);
   if (!u || amount === 0) return [];
   const next = clamp16(u.stress + amount, 0, 100);
   const delta = next - u.stress;
@@ -16145,7 +16344,7 @@ function compel(draft, ctx2, p) {
   events.push(...payCost(draft, reg, p.unitId, cost, { skipStress: p.skipStress }));
   const witnesses = witnessesOf(draft, p.unitId);
   for (const w of witnesses) {
-    const unit2 = unitOf4(draft, w);
+    const unit2 = unitOf5(draft, w);
     events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: "moderate" }, { scale: witnessScale(unit2), witnessOf: p.unitId }));
   }
   events.push(...recordAppraisal(draft, reg, p.unitId, { ...COERCED, targets: [p.unitId], severity: "moderate" }, "subject"));
@@ -16157,7 +16356,7 @@ function settleCompels(draft, ctx2, unitIds) {
   const events = [];
   for (const unitId of unitIds) {
     if (draft.leash.authorizationsLeft < 1) break;
-    const unit2 = unitOf4(draft, unitId);
+    const unit2 = unitOf5(draft, unitId);
     if (!unit2 || !isLiving(unit2)) events.push(...bookUse(draft, ctx2, unitId, "compel", "combat", "done"));
     else events.push(...compel(draft, ctx2, { unitId, context: "combat", skipStress: true, roll: false }).events);
   }
@@ -16180,7 +16379,7 @@ function suppress(draft, ctx2, p) {
   return events;
 }
 function removeFromService(draft, unitId, status, ctx2) {
-  const unit2 = unitOf4(draft, unitId);
+  const unit2 = unitOf5(draft, unitId);
   if (!unit2) throw new Error(`Unknown unit "${unitId}".`);
   if (draft.scene?.participants.includes(unitId)) throw new Error(`${unit2.displayName} is in the open scene: end it first.`);
   if (draft.combat?.combatants.some((c) => c.unitId === unitId)) throw new Error(`${unit2.displayName} is in the open combat: finish it first.`);
@@ -16231,7 +16430,7 @@ function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
   const why = checkLeash(draft, reg, "terminate", unitId);
   if (why) throw new Error(why);
-  const unit2 = unitOf4(draft, unitId);
+  const unit2 = unitOf5(draft, unitId);
   const chance = terminateChance(draft, reg);
   if (!ctx2.rng.chance(chance)) {
     loyaltyRecord(draft, unitId).deniedDay = draft.day;
@@ -17848,9 +18047,9 @@ function harmsSquad(c, effects2) {
   }
   return false;
 }
-var unitOf5 = (c, id) => c.state.squad.find((u) => u.id === id);
+var unitOf6 = (c, id) => c.state.squad.find((u) => u.id === id);
 var shouldNotGo = (c, id) => {
-  const u = unitOf5(c, id);
+  const u = unitOf6(c, id);
   return u !== void 0 && isLiving(u) && (u.status === "injured" || u.injuries.length > 0 || u.stress >= STRESSED);
 };
 var orderRule = (c, orderId) => c.reg.orders.get(orderId)?.wardenRule;
@@ -19003,7 +19202,7 @@ function sparringOdds(state, reg, unitId, handicapId, n = 40) {
 }
 
 // src/engine/personal/tokens.ts
-var unitOf6 = (state, id) => state.squad.find((u) => u.id === id);
+var unitOf7 = (state, id) => state.squad.find((u) => u.id === id);
 var labelOf = (reg, kindId, name) => String(reg.tokenKinds.get(kindId)?.label ?? "{name}'s token").replaceAll("{name}", name);
 var wornTokens = (state) => (state.personal?.tokens?.owned ?? []).filter((t) => t.worn);
 function tokenLine(state) {
@@ -19037,7 +19236,7 @@ function rollTokenOffer(draft, ctx2) {
 }
 function giveToken(draft, ctx2, giverId, kindId) {
   const reg = ctx2.registries;
-  const unit2 = unitOf6(draft, giverId);
+  const unit2 = unitOf7(draft, giverId);
   if (!unit2) throw new Error("There is no such soldier.");
   const kinds2 = kindsFor(draft, reg, giverId);
   const kind = (kindId !== void 0 ? reg.tokenKinds.get(kindId) : void 0) ?? kinds2[ctx2.rng.int(0, Math.max(0, kinds2.length - 1))] ?? [...reg.tokenKinds.values()][0];
@@ -19059,7 +19258,7 @@ function answerOffer(draft, ctx2, offerId, accept, opts = {}) {
     return [{ type: "token_accepted", tokenId: token.id, giverId: offer.giverId, label: token.label }];
   }
   const events = [{ type: "token_declined", offerId, giverId: offer.giverId, ...opts.expired ? { expired: true } : {} }];
-  if (unitOf6(draft, offer.giverId) && isLiving(unitOf6(draft, offer.giverId))) events.push(...hitHer(draft, ctx2.registries, offer.giverId, "rejected_advance", "minor", "declined her token"));
+  if (unitOf7(draft, offer.giverId) && isLiving(unitOf7(draft, offer.giverId))) events.push(...hitHer(draft, ctx2.registries, offer.giverId, "rejected_advance", "minor", "declined her token"));
   return events;
 }
 function wearProblem(state, tokenId) {
@@ -19076,7 +19275,7 @@ function wearToken(draft, ctx2, tokenId) {
   const token = draft.personal.tokens.owned.find((t) => t.id === tokenId);
   token.worn = true;
   delete token.removedDay;
-  const giver = unitOf6(draft, token.giverId);
+  const giver = unitOf7(draft, token.giverId);
   const events = [];
   let reactions = [];
   if (giver && isLiving(giver)) {
@@ -19093,7 +19292,7 @@ function removeToken(draft, ctx2, tokenId) {
   token.worn = false;
   token.removedDay = draft.day;
   const events = [{ type: "token_taken_off", tokenId, giverId: token.giverId }];
-  const giver = unitOf6(draft, token.giverId);
+  const giver = unitOf7(draft, token.giverId);
   if (giver && isLiving(giver)) {
     if (token.lockedUntil !== void 0 && token.lockedUntil > draft.day) {
       events.push(...hitHer(draft, reg, token.giverId, "broke_promise", "moderate", "took off a token she was promised would stay"));
@@ -19108,7 +19307,7 @@ function tokenDayStep(draft, ctx2) {
   const events = [];
   if (tokens?.offer && draft.day >= tokens.offer.day + TUNING.personal.token.offerDays) events.push(...answerOffer(draft, ctx2, tokens.offer.id, false, { expired: true }));
   for (const giverId of new Set(wornTokens(draft).map((t) => t.giverId))) {
-    const giver = unitOf6(draft, giverId);
+    const giver = unitOf7(draft, giverId);
     if (!giver || !isLiving(giver) || !draft.relations[giverId]) continue;
     const applied = applyRelationDelta(draft, giverId, "affinity", TUNING.personal.token.giverAffinityPerDay, "token");
     if (applied !== 0) events.push({ type: "relation_changed", unitId: giverId, axis: "affinity", delta: applied, applied });
@@ -19122,7 +19321,7 @@ function removeTokenQuietly(token) {
 }
 
 // src/engine/personal/wagers.ts
-var unitOf7 = (state, id) => state.squad.find((u) => u.id === id);
+var unitOf8 = (state, id) => state.squad.find((u) => u.id === id);
 var openOf = (state) => state.personal?.wagers?.open ?? [];
 var HANDS = ["rock", "paper", "scissors"];
 var PLAYABLE_KINDS = /* @__PURE__ */ new Set(["coin", "rps", "high_card", "sparring", "expedition_bet"]);
@@ -19221,7 +19420,7 @@ function answerChallenge(draft, ctx2, wagerId, accept, opts = {}) {
   }
   draft.personal.wagers.open = list5.filter((x) => x !== w);
   const events = [{ type: "wager_declined", wagerId, unitId: w.unitId, ...opts.expired ? { expired: true } : {} }];
-  const u = unitOf7(draft, w.unitId);
+  const u = unitOf8(draft, w.unitId);
   if (u && isLiving(u)) events.push(...hitHer(draft, ctx2.registries, w.unitId, "dismissed", "minor", "declined her challenge"));
   return events;
 }
@@ -19249,7 +19448,7 @@ function playWager(draft, ctx2, wagerId, pick2) {
   if (!wagers || !w || w.status !== "accepted") throw new Error("That wager cannot be played now.");
   const game = reg.wagerGames.get(w.gameId);
   if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error("That game is not available.");
-  const u = unitOf7(draft, w.unitId);
+  const u = unitOf8(draft, w.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to play.");
   if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick2 ?? w.pick);
   const { winner, details } = playChance(String(game.kind), ctx2, pick2 ?? w.pick);
@@ -19300,7 +19499,7 @@ function voidWager(draft, w) {
 function applyStake(draft, ctx2, w, winner, resolved) {
   const reg = ctx2.registries;
   const stake = reg.wagerStakes.get(w.stakeId);
-  const u = unitOf7(draft, w.unitId);
+  const u = unitOf8(draft, w.unitId);
   if (!stake || !u) return [];
   const p = personalOf(draft);
   const events = [];
@@ -19379,7 +19578,7 @@ function answerQuestion(draft, _ctx, wagerId, raw) {
   const pending4 = draft.personal?.pendingQuestion;
   if (!pending4 || pending4.wagerId !== wagerId) throw new Error("There is no question waiting.");
   const text2 = cleanText(raw, TUNING.personal.wager.answerMax);
-  const u = unitOf7(draft, pending4.unitId);
+  const u = unitOf8(draft, pending4.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to answer.");
   delete draft.personal.pendingQuestion;
   if (pending4.winner === "unit") {
@@ -19393,7 +19592,7 @@ function recordAnswer(draft, _ctx, unitId, raw) {
   const truth = draft.personal?.truth;
   if (!truth || truth.unitId !== unitId) throw new Error("She owes no answer.");
   const text2 = cleanText(typeof raw === "string" ? raw.slice(0, TUNING.personal.wager.answerMax) : raw, TUNING.personal.wager.answerMax);
-  const u = unitOf7(draft, unitId);
+  const u = unitOf8(draft, unitId);
   delete draft.personal.truth;
   if (u) addFact(draft, { about: [unitId], text: `${u.displayName} told the commander, asked "${truth.question}": ${text2}`, tags: ["wager", "answer"], importance: 3, day: draft.day, knownBy: [unitId] });
   return [{ type: "truth_told", unitId, wagerId: truth.wagerId }];
@@ -19415,7 +19614,7 @@ function wagerDayStep(draft, ctx2) {
 
 // src/engine/power/herCall.ts
 var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var unitOf8 = (state, id) => state.squad.find((u) => u.id === id);
+var unitOf9 = (state, id) => state.squad.find((u) => u.id === id);
 function herCallSpecOf(template) {
   return template?.herCall ?? null;
 }
@@ -19426,7 +19625,7 @@ function herCallCandidates(state, reg, spec, partyIds) {
   const t = spec.trigger;
   const warden = wardenUnitId(state);
   return partyIds.filter((id) => {
-    const unit2 = unitOf8(state, id);
+    const unit2 = unitOf9(state, id);
     if (id === warden || !unit2 || unit2.kind !== "named" || !isLiving(unit2) || unit2.status !== "active" || askFirstHolds(state, id)) return false;
     const bond = bondOf(unit2);
     if (t.minLeadRank !== void 0 && bond !== null && leadRank(bond.leadStyle) >= t.minLeadRank) return true;
@@ -19437,7 +19636,7 @@ function herCallCandidates(state, reg, spec, partyIds) {
   });
 }
 function actorWeight(state, reg, unitId) {
-  const unit2 = unitOf8(state, unitId);
+  const unit2 = unitOf9(state, unitId);
   const bond = unit2 ? bondOf(unit2) : null;
   const impunity = impunityOf(state, reg, unitId);
   if (!bond || !impunity) return 0;
@@ -19448,7 +19647,7 @@ function herCallChance(state, reg) {
   return Math.min(TUNING.herCall.chanceCap, TUNING.herCall.chance * assertiveness(state, reg).privilegeMult);
 }
 function herCallOdds(state, reg, unitId, spec) {
-  const unit2 = unitOf8(state, unitId);
+  const unit2 = unitOf9(state, unitId);
   const T4 = TUNING.herCall.odds;
   if (!unit2) return T4.base;
   const values = effectiveValues(state, reg, unit2);
@@ -19482,7 +19681,7 @@ function applyHerCall(draft, ctx2, p) {
   const { call } = p;
   const T4 = TUNING.herCall;
   const outcome = p.spec.outcomes.find((o) => o.id === call.outcome);
-  const unit2 = unitOf8(draft, call.unitId);
+  const unit2 = unitOf9(draft, call.unitId);
   const events = applyWorldEffects(draft, ctx2, outcome.effects, { kind: "event", id: p.templateId, label: p.title });
   let marked = false;
   if (call.outcome === "good") {
@@ -19518,7 +19717,7 @@ function setAskFirst(draft, ctx2, unitId, on) {
     if (Object.keys(power.askFirst).length === 0) delete power.askFirst;
     return [{ type: "ask_first_set", unitId, on: false }];
   }
-  const unit2 = unitOf8(draft, unitId);
+  const unit2 = unitOf9(draft, unitId);
   if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) throw new Error("There is no such soldier to give that order to.");
   if (askFirstHolds(draft, unitId)) throw new Error("She is already under that order.");
   (powerOf(draft).askFirst ??= {})[unitId] = draft.day;
@@ -21161,7 +21360,7 @@ var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var slot = (m) => m === "small" ? 0 : m === "medium" ? 1 : 2;
 var shape = (reason) => ({ rule: "shape", reason });
 var flagRule = (reason) => ({ rule: 6, reason });
-function plainText(v, max) {
+function plainText2(v, max) {
   const t = String(v).replace(/\s+/g, " ").replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, "").replace(/ {2,}/g, " ").trim();
   return t.slice(0, max).trim();
 }
@@ -21211,7 +21410,7 @@ function toWorldEffect(raw, ctx2) {
         if (threadId === void 0 || !target.startsWith(`thread:${threadId}:`) || !/^thread:[^:]+:[a-z0-9_]+$/.test(target)) {
           return flagRule(`Flag "${target}" is not in this dilemma's thread.`);
         }
-        const note = typeof raw.note === "string" && plainText(raw.note, 120) !== "" ? plainText(raw.note, 120) : "Set by a decision.";
+        const note = typeof raw.note === "string" && plainText2(raw.note, 120) !== "" ? plainText2(raw.note, 120) : "Set by a decision.";
         return { type: "thread_flag", threadId, flagId: target, description: note };
       }
       const def = ctx2.reg.flags.get(target);
@@ -21230,10 +21429,10 @@ var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).j
 function parseOption(raw, index2, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index2, reason });
   if (!isObj7(raw)) return at("An option must be an object."), null;
-  if (typeof raw.label !== "string" || plainText(raw.label, 400) === "") return at("An option needs a label."), null;
+  if (typeof raw.label !== "string" || plainText2(raw.label, 400) === "") return at("An option needs a label."), null;
   if (!Array.isArray(raw.effects) || raw.effects.length === 0 || raw.effects.length > 6) return at("An option needs 1 to 6 effects."), null;
   const option2 = {
-    label: cutWords3(plainText(raw.label, 400), TUNING.dilemma.labelWords),
+    label: cutWords3(plainText2(raw.label, 400), TUNING.dilemma.labelWords),
     effects: [],
     magnitudes: []
   };
@@ -21277,8 +21476,8 @@ function parseDilemmaOutput(raw, ctx2) {
   const bad = [];
   try {
     if (!isObj7(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
-    if (typeof raw.title !== "string" || plainText(raw.title, 200) === "") bad.push({ rule: "shape", reason: "A dilemma needs a title." });
-    if (typeof raw.setup !== "string" || plainText(raw.setup, 2e3) === "") bad.push({ rule: "shape", reason: "A dilemma needs a setup." });
+    if (typeof raw.title !== "string" || plainText2(raw.title, 200) === "") bad.push({ rule: "shape", reason: "A dilemma needs a title." });
+    if (typeof raw.setup !== "string" || plainText2(raw.setup, 2e3) === "") bad.push({ rule: "shape", reason: "A dilemma needs a setup." });
     const want = ctx2.template.optionCount ?? 3;
     if (!Array.isArray(raw.options)) bad.push({ rule: "shape", reason: "A dilemma needs a list of options." });
     else if (raw.options.length !== want) bad.push({ rule: "shape", reason: `This dilemma needs exactly ${want} options.` });
@@ -21306,8 +21505,8 @@ function parseDilemmaOutput(raw, ctx2) {
     }
     if (bad.length > 0) return { rejected: bad };
     return {
-      title: plainText(raw.title, TUNING.dilemma.titleMax),
-      setup: cutWords3(plainText(raw.setup, 2e3), TUNING.dilemma.setupWords),
+      title: plainText2(raw.title, TUNING.dilemma.titleMax),
+      setup: cutWords3(plainText2(raw.setup, 2e3), TUNING.dilemma.setupWords),
       options: options2
     };
   } catch (e) {
@@ -23879,49 +24078,17 @@ function bondsDayStep(draft, ctx2) {
   ];
 }
 
-// src/engine/life/facts.ts
-var LIFE_TAG = "life";
-var plainText2 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
-function writeLifeFact(draft, unitId, text2, tags, importance) {
-  return addFact(draft, {
-    about: [unitId],
-    text: text2,
-    tags: [LIFE_TAG, UNTOLD_TAG, ...tags],
-    importance,
-    day: draft.day,
-    knownBy: [unitId],
-    hiddenFromCommander: true
-  });
-}
-
-// src/engine/life/news.ts
-function enqueue(draft, item) {
-  const life = ensureLife(draft);
-  const queued = { id: nextLifeId(life, "ln"), ...item };
-  life.queue.push(queued);
-  return [{ type: "news_queued", itemId: queued.id, unitId: queued.unitId }];
-}
-
 // src/engine/life/events.ts
-var DAY_SLOTS = ["morning", "afternoon", "evening"];
-var SLOTS_PER_DAY = 4;
 var eventsOf = (reg) => [...reg.lifeEvents.values()];
-var unitOf9 = (state, id) => state.squad.find((u) => u.id === id);
-function takesPart(state, unitId) {
-  const u = unitOf9(state, unitId);
-  return u !== void 0 && u.kind === "named" && isLiving(u) && state.expedition?.party.includes(u.id) !== true;
-}
-function roomsToday(state, reg, unitId, day) {
-  return DAY_SLOTS.map((slot2) => {
-    const w = whereabouts({ ...state, day, slot: slot2 }, reg).find((x) => x.unitId === unitId);
-    const room2 = w?.roomId ? reg.hubRooms.get(w.roomId) : void 0;
-    return { reason: w?.reason ?? "nowhere", locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
+function roomsToday(state, reg, unitId, day, cache) {
+  return placesOf(state, reg, unitId, day, cache).map((w) => {
+    const room2 = w.roomId ? reg.hubRooms.get(w.roomId) : void 0;
+    return { reason: w.reason, locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
   });
 }
-var busySlot = (day, slot2) => day * SLOTS_PER_DAY + ["morning", "afternoon", "evening", "night"].indexOf(slot2);
-function requiresHold(state, reg, unitId, req, day) {
+function requiresHold(state, reg, unitId, req, day, cache) {
   if (!req) return true;
-  const unit2 = unitOf9(state, unitId);
+  const unit2 = unitOf2(state, unitId);
   if (!unit2) return false;
   const life = state.life;
   const rel = state.relations[unitId];
@@ -23933,7 +24100,7 @@ function requiresHold(state, reg, unitId, req, day) {
         ok = (unit2.hobbies ?? []).some((h2) => h2.state === "active" && (value === "any" || h2.id === value));
         break;
       case "location":
-        ok = roomsToday(state, reg, unitId, day).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
+        ok = roomsToday(state, reg, unitId, day, cache).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
         break;
       case "activity": {
         const lo = day * SLOTS_PER_DAY;
@@ -24029,7 +24196,7 @@ function weekOf2(state, unitId, day) {
   const w = state.life?.units[unitId]?.week;
   return w !== void 0 && w.n === week ? w : { n: week, events: 0, notable: 0 };
 }
-function eventPool2(state, reg, unitId, day) {
+function eventPool2(state, reg, unitId, day, cache = /* @__PURE__ */ new Map()) {
   const life = state.life;
   if (!life || !takesPart(state, unitId)) return [];
   const mine = life.units[unitId]?.last ?? {};
@@ -24040,15 +24207,15 @@ function eventPool2(state, reg, unitId, day) {
     if (mine[e.id] !== void 0 && day - mine[e.id] < cooldown) return false;
     if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
     if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
-    return requiresHold(state, reg, unitId, e.requires, day);
+    return requiresHold(state, reg, unitId, e.requires, day, cache);
   });
 }
-function pickLifeEvent(state, reg, unitId, day) {
+function pickLifeEvent(state, reg, unitId, day, cache) {
   const life = state.life;
   const mode = lifeMode(state);
   if (!life || mode === "off" || !takesPart(state, unitId)) return null;
   const week = weekOf2(state, unitId, day);
-  const pool = eventPool2(state, reg, unitId, day);
+  const pool = eventPool2(state, reg, unitId, day, cache);
   if (pool.length === 0) return null;
   const yearly = pool.filter((e) => e.yearly === true);
   if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
@@ -24070,36 +24237,41 @@ function shareChance(state, reg, unitId, entry) {
   if (share === "close" && !close) return 0;
   return TUNING.life.share[temperamentOf(state, unitId).talkativeness] * (close ? 1 : TUNING.life.shareLowMult);
 }
+function milestoneHobby(draft, reg, unitId, entry, day) {
+  const unit2 = unitOf2(draft, unitId);
+  const named3 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
+  const movable = (unit2?.hobbies ?? []).filter((h2) => h2.state === "active" && h2.mastered !== true && h2.ceiling !== true && h2.milestones.length < 4 && reg.hobbies.has(h2.id));
+  if (named3 !== void 0) return movable.some((h2) => h2.id === named3) ? named3 : null;
+  return movable.length === 0 ? null : movable[lifeHash(draft.life, `${unitId}|${day}|milestone`) % movable.length].id;
+}
 function applyBecomes(draft, reg, unitId, entry, day) {
   const events = [];
-  const unit2 = unitOf9(draft, unitId);
+  const unit2 = unitOf2(draft, unitId);
   const becomes = entry.becomes;
   if (!unit2 || !becomes) return events;
   if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
     const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
-    if (have) {
-      have.interest = Math.min(100, have.interest + TUNING.life.interest.push);
-    } else {
-      events.push({ type: "hobby_started", unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit2, becomes.hobby, day));
-    }
+    if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
+    else events.push({ type: "hobby_started", unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit2, becomes.hobby, day));
   }
-  if (becomes.opinionTopic !== void 0 && reg.opinionTopics.has(becomes.opinionTopic) && unit2.opinions?.[becomes.opinionTopic] === void 0) {
-    const mine = draft.life.units[unitId] ??= { last: {} };
-    const pending4 = mine.pendingTopics ??= [];
-    if (!pending4.includes(becomes.opinionTopic)) pending4.push(becomes.opinionTopic);
+  if (becomes.milestone === true) {
+    const id = milestoneHobby(draft, reg, unitId, entry, day);
+    const h2 = id === null ? void 0 : unit2.hobbies?.find((x) => x.id === id);
+    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, { told: true }));
   }
+  if (becomes.opinionTopic !== void 0) openTopic(draft, reg, unitId, becomes.opinionTopic);
   return events;
 }
 function applyLifeEvent(draft, reg, unitId, entry, day) {
   const life = draft.life;
-  const unit2 = unitOf9(draft, unitId);
+  const unit2 = unitOf2(draft, unitId);
   if (!life || !unit2) return [];
   const mine = life.units[unitId] ??= { last: {} };
   const week = weekOf2(draft, unitId, day);
   mine.week = { n: week.n, events: week.events + 1, notable: week.notable + (entry.size === "notable" ? 1 : 0) };
   mine.last[entry.id] = day;
   life.kinds = [...life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays), { kind: entry.id, unitId, day }];
-  const fact = writeLifeFact(draft, unitId, `${unit2.displayName}: ${plainText2(String(entry.description))}`, [entry.id, ...entry.tags ?? []], entry.size === "notable" ? 2 : 1);
+  const fact = writeLifeFact(draft, unitId, `${unit2.displayName}: ${plainText(String(entry.description))}`, [entry.id, ...entry.tags ?? []], entry.size === "notable" ? 2 : 1);
   const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
   const share = effectiveShare(draft, reg, unitId, entry);
   if (share !== "keeps") mine.hub = { eventId: entry.id, day };
@@ -24140,6 +24312,17 @@ function recordDeaths(draft, old = false) {
     life.deaths.push({ unitId: u.id, day: draft.day, grunt: u.kind === "grunt", ...old ? { old: true } : {} });
   }
 }
+function practicePass(draft, reg, day, places) {
+  const plans = draft.squad.map((u) => ({ unitId: u.id, slots: practiceSlots(draft, reg, u.id, day, places) })).filter((p) => p.slots.length > 0);
+  const events = [];
+  for (const { unitId, slots } of plans) {
+    for (const p of slots) {
+      const together = plans.some((o) => o.unitId !== unitId && o.slots.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot, together ? { push: true } : {}));
+    }
+  }
+  return events;
+}
 function lifeDayStep(draft, ctx2) {
   if (lifeMode(draft) === "off") return [];
   const created = draft.life === void 0;
@@ -24149,11 +24332,13 @@ function lifeDayStep(draft, ctx2) {
   if ((draft.calendar.shortageStreak ?? 0) > 0) life.shortageDay = day;
   recordDeaths(draft, created);
   const events = [];
+  const places = /* @__PURE__ */ new Map();
   for (const unit2 of draft.squad) {
     if (!takesPart(draft, unit2.id)) continue;
-    const entry = pickLifeEvent(draft, reg, unit2.id, day);
+    const entry = pickLifeEvent(draft, reg, unit2.id, day, places);
     if (entry) events.push(...applyLifeEvent(draft, reg, unit2.id, entry, day));
   }
+  events.push(...practicePass(draft, reg, day, places));
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }

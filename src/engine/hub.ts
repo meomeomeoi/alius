@@ -2,7 +2,9 @@ import type { Entry, Registries } from '../content/types';
 import { activeRestrictions } from './discipline/restrictions';
 import { facilityLevel, isLiving, livingUnits } from './economy';
 import type { CampaignState, Slot, Unit } from './state/types';
+import { TUNING } from './tuning';
 import { likesOf } from './development/profile';
+import { lifeMode } from './life/state';
 
 /** FNV-1a, 32 bit. The hub's only source of "randomness": a stable function of its input, never a draw from the campaign RNG. */
 export function fnv1a(s: string): number {
@@ -42,7 +44,18 @@ function routineWeight(state: CampaignState, reg: Registries, room: Entry, unit:
   if (!open) return 0;
   if (typeof room.facilityId === 'string' && facilityLevel(state, room.facilityId) < 1) return 0;
   const liked = ((room.likeTags ?? []) as string[]).some((t) => likesOf(unit).some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0);
+  return base + (liked ? 2 : 0) + hobbyWeight(state, reg, room, unit);
+}
+
+/**
+ * P14c: a room where one of her active hobbies is practised weighs more (once, however many hobbies share it). Nothing is read while life
+ * is off or when she has no hobbies, so a campaign without them keeps its rooms.
+ */
+function hobbyWeight(state: CampaignState, reg: Registries, room: Entry, unit: Unit): number {
+  if (!unit.hobbies || unit.hobbies.length === 0 || lifeMode(state) === 'off') return 0;
+  const here = room.sceneLocationId as string;
+  const hosted = unit.hobbies.some((h) => h.state === 'active' && ((reg.hobbies.get(h.id)?.locations ?? []) as string[]).includes(here));
+  return hosted ? TUNING.life.hobbyRoomWeight : 0;
 }
 
 function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit): Whereabout {
@@ -83,4 +96,14 @@ function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit
 export function whereabouts(state: CampaignState, reg: Registries): Whereabout[] {
   const rooms = roomsOf(reg);
   return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+
+/**
+ * Where one unit is on any day and slot (P14c: practice reads the slots of the day that is ending): the same derivation as `whereabouts`, with
+ * the day and slot as parameters. A unit that is not living or not in the squad is nowhere. Derived, never stored, no RNG.
+ */
+export function whereaboutAt(state: CampaignState, reg: Registries, unitId: string, day: number, slot: Slot): Whereabout {
+  const unit = livingUnits(state).find((u) => u.id === unitId);
+  if (!unit) return { unitId, roomId: null, reason: 'nowhere' };
+  return place(state.day === day && state.slot === slot ? state : { ...state, day, slot }, reg, roomsOf(reg), unit);
 }

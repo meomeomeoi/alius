@@ -1,7 +1,10 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import type { Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { applyLifeEvent, busySlot, pickLifeEvent, takesPart } from './events';
+import { applyLifeEvent, pickLifeEvent } from './events';
+import { practise, practiceSlots } from './hobbies';
+import { busySlot, takesPart, type DayPlaces } from './places';
 import { ensureLife, lifeMode } from './state';
 
 /**
@@ -33,6 +36,22 @@ export function recordDeaths(draft: CampaignState, old = false): void {
 }
 
 /**
+ * Each woman practises in the slots `practiceSlots` lists. A slot shared with another woman who has the same hobby in the same room is a push
+ * for both (they practise together); the plans are all made before anyone practises.
+ */
+function practicePass(draft: CampaignState, reg: Registries, day: number, places: DayPlaces): EngineEvent[] {
+  const plans = draft.squad.map((u) => ({ unitId: u.id, slots: practiceSlots(draft, reg, u.id, day, places) })).filter((p) => p.slots.length > 0);
+  const events: EngineEvent[] = [];
+  for (const { unitId, slots } of plans) {
+    for (const p of slots) {
+      const together = plans.some((o) => o.unitId !== unitId && o.slots.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot, together ? { push: true } : {}));
+    }
+  }
+  return events;
+}
+
+/**
  * The day-end step of her life (the `dm_rumors` hook, after development's). It runs for the day that is ending and does nothing while life is
  * off. In order: a shortage noted, the deaths, then for each named soldier at the base (squad order) the life event of her day. Practice and
  * interest, and the delivery of the news, follow in their own tasks. No rng is drawn.
@@ -46,11 +65,13 @@ export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
   if ((draft.calendar.shortageStreak ?? 0) > 0) life.shortageDay = day; // today's upkeep fell short (it ran earlier in this day end)
   recordDeaths(draft, created);
   const events: EngineEvent[] = [];
+  const places: DayPlaces = new Map(); // her whereabouts of this day, derived once and read by the events and by practice
   for (const unit of draft.squad) {
     if (!takesPart(draft, unit.id)) continue;
-    const entry = pickLifeEvent(draft, reg, unit.id, day);
+    const entry = pickLifeEvent(draft, reg, unit.id, day, places);
     if (entry) events.push(...applyLifeEvent(draft, reg, unit.id, entry, day));
   }
+  events.push(...practicePass(draft, reg, day, places));
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }

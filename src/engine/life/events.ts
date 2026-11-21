@@ -1,15 +1,14 @@
 import type { Registries } from '../../content/types';
 import { bondTierOf } from '../bonds';
 import type { EngineEvent } from '../dispatch';
-import { isLiving } from '../economy';
-import { whereabouts } from '../hub';
 import { leaderOf } from '../power/state';
 import { rationsOf } from '../power/state';
 import { TUNING } from '../tuning';
-import type { CampaignState, Slot, Unit } from '../state/types';
+import type { CampaignState } from '../state/types';
 import { writeLifeFact, plainText } from './facts';
-import { takeUpHobby } from './hobbies';
+import { grantMilestone, openTopic, pushHobby, takeUpHobby } from './hobbies';
 import { enqueue } from './news';
+import { SLOTS_PER_DAY, placesOf, takesPart, unitOf, type DayPlaces } from './places';
 import { lifeChance, lifeHash, lifeMode, temperamentOf } from './state';
 import type { LifeEventEntry, LifeRequires, LifeShare } from './types';
 
@@ -18,38 +17,23 @@ import type { LifeEventEntry, LifeRequires, LifeShare } from './types';
  * chance is `lifeChance(...)` and a pick is `lifeHash(...) % n` over a list in registry order, so the same state always answers the same.
  */
 
-/** Today's slots in which her whereabouts are read for `requires.location` (the night is spent in her quarters). */
-const DAY_SLOTS: readonly Slot[] = ['morning', 'afternoon', 'evening'];
-/** Slots a day holds, the unit of `LifeState.busy.slot` (`day × 4 + the slot's index`). */
-export const SLOTS_PER_DAY = 4;
+export { SLOTS_PER_DAY, busySlot, takesPart } from './places';
 
 const eventsOf = (reg: Pick<Registries, 'lifeEvents'>): LifeEventEntry[] => [...reg.lifeEvents.values()] as unknown as LifeEventEntry[];
 
-const unitOf = (state: Pick<CampaignState, 'squad'>, id: string): Unit | undefined => state.squad.find((u) => u.id === id);
-
-/** A named, living soldier at the base: not out on an open run. Only she takes part in her life. */
-export function takesPart(state: Pick<CampaignState, 'squad' | 'expedition'>, unitId: string): boolean {
-  const u = unitOf(state, unitId);
-  return u !== undefined && u.kind === 'named' && isLiving(u) && state.expedition?.party.includes(u.id) !== true;
-}
-
 /** Where she is on each slot of `day` (morning to evening): the rooms of the hub, derived the way the hub derives them. */
-function roomsToday(state: CampaignState, reg: Registries, unitId: string, day: number): Array<{ reason: string; locationId: string | null }> {
-  return DAY_SLOTS.map((slot) => {
-    const w = whereabouts({ ...state, day, slot }, reg).find((x) => x.unitId === unitId);
-    const room = w?.roomId ? reg.hubRooms.get(w.roomId) : undefined;
-    return { reason: w?.reason ?? 'nowhere', locationId: typeof room?.sceneLocationId === 'string' ? room.sceneLocationId : null };
+function roomsToday(state: CampaignState, reg: Registries, unitId: string, day: number, cache?: DayPlaces): Array<{ reason: string; locationId: string | null }> {
+  return placesOf(state, reg, unitId, day, cache).map((w) => {
+    const room = w.roomId ? reg.hubRooms.get(w.roomId) : undefined;
+    return { reason: w.reason, locationId: typeof room?.sceneLocationId === 'string' ? room.sceneLocationId : null };
   });
 }
-
-/** The absolute slot index of the busy list for a day and a slot. */
-export const busySlot = (day: number, slot: Slot): number => day * SLOTS_PER_DAY + ['morning', 'afternoon', 'evening', 'night'].indexOf(slot);
 
 /**
  * Whether every condition of `req` holds for her on `day` (each field reads state that already exists; an empty `req` always holds).
  * The closed vocabulary is `LifeRequires`; a field this function does not know never holds.
  */
-export function requiresHold(state: CampaignState, reg: Registries, unitId: string, req: LifeRequires | undefined, day: number): boolean {
+export function requiresHold(state: CampaignState, reg: Registries, unitId: string, req: LifeRequires | undefined, day: number, cache?: DayPlaces): boolean {
   if (!req) return true;
   const unit = unitOf(state, unitId);
   if (!unit) return false;
@@ -60,7 +44,7 @@ export function requiresHold(state: CampaignState, reg: Registries, unitId: stri
     let ok: boolean;
     switch (field as keyof LifeRequires) {
       case 'hobby': ok = (unit.hobbies ?? []).some((h) => h.state === 'active' && (value === 'any' || h.id === value)); break;
-      case 'location': ok = roomsToday(state, reg, unitId, day).some((r) => r.reason === 'routine' && r.locationId !== null && (value as string[]).includes(r.locationId)); break;
+      case 'location': ok = roomsToday(state, reg, unitId, day, cache).some((r) => r.reason === 'routine' && r.locationId !== null && (value as string[]).includes(r.locationId)); break;
       case 'activity': {
         const lo = day * SLOTS_PER_DAY;
         ok = (life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= lo && b.slot < lo + SLOTS_PER_DAY && b.activityId !== undefined && (value as string[]).includes(b.activityId));
@@ -128,7 +112,7 @@ function weekOf(state: CampaignState, unitId: string, day: number): { n: number;
  * 21 for a small event and 45 for a notable one; the same kind for any woman within `squadKindDays`). A `yearly` event is in the pool only
  * on its own day of the year. A notable one is left out once she has had one this week (a yearly one is not: it is her day). Registry order.
  */
-export function eventPool(state: CampaignState, reg: Registries, unitId: string, day: number): LifeEventEntry[] {
+export function eventPool(state: CampaignState, reg: Registries, unitId: string, day: number, cache: DayPlaces = new Map()): LifeEventEntry[] {
   const life = state.life;
   if (!life || !takesPart(state, unitId)) return [];
   const mine = life.units[unitId]?.last ?? {};
@@ -139,7 +123,7 @@ export function eventPool(state: CampaignState, reg: Registries, unitId: string,
     if (mine[e.id] !== undefined && day - mine[e.id] < cooldown) return false;
     if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
     if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
-    return requiresHold(state, reg, unitId, e.requires, day);
+    return requiresHold(state, reg, unitId, e.requires, day, cache);
   });
 }
 
@@ -149,12 +133,12 @@ export function eventPool(state: CampaignState, reg: Registries, unitId: string,
  * the pool takes the day without the chance or the allowance (an anniversary that mostly did not happen would not be one); it still counts
  * toward the week. The pick is a hash over the pool.
  */
-export function pickLifeEvent(state: CampaignState, reg: Registries, unitId: string, day: number): LifeEventEntry | null {
+export function pickLifeEvent(state: CampaignState, reg: Registries, unitId: string, day: number, cache?: DayPlaces): LifeEventEntry | null {
   const life = state.life;
   const mode = lifeMode(state);
   if (!life || mode === 'off' || !takesPart(state, unitId)) return null;
   const week = weekOf(state, unitId, day);
-  const pool = eventPool(state, reg, unitId, day);
+  const pool = eventPool(state, reg, unitId, day, cache);
   if (pool.length === 0) return null;
   const yearly = pool.filter((e) => e.yearly === true);
   if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
@@ -182,7 +166,22 @@ export function shareChance(state: CampaignState, reg: Registries, unitId: strin
   return TUNING.life.share[temperamentOf(state, unitId).talkativeness] * (close ? 1 : TUNING.life.shareLowMult);
 }
 
-/** What an event turns into: a hobby she takes up (or a push for one she has) and a topic her opinion may form on. */
+/**
+ * The hobby a `milestone` event moves on: the one it names (`becomes.hobby`, else the one it requires), and for `any` one of her active hobbies
+ * that can still move on, picked by a hash. Null when she has none.
+ */
+function milestoneHobby(draft: CampaignState, reg: Registries, unitId: string, entry: LifeEventEntry, day: number): string | null {
+  const unit = unitOf(draft, unitId);
+  const named = entry.becomes?.hobby ?? (entry.requires?.hobby !== 'any' ? entry.requires?.hobby : undefined);
+  const movable = (unit?.hobbies ?? []).filter((h) => h.state === 'active' && h.mastered !== true && h.ceiling !== true && h.milestones.length < 4 && reg.hobbies.has(h.id));
+  if (named !== undefined) return movable.some((h) => h.id === named) ? named : null;
+  return movable.length === 0 ? null : movable[lifeHash(draft.life!, `${unitId}|${day}|milestone`) % movable.length].id;
+}
+
+/**
+ * What an event turns into: a hobby she takes up (or a push for one she has: its interest rises and a plateau breaks), the next milestone of a
+ * hobby (the event is the news, so the milestone is not queued again), and a topic her opinion may form on.
+ */
 function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, entry: LifeEventEntry, day: number): EngineEvent[] {
   const events: EngineEvent[] = [];
   const unit = unitOf(draft, unitId);
@@ -190,18 +189,15 @@ function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, ent
   if (!unit || !becomes) return events;
   if (becomes.hobby !== undefined && reg.hobbies.has(becomes.hobby)) {
     const have = (unit.hobbies ??= []).find((h) => h.id === becomes.hobby);
-    if (have) {
-      // a push: the interest rises (the plateau a push breaks is the practice pass's)
-      have.interest = Math.min(100, have.interest + TUNING.life.interest.push);
-    } else {
-      events.push({ type: 'hobby_started', unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit, becomes.hobby, day));
-    }
+    if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
+    else events.push({ type: 'hobby_started', unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit, becomes.hobby, day));
   }
-  if (becomes.opinionTopic !== undefined && reg.opinionTopics.has(becomes.opinionTopic) && unit.opinions?.[becomes.opinionTopic] === undefined) {
-    const mine = (draft.life!.units[unitId] ??= { last: {} });
-    const pending = (mine.pendingTopics ??= []);
-    if (!pending.includes(becomes.opinionTopic)) pending.push(becomes.opinionTopic);
+  if (becomes.milestone === true) {
+    const id = milestoneHobby(draft, reg, unitId, entry, day);
+    const h = id === null ? undefined : unit.hobbies?.find((x) => x.id === id);
+    if (id !== null && h) events.push(...grantMilestone(draft, reg, unitId, id, h.milestones.length, { told: true }));
   }
+  if (becomes.opinionTopic !== undefined) openTopic(draft, reg, unitId, becomes.opinionTopic);
   return events;
 }
 
