@@ -3,7 +3,7 @@
  * (`dynamicOf`, `dynamicHash`). It imports only types, so the state types can name it without a cycle. Whether the dynamic is on, who
  * may hold and the writers are in `gate.ts`.
  */
-import type { CampaignState } from '../state/types';
+import type { CampaignState, LeashKind } from '../state/types';
 import type { OpenOverride } from '../warden/state';
 import type { ResponseType } from '../blocking/types';
 import type {
@@ -143,7 +143,12 @@ export interface DynamicCampaign {
   override?: OpenOverride & { unitId: string };
   overrideSeq: number;
   /** Days of Leash requests a holder blocked or cancelled (R16). */
-  oversight?: { blocked: number[]; threadId?: string };
+  oversight?: {
+    blocked: number[];
+    threadId?: string;
+    /** A bypass that was taken for one request (`bypass.ts`): that request (the unit it is on and its kind) is not held, once. */
+    pass?: { unitId: string; kind: LeashKind };
+  };
   /** The probe queue (R9): unit ids, first in line first. */
   queue: string[];
   /** Days the dynamic noticed in passing (the style's surfacing reads them, T16): the last gain of the commander's endurance, the last time the crime was revealed. */

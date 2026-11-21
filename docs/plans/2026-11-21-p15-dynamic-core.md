@@ -1824,16 +1824,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `bypassLeash(draft, ctx, p: { route: 'comms' | 'reset' | 'ally'; allyId?: string; kind: LeashKind; unitId: string }): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `comms costs the slot and files the request with no block`; `discovery 0.3` (seeded: over 400 tries 0.25–0.35).
   - `reset needs a tech ally` (refused without); discovery 0.1 with the ally's `tech`.
   - `ally: discovered → the ally's Trust −5`.
   - `discovered → overrode_her (major) on the holder, Regard −2, and the memory fact`.
   - jsdom: `the form offers the routes only while blocked`, each with `data-analyze`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/bypass.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): going around the Leash block`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/bypass.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): going around the Leash block`
 
 ---
 

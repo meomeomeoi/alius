@@ -66,6 +66,7 @@ import { createWarden } from './warden/controller';
 import { createHeadStart } from './headStart/controller';
 import { createDevelopment } from './development/controller';
 import { createDynamic } from './dynamic/controller';
+import { bypassRoutes } from './engine/dynamic/bypass';
 import { leashBlockOf } from './engine/dynamic/leashBlock';
 import { clearDynamicDirectives, refreshDynamicDirectives } from './dynamic/directives';
 import { createLife } from './life/controller';
@@ -91,7 +92,7 @@ import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
-import { fileLeashRequest } from './ui/leash/requestForm';
+import { fileLeashRequest, type LeashFormOpts } from './ui/leash/requestForm';
 import { renderConfrontation } from './ui/loyalty/confrontation';
 import { cutIn } from './ui/scene/cutIn';
 import { renderCombatScreen, type CombatScreen } from './ui/combat/combatScreen';
@@ -1180,11 +1181,17 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     return checkLeash(s, registries, kind, unitId);
   }
 
-  /** P15: the form says so while a holder holds the Leash requests (her co-sign is asked when it is filed). */
-  function heldFor(s: CampaignState): { heldBy?: string } {
+  /** P15: the form says so while a holder holds the Leash requests (her co-sign is asked when it is filed), and offers the three ways around it (`onRoute` reports the one taken). */
+  function heldFor(s: CampaignState, onRoute: (c: { route: 'comms' | 'reset' | 'ally'; allyId?: string }) => void): Pick<LeashFormOpts, 'heldBy' | 'routes' | 'onRoute'> {
     const holder = leashBlockOf(s, registries);
     const name = holder === null ? undefined : s.squad.find((u) => u.id === holder)?.displayName;
-    return name === undefined ? {} : { heldBy: name };
+    if (name === undefined) return {};
+    const r = bypassRoutes(s, registries);
+    const named = (ids: string[]) => ids.map((id) => ({ id, name: s.squad.find((u) => u.id === id)?.displayName ?? id }));
+    return {
+      heldBy: name, onRoute,
+      routes: { comms: r.comms, reset: { ...r.reset, allies: named(r.reset.allies) }, ally: { ...r.ally, allies: named(r.ally.allies) } },
+    };
   }
 
   async function fileLeash(kind: LeashKind, unitId: string): Promise<boolean> {
@@ -1203,17 +1210,20 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     // P9c: a soldier with access to the commander's messages may stop the request before it is filed (KEEP: nothing is filed)
     if ((await personal.beforeRequest('leash')).cancelled || st.getActiveChat()?.chatId !== chatId) return false;
     const cause = kind === 'terminate' ? s.disloyalty?.units[unitId]?.cause : undefined;
+    let via: { route: 'comms' | 'reset' | 'ally'; allyId?: string } | undefined; // P15: the way round a holder's hold that the player took
     const filed = await fileLeashRequest(shell, {
       kind, unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft,
       ...(kind !== 'terminate' ? { cost: leashCost(s, registries, unitId, kind) } : {}),
       ...(cause ? { cause: cause.kind === 'attack' ? 'ATTACKED THE UNIT' : 'REPEATED DESERTION ATTEMPTS' } : {}),
       showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s), onVerdict: () => sound.play('stamp'),
       ...(kind === 'terminate' ? { verdict: 'UNDER REVIEW' } : {}),
-      ...heldFor(s),
+      ...heldFor(s, (c) => { via = c; }),
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
-    if (kind === 'compel') return loyalty.compel(unitId);
-    const events = act({ type: kind === 'suppress' ? 'leash/suppress' : 'leash/terminate', payload: { unitId } });
+    if (kind === 'compel') return loyalty.compel(unitId, via);
+    const events = act(via !== undefined
+      ? { type: 'dynamic/bypass_leash', payload: { route: via.route, kind, unitId, ...(via.allyId !== undefined ? { allyId: via.allyId } : {}) } }
+      : { type: kind === 'suppress' ? 'leash/suppress' : 'leash/terminate', payload: { unitId } });
     if (events.some((e) => e.type === 'error')) return false;
     if (events.some((e) => e.type === 'leash_used' && e.outcome === 'denied')) toast('warn', `Oversight denied the termination of ${unit.displayName}.`, OVERSIGHT);
     return true;
@@ -2092,6 +2102,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       toast('info', String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? '').replaceAll('{name}', name), { voice: VOICE_OF.dynamic, title: name });
       const root = document.getElementById('alius-shell');
       if (root) cutIn(root, 'dynamic', (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
+    }
+    // P15: a Leash request a holder held is her notice (nothing is spent; the chance she was given is hidden)
+    for (const e of events) {
+      if (e.type !== 'leash_blocked' || !state) continue;
+      const name = state.squad.find((u) => u.id === e.holderId)?.displayName ?? 'She';
+      toast('warn', `AUTHOR TO WRITE: ${name} held the request and did not sign it. Nothing was spent.`, { voice: VOICE_OF.dynamic, title: name });
     }
     if (events.some((e) => e.type === 'warden_override')) setTimeout(showOverrideModal, 0);
     if (events.some((e) => e.type === 'error' && typeof e.message === 'string' && e.message.includes('has overridden an order'))) setTimeout(showOverrideModal, 0);

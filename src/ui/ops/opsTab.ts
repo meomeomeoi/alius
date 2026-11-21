@@ -51,8 +51,12 @@ const unitLabel = (u: Unit) => (u.kind === 'grunt' ? `${u.displayName} (grunt)` 
 /** One activity as the OPS tab shows it; the hub's room panel reuses it for the activities of a room. */
 export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLElement {
   const mode = a.companion as 'none' | 'optional' | 'required';
-  // P12: a focus that asks for a trait effect (burning the frequency implant) is only listed to a commander who has it
-  const focusList = ((a.focus as Array<Focus & { requires?: { traitEffect: string } }> | undefined) ?? []).filter((f) => !f.requires || hasTraitEffect(state, ctx.registries, f.requires.traitEffect as never));
+  // P12: a focus that asks for a trait effect (burning the frequency implant) is only listed to a commander who has it.
+  // P15: a focus that asks for a held capability (the Leash terminal) is filed from the Leash request form, never picked here; if that leaves one focus, the default runs.
+  type FocusRow = Focus & { requires?: { traitEffect?: string; capabilityHeldBy?: string } };
+  const allFoci = (a.focus as FocusRow[] | undefined) ?? [];
+  const pickable = allFoci.filter((f) => f.requires?.capabilityHeldBy === undefined && (f.requires?.traitEffect === undefined || hasTraitEffect(state, ctx.registries, f.requires.traitEffect as never)));
+  const focusList = allFoci.some((f) => f.requires?.capabilityHeldBy !== undefined) && pickable.length < 2 ? [] : pickable;
   const living = state.squad.filter(isLiving);
   // a conversation needs a character card: grunts cannot be talked to
   const companions = a.startsScene === true ? living.filter((u) => u.kind === 'named') : living;

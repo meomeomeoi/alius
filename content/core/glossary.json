@@ -2933,5 +2933,38 @@
       "claim",
       "capability_countermand"
     ]
+  },
+  {
+    "id": "leash_bypass_comms",
+    "term": "The comms terminal",
+    "short": "File the request from the terminal in the comms room, around her hold. It costs the slot, and she may find out.",
+    "long": "AUTHOR TO WRITE: The terminal in the comms room is not on her device. Using it costs a slot and, if she finds out, counts as a defiance toward her.",
+    "see": [
+      "capability_leash_block",
+      "leash_bypass_reset",
+      "leash_bypass_ally"
+    ]
+  },
+  {
+    "id": "leash_bypass_reset",
+    "term": "Reset the device",
+    "short": "A soldier who knows the device resets it so the request goes out unheld. The least likely to be found; it needs someone technically able.",
+    "long": "AUTHOR TO WRITE: Needs a soldier whose role or defect gives the know-how. If she finds out, it counts as a defiance toward her.",
+    "see": [
+      "capability_leash_block",
+      "leash_bypass_comms",
+      "leash_bypass_ally"
+    ]
+  },
+  {
+    "id": "leash_bypass_ally",
+    "term": "Ask another soldier",
+    "short": "Another soldier files it through her own channel. The most likely to be found, and the soldier pays for it.",
+    "long": "AUTHOR TO WRITE: Only a soldier who trusts the commander will do it. If she finds out, it counts as a defiance toward her and the soldier loses trust.",
+    "see": [
+      "capability_leash_block",
+      "leash_bypass_comms",
+      "leash_bypass_reset"
+    ]
   }
 ]

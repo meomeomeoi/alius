@@ -1067,6 +1067,22 @@
     ]
   },
   {
+    "id": "leash_bypass_found",
+    "event": "leash_bypassed",
+    "when": {
+      "discovered": true
+    },
+    "text": "AUTHOR TO WRITE: {name} found out that the commander went around her hold on the Leash requests.",
+    "importance": 4,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "leash_bypass"
+    ]
+  },
+  {
     "id": "aftermath_return_refused",
     "event": "aftermath_ended",
     "when": {

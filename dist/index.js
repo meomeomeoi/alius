@@ -6801,6 +6801,7 @@ var REGION_RANKS = ["hollow", "elusive", "cowed", "double_game", "calculating", 
 var AFTERMATH_KINDS = ["grief", "pursuit", "blackmail", "revenge", "command_kept", "cold_contempt", "return_offer", "successor", "habits"];
 var AFTERMATH_DEMAND_KINDS = ["desire", "exclusion", "information", "interpersonal", "item", "privilege", "resource"];
 var EXIT_ROUTES = ["abrupt", "negotiated", "transfer", "force"];
+var BYPASS_ROUTES = ["comms", "reset", "ally"];
 var SIGN_KINDS = [
   "step_behind",
   "protocol_public",
@@ -7816,8 +7817,11 @@ var ActivitySchema = BaseEntrySchema.extend({
     id: str,
     label: str,
     units: external_exports.object({ min: int.min(1), max: int.min(1) }).strict().optional(),
-    /** P12: the focus is offered, and allowed, only to a commander whose traits have this effect type. */
-    requires: external_exports.object({ traitEffect: str }).strict().optional(),
+    /**
+     * P12: the focus is offered, and allowed, only to a commander whose traits have this effect type. P15: or (`capabilityHeldBy`) only while some
+     * holder holds this capability (the Leash terminal: while a block stands). One of the two at least.
+     */
+    requires: external_exports.object({ traitEffect: str.optional(), capabilityHeldBy: external_exports.enum(CAPABILITIES).optional() }).strict().refine((r) => r.traitEffect !== void 0 || r.capabilityHeldBy !== void 0, "a focus requirement names a traitEffect or a capabilityHeldBy").optional(),
     /** P12: a one-way choice: the app asks this question first (the activity runs only on a yes). */
     confirm: str.max(200).optional()
   }).strict()).optional(),
@@ -22560,7 +22564,8 @@ function checkActivity(state, reg, request) {
   if (mode === "required") return `${name} needs a companion.`;
   const focus = focusOf(a, req);
   if (req.focus !== void 0 && !focus) return `Unknown focus "${req.focus}" for ${name}.`;
-  if (focus?.requires && !hasTraitEffect(state, reg, focus.requires.traitEffect)) return `${focus.label} is not available to this commander.`;
+  if (focus?.requires?.traitEffect !== void 0 && !hasTraitEffect(state, reg, focus.requires.traitEffect)) return `${focus.label} is not available to this commander.`;
+  if (focus?.requires?.capabilityHeldBy !== void 0 && holderWith(state, reg, focus.requires.capabilityHeldBy) === null) return `${focus.label} is not available: nobody holds that.`;
   if (focus && state.special?.frequency?.burnedDay !== void 0 && a.effects.some((fx2) => fx2.type === "burn_frequency_implant" && fx2.when?.focus === focus.id)) return "The implant is already burned.";
   for (const fx2 of a.effects.filter((x) => x.type === "commander_endurance_xp" && focus !== void 0 && x.when?.focus === focus.id)) {
     if (state.commander.endurance?.[String(fx2.physics)]?.trainedDay === state.day) return `${focus.label} was done today.`;
@@ -28304,6 +28309,10 @@ registerMemoryResolver("dynamic_exit", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
 }, { ids: ["her"], vars: ["name", "sworn"] });
+registerMemoryResolver("leash_bypassed", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, discovered: yes(event.discovered === true) } } : null;
+}, { ids: ["her"], vars: ["name", "discovered"] });
 registerMemoryResolver("aftermath_ended", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, reason: String(event.reason ?? ""), kind: String(event.kind ?? "") } } : null;
@@ -31490,6 +31499,11 @@ function noteBlocked(draft, holderId) {
 function rollBlock(draft, ctx2, targetId, kind) {
   const holderId = leashBlockOf(draft, ctx2.registries);
   if (holderId === null) return { ok: true, events: [] };
+  const pass = draft.dynamic?.oversight?.pass;
+  if (pass !== void 0) {
+    delete draft.dynamic.oversight.pass;
+    if (pass.unitId === targetId && pass.kind === kind) return { ok: true, events: [] };
+  }
   const ok = targetId !== holderId && ctx2.rng.chance(blockCosignChance(draft, ctx2.registries, holderId));
   if (ok) return { ok: true, events: [] };
   noteBlocked(draft, holderId);
@@ -34784,6 +34798,76 @@ function installDynamicHooks() {
   registerExpectation(expectation);
 }
 
+// src/engine/dynamic/bypass.ts
+function terminalActivity(reg) {
+  for (const a of reg.activities.values()) {
+    const f = a.focus?.find((x) => x.requires?.capabilityHeldBy === "leash_block");
+    if (f !== void 0) return { activityId: String(a.id), focus: f.id };
+  }
+  return null;
+}
+function bypassAllies(state, reg, opts = {}) {
+  const holder2 = leashBlockOf(state, reg);
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder2 && (state.relations[u.id]?.trust ?? 0) >= TUNING.dynamic.bypass.allyMinTrust && (opts.tech !== true || isTech(state, reg, u.id))).map((u) => u.id);
+}
+function bypassRoutes(state, reg) {
+  const terminal = terminalActivity(reg);
+  const closed = state.scene !== void 0 ? "LEAVE THE SCENE FIRST" : terminal === null ? "NO TERMINAL" : checkActivity(state, reg, { activityId: terminal.activityId, focus: terminal.focus });
+  const reset = bypassAllies(state, reg, { tech: true });
+  const ally = bypassAllies(state, reg);
+  return {
+    comms: closed ? { disabled: closed.toUpperCase() } : {},
+    reset: { allies: reset, ...reset.length === 0 ? { disabled: "NO ONE WHO KNOWS THE DEVICE" } : {} },
+    ally: { allies: ally, ...ally.length === 0 ? { disabled: "NO ONE TRUSTS THE COMMANDER ENOUGH" } : {} }
+  };
+}
+function bypassChance(state, reg, route, allyId) {
+  const B2 = TUNING.dynamic.bypass;
+  if (route === "comms") return B2.comms;
+  if (route === "reset") return allyId !== void 0 && isTech(state, reg, allyId) ? B2.resetTech : B2.reset;
+  const holder2 = state.squad.find((u) => u.id === leashBlockOf(state, reg));
+  return Math.min(0.95, B2.ally * TUNING.squadKnowledge.insight[holder2?.insight ?? "mid"]);
+}
+var ACTION_OF = { compel: "leash/compel", suppress: "leash/suppress", terminate: "leash/terminate" };
+function bypassLeash(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const holderId = leashBlockOf(draft, reg);
+  if (holderId === null) throw new Error("Nothing holds the Leash requests: file it as usual.");
+  const holder2 = draft.squad.find((u) => u.id === holderId);
+  const why = checkLeash(draft, reg, p.kind, p.unitId);
+  if (why) throw new Error(why);
+  const terminal = terminalActivity(reg);
+  if (p.route === "comms") {
+    if (draft.scene !== void 0) throw new Error("The terminal is in the comms room: leave the scene first.");
+    const closed = terminal === null ? "There is no comms terminal." : checkActivity(draft, reg, { activityId: terminal.activityId, focus: terminal.focus });
+    if (closed) throw new Error(closed);
+  } else {
+    const ally = p.allyId === void 0 ? void 0 : draft.squad.find((u) => u.id === p.allyId);
+    if (ally === void 0) throw new Error(p.route === "reset" ? "The reset needs an ally who knows the device." : "Pick the soldier who will file it.");
+    if (!bypassAllies(draft, reg, { tech: p.route === "reset" }).includes(ally.id)) {
+      throw new Error(p.route === "reset" ? `${ally.displayName} cannot work on the device.` : `${ally.displayName} will not file it for the commander.`);
+    }
+  }
+  const discovered = ctx2.rng.chance(bypassChance(draft, reg, p.route, p.allyId));
+  const events = [{ type: "leash_bypassed", unitId: holderId, route: p.route, discovered, targetId: p.unitId, kind: p.kind, ...p.allyId !== void 0 ? { allyId: p.allyId } : {} }];
+  if (discovered) {
+    events.push(...hitHer(draft, reg, holderId, "overrode_her", "major", `went around ${holder2.displayName}'s hold on the Leash`, { amplified: true }));
+    if (p.route === "ally" && p.allyId !== void 0) {
+      const applied = applyRelationDelta(draft, p.allyId, "trust", TUNING.dynamic.bypass.allyTrust, "leash_bypass");
+      if (applied !== 0) events.push({ type: "relation_changed", unitId: p.allyId, axis: "trust", delta: applied, applied });
+    }
+  }
+  const x = draft.dynamic;
+  (x.oversight ??= { blocked: [] }).pass = { unitId: p.unitId, kind: p.kind };
+  try {
+    events.push(...runHandler(ACTION_OF[p.kind], draft, { unitId: p.unitId }, ctx2));
+  } finally {
+    delete x.oversight?.pass;
+  }
+  if (p.route === "comms") events.push(...runActivity(draft, ctx2, { activityId: terminal.activityId, focus: terminal.focus, countermandChecked: true, wardenChecked: true }));
+  return events;
+}
+
 // src/engine/actions/dynamic.ts
 function namedUnit3(draft, id, action) {
   const unit3 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
@@ -34972,6 +35056,15 @@ registerAction("dynamic/answer_return", (draft, payload, ctx2) => {
   const p = payload ?? {};
   if (p.answer !== "accept" && p.answer !== "refuse") throw new Error("The answer must be accept or refuse.");
   return answerReturn(draft, ctx2, p.answer);
+});
+registerAction("dynamic/bypass_leash", (draft, payload, ctx2) => {
+  const p = payload ?? {};
+  if (!BYPASS_ROUTES.includes(p.route)) throw new Error(`A bypass is ${BYPASS_ROUTES.join(", ")}.`);
+  if (p.kind !== "compel" && p.kind !== "suppress" && p.kind !== "terminate") throw new Error("A request is compel, suppress or terminate.");
+  if (typeof p.unitId !== "string") throw new Error("dynamic/bypass_leash needs a unitId.");
+  if (p.allyId !== void 0 && typeof p.allyId !== "string") throw new Error("allyId must be a unit id.");
+  if (!dynamicOn(draft, ctx2.registries)) throw new Error("The dynamic is off.");
+  return bypassLeash(draft, ctx2, { route: p.route, kind: p.kind, unitId: p.unitId, ...p.allyId !== void 0 ? { allyId: p.allyId } : {} });
 });
 
 // src/llm/callTypes.ts
@@ -35739,13 +35832,14 @@ function createLoyalty(deps) {
     deps.refreshContext();
     return refused;
   }
-  function compel2(unitId) {
-    const events = deps.app.dispatch({ type: "leash/compel", payload: { unitId, context: "scene" } });
+  function compel2(unitId, bypass) {
+    const events = deps.app.dispatch(bypass === void 0 ? { type: "leash/compel", payload: { unitId, context: "scene" } } : { type: "dynamic/bypass_leash", payload: { route: bypass.route, kind: "compel", unitId, ...bypass.allyId !== void 0 ? { allyId: bypass.allyId } : {} } });
     const bad = failure(events);
     if (bad) {
       toastFailure(bad);
       return false;
     }
+    if (!events.some((e) => e.type === "scene_compelled")) return false;
     const forced = events.find((e) => e.type === "scene_compelled")?.forced === true;
     deps.context.setDirective(forced ? compelledDirective(unitId, nameOf20(unitId)) : compelFailedDirective(unitId, nameOf20(unitId)));
     deps.refreshContext();
@@ -39940,14 +40034,41 @@ async function fileLeashRequest(shell, o) {
     ...o.heldBy !== void 0 ? [heldLine(o.heldBy)] : []
   );
   const paper2 = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
-  const choice = await shell.modal({
-    title: title3,
-    body: paper2(form),
-    actions: [
-      { label: "[ FILE REQUEST ]", value: "file", ...o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} },
-      { label: "[ WITHDRAW ]", value: "withdraw" }
-    ]
-  });
+  const routes = o.heldBy !== void 0 ? o.routes : void 0;
+  const routeAction = (id, label2) => {
+    const r = routes[id];
+    return { label: label2, value: id, analyze: `glossary:leash_bypass_${id}`, ...r.disabled !== void 0 ? { disabled: r.disabled } : o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} };
+  };
+  let choice;
+  for (; ; ) {
+    choice = await shell.modal({
+      title: title3,
+      body: paper2(form),
+      actions: [
+        { label: "[ FILE REQUEST ]", value: "file", ...o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} },
+        ...routes !== void 0 ? [routeAction("comms", "[ COMMS TERMINAL ]"), routeAction("reset", "[ RESET THE DEVICE ]"), routeAction("ally", "[ ASK A SOLDIER ]")] : [],
+        { label: "[ WITHDRAW ]", value: "withdraw" }
+      ]
+    });
+    if (routes === void 0 || choice !== "comms" && choice !== "reset" && choice !== "ally") break;
+    if (choice === "comms") {
+      o.onRoute?.({ route: "comms" });
+      choice = "file";
+      break;
+    }
+    const allies2 = routes[choice].allies;
+    const who = await shell.modal({
+      title: choice === "reset" ? "WHO WORKS ON THE DEVICE" : "WHO FILES IT",
+      body: paper2(h("div", { class: "alius-form" }, line("REQUEST", "request", `${ACTION[o.kind]} \u2014 ${o.unitName}`))),
+      actions: [...allies2.map((a) => ({ label: `[ ${a.name.toUpperCase()} ]`, value: `ally:${a.id}`, analyze: `glossary:leash_bypass_${choice}` })), { label: "[ BACK ]", value: "back" }]
+    });
+    if (who?.startsWith("ally:")) {
+      o.onRoute?.({ route: choice, allyId: who.slice("ally:".length) });
+      choice = "file";
+      break;
+    }
+    if (who === null) return false;
+  }
   if (choice !== "file") return false;
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
@@ -49330,7 +49451,9 @@ var costText2 = (cost) => {
 var unitLabel = (u) => u.kind === "grunt" ? `${u.displayName} (grunt)` : u.displayName;
 function activityCard(a, state, ctx2) {
   const mode = a.companion;
-  const focusList = (a.focus ?? []).filter((f) => !f.requires || hasTraitEffect(state, ctx2.registries, f.requires.traitEffect));
+  const allFoci = a.focus ?? [];
+  const pickable = allFoci.filter((f) => f.requires?.capabilityHeldBy === void 0 && (f.requires?.traitEffect === void 0 || hasTraitEffect(state, ctx2.registries, f.requires.traitEffect)));
+  const focusList = allFoci.some((f) => f.requires?.capabilityHeldBy !== void 0) && pickable.length < 2 ? [] : pickable;
   const living2 = state.squad.filter(isLiving);
   const companions = a.startsScene === true ? living2.filter((u) => u.kind === "named") : living2;
   const companionSel = mode === "none" ? null : h(
@@ -56664,7 +56787,7 @@ function createModalHost(layer) {
           resolve(value);
         };
         const buttons = opts.actions.map(
-          (a) => h("button", { type: "button", class: "alius-btn", disabled: a.disabled !== void 0, title: a.disabled, onclick: () => finish2(a.value) }, a.label)
+          (a) => h("button", { type: "button", class: "alius-btn", disabled: a.disabled !== void 0, title: a.disabled, onclick: () => finish2(a.value), ...a.analyze !== void 0 ? analyzeAttrs(a.analyze) : {} }, a.label)
         );
         const reasons = opts.actions.flatMap((a) => a.disabled !== void 0 ? [h("span", { class: "alius-modal-reason" }, `${a.label} \u2014 ${a.disabled}`)] : []);
         const dialog = h(
@@ -58690,10 +58813,17 @@ function createApp(st, deps) {
     }
     return checkLeash(s, registries, kind, unitId);
   }
-  function heldFor(s) {
+  function heldFor(s, onRoute) {
     const holder2 = leashBlockOf(s, registries);
     const name = holder2 === null ? void 0 : s.squad.find((u) => u.id === holder2)?.displayName;
-    return name === void 0 ? {} : { heldBy: name };
+    if (name === void 0) return {};
+    const r = bypassRoutes(s, registries);
+    const named4 = (ids) => ids.map((id) => ({ id, name: s.squad.find((u) => u.id === id)?.displayName ?? id }));
+    return {
+      heldBy: name,
+      onRoute,
+      routes: { comms: r.comms, reset: { ...r.reset, allies: named4(r.reset.allies) }, ally: { ...r.ally, allies: named4(r.ally.allies) } }
+    };
   }
   async function fileLeash(kind, unitId) {
     const s = state;
@@ -58710,6 +58840,7 @@ function createApp(st, deps) {
     const chatId = st.getActiveChat()?.chatId;
     if ((await personal.beforeRequest("leash")).cancelled || st.getActiveChat()?.chatId !== chatId) return false;
     const cause = kind === "terminate" ? s.disloyalty?.units[unitId]?.cause : void 0;
+    let via;
     const filed = await fileLeashRequest(shell, {
       kind,
       unitName: unit3.displayName,
@@ -58723,11 +58854,13 @@ function createApp(st, deps) {
       corporation: corporationName(s),
       onVerdict: () => sound.play("stamp"),
       ...kind === "terminate" ? { verdict: "UNDER REVIEW" } : {},
-      ...heldFor(s)
+      ...heldFor(s, (c) => {
+        via = c;
+      })
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
-    if (kind === "compel") return loyalty.compel(unitId);
-    const events = act({ type: kind === "suppress" ? "leash/suppress" : "leash/terminate", payload: { unitId } });
+    if (kind === "compel") return loyalty.compel(unitId, via);
+    const events = act(via !== void 0 ? { type: "dynamic/bypass_leash", payload: { route: via.route, kind, unitId, ...via.allyId !== void 0 ? { allyId: via.allyId } : {} } } : { type: kind === "suppress" ? "leash/suppress" : "leash/terminate", payload: { unitId } });
     if (events.some((e) => e.type === "error")) return false;
     if (events.some((e) => e.type === "leash_used" && e.outcome === "denied")) toast("warn", `Oversight denied the termination of ${unit3.displayName}.`, OVERSIGHT);
     return true;
@@ -59541,6 +59674,11 @@ function createApp(st, deps) {
       toast("info", String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? "").replaceAll("{name}", name), { voice: VOICE_OF.dynamic, title: name });
       const root = document.getElementById("alius-shell");
       if (root) cutIn(root, "dynamic", (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
+    }
+    for (const e of events) {
+      if (e.type !== "leash_blocked" || !state) continue;
+      const name = state.squad.find((u) => u.id === e.holderId)?.displayName ?? "She";
+      toast("warn", `AUTHOR TO WRITE: ${name} held the request and did not sign it. Nothing was spent.`, { voice: VOICE_OF.dynamic, title: name });
     }
     if (events.some((e) => e.type === "warden_override")) setTimeout(showOverrideModal, 0);
     if (events.some((e) => e.type === "error" && typeof e.message === "string" && e.message.includes("has overridden an order"))) setTimeout(showOverrideModal, 0);

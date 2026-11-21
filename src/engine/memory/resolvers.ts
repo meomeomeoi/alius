@@ -380,6 +380,12 @@ registerMemoryResolver('dynamic_exit', (draft, event) => {
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
 }, { ids: ['her'], vars: ['name', 'sworn'] });
 
+// the dynamic (P15): the holder found out the commander went around her hold on the Leash requests (the event's unit is the holder; an undiscovered one is no rule)
+registerMemoryResolver('leash_bypassed', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, discovered: yes(event.discovered === true) } } : null;
+}, { ids: ['her'], vars: ['name', 'discovered'] });
+
 // the dynamic (P15): an aftermath ended; the reason says how (a return offer refused is the pair's to remember)
 registerMemoryResolver('aftermath_ended', (draft, event) => {
   const her = subjectOf(draft, event.unitId);

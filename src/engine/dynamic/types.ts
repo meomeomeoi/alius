@@ -103,6 +103,9 @@ export type AftermathEffect =
   | { type: 'protocol_slips'; days: number };
 
 export const EXIT_ROUTES = ['abrupt', 'negotiated', 'transfer', 'force'] as const;
+/** The ways round a Leash block (R16): the comms terminal, a device reset by a technical ally, another soldier filing through her own channel. */
+export const BYPASS_ROUTES = ['comms', 'reset', 'ally'] as const;
+export type BypassRoute = (typeof BYPASS_ROUTES)[number];
 export type ExitRoute = (typeof EXIT_ROUTES)[number];
 
 /** What the squad reads as a sign of the dynamic (R14). The first group carries suspicion, the `instant` group knowledge, the closeness group only `suspects_close`. */

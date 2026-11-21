@@ -10,6 +10,7 @@ import { revealKnown, signsFromEvents } from '../dynamic/knowledge';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
 import { answerReturn, commandKeptEnforced, restoreCommandKept } from '../dynamic/aftermath';
+import { bypassLeash } from '../dynamic/bypass';
 import { answerClaim } from '../dynamic/domains';
 import { registerEnforced, registerUndone } from '../discipline/record';
 import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
@@ -21,7 +22,7 @@ import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
 import { seedHold } from '../dynamic/seeds';
 import { dynamicSaltOf, newDynamicCampaign } from '../dynamic/state';
-import { EXIT_ROUTES, FREQUENCIES, HOLDER_CAPS, MAY_HOLD, MOTIVES, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES, type Motive } from '../dynamic/types';
+import { BYPASS_ROUTES, EXIT_ROUTES, FREQUENCIES, HOLDER_CAPS, MAY_HOLD, MOTIVES, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES, type Motive } from '../dynamic/types';
 import { TUNING } from '../tuning';
 import type { Unit } from '../state/types';
 
@@ -311,4 +312,23 @@ registerAction('dynamic/answer_return', (draft, payload, ctx) => {
   const p = (payload ?? {}) as { answer?: unknown };
   if (p.answer !== 'accept' && p.answer !== 'refuse') throw new Error('The answer must be accept or refuse.');
   return answerReturn(draft, ctx, p.answer);
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Going around the Leash block (R16)
+
+/**
+ * `dynamic/bypass_leash { route, kind, unitId, allyId? }`: files the request `kind` on `unitId` around the holder's block: through the comms terminal
+ * (costs the slot), by a reset with a technical ally, or through another soldier (`allyId`). One discovery draw; a discovered one is a defiance
+ * toward her. A refusal (no block, no ally, a request that cannot be filed) changes nothing. The combat compel has no bypass.
+ */
+registerAction('dynamic/bypass_leash', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { route?: unknown; kind?: unknown; unitId?: unknown; allyId?: unknown };
+  if (!(BYPASS_ROUTES as readonly unknown[]).includes(p.route)) throw new Error(`A bypass is ${BYPASS_ROUTES.join(', ')}.`);
+  if (p.kind !== 'compel' && p.kind !== 'suppress' && p.kind !== 'terminate') throw new Error('A request is compel, suppress or terminate.');
+  if (typeof p.unitId !== 'string') throw new Error('dynamic/bypass_leash needs a unitId.');
+  if (p.allyId !== undefined && typeof p.allyId !== 'string') throw new Error('allyId must be a unit id.');
+  if (!dynamicOn(draft, ctx.registries)) throw new Error('The dynamic is off.');
+  return bypassLeash(draft, ctx, { route: p.route as (typeof BYPASS_ROUTES)[number], kind: p.kind, unitId: p.unitId, ...(p.allyId !== undefined ? { allyId: p.allyId } : {}) });
 });

@@ -333,7 +333,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P15 (her milestone card, the vow, the frame; the Tonight chip)
   'milestone', 'vow', 'frame',
   // P15 (her claim card: the domain, the claim and what a domain grants)
-  'domain', 'claim', 'aftermath', 'holder_override', 'capability_booking_uncapped', 'capability_book_ahead', 'capability_body_conditions', 'capability_device_floor', 'capability_leash_block', 'capability_household_protocol', 'capability_second_place', 'capability_relation_rules', 'capability_booking_consent', 'capability_countermand', 'capability_co_leader',
+  'domain', 'claim', 'aftermath', 'holder_override', 'capability_booking_uncapped', 'capability_book_ahead', 'capability_body_conditions', 'capability_device_floor', 'capability_leash_block', 'capability_household_protocol', 'capability_second_place', 'capability_relation_rules', 'capability_booking_consent', 'capability_countermand', 'capability_co_leader', 'leash_bypass_comms', 'leash_bypass_reset', 'leash_bypass_ally',
 ];
 
 let registered = false;

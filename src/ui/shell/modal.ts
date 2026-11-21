@@ -1,10 +1,11 @@
+import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface ModalOpts {
   title: string;
   body: Node | string;
   /** `disabled` is the reason the action cannot be taken now: the button is greyed and the reason shown beside it. */
-  actions: Array<{ label: string; value: string; disabled?: string }>;
+  actions: Array<{ label: string; value: string; disabled?: string; /** P15: the analyze address of the button (`glossary:...`), when it has one. */ analyze?: string }>;
 }
 
 /** One modal at a time inside `layer`; a new modal cancels the open one. */
@@ -25,7 +26,7 @@ export function createModalHost(layer: HTMLElement) {
           resolve(value);
         };
         const buttons = opts.actions.map((a) =>
-          h('button', { type: 'button', class: 'alius-btn', disabled: a.disabled !== undefined, title: a.disabled, onclick: () => finish(a.value) }, a.label),
+          h('button', { type: 'button', class: 'alius-btn', disabled: a.disabled !== undefined, title: a.disabled, onclick: () => finish(a.value), ...(a.analyze !== undefined ? analyzeAttrs(a.analyze) : {}) }, a.label),
         );
         const reasons = opts.actions.flatMap((a) => (a.disabled !== undefined ? [h('span', { class: 'alius-modal-reason' }, `${a.label} — ${a.disabled}`)] : []));
         const dialog = h(

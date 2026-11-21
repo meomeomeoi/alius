@@ -14,7 +14,8 @@ export interface LoyaltyController {
   /** Gives an order to a unit in the open scene. Returns whether she refused. */
   order(unitId: string): boolean;
   /** Forces a refused order through the Leash. Returns whether it went through. */
-  compel(unitId: string): boolean;
+  /** `bypass`: the request goes around a holder's hold on the Leash (P15): the same request, through `dynamic/bypass_leash`. */
+  compel(unitId: string, bypass?: { route: 'comms' | 'reset' | 'ally'; allyId?: string }): boolean;
   onSceneOpened(): void;
   onSceneClosed(): void;
   onEvents(events: EngineEvent[]): void;
@@ -54,13 +55,16 @@ export function createLoyalty(deps: LoyaltyDeps): LoyaltyController {
     return refused;
   }
 
-  function compel(unitId: string): boolean {
-    const events = deps.app.dispatch({ type: 'leash/compel', payload: { unitId, context: 'scene' } });
+  function compel(unitId: string, bypass?: { route: 'comms' | 'reset' | 'ally'; allyId?: string }): boolean {
+    const events = deps.app.dispatch(bypass === undefined
+      ? { type: 'leash/compel', payload: { unitId, context: 'scene' } }
+      : { type: 'dynamic/bypass_leash', payload: { route: bypass.route, kind: 'compel', unitId, ...(bypass.allyId !== undefined ? { allyId: bypass.allyId } : {}) } });
     const bad = failure(events);
     if (bad) {
       toastFailure(bad);
       return false;
     }
+    if (!events.some((e) => e.type === 'scene_compelled')) return false; // P15: a request that was held or denied did nothing: the refusal stands and her answer is unchanged
     const forced = events.find((e) => e.type === 'scene_compelled')?.forced === true;
     deps.context.setDirective(forced ? compelledDirective(unitId, nameOf(unitId)) : compelFailedDirective(unitId, nameOf(unitId)));
     deps.refreshContext();

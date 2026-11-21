@@ -55,6 +55,12 @@ export function noteBlocked(draft: CampaignState, holderId: string): void {
 export function rollBlock(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>, targetId: string, kind: LeashKind): { ok: boolean; events: EngineEvent[]; holderId?: string } {
   const holderId = leashBlockOf(draft, ctx.registries);
   if (holderId === null) return { ok: true, events: [] };
+  const pass = draft.dynamic?.oversight?.pass;
+  if (pass !== undefined) {
+    // a bypass was taken for this one request: it goes unheld; any other pass is stale (it was for another request) and is dropped
+    delete draft.dynamic!.oversight!.pass;
+    if (pass.unitId === targetId && pass.kind === kind) return { ok: true, events: [] };
+  }
   const ok = targetId !== holderId && ctx.rng.chance(blockCosignChance(draft, ctx.registries, holderId));
   if (ok) return { ok: true, events: [] };
   noteBlocked(draft, holderId);

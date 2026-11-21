@@ -583,8 +583,12 @@ export const ActivitySchema = BaseEntrySchema.extend({
     id: str,
     label: str,
     units: z.object({ min: int.min(1), max: int.min(1) }).strict().optional(),
-    /** P12: the focus is offered, and allowed, only to a commander whose traits have this effect type. */
-    requires: z.object({ traitEffect: str }).strict().optional(),
+    /**
+     * P12: the focus is offered, and allowed, only to a commander whose traits have this effect type. P15: or (`capabilityHeldBy`) only while some
+     * holder holds this capability (the Leash terminal: while a block stands). One of the two at least.
+     */
+    requires: z.object({ traitEffect: str.optional(), capabilityHeldBy: z.enum(CAPABILITIES).optional() }).strict()
+      .refine((r) => r.traitEffect !== undefined || r.capabilityHeldBy !== undefined, 'a focus requirement names a traitEffect or a capabilityHeldBy').optional(),
     /** P12: a one-way choice: the app asks this question first (the activity runs only on a yes). */
     confirm: str.max(200).optional(),
   }).strict()).optional(),

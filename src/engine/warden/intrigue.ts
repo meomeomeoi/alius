@@ -206,7 +206,7 @@ export function dig(draft: CampaignState, ctx: EngineCtx, allyId?: string): Engi
 }
 
 /** Does this unit have the know-how to work on the implant (a role or a defect with the `tech` field)? */
-function isTech(state: CampaignState, reg: Registries, unitId: string): boolean {
+export function isTech(state: CampaignState, reg: Registries, unitId: string): boolean {
   const u = state.squad.find((x) => x.id === unitId);
   if (!u) return false;
   return reg.roles.get(u.roleId)?.tech === true || u.defects.some((d) => reg.defects.get(d.id)?.tech === true);

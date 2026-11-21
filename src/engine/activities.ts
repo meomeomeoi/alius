@@ -1,7 +1,9 @@
 import { rollCountermand } from './power/leader';
 import { commanderRestriction } from './warden/punish';
 import { judgedOf, plainPayload } from './warden/override';
+import { holderWith } from './dynamic/capabilities';
 import { rollOverrides } from './dynamic/command';
+import type { Capability } from './dynamic/types';
 import type { Entry, Registries } from '../content/types';
 import type { ActivityEffect } from '../content/schemas';
 import { consumeSlots, isQuietNight } from './calendar';
@@ -35,7 +37,7 @@ export interface ActivityRequest {
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
-type Focus = { id: string; label: string; units?: { min: number; max: number }; requires?: { traitEffect: string }; confirm?: string };
+type Focus = { id: string; label: string; units?: { min: number; max: number }; requires?: { traitEffect?: string; capabilityHeldBy?: string }; confirm?: string };
 type Fx = ActivityEffect & { when?: { focus?: string; companionLikes?: string }; scale?: { facility: string; key: string } };
 
 /** What an activity just did; hooks (P3 defect social effects) react to it. */
@@ -130,7 +132,9 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   const focus = focusOf(a, req);
   if (req.focus !== undefined && !focus) return `Unknown focus "${req.focus}" for ${name}.`;
   // P12: a focus only a commander with a given trait effect may take, and a one-way burn that cannot be done twice
-  if (focus?.requires && !hasTraitEffect(state, reg, focus.requires.traitEffect as never)) return `${focus.label} is not available to this commander.`;
+  if (focus?.requires?.traitEffect !== undefined && !hasTraitEffect(state, reg, focus.requires.traitEffect as never)) return `${focus.label} is not available to this commander.`;
+  // P15: a focus that exists only while some holder holds a capability (the Leash terminal, while a block stands)
+  if (focus?.requires?.capabilityHeldBy !== undefined && holderWith(state, reg, focus.requires.capabilityHeldBy as Capability) === null) return `${focus.label} is not available: nobody holds that.`;
   if (focus && state.special?.frequency?.burnedDay !== undefined
     && (a.effects as Fx[]).some((fx) => fx.type === 'burn_frequency_implant' && fx.when?.focus === focus.id)) return 'The implant is already burned.';
   // P15a: an endurance drill is done once a day for each physics

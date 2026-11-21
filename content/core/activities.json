@@ -338,15 +338,34 @@
     },
     "cost": {},
     "companion": "none",
+    "focus": [
+      {
+        "id": "scout",
+        "label": "Scout the net"
+      },
+      {
+        "id": "leash_terminal",
+        "label": "File at the comms terminal",
+        "requires": {
+          "capabilityHeldBy": "leash_block"
+        }
+      }
+    ],
     "effects": [
       {
         "type": "commander_stat",
         "stat": "insight",
-        "amount": 4
+        "amount": 4,
+        "when": {
+          "focus": "scout"
+        }
       },
       {
         "type": "emit_event",
-        "event": "rumors_requested"
+        "event": "rumors_requested",
+        "when": {
+          "focus": "scout"
+        }
       }
     ],
     "companionEffects": [],

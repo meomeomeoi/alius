@@ -33,7 +33,19 @@ export interface LeashFormOpts {
   verdict?: string;
   /** P15: the name of the holder who holds the commander's Leash requests; the form says the request waits for her co-sign. */
   heldBy?: string;
+  /**
+   * P15: the three ways around her hold, offered only while `heldBy` is set. `disabled` is the reason a route cannot be taken now; the two that
+   * need a soldier list who could (`reset`: those who know the device). The choice is reported through `onRoute` before the form resolves `true`.
+   */
+  routes?: {
+    comms: { disabled?: string };
+    reset: { disabled?: string; allies: BypassAlly[] };
+    ally: { disabled?: string; allies: BypassAlly[] };
+  };
+  onRoute?: (choice: { route: 'comms' | 'reset' | 'ally'; allyId?: string }) => void;
 }
+
+export interface BypassAlly { id: string; name: string }
 
 const ACTION: Record<LeashKind, string> = {
   compel: 'COMPEL — NEURAL COMPLIANCE BURST',
@@ -90,13 +102,33 @@ export async function fileLeashRequest(shell: LeashFormShell, o: LeashFormOpts):
     ...(o.heldBy !== undefined ? [heldLine(o.heldBy)] : []),
   );
   const paper = (inner: Node): HTMLElement => renderVoiceCard({ voice: 'paper', meta: 'CCP OVERSIGHT OFFICE · FORM OR-7', body: inner });
-  const choice = await shell.modal({
-    title, body: paper(form),
-    actions: [
-      { label: '[ FILE REQUEST ]', value: 'file', ...(o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {}) },
-      { label: '[ WITHDRAW ]', value: 'withdraw' },
-    ],
-  });
+  const routes = o.heldBy !== undefined ? o.routes : undefined;
+  const routeAction = (id: 'comms' | 'reset' | 'ally', label: string): { label: string; value: string; disabled?: string; analyze: string } => {
+    const r = routes![id];
+    return { label, value: id, analyze: `glossary:leash_bypass_${id}`, ...(r.disabled !== undefined ? { disabled: r.disabled } : o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {}) };
+  };
+  let choice: string | null;
+  for (;;) {
+    choice = await shell.modal({
+      title, body: paper(form),
+      actions: [
+        { label: '[ FILE REQUEST ]', value: 'file', ...(o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {}) },
+        ...(routes !== undefined ? [routeAction('comms', '[ COMMS TERMINAL ]'), routeAction('reset', '[ RESET THE DEVICE ]'), routeAction('ally', '[ ASK A SOLDIER ]')] : []),
+        { label: '[ WITHDRAW ]', value: 'withdraw' },
+      ],
+    });
+    if (routes === undefined || (choice !== 'comms' && choice !== 'reset' && choice !== 'ally')) break;
+    if (choice === 'comms') { o.onRoute?.({ route: 'comms' }); choice = 'file'; break; }
+    // the two routes through a soldier ask who
+    const allies = routes[choice].allies;
+    const who = await shell.modal({
+      title: choice === 'reset' ? 'WHO WORKS ON THE DEVICE' : 'WHO FILES IT',
+      body: paper(h('div', { class: 'alius-form' }, line('REQUEST', 'request', `${ACTION[o.kind]} — ${o.unitName}`))),
+      actions: [...allies.map((a) => ({ label: `[ ${a.name.toUpperCase()} ]`, value: `ally:${a.id}`, analyze: `glossary:leash_bypass_${choice as 'reset' | 'ally'}` })), { label: '[ BACK ]', value: 'back' }],
+    });
+    if (who?.startsWith('ally:')) { o.onRoute?.({ route: choice, allyId: who.slice('ally:'.length) }); choice = 'file'; break; }
+    if (who === null) return false;
+  }
   if (choice !== 'file') return false;
 
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
