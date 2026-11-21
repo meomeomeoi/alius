@@ -884,6 +884,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerRule: answerRule,
+        onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
         onPastime: (_unitId, pastimeId) => { // P14c: the "let's ..." of the scene; the pastime's own checks refuse what does not fit
           const events = api.dispatch({ type: 'life/pastime_in_scene', payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
           const failed = events.find((e) => e.type === 'error');

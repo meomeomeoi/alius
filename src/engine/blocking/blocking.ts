@@ -239,7 +239,7 @@ function slotsFor(item: Entry, chosen: string | undefined, b: Blocking): WornSlo
     return free(slot) ? [slot] : `The ${slot} is taken.`;
   }
   const taken = all.find((s) => !free(s));
-  return taken !== undefined ? `The ${taken} is taken by ${String(b.worn![taken]!.id).replace(/_/g, ' ')}.` : all;
+  return taken !== undefined ? `The ${taken} slot is taken by ${String(b.worn![taken]!.id).replace(/_/g, ' ')}.` : all;
 }
 
 /** What `removed` points at: an item the person wears, or the contact (the person is a party to it and its id matches). */
@@ -348,7 +348,7 @@ function apply(draft: CampaignState, reg: Registries, change: BlockingChange): v
 export function setBlocking(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, change: BlockingChange, opts: { at: number; source: BlockingSource }): EngineEvent[] {
   const problem = checkChange(draft, ctx.registries, change);
   if (problem !== null) throw new Error(problem);
-  pushLog(draft, opts.at);
+  pushLog(draft, opts.at, { person: change.person, field: change.field, ...(change.value !== undefined ? { value: change.value } : {}), source: opts.source });
   apply(draft, ctx.registries, change);
   return [{ type: 'blocking_changed', person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
 }

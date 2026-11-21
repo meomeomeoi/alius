@@ -11649,15 +11649,15 @@ function pushAppraisal(draft, reg, unitId, seen) {
 }
 function recordAppraisal(draft, reg, unitId, event, role, opts = {}) {
   if (developmentMode(draft) === "off") return [];
-  const reading = readingFor(reg, event);
-  if (!reading) return [];
+  const reading2 = readingFor(reg, event);
+  if (!reading2) return [];
   const sceneId = opts.sceneId ?? draft.scene?.id;
   return pushAppraisal(draft, reg, unitId, {
     kind: event.type,
     target: role === "actor" ? "commander" : "her",
     role,
     subject: role === "actor" ? "commander" : unitId,
-    reading,
+    reading: reading2,
     severity: event.severity,
     evidence: event.evidence,
     tags: event.tags ?? [],
@@ -11666,8 +11666,8 @@ function recordAppraisal(draft, reg, unitId, event, role, opts = {}) {
 }
 function recordWitnesses(draft, reg, event, believed, participants, sceneId) {
   if (developmentMode(draft) === "off" || believed.length === 0) return [];
-  const reading = readingFor(reg, event);
-  if (!reading) return [];
+  const reading2 = readingFor(reg, event);
+  if (!reading2) return [];
   const subject = event.actor === "commander" ? believed[0] : "commander";
   const events = [];
   for (const id of participants) {
@@ -11677,7 +11677,7 @@ function recordWitnesses(draft, reg, event, believed, participants, sceneId) {
       target: event.actor === "commander" ? `unit:${believed[0]}` : "commander",
       role: "witness",
       subject,
-      reading,
+      reading: reading2,
       severity: event.severity,
       evidence: event.evidence,
       tags: event.tags ?? [],
@@ -11688,9 +11688,9 @@ function recordWitnesses(draft, reg, event, believed, participants, sceneId) {
 }
 function recordActivity(draft, reg, unitId, activityId) {
   if (developmentMode(draft) === "off") return [];
-  const reading = reg.activities.get(activityId)?.appraisal;
-  if (!reading) return [];
-  return pushAppraisal(draft, reg, unitId, { kind: `activity:${activityId}`, target: "her", role: "subject", subject: unitId, reading, severity: "minor", tags: reg.activities.get(activityId)?.appraisalTags ?? [] });
+  const reading2 = reg.activities.get(activityId)?.appraisal;
+  if (!reading2) return [];
+  return pushAppraisal(draft, reg, unitId, { kind: `activity:${activityId}`, target: "her", role: "subject", subject: unitId, reading: reading2, severity: "minor", tags: reg.activities.get(activityId)?.appraisalTags ?? [] });
 }
 function removeAppraisals(draft, list5) {
   for (const { unitId, id } of list5) {
@@ -11709,15 +11709,15 @@ function removeAppraisals(draft, list5) {
 }
 function recordWitnessOf(draft, reg, unitId, event, subjectId) {
   if (developmentMode(draft) === "off") return [];
-  const reading = readingFor(reg, event);
-  if (!reading) return [];
+  const reading2 = readingFor(reg, event);
+  if (!reading2) return [];
   const sceneId = draft.scene?.id;
   return pushAppraisal(draft, reg, unitId, {
     kind: event.type,
     target: `unit:${subjectId}`,
     role: "witness",
     subject: subjectId,
-    reading,
+    reading: reading2,
     severity: event.severity,
     evidence: event.evidence,
     tags: event.tags ?? [],
@@ -17043,8 +17043,8 @@ function validateIntents(raw, ctx2) {
     if (actor === "commander" ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
     if (type === "defied" ? actor === "commander" : COMMANDER_DISCIPLINE.includes(type) && actor !== "commander") continue;
     const intent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
-    const reading = readingOf2(e.reading);
-    if (reading) intent.reading = reading;
+    const reading2 = readingOf2(e.reading);
+    if (reading2) intent.reading = reading2;
     if (type === "compromise_reached" && typeof e.overrideId === "string") {
       if (actor !== "commander" || !(ctx2.overrides ?? []).includes(e.overrideId)) continue;
       const text2 = typeof e.text === "string" ? e.text.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim() : "";
@@ -25700,11 +25700,11 @@ function rollbackAfter(draft, index2) {
   if (log.length === 0) delete scene.stagingLog;
   return true;
 }
-function pushLog(draft, at) {
+function pushLog(draft, at, meta2 = {}) {
   const scene = draft.scene;
   if (!scene) return;
   const log = scene.stagingLog ??= [];
-  log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...scene.moments !== void 0 ? { moments: structuredClone(scene.moments) } : {} });
+  log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...scene.moments !== void 0 ? { moments: structuredClone(scene.moments) } : {}, ...meta2, exchange: scene.exchanges });
   if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
 }
 
@@ -25882,7 +25882,7 @@ function slotsFor(item, chosen, b) {
     return free(slot2) ? [slot2] : `The ${slot2} is taken.`;
   }
   const taken = all.find((s) => !free(s));
-  return taken !== void 0 ? `The ${taken} is taken by ${String(b.worn[taken].id).replace(/_/g, " ")}.` : all;
+  return taken !== void 0 ? `The ${taken} slot is taken by ${String(b.worn[taken].id).replace(/_/g, " ")}.` : all;
 }
 function removalTarget(state, person, id) {
   const scene = state.scene;
@@ -25982,7 +25982,7 @@ function apply(draft, reg, change) {
 function setBlocking(draft, ctx2, change, opts) {
   const problem = checkChange(draft, ctx2.registries, change);
   if (problem !== null) throw new Error(problem);
-  pushLog(draft, opts.at);
+  pushLog(draft, opts.at, { person: change.person, field: change.field, ...change.value !== void 0 ? { value: change.value } : {}, source: opts.source });
   apply(draft, ctx2.registries, change);
   return [{ type: "blocking_changed", person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
 }
@@ -26031,17 +26031,17 @@ function stripTagged(draft, reg, removed) {
 function startBlocking(draft, reg) {
   const scene = draft.scene;
   if (!scene || !blockingLive(draft, reg)) return;
-  const set = (person, value, actor) => typeof value === "string" && reg.blockingActivities.get(value)?.actor === actor && setQuietly(draft, reg, { person, field: "activity", value });
+  const set2 = (person, value, actor) => typeof value === "string" && reg.blockingActivities.get(value)?.actor === actor && setQuietly(draft, reg, { person, field: "activity", value });
   const pastime = scene.pastime ? reg.pastimes.get(scene.pastime.id) : void 0;
   if (pastime && scene.pastime) {
-    set(scene.pastime.unitId, pastime.herActivity, "her");
-    set(COMMANDER, pastime.commanderActivity, "commander");
+    set2(scene.pastime.unitId, pastime.herActivity, "her");
+    set2(COMMANDER, pastime.commanderActivity, "commander");
     return;
   }
   const first2 = scene.participants[0];
   if (scene.activityId === void 0 || first2 === void 0) return;
   for (const a of reg.blockingActivities.values()) {
-    if (a.actor === "her" && Array.isArray(a.fromActivities) && a.fromActivities.includes(scene.activityId) && set(first2, a.id, "her")) return;
+    if (a.actor === "her" && Array.isArray(a.fromActivities) && a.fromActivities.includes(scene.activityId) && set2(first2, a.id, "her")) return;
   }
 }
 
@@ -29946,36 +29946,36 @@ function createLoyalty(deps) {
     const state = deps.app.current().state;
     if (!state?.scene) return;
     const log = leashLog(state);
-    let set = false;
+    let set2 = false;
     for (const id of state.scene.participants) {
       const rel = state.relations[id];
       if (!rel) continue;
       const band2 = bandDirective(id, nameOf18(id), rel.loyaltyBand);
       if (band2) {
         deps.context.setDirective(band2);
-        set = true;
+        set2 = true;
       }
       const recent2 = log.some((e) => e.unitId === id && state.day - e.day <= TUNING.leash.traumaDays);
       if (rel.flags.includes("leashed") && recent2) {
         deps.context.setDirective(traumaDirective(id, nameOf18(id)));
-        set = true;
+        set2 = true;
       }
     }
-    if (set) deps.refreshContext();
+    if (set2) deps.refreshContext();
   }
   function onSceneClosed() {
     deps.context.clearMatching((d) => d.id === "dilemma" || SCENE_PREFIXES.some((p) => d.id.startsWith(p)));
     deps.refreshContext();
   }
   function onEvents(events) {
-    let set = false;
+    let set2 = false;
     const sceneOpen = deps.app.current().state?.scene !== void 0;
     for (const e of events) {
       if (e.type !== "dilemma_resolved" || e.nothing === true || typeof e.label !== "string") continue;
       deps.context.setDirective(aftermathDirective(String(e.title ?? e.templateId), e.label, sceneOpen ? "scene" : "next_reply"));
-      set = true;
+      set2 = true;
     }
-    if (set) deps.refreshContext();
+    if (set2) deps.refreshContext();
   }
   return { order, compel: compel2, onSceneOpened, onSceneClosed, onEvents };
 }
@@ -32790,12 +32790,12 @@ function createDiscipline(deps) {
     await deps.generations.reroll("flavor.demand", demandId);
   }
   function onEvents(events) {
-    let set = false;
+    let set2 = false;
     for (const e of events) {
       if (e.type === "threat_registered" && (e.channel ?? "scene") === "scene") {
         const unitId = String(e.unitId);
         deps.context.setDirective(threatDirective(unitId, nameOf18(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
-        set = true;
+        set2 = true;
       } else if (e.type === "delegate_demand" && typeof e.demandId === "string") {
         void wordAndDeliver(e.demandId, chatId()).catch(() => {
         });
@@ -32808,7 +32808,7 @@ function createDiscipline(deps) {
         deps.toast("info", `Covert sabotage (${String(e.kind)}).`);
       }
     }
-    if (set) deps.refreshContext();
+    if (set2) deps.refreshContext();
   }
   function onSceneOpened() {
     const state2 = deps.app.current().state;
@@ -33282,9 +33282,9 @@ var rerollId = (siteId, key) => `reroll:${siteId}:${key}`;
 function drawRecordChip(host, ui, state, rec, opts = {}) {
   const site = generationSite(rec.siteId);
   const label2 = site ? site.label(state, rec.key) : rec.siteId;
-  const set = ui.settings();
-  const base = site ? Math.ceil((set.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
-  const text2 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set.llmTimeoutMs, expiredWhy: rec.expiredWhy });
+  const set2 = ui.settings();
+  const base = site ? Math.ceil((set2.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
+  const text2 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set2.llmTimeoutMs, expiredWhy: rec.expiredWhy });
   const held3 = site?.held === true;
   const retry = (opts2) => runPending(ui, rec.id, async () => {
     await ui.generations.retry(rec.id, opts2);
@@ -37131,9 +37131,9 @@ function createSceneController(deps) {
     return events;
   }
   function reflect(events, extremeKinds = []) {
-    const set = [];
+    const set2 = [];
     const s = state();
-    if (!s) return set;
+    if (!s) return set2;
     for (const e of events) {
       switch (e.type) {
         case "relation_changed":
@@ -37157,14 +37157,14 @@ function createSceneController(deps) {
           if (!unit2) break;
           const result = e.receptive === true ? { receptive: true } : { receptive: false, reason: e.reason };
           app.context.setDirective(proposalDirective(unit2.id, unit2.displayName, String(e.kind), result));
-          set.push(`proposal:${unit2.id}`);
+          set2.push(`proposal:${unit2.id}`);
           break;
         }
       }
     }
     for (const kind of extremeKinds) deps.onUi({ type: "cut_in", kind });
     app.refreshContext();
-    return set;
+    return set2;
   }
   const avatarsOf = (s, ids) => ids.map((id) => unitById(s, id)?.cardRef).filter((a) => typeof a === "string");
   function setSceneContext(s) {
@@ -39666,10 +39666,10 @@ function renderCalibration(host, ctx2) {
     care.addEventListener("change", () => write2({ caretaker: care.checked }));
     const limited = bond.ownLimits.categories;
     const toggleLimit = (id) => {
-      const set = new Set(limited);
-      if (set.has(id)) set.delete(id);
-      else set.add(id);
-      const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set.has(x));
+      const set2 = new Set(limited);
+      if (set2.has(id)) set2.delete(id);
+      else set2.add(id);
+      const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set2.has(x));
       write2({ ownLimits: { categories, note: bond.ownLimits.note ?? "" } });
     };
     const fromCard = !manual && cand?.bondReason ? cand.bondReason : "";
@@ -46016,6 +46016,111 @@ function renderFreqChip(host, state, reg, unitId) {
   host.append(h("span", { class: "alius-chip alius-freq-chip", "data-freq-unit": unitId, ...analyzeAttrs("glossary:frequency_intercept") }, `FREQ \u25B8 "${text2}" (unverified)`));
 }
 
+// src/ui/scene/blockingStrip.ts
+var MOVES = [
+  { move: "kneel", text: "[ KNEEL ]", posture: "kneeling_upright" },
+  { move: "sit", text: "[ SIT ]", posture: "sitting" },
+  { move: "stand", text: "[ STAND ]", posture: "standing" },
+  { move: "crawl", text: "[ CRAWL ]", posture: "all_fours" },
+  { move: "lie", text: "[ LIE DOWN ]", posture: "lying_back" }
+];
+var set = (change) => ({ type: "blocking/set", payload: { ...change } });
+function renderBlockingStrip(host, ctx2) {
+  const { state, registries: reg } = ctx2;
+  const wasOpen = host.querySelector("details.alius-blocking-add")?.open === true;
+  const wasWith = host.querySelector('select[name="blocking-with"]')?.value;
+  if (!state?.scene || !blockingLive(state, reg)) {
+    host.replaceChildren();
+    return;
+  }
+  const scene = state.scene;
+  const units = scene.participants;
+  const name = (id) => id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const guarded2 = (change, tag2, attrs, text2) => {
+    const why = checkChange(state, reg, change);
+    return h(tag2, {
+      type: "button",
+      ...attrs,
+      "aria-disabled": why !== null ? "true" : null,
+      title: why ?? attrs.title ?? null,
+      onclick: () => {
+        if (why === null) ctx2.onStage(set(change));
+      }
+    }, text2);
+  };
+  const chip2 = (registry2, id, label2, kind) => h("span", { class: "alius-chip", "data-kind": kind, ...analyzeAttrs(`${registry2}:${id}`) }, label2);
+  const labelOf2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id);
+  const remover = (person, id, label2) => {
+    const change = { person, field: "removed", value: id };
+    return guarded2(change, "button", { class: "alius-btn alius-blocking-x", "data-action": "remove", "data-person": person, "data-id": id, "aria-label": `Remove ${label2}` }, "\xD7");
+  };
+  const row2 = (person) => {
+    const b = blockingOf(scene, person);
+    const chips = [];
+    if (b.posture !== void 0) chips.push(chip2("blockingPostures", b.posture, labelOf2("blockingPostures", b.posture), "posture"));
+    if (b.anchor !== void 0) chips.push(chip2("blockingAnchors", b.anchor.id, labelOf2("blockingAnchors", b.anchor.id), "anchor"));
+    if (b.contact !== void 0) chips.push(chip2("blockingContacts", b.contact.id, labelOf2("blockingContacts", b.contact.id), "contact"), remover(person, b.contact.id, labelOf2("blockingContacts", b.contact.id)));
+    const seen = /* @__PURE__ */ new Set();
+    for (const slot2 of WORN_SLOTS) {
+      const w = b.worn?.[slot2];
+      if (!w || seen.has(w.id)) continue;
+      seen.add(w.id);
+      chips.push(chip2("blockingItems", w.id, labelOf2("blockingItems", w.id), "worn"), remover(person, w.id, labelOf2("blockingItems", w.id)));
+    }
+    if (b.activity !== void 0) chips.push(chip2("blockingActivities", b.activity, labelOf2("blockingActivities", b.activity), "activity"));
+    const moves = person === COMMANDER ? MOVES.map((m) => guarded2(
+      { person: COMMANDER, field: "posture", value: m.posture },
+      "button",
+      { class: "alius-btn alius-option", "data-move": m.move, title: labelOf2("blockingPostures", m.posture), ...analyzeNative(`blockingPostures:${m.posture}`) },
+      m.text
+    )) : [];
+    if (chips.length === 0 && moves.length === 0) return null;
+    return h("div", { class: "alius-blocking-row", "data-person": person }, h("span", { class: "alius-blocking-name" }, name(person)), ...chips, ...moves);
+  };
+  const vocab = blockingVocabulary(state, reg);
+  const who = units.length > 1 ? h("select", { name: "blocking-with", class: "alius-select", "aria-label": "With" }, ...units.map((u) => h("option", { value: u }, name(u)))) : null;
+  if (who !== null && wasWith !== void 0 && units.includes(wasWith)) who.value = wasWith;
+  const unit2 = () => who?.value || units[0];
+  const entry = (group2, registry2, id, text2, change, direction) => {
+    const why = checkChange(state, reg, change());
+    return h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-group": group2,
+      "data-id": id,
+      ...direction !== void 0 ? { "data-direction": direction } : {},
+      "aria-disabled": why !== null ? "true" : null,
+      title: why ?? null,
+      ...analyzeNative(`${registry2}:${id}`),
+      onclick: () => {
+        const c = change();
+        if (checkChange(state, reg, c) === null) ctx2.onStage(set(c));
+      }
+    }, text2);
+  };
+  const group = (title3, items2) => items2.length === 0 ? null : h("div", { class: "alius-blocking-group" }, h("strong", { class: "alius-dim" }, title3), ...items2);
+  const anchors = vocab.anchor.map((e) => entry("anchor", "blockingAnchors", e.id, String(e.label), () => ({ person: COMMANDER, field: "anchor", value: e.id })));
+  const contacts = vocab.contact.flatMap((e) => e.dir === "either" ? [
+    entry("contact", "blockingContacts", e.id, `${String(e.label)} (from her)`, () => ({ person: COMMANDER, field: "contact", value: e.id, with: unit2(), direction: "from" }), "from"),
+    entry("contact", "blockingContacts", e.id, `${String(e.label)} (to her)`, () => ({ person: COMMANDER, field: "contact", value: e.id, with: unit2(), direction: "to" }), "to")
+  ] : [entry("contact", "blockingContacts", e.id, String(e.label), () => ({ person: COMMANDER, field: "contact", value: e.id, with: unit2() }))]);
+  const items = vocab.item.map((e) => entry("worn", "blockingItems", e.id, String(e.label), () => ({ person: e.wornBy === "her" ? unit2() : COMMANDER, field: "worn", value: e.id })));
+  const menu = h(
+    "details",
+    { class: "alius-blocking-add", ...wasOpen ? { open: "" } : {} },
+    h("summary", { class: "alius-btn alius-option", ...analyzeAttrs("glossary:blocking_strip") }, "[ + ]"),
+    h("div", { class: "alius-blocking-menu" }, who, group("PLACE", anchors), group("CONTACT", contacts), group("WEARING", items))
+  );
+  if (wasOpen) menu.open = true;
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-blocking", "aria-label": "Blocking" },
+    h("span", { class: "alius-stat alius-blocking-title", ...analyzeAttrs("glossary:blocking_strip") }, "BLOCKING"),
+    ...[...units, COMMANDER].map(row2).filter((r) => r !== null),
+    menu
+  ));
+}
+
 // src/ui/scene/sceneScreen.ts
 var loaded = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
@@ -46138,6 +46243,7 @@ function renderSceneScreen(host, ctx2) {
   let letsHost;
   let banner;
   let deviceHost;
+  let blockingHost;
   let busyHost;
   let caption;
   let input;
@@ -46437,6 +46543,16 @@ function renderSceneScreen(host, ctx2) {
     deviceHost.replaceChildren();
     if (deviceLocked(s, registries)) deviceHost.append(h("p", { class: "alius-device-out alius-dim", role: "note", ...analyzeAttrs("glossary:device_out_of_reach") }, "The device is out of reach."));
   }
+  function drawBlocking(s) {
+    renderBlockingStrip(blockingHost, {
+      state: s,
+      registries,
+      onStage: (action) => {
+        (ctx2.onStage ?? ((a) => void controller.stage(a)))(action);
+        if (!disposed) refresh();
+      }
+    });
+  }
   function drawBanner() {
     banner.replaceChildren();
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
@@ -46488,6 +46604,7 @@ function renderSceneScreen(host, ctx2) {
     letsHost = h("div", { class: "alius-lets-host" });
     banner = h("div", { class: "alius-pacing-host" });
     deviceHost = h("div", { class: "alius-device-host" });
+    blockingHost = h("div", { class: "alius-blocking-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
@@ -46579,6 +46696,7 @@ function renderSceneScreen(host, ctx2) {
       hud,
       log,
       genChips,
+      blockingHost,
       chips,
       leadChips,
       ruleChips,
@@ -46627,6 +46745,7 @@ function renderSceneScreen(host, ctx2) {
     drawGeneration(s);
     drawBanner();
     drawDevice(s);
+    drawBlocking(s);
     placeSprites();
   }
   function pulse(e) {
@@ -46711,8 +46830,8 @@ function readingFor2(subject, env) {
         continue;
       }
       try {
-        const reading = provider(subject, env, knowledge);
-        if (reading) lines.push(...reading.lines);
+        const reading2 = provider(subject, env, knowledge);
+        if (reading2) lines.push(...reading2.lines);
       } catch (e) {
         console.warn(`analyze provider "${key}" failed`, e);
       }
@@ -47062,6 +47181,53 @@ function registerBondsProviders() {
   registerAnalyzeProvider("relationshipRuleTemplates", ruleProvider);
 }
 
+// src/analysis/providers/blocking.ts
+var BY = { engine: "the game", chip: "a chip", reading: "the reading of the scene" };
+var FIELD = { postures: "posture", anchors: "anchor", contacts: "contact", items: "worn", activities: "activity" };
+var VERB = { posture: "is in it", anchor: "is there", contact: "is in it", worn: "wears it", activity: "is doing it" };
+function holders(state, kind, id) {
+  const blocking = state.scene?.blocking ?? {};
+  const out = [];
+  for (const person of [...state.scene?.participants ?? [], COMMANDER]) {
+    const b = blocking[person];
+    if (!b) continue;
+    const has2 = kind === "posture" ? b.posture === id : kind === "anchor" ? b.anchor?.id === id : kind === "activity" ? b.activity === id : kind === "contact" ? b.contact?.id === id : WORN_SLOTS.some((s) => b.worn?.[s]?.id === id);
+    if (has2) out.push(person);
+  }
+  return out;
+}
+function entryFor(state, kind, id, person) {
+  const log = state.scene?.stagingLog ?? [];
+  for (let i = log.length - 1; i >= 0; i--) {
+    const e = log[i];
+    if (e.field !== kind) continue;
+    if (kind === "posture" || kind === "anchor" ? e.person === person && e.value === id : kind === "activity" ? e.person === person && e.value === id : e.value === id) return e;
+  }
+  return void 0;
+}
+function reading(kind) {
+  return (subject, env) => {
+    const state = env.state;
+    if (!state?.scene) return null;
+    const who = holders(state, kind, subject.id);
+    if (who.length === 0) return null;
+    const name = (p) => p === COMMANDER ? "the commander" : state.squad.find((u) => u.id === p)?.displayName ?? p;
+    const parts = who.map((p) => {
+      const e = entryFor(state, kind, subject.id, p);
+      const how = e === void 0 ? "set by the game at the start" : `set by ${BY[e.source ?? "engine"]} in exchange ${e.exchange ?? 0}`;
+      return `${name(p)} ${VERB[kind]}, ${how}`;
+    });
+    return { lines: [`In the scene: ${parts.join("; ")}.`] };
+  };
+}
+function registerBlockingProviders() {
+  registerAnalyzeProvider("blockingPostures", reading(FIELD.postures));
+  registerAnalyzeProvider("blockingAnchors", reading(FIELD.anchors));
+  registerAnalyzeProvider("blockingContacts", reading(FIELD.contacts));
+  registerAnalyzeProvider("blockingItems", reading(FIELD.items));
+  registerAnalyzeProvider("blockingActivities", reading(FIELD.activities));
+}
+
 // src/analysis/providers/memory.ts
 var plural2 = (n, one2, many2 = `${one2}s`) => `${n} ${n === 1 ? one2 : many2}`;
 function presetProvider(_subject, env) {
@@ -47170,8 +47336,8 @@ function deviceAccessProvider(subject, env, k) {
   if (!state) return null;
   const unitId = unitIdOf3(subject);
   if (unitId === null) {
-    const holders = state.squad.filter((u) => u.kind === "named").map((u) => ({ u, level: deviceAccess(state, env.registries, u.id) })).filter((x) => x.level > 0);
-    return holders.length === 0 ? { lines: [] } : { lines: [`Soldiers with access: ${holders.map((x) => `${x.u.displayName} (${LEVEL_WORD[x.level]})`).join(", ")}.`] };
+    const holders2 = state.squad.filter((u) => u.kind === "named").map((u) => ({ u, level: deviceAccess(state, env.registries, u.id) })).filter((x) => x.level > 0);
+    return holders2.length === 0 ? { lines: [] } : { lines: [`Soldiers with access: ${holders2.map((x) => `${x.u.displayName} (${LEVEL_WORD[x.level]})`).join(", ")}.`] };
   }
   if (!state.squad.some((u) => u.id === unitId)) return null;
   const name = nameOf15(state, unitId);
@@ -48177,6 +48343,7 @@ function registerCoreProviders() {
   registerCommanderProviders();
   registerWorldProviders();
   registerDisciplineProviders();
+  registerBlockingProviders();
   registerBondsProviders();
   registerPowerProviders();
   registerPersonalProviders();
@@ -50467,6 +50634,10 @@ function createApp(st, deps) {
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerRule: answerRule2,
+        onStage: (action) => {
+          scene.stage(action);
+        },
+        // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
         onPastime: (_unitId, pastimeId) => {
           const events = api.dispatch({ type: "life/pastime_in_scene", payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
           const failed = events.find((e) => e.type === "error");

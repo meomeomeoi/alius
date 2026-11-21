@@ -1356,6 +1356,16 @@
     ]
   },
   {
+    "id": "blocking_strip",
+    "term": "Blocking strip",
+    "short": "Who is where, in what posture, touching whom and wearing what. The chips set it; the story must follow it.",
+    "long": "AUTHOR TO WRITE: The strip under the transcript shows one row per person. A chip can be examined for what it does. The movement buttons change the commander's posture, and [ + ] adds a place, a contact or an item the scene allows. A button that is grayed out shows why. Changes made after a reply are taken back if that reply is swiped.",
+    "see": [
+      "blocking",
+      "device_out_of_reach"
+    ]
+  },
+  {
     "id": "lead",
     "term": "Lead",
     "short": "Who drives a romantic scene: the soldier, the commander or both. The game decides it from her style, her Impunity and what happened lately.",

@@ -48,6 +48,13 @@ export interface StagingSnapshot {
   at: number;
   blocking: Record<string, Blocking>;
   moments?: unknown;
+  /** What the change that followed was (the readings say who set a value, and when: the newest entry that names it). */
+  person?: string;
+  field?: string;
+  value?: string;
+  source?: 'engine' | 'chip' | 'reading';
+  /** The exchange number it was made in. */
+  exchange?: number;
 }
 
 export const NOTE_MAX = 120;

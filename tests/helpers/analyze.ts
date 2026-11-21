@@ -24,6 +24,11 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   hobbies: 'hobbies:reading', // P14c
   lifeEvents: 'lifeEvents:wrote_journal', // P14c: an event she keeps to herself: the reading must stay empty
   pastimes: 'pastimes:patch_each_other', // P14c
+  blockingPostures: 'blockingPostures:sitting', // P15a
+  blockingAnchors: 'blockingAnchors:at_desk', // P15a
+  blockingContacts: 'blockingContacts:foot_worship', // P15a
+  blockingItems: 'blockingItems:hood', // P15a
+  blockingActivities: 'blockingActivities:on_comms', // P15a
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

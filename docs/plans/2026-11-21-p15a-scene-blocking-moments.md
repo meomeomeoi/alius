@@ -914,16 +914,16 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - a `[ + ]` menu with the allowed contacts, items and anchors, grouped, each `.alius-option`;
   - providers `blockingPostures`, `blockingAnchors`, `blockingContacts`, `blockingItems` and `blockingActivities`. A live reading is "set by: engine / chip / reading" and the exchange; it reads only the open scene.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the strip is absent when not live`.
   - `a mobility-frozen chip is aria-disabled with the reason`.
   - `the menu lists only allowed entries` (the same filter as Task 10).
   - `every element resolves` (`analyzeCoverage` helper).
   - `chip goes through stage` (spy).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/blockingStrip.test.ts` → FAIL.
-- [ ] **Step 3: Implement** with the existing chip and menu styles. Nothing animates without `motionReduced` being asked.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the BLOCKING strip with chips and readings`
+- [x] **Step 2: Run** `npx vitest run tests/ui/blockingStrip.test.ts` → FAIL.
+- [x] **Step 3: Implement** with the existing chip and menu styles. Nothing animates without `motionReduced` being asked.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the BLOCKING strip with chips and readings`
 
 ---
 

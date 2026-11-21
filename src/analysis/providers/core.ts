@@ -14,6 +14,7 @@ import { registerDisciplineProviders } from './discipline';
 import { registerGenerationProviders } from './generation';
 import { registerImmersionProviders } from './immersion';
 import { registerBondsProviders } from './bonds';
+import { registerBlockingProviders } from './blocking';
 import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
 import { registerSpecialProviders } from './special';
@@ -321,7 +322,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P10d (cabins, floor buttons and staircases, closed rooms on the plan)
   'cabin', 'base_floor', 'closed_room',
   // P15a (the strip, the moment card, the physics panel, the CMDR lines and the content toggles address these; later tasks add their own)
-  'moment', 'contact_physics', 'endurance_skill', 'commander_condition', 'stimulus', 'blocking', 'worship_target', 'escalation', 'device_out_of_reach',
+  'moment', 'contact_physics', 'endurance_skill', 'commander_condition', 'stimulus', 'blocking', 'worship_target', 'escalation', 'device_out_of_reach', 'blocking_strip',
 ];
 
 let registered = false;
@@ -339,6 +340,7 @@ export function registerCoreProviders(): void {
   registerCommanderProviders(); // P7
   registerWorldProviders(); // P8
   registerDisciplineProviders(); // P9
+  registerBlockingProviders(); // P15a
   registerBondsProviders(); // P9d
   registerPowerProviders(); // P9b
   registerPersonalProviders(); // P9c

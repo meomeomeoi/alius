@@ -20,6 +20,8 @@ import { lifeMode } from '../../engine/life/state';
 import { renderLetsMenu } from '../life/lifeViews';
 import { analyzeAttrs } from '../analyze/mark';
 import { deviceLocked } from '../../engine/blocking';
+import type { Action } from '../../engine/dispatch';
+import { renderBlockingStrip } from './blockingStrip';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -50,6 +52,8 @@ export interface SceneScreenCtx {
   generation?: GenerationUi;
   /** P14c: the `[ LET'S … ]` of a private scene with one named woman: she and the pastime picked (the app dispatches `life/pastime_in_scene`). Absent = no menu. */
   onPastime?: (unitId: string, pastimeId: string) => void;
+  /** P15a: a BLOCKING chip's action (the app passes the scene controller's `stage`). Absent: the controller's own `stage`. */
+  onStage?: (action: Action) => void;
 }
 
 export interface SceneScreen {
@@ -201,6 +205,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let banner: HTMLElement;
   /** P15a: "The device is out of reach." while busy hands or a covered face lock the PDA. */
   let deviceHost: HTMLElement;
+  /** P15a: the BLOCKING strip (drawn only while the blocking is live). */
+  let blockingHost: HTMLElement;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
   let input: HTMLInputElement;
@@ -520,6 +526,14 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (deviceLocked(s, registries)) deviceHost.append(h('p', { class: 'alius-device-out alius-dim', role: 'note', ...analyzeAttrs('glossary:device_out_of_reach') }, 'The device is out of reach.'));
   }
 
+  /** P15a: the strip; a chip dispatches through `stage` and the screen redraws. */
+  function drawBlocking(s: CampaignState): void {
+    renderBlockingStrip(blockingHost, {
+      state: s, registries,
+      onStage: (action) => { (ctx.onStage ?? ((a) => void controller.stage(a)))(action); if (!disposed) refresh(); },
+    });
+  }
+
   function drawBanner(): void {
     banner.replaceChildren();
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
@@ -572,6 +586,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     letsHost = h('div', { class: 'alius-lets-host' });
     banner = h('div', { class: 'alius-pacing-host' });
     deviceHost = h('div', { class: 'alius-device-host' });
+    blockingHost = h('div', { class: 'alius-blocking-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
@@ -652,6 +667,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       hud,
       log,
       genChips,
+      blockingHost,
       chips,
       leadChips,
       ruleChips,
@@ -702,6 +718,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawGeneration(s);
     drawBanner();
     drawDevice(s);
+    drawBlocking(s);
     placeSprites();
   }
 

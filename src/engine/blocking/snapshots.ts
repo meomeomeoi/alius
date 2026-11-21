@@ -3,6 +3,7 @@
  * (plan R7). Physics is never rolled back; only `blocking` (and, from Task 13, `moments`).
  */
 import type { CampaignState } from '../state/types';
+import type { StagingSnapshot } from './state';
 import { TUNING } from '../tuning';
 
 /**
@@ -26,10 +27,10 @@ export function rollbackAfter(draft: CampaignState, index: number): boolean {
 }
 
 /** Pushes a deep copy of what is about to change onto the log (newest last, capped). Call it before the change. */
-export function pushLog(draft: CampaignState, at: number): void {
+export function pushLog(draft: CampaignState, at: number, meta: Pick<StagingSnapshot, 'person' | 'field' | 'value' | 'source'> = {}): void {
   const scene = draft.scene;
   if (!scene) return;
   const log = (scene.stagingLog ??= []);
-  log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...(scene.moments !== undefined ? { moments: structuredClone(scene.moments) } : {}) });
+  log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...(scene.moments !== undefined ? { moments: structuredClone(scene.moments) } : {}), ...meta, exchange: scene.exchanges });
   if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
 }
