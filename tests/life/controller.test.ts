@@ -28,6 +28,7 @@ function world(kind: 'dm' | 'note' = 'dm'): { s: CampaignState; itemId: string }
   s.day = 20;
   s.world.clocks = [];
   s.settings.lifeEvents = 'normal';
+  s.settings.unitDms = true; // the mirror of the global setting: a DM is sent only while units may write
   s.life = newLife(7);
   const fact = writeLifeFact(s, ANN, kind === 'dm' ? 'Ann: She broke something small.' : 'Ann (sketching): faces.', ['life'], 1);
   enqueue(s, kind === 'dm'
@@ -54,6 +55,19 @@ const entry = (): LifeEventEntry => reg.lifeEvents.get(EVENT) as unknown as Life
 const dms = (h: ReturnType<typeof worldHarness>) => h.state().dms[ANN] ?? [];
 
 describe('the share DM', () => {
+  it('with her DMs off no words are asked for and no DM is sent: the item becomes news for her next scene', async () => {
+    const { s, itemId } = world();
+    s.settings.unitDms = false;
+    const { h, ctl } = rig(s);
+    await ctl.run();
+    expect(h.st.calls).toHaveLength(0);
+    expect(dms(h)).toEqual([]);
+    expect(h.state().life!.outbox).toEqual([]);
+    expect(h.state().life!.news.map((n) => n.itemId)).toEqual([itemId]);
+    expect(h.state().life!.queue).toHaveLength(1); // still hers to tell
+    expect(records(h)).toEqual([]);
+  });
+
   it('an outbox item becomes one DM, in the words of the model', async () => {
     const { s, itemId } = world();
     const { h, ctl } = rig(s);

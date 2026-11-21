@@ -26,6 +26,7 @@ const LABELS: Array<[prefix: string, label: string]> = [
   ['relations/', 'relationships'],
   ['commander/', 'commander'],
   ['memory/', 'conversation'],
+  ['life/', 'her life'],
 ];
 
 export function ledgerLabel(action: string): string {

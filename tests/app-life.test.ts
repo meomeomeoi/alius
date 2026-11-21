@@ -127,7 +127,10 @@ function tell(t: Boot, channel: 'dm' | 'directive'): string {
     const fact = writeLifeFact(s, RHEA, 'Rhea: She mended a boot with wire.', ['life'], 1);
     enqueue(s, { unitId: RHEA, kind: 'event', ref: 'broke_favourite_thing', what: 'event', factId: fact.id, category: 'things', day: s.day });
     itemId = s.life.queue[0].id;
-    if (channel === 'dm') s.life.outbox.push({ itemId, unitId: RHEA, channel: 'dm', day: s.day });
+    if (channel === 'dm') {
+      s.settings.unitDms = true; // a DM is sent only while her DMs are on (R14); with them off the item is news for her next scene
+      s.life.outbox.push({ itemId, unitId: RHEA, channel: 'dm', day: s.day });
+    }
     else s.life.news.push({ itemId, unitId: RHEA, until: s.day + 3 });
   });
   return itemId;

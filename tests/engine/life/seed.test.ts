@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Entry, Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/life';
 import '../../../src/engine/actions/squad';
+import { enqueue } from '../../../src/engine/life/news';
 import { milestoneAt, seedLife } from '../../../src/engine/life/hobbies';
 import { lifeMode } from '../../../src/engine/life/state';
 import { buildCampaign } from '../../../src/engine/setup';
@@ -242,6 +243,24 @@ describe('squad/resync of hobbies and opinions', () => {
     expect(r.state.squad[0].opinions).toBeUndefined();
     expect(r.state.life!.units[ANN]).toBeUndefined();
     expect(r.state.squad[1].hobbies).toBeDefined(); // she is not the only one
+  });
+
+  it('Reset life also drops her news (queue, outbox, directives, a waiting quiet hour) and leaves another woman\'s', () => {
+    const s = lifeCampaign('normal', 21);
+    const BEA = s.squad[1].id;
+    for (const [i, unitId] of [ANN, ANN, BEA].entries()) {
+      enqueue(s, { unitId, kind: 'event', ref: 'x', what: 'event', category: 'things', day: 20 });
+      const id = s.life!.queue.at(-1)!.id;
+      if (i === 0) s.life!.outbox.push({ itemId: id, unitId, channel: 'dm', day: 20 });
+      else s.life!.news.push({ itemId: id, unitId, until: 23 });
+    }
+    s.life!.pending = { unitId: ANN, pastimeId: 'tidy_her_quarters', locationId: 'quarters_unit', day: 21, slot: 'morning' };
+    const r = resync(s, { hobbies: [] }, { resetLife: true });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.life!.queue.map((q) => q.unitId)).toEqual([BEA]);
+    expect(r.state.life!.outbox).toEqual([]);
+    expect(r.state.life!.news.map((n) => n.unitId)).toEqual([BEA]);
+    expect(r.state.life!.pending).toBeUndefined();
   });
 });
 

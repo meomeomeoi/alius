@@ -753,6 +753,9 @@ var TUNING = Object.freeze({
     hobbyWeek: 2,
     sameWomanDays: 2,
     deliveredKeep: 14,
+    /** An untold fact nobody is waiting to tell goes after `untoldKeepDays` (hobby facts excepted: they say what she has not told of); a woman keeps her newest `keepsMax` kept facts. AUTHOR TO TUNE. */
+    untoldKeepDays: 30,
+    keepsMax: 10,
     aptitude: Object.freeze({ low: 0.5, standard: 1, high: 1.6 }),
     interestDiv: 60,
     interestCap: 1.3,
@@ -13091,8 +13094,11 @@ function revealFact(draft, factId) {
 }
 function revealMastery(draft, unitId, hobbyId) {
   const fact = draft.memory.facts.find((f) => f.about.includes(unitId) && f.tags.includes("mastered") && f.tags.includes(hobbyId));
-  if (!fact || !revealFact(draft, fact.id)) return false;
-  const unit2 = draft.squad.find((u) => u.id === unitId);
+  return fact !== void 0 && revealMasteryFact(draft, fact);
+}
+function revealMasteryFact(draft, fact) {
+  if (!revealFact(draft, fact.id)) return false;
+  const unit2 = draft.squad.find((u) => fact.about.includes(u.id) && u.kind === "named");
   if (unit2 && developmentMode(draft) !== "off") {
     const dev = ensureDevelopment(unit2);
     const df = { id: nextDevId(dev, "df"), text: fact.text, kind: "skill", day: draft.day, source: "life" };
@@ -13177,6 +13183,23 @@ function staleSweep(draft, day) {
   }
   return events;
 }
+function sweepUntold(draft, reg, day) {
+  const life = draft.life;
+  if (!life || lifeMode(draft) === "off") return;
+  const carried = new Set(life.queue.flatMap((q) => [...q.factId !== void 0 ? [q.factId] : [], ...q.alsoFacts ?? []]));
+  const keepsTag = (f) => f.tags.some((t) => reg.lifeEvents.get(t)?.share === "keeps");
+  const mine = (f) => f.tags.includes(LIFE_TAG) && f.tags.includes(UNTOLD_TAG);
+  const doomed = /* @__PURE__ */ new Set();
+  for (const f of draft.memory.facts) {
+    if (!mine(f) || carried.has(f.id) || keepsTag(f)) continue;
+    if (f.tags.includes("hobby") && !f.tags.includes("dropped")) continue;
+    if (day - f.day >= TUNING.life.untoldKeepDays) doomed.add(f.id);
+  }
+  const keeps = /* @__PURE__ */ new Map();
+  for (const f of draft.memory.facts) if (mine(f) && keepsTag(f) && !carried.has(f.id)) for (const id of f.about) keeps.set(id, [...keeps.get(id) ?? [], f.id]);
+  for (const ids of keeps.values()) for (const id of ids.slice(0, Math.max(0, ids.length - TUNING.life.keepsMax))) doomed.add(id);
+  if (doomed.size > 0) draft.memory.facts = draft.memory.facts.filter((f) => !doomed.has(f.id));
+}
 function endSceneNews(draft, unitIds) {
   const life = draft.life;
   if (!life || life.news.length === 0) return [];
@@ -13228,13 +13251,44 @@ function pendingNews(state, unitId) {
   }
   return out.sort((a, b) => a.day - b.day || a.at - b.at).map(({ itemId, text: text2, passing }) => ({ itemId, text: text2, ...passing === true ? { passing: true } : {} }));
 }
+var tell = (draft, fact) => {
+  if (fact.tags.includes("mastered")) revealMasteryFact(draft, fact);
+  else revealFact(draft, fact.id);
+};
+function earlierHobbyFacts(draft, item, told) {
+  const life = draft.life;
+  const unit2 = draft.squad.find((u) => u.id === item.unitId);
+  if (!life || !unit2) return;
+  const have = (unit2.hobbies ?? []).map((h2) => h2.id);
+  const hobbies = new Set(item.kind === "hobby" ? [item.ref] : []);
+  for (const f of told) if (f.tags.includes("hobby")) {
+    for (const id of have) if (f.tags.includes(id)) hobbies.add(id);
+  }
+  if (hobbies.size === 0) return;
+  const at = new Map(draft.memory.facts.map((f, i) => [f.id, i]));
+  const limit = Math.max(-1, ...told.map((f) => at.get(f.id) ?? -1));
+  const earlier = (f) => limit >= 0 ? at.get(f.id) < limit : f.day <= item.day;
+  const revealed2 = /* @__PURE__ */ new Set();
+  for (const f of [...draft.memory.facts]) {
+    if (!f.about.includes(item.unitId) || !f.tags.includes("hobby") || !f.tags.includes(UNTOLD_TAG) || !earlier(f)) continue;
+    if (!have.some((id) => hobbies.has(id) && f.tags.includes(id))) continue;
+    tell(draft, f);
+    revealed2.add(f.id);
+  }
+  const gone = (q) => q.id !== item.id && q.unitId === item.unitId && q.kind === "hobby" && hobbies.has(q.ref) && q.factId !== void 0 && revealed2.has(q.factId);
+  const out = new Set(life.queue.filter(gone).map((q) => q.id));
+  life.queue = life.queue.filter((q) => !out.has(q.id));
+  life.outbox = life.outbox.filter((o) => !out.has(o.itemId));
+  life.news = life.news.filter((n) => !out.has(n.itemId));
+}
 function closeNews(draft, itemId) {
   const life = draft.life;
   const item = life?.queue.find((q) => q.id === itemId);
   if (!life || !item) return [];
-  if (item.factId !== void 0) revealFact(draft, item.factId);
-  for (const id of item.alsoFacts ?? []) revealFact(draft, id);
+  const told = [...item.factId !== void 0 ? [item.factId] : [], ...item.alsoFacts ?? []].map((id) => draft.memory.facts.find((f) => f.id === id)).filter((f) => f !== void 0);
+  for (const f of told) tell(draft, f);
   if (item.what === "mastered") revealMastery(draft, item.unitId, item.ref);
+  earlierHobbyFacts(draft, item, told);
   life.queue = life.queue.filter((q) => q.id !== itemId);
   life.outbox = life.outbox.filter((o) => o.itemId !== itemId);
   life.news = life.news.filter((n) => n.itemId !== itemId);
@@ -13338,9 +13392,9 @@ function practiceSlots(state, reg, unitId, day, cache) {
   }
   return out;
 }
-function masterHobby(draft, unit2, h2, entry) {
+function masterHobby(draft, unit2, h2, entry, facts) {
   h2.mastered = true;
-  addFact(draft, {
+  const fact = addFact(draft, {
     about: [unit2.id],
     text: `${unit2.displayName} is the base's ${entry.label} hand.`,
     tags: ["life", UNTOLD_TAG, "hobby", "mastered", h2.id],
@@ -13349,6 +13403,7 @@ function masterHobby(draft, unit2, h2, entry) {
     knownBy: draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id),
     hiddenFromCommander: true
   });
+  facts?.push(fact.id);
   return [{ type: "hobby_mastered", unitId: unit2.id, hobbyId: h2.id }];
 }
 function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
@@ -13391,8 +13446,8 @@ function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
     events.push(...bumpInterest(draft, unitId, hobbyId, temperamentOf(draft, unitId).volatility === "moody" ? TUNING.life.interest.ceilingMoody : TUNING.life.interest.ceiling, draft.day));
   }
   if (n === 3) {
-    events.push(...masterHobby(draft, unit2, h2, entry));
-    if (opts.caused === true || opts.told === true) revealMastery(draft, unitId, hobbyId);
+    events.push(...masterHobby(draft, unit2, h2, entry, opts.told === true ? opts.facts : void 0));
+    if (opts.caused === true) revealMastery(draft, unitId, hobbyId);
   }
   return events;
 }
@@ -13505,7 +13560,7 @@ function startHobby(draft, reg, unitId, hobbyId, day, source, facts) {
   if (source === "import") return events;
   const fact = writeLifeFact(draft, unitId, `${unit2.displayName} has taken up ${entry.label}.`, ["hobby", hobbyId, "started"], 1);
   if (source === "event") facts?.push(fact.id);
-  if (source === "friend") events.push(...enqueue(draft, { unitId, kind: "hobby", ref: hobbyId, what: "started", factId: fact.id, category: "hobby", day }));
+  if (source === "friend" || source === "unshared") events.push(...enqueue(draft, { unitId, kind: "hobby", ref: hobbyId, what: "started", factId: fact.id, category: "hobby", day }));
   return events;
 }
 function friendHobbies(draft, reg, day, places = /* @__PURE__ */ new Map(), plans) {
@@ -15756,7 +15811,9 @@ function hubLine(state, reg, unitId) {
   if (!hub || state.day - hub.day > TUNING.life.hubDays || state.day < hub.day) return null;
   const entry = reg.lifeEvents.get(hub.eventId);
   const text2 = entry === void 0 ? "" : plainText(String(entry.hub));
-  return text2 === "" ? null : { eventId: hub.eventId, text: text2 };
+  if (text2 === "") return null;
+  const fact = [...state.memory.facts].reverse().find((f) => f.about.includes(unitId) && f.tags.includes("life") && f.tags.includes(hub.eventId));
+  return { eventId: hub.eventId, text: text2, told: fact !== void 0 && !untold(fact) };
 }
 function lifeView(state, reg, unitId, visible = () => true) {
   const unit2 = state.squad.find((u) => u.id === unitId);
@@ -16285,12 +16342,12 @@ function applyBecomes(draft, reg, unitId, entry, day, facts) {
   if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
     const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
     if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
-    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, "event", facts));
+    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, facts === void 0 ? "unshared" : "event", facts));
   }
   if (becomes.milestone === true) {
     const id = milestoneHobby(draft, reg, unitId, entry, day);
     const h2 = id === null ? void 0 : unit2.hobbies?.find((x) => x.id === id);
-    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, { told: true, facts }));
+    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, facts === void 0 ? {} : { told: true, facts }));
   }
   if (becomes.opinionTopic !== void 0) openTopic(draft, reg, unitId, becomes.opinionTopic);
   return events;
@@ -16308,9 +16365,10 @@ function applyLifeEvent(draft, reg, unitId, entry, day) {
   const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
   const share = effectiveShare(draft, reg, unitId, entry);
   if (share !== "keeps") mine.hub = { eventId: entry.id, day };
+  const shared = lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry));
   const also = [];
-  events.push(...applyBecomes(draft, reg, unitId, entry, day, also));
-  if (lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry))) {
+  events.push(...applyBecomes(draft, reg, unitId, entry, day, shared ? also : void 0));
+  if (shared) {
     events.push(...enqueue(draft, {
       unitId,
       kind: "event",
@@ -16382,7 +16440,8 @@ function pastimeProblem(state, reg, unitId, pastimeId, at) {
   const req = pastime.requires;
   if (req?.afterRun === true && !requiresHold(state, reg, unitId, { afterRun: {} }, state.day)) return `${pastime.label} is for after a run.`;
   if (req?.firstSlot === true && slot2 !== "morning") return `${pastime.label} is for the first slot of the day.`;
-  if (req?.hobby !== void 0 && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
+  const shown = (unit2.hobbies ?? []).some((h2) => h2.state === "active" && (req?.hobby === "any" || h2.id === req?.hobby) && !hobbyUntold(state, unitId, h2.id));
+  if (req?.hobby !== void 0 && !shown) return `${pastime.label} needs a hobby ${name} does not have.`;
   if (pastime.hobby === true && keenestHobby(state, reg, unit2) === void 0) return `${name} has no hobby to show.`;
   return null;
 }
@@ -16445,7 +16504,7 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
     const first2 = pendingNews(state, unit2.id)[0];
     if (first2) offer.news.push({ id: first2.itemId, unitId: unit2.id, text: first2.text });
     for (const h2 of unit2.hobbies ?? []) {
-      if (h2.state !== "active") continue;
+      if (h2.state !== "active" || hobbyUntold(state, unit2.id, h2.id)) continue;
       const entry = reg.hobbies.get(h2.id);
       if (entry) offer.hobbies.push({ id: h2.id, unitId: unit2.id, label: entry.label });
     }
@@ -17198,7 +17257,7 @@ function dig(draft, ctx2, allyId) {
   const { day, slot: slot2 } = draft;
   ls.intrigue.seq += 1;
   const events = [{ type: "intrigue_action", action: "dig" }];
-  const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*"));
+  const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*") && !f.tags.includes("life"));
   const newest = hidden.reduce((best, f) => best === void 0 || f.day >= best.day ? f : best, void 0);
   if (newest) {
     delete newest.hiddenFromCommander;
@@ -18849,7 +18908,7 @@ function candidateTruths(state, reg, unitId) {
   }
   const sign2 = [...state.disloyalty?.units[unitId]?.signs ?? []].reverse().find((x) => x.about === "desertion" || x.about === "mutiny");
   if (sign2) out.push({ kind: "loyalty", value: sign2.about });
-  const facts = state.memory.facts.filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*") && !f.tags.includes("frequency")).sort((a, b) => b.day - a.day);
+  const facts = state.memory.facts.filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*") && !f.tags.includes("frequency") && !f.tags.includes("life")).sort((a, b) => b.day - a.day);
   for (const f of facts) out.push({ kind: "fact", value: f.id, refId: f.id });
   if (rel) out.push({ kind: "attraction", value: attractionBand(rel.attraction) });
   const defied = (state.discipline?.defiance ?? []).some((x) => x.unitId === unitId);
@@ -24136,6 +24195,7 @@ var covered = (state, fact) => (fact.foldedInto?.length ?? 0) > 0 && foldTargets
 function sweepCovered(draft) {
   if (draft.memory.facts.some((f) => f.foldedInto !== void 0)) draft.memory.facts = draft.memory.facts.filter((f) => !covered(draft, f));
 }
+var countedFacts = (facts) => facts.filter((f) => !f.tags.includes(UNTOLD_TAG)).length;
 function foldDue(state) {
   const groups = /* @__PURE__ */ new Map();
   for (const f of state.memory.facts) {
@@ -24146,7 +24206,7 @@ function foldDue(state) {
   const order = [...state.squad.map((u) => u.id), WORLD];
   const rank2 = (t) => order.indexOf(t) === -1 ? order.length : order.indexOf(t);
   const best = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank2(a[0]) - rank2(b[0]))[0];
-  if (best[1].length < TUNING.memory.foldBatch && state.memory.facts.length <= memoryConfig(state).factsMax) return null;
+  if (best[1].length < TUNING.memory.foldBatch && countedFacts(state.memory.facts) <= memoryConfig(state).factsMax) return null;
   const own = best[1].filter((f) => foldPart(state, f) === "own");
   return { target: best[0], own, shared: best[1].filter((f) => !own.includes(f)) };
 }
@@ -24212,11 +24272,11 @@ function addFact(draft, f, opts = {}) {
 function pruneFacts(draft) {
   sweepCovered(draft);
   const ceiling = Math.floor(memoryConfig(draft).factsMax * TUNING.memory.hardCeiling);
-  const extra = draft.memory.facts.length - ceiling;
+  const extra = countedFacts(draft.memory.facts) - ceiling;
   if (extra <= 0) return;
   const at = new Map(draft.memory.facts.map((f, i) => [f.id, i]));
   const doomed = new Set(
-    draft.memory.facts.filter((f) => !f.pinned).sort((a, b) => a.importance - b.importance || a.day - b.day || at.get(a.id) - at.get(b.id)).slice(0, extra).map((f) => f.id)
+    draft.memory.facts.filter((f) => !f.pinned && !f.tags.includes(UNTOLD_TAG)).sort((a, b) => a.importance - b.importance || a.day - b.day || at.get(a.id) - at.get(b.id)).slice(0, extra).map((f) => f.id)
   );
   draft.memory.facts = draft.memory.facts.filter((f) => !doomed.has(f.id));
 }
@@ -24828,7 +24888,14 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   if (payload.resetLife === true) {
     delete unit2.hobbies;
     delete unit2.opinions;
-    delete draft.life?.units[unit2.id];
+    if (draft.life) {
+      const life = draft.life;
+      delete life.units[unit2.id];
+      life.queue = life.queue.filter((q) => q.unitId !== unit2.id);
+      life.outbox = life.outbox.filter((o) => o.unitId !== unit2.id);
+      life.news = life.news.filter((n) => n.unitId !== unit2.id);
+      if (life.pending?.unitId === unit2.id) delete life.pending;
+    }
   }
   if (patch.aptitudes !== void 0) {
     if (patch.aptitudes.high.length > 0 || patch.aptitudes.low.length > 0) unit2.aptitudes = { high: [...patch.aptitudes.high], low: [...patch.aptitudes.low] };
@@ -25209,6 +25276,7 @@ function lifeDayStep(draft, ctx2) {
   }
   events.push(...hobbyPass(draft, reg, day, places));
   events.push(...staleSweep(draft, day), ...deliverNews(draft, reg, day));
+  sweepUntold(draft, reg, day);
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }
@@ -28174,6 +28242,12 @@ registerAction("life/share_done", (draft, payload, ctx2) => {
   const p = payload;
   const { entry } = outboxItem(draft, p?.itemId, "dm");
   livingNamed4(draft, entry.unitId, "life/share_done");
+  if (draft.settings.unitDms !== true) {
+    const life = draft.life;
+    life.outbox = life.outbox.filter((o) => o.itemId !== entry.itemId);
+    life.news.push({ itemId: entry.itemId, unitId: entry.unitId, until: draft.day + TUNING.life.newsDays });
+    return [{ type: "news_delivered", itemId: entry.itemId, unitId: entry.unitId, channel: "directive" }];
+  }
   return runHandler("dm/receive", draft, { unitId: entry.unitId, text: p?.text, initiated: true, lifeItemId: entry.itemId }, ctx2);
 });
 registerAction("life/trace_note", (draft, payload) => {
@@ -31194,6 +31268,11 @@ function createLife(deps) {
     const next = (s.life?.outbox ?? []).find((o) => !tried.has(o.itemId));
     const form = next === void 0 ? nextForm(s) : void 0;
     if (!next && form === void 0) return;
+    if (next?.channel === "dm" && s.settings.unitDms !== true) {
+      tried.add(next.itemId);
+      deps.app.dispatch({ type: "life/share_done", payload: { itemId: next.itemId, text: "" } }, { expectChatId: chatId() });
+      return run();
+    }
     busy = true;
     const call = next ? (tried.add(next.itemId), deps.generations.generate(SITE_OF[next.channel], next.itemId)) : (tried.add(form), deps.generations.generate(FORM_SITE, form));
     flight = call.then(() => void 0).finally(() => {
@@ -39727,7 +39806,8 @@ function renderLetsMenu(host, ctx2) {
 function renderHubDayLine(host, state, reg, unitId) {
   const line2 = hubLine(state, reg, unitId);
   if (!line2) return;
-  host.append(h("span", { class: "alius-dim alius-hub-line alius-stat", "data-hub-line": unitId, ...analyzeAttrs(`lifeEvents:${line2.eventId}`, { unitId }) }, line2.text));
+  const analyze = line2.told ? analyzeAttrs(`lifeEvents:${line2.eventId}`, { unitId }) : analyzeAttrs("glossary:life_events", { unitId });
+  host.append(h("span", { class: "alius-dim alius-hub-line alius-stat", "data-hub-line": unitId, ...analyze }, line2.text));
 }
 
 // src/ui/vitals/trace.ts
@@ -46808,7 +46888,8 @@ var LABELS2 = [
   ["proposal/", "proposal"],
   ["relations/", "relationships"],
   ["commander/", "commander"],
-  ["memory/", "conversation"]
+  ["memory/", "conversation"],
+  ["life/", "her life"]
 ];
 function ledgerLabel(action) {
   return LABELS2.find(([prefix]) => action.startsWith(prefix))?.[1] ?? "other";

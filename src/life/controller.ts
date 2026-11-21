@@ -206,6 +206,12 @@ export function createLife(deps: LifeDeps): LifeController {
     const next = (s.life?.outbox ?? []).find((o) => !tried.has(o.itemId));
     const form = next === undefined ? nextForm(s) : undefined;
     if (!next && form === undefined) return;
+    if (next?.channel === 'dm' && s.settings.unitDms !== true) {
+      // her DMs are off: the engine turns the item into news for her next scene; no words are asked for
+      tried.add(next.itemId);
+      deps.app.dispatch({ type: 'life/share_done', payload: { itemId: next.itemId, text: '' } }, { expectChatId: chatId() });
+      return run(); // the next waiting item
+    }
     busy = true;
     const call = next ? (tried.add(next.itemId), deps.generations.generate(SITE_OF[next.channel], next.itemId)) : (tried.add(form!), deps.generations.generate(FORM_SITE, form!));
     flight = call.then(() => undefined).finally(() => { flight = null; busy = false; });

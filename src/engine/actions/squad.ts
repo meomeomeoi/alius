@@ -142,7 +142,15 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   if (payload.resetLife === true) {
     delete unit.hobbies;
     delete unit.opinions;
-    delete draft.life?.units[unit.id];
+    if (draft.life) {
+      const life = draft.life;
+      delete life.units[unit.id];
+      // what she had to tell goes with her life: her waiting items, the DMs and notes written for them, her news directives and a quiet hour waiting for her
+      life.queue = life.queue.filter((q) => q.unitId !== unit.id);
+      life.outbox = life.outbox.filter((o) => o.unitId !== unit.id);
+      life.news = life.news.filter((n) => n.unitId !== unit.id);
+      if (life.pending?.unitId === unit.id) delete life.pending;
+    }
   }
   if (patch.aptitudes !== undefined) {
     if (patch.aptitudes.high.length > 0 || patch.aptitudes.low.length > 0) unit.aptitudes = { high: [...patch.aptitudes.high], low: [...patch.aptitudes.low] };

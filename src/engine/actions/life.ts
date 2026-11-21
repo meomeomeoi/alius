@@ -175,12 +175,19 @@ function livingNamed(draft: { squad: Unit[] }, id: string, action: string): Unit
 /**
  * `life/share_done { itemId, text }`: her DM about what happened to her arrives (the controller worded it, or the line of the registry did).
  * The same path as any DM she starts, `dm/receive` with `initiated`, and it closes the outbox entry and tells the commander the fact.
- * Refuses an item that is not waiting as a DM ("Already told.").
+ * Refuses an item that is not waiting as a DM ("Already told."). While the commander's DMs are off (`settings.unitDms`, mirrored by the app;
+ * unknown = off) nothing is sent: the item falls back to a news directive for her next scene, the usual `newsDays` (ruling R14).
  */
 registerAction('life/share_done', (draft, payload, ctx) => {
   const p = payload as { itemId?: unknown; text?: unknown } | undefined;
   const { entry } = outboxItem(draft, p?.itemId, 'dm');
   livingNamed(draft, entry.unitId, 'life/share_done');
+  if (draft.settings.unitDms !== true) {
+    const life = draft.life!;
+    life.outbox = life.outbox.filter((o) => o.itemId !== entry.itemId);
+    life.news.push({ itemId: entry.itemId, unitId: entry.unitId, until: draft.day + TUNING.life.newsDays });
+    return [{ type: 'news_delivered', itemId: entry.itemId, unitId: entry.unitId, channel: 'directive' }];
+  }
   return runHandler('dm/receive', draft, { unitId: entry.unitId, text: p?.text, initiated: true, lifeItemId: entry.itemId }, ctx);
 });
 
