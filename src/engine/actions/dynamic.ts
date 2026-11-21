@@ -277,21 +277,20 @@ registerAction('dynamic/answer_claim', (draft, payload, ctx) => {
 // Leaving (R15)
 
 /**
- * `dynamic/exit { unitId, route, toUnitId?, means?, measure? }`: the commander ends what she holds with her, by `abrupt`, `negotiated` (a scene; it
- * waits for a compromise, or ends abruptly from the same card), `transfer` (to another holder: `toUnitId`) or `force` (`means`: `discipline` with
- * the `measure` of a punishment, `leash`, or `transfer_request`, which oversight takes up later). Always allowed for a dynamic at `play` or beyond; a
- * refusal changes nothing. The only way to make an exit clean is a compromise in the scene (`compromise_reached { exitId }`), never a payload.
+ * `dynamic/exit { unitId, route, toUnitId?, means? }`: the commander ends what she holds with her, by `abrupt`, `negotiated` (a scene; it
+ * waits for a compromise, or ends abruptly from the same card), `transfer` (to another holder: `toUnitId`) or `force` (`means`: `discipline`, `leash`,
+ * or `transfer_request`, which oversight takes up later). A forced exit never runs its means: the card runs it first through its own path (the squad's
+ * vote, the warden's co-sign, the warnings) and the exit only checks, from state, that it was done on her today ("Do it first: ..." otherwise).
+ * Always allowed for a dynamic at `play` or beyond; a refusal changes nothing. The only way to make an exit clean is a compromise in the scene (`compromise_reached { exitId }`), never a payload.
  */
 registerAction('dynamic/exit', (draft, payload, ctx) => {
-  const p = (payload ?? {}) as { unitId?: unknown; route?: unknown; toUnitId?: unknown; means?: unknown; measure?: unknown };
+  const p = (payload ?? {}) as { unitId?: unknown; route?: unknown; toUnitId?: unknown; means?: unknown };
   const unit = namedUnit(draft, p.unitId, 'dynamic/exit');
   if (!(EXIT_ROUTES as readonly unknown[]).includes(p.route)) throw new Error(`An exit is ${EXIT_ROUTES.join(', ')}.`);
   if (p.toUnitId !== undefined && typeof p.toUnitId !== 'string') throw new Error('toUnitId must be a unit id.');
   if (p.means !== undefined && !(EXIT_MEANS as readonly unknown[]).includes(p.means)) throw new Error(`A means is ${EXIT_MEANS.join(', ')}.`);
-  if (p.measure !== undefined && typeof p.measure !== 'string') throw new Error('measure must be a punishment id.');
   return exitDynamic(draft, ctx, unit.id, p.route as (typeof EXIT_ROUTES)[number], {
     ...(p.toUnitId !== undefined ? { toUnitId: p.toUnitId as string } : {}), ...(p.means !== undefined ? { means: p.means as (typeof EXIT_MEANS)[number] } : {}),
-    ...(p.measure !== undefined ? { measure: p.measure as string } : {}),
   });
 });
 

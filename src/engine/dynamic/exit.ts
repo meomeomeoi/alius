@@ -2,17 +2,16 @@
  * Leaving a dynamic (P15, plan R15, R17, spec §9): saying "it's over" is always possible, and what it costs grows with what she held. The cost
  * is a relation event (`dynamic_exit`) whose severity reads her frame, her domains and the vow (`exitSeverity`); a vow is a break. The routes:
  * `abrupt` now; `negotiated` opens a scene and waits for a compromise (`compromise_reached { exitId }`), which makes the exit clean (one step
- * lighter, and a mild aftermath); `transfer` runs the domain conflict with another holder; `force` runs a means first (a punishment, the Leash
- * or, later, an oversight request) and costs two steps more. Every domain is dropped except the one that grants the command, which she keeps
+ * lighter, and a mild aftermath); `transfer` runs the domain conflict with another holder; `force` needs a means already done on her today (a punishment, the Leash
+ * or, later, an oversight request: the card runs it through its own path, the vote, the warden's co-sign and the warnings) and costs two steps more. Every domain is dropped except the one that grants the command, which she keeps
  * as a struggle (`commandKept`); the dynamic starts again from `equal` with hold 0 and her tracks, and the romance falls a rung.
  * Draws once, for the aftermath that follows (`startAftermathOnExit`), unless the command forces `command_kept`.
  */
 import type { Registries } from '../../content/types';
 import { frameRank } from '../blocking/state';
-import { checkPunish, applyPunishment } from '../discipline/punish';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
-import { compel } from '../leash/use';
+import { leashLog } from '../leash/weekly';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic, romanceStepDown } from '../relations/graph';
 import { SEVERITIES } from '../relations/vocab';
@@ -27,20 +26,35 @@ import { EXIT_ROUTES, type ExitRoute } from './types';
 
 type Ctx = Pick<EngineCtx, 'registries'> & Partial<Pick<EngineCtx, 'rng'>>;
 
-/** What a forced exit runs first. The oversight request is chunk (i)'s: here it is accepted and costs the same. */
+/** What a forced exit needs done first, through its own path (the exit never runs it). The oversight request is chunk (i)'s: here it is accepted and costs the same. */
 export const EXIT_MEANS = ['discipline', 'leash', 'transfer_request'] as const;
 export type ExitMeans = (typeof EXIT_MEANS)[number];
 
 export interface ExitOpts {
   /** `transfer`: the holder who takes the commander on. */
   toUnitId?: string;
-  /** `force`: what runs first. */
+  /** `force`: what was done first. */
   means?: ExitMeans;
-  /** `force` by `discipline`: the punishment (a `punishments` id the menu offers). */
-  measure?: string;
   /** A compromise in the negotiation: the exit is clean. Only the compromise sets it. */
   clean?: boolean;
 }
+
+/**
+ * Whether the means of a forced exit was done on her today, read from state (R15, review I1): a punishment is an application of hers dated today
+ * (`discipline.applications`), the Leash a `done` entry of hers in the log. The oversight request is accepted as today (chunk (i) builds it).
+ * The exit never runs a means itself: that would go around the squad's vote, the warden's co-sign and the warnings.
+ */
+export function meansDone(state: CampaignState, unitId: string, means: ExitMeans): boolean {
+  if (means === 'discipline') return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day);
+  if (means === 'leash') return leashLog(state).some((e) => e.unitId === unitId && e.day === state.day && e.outcome === 'done');
+  return true;
+}
+
+const DO_FIRST: Record<ExitMeans, string> = {
+  discipline: 'Do it first: impose a punishment on her today, then force the exit.',
+  leash: 'Do it first: file the Leash on her today and have it done, then force the exit.',
+  transfer_request: 'Do it first: file the oversight request.',
+};
 
 const named = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
 const clampSteps = (n: number): number => Math.min(SEVERITIES.length - 1, Math.max(0, n));
@@ -111,11 +125,7 @@ export function exitDynamic(draft: CampaignState, ctx: Ctx, unitId: string, rout
   }
   if (route === 'force') {
     if (opts.means === undefined || !EXIT_MEANS.includes(opts.means)) throw new Error(`A forced exit names its means: ${EXIT_MEANS.join(', ')}.`);
-    if (opts.means === 'discipline') {
-      if (typeof opts.measure !== 'string' || opts.measure === '') throw new Error('Name the punishment.');
-      const why = checkPunish(draft, reg, unitId, opts.measure);
-      if (why !== null) throw new Error(why);
-    }
+    if (!meansDone(draft, unitId, opts.means)) throw new Error(DO_FIRST[opts.means]);
   }
   if (route === 'negotiated' && opts.clean !== true) {
     if (pendingExit(draft, unitId) === undefined) (x.open.exits ??= []).push({ id: `dx${x.seq++}`, unitId, day: draft.day });
@@ -127,20 +137,18 @@ export function exitDynamic(draft: CampaignState, ctx: Ctx, unitId: string, rout
   const from = dyn.frame;
   const events: EngineEvent[] = [];
 
-  // the means first, through its own engine (a Leash that cannot be filed throws before it changes anything)
-  if (route === 'force' && opts.means === 'leash') events.push(...compel(draft, ctx as EngineCtx, { unitId, context: 'pda', roll: false }).events);
-  else if (route === 'force' && opts.means === 'discipline') events.push(...applyPunishment(draft, ctx as EngineCtx, { unitId, measure: opts.measure!, source: 'menu', channel: 'pda' }));
   // a transfer: the other holder claims what she holds, domain by domain; the winner of each keeps it
   if (route === 'transfer') for (const d of [...dyn.domains]) events.push(...settleDomainConflict(draft, ctx, opts.toUnitId!, unitId, d.id));
 
-  // every domain is dropped but the command, which she keeps as a struggle
-  const commandKept = dyn.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
+  // every domain is dropped but the command, which she keeps as a struggle: except when the Leash forced it, which wins the command back (R15a)
+  const byLeash = route === 'force' && opts.means === 'leash';
+  const commandKept = !byLeash && dyn.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
   for (const d of [...dyn.domains]) {
     if (commandKept && keepsCommand(draft, reg, d.id)) {
       delete d.partialUntil;
       continue;
     }
-    events.push(loseDomain(draft, unitId, d.id, 'exit'));
+    events.push(loseDomain(draft, unitId, d.id, byLeash && keepsCommand(draft, reg, d.id) ? 'force' : 'exit'));
   }
   dropVoidOverride(draft, reg, unitId);
 

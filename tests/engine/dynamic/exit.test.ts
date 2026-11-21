@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
+import type { EngineCtx } from '../../../src/engine/dispatch';
+import { compel } from '../../../src/engine/leash/use';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
+import '../../../src/engine/actions/discipline';
 import { forgetDynamic } from '../../../src/engine/dynamic/forget';
 import { exitCostWord, exitDynamic, exitSeverity } from '../../../src/engine/dynamic/exit';
 import { dynamicIntentInput } from '../../../src/engine/dynamic/intents';
@@ -218,32 +222,91 @@ describe('the routes', () => {
     expect(dyn(s).frame).toBe('role'); // refused: nothing changed
   });
 
-  it('force with the Leash: two steps up and the forced memory', () => {
+  it('force refuses without the means done today', () => {
+    const s = world('role', 50, ['private_time']);
+    for (const means of ['discipline', 'leash'] as const) {
+      const r = exit(s, { route: 'force', means });
+      const bad = errors(r.events);
+      expect(bad, means).not.toEqual([]);
+      expect(String(bad[0].message), means).toMatch(/Do it first/);
+      expect(dyn(r.state).frame, means).toBe('role'); // refused: nothing changed
+      expect(r.events.some((e) => e.type === 'dynamic_exit'), means).toBe(false);
+    }
+    expect(errors(exit(s, { route: 'force' }).events)).not.toEqual([]); // a forced exit names its means
+    // a means that was not on her, not done, or not today does not count
+    const other = structuredClone(s);
+    compel(other, ctxOf(other, reg) as EngineCtx, { unitId: BEA, context: 'pda', roll: false });
+    expect(errors(exit(other, { route: 'force', means: 'leash' }).events)).not.toEqual([]);
+    const failed = structuredClone(s);
+    failed.leash.log.push({ no: 90, unitId: ANN, kind: 'compel', day: failed.day, context: 'pda', outcome: 'failed' });
+    expect(errors(exit(failed, { route: 'force', means: 'leash' }).events)).not.toEqual([]);
+    const old = structuredClone(s);
+    old.leash.log.push({ no: 91, unitId: ANN, kind: 'compel', day: old.day - 1, context: 'pda', outcome: 'done' });
+    expect(errors(exit(old, { route: 'force', means: 'leash' }).events)).not.toEqual([]);
+    const yesterday = run(s, reg, { type: 'discipline/punish', payload: { unitId: ANN, measure: 'extra_duty' } }).state;
+    yesterday.discipline!.applications.forEach((a) => { a.day = yesterday.day - 1; });
+    expect(errors(exit(yesterday, { route: 'force', means: 'discipline' }).events)).not.toEqual([]);
+    // the means that was done is the one that opens the exit: a punishment does not stand in for the Leash
+    const punished = run(s, reg, { type: 'discipline/punish', payload: { unitId: ANN, measure: 'extra_duty' } }).state;
+    expect(errors(exit(punished, { route: 'force', means: 'leash' }).events)).not.toEqual([]);
+  });
+
+  it('force after a done Leash use costs two steps up', () => {
     const s = world('role', 50, ['private_time']); // moderate, two up: extreme
+    compel(s, ctxOf(s, reg) as EngineCtx, { unitId: ANN, context: 'pda', roll: false });
     const left = s.leash.authorizationsLeft;
-    expect(left).toBeGreaterThan(0);
     const r = exit(s, { route: 'force', means: 'leash' });
     expect(errors(r.events)).toEqual([]);
     expect(exitEvent(r.events)).toMatchObject({ route: 'force', severity: 'extreme', force: true, means: 'leash' });
-    expect(r.events.some((e) => e.type === 'leash_used' && e.unitId === ANN && e.outcome === 'done')).toBe(true);
-    expect(r.state.leash.authorizationsLeft).toBe(left - 1);
-    expect(r.state.memory.facts.some((f) => f.tags.includes('leash') && f.about.includes(ANN))).toBe(true);
+    expect(r.events.some((e) => e.type === 'leash_used')).toBe(false); // the exit runs nothing itself
+    expect(r.state.leash.authorizationsLeft).toBe(left);
     expect(dyn(r.state).frame).toBe('equal');
   });
 
-  it('force with discipline runs the punishment first; with no authorization the Leash refuses and nothing changes', () => {
+  it('force after a punishment today costs two steps up, and the means is not run again', () => {
     const s = world('role', 50, ['private_time']);
-    const r = exit(s, { route: 'force', means: 'discipline', measure: 'extra_duty' });
+    const punished = run(s, reg, { type: 'discipline/punish', payload: { unitId: ANN, measure: 'extra_duty' } });
+    expect(errors(punished.events)).toEqual([]);
+    const r = exit(punished.state, { route: 'force', means: 'discipline' });
     expect(errors(r.events)).toEqual([]);
-    expect(r.events.map((e) => e.type)).toEqual(expect.arrayContaining(['discipline_applied', 'dynamic_exit']));
+    expect(r.events.some((e) => e.type === 'discipline_applied')).toBe(false);
+    expect(r.state.discipline!.applications).toHaveLength(1);
     expect(exitEvent(r.events)).toMatchObject({ severity: 'extreme', force: true, means: 'discipline' });
-    expect(errors(exit(s, { route: 'force', means: 'discipline' }).events)).not.toEqual([]); // no measure named
+  });
+
+  it('a forced exit by the Leash on a command holder starts no command_kept and returns command', () => {
+    const leashed = (): CampaignState => {
+      const s = world('rule', 70, ['private_time', 'command']);
+      compel(s, ctxOf(s, reg) as EngineCtx, { unitId: ANN, context: 'pda', roll: false });
+      return s;
+    };
+    const r = exit(leashed(), { route: 'force', means: 'leash' });
+    expect(errors(r.events)).toEqual([]);
+    expect(exitEvent(r.events)).toMatchObject({ route: 'force', commandKept: false });
+    expect(dyn(r.state).domains).toEqual([]);
+    expect(dyn(r.state).aftermath?.kind).not.toBe('command_kept');
+    expect(r.events.filter((e) => e.type === 'domain_lost' && e.domainId === 'command').map((e) => e.reason)).toEqual(['force']);
+    expect(r.events.some((e) => e.type === 'aftermath_started' && e.kind === 'command_kept')).toBe(false);
+    // the same command held, left by another force, is still a struggle (R15a lists only the Leash)
+    const s = world('rule', 70, ['private_time', 'command']);
+    const punished = run(s, reg, { type: 'discipline/punish', payload: { unitId: ANN, measure: 'extra_duty' } }).state;
+    const other = exit(punished, { route: 'force', means: 'discipline' });
+    expect(exitEvent(other.events)).toMatchObject({ commandKept: true });
+    expect(dyn(other.state).aftermath?.kind).toBe('command_kept');
+  });
+
+  it('a Leash with no authorization left cannot be done first, so the forced exit stays closed', () => {
     const dry = world('role', 50, ['private_time']);
     dry.leash.authorizationsLeft = 0;
+    expect(() => compel(dry, ctxOf(dry, reg) as EngineCtx, { unitId: ANN, context: 'pda', roll: false })).toThrow();
     const bad = exit(dry, { route: 'force', means: 'leash' });
     expect(errors(bad.events)).not.toEqual([]);
     expect(dyn(bad.state).frame).toBe('role');
-    expect(errors(exit(s, { route: 'force' }).events)).not.toEqual([]); // a forced exit names its means
+  });
+
+  it('no path in exit.ts runs a means itself', () => {
+    const code = readFileSync('src/engine/dynamic/exit.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).not.toMatch(/\b(applyPunishment|compel|checkPunish|suppress)\s*\(/);
   });
 
   it('the transfer request is accepted as a means and costs the same (the oversight request is chunk (i)\'s)', () => {
