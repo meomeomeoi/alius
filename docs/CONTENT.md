@@ -918,3 +918,61 @@ Three registries (core: `content/core/developmentAxes.json`, `developmentRules.j
 
 **Fields on other registries:** `eventDeltas[].appraisal` and `activities[].appraisal` / `dilemmaTemplates[].appraisal` are `{ wanted: 'yes'|'no'|'unclear', initiator: 'target'|'actor'|'mutual', harm: 'none'|'minor'|'serious', outcome: 'good'|'mixed'|'bad' }` (an event with neither the model's reading nor this row records nothing); `activities[].appraisalTags` (≤ 3 tags) are what a `like:{tag}` push takes from an activity. Glossary: `character_development`, `development_moment`, `development_fact`, `habit`, `development_hold`, `appraisal`, `setting_habit_wording`.
 
+## Her life (P14c)
+
+Four registries (core: `content/core/lifeEvents.json`, `hobbies.json`, `opinionTopics.json`, `pastimes.json`); all four are player-visible, so every entry needs a `description`. Draft texts start `AUTHOR TO WRITE:` on the entry-level `description` (the marker is stripped where a text reaches the main model or the player). Text is US spelling (the spelling test enforces it) and **no text may give the commander a pronoun** (lore §0: the soldiers are "she"; `tests/content/pronouns.test.ts`). The engine reads all of it by field, never by id: add an entry and it joins the pool.
+
+**A life event** (`lifeEvents`): something that happens to her off-screen.
+```
+{ id, size: 'small' | 'notable', category: 'things' | 'body' | 'construct' | 'people' | 'service' | 'luck', tags?: string[],
+  share: 'anyone' | 'close' | 'keeps', keepsUnless?: { affinityMin?, romantic? }, requires?: LifeRequires,
+  becomes?: { hobby?: <hobbies id>, milestone?: true, opinionTopic?: <opinionTopics id> },
+  cooldownDays?, yearly?: true, urgent?: true, description, hub, lines: [string, string] }
+```
+- `description` is the hint the model receives and the text of the hidden fact ("{Name}: {description}"); `hub` is the short third-person line the hub shows for two days; `lines` are her fallback words (a DM, or what she says), one picked by hash.
+- `share`: `anyone` is told by chance by her talkativeness; `close` needs Affinity 40; `keeps` is never told in P14c (a later package surfaces it). `keepsUnless` turns a `keeps` event into `close` when ANY of its conditions holds (Affinity at least `affinityMin`, or a romantic bond).
+- `becomes.hobby` starts that hobby (or pushes it if she has it); `becomes.milestone` grants the next milestone of the hobby the event names (else the one it requires, else one of hers); `becomes.opinionTopic` opens a topic her opinion may form on. Ids must exist (a refs check).
+- `cooldownDays` defaults by size (small 21, notable 45); `yearly` fires once a fiction year by a hash of her id (a birthday); `urgent` bypasses the news caps on its day. A notable event is out of the pool once she had one that week.
+
+**`requires`** is a **closed vocabulary**; every listed field must hold, and a field the engine does not know never holds (the schema refuses it). Each reads state that already exists:
+
+| field | holds when |
+|---|---|
+| `hobby: '<id>' \| 'any'` | she has that hobby `active` (or any active hobby) |
+| `location: string[]` | one of her derived whereabouts today is a routine stay in a room whose `sceneLocationId` is listed |
+| `activity: string[]` | she took part today (companion or roster) in one of these P2 activities |
+| `afterRun: { hurt?: true }` | the last expedition ended yesterday or today with her in the party (`hurt`: and she was injured) |
+| `noRunDays: n` | no expedition with her in the party for `n` days, and none open |
+| `stressMin` / `stressMax` | her stress |
+| `defectCategory: string` | one of her defects has that `category` |
+| `injured: true` | she has an injury |
+| `otherNamed: true` | another named living soldier is at the base |
+| `affinityMin` / `trustMin` | her relation to the commander |
+| `romantic: true` | her relationship state is romantic (`bondTier`) |
+| `leaderNotHer: true` | the squad has a leader and she is not it |
+| `gruntDiedDays: n` | a grunt died within `n` days |
+| `deathAgo: n` | a death `n`, `2n`, … days ago (an anniversary) |
+| `rumour: true` | the world has a rumor |
+| `rationsShort: true` | rations are not `equal`, or a shortage within 3 days |
+| `sparring: 'won' \| 'lost'` | a sparring wager of hers in the last 2 days with that winner |
+| `bloomHalf: true` | a regional clock is half full |
+| `missionBoard: true` | at least one mission is on the board |
+| `afterEvent: '<id>'` | she had that life event within 30 days |
+| `otherHadThisWeek: '<id>'` | another woman had it within 7 days |
+
+There is no weather and no defect "tag" in the state: do not add either to a `requires`. A new condition is an engine change (`requiresHold`, `LifeRequiresSchema`, this table), not content.
+
+**A hobby** (`hobbies`): `{ id, label, locations: string[], activityIds: string[], teachable, milestones: [{ id, line, trace?: 'note' | 'prop' | 'opinion' }] (exactly four, unique ids), opinionTopic?, description, traceText? }`.
+- `locations` are scene location ids where she practises (at least one hosted by a hub room: a refs check); a slot counts as practice when she is routinely in such a room. `activityIds` is stored for P15a and has no reader yet.
+- `milestone.line` is her fallback words for the news. A `note` trace leaves a note in her quarters; a `prop` trace shows as "in her quarters: {traceText}" in the dossier; an `opinion` trace opens `opinionTopic`. Every `note` or `prop` trace needs the hobby's `traceText`. The four milestones sit at about 10, 30, 60 and 100 skill, each moved up to ±15 % per woman by a hash.
+
+**An opinion topic** (`opinionTopics`): `{ id, label, group: 'lore' | 'service' | 'everyday' | 'people' | 'abstract', axis?: { id: <value axis>, sign: 1 | -1 }, positions: [{ id, description, lines: [string, string] }] (2–5, ordered: neighbours are the steps persuasion takes), triggers: { locations?, activities?, lifeEvents?, keywords? }, description }`.
+- `positions` are a spectrum; with an `axis` (needs at least 3 positions) a positive value on it (times `sign`) suggests the first position and a negative one the last, otherwise the middle. `description` is the neutral hint the model receives and the reading; `lines` are her fallback words.
+- `triggers` are what bring the topic up: scene locations, P2 activities, life events and whole-word **keywords** in the commander's own line. Keep keywords specific (an over-common word fires on every scene) and unique across topics.
+
+**A pastime** (`pastimes`): `{ id, label, locations: string[], slots: [...], requires?: { afterRun?: true, firstSlot?: true, hobby?: <hobbies id> }, hobby?: true, talk: 'quiet' | 'some', herActivity, commanderActivity, sensoryTag, momentSources: string[], description, opening, lines }`.
+- `locations` are scene location ids; the first one open in the slot is used. `hobby: true` marks the pastime that is her hobby (empty `locations`: it uses her keenest hobby's). `talk: 'some'` pastimes are listed after the quiet ones for a silent woman. `opening` sets the scene in the directive; `herActivity` / `commanderActivity` are words in it. `sensoryTag` and `momentSources` are stored for P15a and P17d.
+- A pastime needs a scene location that is open in one of its slots; a location with no art ends at the ASCII stage.
+
+**Adding one:** write the entry with an `AUTHOR TO WRITE:` description, run `npm test` (the schema, the refs checks, the spelling test and the pronoun test say what is wrong) and nothing else: there is no code to touch. The glossary has the terms the views address (`temperament`, `life_events`, `news_queue`, `hobby_cycle`, `quiet_meeting`, `thoughts`, `running_joke`, `commander_hobby_skill`, `setting_life_events`).
+

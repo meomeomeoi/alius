@@ -178,4 +178,20 @@ describe('her life in the app (P14c)', () => {
     t.app.refreshContext();
     expect(t.app.context.build(t.state(), 5000).directives).not.toContain('mended a boot');
   });
+
+  it('app.life.timeTogether holds the slot, opens the scene at the pastime place as a quiet meeting, and a refused pastime opens nothing', async () => {
+    const t = await boot();
+    t.edit((s) => { s.settings.lifeEvents = 'normal'; s.life = newLife(7); });
+    const slot = t.state().slot;
+    expect(await t.app.life.timeTogether(RHEA, 'tea_at_night')).toBe(false); // a night pastime in the morning
+    expect(t.state().scene).toBeUndefined();
+    expect(t.sh.toasts.some((x) => x.kind === 'warn')).toBe(true);
+    expect(await t.app.life.timeTogether(RHEA, 'tidy_her_quarters')).toBe(true);
+    await settle();
+    expect(t.state().scene).toMatchObject({ locationId: 'quarters_unit', origin: 'activity', pastime: { id: 'tidy_her_quarters', unitId: RHEA } });
+    expect(t.state().slot).toBe(slot); // the slot is spent when the scene ends
+    expect(t.state().life!.pending).toBeUndefined();
+    t.app.refreshContext();
+    expect(t.app.context.build(t.state(), 5000).directives).toContain('A quiet meeting with no stakes');
+  });
 });

@@ -1,6 +1,6 @@
 # Alius — Design Docs
 
-Release **0.1.0**: every package in the main table of `00-overview.md` §9 is implemented (P0–P14b, including P3b, P7a, P9b–P9e, P10b–P10d, P11b, P14b). The packages of 0.2 (P14c, P15a–P17f), 0.3 (P18–P20) and 0.4 (P21–P26) are specs only. `RELEASE_0.1_AUDIT.md` holds the pre-release audit and what is still open from it.
+Release **0.1.0**: every package in the main table of `00-overview.md` §9 is implemented (P0–P14b, including P3b, P7a, P9b–P9e, P10b–P10d, P11b, P14b). P14c (her life) is the first package of 0.2 and is implemented; the rest of 0.2 (P15a–P17f), 0.3 (P18–P20) and 0.4 (P21–P26) are specs only. `RELEASE_0.1_AUDIT.md` holds the pre-release audit and what is still open from it.
 
 Read order for an implementing agent:
 
@@ -15,12 +15,13 @@ Quick facts for a new session: state changes only through registered engine acti
 |---|---|
 | `00-overview.md` | Vision, pillars, non-negotiable principles, glossary, architecture, data model, loops, settings, package map, roadmap, agent rules |
 | `packages/P0-…` … `P14b-…` (0.1) | Implemented: foundation, setup and import, calendar and economy, scenes and relationships, memory (P3b), combat, world and expeditions, dilemmas and the Leash, analysis tool (P7a), commander profile (P7), world options (P8), impunity and discipline (P9), power structure (P9b), personal pressure (P9c), desire and bonds (P9d), her call (P9e), visual upgrade (P10, P10b–P10d), prologue (P11) and head start (P11b), special traits (P12), LEASHSWAP (P13), generation envelope (P14), character development (P14b) |
-| `packages/P14c-…`, `P15…P17f` (0.2) | Specs: her life, the dynamic (scene blocking, practices, service craft, staged scenes and the rest) |
+| `packages/P14c-…` (0.2) | Implemented: her life (temperament, days off-screen, hobbies, opinions, quiet meetings, first moments, running jokes) |
+| `packages/P15…P17f` (0.2) | Specs: the dynamic (scene blocking, practices, service craft, staged scenes and the rest) |
 | `packages/P18…P20` (0.3), `P21…P26` (0.4) | Specs: AI story arcs, arc missions, story nodes; combat vocabulary, enemies, skill trees, gear, bonds in progression, depth runs |
 | `ROADMAP-next.md` | Why the 0.1 packages after P6 came in the order they did, and the session chunks |
 | `RELEASE_0.1_AUDIT.md` | The 0.1 pre-release audit: security, engine, integration and content findings |
 | `CONTENT.md` | How to add content: pack layout, effects, every registry's fields with an example, the lorebook format |
-| `MANUAL_TEST_P*.md` | Acceptance checklists run by hand inside SillyTavern, one per implemented package (P0–P14b) |
+| `MANUAL_TEST_P*.md` | Acceptance checklists run by hand inside SillyTavern, one per implemented package (P0–P14b, P14c) |
 | `BALANCE_REPORT.md` | Defect neutrality report from `npm run sim -- --neutrality` (P4) |
 | `plans/` | Implementation plans per package (task-by-task; ticked as they are done; a **Status** line on top says when a plan was executed) |
 | `content/lore.md` | **Placeholder** lore & structure (author rewrites); §0 holds the rules every text follows (the squad is women, the player is of any gender). **Read it at the start of every session.** |

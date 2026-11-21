@@ -555,6 +555,13 @@ Temperament for every named unit (`talkativeness`, `volatility`, `humor`) is P14
 - Whether `rule` without the command domain is possible (draft: yes; `rule` over the private domains only).
 - (§16) Regard band names, the forms-of-low-Regard wording per style, the `cowed` region name, nickname candidates by tone, descriptions of `drill`, `regal`, `vindictive`, `fairness` and `hintStyle` values.
 
+## Interfaces already provided by P14c (implemented — use, do not rebuild)
+
+- **Quiet meetings are value outside the dynamic** (§16.3 Regard): a finished quiet meeting writes the relation event `time_together` (Affinity +2 through the gain handler, her stress −5, a history entry of that type, `LifeUnit.meetingDay`) and, for her hobby, `Commander.hobbySkill`. Count them from the relation history (`type: 'time_together'`) or `meetingDay`; do not add a second counter. `pastimeProblem` / `availablePastimes` decide who may have one (Affinity above −30, not deserting, not restricted, once a day).
+- **`temperamentOf(state, unitId)`** (`talkativeness`, `volatility`, `humor`, with the defaults `terse` / `steady` / `dry`) is the only reader of her temperament; §16.7 adds the holder-only fields on top of it.
+- **First moments** (`LifeUnit.firsts`, the six kinds of `FIRST_KINDS`, once per pair) and running jokes (`LifeUnit.jokes`, habit `running_joke`) are the pair's own memories; a staging may read them through the facts they write (`first_<kind>`, tag `first`).
+- Keep new directive ids away from `life:`; no rng draw (`lifeChance` / `lifeHash` hash a key with the salt); read life content by field, never by id. Details: P14c **Implemented as**.
+
 ## Interfaces already provided by P9d (implemented — use, do not rebuild)
 
 - `bondOf`, `validateBond`, the `bond` section of `profile_import` and re-sync; `contentAllowed(state, reg, entry, unitId?)`, `CONTENT_GATED_REGISTRIES` + `GATE_PROBES` for new tagged registries; `decideLead`; `wantOf`/`relieveWant`; rules (`rulesOf`, `activeRules`, the `intent` check); `setPublicity`. Read tiers by `bondTier`, never state ids.

@@ -33,7 +33,12 @@ registerAction('calendar/sleep', (draft, _payload, ctx) => {
   return [...rested, ...consumeSlots(draft, 1, ctx)];
 });
 
-registerAction('activity/do', (draft, payload, ctx) => runActivity(draft, ctx, payload));
+registerAction('activity/do', (draft, payload, ctx) => {
+  // P14c: a quiet hour is spent from her pastimes (`life/time_together` runs that activity itself, with the pastime stored for the scene); asked for directly it would hold the slot with no pastime
+  const id = isObj(payload) ? payload.activityId : undefined;
+  if (typeof id === 'string' && ctx.registries.activities.get(id)?.pastime === true) throw new Error('A quiet hour is spent with her at one of her pastimes: pick one.');
+  return runActivity(draft, ctx, payload);
+});
 
 /** P4 hook (Commander Crisis): blocks `train` and `work` for `days`; units in lover/devoted/dependent states react in P3. */
 registerAction('commander/injure', (draft, payload) => {

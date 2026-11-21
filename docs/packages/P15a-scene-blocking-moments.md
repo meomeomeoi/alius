@@ -619,6 +619,15 @@ The reversed form of "stop on her word" (P16b mini-games): the commander keeps *
 
 `blockingOf(scene, personId)`, `setBlocking` (validated), `effectsOf(blocking, channel)`, `liveSources`, `fireMoment`, `answerMoment`, `startPhysics` / `physicsInput` / `physicsSignal`, `commanderSkill(physicsId)`, the `[BLOCKING]` provider, snapshots per message id, `worshipTargets`, the local-pack loader.
 
+## Interfaces already provided by P14c (implemented — use, do not rebuild)
+
+- **Temperament:** `temperamentOf(state, unitId)` gives `talkativeness` (the silent use of §16.1) and `volatility` (how often `her_mood_shift` is live); never read `Unit.temperament` directly (`tests/life/temperamentReaders.test.ts`).
+- **Practice:** hobby practice today comes from her derived whereabouts (`whereaboutAt`, the hobby's `locations`). `hobbies[].activityIds` is stored and validated for you: count a slot whose blocking activity is in it as practice (`practise` in `src/engine/life/hobbies.ts`, the day step's `practiceSlots`), and keep the whereabouts reading working for a soldier who has no blocking.
+- **Quiet meetings:** `pastimes[].momentSources` is stored and has no reader: quiet meetings use only general sources (`her_affection`, `her_question`, `her_weakness`, `memory_surfaces`, `her_mood_shift`), never a `scope: dynamic` source. `herActivity` / `commanderActivity` are words in the `life:pastime:<unitId>` directive today; the pair activities of §16 replace that line. `SceneRecord.pastime { id, unitId }` says a scene is a quiet meeting.
+- **`memory_surfaces`:** a `keeps` life event is a fact about her with `hiddenFromCommander`, the tags `life` and `untold` and the event id, that nothing reveals in P14c. Surface it with `revealFact(draft, factId)` (`src/engine/life/facts.ts`); `retrieveFacts` skips the tag `untold`, so no prompt reads it before.
+- **Bookkeeping you may read:** `LifeState.busy` (who was with the commander in which slot, `day × 4 + slot index`), `LifeUnit.firsts`, `LifeUnit.meetingDay`, `Commander.hobbySkill`.
+- Keep new directive ids away from `life:`; no rng draw (`lifeChance` / `lifeHash` hash a key with the salt); read life content by field, never by id. Details: P14c **Implemented as**.
+
 ## Interfaces already provided by P10d (implemented — use, do not rebuild)
 
 - **The plan** (`planRooms`, `src/engine/basePlan.ts`): every place on two floors and the roof, with doors. **Affordances live on plan rooms** (`affordances`: `desk`, `bunk`, `lock`, `line`, `curtain`, `cupboard`, `crowd`, `exposed`, `window`, `water`, `mirror` in the core data); read them there, not on `hubRooms` / `locations`. A new place (shower block, briefing room, corridor) already exists as a closed plan room: give it a hub room and it opens.

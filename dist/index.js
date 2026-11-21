@@ -24865,7 +24865,11 @@ registerAction("calendar/sleep", (draft, _payload, ctx2) => {
   const rested = addCommanderStress(draft, -TUNING.special.commanderStress.sleepRelief, "sleep");
   return [...rested, ...consumeSlots(draft, 1, ctx2)];
 });
-registerAction("activity/do", (draft, payload, ctx2) => runActivity(draft, ctx2, payload));
+registerAction("activity/do", (draft, payload, ctx2) => {
+  const id = isObj10(payload) ? payload.activityId : void 0;
+  if (typeof id === "string" && ctx2.registries.activities.get(id)?.pastime === true) throw new Error("A quiet hour is spent with her at one of her pastimes: pick one.");
+  return runActivity(draft, ctx2, payload);
+});
 registerAction("commander/injure", (draft, payload) => {
   const days = isObj10(payload) ? payload.days : void 0;
   if (typeof days !== "number" || !Number.isInteger(days) || days < 1) throw new Error("commander/injure: days must be a positive integer");

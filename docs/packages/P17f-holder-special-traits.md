@@ -90,3 +90,10 @@ She writes and draws on the commander's skin, and over months the canvas becomes
 ## Open decisions (author)
 
 - Descriptions; the plan's item vocabulary; her mark vocabulary; the hunt's forfeits.
+
+## Interfaces already provided by P14c (implemented — use, do not rebuild)
+
+- **Hide and seek:** `whereaboutAt(state, reg, unitId, day, slot)` (derived, stateless, no rng; `routineWeight` adds a hobby room for a soldier who has hobbies) and `takesPart(state, unitId)` (named, living, at the base). Read rooms by `sceneLocationId`, never by id.
+- **The canvas and Pygmalion:** her hobbies leave traces (`hobbies[].milestones[].trace`: `note` is a note in her quarters in her hand, `prop` a line in the dossier until P17c's layers draw it, `opinion` opens a topic); her opinions are `Unit.opinions` (read through `Knowledge.life` for what was told; a moved opinion keeps `history`). `temperamentOf` is her temperament.
+- **Facts about her days:** `writeLifeFact` / `revealFact` (hidden, tag `untold`), and the `life:` directive prefix is reserved.
+- Keep new directive ids away from `life:`; no rng draw (`lifeChance` / `lifeHash` hash a key with the salt); read life content by field, never by id. Details: P14c **Implemented as**.

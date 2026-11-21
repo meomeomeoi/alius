@@ -77,6 +77,13 @@ Added after the 2026-11-20 design session. Where it conflicts with the sections 
 5. Rhythm and distance follow emotion, style and staging; "she thinks" replaces the spinner.
 6. Every element carries `data-analyze`; every generation goes through P14.
 
+## Interfaces already provided by P14c (implemented — use, do not rebuild)
+
+- **Temperament:** `temperamentOf(state, unitId).volatility` is the input of her rhythm (steady / moody); `talkativeness` and `humor` set how much and in what tone she speaks. Never read `Unit.temperament` directly.
+- **The room's sensory pool:** `pastimes[].sensoryTag` (one word per pastime) and the pastime's `locations` are stored for you; today the directive `life:pastime:<unitId>` carries only the opening and both activities. Read the tag by field, never by pastime id.
+- **Where she is:** `whereaboutAt(state, reg, unitId, day, slot)` is the hub's own derived placement for any day and slot (no stored room, no rng).
+- Keep new directive ids away from `life:`; no rng draw (`lifeChance` / `lifeHash` hash a key with the salt); read life content by field, never by id. Details: P14c **Implemented as**.
+
 ## Interfaces already provided by P10d (implemented — use, do not rebuild)
 
 - **The plan** (`planRooms`, `src/engine/basePlan.ts`): every place on two floors and the roof, with doors. **Affordances live on plan rooms** (`affordances`: `desk`, `bunk`, `lock`, `line`, `curtain`, `cupboard`, `crowd`, `exposed`, `window`, `water`, `mirror` in the core data); read them there, not on `hubRooms` / `locations`. A new place (shower block, briefing room, corridor) already exists as a closed plan room: give it a hub room and it opens.

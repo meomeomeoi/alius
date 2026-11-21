@@ -296,6 +296,16 @@ describe('the meeting', () => {
   });
 });
 
+describe('the activity of a quiet hour', () => {
+  it('is not done directly: activity/do refuses it and holds nothing', () => {
+    const s = world('afternoon');
+    const done = run(s, reg, { type: 'activity/do', payload: { activityId: 'time_together', companionId: ANN } });
+    expect(errors(done.events)).toHaveLength(1);
+    expect(done.state.calendar.pendingScene).toBeUndefined();
+    expect(done.state.slot).toBe('afternoon');
+  });
+});
+
 describe('a pastime proposed inside a scene', () => {
   function inScene(s: CampaignState, locationId = 'workshop', participants = [ANN]): CampaignState {
     const started = run(s, reg, { type: 'scene/start', payload: { locationId, participants, origin: 'event', startIndex: 0 } });

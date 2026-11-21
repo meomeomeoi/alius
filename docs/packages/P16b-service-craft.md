@@ -191,6 +191,13 @@ The vocabulary (points, states, tags, modifiers and the 48 presets) is `docs/con
 - P15: Regard (`regard`), the motive weights, `practiceStyles` rows, `bond.practice.fairness` / `hintStyle`, `Relation.mastery`.
 - P16: her discipline, the consent ladder, physical discipline and the slap, the named postures, `practice_generate`.
 
+## Interfaces already provided by P14c (implemented — use, do not rebuild)
+
+- **Hobbies are a cycle with a commander's skill beside them:** `HobbyState` (skill and interest are hidden numbers; the player sees milestones she has told and a word), `practise(draft, reg, unitId, hobbyId, day, slot, { push, caused })`, `pushHobby`, `grantMilestone`, `Commander.hobbySkill` (0–100, shown only as `commanderHobbyWord`: none / a beginner / getting there / good at it) and `hobbies[].teachable`. A craft lesson that feeds one of her hobbies calls the same functions, so the cap, the plateau and the news queue stay one system.
+- **The ordinary meeting:** `pastimes` (the quiet hour, `life/time_together`, `her_hobby` as practice plus a push and the commander's learning); `humor` (via `temperamentOf`) is what P16's mock answers read.
+- **`Knowledge.life(unitId, reg)`** is the only way a panel reads her hobbies, opinions and news; extend `LifeView` there rather than reading `unit.hobbies` in a view.
+- Keep new directive ids away from `life:`; no rng draw (`lifeChance` / `lifeHash` hash a key with the salt); read life content by field, never by id. Details: P14c **Implemented as**.
+
 ## Interfaces already provided by P14b (implemented — use, do not rebuild)
 
 - `Development.counters` and habits read by `counter.kind`; P17e's emergent rituals and this package's records may share key kinds. No rng draw (chances are `fnv1a`).
