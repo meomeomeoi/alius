@@ -14,9 +14,15 @@ import.meta.glob('../../src/engine/actions/*.ts', { eager: true });
  * throws: the point is that the run is the same with the P13 modules loaded as it was before they existed (a golden file made on the
  * commit before P13). Returns the event types of every step, the final state and the rng.
  */
-export function runWeek(reg: Registries, opts: { /** P14b: changes the campaign before the first step (the golden callers pass nothing). */ tweak?: (s: CampaignState) => void } = {}): { log: string[]; rng: unknown; state: CampaignState } {
+export function runWeek(reg: Registries, opts: {
+  /** P14b: changes the campaign before the first step (the golden callers pass nothing). */
+  tweak?: (s: CampaignState) => void;
+  /** P14c: sets the frequency of her life (`life/set_frequency`) before the first step; absent (the golden callers) = the campaign as it was built, with no setting. */
+  life?: 'off' | 'rare' | 'normal' | 'often';
+} = {}): { log: string[]; rng: unknown; state: CampaignState } {
   let s = campaign(reg, 4);
   opts.tweak?.(s);
+  if (opts.life !== undefined) s = run(s, reg, { type: 'life/set_frequency', payload: { mode: opts.life } }).state;
   s.rng = seedRng(21);
   const [ANN, BEA, CAT] = s.squad.map((u) => u.id);
   for (const u of s.squad) setRelation(s, u.id, { trust: 50, affinity: 20, stateId: 'comrade' });
