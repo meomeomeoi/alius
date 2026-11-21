@@ -1425,16 +1425,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `answerMilestone(draft, ctx, milestoneId, answer: 'accept' | 'refuse', via: 'card' | 'text'): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `accept applies the frame and moves no hold` (user R1);
   - `refuse drops one band and sets a 7-day cooldown`, and the same milestone is not offered again before it;
   - `the vow sets sworn and pins a memory fact` (importance 5, audience the pair, `pinned`);
   - `the intent path equals the card path` (same events except `via`);
   - `a stale milestone id is refused` (`handler_failed`, no change).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/milestoneAnswer.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): answering milestones and the vow`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/milestoneAnswer.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): answering milestones and the vow`
 
 ---
 

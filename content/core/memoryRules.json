@@ -954,5 +954,70 @@
       "dynamic",
       "position"
     ]
+  },
+  {
+    "id": "dynamic_frame_play",
+    "event": "frame_changed",
+    "when": {
+      "to": "play",
+      "up": true
+    },
+    "text": "{name} and the commander have begun to play at her leading.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "frame_play"
+    ]
+  },
+  {
+    "id": "dynamic_frame_role",
+    "event": "frame_changed",
+    "when": {
+      "to": "role",
+      "up": true
+    },
+    "text": "{name} leads and the commander keeps to the role she gave.",
+    "importance": 4,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "frame_role"
+    ]
+  },
+  {
+    "id": "dynamic_frame_rule",
+    "event": "frame_changed",
+    "when": {
+      "to": "rule",
+      "up": true
+    },
+    "text": "{name}'s word stands over the commander's, across what she has claimed.",
+    "importance": 4,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "frame_rule"
+    ]
+  },
+  {
+    "id": "dynamic_sworn",
+    "event": "sworn",
+    "text": "{name} and the commander said the status aloud, and it is kept.",
+    "importance": 5,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "pinned": true,
+    "tags": [
+      "dynamic",
+      "sworn"
+    ]
   }
 ]

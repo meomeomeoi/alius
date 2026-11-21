@@ -8,6 +8,7 @@ import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
+import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
 import { noteEvents } from '../dynamic/style';
@@ -228,4 +229,20 @@ registerAction('dynamic/declare', (draft, payload, ctx) => {
   dyn.declared = { motive: p.motive as Motive, weight: TUNING.position.declaration.start, day: draft.day };
   const shift = resettleReading(dyn).region;
   return shift === undefined ? [] : [{ type: 'position_shifted', unitId: unit.id, from: shift.from, to: shift.to }];
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Her milestone (R11)
+
+/**
+ * `dynamic/answer_milestone { milestoneId, answer }`: the card's ACCEPT or REFUSE on her open milestone (the open id, `dm<n>`). The words of the
+ * commander do the same through the intents `milestone_accepted` / `milestone_refused`, and the two paths make the same events. A milestone that
+ * is not open is refused with nothing changed. Draws nothing.
+ */
+registerAction('dynamic/answer_milestone', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { milestoneId?: unknown; answer?: unknown };
+  if (typeof p.milestoneId !== 'string') throw new Error('dynamic/answer_milestone needs a milestoneId.');
+  if (p.answer !== 'accept' && p.answer !== 'refuse') throw new Error('The answer must be accept or refuse.');
+  return answerMilestone(draft, ctx, p.milestoneId, p.answer, 'card');
 });

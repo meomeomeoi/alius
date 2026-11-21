@@ -13,6 +13,7 @@ import type { EventIntent } from '../relations/intents';
 import { DYNAMIC_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { canHold, dynamicOn, herPracticeLive } from './gate';
+import { answerMilestone } from './milestones';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
 import { threatIn } from './reading';
 import { dynamicOf } from './state';
@@ -76,7 +77,7 @@ export function dynamicIntentInput(
 
 /**
  * Routes one validated event of the dynamic to its effect on the unit it is about. The offer is rebuilt from the state (an answer to a probe that
- * is no longer pending, or a gesture the unit may no longer make, does nothing). Only the probe types are handled here; the milestone, offer,
+ * is no longer pending, or a gesture the unit may no longer make, does nothing). The probe and milestone types are handled here; the offer,
  * compromat and slip types arrive with their own tasks and do nothing yet. `batch`: the events of the same applied batch so far (a threat to the commander in it makes a probe answer read as fear). Returns the engine events.
  */
 export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: EventIntent, batch: readonly EngineEvent[] = []): EngineEvent[] {
@@ -87,6 +88,12 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
       return ev.response === undefined || pendingProbe(draft, unitId) === undefined ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 1, threatIn(batch));
     case 'probe_observed':
       return ev.response === undefined || dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 0.5, threatIn(batch));
+    case 'milestone_accepted':
+    case 'milestone_refused': {
+      // only the milestone that is open for this unit (the offer was built from the same state): a stale or foreign id does nothing
+      const open = ev.milestoneId === undefined ? undefined : draft.dynamic?.open.milestones.find((m) => m.id === ev.milestoneId && m.unitId === unitId);
+      return open === undefined ? [] : answerMilestone(draft, ctx, open.id, ev.type === 'milestone_accepted' ? 'accept' : 'refuse', 'text');
+    }
     default:
       return [];
   }

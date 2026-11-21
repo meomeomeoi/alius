@@ -153,6 +153,31 @@ export function applyMilestone(draft: CampaignState, ctx: Ctx, unitId: string, m
 }
 
 /**
+ * The commander's answer to her open milestone, from the card (`via: 'card'`) or from words (`via: 'text'`, the intent `milestone_accepted` /
+ * `milestone_refused`): the two paths make the same events, `via` aside. `milestoneId` is the open one (`dm<n>`). Accepting applies the
+ * milestone (no hold gain: it changes the frame, not hold). Refusing is not leaving: hold drops `refuseDrop` (one band; the frame's floor and
+ * the pace apply, as in `addHold`), the milestone waits `refuseCooldownDays`, and the refusal is noted (`refusalCost`, which moves no hold
+ * for a milestone). Throws when it is not open (a stale id), so a card or an action that names one changes nothing.
+ */
+export function answerMilestone(draft: CampaignState, ctx: Ctx, milestoneId: string, answer: 'accept' | 'refuse', via: 'card' | 'text'): EngineEvent[] {
+  const reg = ctx.registries;
+  const row = draft.dynamic?.open.milestones.find((m) => m.id === milestoneId);
+  const unit = row === undefined ? undefined : draft.squad.find((u) => u.id === row.unitId);
+  const m = row === undefined ? undefined : milestoneEntry(reg, row.milestoneId);
+  const dyn = row === undefined ? undefined : dynamicOf(draft, row.unitId);
+  if (!dynamicOn(draft, reg) || row === undefined || unit === undefined || m === undefined || dyn === undefined || !isLiving(unit)) throw new Error('That milestone is not open.');
+  draft.dynamic!.open.milestones = draft.dynamic!.open.milestones.filter((o) => o.id !== row.id);
+  const base = { unitId: row.unitId, id: row.id, milestoneId: m.id, via };
+  if (answer === 'accept') return [{ type: 'milestone_accepted', ...base }, ...applyMilestone(draft, ctx, row.unitId, m.id)];
+  dyn.cooldowns[m.id] = draft.day + TUNING.dynamic.milestones.refuseCooldownDays; // before the hold moves: the check that follows must not offer it again
+  return [
+    { type: 'milestone_refused', ...base },
+    ...addHold(draft, ctx, row.unitId, -TUNING.dynamic.milestones.refuseDrop, 'milestone_refused'),
+    ...refusalCost(draft, ctx, row.unitId, 'milestone'),
+  ];
+}
+
+/**
  * Checks one unit's milestones (after her hold changed, and at day end): automatic ones that are due apply at once (a down-transition, in
  * registry order, until none is due); an open milestone whose frame she has left is dropped; and if none is open, the first due non-automatic
  * one opens. `rekindle` (a return offer accepted) is never due here: the answer to the return applies it. Nothing while the dynamic is off.

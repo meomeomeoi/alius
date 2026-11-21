@@ -79,6 +79,7 @@ export function rememberEvents(draft: CampaignState, events: EngineEvent[], reg:
         about: aboutIds, text: fill(rule.text, { ...res.vars, names }), tags: [...rule.tags, ...(res.tags ?? [])], importance: rule.importance as 1 | 2 | 3 | 4 | 5, day: draft.day, knownBy,
         ...(rule.spread !== 'none' && !knownBy.includes('*') ? { spread: rule.spread } : {}),
         ...(rule.hiddenFromCommander === true ? { hiddenFromCommander: true as const } : {}),
+        ...(rule.pinned === true ? { pinned: true as const } : {}),
       }, { remembered: true });
     }
   }

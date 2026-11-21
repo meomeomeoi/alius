@@ -2205,6 +2205,8 @@ export const MemoryRuleSchema = BaseEntrySchema.extend({
   audience: z.union([str, z.array(str).min(1)]),
   spread: z.enum(['none', 'slow', 'fast']),
   hiddenFromCommander: z.literal(true).optional(),
+  /** P15: the fact it writes is pinned (the fold never takes it): the vow. */
+  pinned: z.literal(true).optional(),
   tags: z.array(str),
 });
 export type MemoryRuleEntry = z.infer<typeof MemoryRuleSchema>;

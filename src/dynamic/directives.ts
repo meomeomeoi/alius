@@ -36,25 +36,29 @@ function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
   return lead.phaseLead === 'secondary' ? `${base} Her ${label(lead.key)} side comes through now.` : base;
 }
 
-/** The directive of a holder who is in the room and at `play` or beyond: the frame, what she has claimed, her manner and what she waits to answer. */
+/**
+ * The directive of a holder who is in the room: at `play` or beyond, the frame, what she has claimed, her manner and what she waits to answer;
+ * before the first frame, only the open milestone she waits on (her manner too), so the scene that carries it can bring it up.
+ */
 function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
   const dyn = dynamicOf(state, unit.id);
   const frame = dyn === undefined ? undefined : frameEntry(reg, dyn.frame);
-  if (dyn === undefined || frame === undefined || frameRank(dyn.frame) < frameRank('play')) return null;
+  const waiting = state.dynamic?.open.milestones.find((m) => m.unitId === unit.id);
+  const holds = dyn !== undefined && frameRank(dyn.frame) >= frameRank('play');
+  if (dyn === undefined || frame === undefined || (!holds && waiting === undefined)) return null;
   const name = unit.displayName;
   const claimed = dyn.domains
     .map((d) => (reg.dynamicDomains.get(d.id) as unknown as DynamicDomainEntry | undefined)?.promptHint)
     .filter((h): h is string => typeof h === 'string')
     .map(sentence);
-  const waiting = state.dynamic?.open.milestones.find((m) => m.unitId === unit.id);
   const milestone = waiting === undefined ? undefined : (reg.dynamicMilestones.get(waiting.milestoneId) as unknown as DynamicMilestoneEntry | undefined);
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const parts = [
-    `${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`,
-    ...(claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
+    ...(holds ? [`${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`] : []),
+    ...(holds && claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
     styleLine(state, reg, unit),
-    ...(milestone !== undefined ? [`She is waiting for the commander's answer to something she asked: ${sentence(milestone.promptHint)}.`] : []),
-    ...(refused ? ['She has not forgotten a recent refusal and will answer it in her own way.'] : []),
+    ...(milestone !== undefined ? [`${holds ? 'She' : name} is waiting for the commander's answer to something she asked: ${sentence(milestone.promptHint)}.`] : []),
+    ...(holds && refused ? ['She has not forgotten a recent refusal and will answer it in her own way.'] : []),
     'Show it in how she acts and speaks; never name it as a mechanic.',
   ];
   return { id: `${DYNAMIC_PREFIX}${unit.id}`, expiresAfter: 'scene', text: parts.filter((p) => p !== '').join(' ') };
@@ -74,7 +78,7 @@ function probeDirective(reg: Registries, unit: Unit, axisId: string): Directive 
 /**
  * Derived directives for the women in the scene (`present`):
  *  - `dynamic:<unitId>`: she holds at `play` or beyond: the frame's line, what she has claimed, her manner (the secondary named while it leads),
- *    and an answer she is waiting for (an open milestone, a recent refusal).
+ *    and an answer she is waiting for (an open milestone, a recent refusal); before the first frame, only an open milestone.
  *  - `dynamic:probe:<unitId>`: her probe is pending (at most one a scene); gone when it is answered or lapses.
  * Nothing while the dynamic is off.
  */

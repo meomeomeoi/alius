@@ -359,3 +359,16 @@ registerMemoryResolver('position_shifted', (draft, event, reg) => {
   const label = (id: unknown): string => String(reg.positionRegions.get(String(id))?.label ?? id);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, from: label(event.from), to: label(event.to) } } : null;
 }, { ids: ['her'], vars: ['name', 'from', 'to'] });
+
+// the dynamic (P15): the frame she holds over the commander moved up, and the vow; the pair's own (a cooling or a lost command is not written)
+
+registerMemoryResolver('frame_changed', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  const rank = (f: unknown): number => ['equal', 'play', 'role', 'rule'].indexOf(String(f));
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, to: String(event.to), from: String(event.from), up: yes(rank(event.to) > rank(event.from)) } } : null;
+}, { ids: ['her'], vars: ['name', 'to', 'from', 'up'] });
+
+registerMemoryResolver('sworn', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ['her'], vars: ['name'] });

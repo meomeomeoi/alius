@@ -9061,6 +9061,8 @@ var MemoryRuleSchema = BaseEntrySchema.extend({
   audience: external_exports.union([str, external_exports.array(str).min(1)]),
   spread: external_exports.enum(["none", "slow", "fast"]),
   hiddenFromCommander: external_exports.literal(true).optional(),
+  /** P15: the fact it writes is pinned (the fold never takes it): the vow. */
+  pinned: external_exports.literal(true).optional(),
   tags: external_exports.array(str)
 });
 registrySchemas.memoryRules = MemoryRuleSchema;
@@ -17080,50 +17082,6 @@ function ensureDynamic(draft, reg, unitId) {
   return [{ type: "dynamic_started", unitId }];
 }
 
-// src/engine/physics/style.ts
-var styleReaders = [];
-var holdsReaders = [];
-function registerPhysicsStyle(fn) {
-  styleReaders.push(fn);
-}
-function registerHoldsUntil(fn) {
-  holdsReaders.push(fn);
-}
-function physicsStyleOf(state, unitId, reg) {
-  for (const read of styleReaders) {
-    const s = read(state, unitId, reg);
-    if (s !== null) return s;
-  }
-  return { primary: "neutral" };
-}
-function holdsUntilOf(state, unitId) {
-  for (const read of holdsReaders) {
-    const h2 = read(state, unitId);
-    if (h2 !== null) return h2;
-  }
-  return "signal";
-}
-function effectiveHoldsUntil(state, reg, unitId) {
-  const h2 = holdsUntilOf(state, unitId);
-  return h2 === "blackout" && !contentAllowed(state, reg, { contentTags: ["breath_play"] }, unitId) ? "limit" : h2;
-}
-var row = (key) => TUNING.physics.style[key] ?? TUNING.physics.style.neutral;
-function styleRows(style) {
-  const secondaryLeads = style.phaseLead === "secondary" && style.secondary !== void 0;
-  const leadKey = secondaryLeads ? style.secondary : style.primary;
-  const otherKey = secondaryLeads ? style.primary : style.secondary;
-  return { lead: row(leadKey), ...otherKey !== void 0 ? { other: row(otherKey) } : {}, leadKey };
-}
-function blendedStyle(style, field2) {
-  const { lead, other } = styleRows(style);
-  const [a, b] = TUNING.physics.blend;
-  return other === void 0 ? lead[field2] : lead[field2] * a + other[field2] * b;
-}
-function leadStyle(style) {
-  const { lead, leadKey } = styleRows(style);
-  return { key: leadKey, cues: lead.cues, seal: lead.seal, skillMult: lead.skillMult };
-}
-
 // src/engine/personal/bookings.ts
 var bookingsOf = (state) => state.personal?.bookings ?? [];
 var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -17304,162 +17262,48 @@ function metAtScene(draft, reg, participants) {
   return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
 }
 
-// src/engine/dynamic/tracks.ts
-var trackEntry = (reg, trackId) => reg.dynamicTracks.get(trackId);
-var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
-function trackOpen(state, reg, unitId, trackId) {
-  const entry = trackEntry(reg, trackId);
-  if (entry === void 0 || !dynamicOn(state, reg) || dynamicOf(state, unitId) === void 0) return false;
-  return entry.category === void 0 || (practiceOf(state, reg, unitId)?.allowed.includes(entry.category) ?? false);
+// src/engine/physics/style.ts
+var styleReaders = [];
+var holdsReaders = [];
+function registerPhysicsStyle(fn) {
+  styleReaders.push(fn);
 }
-function trackLevel(state, unitId, trackId) {
-  return dynamicOf(state, unitId)?.tracks[trackId]?.level ?? 0;
+function registerHoldsUntil(fn) {
+  holdsReaders.push(fn);
 }
-function trackCap(state, reg, unitId, trackId) {
-  return trackOpen(state, reg, unitId, trackId) ? trackLevel(state, unitId, trackId) : 0;
-}
-
-// src/engine/dynamic/milestones.ts
-var milestoneRows = (reg) => [...reg.dynamicMilestones.values()];
-var milestoneEntry = (reg, id) => reg.dynamicMilestones.get(id);
-function capabilitiesHeld(dyn, reg) {
-  const held3 = /* @__PURE__ */ new Set();
-  for (const d of dyn.domains) for (const c of reg.dynamicDomains.get(d.id)?.grants ?? []) held3.add(c);
-  return held3;
-}
-function requiresMet(state, reg, unitId, m) {
-  const dyn = dynamicOf(state, unitId);
-  if (dyn === void 0 || !contentAllowed(state, reg, m, unitId)) return false;
-  const r = m.requires;
-  if (r.holdBand !== void 0) {
-    const band2 = reg.holdBands.get(r.holdBand);
-    if (band2 === void 0 || dyn.hold < Number(band2.min)) return false;
+function physicsStyleOf(state, unitId, reg) {
+  for (const read of styleReaders) {
+    const s = read(state, unitId, reg);
+    if (s !== null) return s;
   }
-  if (r.tracks !== void 0 && Object.entries(r.tracks).some(([id, level]) => trackCap(state, reg, unitId, id) < level)) return false;
-  const caps = capabilitiesHeld(dyn, reg);
-  if (r.capabilities !== void 0 && !r.capabilities.every((c) => caps.has(c))) return false;
-  if (r.noCapability !== void 0 && caps.has(r.noCapability)) return false;
-  if (r.categories !== void 0) {
-    const view = practiceOf(state, reg, unitId);
-    if (view === null || !r.categories.every((c) => view.allowed.includes(c) && view.categories[c]?.as !== "none")) return false;
-  }
-  if (r.styles !== void 0) {
-    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
-    if (primary === void 0 || !r.styles.includes(primary)) return false;
-  }
-  if (r.romantic === true && bondTierOf(state, reg, unitId) !== "romantic") return false;
-  if (r.coolingDays !== void 0 && state.day - dyn.lastPracticeDay < r.coolingDays) return false;
-  if (r.formerHolder === true && dyn.formerHolder === void 0) return false;
-  return true;
+  return { primary: "neutral" };
 }
-function holdsFrameWithoutIt(state, reg, unitId, m) {
-  if (m.requires.noCapability === void 0) return false;
-  return milestoneRows(reg).some((e) => e.to === m.from && e.from !== e.to && e.offer !== "automatic" && !e.effects.some((x) => x.type === "claim") && requiresMet(state, reg, unitId, e));
-}
-function eligible2(state, reg, unitId, dyn, m) {
-  if (m.from !== dyn.frame || state.day < (dyn.cooldowns[m.id] ?? -Infinity)) return false;
-  if (m.from === m.to && dyn.milestones.includes(m.id)) return false;
-  if (!requiresMet(state, reg, unitId, m) || holdsFrameWithoutIt(state, reg, unitId, m)) return false;
-  return m.from !== "equal" || canHold(state, reg, unitId) === null;
-}
-function nextFreeEvening(state) {
-  const taken = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && b.slot === "evening").map((b) => b.day);
-  const from = state.slot === "evening" || state.slot === "night" ? state.day + 1 : state.day;
-  for (let d = from; d <= from + TUNING.dynamic.milestones.bookingSearchDays; d++) if (!taken.includes(d)) return d;
-  return null;
-}
-function openMilestone(draft, ctx2, unitId, m) {
-  const x = draft.dynamic;
-  const id = `dm${x.seq++}`;
-  x.open.milestones.push({ id, unitId, milestoneId: m.id, day: draft.day, form: m.offer });
-  const events = [{ type: "milestone_offered", unitId, id, milestoneId: m.id, form: m.offer }];
-  if (m.offer === "booking") {
-    const day = nextFreeEvening(draft);
-    const kind = bookingKindsFor(draft, ctx2.registries, unitId).find((k) => k.slot === "evening");
-    if (day !== null && kind !== void 0) events.push(...book(draft, ctx2, { unitId, kindId: String(kind.id), day, slot: "evening", source: "milestone" }));
+function holdsUntilOf(state, unitId) {
+  for (const read of holdsReaders) {
+    const h2 = read(state, unitId);
+    if (h2 !== null) return h2;
   }
-  if (m.offer === "booking" || m.offer === "demand") {
-    const name = draft.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
-    pushMessage(draft, unitId, { from: unitId, text: m.text.replaceAll("{name}", name), day: draft.day, slot: draft.slot, read: false, initiated: true });
-  }
-  return events;
+  return "signal";
 }
-function applyMilestone(draft, ctx2, unitId, milestoneId) {
-  const reg = ctx2.registries;
-  const m = milestoneEntry(reg, milestoneId);
-  const dyn = dynamicOf(draft, unitId);
-  if (m === void 0 || dyn === void 0 || !dynamicOn(draft, reg)) return [];
-  const events = [];
-  for (const effect of m.effects) {
-    if (effect.type === "frame") {
-      const from = dyn.frame;
-      dyn.frame = m.to;
-      events.push({ type: "frame_changed", unitId, from, to: m.to, milestoneId: m.id });
-      const floor = frameEntry(reg, m.to)?.holdFloor ?? 0;
-      if (dyn.hold < floor) {
-        const was = dyn.hold;
-        dyn.hold = floor;
-        events.push({ type: "hold_changed", unitId, from: was, to: floor, cause: "frame" });
-        if (holdBandOf(reg, was) !== holdBandOf(reg, floor)) events.push({ type: "hold_band_changed", unitId, from: holdBandOf(reg, was), to: holdBandOf(reg, floor) });
-      }
-      if (frameRank(m.to) < frameRank(from)) {
-        for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
-      }
-    } else if (effect.type === "sworn") {
-      dyn.sworn = { day: draft.day };
-      events.push({ type: "sworn", unitId, day: draft.day });
-    } else if (effect.type === "claim") {
-      if (!capabilitiesHeld(dyn, reg).has(effect.capability)) {
-        const domain = [...reg.dynamicDomains.values()].find((d) => d.grants.includes(effect.capability));
-        if (domain !== void 0) dyn.domains.push({ id: String(domain.id), since: draft.day });
-      }
-    }
-  }
-  dyn.milestones.push(m.id);
-  const x = draft.dynamic;
-  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
-  return events;
+function effectiveHoldsUntil(state, reg, unitId) {
+  const h2 = holdsUntilOf(state, unitId);
+  return h2 === "blackout" && !contentAllowed(state, reg, { contentTags: ["breath_play"] }, unitId) ? "limit" : h2;
 }
-function milestonesDue(draft, ctx2, unitId) {
-  const reg = ctx2.registries;
-  const unit3 = draft.squad.find((u) => u.id === unitId);
-  if (!dynamicOn(draft, reg) || draft.dynamic === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return [];
-  const events = [];
-  for (let again = true, guard = 0; again && guard < 4; guard++) {
-    const dyn2 = dynamicOf(draft, unitId);
-    const auto = dyn2 === void 0 ? void 0 : milestoneRows(reg).find((m) => m.offer === "automatic" && m.requires.formerHolder !== true && eligible2(draft, reg, unitId, dyn2, m));
-    again = auto !== void 0;
-    if (auto !== void 0) events.push(...applyMilestone(draft, ctx2, unitId, auto.id));
-  }
-  const dyn = dynamicOf(draft, unitId);
-  if (dyn === void 0) return events;
-  const x = draft.dynamic;
-  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
-  if (x.open.milestones.some((o) => o.unitId === unitId)) return events;
-  const next = milestoneRows(reg).find((m) => m.offer !== "automatic" && eligible2(draft, reg, unitId, dyn, m));
-  if (next !== void 0) events.push(...openMilestone(draft, ctx2, unitId, next));
-  return events;
+var row = (key) => TUNING.physics.style[key] ?? TUNING.physics.style.neutral;
+function styleRows(style) {
+  const secondaryLeads = style.phaseLead === "secondary" && style.secondary !== void 0;
+  const leadKey = secondaryLeads ? style.secondary : style.primary;
+  const otherKey = secondaryLeads ? style.primary : style.secondary;
+  return { lead: row(leadKey), ...otherKey !== void 0 ? { other: row(otherKey) } : {}, leadKey };
 }
-function refusalCost(draft, ctx2, unitId, what) {
-  const reg = ctx2.registries;
-  const dyn = dynamicOf(draft, unitId);
-  if (dyn === void 0 || !dynamicOn(draft, reg)) return [];
-  const kind = frameEntry(reg, dyn.frame)?.refusal ?? "minor";
-  const events = what === "milestone" ? [] : addHold(draft, ctx2, unitId, TUNING.dynamic.refusalCost[kind], "refusal");
-  if (kind === "minor") return events;
-  const days = TUNING.dynamic.contestWindowDays;
-  dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];
-  events.push({ type: "refusal_noted", unitId, what });
-  if (kind === "contest") {
-    dyn.contest = [...dyn.contest.filter((d) => draft.day - d <= days), draft.day];
-    const x = draft.dynamic;
-    if (dyn.contest.length >= TUNING.dynamic.contestAt && !x.open.claims.some((c) => c.unitId === unitId)) {
-      const claimId = `dc${x.seq++}`;
-      x.open.claims.push({ id: claimId, unitId, submit: true, day: draft.day });
-      events.push({ type: "domain_claimed", unitId, claimId, submit: true });
-    }
-  }
-  return events;
+function blendedStyle(style, field2) {
+  const { lead, other } = styleRows(style);
+  const [a, b] = TUNING.physics.blend;
+  return other === void 0 ? lead[field2] : lead[field2] * a + other[field2] * b;
+}
+function leadStyle(style) {
+  const { lead, leadKey } = styleRows(style);
+  return { key: leadKey, cues: lead.cues, seal: lead.seal, skillMult: lead.skillMult };
 }
 
 // src/engine/dynamic/reading.ts
@@ -17670,6 +17514,181 @@ function addFavour(draft, unitId, n) {
   dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
 }
 
+// src/engine/dynamic/tracks.ts
+var trackEntry = (reg, trackId) => reg.dynamicTracks.get(trackId);
+var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
+function trackOpen(state, reg, unitId, trackId) {
+  const entry = trackEntry(reg, trackId);
+  if (entry === void 0 || !dynamicOn(state, reg) || dynamicOf(state, unitId) === void 0) return false;
+  return entry.category === void 0 || (practiceOf(state, reg, unitId)?.allowed.includes(entry.category) ?? false);
+}
+function trackLevel(state, unitId, trackId) {
+  return dynamicOf(state, unitId)?.tracks[trackId]?.level ?? 0;
+}
+function trackCap(state, reg, unitId, trackId) {
+  return trackOpen(state, reg, unitId, trackId) ? trackLevel(state, unitId, trackId) : 0;
+}
+
+// src/engine/dynamic/milestones.ts
+var milestoneRows = (reg) => [...reg.dynamicMilestones.values()];
+var milestoneEntry = (reg, id) => reg.dynamicMilestones.get(id);
+function capabilitiesHeld(dyn, reg) {
+  const held3 = /* @__PURE__ */ new Set();
+  for (const d of dyn.domains) for (const c of reg.dynamicDomains.get(d.id)?.grants ?? []) held3.add(c);
+  return held3;
+}
+function requiresMet(state, reg, unitId, m) {
+  const dyn = dynamicOf(state, unitId);
+  if (dyn === void 0 || !contentAllowed(state, reg, m, unitId)) return false;
+  const r = m.requires;
+  if (r.holdBand !== void 0) {
+    const band2 = reg.holdBands.get(r.holdBand);
+    if (band2 === void 0 || dyn.hold < Number(band2.min)) return false;
+  }
+  if (r.tracks !== void 0 && Object.entries(r.tracks).some(([id, level]) => trackCap(state, reg, unitId, id) < level)) return false;
+  const caps = capabilitiesHeld(dyn, reg);
+  if (r.capabilities !== void 0 && !r.capabilities.every((c) => caps.has(c))) return false;
+  if (r.noCapability !== void 0 && caps.has(r.noCapability)) return false;
+  if (r.categories !== void 0) {
+    const view = practiceOf(state, reg, unitId);
+    if (view === null || !r.categories.every((c) => view.allowed.includes(c) && view.categories[c]?.as !== "none")) return false;
+  }
+  if (r.styles !== void 0) {
+    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+    if (primary === void 0 || !r.styles.includes(primary)) return false;
+  }
+  if (r.romantic === true && bondTierOf(state, reg, unitId) !== "romantic") return false;
+  if (r.coolingDays !== void 0 && state.day - dyn.lastPracticeDay < r.coolingDays) return false;
+  if (r.formerHolder === true && dyn.formerHolder === void 0) return false;
+  return true;
+}
+function holdsFrameWithoutIt(state, reg, unitId, m) {
+  if (m.requires.noCapability === void 0) return false;
+  return milestoneRows(reg).some((e) => e.to === m.from && e.from !== e.to && e.offer !== "automatic" && !e.effects.some((x) => x.type === "claim") && requiresMet(state, reg, unitId, e));
+}
+function eligible2(state, reg, unitId, dyn, m) {
+  if (m.from !== dyn.frame || state.day < (dyn.cooldowns[m.id] ?? -Infinity)) return false;
+  if (m.from === m.to && dyn.milestones.includes(m.id)) return false;
+  if (!requiresMet(state, reg, unitId, m) || holdsFrameWithoutIt(state, reg, unitId, m)) return false;
+  return m.from !== "equal" || canHold(state, reg, unitId) === null;
+}
+function nextFreeEvening(state) {
+  const taken = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && b.slot === "evening").map((b) => b.day);
+  const from = state.slot === "evening" || state.slot === "night" ? state.day + 1 : state.day;
+  for (let d = from; d <= from + TUNING.dynamic.milestones.bookingSearchDays; d++) if (!taken.includes(d)) return d;
+  return null;
+}
+function openMilestone(draft, ctx2, unitId, m) {
+  const x = draft.dynamic;
+  const id = `dm${x.seq++}`;
+  x.open.milestones.push({ id, unitId, milestoneId: m.id, day: draft.day, form: m.offer });
+  const events = [{ type: "milestone_offered", unitId, id, milestoneId: m.id, form: m.offer }];
+  if (m.offer === "booking") {
+    const day = nextFreeEvening(draft);
+    const kind = bookingKindsFor(draft, ctx2.registries, unitId).find((k) => k.slot === "evening");
+    if (day !== null && kind !== void 0) events.push(...book(draft, ctx2, { unitId, kindId: String(kind.id), day, slot: "evening", source: "milestone" }));
+  }
+  if (m.offer === "booking" || m.offer === "demand") {
+    const name = draft.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+    pushMessage(draft, unitId, { from: unitId, text: m.text.replaceAll("{name}", name), day: draft.day, slot: draft.slot, read: false, initiated: true });
+  }
+  return events;
+}
+function applyMilestone(draft, ctx2, unitId, milestoneId) {
+  const reg = ctx2.registries;
+  const m = milestoneEntry(reg, milestoneId);
+  const dyn = dynamicOf(draft, unitId);
+  if (m === void 0 || dyn === void 0 || !dynamicOn(draft, reg)) return [];
+  const events = [];
+  for (const effect of m.effects) {
+    if (effect.type === "frame") {
+      const from = dyn.frame;
+      dyn.frame = m.to;
+      events.push({ type: "frame_changed", unitId, from, to: m.to, milestoneId: m.id });
+      const floor = frameEntry(reg, m.to)?.holdFloor ?? 0;
+      if (dyn.hold < floor) {
+        const was = dyn.hold;
+        dyn.hold = floor;
+        events.push({ type: "hold_changed", unitId, from: was, to: floor, cause: "frame" });
+        if (holdBandOf(reg, was) !== holdBandOf(reg, floor)) events.push({ type: "hold_band_changed", unitId, from: holdBandOf(reg, was), to: holdBandOf(reg, floor) });
+      }
+      if (frameRank(m.to) < frameRank(from)) {
+        for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
+      }
+    } else if (effect.type === "sworn") {
+      dyn.sworn = { day: draft.day };
+      events.push({ type: "sworn", unitId, day: draft.day });
+    } else if (effect.type === "claim") {
+      if (!capabilitiesHeld(dyn, reg).has(effect.capability)) {
+        const domain = [...reg.dynamicDomains.values()].find((d) => d.grants.includes(effect.capability));
+        if (domain !== void 0) dyn.domains.push({ id: String(domain.id), since: draft.day });
+      }
+    }
+  }
+  dyn.milestones.push(m.id);
+  const x = draft.dynamic;
+  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
+  return events;
+}
+function answerMilestone(draft, ctx2, milestoneId, answer, via) {
+  const reg = ctx2.registries;
+  const row3 = draft.dynamic?.open.milestones.find((m2) => m2.id === milestoneId);
+  const unit3 = row3 === void 0 ? void 0 : draft.squad.find((u) => u.id === row3.unitId);
+  const m = row3 === void 0 ? void 0 : milestoneEntry(reg, row3.milestoneId);
+  const dyn = row3 === void 0 ? void 0 : dynamicOf(draft, row3.unitId);
+  if (!dynamicOn(draft, reg) || row3 === void 0 || unit3 === void 0 || m === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("That milestone is not open.");
+  draft.dynamic.open.milestones = draft.dynamic.open.milestones.filter((o) => o.id !== row3.id);
+  const base = { unitId: row3.unitId, id: row3.id, milestoneId: m.id, via };
+  if (answer === "accept") return [{ type: "milestone_accepted", ...base }, ...applyMilestone(draft, ctx2, row3.unitId, m.id)];
+  dyn.cooldowns[m.id] = draft.day + TUNING.dynamic.milestones.refuseCooldownDays;
+  return [
+    { type: "milestone_refused", ...base },
+    ...addHold(draft, ctx2, row3.unitId, -TUNING.dynamic.milestones.refuseDrop, "milestone_refused"),
+    ...refusalCost(draft, ctx2, row3.unitId, "milestone")
+  ];
+}
+function milestonesDue(draft, ctx2, unitId) {
+  const reg = ctx2.registries;
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (!dynamicOn(draft, reg) || draft.dynamic === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return [];
+  const events = [];
+  for (let again = true, guard = 0; again && guard < 4; guard++) {
+    const dyn2 = dynamicOf(draft, unitId);
+    const auto = dyn2 === void 0 ? void 0 : milestoneRows(reg).find((m) => m.offer === "automatic" && m.requires.formerHolder !== true && eligible2(draft, reg, unitId, dyn2, m));
+    again = auto !== void 0;
+    if (auto !== void 0) events.push(...applyMilestone(draft, ctx2, unitId, auto.id));
+  }
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0) return events;
+  const x = draft.dynamic;
+  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
+  if (x.open.milestones.some((o) => o.unitId === unitId)) return events;
+  const next = milestoneRows(reg).find((m) => m.offer !== "automatic" && eligible2(draft, reg, unitId, dyn, m));
+  if (next !== void 0) events.push(...openMilestone(draft, ctx2, unitId, next));
+  return events;
+}
+function refusalCost(draft, ctx2, unitId, what) {
+  const reg = ctx2.registries;
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0 || !dynamicOn(draft, reg)) return [];
+  const kind = frameEntry(reg, dyn.frame)?.refusal ?? "minor";
+  const events = what === "milestone" ? [] : addHold(draft, ctx2, unitId, TUNING.dynamic.refusalCost[kind], "refusal");
+  if (kind === "minor") return events;
+  const days = TUNING.dynamic.contestWindowDays;
+  dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];
+  events.push({ type: "refusal_noted", unitId, what });
+  if (kind === "contest") {
+    dyn.contest = [...dyn.contest.filter((d) => draft.day - d <= days), draft.day];
+    const x = draft.dynamic;
+    if (dyn.contest.length >= TUNING.dynamic.contestAt && !x.open.claims.some((c) => c.unitId === unitId)) {
+      const claimId = `dc${x.seq++}`;
+      x.open.claims.push({ id: claimId, unitId, submit: true, day: draft.day });
+      events.push({ type: "domain_claimed", unitId, claimId, submit: true });
+    }
+  }
+  return events;
+}
+
 // src/engine/dynamic/probes.ts
 var livingNamed2 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u));
 function pendingProbe(state, unitId) {
@@ -17847,6 +17866,11 @@ function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
       return ev.response === void 0 || pendingProbe(draft, unitId) === void 0 ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 1, threatIn(batch));
     case "probe_observed":
       return ev.response === void 0 || dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 0.5, threatIn(batch));
+    case "milestone_accepted":
+    case "milestone_refused": {
+      const open3 = ev.milestoneId === void 0 ? void 0 : draft.dynamic?.open.milestones.find((m) => m.id === ev.milestoneId && m.unitId === unitId);
+      return open3 === void 0 ? [] : answerMilestone(draft, ctx2, open3.id, ev.type === "milestone_accepted" ? "accept" : "refuse", "text");
+    }
     default:
       return [];
   }
@@ -26962,6 +26986,15 @@ registerMemoryResolver("position_shifted", (draft, event, reg) => {
   const label2 = (id) => String(reg.positionRegions.get(String(id))?.label ?? id);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, from: label2(event.from), to: label2(event.to) } } : null;
 }, { ids: ["her"], vars: ["name", "from", "to"] });
+registerMemoryResolver("frame_changed", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  const rank2 = (f) => ["equal", "play", "role", "rule"].indexOf(String(f));
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, to: String(event.to), from: String(event.from), up: yes(rank2(event.to) > rank2(event.from)) } } : null;
+}, { ids: ["her"], vars: ["name", "to", "from", "up"] });
+registerMemoryResolver("sworn", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ["her"], vars: ["name"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -27028,7 +27061,8 @@ function rememberEvents(draft, events, reg) {
         day: draft.day,
         knownBy,
         ...rule.spread !== "none" && !knownBy.includes("*") ? { spread: rule.spread } : {},
-        ...rule.hiddenFromCommander === true ? { hiddenFromCommander: true } : {}
+        ...rule.hiddenFromCommander === true ? { hiddenFromCommander: true } : {},
+        ...rule.pinned === true ? { pinned: true } : {}
       }, { remembered: true });
     }
   }
@@ -33532,6 +33566,12 @@ registerAction("dynamic/declare", (draft, payload, ctx2) => {
   const shift = resettleReading(dyn).region;
   return shift === void 0 ? [] : [{ type: "position_shifted", unitId: unit3.id, from: shift.from, to: shift.to }];
 });
+registerAction("dynamic/answer_milestone", (draft, payload, ctx2) => {
+  const p = payload ?? {};
+  if (typeof p.milestoneId !== "string") throw new Error("dynamic/answer_milestone needs a milestoneId.");
+  if (p.answer !== "accept" && p.answer !== "refuse") throw new Error("The answer must be accept or refuse.");
+  return answerMilestone(draft, ctx2, p.milestoneId, p.answer, "card");
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -36241,18 +36281,19 @@ function styleLine(state, reg, unit3) {
 function holderDirective(state, reg, unit3) {
   const dyn = dynamicOf(state, unit3.id);
   const frame = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
-  if (dyn === void 0 || frame === void 0 || frameRank(dyn.frame) < frameRank("play")) return null;
+  const waiting2 = state.dynamic?.open.milestones.find((m) => m.unitId === unit3.id);
+  const holds4 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
+  if (dyn === void 0 || frame === void 0 || !holds4 && waiting2 === void 0) return null;
   const name = unit3.displayName;
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
-  const waiting2 = state.dynamic?.open.milestones.find((m) => m.unitId === unit3.id);
   const milestone = waiting2 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting2.milestoneId);
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const parts = [
-    `${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`,
-    ...claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
+    ...holds4 ? [`${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`] : [],
+    ...holds4 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit3),
-    ...milestone !== void 0 ? [`She is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
-    ...refused ? ["She has not forgotten a recent refusal and will answer it in her own way."] : [],
+    ...milestone !== void 0 ? [`${holds4 ? "She" : name} is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
+    ...holds4 && refused ? ["She has not forgotten a recent refusal and will answer it in her own way."] : [],
     "Show it in how she acts and speaks; never name it as a mechanic."
   ];
   return { id: `${DYNAMIC_PREFIX}${unit3.id}`, expiresAfter: "scene", text: parts.filter((p) => p !== "").join(" ") };
