@@ -528,15 +528,15 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `categoryRequires(reg, id): string[]`; `setCategories` unchanged in signature.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `thirteen new categories, all off`: the registry has 22, and none is enabled in a new campaign.
   - `watersports needs bodily_fluids`: `setCategories(d, reg, ['watersports'])` → enabled `[]`; with both → both; then `['watersports']` alone → `[]` and `content_changed.removed` lists `watersports`.
   - `the toggle is aria-disabled with its reason` (jsdom; `renderContentSection`).
   - `an unknown or cyclic requires is a content error` (fixture pack).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/bonds/contentRequires.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in Interfaces.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS (the goldens unchanged).
-- [ ] **Step 5: Commit** `feat(P15a): thirteen content categories and requires`
+- [x] **Step 2: Run** `npx vitest run tests/engine/bonds/contentRequires.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in Interfaces.
+- [x] **Step 4: Run** the file, then `npm test` → PASS (the goldens unchanged).
+- [x] **Step 5: Commit** `feat(P15a): thirteen content categories and requires`
 
 ---
 

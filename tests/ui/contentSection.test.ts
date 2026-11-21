@@ -24,11 +24,11 @@ function draw(enabled: string[] = [], registries = reg) {
 }
 
 describe('renderContentSection (P9d)', () => {
-  it('shows the heading copy and all nine categories in order, each off, with its label and description', () => {
+  it('shows the heading copy and all 22 categories in order, each off, with its label and description', () => {
     const v = draw();
     expect(v.host.querySelector('h3')!.textContent).toBe(COPY);
     expect(v.rows().map((r) => r.dataset.category)).toEqual([...reg.contentCategories.keys()]);
-    expect(v.rows()).toHaveLength(9);
+    expect(v.rows()).toHaveLength(22);
     for (const r of v.rows()) {
       const c = reg.contentCategories.get(r.dataset.category!)!;
       expect(r.getAttribute('aria-pressed'), r.dataset.category).toBe('false');

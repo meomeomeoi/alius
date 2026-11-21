@@ -288,7 +288,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'prologue', 'intake_interview', 'medical_exam', 'personnel_dossier', 'veteran_intake', 'lineup', 'first_words', 'tutorial_expedition',
   'module_offline', 'coach_hint', 'rows',
   // P9d (the calibration's bond profile addresses this; the content and Want entries come with their screens)
-  'bond_profile', 'content_categories', 'lead', 'want', 'relationship_rules', 'publicity',
+  'bond_profile', 'content_categories', 'content_requires', 'lead', 'want', 'relationship_rules', 'publicity',
   // P9b (the WORLD PARAMETERS cards and the VOTE panel address these)
   'squad_power', 'voting', 'vote', 'rations',
   'standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'scapegoat',

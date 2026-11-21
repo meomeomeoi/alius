@@ -1254,7 +1254,17 @@
     "short": "What the story may show. Every category is off until you switch it on; switching one on is your consent for it to appear when the story leads there.",
     "long": "AUTHOR TO WRITE: Categories are listed when you start a campaign and in the settings tab, and you can change them at any time. A category that is off is excluded from every generation and from every mechanic that could produce it; when a reply shows one anyway it is marked and you can regenerate it. A soldier's own limits from her card still hold when a category is on.",
     "see": [
-      "bond_profile"
+      "bond_profile",
+      "content_requires"
+    ]
+  },
+  {
+    "id": "content_requires",
+    "term": "Needs another category",
+    "short": "A category that only makes sense with another one. It cannot be switched on while the other is off, and it goes off with it.",
+    "long": "AUTHOR TO WRITE: Some categories build on another (watersports on bodily fluids). The toggle shows what it needs and stays locked until that one is on; switching the needed one off switches this one off too.",
+    "see": [
+      "content_categories"
     ]
   },
   {

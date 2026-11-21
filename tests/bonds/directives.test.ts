@@ -31,7 +31,7 @@ describe('the content exclusion directive', () => {
     bondsDirectives(b, s, reg);
     const d = dirs(b, s);
     const everyLabel = labels([...reg.contentCategories.keys()]);
-    expect(everyLabel).toHaveLength(9);
+    expect(everyLabel).toHaveLength(22); // P15a: 9 + 13
     for (const l of everyLabel) expect(d).toContain(l);
     expect(d).toContain('Content excluded from this story — never depict, imply or describe: ');
     expect(d).toContain('Fade out intimate moments.');

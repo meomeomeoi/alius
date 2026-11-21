@@ -826,6 +826,27 @@ function tagChecks(path: string, tags: unknown, regs: Record<RegistryName, Map<s
   return tags.filter((t) => !regs.contentCategories.has(String(t))).map((t) => ({ path, message: `unknown content category "${String(t)}"` }));
 }
 
+// P15a: a content category's `requires` names known categories and never loops back to itself
+registerChecks('contentCategories', (entry, regs) => {
+  const requires = entry.requires;
+  if (!Array.isArray(requires)) return [];
+  const out: RegistryCheck[] = requires.filter((r) => !regs.contentCategories.has(String(r))).map((r) => ({ path: 'requires', message: `requires: unknown content category "${String(r)}"` }));
+  const seen = new Set<string>();
+  const stack = requires.map(String);
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    if (id === String(entry.id)) {
+      out.push({ path: 'requires', message: `requires: cycle through "${id}"` });
+      break;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const next = regs.contentCategories.get(id)?.requires;
+    if (Array.isArray(next)) stack.push(...next.map(String));
+  }
+  return out;
+});
+
 for (const registry of REGISTRY_NAMES) {
   registerChecks(registry, (entry, regs) => {
     if (entry.contentTags === undefined) return [];

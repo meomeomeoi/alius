@@ -28,12 +28,12 @@ function draw(state: CampaignState | null, over: Partial<SysCtx> = {}) {
 }
 
 describe('SYS › Content (P9d)', () => {
-  it('lists the nine categories of the campaign, each as set', () => {
+  it('lists the 22 categories of the campaign, each as set', () => {
     const s = campaign(reg, 4);
     s.content = { enabled: ['restraint'] };
     const v = draw(s);
     expect(v.host.textContent).toContain('Content');
-    expect(v.host.querySelectorAll('button[data-category]')).toHaveLength(9);
+    expect(v.host.querySelectorAll('button[data-category]')).toHaveLength(22);
     expect(v.row('restraint')!.getAttribute('aria-pressed')).toBe('true');
     expect(v.row('humiliation')!.getAttribute('aria-pressed')).toBe('false');
   });

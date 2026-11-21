@@ -52,5 +52,86 @@
     "label": "Explicit scenes",
     "description": "AUTHOR TO WRITE: Intimate scenes shown in full instead of fading out.",
     "order": 9
+  },
+  {
+    "id": "worship",
+    "label": "Worship",
+    "description": "AUTHOR TO WRITE: Worship.",
+    "order": 10
+  },
+  {
+    "id": "breath_play",
+    "label": "Breath play",
+    "description": "AUTHOR TO WRITE: Breath play.",
+    "order": 11
+  },
+  {
+    "id": "bodily_fluids",
+    "label": "Bodily fluids",
+    "description": "AUTHOR TO WRITE: Bodily fluids.",
+    "order": 12
+  },
+  {
+    "id": "watersports",
+    "label": "Watersports",
+    "description": "AUTHOR TO WRITE: Watersports.",
+    "order": 13,
+    "requires": [
+      "bodily_fluids"
+    ]
+  },
+  {
+    "id": "service",
+    "label": "Service",
+    "description": "AUTHOR TO WRITE: Service.",
+    "order": 14
+  },
+  {
+    "id": "denial",
+    "label": "Denial",
+    "description": "AUTHOR TO WRITE: Denial.",
+    "order": 15
+  },
+  {
+    "id": "exposure_risk",
+    "label": "Exposure risk",
+    "description": "AUTHOR TO WRITE: Exposure risk.",
+    "order": 16
+  },
+  {
+    "id": "pet_play",
+    "label": "Pet play",
+    "description": "AUTHOR TO WRITE: Pet play.",
+    "order": 17
+  },
+  {
+    "id": "objectification",
+    "label": "Objectification",
+    "description": "AUTHOR TO WRITE: Objectification.",
+    "order": 18
+  },
+  {
+    "id": "deprivation",
+    "label": "Deprivation",
+    "description": "AUTHOR TO WRITE: Deprivation.",
+    "order": 19
+  },
+  {
+    "id": "strap",
+    "label": "Strap",
+    "description": "AUTHOR TO WRITE: Strap.",
+    "order": 20
+  },
+  {
+    "id": "her_anatomy",
+    "label": "Her anatomy",
+    "description": "AUTHOR TO WRITE: Her anatomy.",
+    "order": 21
+  },
+  {
+    "id": "feminization",
+    "label": "Feminization",
+    "description": "AUTHOR TO WRITE: Feminization.",
+    "order": 22
   }
 ]

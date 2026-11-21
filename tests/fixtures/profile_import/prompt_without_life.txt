@@ -107,6 +107,19 @@ CONTENT CATEGORIES (id: label):
 - jealousy_games: Jealousy games
 - body_modification: Body modification
 - explicit_scenes: Explicit scenes
+- worship: Worship
+- breath_play: Breath play
+- bodily_fluids: Bodily fluids
+- watersports: Watersports
+- service: Service
+- denial: Denial
+- exposure_risk: Exposure risk
+- pet_play: Pet play
+- objectification: Objectification
+- deprivation: Deprivation
+- strap: Strap
+- her_anatomy: Her anatomy
+- feminization: Feminization
 
 DEVELOPMENT AXES (keys an anchor may name):
 value:pragmatism, value:autonomy, value:ingroup, value:mercy, value:corporate, value:sacrifice, bond:attachment, bond:desire, bond:caretaker, bond:lead_style, taste:respects_strength, taste:wary_of_brutes, taste:protective_of_frail, taste:drawn_to_feminine, taste:drawn_to_masculine, taste:drawn_to_androgynous, taste:drawn_to_older, taste:drawn_to_younger, taste:indifferent_to_looks

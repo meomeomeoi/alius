@@ -571,7 +571,7 @@ describe('bond section (P9d)', () => {
     expect(t2).not.toContain('leadStyle');
     expect(t2).not.toContain('restraint');
     expect(buildImportInput(card('detailed'), reg, setup().settings, ['role']).categories).toBeUndefined();
-    expect(buildImportInput(card('detailed'), reg, setup().settings, ['bond']).categories).toHaveLength(9);
+    expect(buildImportInput(card('detailed'), reg, setup().settings, ['bond']).categories).toHaveLength(22);
   });
 
   it('hostile bond output becomes modest defaults per field and lists bond in missing (Review Focus 2)', async () => {

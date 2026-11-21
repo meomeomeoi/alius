@@ -27,8 +27,8 @@ describe('contentCategories registry', () => {
     expect(REGISTRY_NAMES).toContain('contentCategories');
   });
 
-  it('loads nine core categories with descriptions', () => {
-    expect([...reg.contentCategories.keys()]).toEqual([
+  it('loads the nine P9d core categories first (P15a adds thirteen), with descriptions', () => {
+    expect([...reg.contentCategories.keys()].slice(0, 9)).toEqual([
       'humiliation', 'public_humiliation', 'degrading_language', 'pain_rough', 'restraint',
       'physical_discipline_shown', 'jealousy_games', 'body_modification', 'explicit_scenes',
     ]);

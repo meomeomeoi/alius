@@ -1,4 +1,4 @@
-import { bondOf, enabledCategories, leadScoreParts, rulesOf, wantBand, wantEligible, wantOf } from '../../engine/bonds';
+import { bondOf, categoryRequires, enabledCategories, leadScoreParts, rulesOf, wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import type { Registries } from '../../content/types';
 import { TUNING } from '../../engine/tuning';
 import type { Knowledge } from '../knowledge';
@@ -19,7 +19,10 @@ const plain = (t: string): string => t.replace(/\[\[|\]\]/g, '').replace(/\s+/g,
 
 function categoryProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
   if (!env.state || !env.registries.contentCategories.has(subject.id)) return null;
-  return { lines: [enabledCategories(env.state).includes(subject.id) ? 'In this campaign: switched on.' : 'In this campaign: off. It is excluded from every generation.'] };
+  const lines = [enabledCategories(env.state).includes(subject.id) ? 'In this campaign: switched on.' : 'In this campaign: off. It is excluded from every generation.'];
+  const needs = categoryRequires(env.registries, subject.id).map((r) => link(r, String(env.registries.contentCategories.get(r)?.label ?? r)));
+  if (needs.length > 0) lines.push(`Needs ${needs.join(', ')} switched on. [[content_requires]]`);
+  return { lines };
 }
 
 function categoriesGlossaryProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {

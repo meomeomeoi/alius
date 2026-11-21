@@ -8360,7 +8360,9 @@ var ContentCategorySchema = BaseEntrySchema.extend({
   label: str.max(40),
   description: str.max(200),
   /** Display order (setup and SYS list them by it). */
-  order: int
+  order: int,
+  /** P15a: categories that must be on for this one to be (watersports needs bodily fluids). Checked in `refs.ts`: known ids, no cycle. */
+  requires: external_exports.array(str).optional()
 }).strict();
 registrySchemas.contentCategories = ContentCategorySchema;
 var RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
@@ -10999,9 +11001,22 @@ function contentAllowed(state, _reg, entry, unitId) {
   const limits = unit2 ? bondOf(unit2)?.ownLimits.categories ?? [] : [];
   return !tags.some((t) => limits.includes(t));
 }
+function categoryRequires(reg, id) {
+  const r = reg.contentCategories.get(id)?.requires;
+  return Array.isArray(r) ? r.map(String) : [];
+}
+function withRequirements(reg, ids) {
+  let next = ids;
+  for (let again = true; again; ) {
+    const kept = next.filter((id) => categoryRequires(reg, id).every((r) => next.includes(r)));
+    again = kept.length !== next.length;
+    next = kept;
+  }
+  return next;
+}
 function setCategories(draft, reg, enabled) {
   const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-  const next = known.filter((id) => enabled.includes(id));
+  const next = withRequirements(reg, known.filter((id) => enabled.includes(id)));
   const before = enabledCategories(draft);
   const added = next.filter((id) => !before.includes(id));
   const removed = before.filter((id) => !next.includes(id));
@@ -38955,14 +38970,22 @@ function renderContentSection(host, ctx2) {
     categories.length === 0 ? h("p", { class: "alius-dim" }, "This content pack has no content categories.") : h("div", { class: "alius-cards alius-content-categories" }, ...categories.map((c) => {
       const id = String(c.id);
       const on = enabled.includes(id);
+      const missing2 = categoryRequires(reg, id).filter((r) => !enabled.includes(r));
+      const reason = missing2.length > 0 ? `needs ${missing2.map((r) => String(reg.contentCategories.get(r)?.label ?? r)).join(", ")}` : "";
+      const blocked = !on && reason !== "";
       return h("button", {
         type: "button",
         class: "alius-card alius-option alius-content-category",
         "data-category": id,
         "aria-pressed": String(on),
+        "aria-disabled": blocked ? "true" : null,
+        title: blocked ? reason : null,
         ...analyzeNative(`contentCategories:${id}`),
-        onclick: () => ctx2.onChange(categories.map((x) => String(x.id)).filter((x) => x === id ? !on : enabled.includes(x)))
-      }, h("strong", {}, String(c.label)), " ", h("span", { class: "alius-lock" }, on ? "ON" : "OFF"), h("p", {}, String(c.description)));
+        onclick: () => {
+          if (blocked) return;
+          ctx2.onChange(withRequirements(reg, categories.map((x) => String(x.id)).filter((x) => x === id ? !on : enabled.includes(x))));
+        }
+      }, h("strong", {}, String(c.label)), " ", h("span", { class: "alius-lock" }, on ? "ON" : "OFF"), blocked ? h("span", { class: "alius-dim" }, ` ${reason}`) : null, h("p", {}, String(c.description)));
     }))
   ));
 }
@@ -45876,7 +45899,10 @@ var link = (id, label2) => `[[contentCategories:${id}|${label2}]]`;
 var plain4 = (t) => t.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim();
 function categoryProvider(subject, env) {
   if (!env.state || !env.registries.contentCategories.has(subject.id)) return null;
-  return { lines: [enabledCategories(env.state).includes(subject.id) ? "In this campaign: switched on." : "In this campaign: off. It is excluded from every generation."] };
+  const lines = [enabledCategories(env.state).includes(subject.id) ? "In this campaign: switched on." : "In this campaign: off. It is excluded from every generation."];
+  const needs = categoryRequires(env.registries, subject.id).map((r) => link(r, String(env.registries.contentCategories.get(r)?.label ?? r)));
+  if (needs.length > 0) lines.push(`Needs ${needs.join(", ")} switched on. [[content_requires]]`);
+  return { lines };
 }
 function categoriesGlossaryProvider(_subject, env) {
   if (!env.state) return null;
@@ -51764,6 +51790,25 @@ function tagChecks(path, tags, regs) {
   if (!Array.isArray(tags)) return [];
   return tags.filter((t) => !regs.contentCategories.has(String(t))).map((t) => ({ path, message: `unknown content category "${String(t)}"` }));
 }
+registerChecks("contentCategories", (entry, regs) => {
+  const requires = entry.requires;
+  if (!Array.isArray(requires)) return [];
+  const out = requires.filter((r) => !regs.contentCategories.has(String(r))).map((r) => ({ path: "requires", message: `requires: unknown content category "${String(r)}"` }));
+  const seen = /* @__PURE__ */ new Set();
+  const stack = requires.map(String);
+  while (stack.length > 0) {
+    const id = stack.pop();
+    if (id === String(entry.id)) {
+      out.push({ path: "requires", message: `requires: cycle through "${id}"` });
+      break;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const next = regs.contentCategories.get(id)?.requires;
+    if (Array.isArray(next)) stack.push(...next.map(String));
+  }
+  return out;
+});
 for (const registry2 of REGISTRY_NAMES) {
   registerChecks(registry2, (entry, regs) => {
     if (entry.contentTags === void 0) return [];

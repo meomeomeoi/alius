@@ -35,14 +35,31 @@ export function contentAllowed(state: ContentHolder, _reg: Registries, entry: ob
   return !tags.some((t) => limits.includes(t));
 }
 
+/** The categories that must be on for this one to be on (P15a: watersports needs bodily fluids). Unknown id = none. */
+export function categoryRequires(reg: Registries, id: string): string[] {
+  const r = reg.contentCategories.get(id)?.requires;
+  return Array.isArray(r) ? r.map(String) : [];
+}
+
+/** The list without any category whose requirement is not in it (repeated until stable: a requirement may itself require). */
+export function withRequirements(reg: Registries, ids: string[]): string[] {
+  let next = ids;
+  for (let again = true; again;) {
+    const kept = next.filter((id) => categoryRequires(reg, id).every((r) => next.includes(r)));
+    again = kept.length !== next.length;
+    next = kept;
+  }
+  return next;
+}
+
 /**
- * Sets the enabled categories (unknown ids dropped, registry order). Turning a category off quietly withdraws what is open
+ * Sets the enabled categories (unknown ids dropped, registry order, a category whose `requires` are not all on dropped). Turning a category off quietly withdraws what is open
  * under it, with no deltas: demands built on a tagged template and night knocks from a tagged spec. Emits `content_changed`
  * when something moved. Always stores the choice, so a campaign that has made one never falls back to a carried-over default.
  */
 export function setCategories(draft: CampaignState, reg: Registries, enabled: string[]): EngineEvent[] {
   const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
-  const next = known.filter((id) => enabled.includes(id));
+  const next = withRequirements(reg, known.filter((id) => enabled.includes(id)));
   const before = enabledCategories(draft);
   const added = next.filter((id) => !before.includes(id));
   const removed = before.filter((id) => !next.includes(id));

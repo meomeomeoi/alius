@@ -486,7 +486,7 @@ describe('coverage: world parameters and disposition controls (P8)', () => {
     document.body.append(host);
     renderSetupScreen(host, { wizard: w, registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
     const rows = [...host.querySelectorAll<HTMLElement>('button[data-category]')];
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(22);
     expect(rows.map((r) => r.getAttribute('data-analyze'))).toEqual([...reg.contentCategories.keys()].map((id) => `contentCategories:${id}`));
     expect(unresolved(host, env(null))).toEqual([]);
   });

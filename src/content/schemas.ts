@@ -1926,6 +1926,8 @@ export const ContentCategorySchema = BaseEntrySchema.extend({
   description: str.max(200),
   /** Display order (setup and SYS list them by it). */
   order: int,
+  /** P15a: categories that must be on for this one to be (watersports needs bodily fluids). Checked in `refs.ts`: known ids, no cycle. */
+  requires: z.array(str).optional(),
 }).strict();
 
 registrySchemas.contentCategories = ContentCategorySchema;

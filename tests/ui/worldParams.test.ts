@@ -154,9 +154,9 @@ describe('the WORLD PARAMETERS screen', () => {
 describe('the CONTENT section (P9d)', () => {
   const rows = (host: HTMLElement) => qa(host, 'button[data-category]');
 
-  it('is drawn after the world groups and before the summary, with nine categories, all off', () => {
+  it('is drawn after the world groups and before the summary, with 22 categories, all off', () => {
     const { host } = make();
-    expect(rows(host)).toHaveLength(9);
+    expect(rows(host)).toHaveLength(22);
     for (const r of rows(host)) expect(r.getAttribute('aria-pressed')).toBe('false');
     const html = host.innerHTML;
     expect(html.indexOf('data-category="restraint"')).toBeGreaterThan(html.lastIndexOf('alius-world-option'));
