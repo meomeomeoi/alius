@@ -753,6 +753,8 @@ export const TUNING = Object.freeze({
      * a forced one `forceSteps` heavier. At `play` with `freeHold` or more it is at least one step (not free). `AUTHOR TO TUNE`.
      */
     exit: Object.freeze({ freeHold: 40, domainsPerStep: 2, cleanSteps: 1, forceSteps: 2 }),
+    /** Aftermaths (R15): every weight is multiplied by `forceMult` after a forced exit. `AUTHOR TO TUNE`. */
+    aftermath: Object.freeze({ forceMult: 1.5 }),
     /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days

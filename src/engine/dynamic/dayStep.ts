@@ -12,6 +12,7 @@ import { leaderOf } from '../power/state';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
+import { aftermathDayStep } from './aftermath';
 import { claimsDue } from './domains';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
@@ -94,8 +95,11 @@ const claims: SubStep = (draft, ctx) => claimsDue(draft, ctx);
 /** 8. Knowledge (Task 27): what has not been fed ages, then the background, what the holders tell and the gossip add to what the squad suspects. Draws nothing. */
 const knowledge: SubStep = (draft, ctx) => knowledgeDayStep(draft, ctx);
 
+/** 9. Aftermaths (Task 30): a stage whose day has come gives way to the next, the last one ends (and may chain, one draw). */
+const aftermaths: SubStep = (draft, ctx) => aftermathDayStep(draft, ctx);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

@@ -1014,6 +1014,8 @@ var TUNING = Object.freeze({
      * a forced one `forceSteps` heavier. At `play` with `freeHold` or more it is at least one step (not free). `AUTHOR TO TUNE`.
      */
     exit: Object.freeze({ freeHold: 40, domainsPerStep: 2, cleanSteps: 1, forceSteps: 2 }),
+    /** Aftermaths (R15): every weight is multiplied by `forceMult` after a forced exit. `AUTHOR TO TUNE`. */
+    aftermath: Object.freeze({ forceMult: 1.5 }),
     /**
      * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
      * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
@@ -10604,17 +10606,17 @@ function defaultFormation(state, reg, unitIds) {
   const front = [];
   const back = [];
   const max = TUNING.combat.maxPerRow;
-  const rowOf2 = (id) => {
+  const rowOf3 = (id) => {
     const u = state.squad.find((x) => x.id === id);
     return (u && reg.roles.get(u.roleId)?.row) ?? "either";
   };
   for (const id of unitIds) {
-    const row3 = rowOf2(id);
+    const row3 = rowOf3(id);
     if (row3 === "front") (front.length < max ? front : back).push(id);
     else if (row3 === "back") (back.length < max ? back : front).push(id);
   }
   for (const id of unitIds) {
-    if (rowOf2(id) !== "either") continue;
+    if (rowOf3(id) !== "either") continue;
     (front.length < back.length && front.length < max ? front : back.length < max ? back : front).push(id);
   }
   const order = (xs) => [...xs].sort((a, b) => unitIds.indexOf(a) - unitIds.indexOf(b));
@@ -10767,6 +10769,13 @@ function relieveWant(draft, unitId, amount, cause) {
   const from = rel.want;
   setWant(rel, from - amount);
   return [{ type: "want_changed", unitId, from, to: rel.want ?? 0, cause }];
+}
+function raiseWant(draft, unitId, amount, cause) {
+  const rel = draft.relations[unitId];
+  if (!rel || amount <= 0) return [];
+  const from = rel.want ?? 0;
+  setWant(rel, from + amount);
+  return (rel.want ?? 0) === from ? [] : [{ type: "want_changed", unitId, from, to: rel.want ?? 0, cause }];
 }
 function relieveAtSceneEnd(draft, scene) {
   const unitId = scene.participants[0];
@@ -11414,25 +11423,42 @@ function offerable(state, reg, unitId, tpl) {
   if (held3 !== void 0 && frameRank(held3.frame) >= frameRank("play") && dynamicOn(state, reg) && tagsOf(tpl).some((t) => RELATION_RULE_TAGS.includes(t)) && !hasCapability(state, reg, unitId, "relation_rules")) return false;
   return contentAllowed(state, reg, tpl, unitId);
 }
+function proposalPool(draft, reg, unit3) {
+  const bond = unit3.kind === "named" && isLiving(unit3) ? bondOf(unit3) : null;
+  if (!bond || leadRank(bond.leadStyle) < leadRank("assertive") || bondTierOf(draft, reg, unit3.id) === null) return [];
+  const mine = rulesOf(draft).filter((r) => r.unitId === unit3.id);
+  if (mine.some((r) => r.status === "proposed" || r.status === "negotiating") || mine.filter((r) => r.status === "active").length >= R.maxActive) return [];
+  return [...reg.relationshipRuleTemplates.values()].map((t) => t).filter((t) => offerable(draft, reg, unit3.id, t));
+}
+function propose(draft, unit3, tpl) {
+  const rule = { id: nextId(draft, "r"), unitId: unit3.id, templateId: tpl.id, text: clean(tpl.text.replaceAll("{name}", unit3.displayName), R.textMax), status: "proposed", day: draft.day, brokenCount: 0 };
+  ensureBonds(draft).rules.push(rule);
+  return { type: "rule_proposed", ruleId: rule.id, unitId: unit3.id };
+}
 function rollRules(draft, ctx2) {
   const reg = ctx2.registries;
   if (!intimacyOf(draft).romance) return [];
   const events = [];
   for (const unit3 of draft.squad) {
-    const bond = unit3.kind === "named" && isLiving(unit3) ? bondOf(unit3) : null;
-    if (!bond || leadRank(bond.leadStyle) < leadRank("assertive") || bondTierOf(draft, reg, unit3.id) === null) continue;
-    const mine = rulesOf(draft).filter((r2) => r2.unitId === unit3.id);
-    if (mine.some((r2) => r2.status === "proposed" || r2.status === "negotiating") || mine.filter((r2) => r2.status === "active").length >= R.maxActive) continue;
-    const pool = [...reg.relationshipRuleTemplates.values()].map((t) => t).filter((t) => offerable(draft, reg, unit3.id, t));
+    const pool = proposalPool(draft, reg, unit3);
     if (pool.length === 0) continue;
-    if (!ctx2.rng.chance(R.chance * R.leadMult[bond.leadStyle])) continue;
+    if (!ctx2.rng.chance(R.chance * R.leadMult[bondOf(unit3).leadStyle])) continue;
     let r = ctx2.rng.float() * pool.reduce((s, t) => s + Number(t.weight), 0);
     const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
-    const rule = { id: nextId(draft, "r"), unitId: unit3.id, templateId: tpl.id, text: clean(tpl.text.replaceAll("{name}", unit3.displayName), R.textMax), status: "proposed", day: draft.day, brokenCount: 0 };
-    ensureBonds(draft).rules.push(rule);
-    events.push({ type: "rule_proposed", ruleId: rule.id, unitId: unit3.id });
+    events.push(propose(draft, unit3, tpl));
   }
   return events;
+}
+function proposeRuleHashed(draft, reg, unitId, roll) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (!unit3 || !intimacyOf(draft).romance) return [];
+  const pool = proposalPool(draft, reg, unit3);
+  const aimed = pool.filter((t) => tagsOf(t).some((tag2) => RELATION_RULE_TAGS.includes(tag2)));
+  const from = aimed.length > 0 ? aimed : pool;
+  if (from.length === 0) return [];
+  let r = roll * from.reduce((n, t) => n + Number(t.weight), 0);
+  const tpl = from.find((t) => (r -= Number(t.weight)) < 0) ?? from[from.length - 1];
+  return [propose(draft, unit3, tpl)];
 }
 function deliverRule(draft, ruleId, text2) {
   const rule = rulesOf(draft).find((r) => r.id === ruleId);
@@ -18584,6 +18610,245 @@ function terminate(draft, ctx2, unitId) {
   return { approved: true, events };
 }
 
+// src/engine/dynamic/reactions.ts
+var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function reactionFact(draft, observerId, holderId, text2) {
+  addFact(draft, { about: [observerId, holderId], text: text2, tags: [DYNAMIC_KNOWLEDGE_TAG, "reaction"], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
+}
+function strongestDomain(draft, reg, holderId) {
+  const rows = (dynamicOf(draft, holderId)?.domains ?? []).filter((d) => standing(d, draft.day)).map((d) => ({ id: d.id, entry: domainEntry(reg, d.id) })).filter((r) => r.entry !== void 0);
+  let best;
+  for (const r of rows) if (best === void 0 || bandMin(reg, r.entry) > bandMin(reg, best.entry)) best = r;
+  return best?.id;
+}
+var hashedCtx = (ctx2, roll) => ({ ...ctx2, rng: { float: () => roll } });
+function askAbout(draft, ctx2, observerId, holderId) {
+  if (dynamicRoll(draft, observerId, `dislikes:${holderId}`) >= 1 / TUNING.squadKnowledge.reaction.demandOneIn) return [];
+  return openDemand(draft, hashedCtx(ctx2, dynamicRoll(draft, observerId, `pick:${holderId}`)), observerId, { only: "interpersonal" })?.events ?? [];
+}
+function reactToDynamic(draft, ctx2, observerId, holderId) {
+  const reg = ctx2.registries;
+  const observer = draft.squad.find((u) => u.id === observerId);
+  if (!dynamicOn(draft, reg) || observerId === holderId || observer === void 0 || observer.kind !== "named" || !isLiving(observer)) return [];
+  const events = [];
+  const reaction = reactionOf(draft, reg, observerId, holderId);
+  const holder2 = nameOf4(draft, holderId);
+  if (reaction === "drawn") events.push(...addHold(draft, ctx2, observerId, TUNING.dynamic.gains.witness_drawn, "witness_drawn"));
+  else if (reaction === "dislikes") events.push(...askAbout(draft, ctx2, observerId, holderId));
+  else if (reaction === "respects") reactionFact(draft, observerId, holderId, `${observer.displayName} respects what ${holder2} holds and keeps out of its way.`);
+  else if (reaction === "competes") {
+    const domainId = strongestDomain(draft, reg, holderId);
+    reactionFact(draft, observerId, holderId, `${observer.displayName} wants what ${holder2} holds and means to take it.`);
+    if (domainId !== void 0 && dynamicOf(draft, observerId) !== void 0) events.push(...settleDomainConflict(draft, ctx2, observerId, holderId, domainId));
+  }
+  if (leaderOf(draft)?.id === observerId) reactionFact(draft, observerId, holderId, `${observer.displayName} weighs what ${holder2} holds against her own standing.`);
+  return events;
+}
+
+// src/engine/dynamic/aftermath.ts
+var bandReader = null;
+var compromatReader = null;
+var regardBandOf = (state, reg, unitId) => bandReader?.(state, reg, unitId) ?? null;
+var compromatCount = (state, holderId) => compromatReader?.(state, holderId) ?? 0;
+var rowsOf = (reg) => [...reg.aftermaths.values()];
+var aftermathRowOf = (reg, kind) => rowsOf(reg).find((r) => r.kind === kind);
+var rowOf = aftermathRowOf;
+function aftermathWeights(state, reg, unitId, ctx2) {
+  const dyn = dynamicOf(state, unitId);
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const out = Object.fromEntries(AFTERMATH_KINDS.map((k) => [k, 0]));
+  if (dyn === void 0 || unit3 === void 0) return out;
+  const style = unit3.bond?.practice?.style;
+  const values = unit3.kind === "named" ? effectiveValues(state, reg, unit3) : void 0;
+  const band2 = regardBandOf(state, reg, unitId);
+  const holdsCommand = hasCapability(state, reg, unitId, "countermand");
+  const mult = ctx2.force ? TUNING.dynamic.aftermath.forceMult : 1;
+  for (const row3 of rowsOf(reg)) {
+    const wt = row3.weights;
+    if (wt.needsCommand === true) {
+      if (holdsCommand) out[row3.kind] = Math.max(wt.base, 1) * (wt.command ?? 1) * mult;
+      continue;
+    }
+    if (holdsCommand) continue;
+    if (wt.needsCompromat === true && compromatCount(state, unitId) < 1) continue;
+    if (ctx2.clean && wt.mild !== true) continue;
+    let weight = wt.base;
+    if (style !== void 0) {
+      weight += wt.styles?.[style.primary] ?? 0;
+      if (style.secondary !== void 0) weight += (wt.styles?.[style.secondary] ?? 0) * 0.5;
+    }
+    for (const [axis, sides] of Object.entries(wt.values ?? {})) {
+      const v = values?.[axis] ?? 0;
+      if (v > 0) weight += sides.high ?? 0;
+      else if (v < 0) weight += sides.low ?? 0;
+    }
+    if (band2 !== null) weight *= wt.regard?.[band2] ?? 1;
+    if (dyn.formerHolder !== void 0) {
+      weight *= wt.frames?.[dyn.formerHolder.frame] ?? 1;
+      if (dyn.formerHolder.sworn) weight *= wt.sworn ?? 1;
+    }
+    out[row3.kind] = weight * mult;
+  }
+  return out;
+}
+function pickKind(weights, roll) {
+  const total2 = AFTERMATH_KINDS.reduce((n, k) => n + weights[k], 0);
+  if (total2 <= 0) return null;
+  let r = roll * total2;
+  const live3 = AFTERMATH_KINDS.filter((k) => weights[k] > 0);
+  return live3.find((k) => (r -= weights[k]) < 0) ?? live3[live3.length - 1];
+}
+function runAftermathEffect(draft, ctx2, unitId, fx2) {
+  const reg = ctx2.registries;
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return [];
+  switch (fx2.type) {
+    case "stress": {
+      const next = Math.min(100, Math.max(0, unit3.stress + fx2.amount));
+      const delta = next - unit3.stress;
+      unit3.stress = next;
+      return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
+    }
+    case "want":
+      return raiseWant(draft, unitId, fx2.amount, "aftermath");
+    case "night_knock": {
+      const v = TUNING.bonds.want.visit;
+      return queueNightSpec(draft, unit3, { id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: 1, priority: TUNING.bonds.want.satisfyPriority, trigger: "daily", framing: v.framing, ignore: { ...v.ignore }, contentTags: [] });
+    }
+    case "demand": {
+      const roll = dynamicRoll(draft, unitId, `aftermath:demand:${fx2.kind}`);
+      return openDemand(draft, hashedCtx(ctx2, roll), unitId, fx2.kind === "desire" ? { desire: true } : { only: fx2.kind })?.events ?? [];
+    }
+    case "booking": {
+      if (pressureGate(draft, reg, unitId, "booking") !== null || restrictionReason(draft, unitId, "scene") !== null) return [];
+      if ((draft.personal?.bookings ?? []).some((b) => b.unitId === unitId && b.status === "booked")) return [];
+      const day = nextFreeEvening(draft);
+      const kind = bookingKindsFor(draft, reg, unitId).find((k) => k.slot === "evening");
+      if (day === null || kind === void 0) return [];
+      const events = book(draft, ctx2, { unitId, kindId: String(kind.id), day, slot: "evening", source: "aftermath" });
+      pushMessage(draft, unitId, { from: unitId, text: String(kind.text).replaceAll("{name}", unit3.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
+      return events;
+    }
+    case "rule_interfere":
+      return proposeRuleHashed(draft, reg, unitId, dynamicRoll(draft, unitId, "aftermath:rule"));
+    case "threaten_tell":
+      return [];
+    // the threat is made with compromat of hers: chunk (i)
+    case "rumor": {
+      const name = unit3.displayName;
+      addFact(draft, {
+        about: [unitId],
+        text: `${name} is telling anyone who will listen what went on between ${name} and the commander.`,
+        tags: ["rumor", "dynamic", "aftermath"],
+        importance: 3,
+        day: draft.day,
+        knownBy: [unitId],
+        spread: "fast"
+      });
+      return [];
+    }
+    case "squad_impunity": {
+      const events = [];
+      for (const [observer, row3] of Object.entries(draft.dynamic?.knowledge ?? {})) {
+        if (row3[unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, fx2.amount, "dynamic_aftermath"));
+      }
+      return events;
+    }
+    case "vote_sabotage":
+      return [];
+    // read by the ballots (`sabotagesVotes`) while the stage stands
+    case "defiance":
+      return applyDisciplineEvent(draft, ctx2, unitId, {
+        type: "defied",
+        actor: unitId,
+        targets: [unitId],
+        severity: "moderate",
+        evidence: "she turned on the commander after it ended",
+        confidence: 1
+      }, { channel: "dm" });
+    case "trust": {
+      const applied = applyRelationDelta(draft, unitId, "trust", fx2.amount, "aftermath");
+      return applied === 0 ? [] : [{ type: "relation_changed", unitId, axis: "trust", delta: applied, applied }];
+    }
+    case "return_offer":
+    case "successor":
+    case "protocol_slips":
+      return [];
+  }
+}
+function enterStage(draft, ctx2, unitId, row3, stage) {
+  return (row3.stages[stage]?.effects ?? []).flatMap((fx2) => runAftermathEffect(draft, ctx2, unitId, fx2));
+}
+function endAftermath(draft, unitId, reason) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn?.aftermath === void 0) throw new Error("She has no aftermath to end.");
+  const { id, kind } = dyn.aftermath;
+  delete dyn.aftermath;
+  const x = draft.dynamic;
+  if (x?.open.returnOffer?.unitId === unitId) delete x.open.returnOffer;
+  return { type: "aftermath_ended", unitId, id, kind, reason };
+}
+function startAftermath(draft, ctx2, unitId, kind, opts = {}) {
+  const row3 = rowOf(ctx2.registries, kind);
+  const dyn = dynamicOf(draft, unitId);
+  const x = draft.dynamic;
+  if (row3 === void 0 || dyn === void 0 || x === void 0) return [];
+  const events = [];
+  if (dyn.aftermath !== void 0) events.push(endAftermath(draft, unitId, "time"));
+  const id = `da${x.seq++}`;
+  const total2 = row3.stages.reduce((n, s) => n + s.days, 0);
+  dyn.aftermath = { id, kind, stage: 0, untilDay: draft.day + total2, stageUntil: draft.day + row3.stages[0].days, ...opts.forced === true ? { forced: true } : {} };
+  events.push({ type: "aftermath_started", unitId, id, kind, ...opts.forced === true ? { forced: true } : {} });
+  events.push(...enterStage(draft, ctx2, unitId, row3, 0));
+  return events;
+}
+function startAftermathOnExit(draft, ctx2, req) {
+  const reg = ctx2.registries;
+  const weights = aftermathWeights(draft, reg, req.unitId, { route: req.route, clean: req.clean, force: req.force });
+  const live3 = AFTERMATH_KINDS.filter((k) => weights[k] > 0);
+  const kind = live3.length === 0 ? null : req.commandKept ? "command_kept" : pickKind(weights, ctx2.rng.float());
+  return kind === null ? [] : startAftermath(draft, ctx2, req.unitId, kind, { forced: req.force });
+}
+function advance(draft, ctx2, unitId, dyn, row3) {
+  const a = dyn.aftermath;
+  const events = [];
+  while (dyn.aftermath === a && a.stageUntil !== void 0 && draft.day >= a.stageUntil) {
+    if (a.stage + 1 < row3.stages.length) {
+      a.stage += 1;
+      a.stageUntil += row3.stages[a.stage].days;
+      events.push(...enterStage(draft, ctx2, unitId, row3, a.stage));
+      continue;
+    }
+    events.push(endAftermath(draft, unitId, "time"));
+    events.push(...chain(draft, ctx2, unitId, row3, a.forced === true));
+  }
+  return events;
+}
+function chain(draft, ctx2, unitId, row3, forced) {
+  if (row3.chainsTo === void 0) return [];
+  const all = aftermathWeights(draft, ctx2.registries, unitId, { route: "abrupt", clean: false, force: forced });
+  const weights = Object.fromEntries(AFTERMATH_KINDS.map((k) => [k, row3.chainsTo.includes(k) ? all[k] : 0]));
+  if (AFTERMATH_KINDS.every((k) => weights[k] <= 0)) return [];
+  const next = pickKind(weights, ctx2.rng.float());
+  return next === null ? [] : startAftermath(draft, ctx2, unitId, next, { forced });
+}
+function aftermathDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  if (!dynamicOn(draft, reg)) return [];
+  const events = [];
+  for (const unit3 of draft.squad) {
+    const dyn = dynamicOf(draft, unit3.id);
+    if (dyn?.aftermath === void 0) continue;
+    const row3 = rowOf(reg, dyn.aftermath.kind);
+    if (unit3.kind !== "named" || !isLiving(unit3) || row3 === void 0) {
+      events.push(endAftermath(draft, unit3.id, "gone"));
+      continue;
+    }
+    events.push(...advance(draft, ctx2, unit3.id, dyn, row3));
+  }
+  return events;
+}
+
 // src/engine/dynamic/exit.ts
 var EXIT_MEANS = ["discipline", "leash", "transfer_request"];
 var named2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -18681,6 +18946,7 @@ function exitDynamic(draft, ctx2, unitId, route, opts = {}) {
     ...route === "force" ? { means: opts.means } : {},
     frame: from
   });
+  events.push(...startAftermathOnExit(draft, ctx2, request));
   return events;
 }
 function compromiseExit(draft, ctx2, unitId) {
@@ -18692,41 +18958,6 @@ function compromiseExit(draft, ctx2, unitId) {
     return [];
   }
   return exitDynamic(draft, ctx2, unitId, "negotiated", { clean: true });
-}
-
-// src/engine/dynamic/reactions.ts
-var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function reactionFact(draft, observerId, holderId, text2) {
-  addFact(draft, { about: [observerId, holderId], text: text2, tags: [DYNAMIC_KNOWLEDGE_TAG, "reaction"], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
-}
-function strongestDomain(draft, reg, holderId) {
-  const rows = (dynamicOf(draft, holderId)?.domains ?? []).filter((d) => standing(d, draft.day)).map((d) => ({ id: d.id, entry: domainEntry(reg, d.id) })).filter((r) => r.entry !== void 0);
-  let best;
-  for (const r of rows) if (best === void 0 || bandMin(reg, r.entry) > bandMin(reg, best.entry)) best = r;
-  return best?.id;
-}
-var hashedCtx = (ctx2, roll) => ({ ...ctx2, rng: { float: () => roll } });
-function askAbout(draft, ctx2, observerId, holderId) {
-  if (dynamicRoll(draft, observerId, `dislikes:${holderId}`) >= 1 / TUNING.squadKnowledge.reaction.demandOneIn) return [];
-  return openDemand(draft, hashedCtx(ctx2, dynamicRoll(draft, observerId, `pick:${holderId}`)), observerId, { only: "interpersonal" })?.events ?? [];
-}
-function reactToDynamic(draft, ctx2, observerId, holderId) {
-  const reg = ctx2.registries;
-  const observer = draft.squad.find((u) => u.id === observerId);
-  if (!dynamicOn(draft, reg) || observerId === holderId || observer === void 0 || observer.kind !== "named" || !isLiving(observer)) return [];
-  const events = [];
-  const reaction = reactionOf(draft, reg, observerId, holderId);
-  const holder2 = nameOf4(draft, holderId);
-  if (reaction === "drawn") events.push(...addHold(draft, ctx2, observerId, TUNING.dynamic.gains.witness_drawn, "witness_drawn"));
-  else if (reaction === "dislikes") events.push(...askAbout(draft, ctx2, observerId, holderId));
-  else if (reaction === "respects") reactionFact(draft, observerId, holderId, `${observer.displayName} respects what ${holder2} holds and keeps out of its way.`);
-  else if (reaction === "competes") {
-    const domainId = strongestDomain(draft, reg, holderId);
-    reactionFact(draft, observerId, holderId, `${observer.displayName} wants what ${holder2} holds and means to take it.`);
-    if (domainId !== void 0 && dynamicOf(draft, observerId) !== void 0) events.push(...settleDomainConflict(draft, ctx2, observerId, holderId, domainId));
-  }
-  if (leaderOf(draft)?.id === observerId) reactionFact(draft, observerId, holderId, `${observer.displayName} weighs what ${holder2} holds against her own standing.`);
-  return events;
 }
 
 // src/engine/dynamic/knowledge.ts
@@ -29832,14 +30063,14 @@ function startPhysics(draft, ctx2, o) {
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...o.duration !== void 0 ? { duration: o.duration } : {} }];
 }
 function chainRun(draft, reg, run) {
-  const chain = reg.contactPhysics.get(run.physicsId)?.chains?.find((c) => c.on === "slip");
-  const to = chain ? reg.contactPhysics.get(chain.to) : void 0;
-  if (!chain || !to) return [];
+  const chain2 = reg.contactPhysics.get(run.physicsId)?.chains?.find((c) => c.on === "slip");
+  const to = chain2 ? reg.contactPhysics.get(chain2.to) : void 0;
+  if (!chain2 || !to) return [];
   const from = run.physicsId;
   const g = gaugeFor(draft, to);
-  run.physicsId = chain.to;
+  run.physicsId = chain2.to;
   run.capacity = g.capacity;
-  run.gauge = chain.start ?? g.gauge;
+  run.gauge = chain2.start ?? g.gauge;
   delete run.seal;
   delete run.sealRange;
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
@@ -33059,7 +33290,7 @@ var BAND_INDEX = { faint: 0, noticeable: 1, strong: 2, overwhelming: 3 };
 var T4 = TUNING.stimuli;
 var WAYS = ["avoid", "sniff", "inhale", "nuzzle", "ordered", "secret", "taste"];
 var SEEKING = /* @__PURE__ */ new Set(["sniff", "inhale", "nuzzle", "ordered", "secret", "taste"]);
-var rowOf = (state, kind) => state.commander.stimuli?.[kind];
+var rowOf2 = (state, kind) => state.commander.stimuli?.[kind];
 var stageIndex = (stage) => STAGES.indexOf(stage);
 var stageOf = (seek) => STAGES[T4.stages.filter((b) => seek >= b).length];
 function inhaleZone(band2, tolerance) {
@@ -33117,7 +33348,7 @@ function updateTrajectory(row3, seeking) {
 }
 function perceptionWord(state, reg, kind, band2) {
   const entry = reg.stimulusKinds.get(kind);
-  const row3 = rowOf(state, kind);
+  const row3 = rowOf2(state, kind);
   if (!entry) return null;
   const words3 = entry.perception;
   if (band2 === "faint" && (row3?.tolerance ?? T4.startTolerance) >= T4.faintFadeAt) return null;
@@ -34022,7 +34253,8 @@ var declarations = (draft, _ctx, holders2) => fadeDeclarations(draft, holders2);
 var milestones = (draft, ctx2, holders2) => holders2.flatMap((id) => milestonesDue(draft, ctx2, id));
 var claims = (draft, ctx2) => claimsDue(draft, ctx2);
 var knowledge = (draft, ctx2) => knowledgeDayStep(draft, ctx2);
-var STEPS = [decay3, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge];
+var aftermaths = (draft, ctx2) => aftermathDayStep(draft, ctx2);
+var STEPS = [decay3, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths];
 function dynamicDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   const holders2 = holdersOf2(draft);
@@ -37079,6 +37311,7 @@ var DYNAMIC_PREFIX = "dynamic:";
 var PROBE_PREFIX = "dynamic:probe:";
 var COMMAND_PREFIX = "dynamic:command:";
 var WITNESS_PREFIX = "dynamic:witness:";
+var AFTERMATH_PREFIX = "dynamic:aftermath:";
 function styleLine(state, reg, unit3) {
   const pair = unit3.bond?.practice?.style;
   if (pair === void 0) return "";
@@ -37132,9 +37365,20 @@ function dynamicDirectives(state, reg, present2) {
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== void 0) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId), probe.probe.axis));
+  for (const unit3 of units) {
+    const line2 = aftermathDirective2(state, reg, unit3);
+    if (line2 !== null) out.push(line2);
+  }
   out.push(...commandDirectives(state, reg, present2));
   out.push(...witnessDirectives(state, reg, present2));
   return out;
+}
+function aftermathDirective2(state, reg, unit3) {
+  const a = dynamicOf(state, unit3.id)?.aftermath;
+  const row3 = a === void 0 ? void 0 : aftermathRowOf(reg, a.kind);
+  const stage = a === void 0 ? void 0 : row3?.stages[a.stage];
+  if (stage === void 0) return null;
+  return { id: `${AFTERMATH_PREFIX}${unit3.id}`, expiresAfter: "scene", text: `${sentence2(stage.directive.replaceAll("{name}", unit3.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
 }
 var REACTION_LINE = {
   drawn: (h2) => `She is drawn to it: she watches ${h2} with interest and may ask about it.`,
@@ -42251,7 +42495,7 @@ function createStaging(deps) {
     }
   }
   const silent = (s, unitId) => temperamentOf(s, unitId).talkativeness === "silent";
-  function advance(now) {
+  function advance2(now) {
     const s = state();
     const r = s?.scene?.physics;
     if (!s || !r) return;
@@ -42287,7 +42531,7 @@ function createStaging(deps) {
   return {
     onEvents(events) {
       handle(events);
-      if (active) advance(deps.now());
+      if (active) advance2(deps.now());
     },
     input(i) {
       const r = run();
@@ -42323,7 +42567,7 @@ function createStaging(deps) {
       return active && run() ? dispatch2({ type: "physics/skip", payload: { strategy } }) : [];
     },
     tick(nowMs) {
-      if (active) advance(nowMs);
+      if (active) advance2(nowMs);
     },
     cue(kind, beat) {
       const r = run();
@@ -50630,7 +50874,7 @@ function renderPlanner(host, ctx2) {
   draft.picked = draft.picked.filter((id) => living2.some((u) => u.id === id));
   const full = draft.picked.length >= TUNING.expedition.partyMax;
   const defaults = defaultFormation(state, reg, draft.picked);
-  const rowOf2 = (id) => draft.rows[id] ?? (defaults.front.includes(id) ? "front" : "back");
+  const rowOf3 = (id) => draft.rows[id] ?? (defaults.front.includes(id) ? "front" : "back");
   root.append(h("h3", {}, "SQUAD"));
   for (const u of living2) {
     const reason2 = unitReason(state, u);
@@ -50660,10 +50904,10 @@ function renderPlanner(host, ctx2) {
           class: "alius-btn",
           "data-row": u.id,
           onclick: () => {
-            draft.rows[u.id] = rowOf2(u.id) === "front" ? "back" : "front";
+            draft.rows[u.id] = rowOf3(u.id) === "front" ? "back" : "front";
             ctx2.redraw();
           }
-        }, rowOf2(u.id) === "front" ? "[ FRONT ]" : "[ BACK ]"));
+        }, rowOf3(u.id) === "front" ? "[ FRONT ]" : "[ BACK ]"));
       }
     }
     root.append(row3);
@@ -50683,8 +50927,8 @@ function renderPlanner(host, ctx2) {
     h("p", { class: "alius-dim" }, `REST NEEDS ${(rest?.suppliesPerUnit ?? 1) * Math.max(1, draft.picked.length)} PER STOP`)
   );
   const formation = {
-    front: draft.picked.filter((id) => rowOf2(id) === "front"),
-    back: draft.picked.filter((id) => rowOf2(id) === "back")
+    front: draft.picked.filter((id) => rowOf3(id) === "front"),
+    back: draft.picked.filter((id) => rowOf3(id) === "back")
   };
   const payload = { ..."missionId" in ctx2.target ? { missionId: ctx2.target.missionId } : { poi: ctx2.target.poi }, unitIds: [...draft.picked], formation, supplies: draft.supplies };
   const reason = checkExpedition(state, reg, payload);
@@ -53691,17 +53935,17 @@ function renderSceneScreen(host, ctx2) {
     });
     const romance = intimacyOf(s).romance;
     const kinds2 = ALL_KINDS.filter((k) => romance || !ROMANTIC_PROPOSALS.includes(k));
-    const propose = h("select", {
+    const propose2 = h("select", {
       name: "propose",
       class: "alius-select",
       "aria-label": "Propose",
       title: "Make a formal proposal. The rules decide how she answers; the model plays it out."
     }, h("option", { value: "" }, "PROPOSE \u25BE"), ...kinds2.map((k) => h("option", { value: k }, `${label(k)} \u2014 ${KIND_HINT[k] ?? ""}`)));
     const who = units.length > 1 ? h("select", { name: "propose-unit", class: "alius-select", "aria-label": "Propose to" }, ...units.map((u) => h("option", { value: u.id }, u.displayName))) : null;
-    propose.addEventListener("change", () => {
-      const kind = propose.value;
+    propose2.addEventListener("change", () => {
+      const kind = propose2.value;
       if (kind === "") return;
-      propose.value = "";
+      propose2.value = "";
       controller.propose(kind, who?.value || units[0]?.id);
     });
     if (ctx2.onOrder) {
@@ -53764,7 +54008,7 @@ function renderSceneScreen(host, ctx2) {
       freqChips,
       disciplineMenus,
       letsHost,
-      h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose, who)
+      h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose2, who)
     );
     drawBackground(s);
   }
@@ -60550,9 +60794,9 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
       const id = parsed.data.id;
       if (seen2.has(id)) return err(fmtPath(["id"], index2), `duplicate id "${id}" in this file`);
       seen2.add(id);
-      const chain = versions[job.registry].get(id) ?? [];
-      chain.push({ entry: raw, pack: job.pack, file: job.file, index: index2 });
-      versions[job.registry].set(id, chain);
+      const chain2 = versions[job.registry].get(id) ?? [];
+      chain2.push({ entry: raw, pack: job.pack, file: job.file, index: index2 });
+      versions[job.registry].set(id, chain2);
     });
   });
   const resolved = /* @__PURE__ */ new Map();
@@ -60591,11 +60835,11 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
   const registries = emptyRegistries();
   const finalOrigin = /* @__PURE__ */ new Map();
   for (const reg of REGISTRY_NAMES) {
-    for (const [id, chain] of versions[reg]) {
-      const k = chain.length - 1;
+    for (const [id, chain2] of versions[reg]) {
+      const k = chain2.length - 1;
       const entry = resolve(reg, id, k);
       if (entry === null) continue;
-      const origin = chain[k];
+      const origin = chain2[k];
       const parsed = registrySchemas[reg].safeParse(entry);
       if (!parsed.success) {
         for (const issue of parsed.error.issues) {

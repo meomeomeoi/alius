@@ -1736,17 +1736,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `runAftermathEffect(draft, ctx, unitId, fx: AftermathEffect): EngineEvent[]` (one case per `AFTERMATH_EFFECTS` type);
   - `endAftermath(draft, unitId, reason: 'time' | 'resolved' | 'refused' | 'returned' | 'gone'): EngineEvent`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `weights follow style`: an `affectionate` holder's top weight is `grief`, a `possessive` one's `pursuit`, `cold` / `clinical` → `blackmail` only with compromat ≥ 1, else `cold_contempt`.
   - `low Regard raises cold_contempt and blackmail` (×1.5); `a clean exit allows only grief, return_offer and habits`; `force multiplies every weight by 1.5`.
   - `one draw at the pick, one more at a chain` (rng advanced exactly by those).
   - `each effect type runs`, with a table test over a fixture aftermath per type: stress, Want, a night knock, a demand of the stage's kind, a booking, rule interference, a rumor fact, the squad's Impunity record, defiance, Trust.
   - `pursuit chains to blackmail` when its row says so.
   - `a removed holder's aftermath ends with gone`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/aftermath.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R15. Read rows by `kind` and effect `type`, never by id.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): aftermaths as data`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/aftermath.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R15. Read rows by `kind` and effect `type`, never by id.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): aftermaths as data`
 
 ---
 

@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { frameRank } from '../engine/blocking/state';
+import { aftermathRowOf } from '../engine/dynamic/aftermath';
 import { hasCapability } from '../engine/dynamic/capabilities';
 import { herPracticeLive, dynamicOn } from '../engine/dynamic/gate';
 import { frameEntry } from '../engine/dynamic/hold';
@@ -30,6 +31,7 @@ export const DYNAMIC_PREFIX = 'dynamic:';
 export const PROBE_PREFIX = 'dynamic:probe:';
 export const COMMAND_PREFIX = 'dynamic:command:';
 export const WITNESS_PREFIX = 'dynamic:witness:';
+export const AFTERMATH_PREFIX = 'dynamic:aftermath:';
 
 /** Her style pair in words, the secondary's side named while it leads. */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
@@ -106,9 +108,22 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== undefined) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId)!, probe.probe.axis));
+  for (const unit of units) {
+    const line = aftermathDirective(state, reg, unit);
+    if (line !== null) out.push(line);
+  }
   out.push(...commandDirectives(state, reg, present));
   out.push(...witnessDirectives(state, reg, present));
   return out;
+}
+
+/** The line of her aftermath while its stage runs (`dynamic:aftermath:<unitId>`): the stage's `directive`, with her name; one line, gone with the aftermath. */
+function aftermathDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
+  const a = dynamicOf(state, unit.id)?.aftermath;
+  const row = a === undefined ? undefined : aftermathRowOf(reg, a.kind);
+  const stage = a === undefined ? undefined : row?.stages[a.stage];
+  if (stage === undefined) return null;
+  return { id: `${AFTERMATH_PREFIX}${unit.id}`, expiresAfter: 'scene', text: `${sentence(stage.directive.replaceAll('{name}', unit.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
 }
 
 /** What she does about it, in her own words, once she knows (R14): by her reaction. No line states what the commander feels. */

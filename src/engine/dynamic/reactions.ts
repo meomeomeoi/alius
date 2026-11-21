@@ -45,7 +45,7 @@ function strongestDomain(draft: CampaignState, reg: Registries, holderId: string
  * `openDemand` picks a template with one `rng.float()`; this hands it the hashed number instead, so the real rng is never drawn (the one place the
  * discipline layer's picker is reused for a chance that is not the spec's roll).
  */
-const hashedCtx = (ctx: Ctx & Partial<EngineCtx>, roll: number): EngineCtx => ({ ...ctx, rng: { float: () => roll } as unknown as EngineCtx['rng'] } as EngineCtx);
+export const hashedCtx = (ctx: Ctx & Partial<EngineCtx>, roll: number): EngineCtx => ({ ...ctx, rng: { float: () => roll } as unknown as EngineCtx['rng'] } as EngineCtx);
 
 /** She asks the commander about it: an interpersonal demand, hashed (one day in `demandOneIn`). Nothing when she has one open or cannot be asked. */
 function askAbout(draft: CampaignState, ctx: Ctx, observerId: string, holderId: string): EngineEvent[] {

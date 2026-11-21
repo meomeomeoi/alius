@@ -77,7 +77,7 @@ function eligible(state: CampaignState, reg: Registries, unitId: string, dyn: Dy
 }
 
 /** The first evening from now (today's counts while it is still ahead) that nobody has booked. `null` when none within the search days. */
-function nextFreeEvening(state: CampaignState): number | null {
+export function nextFreeEvening(state: CampaignState): number | null {
   const taken = (state.personal?.bookings ?? []).filter((b) => b.status === 'booked' && b.slot === 'evening').map((b) => b.day);
   const from = state.slot === 'evening' || state.slot === 'night' ? state.day + 1 : state.day;
   for (let d = from; d <= from + TUNING.dynamic.milestones.bookingSearchDays; d++) if (!taken.includes(d)) return d;

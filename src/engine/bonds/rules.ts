@@ -46,6 +46,25 @@ function offerable(state: CampaignState, reg: Registries, unitId: string, tpl: T
 }
 
 /**
+ * The templates she may be offered now, or `[]` when she may not be offered one at all: a named living unit, lead style at least assertive, a
+ * relationship state of the romantic or close tier, no proposal or negotiation open and fewer than three active rules. Pure.
+ */
+function proposalPool(draft: CampaignState, reg: Registries, unit: CampaignState['squad'][number]): Template[] {
+  const bond = unit.kind === 'named' && isLiving(unit) ? bondOf(unit) : null;
+  if (!bond || leadRank(bond.leadStyle) < leadRank('assertive') || bondTierOf(draft, reg, unit.id) === null) return [];
+  const mine = rulesOf(draft).filter((r) => r.unitId === unit.id);
+  if (mine.some((r) => r.status === 'proposed' || r.status === 'negotiating') || mine.filter((r) => r.status === 'active').length >= R.maxActive) return [];
+  return [...reg.relationshipRuleTemplates.values()].map((t) => t as unknown as Template).filter((t) => offerable(draft, reg, unit.id, t));
+}
+
+/** Writes a rule of a template as proposed by her, and says so. */
+function propose(draft: CampaignState, unit: CampaignState['squad'][number], tpl: Template): EngineEvent {
+  const rule: Rule = { id: nextId(draft, 'r'), unitId: unit.id, templateId: tpl.id, text: clean(tpl.text.replaceAll('{name}', unit.displayName), R.textMax), status: 'proposed', day: draft.day, brokenCount: 0 };
+  ensureBonds(draft).rules.push(rule);
+  return { type: 'rule_proposed', ruleId: rule.id, unitId: unit.id };
+}
+
+/**
  * The daily roll of a leading partner proposing a rule. Eligible: a named living unit, romance on, lead style at least
  * assertive, a relationship state of the romantic or close tier, no proposal or negotiation open, fewer than three active rules
  * and some template she may be offered. Each eligible unit rolls `chance × (dominant 1.5 | assertive 1)`; a hit is a seeded
@@ -56,20 +75,31 @@ export function rollRules(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   if (!intimacyOf(draft).romance) return [];
   const events: EngineEvent[] = [];
   for (const unit of draft.squad) {
-    const bond = unit.kind === 'named' && isLiving(unit) ? bondOf(unit) : null;
-    if (!bond || leadRank(bond.leadStyle) < leadRank('assertive') || bondTierOf(draft, reg, unit.id) === null) continue;
-    const mine = rulesOf(draft).filter((r) => r.unitId === unit.id);
-    if (mine.some((r) => r.status === 'proposed' || r.status === 'negotiating') || mine.filter((r) => r.status === 'active').length >= R.maxActive) continue;
-    const pool = [...reg.relationshipRuleTemplates.values()].map((t) => t as unknown as Template).filter((t) => offerable(draft, reg, unit.id, t));
+    const pool = proposalPool(draft, reg, unit);
     if (pool.length === 0) continue;
-    if (!ctx.rng.chance(R.chance * R.leadMult[bond.leadStyle as 'assertive' | 'dominant'])) continue;
+    if (!ctx.rng.chance(R.chance * R.leadMult[bondOf(unit)!.leadStyle as 'assertive' | 'dominant'])) continue;
     let r = ctx.rng.float() * pool.reduce((s, t) => s + Number(t.weight), 0);
     const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
-    const rule: Rule = { id: nextId(draft, 'r'), unitId: unit.id, templateId: tpl.id, text: clean(tpl.text.replaceAll('{name}', unit.displayName), R.textMax), status: 'proposed', day: draft.day, brokenCount: 0 };
-    ensureBonds(draft).rules.push(rule);
-    events.push({ type: 'rule_proposed', ruleId: rule.id, unitId: unit.id });
+    events.push(propose(draft, unit, tpl));
   }
   return events;
+}
+
+/**
+ * P15 (an aftermath that still sets rules, `rule_interfere`): proposes one rule in her name, with no roll of the campaign's rng: the pick among the
+ * templates she may be offered is the hashed number `roll` (0 to under 1), the ones about the commander's other relations first. Nothing when she
+ * may not be offered one (romance off, not a leading partner, no bond tier, a proposal already open, no template left).
+ */
+export function proposeRuleHashed(draft: CampaignState, reg: Registries, unitId: string, roll: number): EngineEvent[] {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || !intimacyOf(draft).romance) return [];
+  const pool = proposalPool(draft, reg, unit);
+  const aimed = pool.filter((t) => tagsOf(t).some((tag) => RELATION_RULE_TAGS.includes(tag)));
+  const from = aimed.length > 0 ? aimed : pool;
+  if (from.length === 0) return [];
+  let r = roll * from.reduce((n, t) => n + Number(t.weight), 0);
+  const tpl = from.find((t) => (r -= Number(t.weight)) < 0) ?? from[from.length - 1];
+  return [propose(draft, unit, tpl)];
 }
 
 /**

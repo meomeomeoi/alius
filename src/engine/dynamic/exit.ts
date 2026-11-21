@@ -5,7 +5,7 @@
  * lighter, and a mild aftermath); `transfer` runs the domain conflict with another holder; `force` runs a means first (a punishment, the Leash
  * or, later, an oversight request) and costs two steps more. Every domain is dropped except the one that grants the command, which she keeps
  * as a struggle (`commandKept`); the dynamic starts again from `equal` with hold 0 and her tracks, and the romance falls a rung.
- * Draws nothing: the aftermath it asks for (Task 30) is the only draw that follows.
+ * Draws once, for the aftermath that follows (`startAftermathOnExit`), unless the command forces `command_kept`.
  */
 import type { Registries } from '../../content/types';
 import { frameRank } from '../blocking/state';
@@ -18,6 +18,7 @@ import { evaluateAutomatic, romanceStepDown } from '../relations/graph';
 import { SEVERITIES } from '../relations/vocab';
 import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { startAftermathOnExit } from './aftermath';
 import { domainEntry, dropVoidOverride, standing } from './capabilities';
 import { loseDomain, settleDomainConflict } from './domains';
 import { dynamicOn } from './gate';
@@ -74,7 +75,7 @@ export function exitCostWord(state: CampaignState, reg: Registries, unitId: stri
   return severity === 'moderate' ? 'costly' : 'heavy';
 }
 
-/** What a request for the aftermath carries (Task 30 picks from it): how she was left. */
+/** What the pick of the aftermath reads of how she was left. */
 export interface AftermathRequest { unitId: string; route: ExitRoute; clean: boolean; force: boolean; commandKept: boolean }
 
 /** Her open negotiated exit, if any. */
@@ -167,6 +168,7 @@ export function exitDynamic(draft: CampaignState, ctx: Ctx, unitId: string, rout
     type: 'dynamic_exit', unitId, route, severity, sworn, clean: request.clean, force: request.force, commandKept,
     ...(route === 'transfer' ? { toUnitId: opts.toUnitId } : {}), ...(route === 'force' ? { means: opts.means } : {}), frame: from,
   });
+  events.push(...startAftermathOnExit(draft, ctx as EngineCtx, request)); // how she took it: one draw of the rng (none when the command forces it)
   return events;
 }
 

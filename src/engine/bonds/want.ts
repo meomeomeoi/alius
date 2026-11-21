@@ -59,6 +59,15 @@ export function relieveWant(draft: CampaignState, unitId: string, amount: number
   return [{ type: 'want_changed', unitId, from, to: rel.want ?? 0, cause }];
 }
 
+/** Raises her Want (never past the maximum; P15's grief). Emits `want_changed` when it moved. Stored whether or not Want runs for her: it is read only while it does (`effectiveWant`). */
+export function raiseWant(draft: CampaignState, unitId: string, amount: number, cause: string): EngineEvent[] {
+  const rel = draft.relations[unitId];
+  if (!rel || amount <= 0) return [];
+  const from = rel.want ?? 0;
+  setWant(rel, from + amount);
+  return (rel.want ?? 0) === from ? [] : [{ type: 'want_changed', unitId, from, to: rel.want ?? 0, cause }];
+}
+
 /** A finished scene with her lowers it: intimate by 60, romantic by 25 (draft). The tone only exists in a scene with one partner. */
 export function relieveAtSceneEnd(draft: CampaignState, scene: SceneRecord): EngineEvent[] {
   const unitId = scene.participants[0];

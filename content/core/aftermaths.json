@@ -6,7 +6,7 @@
     "weights": {
       "base": 1,
       "styles": {
-        "affectionate": 3,
+        "affectionate": 4,
         "regal": 0.5
       },
       "regard": {
