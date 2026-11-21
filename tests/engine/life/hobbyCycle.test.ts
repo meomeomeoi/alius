@@ -67,6 +67,8 @@ function simulate(salt: number, cast: Cast = CAST, days = 120) {
   return { s, reached, log };
 }
 const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? Infinity;
+/** One standard woman alone with her hobby in the mess hall: nobody to share the room with, nobody to pass hobbies on to or to take her slots. */
+const SOLO: Cast = [{ id: 'unit_ann', hobby: 'cooking', aptitude: 'standard', stress: 0 }];
 const SALTS = Array.from({ length: 30 }, (_, i) => i + 1);
 
 describe('120-day simulation: the squad (salt 2 pinned as a regression check)', () => {
@@ -116,9 +118,11 @@ describe('120-day simulation: the squad (salt 2 pinned as a regression check)', 
 describe('the pace over 30 salts (Review Focus 4)', () => {
   let squad: Array<ReturnType<typeof simulate>>;
   let pairs: Array<ReturnType<typeof simulate>>;
+  let solos: Array<ReturnType<typeof simulate>>;
   beforeAll(() => {
     squad = SALTS.map((salt) => simulate(salt));
     pairs = SALTS.map((salt) => simulate(salt, PAIR, 180));
+    solos = SALTS.map((salt) => simulate(salt, SOLO, 120));
   });
 
   it('nobody with low aptitude ever reaches the fourth milestone, and a low hobby stops at its ceiling', () => {
@@ -131,11 +135,46 @@ describe('the pace over 30 salts (Review Focus 4)', () => {
     expect(squad.some((sim) => mine(sim.s, 'unit_dee').hobbies![0].ceiling === true)).toBe(true);
   });
 
-  it('the median day of a standard woman\'s first milestone (a shared room, every slot free) is within 8 and 20', () => {
-    const firsts = pairs.flatMap((sim) => ['unit_ann', 'unit_bea'].map((id) => sim.reached[id][0] ?? Infinity));
-    const m = median(firsts);
+  // Target (a): the median day of a standard woman's first milestone is within 8 and 20, measured on each group (a woman who never gets there counts as Infinity).
+  const firstDays = (sims: Array<ReturnType<typeof simulate>>, ids: string[]): number[] => sims.flatMap((sim) => ids.map((id) => sim.reached[id][0] ?? Infinity));
+  const within = (m: number): void => {
     expect(m).toBeGreaterThanOrEqual(8);
     expect(m).toBeLessThanOrEqual(20);
+  };
+
+  it('(a) the pair: the median first-milestone day of a standard woman who shares her room is within 8 and 20', () => {
+    within(median(firstDays(pairs, ['unit_ann', 'unit_bea'])));
+  });
+
+  // KNOWN GAP: it flips to a plain `it` once the author tunes the pace (TUNING.life is AUTHOR TO TUNE; no value was changed).
+  it.fails('(a) the squad: the median first-milestone day of a standard woman is within 8 and 20', () => {
+    within(median(firstDays(squad, ['unit_ann', 'unit_bea'])));
+  });
+
+  // KNOWN GAP: it flips to a plain `it` once the author tunes the pace (TUNING.life is AUTHOR TO TUNE; no value was changed).
+  it.fails('(a) alone: the median first-milestone day of a standard woman is within 8 and 20', () => {
+    within(median(firstDays(solos, ['unit_ann'])));
+  });
+
+  it('(a) the measured medians and the standard women with no first milestone (a regression pin for the report)', () => {
+    const squadDays = firstDays(squad, ['unit_ann', 'unit_bea']);
+    expect({
+      pairMedian: median(firstDays(pairs, ['unit_ann', 'unit_bea'])),
+      squadMedian: median(squadDays),
+      squadNever: squadDays.filter((d) => d === Infinity).length,
+      squadWomen: squadDays.length,
+      soloMedian: median(firstDays(solos, ['unit_ann'])),
+      soloNever: firstDays(solos, ['unit_ann']).filter((d) => d === Infinity).length,
+    }).toMatchInlineSnapshot(`
+      {
+        "pairMedian": 10,
+        "soloMedian": 22,
+        "soloNever": 0,
+        "squadMedian": 21,
+        "squadNever": 6,
+        "squadWomen": 60,
+      }
+    `);
   });
 
   it('two equal standard women who share a room reach the same milestone on the same day in no salt', () => {
