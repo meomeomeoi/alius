@@ -1218,7 +1218,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `answerProbe(draft, ctx, unitId, response: ResponseType, tone: Tone | undefined, weight: 1 | 0.5): EngineEvent[]` (closes the pending probe when `weight === 1`; feeds hold and, from Task 15, the reading);
   - `probeQueueRoom(state): number`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `an eager unit on interest probes about 30 % of days` (200 seeded days, frequency normal: 0.25–0.35).
   - `none never probes; latent only with a cause` (Impunity 45 → probes; 30 → never).
   - `at most cap units probe`: cap 1, two eager units → only one is ever pending.
@@ -1227,10 +1227,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `back-off`: three deflections among the last five → `backoffUntil = day + 14`, `probe_backoff`, she leaves the queue.
   - `a pending probe lapses after 3 days`.
   - `no eligible unit: no draw` (rng unchanged).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/probes.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R9.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): probes on the engine's schedule`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/probes.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R9.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): probes on the engine's schedule`
 
 ---
 

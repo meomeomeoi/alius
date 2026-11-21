@@ -1005,7 +1005,24 @@ var TUNING = Object.freeze({
     /** Favour (R7): clamped to ±`max`, and drawn toward 0 by `decayPerDay` each day. */
     favour: Object.freeze({ max: 20, decayPerDay: 1 }),
     /** Track xp (spec §6: tracks decay much slower than hold): after `idleDays` without a practice, `decayPerDay` xp a day. `AUTHOR TO TUNE`. */
-    tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 })
+    tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
+    /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
+    backoffDays: 14
+  }),
+  /**
+   * P15: probes (R9, spec §15.1, §15.12). `chance` is the daily chance by inclination (`none` never probes; `latent` only with a cause);
+   * a probe lapses after `lapseDays`; she leaves the queue after `queueIdleDays` without one. Back-off: `backoffCount` of the last
+   * `backoffWindow` answers deflected or resisted. `skipRecent` axes of `recent` are not repeated. `AUTHOR TO TUNE` (the spec's drafts).
+   */
+  probes: Object.freeze({
+    chance: Object.freeze({ latent: 0.05, curious: 0.15, eager: 0.3 }),
+    lapseDays: 3,
+    queueIdleDays: 14,
+    queueMax: 3,
+    backoffWindow: 5,
+    backoffCount: 3,
+    skipRecent: 3,
+    recentMax: 8
   })
 });
 
@@ -25227,6 +25244,9 @@ function fnv1a3(s) {
   }
   return h2 >>> 0;
 }
+function dynamicHash(state, unitId, key) {
+  return fnv1a3(`${state.dynamic?.salt ?? 0}|${unitId}|dynamic|${key}|${state.day}`) / 2 ** 32;
+}
 var dynamicSaltOf = (rng) => fnv1a3(JSON.stringify(rng));
 function newDynamicCampaign(salt, setup) {
   return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
@@ -32503,6 +32523,81 @@ function addFavour(draft, unitId, n) {
   dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
 }
 
+// src/engine/dynamic/probes.ts
+var livingNamed5 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u));
+function probeQueueRoom(state) {
+  const cap7 = holderCap(state);
+  const n = Number.isFinite(cap7) ? cap7 : TUNING.probes.queueMax;
+  return Math.max(0, n - (state.dynamic?.queue.length ?? 0));
+}
+function latentCause(state, reg, unitId) {
+  if ((impunityOf(state, reg, unitId)?.value ?? 0) >= TUNING.dynamic.impunityRoute) return true;
+  const known2 = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === "knows_dynamic");
+  if (!known2) return false;
+  const view = practiceOf(state, reg, unitId);
+  return view !== null && Object.values(view.categories).some((c) => c.witness === "drawn");
+}
+function probeChance(state, reg, unitId) {
+  const inclination = effectiveInclination(state, unitId);
+  if (inclination === "none") return 0;
+  if (inclination === "latent" && !latentCause(state, reg, unitId)) return 0;
+  const base = TUNING.probes.chance[inclination];
+  const p = base * TUNING.dynamic.frequency[state.dynamic.setup.frequency] * assertiveness(state, reg).demandMult;
+  return Math.min(1, Math.max(0, p));
+}
+function pickAxis(draft, reg, unitId, tier, recent2) {
+  const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
+  const skip = recent2.slice(-TUNING.probes.skipRecent);
+  const fresh = axes.filter((a) => !skip.includes(a.id));
+  const pool = fresh.length > 0 ? fresh : axes;
+  return pool[Math.min(pool.length - 1, Math.floor(dynamicHash(draft, unitId, "probe_axis") * pool.length))];
+}
+function staysInQueue(draft, id) {
+  const dyn = dynamicOf(draft, id);
+  const unit3 = draft.squad.find((u) => u.id === id);
+  if (dyn === void 0 || unit3 === void 0 || !isLiving(unit3)) return false;
+  if (frameRank(dyn.frame) >= frameRank("play")) return false;
+  if (dyn.probes.backoffUntil !== void 0 && draft.day < dyn.probes.backoffUntil) return false;
+  if (dyn.probes.pending !== void 0) return true;
+  return dyn.probes.lastDay !== void 0 && draft.day - dyn.probes.lastDay <= TUNING.probes.queueIdleDays;
+}
+function probeDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  if (!dynamicOn(draft, reg)) return [];
+  const campaign = draft.dynamic;
+  for (const u of livingNamed5(draft)) {
+    const p = dynamicOf(draft, u.id)?.probes;
+    if (p?.pending !== void 0 && draft.day - p.pending.day >= TUNING.probes.lapseDays) delete p.pending;
+  }
+  campaign.queue = campaign.queue.filter((id) => staysInQueue(draft, id));
+  if (draft.squad.some((u) => dynamicOf(draft, u.id)?.probes.lastDay === draft.day)) return [];
+  const candidates3 = livingNamed5(draft).map((u) => u.id).filter((id) => {
+    const dyn = dynamicOf(draft, id);
+    if (dyn !== void 0 && (frameRank(dyn.frame) >= frameRank("play") || dyn.probes.pending !== void 0)) return false;
+    if (dyn?.probes.backoffUntil !== void 0 && draft.day < dyn.probes.backoffUntil) return false;
+    return canHold(draft, reg, id) === null;
+  }).sort((a, b) => dynamicHash(draft, a, "probe_order") - dynamicHash(draft, b, "probe_order"));
+  for (const id of candidates3) {
+    if (!campaign.queue.includes(id) && probeQueueRoom(draft) <= 0) continue;
+    const p = probeChance(draft, reg, id);
+    if (p <= 0 || !ctx2.rng.chance(p)) continue;
+    const events = ensureDynamic(draft, reg, id);
+    const dyn = dynamicOf(draft, id);
+    if (dyn === void 0) continue;
+    const tier = bandIndex(reg, dyn.hold) === 0 ? 1 : 2;
+    const axis = pickAxis(draft, reg, id, tier, dyn.recent);
+    dyn.probes.pending = { axis: axis.id, tier, day: draft.day };
+    dyn.probes.lastDay = draft.day;
+    dyn.probes.issued += 1;
+    dyn.recent.push(axis.id);
+    while (dyn.recent.length > TUNING.probes.recentMax) dyn.recent.shift();
+    if (!campaign.queue.includes(id)) campaign.queue.push(id);
+    events.push({ type: "probe_issued", unitId: id, axis: axis.id, tier });
+    return events;
+  }
+  return [];
+}
+
 // src/engine/dynamic/tracks.ts
 var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
 
@@ -32551,7 +32646,8 @@ var favourDecay = (draft, _ctx, holders2) => {
   }
   return [];
 };
-var STEPS = [decay2, slowTerm, trackDecay, favourDecay];
+var probes = (draft, ctx2) => probeDayStep(draft, ctx2);
+var STEPS = [decay2, slowTerm, trackDecay, favourDecay, probes];
 function dynamicDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   const holders2 = holdersOf(draft);

@@ -2,7 +2,7 @@
  * The dynamic's day step (P15, plan R8, spec §15.12): what a day does to every holder, in a fixed order. It runs from the `dm_rumors`
  * hook, after her life's step (`actions/dynamic.ts` is imported last). While the dynamic is off it returns `[]` and touches nothing.
  * The later tasks add their sub-steps in place, in the order of the list below: probes (Task 14), milestones (19), claims (22),
- * knowledge (27), aftermaths (30), oversight (34), Regard (36), exchange (38). Steps 1 to 4 draw nothing.
+ * knowledge (27), aftermaths (30), oversight (34), Regard (36), exchange (38). Steps 1 to 4 draw nothing; the probe step draws one chance for a unit that is eligible and has room.
  */
 import type { Registries } from '../../content/types';
 import { impunityOf } from '../discipline/impunity';
@@ -14,11 +14,12 @@ import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
+import { probeDayStep } from './probes';
 import { dynamicOf } from './state';
 import { levelOfXp } from './tracks';
 import type { DynamicTrackEntry } from './types';
 
-type SubStep = (draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holders: string[]) => EngineEvent[];
+type SubStep = (draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>, holders: string[]) => EngineEvent[];
 
 /** The living named units that have a dynamic, in squad order. */
 const holdersOf = (draft: CampaignState): string[] => draft.squad.filter((u) => u.kind === 'named' && isLiving(u) && dynamicOf(draft, u.id) !== undefined).map((u) => u.id);
@@ -74,11 +75,14 @@ const favourDecay: SubStep = (draft, _ctx, holders) => {
   return [];
 };
 
+/** 5. Probes (Task 14): a pending probe lapses, the queue is kept, and at most one eligible unit rolls her daily chance (the only draw of the step). */
+const probes: SubStep = (draft, ctx) => probeDayStep(draft, ctx);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
-export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>): EngineEvent[] {
+export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {
   if (!dynamicOn(draft, ctx.registries)) return [];
   const holders = holdersOf(draft);
   const events: EngineEvent[] = [];

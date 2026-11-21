@@ -121,6 +121,10 @@ export type OfferAnswer = (typeof OFFER_ANSWERS)[number];
 export const KNOWLEDGE_LEVELS = ['suspects_close', 'suspects_dynamic', 'knows_dynamic'] as const;
 export type KnowledgeLevel = (typeof KNOWLEDGE_LEVELS)[number];
 
+/** The tones of a yielding the intent reader reports (P15a's `TONES` in `intentExtract.ts`; a test keeps the two lists equal). */
+export const TONES = ['sincere', 'ironic', 'transactional', 'flat'] as const;
+export type Tone = (typeof TONES)[number];
+
 export const REGARD_SPEEDS = ['very_slow', 'slow', 'normal', 'fast'] as const;
 export type RegardSpeed = (typeof REGARD_SPEEDS)[number];
 export const REFUSAL_COSTS = ['minor', 'moderate', 'major', 'contest'] as const;

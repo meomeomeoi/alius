@@ -744,5 +744,22 @@ export const TUNING = Object.freeze({
     favour: Object.freeze({ max: 20, decayPerDay: 1 }),
     /** Track xp (spec §6: tracks decay much slower than hold): after `idleDays` without a practice, `decayPerDay` xp a day. `AUTHOR TO TUNE`. */
     tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
+    /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
+    backoffDays: 14,
+  }),
+  /**
+   * P15: probes (R9, spec §15.1, §15.12). `chance` is the daily chance by inclination (`none` never probes; `latent` only with a cause);
+   * a probe lapses after `lapseDays`; she leaves the queue after `queueIdleDays` without one. Back-off: `backoffCount` of the last
+   * `backoffWindow` answers deflected or resisted. `skipRecent` axes of `recent` are not repeated. `AUTHOR TO TUNE` (the spec's drafts).
+   */
+  probes: Object.freeze({
+    chance: Object.freeze({ latent: 0.05, curious: 0.15, eager: 0.3 } as const),
+    lapseDays: 3,
+    queueIdleDays: 14,
+    queueMax: 3,
+    backoffWindow: 5,
+    backoffCount: 3,
+    skipRecent: 3,
+    recentMax: 8,
   }),
 });

@@ -11,3 +11,4 @@ export { addTrackXp, levelOfXp, trackCap, trackLevel, trackOpen } from './tracks
 export { FEED_CAUSE, holdFeed } from './feed';
 export { dynamicDayStep } from './dayStep';
 export { installDynamicHooks } from './hooks';
+export { answerProbe, pendingProbe, probeDayStep, probeQueueRoom, sceneProbe } from './probes';
