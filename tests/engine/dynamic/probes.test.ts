@@ -284,6 +284,21 @@ describe('answers', () => {
     expect(events).toContainEqual({ type: 'hold_changed', unitId: ANN, from: 10, to: 14, cause: 'probe_yielded' });
   });
 
+  it('an answer feeds her reading after the hold (the first gain is exact; a later one is scaled by how she reads the commander)', () => {
+    const s = pending({ hold: 10 });
+    answer(s, 'yielded', 1, 'sincere');
+    expect(holdOf(s)).toBe(14);
+    expect(dynamicOf(s, ANN)!.readOf.updates).toBe(1);
+    expect(dynamicOf(s, ANN)!.readOf.r).toBeGreaterThan(0);
+    const half = pending({ hold: 10 });
+    answer(half, 'yielded', 0.5);
+    expect(dynamicOf(half, ANN)!.readOf.r).toBeCloseTo(dynamicOf(s, ANN)!.readOf.r / 2, 3); // observed moves her reading half as far
+    dynamicOf(s, ANN)!.probes.pending = { axis: 'touch', tier: 2, day: s.day };
+    answer(s, 'yielded');
+    expect(holdOf(s)).not.toBe(18); // her compatibility now counts
+    expect(dynamicOf(s, ANN)!.readOf.updates).toBe(2);
+  });
+
   it('observed counts half, closes nothing and records nothing', () => {
     const s = pending();
     answer(s, 'yielded', 0.5);

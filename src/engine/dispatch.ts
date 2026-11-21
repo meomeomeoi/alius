@@ -51,9 +51,10 @@ export function registerAction(type: string, handler: Handler): void {
 
 /**
  * A step that runs after every successful action, in the same draft and rng (registered by the module that owns the state it settles).
- * It must draw nothing unless its own condition holds, so actions that do not touch it stay byte-identical.
+ * It must draw nothing unless its own condition holds, so actions that do not touch it stay byte-identical. It gets the events the action
+ * and the steps before it produced (read-only; its own are appended after it returns).
  */
-export type AfterAction = (draft: CampaignState, ctx: EngineCtx) => EngineEvent[];
+export type AfterAction = (draft: CampaignState, ctx: EngineCtx, events: readonly EngineEvent[]) => EngineEvent[];
 const afterActions: AfterAction[] = [];
 export function registerAfterAction(step: AfterAction): void {
   afterActions.push(step);
@@ -128,7 +129,7 @@ export function dispatch(
     const events = handler(draft, action.payload, { registries, rng });
     // the vote is spent once, in the same state, and only if the decision ran (P9b; 0.1 audit: not when the warden or a walk-out stopped it)
     if (voteId !== undefined) events.push(...carryIfRan(draft, voteId, events, { registries }));
-    for (const step of afterActions) events.push(...step(draft, { registries, rng }));
+    for (const step of afterActions) events.push(...step(draft, { registries, rng }, events));
     draft.rng = rng.state;
     try {
       rememberEvents(draft, events, registries); // P3b: engine events become facts; memory never fails a valid action

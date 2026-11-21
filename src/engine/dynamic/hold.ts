@@ -8,8 +8,9 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { canHold, dynamicOn, ensureDynamic } from './gate';
+import { distanceToPoint } from './reading';
 import { dynamicOf } from './state';
-import type { DynamicFrameEntry, Frame, HoldBandEntry } from './types';
+import type { DynamicFrameEntry, Frame, HoldBandEntry, PracticeStyleEntry } from './types';
 
 const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 
@@ -37,10 +38,33 @@ export function frameEntry(reg: Registries, frame: Frame): DynamicFrameEntry | u
 }
 
 /**
- * How well the commander stands at her point, as a multiplier on a gain (R10): 0.8 … 1.2. Until the position (Task 15) reads, it is 1.
+ * How well the commander stands at her point, as a multiplier on a gain (R10): `1.2 - 0.2 x distance` from her reading to her style's point
+ * (plus her own offset), clamped to 0.8 ... 1.2; `notWith: 'other_women'` takes 0.1 off per other woman in a romantic bond. `clinical` has no
+ * point: 1 + 0.2 x her share of sincere tones - 0.2 when she reads a double game or a hollow answer. It is 1 until she has read anything, and
+ * for a unit with no dynamic. Pure.
  */
-export function compatibilityOf(_state: CampaignState, _reg: Registries, _unitId: string): number {
-  return 1;
+export function compatibilityOf(state: CampaignState, reg: Registries, unitId: string): number {
+  const dyn = dynamicOf(state, unitId);
+  const C = TUNING.position;
+  const D = TUNING.dynamic.compatibility;
+  if (dyn === undefined || dyn.readOf.updates === 0) return 1;
+  const unit = state.squad.find((u) => u.id === unitId);
+  const primary = unit?.bond?.practice?.style.primary;
+  const entry = primary === undefined ? undefined : (reg.practiceStyles.get(primary) as unknown as PracticeStyleEntry | undefined);
+  if (entry === undefined) return 1;
+  const rd = dyn.readOf;
+  if (entry.point === null) {
+    const bad = rd.region === 'double_game' || rd.region === 'hollow' ? 1 : 0;
+    return Math.min(D.max, Math.max(D.min, 1 + C.clinical.sincere * (rd.sincere ?? 0) - C.clinical.hollow * bad));
+  }
+  const offset = unit?.kind === 'named' ? unit.expectations?.offset : undefined;
+  const point = { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
+  let value = D.max - D.perDistance * distanceToPoint(rd, point);
+  if (entry.point.notWith === 'other_women') {
+    const others = state.squad.filter((u) => u.id !== unitId && u.kind === 'named' && bondTierOf(state, reg, u.id) === 'romantic').length;
+    value -= C.notWith * others;
+  }
+  return Math.min(D.max, Math.max(D.min, value));
 }
 
 /**

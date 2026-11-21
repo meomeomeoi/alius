@@ -37,6 +37,8 @@ export interface HerReading {
   motive: Record<Motive, number>;
   flat: number;
   deflect: number;
+  /** The share of `sincere` tones (absent until the first toned answer; `clinical` values it, R10). */
+  sincere?: number;
   region: RegionRank;
   pending?: { region: RegionRank; count: number };
   updates: number;

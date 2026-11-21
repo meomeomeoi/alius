@@ -748,6 +748,24 @@ export const TUNING = Object.freeze({
     backoffDays: 14,
   }),
   /**
+   * P15: her reading of the commander's position (R10, spec §15.2, §15.12, §16.4). `alpha` is the weight a sample moves each axis by (the
+   * motive average moves `alpha.motive / alpha.probe` times as far); a region changes after `hysteresis` updates in a row; a declaration
+   * starts at `declaration.start` and fades `declaration.fadePerDay`. `region` holds the thresholds of the table; `bias` the misreadings
+   * (`herToward`: the share of the way to `her` a possessive or obsessive reading moves each update; `readiness`: what a cruel or vindictive
+   * one takes off r each update); `insight` multiplies the bias; `clinical` is her compatibility without a point; `notWith` is what each
+   * other woman in a romantic bond takes off the compatibility of a style that wants no other. `AUTHOR TO TUNE`.
+   */
+  position: Object.freeze({
+    alpha: Object.freeze({ probe: 0.1, moment: 0.15, practice: 0.2, motive: 0.15 }),
+    hysteresis: 3,
+    declaration: Object.freeze({ start: 0.5, fadePerDay: 0.05 }),
+    region: Object.freeze({ flat: 0.5, deflect: 0.4, friction: 0.3, play: 0.5, ready: 0.3 }),
+    bias: Object.freeze({ herToward: 0.1, readiness: -0.1 }),
+    insight: Object.freeze({ low: 2, mid: 1, high: 1 } as const),
+    clinical: Object.freeze({ sincere: 0.2, hollow: 0.2 }),
+    notWith: 0.1,
+  }),
+  /**
    * P15: probes (R9, spec §15.1, §15.12). `chance` is the daily chance by inclination (`none` never probes; `latent` only with a cause);
    * a probe lapses after `lapseDays`; she leaves the queue after `queueIdleDays` without one. Back-off: `backoffCount` of the last
    * `backoffWindow` answers deflected or resisted. `skipRecent` axes of `recent` are not repeated. `AUTHOR TO TUNE` (the spec's drafts).

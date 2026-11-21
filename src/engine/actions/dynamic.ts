@@ -1,5 +1,5 @@
 import { MODEST_BOND } from '../bonds/profile';
-import { registerAction, type EngineEvent } from '../dispatch';
+import { registerAction, registerAfterAction, type EngineEvent } from '../dispatch';
 import { EXPECTATION_FIELDS, lockedExpectation, mergeExpectations, validateExpectations, type ExpectationProfile } from '../dynamic/expectations';
 import { mergePractice, validatePractice } from '../dynamic/profile';
 import { contentAllowed } from '../bonds/content';
@@ -8,11 +8,13 @@ import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { holdReason } from '../dynamic/gate';
+import { readMoments, resettleReading } from '../dynamic/reading';
+import { dynamicOf } from '../dynamic/state';
 import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
 import { seedHold } from '../dynamic/seeds';
 import { dynamicSaltOf, newDynamicCampaign } from '../dynamic/state';
-import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES } from '../dynamic/types';
+import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, MOTIVES, PACES, PRACTICE_LOCK_FIELDS, SENSITIVITIES, type Motive } from '../dynamic/types';
 import { TUNING } from '../tuning';
 import type { Unit } from '../state/types';
 
@@ -31,6 +33,8 @@ registerEventLanded(holdFeed);
 registerDayEndStep('dm_rumors', dynamicDayStep);
 // Her place in the P15a stand-ins: frame, live scenes, physics style, what she holds until, what she expects (R10); every reader is null while off.
 installDynamicHooks();
+// A moment she was answered feeds her reading of the commander, never her hold (R10, user ruling R1); nothing while off.
+registerAfterAction(readMoments);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -200,4 +204,24 @@ registerAction('dynamic/set_unit', (draft, payload) => {
   if (Object.keys(entry).length === 0) delete draft.dynamic.setup.units[unit.id];
   else draft.dynamic.setup.units[unit.id] = entry;
   return [];
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Her reading (R10)
+
+/**
+ * `dynamic/declare { unitId, motive }`: the commander says what drives the position (from the milestone conversation, or later the "what do you
+ * feel?" question). It needs her block; it sets her `declared` motive at weight `declaration.start`, and the weight fades each day, so deeds outweigh
+ * it over time. Her region settles with the same hysteresis (no new sample).
+ */
+registerAction('dynamic/declare', (draft, payload) => {
+  const p = (payload ?? {}) as { unitId?: unknown; motive?: unknown };
+  const unit = namedUnit(draft, p.unitId, 'dynamic/declare');
+  if (!(MOTIVES as readonly unknown[]).includes(p.motive)) throw new Error(`A motive is ${MOTIVES.join(', ')}.`);
+  const dyn = dynamicOf(draft, unit.id);
+  if (dyn === undefined) throw new Error(`${unit.displayName} has no dynamic with the commander.`);
+  dyn.declared = { motive: p.motive as Motive, weight: TUNING.position.declaration.start, day: draft.day };
+  const shift = resettleReading(dyn).region;
+  return shift === undefined ? [] : [{ type: 'position_shifted', unitId: unit.id, from: shift.from, to: shift.to }];
 });

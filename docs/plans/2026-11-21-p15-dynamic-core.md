@@ -1256,7 +1256,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `compatibilityOf(state, reg, unitId): number` (0.8–1.2);
   - `readMoments(draft, ctx, events): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the region table in order`: hand-built readings land in hollow (flat 0.5), elusive (deflect 0.4), cowed (fear largest), double game, calculating, bratty, proud, hungry (process largest), reluctant, dutiful (order largest), devoted.
   - `hysteresis`: a region changes only after three updates in a row; one stray answer changes nothing.
   - `misreading`: the same five answers read differently by `clinical` and `possessive` (`her` weight higher for `possessive`); insight `low` doubles it; no rng draw.
@@ -1264,10 +1264,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `compatibility`: a `ritual` holder with a dutiful reading → 1.2; with a bratty reading → closer to 0.8; hold gains use it.
   - `moment_answered feeds the reading but not hold` (dispatch a `moment/answer` in a live scene with a holder: `readOf.updates` +1, `hold` unchanged).
   - `position_shifted writes the hidden memory fact`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/reading.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R10.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): her reading of the commander's position`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/reading.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R10.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): her reading of the commander's position`
 
 ---
 

@@ -350,3 +350,12 @@ registerMemoryResolver('first_moment_kept', (draft, event) => {
   const kind = str(event.kind);
   return her && kind !== undefined ? { ids: { her: [her.id] }, vars: { name: her.name, kind } } : null;
 }, { ids: ['her'], vars: ['name', 'kind'] });
+
+// ---------------------------------------------------------------------------------------------
+// the dynamic (P15): where she now reads the commander's position; hers alone, never shown to the commander as a reading of the commander's heart
+
+registerMemoryResolver('position_shifted', (draft, event, reg) => {
+  const her = subjectOf(draft, event.unitId);
+  const label = (id: unknown): string => String(reg.positionRegions.get(String(id))?.label ?? id);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, from: label(event.from), to: label(event.to) } } : null;
+}, { ids: ['her'], vars: ['name', 'from', 'to'] });

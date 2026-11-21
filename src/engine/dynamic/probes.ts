@@ -13,12 +13,14 @@ import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { impunityOf } from '../discipline/impunity';
 import { isLiving } from '../economy';
+import { physicsStyleOf } from '../physics/style';
 import { assertiveness } from '../power/options';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap } from './gate';
 import { addHold, bandIndex } from './hold';
 import { practiceOf } from './profile';
+import { updateReading } from './reading';
 import { dynamicHash, dynamicOf, type DynamicRelation } from './state';
 import type { ProbeAxisEntry, Tone } from './types';
 
@@ -145,7 +147,7 @@ function answerCause(state: CampaignState, unitId: string, response: ResponseTyp
 
 /**
  * The commander's answer to a probe (or, at weight 0.5, to a gesture the model made on its own: `probe_observed`). Moves hold by the gain
- * table, scaled by her sensitivity and by the weight, and feeds her reading. At weight 1 it closes her pending probe, records the answer
+ * table, scaled by her sensitivity and by the weight, and then feeds her reading (alpha 0.10, halved at weight 0.5). At weight 1 it closes her pending probe, records the answer
  * and checks the back-off (a pending probe is required: without one nothing happens); at 0.5 it closes nothing and records nothing, and
  * a unit with no dynamic yet starts one if she may hold. Draws nothing. `tone` is the intent's tone, already validated.
  */
@@ -167,7 +169,11 @@ export function answerProbe(
   const cause = answerCause(draft, unitId, response);
   const base = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
   events.push(...addHold(draft, ctx, unitId, base, cause));
-  void tone; // Task 15: her reading takes the answer after the hold (a gain is scaled by how she read the commander until now)
+  // her reading takes the answer after the hold: a gain is scaled by how she read the commander until now
+  const unit = draft.squad.find((u) => u.id === unitId)!;
+  const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
+  const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}) }, alpha, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
+  if (shift !== undefined) events.push({ type: 'position_shifted', unitId, from: shift.from, to: shift.to });
   if (weight === 1) {
     delete dyn.probes.pending;
     dyn.probes.answers.push(response);

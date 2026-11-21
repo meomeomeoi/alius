@@ -940,5 +940,19 @@
       "stimulus",
       "adoring"
     ]
+  },
+  {
+    "id": "position_region",
+    "event": "position_shifted",
+    "text": "{name} now reads the commander's way with her as {to}.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "hiddenFromCommander": true,
+    "tags": [
+      "dynamic",
+      "position"
+    ]
   }
 ]

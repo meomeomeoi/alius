@@ -12,3 +12,5 @@ export { FEED_CAUSE, holdFeed } from './feed';
 export { dynamicDayStep } from './dayStep';
 export { installDynamicHooks } from './hooks';
 export { answerProbe, pendingProbe, probeDayStep, probeQueueRoom, sceneProbe } from './probes';
+export { distanceToPoint, fadeDeclarations, newReading, readMoments, regionOf, resettleReading, updateReading } from './reading';
+export type { ReadingSample } from './reading';

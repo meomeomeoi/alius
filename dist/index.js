@@ -1010,6 +1010,24 @@ var TUNING = Object.freeze({
     backoffDays: 14
   }),
   /**
+   * P15: her reading of the commander's position (R10, spec §15.2, §15.12, §16.4). `alpha` is the weight a sample moves each axis by (the
+   * motive average moves `alpha.motive / alpha.probe` times as far); a region changes after `hysteresis` updates in a row; a declaration
+   * starts at `declaration.start` and fades `declaration.fadePerDay`. `region` holds the thresholds of the table; `bias` the misreadings
+   * (`herToward`: the share of the way to `her` a possessive or obsessive reading moves each update; `readiness`: what a cruel or vindictive
+   * one takes off r each update); `insight` multiplies the bias; `clinical` is her compatibility without a point; `notWith` is what each
+   * other woman in a romantic bond takes off the compatibility of a style that wants no other. `AUTHOR TO TUNE`.
+   */
+  position: Object.freeze({
+    alpha: Object.freeze({ probe: 0.1, moment: 0.15, practice: 0.2, motive: 0.15 }),
+    hysteresis: 3,
+    declaration: Object.freeze({ start: 0.5, fadePerDay: 0.05 }),
+    region: Object.freeze({ flat: 0.5, deflect: 0.4, friction: 0.3, play: 0.5, ready: 0.3 }),
+    bias: Object.freeze({ herToward: 0.1, readiness: -0.1 }),
+    insight: Object.freeze({ low: 2, mid: 1, high: 1 }),
+    clinical: Object.freeze({ sincere: 0.2, hollow: 0.2 }),
+    notWith: 0.1
+  }),
+  /**
    * P15: probes (R9, spec §15.1, §15.12). `chance` is the daily chance by inclination (`none` never probes; `latent` only with a cause);
    * a probe lapses after `lapseDays`; she leaves the queue after `queueIdleDays` without one. Back-off: `backoffCount` of the last
    * `backoffWindow` answers deflected or resisted. `skipRecent` axes of `recent` are not repeated. `AUTHOR TO TUNE` (the spec's drafts).
@@ -6672,6 +6690,7 @@ var SIGN_KINDS = [
   "time_alone",
   "territory_marking"
 ];
+var TONES = ["sincere", "ironic", "transactional", "flat"];
 var REGARD_SPEEDS = ["very_slow", "slow", "normal", "fast"];
 var REFUSAL_COSTS = ["minor", "moderate", "major", "contest"];
 var OUTSIDE_REACH = ["none", "scenes", "all_day", "domains"];
@@ -26226,6 +26245,11 @@ registerMemoryResolver("first_moment_kept", (draft, event) => {
   const kind = str2(event.kind);
   return her && kind !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, kind } } : null;
 }, { ids: ["her"], vars: ["name", "kind"] });
+registerMemoryResolver("position_shifted", (draft, event, reg) => {
+  const her = subjectOf2(draft, event.unitId);
+  const label2 = (id) => String(reg.positionRegions.get(String(id))?.label ?? id);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, from: label2(event.from), to: label2(event.to) } } : null;
+}, { ids: ["her"], vars: ["name", "from", "to"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -26367,7 +26391,7 @@ function dispatch(state, action, registries) {
   try {
     const events = handler2(draft, action.payload, { registries, rng });
     if (voteId !== void 0) events.push(...carryIfRan(draft, voteId, events, { registries }));
-    for (const step of afterActions) events.push(...step(draft, { registries, rng }));
+    for (const step of afterActions) events.push(...step(draft, { registries, rng }, events));
     draft.rng = rng.state;
     try {
       rememberEvents(draft, events, registries);
@@ -32460,8 +32484,127 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
   return [{ type: "pastime_set", unitId: unit3.id, pastimeId }];
 });
 
-// src/engine/dynamic/hold.ts
+// src/engine/dynamic/reading.ts
 var round42 = (n) => Math.round(n * 1e4) / 1e4;
+var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function blended(m, declared) {
+  if (declared === void 0 || declared.weight <= 0) return m;
+  const w = Math.min(1, declared.weight);
+  return Object.fromEntries(MOTIVES.map((k) => [k, m[k] * (1 - w) + (k === declared.motive ? w : 0)]));
+}
+var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
+function regionOf(reading2, declared) {
+  const R2 = TUNING.position.region;
+  const m = blended(reading2.motive, declared);
+  const { r, f, p } = reading2;
+  if (reading2.flat >= R2.flat) return "hollow";
+  if (reading2.deflect >= R2.deflect) return "elusive";
+  if (largest(m, "fear")) return "cowed";
+  if (f >= R2.friction && largest(m, "gain")) return "double_game";
+  if (f < R2.friction && largest(m, "gain")) return "calculating";
+  if (f >= R2.friction && p >= R2.play) return "bratty";
+  if (f >= R2.friction) return "proud";
+  if (r >= R2.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (r < 0) return "reluctant";
+  if (r >= R2.ready && largest(m, "order")) return "dutiful";
+  return "devoted";
+}
+function motiveOf(sample) {
+  if (sample.afterThreat === true && sample.response === "yielded") return "fear";
+  if (sample.tone === "transactional") return "gain";
+  if (sample.tone === "sincere" && sample.response === "yielded") return "order";
+  return void 0;
+}
+function settle4(rel) {
+  const rd = rel.readOf;
+  const candidate = regionOf(rd, rel.declared);
+  if (candidate === rd.region) {
+    delete rd.pending;
+    return void 0;
+  }
+  const count2 = rd.pending?.region === candidate ? rd.pending.count + 1 : 1;
+  if (count2 < TUNING.position.hysteresis) {
+    rd.pending = { region: candidate, count: count2 };
+    return void 0;
+  }
+  const from = rd.region;
+  rd.region = candidate;
+  delete rd.pending;
+  return { from, to: candidate };
+}
+function updateReading(rel, sample, alpha, style, insight) {
+  const rd = rel.readOf;
+  const toward = (v, target2, a) => v + a * (target2 - v);
+  if (sample.response === "yielded") rd.r = toward(rd.r, 1, alpha);
+  if (sample.response === "resisted") {
+    rd.r = toward(rd.r, -1, alpha);
+    rd.f = toward(rd.f, 0.5, alpha);
+    rd.p = toward(rd.p, 0, alpha);
+  }
+  if (sample.response === "returned") {
+    rd.f = toward(rd.f, 1, alpha);
+    rd.p = toward(rd.p, 1, alpha);
+  }
+  rd.deflect = toward(rd.deflect, sample.response === "deflected" ? 1 : 0, alpha);
+  if (sample.tone !== void 0) {
+    rd.flat = toward(rd.flat, sample.tone === "flat" ? 1 : 0, alpha);
+    rd.sincere = toward(rd.sincere ?? 0, sample.tone === "sincere" ? 1 : 0, alpha);
+  }
+  const target = motiveOf(sample);
+  const step = Math.min(1, alpha * TUNING.position.alpha.motive / TUNING.position.alpha.probe);
+  if (target !== void 0) for (const k of MOTIVES) rd.motive[k] = toward(rd.motive[k], k === target ? 1 : 0, step);
+  const lead = style.phaseLead === "secondary" && style.secondary !== void 0 ? style.secondary : style.primary;
+  const bias = TUNING.position.insight[insight];
+  if (lead === "possessive" || lead === "obsessive") for (const k of MOTIVES) rd.motive[k] = toward(rd.motive[k], k === "her" ? 1 : 0, TUNING.position.bias.herToward * bias);
+  if (lead === "cruel" || lead === "vindictive") rd.r += TUNING.position.bias.readiness * bias;
+  rd.r = round42(clamp37(rd.r, -1, 1));
+  rd.f = round42(clamp37(rd.f, -1, 1));
+  rd.p = round42(clamp37(rd.p, 0, 1));
+  rd.flat = round42(clamp37(rd.flat, 0, 1));
+  rd.deflect = round42(clamp37(rd.deflect, 0, 1));
+  if (rd.sincere !== void 0) rd.sincere = round42(clamp37(rd.sincere, 0, 1));
+  for (const k of MOTIVES) rd.motive[k] = round42(rd.motive[k]);
+  rd.updates += 1;
+  const region = settle4(rel);
+  return region === void 0 ? {} : { region };
+}
+function resettleReading(rel) {
+  const region = settle4(rel);
+  return region === void 0 ? {} : { region };
+}
+function distanceToPoint(reading2, point) {
+  return Math.hypot(reading2.r - point.r, reading2.f - point.f);
+}
+function fadeDeclarations(draft, ids) {
+  const events = [];
+  for (const id of ids) {
+    const rel = dynamicOf(draft, id);
+    if (rel?.declared === void 0) continue;
+    rel.declared.weight = round42(rel.declared.weight - TUNING.position.declaration.fadePerDay);
+    if (rel.declared.weight <= 0) delete rel.declared;
+    const shift = resettleReading(rel).region;
+    if (shift !== void 0) events.push({ type: "position_shifted", unitId: id, from: shift.from, to: shift.to });
+  }
+  return events;
+}
+function readMoments(draft, ctx2, events) {
+  const answers = events.filter((e) => e.type === "moment_answered");
+  if (answers.length === 0 || !dynamicOn(draft, ctx2.registries)) return [];
+  const out = [];
+  for (const e of answers) {
+    const unitId = String(e.unitId);
+    const unit3 = draft.squad.find((u) => u.id === unitId);
+    const rel = dynamicOf(draft, unitId);
+    if (unit3 === void 0 || rel === void 0 || !isLiving(unit3) || !herPracticeLive(draft, unitId)) continue;
+    const tone = TONES.find((t) => t === e.tone);
+    const region = updateReading(rel, { response: e.responseType, ...tone !== void 0 ? { tone } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId), unit3.insight ?? "mid").region;
+    if (region !== void 0) out.push({ type: "position_shifted", unitId, from: region.from, to: region.to });
+  }
+  return out;
+}
+
+// src/engine/dynamic/hold.ts
+var round43 = (n) => Math.round(n * 1e4) / 1e4;
 function bandsOf(reg) {
   return [...reg.holdBands.values()].map((b) => b).sort((a, b) => a.min - b.min);
 }
@@ -32477,8 +32620,28 @@ function holdBandOf(reg, hold) {
 function frameEntry(reg, frame) {
   return reg.dynamicFrames.get(frame);
 }
-function compatibilityOf(_state, _reg, _unitId) {
-  return 1;
+function compatibilityOf(state, reg, unitId) {
+  const dyn = dynamicOf(state, unitId);
+  const C = TUNING.position;
+  const D3 = TUNING.dynamic.compatibility;
+  if (dyn === void 0 || dyn.readOf.updates === 0) return 1;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const primary = unit3?.bond?.practice?.style.primary;
+  const entry = primary === void 0 ? void 0 : reg.practiceStyles.get(primary);
+  if (entry === void 0) return 1;
+  const rd = dyn.readOf;
+  if (entry.point === null) {
+    const bad = rd.region === "double_game" || rd.region === "hollow" ? 1 : 0;
+    return Math.min(D3.max, Math.max(D3.min, 1 + C.clinical.sincere * (rd.sincere ?? 0) - C.clinical.hollow * bad));
+  }
+  const offset = unit3?.kind === "named" ? unit3.expectations?.offset : void 0;
+  const point = { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
+  let value = D3.max - D3.perDistance * distanceToPoint(rd, point);
+  if (entry.point.notWith === "other_women") {
+    const others = state.squad.filter((u) => u.id !== unitId && u.kind === "named" && bondTierOf(state, reg, u.id) === "romantic").length;
+    value -= C.notWith * others;
+  }
+  return Math.min(D3.max, Math.max(D3.min, value));
 }
 function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   const reg = ctx2.registries;
@@ -32504,7 +32667,7 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   const floor = frame?.holdFloor ?? 0;
   const ceiling = frame?.holdCeiling ?? 100;
   const from = dyn.hold;
-  let to = round42(Math.min(ceiling, Math.max(floor, from + delta)));
+  let to = round43(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain && to < from) to = from;
   if (!gain && to > from) to = from;
   if (gain && opts.practice !== false) dyn.lastPracticeDay = draft.day;
@@ -32647,7 +32810,8 @@ var favourDecay = (draft, _ctx, holders2) => {
   return [];
 };
 var probes = (draft, ctx2) => probeDayStep(draft, ctx2);
-var STEPS = [decay2, slowTerm, trackDecay, favourDecay, probes];
+var declarations = (draft, _ctx, holders2) => fadeDeclarations(draft, holders2);
+var STEPS = [decay2, slowTerm, trackDecay, favourDecay, probes, declarations];
 function dynamicDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   const holders2 = holdersOf(draft);
@@ -32731,6 +32895,7 @@ function namedUnit3(draft, id, action) {
 registerEventLanded(holdFeed);
 registerDayEndStep("dm_rumors", dynamicDayStep);
 installDynamicHooks();
+registerAfterAction(readMoments);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);
@@ -32862,6 +33027,16 @@ registerAction("dynamic/set_unit", (draft, payload) => {
   if (Object.keys(entry).length === 0) delete draft.dynamic.setup.units[unit3.id];
   else draft.dynamic.setup.units[unit3.id] = entry;
   return [];
+});
+registerAction("dynamic/declare", (draft, payload) => {
+  const p = payload ?? {};
+  const unit3 = namedUnit3(draft, p.unitId, "dynamic/declare");
+  if (!MOTIVES.includes(p.motive)) throw new Error(`A motive is ${MOTIVES.join(", ")}.`);
+  const dyn = dynamicOf(draft, unit3.id);
+  if (dyn === void 0) throw new Error(`${unit3.displayName} has no dynamic with the commander.`);
+  dyn.declared = { motive: p.motive, weight: TUNING.position.declaration.start, day: draft.day };
+  const shift = resettleReading(dyn).region;
+  return shift === void 0 ? [] : [{ type: "position_shifted", unitId: unit3.id, from: shift.from, to: shift.to }];
 });
 
 // src/llm/callTypes.ts
@@ -35758,7 +35933,7 @@ function createLife(deps) {
       trace: plainText(h2.traceText ?? "").replaceAll("{name}", w.unit.displayName)
     };
   }
-  function settle5(events, what) {
+  function settle6(events, what) {
     const err = events.find((e) => e.type === "error");
     if (!err) return "ok";
     if (err.code === "chat_changed" || err.message === "Already told." || /already has a view/.test(String(err.message))) return { stale: true };
@@ -35767,7 +35942,7 @@ function createLife(deps) {
   deps.generations.bind(SHARE_SITE, {
     build: (key) => shareInput(state(), key),
     parse: (raw) => sanitizeLifeShare(raw),
-    apply: (key, text2) => settle5(deps.app.dispatch({ type: "life/share_done", payload: { itemId: key, text: text2 } }, { expectChatId: chatId() }), "The message"),
+    apply: (key, text2) => settle6(deps.app.dispatch({ type: "life/share_done", payload: { itemId: key, text: text2 } }, { expectChatId: chatId() }), "The message"),
     fallback(key, input) {
       const s = state();
       if (!s?.life || !input) return false;
@@ -35778,7 +35953,7 @@ function createLife(deps) {
   deps.generations.bind(TRACE_SITE, {
     build: (key) => traceInput(state(), key),
     parse: (raw) => sanitizeLifeTrace(raw),
-    apply: (key, text2) => settle5(deps.app.dispatch({ type: "life/trace_note", payload: { itemId: key, text: text2 } }, { expectChatId: chatId() }), "The note"),
+    apply: (key, text2) => settle6(deps.app.dispatch({ type: "life/trace_note", payload: { itemId: key, text: text2 } }, { expectChatId: chatId() }), "The note"),
     fallback(key, input) {
       if (!input || input.trace === "") return false;
       return !deps.app.dispatch({ type: "life/trace_note", payload: { itemId: key, text: input.trace } }, { expectChatId: chatId() }).some((e) => e.type === "error");
@@ -35821,7 +35996,7 @@ function createLife(deps) {
     parse: (raw, input) => sanitizeOpinion(raw, input),
     apply(key, value) {
       const [unitId, topicId] = splitKey(key);
-      return settle5(deps.app.dispatch({ type: "life/opinion_formed", payload: { unitId, topicId, position: value.position, text: value.text, strength: "held", source: "model" } }, { expectChatId: chatId() }), "Her opinion");
+      return settle6(deps.app.dispatch({ type: "life/opinion_formed", payload: { unitId, topicId, position: value.position, text: value.text, strength: "held", source: "model" } }, { expectChatId: chatId() }), "Her opinion");
     },
     fallback(key) {
       const s = state();
@@ -38877,7 +39052,7 @@ var EXPRESSION_LABELS = [
   "neutral"
 ];
 var STAGING_FIELDS = ["posture", "anchor", "contact", "worn", "removed"];
-var TONES = ["sincere", "ironic", "transactional", "flat"];
+var TONES2 = ["sincere", "ironic", "transactional", "flat"];
 var list3 = external_exports.array(external_exports.unknown()).catch([]);
 var IntentExtractRawSchema = external_exports.object({
   events: list3,
@@ -38935,7 +39110,7 @@ function stagingShape(s) {
     '  "staging": {',
     `    "blocking": [{ "person": "<id from PERSONS>", "field": ${STAGING_FIELDS.map((f) => `"${f}"`).join(" | ")}, "value": "<id from the lists under STAGING>", "relTo": "<person id>", "with": "<person id>", "direction": "from" | "to", "confidence": 0.0-1.0 }]${s.ripe.length > 0 || s.open ? "," : ""}`,
     ...s.ripe.length > 0 ? [`    "ripe": "<id from RIPE>" | null${s.open ? "," : ""}`] : [],
-    ...s.open ? [`    "answer": { "option": 0 | 1 | 2 | "<extra key from OPEN>", "confidence": 0.0-1.0, "tone": ${TONES.map((t) => `"${t}"`).join(" | ")} } | null,`, '    "labels": ["<label of option 0>", "<label of option 1>", "<label of option 2>"] | null'] : [],
+    ...s.open ? [`    "answer": { "option": 0 | 1 | 2 | "<extra key from OPEN>", "confidence": 0.0-1.0, "tone": ${TONES2.map((t) => `"${t}"`).join(" | ")} } | null,`, '    "labels": ["<label of option 0>", "<label of option 1>", "<label of option 2>"] | null'] : [],
     "  }"
   ].join("\n");
 }
@@ -39135,7 +39310,7 @@ function sanitizeStaging(raw, input) {
     const key = typeof src.answer.option === "number" || typeof src.answer.option === "string" ? String(src.answer.option) : "";
     const confidence = src.answer.confidence;
     if (keys.includes(key) && typeof confidence === "number" && confidence >= TUNING.moments.answerConfidence) {
-      const tone = TONES.includes(src.answer.tone) ? src.answer.tone : void 0;
+      const tone = TONES2.includes(src.answer.tone) ? src.answer.tone : void 0;
       answer = { key, confidence, ...tone !== void 0 ? { tone } : {} };
     }
   }
@@ -45631,7 +45806,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit2 = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
-var clamp37 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp38 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a2(seed) % n;
@@ -45655,7 +45830,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp37(v));
+    out.push(clamp38(v));
   }
   return out;
 }
@@ -45873,7 +46048,7 @@ function unitPortrait(st, unit3, o) {
     return img;
   }
   let usingAvatar = !known2?.url;
-  const settle5 = () => {
+  const settle6 = () => {
     if (o.dither) ditherWhenLoaded(img, key, o.palette, size);
   };
   img.addEventListener("error", () => {
@@ -45882,7 +46057,7 @@ function unitPortrait(st, unit3, o) {
     img.setAttribute("src", avatar);
   });
   if (known2 && (known2.url || Date.now() - known2.at < RETRY_MS)) {
-    settle5();
+    settle6();
     return img;
   }
   st.getSpriteUrl(card2, "neutral").then(
@@ -45892,9 +46067,9 @@ function unitPortrait(st, unit3, o) {
         usingAvatar = false;
         img.setAttribute("src", url);
       }
-      settle5();
+      settle6();
     },
-    () => settle5()
+    () => settle6()
   );
   return img;
 }
@@ -58571,7 +58746,7 @@ function fmtPath(path, index2) {
   for (const p of path) s += typeof p === "number" ? `[${p}]` : s === "" ? p : `.${p}`;
   return s;
 }
-var settle4 = (fetchJson2, path) => fetchJson2(path).then(
+var settle5 = (fetchJson2, path) => fetchJson2(path).then(
   (value) => ({ ok: true, value }),
   (e) => ({ ok: false, message: e instanceof Error ? e.message : String(e) })
 );
@@ -58585,7 +58760,7 @@ function collectArt(packs) {
 var isAbsent = (message) => /\b404\b|ENOENT|not found/i.test(message);
 async function loadPacks(packRoots, fetchJson2, opts = {}) {
   const errors = [];
-  const manifestResults = await Promise.all(packRoots.map((root) => settle4(fetchJson2, `${root}/manifest.json`)));
+  const manifestResults = await Promise.all(packRoots.map((root) => settle5(fetchJson2, `${root}/manifest.json`)));
   const packs = [];
   manifestResults.forEach((res, i) => {
     const root = packRoots[i];
@@ -58607,7 +58782,7 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
   let lorebook = null;
   const lorePack = [...packs].reverse().find((p) => p.manifest.lorebook !== void 0);
   const loreFile = lorePack?.manifest.lorebook;
-  const loreJob = lorePack && loreFile ? settle4(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
+  const loreJob = lorePack && loreFile ? settle5(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
   const jobs = packs.flatMap(
     ({ root, manifest }) => Object.entries(manifest.files).map(([registry2, file]) => ({
       pack: manifest.id,
@@ -58616,7 +58791,7 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
       file
     }))
   );
-  const fileResults = await Promise.all(jobs.map((j) => settle4(fetchJson2, `${j.root}/${j.file}`)));
+  const fileResults = await Promise.all(jobs.map((j) => settle5(fetchJson2, `${j.root}/${j.file}`)));
   if (loreJob && lorePack && loreFile) {
     const res = await loreJob;
     const err = (path, message) => errors.push({ pack: lorePack.manifest.id, file: loreFile, path, message });
