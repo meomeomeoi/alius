@@ -104,7 +104,7 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   const phys = reg.contactPhysics.get(o.physicsId)!;
   const ref = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
   const range = ref?.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
-  const lead = leadStyle(physicsStyleOf(draft, o.holderId)).seal;
+  const lead = leadStyle(physicsStyleOf(draft, o.holderId, reg)).seal;
   const seal = range ? range[lead === 'loosest' ? 0 : lead === 'tightest' ? range.length - 1 : Math.floor(range.length / 2)] : undefined;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
   const run: PhysicsRun = {

@@ -11,16 +11,19 @@
  * `Relation.dynamic`, or none of HER practised categories enabled and outside her limits (`herPracticeLive`, which is what switching the
  * practice categories off comes to). The blocking gate and the expectation reader get a registry and also ask `dynamicOn`.
  */
+import type { Registries } from '../../content/types';
 import { frameRank, type Frame } from '../blocking/state';
 import { registerBlockingGate, registerFrameReader } from '../blocking/gate';
 import { isLiving } from '../economy';
 import { registerExpectation } from '../moments/answer';
+import type { OpenMoment } from '../moments/state';
 import { registerHoldsUntil, registerPhysicsStyle } from '../physics/style';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
 import { holdsUntilOfUnit, expectationsOf } from './expectations';
 import { dynamicOn, herPracticeLive } from './gate';
 import { styleOf } from './profile';
+import { defaultExpectation, leadingStyle } from './style';
 import { dynamicOf, type DynamicRelation } from './state';
 
 /** Her dynamic, only while the block exists, holders is not 0 and she is a named unit in service; `undefined` otherwise (the state-only "off" check). */
@@ -36,13 +39,16 @@ function frameReader(state: CampaignState, unitId: string): Frame | null {
 }
 
 /**
- * Her style pair from the profile (what she has become folded in). `phaseLead` is `primary` until the secondary's surfacing conditions
- * are read (Task 16).
+ * Her style pair from the profile (what she has become folded in). `phaseLead` is `secondary` while the secondary's surfacing conditions hold
+ * (Task 16); callers pass the registries (all of P15a's do).
  */
-function styleReader(state: CampaignState, unitId: string): PhysicsStyle | null {
+function styleReader(state: CampaignState, unitId: string, reg?: Registries): PhysicsStyle | null {
   if (liveDynamic(state, unitId) === undefined) return null;
   const style = styleOf(state.squad.find((u) => u.id === unitId)!);
-  return style === undefined ? null : { primary: style.primary, ...(style.secondary !== undefined ? { secondary: style.secondary } : {}), phaseLead: 'primary' };
+  if (style === undefined) return null;
+  // the secondary leads while one of its conditions holds (`style.ts`); a caller with no registry leaves the primary in the lead
+  const phaseLead = reg === undefined || style.secondary === undefined ? 'primary' : leadingStyle(state, reg, unitId).phaseLead;
+  return { primary: style.primary, ...(style.secondary !== undefined ? { secondary: style.secondary } : {}), phaseLead };
 }
 
 /** What she holds the commander until (her expectation profile); `blackout` without `breath_play` is turned into `limit` by P15a itself. */
@@ -58,15 +64,15 @@ function gate(state: CampaignState, reg: Parameters<typeof dynamicOn>[1]): boole
 
 /**
  * Her profile value for the moment's source: the option of the moment whose type it names (a frame option first, then any other), with her
- * strength. Without a value, or when the moment does not offer the type, it defers (Task 16 gives the default expectation).
+ * strength. Without a value, or when the moment does not offer the type, her style's default (`defaultExpectation`).
  */
 function expectation(state: CampaignState, reg: Parameters<typeof dynamicOn>[1], moment: { sourceId: string; unitId: string; options: Array<{ key: string; type: string }> }) {
   if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === undefined) return null;
   const wanted = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
-  if (wanted === undefined) return null;
-  const options = moment.options.filter((o) => o.type === wanted.type);
+  const options = wanted === undefined ? [] : moment.options.filter((o) => o.type === wanted.type);
   const pick = options.find((o) => o.key === '0' || o.key === '1' || o.key === '2') ?? options[0];
-  return pick === undefined ? null : { key: pick.key, strength: wanted.strength };
+  // her profile value when the moment offers that type; else the option that moves the commander toward her style's point (Task 16)
+  return wanted !== undefined && pick !== undefined ? { key: pick.key, strength: wanted.strength } : defaultExpectation(state, reg, moment as OpenMoment);
 }
 
 /** Registers the dynamic's readers on the P15a hooks. Idempotent in effect: a second call adds readers that answer the same. */

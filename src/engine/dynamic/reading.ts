@@ -83,6 +83,15 @@ function settle(rel: DynamicRelation): { from: RegionRank; to: RegionRank } | un
   return { from, to: candidate };
 }
 
+/** Where readiness and friction stand after one answer of this weight (no side effects; the default expectation previews with it). */
+export function axisStep(rd: Pick<HerReading, 'r' | 'f'>, response: ResponseType, alpha: number): { r: number; f: number } {
+  const toward = (v: number, target: number): number => v + alpha * (target - v);
+  if (response === 'yielded') return { r: toward(rd.r, 1), f: rd.f };
+  if (response === 'resisted') return { r: toward(rd.r, -1), f: toward(rd.f, 0.5) };
+  if (response === 'returned') return { r: rd.r, f: toward(rd.f, 1) };
+  return { r: rd.r, f: rd.f };
+}
+
 /**
  * One answer into her reading (R10): each axis moves `alpha` of the way toward what the answer says (`yielded` r toward +1; `resisted` r
  * toward -1, f toward 0.5, p to 0; `returned` f toward +1, p toward 1; every answer moves the deflect share, a toned one the flat and
@@ -95,16 +104,11 @@ export function updateReading(
 ): { region?: { from: RegionRank; to: RegionRank } } {
   const rd = rel.readOf;
   const toward = (v: number, target: number, a: number): number => v + a * (target - v);
-  if (sample.response === 'yielded') rd.r = toward(rd.r, 1, alpha);
-  if (sample.response === 'resisted') {
-    rd.r = toward(rd.r, -1, alpha);
-    rd.f = toward(rd.f, 0.5, alpha);
-    rd.p = toward(rd.p, 0, alpha);
-  }
-  if (sample.response === 'returned') {
-    rd.f = toward(rd.f, 1, alpha);
-    rd.p = toward(rd.p, 1, alpha);
-  }
+  const axes = axisStep(rd, sample.response, alpha);
+  rd.r = axes.r;
+  rd.f = axes.f;
+  if (sample.response === 'resisted') rd.p = toward(rd.p, 0, alpha);
+  if (sample.response === 'returned') rd.p = toward(rd.p, 1, alpha);
   rd.deflect = toward(rd.deflect, sample.response === 'deflected' ? 1 : 0, alpha);
   if (sample.tone !== undefined) {
     rd.flat = toward(rd.flat, sample.tone === 'flat' ? 1 : 0, alpha);

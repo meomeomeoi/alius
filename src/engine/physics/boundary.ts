@@ -31,7 +31,7 @@ function practiceKinds(reg: Registries, run: PhysicsRun): HerSkill[] {
 /** A hold that was endured: the commander's xp and her practice, once, when it ends well. */
 export function creditHold(draft: CampaignState, reg: Registries, run: PhysicsRun): EngineEvent[] {
   const events: EngineEvent[] = [];
-  const style = leadStyle(physicsStyleOf(draft, run.holderId)).key;
+  const style = leadStyle(physicsStyleOf(draft, run.holderId, reg)).key;
   const kinds = new Set<HerSkill>();
   for (const which of ['main', 'second'] as const) {
     const core = coreRun(run, which);
@@ -46,7 +46,7 @@ export function creditHold(draft: CampaignState, reg: Registries, run: PhysicsRu
 /** The chance she "forgets" to let go when a release is due: 0.10, +0.15 for a cruel holder, +0.002 per Impunity point above 50. */
 export function forgetChance(state: CampaignState, reg: Registries, unitId: string): number {
   const f = P.forget;
-  const cruel = leadStyle(physicsStyleOf(state, unitId)).key === 'cruel' ? f.cruel : 0;
+  const cruel = leadStyle(physicsStyleOf(state, unitId, reg)).key === 'cruel' ? f.cruel : 0;
   return f.base + cruel + f.perImpunity * Math.max(0, (impunityOf(state, reg, unitId)?.value ?? 0) - f.from);
 }
 
@@ -103,7 +103,7 @@ export function decideBoundary(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
       }
     }
     if (move === undefined) {
-      const key = leadStyle(physicsStyleOf(draft, run.holderId)).key;
+      const key = leadStyle(physicsStyleOf(draft, run.holderId, reg)).key;
       const left = run.capacity > 0 ? (reg.contactPhysics.get(run.physicsId)?.gauge as { kind: string }).kind === 'capacity' ? run.gauge / run.capacity : 1 : 1;
       if (PRESSES.has(key) && result.missed === 0 && result.slips === 0) {
         run.pressure = Math.min(1.5, (run.pressure ?? 1) + 0.25);

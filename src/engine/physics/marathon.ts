@@ -85,12 +85,12 @@ export function resolveSkip(state: CampaignState, reg: Registries, run: PhysicsR
       const reading = herSkillOf(state, run.holderId).reading;
       const activity = state.scene?.blocking?.[run.holderId]?.activity;
       const attention = activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined;
-      const p = averageCaught(attention, physicsStyleOf(state, run.holderId), reading);
+      const p = averageCaught(attention, physicsStyleOf(state, run.holderId, reg), reading);
       const hit = rng.chance(p);
       return { held: !hit, summary: hit ? SUMMARY.cheat.bad : SUMMARY.cheat.good, delta: hit ? -M.failCost : M.cheatRelief, caught: hit, slip: hit };
     }
     case 'rest': {
-      const refused = ['cruel', 'vindictive'].includes(leadStyle(physicsStyleOf(state, run.holderId)).key);
+      const refused = ['cruel', 'vindictive'].includes(leadStyle(physicsStyleOf(state, run.holderId, reg)).key);
       return { held: !refused, summary: refused ? SUMMARY.rest.bad : SUMMARY.rest.good, delta: refused ? -M.spareCost : M.rest };
     }
   }

@@ -131,6 +131,8 @@ export interface DynamicCampaign {
   oversight?: { blocked: number[]; threadId?: string };
   /** The probe queue (R9): unit ids, first in line first. */
   queue: string[];
+  /** Days the dynamic noticed in passing (the style's surfacing reads them, T16): the last gain of the commander's endurance, the last time the crime was revealed. */
+  noted?: { enduranceDay?: number; crimeDay?: number };
   /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`. */
   seq: number;
   open: { claims: OpenClaim[]; milestones: OpenMilestone[]; returnOffer?: OpenReturn; offers: OpenOffer[] };

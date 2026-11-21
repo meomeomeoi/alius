@@ -746,6 +746,19 @@ export const TUNING = Object.freeze({
     tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
     /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
     backoffDays: 14,
+    /**
+     * Where a secondary style comes through (R10, spec §15.4; the conditions themselves are `practiceStyles[].surfacesWhen`). `peakLeads`: the
+     * secondaries that take the peak of a hold whatever their conditions say. `edgeStart` / `edgeEnd`: the exchange counts of a scene's first
+     * and last stretch. `favourMood`: the favour from which she is pleased or displeased, until satisfaction (Task 38) exists. `ignoredDays`:
+     * days without contact. `stagnationDays`: days without a gain of the commander's endurance. `failedRunDays`: how long after a failed
+     * expedition. `anniversaryDays`: the campaign day it comes back on. `trainingEffects`: the effect types that make an activity a drill.
+     * `AUTHOR TO TUNE`.
+     */
+    style: Object.freeze({
+      peakLeads: Object.freeze(['cruel', 'drill', 'vindictive']) as readonly string[],
+      edgeStart: 1, edgeEnd: 24, favourMood: 1, ignoredDays: 3, stagnationDays: 7, failedRunDays: 2, anniversaryDays: 30,
+      trainingEffects: Object.freeze(['unit_xp', 'commander_body_xp', 'commander_endurance_xp']) as readonly string[],
+    }),
   }),
   /**
    * P15: her reading of the commander's position (R10, spec §15.2, §15.12, §16.4). `alpha` is the weight a sample moves each axis by (the

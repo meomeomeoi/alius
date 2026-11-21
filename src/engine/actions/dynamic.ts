@@ -10,6 +10,7 @@ import { installDynamicHooks } from '../dynamic/hooks';
 import { holdReason } from '../dynamic/gate';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
+import { noteEvents } from '../dynamic/style';
 import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
 import { seedHold } from '../dynamic/seeds';
@@ -35,6 +36,8 @@ registerDayEndStep('dm_rumors', dynamicDayStep);
 installDynamicHooks();
 // A moment she was answered feeds her reading of the commander, never her hold (R10, user ruling R1); nothing while off.
 registerAfterAction(readMoments);
+// What the surfacing reads and no state keeps (an endurance gain, the crime revealed): noted from the events, only while on.
+registerAfterAction(noteEvents);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

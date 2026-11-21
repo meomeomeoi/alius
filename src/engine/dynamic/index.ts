@@ -14,3 +14,4 @@ export { installDynamicHooks } from './hooks';
 export { answerProbe, pendingProbe, probeDayStep, probeQueueRoom, sceneProbe } from './probes';
 export { distanceToPoint, fadeDeclarations, newReading, readMoments, regionOf, resettleReading, updateReading } from './reading';
 export type { ReadingSample } from './reading';
+export { defaultExpectation, leadingStyle, noteEvents, surfaceHolds } from './style';

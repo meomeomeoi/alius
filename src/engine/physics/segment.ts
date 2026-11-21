@@ -73,7 +73,7 @@ function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean): number
  */
 export function planSegment(state: CampaignState, reg: Registries, run: PhysicsRun, rng: Rng): SegmentPlan {
   const phys = reg.contactPhysics.get(run.physicsId)!;
-  const style = physicsStyleOf(state, run.holderId);
+  const style = physicsStyleOf(state, run.holderId, reg);
   const n = beatsPerSegment(state, Number(phys.segmentSeconds)); // a second physics runs on the same beats: the first one's length
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
@@ -125,7 +125,7 @@ export function sealNow(run: Pick<PhysicsRun, 'seal'>, sealLevel: number): Seal 
 export function resolveEnvOf(state: CampaignState, reg: Registries, run: PhysicsRun): ResolveEnv {
   const phys = reg.contactPhysics.get(run.physicsId)!;
   return {
-    gaugeKind: (phys.gauge as { kind: GaugeKind }).kind, interaction: String(phys.interaction) as InteractionType, style: physicsStyleOf(state, run.holderId),
+    gaugeKind: (phys.gauge as { kind: GaugeKind }).kind, interaction: String(phys.interaction) as InteractionType, style: physicsStyleOf(state, run.holderId, reg),
     sealLevel: herSkillOf(state, run.holderId).seal, band: 'noticeable', // Task 26 reads the scent band of the part she presses
   };
 }

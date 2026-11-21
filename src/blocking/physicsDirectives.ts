@@ -69,7 +69,7 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   const run = state.scene?.physics;
   if (!state.scene || !run) return null;
   const name = state.squad.find((u) => u.id === run.holderId)?.displayName ?? run.holderId;
-  const style = leadStyle(physicsStyleOf(state, run.holderId)).key;
+  const style = leadStyle(physicsStyleOf(state, run.holderId, reg)).key;
   const source = run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : '';

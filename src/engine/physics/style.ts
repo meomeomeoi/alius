@@ -9,12 +9,12 @@ import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import type { HoldsUntil, PhysicsStyle, StyleKey } from './state';
 
-type StyleReader = (state: CampaignState, unitId: string) => PhysicsStyle | null;
+type StyleReader = (state: CampaignState, unitId: string, reg?: Registries) => PhysicsStyle | null;
 type HoldsReader = (state: CampaignState, unitId: string) => HoldsUntil | null;
 const styleReaders: StyleReader[] = [];
 const holdsReaders: HoldsReader[] = [];
 
-/** P15 plugs in here: her style pair and which one leads the phase. The first reader that answers wins. */
+/** P15 plugs in here: her style pair and which one leads the phase (the registries are passed by the callers that have them: the surfacing conditions read them). The first reader that answers wins. */
 export function registerPhysicsStyle(fn: StyleReader): void {
   styleReaders.push(fn);
 }
@@ -28,9 +28,9 @@ export function resetPhysicsHooks(): void {
   holdsReaders.length = 0;
 }
 
-export function physicsStyleOf(state: CampaignState, unitId: string): PhysicsStyle {
+export function physicsStyleOf(state: CampaignState, unitId: string, reg?: Registries): PhysicsStyle {
   for (const read of styleReaders) {
-    const s = read(state, unitId);
+    const s = read(state, unitId, reg);
     if (s !== null) return s;
   }
   return { primary: 'neutral' };

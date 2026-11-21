@@ -189,7 +189,7 @@ export function applyWay(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'
   else if (w === 'secret') {
     const activity = blockingOf(scene, ex.holderId).activity;
     const attention = activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined;
-    caught = ctx.rng.chance(averageCaught(attention, physicsStyleOf(draft, ex.holderId), herSkillOf(draft, ex.holderId).reading));
+    caught = ctx.rng.chance(averageCaught(attention, physicsStyleOf(draft, ex.holderId, reg), herSkillOf(draft, ex.holderId).reading));
   }
   events.push({ type: 'stimulus_way', kind: ex.kind, way: w, result, holderId: ex.holderId, noticed, caught });
   if (result === 'reflex') {

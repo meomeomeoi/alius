@@ -1007,7 +1007,26 @@ var TUNING = Object.freeze({
     /** Track xp (spec §6: tracks decay much slower than hold): after `idleDays` without a practice, `decayPerDay` xp a day. `AUTHOR TO TUNE`. */
     tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
     /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
-    backoffDays: 14
+    backoffDays: 14,
+    /**
+     * Where a secondary style comes through (R10, spec §15.4; the conditions themselves are `practiceStyles[].surfacesWhen`). `peakLeads`: the
+     * secondaries that take the peak of a hold whatever their conditions say. `edgeStart` / `edgeEnd`: the exchange counts of a scene's first
+     * and last stretch. `favourMood`: the favour from which she is pleased or displeased, until satisfaction (Task 38) exists. `ignoredDays`:
+     * days without contact. `stagnationDays`: days without a gain of the commander's endurance. `failedRunDays`: how long after a failed
+     * expedition. `anniversaryDays`: the campaign day it comes back on. `trainingEffects`: the effect types that make an activity a drill.
+     * `AUTHOR TO TUNE`.
+     */
+    style: Object.freeze({
+      peakLeads: Object.freeze(["cruel", "drill", "vindictive"]),
+      edgeStart: 1,
+      edgeEnd: 24,
+      favourMood: 1,
+      ignoredDays: 3,
+      stagnationDays: 7,
+      failedRunDays: 2,
+      anniversaryDays: 30,
+      trainingEffects: Object.freeze(["unit_xp", "commander_body_xp", "commander_endurance_xp"])
+    })
   }),
   /**
    * P15: her reading of the commander's position (R10, spec §15.2, §15.12, §16.4). `alpha` is the weight a sample moves each axis by (the
@@ -6690,6 +6709,7 @@ var SIGN_KINDS = [
   "time_alone",
   "territory_marking"
 ];
+var OFFER_TABS = ["part", "posture", "contact", "service", "time", "role", "endurance"];
 var TONES = ["sincere", "ironic", "transactional", "flat"];
 var REGARD_SPEEDS = ["very_slow", "slow", "normal", "fast"];
 var REFUSAL_COSTS = ["minor", "moderate", "major", "contest"];
@@ -17097,8 +17117,8 @@ function unformedTopics(state, unitId) {
   const mine = state.life?.units[unitId];
   const unit3 = unitOf2(state, unitId);
   if (!mine || !unit3) return [];
-  const inScene = mine.scene !== void 0 && mine.scene.sceneId === state.scene?.id ? mine.scene.topics : [];
-  return [.../* @__PURE__ */ new Set([...inScene, ...mine.pendingTopics ?? []])].filter((t) => unit3.opinions?.[t] === void 0);
+  const inScene2 = mine.scene !== void 0 && mine.scene.sceneId === state.scene?.id ? mine.scene.topics : [];
+  return [.../* @__PURE__ */ new Set([...inScene2, ...mine.pendingTopics ?? []])].filter((t) => unit3.opinions?.[t] === void 0);
 }
 var ready = (unit3, topicId, day) => {
   const o = unit3.opinions?.[topicId];
@@ -28108,9 +28128,9 @@ function registerPhysicsStyle(fn) {
 function registerHoldsUntil(fn) {
   holdsReaders.push(fn);
 }
-function physicsStyleOf(state, unitId) {
+function physicsStyleOf(state, unitId, reg) {
   for (const read of styleReaders) {
-    const s = read(state, unitId);
+    const s = read(state, unitId, reg);
     if (s !== null) return s;
   }
   return { primary: "neutral" };
@@ -28228,12 +28248,12 @@ function resolveSkip(state, reg, run, strategy, rng) {
       const reading2 = herSkillOf(state, run.holderId).reading;
       const activity = state.scene?.blocking?.[run.holderId]?.activity;
       const attention = activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0;
-      const p = averageCaught(attention, physicsStyleOf(state, run.holderId), reading2);
+      const p = averageCaught(attention, physicsStyleOf(state, run.holderId, reg), reading2);
       const hit = rng.chance(p);
       return { held: !hit, summary: hit ? SUMMARY.cheat.bad : SUMMARY.cheat.good, delta: hit ? -M.failCost : M.cheatRelief, caught: hit, slip: hit };
     }
     case "rest": {
-      const refused = ["cruel", "vindictive"].includes(leadStyle(physicsStyleOf(state, run.holderId)).key);
+      const refused = ["cruel", "vindictive"].includes(leadStyle(physicsStyleOf(state, run.holderId, reg)).key);
       return { held: !refused, summary: refused ? SUMMARY.rest.bad : SUMMARY.rest.good, delta: refused ? -M.spareCost : M.rest };
     }
   }
@@ -28302,7 +28322,7 @@ function startPhysics(draft, ctx2, o) {
   const phys = reg.contactPhysics.get(o.physicsId);
   const ref = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
   const range2 = ref?.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : void 0;
-  const lead = leadStyle(physicsStyleOf(draft, o.holderId)).seal;
+  const lead = leadStyle(physicsStyleOf(draft, o.holderId, reg)).seal;
   const seal = range2 ? range2[lead === "loosest" ? 0 : lead === "tightest" ? range2.length - 1 : Math.floor(range2.length / 2)] : void 0;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
   const run = {
@@ -28477,7 +28497,7 @@ function practiceKinds(reg, run) {
 }
 function creditHold(draft, reg, run) {
   const events = [];
-  const style = leadStyle(physicsStyleOf(draft, run.holderId)).key;
+  const style = leadStyle(physicsStyleOf(draft, run.holderId, reg)).key;
   const kinds2 = /* @__PURE__ */ new Set();
   for (const which of ["main", "second"]) {
     const core = coreRun(run, which);
@@ -28490,7 +28510,7 @@ function creditHold(draft, reg, run) {
 }
 function forgetChance(state, reg, unitId) {
   const f = P.forget;
-  const cruel = leadStyle(physicsStyleOf(state, unitId)).key === "cruel" ? f.cruel : 0;
+  const cruel = leadStyle(physicsStyleOf(state, unitId, reg)).key === "cruel" ? f.cruel : 0;
   return f.base + cruel + f.perImpunity * Math.max(0, (impunityOf(state, reg, unitId)?.value ?? 0) - f.from);
 }
 function resting(state, reg, unitId) {
@@ -28536,7 +28556,7 @@ function decideBoundary(draft, ctx2, run, result) {
       }
     }
     if (move === void 0) {
-      const key = leadStyle(physicsStyleOf(draft, run.holderId)).key;
+      const key = leadStyle(physicsStyleOf(draft, run.holderId, reg)).key;
       const left = run.capacity > 0 ? (reg.contactPhysics.get(run.physicsId)?.gauge).kind === "capacity" ? run.gauge / run.capacity : 1 : 1;
       if (PRESSES.has(key) && result.missed === 0 && result.slips === 0) {
         run.pressure = Math.min(1.5, (run.pressure ?? 1) + 0.25);
@@ -30207,14 +30227,14 @@ var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("discipline/punish", (draft, payload, ctx2) => {
   if (!isObj23(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") throw new Error("discipline/punish needs { unitId, measure }");
   if (payload.days !== void 0 && typeof payload.days !== "number") throw new Error("discipline/punish: days must be a number");
-  const inScene = draft.scene?.participants.includes(payload.unitId) === true;
+  const inScene2 = draft.scene?.participants.includes(payload.unitId) === true;
   const events = applyPunishment(draft, ctx2, {
     unitId: payload.unitId,
     measure: payload.measure,
     ...payload.days !== void 0 ? { days: payload.days } : {},
     source: "menu",
-    channel: inScene ? "scene" : "pda",
-    ...inScene && draft.scene ? { sceneId: draft.scene.id } : {}
+    channel: inScene2 ? "scene" : "pda",
+    ...inScene2 && draft.scene ? { sceneId: draft.scene.id } : {}
   });
   const benches = (ctx2.registries.punishments.get(payload.measure)?.sideEffects ?? []).some((e) => e.type === "bench");
   return [...events, ...actOnWarning(draft, ctx2, payload.unitId, benches ? "removed" : "punished")];
@@ -31699,7 +31719,7 @@ function applyWay(draft, ctx2, way, kind, depth) {
   else if (w === "secret") {
     const activity = blockingOf(scene, ex.holderId).activity;
     const attention = activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0;
-    caught = ctx2.rng.chance(averageCaught(attention, physicsStyleOf(draft, ex.holderId), herSkillOf(draft, ex.holderId).reading));
+    caught = ctx2.rng.chance(averageCaught(attention, physicsStyleOf(draft, ex.holderId, reg), herSkillOf(draft, ex.holderId).reading));
   }
   events.push({ type: "stimulus_way", kind: ex.kind, way: w, result, holderId: ex.holderId, noticed, caught });
   if (result === "reflex") {
@@ -31847,7 +31867,7 @@ function openingWidth(style, rng, measuring) {
 }
 function planSegment(state, reg, run, rng) {
   const phys = reg.contactPhysics.get(run.physicsId);
-  const style = physicsStyleOf(state, run.holderId);
+  const style = physicsStyleOf(state, run.holderId, reg);
   const n = beatsPerSegment(state, Number(phys.segmentSeconds));
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
@@ -31901,7 +31921,7 @@ function resolveEnvOf(state, reg, run) {
   return {
     gaugeKind: phys.gauge.kind,
     interaction: String(phys.interaction),
-    style: physicsStyleOf(state, run.holderId),
+    style: physicsStyleOf(state, run.holderId, reg),
     sealLevel: herSkillOf(state, run.holderId).seal,
     band: "noticeable"
     // Task 26 reads the scent band of the part she presses
@@ -32532,19 +32552,21 @@ function settle4(rel) {
   delete rd.pending;
   return { from, to: candidate };
 }
+function axisStep(rd, response, alpha) {
+  const toward = (v, target) => v + alpha * (target - v);
+  if (response === "yielded") return { r: toward(rd.r, 1), f: rd.f };
+  if (response === "resisted") return { r: toward(rd.r, -1), f: toward(rd.f, 0.5) };
+  if (response === "returned") return { r: rd.r, f: toward(rd.f, 1) };
+  return { r: rd.r, f: rd.f };
+}
 function updateReading(rel, sample, alpha, style, insight) {
   const rd = rel.readOf;
   const toward = (v, target2, a) => v + a * (target2 - v);
-  if (sample.response === "yielded") rd.r = toward(rd.r, 1, alpha);
-  if (sample.response === "resisted") {
-    rd.r = toward(rd.r, -1, alpha);
-    rd.f = toward(rd.f, 0.5, alpha);
-    rd.p = toward(rd.p, 0, alpha);
-  }
-  if (sample.response === "returned") {
-    rd.f = toward(rd.f, 1, alpha);
-    rd.p = toward(rd.p, 1, alpha);
-  }
+  const axes = axisStep(rd, sample.response, alpha);
+  rd.r = axes.r;
+  rd.f = axes.f;
+  if (sample.response === "resisted") rd.p = toward(rd.p, 0, alpha);
+  if (sample.response === "returned") rd.p = toward(rd.p, 1, alpha);
   rd.deflect = toward(rd.deflect, sample.response === "deflected" ? 1 : 0, alpha);
   if (sample.tone !== void 0) {
     rd.flat = toward(rd.flat, sample.tone === "flat" ? 1 : 0, alpha);
@@ -32849,6 +32871,106 @@ function holdFeed(draft, reg, unitId, event, _severity) {
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);
 }
 
+// src/engine/dynamic/style.ts
+var FRAME_KEYS2 = ["0", "1", "2"];
+var entryOf2 = (reg, key) => reg.practiceStyles.get(key);
+var inScene = (state, unitId) => state.scene?.participants.includes(unitId) === true;
+function atPeak(state, unitId) {
+  const run = state.scene?.physics;
+  return run !== void 0 && run.holderId === unitId && run.gauge <= run.capacity * TUNING.physics.warning / 100;
+}
+var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type));
+function surfaceHolds(state, reg, unitId, cond) {
+  const scene = state.scene;
+  const rel = dynamicOf(state, unitId);
+  const S2 = TUNING.dynamic.style;
+  switch (cond) {
+    case "peak":
+      return atPeak(state, unitId);
+    case "scene_edges":
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S2.edgeStart || scene.exchanges >= S2.edgeEnd);
+    case "before_others":
+      return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
+    case "third_person":
+      return scene !== void 0 && inScene(state, unitId) && (scene.participants.length >= 2 || scene.moments?.open?.visitorId !== void 0);
+    case "displeased":
+      return rel !== void 0 && rel.favour <= -S2.favourMood;
+    case "low_stakes_good_mood":
+      return rel !== void 0 && rel.favour >= S2.favourMood && scene?.physics === void 0 && scene?.tone !== "intimate";
+    case "threat":
+      return scene !== void 0 && inScene(state, unitId) && scene.participants.some((id) => id !== unitId && (dynamicOf(state, id) !== void 0 && frameRank(dynamicOf(state, id).frame) >= frameRank("play")));
+    case "after_defiance":
+      return rel !== void 0 && (rel.refusals.includes(state.day) || rel.contest.includes(state.day)) || scene?.refusals?.some((r) => r.unitId === unitId) === true;
+    case "after_peak_or_wound": {
+      const ended = scene !== void 0 && inScene(state, unitId) && (scene.physicsCount ?? 0) > 0 && scene.physics === void 0;
+      const hurt = state.commander.injuredUntilDay !== void 0 && state.day < state.commander.injuredUntilDay;
+      return ended || hurt;
+    }
+    case "new_practice": {
+      const recent2 = rel?.recent ?? [];
+      const last = recent2[recent2.length - 1];
+      return last !== void 0 && !reg.probeAxes.has(last) && !OFFER_TABS.includes(last) && recent2.filter((r) => r === last).length === 1;
+    }
+    case "stagnation": {
+      const day = state.dynamic?.noted?.enduranceDay;
+      return day !== void 0 && state.day - day >= S2.stagnationDays;
+    }
+    case "training_start":
+      return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
+    case "praised_or_ignored": {
+      const contact = state.relations[unitId]?.contactDay;
+      return contact !== void 0 && state.day - contact >= S2.ignoredDays;
+    }
+    case "crime_mentioned":
+      return state.dynamic?.noted?.crimeDay === state.day;
+    case "failed_run": {
+      const e = state.lastExpedition;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S2.failedRunDays;
+    }
+    case "arrival_anniversary":
+      return state.day > 0 && state.day % S2.anniversaryDays === 0;
+  }
+}
+function leadingStyle(state, reg, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const style = unit3 === void 0 ? void 0 : styleOf(unit3);
+  if (style === void 0) return { key: "neutral", phaseLead: "primary" };
+  const secondary = style.secondary;
+  if (secondary === void 0) return { key: style.primary, phaseLead: "primary" };
+  const conditions = entryOf2(reg, secondary)?.surfacesWhen ?? [];
+  const surfaces = conditions.some((c) => surfaceHolds(state, reg, unitId, c)) || TUNING.dynamic.style.peakLeads.includes(secondary) && atPeak(state, unitId);
+  return surfaces ? { key: secondary, phaseLead: "secondary" } : { key: style.primary, phaseLead: "primary" };
+}
+function defaultExpectation(state, reg, moment) {
+  const rel = dynamicOf(state, moment.unitId);
+  const unit3 = state.squad.find((u) => u.id === moment.unitId);
+  const primary = unit3 === void 0 ? void 0 : styleOf(unit3)?.primary;
+  const entry = primary === void 0 ? void 0 : entryOf2(reg, primary);
+  const offset = unit3?.kind === "named" ? unit3.expectations?.offset : void 0;
+  const point = entry?.point == null ? void 0 : { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
+  const frame = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
+  const options2 = frame.length > 0 ? frame : [...moment.options];
+  const prefer = rel !== void 0 && frameRank(rel.frame) >= frameRank("play") ? "yielded" : "returned";
+  const score = (type) => {
+    if (point === void 0 || rel === void 0) return 0;
+    const next = axisStep(rel.readOf, type, TUNING.position.alpha.moment);
+    return Math.round(distanceToPoint(next, point) * 1e6) / 1e6;
+  };
+  const best = Math.min(...options2.map((o) => score(o.type)));
+  const tied = options2.filter((o) => score(o.type) === best);
+  const pick3 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
+  return { key: pick3?.key ?? "0", strength: 1 };
+}
+function noteEvents(draft, ctx2, events) {
+  if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
+  const noted = () => draft.dynamic.noted ??= {};
+  for (const e of events) {
+    if (e.type === "endurance_gained") noted().enduranceDay = draft.day;
+    if (e.type === "intents_applied" && Array.isArray(e.landed) && e.landed.includes("crime_revealed")) noted().crimeDay = draft.day;
+  }
+  return [];
+}
+
 // src/engine/dynamic/hooks.ts
 function liveDynamic(state, unitId) {
   if (state.dynamic === void 0 || state.dynamic.setup.holders === 0) return void 0;
@@ -32858,10 +32980,12 @@ function liveDynamic(state, unitId) {
 function frameReader(state, unitId) {
   return liveDynamic(state, unitId)?.frame ?? null;
 }
-function styleReader(state, unitId) {
+function styleReader(state, unitId, reg) {
   if (liveDynamic(state, unitId) === void 0) return null;
   const style = styleOf(state.squad.find((u) => u.id === unitId));
-  return style === void 0 ? null : { primary: style.primary, ...style.secondary !== void 0 ? { secondary: style.secondary } : {}, phaseLead: "primary" };
+  if (style === void 0) return null;
+  const phaseLead = reg === void 0 || style.secondary === void 0 ? "primary" : leadingStyle(state, reg, unitId).phaseLead;
+  return { primary: style.primary, ...style.secondary !== void 0 ? { secondary: style.secondary } : {}, phaseLead };
 }
 function holdsReader(state, unitId) {
   return liveDynamic(state, unitId) === void 0 ? null : holdsUntilOfUnit(state.squad.find((u) => u.id === unitId)) ?? null;
@@ -32873,10 +32997,9 @@ function gate(state, reg) {
 function expectation(state, reg, moment) {
   if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === void 0) return null;
   const wanted = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
-  if (wanted === void 0) return null;
-  const options2 = moment.options.filter((o) => o.type === wanted.type);
+  const options2 = wanted === void 0 ? [] : moment.options.filter((o) => o.type === wanted.type);
   const pick3 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
-  return pick3 === void 0 ? null : { key: pick3.key, strength: wanted.strength };
+  return wanted !== void 0 && pick3 !== void 0 ? { key: pick3.key, strength: wanted.strength } : defaultExpectation(state, reg, moment);
 }
 function installDynamicHooks() {
   registerFrameReader(frameReader);
@@ -32896,6 +33019,7 @@ registerEventLanded(holdFeed);
 registerDayEndStep("dm_rumors", dynamicDayStep);
 installDynamicHooks();
 registerAfterAction(readMoments);
+registerAfterAction(noteEvents);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function patchedFields(patch) {
   return Object.keys(patch).flatMap((k) => k === "categories" && isObj38(patch.categories) ? Object.keys(patch.categories).map((id) => `categories.${id}`) : [k]);
@@ -40463,7 +40587,7 @@ function physicsLines(state, reg) {
   const run = state.scene?.physics;
   if (!state.scene || !run) return null;
   const name = state.squad.find((u) => u.id === run.holderId)?.displayName ?? run.holderId;
-  const style = leadStyle(physicsStyleOf(state, run.holderId)).key;
+  const style = leadStyle(physicsStyleOf(state, run.holderId, reg)).key;
   const source = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : "";
@@ -40626,7 +40750,7 @@ function createStaging(deps) {
       card: card2,
       physicsId: r.physicsId,
       physics: String(reg.contactPhysics.get(r.physicsId)?.label ?? r.physicsId),
-      style: leadStyle(physicsStyleOf(s, r.holderId)).key,
+      style: leadStyle(physicsStyleOf(s, r.holderId, reg)).key,
       kinds: [...CUE_KINDS]
     };
   }

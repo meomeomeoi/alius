@@ -1298,16 +1298,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `leadingStyle(state, reg, unitId): { key, phaseLead }`;
   - `defaultExpectation(state, reg, moment): Expectation` (P15a's type, `engine/moments/answer.ts`).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the secondary leads while its condition holds`: `affectionate` + `cruel` at the physics peak → `phaseLead: 'secondary'`; after the hold → `primary`.
   - `ritual surfaces before others` (a group scene).
   - `numbers blend 65/35 through P15a`: `blendedStyle` reads the reversed pair in the secondary's phase (the P15a function, unchanged).
   - `default expectation`: a `ritual` holder (point dutiful) expects the `yielded` option; with no profile value and frame `equal` a tie goes to `returned`.
   - `preferences come from the profile`: a profile value beats the style default.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/style.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in §15.4 and R10.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the style pair surfaces and leads phases`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/style.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in §15.4 and R10.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the style pair surfaces and leads phases`
 
 ---
 

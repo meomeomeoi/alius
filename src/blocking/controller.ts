@@ -112,7 +112,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     const card = String((unit as { card?: unknown } | undefined)?.card ?? '').slice(0, CARD_MAX);
     return {
       unitId: r.holderId, name: unit?.displayName ?? r.holderId, card, physicsId: r.physicsId, physics: String(reg.contactPhysics.get(r.physicsId)?.label ?? r.physicsId),
-      style: leadStyle(physicsStyleOf(s, r.holderId)).key, kinds: [...CUE_KINDS],
+      style: leadStyle(physicsStyleOf(s, r.holderId, reg)).key, kinds: [...CUE_KINDS],
     };
   }
 
