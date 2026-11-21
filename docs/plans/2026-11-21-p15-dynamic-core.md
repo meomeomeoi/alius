@@ -1798,16 +1798,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `leashBlockOf(state, reg): string | null`; `blockCosignChance(state, reg, holderId): number`; `rollBlock(draft, ctx, targetId, kind): { ok: boolean; events: EngineEvent[] }`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `no block below owning or without leash_block: no draw`.
   - `a blocked compel is cancelled`, logged `denied` with `cc` = her id, `leash_blocked` emitted, and the oversight window gets the day.
   - `the warden co-signs first`: a warden denial stops before the block roll.
   - `a request on the holder herself is blocked too`.
   - `the P9c intercept still runs` (P9c suites green).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/leashBlock.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R16.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the Leash block`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/leashBlock.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R16.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the Leash block`
 
 ---
 

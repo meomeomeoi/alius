@@ -37,9 +37,9 @@ export function rollCosign(draft: CampaignState, ctx: EngineCtx, targetId: strin
   return { ok, events: [{ type: ok ? 'leash_cosigned' : 'leash_cosign_denied', unitId: targetId, kind }] };
 }
 
-/** A request the warden refused: a `denied` log entry that copies her, no authorization spent. */
-export function logCosignDenied(draft: CampaignState, ctx: EngineCtx, unitId: string, kind: LeashKind, context: LeashLogEntry['context']): EngineEvent[] {
-  return bookUse(draft, ctx, unitId, kind, context, 'denied', 'warden');
+/** A request the warden refused (P15: or a holder who blocks the Leash, `cc` her id): a `denied` log entry that copies her, no authorization spent. */
+export function logCosignDenied(draft: CampaignState, ctx: EngineCtx, unitId: string, kind: LeashKind, context: LeashLogEntry['context'], cc: 'warden' | string = 'warden'): EngineEvent[] {
+  return bookUse(draft, ctx, unitId, kind, context, 'denied', cc);
 }
 
 /** Slots from now to the end of the evening, which is where the day rolls over. Nothing is left at night. */

@@ -66,6 +66,7 @@ import { createWarden } from './warden/controller';
 import { createHeadStart } from './headStart/controller';
 import { createDevelopment } from './development/controller';
 import { createDynamic } from './dynamic/controller';
+import { leashBlockOf } from './engine/dynamic/leashBlock';
 import { clearDynamicDirectives, refreshDynamicDirectives } from './dynamic/directives';
 import { createLife } from './life/controller';
 import { clearLifeDirectives, refreshLifeDirectives } from './life/directives';
@@ -1179,6 +1180,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     return checkLeash(s, registries, kind, unitId);
   }
 
+  /** P15: the form says so while a holder holds the Leash requests (her co-sign is asked when it is filed). */
+  function heldFor(s: CampaignState): { heldBy?: string } {
+    const holder = leashBlockOf(s, registries);
+    const name = holder === null ? undefined : s.squad.find((u) => u.id === holder)?.displayName;
+    return name === undefined ? {} : { heldBy: name };
+  }
+
   async function fileLeash(kind: LeashKind, unitId: string): Promise<boolean> {
     const s = state;
     const unit = s?.squad.find((u) => u.id === unitId);
@@ -1201,6 +1209,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       ...(cause ? { cause: cause.kind === 'attack' ? 'ATTACKED THE UNIT' : 'REPEATED DESERTION ATTEMPTS' } : {}),
       showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s), onVerdict: () => sound.play('stamp'),
       ...(kind === 'terminate' ? { verdict: 'UNDER REVIEW' } : {}),
+      ...heldFor(s),
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
     if (kind === 'compel') return loyalty.compel(unitId);

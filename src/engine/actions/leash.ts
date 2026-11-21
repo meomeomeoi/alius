@@ -2,6 +2,7 @@ import { consumeSlots, registerDayEndStep } from '../calendar';
 import { actOnWarning } from '../special/paranoia/accusations';
 import { registerAction, type EngineCtx, type EngineEvent } from '../dispatch';
 import type { CampaignState, LeashKind, LeashLogEntry } from '../state/types';
+import { leashBlockOf, rollBlock } from '../dynamic/leashBlock';
 import { wardenOf } from '../warden/state';
 import { compel, suppress, terminate } from '../leash/use';
 import { ensureLeash, refreshLeash } from '../leash/weekly';
@@ -32,21 +33,29 @@ const unitIdOf = (payload: unknown, action: string): string => {
 /**
  * P13: a squad Leash request that is valid goes to the warden first (while she is in service). A denial is logged (`denied`, copying her),
  * spends nothing and stops the request; a co-sign (or no warden) lets it run as before, with her event in front. An invalid request throws
- * before she is asked, so nothing is drawn for it.
+ * before she is asked, so nothing is drawn for it. P15: then a holder who blocks the Leash is asked (`rollBlock`); her refusal is logged with her
+ * as `cc` and counts toward oversight's inquiry. The warden's denial stops before the holder is asked (no second draw).
  */
-function askWarden(draft: CampaignState, ctx: EngineCtx, unitId: string, kind: LeashKind, context: LeashLogEntry['context']): { denied: boolean; events: EngineEvent[] } {
-  if (wardenOf(draft) === null) return { denied: false, events: [] };
+function askCosigners(draft: CampaignState, ctx: EngineCtx, unitId: string, kind: LeashKind, context: LeashLogEntry['context']): { denied: boolean; events: EngineEvent[] } {
+  if (wardenOf(draft) === null && leashBlockOf(draft, ctx.registries) === null) return { denied: false, events: [] };
   const why = checkLeash(draft, ctx.registries, kind, unitId);
   if (why) throw new Error(why);
-  const asked = rollCosign(draft, ctx, unitId, kind);
-  return asked.ok ? { denied: false, events: asked.events } : { denied: true, events: [...asked.events, ...logCosignDenied(draft, ctx, unitId, kind, context)] };
+  const events: EngineEvent[] = [];
+  if (wardenOf(draft) !== null) {
+    const asked = rollCosign(draft, ctx, unitId, kind);
+    if (!asked.ok) return { denied: true, events: [...asked.events, ...logCosignDenied(draft, ctx, unitId, kind, context)] };
+    events.push(...asked.events);
+  }
+  const held = rollBlock(draft, ctx, unitId, kind);
+  if (!held.ok) return { denied: true, events: [...events, ...held.events, ...logCosignDenied(draft, ctx, unitId, kind, context, held.holderId)] };
+  return { denied: false, events };
 }
 
 registerAction('leash/compel', (draft, payload, ctx) => {
   const unitId = unitIdOf(payload, 'leash/compel');
   const refusal = draft.scene?.refusals?.find((r) => r.unitId === unitId);
   if (!draft.scene?.participants.includes(unitId) || !refusal) throw new Error('She has not refused an order in this scene: there is nothing to compel.');
-  const asked = askWarden(draft, ctx, unitId, 'compel', 'scene'); // P13: the warden co-signs, or not
+  const asked = askCosigners(draft, ctx, unitId, 'compel', 'scene'); // P13: the warden co-signs, or not; P15: then the holder
   if (asked.denied) return asked.events;
   const { forced, events } = compel(draft, ctx, { unitId, context: 'scene' });
   if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
@@ -59,7 +68,7 @@ registerAction('leash/suppress', (draft, payload, ctx) => {
   if (!open || open.unitId !== unitId || (open.kind !== 'desertion' && open.kind !== 'mutiny')) {
     throw new Error('There is nothing to suppress: no desertion or attack is about to happen.');
   }
-  const asked = askWarden(draft, ctx, unitId, 'suppress', open.kind); // P13
+  const asked = askCosigners(draft, ctx, unitId, 'suppress', open.kind); // P13
   if (asked.denied) return asked.events;
   const events = [...asked.events, ...suppress(draft, ctx, { unitId, context: open.kind })];
   events.push(...actOnWarning(draft, ctx, unitId, 'leash')); // P12
@@ -69,6 +78,6 @@ registerAction('leash/suppress', (draft, payload, ctx) => {
 
 registerAction('leash/terminate', (draft, payload, ctx) => {
   const unitId = unitIdOf(payload, 'leash/terminate');
-  const asked = askWarden(draft, ctx, unitId, 'terminate', 'desertion'); // P13
+  const asked = askCosigners(draft, ctx, unitId, 'terminate', 'desertion'); // P13
   return asked.denied ? asked.events : [...asked.events, ...terminate(draft, ctx, unitId).events];
 });

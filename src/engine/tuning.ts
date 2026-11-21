@@ -797,6 +797,28 @@ export const TUNING = Object.freeze({
       edgeStart: 1, edgeEnd: 24, favourMood: 1, ignoredDays: 3, stagnationDays: 7, failedRunDays: 2, anniversaryDays: 30,
       trainingEffects: Object.freeze(['unit_xp', 'commander_body_xp', 'commander_endurance_xp']) as readonly string[],
     }),
+    /**
+     * The Leash block (R16, spec §10): the holder co-signs a request with `base + perFavour x favour / favour.max`, clamped to [min, max]. `AUTHOR TO TUNE`.
+     */
+    block: Object.freeze({ base: 0.2, perFavour: 0.3, min: 0, max: 0.5 }),
+    /**
+     * Going around the block (R16): the discovery chance of each route (`resetTech`: the reset when the ally's role or defect is technical); the
+     * `ally` route's chance is multiplied by the holder's insight (`position.insight`-style: low 0.7, mid 1, high 1.3, as the squad's gossip); an ally who is
+     * found out loses `allyTrust` Trust. A route that is found out is an `overrode_her` (major) on the holder, `regard` units of Regard for her
+     * (the Regard pass reads `regardFall` and uses its own scale) and costs the hold `overrode_her` already costs. `AUTHOR TO TUNE`.
+     */
+    bypass: Object.freeze({ comms: 0.3, reset: 0.2, resetTech: 0.1, ally: 0.4, allyTrust: -5, allyMinTrust: 50, regardFall: 2 }),
+    /**
+     * Oversight's inquiry (R16): `blockedMax` blocked or cancelled requests within `spanDays` advance the `oversight_inquiry` clock by one (a holder's
+     * cover shortens the span); `notices` are the segments that give a notice; on fill oversight acts on her: a reprimand takes `reprimandStress` stress and
+     * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight. `AUTHOR TO TUNE`.
+     */
+    oversight: Object.freeze({ blockedMax: 3, spanDays: 14, notices: Object.freeze([3, 5]) as readonly number[], reprimandStress: 15, reprimandHold: 10, threatDays: 7 }),
+    /**
+     * The holder's cover (R19): the share of the suspicion, the debts' oversight gains and the inquiry's pace she takes off at `role` and at `rule`; a `cruel`
+     * primary style gives half. The strongest holder counts. `AUTHOR TO TUNE`.
+     */
+    cover: Object.freeze({ role: 0.2, rule: 0.35, cruelHalf: 0.5 }),
   }),
   /**
    * P15: her reading of the commander's position (R10, spec §15.2, §15.12, §16.4). `alpha` is the weight a sample moves each axis by (the

@@ -9,6 +9,7 @@ import { TUNING } from '../tuning';
 import { logCosignDenied, rollCosign } from '../warden/leash';
 import { plainPayload } from '../warden/override';
 import { rollOverrides } from '../dynamic/command';
+import { rollBlock } from '../dynamic/leashBlock';
 import { isLiving } from '../economy';
 import { leashCost } from '../leash/use';
 import { finalizeCombat } from '../combat/outcome';
@@ -119,12 +120,17 @@ registerAction('combat/compel', (draft, _payload, ctx) => {
   const unit = target?.unitId ? draft.squad.find((u) => u.id === target.unitId) : undefined;
   if (!target || !unit || !isStanding(target) || !isLiving(unit)) throw new Error('The unit that refused is no longer standing.');
   if (draft.leash.authorizationsLeft - (cs.compels?.length ?? 0) < 1) throw new Error('No Leash authorization is left this week.');
-  // P13: the warden co-signs the request (asked once per refusal: a denial leaves the refusal standing and is not asked again)
-  if (refusal.cosignDenied) throw new Error('The warden has already denied this request.');
+  // P13: the warden co-signs the request (asked once per refusal: a denial leaves the refusal standing and is not asked again); P15: then a holder who blocks the Leash
+  if (refusal.cosignDenied) throw new Error('The request was already denied.');
   const asked = rollCosign(draft, ctx, unit.id, 'compel');
   if (!asked.ok) {
     cs.lastRefusal = { ...refusal, cosignDenied: true };
     return [...asked.events, ...logCosignDenied(draft, ctx, unit.id, 'compel', 'combat')];
+  }
+  const held = rollBlock(draft, ctx, unit.id, 'compel');
+  if (!held.ok) {
+    cs.lastRefusal = { ...refusal, cosignDenied: true };
+    return [...asked.events, ...held.events, ...logCosignDenied(draft, ctx, unit.id, 'compel', 'combat', held.holderId)];
   }
   const cost = leashCost(draft, ctx.registries, unit.id, 'compel');
   const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);

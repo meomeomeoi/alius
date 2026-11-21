@@ -1,5 +1,6 @@
 import type { LeashKind } from '../../engine/state/types';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../settings';
+import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 import { motionReduced } from '../motion';
 import { renderVoiceCard } from '../voice/voiceCard';
@@ -30,6 +31,8 @@ export interface LeashFormOpts {
   onVerdict?: () => void;
   /** The last line of the review (default `APPROVED`). */
   verdict?: string;
+  /** P15: the name of the holder who holds the commander's Leash requests; the form says the request waits for her co-sign. */
+  heldBy?: string;
 }
 
 const ACTION: Record<LeashKind, string> = {
@@ -65,6 +68,13 @@ function consequence(o: LeashFormOpts): string {
 const line = (key: string, id: string, value: string): HTMLElement =>
   h('div', { class: 'alius-form-line', 'data-line': id }, h('span', { class: 'alius-form-key' }, key), h('span', { class: 'alius-form-val' }, value));
 
+/** P15: the line of a request that waits for a holder's co-sign (the capability's own glossary entry explains it). */
+const heldLine = (by: string): HTMLElement => {
+  const row = line('CO-SIGN', 'cosign', `HELD FOR ${by.toUpperCase()}'S CO-SIGN`);
+  for (const [k, v] of Object.entries(analyzeAttrs('glossary:capability_leash_block'))) row.setAttribute(k, v);
+  return row;
+};
+
 /**
  * The cold bureaucratic form every Leash request is filed through. Resolves `true` once the request was filed and the
  * "review" has run its course, `false` when it was withdrawn. The caller then dispatches the action.
@@ -77,6 +87,7 @@ export async function fileLeashRequest(shell: LeashFormShell, o: LeashFormOpts):
     line('GROUNDS', 'grounds', o.cause ?? DEFAULT_GROUNDS[o.kind]),
     line('AUTHORIZATIONS REMAINING', 'remaining', String(o.left)),
     line('CONSEQUENCE', 'consequence', consequence(o)),
+    ...(o.heldBy !== undefined ? [heldLine(o.heldBy)] : []),
   );
   const paper = (inner: Node): HTMLElement => renderVoiceCard({ voice: 'paper', meta: 'CCP OVERSIGHT OFFICE · FORM OR-7', body: inner });
   const choice = await shell.modal({

@@ -1071,7 +1071,29 @@ var TUNING = Object.freeze({
       failedRunDays: 2,
       anniversaryDays: 30,
       trainingEffects: Object.freeze(["unit_xp", "commander_body_xp", "commander_endurance_xp"])
-    })
+    }),
+    /**
+     * The Leash block (R16, spec §10): the holder co-signs a request with `base + perFavour x favour / favour.max`, clamped to [min, max]. `AUTHOR TO TUNE`.
+     */
+    block: Object.freeze({ base: 0.2, perFavour: 0.3, min: 0, max: 0.5 }),
+    /**
+     * Going around the block (R16): the discovery chance of each route (`resetTech`: the reset when the ally's role or defect is technical); the
+     * `ally` route's chance is multiplied by the holder's insight (`position.insight`-style: low 0.7, mid 1, high 1.3, as the squad's gossip); an ally who is
+     * found out loses `allyTrust` Trust. A route that is found out is an `overrode_her` (major) on the holder, `regard` units of Regard for her
+     * (the Regard pass reads `regardFall` and uses its own scale) and costs the hold `overrode_her` already costs. `AUTHOR TO TUNE`.
+     */
+    bypass: Object.freeze({ comms: 0.3, reset: 0.2, resetTech: 0.1, ally: 0.4, allyTrust: -5, allyMinTrust: 50, regardFall: 2 }),
+    /**
+     * Oversight's inquiry (R16): `blockedMax` blocked or cancelled requests within `spanDays` advance the `oversight_inquiry` clock by one (a holder's
+     * cover shortens the span); `notices` are the segments that give a notice; on fill oversight acts on her: a reprimand takes `reprimandStress` stress and
+     * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight. `AUTHOR TO TUNE`.
+     */
+    oversight: Object.freeze({ blockedMax: 3, spanDays: 14, notices: Object.freeze([3, 5]), reprimandStress: 15, reprimandHold: 10, threatDays: 7 }),
+    /**
+     * The holder's cover (R19): the share of the suspicion, the debts' oversight gains and the inquiry's pace she takes off at `role` and at `rule`; a `cruel`
+     * primary style gives half. The strongest holder counts. `AUTHOR TO TUNE`.
+     */
+    cover: Object.freeze({ role: 0.2, rule: 0.35, cruelHalf: 0.5 })
   }),
   /**
    * P15: her reading of the commander's position (R10, spec §15.2, §15.12, §16.4). `alpha` is the weight a sample moves each axis by (the
@@ -31412,8 +31434,8 @@ function rollCosign(draft, ctx2, targetId, kind) {
   const ok = targetId !== w.unitId && ctx2.rng.chance(cosignChance(draft, ctx2.registries, targetId));
   return { ok, events: [{ type: ok ? "leash_cosigned" : "leash_cosign_denied", unitId: targetId, kind }] };
 }
-function logCosignDenied(draft, ctx2, unitId, kind, context) {
-  return bookUse(draft, ctx2, unitId, kind, context, "denied", "warden");
+function logCosignDenied(draft, ctx2, unitId, kind, context, cc = "warden") {
+  return bookUse(draft, ctx2, unitId, kind, context, "denied", cc);
 }
 var restOfDay = (slot2) => SLOTS2.includes(slot2) ? SLOTS2.length - SLOTS2.indexOf(slot2) : 0;
 function leashCommander(draft, ctx2, kind) {
@@ -31438,9 +31460,45 @@ function refreshWardenLeash(draft, _reg) {
   return [{ type: "warden_leash_refreshed", left: w.leashLeft }];
 }
 
+// src/engine/dynamic/leashBlock.ts
+var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function leashBlockOf(state, reg) {
+  if (!dynamicOn(state, reg)) return null;
+  for (const u of state.squad) {
+    const dyn = u.kind === "named" && isLiving(u) ? dynamicOf(state, u.id) : void 0;
+    if (dyn === void 0) continue;
+    const holds4 = dyn.domains.some((d) => {
+      const entry = domainEntry(reg, d.id);
+      return entry !== void 0 && standing(d, state.day) && entry.grants.includes("leash_block") && dyn.hold >= bandMin(reg, entry);
+    });
+    if (holds4) return u.id;
+  }
+  return null;
+}
+function blockCosignChance(state, _reg, holderId) {
+  const B2 = TUNING.dynamic.block;
+  const favour = dynamicOf(state, holderId)?.favour ?? 0;
+  return clamp36(B2.base + B2.perFavour * favour / TUNING.dynamic.favour.max, B2.min, B2.max);
+}
+function noteBlocked(draft, holderId) {
+  const x = draft.dynamic;
+  if (x === void 0) return;
+  (x.oversight ??= { blocked: [] }).blocked.push(draft.day);
+  const dyn = dynamicOf(draft, holderId);
+  if (dyn !== void 0) dyn.leashBlock = { since: dyn.leashBlock?.since ?? draft.day, held: (dyn.leashBlock?.held ?? 0) + 1 };
+}
+function rollBlock(draft, ctx2, targetId, kind) {
+  const holderId = leashBlockOf(draft, ctx2.registries);
+  if (holderId === null) return { ok: true, events: [] };
+  const ok = targetId !== holderId && ctx2.rng.chance(blockCosignChance(draft, ctx2.registries, holderId));
+  if (ok) return { ok: true, events: [] };
+  noteBlocked(draft, holderId);
+  return { ok: false, holderId, events: [{ type: "leash_blocked", unitId: targetId, holderId, kind }] };
+}
+
 // src/engine/warden/removal.ts
 var INVESTIGATION_CLOCK = "investigation";
-var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill4 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 function reactionAxes(draft, wardenId, route) {
   const her = draft.squad.find((u) => u.id === wardenId);
@@ -31483,7 +31541,7 @@ function wardenGone(draft, ctx2, how) {
 }
 function reportChance(state, _reg) {
   const R2 = TUNING.warden.verdict.report;
-  return clamp36(R2.base + R2.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R2.perCunning * (socialRank(state, "cunning") - 1), R2.min, R2.max);
+  return clamp37(R2.base + R2.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R2.perCunning * (socialRank(state, "cunning") - 1), R2.min, R2.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -31579,7 +31637,7 @@ function verdictChance(state, _reg) {
   const V = TUNING.warden.verdict;
   const route = ls?.removal?.route ?? "death";
   const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
-  return clamp36(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
+  return clamp37(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
 }
 function rollVerdict(draft, ctx2) {
   const ls = leashswapOf(draft);
@@ -31874,11 +31932,16 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   const unit3 = target?.unitId ? draft.squad.find((u) => u.id === target.unitId) : void 0;
   if (!target || !unit3 || !isStanding(target) || !isLiving(unit3)) throw new Error("The unit that refused is no longer standing.");
   if (draft.leash.authorizationsLeft - (cs.compels?.length ?? 0) < 1) throw new Error("No Leash authorization is left this week.");
-  if (refusal2.cosignDenied) throw new Error("The warden has already denied this request.");
+  if (refusal2.cosignDenied) throw new Error("The request was already denied.");
   const asked = rollCosign(draft, ctx2, unit3.id, "compel");
   if (!asked.ok) {
     cs.lastRefusal = { ...refusal2, cosignDenied: true };
     return [...asked.events, ...logCosignDenied(draft, ctx2, unit3.id, "compel", "combat")];
+  }
+  const held3 = rollBlock(draft, ctx2, unit3.id, "compel");
+  if (!held3.ok) {
+    cs.lastRefusal = { ...refusal2, cosignDenied: true };
+    return [...asked.events, ...held3.events, ...logCosignDenied(draft, ctx2, unit3.id, "compel", "combat", held3.holderId)];
   }
   const cost = leashCost(draft, ctx2.registries, unit3.id, "compel");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
@@ -32129,18 +32192,25 @@ var unitIdOf = (payload, action) => {
   if (typeof id !== "string") throw new Error(`${action} needs { unitId }`);
   return id;
 };
-function askWarden(draft, ctx2, unitId, kind, context) {
-  if (wardenOf(draft) === null) return { denied: false, events: [] };
+function askCosigners(draft, ctx2, unitId, kind, context) {
+  if (wardenOf(draft) === null && leashBlockOf(draft, ctx2.registries) === null) return { denied: false, events: [] };
   const why = checkLeash(draft, ctx2.registries, kind, unitId);
   if (why) throw new Error(why);
-  const asked = rollCosign(draft, ctx2, unitId, kind);
-  return asked.ok ? { denied: false, events: asked.events } : { denied: true, events: [...asked.events, ...logCosignDenied(draft, ctx2, unitId, kind, context)] };
+  const events = [];
+  if (wardenOf(draft) !== null) {
+    const asked = rollCosign(draft, ctx2, unitId, kind);
+    if (!asked.ok) return { denied: true, events: [...asked.events, ...logCosignDenied(draft, ctx2, unitId, kind, context)] };
+    events.push(...asked.events);
+  }
+  const held3 = rollBlock(draft, ctx2, unitId, kind);
+  if (!held3.ok) return { denied: true, events: [...events, ...held3.events, ...logCosignDenied(draft, ctx2, unitId, kind, context, held3.holderId)] };
+  return { denied: false, events };
 }
 registerAction("leash/compel", (draft, payload, ctx2) => {
   const unitId = unitIdOf(payload, "leash/compel");
   const refusal2 = draft.scene?.refusals?.find((r) => r.unitId === unitId);
   if (!draft.scene?.participants.includes(unitId) || !refusal2) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
-  const asked = askWarden(draft, ctx2, unitId, "compel", "scene");
+  const asked = askCosigners(draft, ctx2, unitId, "compel", "scene");
   if (asked.denied) return asked.events;
   const { forced, events } = compel(draft, ctx2, { unitId, context: "scene" });
   if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
@@ -32152,7 +32222,7 @@ registerAction("leash/suppress", (draft, payload, ctx2) => {
   if (!open3 || open3.unitId !== unitId || open3.kind !== "desertion" && open3.kind !== "mutiny") {
     throw new Error("There is nothing to suppress: no desertion or attack is about to happen.");
   }
-  const asked = askWarden(draft, ctx2, unitId, "suppress", open3.kind);
+  const asked = askCosigners(draft, ctx2, unitId, "suppress", open3.kind);
   if (asked.denied) return asked.events;
   const events = [...asked.events, ...suppress(draft, ctx2, { unitId, context: open3.kind })];
   events.push(...actOnWarning(draft, ctx2, unitId, "leash"));
@@ -32161,7 +32231,7 @@ registerAction("leash/suppress", (draft, payload, ctx2) => {
 });
 registerAction("leash/terminate", (draft, payload, ctx2) => {
   const unitId = unitIdOf(payload, "leash/terminate");
-  const asked = askWarden(draft, ctx2, unitId, "terminate", "desertion");
+  const asked = askCosigners(draft, ctx2, unitId, "terminate", "desertion");
   return asked.denied ? asked.events : [...asked.events, ...terminate(draft, ctx2, unitId).events];
 });
 
@@ -33832,7 +33902,7 @@ function mergeInputs(mainI, secondI, plan, inputs) {
 // src/engine/physics/segment.ts
 var stillnessOf = (_state) => 0;
 var P2 = TUNING.physics;
-var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp38 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function rhythmOffset(state, unitId) {
   return fnv1a2(`${state.life?.salt ?? 0}|${unitId}|rhythm`) % 3;
 }
@@ -33895,7 +33965,7 @@ function planSegment(state, reg, run, rng) {
 }
 function sealNow(run, sealLevel) {
   const at = SEALS.indexOf(run.seal ?? "tight");
-  return SEALS[clamp37(at + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
+  return SEALS[clamp38(at + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
 }
 function resolveEnvOf(state, reg, run) {
   const phys = reg.contactPhysics.get(run.physicsId);
@@ -34035,7 +34105,7 @@ function resolveSegment(run, plan, inputs, env) {
         break;
     }
     if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
-    r.gauge = clamp37(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap7);
+    r.gauge = clamp38(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap7);
   }
   if (rest) {
     r.askedRest = true;
@@ -37603,6 +37673,7 @@ var PROBE_PREFIX = "dynamic:probe:";
 var COMMAND_PREFIX = "dynamic:command:";
 var WITNESS_PREFIX = "dynamic:witness:";
 var AFTERMATH_PREFIX = "dynamic:aftermath:";
+var LEASH_BLOCK_PREFIX = "dynamic:leash_block:";
 function styleLine(state, reg, unit3) {
   const pair = unit3.bond?.practice?.style;
   if (pair === void 0) return "";
@@ -37660,6 +37731,7 @@ function dynamicDirectives(state, reg, present2) {
     const line2 = aftermathDirective2(state, reg, unit3);
     if (line2 !== null) out.push(line2);
   }
+  out.push(...leashBlockDirectives(state, reg, present2));
   out.push(...commandDirectives(state, reg, present2));
   out.push(...witnessDirectives(state, reg, present2));
   return out;
@@ -37697,6 +37769,15 @@ function witnessDirectives(state, reg, present2) {
     if (lines.length > 0) out.push({ id: `${WITNESS_PREFIX}${id}`, expiresAfter: "scene", text: [...lines, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
   }
   return out;
+}
+function leashBlockDirectives(state, reg, present2) {
+  const holderId = leashBlockOf(state, reg);
+  const holder2 = holderId === null || !present2.includes(holderId) ? void 0 : state.squad.find((u) => u.id === holderId);
+  return holder2 === void 0 ? [] : [{
+    id: `${LEASH_BLOCK_PREFIX}${holder2.id}`,
+    expiresAfter: "scene",
+    text: `AUTHOR TO WRITE: ${holder2.displayName} holds the commander's Leash requests: nothing is filed on the device without her say, and she may refuse to sign it. Show it in how she speaks about the device; never name it as a mechanic.`
+  }];
 }
 function commandDirectives(state, reg, present2) {
   const others = (id) => state.squad.some((u) => u.id === id && isLiving(u));
@@ -39841,6 +39922,11 @@ function consequence(o) {
   return `SUBJECT WILL NOT FORGET: TRUST AND WARMTH DROP SHARPLY AND STRESS RISES.${mayFail ? " THE BURST MAY FAIL." : ""}`;
 }
 var line = (key, id, value) => h("div", { class: "alius-form-line", "data-line": id }, h("span", { class: "alius-form-key" }, key), h("span", { class: "alius-form-val" }, value));
+var heldLine = (by) => {
+  const row3 = line("CO-SIGN", "cosign", `HELD FOR ${by.toUpperCase()}'S CO-SIGN`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:capability_leash_block"))) row3.setAttribute(k, v);
+  return row3;
+};
 async function fileLeashRequest(shell, o) {
   const title3 = `OVERSIGHT REQUEST #${String(o.no).padStart(4, "0")}`;
   const form = h(
@@ -39850,7 +39936,8 @@ async function fileLeashRequest(shell, o) {
     line("ACTION", "action", ACTION[o.kind]),
     line("GROUNDS", "grounds", o.cause ?? DEFAULT_GROUNDS[o.kind]),
     line("AUTHORIZATIONS REMAINING", "remaining", String(o.left)),
-    line("CONSEQUENCE", "consequence", consequence(o))
+    line("CONSEQUENCE", "consequence", consequence(o)),
+    ...o.heldBy !== void 0 ? [heldLine(o.heldBy)] : []
   );
   const paper2 = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
   const choice = await shell.modal({
@@ -47931,7 +48018,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit2 = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
-var clamp38 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp39 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a2(seed) % n;
@@ -47955,7 +48042,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp38(v));
+    out.push(clamp39(v));
   }
   return out;
 }
@@ -58603,6 +58690,11 @@ function createApp(st, deps) {
     }
     return checkLeash(s, registries, kind, unitId);
   }
+  function heldFor(s) {
+    const holder2 = leashBlockOf(s, registries);
+    const name = holder2 === null ? void 0 : s.squad.find((u) => u.id === holder2)?.displayName;
+    return name === void 0 ? {} : { heldBy: name };
+  }
   async function fileLeash(kind, unitId) {
     const s = state;
     const unit3 = s?.squad.find((u) => u.id === unitId);
@@ -58630,7 +58722,8 @@ function createApp(st, deps) {
       settings: getSettings(st),
       corporation: corporationName(s),
       onVerdict: () => sound.play("stamp"),
-      ...kind === "terminate" ? { verdict: "UNDER REVIEW" } : {}
+      ...kind === "terminate" ? { verdict: "UNDER REVIEW" } : {},
+      ...heldFor(s)
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
     if (kind === "compel") return loyalty.compel(unitId);

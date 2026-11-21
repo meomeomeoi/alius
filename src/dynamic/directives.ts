@@ -3,6 +3,7 @@ import { frameRank } from '../engine/blocking/state';
 import { aftermathRowOf } from '../engine/dynamic/aftermath';
 import { hasCapability } from '../engine/dynamic/capabilities';
 import { herPracticeLive, dynamicOn } from '../engine/dynamic/gate';
+import { leashBlockOf } from '../engine/dynamic/leashBlock';
 import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { dynamicOf } from '../engine/dynamic/state';
@@ -32,6 +33,7 @@ export const PROBE_PREFIX = 'dynamic:probe:';
 export const COMMAND_PREFIX = 'dynamic:command:';
 export const WITNESS_PREFIX = 'dynamic:witness:';
 export const AFTERMATH_PREFIX = 'dynamic:aftermath:';
+export const LEASH_BLOCK_PREFIX = 'dynamic:leash_block:';
 
 /** Her style pair in words, the secondary's side named while it leads. */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
@@ -92,6 +94,7 @@ function probeDirective(reg: Registries, unit: Unit, axisId: string): Directive 
  *  - `dynamic:<unitId>`: she holds at `play` or beyond: the frame's line, what she has claimed, her manner (the secondary named while it leads),
  *    and an answer she is waiting for (an open milestone, a recent refusal); before the first frame, only an open milestone.
  *  - `dynamic:probe:<unitId>`: her probe is pending (at most one a scene); gone when it is answered or lapses.
+ *  - `dynamic:leash_block:<unitId>`: she is in the room and holds the commander's Leash requests: she answers for anything filed on the device.
  *  - `dynamic:command:<unitId>`: she holds the command and someone else is in the room: who gives the orders now. Her own line, while the argument over her override is the scene, adds what she overrode.
  *  - `dynamic:witness:<observerId>`: she suspects (cautious) or knows (her reaction by profile) a holder's dynamic and is in the room.
  * Nothing while the dynamic is off.
@@ -112,6 +115,7 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
     const line = aftermathDirective(state, reg, unit);
     if (line !== null) out.push(line);
   }
+  out.push(...leashBlockDirectives(state, reg, present));
   out.push(...commandDirectives(state, reg, present));
   out.push(...witnessDirectives(state, reg, present));
   return out;
@@ -160,6 +164,16 @@ function witnessDirectives(state: CampaignState, reg: Registries, present: strin
     if (lines.length > 0) out.push({ id: `${WITNESS_PREFIX}${id}`, expiresAfter: 'scene', text: [...lines, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') });
   }
   return out;
+}
+
+/** The line of the holder who holds the commander's Leash requests, while she is in the room (`dynamic:leash_block:<unitId>`). No number, no chance. */
+function leashBlockDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const holderId = leashBlockOf(state, reg);
+  const holder = holderId === null || !present.includes(holderId) ? undefined : state.squad.find((u) => u.id === holderId);
+  return holder === undefined ? [] : [{
+    id: `${LEASH_BLOCK_PREFIX}${holder.id}`, expiresAfter: 'scene',
+    text: `AUTHOR TO WRITE: ${holder.displayName} holds the commander's Leash requests: nothing is filed on the device without her say, and she may refuse to sign it. Show it in how she speaks about the device; never name it as a mechanic.`,
+  }];
 }
 
 /** What the other women in the room hear while a holder gives the orders (`dynamic:command:<holderId>`): only with someone else present to address her. */
