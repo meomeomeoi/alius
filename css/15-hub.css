@@ -155,6 +155,9 @@
   white-space: nowrap;
 }
 
+#alius-shell .alius-marker-commander { --alius-ring: var(--alius-accent); }
+#alius-shell .alius-marker-commander .alius-marker-ring { border-style: double; border-width: 3px; }
+#alius-shell .alius-hub-plan .alius-marker-commander .alius-marker-ring { border-width: 2.5px; }
 #alius-shell .alius-marker[data-tone="danger"] { --alius-ring: var(--alius-danger, var(--alius-err)); }
 #alius-shell .alius-marker[data-tone="bond"] { --alius-ring: var(--alius-bond, var(--alius-accent)); }
 #alius-shell .alius-marker[data-tone="trust"] { --alius-ring: var(--alius-trust, var(--alius-fg)); }

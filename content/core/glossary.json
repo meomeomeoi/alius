@@ -1905,6 +1905,16 @@
     ]
   },
   {
+    "id": "commander_marker",
+    "term": "The commander on the plan",
+    "short": "A ring with a C and a diamond: where the commander is when she is not in her own cabin.",
+    "long": "AUTHOR TO WRITE: The commander is not drawn in her own cabin. When a reason moves her she shows up in the room she is in. Today the one reason is a second place: a soldier who holds the household has her quarters as the commander's second place, and on an evening she booked, the commander is in her cabin.",
+    "see": [
+      "cabin",
+      "whereabouts"
+    ]
+  },
+  {
     "id": "closed_room",
     "term": "Closed room",
     "short": "A dark, hatched room is part of the outpost but nothing happens there yet.",

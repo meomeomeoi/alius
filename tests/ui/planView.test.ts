@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { registerCoreProviders } from '../../src/analysis/providers/core';
 import type { Registries } from '../../src/content/types';
 import { cabinOf, cabinOwner, registerPlanMarks, resetPlanMarks, unitCabins } from '../../src/engine/basePlan';
+import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
 import type { CampaignState } from '../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { h } from '../../src/ui/dom';
@@ -174,6 +175,44 @@ describe('the plan stage (P10d)', () => {
     const el = m.q('.alius-room[data-plan="u_cabin_1"]')!;
     expect(el.dataset.marks).toBe('territory');
     expect(el.querySelector('.alius-plan-mark')!.textContent).toBe('HERS');
+  });
+
+  it('the commander is drawn only when something moved her: in the holder\'s cabin on an evening she booked with the second place (review I9)', () => {
+    const base = campaign(reg, 4);
+    base.slot = 'evening';
+    expect(mount(base).host.querySelector('[data-person="commander"]')).toBeNull(); // home: nothing is drawn (as in P10d)
+    const s = campaign(reg, 4);
+    s.slot = 'evening';
+    s.content = { enabled: ['restraint'] };
+    s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+    s.relations[s.squad[1].id].dynamic = { ...blankDynamic(s.day), frame: 'role', hold: 70, domains: [{ id: 'household', since: 1 }] };
+    s.personal = { ...(s.personal ?? {}), bookings: [{ id: 'bk1', unitId: s.squad[1].id, kindId: 'roof_walk', day: s.day, slot: 'evening', status: 'booked', source: 'roll', made: s.day - 1 }] } as CampaignState['personal'];
+    const cabin = String(cabinOf(s, reg, s.squad[1].id)!.id);
+    const m = mount(s);
+    const mark = m.host.querySelector<HTMLElement>('[data-person="commander"]')!;
+    expect(mark).not.toBeNull();
+    expect(mark.closest<HTMLElement>('.alius-plan-room')!.dataset.plan).toBe(cabin);
+    expect(m.host.querySelector('.alius-plan-room[data-cabin="commander"] [data-person="commander"]')).toBeNull();
+    expect(mark.getAttribute('aria-label')).toContain(s.squad[1].displayName);
+    expect(mark.getAttribute('data-analyze')).toBe('glossary:commander_marker');
+    // the same state in the afternoon: she is home again
+    s.slot = 'afternoon';
+    expect(mount(s).host.querySelector('[data-person="commander"]')).toBeNull();
+  });
+
+  it('the commander marker resolves, is reachable and is marked (data-analyze)', () => {
+    const s = campaign(reg, 4);
+    s.slot = 'evening';
+    s.content = { enabled: ['restraint'] };
+    s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+    s.relations[s.squad[1].id].dynamic = { ...blankDynamic(s.day), frame: 'role', hold: 70, domains: [{ id: 'household', since: 1 }] };
+    s.personal = { ...(s.personal ?? {}), bookings: [{ id: 'bk1', unitId: s.squad[1].id, kindId: 'roof_walk', day: s.day, slot: 'evening', status: 'played', source: 'roll', made: s.day - 1 }] } as CampaignState['personal'];
+    const m = mount(s);
+    for (const f of ['ground', 'upper', 'roof']) layer(m.host, f).hidden = false;
+    expect(m.host.querySelector('[data-person="commander"]')).not.toBeNull();
+    expect(markedWithout(m.host)).toEqual([]);
+    expect(unresolved(m.host, { registries: reg, state: s, settings: { ...DEFAULT_SETTINGS } })).toEqual([]);
+    expect(unreachable(m.host)).toEqual([]);
   });
 
   it('every marked element on every floor resolves, is reachable and is marked', () => {

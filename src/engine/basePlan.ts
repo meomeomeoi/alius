@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../content/types';
 import { PLAN_OPEN_KINDS, type PlanFloor } from '../content/schemas';
+import { secondPlaceHolder } from './dynamic/capabilities';
 import { isLiving } from './economy';
 import type { Whereabout } from './hub';
 import type { CampaignState } from './state/types';
@@ -84,11 +85,15 @@ export function cabinOwner(state: Pick<CampaignState, 'squad'>, reg: Registries,
 
 /**
  * The plan room a person is drawn in. A unit: her whereabout's hub room, and when that hub room has unit cabins, her own
- * cabin; `null` while she is away or nowhere. The commander (`'commander'`): the commander's cabin (later packages add
- * reasons that move the commander: a hold, a night claimed, the cage).
+ * cabin; `null` while she is away or nowhere. The commander (`'commander'`): the commander's cabin, unless a reason moves her (later packages add
+ * more: a hold, a night claimed, the cage). P15: on an evening a holder with the second place (`second_place`) booked, she is in that holder's cabin
+ * (derived from the booking; nothing is stored, nothing is drawn).
  */
 export function roomOfPerson(state: CampaignState, reg: Registries, here: Whereabout[], personId: string): Entry | null {
-  if (personId === 'commander') return commanderCabin(reg) ?? null;
+  if (personId === 'commander') {
+    const holder = secondPlaceHolder(state, reg);
+    return (holder !== null ? cabinOf(state, reg, holder) : null) ?? commanderCabin(reg) ?? null;
+  }
   const w = here.find((x) => x.unitId === personId);
   if (!w || w.roomId === null) return null;
   const plan = [...reg.planRooms.values()].filter((e) => e.hubRoomId === w.roomId);

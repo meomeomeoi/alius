@@ -3,6 +3,7 @@ import type { Registries } from '../../../src/content/types';
 import { rollRules } from '../../../src/engine/bonds/rules';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Frame, ProfileStyle } from '../../../src/engine/dynamic/types';
+import { cabinOf, commanderCabin, roomOfPerson } from '../../../src/engine/basePlan';
 import { whereabouts } from '../../../src/engine/hub';
 import { deviceAccess } from '../../../src/engine/personal/access';
 import { consentProblem, rollBookings } from '../../../src/engine/personal/bookings';
@@ -133,27 +134,50 @@ describe('device, hub, rules and standing', () => {
     expect(deviceAccess(bare, reg, ANN)).toBe(0);
   });
 
-  it('the hub places the commander in her quarters on her booked evening (and nowhere new without the capability)', () => {
+  it('second_place is the commander\'s place, not the holder\'s: her whereabout stays the booked room, the commander is drawn in her cabin (review I9)', () => {
     const s = partner(plain(reg), ANN, { lead: 'assertive', stateId: 'lover', affinity: 90 });
     s.day = 5;
     s.slot = 'evening';
     personalOf(s).bookings = [bk('b1', ANN, { kindId: 'roof_walk', day: 5 })];
     const room = (st: CampaignState) => whereabouts(st, reg).find((w) => w.unitId === ANN)!.roomId!;
     const at = (id: string) => String(reg.locations.get(String(reg.hubRooms.get(id)!.sceneLocationId))?.id);
-    const roofRoom = room(s);
-    expect(at(roofRoom)).toBe('roof');
+    const here = (st: CampaignState) => whereabouts(st, reg);
+    const cmdr = (st: CampaignState) => String(roomOfPerson(st, reg, here(st), 'commander')!.id);
+    // no capability: the booked room is P9c's, and the commander is home
+    expect(at(room(s))).toBe('roof');
+    expect(cmdr(s)).toBe(String(commanderCabin(reg)!.id));
     holder(s, ANN, ['household']);
-    const second = room(s);
-    expect(reg.locations.get(String(reg.hubRooms.get(second)!.sceneLocationId))?.perUnit).toBe(true);
-    // no booking, no change; another unit's slot is unchanged
+    // the holder's whereabout is untouched by the domain
+    expect(at(room(s))).toBe('roof');
+    // the commander is in the holder's cabin
+    expect(cmdr(s)).toBe(String(cabinOf(s, reg, ANN)!.id));
+    // a played booking of the evening still stands (derived from the booking, nothing stored)
+    personalOf(s).bookings![0].status = 'played';
+    expect(cmdr(s)).toBe(String(cabinOf(s, reg, ANN)!.id));
+    // not an evening she booked: no booking, an afternoon booking, a lapsed or cancelled one, another day, or the domain lost: home
+    const home = String(commanderCabin(reg)!.id);
     const idle = structuredClone(s);
     personalOf(idle).bookings = [];
-    expect(whereabouts(idle, reg).find((w) => w.unitId === ANN)).toEqual(whereabouts({ ...idle, dynamic: undefined }, reg).find((w) => w.unitId === ANN));
-    // an afternoon booking is not an evening: the place does not move
+    expect(cmdr(idle)).toBe(home);
     const afternoon = structuredClone(s);
     afternoon.slot = 'afternoon';
     personalOf(afternoon).bookings = [bk('b2', ANN, { kindId: 'train_together', day: 5, slot: 'afternoon' })];
-    expect(at(room(afternoon))).toBe('training_yard');
+    expect(cmdr(afternoon)).toBe(home);
+    for (const status of ['lapsed', 'cancelled'] as const) {
+      const t = structuredClone(s);
+      personalOf(t).bookings![0].status = status;
+      expect(cmdr(t)).toBe(home);
+    }
+    const other = structuredClone(s);
+    other.day = 6;
+    expect(cmdr(other)).toBe(home);
+    const lost = structuredClone(s);
+    dynamicOf(lost, ANN)!.domains = [];
+    expect(cmdr(lost)).toBe(home);
+    // derived: no rng, no stored room
+    const before = JSON.stringify(s);
+    cmdr(s);
+    expect(JSON.stringify(s)).toBe(before);
   });
 
   it('relation_rules unlocks jealousy_games templates for her only', () => {

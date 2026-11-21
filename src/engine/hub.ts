@@ -4,7 +4,6 @@ import { facilityLevel, isLiving, livingUnits } from './economy';
 import type { CampaignState, Slot, Unit } from './state/types';
 import { TUNING } from './tuning';
 import { likesOf } from './development/profile';
-import { hasCapability } from './dynamic/capabilities';
 import { lifeMode } from './life/state';
 
 /** FNV-1a, 32 bit. The hub's only source of "randomness": a stable function of its input, never a draw from the campaign RNG. */
@@ -75,11 +74,7 @@ function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit
 
   // P9c: in a slot she booked she is where the booking says (the room of its location)
   const booked = state.personal?.bookings?.find((b) => b.unitId === unit.id && b.day === state.day && b.slot === state.slot && (b.status === 'booked' || b.status === 'played'));
-  // P15: with the second place (`second_place`) an evening she booked is spent in her own quarters (derived; nothing is stored)
-  const secondPlace = booked?.slot === 'evening' && hasCapability(state, reg, unit.id, 'second_place')
-    ? rooms.find((r) => reg.locations.get(r.sceneLocationId as string)?.perUnit === true)
-    : undefined;
-  const bookedRoom = secondPlace ?? (booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : undefined);
+  const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : undefined;
   if (bookedRoom) return { unitId: unit.id, roomId: bookedRoom.id, reason: 'routine' };
 
   const weights = rooms.map((room) => routineWeight(state, reg, room, unit));

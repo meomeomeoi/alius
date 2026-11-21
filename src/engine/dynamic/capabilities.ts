@@ -38,6 +38,16 @@ export function holderWith(state: CampaignState, reg: Registries, cap: Capabilit
   return state.squad.find((u) => u.kind === 'named' && hasCapability(state, reg, u.id, cap))?.id ?? null;
 }
 
+/**
+ * The holder whose second place (`second_place`) the commander spends this slot in (R12, review I9): a booking of the evening of today that stands
+ * (booked or played, as the hub reads a booking) belonging to a unit whose domains grant it. The first in the bookings' order. Only the Evening slot
+ * has one. Derived, nothing is stored, no draw. `null` while the dynamic is off.
+ */
+export function secondPlaceHolder(state: CampaignState, reg: Registries): string | null {
+  if (state.slot !== 'evening') return null;
+  const b = (state.personal?.bookings ?? []).find((x) => x.day === state.day && x.slot === 'evening' && (x.status === 'booked' || x.status === 'played') && hasCapability(state, reg, x.unitId, 'second_place'));
+  return b?.unitId ?? null;
+}
 
 /** Without the command her open override is void (nothing runs, nothing is owed): called after a domain of hers is lost. */
 export function dropVoidOverride(draft: CampaignState, reg: Registries, unitId: string): void {

@@ -39,3 +39,16 @@ export function renderMarker(state: CampaignState, reg: Registries, unit: Unit):
     h('span', { class: 'alius-marker-glyphs', 'aria-hidden': 'true' }, glyphs),
   );
 }
+
+/**
+ * The commander, drawn where something moved her from her own cabin (P15: the second place of a holder; later P16, P17a, P17b). A ring with her
+ * initial and a glyph, so the colour never carries the meaning alone; analyze explains what moved her. `place` is the name of the room she is in.
+ */
+export function renderCommanderMarker(place: string): HTMLElement {
+  return h(
+    'span',
+    { class: 'alius-marker alius-marker-commander alius-chip', 'data-person': 'commander', 'aria-label': `The commander, at ${place}`, ...analyzeAttrs('glossary:commander_marker') },
+    h('span', { class: 'alius-marker-ring', 'aria-hidden': 'true' }, 'C'),
+    h('span', { class: 'alius-marker-glyphs', 'aria-hidden': 'true' }, '◆'),
+  );
+}

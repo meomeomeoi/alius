@@ -1,14 +1,14 @@
 import type { Entry, Registries } from '../../../content/types';
 import { PLAN_FLOORS } from '../../../content/schemas';
 import {
-  cabinOwner, isClosed, isOpenSpace, litRooms, planMarks, planRoomsOn, rectOf, roomOfPerson, type PlanFloor, type PlanMark,
+  cabinOwner, commanderCabin, isClosed, isOpenSpace, litRooms, planMarks, planRoomsOn, rectOf, roomOfPerson, type PlanFloor, type PlanMark,
 } from '../../../engine/basePlan';
 import { quartersOf } from '../../../engine/backdrops';
 import type { Whereabout } from '../../../engine/hub';
 import type { CampaignState, Unit } from '../../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
-import { renderMarker } from '../marker';
+import { renderCommanderMarker, renderMarker } from '../marker';
 import { drawFloor, drawRoofs, drawSite } from './draw';
 import type { CabinVariant } from './furnish';
 import { Pen, svgEl } from './svg';
@@ -50,6 +50,15 @@ export function cabinVariant(state: CampaignState, reg: Registries, cabin: Entry
 /** The people drawn in a plan room (named units and grunts), in squad order. */
 export function peopleIn(state: CampaignState, reg: Registries, here: Whereabout[], planRoomId: string): Unit[] {
   return state.squad.filter((u) => roomOfPerson(state, reg, here, u.id)?.id === planRoomId);
+}
+
+/**
+ * The plan room the commander is drawn in when something moved her out of her own cabin (P15's second place; P16, P17a and P17b add reasons), else
+ * `null`: at home she is not drawn, as in P10d. Read from `roomOfPerson`; nothing is stored.
+ */
+export function commanderAwayRoom(state: CampaignState, reg: Registries, here: Whereabout[]): Entry | null {
+  const room = roomOfPerson(state, reg, here, 'commander');
+  return room !== null && room.id !== commanderCabin(reg)?.id ? room : null;
 }
 
 function svgLayers(reg: Registries, state: CampaignState, here: Whereabout[]): SVGElement {
@@ -112,6 +121,7 @@ function roomLayer(ctx: PlanStageCtx, e: Entry, marks: PlanMark[]): HTMLElement 
 
   const hub = reg.hubRooms.get(String(e.hubRoomId));
   const inside = peopleIn(state, reg, here, String(e.id));
+  const cmdrHere = commanderAwayRoom(state, reg, here)?.id === e.id;
   const owner = e.cabin === 'unit' ? cabinOwner(state, reg, String(e.id)) : null;
   const ownerName = owner ? state.squad.find((u) => u.id === owner)?.displayName ?? '' : '';
   const label = e.cabin === 'unit' ? (owner ? ownerName.toUpperCase() : 'VACANT') : String(e.label);
@@ -131,11 +141,11 @@ function roomLayer(ctx: PlanStageCtx, e: Entry, marks: PlanMark[]): HTMLElement 
       'div', { class: 'alius-room-head' },
       h('button', {
         type: 'button', class: 'alius-room-label alius-chip', 'data-short': String(e.shortLabel ?? ''), 'data-key': `plan:${String(e.id)}`,
-        'aria-label': inside.length > 0 ? `${ariaName}, ${inside.length} here` : ariaName, ...analyze,
+        'aria-label': inside.length + (cmdrHere ? 1 : 0) > 0 ? `${ariaName}, ${inside.length + (cmdrHere ? 1 : 0)} here` : ariaName, ...analyze,
       }, label),
-      inside.length > 0 ? h('span', { class: 'alius-room-count', 'aria-hidden': 'true' }, String(inside.length)) : null,
+      inside.length + (cmdrHere ? 1 : 0) > 0 ? h('span', { class: 'alius-room-count', 'aria-hidden': 'true' }, String(inside.length + (cmdrHere ? 1 : 0))) : null,
     ),
-    h('div', { class: 'alius-room-markers' }, ...inside.map((u) => renderMarker(state, reg, u))),
+    h('div', { class: 'alius-room-markers' }, ...inside.map((u) => renderMarker(state, reg, u)), cmdrHere ? renderCommanderMarker(ariaName) : null),
     markChips(marks),
   );
 }
@@ -157,6 +167,8 @@ export function renderPlanStage(ctx: PlanStageCtx): { stage: HTMLElement; floorB
     const f = roomOfPerson(state, reg, here, u.id)?.floor as PlanFloor | undefined;
     if (f) counts.set(f, (counts.get(f) ?? 0) + 1);
   }
+  const away = commanderAwayRoom(state, reg, here)?.floor as PlanFloor | undefined;
+  if (away) counts.set(away, (counts.get(away) ?? 0) + 1);
   const buttons = new Map<PlanFloor, HTMLElement>();
   const floorBar = h('div', { class: 'alius-plan-floors', role: 'group', 'aria-label': 'Floors' },
     ...PLAN_FLOORS.map((f) => {

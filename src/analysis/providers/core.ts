@@ -322,6 +322,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'quarters',
   // P10d (cabins, floor buttons and staircases, closed rooms on the plan)
   'cabin', 'base_floor', 'closed_room',
+  // P15 (the commander's marker on the plan, drawn when a holder's second place moves her)
+  'commander_marker',
   // P15a (the strip, the moment card, the physics panel, the CMDR lines and the content toggles address these; later tasks add their own)
   'moment', 'moment_card', 'contact_physics', 'wake_up', 'tap_signal', 'stop_word', 'physics_panel', 'endurance_training', 'marathon', 'marathon_strategy', 'mouth_act', 'counted_kisses', 'endurance_skill', 'commander_condition', 'stimulus', 'blocking', 'worship_target', 'escalation', 'device_out_of_reach', 'blocking_strip',
   // P15 (the PRACTICE and EXPECTATIONS editors; later tasks add their own)
