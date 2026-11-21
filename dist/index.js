@@ -25731,6 +25731,14 @@ function partsOf(b, reg, withStance) {
   if (b.contact) out.push({ entry: reg.blockingContacts.get(b.contact.id), held: true });
   return out;
 }
+function personEffects(state, reg, personId) {
+  const scene = state.scene;
+  if (!scene) return [];
+  const own = blockingOf(scene, personId);
+  if (personId !== COMMANDER) return partsOf({ ...own, contact: void 0 }, reg, true).flatMap((p) => effectsOfEntry(p.entry));
+  const contact = contactOf(scene);
+  return partsOf({ ...own, contact: void 0 }, reg, true).flatMap((p) => effectsOfEntry(p.entry)).concat(contact ? effectsOfEntry(reg.blockingContacts.get(contact.id)) : []);
+}
 function restraintEffects(state, reg, personId) {
   const scene = state.scene;
   if (!scene) return [];
@@ -36261,6 +36269,94 @@ function registerDevelopmentContext(builder, deps) {
   });
 }
 
+// src/scene/blockingContext.ts
+var hintOf = (e) => typeof e?.promptHint === "string" && e.promptHint.trim() !== "" ? e.promptHint.trim() : null;
+function blockingLine(state, reg, personId) {
+  const b = blockingOf(state.scene, personId);
+  const parts = [];
+  const stance = [hintOf(reg.blockingPostures.get(b.posture ?? "")), hintOf(reg.blockingAnchors.get(b.anchor?.id ?? ""))].filter((x) => x !== null);
+  if (stance.length > 0) parts.push(stance.join(" "));
+  const contact = hintOf(reg.blockingContacts.get(b.contact?.id ?? ""));
+  if (contact !== null) parts.push(contact);
+  const seen = /* @__PURE__ */ new Set();
+  for (const slot2 of WORN_SLOTS) {
+    const w = b.worn?.[slot2];
+    if (!w || seen.has(w.id)) continue;
+    seen.add(w.id);
+    const h2 = hintOf(reg.blockingItems.get(w.id));
+    if (h2 !== null) parts.push(h2);
+  }
+  const activity = hintOf(reg.blockingActivities.get(b.activity ?? ""));
+  if (activity !== null) parts.push(activity);
+  if (b.intimacy !== void 0 && b.intimacy !== "none") parts.push(`intimacy: ${b.intimacy}`);
+  if (b.note !== void 0 && b.note !== "") parts.push(`note: ${b.note}`);
+  if (parts.length === 0) return null;
+  const name = personId === COMMANDER ? "The commander" : state.squad.find((u) => u.id === personId)?.displayName ?? personId;
+  return `${name}: ${parts.join(", ")}.`;
+}
+function registerBlockingContext(builder, deps) {
+  builder.register({
+    id: "blocking",
+    priority: 88,
+    core: true,
+    render: (s) => {
+      const reg = deps.registries();
+      if (!blockingLive(s, reg)) return null;
+      const lines = [...s.scene?.participants ?? [], COMMANDER].map((id) => blockingLine(s, reg, id)).filter((l) => l !== null);
+      return lines.length === 0 ? null : ["[BLOCKING]", ...lines].join("\n");
+    }
+  });
+}
+
+// src/blocking/directives.ts
+var BLOCKING_PREFIX = "blocking:";
+var SPEECH = {
+  muffled: "cannot speak words, only muffled sounds",
+  no_speech: "cannot speak words, only sounds",
+  gestures_only: "can only gesture, not speak",
+  action_only: "can only act, not speak",
+  no_hands: "cannot use the hands"
+};
+var garbled = (strength) => strength === 3 ? "cannot be understood: every word comes out garbled" : strength === 2 ? "is badly garbled when speaking" : "is garbled when speaking";
+var MOVEMENT = {
+  none: "cannot move: held in place",
+  limited: "has limited movement",
+  crawl: "can only crawl",
+  follows: "can only stay at her side, led"
+};
+function limitWords(effects2) {
+  const out = [];
+  for (const e of effects2) {
+    if (e.type === "input") out.push(e.limit === "garbled" ? garbled(e.strength) : SPEECH[e.limit] ?? "");
+    else if (e.type === "mobility") out.push(MOVEMENT[e.level] ?? "");
+  }
+  return [...new Set(out.filter((w) => w !== ""))];
+}
+function limitSentences(state, reg) {
+  const out = [];
+  for (const id of [...state.scene?.participants ?? [], COMMANDER]) {
+    const words3 = limitWords(personEffects(state, reg, id));
+    if (words3.length === 0) continue;
+    const name = id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
+    out.push(`${name} ${words3.length === 1 ? words3[0] : `${words3.slice(0, -1).join(", ")} and ${words3[words3.length - 1]}`}.`);
+  }
+  return out;
+}
+var POV_TEXT = "Narrate only what the commander can hear, feel and smell; do not describe how anyone looks.";
+function refreshBlockingDirectives(builder, state, reg) {
+  const live = state !== null && blockingLive(state, reg);
+  const sentences = live ? limitSentences(state, reg) : [];
+  if (sentences.length > 0) builder.setDirective({ id: `${BLOCKING_PREFIX}scene`, text: sentences.join(" "), expiresAfter: "manual" });
+  else builder.clearDirective(`${BLOCKING_PREFIX}scene`);
+  const commander = live ? personEffects(state, reg, COMMANDER) : [];
+  const blind = commander.some((e) => e.type === "perception" && e.others === "obscured" || e.type === "camera" && e.mode === "pov_dark");
+  if (blind) builder.setDirective({ id: `${BLOCKING_PREFIX}pov`, text: POV_TEXT, expiresAfter: "manual" });
+  else builder.clearDirective(`${BLOCKING_PREFIX}pov`);
+}
+function clearBlockingDirectives(builder) {
+  builder.clearMatching((d) => d.id.startsWith(BLOCKING_PREFIX));
+}
+
 // src/llm/calls/emotionPick.ts
 var EmotionSchema = external_exports.object({ label: external_exports.string() }).strip();
 registerCallType({
@@ -37210,7 +37306,7 @@ function createSceneController(deps) {
       clearSceneDirectives(app.context);
       app.context.clearDirective("night");
       const now = state();
-      app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:"));
+      app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:") || d.id.startsWith("blocking:"));
       app.refreshContext();
       const living2 = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
       try {
@@ -49603,7 +49699,9 @@ function createApp(st, deps) {
       refreshPersonalDirectives(context, state, registries);
       refreshSpecialDirectives(context, state, registries);
       refreshLifeDirectives(context, state, registries);
+      refreshBlockingDirectives(context, state, registries);
     } else {
+      clearBlockingDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -49616,6 +49714,7 @@ function createApp(st, deps) {
   }
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerBlockingContext(context, { registries: () => registries });
   registerDevelopmentContext(context, { registries: () => registries });
   registerMemoryContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldOptionsContext(context, { registries: () => registries });

@@ -98,6 +98,8 @@ import { clearSceneDirectives, registerSceneContext } from './scene/context';
 import { createMemoryController } from './scene/memoryController';
 import { registerMemoryContext } from './scene/memoryContext';
 import { registerDevelopmentContext } from './scene/developmentContext';
+import { registerBlockingContext } from './scene/blockingContext';
+import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
 import { createEnvelope, type Envelope } from './llm/envelope';
@@ -305,7 +307,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       refreshPersonalDirectives(context, state, registries); // P9c: courting, a claim, peeled decor and a booking
       refreshSpecialDirectives(context, state, registries); // P12: a soldier who senses static around the commander
       refreshLifeDirectives(context, state, registries); // P14c: news she has for the commander (a derived `life:` directive, gone once told)
+      refreshBlockingDirectives(context, state, registries); // P15a: the limits and the point of view of the blocking (nothing while it is not live)
     } else {
+      clearBlockingDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -319,6 +323,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerBlockingContext(context, { registries: () => registries }); // P15a: the [BLOCKING] block (scene group, priority 88, core)
   registerDevelopmentContext(context, { registries: () => registries }); // P14b: the since-joining block (memory group, priority 68)
   registerMemoryContext(context, { registries: () => registries, settings: () => getSettings(st) }); // P3b: dossier, journal, facts, promises, recent, DM recap
   registerWorldOptionsContext(context, { registries: () => registries });

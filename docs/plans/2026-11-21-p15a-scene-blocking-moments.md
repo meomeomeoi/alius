@@ -825,17 +825,17 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `blockingLine(state, reg, personId): string | null`; directives `blocking:scene`, `blocking:pov` and `blocking:stop` (R8).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the reference case renders` as two lines: `Rhea: sitting at desk, on comms.` and `The commander: kneeling under the desk, gagged.` (labels from the fixture).
   - `unset fields are not rendered`; a live scene with nothing set → no block.
   - `not live → no block and no directive`.
   - `blocking:scene words input and mobility` and contains no pronoun.
   - `blocking:pov with a blindfold or pov_dark`, and it is gone when removed.
   - `the provider is core and keeps its room` when memory fills the cap.
-- [ ] **Step 2: Run** `npx vitest run tests/scene/blockingContext.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the [BLOCKING] block and its directives`
+- [x] **Step 2: Run** `npx vitest run tests/scene/blockingContext.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the [BLOCKING] block and its directives`
 
 ---
 
