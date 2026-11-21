@@ -8,12 +8,13 @@ import { TUNING } from '../tuning';
 
 /**
  * Takes back what changed after chat index `index`: the blocking (and the moments) go back to the state before the oldest change made
- * after it, and the log from there on is dropped. Returns whether anything was rolled back. Never touches physics (plan R7).
+ * after it, and the log from there on is dropped. Returns whether anything was rolled back. Never touches physics (plan R7): while a hold runs nothing is taken back, so the run never loses its contact.
  */
 export function rollbackAfter(draft: CampaignState, index: number): boolean {
   const scene = draft.scene;
   const log = scene?.stagingLog;
   if (!scene || !log) return false;
+  if (scene.physics) return false; // a hold is never rolled back, and what it stands on (its contact, its item) stays with it
   const i = log.findIndex((e) => e.at > index);
   if (i < 0) return false;
   const snap = log[i]!;

@@ -210,5 +210,21 @@ describe('life:pastime: drops only the words that were set as blocking activitie
 });
 
 describe('swipe during a hold keeps the run', () => {
-  it.todo('completed in Task 21');
+  it('while a physics runs nothing is rolled back: the contact it stands on stays, and so does the log', () => {
+    registerFrameReader(() => 'play');
+    const s = campaign(reg, 4);
+    setRelation(s, ANN, { stateId: 'confidant' });
+    s.content = { enabled: ['worship', 'restraint'] };
+    const started = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    setBlocking(started, { registries: reg }, { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER }, { at: 5, source: 'chip' });
+    expect(started.scene!.physics).toBeDefined();
+    const before = structuredClone(started);
+    expect(rollbackAfter(started, 2)).toBe(false);
+    expect(started).toEqual(before);
+    // without a run the same swipe takes the contact back
+    const quiet = structuredClone(before);
+    delete quiet.scene!.physics;
+    expect(rollbackAfter(quiet, 2)).toBe(true);
+    expect(quiet.scene!.blocking).toBeUndefined();
+  });
 });

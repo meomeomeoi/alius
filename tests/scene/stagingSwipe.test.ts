@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
-import { COMMANDER } from '../../src/engine/blocking';
+import { COMMANDER, registerFrameReader } from '../../src/engine/blocking';
 import { DEBUG_NOT_ROLLED_BACK } from '../../src/scene/sceneController';
 import { ANN, harness, intentJson, praised, reply, type Harness } from '../helpers/sceneHarness';
 import { loadCore } from '../helpers/world';
@@ -117,5 +117,37 @@ describe('a swipe takes back what was staged after the reply (R7)', () => {
 });
 
 describe('a swipe during a hold keeps the run', () => {
-  it.todo('completed in Task 21 (physics is never rolled back)');
+  it('the last reply swiped: the run, its contact and what was read all stay, and the debug line says so', async () => {
+    registerFrameReader(() => 'play');
+    const h = await setup({ debug: true });
+    const s0 = structuredClone(h.state());
+    s0.content = { enabled: ['worship', 'restraint'] };
+    h.set(s0);
+    h.st.mainReplies = [intentJson([praised()]), intentJson()];
+    await h.controller.send('Hello');
+    h.controller.stage({ type: 'blocking/set', payload: { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER } });
+    const run = structuredClone(h.state().scene!.physics);
+    expect(run).toBeDefined();
+    const affinity = h.state().relations[ANN]!.affinity;
+    await h.st.swipeLast('right');
+    await h.controller.idle();
+    expect(h.state().scene!.physics).toEqual(run);
+    expect(blocking(h)![COMMANDER]!.contact?.id).toBe('smothered_armpit');
+    expect(h.state().relations[ANN]!.affinity).toBe(affinity); // the reading came with the run and stays
+    expect(h.toasts.some((t) => t.text === DEBUG_NOT_ROLLED_BACK)).toBe(true);
+  });
+
+  it('an older reply swiped: the staging log is not rolled back either', async () => {
+    registerFrameReader(() => 'play');
+    const h = await setup({ intentMode: 'scene_end' });
+    const s0 = structuredClone(h.state());
+    s0.content = { enabled: ['worship', 'restraint'] };
+    h.set(s0);
+    await h.controller.send('Hello');
+    h.controller.stage({ type: 'blocking/set', payload: { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER, at: 6 } });
+    h.controller.onSwipe(2);
+    expect(h.state().scene!.physics).toBeDefined();
+    expect(blocking(h)![COMMANDER]!.contact?.id).toBe('smothered_armpit');
+    expect(h.state().scene!.stagingLog).toHaveLength(1);
+  });
 });

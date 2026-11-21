@@ -136,6 +136,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     head_start_recap: 900,
     development_review: 700,
     opinion_form: 150,
+    physics_cues: 250,
     ping: 100,
   },
   contextTokenCap: 1600,

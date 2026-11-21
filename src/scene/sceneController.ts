@@ -110,6 +110,8 @@ export interface SceneController {
    * rebase point of the last extraction, so that swiping that reply later takes the extraction AND what was staged after it.
    */
   stage(action: Action): EngineEvent[];
+  /** P15a: a reply from the main model is on its way (the physics layer holds the body, and never waits longer than that). */
+  replyPending(): boolean;
   /** After a reload or chat change with an open scene: members, directives and the transcript. */
   resume(): void;
   /** Resolves when background work (a swipe re-extraction) has finished. */
@@ -829,6 +831,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
       }
       handleEdited(index);
     },
+
+    replyPending: () => busyHere(),
 
     stage(action) {
       const p = action.payload;

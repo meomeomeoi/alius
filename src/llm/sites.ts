@@ -88,5 +88,7 @@ declare('setup.head_start_recap', 'head_start_recap', 'world', 'before_commit', 
 declare('development.review', 'development_review', 'world', 'before_commit', 'quiet', 'Character development');
 // her view on a topic is formed once and fixed (a reroll could never succeed: the engine refuses a second opinion)
 declare('opinion.form', 'opinion_form', 'scene', 'none', 'quiet', 'Her opinion');
+// P15a: her cue lines are display text, asked for once when a hold starts (the registry stands in); nothing is worth a reroll
+declare('physics.cues', 'physics_cues', 'scene', 'none', 'quiet', 'Her cues');
 declare('setup.commander_import', 'commander_import', 'setup', 'before_commit', 'none', 'Commander import');
 declare('sys.ping', 'ping', 'sys', 'none', 'none', 'Connection test');

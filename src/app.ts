@@ -103,7 +103,8 @@ import { registerDevelopmentContext } from './scene/developmentContext';
 import { registerBlockingContext } from './scene/blockingContext';
 import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
 import { applyMomentDirectives, clearMomentDirectives } from './blocking/momentDirectives';
-import { applyPhysicsDirectives } from './blocking/physicsDirectives';
+import { applyPhysicsDirectives, clearPhysicsDirectives, refreshPhysicsDirectives } from './blocking/physicsDirectives';
+import { createStaging } from './blocking/controller';
 import { wakeCard } from './ui/scene/wakeCard';
 import { bellsFor, deviceTabLocks, muffled, sceneSettingsPatch } from './blocking/sync';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
@@ -314,9 +315,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       refreshSpecialDirectives(context, state, registries); // P12: a soldier who senses static around the commander
       refreshLifeDirectives(context, state, registries); // P14c: news she has for the commander (a derived `life:` directive, gone once told)
       refreshBlockingDirectives(context, state, registries); // P15a: the limits and the point of view of the blocking (nothing while it is not live)
+      refreshPhysicsDirectives(context, state, registries); // P15a: her rhythm, what she expects and the last stretch of a running hold
     } else {
       clearBlockingDirectives(context);
       clearMomentDirectives(context);
+      clearPhysicsDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -556,6 +559,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onCommanderLine: (text: string) => { life.onCommanderLine(text); }, // P14c: a keyword in the commander's line brings a topic up (her opinions)
   };
   const scene = createSceneController(sceneDeps);
+  // P15a: the real-time layer of the contact physics: its segments run on their own clock and never wait for the model
+  const staging = createStaging({
+    app: sceneApp, registries: () => registries, settings: () => getSettings(st), generations,
+    scene: { replyPending: () => scene.replyPending(), end: () => scene.end() },
+    now: () => Date.now(), toast: (kind, text) => toast(kind, text),
+  });
+  const stagingClock = setInterval(() => staging.tick(Date.now()), 250) as unknown as { unref?: () => void };
+  stagingClock.unref?.(); // never keeps a process alive on its own
   const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k), onReply: (u, t) => personal.onReply(u, t) } });
   const worldDeps = {
     st,
@@ -838,6 +849,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_deserted') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} HAS DESERTED`);
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
+      staging.onEvents(events); // P15a: a hold that starts asks for her cues and gets its first segment; a blackout ends the scene
       if (applyMomentDirectives(context, events, state, registries) || applyPhysicsDirectives(context, events, state, registries)) applyContext(); // P15a: the tension of a moment, or what the commander chose, for her next reply
       discipline.onEvents(events);
       bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
@@ -2626,7 +2638,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           expedition.cancelPlan();
           seenOffers.clear();
           generations.clearSnapshots(); // a revert snapshot belongs to one campaign
+          staging.reset(); // P15a: a hold's clock, inputs and cue pool belong to one chat
           openCampaign();
+          staging.resume();
           shell.refresh();
         });
         st.on('message_received', () => {

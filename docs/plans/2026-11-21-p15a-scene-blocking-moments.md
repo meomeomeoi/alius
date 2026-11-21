@@ -1249,7 +1249,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `StagingController = { onEvents(events), tick(nowMs), reset(), idle() }`;
   - `physics:<id>`: her rhythm in words (from the style: "even", "counts", "teases"), what she expects (`holdsUntil` in words), the last segment summary (windows caught or missed, a gasp, a slip, noise), and the stimulus stage word. **No line states what the commander feels** (a word-list test for "feel", "want", "love", "enjoy", "ashamed" and "afraid" next to "the commander").
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `cues: valid, cut, fallback`: a hostile answer → fallback lines by `fnv1a`; missing kinds filled from the registry.
   - `the site is declared` (registry test).
   - `slow and fast model, same outcome`: two harness runs of the same seed, one answering at once and one after three segments, end deep-equal in `scene.physics`, `commander.endurance` and `state.rng`.
@@ -1257,10 +1257,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `silent use runs back to back` (`talkativeness: 'silent'` → no wait for a reply).
   - `swipe during a hold keeps the run` (completes Task 8's todo).
   - `the directive never states a feeling`.
-- [ ] **Step 2: Run** `npx vitest run tests/llm/physicsCues.test.ts tests/blocking/latency.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The controller's clock is injected (`now()` and `setTimeout` from deps) so the tests drive it.
-- [ ] **Step 4: Run** both files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): her cue pool, the physics directive and the latency rule`
+- [x] **Step 2: Run** `npx vitest run tests/llm/physicsCues.test.ts tests/blocking/latency.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The controller's clock is injected (`now()` and `setTimeout` from deps) so the tests drive it.
+- [x] **Step 4: Run** both files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): her cue pool, the physics directive and the latency rule`
 
 ---
 
