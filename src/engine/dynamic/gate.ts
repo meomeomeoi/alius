@@ -64,18 +64,20 @@ export function holdersAtPlay(state: Pick<CampaignState, 'relations' | 'squad'>)
 
 /**
  * Why a unit may not hold (R2), or `null` when she may: the dynamic is off, she has no profile, the setup says no, she has no inclination
- * (unless seeded, or the setup says `yes`), no category she would lead in, a lead style too weak for her Impunity, or the cap is reached. `ignoreCap` leaves the
- * last one out (a seed and a unit that already holds are not turned away by it). Reads only; draws nothing.
+ * (unless seeded, or the setup says `yes`), no category she would lead in, a lead style too weak for her Impunity, an aftermath of hers still running (a
+ * former holder is brought back only by the return she is offered, never by a probe or a first yes), or the cap is reached. `ignoreCap` leaves the
+ * cap out (a seed and a unit that already holds are not turned away by it) and `ignoreAftermath` her running aftermath (the return she is offered ends it). Reads only; draws nothing.
  */
-export function canHold(state: CampaignState, reg: Registries, unitId: string, opts: { ignoreCap?: boolean } = {}): string | null {
+export function canHold(state: CampaignState, reg: Registries, unitId: string, opts: { ignoreCap?: boolean; ignoreAftermath?: boolean } = {}): string | null {
   return holdReason(state, reg, unitId, { ...opts, seeded: state.dynamic?.setup.units[unitId]?.seeded === true });
 }
 
 /** `canHold` with the seed decided by the caller (the setup checks a unit it is about to seed). */
-export function holdReason(state: CampaignState, reg: Registries, unitId: string, opts: { ignoreCap?: boolean; seeded: boolean }): string | null {
+export function holdReason(state: CampaignState, reg: Registries, unitId: string, opts: { ignoreCap?: boolean; ignoreAftermath?: boolean; seeded: boolean }): string | null {
   if (!dynamicOn(state, reg)) return 'the dynamic is off';
   const view = practiceOf(state, reg, unitId);
   if (view === null) return 'she has no practice profile';
+  if (opts.ignoreAftermath !== true && state.relations[unitId]?.dynamic?.aftermath !== undefined) return 'her aftermath is still running'; // only the return (`rekindle`) brings her back during it (review M8)
   const unit = state.squad.find((u) => u.id === unitId)!;
   const may = mayHoldOf(state, unitId);
   if (may === 'no') return 'the setup says she may not hold';

@@ -4,7 +4,10 @@ import type { AnalyzeEnv } from '../../../src/analysis/model';
 import { registerCoreProviders } from '../../../src/analysis/providers/core';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
-import { aftermathDayStep, answerReturn, commandStruggleOf, countStruggleVote, resetAftermathReaders, startAftermath } from '../../../src/engine/dynamic/aftermath';
+import { canHold } from '../../../src/engine/dynamic/gate';
+import { milestonesDue } from '../../../src/engine/dynamic/milestones';
+import { probeDayStep } from '../../../src/engine/dynamic/probes';
+import { aftermathDayStep, answerReturn, endAftermath, commandStruggleOf, countStruggleVote, resetAftermathReaders, startAftermath } from '../../../src/engine/dynamic/aftermath';
 import { holderSource } from '../../../src/engine/dynamic/command';
 import { addHold } from '../../../src/engine/dynamic/hold';
 import { exitDynamic } from '../../../src/engine/dynamic/exit';
@@ -60,6 +63,41 @@ function left(primary: ProfileStyle = 'cold', formerFrame: Frame = 'role'): Camp
   return s;
 }
 const openVote = (s: CampaignState, subject = 'workshop') => run(s, reg, { type: 'vote/open', payload: { kind: 'upgrade', subject } });
+
+describe('a former holder does not come back on her own during her aftermath (M8)', () => {
+  const ready = (): CampaignState => {
+    const s = left('cold', 'role');
+    dyn(s).hold = 25; // testing: first_yes would be due
+    startAftermath(s, ctxOf(s, reg), ANN, 'grief');
+    return s;
+  };
+
+  it('canHold refuses her while the aftermath runs, and no first_yes or probe comes', () => {
+    const s = ready();
+    expect(canHold(s, reg, ANN)).toMatch(/aftermath/);
+    const events = milestonesDue(s, ctxOf(s, reg), ANN);
+    expect(events.some((e) => e.type === 'milestone_offered')).toBe(false);
+    expect(s.dynamic!.open.milestones).toEqual([]);
+    for (let i = 0; i < 40; i++) {
+      s.day += 1;
+      expect(probeDayStep(s, ctxOf(s, reg)).some((e) => e.type === 'probe_issued' && e.unitId === ANN)).toBe(false);
+      for (const u of s.squad) if (u.id !== ANN && dyn(s, u.id)?.probes) delete dyn(s, u.id)!.probes.lastDay;
+    }
+    expect(dyn(s).probes.pending).toBeUndefined();
+  });
+
+  it('only the return brings her back while it runs; once it has ended she is eligible again', () => {
+    const s = ready();
+    s.dynamic!.open.returnOffer = { id: 'dr0', unitId: ANN, terms: 'lower_band', day: s.day };
+    answerReturn(s, ctxOf(s, reg), 'accept');
+    expect(dyn(s).frame).toBe('play'); // rekindle
+    const over = ready();
+    expect(canHold(over, reg, ANN)).not.toBeNull();
+    endAftermath(over, ANN, 'time');
+    expect(canHold(over, reg, ANN)).toBeNull();
+    expect(milestonesDue(over, ctxOf(over, reg), ANN).some((e) => e.type === 'milestone_offered')).toBe(true);
+  });
+});
 
 describe('command_kept', () => {
   it('command_kept keeps countermand rolling after exit', () => {
@@ -239,6 +277,30 @@ describe('return_offer', () => {
     expect(dyn(p.state).frame).toBe('play');
     expect(dyn(p.state).hold).toBe(40); // keeping
     expect(p.events).toContainEqual({ type: 'refusal_noted', unitId: ANN, what: 'return' });
+  });
+
+  it('accepting lifts her hold like addHold does: the band change is an event (M9)', () => {
+    const p = run(offer('drill'), reg, { type: 'dynamic/answer_return', payload: { answer: 'accept' } });
+    expect(errors(p.events)).toEqual([]);
+    const lifted = p.events.filter((e) => e.type === 'hold_changed' && e.cause === 'return');
+    expect(lifted).toHaveLength(1);
+    expect(p.events).toContainEqual({ type: 'hold_band_changed', unitId: ANN, from: 'testing', to: 'keeping' });
+  });
+
+  it('accepting checks the cap: with the places taken she cannot come back, and nothing changes (M9)', () => {
+    const s = offer('cold');
+    s.dynamic!.setup.holders = 1;
+    s.relations[BEA].dynamic = { ...blankDynamic(s.day), frame: 'play', hold: 45 };
+    const before = structuredClone(s);
+    const r = run(s, reg, { type: 'dynamic/answer_return', payload: { answer: 'accept' } });
+    expect(errors(r.events)).not.toEqual([]);
+    expect(r.state).toEqual(before); // the offer stands, her aftermath runs
+    expect(r.state.dynamic!.open.returnOffer).toBeDefined();
+    expect(() => answerReturn(s, ctxOf(s, reg), 'accept')).toThrow(/cap/);
+    expect(s).toEqual(before); // thrown before anything was touched
+    // refusing is still possible, and with a place free she is taken back
+    delete s.relations[BEA].dynamic;
+    expect(errors(run(s, reg, { type: 'dynamic/answer_return', payload: { answer: 'accept' } }).events)).toEqual([]);
   });
 
   it('refuse ends it with the memory fact', () => {

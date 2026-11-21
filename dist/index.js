@@ -12354,6 +12354,7 @@ function holdReason(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return "the dynamic is off";
   const view = practiceOf(state, reg, unitId);
   if (view === null) return "she has no practice profile";
+  if (opts.ignoreAftermath !== true && state.relations[unitId]?.dynamic?.aftermath !== void 0) return "her aftermath is still running";
   const unit3 = state.squad.find((u) => u.id === unitId);
   const may = mayHoldOf(state, unitId);
   if (may === "no") return "the setup says she may not hold";
@@ -18275,6 +18276,7 @@ function answerClaim(draft, ctx2, claimId, answer) {
       dyn.contest = [];
       return [{ type: "domain_yielded", ...base, submit: true }];
     }
+    dyn.contest = [];
     const events = [{ type: "domain_refused", ...base, submit: true }, ...addHold(draft, ctx2, claim2.unitId, -TUNING.dynamic.milestones.refuseDrop, "refusal")];
     for (const [observer, row3] of Object.entries(draft.dynamic.knowledge)) {
       if (row3[claim2.unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, TUNING.dynamic.contestImpunity, "dynamic_contest"));
@@ -18636,6 +18638,10 @@ function answerReturn(draft, ctx2, answer) {
   const dyn = offer === void 0 ? void 0 : dynamicOf(draft, offer.unitId);
   if (!dynamicOn(draft, reg) || offer === void 0 || unit3 === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("There is no return offer to answer.");
   if (answer !== "accept" && answer !== "refuse") throw new Error("The answer must be accept or refuse.");
+  if (answer === "accept") {
+    const why = canHold(draft, reg, offer.unitId, { ignoreAftermath: true });
+    if (why !== null) throw new Error(`She cannot be taken back now: ${why}.`);
+  }
   delete draft.dynamic.open.returnOffer;
   const events = [];
   if (answer === "refuse") {
@@ -18647,8 +18653,13 @@ function answerReturn(draft, ctx2, answer) {
   if (rekindle !== void 0) events.push(...applyMilestone(draft, ctx2, offer.unitId, rekindle));
   const to = bandMinAt(reg, TUNING.dynamic.returnBand[offer.terms]);
   if (dyn.hold < to) {
-    events.push({ type: "hold_changed", unitId: offer.unitId, from: dyn.hold, to, cause: "return" });
+    const from = dyn.hold;
+    events.push({ type: "hold_changed", unitId: offer.unitId, from, to, cause: "return" });
     dyn.hold = to;
+    const was = holdBandOf(reg, from);
+    const now = holdBandOf(reg, to);
+    if (was !== now) events.push({ type: "hold_band_changed", unitId: offer.unitId, from: was, to: now });
+    events.push(...milestonesDue(draft, ctx2, offer.unitId));
   }
   dyn.lastPracticeDay = draft.day;
   if (offer.terms === "after_punishment") events.push({ type: "refusal_noted", unitId: offer.unitId, what: "return" });
@@ -26854,6 +26865,7 @@ function refuseLikeDemand(draft, ctx2, unitId, opts) {
     targets: [unitId],
     severity: "moderate",
     ...opts.templateId !== void 0 ? { templateId: opts.templateId } : {},
+    ...opts.lapsed === true ? { lapsed: true } : {},
     evidence: opts.evidence,
     confidence: 1
   }, { scale: high ? TUNING.demands.refuseHighMult : 1 });
@@ -26901,7 +26913,7 @@ function answerDemand(draft, ctx2, demandId, answer, opts = {}) {
       confidence: 1
     }));
   } else {
-    events.push(...refuseLikeDemand(draft, ctx2, unit3.id, { templateId: demand.templateId, evidence: "a demand was refused" }));
+    events.push(...refuseLikeDemand(draft, ctx2, unit3.id, { templateId: demand.templateId, evidence: opts.expired === true ? "a demand ran out" : "a demand was refused", lapsed: opts.expired === true }));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit3.id, { type: "broke_promise", actor: "commander", targets: [unit3.id], severity: "moderate", evidence: "an owed demand was refused", confidence: 1 }));
     }
@@ -34486,7 +34498,7 @@ function causeOf(reg, event) {
 function holdFeed(draft, reg, unitId, event, _severity) {
   if (event.actor !== "commander" || !dynamicOn(draft, reg) || dynamicOf(draft, unitId) === void 0) return [];
   if (event.type === "rule_broken" && event.ruleId !== void 0 && rulesOf(draft).some((r) => r.id === event.ruleId && r.lastBrokenDay === draft.day)) return [];
-  if (event.type === "refused_demand") return event.templateId !== void 0 && reg.demandTemplates.get(event.templateId)?.kind === "desire" ? [] : refusalCost(draft, { registries: reg }, unitId, "demand");
+  if (event.type === "refused_demand") return event.lapsed === true || event.templateId !== void 0 && reg.demandTemplates.get(event.templateId)?.kind === "desire" ? [] : refusalCost(draft, { registries: reg }, unitId, "demand");
   const cause = causeOf(reg, event);
   if (cause === null) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);

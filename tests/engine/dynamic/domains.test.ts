@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
+import { refusalCost } from '../../../src/engine/dynamic/milestones';
 import { addHold } from '../../../src/engine/dynamic/hold';
 import { answerClaim, capabilitiesOf, claimsDue, hasCapability, holderWith, loseDomain, settleDomainConflict, yieldPartial } from '../../../src/engine/dynamic/domains';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
@@ -209,6 +210,12 @@ describe('answering a claim', () => {
     expect(dyn(r.state).hold).toBe(60); // 70 - 20 is 50, but the rule frame's floor is 60
     expect(r.events.map((e) => e.type)).toContain('domain_refused');
     expect(r.state.dynamic!.open.claims).toEqual([]);
+    // M2: refusing clears the contest too, so the next refusal or DEFY does not reopen the card at once
+    expect(dyn(r.state).contest).toEqual([]);
+    dyn(r.state).frame = 'rule'; // (the band drop may have cooled her: put her back to count the next refusal at the contest frame)
+    refusalCost(r.state, { registries: reg }, ANN, 'defy');
+    expect(r.state.dynamic!.open.claims).toEqual([]);
+    expect(dyn(r.state).contest).toHaveLength(1);
   });
 });
 

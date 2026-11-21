@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
+import { answerDemand } from '../../../src/engine/discipline/demands';
+import { disciplineOf } from '../../../src/engine/discipline/record';
 import { dynamicDayStep } from '../../../src/engine/dynamic/dayStep';
 import { holdFeed } from '../../../src/engine/dynamic/feed';
 import { addHold } from '../../../src/engine/dynamic/hold';
@@ -326,6 +328,33 @@ describe('the demand refusal goes through refusalCost (M5)', () => {
     expect(dyn(s).refusals).toEqual([]);
     holdFeed(s, reg, ANN, refused({ templateId: 'claim_weapon' }), 'moderate'); // an item demand refused is
     expect(dyn(s).hold).toBe(56);
+  });
+});
+
+describe('an expired demand is nobody\'s choice (M3)', () => {
+  it('the lapse costs her no hold and is not a refusal or a contest', () => {
+    const s = world('rule', 70);
+    holdFeed(s, reg, ANN, { type: 'refused_demand', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'x', confidence: 1, templateId: 'claim_weapon', lapsed: true } as EventIntent, 'moderate');
+    expect(dyn(s).hold).toBe(70);
+    expect(dyn(s).refusals).toEqual([]);
+    expect(dyn(s).contest).toEqual([]);
+  });
+
+  it('through the demand\'s own day step: expiring changes nothing of hers, answering REFUSE does', () => {
+    const open = (): CampaignState => {
+      const s = world('rule', 70);
+      disciplineOf(s).demands.push({ id: 'dm1', unitId: ANN, templateId: 'claim_weapon', text: 'x', day: s.day - 3, expiresDay: s.day, status: 'open', impunityDriven: false });
+      return s;
+    };
+    const expired = open();
+    answerDemand(expired, ctxOf(expired, reg), 'dm1', 'refuse', { expired: true });
+    expect(dyn(expired).hold).toBe(70);
+    expect(dyn(expired).refusals).toEqual([]);
+    expect(dyn(expired).contest).toEqual([]);
+    const refused = open();
+    answerDemand(refused, ctxOf(refused, reg), 'dm1', 'refuse');
+    expect(dyn(refused).hold).toBeLessThan(70);
+    expect(dyn(refused).refusals).toEqual([refused.day]);
   });
 });
 

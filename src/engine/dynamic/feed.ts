@@ -50,8 +50,9 @@ export function holdFeed(draft: CampaignState, reg: Registries, unitId: string, 
   if (event.actor !== 'commander' || !dynamicOn(draft, reg) || dynamicOf(draft, unitId) === undefined) return [];
   // one break of one rule counts once a day: whichever of the engine's check and a report lands second finds it counted (`applyRuleEvent` stamps the day)
   if (event.type === 'rule_broken' && event.ruleId !== undefined && rulesOf(draft).some((r) => r.id === event.ruleId && r.lastBrokenDay === draft.day)) return [];
-  // a refusal costs by her frame (`refusalCost`); a desire demand that is put off is not one (she is asked to wait, not defied: `demands.ts`)
-  if (event.type === 'refused_demand') return event.templateId !== undefined && reg.demandTemplates.get(event.templateId)?.kind === 'desire' ? [] : refusalCost(draft, { registries: reg }, unitId, 'demand');
+  // a refusal costs by her frame (`refusalCost`); a desire demand that is put off, or one that ran out, is not one (she is asked to wait, not defied: `demands.ts`)
+  // a demand that ran out is nobody's choice either (`lapsed`: the day step's refusal)
+  if (event.type === 'refused_demand') return event.lapsed === true || (event.templateId !== undefined && reg.demandTemplates.get(event.templateId)?.kind === 'desire') ? [] : refusalCost(draft, { registries: reg }, unitId, 'demand');
   const cause = causeOf(reg, event);
   if (cause === null) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause as keyof typeof TUNING.dynamic.gains], cause);

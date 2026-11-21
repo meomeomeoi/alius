@@ -234,11 +234,11 @@ function pay(draft: CampaignState, ctx: EngineCtx, unit: Unit, cost: DemandCost)
  * (moderate) at her weight, ×`refuseHighMult` at Impunity 50 or more, where it also holds a moderate defiance; the deed
  * `demands_refused` is counted. Her relationship state is not re-evaluated here (the caller does that once).
  */
-export function refuseLikeDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { templateId?: string; evidence: string }): EngineEvent[] {
+export function refuseLikeDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { templateId?: string; evidence: string; lapsed?: boolean }): EngineEvent[] {
   const high = (impunityOf(draft, ctx.registries, unitId)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
   const events = applyEventToUnit(draft, ctx.registries, unitId, {
     type: 'refused_demand', actor: 'commander', targets: [unitId], severity: 'moderate', ...(opts.templateId !== undefined ? { templateId: opts.templateId } : {}),
-    evidence: opts.evidence, confidence: 1,
+    ...(opts.lapsed === true ? { lapsed: true } : {}), evidence: opts.evidence, confidence: 1,
   } as never, { scale: high ? TUNING.demands.refuseHighMult : 1 });
   countDeed(draft, 'demands_refused');
   if (high) events.push(...holdDefiance(draft, unitId, 'moderate', 'demand'));
@@ -281,7 +281,7 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
       type: 'refused_demand', actor: 'commander', targets: [unit.id], severity: 'moderate', templateId: demand.templateId, evidence: 'a demand was postponed', confidence: 1,
     }));
   } else {
-    events.push(...refuseLikeDemand(draft, ctx, unit.id, { templateId: demand.templateId, evidence: 'a demand was refused' }));
+    events.push(...refuseLikeDemand(draft, ctx, unit.id, { templateId: demand.templateId, evidence: opts.expired === true ? 'a demand ran out' : 'a demand was refused', lapsed: opts.expired === true }));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit.id, { type: 'broke_promise', actor: 'commander', targets: [unit.id], severity: 'moderate', evidence: 'an owed demand was refused', confidence: 1 }));
     }

@@ -168,7 +168,7 @@ const closeClaim = (draft: CampaignState, claimId: string): void => { draft.dyna
  * The commander answers her open claim (`dynamic/answer_claim`): YIELD gives her the domain (a rival holder turns it into a conflict); REFUSE costs
  * by the frame (`refusalCost`), waits `claimCooldownDays` for that domain and takes back a domain she held only by compromise; TALK changes
  * nothing here (the card opens a scene, and a compromise in it is `yieldPartial`). The submit claim (no domain, R1's contest) yields by clearing the contest
- * and, refused, costs a band and raises the Impunity record of every unit who knows the dynamic. Throws for a claim that is not open.
+ * and, refused, clears it too, costs a band and raises the Impunity record of every unit who knows the dynamic. Throws for a claim that is not open.
  */
 export function answerClaim(draft: CampaignState, ctx: Ctx, claimId: string, answer: 'yield' | 'refuse' | 'talk'): EngineEvent[] {
   const reg = ctx.registries;
@@ -183,6 +183,7 @@ export function answerClaim(draft: CampaignState, ctx: Ctx, claimId: string, ans
       dyn.contest = [];
       return [{ type: 'domain_yielded', ...base, submit: true }];
     }
+    dyn.contest = []; // the card was answered: the next refusal or DEFY counts from nothing (review M2)
     const events: EngineEvent[] = [{ type: 'domain_refused', ...base, submit: true }, ...addHold(draft, ctx, claim.unitId, -TUNING.dynamic.milestones.refuseDrop, 'refusal')];
     for (const [observer, row] of Object.entries(draft.dynamic!.knowledge)) {
       if (row[claim.unitId]?.level === 'knows_dynamic') events.push(...addRecord(draft, observer, TUNING.dynamic.contestImpunity, 'dynamic_contest'));

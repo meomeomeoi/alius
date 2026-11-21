@@ -31,8 +31,8 @@ import { effectiveValues } from '../worldOptions/stances';
 import { domainEntry, dropVoidOverride, hasCapability, standing } from './capabilities';
 import { loseDomain } from './domains';
 import { canHold, dynamicOn } from './gate';
-import { addHold, bandMinAt } from './hold';
-import { applyMilestone, nextFreeEvening, rekindleMilestone } from './milestones';
+import { addHold, bandMinAt, holdBandOf } from './hold';
+import { applyMilestone, milestonesDue, nextFreeEvening, rekindleMilestone } from './milestones';
 import { hashedCtx } from './reactions';
 import { dynamicOf, type DynamicRelation, type DynamicUndo } from './state';
 import { commandStruggleOf } from './struggle';
@@ -433,7 +433,7 @@ function successorsDue(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>)
 /**
  * The commander answers her return offer (`dynamic/answer_return`): ACCEPT re-kindles it (`rekindle`: the frame is `play` again) with her hold lifted
  * to the band the terms name (`lower_band`: the second band; `after_punishment`: the third, and `refusal_noted` for P16), and the aftermath ends
- * `returned`; REFUSE ends it `refused` (remembered by the pair). Throws, changing nothing, when no offer is open. Draws nothing.
+ * `returned`; REFUSE ends it `refused` (remembered by the pair). Throws, changing nothing, when no offer is open or, to accept, when she cannot hold now (the cap). Draws nothing.
  */
 export function answerReturn(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, answer: 'accept' | 'refuse'): EngineEvent[] {
   const reg = ctx.registries;
@@ -442,6 +442,10 @@ export function answerReturn(draft: CampaignState, ctx: Pick<EngineCtx, 'registr
   const dyn = offer === undefined ? undefined : dynamicOf(draft, offer.unitId);
   if (!dynamicOn(draft, reg) || offer === undefined || unit === undefined || dyn === undefined || !isLiving(unit)) throw new Error('There is no return offer to answer.');
   if (answer !== 'accept' && answer !== 'refuse') throw new Error('The answer must be accept or refuse.');
+  if (answer === 'accept') {
+    const why = canHold(draft, reg, offer.unitId, { ignoreAftermath: true }); // the cap among the rest: taking her back is a holder at play again (review M9)
+    if (why !== null) throw new Error(`She cannot be taken back now: ${why}.`);
+  }
   delete draft.dynamic!.open.returnOffer;
   const events: EngineEvent[] = [];
   if (answer === 'refuse') {
@@ -453,8 +457,13 @@ export function answerReturn(draft: CampaignState, ctx: Pick<EngineCtx, 'registr
   if (rekindle !== undefined) events.push(...applyMilestone(draft, ctx, offer.unitId, rekindle));
   const to = bandMinAt(reg, TUNING.dynamic.returnBand[offer.terms]);
   if (dyn.hold < to) {
-    events.push({ type: 'hold_changed', unitId: offer.unitId, from: dyn.hold, to, cause: 'return' });
+    const from = dyn.hold;
+    events.push({ type: 'hold_changed', unitId: offer.unitId, from, to, cause: 'return' });
     dyn.hold = to;
+    const was = holdBandOf(reg, from);
+    const now = holdBandOf(reg, to);
+    if (was !== now) events.push({ type: 'hold_band_changed', unitId: offer.unitId, from: was, to: now }); // as `addHold` does across a band
+    events.push(...milestonesDue(draft, ctx, offer.unitId)); // and what the new hold makes due
   }
   dyn.lastPracticeDay = draft.day;
   if (offer.terms === 'after_punishment') events.push({ type: 'refusal_noted', unitId: offer.unitId, what: 'return' });

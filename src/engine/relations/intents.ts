@@ -20,6 +20,8 @@ export interface EventIntent {
   measure?: string;
   /** P9: the demand template of an engine-made `granted_demand` / `refused_demand`. */
   templateId?: string;
+  /** P15: an engine-made `refused_demand` nobody chose (the demand ran out): it costs the holder nothing and is not a refusal of hers. Never set by a model. */
+  lapsed?: true;
   /** P9d: the rule a `rule_kept` / `rule_broken` / `compromise_reached` is about, and the agreed text of a compromise. */
   ruleId?: string;
   text?: string;
