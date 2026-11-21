@@ -3,6 +3,7 @@ import type { Registries } from '../../content/types';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyLifeEvent, pickLifeEvent } from './events';
+import { deliverNews, staleSweep } from './news';
 import { friendHobbies, interestTick, practise, practiceSlots } from './hobbies';
 import { busySlot, takesPart, type DayPlaces } from './places';
 import { ensureLife, lifeMode } from './state';
@@ -65,7 +66,8 @@ export function hobbyPass(draft: CampaignState, reg: Registries, day: number, pl
 /**
  * The day-end step of her life (the `dm_rumors` hook, after development's). It runs for the day that is ending and does nothing while life is
  * off. In order: a shortage noted, the deaths, then for each named soldier at the base (squad order) the life event of her day, the practice
- * of the day, the hobbies friends pass on, and the weekly tick of every hobby (interest, cooling, dropping, decay). The delivery of the news follows in its own task. No rng is drawn.
+ * of the day, the hobbies friends pass on, the weekly tick of every hobby (interest, cooling, dropping, decay), and last the news: what has gone stale, then
+ * what is told today. No rng is drawn.
  */
 export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   if (lifeMode(draft) === 'off') return [];
@@ -83,6 +85,7 @@ export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
     if (entry) events.push(...applyLifeEvent(draft, reg, unit.id, entry, day));
   }
   events.push(...hobbyPass(draft, reg, day, places));
+  events.push(...staleSweep(draft, day), ...deliverNews(draft, reg, day)); // the news last: what the day brought is paced out
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }

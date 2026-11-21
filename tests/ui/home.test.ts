@@ -161,6 +161,13 @@ describe('HOME: the notes', () => {
     expect(host.querySelectorAll('.alius-note').length).toBeGreaterThanOrEqual(5); // + at least one pinned line
   });
 
+  it('a note about her hobby (a note id with no registry entry behind it) is shown like any other', () => {
+    const s = decorated();
+    s.notes = { seq: 1, list: [{ id: 'hn1', unitId: ANN, noteId: 'life:reading', where: 'quarters', text: 'Pencil drawings, pinned over the cot.', day: 5 }] };
+    const { qa } = mount(s);
+    expect(qa('.alius-note .alius-note-body').map((n) => n.textContent)).toContain('Pencil drawings, pinned over the cot.');
+  });
+
   it('[ GOT IT ] on a stored note calls onReadNote; a rule note answers through the rule handlers', () => {
     const s = decorated();
     s.notes = { seq: 1, list: [{ id: 'hn1', unitId: ANN, noteId: 'door_plain', where: 'door', text: 'I came by.', day: 5 }] };

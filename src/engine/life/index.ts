@@ -4,6 +4,6 @@ export {
   aptitudeOf, bumpInterest, breakthrough, decay, friendHobbies, grantMilestone, interestTick, milestoneAt, newHobby, practiceGain, practiceSlots, practise, pushHobby, seedLife, startHobby,
   takeUpHobbies, takeUpHobby,
 } from './hobbies';
-export { enqueue } from './news';
+export { channelFor, closeNews, deliverNews, endSceneNews, enqueue, pendingNews, staleSweep } from './news';
 export { hobbyPass, lifeDayStep, noteBusy } from './dayStep';
 export { UNTOLD_TAG, ensureLife, lifeChance, lifeHash, lifeMode, lifeOf, newLife, nextLifeId, temperamentOf } from './state';

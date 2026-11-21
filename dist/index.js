@@ -748,6 +748,7 @@ var TUNING = Object.freeze({
     shareLowMult: 0.5,
     newsDays: 3,
     staleDays: 7,
+    dmChance: 0.5,
     perDay: Object.freeze({ rare: 0.5, normal: 1, often: 2 }),
     hobbyWeek: 2,
     sameWomanDays: 2,
@@ -1665,15 +1666,15 @@ function capByKind(list5, max) {
   if (list5.length <= max) return list5;
   const counts = /* @__PURE__ */ new Map();
   for (const e of list5) counts.set(kindOf(e), (counts.get(kindOf(e)) ?? 0) + 1);
-  const drop = /* @__PURE__ */ new Set();
+  const drop2 = /* @__PURE__ */ new Set();
   for (let over = list5.length - max; over > 0; over--) {
     let crowded = "";
     for (const [kind, n] of counts) if (crowded === "" || n > (counts.get(crowded) ?? 0)) crowded = kind;
-    const oldest = list5.find((e) => !drop.has(e) && kindOf(e) === crowded);
-    drop.add(oldest);
+    const oldest = list5.find((e) => !drop2.has(e) && kindOf(e) === crowded);
+    drop2.add(oldest);
     counts.set(crowded, (counts.get(crowded) ?? 1) - 1);
   }
-  return list5.filter((e) => !drop.has(e));
+  return list5.filter((e) => !drop2.has(e));
 }
 
 // src/engine/power/state.ts
@@ -9022,8 +9023,8 @@ function pruneClosedPromises(draft) {
   const list5 = draft.memory.promises ?? [];
   const extra = list5.filter((x) => x.status !== "open").length - TUNING.memory.closedPromisesMax;
   if (extra <= 0) return;
-  let drop = extra;
-  draft.memory.promises = list5.filter((x) => !(x.status !== "open" && drop-- > 0));
+  let drop2 = extra;
+  draft.memory.promises = list5.filter((x) => !(x.status !== "open" && drop2-- > 0));
 }
 function openPromises(state, unitIds, viewers = []) {
   return (state.memory.promises ?? []).filter(
@@ -9567,8 +9568,8 @@ function hobbyWeight(state, reg, room2, unit2) {
 function place(state, reg, rooms, unit2) {
   const here = (room2, reason) => room2 ? { unitId: unit2.id, roomId: room2.id, reason } : null;
   if (state.expedition?.party.includes(unit2.id)) return { unitId: unit2.id, roomId: null, reason: "expedition" };
-  const held2 = activeRestrictions(state, unit2.id);
-  const found = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  const held3 = activeRestrictions(state, unit2.id);
+  const found = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held3.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held3.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
   if (found) return found;
   const booked = state.personal?.bookings?.find((b) => b.unitId === unit2.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
   const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
@@ -11709,11 +11710,11 @@ function decayRecords(draft) {
 function holdDefiance(draft, unitId, severity, source, sceneId) {
   if (draft.squad.find((u) => u.id === unitId)?.kind !== "named") return [];
   const list5 = disciplineOf(draft).defiance;
-  const held2 = list5.find((d) => d.unitId === unitId);
+  const held3 = list5.find((d) => d.unitId === unitId);
   const next = { unitId, severity, day: draft.day, source, ...sceneId !== void 0 ? { sceneId } : {} };
-  if (held2) {
-    if (SEVERITIES.indexOf(severity) <= SEVERITIES.indexOf(held2.severity)) return [];
-    list5[list5.indexOf(held2)] = next;
+  if (held3) {
+    if (SEVERITIES.indexOf(severity) <= SEVERITIES.indexOf(held3.severity)) return [];
+    list5[list5.indexOf(held3)] = next;
   } else list5.push(next);
   return [{ type: "defiance_noted", unitId, severity, source }];
 }
@@ -11912,8 +11913,8 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
       break;
     case "commander_yielded": {
       events.push(...addRecord(draft, unitId, TUNING.impunity.yielded[event.severity], "commander_yielded"));
-      const held2 = dropDefiance(draft, unitId);
-      if (held2) events.push(...settleOne(draft, held2));
+      const held3 = dropDefiance(draft, unitId);
+      if (held3) events.push(...settleOne(draft, held3));
       const threat = unitThreat(draft, unitId);
       if (threat) {
         removeThreat(draft, threat.id);
@@ -11982,8 +11983,8 @@ function expireRestrictions(draft) {
 }
 var NEXT = { morning: "afternoon", afternoon: "evening", evening: "morning", night: "morning" };
 function dutySlot(state) {
-  const held2 = state.scene !== void 0 || state.calendar.pendingScene !== void 0;
-  if (!held2) return { day: state.day, slot: state.slot };
+  const held3 = state.scene !== void 0 || state.calendar.pendingScene !== void 0;
+  if (!held3) return { day: state.day, slot: state.slot };
   const slot2 = NEXT[state.slot];
   return { day: slot2 === "morning" ? state.day + 1 : state.day, slot: slot2 };
 }
@@ -13072,13 +13073,13 @@ function writeLifeFact(draft, unitId, text2, tags, importance) {
     hiddenFromCommander: true
   });
 }
-
-// src/engine/life/news.ts
-function enqueue(draft, item) {
-  const life = ensureLife(draft);
-  const queued = { id: nextLifeId(life, "ln"), ...item };
-  life.queue.push(queued);
-  return [{ type: "news_queued", itemId: queued.id, unitId: queued.unitId }];
+function revealFact(draft, factId) {
+  const fact = draft.memory.facts.find((f) => f.id === factId);
+  if (!fact) return false;
+  const was = fact.hiddenFromCommander === true || fact.tags.includes(UNTOLD_TAG);
+  delete fact.hiddenFromCommander;
+  fact.tags = fact.tags.filter((t) => t !== UNTOLD_TAG);
+  return was;
 }
 
 // src/engine/life/places.ts
@@ -13097,6 +13098,98 @@ function placesOf(state, reg, unitId, day, cache) {
   const places = DAY_SLOTS.map((slot2) => whereaboutAt(state, reg, unitId, day, slot2));
   cache?.set(key, places);
   return places;
+}
+
+// src/engine/life/news.ts
+function enqueue(draft, item) {
+  const life = ensureLife(draft);
+  const queued = { id: nextLifeId(life, "ln"), ...item };
+  life.queue.push(queued);
+  return [{ type: "news_queued", itemId: queued.id, unitId: queued.unitId }];
+}
+function traceOf(reg, item) {
+  if (item.kind !== "hobby" || item.milestoneId === void 0) return void 0;
+  const entry = reg.hobbies.get(item.ref);
+  return entry?.milestones.find((m) => m.id === item.milestoneId)?.trace;
+}
+function channelFor(state, reg, item) {
+  if (traceOf(reg, item) === "note") return "note";
+  if (state.settings.unitDms !== true || !state.life) return "directive";
+  if (temperamentOf(state, item.unitId).talkativeness === "talkative") return "dm";
+  const close = (state.relations[item.unitId]?.affinity ?? 0) >= TUNING.life.shareAffinity;
+  return close && lifeChance(state.life, `${item.id}|dm`, TUNING.life.dmChance) ? "dm" : "directive";
+}
+var held = (life) => /* @__PURE__ */ new Set([...life.outbox.map((o) => o.itemId), ...life.news.map((n) => n.itemId)]);
+function perDayCap(draft, day) {
+  const mode = lifeMode(draft);
+  if (mode === "off") return 0;
+  const per = TUNING.life.perDay[mode];
+  return per >= 1 ? per : day % Math.round(1 / per) === 1 ? 1 : 0;
+}
+function drop(life, itemId, unitId) {
+  life.news = life.news.filter((n) => n.itemId !== itemId);
+  life.queue = life.queue.filter((q) => q.id !== itemId);
+  return [{ type: "news_stale", itemId, unitId }];
+}
+function staleSweep(draft, day) {
+  const life = draft.life;
+  if (!life || lifeMode(draft) === "off") return [];
+  const events = [];
+  for (const n of [...life.news]) if (day >= n.until) events.push(...drop(life, n.itemId, n.unitId));
+  const standing = held(life);
+  for (const item of life.queue) {
+    if (standing.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
+    life.news.push({ itemId: item.id, unitId: item.unitId, until: day + TUNING.life.newsDays, passing: true });
+  }
+  return events;
+}
+function endSceneNews(draft, unitIds) {
+  const life = draft.life;
+  if (!life || life.news.length === 0) return [];
+  const events = [];
+  for (const n of [...life.news]) if (unitIds.includes(n.unitId)) events.push(...drop(life, n.itemId, n.unitId));
+  return events;
+}
+function deliver(draft, reg, life, item, day) {
+  const channel = channelFor(draft, reg, item);
+  if (channel === "directive") life.news.push({ itemId: item.id, unitId: item.unitId, until: day + TUNING.life.newsDays });
+  else life.outbox.push({ itemId: item.id, unitId: item.unitId, channel, day });
+  life.delivered.push({ day, unitId: item.unitId, category: item.category, hobby: item.kind === "hobby" });
+  return [{ type: "news_delivered", itemId: item.id, unitId: item.unitId, channel }];
+}
+function deliverNews(draft, reg, day) {
+  const life = draft.life;
+  if (!life || lifeMode(draft) === "off") return [];
+  life.delivered = life.delivered.filter((r) => day - r.day < TUNING.life.deliveredKeep);
+  const t = TUNING.life;
+  const events = [];
+  const inQueue = () => {
+    const standing = held(life);
+    return life.queue.filter((i) => !standing.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
+  };
+  const told = () => life.delivered.filter((r) => r.caused !== true);
+  const lastIndex = (category) => told().map((r) => r.category).lastIndexOf(category);
+  const order = (a, b) => Number(b.notable === true) - Number(a.notable === true) || a.day - b.day || lastIndex(a.category) - lastIndex(b.category) || lifeHash(life, a.id) - lifeHash(life, b.id);
+  for (const item of inQueue().filter((i) => i.urgent === true).sort(order)) events.push(...deliver(draft, reg, life, item, day));
+  const cap7 = perDayCap(draft, day);
+  for (; ; ) {
+    if (told().filter((r) => r.day === day).length >= cap7) break;
+    const last = told().at(-1);
+    const pick2 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
+    if (!pick2) break;
+    events.push(...deliver(draft, reg, life, pick2, day));
+  }
+  return events;
+}
+function closeNews(draft, itemId) {
+  const life = draft.life;
+  const item = life?.queue.find((q) => q.id === itemId);
+  if (!life || !item) return [];
+  if (item.factId !== void 0) revealFact(draft, item.factId);
+  life.queue = life.queue.filter((q) => q.id !== itemId);
+  life.outbox = life.outbox.filter((o) => o.itemId !== itemId);
+  life.news = life.news.filter((n) => n.itemId !== itemId);
+  return [{ type: "life_noted", unitId: item.unitId, itemId }];
 }
 
 // src/engine/life/hobbies.ts
@@ -20879,8 +20972,8 @@ function checkExpedition(state, reg, p) {
     if (!isLiving(u) || u.status !== "active") return `${u.displayName} is not available (${u.status}).`;
     if (u.breakdown) return `${u.displayName} is in a breakdown.`;
     if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
-    const held2 = restrictionReason(state, id, "expedition");
-    if (held2) return held2;
+    const held3 = restrictionReason(state, id, "expedition");
+    if (held3) return held3;
   }
   const formation = formationProblem(ids, p.formation);
   if (formation) return formation;
@@ -24442,6 +24535,7 @@ function lifeDayStep(draft, ctx2) {
     if (entry) events.push(...applyLifeEvent(draft, reg, unit2.id, entry, day));
   }
   events.push(...hobbyPass(draft, reg, day, places));
+  events.push(...staleSweep(draft, day), ...deliverNews(draft, reg, day));
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }
@@ -24486,8 +24580,8 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === "grunt") throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
-    const held2 = origin === "night" ? null : restrictionReason(draft, id, "scene");
-    if (held2) throw new Error(held2);
+    const held3 = origin === "night" ? null : restrictionReason(draft, id, "scene");
+    if (held3) throw new Error(held3);
   }
   const participants = ids;
   const pending4 = draft.calendar.pendingScene;
@@ -24613,6 +24707,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...expireSceneProposals(draft, scene.participants));
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id));
+  events.push(...endSceneNews(draft, scene.participants));
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
@@ -24969,6 +25064,12 @@ function leaveNote(draft, unit2, entry) {
   capNotes(draft);
   return [{ type: "note_left", unitId: unit2.id, noteId: note.noteId, where: note.where }];
 }
+function leaveLifeNote(draft, unit2, text2, hobbyId) {
+  const note = { id: nextNoteId(draft), unitId: unit2.id, noteId: `life:${hobbyId}`, where: "quarters", text: text2, day: draft.day };
+  notesOf(draft).list.push(note);
+  capNotes(draft);
+  return [{ type: "note_left", unitId: unit2.id, noteId: note.noteId, where: note.where }];
+}
 function writeDoorNote(draft, reg, unitId) {
   const unit2 = namedLiving8(draft, unitId);
   if (!unit2) return [];
@@ -25130,12 +25231,15 @@ registerAction("dm/receive", (draft, payload, ctx2) => {
   const unit2 = namedUnit(draft, payload.unitId);
   const text2 = textOf(payload.text);
   const initiated = payload.initiated === true;
+  const lifeItemId = payload.lifeItemId;
+  if (lifeItemId !== void 0 && !(draft.life?.outbox ?? []).some((o) => o.itemId === lifeItemId && o.unitId === unit2.id && o.channel === "dm")) throw new Error("Already told.");
   if (payload.mode !== void 0 && payload.mode !== "curt") throw new Error("dm/receive: mode can only be 'curt'.");
   const msg = pushMessage(draft, unit2.id, { from: unit2.id, text: text2, day: draft.day, slot: draft.slot, read: false, ...initiated ? { initiated: true } : {} });
   const stamped = stampBehaviours(draft, ctx2.registries, unit2.id, msg, { curt: payload.mode === "curt" });
   if (stamped.length > 0) msg.behaviours = stamped;
   const heard = rollIntercepts(draft, ctx2, [unit2.id], { private: false, dm: true });
-  return [{ type: "dm_received", unitId: unit2.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit2.id), ...heard];
+  const told = lifeItemId === void 0 ? [] : closeNews(draft, String(lifeItemId));
+  return [{ type: "dm_received", unitId: unit2.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit2.id), ...heard, ...told];
 });
 registerAction("dm/read", (draft, payload) => {
   if (!isObj14(payload)) throw new Error("dm/read needs { unitId }");
@@ -27254,9 +27358,9 @@ registerAction("development/hold", (draft, payload) => {
   if (!unit2 || unit2.kind !== "named") throw new Error("Only a named soldier can be held.");
   if (typeof p?.axis !== "string" || axisKind(p.axis) === null || typeof p.on !== "boolean") throw new Error("development/hold needs { unitId, axis, on }.");
   const dev = ensureDevelopment(unit2);
-  const held2 = (dev.held ?? []).filter((a) => a !== p.axis);
-  if (p.on) held2.push(p.axis);
-  if (held2.length > 0) dev.held = held2;
+  const held3 = (dev.held ?? []).filter((a) => a !== p.axis);
+  if (p.on) held3.push(p.axis);
+  if (held3.length > 0) dev.held = held3;
   else delete dev.held;
   return [];
 });
@@ -27364,6 +27468,32 @@ registerAction("profile/set_opinion", (draft, payload, ctx2) => {
   delete next.push;
   opinions[topic.id] = next;
   return [{ type: "opinion_set", unitId: unit2.id, topicId: topic.id, position: next.position }];
+});
+registerAction("campaign/set_unit_dms", (draft, payload) => {
+  const on = payload?.on;
+  if (typeof on !== "boolean") throw new Error("campaign/set_unit_dms needs { on } as true or false");
+  draft.settings.unitDms = on;
+  return [];
+});
+var TRACE_NOTE_MAX = 400;
+function outboxItem(draft, itemId, channel) {
+  const entry = draft.life?.outbox.find((o) => o.itemId === itemId);
+  if (!entry || entry.channel !== channel) throw new Error("Already told.");
+  return { entry, item: draft.life.queue.find((q) => q.id === itemId) };
+}
+registerAction("life/share_done", (draft, payload, ctx2) => {
+  const p = payload;
+  const { entry } = outboxItem(draft, p?.itemId, "dm");
+  return runHandler("dm/receive", draft, { unitId: entry.unitId, text: p?.text, initiated: true, lifeItemId: entry.itemId }, ctx2);
+});
+registerAction("life/trace_note", (draft, payload) => {
+  const p = payload;
+  const { entry, item } = outboxItem(draft, p?.itemId, "note");
+  const unit2 = draft.squad.find((u) => u.id === entry.unitId);
+  const text2 = typeof p?.text === "string" ? p.text.trim() : "";
+  if (!unit2 || unit2.kind !== "named") throw new Error("life/trace_note needs a named soldier.");
+  if (text2 === "" || text2.length > TRACE_NOTE_MAX) throw new Error(`A note is 1 to ${TRACE_NOTE_MAX} characters.`);
+  return [...leaveLifeNote(draft, unit2, text2, item?.ref ?? "hobby"), ...closeNews(draft, entry.itemId)];
 });
 
 // src/llm/callTypes.ts
@@ -28291,7 +28421,7 @@ function createPower(deps) {
     return true;
   }
   const overrule = (voteId, means, punish) => send({ type: "vote/overrule", payload: { voteId, means, ...punish !== void 0 ? { punish } : {} } }, chatId());
-  const drop = (voteId) => send({ type: "vote/drop", payload: { voteId } }, chatId());
+  const drop2 = (voteId) => send({ type: "vote/drop", payload: { voteId } }, chatId());
   let voting = false;
   async function requestVote(action) {
     if (voting) {
@@ -28332,10 +28462,10 @@ function createPower(deps) {
     if (answer.choice === "carry" && read.status === "passed") return rerun();
     if (answer.choice === "overrule") {
       if (overrule(opened.id, answer.means, answer.punish)) return rerun();
-      drop(opened.id);
+      drop2(opened.id);
       return "cancelled";
     }
-    drop(opened.id);
+    drop2(opened.id);
     return answer.choice === "accept" ? "dropped" : "cancelled";
   }
   const nameOf16 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? String(id);
@@ -28409,7 +28539,7 @@ function createPower(deps) {
     askFirst,
     requestVote,
     overrule,
-    drop,
+    drop: drop2,
     ballotLines
   };
 }
@@ -29162,9 +29292,9 @@ function createOnboarding(deps) {
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== "scene" || step.perUnit !== true || s.scene) return false;
       if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
-      const held2 = restrictionReason(s, unitId, "scene");
-      if (held2) {
-        deps.toast("warn", held2);
+      const held3 = restrictionReason(s, unitId, "scene");
+      if (held3) {
+        deps.toast("warn", held3);
         return false;
       }
       return open3(step, [unitId]);
@@ -30304,9 +30434,9 @@ function renderVotePanel(host, vote, lines, ctx2) {
   if (vote.status === "passed") {
     actions.push(act("carry", "[ CARRY OUT ]", ctx2.onCarry));
     if (against !== null) {
-      const drop = act("drop", "[ DROP ]", ctx2.onDrop);
-      markPick(drop);
-      actions.push(drop, defiesHint(against));
+      const drop2 = act("drop", "[ DROP ]", ctx2.onDrop);
+      markPick(drop2);
+      actions.push(drop2, defiesHint(against));
     }
   } else if (vote.status === "failed") {
     const leashed = state.leash.authorizationsLeft < 1;
@@ -30838,14 +30968,14 @@ function renderOnboardingCard(host, ctx2) {
     const spoken = new Set(state.onboarding?.spoken ?? []);
     body.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
       const done = spoken.has(u.id);
-      const held2 = restrictionReason(state, u.id, "scene");
+      const held3 = restrictionReason(state, u.id, "scene");
       return h(
         "li",
         { class: "alius-onboarding-unit", "data-unit": u.id },
         h("span", { class: "alius-onboarding-name" }, `${done ? "\u2713 " : ""}${u.displayName}`),
-        done ? null : button("[ TALK ]", "talk", address, () => void controller.talkFirstWords(u.id), held2 ?? scene !== void 0),
+        done ? null : button("[ TALK ]", "talk", address, () => void controller.talkFirstWords(u.id), held3 ?? scene !== void 0),
         done ? null : button("[ SKIP ]", "skip-unit", address, () => controller.skipFirstWords(u.id)),
-        held2 && !done ? h("span", { class: "alius-dim alius-reason" }, held2) : null
+        held3 && !done ? h("span", { class: "alius-dim alius-reason" }, held3) : null
       );
     })));
     body.append(h("div", { class: "alius-row" }, skip()));
@@ -30933,8 +31063,8 @@ function fullOpenRecords(state) {
   return (state.generations?.records ?? []).filter((r) => r.status === "open" && sites.get(r.siteId)?.record === "full");
 }
 var GLOSSARY = "generation_failed";
-function declare(id, callType, surface, reroll, record, label2, held2) {
-  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label2, ...held2 ? { held: held2 } : {} });
+function declare(id, callType, surface, reroll, record, label2, held3) {
+  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label2, ...held3 ? { held: held3 } : {} });
 }
 declare("scene.intents", "intent_extract", "scene", "revert", "full", "Scene reading");
 declare("scene.summary", "scene_summary", "day", "revert", "full", "Scene summary");
@@ -31075,7 +31205,7 @@ function drawRecordChip(host, ui, state, rec, opts = {}) {
   const set = ui.settings();
   const base = site ? Math.ceil((set.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
   const text2 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set.llmTimeoutMs, expiredWhy: rec.expiredWhy });
-  const held2 = site?.held === true;
+  const held3 = site?.held === true;
   const retry = (opts2) => runPending(ui, rec.id, async () => {
     await ui.generations.retry(rec.id, opts2);
   });
@@ -31085,13 +31215,13 @@ function drawRecordChip(host, ui, state, rec, opts = {}) {
     pending: isPending(rec.id),
     showDrop: opts.showDrop,
     onRetry: () => retry(),
-    onMenu: () => void retryMenuFor(ui, held2).then((choice) => {
+    onMenu: () => void retryMenuFor(ui, held3).then((choice) => {
       if (choice === null) return;
       if (choice === "drop") ui.generations.drop(rec.id);
       else if (choice === "fallback") runPending(ui, rec.id, () => ui.generations.useFallback(rec.id));
       else retry(choice);
     }),
-    ...held2 && rec.status === "open" ? { onUseFallback: () => runPending(ui, rec.id, () => ui.generations.useFallback(rec.id)) } : {},
+    ...held3 && rec.status === "open" ? { onUseFallback: () => runPending(ui, rec.id, () => ui.generations.useFallback(rec.id)) } : {},
     onDrop: () => ui.generations.drop(rec.id)
   });
 }
@@ -31110,8 +31240,8 @@ function drawSiteReroll(host, ui, siteId, key, run, stateOf) {
     if (out && typeof out === "object" && out.kind === "expired") ui.toast("warn", String(out.why ?? "This can no longer be rerolled."));
   }), isPending(id));
 }
-function retryMenuFor(ui, held2) {
-  return openRetryMenu((o) => ui.modal(o), { hasMechanic: ui.settings().mechanicProfileId !== "", hasFallback: held2 });
+function retryMenuFor(ui, held3) {
+  return openRetryMenu((o) => ui.modal(o), { hasMechanic: ui.settings().mechanicProfileId !== "", hasFallback: held3 });
 }
 
 // src/ui/warden/endScreen.ts
@@ -43171,7 +43301,7 @@ function resetDoor() {
   clocks.clear();
   drafts2.clear();
 }
-function held(entry, input) {
+function held2(entry, input) {
   if (pending3.has(entry.id) || document.hidden) return true;
   if (document.querySelector(".alius-modal-backdrop") || document.querySelector(".alius-analyze")) return true;
   return input !== null && (input.value !== "" || document.activeElement === input);
@@ -43299,7 +43429,7 @@ function renderDoor(host, ctx2) {
   running.set(host, stop);
   handle = setInterval(() => {
     if (!host.isConnected || used) return stop();
-    if (held(entry, input)) return;
+    if (held2(entry, input)) return;
     clock.remaining = Math.max(0, clock.remaining - TICK_MS / 1e3);
     paint();
     if (!said10 && clock.remaining <= 10) {
@@ -44189,10 +44319,10 @@ function punishmentProvider(subject, env, k) {
 }
 function reputationProvider(subject, env, k) {
   const state = env.state;
-  const held2 = state?.commander.reputation?.active.find((a) => a.id === subject.id);
+  const held3 = state?.commander.reputation?.active.find((a) => a.id === subject.id);
   const entry = env.registries.reputations.get(subject.id);
-  if (!state || !held2 || !entry) return null;
-  const lines = [`Held since day ${held2.sinceDay}`];
+  if (!state || !held3 || !entry) return null;
+  const lines = [`Held since day ${held3.sinceDay}`];
   const p = entry.pattern;
   if (p && k.showRaw) {
     const deeds = deedsOf(state);
@@ -44943,8 +45073,8 @@ function habitProvider(s, env, k) {
 function holdProvider(s, env, k) {
   const unitId = unitIdOf4(s);
   if (!env.state || unitId === null) return null;
-  const held2 = k.development(unitId, env.registries).axes.filter((a) => a.held);
-  return { lines: [held2.length === 0 ? "Nothing is held." : `Held: ${held2.map((a) => a.words).join("; ")}.`] };
+  const held3 = k.development(unitId, env.registries).axes.filter((a) => a.held);
+  return { lines: [held3.length === 0 ? "Nothing is held." : `Held: ${held3.map((a) => a.words).join("; ")}.`] };
 }
 function registerDevelopmentProviders() {
   registerAnalyzeProvider("developmentAxes", axisProvider);
@@ -47151,6 +47281,12 @@ function createApp(st, deps) {
     if (state.settings.beatCooldownDays === days) return;
     api.dispatch({ type: "campaign/set_beat_cooldown", payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
   }
+  function syncUnitDms() {
+    if (!state || load.kind !== "ok") return;
+    const on = getSettings(st).unitDms;
+    if (state.settings.unitDms === on) return;
+    api.dispatch({ type: "campaign/set_unit_dms", payload: { on } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
   function syncFirstImpressionTau() {
     if (!state || load.kind !== "ok") return;
     const days = getSettings(st).firstImpressionTau;
@@ -48201,6 +48337,7 @@ function createApp(st, deps) {
     adoptExpedition();
     syncIntimacy();
     syncBeatCooldown();
+    syncUnitDms();
     syncFirstImpressionTau();
     syncMinConfidence();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn("[Alius] director failed", e));
@@ -48858,6 +48995,7 @@ function createApp(st, deps) {
     onSettingsChanged: () => {
       syncIntimacy();
       syncBeatCooldown();
+      syncUnitDms();
       syncFirstImpressionTau();
       syncMinConfidence();
     }

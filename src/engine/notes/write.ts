@@ -49,6 +49,17 @@ export function leaveNote(draft: CampaignState, unit: Unit, entry: Entry): Engin
 }
 
 /**
+ * A note she leaves in her quarters about what she has made or become (P14c, the `note` trace of a hobby milestone). The text is the model's
+ * or the hobby's own `traceText`; the note id is `life:<hobbyId>` and has no registry entry behind it (no reader looks one up). Draws nothing.
+ */
+export function leaveLifeNote(draft: CampaignState, unit: Unit, text: string, hobbyId: string): EngineEvent[] {
+  const note: HandNote = { id: nextNoteId(draft), unitId: unit.id, noteId: `life:${hobbyId}`, where: 'quarters', text, day: draft.day };
+  notesOf(draft).list.push(note);
+  capNotes(draft);
+  return [{ type: 'note_left', unitId: unit.id, noteId: note.noteId, where: note.where }];
+}
+
+/**
  * An unanswered knock (the timer, STAY SILENT, the old IGNORE) leaves a note under the door: the first `knock_unanswered`
  * entry whose conditions hold. No hash gate: it always happens when an entry fits. Opening the door writes nothing.
  */

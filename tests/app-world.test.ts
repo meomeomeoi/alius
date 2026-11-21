@@ -518,6 +518,17 @@ describe('minor fixes', () => {
     expect(t.state().settings.beatCooldownDays).toBe(2);
   });
 
+  it('the unit DMs setting is mirrored into the campaign on load and when it changes (the channel of her news, P14c)', async () => {
+    const t = await boot();
+    expect(t.state().settings.unitDms).toBe(false); // boot turns them off
+    t.st.settings.unitDms = true;
+    t.settingsChanged();
+    expect(t.state().settings.unitDms).toBe(true);
+    t.st.settings.unitDms = false;
+    t.settingsChanged();
+    expect(t.state().settings.unitDms).toBe(false);
+  });
+
   it('a plan and the OPS badge memory do not survive a chat switch', async () => {
     const t = await boot();
     const id = t.offer();

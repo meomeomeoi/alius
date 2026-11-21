@@ -6,6 +6,7 @@ import { confess, SECRET_NIGHT_KIND } from '../personal/secrets';
 import { relieveWant } from '../bonds/want';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { closeNews } from '../life/news';
 import { stampBehaviours } from '../dmBehaviours';
 import { writeDoorNote } from '../notes';
 import { countSent, dmMode, pushMessage, rollInitiative } from '../dms';
@@ -85,6 +86,9 @@ registerAction('dm/receive', (draft, payload, ctx) => {
   const unit = namedUnit(draft, payload.unitId);
   const text = textOf(payload.text);
   const initiated = payload.initiated === true;
+  // P14c: a DM that tells her news closes its outbox entry (only one that is waiting for this unit)
+  const lifeItemId = payload.lifeItemId;
+  if (lifeItemId !== undefined && !(draft.life?.outbox ?? []).some((o) => o.itemId === lifeItemId && o.unitId === unit.id && o.channel === 'dm')) throw new Error('Already told.');
   // P10b: `curt` says the reply was asked for in that mode; it is the only mode a received message can carry
   if (payload.mode !== undefined && payload.mode !== 'curt') throw new Error("dm/receive: mode can only be 'curt'.");
   const msg = pushMessage(draft, unit.id, { from: unit.id, text, day: draft.day, slot: draft.slot, read: false, ...(initiated ? { initiated: true } : {}) });
@@ -92,7 +96,8 @@ registerAction('dm/receive', (draft, payload, ctx) => {
   const stamped = stampBehaviours(draft, ctx.registries, unit.id, msg, { curt: payload.mode === 'curt' });
   if (stamped.length > 0) msg.behaviours = stamped;
   const heard = rollIntercepts(draft, ctx, [unit.id], { private: false, dm: true }); // P12: at most once a day, at half rate
-  return [{ type: 'dm_received', unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx.registries, unit.id), ...heard];
+  const told = lifeItemId === undefined ? [] : closeNews(draft, String(lifeItemId)); // P14c: the fact is the commander's now
+  return [{ type: 'dm_received', unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx.registries, unit.id), ...heard, ...told];
 });
 
 registerAction('dm/read', (draft, payload) => {

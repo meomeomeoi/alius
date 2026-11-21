@@ -3,7 +3,7 @@ import { alive } from './dayStep';
 
 export { alive, notesDayStep } from './dayStep';
 export { forgetNotes, notesOf } from './state';
-export { writeDoorNote } from './write';
+export { leaveLifeNote, writeDoorNote } from './write';
 
 /** The notes still on show (within `TUNING.notes.keepDays`), newest first; `where` limits them to one place. */
 export function notesFor(state: CampaignState, where?: HandNote['where']): HandNote[] {

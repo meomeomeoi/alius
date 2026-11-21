@@ -18,6 +18,7 @@ import { applyIntents } from '../relations/apply';
 import { showMoments, stampMoments, unstampMoments } from '../development/moments';
 import { countCompanions } from '../development/habits';
 import { noteBusy } from '../life/dayStep';
+import { endSceneNews } from '../life/news';
 import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
@@ -196,6 +197,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   // P9: a defiance nobody answered in this scene settles now
   events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id)); // P9d: a scene with her ends her hold
+  events.push(...endSceneNews(draft, scene.participants)); // P14c: what she had to tell and did not is gone
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });

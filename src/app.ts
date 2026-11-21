@@ -352,6 +352,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     api.dispatch({ type: 'campaign/set_beat_cooldown', payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
   }
 
+  /** P14c: whether units may start DMs is a global setting; the engine decides the channel of her news with its mirror in the campaign. */
+  function syncUnitDms(): void {
+    if (!state || load.kind !== 'ok') return;
+    const on = getSettings(st).unitDms;
+    if (state.settings.unitDms === on) return;
+    api.dispatch({ type: 'campaign/set_unit_dms', payload: { on } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
   /** P7: the first-impression decay is a global setting; the pure engine reads its mirror in the campaign. */
   function syncFirstImpressionTau(): void {
     if (!state || load.kind !== 'ok') return;
@@ -1435,6 +1443,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     adoptExpedition();
     syncIntimacy();
     syncBeatCooldown();
+    syncUnitDms();
     syncFirstImpressionTau();
     syncMinConfidence();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
@@ -2119,6 +2128,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onSettingsChanged: () => {
       syncIntimacy();
       syncBeatCooldown();
+      syncUnitDms();
       syncFirstImpressionTau();
       syncMinConfidence();
     },

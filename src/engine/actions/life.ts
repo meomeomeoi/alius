@@ -1,6 +1,8 @@
 import { registerActivityHook } from '../activities';
 import { registerDayEndStep } from '../calendar';
-import { registerAction } from '../dispatch';
+import { registerAction, runHandler } from '../dispatch';
+import { closeNews } from '../life/news';
+import { leaveLifeNote } from '../notes/write';
 import { lifeDayStep, noteBusy, recordDeaths } from '../life/dayStep';
 import { newHobby, seedLife } from '../life/hobbies';
 import { LIFE_MODES, TEMPERAMENT_FIELDS, ensureLife, temperamentOf, temperamentProblems } from '../life/state';
@@ -142,3 +144,45 @@ registerAction('profile/set_opinion', (draft, payload, ctx) => {
   return [{ type: 'opinion_set', unitId: unit.id, topicId: topic.id, position: next.position }];
 });
 
+
+/** Mirrors the global setting `unitDms` into the campaign, which is what the pure engine reads (the channel of her news, P14c). */
+registerAction('campaign/set_unit_dms', (draft, payload) => {
+  const on = (payload as { on?: unknown } | undefined)?.on;
+  if (typeof on !== 'boolean') throw new Error('campaign/set_unit_dms needs { on } as true or false');
+  draft.settings.unitDms = on;
+  return [];
+});
+
+const TRACE_NOTE_MAX = 400;
+
+/** An item that is waiting in the outbox for this channel, or the refusal: it was told already (or never was this kind). */
+function outboxItem(draft: { life?: { outbox: Array<{ itemId: string; unitId: string; channel: 'dm' | 'note' }>; queue: Array<{ id: string; ref: string }> } }, itemId: unknown, channel: 'dm' | 'note') {
+  const entry = draft.life?.outbox.find((o) => o.itemId === itemId);
+  if (!entry || entry.channel !== channel) throw new Error('Already told.');
+  return { entry, item: draft.life!.queue.find((q) => q.id === itemId) };
+}
+
+/**
+ * `life/share_done { itemId, text }`: her DM about what happened to her arrives (the controller worded it, or the line of the registry did).
+ * The same path as any DM she starts, `dm/receive` with `initiated`, and it closes the outbox entry and tells the commander the fact.
+ * Refuses an item that is not waiting as a DM ("Already told.").
+ */
+registerAction('life/share_done', (draft, payload, ctx) => {
+  const p = payload as { itemId?: unknown; text?: unknown } | undefined;
+  const { entry } = outboxItem(draft, p?.itemId, 'dm');
+  return runHandler('dm/receive', draft, { unitId: entry.unitId, text: p?.text, initiated: true, lifeItemId: entry.itemId }, ctx);
+});
+
+/**
+ * `life/trace_note { itemId, text }`: the note she leaves in her quarters about a milestone (the trace of the hobby). The fact is revealed
+ * and the item closed. Refuses an item that is not waiting as a note ("Already told.").
+ */
+registerAction('life/trace_note', (draft, payload) => {
+  const p = payload as { itemId?: unknown; text?: unknown } | undefined;
+  const { entry, item } = outboxItem(draft, p?.itemId, 'note');
+  const unit = draft.squad.find((u) => u.id === entry.unitId);
+  const text = typeof p?.text === 'string' ? p.text.trim() : '';
+  if (!unit || unit.kind !== 'named') throw new Error('life/trace_note needs a named soldier.');
+  if (text === '' || text.length > TRACE_NOTE_MAX) throw new Error(`A note is 1 to ${TRACE_NOTE_MAX} characters.`);
+  return [...leaveLifeNote(draft, unit, text, item?.ref ?? 'hobby'), ...closeNews(draft, entry.itemId)];
+});
