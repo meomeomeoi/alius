@@ -10,7 +10,7 @@ import type { HobbyEntry, PastimeEntry } from '../../../src/engine/life/types';
 import type { CampaignState, HobbyState, Slot } from '../../../src/engine/state/types';
 import { lifeDirectives } from '../../../src/life/directives';
 import { personalOf } from '../../../src/engine/personal/state';
-import { writeLifeFact } from '../../../src/engine/life/facts';
+import { revealFact, writeLifeFact } from '../../../src/engine/life/facts';
 import { campaign, errors, loadCore, ofType, run } from '../../helpers/world';
 
 let reg: Registries;
@@ -357,6 +357,18 @@ describe('her_hobby shows only a hobby the commander knows she has', () => {
     const ended = run(open, reg, { type: 'scene/end', payload: {} }).state;
     expect(Object.keys(ended.commander.hobbySkill ?? {})).toEqual(['tinkering']);
     expect(mine(ended).hobbies!.find((x) => x.id === 'chess')).toMatchObject({ skill: 0, interest: 95 });
+  });
+});
+
+describe('a pastime that needs a hobby (P14c final review)', () => {
+  it('is not open for a hobby she took up off-screen and has not told, and opens when it is told', () => {
+    const s = world('afternoon');
+    mine(s).hobbies = [take('animals')];
+    const fact = writeLifeFact(s, ANN, 'Ann has taken up animals.', ['hobby', 'animals', 'started'], 1);
+    expect(problem(s, 'care_for_animal')).toEqual(expect.any(String));
+    expect(availablePastimes(s, reg, ANN).map((p) => p.id)).not.toContain('care_for_animal');
+    revealFact(s, fact.id);
+    expect(problem(s, 'care_for_animal')).toBeNull();
   });
 });
 

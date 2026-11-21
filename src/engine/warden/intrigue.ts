@@ -182,7 +182,7 @@ export function dig(draft: CampaignState, ctx: EngineCtx, allyId?: string): Engi
   const { day, slot } = draft;
   ls.intrigue.seq += 1;
   const events: EngineEvent[] = [{ type: 'intrigue_action', action: 'dig' }];
-  const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes('*'));
+  const hidden = draft.memory.facts.filter((f) => f.about.includes(w.unitId) && f.hiddenFromCommander === true && !f.knownBy.includes('*') && !f.tags.includes('life')); // a fact of her life she has not told is not leverage (P14c)
   const newest = hidden.reduce<Fact | undefined>((best, f) => (best === undefined || f.day >= best.day ? f : best), undefined);
   if (newest) {
     delete newest.hiddenFromCommander;

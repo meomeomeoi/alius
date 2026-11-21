@@ -6,6 +6,7 @@ import { buildCampaign } from '../../src/engine/setup';
 import type { CampaignState } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
 import { dig, digProblem, kompromatOf, wardenOf } from '../../src/engine/warden';
+import { writeLifeFact } from '../../src/engine/life/facts';
 import { loadCore, unitSetup } from '../helpers/world';
 import '../../src/engine/actions/warden';
 import '../../src/engine/actions/scene';
@@ -46,6 +47,27 @@ describe('dig', () => {
     expect(fact.tags).toContain('kompromat');
     expect(s.memory.facts.find((f) => f.id === 'h_She hides a debt.')!.hiddenFromCommander).toBe(true); // only one a dig
     expect(kompromatOf(s)).toHaveLength(1);
+  });
+
+  it('never takes a fact of her life she has not told: it stays hers, hidden and untold, and is no kompromat (P14c)', () => {
+    const s = swap((x) => { ally(x); hide(x, 'She forged a signature.', 1); });
+    const life = writeLifeFact(s, ID.bea, 'Bea: a nightmare, SENTINEL-LIFE.', ['nightmare'], 1);
+    s.memory.facts.find((f) => f.id === life.id)!.day = 5; // the newest
+    const found = dig(s, quiet(), ID.cat).find((e) => e.type === 'kompromat_found') as unknown as { factId: string };
+    expect(found.factId).toBe('h_She forged a signature.');
+    const kept = s.memory.facts.find((f) => f.id === life.id)!;
+    expect(kept.hiddenFromCommander).toBe(true);
+    expect(kept.tags).toContain('untold');
+    expect(kept.tags).not.toContain('kompromat');
+    expect(kompromatOf(s).map((f) => f.id)).not.toContain(life.id);
+  });
+
+  it('with only life facts hidden, a dig falls to the authored line', () => {
+    const s = swap((x) => ally(x));
+    const life = writeLifeFact(s, ID.bea, 'Bea: a quiet thing.', ['nightmare'], 2);
+    const found = dig(s, quiet(), ID.cat).find((e) => e.type === 'kompromat_found') as unknown as { factId: string };
+    expect(found.factId).not.toBe(life.id);
+    expect(s.memory.facts.find((f) => f.id === life.id)!.hiddenFromCommander).toBe(true);
   });
 
   it('then an authored line: a new pinned fact about her, tagged, known to the commander and the ally', () => {

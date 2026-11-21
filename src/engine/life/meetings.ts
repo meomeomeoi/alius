@@ -97,7 +97,9 @@ export function pastimeProblem(
   const req = pastime.requires;
   if (req?.afterRun === true && !requiresHold(state, reg, unitId, { afterRun: {} }, state.day)) return `${pastime.label} is for after a run.`;
   if (req?.firstSlot === true && slot !== 'morning') return `${pastime.label} is for the first slot of the day.`;
-  if (req?.hobby !== undefined && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
+  // a hobby she took up off-screen and has not told is not one the commander can ask about (the pastime would name it)
+  const shown = (unit.hobbies ?? []).some((h) => h.state === 'active' && (req?.hobby === 'any' || h.id === req?.hobby) && !hobbyUntold(state, unitId, h.id));
+  if (req?.hobby !== undefined && !shown) return `${pastime.label} needs a hobby ${name} does not have.`;
   if (pastime.hobby === true && keenestHobby(state, reg, unit) === undefined) return `${name} has no hobby to show.`;
   return null;
 }

@@ -5,6 +5,7 @@ import type { EventIntent } from '../relations/intents';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { bumpInterest, pushHobby } from './hobbies';
+import { hobbyUntold } from './known';
 import { closeNews, pendingNews } from './news';
 import { returnJoke, jokeCandidates } from './jokes';
 import { keepFirst, missingFirsts } from './meetings';
@@ -41,7 +42,7 @@ export function lifeIntentInput(
     const first = pendingNews(state, unit.id)[0];
     if (first) offer.news.push({ id: first.itemId, unitId: unit.id, text: first.text });
     for (const h of unit.hobbies ?? []) {
-      if (h.state !== 'active') continue;
+      if (h.state !== 'active' || hobbyUntold(state, unit.id, h.id)) continue; // a hobby she has not told of is not the commander's to praise
       const entry = reg.hobbies.get(h.id) as unknown as HobbyEntry | undefined;
       if (entry) offer.hobbies.push({ id: h.id, unitId: unit.id, label: entry.label });
     }

@@ -40,7 +40,7 @@ export function candidateTruths(state: CampaignState, reg: Registries, unitId: s
   const sign = [...(state.disloyalty?.units[unitId]?.signs ?? [])].reverse().find((x) => x.about === 'desertion' || x.about === 'mutiny');
   if (sign) out.push({ kind: 'loyalty', value: sign.about });
   const facts = state.memory.facts
-    .filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes('*') && !f.tags.includes('frequency'))
+    .filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes('*') && !f.tags.includes('frequency') && !f.tags.includes('life')) // her untold life is not overheard (P14c)
     .sort((a, b) => b.day - a.day);
   for (const f of facts) out.push({ kind: 'fact', value: f.id, refId: f.id });
   if (rel) out.push({ kind: 'attraction', value: attractionBand(rel.attraction) });

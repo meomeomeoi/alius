@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { addSecret } from '../../src/engine/personal';
+import { writeLifeFact } from '../../src/engine/life/facts';
 import { Rng } from '../../src/engine/rng';
 import { candidateTruths, catchChance, falseValue, rollIntercepts } from '../../src/engine/special/frequency/intercepts';
 import { TUNING } from '../../src/engine/tuning';
@@ -48,6 +49,17 @@ describe('candidateTruths', () => {
     expect(c.filter((x) => x.kind === 'fact').map((x) => x.refId)).toEqual(['f1']);
     expect(c.filter((x) => x.kind === 'secret')).toHaveLength(1);
     expect(c.find((x) => x.kind === 'loyalty')!.value).toBe('mutiny');
+  });
+});
+
+describe('a fact of her life she has not told (P14c)', () => {
+  it('is not a candidate, an untold one or one she keeps', () => {
+    const s = specialCampaign(reg, 'secret_frequency');
+    writeLifeFact(s, ANN, 'Ann: SENTINEL-UNTOLD-LIFE.', ['nightmare'], 1);
+    const kept = writeLifeFact(s, ANN, 'Ann: SENTINEL-KEPT-LIFE.', ['nightmare'], 1);
+    kept.tags = kept.tags.filter((t) => t !== 'untold'); // a kept fact is hidden without the tag too
+    s.memory.facts.push({ id: 'f1', about: [ANN], text: 'secret', tags: [], importance: 3, day: 1, knownBy: [ANN], hiddenFromCommander: true });
+    expect(candidateTruths(s, reg, ANN).filter((x) => x.kind === 'fact').map((x) => x.refId)).toEqual(['f1']);
   });
 });
 

@@ -153,6 +153,17 @@ describe('what may be argued or agreed with', () => {
   });
 });
 
+describe('hobbies offered for praise (P14c final review)', () => {
+  it('only the told active ones: a hobby she took up off-screen and has not told is not in the offer', () => {
+    const s = world();
+    mine(s).hobbies = [take('reading'), take('chess')];
+    writeLifeFact(s, ANN, 'Ann has taken up chess.', ['hobby', 'chess', 'started'], 1);
+    const offer = lifeIntentInput(s, reg, [ANN], s.scene!, 'scene').life!;
+    expect(offer.hobbies.map((h) => h.id)).toEqual(['reading']);
+    expect(JSON.stringify(offer)).not.toContain(String((reg.hobbies.get('chess') as { label?: unknown }).label));
+  });
+});
+
 describe('validation drops', () => {
   const squad = [{ id: ANN }, { id: BEA }];
   const ctx = (life: LifeOffer) => ({ participants: [ANN], squad, life });

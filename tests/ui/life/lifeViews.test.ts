@@ -28,6 +28,9 @@ import { renderSysTab } from '../../../src/ui/shell/sysTab';
 import { renderSquadTab } from '../../../src/ui/squad/squadTab';
 import { hiddenFixture } from '../../fixtures/analyze/hidden';
 import { resetKnowledgeRules } from '../../../src/analysis/knowledge';
+import { buildPanelModel } from '../../../src/analysis/model';
+import { readingFor } from '../../../src/analysis/providers';
+import { parseSubject } from '../../../src/analysis/subject';
 import { campaign, errors, loadCore, run } from '../../helpers/world';
 import { markedWithout, markerCount, unreachable, unresolved } from '../../helpers/analyzeCoverage';
 
@@ -295,10 +298,24 @@ describe('the hub line', () => {
     applyLifeEvent(s, reg, ANN, anyone(), 38); // two days ago
     const host = line(s);
     expect(host.querySelector('[data-hub-line]')!.textContent).toBe(plainText(anyone().hub));
-    expect(host.querySelector('[data-hub-line]')!.getAttribute('data-analyze')).toBe(`lifeEvents:${anyone().id}`);
+    expect(host.querySelector('[data-hub-line]')!.getAttribute('data-analyze')).toBe('glossary:life_events'); // not told yet: the entry is not opened
     expect(markedWithout(host)).toEqual([]);
     expect(unresolved(host, env(s))).toEqual([]);
     expect(unreachable(host)).toEqual([]);
+  });
+
+  it('opens no panel that names or describes an event she has not told of; a told one opens its entry', () => {
+    const s = world();
+    applyLifeEvent(s, reg, ANN, anyone(), 38);
+    const el = line(s).querySelector('[data-hub-line]')!;
+    const subject = parseSubject(el.getAttribute('data-analyze') ?? '', el.getAttribute('data-analyze-ctx'))!;
+    const panel = buildPanelModel(subject, env(s));
+    const shown = `${panel.title}\n${panel.text}\n${panel.long ?? ''}\n${(readingFor(subject, env(s))?.lines ?? []).join('\n')}`;
+    expect(shown).not.toContain(anyone().id);
+    expect(shown).not.toContain(plainText(String(anyone().description)));
+    const fact = s.memory.facts.find((f) => f.about.includes(ANN) && f.tags.includes(anyone().id))!;
+    revealFact(s, fact.id);
+    expect(line(s).querySelector('[data-hub-line]')!.getAttribute('data-analyze')).toBe(`lifeEvents:${anyone().id}`);
   });
 
   it('shows nothing after two days, for what she keeps to herself, or with life off', () => {

@@ -63,20 +63,28 @@ export interface LifeView {
   /** How well the commander has learned each hobby from her, as a word. */
   commanderSkills: Array<{ id: string; label: string; word: string }>;
   /** The line under her name on the hub, from the newest event of the last days (nothing for what she keeps to herself). */
-  hub: { eventId: string; text: string } | null;
+  hub: { eventId: string; text: string; told: boolean } | null;
   /** Her three temperament words (through `temperamentOf`) and the campaign's frequency (off for an old save). */
   temperWords: Temperament;
   mode: LifeMode;
 }
 
-/** The hub line of her newest event, within `hubDays`, with the event's own id and its text. Null while life is off or when none stands. */
-export function hubLine(state: Pick<CampaignState, 'life' | 'settings' | 'day'>, reg: Pick<Registries, 'lifeEvents'>, unitId: string): { eventId: string; text: string } | null {
+/**
+ * The hub line of her newest event, within `hubDays`, with the event's own id, its text and whether the commander has been told of the event
+ * (its fact is revealed): until then the line may be shown, but what the event is stays hers, so a panel never opens its entry. Null while life
+ * is off or when none stands.
+ */
+export function hubLine(
+  state: Pick<CampaignState, 'life' | 'settings' | 'day' | 'memory'>, reg: Pick<Registries, 'lifeEvents'>, unitId: string,
+): { eventId: string; text: string; told: boolean } | null {
   if (lifeMode(state) === 'off') return null;
   const hub = state.life?.units[unitId]?.hub;
   if (!hub || state.day - hub.day > TUNING.life.hubDays || state.day < hub.day) return null;
   const entry = reg.lifeEvents.get(hub.eventId) as unknown as LifeEventEntry | undefined;
   const text = entry === undefined ? '' : plainText(String(entry.hub));
-  return text === '' ? null : { eventId: hub.eventId, text };
+  if (text === '') return null;
+  const fact = [...state.memory.facts].reverse().find((f) => f.about.includes(unitId) && f.tags.includes('life') && f.tags.includes(hub.eventId));
+  return { eventId: hub.eventId, text, told: fact !== undefined && !untold(fact) };
 }
 
 /** The view of her life as it stands, for a campaign whose life is on or has been (an old save with no trace of it reads empty). */

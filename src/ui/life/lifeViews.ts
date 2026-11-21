@@ -107,5 +107,7 @@ export function renderLetsMenu(host: HTMLElement, ctx: PickerCtx & { open?: bool
 export function renderHubDayLine(host: HTMLElement, state: CampaignState, reg: Registries, unitId: string): void {
   const line = hubLine(state, reg, unitId);
   if (!line) return;
-  host.append(h('span', { class: 'alius-dim alius-hub-line alius-stat', 'data-hub-line': unitId, ...analyzeAttrs(`lifeEvents:${line.eventId}`, { unitId }) }, line.text));
+  // the panel of an event entry carries its id and its description: only an event she has told of may be opened, anything else opens what she has told
+  const analyze = line.told ? analyzeAttrs(`lifeEvents:${line.eventId}`, { unitId }) : analyzeAttrs('glossary:life_events', { unitId });
+  host.append(h('span', { class: 'alius-dim alius-hub-line alius-stat', 'data-hub-line': unitId, ...analyze }, line.text));
 }
