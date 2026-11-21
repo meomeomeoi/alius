@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
+import { lifeIntentInput } from '../engine/life/intents';
 import type { EngineEvent } from '../engine/dispatch';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { measureList } from '../engine/discipline';
@@ -284,6 +285,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       ...overrideInput(s0, deps.registries(), scene.participants), // P13: the warden's open override, while she is present
       ...expectationInput(s0, deps.registries(), scene.participants), // P13: her expectations, while she is present
       ...conspireInput(s0, deps.registries(), scene.participants), // P13: who the commander may enlist against her, while she is not present
+      ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, 'scene'), // P14c: what she may tell, her hobbies, her views (nothing while life is off)
     };
   }
 

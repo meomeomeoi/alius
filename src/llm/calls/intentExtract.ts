@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { EVENT_TYPES, LIFE_EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
+import type { LifeOffer } from '../../engine/life/types';
+import { EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
@@ -53,6 +54,8 @@ export interface IntentExtractInput {
   expectations?: Array<{ id: string; text: string }>;
   /** P13: the present units the commander may enlist against the warden (she is not in the room). Absent or empty = `conspired` is not offered. */
   conspire?: string[];
+  /** P14c: what she may tell, her hobbies, the opinions she has voiced and the jokes that may come back, as lists of ids the model may name; each type of her life is offered only while its list is not empty. Absent or empty = the prompt is byte-identical to before her life existed. */
+  life?: LifeOffer;
   /** P14b: ask for each event's `reading` (how the person it happened to took it); absent = the prompt is byte-identical to before development existed. */
   reading?: true;
 }
@@ -86,6 +89,41 @@ const CONSPIRE_TYPE = 'conspired';
 /** P12: the event type offered only while a present unit has an open warning. */
 const ACCUSED_TYPE = 'accused';
 
+/** P14c: which types of her life are offered, from the lists: news, hobbies, a topic she may voice or one she has told, the jokes and the firsts. */
+function lifeFlags(life: LifeOffer | undefined): { news: boolean; hobbies: boolean; topics: boolean; voice: boolean; voiced: boolean; jokes: boolean; firsts: boolean; types: Set<string> } {
+  const news = (life?.news ?? []).length > 0;
+  const hobbies = (life?.hobbies ?? []).length > 0;
+  const voice = (life?.topics ?? []).some((t) => t.pick === true);
+  const voiced = (life?.topics ?? []).some((t) => t.voiced === true);
+  const jokes = (life?.jokes ?? []).length > 0;
+  const firsts = life?.firsts === true;
+  const types = new Set<string>([
+    ...(news ? ['news_told'] : []), ...(hobbies ? ['hobby_praised'] : []), ...(voice ? ['opinion_voiced'] : []),
+    ...(voiced ? ['opinion_challenged', 'opinion_agreed'] : []), ...(firsts ? ['first_moment'] : []), ...(jokes ? ['joke_returned'] : []),
+  ]);
+  return { news, hobbies, topics: voice || voiced, voice, voiced, jokes, firsts, types };
+}
+
+const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ');
+
+/** P14c: the `LIFE` data block of the prompt: each list that is not empty, one id per line (empty when nothing is offered). */
+function lifeBlock(life: LifeOffer): string[] {
+  const f = lifeFlags(life);
+  const out: string[] = [];
+  if (f.news) out.push('NEWS (id — unit: what she has to tell):', ...life.news.map((n) => `- ${n.id} — ${n.unitId}: ${oneLine(n.text)}`));
+  if (f.hobbies) out.push('HOBBIES (id — unit: label):', ...life.hobbies.map((h) => `- ${h.id} — ${h.unitId}: ${oneLine(h.label)}`));
+  if (f.topics) {
+    out.push('TOPICS (id — unit: label; positions; marked "may voice" or "has told"):');
+    for (const t of life.topics) {
+      if (t.pick !== true && t.voiced !== true) continue;
+      const marks = [...(t.pick === true ? ['may voice'] : []), ...(t.voiced === true ? ['has told'] : [])].join(', ');
+      out.push(`- ${t.id} — ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(', ')}; ${marks}`);
+    }
+  }
+  if (f.jokes) out.push('JOKES (id — unit: what it is about):', ...life.jokes.map((j) => `- ${j.id} — ${j.unitId}: ${oneLine(j.text)}`));
+  return out.length > 0 ? ['LIFE (what the units may bring up; a report may name only the ids listed here):', ...out] : [];
+}
+
 function system(raw: unknown): string {
   const input = raw as IntentExtractInput;
   const excluded = input.excluded ?? [];
@@ -98,7 +136,8 @@ function system(raw: unknown): string {
   const hasExpectations = (input.expectations ?? []).length > 0;
   const hasConspire = (input.conspire ?? []).length > 0;
   const asksReading = input.reading === true;
-  const eventTypes = EVENT_TYPES.filter((t) => !LIFE_EVENT_TYPES.includes(t) /* P14c: offered with their own lists, from the intents task on */ && (hasRules || (hasOverride && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const life = lifeFlags(input.life);
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (hasRules || (hasOverride && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),
@@ -121,6 +160,11 @@ function system(raw: unknown): string {
     ...(hasLeaks ? ['               "itemId": "<id from INTERCEPTED>" }],   // only for knowledge_leak'] : []),
     ...(hasExpectations ? ['               "expectationId": "<id from EXPECTATIONS>"   // only for expectation_kept / expectation_broken'] : []),
     ...(hasOverride ? ['               "overrideId": "<id from OVERRIDE>", "text": "<the agreed wording>"   // only for compromise_reached with the warden'] : []),
+    ...(life.news ? ['               "newsId": "<id from NEWS>"   // only for news_told'] : []),
+    ...(life.hobbies ? ['               "hobbyId": "<id from HOBBIES>"   // only for hobby_praised'] : []),
+    ...(life.topics ? ['               "topicId": "<id from TOPICS>", "positionId": "<a position id of that topic>"   // topicId for opinion_voiced / opinion_challenged / opinion_agreed; positionId only for opinion_challenged, optional'] : []),
+    ...(life.firsts ? ['               "kind": FIRST_KIND   // only for first_moment'] : []),
+    ...(life.jokes ? ['               "factId": "<id from JOKES>"   // only for joke_returned'] : []),
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -135,6 +179,7 @@ function system(raw: unknown): string {
     `MEASURE: ${(input.measures ?? []).join(', ')}`,
     `PROPOSAL_KIND: ${proposalKinds.join(', ')}`,
     `EXPRESSION_LABEL: ${EXPRESSION_LABELS.join(', ')}`,
+    ...(life.firsts ? [`FIRST_KIND: ${FIRST_KINDS.join(', ')}`] : []),
     ...(excluded.length > 0 ? ['EXCLUDED (id: label):', ...excluded.map((e) => `- ${e.id}: ${e.label}`)] : []),
     '',
     'Rules: "actor" is "commander" when the commander does it to a unit; a unit\'s own act toward the commander (shared_secret, apologized) has that unit as actor and no targets.',
@@ -158,6 +203,12 @@ function system(raw: unknown): string {
     ...(hasExpectations ? ['"expectation_kept" / "expectation_broken": the commander does what an expectation of the warden asks, or what it forbids, in this exchange; the warden is the target; set "expectationId" to its id from EXPECTATIONS. When the commander turns romantic with a unit other than the warden and an expectation says no one else, that is expectation_broken. Skip an expectation the exchange does not touch.'] : []),
     ...(hasConspire ? ['"conspired": the commander quietly asks a unit listed in CONSPIRE to stand with the commander against the one who holds the controller (to look away, to warn, to help); that unit is the target. Report it only when the exchange shows the ask, not a complaint.'] : []),
     ...(hasWarned ? ['"accused": the commander openly accuses a unit listed in WARNED of planning disloyalty, desertion, mutiny or defiance; the unit is the target. Report it only when the exchange shows the accusation.'] : []),
+    ...(life.news ? ['"news_told": a unit tells the commander one of the NEWS items (what happened to her), in her own words; she is the actor, no targets; set "newsId". Report it only when the exchange shows her telling it.'] : []),
+    ...(life.hobbies ? ['"hobby_praised": the commander shows interest in, or praises, a unit\'s hobby listed in HOBBIES; the unit is the target; set "hobbyId". An empty compliment is not praise of the hobby.'] : []),
+    ...(life.voice ? ['"opinion_voiced": a unit says what she thinks about a topic in TOPICS marked "may voice"; she is the actor, no targets; set "topicId". Report it only when she says it.'] : []),
+    ...(life.voiced ? ['"opinion_challenged": the commander argues against what a unit has told about a topic in TOPICS marked "has told"; the unit is the target; set "topicId", and "positionId" when the commander clearly argues for one of its positions; "severity" is how hard the commander pushes (minor or moderate: a remark; major or extreme: a full argument). "opinion_agreed": the commander agrees with what she holds on such a topic.'] : []),
+    ...(life.firsts ? ['"first_moment": something happens for the first time between the commander and the unit; set "kind" to the word from FIRST_KIND that fits. Report it only when the exchange plainly shows it.'] : []),
+    ...(life.jokes ? ['"joke_returned": the commander and a unit bring back a joke from JOKES; set "factId". Report it only when the exchange plainly refers to it.'] : []),
     ...(hasLimits ? ['If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders).'] : []),
   ].join('\n');
 }
@@ -185,6 +236,8 @@ function prompt(raw: unknown): string {
   if ((input.conspire ?? []).length > 0) out.push('', `CONSPIRE (units the commander may enlist): ${input.conspire!.join(', ')}`);
   if ((input.overrides ?? []).length > 0) out.push('', 'OVERRIDE (id — the commander\'s order; what she wants instead):', ...input.overrides!.map((o) => `- ${o.id} — ${o.order}; ${o.alternative}`));
   if ((input.warned ?? []).length > 0) out.push('', `WARNED (units the commander has been warned about): ${input.warned!.join(', ')}`);
+  const lifeList = input.life;
+  if (lifeList && lifeBlock(lifeList).length > 0) out.push('', ...lifeBlock(lifeList));
   if (input.openPromises.length > 0) {
     out.push('', 'Open promises:', ...input.openPromises.map((p) => `- ${p.by} → ${p.to}: ${p.text}`));
   }
@@ -207,14 +260,14 @@ const LABELS: readonly string[] = EXPRESSION_LABELS;
  */
 export function sanitizeIntentOutput(
   raw: unknown,
-  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P11b: the campaign's fact length. */ factTextMax?: number },
+  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P14c: what was offered about her life (the lists the model was shown). */ life?: LifeOffer; /** P11b: the campaign's fact length. */ factTextMax?: number },
 ): IntentOutput {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: undefined };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
   // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.life ? { life: ctx.life } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {
@@ -241,6 +294,7 @@ export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: 
     excluded: (input.excluded ?? []).map((e) => e.id), rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
     intercepted: (input.intercepted ?? []).map((i) => i.id), warned: input.warned ?? [],
     overrides: (input.overrides ?? []).map((o) => o.id), expectations: (input.expectations ?? []).map((x) => x.id), conspire: input.conspire ?? [],
+    ...(input.life ? { life: input.life } : {}),
     ...(input.factTextMax !== undefined ? { factTextMax: input.factTextMax } : {}),
   });
 }

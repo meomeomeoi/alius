@@ -1,7 +1,8 @@
 import { normalizeTag } from '../setup';
+import type { LifeOffer } from '../life/types';
 import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
-import { EVENT_TYPES, LIFE_EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
+import { EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
 export { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES };
 export type { EventType, ProposalKind };
@@ -26,6 +27,13 @@ export interface EventIntent {
   expectationId?: string;
   /** P12: the intercepted item a `knowledge_leak` is about (an id from the list the model was given). */
   itemId?: string;
+  /** P14c: the news item a `news_told` closes, the hobby a `hobby_praised` is about, the topic and the position an opinion event is about, the kind of a `first_moment` and the fact a `joke_returned` brings back (each an id from the list the model was shown). */
+  newsId?: string;
+  hobbyId?: string;
+  topicId?: string;
+  positionId?: string;
+  kind?: string;
+  factId?: string;
   /** P14b: how the person it happened to took it, read by the model (character development); only a complete, valid reading is kept. */
   reading?: Reading;
   evidence: string;
@@ -121,6 +129,85 @@ function tagsOf(v: unknown): string[] {
 
 const clamp01 = (n: unknown): number => (typeof n === 'number' && Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0);
 
+/** P14c: the types a unit does (she tells, she says what she thinks): she is the actor and nobody the target. The commander's acts have her as the target. */
+const UNIT_SIDE: readonly string[] = ['news_told', 'opinion_voiced'];
+const COMMANDER_SIDE: readonly string[] = ['hobby_praised', 'opinion_challenged', 'opinion_agreed'];
+
+/**
+ * P14c: checks a reported event of her life against what the model was offered and writes its payload (`newsId`, `hobbyId`, `topicId`,
+ * `positionId`, `kind`, `factId`) onto `intent`. The woman is the actor, or the target of the commander. Returns a key that is the same for the
+ * same report (so a repeat in one answer can be dropped), or null when the report is not valid: nothing offered, an id that was not
+ * offered for her, a kind outside `FIRST_KINDS`. A `positionId` that is not a position of the topic is removed and the event kept.
+ */
+function lifeFields(type: string, e: Record<string, unknown>, intent: EventIntent, life: LifeOffer | undefined): { key: string } | null {
+  if (!life) return null;
+  const candidates = intent.actor === 'commander' ? intent.targets : [intent.actor];
+  const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+  let who: string | undefined;
+  let key: string | null = null;
+  const pick = <T extends { id: string; unitId: string }>(list: readonly T[], id: string | null): T | undefined => {
+    const row = id === null ? undefined : list.find((x) => x.id === id && candidates.includes(x.unitId));
+    who = row?.unitId;
+    return row;
+  };
+  switch (type) {
+    case 'news_told': {
+      const row = pick(life.news, str(e.newsId));
+      if (!row) return null;
+      intent.newsId = row.id;
+      key = row.id;
+      break;
+    }
+    case 'hobby_praised': {
+      const row = pick(life.hobbies, str(e.hobbyId));
+      if (!row) return null;
+      intent.hobbyId = row.id;
+      key = row.id;
+      break;
+    }
+    case 'opinion_voiced':
+    case 'opinion_challenged':
+    case 'opinion_agreed': {
+      const row = pick(life.topics.filter((t) => (type === 'opinion_voiced' ? t.pick === true : t.voiced === true)), str(e.topicId));
+      if (!row) return null;
+      intent.topicId = row.id;
+      const position = str(e.positionId);
+      if (type === 'opinion_challenged' && position !== null && row.positions.includes(position)) intent.positionId = position;
+      key = row.id;
+      break;
+    }
+    case 'first_moment': {
+      const kind = (FIRST_KINDS as readonly unknown[]).includes(e.kind) ? (e.kind as string) : null;
+      who = candidates[0]; // the woman of a private scene
+      if (!life.firsts || kind === null || who === undefined) return null;
+      intent.kind = kind;
+      key = kind;
+      break;
+    }
+    case 'joke_returned': {
+      const row = pick(life.jokes, str(e.factId));
+      if (!row) return null;
+      intent.factId = row.id;
+      key = row.id;
+      break;
+    }
+    default:
+      return null;
+  }
+  if (who === undefined) return null;
+  if (UNIT_SIDE.includes(type)) {
+    intent.actor = who;
+    intent.targets = [];
+  } else if (COMMANDER_SIDE.includes(type) || intent.actor === 'commander') {
+    intent.actor = 'commander';
+    intent.targets = [who];
+  } else {
+    intent.actor = who;
+    intent.targets = [];
+  }
+  return { key: `${type}|${who}|${key}` };
+}
+
 /**
  * Re-validates whatever the mechanic model returned. Never throws; drops what it cannot trust: unknown enums,
  * ids that are not scene participants (or not in the squad), unit→unit events, events without evidence,
@@ -146,6 +233,8 @@ export function validateIntents(
     expectations?: string[];
     /** P13: the units a `conspired` may name (present, not the warden, not yet an ally). Without them the event is dropped. */
     conspire?: string[];
+    /** P14c: what the model was offered about her life (`lifeIntentInput`). Without it, or for a list that is empty, a report of that type is dropped. */
+    life?: LifeOffer;
     /** P11b: the longest text a fact or a promise keeps (the campaign's memory setting); default `TUNING.memory.factTextMax`. */
     factTextMax?: number;
   },
@@ -155,6 +244,7 @@ export function validateIntents(
   const known = new Set(ctx.squad.map((u) => u.id));
   const present = new Set(ctx.participants.filter((id) => known.has(id)));
   const isUnit = (v: unknown): v is string => typeof v === 'string' && present.has(v);
+  const seenLife = new Set<string>(); // the same item of her life reported twice in one answer counts once
 
   for (const e of arr(raw.events)) {
     if (!isObj(e)) continue;
@@ -162,7 +252,6 @@ export function validateIntents(
     const severity = oneOf(SEVERITIES, e.severity);
     const evidence = evidenceOf(e.evidence);
     if (!type || !severity || evidence === '') continue;
-    if (LIFE_EVENT_TYPES.includes(type)) continue; // P14c: her life's types are offered with their own lists, from the intents task on; until then none is
     const actor = e.actor === 'commander' ? 'commander' : isUnit(e.actor) ? e.actor : null;
     if (actor === null) continue;
     const targets = [...new Set(arr(e.targets).filter(isUnit))].filter((t) => t !== actor);
@@ -206,6 +295,12 @@ export function validateIntents(
       // a leak names an item it was given; the commander is always the actor
       if (actor !== 'commander' || typeof e.itemId !== 'string' || !(ctx.intercepted ?? []).includes(e.itemId)) continue;
       intent.itemId = e.itemId;
+    }
+    if (LIFE_EVENT_TYPES.includes(type)) {
+      // her life: the report names an id it was shown, for a woman who is here; the sides are the type's own, whichever way the model wrote them
+      const life = lifeFields(type, e, intent, ctx.life);
+      if (life === null || seenLife.has(life.key)) continue;
+      seenLife.add(life.key);
     }
     if (type === 'commander_enforced' || type === 'threatened') {
       const word = typeof e.measure === 'string' ? e.measure : '';

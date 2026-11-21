@@ -260,6 +260,8 @@ export interface NewsItem {
   what: 'event' | 'milestone' | 'breakthrough' | 'started' | 'dropped' | 'mastered';
   milestoneId?: string;
   factId?: string;
+  /** More hidden facts the item tells with `factId` (a milestone or a hobby its life event brought): they are revealed together. */
+  alsoFacts?: string[];
   category: string;
   day: number;
   notable?: true;

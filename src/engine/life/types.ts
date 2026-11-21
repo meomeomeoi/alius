@@ -130,3 +130,21 @@ export interface PastimeEntry extends Entry {
 export function pastimeActivity(reg: Pick<Registries, 'activities'>): Entry | undefined {
   return [...reg.activities.values()].find((a) => a.pastime === true);
 }
+
+/**
+ * What the intent model may report about her life (P14c), rebuilt from the state each time (`lifeIntentInput`); the prompt lists it and
+ * `validateIntents` drops any id that is not here. Each type of her life is offered only while its list is not empty (`firsts` for a first
+ * moment); a list the state leaves empty is absent from the prompt, which is then byte-identical to the one before her life existed.
+ */
+export interface LifeOffer {
+  /** The news she has to tell (the item her directive names): id of the item, her id, the text of the fact. */
+  news: Array<{ id: string; unitId: string; text: string }>;
+  /** Her active hobbies: the hobby id, her id, its label. */
+  hobbies: Array<{ id: string; unitId: string; label: string }>;
+  /** Opinions: the topic id, her id, the label, the ids of its positions in order; `pick`: she may voice it now; `voiced`: she has told it, so it may be argued or agreed with. */
+  topics: Array<{ id: string; unitId: string; label: string; positions: string[]; pick?: true; voiced?: true }>;
+  /** Jokes that may come back: the id of the fact, her id, its text. */
+  jokes: Array<{ id: string; unitId: string; text: string }>;
+  /** A private scene with a named woman: a first moment may be reported. */
+  firsts: boolean;
+}

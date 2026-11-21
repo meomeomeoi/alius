@@ -6199,6 +6199,7 @@ var EVENT_TYPES = [
   "joke_returned"
 ];
 var LIFE_EVENT_TYPES = ["news_told", "hobby_praised", "opinion_voiced", "opinion_challenged", "opinion_agreed", "first_moment", "joke_returned"];
+var FIRST_KINDS = ["laughed", "fell_asleep_beside", "told_her_past", "cried", "taught", "asked_about_commander"];
 var ENGINE_EVENT_TYPES = [
   "warden_complied",
   "warden_defied",
@@ -13225,6 +13226,7 @@ function closeNews(draft, itemId) {
   const item = life?.queue.find((q) => q.id === itemId);
   if (!life || !item) return [];
   if (item.factId !== void 0) revealFact(draft, item.factId);
+  for (const id of item.alsoFacts ?? []) revealFact(draft, id);
   if (item.what === "mastered") revealMastery(draft, item.unitId, item.ref);
   life.queue = life.queue.filter((q) => q.id !== itemId);
   life.outbox = life.outbox.filter((o) => o.itemId !== itemId);
@@ -13358,8 +13360,11 @@ function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
   delete h2.plateau;
   const events = [{ type: "hobby_milestone", unitId, hobbyId, milestoneId: m.id }];
   const fact = writeLifeFact(draft, unitId, `${unit2.displayName} (${entry.label}): ${plainText(m.line)}`, ["hobby", hobbyId, m.id], n === 3 ? 2 : 1);
-  if (opts.caused === true) life.delivered.push({ day: draft.day, unitId, category: "hobby", hobby: true, caused: true });
-  else if (opts.told !== true) {
+  if (opts.caused === true) {
+    life.delivered.push({ day: draft.day, unitId, category: "hobby", hobby: true, caused: true });
+    revealFact(draft, fact.id);
+  } else if (opts.told === true) opts.facts?.push(fact.id);
+  else {
     events.push(...enqueue(draft, {
       unitId,
       kind: "hobby",
@@ -13476,13 +13481,14 @@ function interestTick(draft, reg, unitId, day) {
   events.push(...decay(draft, reg, unitId, day));
   return events;
 }
-function startHobby(draft, reg, unitId, hobbyId, day, source) {
+function startHobby(draft, reg, unitId, hobbyId, day, source, facts) {
   const unit2 = unitOf2(draft, unitId);
   const entry = reg.hobbies.get(hobbyId);
   if (!unit2 || unit2.kind !== "named" || !entry || (unit2.hobbies ?? []).some((h2) => h2.id === hobbyId)) return [];
   const events = [{ type: "hobby_started", unitId, hobbyId }, ...takeUpHobby(unit2, hobbyId, day)];
   if (source === "import") return events;
   const fact = writeLifeFact(draft, unitId, `${unit2.displayName} has taken up ${entry.label}.`, ["hobby", hobbyId, "started"], 1);
+  if (source === "event") facts?.push(fact.id);
   if (source === "friend") events.push(...enqueue(draft, { unitId, kind: "hobby", ref: hobbyId, what: "started", factId: fact.id, category: "hobby", day }));
   return events;
 }
@@ -13491,7 +13497,7 @@ function friendHobbies(draft, reg, day, places = /* @__PURE__ */ new Map(), plan
   if (lifeMode(draft) === "off" || !life) return [];
   const events = [];
   const learned = /* @__PURE__ */ new Set();
-  const planOf = (id) => plans?.get(id) ?? practiceSlots(draft, reg, id, day, places);
+  const planOf = (id) => plans ? plans.get(id) ?? [] : practiceSlots(draft, reg, id, day, places);
   for (const teacher of draft.squad) {
     for (const p of planOf(teacher.id)) {
       if (isPrivateRoom(reg, p.roomId)) continue;
@@ -15401,6 +15407,57 @@ var measureList = (reg, state) => [
   "unspecified"
 ];
 
+// src/engine/life/intents.ts
+function lifeIntentInput(state, reg, participants, scene, channel) {
+  if (lifeMode(state) === "off" || !state.life) return {};
+  const offer = { news: [], hobbies: [], topics: [], jokes: [], firsts: false };
+  const present2 = participants.map((id) => unitOf2(state, id)).filter((u) => u !== void 0 && u.kind === "named" && isLiving(u));
+  for (const unit2 of present2) {
+    const first2 = pendingNews(state, unit2.id)[0];
+    if (first2) offer.news.push({ id: first2.itemId, unitId: unit2.id, text: first2.text });
+    for (const h2 of unit2.hobbies ?? []) {
+      if (h2.state !== "active") continue;
+      const entry = reg.hobbies.get(h2.id);
+      if (entry) offer.hobbies.push({ id: h2.id, unitId: unit2.id, label: entry.label });
+    }
+    if (channel !== "scene" || scene === null) continue;
+    const picked = state.life.units[unit2.id]?.scene?.topic;
+    for (const [topicId, o] of Object.entries(unit2.opinions ?? {})) {
+      const isPick = picked === topicId;
+      if (!isPick && o.voicedDay === void 0) continue;
+      const topic = reg.opinionTopics.get(topicId);
+      if (!topic) continue;
+      offer.topics.push({
+        id: topicId,
+        unitId: unit2.id,
+        label: topic.label,
+        positions: topic.positions.map((p) => p.id),
+        ...isPick ? { pick: true } : {},
+        ...o.voicedDay !== void 0 ? { voiced: true } : {}
+      });
+    }
+  }
+  if (channel === "scene" && scene !== null && scene.mode === "private" && present2.length === 1) offer.firsts = true;
+  const empty = offer.news.length + offer.hobbies.length + offer.topics.length + offer.jokes.length === 0 && !offer.firsts;
+  return empty ? {} : { life: offer };
+}
+function applyLifeIntent(draft, ctx2, unitId, ev) {
+  const reg = ctx2.registries;
+  switch (ev.type) {
+    case "news_told": {
+      if (ev.newsId === void 0) return [];
+      const item = draft.life?.queue.find((q) => q.id === ev.newsId && q.unitId === unitId);
+      const closed = closeNews(draft, ev.newsId);
+      if (item?.kind === "hobby" && closed.length > 0) closed.push(...bumpInterest(draft, unitId, item.ref, TUNING.life.interest.share, draft.day));
+      return closed;
+    }
+    case "hobby_praised":
+      return ev.hobbyId === void 0 ? [] : pushHobby(draft, reg, unitId, ev.hobbyId, draft.day, { caused: true });
+    default:
+      return [];
+  }
+}
+
 // src/engine/relations/intents.ts
 var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], stressHints: [] });
 var EVIDENCE_WORDS = 20;
@@ -15441,19 +15498,89 @@ function tagsOf2(v) {
   return out;
 }
 var clamp01 = (n) => typeof n === "number" && Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
+var UNIT_SIDE = ["news_told", "opinion_voiced"];
+var COMMANDER_SIDE = ["hobby_praised", "opinion_challenged", "opinion_agreed"];
+function lifeFields(type, e, intent, life) {
+  if (!life) return null;
+  const candidates3 = intent.actor === "commander" ? intent.targets : [intent.actor];
+  const str5 = (v) => typeof v === "string" && v !== "" ? v : null;
+  let who;
+  let key = null;
+  const pick2 = (list5, id) => {
+    const row2 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
+    who = row2?.unitId;
+    return row2;
+  };
+  switch (type) {
+    case "news_told": {
+      const row2 = pick2(life.news, str5(e.newsId));
+      if (!row2) return null;
+      intent.newsId = row2.id;
+      key = row2.id;
+      break;
+    }
+    case "hobby_praised": {
+      const row2 = pick2(life.hobbies, str5(e.hobbyId));
+      if (!row2) return null;
+      intent.hobbyId = row2.id;
+      key = row2.id;
+      break;
+    }
+    case "opinion_voiced":
+    case "opinion_challenged":
+    case "opinion_agreed": {
+      const row2 = pick2(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str5(e.topicId));
+      if (!row2) return null;
+      intent.topicId = row2.id;
+      const position = str5(e.positionId);
+      if (type === "opinion_challenged" && position !== null && row2.positions.includes(position)) intent.positionId = position;
+      key = row2.id;
+      break;
+    }
+    case "first_moment": {
+      const kind = FIRST_KINDS.includes(e.kind) ? e.kind : null;
+      who = candidates3[0];
+      if (!life.firsts || kind === null || who === void 0) return null;
+      intent.kind = kind;
+      key = kind;
+      break;
+    }
+    case "joke_returned": {
+      const row2 = pick2(life.jokes, str5(e.factId));
+      if (!row2) return null;
+      intent.factId = row2.id;
+      key = row2.id;
+      break;
+    }
+    default:
+      return null;
+  }
+  if (who === void 0) return null;
+  if (UNIT_SIDE.includes(type)) {
+    intent.actor = who;
+    intent.targets = [];
+  } else if (COMMANDER_SIDE.includes(type) || intent.actor === "commander") {
+    intent.actor = "commander";
+    intent.targets = [who];
+  } else {
+    intent.actor = who;
+    intent.targets = [];
+  }
+  return { key: `${type}|${who}|${key}` };
+}
 function validateIntents(raw, ctx2) {
   const out = emptyIntents();
   if (!isObj3(raw)) return out;
   const known = new Set(ctx2.squad.map((u) => u.id));
   const present2 = new Set(ctx2.participants.filter((id) => known.has(id)));
   const isUnit = (v) => typeof v === "string" && present2.has(v);
+  const seenLife = /* @__PURE__ */ new Set();
   for (const e of arr(raw.events)) {
     if (!isObj3(e)) continue;
     const type = oneOf(EVENT_TYPES, e.type);
     const severity = oneOf(SEVERITIES, e.severity);
     const evidence = evidenceOf(e.evidence);
     if (!type || !severity || evidence === "") continue;
-    if (LIFE_EVENT_TYPES.includes(type)) continue;
     const actor = e.actor === "commander" ? "commander" : isUnit(e.actor) ? e.actor : null;
     if (actor === null) continue;
     const targets = [...new Set(arr(e.targets).filter(isUnit))].filter((t) => t !== actor);
@@ -15491,6 +15618,11 @@ function validateIntents(raw, ctx2) {
     if (type === "knowledge_leak") {
       if (actor !== "commander" || typeof e.itemId !== "string" || !(ctx2.intercepted ?? []).includes(e.itemId)) continue;
       intent.itemId = e.itemId;
+    }
+    if (LIFE_EVENT_TYPES.includes(type)) {
+      const life = lifeFields(type, e, intent, ctx2.life);
+      if (life === null || seenLife.has(life.key)) continue;
+      seenLife.add(life.key);
     }
     if (type === "commander_enforced" || type === "threatened") {
       const word = typeof e.measure === "string" ? e.measure : "";
@@ -17693,7 +17825,9 @@ function applyIntents(draft, ctx2, p) {
     // P13: the warden's override a compromise may settle
     expectations: expectationIds(draft, p.participants),
     // P13: her expectations, while she is present
-    ...conspireInput(draft, reg, p.participants)
+    ...conspireInput(draft, reg, p.participants),
+    // P13: the units the commander may enlist against her
+    ...lifeIntentInput(draft, reg, p.participants, p.channel === "scene" ? draft.scene ?? null : null, p.channel)
   });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
@@ -17709,6 +17843,7 @@ function applyIntents(draft, ctx2, p) {
       events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
       if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
       if (e.type === "conspired") events.push(...tryAlly(draft, ctx2, id));
+      if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
@@ -24488,7 +24623,7 @@ function milestoneHobby(draft, reg, unitId, entry, day) {
   if (named3 !== void 0) return movable.some((h2) => h2.id === named3) ? named3 : null;
   return movable.length === 0 ? null : movable[lifeHash(draft.life, `${unitId}|${day}|milestone`) % movable.length].id;
 }
-function applyBecomes(draft, reg, unitId, entry, day) {
+function applyBecomes(draft, reg, unitId, entry, day, facts) {
   const events = [];
   const unit2 = unitOf2(draft, unitId);
   const becomes = entry.becomes;
@@ -24496,12 +24631,12 @@ function applyBecomes(draft, reg, unitId, entry, day) {
   if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
     const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
     if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
-    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, "event"));
+    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, "event", facts));
   }
   if (becomes.milestone === true) {
     const id = milestoneHobby(draft, reg, unitId, entry, day);
     const h2 = id === null ? void 0 : unit2.hobbies?.find((x) => x.id === id);
-    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, { told: true }));
+    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, { told: true, facts }));
   }
   if (becomes.opinionTopic !== void 0) openTopic(draft, reg, unitId, becomes.opinionTopic);
   return events;
@@ -24519,7 +24654,8 @@ function applyLifeEvent(draft, reg, unitId, entry, day) {
   const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
   const share = effectiveShare(draft, reg, unitId, entry);
   if (share !== "keeps") mine.hub = { eventId: entry.id, day };
-  events.push(...applyBecomes(draft, reg, unitId, entry, day));
+  const also = [];
+  events.push(...applyBecomes(draft, reg, unitId, entry, day, also));
   if (lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry))) {
     events.push(...enqueue(draft, {
       unitId,
@@ -24529,6 +24665,7 @@ function applyLifeEvent(draft, reg, unitId, entry, day) {
       factId: fact.id,
       category: entry.category,
       day,
+      ...also.length > 0 ? { alsoFacts: also } : {},
       ...entry.size === "notable" ? { notable: true } : {},
       ...entry.urgent === true ? { urgent: true } : {}
     }));
@@ -33362,6 +33499,40 @@ var LEAK_TYPE = "knowledge_leak";
 var EXPECTATION_TYPES = ["expectation_kept", "expectation_broken"];
 var CONSPIRE_TYPE = "conspired";
 var ACCUSED_TYPE = "accused";
+function lifeFlags(life) {
+  const news = (life?.news ?? []).length > 0;
+  const hobbies = (life?.hobbies ?? []).length > 0;
+  const voice = (life?.topics ?? []).some((t) => t.pick === true);
+  const voiced = (life?.topics ?? []).some((t) => t.voiced === true);
+  const jokes = (life?.jokes ?? []).length > 0;
+  const firsts = life?.firsts === true;
+  const types = /* @__PURE__ */ new Set([
+    ...news ? ["news_told"] : [],
+    ...hobbies ? ["hobby_praised"] : [],
+    ...voice ? ["opinion_voiced"] : [],
+    ...voiced ? ["opinion_challenged", "opinion_agreed"] : [],
+    ...firsts ? ["first_moment"] : [],
+    ...jokes ? ["joke_returned"] : []
+  ]);
+  return { news, hobbies, topics: voice || voiced, voice, voiced, jokes, firsts, types };
+}
+var oneLine = (text2) => text2.replace(/[\r\n]+/g, " ");
+function lifeBlock(life) {
+  const f = lifeFlags(life);
+  const out = [];
+  if (f.news) out.push("NEWS (id \u2014 unit: what she has to tell):", ...life.news.map((n) => `- ${n.id} \u2014 ${n.unitId}: ${oneLine(n.text)}`));
+  if (f.hobbies) out.push("HOBBIES (id \u2014 unit: label):", ...life.hobbies.map((h2) => `- ${h2.id} \u2014 ${h2.unitId}: ${oneLine(h2.label)}`));
+  if (f.topics) {
+    out.push('TOPICS (id \u2014 unit: label; positions; marked "may voice" or "has told"):');
+    for (const t of life.topics) {
+      if (t.pick !== true && t.voiced !== true) continue;
+      const marks = [...t.pick === true ? ["may voice"] : [], ...t.voiced === true ? ["has told"] : []].join(", ");
+      out.push(`- ${t.id} \u2014 ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(", ")}; ${marks}`);
+    }
+  }
+  if (f.jokes) out.push("JOKES (id \u2014 unit: what it is about):", ...life.jokes.map((j) => `- ${j.id} \u2014 ${j.unitId}: ${oneLine(j.text)}`));
+  return out.length > 0 ? ["LIFE (what the units may bring up; a report may name only the ids listed here):", ...out] : [];
+}
 function system3(raw) {
   const input = raw;
   const excluded = input.excluded ?? [];
@@ -33374,7 +33545,8 @@ function system3(raw) {
   const hasExpectations = (input.expectations ?? []).length > 0;
   const hasConspire = (input.conspire ?? []).length > 0;
   const asksReading = input.reading === true;
-  const eventTypes = EVENT_TYPES.filter((t) => !LIFE_EVENT_TYPES.includes(t) && (hasRules || hasOverride && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const life = lifeFlags(input.life);
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (hasRules || hasOverride && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []
@@ -33395,6 +33567,11 @@ function system3(raw) {
     ...hasLeaks ? ['               "itemId": "<id from INTERCEPTED>" }],   // only for knowledge_leak'] : [],
     ...hasExpectations ? ['               "expectationId": "<id from EXPECTATIONS>"   // only for expectation_kept / expectation_broken'] : [],
     ...hasOverride ? ['               "overrideId": "<id from OVERRIDE>", "text": "<the agreed wording>"   // only for compromise_reached with the warden'] : [],
+    ...life.news ? ['               "newsId": "<id from NEWS>"   // only for news_told'] : [],
+    ...life.hobbies ? ['               "hobbyId": "<id from HOBBIES>"   // only for hobby_praised'] : [],
+    ...life.topics ? ['               "topicId": "<id from TOPICS>", "positionId": "<a position id of that topic>"   // topicId for opinion_voiced / opinion_challenged / opinion_agreed; positionId only for opinion_challenged, optional'] : [],
+    ...life.firsts ? ['               "kind": FIRST_KIND   // only for first_moment'] : [],
+    ...life.jokes ? ['               "factId": "<id from JOKES>"   // only for joke_returned'] : [],
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -33409,6 +33586,7 @@ function system3(raw) {
     `MEASURE: ${(input.measures ?? []).join(", ")}`,
     `PROPOSAL_KIND: ${proposalKinds.join(", ")}`,
     `EXPRESSION_LABEL: ${EXPRESSION_LABELS.join(", ")}`,
+    ...life.firsts ? [`FIRST_KIND: ${FIRST_KINDS.join(", ")}`] : [],
     ...excluded.length > 0 ? ["EXCLUDED (id: label):", ...excluded.map((e) => `- ${e.id}: ${e.label}`)] : [],
     "",
     `Rules: "actor" is "commander" when the commander does it to a unit; a unit's own act toward the commander (shared_secret, apologized) has that unit as actor and no targets.`,
@@ -33432,6 +33610,12 @@ function system3(raw) {
     ...hasExpectations ? ['"expectation_kept" / "expectation_broken": the commander does what an expectation of the warden asks, or what it forbids, in this exchange; the warden is the target; set "expectationId" to its id from EXPECTATIONS. When the commander turns romantic with a unit other than the warden and an expectation says no one else, that is expectation_broken. Skip an expectation the exchange does not touch.'] : [],
     ...hasConspire ? ['"conspired": the commander quietly asks a unit listed in CONSPIRE to stand with the commander against the one who holds the controller (to look away, to warn, to help); that unit is the target. Report it only when the exchange shows the ask, not a complaint.'] : [],
     ...hasWarned ? ['"accused": the commander openly accuses a unit listed in WARNED of planning disloyalty, desertion, mutiny or defiance; the unit is the target. Report it only when the exchange shows the accusation.'] : [],
+    ...life.news ? ['"news_told": a unit tells the commander one of the NEWS items (what happened to her), in her own words; she is the actor, no targets; set "newsId". Report it only when the exchange shows her telling it.'] : [],
+    ...life.hobbies ? [`"hobby_praised": the commander shows interest in, or praises, a unit's hobby listed in HOBBIES; the unit is the target; set "hobbyId". An empty compliment is not praise of the hobby.`] : [],
+    ...life.voice ? ['"opinion_voiced": a unit says what she thinks about a topic in TOPICS marked "may voice"; she is the actor, no targets; set "topicId". Report it only when she says it.'] : [],
+    ...life.voiced ? ['"opinion_challenged": the commander argues against what a unit has told about a topic in TOPICS marked "has told"; the unit is the target; set "topicId", and "positionId" when the commander clearly argues for one of its positions; "severity" is how hard the commander pushes (minor or moderate: a remark; major or extreme: a full argument). "opinion_agreed": the commander agrees with what she holds on such a topic.'] : [],
+    ...life.firsts ? ['"first_moment": something happens for the first time between the commander and the unit; set "kind" to the word from FIRST_KIND that fits. Report it only when the exchange plainly shows it.'] : [],
+    ...life.jokes ? ['"joke_returned": the commander and a unit bring back a joke from JOKES; set "factId". Report it only when the exchange plainly refers to it.'] : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");
 }
@@ -33458,6 +33642,8 @@ function prompt3(raw) {
   if ((input.conspire ?? []).length > 0) out.push("", `CONSPIRE (units the commander may enlist): ${input.conspire.join(", ")}`);
   if ((input.overrides ?? []).length > 0) out.push("", "OVERRIDE (id \u2014 the commander's order; what she wants instead):", ...input.overrides.map((o) => `- ${o.id} \u2014 ${o.order}; ${o.alternative}`));
   if ((input.warned ?? []).length > 0) out.push("", `WARNED (units the commander has been warned about): ${input.warned.join(", ")}`);
+  const lifeList = input.life;
+  if (lifeList && lifeBlock(lifeList).length > 0) out.push("", ...lifeBlock(lifeList));
   if (input.openPromises.length > 0) {
     out.push("", "Open promises:", ...input.openPromises.map((p) => `- ${p.by} \u2192 ${p.to}: ${p.text}`));
   }
@@ -33479,7 +33665,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
   const events = src.events.filter((e) => isObj36(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj36(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj36(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -33511,6 +33697,7 @@ function readIntentOutput(raw, input, opts) {
     overrides: (input.overrides ?? []).map((o) => o.id),
     expectations: (input.expectations ?? []).map((x) => x.id),
     conspire: input.conspire ?? [],
+    ...input.life ? { life: input.life } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
 }
@@ -33572,8 +33759,10 @@ function createComms(deps) {
       // P14b
       ...leakInput(s, deps.registries(), [unitId]),
       // P12: what the frequency caught about her (nothing without the trait)
-      ...warnedInput(s, [unitId])
+      ...warnedInput(s, [unitId]),
       // P12: the units the commander has an open warning about
+      ...lifeIntentInput(s, deps.registries(), [unitId], null, "dm")
+      // P14c: her news and her hobbies only
     };
   }
   async function readExchange(unitId, ref) {
@@ -35155,8 +35344,10 @@ function createSceneController(deps) {
       // P13: the warden's open override, while she is present
       ...expectationInput(s0, deps.registries(), scene.participants),
       // P13: her expectations, while she is present
-      ...conspireInput(s0, deps.registries(), scene.participants)
+      ...conspireInput(s0, deps.registries(), scene.participants),
       // P13: who the commander may enlist against her, while she is not present
+      ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, "scene")
+      // P14c: what she may tell, her hobbies, her views (nothing while life is off)
     };
   }
   function dropSuperseded(_s0, sceneId, from, key) {

@@ -9,7 +9,9 @@ import { applyDisciplineEvent } from '../discipline/record';
 import { recordWitnesses } from '../development/appraisal';
 import { measureList } from '../discipline';
 import { evaluateAutomatic } from './graph';
+import { applyLifeIntent, lifeIntentInput } from '../life/intents';
 import { validateIntents } from './intents';
+import { LIFE_EVENT_TYPES } from './vocab';
 import { commanderProposal, offerProposal } from './proposals';
 import { applyRuleEvent, RULE_EVENT_TYPES, rulesOf } from '../bonds/rules';
 import { expectationEvent } from '../warden/agenda';
@@ -63,7 +65,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     warned: warnedUnits(draft, p.participants), // P12: only units there is an open warning about
     overrides: openOverrideIds(draft, p.participants), // P13: the warden's override a compromise may settle
     expectations: expectationIds(draft, p.participants), // P13: her expectations, while she is present
-    ...conspireInput(draft, reg, p.participants) }); // P13: the units the commander may enlist against her
+    ...conspireInput(draft, reg, p.participants), // P13: the units the commander may enlist against her
+    ...lifeIntentInput(draft, reg, p.participants, p.channel === 'scene' ? draft.scene ?? null : null, p.channel) }); // P14c: what she may tell, her hobbies, her views
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -87,6 +90,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'conspired') events.push(...tryAlly(draft, ctx, id)); // P13: the ally check
+      if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx, id, e)); // P14c: her news told, a hobby praised, ...
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)

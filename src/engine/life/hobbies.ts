@@ -5,7 +5,7 @@ import { addFact } from '../memory';
 import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
 import type { CampaignState, HobbyState, Slot, Unit } from '../state/types';
-import { plainText, revealMastery, writeLifeFact } from './facts';
+import { plainText, revealFact, revealMastery, writeLifeFact } from './facts';
 import { enqueue } from './news';
 import { DAY_SLOTS, busySlot, isPrivateRoom, placesOf, takesPart, unitOf, type DayPlaces } from './places';
 import { UNTOLD_TAG, lifeChance, lifeHash, lifeMode, temperamentOf } from './state';
@@ -180,9 +180,11 @@ function masterHobby(draft: CampaignState, unit: Unit, h: HobbyState, entry: Hob
  * She reaches the `n`-th (0..3) milestone of a hobby: skill at least its threshold, the plateau gone, interest +15, a hidden fact and (unless
  * `caused`, told in the scene the commander was in, or `told`, the news of the life event that brought it) an item in the news queue; a
  * milestone with an `opinion` trace opens the hobby's topic for her. The fourth is mastery. Low aptitude stops at the third (ceiling).
+ * A `caused` milestone is known to the commander at once (it was there); a `told` one adds its fact id to `opts.facts`, so the item of the
+ * event that brought it reveals it with the event.
  */
 export function grantMilestone(
-  draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, n: number, opts: { caused?: true; told?: true } = {},
+  draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, n: number, opts: { caused?: true; told?: true; facts?: string[] } = {},
 ): EngineEvent[] {
   const unit = unitOf(draft, unitId);
   const life = draft.life;
@@ -199,8 +201,11 @@ export function grantMilestone(
   delete h.plateau;
   const events: EngineEvent[] = [{ type: 'hobby_milestone', unitId, hobbyId, milestoneId: m.id }];
   const fact = writeLifeFact(draft, unitId, `${unit.displayName} (${entry.label}): ${plainText(m.line)}`, ['hobby', hobbyId, m.id], n === 3 ? 2 : 1);
-  if (opts.caused === true) life.delivered.push({ day: draft.day, unitId, category: 'hobby', hobby: true, caused: true });
-  else if (opts.told !== true) {
+  if (opts.caused === true) {
+    life.delivered.push({ day: draft.day, unitId, category: 'hobby', hobby: true, caused: true });
+    revealFact(draft, fact.id); // the commander was there
+  } else if (opts.told === true) opts.facts?.push(fact.id);
+  else {
     events.push(...enqueue(draft, {
       unitId, kind: 'hobby', ref: hobbyId, what: n === 3 ? 'mastered' : 'milestone', milestoneId: m.id, factId: fact.id, category: 'hobby', day: draft.day,
       ...(n === 3 ? { notable: true as const } : {}),
@@ -343,16 +348,19 @@ export function interestTick(draft: CampaignState, reg: Registries, unitId: stri
 
 /**
  * She takes up a hobby she does not have: skill 0, the novelty interest, active (the least keen of the others cools past three). From an
- * `event` the life event is the news; from a `friend` it is news of its own (a hidden fact and a queue item); an `import` is a starting hobby
- * and silent.
+ * `event` the life event is the news (its fact id goes to `facts`, so the event's item reveals it with the event); from a `friend` it is news
+ * of its own (a hidden fact and a queue item); an `import` is a starting hobby and silent.
  */
-export function startHobby(draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number, source: 'event' | 'friend' | 'import'): EngineEvent[] {
+export function startHobby(
+  draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number, source: 'event' | 'friend' | 'import', facts?: string[],
+): EngineEvent[] {
   const unit = unitOf(draft, unitId);
   const entry = reg.hobbies.get(hobbyId) as HobbyEntry | undefined;
   if (!unit || unit.kind !== 'named' || !entry || (unit.hobbies ?? []).some((h) => h.id === hobbyId)) return [];
   const events: EngineEvent[] = [{ type: 'hobby_started', unitId, hobbyId }, ...takeUpHobby(unit, hobbyId, day)];
   if (source === 'import') return events;
   const fact = writeLifeFact(draft, unitId, `${unit.displayName} has taken up ${entry.label}.`, ['hobby', hobbyId, 'started'], 1);
+  if (source === 'event') facts?.push(fact.id);
   if (source === 'friend') events.push(...enqueue(draft, { unitId, kind: 'hobby', ref: hobbyId, what: 'started', factId: fact.id, category: 'hobby', day }));
   return events;
 }
@@ -369,7 +377,7 @@ export function friendHobbies(
   if (lifeMode(draft) === 'off' || !life) return [];
   const events: EngineEvent[] = [];
   const learned = new Set<string>();
-  const planOf = (id: string) => plans?.get(id) ?? practiceSlots(draft, reg, id, day, places);
+  const planOf = (id: string) => (plans ? (plans.get(id) ?? []) : practiceSlots(draft, reg, id, day, places)); // a woman with no planned slot has none: nothing is derived again
   for (const teacher of draft.squad) {
     for (const p of planOf(teacher.id)) {
       if (isPrivateRoom(reg, p.roomId)) continue; // her own quarters: nobody is there to learn from her

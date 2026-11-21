@@ -166,6 +166,7 @@ export function closeNews(draft: CampaignState, itemId: string): EngineEvent[] {
   const item = life?.queue.find((q) => q.id === itemId);
   if (!life || !item) return [];
   if (item.factId !== undefined) revealFact(draft, item.factId);
+  for (const id of item.alsoFacts ?? []) revealFact(draft, id); // what the event brought comes out with it
   if (item.what === 'mastered') revealMastery(draft, item.unitId, item.ref); // the base's best hand is known now, and a trait of hers
   life.queue = life.queue.filter((q) => q.id !== itemId);
   life.outbox = life.outbox.filter((o) => o.itemId !== itemId);

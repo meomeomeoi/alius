@@ -182,7 +182,7 @@ function milestoneHobby(draft: CampaignState, reg: Registries, unitId: string, e
  * What an event turns into: a hobby she takes up (or a push for one she has: its interest rises and a plateau breaks), the next milestone of a
  * hobby (the event is the news, so the milestone is not queued again), and a topic her opinion may form on.
  */
-function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, entry: LifeEventEntry, day: number): EngineEvent[] {
+function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, entry: LifeEventEntry, day: number, facts: string[]): EngineEvent[] {
   const events: EngineEvent[] = [];
   const unit = unitOf(draft, unitId);
   const becomes = entry.becomes;
@@ -190,12 +190,12 @@ function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, ent
   if (becomes.hobby !== undefined && reg.hobbies.has(becomes.hobby)) {
     const have = (unit.hobbies ??= []).find((h) => h.id === becomes.hobby);
     if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
-    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, 'event'));
+    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, 'event', facts));
   }
   if (becomes.milestone === true) {
     const id = milestoneHobby(draft, reg, unitId, entry, day);
     const h = id === null ? undefined : unit.hobbies?.find((x) => x.id === id);
-    if (id !== null && h) events.push(...grantMilestone(draft, reg, unitId, id, h.milestones.length, { told: true }));
+    if (id !== null && h) events.push(...grantMilestone(draft, reg, unitId, id, h.milestones.length, { told: true, facts }));
   }
   if (becomes.opinionTopic !== undefined) openTopic(draft, reg, unitId, becomes.opinionTopic);
   return events;
@@ -219,10 +219,12 @@ export function applyLifeEvent(draft: CampaignState, reg: Registries, unitId: st
   const events: EngineEvent[] = [{ type: 'life_event', unitId, eventId: entry.id, size: entry.size }];
   const share = effectiveShare(draft, reg, unitId, entry);
   if (share !== 'keeps') mine.hub = { eventId: entry.id, day };
-  events.push(...applyBecomes(draft, reg, unitId, entry, day));
+  const also: string[] = []; // what `becomes` wrote about her (a milestone, a hobby): told with the event
+  events.push(...applyBecomes(draft, reg, unitId, entry, day, also));
   if (lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry))) {
     events.push(...enqueue(draft, {
       unitId, kind: 'event', ref: entry.id, what: 'event', factId: fact.id, category: entry.category, day,
+      ...(also.length > 0 ? { alsoFacts: also } : {}),
       ...(entry.size === 'notable' ? { notable: true as const } : {}), ...(entry.urgent === true ? { urgent: true as const } : {}),
     }));
     events.push({ type: 'life_shared', unitId, eventId: entry.id });

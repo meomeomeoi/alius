@@ -1,5 +1,6 @@
 import { clockText } from '../engine/calendar';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
+import { lifeIntentInput } from '../engine/life/intents';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { dmMode, threadOf } from '../engine/dms';
 import { measureList } from '../engine/discipline';
@@ -104,6 +105,7 @@ export function createComms(deps: CommsDeps): Comms {
       ...(developmentMode(s) !== 'off' ? { reading: true as const } : {}), // P14b
       ...leakInput(s, deps.registries(), [unitId]), // P12: what the frequency caught about her (nothing without the trait)
       ...warnedInput(s, [unitId]), // P12: the units the commander has an open warning about
+      ...lifeIntentInput(s, deps.registries(), [unitId], null, 'dm'), // P14c: her news and her hobbies only
     };
   }
 

@@ -461,16 +461,18 @@ describe('a seeded month', () => {
     });
     const rng = structuredClone(s.rng);
     const rowsByDay: Array<{ day: number; unitId: string; category: string; hobby: boolean }> = [];
+    const hobbyRows: Array<{ day: number }> = []; // the hobby week counts the ones the commander caused too
     for (let d = 1; d <= 30; d++) {
       s.day = d;
       lifeDayStep(s, ctxOf(s, reg));
       // nothing here tells her: every directive that expired is simply gone
       rowsByDay.push(...s.life!.delivered.filter((r) => r.day === d && r.caused !== true));
+      hobbyRows.push(...s.life!.delivered.filter((r) => r.day === d && r.hobby));
     }
     expect(s.rng).toEqual(rng); // no rng draw
     expect(rowsByDay.length).toBeGreaterThanOrEqual(6); // the month has something to check
     for (let d = 1; d <= 30; d++) expect(rowsByDay.filter((r) => r.day === d).length).toBeLessThanOrEqual(1);
-    for (let d = 1; d <= 30; d++) expect(rowsByDay.filter((r) => r.hobby && r.day <= d && r.day > d - 7).length).toBeLessThanOrEqual(TUNING.life.hobbyWeek);
+    for (let d = 1; d <= 30; d++) expect(hobbyRows.filter((r) => r.day <= d && r.day > d - 7).length).toBeLessThanOrEqual(TUNING.life.hobbyWeek);
     for (const r of rowsByDay) expect(rowsByDay.filter((o) => o.unitId === r.unitId && o.day > r.day && o.day - r.day < TUNING.life.sameWomanDays)).toEqual([]);
     rowsByDay.slice(1).forEach((r, i) => expect(r.category).not.toBe(rowsByDay[i].category));
   });
