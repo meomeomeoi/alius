@@ -18227,6 +18227,18 @@ function settleDomainConflict(draft, ctx2, claimantId, holderId, domainId) {
   events.push(...addHold(draft, ctx2, loserId, -TUNING.dynamic.contestedLoss, "contested"));
   return events;
 }
+function transferDomains(draft, loserId, winnerId, who) {
+  const loser = dynamicOf(draft, loserId);
+  const winner = dynamicOf(draft, winnerId);
+  if (loser === void 0 || winner === void 0) return [];
+  const events = [];
+  for (const d of [...loser.domains].filter((x) => standing(x, draft.day))) {
+    events.push(loseDomain(draft, loserId, d.id, "contest"));
+    winner.domains = [...winner.domains.filter((x) => x.id !== d.id), { id: d.id, since: draft.day }];
+    events.push({ type: "domain_contested", domainId: d.id, winnerId, loserId, claimantId: who.claimantId, holderId: who.holderId });
+  }
+  return events;
+}
 function openClaim(draft, reg, claimId) {
   const claim2 = draft.dynamic?.open.claims.find((c) => c.id === claimId);
   const unit3 = claim2 === void 0 ? void 0 : draft.squad.find((u) => u.id === claim2.unitId);
@@ -18662,52 +18674,62 @@ function exitDynamic(draft, ctx2, unitId, route, opts = {}) {
     if (pendingExit(draft, unitId) === void 0) (x.open.exits ??= []).push({ id: `dx${x.seq++}`, unitId, day: draft.day });
     return [];
   }
-  const severity = exitSeverity(draft, reg, unitId, route, opts.clean === true);
-  const sworn = dyn.sworn !== void 0;
-  const from = dyn.frame;
+  let leaverId = unitId;
+  let winnerId;
+  if (route === "transfer") {
+    winnerId = settleOrder(draft, reg, opts.toUnitId, unitId);
+    leaverId = winnerId === unitId ? opts.toUnitId : unitId;
+  }
+  const leaver = dynamicOf(draft, leaverId);
+  const severity = exitSeverity(draft, reg, leaverId, route, opts.clean === true);
+  const sworn = leaver.sworn !== void 0;
+  const from = leaver.frame;
   const events = [];
-  if (route === "transfer") for (const d of [...dyn.domains]) events.push(...settleDomainConflict(draft, ctx2, opts.toUnitId, unitId, d.id));
+  if (winnerId !== void 0) {
+    events.push(...transferDomains(draft, leaverId, winnerId, { claimantId: opts.toUnitId, holderId: unitId }));
+    events.push(...addHold(draft, ctx2, leaverId, -TUNING.dynamic.contestedLoss, "contested"));
+  }
   const byLeash = route === "force" && opts.means === "leash";
-  const commandKept = !byLeash && dyn.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
-  for (const d of [...dyn.domains]) {
+  const commandKept = !byLeash && leaver.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
+  for (const d of [...leaver.domains]) {
     if (commandKept && keepsCommand(draft, reg, d.id)) {
       delete d.partialUntil;
       continue;
     }
-    events.push(loseDomain(draft, unitId, d.id, byLeash && keepsCommand(draft, reg, d.id) ? "force" : "exit"));
+    events.push(loseDomain(draft, leaverId, d.id, byLeash && keepsCommand(draft, reg, d.id) ? "force" : "exit"));
   }
-  dropVoidOverride(draft, reg, unitId);
-  dyn.frame = "equal";
-  dyn.hold = 0;
-  dyn.milestones = [];
-  dyn.refusals = [];
-  dyn.contest = [];
-  delete dyn.sworn;
-  delete dyn.leashBlock;
-  delete dyn.probes.pending;
-  dyn.formerHolder = { endedDay: draft.day, frame: from, sworn };
-  x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
-  x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
-  x.open.exits = (x.open.exits ?? []).filter((e) => e.unitId !== unitId);
-  events.push(...applyEventToUnit(draft, reg, unitId, {
+  dropVoidOverride(draft, reg, leaverId);
+  leaver.frame = "equal";
+  leaver.hold = 0;
+  leaver.milestones = [];
+  leaver.refusals = [];
+  leaver.contest = [];
+  delete leaver.sworn;
+  delete leaver.leashBlock;
+  delete leaver.probes.pending;
+  leaver.formerHolder = { endedDay: draft.day, frame: from, sworn };
+  x.open.claims = x.open.claims.filter((c) => c.unitId !== leaverId);
+  x.open.milestones = x.open.milestones.filter((m) => m.unitId !== leaverId);
+  x.open.exits = (x.open.exits ?? []).filter((e) => e.unitId !== leaverId);
+  events.push(...applyEventToUnit(draft, reg, leaverId, {
     type: "dynamic_exit",
     actor: "commander",
-    targets: [unitId],
+    targets: [leaverId],
     severity,
     evidence: "the commander left what she held",
     confidence: 1
-  }), ...evaluateAutomatic(draft, reg, unitId), ...romanceStepDown(draft, reg, unitId));
-  const request = { unitId, route, clean: opts.clean === true, force: route === "force", commandKept };
+  }), ...evaluateAutomatic(draft, reg, leaverId), ...romanceStepDown(draft, reg, leaverId));
+  const request = { unitId: leaverId, route, clean: opts.clean === true, force: route === "force", commandKept };
   events.push({
     type: "dynamic_exit",
-    unitId,
+    unitId: leaverId,
     route,
     severity,
     sworn,
     clean: request.clean,
     force: request.force,
     commandKept,
-    ...route === "transfer" ? { toUnitId: opts.toUnitId } : {},
+    ...winnerId !== void 0 ? { toUnitId: winnerId } : {},
     ...route === "force" ? { means: opts.means } : {},
     frame: from
   });

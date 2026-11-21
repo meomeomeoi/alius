@@ -2,7 +2,7 @@
  * Leaving a dynamic (P15, plan R15, R17, spec §9): saying "it's over" is always possible, and what it costs grows with what she held. The cost
  * is a relation event (`dynamic_exit`) whose severity reads her frame, her domains and the vow (`exitSeverity`); a vow is a break. The routes:
  * `abrupt` now; `negotiated` opens a scene and waits for a compromise (`compromise_reached { exitId }`), which makes the exit clean (one step
- * lighter, and a mild aftermath); `transfer` runs the domain conflict with another holder; `force` needs a means already done on her today (a punishment, the Leash
+ * lighter, and a mild aftermath); `transfer` is one conflict with another holder (the winner holds the domains, the loser alone leaves); `force` needs a means already done on her today (a punishment, the Leash
  * or, later, an oversight request: the card runs it through its own path, the vote, the warden's co-sign and the warnings) and costs two steps more. Every domain is dropped except the one that grants the command, which she keeps
  * as a struggle (`commandKept`); the dynamic starts again from `equal` with hold 0 and her tracks, and the romance falls a rung.
  * Draws once, for the aftermath that follows (`startAftermathOnExit`), unless the command forces `command_kept`.
@@ -13,13 +13,15 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { leashLog } from '../leash/weekly';
 import { applyEventToUnit } from '../relations/effects';
+import { settleOrder } from '../personal/bookings';
 import { evaluateAutomatic, romanceStepDown } from '../relations/graph';
 import { SEVERITIES } from '../relations/vocab';
 import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { startAftermathOnExit } from './aftermath';
 import { domainEntry, dropVoidOverride, standing } from './capabilities';
-import { loseDomain, settleDomainConflict } from './domains';
+import { loseDomain, transferDomains } from './domains';
+import { addHold } from './hold';
 import { dynamicOn } from './gate';
 import { dynamicOf } from './state';
 import { EXIT_ROUTES, type ExitRoute } from './types';
@@ -132,49 +134,59 @@ export function exitDynamic(draft: CampaignState, ctx: Ctx, unitId: string, rout
     return [];
   }
 
-  const severity = exitSeverity(draft, reg, unitId, route, opts.clean === true);
-  const sworn = dyn.sworn !== undefined;
-  const from = dyn.frame;
+  // a transfer is one conflict between the two holders (R15): the order decides, the winner holds the domains of both, and the loser alone leaves
+  let leaverId = unitId;
+  let winnerId: string | undefined;
+  if (route === 'transfer') {
+    winnerId = settleOrder(draft, reg, opts.toUnitId!, unitId);
+    leaverId = winnerId === unitId ? opts.toUnitId! : unitId;
+  }
+  const leaver = dynamicOf(draft, leaverId)!;
+  const severity = exitSeverity(draft, reg, leaverId, route, opts.clean === true);
+  const sworn = leaver.sworn !== undefined;
+  const from = leaver.frame;
   const events: EngineEvent[] = [];
 
-  // a transfer: the other holder claims what she holds, domain by domain; the winner of each keeps it
-  if (route === 'transfer') for (const d of [...dyn.domains]) events.push(...settleDomainConflict(draft, ctx, opts.toUnitId!, unitId, d.id));
+  if (winnerId !== undefined) {
+    events.push(...transferDomains(draft, leaverId, winnerId, { claimantId: opts.toUnitId!, holderId: unitId }));
+    events.push(...addHold(draft, ctx, leaverId, -TUNING.dynamic.contestedLoss, 'contested')); // once, whatever she held
+  }
 
   // every domain is dropped but the command, which she keeps as a struggle: except when the Leash forced it, which wins the command back (R15a)
   const byLeash = route === 'force' && opts.means === 'leash';
-  const commandKept = !byLeash && dyn.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
-  for (const d of [...dyn.domains]) {
+  const commandKept = !byLeash && leaver.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
+  for (const d of [...leaver.domains]) {
     if (commandKept && keepsCommand(draft, reg, d.id)) {
       delete d.partialUntil;
       continue;
     }
-    events.push(loseDomain(draft, unitId, d.id, byLeash && keepsCommand(draft, reg, d.id) ? 'force' : 'exit'));
+    events.push(loseDomain(draft, leaverId, d.id, byLeash && keepsCommand(draft, reg, d.id) ? 'force' : 'exit'));
   }
-  dropVoidOverride(draft, reg, unitId);
+  dropVoidOverride(draft, reg, leaverId);
 
   // the dynamic starts again from equal; her tracks and her reading of the commander are kept
-  dyn.frame = 'equal';
-  dyn.hold = 0;
-  dyn.milestones = [];
-  dyn.refusals = [];
-  dyn.contest = [];
-  delete dyn.sworn;
-  delete dyn.leashBlock;
-  delete dyn.probes.pending;
-  dyn.formerHolder = { endedDay: draft.day, frame: from, sworn };
-  x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
-  x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
-  x.open.exits = (x.open.exits ?? []).filter((e) => e.unitId !== unitId);
+  leaver.frame = 'equal';
+  leaver.hold = 0;
+  leaver.milestones = [];
+  leaver.refusals = [];
+  leaver.contest = [];
+  delete leaver.sworn;
+  delete leaver.leashBlock;
+  delete leaver.probes.pending;
+  leaver.formerHolder = { endedDay: draft.day, frame: from, sworn };
+  x.open.claims = x.open.claims.filter((c) => c.unitId !== leaverId);
+  x.open.milestones = x.open.milestones.filter((m) => m.unitId !== leaverId);
+  x.open.exits = (x.open.exits ?? []).filter((e) => e.unitId !== leaverId);
 
   // the cost lands on her, and the romance falls a rung (it never leaves romance)
-  events.push(...applyEventToUnit(draft, reg, unitId, {
-    type: 'dynamic_exit', actor: 'commander', targets: [unitId], severity, evidence: 'the commander left what she held', confidence: 1,
-  }), ...evaluateAutomatic(draft, reg, unitId), ...romanceStepDown(draft, reg, unitId));
+  events.push(...applyEventToUnit(draft, reg, leaverId, {
+    type: 'dynamic_exit', actor: 'commander', targets: [leaverId], severity, evidence: 'the commander left what she held', confidence: 1,
+  }), ...evaluateAutomatic(draft, reg, leaverId), ...romanceStepDown(draft, reg, leaverId));
 
-  const request: AftermathRequest = { unitId, route, clean: opts.clean === true, force: route === 'force', commandKept };
+  const request: AftermathRequest = { unitId: leaverId, route, clean: opts.clean === true, force: route === 'force', commandKept };
   events.push({
-    type: 'dynamic_exit', unitId, route, severity, sworn, clean: request.clean, force: request.force, commandKept,
-    ...(route === 'transfer' ? { toUnitId: opts.toUnitId } : {}), ...(route === 'force' ? { means: opts.means } : {}), frame: from,
+    type: 'dynamic_exit', unitId: leaverId, route, severity, sworn, clean: request.clean, force: request.force, commandKept,
+    ...(winnerId !== undefined ? { toUnitId: winnerId } : {}), ...(route === 'force' ? { means: opts.means } : {}), frame: from,
   });
   events.push(...startAftermathOnExit(draft, ctx as EngineCtx, request)); // how she took it: one draw of the rng (none when the command forces it)
   return events;

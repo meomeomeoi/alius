@@ -135,6 +135,24 @@ export function settleDomainConflict(draft: CampaignState, ctx: Pick<EngineCtx, 
   return events;
 }
 
+/**
+ * A transfer of the commander (R15, review I2): the loser's standing domains pass to the winner at once (`domain_lost { reason: 'contest' }`, then the
+ * winner holds them since today, `domain_contested` for each with who claimed and who held). Hold is not touched here: the exit charges the loser
+ * `contestedLoss` once, whatever she held. A domain that is not standing is left where it is. Draws nothing.
+ */
+export function transferDomains(draft: CampaignState, loserId: string, winnerId: string, who: { claimantId: string; holderId: string }): EngineEvent[] {
+  const loser = dynamicOf(draft, loserId);
+  const winner = dynamicOf(draft, winnerId);
+  if (loser === undefined || winner === undefined) return [];
+  const events: EngineEvent[] = [];
+  for (const d of [...loser.domains].filter((x) => standing(x, draft.day))) {
+    events.push(loseDomain(draft, loserId, d.id, 'contest'));
+    winner.domains = [...winner.domains.filter((x) => x.id !== d.id), { id: d.id, since: draft.day }];
+    events.push({ type: 'domain_contested', domainId: d.id, winnerId, loserId, claimantId: who.claimantId, holderId: who.holderId });
+  }
+  return events;
+}
+
 /** The open claim of a unit by id, with her and her block, or `null` when it is stale. */
 function openClaim(draft: CampaignState, reg: Registries, claimId: string) {
   const claim = draft.dynamic?.open.claims.find((c) => c.id === claimId);

@@ -9,6 +9,7 @@ import { forgetDynamic } from '../../../src/engine/dynamic/forget';
 import { exitCostWord, exitDynamic, exitSeverity } from '../../../src/engine/dynamic/exit';
 import { dynamicIntentInput } from '../../../src/engine/dynamic/intents';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
+import { TUNING } from '../../../src/engine/tuning';
 import type { Frame } from '../../../src/engine/dynamic/types';
 import { romanceStepDown } from '../../../src/engine/relations/graph';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -205,13 +206,51 @@ describe('the routes', () => {
     expect(dyn(r.state).formerHolder).toBeDefined();
   });
 
-  it('a transfer she wins keeps nothing for the one who left but her command', () => {
+  it('transfer: the winner keeps the domains', () => {
     const s = world('role', 70, ['device', 'command'], { frame: 'play', hold: 45 });
-    unitOf(s, ANN).bond = practice('intense');
+    unitOf(s, ANN).bond = practice('intense'); // the old holder wins the order of two
     const r = exit(s, { route: 'transfer', toUnitId: BEA });
-    expect(r.events.filter((e) => e.type === 'domain_contested').map((e) => e.winnerId)).toEqual([ANN, ANN]);
-    expect(dyn(r.state).domains.map((d) => d.id)).toEqual(['command']);
-    expect(exitEvent(r.events)).toMatchObject({ commandKept: true });
+    expect(errors(r.events)).toEqual([]);
+    // she keeps everything and nobody takes the command from her: it is the claimant who loses
+    expect(dyn(r.state).domains.map((d) => d.id).sort()).toEqual(['command', 'device']);
+    expect(dyn(r.state).frame).toBe('role');
+    expect(dyn(r.state).hold).toBe(70); // hers is untouched
+    expect(dyn(r.state).formerHolder).toBeUndefined();
+    expect(r.events.some((e) => e.type === 'domain_lost')).toBe(false); // she held them all along: no domain moved
+    expect(r.events.some((e) => e.type === 'dynamic_exit' && e.unitId === ANN)).toBe(false);
+    expect(exitEvent(r.events)).toMatchObject({ unitId: BEA, route: 'transfer', toUnitId: ANN, commandKept: false });
+    // the one who won a domain of the loser takes that one too
+    const rich = world('role', 70, ['device'], { frame: 'role', hold: 60, domains: ['body'] });
+    unitOf(rich, ANN).bond = practice('intense');
+    const won = exit(rich, { route: 'transfer', toUnitId: BEA });
+    expect(dyn(won.state).domains.map((d) => d.id).sort()).toEqual(['body', 'device']);
+    expect(dyn(won.state, BEA).domains).toEqual([]);
+  });
+
+  it('transfer: the loser alone exits with an aftermath and -10 once', () => {
+    const s = world('role', 70, ['device', 'command'], { frame: 'role', hold: 70 });
+    unitOf(s, BEA).bond = practice('intense'); // the claimant wins
+    const r = exit(s, { route: 'transfer', toUnitId: BEA });
+    expect(errors(r.events)).toEqual([]);
+    const exits = r.events.filter((e) => e.type === 'dynamic_exit');
+    expect(exits).toHaveLength(1);
+    expect(exits[0]).toMatchObject({ unitId: ANN, toUnitId: BEA });
+    // the winner holds what the loser held, and nobody else left
+    expect(dyn(r.state, BEA).domains.map((d) => d.id).sort()).toEqual(['command', 'device']);
+    expect(dyn(r.state, BEA).frame).toBe('role');
+    expect(dyn(r.state, BEA).formerHolder).toBeUndefined();
+    expect(dyn(r.state).frame).toBe('equal');
+    // an aftermath for the loser only
+    expect(r.events.filter((e) => e.type === 'aftermath_started').map((e) => e.unitId)).toEqual([ANN]);
+    expect(dyn(r.state).aftermath).toBeDefined();
+    expect(dyn(r.state, BEA).aftermath).toBeUndefined();
+    // -10 once, not once per domain
+    const lost = r.events.filter((e) => e.type === 'hold_changed' && e.cause === 'contested');
+    expect(lost).toHaveLength(1);
+    expect(lost[0]).toMatchObject({ unitId: ANN });
+    expect(Number(lost[0].from) - Number(lost[0].to)).toBe(TUNING.dynamic.contestedLoss);
+    expect(r.events.filter((e) => e.type === 'domain_contested').map((e) => e.domainId)).toEqual(['device', 'command']);
+    expect(r.events.filter((e) => e.type === 'domain_lost').map((e) => e.reason)).toEqual(['contest', 'contest']);
   });
 
   it('transfer needs another holder at play or beyond', () => {
