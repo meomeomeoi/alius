@@ -4,6 +4,7 @@
  * model-reported ones take the same path and there is no second pipeline. It draws nothing and answers `[]` while the dynamic is off.
  */
 import type { Registries } from '../../content/types';
+import { rulesOf } from '../bonds/rules';
 import type { EngineEvent } from '../dispatch';
 import type { EventIntent } from '../relations/intents';
 import type { CampaignState, Severity } from '../state/types';
@@ -47,6 +48,8 @@ function causeOf(reg: Registries, event: EventIntent): string | null {
  */
 export function holdFeed(draft: CampaignState, reg: Registries, unitId: string, event: EventIntent, _severity: Severity): EngineEvent[] {
   if (event.actor !== 'commander' || !dynamicOn(draft, reg) || dynamicOf(draft, unitId) === undefined) return [];
+  // one break of one rule counts once a day: whichever of the engine's check and a report lands second finds it counted (`applyRuleEvent` stamps the day)
+  if (event.type === 'rule_broken' && event.ruleId !== undefined && rulesOf(draft).some((r) => r.id === event.ruleId && r.lastBrokenDay === draft.day)) return [];
   const cause = causeOf(reg, event);
   if (cause === null) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause as keyof typeof TUNING.dynamic.gains], cause);

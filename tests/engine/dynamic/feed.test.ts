@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
+import { bondsDayStep } from '../../../src/engine/bonds';
+import { Rng } from '../../../src/engine/rng';
 import { FEED_CAUSE, holdFeed } from '../../../src/engine/dynamic/feed';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import { TUNING } from '../../../src/engine/tuning';
@@ -116,6 +118,48 @@ describe('the hold feed', () => {
     delete withHook.relations[ANN].dynamic;
     delete bare.relations[ANN].dynamic;
     expect(withHook).toEqual(bare);
+  });
+});
+
+describe('a rule broken by the engine\'s own check', () => {
+  const withRule = (): CampaignState => {
+    const s = world();
+    s.day = 10;
+    s.relations[ANN].dynamic!.lastPracticeDay = -9;
+    s.bonds = { rules: [{ id: 'r1', unitId: ANN, templateId: 'report_evening', text: 'AUTHOR TO WRITE', status: 'active', day: 9, brokenCount: 0 }] };
+    return s;
+  };
+  const day = (s: CampaignState) => bondsDayStep(s, { registries: reg, rng: new Rng(s.rng) });
+
+  it('an engine-detected broken rule costs the same hold as a reported one', () => {
+    const checked = withRule();
+    const events = day(checked); // nothing reached her today: daily_contact is broken by the check
+    expect(events.filter((e) => e.type === 'rule_broken_by_check')).toHaveLength(1);
+    expect(holdOf(checked)).toBe(50 + TUNING.dynamic.gains.rule_broken);
+    expect(events.filter((e) => e.type === 'hold_changed')).toEqual([{ type: 'hold_changed', unitId: ANN, from: 50, to: 45, cause: 'rule_broken' }]);
+    const reported = withRule();
+    applyEventToUnit(reported, reg, ANN, event('rule_broken', { ruleId: 'r1' }));
+    expect(holdOf(reported)).toBe(holdOf(checked));
+  });
+
+  it('a break counted once is not counted again when the report of it lands the same day', () => {
+    const s = withRule();
+    day(s);
+    expect(holdOf(s)).toBe(45);
+    applyEventToUnit(s, reg, ANN, event('rule_broken', { ruleId: 'r1' }));
+    expect(holdOf(s)).toBe(45);
+    s.day = 11; // another day, another break
+    applyEventToUnit(s, reg, ANN, event('rule_broken', { ruleId: 'r1' }));
+    expect(holdOf(s)).toBe(40);
+  });
+
+  it('the check feeds nothing while the dynamic is off, and draws nothing', () => {
+    const off = withRule();
+    off.content = { enabled: [] };
+    const rng = structuredClone(off.rng);
+    day(off);
+    expect(holdOf(off)).toBe(50);
+    expect(off.rng).toEqual(rng);
   });
 });
 

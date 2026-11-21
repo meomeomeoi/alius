@@ -4,7 +4,7 @@ import { isLiving } from '../economy';
 import { pushMessage } from '../dms';
 import { addFact, nextId } from '../memory';
 import { applyRelationDelta } from '../relationGain';
-import { applyEventToUnit } from '../relations/effects';
+import { applyEventToUnit, landEvent } from '../relations/effects';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { intimacyOf } from '../relations/gain';
 import type { CampaignState, Rule } from '../state/types';
@@ -188,7 +188,9 @@ export function applyRuleEvent(draft: CampaignState, ctx: EngineCtx, unitId: str
 /** An engine check found the commander broke her rule: the same consequences as a reading at confidence 1, with the history line. */
 function breakByCheck(draft: CampaignState, ctx: EngineCtx, rule: Rule, present: string[]): EngineEvent[] {
   pushHistory(draft, rule.unitId, { day: draft.day, kind: 'event', type: 'rule_broken', severity: 'minor' });
-  return [{ type: 'rule_broken_by_check', ruleId: rule.id, unitId: rule.unitId }, ...applyRuleEvent(draft, ctx, rule.unitId, { type: 'rule_broken', ruleId: rule.id }, present)];
+  // P15: a rule broken by check feeds hold like a reported one (it never passed `applyEventToUnit`); before `applyRuleEvent` counts the break
+  const landed = landEvent(draft, ctx.registries, rule.unitId, { type: 'rule_broken', actor: 'commander', targets: [rule.unitId], severity: 'minor', evidence: 'an engine check', confidence: 1, ruleId: rule.id }, 'minor');
+  return [{ type: 'rule_broken_by_check', ruleId: rule.id, unitId: rule.unitId }, ...landed, ...applyRuleEvent(draft, ctx, rule.unitId, { type: 'rule_broken', ruleId: rule.id }, present)];
 }
 
 /** Day end: `daily_contact` rules are broken when the commander neither shared a scene with her nor wrote to her today (once a day). */

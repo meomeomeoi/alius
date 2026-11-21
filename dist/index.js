@@ -11998,7 +11998,8 @@ function applyRuleEvent(draft, ctx2, unitId, ev, present2 = []) {
 }
 function breakByCheck(draft, ctx2, rule, present2) {
   pushHistory(draft, rule.unitId, { day: draft.day, kind: "event", type: "rule_broken", severity: "minor" });
-  return [{ type: "rule_broken_by_check", ruleId: rule.id, unitId: rule.unitId }, ...applyRuleEvent(draft, ctx2, rule.unitId, { type: "rule_broken", ruleId: rule.id }, present2)];
+  const landed = landEvent(draft, ctx2.registries, rule.unitId, { type: "rule_broken", actor: "commander", targets: [rule.unitId], severity: "minor", evidence: "an engine check", confidence: 1, ruleId: rule.id }, "minor");
+  return [{ type: "rule_broken_by_check", ruleId: rule.id, unitId: rule.unitId }, ...landed, ...applyRuleEvent(draft, ctx2, rule.unitId, { type: "rule_broken", ruleId: rule.id }, present2)];
 }
 function checkDailyContact(draft, ctx2) {
   const events = [];
@@ -12990,6 +12991,9 @@ var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var landedHooks = [];
 function registerEventLanded(fn) {
   landedHooks.push(fn);
+}
+function landEvent(draft, reg, unitId, event, severity) {
+  return landedHooks.flatMap((hook) => hook(draft, reg, unitId, event, severity));
 }
 function defectEventStress(reg, unit3, rel, eventType) {
   let sum = 0;
@@ -33059,6 +33063,7 @@ function causeOf(reg, event) {
 }
 function holdFeed(draft, reg, unitId, event, _severity) {
   if (event.actor !== "commander" || !dynamicOn(draft, reg) || dynamicOf(draft, unitId) === void 0) return [];
+  if (event.type === "rule_broken" && event.ruleId !== void 0 && rulesOf(draft).some((r) => r.id === event.ruleId && r.lastBrokenDay === draft.day)) return [];
   const cause = causeOf(reg, event);
   if (cause === null) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);

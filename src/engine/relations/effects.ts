@@ -22,6 +22,13 @@ const landedHooks: EventLandedHook[] = [];
 export function registerEventLanded(fn: EventLandedHook): void {
   landedHooks.push(fn);
 }
+/**
+ * Runs only the landing hooks for an event the engine produced itself (an engine check that found a rule broken): the same consequences for
+ * hold as a reported event, with none of the delta chain (the caller applies its own). Returns the hooks' events.
+ */
+export function landEvent(draft: CampaignState, reg: Registries, unitId: string, event: EventIntent, severity: Severity): EngineEvent[] {
+  return landedHooks.flatMap((hook) => hook(draft, reg, unitId, event, severity));
+}
 /** Tests: forget every registered hook. */
 export function resetEventLanded(): void {
   landedHooks.length = 0;
