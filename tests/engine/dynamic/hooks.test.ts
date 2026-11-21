@@ -74,8 +74,11 @@ describe('readers answer null when off', () => {
     }
   });
 
-  it('with no practice category on, the readers that get a registry defer (the frame, style and holds readers see only the state)', () => {
+  it('with no practice category on, every reader defers', () => {
     const s = world({ frame: 'role', on: ['worship'] });
+    expect(frameOf(s, ANN)).toBe('equal');
+    expect(physicsStyleOf(s, ANN)).toEqual({ primary: 'neutral' });
+    expect(holdsUntilOf(s, ANN)).toBe('signal');
     expect(blockingLive(s, reg)).toBe(false);
     const m = moment(s);
     expect(expectedOption(m.state, reg, m.open).strength).toBe(1);
@@ -89,6 +92,34 @@ describe('readers answer null when off', () => {
     const m = moment(s);
     expect(expectedOption(m.state, reg, m.open).strength).toBe(1);
     expect(blockingLive(s, reg)).toBe(false);
+  });
+});
+
+describe('her practice categories', () => {
+  it('switching her categories off makes the readers answer null', () => {
+    const s = world({ frame: 'role', secondary: 'playful' });
+    const m = () => moment(s);
+    expect(frameOf(s, ANN)).toBe('role');
+    expect(physicsStyleOf(s, ANN).primary).toBe('cold');
+    expect(holdsUntilOf(s, ANN)).toBe('limit');
+    expect(expectedOption(m().state, reg, m().open).strength).toBe(3);
+    expect(blockingLive(s, reg)).toBe(true);
+    s.content = { enabled: [] };
+    expect(frameOf(s, ANN)).toBe('equal');
+    expect(physicsStyleOf(s, ANN)).toEqual({ primary: 'neutral' });
+    expect(holdsUntilOf(s, ANN)).toBe('signal');
+    expect(blockingLive(s, reg)).toBe(false);
+    s.content = { enabled: ['denial'] }; // a practice category, but not one she practises
+    expect(frameOf(s, ANN)).toBe('equal');
+    s.content = { enabled: ['restraint'] };
+    unitOf(s, ANN).bond!.ownLimits = { categories: ['restraint'] }; // among her own limits
+    expect(frameOf(s, ANN)).toBe('equal');
+    unitOf(s, ANN).bond!.ownLimits = { categories: [] };
+    unitOf(s, ANN).bond!.practice!.categories.restraint.as = 'none'; // she does not practise it
+    expect(frameOf(s, ANN)).toBe('equal');
+    unitOf(s, ANN).bond!.practice!.categories.restraint.as = 'enjoys';
+    expect(frameOf(s, ANN)).toBe('role'); // back on: role again
+    expect(blockingLive(s, reg)).toBe(true);
   });
 });
 

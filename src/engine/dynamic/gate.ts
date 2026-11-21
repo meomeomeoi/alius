@@ -19,6 +19,21 @@ export function dynamicOn(state: Pick<CampaignState, 'dynamic' | 'content'>, reg
   return state.dynamic !== undefined && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
 }
 
+/**
+ * State-only: does she practise anything that is switched on? True when some category of her practice section with `as` other than
+ * `none` (what she has become folded in) is among the campaign's enabled content and not among her own limits. The readers on the P15a
+ * hooks have no registry, so they cannot ask `dynamicOn`; this is what turns them off with the categories (needs no registry).
+ */
+export function herPracticeLive(state: Pick<CampaignState, 'squad' | 'content'>, unitId: string): boolean {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const stored = unit?.bond?.practice?.categories;
+  if (unit === undefined || stored === undefined) return false;
+  const on = state.content?.enabled ?? [];
+  const limits = unit.bond?.ownLimits.categories ?? [];
+  const drift = unit.development?.practice?.categories;
+  return Object.keys({ ...stored, ...drift }).some((id) => on.includes(id) && !limits.includes(id) && { ...stored[id], ...drift?.[id] }.as !== undefined && { ...stored[id], ...drift?.[id] }.as !== 'none');
+}
+
 /** What the setup says about her; `auto` leaves it to her inclination. */
 export function mayHoldOf(state: Pick<CampaignState, 'dynamic'>, unitId: string): MayHold {
   return state.dynamic?.setup.units[unitId]?.mayHold ?? 'auto';

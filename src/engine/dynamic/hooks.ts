@@ -3,14 +3,13 @@
  * holds the commander until, and the option she expects of a moment. `installDynamicHooks` registers the five readers once (from
  * `actions/dynamic.ts`, at module load); registering twice gives the same answers, so a test that reset the hooks may install again.
  *
- * Every reader answers `null` unless the dynamic is on AND she has her own dynamic (`Relation.dynamic`); then P15a's stand-in answers.
- * Readers stack and the first non-null answer wins; all of them are pure and draw nothing.
+ * Every reader answers `null` unless the dynamic is on AND she has her own dynamic (`Relation.dynamic`) AND she practises something that is
+ * switched on (`herPracticeLive`); then P15a's stand-in answers. Readers stack and the first non-null answer wins; all are pure, no draws.
  *
- * Three of the P15a hooks have no registry argument (`FrameReader`, `StyleReader`, `HoldsReader`), so those readers cannot ask
- * `dynamicOn` (it needs the practice categories, which come from a registry). They decide "off" from the state alone: no `state.dynamic`,
- * `holders` 0, or no `Relation.dynamic` on her. `Relation.dynamic` is written only while the dynamic is on (R7), so the one case they cannot
- * see is a practice category switched off after a holder formed: until it is switched back on they keep answering. The two readers that
- * do get a registry (the blocking gate and the expectation) ask `dynamicOn` itself.
+ * Three of the P15a hooks have no registry argument (`FrameReader`, `StyleReader`, `HoldsReader`), so those readers cannot ask `dynamicOn`
+ * (it needs the practice categories from a registry). They decide "off" from the state alone: no `state.dynamic`, `holders` 0, no
+ * `Relation.dynamic`, or none of HER practised categories enabled and outside her limits (`herPracticeLive`, which is what switching the
+ * practice categories off comes to). The blocking gate and the expectation reader get a registry and also ask `dynamicOn`.
  */
 import { frameRank, type Frame } from '../blocking/state';
 import { registerBlockingGate, registerFrameReader } from '../blocking/gate';
@@ -20,7 +19,7 @@ import { registerHoldsUntil, registerPhysicsStyle } from '../physics/style';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
 import { holdsUntilOfUnit, expectationsOf } from './expectations';
-import { dynamicOn } from './gate';
+import { dynamicOn, herPracticeLive } from './gate';
 import { styleOf } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 
@@ -28,7 +27,7 @@ import { dynamicOf, type DynamicRelation } from './state';
 function liveDynamic(state: CampaignState, unitId: string): DynamicRelation | undefined {
   if (state.dynamic === undefined || state.dynamic.setup.holders === 0) return undefined;
   const unit = state.squad.find((u) => u.id === unitId);
-  return unit !== undefined && unit.kind === 'named' && isLiving(unit) ? dynamicOf(state, unitId) : undefined;
+  return unit !== undefined && unit.kind === 'named' && isLiving(unit) && herPracticeLive(state, unitId) ? dynamicOf(state, unitId) : undefined;
 }
 
 /** The frame of her relationship (`Relation.dynamic.frame`). */
@@ -62,7 +61,7 @@ function gate(state: CampaignState, reg: Parameters<typeof dynamicOn>[1]): boole
  * strength. Without a value, or when the moment does not offer the type, it defers (Task 16 gives the default expectation).
  */
 function expectation(state: CampaignState, reg: Parameters<typeof dynamicOn>[1], moment: { sourceId: string; unitId: string; options: Array<{ key: string; type: string }> }) {
-  if (!dynamicOn(state, reg) || dynamicOf(state, moment.unitId) === undefined) return null;
+  if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === undefined) return null;
   const wanted = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
   if (wanted === undefined) return null;
   const options = moment.options.filter((o) => o.type === wanted.type);

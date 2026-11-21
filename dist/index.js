@@ -25256,6 +25256,15 @@ function blankDynamic(day) {
 function dynamicOn(state, reg) {
   return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
 }
+function herPracticeLive(state, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const stored = unit3?.bond?.practice?.categories;
+  if (unit3 === void 0 || stored === void 0) return false;
+  const on = state.content?.enabled ?? [];
+  const limits = unit3.bond?.ownLimits.categories ?? [];
+  const drift = unit3.development?.practice?.categories;
+  return Object.keys({ ...stored, ...drift }).some((id) => on.includes(id) && !limits.includes(id) && { ...stored[id], ...drift?.[id] }.as !== void 0 && { ...stored[id], ...drift?.[id] }.as !== "none");
+}
 function mayHoldOf(state, unitId) {
   return state.dynamic?.setup.units[unitId]?.mayHold ?? "auto";
 }
@@ -32584,7 +32593,7 @@ function holdFeed(draft, reg, unitId, event, _severity) {
 function liveDynamic(state, unitId) {
   if (state.dynamic === void 0 || state.dynamic.setup.holders === 0) return void 0;
   const unit3 = state.squad.find((u) => u.id === unitId);
-  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) ? dynamicOf(state, unitId) : void 0;
+  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && herPracticeLive(state, unitId) ? dynamicOf(state, unitId) : void 0;
 }
 function frameReader(state, unitId) {
   return liveDynamic(state, unitId)?.frame ?? null;
@@ -32602,7 +32611,7 @@ function gate(state, reg) {
   return (state.scene?.participants ?? []).some((id) => liveDynamic(state, id) !== void 0 && frameRank(dynamicOf(state, id).frame) >= frameRank("play"));
 }
 function expectation(state, reg, moment) {
-  if (!dynamicOn(state, reg) || dynamicOf(state, moment.unitId) === void 0) return null;
+  if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === void 0) return null;
   const wanted = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
   if (wanted === void 0) return null;
   const options2 = moment.options.filter((o) => o.type === wanted.type);
