@@ -2563,5 +2563,24 @@
     "see": [
       "physics_panel"
     ]
+  },
+  {
+    "id": "marathon",
+    "term": "Marathon",
+    "short": "A hold of an hour of story time or more. It runs in phases, the clock shows the story time, and the slots it spans are spent.",
+    "long": "AUTHOR TO WRITE: A long hold is played in phases of a few segments. Between two phases the story time passes and you choose how to spend it. Each phase starts a little weaker than the last. When it is over the scene ends, every slot it spanned is spent and the commander is stiff until the next one. The pace setting changes only how long it takes to play, never what happens in the story.",
+    "see": [
+      "marathon_strategy",
+      "physics_panel"
+    ]
+  },
+  {
+    "id": "marathon_strategy",
+    "term": "Spending the stretch",
+    "short": "Between two phases: endure it, spare strength for the next, ease the body in secret, or ask for a rest. The game decides how it went.",
+    "long": "AUTHOR TO WRITE: Endure holds with a chance that grows with the commander's endurance. Sparing strength helps the next stretch. Easing the body in secret restores something and may be caught, the way relief inputs are. Asking for a rest is granted or refused by how she holds.",
+    "see": [
+      "marathon"
+    ]
   }
 ]

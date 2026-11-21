@@ -14,9 +14,10 @@ import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
 import { momentPass } from '../moments/fire';
-import { decideBoundary } from './boundary';
+import { creditHold, decideBoundary } from './boundary';
 import { mergeInputs, STEADY_DRAIN } from './combined';
-import { chainRun, coreRun } from './run';
+import { hoursPerPhase, paceScale, phaseSegments, attrition, resolveSkip, STRATEGIES, clockText, type Strategy } from './marathon';
+import { chainRun, coreRun, stopPhysics } from './run';
 import { attentionCue, attentionPlan, cheatRoll, segmentNoise, type NoiseKind } from './gaze';
 import { addEnduranceXp, herSkillOf } from './skill';
 import {
@@ -257,6 +258,7 @@ export function nextSegment(draft: CampaignState, ctx: { registries: Registries;
   const run = draft.scene?.physics;
   if (!run || run.id !== runId) throw new Error('Stale physics run.');
   if (run.segment.state !== 'held') throw new Error('A segment is running already.');
+  if (run.marathon?.waiting) throw new Error('The phase is over: choose how to spend the stretch first.');
   run.segment = { n: run.segment.n + 1, state: 'running', plan: planSegment(draft, ctx.registries, run, ctx.rng) };
   return [{ type: 'physics_segment', runId: run.id, n: run.segment.n, phase: 'start', beats: run.segment.plan!.beats.length }];
 }
@@ -273,6 +275,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   if (run.segment.state !== 'running' || !run.segment.plan) throw new Error('No segment is running.');
   if (!Array.isArray(inputs) || !inputs.every(validInput)) throw new Error('physics/segment_end: inputs are { beat, kind } with a known kind');
   const plan = run.segment.plan;
+  const old = { main: run.gauge, second: run.second?.gauge ?? 0 };
   const envMain = resolveEnvOf(draft, reg, run);
   const second = coreRun(run, 'second');
   let result: SegmentResult;
@@ -298,6 +301,13 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
       reliefs: m.reliefs + x.reliefs, reliefInputs: [...m.reliefInputs, ...x.reliefInputs], warning: m.warning || x.warning, checked: m.checked || x.checked,
       complete: m.complete || x.complete, degraded: m.degraded || x.degraded, askedRest: m.askedRest || x.askedRest,
     };
+  }
+  if (run.marathon) {
+    // a phase costs the same at every pace: a segment counts as much as the normal pace's segments over this pace's
+    const k = paceScale(draft, reg, run);
+    const round = (v: number): number => Math.round(v * 100) / 100;
+    result.gauge = round(old.main + (result.gauge - old.main) * k);
+    if (run.second) run.second.gauge = round(old.second + (run.second.gauge - old.second) * k);
   }
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
@@ -351,6 +361,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   const boundary = decideBoundary(draft, ctx, run, result);
   if (boundary.move !== undefined) (events[0] as { move?: string }).move = boundary.move;
   events.push(...boundary.events);
+  if (run.marathon && draft.scene?.physics === run) events.push(...phaseBoundary(draft, reg, run));
   events.push(...momentPass(draft, ctx, 'segment')); // a warning or a slip of this segment may bring a moment up (a no-op, and no draw, unless one is live)
   return events;
 }
@@ -366,3 +377,59 @@ export function typedBeats(draft: CampaignState, chars: number, from: number): E
   run.segment.lapsed = [...set].sort((a, b) => a - b);
   return [{ type: 'physics_segment', runId: run.id, n: run.segment.n, phase: 'typed', lapsed: run.segment.lapsed.length }];
 }
+
+/** A marathon after a segment: the phase may be over. The last one ends the hold (released); another waits for the player's strategy. */
+function phaseBoundary(draft: CampaignState, reg: Registries, run: PhysicsRun): EngineEvent[] {
+  const m = run.marathon!;
+  m.segmentsDone += 1;
+  if (m.segmentsDone < phaseSegments(draft, reg, run)) return [];
+  if (m.phase >= m.phases) {
+    m.clockMin += hoursPerPhase(m) * 60;
+    return [{ type: 'marathon_phase', runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), ...stopPhysics(draft, reg, 'released')];
+  }
+  m.waiting = true;
+  return [{ type: 'marathon_phase', runId: run.id, phase: m.phase, over: true, clock: clockText(m.clockMin) }];
+}
+
+/**
+ * `physics/skip`: the player's strategy for the stretch between two phases (endure, spare strength, cheat, ask for a rest). One draw at most,
+ * a summary in words, then the next phase starts weaker: attrition takes capacity, and the stretch decides the gauge it starts with.
+ */
+export function marathonSkip(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, strategy: unknown): EngineEvent[] {
+  const reg = ctx.registries;
+  const run = draft.scene?.physics;
+  const m = run?.marathon;
+  if (!run || !m) throw new Error('physics/skip: no marathon is running');
+  if (!m.waiting) throw new Error('physics/skip: the phase is not over');
+  if (typeof strategy !== 'string' || !(STRATEGIES as readonly string[]).includes(strategy)) throw new Error('physics/skip: strategy is endure, spare, cheat or rest');
+  const k = resolveSkip(draft, reg, run, strategy as Strategy, ctx.rng);
+  const events: EngineEvent[] = [];
+  if (k.slip) {
+    events.push({ type: 'physics_slip', runId: run.id, kind: 'skip', count: 1, holderId: run.holderId });
+    run.extend += TUNING.physics.slipExtend;
+  }
+  if (k.caught) events.push({ type: 'physics_caught', runId: run.id, holderId: run.holderId, kind: 'cheat', beat: -1 });
+  const hpp = hoursPerPhase(m);
+  const loss = attrition(hpp, commanderLevel(draft, run.physicsId));
+  const base = run.baseCapacity ?? run.capacity;
+  const next = (cap: number, gaugeKind: string, gauge: number): { capacity: number; gauge: number } => {
+    const capacity = Math.max(Math.round(base * 0.2), cap - loss);
+    if (gaugeKind === 'capacity') return { capacity, gauge: Math.min(capacity, Math.max(1, capacity + k.delta)) };
+    if (gaugeKind === 'fill') return { capacity, gauge: Math.min(capacity - 1, Math.max(0, -Math.min(0, k.delta))) };
+    return { capacity, gauge };
+  };
+  const kindOf = (id: string): string => String((reg.contactPhysics.get(id)?.gauge as { kind: string }).kind);
+  Object.assign(run, next(run.capacity, kindOf(run.physicsId), run.gauge));
+  if (run.second) Object.assign(run.second, next(run.second.capacity, kindOf(run.second.physicsId), run.second.gauge));
+  m.clockMin += hpp * 60;
+  m.phase += 1;
+  m.segmentsDone = 0;
+  m.waiting = false;
+  m.summary = k.summary;
+  if (k.spare !== undefined) m.spare = k.spare;
+  else delete m.spare;
+  events.push({ type: 'marathon_phase', runId: run.id, phase: m.phase, phases: m.hours === 'unknown' ? undefined : m.phases, strategy, held: k.held, summary: k.summary, clock: clockText(m.clockMin) });
+  return events;
+}
+
+const commanderLevel = (state: CampaignState, physicsId: string): number => state.commander.endurance?.[physicsId]?.level ?? 0;

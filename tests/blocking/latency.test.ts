@@ -260,3 +260,47 @@ describe('the physics directive', () => {
     void reply;
   });
 });
+
+describe('a marathon under the controller', () => {
+  async function marathonWorld(): Promise<World> {
+    const w = await world();
+    const s = structuredClone(w.h.state());
+    delete s.scene!.physics;
+    s.scene!.physicsCount = 0;
+    w.h.set(s);
+    w.staging.onEvents(w.h.dispatch({ type: 'physics/start', payload: { physicsId: 'weight', sourceKind: 'contact', sourceId: 'footrest', holderId: ANN, duration: { hours: 2 } } }));
+    return w;
+  }
+
+  it('between two phases nothing starts by itself: it waits for the strategy, whatever the clock does', async () => {
+    const w = await marathonWorld();
+    for (let i = 0; i < 2; i++) { play(w); tick(w, 1000); }
+    expect(run(w)!.marathon).toMatchObject({ waiting: true });
+    tick(w, 120_000);
+    expect(run(w)!.segment.state).toBe('held');
+    expect(run(w)!.marathon!.phase).toBe(1);
+    const events = w.staging.skip('spare');
+    expect(events.some((e) => e.type === 'marathon_phase' && e.phase === 2)).toBe(true);
+    tick(w, 1000);
+    expect(run(w)!.segment.state).toBe('running');
+  });
+
+  it('a marathon that runs its time out ends the scene, once; one cut short by the stop word does not', async () => {
+    const w = await marathonWorld();
+    for (let guard = 0; guard < 40 && run(w); guard++) {
+      if (run(w)!.marathon!.waiting) w.staging.skip('spare');
+      else if (run(w)!.segment.state === 'running') play(w);
+      else tick(w, 1000);
+    }
+    expect(run(w)).toBeUndefined();
+    await w.staging.idle();
+    expect(w.ended).toBe(1);
+    tick(w, 5000);
+    expect(w.ended).toBe(1);
+    const stopped = await marathonWorld();
+    play(stopped);
+    stopped.staging.stopWord();
+    await stopped.staging.idle();
+    expect(stopped.ended).toBe(0);
+  });
+});

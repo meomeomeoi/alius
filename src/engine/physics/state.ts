@@ -91,6 +91,25 @@ export interface PhysicsCore {
   streak: number;
 }
 
+/** A hold of an hour of fiction or more (plan R13): phases of a few segments, the stretch between them resolved by a strategy, a fiction clock. */
+export interface MarathonState {
+  hours: number | 'unknown';
+  /** The phase being played (1-based) and how many there are (hidden from the player when the length is unknown). */
+  phase: number;
+  phases: number;
+  /** Segments played in this phase. */
+  segmentsDone: number;
+  /** The fiction clock, in minutes since midnight, and where it began. */
+  clockMin: number;
+  startMin: number;
+  /** The phase is over and the player has not yet chosen how to spend the stretch. */
+  waiting: boolean;
+  /** Added to the next stretch's chance to endure (a strategy of sparing strength). */
+  spare?: number;
+  /** What the last stretch came to, in words. */
+  summary?: string;
+}
+
 export interface PhysicsRun {
   /** `p<n>`: a late `segment_end` for another run is refused. */
   id: string;
@@ -120,6 +139,9 @@ export interface PhysicsRun {
   second?: PhysicsCore;
   /** A marathon: how long it lasts in the fiction (`unknown`: nobody says). Absent = an ordinary hold. */
   duration?: { hours: number } | 'unknown';
+  marathon?: MarathonState;
+  /** The capacity a marathon started with (attrition takes from it phase by phase). */
+  baseCapacity?: number;
 }
 
 export const GAUGE_FULL = 100;

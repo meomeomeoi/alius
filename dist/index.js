@@ -160,6 +160,28 @@ var TUNING = Object.freeze({
     blackout: Object.freeze({ slots: 1, stress: 5 }),
     endurance: Object.freeze({ hold: 10, streakFrom: 3, streak: 2, training: 15, thresholds: Object.freeze([30, 80, 150, 250, 400]), capacityPerLevel: 0.1 }),
     herSkill: Object.freeze({ practices: 8, cap: 5, mult: Object.freeze({ drill: 1.5, clinical: 1.5, affectionate: 0.7 }) }),
+    /**
+     * The marathon (plan R13; AUTHOR TO TUNE): a hold of an hour of fiction or more runs in phases (one a fiction hour, 2–8; 6 when nobody says).
+     * `paceMinutes` and `phaseBeats` are how long a phase takes in play (real time / turn-based) and change nothing in fiction. `attrition`: capacity lost
+     * per fiction hour, less 2 per level of the commander's endurance. A slot is `slotHours` of fiction.
+     */
+    marathon: Object.freeze({
+      paceMinutes: Object.freeze({ short: 1.5, normal: 3.5, long: 5.5 }),
+      phaseBeats: Object.freeze({ short: 4, normal: 8, long: 12 }),
+      slotHours: 4,
+      unknownPhases: 6,
+      minPhases: 2,
+      maxPhases: 8,
+      attrition: 5,
+      perLevel: 2,
+      startClock: Object.freeze({ morning: 480, afternoon: 780, evening: 1080, night: 1320 }),
+      endure: Object.freeze({ base: 0.5, perLevel: 0.1 }),
+      spare: 0.2,
+      failCost: 25,
+      spareCost: 5,
+      rest: 30,
+      cheatRelief: 15
+    }),
     typing: Object.freeze({ charsPerBeat: 40, lapseMs: 400 }),
     blend: Object.freeze([0.65, 0.35]),
     /** The gaze of R13: her attention per beat by the activity's attention, and the chance a relief input on that beat is caught. */
@@ -18323,7 +18345,7 @@ var namedLiving3 = (state) => {
 };
 var round22 = (n) => Math.round(n * 100) / 100;
 function recordMerit(draft, cs) {
-  const M = TUNING.power.merit;
+  const M2 = TUNING.power.merit;
   const byCid2 = new Map(cs.combatants.map((c) => [c.cid, c]));
   const points = /* @__PURE__ */ new Map();
   const credit = (cid, n) => {
@@ -18337,15 +18359,15 @@ function recordMerit(draft, cs) {
     return c !== void 0 && c.side === "enemy" && c.enemyId !== void 0;
   };
   for (const e of cs.log) {
-    if ((e.kind === "hit" || e.kind === "crit") && isEnemy(e.target)) credit(e.actor, (e.amount ?? 0) / M.damagePer);
-    else if ((e.kind === "hit" || e.kind === "crit") && isEnemy(e.actor) && byCid2.get(e.target ?? "")?.side === "squad") credit(e.target, (e.amount ?? 0) / M.absorbPer);
-    else if (e.kind === "downed" && isEnemy(e.target)) credit(e.actor, M.finishingBlow);
-    else if (e.kind === "heal") credit(e.actor, (e.amount ?? 0) / M.healPer);
+    if ((e.kind === "hit" || e.kind === "crit") && isEnemy(e.target)) credit(e.actor, (e.amount ?? 0) / M2.damagePer);
+    else if ((e.kind === "hit" || e.kind === "crit") && isEnemy(e.actor) && byCid2.get(e.target ?? "")?.side === "squad") credit(e.target, (e.amount ?? 0) / M2.absorbPer);
+    else if (e.kind === "downed" && isEnemy(e.target)) credit(e.actor, M2.finishingBlow);
+    else if (e.kind === "heal") credit(e.actor, (e.amount ?? 0) / M2.healPer);
   }
   const fresh = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
   if (fresh.length === 0 && !draft.power?.merit) return;
   const power = powerOf(draft);
-  power.merit = (power.merit ?? []).filter((m) => draft.day - m.day < M.windowDays);
+  power.merit = (power.merit ?? []).filter((m) => draft.day - m.day < M2.windowDays);
   for (const c of cs.combatants) {
     const hit = fresh.find(([id]) => id === c.unitId);
     if (hit) power.merit.push({ day: draft.day, unitId: hit[0], points: round22(hit[1]) });
@@ -26880,6 +26902,71 @@ function leadStyle(style) {
   return { key: leadKey, cues: lead.cues, seal: lead.seal, skillMult: lead.skillMult };
 }
 
+// src/engine/physics/marathon.ts
+var M = TUNING.physics.marathon;
+var isMarathon = (duration) => duration === "unknown" || duration !== void 0 && duration.hours >= 1;
+function phasesOf(duration) {
+  return duration === "unknown" ? M.unknownPhases : Math.min(M.maxPhases, Math.max(M.minPhases, Math.round(duration.hours)));
+}
+var hoursPerPhase = (m) => m.hours === "unknown" ? 1 : m.hours / m.phases;
+function phaseLength(pace, realtime, segmentSeconds) {
+  return Math.max(1, realtime ? Math.round(M.paceMinutes[pace] * 60 / segmentSeconds) : Math.round(M.phaseBeats[pace] / TUNING.physics.turnBeats));
+}
+function phaseSegments(state, reg, run) {
+  const s = sceneSettingsOf(state);
+  return phaseLength(s.marathonPace, s.physicsRealtime, Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 20));
+}
+function initMarathon(state, duration) {
+  const start = M.startClock[state.slot];
+  return { hours: duration === "unknown" ? "unknown" : duration.hours, phase: 1, phases: phasesOf(duration), segmentsDone: 0, clockMin: start, startMin: start, waiting: false };
+}
+function paceScale(state, reg, run) {
+  const s = sceneSettingsOf(state);
+  const secs = Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 20);
+  return phaseLength("normal", s.physicsRealtime, secs) / phaseSegments(state, reg, run);
+}
+function attrition(hours, level) {
+  return Math.max(0, M.attrition * hours - M.perLevel * level);
+}
+var STRATEGIES = ["endure", "spare", "cheat", "rest"];
+var SUMMARY = {
+  endure: { good: "The stretch passes in a long, steady hold.", bad: "The stretch passes badly: the body gives, and she sees it." },
+  spare: { good: "The commander spares strength through the stretch and moves as little as possible.", bad: "" },
+  cheat: { good: "The commander eases the body whenever she is not looking, and she does not notice.", bad: "The commander eases the body and she catches it." },
+  rest: { good: "She allows a rest, and the commander takes it.", bad: "She refuses the rest, and the stretch is long." }
+};
+function resolveSkip(state, reg, run, strategy, rng) {
+  const m = run.marathon;
+  switch (strategy) {
+    case "endure": {
+      const level = commanderSkill(state, run.physicsId);
+      const held3 = rng.chance(Math.min(1, M.endure.base + M.endure.perLevel * level + (m.spare ?? 0)));
+      return { held: held3, summary: held3 ? SUMMARY.endure.good : SUMMARY.endure.bad, delta: held3 ? 0 : -M.failCost, slip: !held3 };
+    }
+    case "spare":
+      return { held: true, summary: SUMMARY.spare.good, delta: -M.spareCost, spare: M.spare };
+    case "cheat": {
+      const reading2 = herSkillOf(state, run.holderId).reading;
+      const activity = state.scene?.blocking?.[run.holderId]?.activity;
+      const attention = (activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0) ?? "on_commander";
+      const [w, g, b] = leadStyle(physicsStyleOf(state, run.holderId)).key === "clinical" ? [1, 0, 0] : TUNING.physics.gaze.attention[attention] ?? TUNING.physics.gaze.attention.on_commander;
+      const c = TUNING.physics.gaze.caught;
+      const p = Math.min(1, (w * c.watching + g * c.glancing + b * c.busy) * (1 + TUNING.physics.gaze.readingMult * reading2));
+      const hit = rng.chance(p);
+      return { held: !hit, summary: hit ? SUMMARY.cheat.bad : SUMMARY.cheat.good, delta: hit ? -M.failCost : M.cheatRelief, caught: hit, slip: hit };
+    }
+    case "rest": {
+      const refused = ["cruel", "vindictive"].includes(leadStyle(physicsStyleOf(state, run.holderId)).key);
+      return { held: !refused, summary: refused ? SUMMARY.rest.bad : SUMMARY.rest.good, delta: refused ? -M.spareCost : M.rest };
+    }
+  }
+}
+function clockText2(minutes) {
+  const m = (minutes % 1440 + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+var extraSlotsFor = (elapsedMin) => Math.max(0, Math.ceil(elapsedMin / 60 / M.slotHours) - 1);
+
 // src/engine/physics/run.ts
 var SEAL_ORDER = ["leaky", "firm", "tight"];
 function physicsOf(entry) {
@@ -26958,6 +27045,10 @@ function startPhysics(draft, ctx2, o) {
     extend: 0,
     ...o.duration !== void 0 ? { duration: o.duration } : {}
   };
+  if (o.duration !== void 0 && isMarathon(o.duration)) {
+    run.marathon = initMarathon(draft, o.duration);
+    run.baseCapacity = run.capacity;
+  }
   const list5 = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
   const secondRef = o.second !== void 0 ? list5.find((p) => p.id === o.second) : list5.find((p) => p.id !== o.physicsId);
   const secondPhys = secondRef ? reg.contactPhysics.get(secondRef.id) : void 0;
@@ -26987,12 +27078,26 @@ function chainRun(draft, reg, run) {
   delete run.sealRange;
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
 }
-function stopPhysics(draft, _reg, result) {
+function stopPhysics(draft, reg, result) {
   const run = draft.scene?.physics;
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   removeSource(draft, run.sourceKind, run.sourceId);
-  return [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {} }];
+  const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {} }];
+  if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
+  return events;
+}
+function finishMarathon(draft, reg, run, result) {
+  const m = run.marathon;
+  const elapsed = m.clockMin - m.startMin;
+  const extra = extraSlotsFor(elapsed);
+  const scene = draft.scene;
+  if (extra > 0) scene.extraSlots = (scene.extraSlots ?? 0) + extra;
+  scene.marathon = true;
+  return [
+    ...setCondition(draft, reg, "stiff", { day: draft.day, slot: draft.slot }),
+    { type: "marathon_done", hours: Math.round(elapsed / 60 * 100) / 100, unitId: run.holderId, physicsId: run.physicsId, result, phases: m.phase }
+  ];
 }
 function physicsSignal(draft, ctx2) {
   const run = draft.scene?.physics;
@@ -27433,9 +27538,10 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx2));
   const extra = Math.min(scene.extraSlots ?? 0, slotsLeftToday(draft.slot));
   if (extra > 0) events.push(...consumeSlots(draft, extra, ctx2));
+  if (scene.marathon) events.push(...setCondition(draft, reg, "stiff", { day: draft.day, slot: draft.slot }));
   if (scene.blackout && draft.lastWake) {
     draft.lastWake = { ...draft.lastWake, day: draft.day, slot: draft.slot };
-    if (draft.commander.conditions?.some((c) => c.id === "dizzy")) events.push(...setCondition(draft, reg, "dizzy", { day: draft.day }));
+    events.push(...setCondition(draft, reg, "dizzy", { day: draft.day }));
   }
   return events;
 });
@@ -30396,6 +30502,7 @@ function nextSegment(draft, ctx2, runId) {
   const run = draft.scene?.physics;
   if (!run || run.id !== runId) throw new Error("Stale physics run.");
   if (run.segment.state !== "held") throw new Error("A segment is running already.");
+  if (run.marathon?.waiting) throw new Error("The phase is over: choose how to spend the stretch first.");
   run.segment = { n: run.segment.n + 1, state: "running", plan: planSegment(draft, ctx2.registries, run, ctx2.rng) };
   return [{ type: "physics_segment", runId: run.id, n: run.segment.n, phase: "start", beats: run.segment.plan.beats.length }];
 }
@@ -30407,6 +30514,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   if (run.segment.state !== "running" || !run.segment.plan) throw new Error("No segment is running.");
   if (!Array.isArray(inputs) || !inputs.every(validInput)) throw new Error("physics/segment_end: inputs are { beat, kind } with a known kind");
   const plan = run.segment.plan;
+  const old = { main: run.gauge, second: run.second?.gauge ?? 0 };
   const envMain = resolveEnvOf(draft, reg, run);
   const second = coreRun(run, "second");
   let result;
@@ -30441,6 +30549,12 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
       degraded: m.degraded || x.degraded,
       askedRest: m.askedRest || x.askedRest
     };
+  }
+  if (run.marathon) {
+    const k = paceScale(draft, reg, run);
+    const round5 = (v) => Math.round(v * 100) / 100;
+    result.gauge = round5(old.main + (result.gauge - old.main) * k);
+    if (run.second) run.second.gauge = round5(old.second + (run.second.gauge - old.second) * k);
   }
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
@@ -30498,6 +30612,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   const boundary = decideBoundary(draft, ctx2, run, result);
   if (boundary.move !== void 0) events[0].move = boundary.move;
   events.push(...boundary.events);
+  if (run.marathon && draft.scene?.physics === run) events.push(...phaseBoundary(draft, reg, run));
   events.push(...momentPass(draft, ctx2, "segment"));
   return events;
 }
@@ -30511,6 +30626,54 @@ function typedBeats(draft, chars, from) {
   run.segment.lapsed = [...set2].sort((a, b) => a - b);
   return [{ type: "physics_segment", runId: run.id, n: run.segment.n, phase: "typed", lapsed: run.segment.lapsed.length }];
 }
+function phaseBoundary(draft, reg, run) {
+  const m = run.marathon;
+  m.segmentsDone += 1;
+  if (m.segmentsDone < phaseSegments(draft, reg, run)) return [];
+  if (m.phase >= m.phases) {
+    m.clockMin += hoursPerPhase(m) * 60;
+    return [{ type: "marathon_phase", runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), ...stopPhysics(draft, reg, "released")];
+  }
+  m.waiting = true;
+  return [{ type: "marathon_phase", runId: run.id, phase: m.phase, over: true, clock: clockText2(m.clockMin) }];
+}
+function marathonSkip(draft, ctx2, strategy) {
+  const reg = ctx2.registries;
+  const run = draft.scene?.physics;
+  const m = run?.marathon;
+  if (!run || !m) throw new Error("physics/skip: no marathon is running");
+  if (!m.waiting) throw new Error("physics/skip: the phase is not over");
+  if (typeof strategy !== "string" || !STRATEGIES.includes(strategy)) throw new Error("physics/skip: strategy is endure, spare, cheat or rest");
+  const k = resolveSkip(draft, reg, run, strategy, ctx2.rng);
+  const events = [];
+  if (k.slip) {
+    events.push({ type: "physics_slip", runId: run.id, kind: "skip", count: 1, holderId: run.holderId });
+    run.extend += TUNING.physics.slipExtend;
+  }
+  if (k.caught) events.push({ type: "physics_caught", runId: run.id, holderId: run.holderId, kind: "cheat", beat: -1 });
+  const hpp = hoursPerPhase(m);
+  const loss = attrition(hpp, commanderLevel(draft, run.physicsId));
+  const base = run.baseCapacity ?? run.capacity;
+  const next = (cap7, gaugeKind, gauge) => {
+    const capacity = Math.max(Math.round(base * 0.2), cap7 - loss);
+    if (gaugeKind === "capacity") return { capacity, gauge: Math.min(capacity, Math.max(1, capacity + k.delta)) };
+    if (gaugeKind === "fill") return { capacity, gauge: Math.min(capacity - 1, Math.max(0, -Math.min(0, k.delta))) };
+    return { capacity, gauge };
+  };
+  const kindOf4 = (id) => String((reg.contactPhysics.get(id)?.gauge).kind);
+  Object.assign(run, next(run.capacity, kindOf4(run.physicsId), run.gauge));
+  if (run.second) Object.assign(run.second, next(run.second.capacity, kindOf4(run.second.physicsId), run.second.gauge));
+  m.clockMin += hpp * 60;
+  m.phase += 1;
+  m.segmentsDone = 0;
+  m.waiting = false;
+  m.summary = k.summary;
+  if (k.spare !== void 0) m.spare = k.spare;
+  else delete m.spare;
+  events.push({ type: "marathon_phase", runId: run.id, phase: m.phase, phases: m.hours === "unknown" ? void 0 : m.phases, strategy, held: k.held, summary: k.summary, clock: clockText2(m.clockMin) });
+  return events;
+}
+var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId]?.level ?? 0;
 
 // src/engine/actions/physics.ts
 var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -30564,6 +30727,11 @@ registerAction("physics/typed", (draft, payload, ctx2) => {
 registerAction("physics/wake_seen", (draft) => {
   delete draft.lastWake;
   return [];
+});
+registerAction("physics/skip", (draft, payload, ctx2) => {
+  live(draft, ctx2.registries, "physics/skip");
+  if (!isObj35(payload)) throw new Error("physics/skip needs { strategy }");
+  return marathonSkip(draft, ctx2, payload.strategy);
 });
 
 // src/engine/actions/life.ts
@@ -38155,6 +38323,7 @@ function physicsLines(state, reg) {
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : "";
   const parts = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
+  if (run.marathon?.summary !== void 0) parts.push(run.marathon.summary);
   const last = run.last;
   if (last) {
     const said = [];
@@ -38332,6 +38501,13 @@ function createStaging(deps) {
         collected = [];
         startedAt = null;
       }
+      if (e.type === "marathon_done" && e.result !== "stopped") {
+        const id = `marathon:${String(e.unitId)}:${String(e.hours)}`;
+        if (!ended.has(id)) {
+          ended.add(id);
+          track(deps.scene.end().catch((err) => deps.toast("error", `Could not end the scene: ${err instanceof Error ? err.message : String(err)}`)));
+        }
+      }
       if (e.type === "blackout") {
         const id = String(e.runId);
         if (!ended.has(id)) {
@@ -38352,6 +38528,7 @@ function createStaging(deps) {
       if (s.settings.physicsRealtime === true && now - startedAt >= seconds * 1e3) endSegment();
       return;
     }
+    if (r.marathon?.waiting) return;
     if (!deps.scene.replyPending() || silent(s, r.holderId)) {
       const events = dispatch2({ type: "physics/next_segment", payload: { runId: r.id } });
       if (!events.some((e) => e.type === "error")) {
@@ -38393,6 +38570,9 @@ function createStaging(deps) {
     endSegment,
     stopWord() {
       return dispatch2({ type: "physics/stop_word", payload: {} });
+    },
+    skip(strategy) {
+      return active && run() ? dispatch2({ type: "physics/skip", payload: { strategy } }) : [];
     },
     tick(nowMs) {
       if (active) advance(nowMs);
@@ -48253,6 +48433,7 @@ function renderMomentCard(host, ctx2) {
 }
 
 // src/ui/scene/physicsPanel.ts
+var STRATEGY_TEXT = { endure: "ENDURE", spare: "SPARE STRENGTH", cheat: "EASE THE BODY IN SECRET", rest: "ASK FOR A REST" };
 var PART_LABEL2 = (p) => p.toUpperCase();
 function controlsOf(interaction, run) {
   switch (interaction) {
@@ -48344,7 +48525,16 @@ function renderPhysicsPanel(host, ctx2) {
       "data-run": run.id
     },
     h("div", { class: "alius-physics-title" }, `[ ${[phys?.label ?? run.physicsId, ...secondPhys ? [secondPhys.label] : []].map((x) => String(x).toUpperCase()).join(" + ")} ]`),
-    run.segment.state === "held" ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null,
+    run.marathon ? h("p", { class: "alius-physics-clock", ...analyzeAttrs("glossary:marathon") }, run.marathon.hours === "unknown" ? `${clockText2(run.marathon.clockMin)} \u2026` : `${clockText2(run.marathon.clockMin)}`) : null,
+    run.marathon?.summary !== void 0 ? h("p", { class: "alius-physics-summary alius-dim" }, run.marathon.summary) : null,
+    run.marathon?.waiting ? h(
+      "div",
+      { class: "alius-physics-strategies", role: "group", "aria-label": "How to spend the stretch" },
+      ...STRATEGIES.map((st) => h("button", { type: "button", class: "alius-btn alius-option alius-physics-strategy", "data-strategy": st, ...analyzeNative("glossary:marathon_strategy", { strategy: st }), onclick: () => {
+        staging.skip(st);
+      } }, `[ ${STRATEGY_TEXT[st]} ]`))
+    ) : null,
+    run.segment.state === "held" && !run.marathon?.waiting ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null,
     cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null,
     running2 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null,
     ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
@@ -52896,6 +53086,7 @@ function createApp(st, deps) {
           input: (i) => staging.input(i),
           endSegment: () => staging.endSegment(),
           stopWord: () => staging.stopWord(),
+          skip: (st2) => staging.skip(st2),
           cue: (k, b) => staging.cue(k, b),
           beat: () => staging.beat(),
           keystroke: () => staging.keystroke(),

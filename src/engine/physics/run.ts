@@ -12,6 +12,8 @@ import { sceneSettingsOf } from '../moments/settings';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from './style';
+import { extraSlotsFor, initMarathon, isMarathon } from './marathon';
+import { setCondition } from './conditions';
 import { commanderSkill } from './skill';
 import { type HoldsUntil, type Outcome, type PhysicsRun } from './state';
 import type { Seal } from '../blocking/types';
@@ -109,6 +111,10 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
     segment: { n: 0, state: 'held' }, startedExchange: scene.exchanges, taps: 0, streak: 0, extend: 0,
     ...(o.duration !== undefined ? { duration: o.duration } : {}),
   };
+  if (o.duration !== undefined && isMarathon(o.duration)) {
+    run.marathon = initMarathon(draft, o.duration);
+    run.baseCapacity = run.capacity;
+  }
   // a second physics: the one asked for, or the source's own second entry when it may run (it is left out quietly when it may not)
   const list = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
   const secondRef = o.second !== undefined ? list.find((p) => p.id === o.second) : list.find((p) => p.id !== o.physicsId);
@@ -143,12 +149,31 @@ export function chainRun(draft: CampaignState, reg: Registries, run: PhysicsRun)
 }
 
 /** Ends the run with a result and takes its contact or item out of the scene (the hold is over). Nothing when no run is open. */
-export function stopPhysics(draft: CampaignState, _reg: Registries, result: Outcome): EngineEvent[] {
+export function stopPhysics(draft: CampaignState, reg: Registries, result: Outcome): EngineEvent[] {
   const run = draft.scene?.physics;
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   removeSource(draft, run.sourceKind, run.sourceId);
-  return [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}) }];
+  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}) }];
+  if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
+  return events;
+}
+
+/**
+ * A marathon ends (completed, cut short, or stopped): the fiction time that passed costs its slots (the scene ends with them; they are spent at
+ * `scene/end`), the commander is `stiff` for the next slot, and `marathon_done` says how many hours it was (for P16b's record).
+ */
+function finishMarathon(draft: CampaignState, reg: Registries, run: PhysicsRun, result: Outcome): EngineEvent[] {
+  const m = run.marathon!;
+  const elapsed = m.clockMin - m.startMin;
+  const extra = extraSlotsFor(elapsed);
+  const scene = draft.scene!;
+  if (extra > 0) scene.extraSlots = (scene.extraSlots ?? 0) + extra;
+  scene.marathon = true;
+  return [
+    ...setCondition(draft, reg, 'stiff', { day: draft.day, slot: draft.slot }),
+    { type: 'marathon_done', hours: Math.round((elapsed / 60) * 100) / 100, unitId: run.holderId, physicsId: run.physicsId, result, phases: m.phase },
+  ];
 }
 
 /** The tap (the signal inside the fiction): what it does is what she holds the commander until. */

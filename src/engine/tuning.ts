@@ -131,6 +131,17 @@ export const TUNING = Object.freeze({
     blackout: Object.freeze({ slots: 1, stress: 5 }),
     endurance: Object.freeze({ hold: 10, streakFrom: 3, streak: 2, training: 15, thresholds: Object.freeze([30, 80, 150, 250, 400] as const), capacityPerLevel: 0.1 }),
     herSkill: Object.freeze({ practices: 8, cap: 5, mult: Object.freeze({ drill: 1.5, clinical: 1.5, affectionate: 0.7 } as Record<string, number>) }),
+    /**
+     * The marathon (plan R13; AUTHOR TO TUNE): a hold of an hour of fiction or more runs in phases (one a fiction hour, 2–8; 6 when nobody says).
+     * `paceMinutes` and `phaseBeats` are how long a phase takes in play (real time / turn-based) and change nothing in fiction. `attrition`: capacity lost
+     * per fiction hour, less 2 per level of the commander's endurance. A slot is `slotHours` of fiction.
+     */
+    marathon: Object.freeze({
+      paceMinutes: Object.freeze({ short: 1.5, normal: 3.5, long: 5.5 }), phaseBeats: Object.freeze({ short: 4, normal: 8, long: 12 }),
+      slotHours: 4, unknownPhases: 6, minPhases: 2, maxPhases: 8, attrition: 5, perLevel: 2,
+      startClock: Object.freeze({ morning: 480, afternoon: 780, evening: 1080, night: 1320 }),
+      endure: Object.freeze({ base: 0.5, perLevel: 0.1 }), spare: 0.2, failCost: 25, spareCost: 5, rest: 30, cheatRelief: 15,
+    }),
     typing: Object.freeze({ charsPerBeat: 40, lapseMs: 400 }), blend: Object.freeze([0.65, 0.35] as const),
     /** The gaze of R13: her attention per beat by the activity's attention, and the chance a relief input on that beat is caught. */
     gaze: Object.freeze({

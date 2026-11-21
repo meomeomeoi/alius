@@ -50,6 +50,8 @@ export interface StagingController {
   endSegment(): EngineEvent[];
   /** The player's stop word: always ends the hold. */
   stopWord(): EngineEvent[];
+  /** A marathon between two phases: how the commander spends the stretch (`physics/skip`). */
+  skip(strategy: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
@@ -137,6 +139,14 @@ export function createStaging(deps: StagingDeps): StagingController {
         collected = [];
         startedAt = null;
       }
+      if (e.type === 'marathon_done' && e.result !== 'stopped') {
+        // the hold ran its fiction time out: the scene ends (the slots it cost are spent when it does)
+        const id = `marathon:${String(e.unitId)}:${String(e.hours)}`;
+        if (!ended.has(id)) {
+          ended.add(id);
+          track(deps.scene.end().catch((err) => deps.toast('error', `Could not end the scene: ${err instanceof Error ? err.message : String(err)}`)));
+        }
+      }
       if (e.type === 'blackout') {
         const id = String(e.runId);
         if (!ended.has(id)) {
@@ -159,7 +169,8 @@ export function createStaging(deps: StagingDeps): StagingController {
       if (s.settings.physicsRealtime === true && now - startedAt >= seconds * 1000) endSegment();
       return;
     }
-    // held: nothing drains; the next segment starts when no reply is on its way (a silent holder never waits)
+    // held: nothing drains; a marathon between two phases waits for the player's strategy; otherwise the next segment starts when no reply is on its way (a silent holder never waits)
+    if (r.marathon?.waiting) return;
     if (!deps.scene.replyPending() || silent(s, r.holderId)) {
       const events = dispatch({ type: 'physics/next_segment', payload: { runId: r.id } });
       if (!events.some((e) => e.type === 'error')) {
@@ -203,6 +214,9 @@ export function createStaging(deps: StagingDeps): StagingController {
     endSegment,
     stopWord() {
       return dispatch({ type: 'physics/stop_word', payload: {} });
+    },
+    skip(strategy) {
+      return active && run() ? dispatch({ type: 'physics/skip', payload: { strategy } }) : [];
     },
     tick(nowMs) {
       if (active) advance(nowMs);

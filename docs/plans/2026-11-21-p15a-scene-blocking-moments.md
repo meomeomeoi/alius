@@ -1370,17 +1370,17 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `MarathonState = { hours: number | 'unknown'; phase: number; phases: number; clockMin: number; spare?: number }`, `phaseLength(pace, mode, physics): number` and `resolveSkip(run, strategy, rng): { held: boolean; summary: string }`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `phases: 2 per 2 h, up to 8; unknown hides the count`.
   - `attrition: each phase starts weaker`.
   - `skip draws once with 0.5 + 0.1 × level`; `spare helps the next phase`; `cheat uses the gaze roll`.
   - `the pace changes the real length only`: the same seed at `short` and `long` gives deep-equal fiction results (hours, slips, outcome, `extraSlots`).
   - `the calendar cost`: a 5-hour hold from the afternoon ends the scene with two slots spent.
   - `stiff after, and marathon_done with hours`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/marathon.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): long holds as a marathon`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/marathon.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): long holds as a marathon`
 
 ---
 

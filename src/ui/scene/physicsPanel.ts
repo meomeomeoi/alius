@@ -7,15 +7,17 @@ import type { InputKind, PhysicsRun, SegmentInput } from '../../engine/physics/s
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { AliusSettings } from '../../settings';
-import { analyzeNative } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { motionReduced } from '../motion';
+import { clockText, STRATEGIES } from '../../engine/physics/marathon';
 
 /** What the panel needs of the staging controller (the controller passes it as it is). */
 export interface PhysicsPanelStaging {
   input(i: SegmentInput): void;
   endSegment(): EngineEvent[];
   stopWord(): EngineEvent[];
+  skip(strategy: string): EngineEvent[];
   cue(kind: CueKind, beat: number): string | null;
   beat(): number;
 }
@@ -31,6 +33,7 @@ export interface PhysicsPanelCtx {
 
 interface Control { kind: InputKind | 'wait'; text: string; part?: string; relief?: true; main?: true }
 
+const STRATEGY_TEXT: Record<string, string> = { endure: 'ENDURE', spare: 'SPARE STRENGTH', cheat: 'EASE THE BODY IN SECRET', rest: 'ASK FOR A REST' };
 const PART_LABEL = (p: string): string => p.toUpperCase();
 /** The buttons each interaction offers (turn-based) or answers to (real time). A wait is a beat with no input. */
 function controlsOf(interaction: string, run: PhysicsRun): Control[] {
@@ -125,7 +128,11 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
     class: `alius-physics${tremor ? ' alius-physics-tremor' : ''}${tint ? ' alius-physics-tint' : ''}`, role: 'group', 'aria-label': 'A hold', 'data-run': run.id,
   },
     h('div', { class: 'alius-physics-title' }, `[ ${[phys?.label ?? run.physicsId, ...(secondPhys ? [secondPhys.label] : [])].map((x) => String(x).toUpperCase()).join(' + ')} ]`),
-    run.segment.state === 'held' ? h('p', { class: 'alius-physics-held alius-dim', role: 'status' }, 'She takes her time.') : null,
+    run.marathon ? h('p', { class: 'alius-physics-clock', ...analyzeAttrs('glossary:marathon') }, run.marathon.hours === 'unknown' ? `${clockText(run.marathon.clockMin)} …` : `${clockText(run.marathon.clockMin)}`) : null,
+    run.marathon?.summary !== undefined ? h('p', { class: 'alius-physics-summary alius-dim' }, run.marathon.summary) : null,
+    run.marathon?.waiting ? h('div', { class: 'alius-physics-strategies', role: 'group', 'aria-label': 'How to spend the stretch' },
+      ...STRATEGIES.map((st) => h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-strategy', 'data-strategy': st, ...analyzeNative('glossary:marathon_strategy', { strategy: st }), onclick: () => { staging.skip(st); } }, `[ ${STRATEGY_TEXT[st]} ]`))) : null,
+    run.segment.state === 'held' && !run.marathon?.waiting ? h('p', { class: 'alius-physics-held alius-dim', role: 'status' }, 'She takes her time.') : null,
     cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null,
     running && !realtime ? h('div', { class: 'alius-physics-beats', 'aria-hidden': 'true' }, ...Array.from({ length: total }, (_, i) => h('span', { class: i < pointer.beat ? 'alius-pip alius-pip-done' : 'alius-pip' }, i < pointer.beat ? '●' : '○'))) : null,
     ctx.settings.showRawValues ? h('p', { class: 'alius-physics-raw alius-dim' }, `${gauge ?? 'gauge'}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,

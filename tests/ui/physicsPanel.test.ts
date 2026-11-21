@@ -54,6 +54,7 @@ const fake = () => {
     input: (i) => { calls.push(['input', i]); },
     endSegment: () => { calls.push(['end', null]); return []; },
     stopWord: () => { calls.push(['stop', null]); return []; },
+    skip: (st) => { calls.push(['skip', st]); return []; },
     cue: (kind) => `[${kind}]`,
     beat: () => 0,
   };
@@ -345,5 +346,33 @@ describe('every element resolves', () => {
         document.body.innerHTML = '';
       }
     }
+  });
+});
+
+describe('a marathon in the panel', () => {
+  const marathonState = (waiting: boolean, hours: number | 'unknown' = 3): CampaignState => {
+    const s = hold('footrest', { segment: waiting ? 'held' : 'running' });
+    s.scene!.physics!.marathon = { hours, phase: 1, phases: 3, segmentsDone: 0, clockMin: 17 * 60 + 40, startMin: 17 * 60, waiting };
+    return s;
+  };
+
+  it('shows the fiction clock, and "…" when nobody says how long', () => {
+    expect(draw(marathonState(false)).q('.alius-physics-clock')!.textContent).toBe('17:40');
+    expect(draw(marathonState(false, 'unknown')).q('.alius-physics-clock')!.textContent).toBe('17:40 …');
+    expect(draw(hold('footrest')).q('.alius-physics-clock')).toBeNull();
+  });
+
+  it('between two phases it offers the four strategies instead of "she takes her time", and the stop word stays', () => {
+    const v = draw(marathonState(true));
+    expect(texts(v.qa('.alius-physics-strategy'))).toEqual(['[ ENDURE ]', '[ SPARE STRENGTH ]', '[ EASE THE BODY IN SECRET ]', '[ ASK FOR A REST ]']);
+    expect(v.q('.alius-physics-held')).toBeNull();
+    v.qa('.alius-physics-strategy')[1]!.click();
+    expect(v.calls.at(-1)).toEqual(['skip', 'spare']);
+    expect(v.qa('button').some((b) => b.textContent === '[ STOP WORD ]' && !b.hasAttribute('disabled'))).toBe(true);
+    expect(draw(marathonState(false)).qa('.alius-physics-strategy')).toEqual([]);
+    const s = marathonState(true);
+    expect(markedWithout(v.host)).toEqual([]);
+    expect(unresolved(v.host, env(s))).toEqual([]);
+    expect(unreachable(v.host)).toEqual([]);
   });
 });

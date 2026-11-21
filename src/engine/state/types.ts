@@ -632,6 +632,8 @@ export interface SceneRecord {
   extraSlots?: number;
   /** P15a: a blackout cut this scene: the scene ends and the wake card follows. */
   blackout?: true;
+  /** P15a: a marathon ran in this scene (`stiff` is dated again when the scene ends and the slots it cost are spent). */
+  marathon?: true;
   /** P15a: who fell asleep in a hold and the exchange she wakes at (her activity is `sleeping` until then). */
   sleepUntil?: Record<string, number>;
 }

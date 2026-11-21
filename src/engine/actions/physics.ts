@@ -1,7 +1,7 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
 import { physicsSignal, startPhysics, stopWord } from '../physics/run';
-import { nextSegment, physicsInput, typedBeats } from '../physics/segment';
+import { marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
 
 // Importing this module registers the physics actions (P15a) and, through `physics/run`, what keeps a run in step with the blocking.
 
@@ -66,4 +66,11 @@ registerAction('physics/typed', (draft, payload, ctx) => {
 registerAction('physics/wake_seen', (draft) => {
   delete draft.lastWake;
   return [];
+});
+
+/** `physics/skip { strategy }`: how the commander spends the stretch between two phases of a marathon (endure, spare, cheat, rest). Draws at most once. */
+registerAction('physics/skip', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/skip');
+  if (!isObj(payload)) throw new Error('physics/skip needs { strategy }');
+  return marathonSkip(draft, ctx, payload.strategy);
 });

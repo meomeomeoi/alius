@@ -69,6 +69,7 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : '';
   const parts = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
+  if (run.marathon?.summary !== undefined) parts.push(run.marathon.summary);
   const last = run.last;
   if (last) {
     const said: string[] = [];

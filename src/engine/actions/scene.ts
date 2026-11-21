@@ -248,9 +248,10 @@ registerAction('scene/end', (draft, payload, ctx) => {
   // P15a: the slots a blackout or a marathon cost beyond the scene's own (never past the end of the day), and the wake card says where she came to
   const extra = Math.min(scene.extraSlots ?? 0, slotsLeftToday(draft.slot));
   if (extra > 0) events.push(...consumeSlots(draft, extra, ctx));
+  if (scene.marathon) events.push(...setCondition(draft, reg, 'stiff', { day: draft.day, slot: draft.slot })); // stiff until the next slot after the time has passed
   if (scene.blackout && draft.lastWake) {
     draft.lastWake = { ...draft.lastWake, day: draft.day, slot: draft.slot };
-    if (draft.commander.conditions?.some((c) => c.id === 'dizzy')) events.push(...setCondition(draft, reg, 'dizzy', { day: draft.day }));
+    events.push(...setCondition(draft, reg, 'dizzy', { day: draft.day })); // it may have run out while the slots were spent: it counts from when she came to
   }
   return events;
 });
