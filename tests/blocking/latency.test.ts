@@ -201,6 +201,33 @@ describe('the two ends', () => {
   });
 });
 
+describe('the layer stops being live while a hold runs (review)', () => {
+  it('the hold ends once (the contact goes with it) and the controller does not dispatch a failing action every tick', async () => {
+    const w = await world();
+    play(w); // the segment is over: the body is held
+    expect(run(w)!.segment.state).toBe('held');
+    const d = structuredClone(w.h.state());
+    d.relations[ANN]!.stateId = 'comrade'; // the bond drops below close: the blocking is no longer live
+    w.h.set(d);
+    const before = w.h.actions.length;
+    tick(w, 20_000, 250);
+    const after = w.h.actions.slice(before).filter((a) => a.startsWith('physics/'));
+    expect(after.filter((a) => a === 'physics/next_segment')).toEqual([]);
+    expect(after).toEqual(['physics/stop_word']);
+    expect(run(w)).toBeUndefined();
+    expect(w.h.state().scene!.blocking?.[ANN]?.contact).toBeUndefined();
+  });
+
+  it('a running segment whose layer went away is closed the same way', async () => {
+    const w = await world();
+    const d = structuredClone(w.h.state());
+    d.relations[ANN]!.stateId = 'comrade';
+    w.h.set(d);
+    tick(w, 2000, 250);
+    expect(run(w)).toBeUndefined();
+  });
+});
+
 describe('the cue pool', () => {
   const answer = JSON.stringify({ cues: { shift: ['Her weight moves one way.', 'She rolls her hip.', 'A slow shift.'] } });
 

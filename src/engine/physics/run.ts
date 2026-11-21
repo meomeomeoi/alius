@@ -205,7 +205,13 @@ export function stopWord(draft: CampaignState, ctx: { registries: Registries }):
     return events;
   }
   const contact = contactOf(scene);
-  if (!contact) throw new Error('physics/stop_word: there is nothing to stop');
+  if (!contact) {
+    // no hold and no contact: what the commander wears comes off, a hood or a collar as much as a gag (review: the stop word must always get the commander out)
+    const worn = [...new Set(Object.values(scene.blocking?.[COMMANDER]?.worn ?? {}).map((w) => w?.id).filter((id): id is string => id !== undefined))];
+    if (worn.length === 0) throw new Error('physics/stop_word: there is nothing to stop');
+    for (const id of worn) removeSource(draft, 'item', id);
+    return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: scene.participants[0] ?? null, result: 'stopped', segments: 0, sourceKind: 'item', sourceId: worn[0] }];
+  }
   removeSource(draft, 'contact', contact.id);
   dropOrphanAct(draft);
   return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: 'stopped', segments: 0, sourceKind: 'contact', sourceId: contact.id }];
@@ -292,6 +298,6 @@ registerWithdrawal((draft: CampaignState, reg: Registries, removed: string[]): E
   const run = draft.scene?.physics;
   if (!run) return [];
   const tags = (e: Entry | undefined): string[] => (Array.isArray(e?.contentTags) ? (e!.contentTags as string[]) : []);
-  const hit = [...tags(sourceEntry(reg, run.sourceKind, run.sourceId)), ...tags(reg.contactPhysics.get(run.physicsId))].some((t) => removed.includes(t));
+  const hit = [...tags(sourceEntry(reg, run.sourceKind, run.sourceId)), ...tags(reg.contactPhysics.get(run.physicsId)), ...tags(run.second ? reg.contactPhysics.get(run.second.physicsId) : undefined)].some((t) => removed.includes(t));
   return hit || gone(draft.scene, run) ? stopPhysics(draft, reg, 'stopped') : [];
 });

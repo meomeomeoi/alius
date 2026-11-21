@@ -127,9 +127,9 @@ function physicsLive(state: CampaignState, kind: 'physics_warning' | 'physics_sl
 /**
  * The sources that are live in the open scene, one row per source and soldier, in registry order then participant order. `opts.ripe` is
  * the source the reading of this exchange called ripe: it counts only for a source with the `extracted` kind (it is live because of it, and
- * its weight doubles); for any other source it means nothing. Empty while the blocking is not live. Draws nothing.
+ * its weight doubles); for any other source it means nothing. `opts.cause` is the pass that asks: the physics kinds (a warning, a slip) are live only for `segment` (or when none is said). Empty while the blocking is not live. Draws nothing.
  */
-export function liveSources(state: CampaignState, reg: Registries, opts: { ripe?: string } = {}): LiveSource[] {
+export function liveSources(state: CampaignState, reg: Registries, opts: { ripe?: string; cause?: 'exchange' | 'segment' } = {}): LiveSource[] {
   const scene = state.scene;
   if (!scene || !blockingLive(state, reg)) return [];
   const moments = momentsOf(scene);
@@ -175,7 +175,7 @@ export function liveSources(state: CampaignState, reg: Registries, opts: { ripe?
           }
           case 'alarm': if (alarm && unitId === scene.participants[0]) weight += 1; break;
           case 'keeps_fact': if (keptFacts(state, reg, unitId).length > 0) weight += 1; break;
-          case 'physics_warning': case 'physics_slip': if (physicsLive(state, kind)) weight += 1; break;
+          case 'physics_warning': case 'physics_slip': if (opts.cause !== 'exchange' && physicsLive(state, kind)) weight += 1; break; // what the last segment did is news only to the pass that follows it
           case 'external': if (triggers.get(source.id)?.(state, reg, unitId) === true) weight += 1; break;
         }
       }

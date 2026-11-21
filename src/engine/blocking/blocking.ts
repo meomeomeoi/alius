@@ -315,7 +315,11 @@ function apply(draft: CampaignState, reg: Registries, change: BlockingChange): v
         if (s.posture !== undefined) rec.posture = s.posture;
         if (s.anchor !== undefined) rec.anchor = reg.blockingAnchors.get(s.anchor)?.kind === 'relative' ? { id: s.anchor, relTo: other } : { id: s.anchor };
       }
-      const target = change.target ?? (c.target as string[] | undefined)?.[0];
+      // with no target named, the first one the gates allow (a default the content gate refuses is no default)
+      const target = change.target ?? (c.target as string[] | undefined)?.find((t) => {
+        const entry = reg.worshipTargets.get(t);
+        return entry !== undefined && entryAllowed(draft, reg, entry, draft.scene!.participants);
+      });
       record(draft, p.receiver).contact = { id: value!, with: p.actor, direction: p.actor === COMMANDER ? 'to' : 'from', ...(target !== undefined ? { target } : {}), since, ...(Object.keys(prev).length > 0 ? { prev } : {}) };
       break;
     }

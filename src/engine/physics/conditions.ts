@@ -5,6 +5,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { addCommanderStress } from '../special/commanderStress';
 import type { CampaignState, Slot } from '../state/types';
 
 export type ConditionUntil = { day: number; slot?: Slot };
@@ -22,9 +23,10 @@ export function setCondition(draft: CampaignState, reg: Registries, id: string, 
   const effects = (entry.effects as Array<{ type: string; delta?: number; amount?: number }>) ?? [];
   const rank = effects.filter((e) => e.type === 'social_rank').reduce((n, e) => n + (e.delta ?? 0), 0);
   const was = conditionsOf(draft).some((c) => c.id === id);
-  if (!was) for (const e of effects) if (e.type === 'stress') draft.commander.stress = Math.min(100, Math.max(0, (draft.commander.stress ?? 0) + (e.amount ?? 0)));
+  const events: EngineEvent[] = [];
+  if (!was) for (const e of effects) if (e.type === 'stress') events.push(...addCommanderStress(draft, e.amount ?? 0, 'condition'));
   draft.commander.conditions = [...conditionsOf(draft).filter((c) => c.id !== id), { id, until: { ...until }, ...(rank !== 0 ? { rank } : {}) }];
-  return [{ type: 'condition_set', id, until: { ...until } }];
+  return [...events, { type: 'condition_set', id, until: { ...until } }];
 }
 
 const over = (now: { day: number; slot: Slot }, until: ConditionUntil): boolean =>

@@ -154,7 +154,7 @@ export function weighted<T extends { sourceId: string; weight: number }>(state: 
  * `opts.ripe` is the source the reading called ripe. `cause` says what ran the pass (`exchange`: a reading was applied; `segment`: a physics
  * segment ended); the pass itself is the same.
  */
-export function momentPass(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>, _cause: 'exchange' | 'segment', opts: { ripe?: string } = {}): EngineEvent[] {
+export function momentPass(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>, cause: 'exchange' | 'segment', opts: { ripe?: string } = {}): EngineEvent[] {
   const reg = ctx.registries;
   const scene = draft.scene;
   if (!scene || !blockingLive(draft, reg)) return [];
@@ -162,7 +162,7 @@ export function momentPass(draft: CampaignState, ctx: Pick<EngineCtx, 'registrie
   const open = momentsOf(scene).open !== undefined;
   const { ok, rested } = cooledDown(draft);
   if (!open && ok) {
-    const live = weighted(draft, reg, liveSources(draft, reg, opts).filter((l) => rested(l.sourceId)));
+    const live = weighted(draft, reg, liveSources(draft, reg, { ...opts, cause }).filter((l) => rested(l.sourceId)));
     if (live.length > 0 && ctx.rng.chance(chanceOf(draft))) {
       const total = live.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx.rng.int(0, total - 1);

@@ -101,6 +101,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
   if (origin === 'night' && draft.slot !== 'night') throw new Error('Night scenes only start in the Night slot.');
 
   const sceneId = nextId(draft, 's');
+  delete draft.lastWake; // P15a: the card of an earlier blackout that was never closed is gone with it
   draft.scene = {
     id: sceneId, day: draft.day, slot: draft.slot, locationId: loc.id, participants, mode: participants.length > 1 ? 'group' : 'private',
     origin, consumesSlot: origin !== 'prologue' && payload.consumesSlot !== false, // P11: the prologue's scenes never cost a slot
@@ -244,9 +245,11 @@ registerAction('scene/end', (draft, payload, ctx) => {
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });
   events.push(...argueEnded(draft, ctx, scene.id)); // P13: the argument with the warden ends: a compromise runs the order, none leaves COMPLY and DEFY
+  // P15a: the slots left in THIS day after the scene's own (counted before it is spent: after an evening or a night the day has rolled over)
+  const room = Math.max(0, slotsLeftToday(draft.slot) - (scene.consumesSlot ? 1 : 0));
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx));
   // P15a: the slots a blackout or a marathon cost beyond the scene's own (never past the end of the day), and the wake card says where she came to
-  const extra = Math.min(scene.extraSlots ?? 0, slotsLeftToday(draft.slot));
+  const extra = Math.min(scene.extraSlots ?? 0, room);
   if (extra > 0) events.push(...consumeSlots(draft, extra, ctx));
   if (scene.marathon) events.push(...setCondition(draft, reg, 'stiff', { day: draft.day, slot: draft.slot })); // stiff until the next slot after the time has passed
   if (scene.blackout && draft.lastWake) {

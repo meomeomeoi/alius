@@ -190,6 +190,36 @@ describe('the stop word always works', () => {
     expect(ofType(r.events, 'physics_outcome')[0]).toMatchObject({ result: 'stopped', runId: null });
     expect(errors(stop(scene()).events)).not.toEqual([]);
   });
+
+  it('with no run and no contact it takes off what the commander wears (a hood, a collar), whatever it is', () => {
+    let s = put(scene(), { person: COMMANDER, field: 'worn', value: 'hood' }).state;
+    s = put(s, { person: COMMANDER, field: 'worn', value: 'collar' }).state;
+    expect(s.scene!.physics).toBeUndefined();
+    const r = stop(s);
+    expect(errors(r.events)).toEqual([]);
+    expect(hasSource(r.state.scene, 'item', 'hood')).toBe(false);
+    expect(hasSource(r.state.scene, 'item', 'collar')).toBe(false);
+    expect(ofType(r.events, 'physics_outcome')[0]).toMatchObject({ result: 'stopped', runId: null, sourceKind: 'item' });
+  });
+});
+
+describe('a category that only the second physics carries (review)', () => {
+  it('switching it off ends the hold, as for the first physics', () => {
+    const entry = reg.contactPhysics.get('saturation') as unknown as { contentTags?: string[] };
+    const was = entry.contentTags;
+    entry.contentTags = ['bodily_fluids']; // a local pack could tag a physics like this; the core data tags none of these
+    try {
+      const s = smothered([...ON, 'bodily_fluids']);
+      expect(s.scene!.physics).toMatchObject({ physicsId: 'breath', second: { physicsId: 'saturation' } });
+      const r = run(s, reg, { type: 'content/set_categories', payload: { enabled: ON } });
+      expect(errors(r.events)).toEqual([]);
+      expect(r.state.scene!.physics).toBeUndefined();
+      expect(ofType(r.events, 'physics_outcome')[0]).toMatchObject({ result: 'stopped' });
+    } finally {
+      if (was === undefined) delete entry.contentTags;
+      else entry.contentTags = was;
+    }
+  });
 });
 
 describe('a category switched off mid-scene', () => {

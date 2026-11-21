@@ -105,6 +105,20 @@ describe('her own limits and the target\'s gate (review I4)', () => {
     for (const e of exposedKinds(s, reg)) expect(target.stimuli as string[]).not.toContain(e.kind);
   });
 
+  it('a contact set with no target takes the first target the gates allow, or none (review: the default was not gated)', () => {
+    const make = (on: string[]): CampaignState => {
+      registerFrameReader(() => 'play');
+      const base = campaign(reg, 4);
+      setRelation(base, ANN, { stateId: 'confidant' });
+      enable(base, ...on);
+      const s = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+      setBlocking(s, { registries: reg }, { person: ANN, field: 'contact', value: 'under_her_seat', with: COMMANDER, direction: 'from' }, { at: 4, source: 'chip' });
+      return s;
+    };
+    expect(contactRecord(make(['objectification', 'restraint', 'humiliation'])).target).toBeUndefined(); // `bottom` needs worship
+    expect(contactRecord(make(['objectification', 'restraint', 'worship', 'explicit_scenes', 'humiliation'])).target).toBe('bottom');
+  });
+
   it('actsFor offers nothing at a contact she has limited (worship), and no pet act when pet play is her limit', () => {
     const base = worship([...ON, 'pet_play']);
     expect(actsFor(base, reg)).toContain('pet');

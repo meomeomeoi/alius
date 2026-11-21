@@ -82,6 +82,8 @@ describe('the physics panel', () => {
     expect(draw(null).host.innerHTML).toBe('');
     const s = hold('footrest'); // a weight hold exposes nothing to breathe in
     delete s.scene!.physics;
+    expect(draw(s).qa('button').map((b) => b.textContent)).toEqual(['[ STOP WORD ]']); // the contact is still there: only the way out
+    delete s.scene!.blocking; // nothing holds the commander
     expect(draw(s).host.innerHTML).toBe('');
     const far = hold();
     far.relations[ANN]!.stateId = 'comrade';
@@ -164,6 +166,29 @@ describe('the physics panel', () => {
         expect(v.calls.at(-1)).toEqual(['stop', null]);
       }
     }
+  });
+
+  it('the stop word is there with only something worn, or a contact with no physics, and nowhere with nothing (review)', () => {
+    registerFrameReader(() => 'play');
+    const base = campaign(reg, 4);
+    setRelation(base, ANN, { stateId: 'confidant' });
+    enable(base, ...ON);
+    const open = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    const stopOf = (s: CampaignState) => draw(s).qa('button').filter((b) => b.textContent === '[ STOP WORD ]');
+    expect(stopOf(open)).toHaveLength(0);
+    const hooded = structuredClone(open);
+    setBlocking(hooded, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'hood' }, { at: 3, source: 'chip' });
+    expect(hooded.scene!.physics).toBeUndefined();
+    const v = draw(hooded);
+    const btn = v.qa('button').find((b) => b.textContent === '[ STOP WORD ]')!;
+    expect(btn).toBeDefined();
+    btn.click();
+    expect(v.calls.at(-1)).toEqual(['stop', null]);
+    expect(markedWithout(v.host)).toEqual([]);
+    expect(unresolved(v.host, env(hooded))).toEqual([]);
+    const hands = structuredClone(open);
+    setBlocking(hands, { registries: reg }, { person: ANN, field: 'contact', value: 'holding_hands', with: COMMANDER, direction: 'from' }, { at: 3, source: 'chip' });
+    expect(stopOf(hands)).toHaveLength(1);
   });
 
   it('real time: a press registers its input at the beat now; Space is the main input', () => {

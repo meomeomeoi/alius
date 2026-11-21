@@ -401,6 +401,17 @@ describe('a segment may bring a moment up', () => {
     expect(opened).toBeGreaterThan(0);
   });
 
+  it('a warning or a slip is live in the pass after the segment only, not in the exchanges that follow it (review)', () => {
+    const s = next(withContact(setUp())).state;
+    s.scene!.physics!.gauge = 80;
+    s.scene!.physics!.seal = 'tight';
+    s.scene!.physics!.segment.plan = beats({}, {}, {}, {});
+    const after = end(s, []).state;
+    expect(after.scene!.physics!.last!.warning).toBe(true);
+    expect(liveSources(after, reg, { cause: 'segment' }).map((x) => x.sourceId)).toContain('endurance');
+    expect(liveSources(after, reg, { cause: 'exchange' }).map((x) => x.sourceId)).not.toContain('endurance');
+  });
+
   it('a weight slip makes `own_slip` live', () => {
     const w = next(withContact(setUp(), { value: 'footrest' })).state;
     const r = end(w, []);

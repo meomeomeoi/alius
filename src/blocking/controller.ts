@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { blockingLive } from '../engine/blocking';
 import type { CueKind } from '../engine/blocking/types';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { temperamentOf } from '../engine/life/state';
@@ -172,6 +173,13 @@ export function createStaging(deps: StagingDeps): StagingController {
     const s = state();
     const r = s?.scene?.physics;
     if (!s || !r) return;
+    if (!blockingLive(s, deps.registries())) {
+      // the bond fell below close with a hold running: the layer is gone, so every segment action would fail; the hold ends here, once, through the stop word (it has no live guard)
+      dispatch({ type: 'physics/stop_word', payload: {} });
+      collected = [];
+      startedAt = null;
+      return;
+    }
     if (r.segment.state === 'running') {
       if (startedAt === null) startedAt = now;
       const seconds = Number(deps.registries().contactPhysics.get(r.physicsId)?.segmentSeconds ?? 20);

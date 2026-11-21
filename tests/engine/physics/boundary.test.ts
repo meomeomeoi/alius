@@ -232,8 +232,12 @@ describe('the commander\'s conditions', () => {
   it('setting a condition again replaces it, applies its stress once, and an unknown id is refused', () => {
     const s = campaign(reg, 4);
     s.commander.stress = 0;
-    expect(setCondition(s, reg, 'dizzy', { day: 1 })).toEqual([{ type: 'condition_set', id: 'dizzy', until: { day: 1 } }]);
-    setCondition(s, reg, 'dizzy', { day: 2 });
+    const first = setCondition(s, reg, 'dizzy', { day: 1 });
+    expect(first).toEqual([{ type: 'commander_stress_changed', delta: 5, source: 'condition' }, { type: 'condition_set', id: 'dizzy', until: { day: 1 } }]); // the stress is an event like every other change of it
+    expect(s.commander.stress).toBe(5);
+    const again = setCondition(s, reg, 'dizzy', { day: 2 });
+    expect(again).toEqual([{ type: 'condition_set', id: 'dizzy', until: { day: 2 } }]); // replaced: no second stress
+    expect(s.commander.stress).toBe(5);
     expect(conditionsOf(s)).toHaveLength(1);
     expect(conditionsOf(s)[0]!.until).toEqual({ day: 2 });
     expect(() => setCondition(s, reg, 'nonsense', { day: 1 })).toThrow();
@@ -250,6 +254,17 @@ describe('the commander\'s conditions', () => {
     const none = running();
     expect(b.build(none, 5000).block).not.toContain('dizzy');
     clearSceneDirectives(b);
+  });
+});
+
+describe('a wake card that was never closed does not come back (review)', () => {
+  it('a new scene clears `lastWake`: the card of an old blackout is not shown at the end of another scene', () => {
+    const s = campaign(reg, 4);
+    setRelation(s, ANN, { stateId: 'confidant' });
+    s.lastWake = { day: 1, slot: 'night', unitId: ANN };
+    const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.lastWake).toBeUndefined();
   });
 });
 

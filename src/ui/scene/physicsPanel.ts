@@ -1,5 +1,5 @@
 import type { Registries } from '../../content/types';
-import { blockingLive } from '../../engine/blocking';
+import { blockingLive, blockingOf, COMMANDER, contactOf } from '../../engine/blocking';
 import type { CueKind } from '../../engine/blocking/types';
 import type { EngineEvent } from '../../engine/dispatch';
 import { remainingOf } from '../../engine/physics/run';
@@ -88,7 +88,10 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : undefined;
   const exposures = state && !run ? exposedKinds(state, reg) : [];
   const acts = state && !run ? actsFor(state, reg) : [];
-  if (state && !run && (exposures.length > 0 || acts.length > 0)) {
+  // the stop word must be reachable whenever something holds the commander: a contact or anything worn, hold or not (review)
+  const held = state && !run && state.scene && blockingLive(state, reg)
+    && (contactOf(state.scene) !== undefined || Object.keys(blockingOf(state.scene, COMMANDER).worn ?? {}).length > 0);
+  if (state && !run && (exposures.length > 0 || acts.length > 0 || held)) {
     letGoOf(host);
     unwireKeys(host);
     drawWays(host, ctx, exposures);

@@ -40,6 +40,8 @@ export interface ResolveEnv {
   band: ScentBand;
   /** Beats on which the breath was held while a hold runs with it: the strength drains 25 % less there (`combined.ts`). */
   steady?: ReadonlySet<number>;
+  /** A marathon's pace scale (`paceScale`): every beat's change of the gauge, and the streak xp, count this many times (1 = no scale). Applied per beat, before the clamp. */
+  scale?: number;
 }
 
 const P = TUNING.physics;
@@ -143,7 +145,15 @@ export const validInput = (i: unknown): i is SegmentInput =>
  */
 export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: SegmentInput[], env: ResolveEnv): SegmentResult {
   const lapsed = new Set(run.segment.lapsed ?? []);
-  const live = inputs.filter((i) => !lapsed.has(i.beat) && i.beat < plan.beats.length);
+  const seen = new Set<string>();
+  // one input of a kind counts once on a beat: a key pressed five times in a beat is not five breaths (review)
+  const live = inputs.filter((i) => {
+    if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
+    const key = `${i.beat}|${i.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const at = (beat: number, kind: SegmentInput['kind']): SegmentInput[] => live.filter((i) => i.beat === beat && i.kind === kind);
   const rest = env.interaction === 'gesture' ? live.find((i) => i.kind === 'ask_rest') : undefined;
   const run_ = rest ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
@@ -161,8 +171,10 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   const seal = sealNow(run, env.sealLevel);
   const evenBefore = (b: number): boolean => ![b - 1, b].some((x) => x >= 0 && at(x, 'hold').length === 0);
 
+  const scale = env.scale ?? 1;
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
+    const beatStart = r.gauge;
     if (beat.cue !== undefined) r.cues.push(beat.cue);
     switch (env.interaction) {
       case 'timing': {
@@ -174,8 +186,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
             if (breathed) {
               r.gauge += P.breath.caught;
               r.caught += 1;
-              r.streak += 1;
-              if (r.streak > P.endurance.streakFrom) r.streakBonus += 1;
+              r.streak += scale; // a catch of a coarser pace counts as many as the normal pace's catches it stands for
+              if (r.streak > P.endurance.streakFrom) r.streakBonus += scale;
             } else {
               r.gauge += cruel ? P.breath.cruelMissed : P.breath.missed;
               r.missed += 1;
@@ -239,6 +251,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         if (r.gauge >= P.jaw.degradeAt) r.degraded = true;
         break;
     }
+    // the pace scale is applied to the beat, then clamped, so that a phase gives the same fiction at every pace (review: it was applied after the clamp)
+    if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
     r.gauge = clamp(r.gauge, 0, env.gaugeKind === 'dirt' || env.gaugeKind === 'progress' ? 100 : cap);
   }
   if (rest) {
@@ -277,8 +291,8 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   if (run.segment.state !== 'running' || !run.segment.plan) throw new Error('No segment is running.');
   if (!Array.isArray(inputs) || !inputs.every(validInput)) throw new Error('physics/segment_end: inputs are { beat, kind } with a known kind');
   const plan = run.segment.plan;
-  const old = { main: run.gauge, second: run.second?.gauge ?? 0 };
-  const envMain = resolveEnvOf(draft, reg, run);
+  const scale = run.marathon ? paceScale(draft, reg, run) : 1;
+  const envMain = { ...resolveEnvOf(draft, reg, run), scale };
   const second = coreRun(run, 'second');
   let result: SegmentResult;
   let notices = 0;
@@ -288,7 +302,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   if (!second) result = resolveSegment(run, plan, inputs, envMain);
   else {
     // two physics on the same beats: each input goes to its owner and the pair's conflicts apply (`combined.ts`)
-    const envSecond = resolveEnvOf(draft, reg, second);
+    const envSecond = { ...resolveEnvOf(draft, reg, second), scale };
     const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs);
     const steady = new Set(merged.steady);
     const m = resolveSegment(run, plan, merged.main, envMain.interaction === 'hold' ? { ...envMain, steady } : envMain);
@@ -303,13 +317,6 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
       reliefs: m.reliefs + x.reliefs, reliefInputs: [...m.reliefInputs, ...x.reliefInputs], warning: m.warning || x.warning, checked: m.checked || x.checked,
       complete: m.complete || x.complete, degraded: m.degraded || x.degraded, askedRest: m.askedRest || x.askedRest,
     };
-  }
-  if (run.marathon) {
-    // a phase costs the same at every pace: a segment counts as much as the normal pace's segments over this pace's
-    const k = paceScale(draft, reg, run);
-    const round = (v: number): number => Math.round(v * 100) / 100;
-    result.gauge = round(old.main + (result.gauge - old.main) * k);
-    if (run.second) run.second.gauge = round(old.second + (run.second.gauge - old.second) * k);
   }
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
@@ -353,7 +360,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   };
   run.segment = { n: run.segment.n, state: 'held' };
   events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
-  if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, TUNING.physics.endurance.streak * result.streakBonus));
+  if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, Math.round(TUNING.physics.endurance.streak * result.streakBonus * 100) / 100));
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   if (result.slips > 0) {
     events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId });

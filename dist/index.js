@@ -10586,6 +10586,17 @@ function votingOn(state, reg) {
   return worldEffects(state, reg, "voting").length > 0;
 }
 
+// src/engine/special/commanderStress.ts
+var commanderStress = (state) => state.commander.stress ?? 0;
+var commanderStressBand = (state) => stressBand(commanderStress(state));
+function addCommanderStress(draft, amount, source) {
+  const before = commanderStress(draft);
+  const next = Math.min(100, Math.max(0, before + amount));
+  if (next === before) return [];
+  draft.commander.stress = next;
+  return [{ type: "commander_stress_changed", delta: next - before, source }];
+}
+
 // src/engine/physics/conditions.ts
 var ORDER2 = ["morning", "afternoon", "evening", "night"];
 var conditionsOf = (state) => state.commander.conditions ?? [];
@@ -10596,11 +10607,12 @@ function setCondition(draft, reg, id, until) {
   const effects2 = entry.effects ?? [];
   const rank2 = effects2.filter((e) => e.type === "social_rank").reduce((n, e) => n + (e.delta ?? 0), 0);
   const was = conditionsOf(draft).some((c) => c.id === id);
+  const events = [];
   if (!was) {
-    for (const e of effects2) if (e.type === "stress") draft.commander.stress = Math.min(100, Math.max(0, (draft.commander.stress ?? 0) + (e.amount ?? 0)));
+    for (const e of effects2) if (e.type === "stress") events.push(...addCommanderStress(draft, e.amount ?? 0, "condition"));
   }
   draft.commander.conditions = [...conditionsOf(draft).filter((c) => c.id !== id), { id, until: { ...until }, ...rank2 !== 0 ? { rank: rank2 } : {} }];
-  return [{ type: "condition_set", id, until: { ...until } }];
+  return [...events, { type: "condition_set", id, until: { ...until } }];
 }
 var over = (now, until) => until.slot === void 0 ? now.day > until.day : now.day * ORDER2.length + ORDER2.indexOf(now.slot) > until.day * ORDER2.length + ORDER2.indexOf(until.slot);
 function expireConditions(draft) {
@@ -14384,17 +14396,6 @@ function noteFeat(draft, reg, trigger) {
 }
 function negotiationHolds(e) {
   return e.routePassed === true && e.routeKind === "social" || e.checkPassed === true;
-}
-
-// src/engine/special/commanderStress.ts
-var commanderStress = (state) => state.commander.stress ?? 0;
-var commanderStressBand = (state) => stressBand(commanderStress(state));
-function addCommanderStress(draft, amount, source) {
-  const before = commanderStress(draft);
-  const next = Math.min(100, Math.max(0, before + amount));
-  if (next === before) return [];
-  draft.commander.stress = next;
-  return [{ type: "commander_stress_changed", delta: next - before, source }];
 }
 
 // src/engine/warden/punish.ts
@@ -26296,7 +26297,10 @@ function apply(draft, reg, change) {
         if (s.posture !== void 0) rec.posture = s.posture;
         if (s.anchor !== void 0) rec.anchor = reg.blockingAnchors.get(s.anchor)?.kind === "relative" ? { id: s.anchor, relTo: other } : { id: s.anchor };
       }
-      const target = change.target ?? c.target?.[0];
+      const target = change.target ?? c.target?.find((t) => {
+        const entry = reg.worshipTargets.get(t);
+        return entry !== void 0 && entryAllowed(draft, reg, entry, draft.scene.participants);
+      });
       record(draft, p.receiver).contact = { id: value, with: p.actor, direction: p.actor === COMMANDER ? "to" : "from", ...target !== void 0 ? { target } : {}, since, ...Object.keys(prev).length > 0 ? { prev } : {} };
       break;
     }
@@ -26742,8 +26746,9 @@ function liveSources(state, reg, opts = {}) {
             break;
           case "physics_warning":
           case "physics_slip":
-            if (physicsLive(state, kind)) weight += 1;
+            if (opts.cause !== "exchange" && physicsLive(state, kind)) weight += 1;
             break;
+          // what the last segment did is news only to the pass that follows it
           case "external":
             if (triggers.get(source.id)?.(state, reg, unitId) === true) weight += 1;
             break;
@@ -26902,7 +26907,7 @@ function weighted(state, reg, live2) {
   if ((state.scene?.physics?.last?.noise ?? 0) <= 0) return live2;
   return live2.map((l) => kindsOf2(reg.momentSources.get(l.sourceId) ?? {}).includes("visitor") ? { ...l, weight: l.weight + TUNING.moments.noiseBoost } : l);
 }
-function momentPass(draft, ctx2, _cause, opts = {}) {
+function momentPass(draft, ctx2, cause, opts = {}) {
   const reg = ctx2.registries;
   const scene = draft.scene;
   if (!scene || !blockingLive(draft, reg)) return [];
@@ -26910,7 +26915,7 @@ function momentPass(draft, ctx2, _cause, opts = {}) {
   const open3 = momentsOf(scene).open !== void 0;
   const { ok, rested } = cooledDown(draft);
   if (!open3 && ok) {
-    const live2 = weighted(draft, reg, liveSources(draft, reg, opts).filter((l) => rested(l.sourceId)));
+    const live2 = weighted(draft, reg, liveSources(draft, reg, { ...opts, cause }).filter((l) => rested(l.sourceId)));
     if (live2.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
       const total2 = live2.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
@@ -27214,7 +27219,12 @@ function stopWord(draft, ctx2) {
     return events;
   }
   const contact = contactOf(scene);
-  if (!contact) throw new Error("physics/stop_word: there is nothing to stop");
+  if (!contact) {
+    const worn = [...new Set(Object.values(scene.blocking?.[COMMANDER]?.worn ?? {}).map((w) => w?.id).filter((id) => id !== void 0))];
+    if (worn.length === 0) throw new Error("physics/stop_word: there is nothing to stop");
+    for (const id of worn) removeSource(draft, "item", id);
+    return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: scene.participants[0] ?? null, result: "stopped", segments: 0, sourceKind: "item", sourceId: worn[0] }];
+  }
   removeSource(draft, "contact", contact.id);
   dropOrphanAct(draft);
   return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: "stopped", segments: 0, sourceKind: "contact", sourceId: contact.id }];
@@ -27274,7 +27284,7 @@ registerWithdrawal((draft, reg, removed) => {
   const run = draft.scene?.physics;
   if (!run) return [];
   const tags = (e) => Array.isArray(e?.contentTags) ? e.contentTags : [];
-  const hit = [...tags(sourceEntry(reg, run.sourceKind, run.sourceId)), ...tags(reg.contactPhysics.get(run.physicsId))].some((t) => removed.includes(t));
+  const hit = [...tags(sourceEntry(reg, run.sourceKind, run.sourceId)), ...tags(reg.contactPhysics.get(run.physicsId)), ...tags(run.second ? reg.contactPhysics.get(run.second.physicsId) : void 0)].some((t) => removed.includes(t));
   return hit || gone(draft.scene, run) ? stopPhysics(draft, reg, "stopped") : [];
 });
 
@@ -27494,6 +27504,7 @@ registerAction("scene/start", (draft, payload, ctx2) => {
   }
   if (origin === "night" && draft.slot !== "night") throw new Error("Night scenes only start in the Night slot.");
   const sceneId = nextId(draft, "s");
+  delete draft.lastWake;
   draft.scene = {
     id: sceneId,
     day: draft.day,
@@ -27641,8 +27652,9 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
   events.push(...argueEnded(draft, ctx2, scene.id));
+  const room2 = Math.max(0, slotsLeftToday(draft.slot) - (scene.consumesSlot ? 1 : 0));
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx2));
-  const extra = Math.min(scene.extraSlots ?? 0, slotsLeftToday(draft.slot));
+  const extra = Math.min(scene.extraSlots ?? 0, room2);
   if (extra > 0) events.push(...consumeSlots(draft, extra, ctx2));
   if (scene.marathon) events.push(...setCondition(draft, reg, "stiff", { day: draft.day, slot: draft.slot }));
   if (scene.blackout && draft.lastWake) {
@@ -30687,7 +30699,14 @@ function share(kind, gauge, capacity) {
 var validInput = (i) => typeof i === "object" && i !== null && Number.isInteger(i.beat) && i.beat >= 0 && INPUT_KINDS.includes(i.kind);
 function resolveSegment(run, plan, inputs, env) {
   const lapsed = new Set(run.segment.lapsed ?? []);
-  const live2 = inputs.filter((i) => !lapsed.has(i.beat) && i.beat < plan.beats.length);
+  const seen = /* @__PURE__ */ new Set();
+  const live2 = inputs.filter((i) => {
+    if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
+    const key = `${i.beat}|${i.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const at = (beat, kind) => live2.filter((i) => i.beat === beat && i.kind === kind);
   const rest = env.interaction === "gesture" ? live2.find((i) => i.kind === "ask_rest") : void 0;
   const run_ = rest ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
@@ -30721,8 +30740,10 @@ function resolveSegment(run, plan, inputs, env) {
   };
   const seal = sealNow(run, env.sealLevel);
   const evenBefore = (b) => ![b - 1, b].some((x) => x >= 0 && at(x, "hold").length === 0);
+  const scale = env.scale ?? 1;
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b];
+    const beatStart = r.gauge;
     if (beat.cue !== void 0) r.cues.push(beat.cue);
     switch (env.interaction) {
       case "timing": {
@@ -30734,8 +30755,8 @@ function resolveSegment(run, plan, inputs, env) {
             if (breathed) {
               r.gauge += P2.breath.caught;
               r.caught += 1;
-              r.streak += 1;
-              if (r.streak > P2.endurance.streakFrom) r.streakBonus += 1;
+              r.streak += scale;
+              if (r.streak > P2.endurance.streakFrom) r.streakBonus += scale;
             } else {
               r.gauge += cruel ? P2.breath.cruelMissed : P2.breath.missed;
               r.missed += 1;
@@ -30798,6 +30819,7 @@ function resolveSegment(run, plan, inputs, env) {
         if (r.gauge >= P2.jaw.degradeAt) r.degraded = true;
         break;
     }
+    if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
     r.gauge = clamp36(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap7);
   }
   if (rest) {
@@ -30829,8 +30851,8 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   if (run.segment.state !== "running" || !run.segment.plan) throw new Error("No segment is running.");
   if (!Array.isArray(inputs) || !inputs.every(validInput)) throw new Error("physics/segment_end: inputs are { beat, kind } with a known kind");
   const plan = run.segment.plan;
-  const old = { main: run.gauge, second: run.second?.gauge ?? 0 };
-  const envMain = resolveEnvOf(draft, reg, run);
+  const scale = run.marathon ? paceScale(draft, reg, run) : 1;
+  const envMain = { ...resolveEnvOf(draft, reg, run), scale };
   const second = coreRun(run, "second");
   let result;
   let notices = 0;
@@ -30839,7 +30861,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   let secondPart = null;
   if (!second) result = resolveSegment(run, plan, inputs, envMain);
   else {
-    const envSecond = resolveEnvOf(draft, reg, second);
+    const envSecond = { ...resolveEnvOf(draft, reg, second), scale };
     const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs);
     const steady = new Set(merged.steady);
     const m = resolveSegment(run, plan, merged.main, envMain.interaction === "hold" ? { ...envMain, steady } : envMain);
@@ -30864,12 +30886,6 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
       degraded: m.degraded || x.degraded,
       askedRest: m.askedRest || x.askedRest
     };
-  }
-  if (run.marathon) {
-    const k = paceScale(draft, reg, run);
-    const round5 = (v) => Math.round(v * 100) / 100;
-    result.gauge = round5(old.main + (result.gauge - old.main) * k);
-    if (run.second) run.second.gauge = round5(old.second + (run.second.gauge - old.second) * k);
   }
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
@@ -30917,7 +30933,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   };
   run.segment = { n: run.segment.n, state: "held" };
   events.unshift({ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
-  if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, TUNING.physics.endurance.streak * result.streakBonus));
+  if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, Math.round(TUNING.physics.endurance.streak * result.streakBonus * 100) / 100));
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   if (result.slips > 0) {
     events.push({ type: "physics_slip", runId, kind: "slip", count: result.slips, holderId: run.holderId });
@@ -38883,6 +38899,12 @@ function createStaging(deps) {
     const s = state();
     const r = s?.scene?.physics;
     if (!s || !r) return;
+    if (!blockingLive(s, deps.registries())) {
+      dispatch2({ type: "physics/stop_word", payload: {} });
+      collected = [];
+      startedAt = null;
+      return;
+    }
     if (r.segment.state === "running") {
       if (startedAt === null) startedAt = now;
       const seconds = Number(deps.registries().contactPhysics.get(r.physicsId)?.segmentSeconds ?? 20);
@@ -48861,7 +48883,8 @@ function renderPhysicsPanel(host, ctx2) {
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : void 0;
   const exposures = state && !run ? exposedKinds(state, reg) : [];
   const acts = state && !run ? actsFor(state, reg) : [];
-  if (state && !run && (exposures.length > 0 || acts.length > 0)) {
+  const held3 = state && !run && state.scene && blockingLive(state, reg) && (contactOf(state.scene) !== void 0 || Object.keys(blockingOf(state.scene, COMMANDER).worn ?? {}).length > 0);
+  if (state && !run && (exposures.length > 0 || acts.length > 0 || held3)) {
     letGoOf(host);
     unwireKeys(host);
     drawWays(host, ctx2, exposures);
