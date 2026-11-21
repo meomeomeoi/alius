@@ -4,7 +4,7 @@ import { WARDEN_DERIVED } from '../../src/warden/directives';
 /** The prefixes older packages reserve for their own directives (the P9b / P9c test keeps the same list). */
 const OLDER = [
   'loyalty:', 'refusal:', 'threat:', 'discipline:', 'demand:', 'reputation:', 'nickname', 'content', 'limits:', 'lead', 'boundary:', 'want:', 'rule:',
-  'publicity:', 'co_command:', 'ask:', 'prologue:', 'world:', 'stance:', 'friction:', 'personal:', 'special:', 'power:',
+  'publicity:', 'co_command:', 'ask:', 'prologue:', 'world:', 'stance:', 'friction:', 'personal:', 'special:', 'power:', 'life:',
 ];
 
 describe('P13 directive ids', () => {

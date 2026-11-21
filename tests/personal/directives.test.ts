@@ -160,7 +160,7 @@ describe('ids and words', () => {
   /** Every prefix P9, P9d, P9b, P9e and P11 reserve (tests/power/herCallDirectives.test.ts holds the same list, with personal:). */
   const RESERVED = [
     'loyalty:', 'refusal:', 'threat:', 'discipline:', 'demand:', 'reputation:', 'nickname', 'content', 'limits:', 'lead', 'boundary:', 'want:', 'rule:',
-    'publicity:', 'co_command:', 'ask:', 'prologue:', 'world:', 'stance:', 'friction:', 'power:', 'smother:',
+    'publicity:', 'co_command:', 'ask:', 'prologue:', 'world:', 'stance:', 'friction:', 'power:', 'smother:', 'life:',
   ];
   function everything(): CampaignState {
     const s = scene(enable(lover(), 'jealousy_games'), ANN, BEA);

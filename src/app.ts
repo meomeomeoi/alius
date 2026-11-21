@@ -61,6 +61,8 @@ import { createSpecial, type SpecialController } from './special/controller';
 import { createWarden } from './warden/controller';
 import { createHeadStart } from './headStart/controller';
 import { createDevelopment } from './development/controller';
+import { createLife } from './life/controller';
+import { clearLifeDirectives, refreshLifeDirectives } from './life/directives';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
 import { clearSpecialDirectives, refreshSpecialDirectives } from './special/directives';
 import type { VoteChoice } from './power/deps';
@@ -295,7 +297,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       refreshPowerDirectives(context, state, registries); // P9b: a unit the commander overruled in a vote may push back
       refreshPersonalDirectives(context, state, registries); // P9c: courting, a claim, peeled decor and a booking
       refreshSpecialDirectives(context, state, registries); // P12: a soldier who senses static around the commander
+      refreshLifeDirectives(context, state, registries); // P14c: news she has for the commander (a derived `life:` directive, gone once told)
     } else {
+      clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
       clearPowerDirectives(context);
@@ -576,6 +580,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   }); // P13: the warden's agenda, the day-start snapshot, the rewind and the epilogue
   const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext }); // P11b: the recap of the first weeks and the first scene's opening
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
+  const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -686,6 +691,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onboarding.onSceneClosed(); // and the prologue's goal and wrap directives (P11)
     headStart.onSceneClosed(); // and the head start's opening line (P11b)
     development.onSceneClosed(); // and a quiet change's cue (P14b)
+    life.onSceneClosed(); // and what she had to tell (P14c); the chat switch also forgets which items were asked for
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
@@ -693,6 +699,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onboarding.onSceneOpened();
       headStart.onSceneOpened();
       development.onSceneOpened();
+      life.onSceneOpened();
       showScene();
     } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
@@ -723,6 +730,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onboarding.onSceneOpened();
     headStart.onSceneOpened();
     development.onSceneOpened();
+    life.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -803,6 +811,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       special.onEvents(events); // P12: a new frequency fragment is worded
       warden.onEvents(events); // P13: a new warden is asked for her agenda
       development.onEvents(events); // P14b: a formed habit may be worded
+      life.onEvents(events); // P14c: news delivered, gone stale or told changes the directives
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('campaign_ended')) {
         shell.showScreen('hub'); // P13: the END screen takes the hub's place; nothing else of the campaign can change now
@@ -813,6 +822,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         discipline.onSceneClosed();
         headStart.onSceneClosed();
         development.onSceneClosed();
+        life.onSceneClosed();
       }
       if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
       if (has('night_started') && state?.slot === 'night' && !state.scene) {
@@ -833,6 +843,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       // P3b: what the memory owes after any change (a fold is due, a rumor waits for its retelling); one fold per run, so a fold asks again
       if (events.length > 0 && !has('error')) void memory.run().catch(warn('memory'));
       if (events.length > 0 && !has('error')) void development.run().catch(warn('development')); // P14b: one due review per run (quiet)
+      if (events.length > 0 && !has('error')) void life.run().catch(warn('life')); // P14c: one waiting DM or note of hers per run (quiet)
       if (has('memory_folded')) setTimeout(() => void memory.run().catch(warn('memory')), 0);
     });
   }

@@ -76,6 +76,8 @@ declare('flavor.rule', 'flavor', 'day', 'free', 'quiet', 'Rule wording');
 declare('flavor.ballot', 'flavor', 'day', 'none', 'none', 'Ballot wording');
 declare('flavor.dm_edit', 'flavor', 'comms', 'none', 'none', 'Message edit');
 declare('flavor.habit', 'flavor', 'day', 'free', 'none', 'Habit wording');
+declare('flavor.life_share', 'flavor', 'day', 'free', 'quiet', 'Her news');
+declare('flavor.life_trace', 'flavor', 'day', 'free', 'quiet', 'Her note');
 declare('flavor.frequency_fragment', 'flavor', 'scene', 'none', 'none', 'Fragment wording');
 declare('warden.agenda', 'warden_agenda', 'world', 'before_commit', 'quiet', "The warden's agenda");
 declare('warden.judge', 'warden_judge', 'world', 'none', 'none', 'Warden judgment');

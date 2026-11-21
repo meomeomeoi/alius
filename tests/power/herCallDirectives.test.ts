@@ -136,7 +136,7 @@ describe('ids and words', () => {
   /** Every prefix P9, P9d, P11, the world layer and P9c reserve for their own directives. */
   const RESERVED = [
     'loyalty:', 'refusal:', 'threat:', 'discipline:', 'demand:', 'reputation:', 'nickname', 'content', 'limits:', 'lead', 'boundary:', 'want:', 'rule:',
-    'publicity:', 'co_command:', 'ask:', 'prologue:', 'world:', 'stance:', 'friction:', 'personal:', 'special:', 'warden:',
+    'publicity:', 'co_command:', 'ask:', 'prologue:', 'world:', 'stance:', 'friction:', 'personal:', 'special:', 'warden:', 'life:',
   ];
 
   it('no directive id starts with a prefix P9, P9d or P11 reserve, and every one starts with power:', () => {
