@@ -76,8 +76,9 @@ declare('flavor.rule', 'flavor', 'day', 'free', 'quiet', 'Rule wording');
 declare('flavor.ballot', 'flavor', 'day', 'none', 'none', 'Ballot wording');
 declare('flavor.dm_edit', 'flavor', 'comms', 'none', 'none', 'Message edit');
 declare('flavor.habit', 'flavor', 'day', 'free', 'none', 'Habit wording');
-declare('flavor.life_share', 'flavor', 'day', 'free', 'quiet', 'Her news');
-declare('flavor.life_trace', 'flavor', 'day', 'free', 'quiet', 'Her note');
+// her news and her note: an applied item closes, so there is nothing to replace (a reroll could never succeed)
+declare('flavor.life_share', 'flavor', 'day', 'none', 'quiet', 'Her news');
+declare('flavor.life_trace', 'flavor', 'day', 'none', 'quiet', 'Her note');
 declare('flavor.frequency_fragment', 'flavor', 'scene', 'none', 'none', 'Fragment wording');
 declare('warden.agenda', 'warden_agenda', 'world', 'before_commit', 'quiet', "The warden's agenda");
 declare('warden.judge', 'warden_judge', 'world', 'none', 'none', 'Warden judgment');
@@ -85,5 +86,7 @@ declare('warden.epilogue', 'epilogue', 'world', 'free', 'full', 'Epilogue');
 declare('setup.profile_import', 'profile_import', 'setup', 'before_commit', 'none', 'Profile import');
 declare('setup.head_start_recap', 'head_start_recap', 'world', 'before_commit', 'full', 'Recap of the first weeks');
 declare('development.review', 'development_review', 'world', 'before_commit', 'quiet', 'Character development');
+// her view on a topic is formed once and fixed (a reroll could never succeed: the engine refuses a second opinion)
+declare('opinion.form', 'opinion_form', 'scene', 'none', 'quiet', 'Her opinion');
 declare('setup.commander_import', 'commander_import', 'setup', 'before_commit', 'none', 'Commander import');
 declare('sys.ping', 'ping', 'sys', 'none', 'none', 'Connection test');

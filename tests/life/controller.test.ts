@@ -100,15 +100,14 @@ describe('the share DM', () => {
     expect(h.state().generations).toBeUndefined();
   });
 
-  it('a refused call writes a quiet record and dispatches the fallback, with no toast', async () => {
+  it('a refused call dispatches the fallback, with no toast and no record (nothing can be rerolled once the fallback stands)', async () => {
     const { s, itemId } = world();
     const { h, ctl } = rig(s);
     h.st.mainReplies = ['I cannot help with that.'];
     await ctl.run();
     expect(dms(h).map((m) => m.text)).toEqual([entry().lines[lifeHash(s.life!, itemId) % 2]]);
-    expect(records(h)).toMatchObject([{ siteId: 'flavor.life_share', key: itemId, fallbackApplied: true, quiet: true }]);
+    expect(records(h)).toEqual([]);
     expect(h.toasts).toEqual([]);
-    expect(JSON.stringify(records(h))).not.toContain('broke'); // a record never holds the model's words or the content
   });
 
   it('an answer that does not fit (a pronoun for the commander) is a failure, not a DM', async () => {
@@ -117,7 +116,7 @@ describe('the share DM', () => {
     h.st.mainReplies = [answer('I told him about it.')];
     await ctl.run();
     expect(dms(h).map((m) => m.text)).toEqual([entry().lines[lifeHash(s.life!, itemId) % 2]]);
-    expect(records(h)).toMatchObject([{ reason: 'invalid_output' }]);
+    expect(records(h)).toEqual([]); // the fallback stands: a site that cannot be rerolled writes no record then
   });
 
   it('an answer after a chat switch is dropped: nothing is told and the item stays', async () => {
@@ -239,13 +238,13 @@ describe('the trace note', () => {
     expect(call.prompt).toContain('torn notebook paper'); // the hobby's own trace text, as the tone
   });
 
-  it('a failure leaves the hobby\'s own trace text as the note, with a quiet record', async () => {
+  it('a failure leaves the hobby\'s own trace text as the note, with no record', async () => {
     const { s, itemId } = world('note');
     const { h, ctl } = rig(s);
     h.st.mainReplies = ['nope'];
     await ctl.run();
     expect(h.state().notes!.list[0].text).toBe(String(reg.hobbies.get('sketching')!.traceText));
-    expect(records(h)).toMatchObject([{ siteId: 'flavor.life_trace', key: itemId, fallbackApplied: true, quiet: true }]);
+    expect(records(h)).toEqual([]);
     expect(h.toasts).toEqual([]);
   });
 
@@ -328,10 +327,10 @@ describe('the scene directive', () => {
 });
 
 describe('the sites', () => {
-  it('the two flavor kinds have their sites: quiet, free reroll, on the flavor call type', () => {
+  it('the two flavor kinds have their sites: quiet, no reroll (an applied item closes), on the flavor call type', () => {
     for (const kind of ['life_share', 'life_trace']) {
       expect(listFlavorKinds()).toContain(kind);
-      expect(generationSite(`flavor.${kind}`)).toMatchObject({ callType: 'flavor', record: 'quiet', reroll: 'free', surface: 'day' });
+      expect(generationSite(`flavor.${kind}`)).toMatchObject({ callType: 'flavor', record: 'quiet', reroll: 'none', surface: 'day' });
     }
     expect(generationSite('flavor.life_share')!.label(null, 'k')).toBe('Her news');
     expect(generationSite('flavor.life_trace')!.label(null, 'k')).toBe('Her note');

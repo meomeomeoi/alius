@@ -74,7 +74,7 @@ const records = (w: ReturnType<typeof world>) => w.state().generations?.records 
 describe('the site registry', () => {
   it('declares every site of the plan as data', () => {
     const ids = generationSites().map((s) => s.id).filter((id) => !id.startsWith('test.'));
-    expect(ids).toHaveLength(33); // P11b: + setup.head_start_recap; P14b: + development.review, flavor.habit; P14c: + flavor.life_share, flavor.life_trace
+    expect(ids).toHaveLength(34); // P11b: + setup.head_start_recap; P14b: + development.review, flavor.habit; P14c: + flavor.life_share, flavor.life_trace, opinion.form
     expect(generationSite('scene.summary')).toMatchObject({ callType: 'scene_summary', surface: 'day', reroll: 'revert', record: 'full' });
     expect(generationSite('flavor.frequency_fragment')).toMatchObject({ reroll: 'none', record: 'none' });
     expect(generationSite('dm.initiate')).toMatchObject({ record: 'quiet', reroll: 'none' });

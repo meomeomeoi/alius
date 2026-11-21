@@ -520,6 +520,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
     onUi: routeUi,
     onUnitReply: (unitId: string, text: string) => { personal.onReply(unitId, text); }, // P9c: her first reply answers a question she lost
+    onCommanderLine: (text: string) => { life.onCommanderLine(text); }, // P14c: a keyword in the commander's line brings a topic up (her opinions)
   };
   const scene = createSceneController(sceneDeps);
   const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k), onReply: (u, t) => personal.onReply(u, t) } });

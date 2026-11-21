@@ -36,7 +36,7 @@ export const BEA = 'unit_bea';
 export const CAT = 'unit_cat';
 
 /** A scene-ready world: fake ST with the squad's cards, a real engine and the real controllers. */
-export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => void; settings?: Partial<AliusSettings>; /** P3b: wire a real memory controller into the scene (digest while it runs). */ memory?: boolean } = {}): Harness {
+export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => void; settings?: Partial<AliusSettings>; /** P3b: wire a real memory controller into the scene (digest while it runs). */ memory?: boolean; /** Extra scene deps (a hook under test). */ deps?: Record<string, unknown> } = {}): Harness {
   const st = new FakeStAdapter({ chatId: 'chat-1', isGroup: true, groupId: 'g1' });
   st.personaName = 'Vale';
   let state = campaign(reg, 4);
@@ -80,6 +80,7 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
     restore,
     toast: (kind: string, text: string) => { toasts.push({ kind, text }); },
     onUi: (e: SceneUiEvent) => { ui.push(e); },
+    ...opts.deps,
   };
   const controller = createSceneController(deps as never);
   const comms = createComms({ ...deps, scene: controller } as never);

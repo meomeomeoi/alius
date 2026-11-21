@@ -57,6 +57,8 @@ export interface SceneDeps {
   onUi: (e: SceneUiEvent) => void;
   /** P9c: a line a soldier of the scene said in the last exchange (her first reply after a lost question wager answers it). */
   onUnitReply?: (unitId: string, text: string) => void;
+  /** P14c: the commander's line, before it goes out: a keyword in it may bring a topic up for the women present (their opinions), so a view that is picked reaches the prompt of the reply to it. */
+  onCommanderLine?: (text: string) => void;
   /** P3b: the memory controller; after each reply the scene asks it for a digest, and `end()` waits for one in flight. */
   memory?: Pick<MemoryController, 'digestIfDue' | 'idle'>;
 }
@@ -447,6 +449,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
     awaitingReextract = false;
     try {
       const before = st.chatLength();
+      deps.onCommanderLine?.(t);
       try {
         await st.sendUserMessage(t);
       } catch (e) {

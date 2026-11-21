@@ -1,0 +1,3 @@
+```json
+{ "position": "useful", "text": "They're a machine. Learn where the levers are and it works for you too." }
+```
