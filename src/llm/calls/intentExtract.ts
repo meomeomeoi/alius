@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { LifeOffer } from '../../engine/life/types';
 import { EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
+import { cleanLabels } from '../../engine/moments/answer';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
@@ -347,8 +348,6 @@ export function sanitizeIntentOutput(
   return { intents, emotions, contentViolations, sceneTone };
 }
 
-const CLEAN_QUOTES = /[\u0022\u201c\u201d]/g;
-const EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
 
 /**
  * The staging half of a reading, checked against what the input offered: only the five fields of the closed vocabulary (never a
@@ -383,11 +382,7 @@ export function sanitizeStaging(raw: unknown, input: StagingInput): StagingOutpu
       answer = { key, confidence, ...(tone !== undefined ? { tone } : {}) };
     }
   }
-  let labels: StagingOutput['labels'] = null;
-  if (input.open && Array.isArray(src.labels) && src.labels.length === 3 && src.labels.every((l) => typeof l === 'string')) {
-    const cleaned = (src.labels as string[]).map((l) => l.replace(CLEAN_QUOTES, '').replace(/\s+/g, ' ').trim().replace(EDGE_QUOTES, '').trim().slice(0, 40).trim());
-    if (cleaned.every((l) => l !== '')) labels = cleaned as [string, string, string];
-  }
+  const labels: StagingOutput['labels'] = input.open ? cleanLabels(src.labels) : null; // display only: three short single lines, no pronoun for the commander
   return { blocking, ripe, answer, labels };
 }
 

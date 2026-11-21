@@ -26253,7 +26253,7 @@ var EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
 var COMMANDER_PRONOUN2 = /\b(he|him|his|himself)\b/i;
 function cleanLabels(raw) {
   if (!Array.isArray(raw) || raw.length !== 3 || !raw.every((l) => typeof l === "string")) return null;
-  const cleaned = raw.map((l) => l.replace(/<[^>]*>/g, " ").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, TUNING.moments.labelMax).trim());
+  const cleaned = raw.map((l) => l.replace(/<[^>]*>/g, " ").replace(/[\u0000-\u001f\u007f<>`]/g, " ").replace(QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, TUNING.moments.labelMax).trim());
   return cleaned.every((l) => l !== "" && !COMMANDER_PRONOUN2.test(l)) ? cleaned : null;
 }
 function setLabels(draft, raw) {

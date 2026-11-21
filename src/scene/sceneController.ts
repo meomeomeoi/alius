@@ -376,7 +376,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
           channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}`,
           ...(flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {}),
           ...(result.sceneTone !== null ? { tone: result.sceneTone } : {}),
-          ...(result.staging ? { staging: { blocking: result.staging.blocking } } : {}), // P15a
+          ...(result.staging ? { staging: { blocking: result.staging.blocking, ripe: result.staging.ripe, answer: result.staging.answer, labels: result.staging.labels } } : {}), // P15a
         },
       }, expect);
       if (events.some((e) => e.type === 'error')) return { stale: true };

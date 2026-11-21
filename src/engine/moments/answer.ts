@@ -121,7 +121,7 @@ const COMMANDER_PRONOUN = /\b(he|him|his|himself)\b/i;
 export function cleanLabels(raw: unknown): [string, string, string] | null {
   if (!Array.isArray(raw) || raw.length !== 3 || !raw.every((l) => typeof l === 'string')) return null;
   const cleaned = (raw as string[]).map((l) =>
-    l.replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(QUOTES, '').replace(/\s+/g, ' ').trim().replace(EDGE_QUOTES, '').trim().slice(0, TUNING.moments.labelMax).trim());
+    l.replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f<>`]/g, ' ').replace(QUOTES, '').replace(/\s+/g, ' ').trim().replace(EDGE_QUOTES, '').trim().slice(0, TUNING.moments.labelMax).trim());
   return cleaned.every((l) => l !== '' && !COMMANDER_PRONOUN.test(l)) ? (cleaned as [string, string, string]) : null;
 }
 

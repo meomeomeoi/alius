@@ -1055,15 +1055,15 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 - Consumes: R9 and Task 15.
 - Produces: `StagingOutput.{ripe, answer, labels}`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `no open moment → no answer or labels lines`; `no extracted source → no ripe line`.
   - `labels land on the open moment and are never read` (a label "obey" on a `resisted` option changes nothing).
   - `free text maps to an option` (fixture answer `{ option: 2, confidence: 0.7, tone: 'ironic' }` → `moment_answered.via: 'text'`, `tone: 'ironic'`).
   - `hostile output` (labels with newlines, markup, 300 characters, a pronoun) is sanitized or dropped.
-- [ ] **Step 2: Run** `npx vitest run tests/llm/intentExtractMoments.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the reading hints, answers and labels moments`
+- [x] **Step 2: Run** `npx vitest run tests/llm/intentExtractMoments.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the reading hints, answers and labels moments`
 
 ---
 
