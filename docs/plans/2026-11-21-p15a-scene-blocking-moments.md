@@ -716,15 +716,15 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `loadPacks(..., { optional })`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `an absent local pack is not an error` (fetch 404 for its manifest → `errors` empty).
   - `a local pack adds and overrides by id` (a local `blockingItems` row with the id `collar` and a new `label` wins; a new id is added).
   - `a bad local row is reported, core still loads`.
   - `.gitignore lists content/local/ and not dist/ or style.css`.
-- [ ] **Step 2: Run** `npx vitest run tests/content/localPacks.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): optional local content packs`
+- [x] **Step 2: Run** `npx vitest run tests/content/localPacks.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): optional local content packs`
 
 ---
 

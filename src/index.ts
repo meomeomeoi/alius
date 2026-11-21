@@ -3,7 +3,7 @@ import { loadPacks } from './content/loader';
 import { RealStAdapter } from './st/real';
 import { installLauncher } from './ui/launcher';
 
-const CONTENT_ROOTS = ['../content/core']; // relative to dist/index.js
+const CONTENT_ROOTS = ['../content/core', '../content/local']; // relative to dist/index.js; the second is the player's own pack (P15a) and may be absent
 
 async function fetchJson(path: string): Promise<unknown> {
   const res = await fetch(new URL(path, import.meta.url));
@@ -14,7 +14,7 @@ async function fetchJson(path: string): Promise<unknown> {
 async function main(): Promise<void> {
   const st = new RealStAdapter();
   const app = createApp(st, {
-    loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson),
+    loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson, { optional: ['../content/local'] }),
     assetUrl: (p) => new URL('../' + p, import.meta.url).href, // relative to dist/index.js
   });
 

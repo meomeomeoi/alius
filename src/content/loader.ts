@@ -48,9 +48,21 @@ function collectArt(packs: Array<{ root: string; manifest: PackManifest }>): Pac
   return { hub: [...hub.values()] };
 }
 
+/** A fetch that failed because the file is not there (a missing folder), not because it is broken. */
+const isAbsent = (message: string): boolean => /\b404\b|ENOENT|not found/i.test(message);
+
+export interface LoadOptions {
+  /**
+   * Roots that may be missing (P15a: `content/local`, the player's own pack). An optional root whose manifest is not there is skipped
+   * without an error; one that is there but broken is reported like any other.
+   */
+  optional?: string[];
+}
+
 export async function loadPacks(
   packRoots: string[],
   fetchJson: Fetch,
+  opts: LoadOptions = {},
 ): Promise<{ registries: Registries; errors: ContentError[]; lorebook: PackLorebook | null; art: PackArt }> {
   const errors: ContentError[] = [];
 
@@ -60,6 +72,7 @@ export async function loadPacks(
   manifestResults.forEach((res, i) => {
     const root = packRoots[i];
     if (!res.ok) {
+      if (opts.optional?.includes(root) && isAbsent(res.message)) return;
       errors.push({ pack: root, file: 'manifest.json', path: '', message: res.message });
       return;
     }

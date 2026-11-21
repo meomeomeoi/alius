@@ -52328,13 +52328,15 @@ function collectArt(packs) {
   }
   return { hub: [...hub.values()] };
 }
-async function loadPacks(packRoots, fetchJson2) {
+var isAbsent = (message) => /\b404\b|ENOENT|not found/i.test(message);
+async function loadPacks(packRoots, fetchJson2, opts = {}) {
   const errors = [];
   const manifestResults = await Promise.all(packRoots.map((root) => settle4(fetchJson2, `${root}/manifest.json`)));
   const packs = [];
   manifestResults.forEach((res, i) => {
     const root = packRoots[i];
     if (!res.ok) {
+      if (opts.optional?.includes(root) && isAbsent(res.message)) return;
       errors.push({ pack: root, file: "manifest.json", path: "", message: res.message });
       return;
     }
@@ -52962,7 +52964,7 @@ async function installLauncher(actions, opts = {}) {
 }
 
 // src/index.ts
-var CONTENT_ROOTS = ["../content/core"];
+var CONTENT_ROOTS = ["../content/core", "../content/local"];
 async function fetchJson(path) {
   const res = await fetch(new URL(path, import.meta.url));
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
@@ -52971,7 +52973,7 @@ async function fetchJson(path) {
 async function main() {
   const st = new RealStAdapter();
   const app = createApp(st, {
-    loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson),
+    loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson, { optional: ["../content/local"] }),
     assetUrl: (p) => new URL("../" + p, import.meta.url).href
     // relative to dist/index.js
   });
