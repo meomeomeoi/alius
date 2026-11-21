@@ -25,6 +25,13 @@ export const newReading = (): HerReading => blankReading();
 /** What one answer tells her (R10): the response, the tone it came in, and whether a threat came in the same exchange. */
 export interface ReadingSample { response: ResponseType; tone?: Tone; afterThreat?: boolean }
 
+/**
+ * Events that are a threat to the commander (user ruling, I4): the commander punished or leashed. A sample of an action that holds one is
+ * `afterThreat`. (`threatened` is the commander's own threat toward a unit, so it can say nothing about hers.)
+ */
+const THREAT_EVENTS: readonly string[] = ['commander_punished', 'commander_leashed'];
+export const threatIn = (events: readonly EngineEvent[]): boolean => events.some((e) => THREAT_EVENTS.includes(e.type));
+
 /** The motive weights with a declaration blended in (`declared.weight` of the way toward its motive). */
 function blended(m: Record<Motive, number>, declared?: { motive: Motive; weight: number }): Record<Motive, number> {
   if (declared === undefined || declared.weight <= 0) return m;
@@ -166,13 +173,14 @@ export function readMoments(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const answers = events.filter((e) => e.type === 'moment_answered');
   if (answers.length === 0 || !dynamicOn(draft, ctx.registries)) return [];
   const out: EngineEvent[] = [];
+  const afterThreat = threatIn(events); // the same action
   for (const e of answers) {
     const unitId = String(e.unitId);
     const unit = draft.squad.find((u) => u.id === unitId);
     const rel = dynamicOf(draft, unitId);
     if (unit === undefined || rel === undefined || !isLiving(unit) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
-    const region = updateReading(rel, { response: e.responseType as ResponseType, ...(tone !== undefined ? { tone } : {}) }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
+    const region = updateReading(rel, { response: e.responseType as ResponseType, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
     if (region !== undefined) out.push({ type: 'position_shifted', unitId, from: region.from, to: region.to });
   }
   return out;

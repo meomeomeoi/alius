@@ -14,6 +14,7 @@ import { DYNAMIC_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
+import { threatIn } from './reading';
 import { dynamicOf } from './state';
 import type { DynamicMilestoneEntry, DynamicOffer, ProbeAxisEntry } from './types';
 
@@ -76,16 +77,16 @@ export function dynamicIntentInput(
 /**
  * Routes one validated event of the dynamic to its effect on the unit it is about. The offer is rebuilt from the state (an answer to a probe that
  * is no longer pending, or a gesture the unit may no longer make, does nothing). Only the probe types are handled here; the milestone, offer,
- * compromat and slip types arrive with their own tasks and do nothing yet. Returns the engine events.
+ * compromat and slip types arrive with their own tasks and do nothing yet. `batch`: the events of the same applied batch so far (a threat to the commander in it makes a probe answer read as fear). Returns the engine events.
  */
-export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: EventIntent): EngineEvent[] {
+export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: EventIntent, batch: readonly EngineEvent[] = []): EngineEvent[] {
   const reg = ctx.registries;
   if (!dynamicOn(draft, reg)) return [];
   switch (ev.type) {
     case 'probe_answered':
-      return ev.response === undefined || pendingProbe(draft, unitId) === undefined ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 1);
+      return ev.response === undefined || pendingProbe(draft, unitId) === undefined ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 1, threatIn(batch));
     case 'probe_observed':
-      return ev.response === undefined || dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 0.5);
+      return ev.response === undefined || dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 0.5, threatIn(batch));
     default:
       return [];
   }

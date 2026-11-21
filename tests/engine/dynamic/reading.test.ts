@@ -2,6 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import '../../../src/engine/actions/moments';
+import { applyDynamicIntent } from '../../../src/engine/dynamic/intents';
+import type { EventIntent } from '../../../src/engine/relations/intents';
 import { dynamicDayStep } from '../../../src/engine/dynamic/dayStep';
 import { addHold, compatibilityOf } from '../../../src/engine/dynamic/hold';
 import { newReading, readMoments, regionOf, resettleReading, updateReading, distanceToPoint, type ReadingSample } from '../../../src/engine/dynamic/reading';
@@ -282,6 +284,44 @@ describe('moment answers', () => {
     expect(after.readOf.r).toBeGreaterThan(before.readOf.r);
     expect(after.hold).toBe(before.hold);
     expect(r.events.some((e) => e.type === 'hold_changed')).toBe(false);
+  });
+
+  it('a threat in the same exchange moves fear and a run of them reaches cowed', () => {
+    const answered = { type: 'moment_answered', unitId: ANN, responseType: 'yielded' };
+    // the commander punished or leashed in the same action is the threat; a plain yield is not
+    const calm = world();
+    for (let i = 0; i < 6; i += 1) readMoments(calm, { registries: reg }, [answered]);
+    expect(dynamicOf(calm, ANN)!.readOf.motive.fear).toBe(0.2);
+    expect(dynamicOf(calm, ANN)!.readOf.region).not.toBe('cowed');
+    for (const threat of [{ type: 'commander_punished', punishmentId: 'p', severity: 'minor' }, { type: 'commander_leashed', kind: 'x' }]) {
+      const s = world();
+      const out: unknown[] = [];
+      for (let i = 0; i < 6; i += 1) out.push(...readMoments(s, { registries: reg }, [answered, threat]));
+      const rd = dynamicOf(s, ANN)!.readOf;
+      expect(rd.motive.fear, threat.type).toBeGreaterThan(0.5);
+      expect(rd.region, threat.type).toBe('cowed');
+      expect(out).toContainEqual(expect.objectContaining({ type: 'position_shifted', unitId: ANN, to: 'cowed' }));
+    }
+    // a threat in another action (not in these events) is not a threat of this one
+    const apart = world();
+    readMoments(apart, { registries: reg }, [{ type: 'commander_punished', punishmentId: 'p', severity: 'minor' }]);
+    readMoments(apart, { registries: reg }, [answered]);
+    expect(dynamicOf(apart, ANN)!.readOf.motive.fear).toBe(0.2);
+  });
+
+  it('a probe answer in a batch that holds a threat reads as fear', () => {
+    const ev = { type: 'probe_answered', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'x', confidence: 1, response: 'yielded' } as unknown as EventIntent;
+    const prep = (): CampaignState => {
+      const s = world();
+      dynamicOf(s, ANN)!.probes.pending = { axis: 'space', tier: 1, day: s.day };
+      return s;
+    };
+    const threatened = prep();
+    applyDynamicIntent(threatened, { registries: reg }, ANN, ev, [{ type: 'commander_leashed', kind: 'x' }]);
+    const plain = prep();
+    applyDynamicIntent(plain, { registries: reg }, ANN, ev, []);
+    expect(dynamicOf(threatened, ANN)!.readOf.motive.fear).toBeGreaterThan(dynamicOf(plain, ANN)!.readOf.motive.fear);
+    expect(dynamicOf(plain, ANN)!.readOf.motive.fear).toBe(0.2);
   });
 
   it('a unit with no block, and the dynamic off, are not read', () => {

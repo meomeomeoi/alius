@@ -149,10 +149,10 @@ function answerCause(state: CampaignState, unitId: string, response: ResponseTyp
  * The commander's answer to a probe (or, at weight 0.5, to a gesture the model made on its own: `probe_observed`). Moves hold by the gain
  * table, scaled by her sensitivity and by the weight, and then feeds her reading (alpha 0.10, halved at weight 0.5). At weight 1 it closes her pending probe, records the answer
  * and checks the back-off (a pending probe is required: without one nothing happens); at 0.5 it closes nothing and records nothing, and
- * a unit with no dynamic yet starts one if she may hold. Draws nothing. `tone` is the intent's tone, already validated.
+ * a unit with no dynamic yet starts one if she may hold. Draws nothing. `tone` is the intent's tone, already validated; `afterThreat`: the batch held a threat to the commander (`threatIn`), so a yield reads as fear.
  */
 export function answerProbe(
-  draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, response: ResponseType, tone: Tone | undefined, weight: 1 | 0.5,
+  draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, response: ResponseType, tone: Tone | undefined, weight: 1 | 0.5, afterThreat = false,
 ): EngineEvent[] {
   const reg = ctx.registries;
   if (!dynamicOn(draft, reg)) return [];
@@ -172,7 +172,7 @@ export function answerProbe(
   // her reading takes the answer after the hold: a gain is scaled by how she read the commander until now
   const unit = draft.squad.find((u) => u.id === unitId)!;
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}) }, alpha, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
+  const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, alpha, physicsStyleOf(draft, unitId), unit.insight ?? 'mid').region;
   if (shift !== undefined) events.push({ type: 'position_shifted', unitId, from: shift.from, to: shift.to });
   if (weight === 1) {
     delete dyn.probes.pending;

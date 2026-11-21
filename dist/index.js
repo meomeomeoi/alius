@@ -17117,6 +17117,8 @@ function leadStyle(style) {
 // src/engine/dynamic/reading.ts
 var round4 = (n) => Math.round(n * 1e4) / 1e4;
 var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var THREAT_EVENTS = ["commander_punished", "commander_leashed"];
+var threatIn = (events) => events.some((e) => THREAT_EVENTS.includes(e.type));
 function blended(m, declared) {
   if (declared === void 0 || declared.weight <= 0) return m;
   const w = Math.min(1, declared.weight);
@@ -17223,13 +17225,14 @@ function readMoments(draft, ctx2, events) {
   const answers = events.filter((e) => e.type === "moment_answered");
   if (answers.length === 0 || !dynamicOn(draft, ctx2.registries)) return [];
   const out = [];
+  const afterThreat = threatIn(events);
   for (const e of answers) {
     const unitId = String(e.unitId);
     const unit3 = draft.squad.find((u) => u.id === unitId);
     const rel = dynamicOf(draft, unitId);
     if (unit3 === void 0 || rel === void 0 || !isLiving(unit3) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
-    const region = updateReading(rel, { response: e.responseType, ...tone !== void 0 ? { tone } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId), unit3.insight ?? "mid").region;
+    const region = updateReading(rel, { response: e.responseType, ...tone !== void 0 ? { tone } : {}, ...afterThreat ? { afterThreat } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId), unit3.insight ?? "mid").region;
     if (region !== void 0) out.push({ type: "position_shifted", unitId, from: region.from, to: region.to });
   }
   return out;
@@ -17410,7 +17413,7 @@ function answerCause(state, unitId, response) {
   }
   return `probe_${response}`;
 }
-function answerProbe(draft, ctx2, unitId, response, tone, weight) {
+function answerProbe(draft, ctx2, unitId, response, tone, weight, afterThreat = false) {
   const reg = ctx2.registries;
   if (!dynamicOn(draft, reg)) return [];
   const events = [];
@@ -17428,7 +17431,7 @@ function answerProbe(draft, ctx2, unitId, response, tone, weight) {
   events.push(...addHold(draft, ctx2, unitId, base, cause));
   const unit3 = draft.squad.find((u) => u.id === unitId);
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  const shift = updateReading(dyn, { response, ...tone !== void 0 ? { tone } : {} }, alpha, physicsStyleOf(draft, unitId), unit3.insight ?? "mid").region;
+  const shift = updateReading(dyn, { response, ...tone !== void 0 ? { tone } : {}, ...afterThreat ? { afterThreat } : {} }, alpha, physicsStyleOf(draft, unitId), unit3.insight ?? "mid").region;
   if (shift !== void 0) events.push({ type: "position_shifted", unitId, from: shift.from, to: shift.to });
   if (weight === 1) {
     delete dyn.probes.pending;
@@ -17487,14 +17490,14 @@ function dynamicIntentInput(state, reg, participants, _channel) {
     dynamic: { types, probes: probes2, observed, milestones: milestoneRows.map((m) => m.id), claims, exits: [], offers, compromat: [], slips: slips2, probeAxes, milestoneLabels }
   };
 }
-function applyDynamicIntent(draft, ctx2, unitId, ev) {
+function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
   const reg = ctx2.registries;
   if (!dynamicOn(draft, reg)) return [];
   switch (ev.type) {
     case "probe_answered":
-      return ev.response === void 0 || pendingProbe(draft, unitId) === void 0 ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 1);
+      return ev.response === void 0 || pendingProbe(draft, unitId) === void 0 ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 1, threatIn(batch));
     case "probe_observed":
-      return ev.response === void 0 || dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 0.5);
+      return ev.response === void 0 || dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 0.5, threatIn(batch));
     default:
       return [];
   }
@@ -20866,7 +20869,7 @@ function applyIntents(draft, ctx2, p) {
       if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
       if (e.type === "conspired") events.push(...tryAlly(draft, ctx2, id));
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
-      if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx2, id, e));
+      if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx2, id, e, events));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
