@@ -19,6 +19,7 @@ import { cutIn } from './cutIn';
 import { lifeMode } from '../../engine/life/state';
 import { renderLetsMenu } from '../life/lifeViews';
 import { analyzeAttrs } from '../analyze/mark';
+import { deviceLocked } from '../../engine/blocking';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -198,6 +199,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let disciplineMenus: HTMLElement;
   let letsHost: HTMLElement;
   let banner: HTMLElement;
+  /** P15a: "The device is out of reach." while busy hands or a covered face lock the PDA. */
+  let deviceHost: HTMLElement;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
   let input: HTMLInputElement;
@@ -511,6 +514,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (state.enabled || state.reason !== 'Nothing was read yet.') drawSiteReroll(genTools, ui, 'scene.intents', 'last', () => controller.rerollLast(), state);
   }
 
+  /** P15a: the PDA is out of reach (the tabs are locked); the line is gone with the item or the contact. */
+  function drawDevice(s: CampaignState): void {
+    deviceHost.replaceChildren();
+    if (deviceLocked(s, registries)) deviceHost.append(h('p', { class: 'alius-device-out alius-dim', role: 'note', ...analyzeAttrs('glossary:device_out_of_reach') }, 'The device is out of reach.'));
+  }
+
   function drawBanner(): void {
     banner.replaceChildren();
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
@@ -562,6 +571,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
     letsHost = h('div', { class: 'alius-lets-host' });
     banner = h('div', { class: 'alius-pacing-host' });
+    deviceHost = h('div', { class: 'alius-device-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
@@ -636,6 +646,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           act('end', '[ END TRANSMISSION ]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
       ),
       banner,
+      deviceHost,
       busyHost,
       h('div', { class: 'alius-stage' }, bg, spriteHost, caption),
       hud,
@@ -690,6 +701,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
+    drawDevice(s);
     placeSprites();
   }
 

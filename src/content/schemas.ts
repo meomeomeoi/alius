@@ -1781,7 +1781,7 @@ Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
 // P10: UI sounds (not player-visible: no description, not in DESCRIBED_REGISTRIES)
 
 /** The sounds the shell knows how to ask for; code names these ids, never an entry's contents. */
-export const SOUND_IDS = ['open', 'close', 'tab', 'notify', 'alert', 'stamp', 'typing', 'hum', 'knock'] as const;
+export const SOUND_IDS = ['open', 'close', 'tab', 'notify', 'alert', 'stamp', 'typing', 'hum', 'knock', 'bell', 'steps'] as const; // P15a: bell (a bell collar) and steps (someone at the door)
 
 /**
  * One UI sound. v1 ships no audio files: `synth` describes a WebAudio fallback (a wave, a frequency sweep, a length and a

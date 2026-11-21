@@ -100,6 +100,7 @@ import { registerMemoryContext } from './scene/memoryContext';
 import { registerDevelopmentContext } from './scene/developmentContext';
 import { registerBlockingContext } from './scene/blockingContext';
 import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
+import { bellsFor, deviceTabLocks, muffled } from './blocking/sync';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
 import { createEnvelope, type Envelope } from './llm/envelope';
@@ -122,7 +123,7 @@ import { portraitOptions, unitPortrait } from './ui/portrait/portrait';
 import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
 import { renderMarks } from './ui/device/marks';
 import { pickSkin } from './ui/device/skins';
-import { createSound } from './ui/sound/sound';
+import { createSound, type SoundId } from './ui/sound/sound';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -331,8 +332,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** The COMMS tab shows how many messages from units are unread. */
   /** P11: the tabs the prologue has not opened yet read OFFLINE (no campaign, an old one or a finished prologue: all open). */
   function syncLocks(): void {
-    const locked = state ? lockedTabs(state, registries) : new Set<string>();
+    const locked = deviceTabLocks(state, registries, TAB_IDS, state ? lockedTabs(state, registries) : new Set<string>()); // P15a: the device is out of reach while hands are busy or the face is covered
     for (const id of TAB_IDS) shell.setTabLocked(id, locked.has(id));
+  }
+
+  /** P15a: the muffle follows the commander's ears and a bell rings on a move (nothing before the sound exists or without a state). */
+  function syncSound(events: EngineEvent[]): void {
+    sound.setMuffle(muffled(state, registries));
+    for (const id of bellsFor(events, state, registries)) sound.play(id as SoundId);
   }
 
   /** P11: a tab that just came online says so, in the terminal voice. */
@@ -2637,6 +2644,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (r.state !== before) announceUnlocks(before, r.state);
       applyContext();
       syncBadges();
+      syncSound(r.events); // P15a: muffled under a hood, a bell on every move of a bell collar
       drawDilemma();
       // a blocked action brings the waiting decision back (the player may have dismissed its modal)
       if (r.events.some((e) => e.type === 'error' && e.code === 'dilemma_open')) openDilemmaModal();
@@ -2655,6 +2663,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       syncMinConfidence(); // the snapshot may carry the mirror of an older setting (P8)
       applyContext();
       syncBadges();
+      syncSound([]);
       shell.refresh();
       return true;
     },

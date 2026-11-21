@@ -39,11 +39,16 @@ export interface Sound {
   stopHum(): void;
   /** P10b: while it is night every sound and the hum play at `NIGHT_GAIN` of their gain. */
   setNight(on: boolean): void;
+  /** P15a: while the commander is hooded every sound and the hum play at `MUFFLE_GAIN` of their gain. */
+  setMuffle(on: boolean): void;
   dispose(): void;
 }
 
 /** P10b: the share of its gain a sound keeps at night (a UI constant, not a setting). */
 export const NIGHT_GAIN = 0.5;
+
+/** P15a: the share of its gain a sound keeps while the commander's ears are covered. */
+export const MUFFLE_GAIN = 0.4;
 
 /** Typing ticks come at most this often. */
 const TYPING_GAP_MS = 60;
@@ -74,9 +79,10 @@ export function createSound(deps: SoundDeps): Sound {
   const files = new Map<string, Promise<unknown>>();
 
   let night = false;
+  let muffle = false;
   const level = (): number => {
     const s = deps.settings();
-    return s.soundMuted ? 0 : (s.soundVolume / 100) * (night ? NIGHT_GAIN : 1);
+    return s.soundMuted ? 0 : (s.soundVolume / 100) * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1);
   };
 
   const GESTURES = ['pointerdown', 'keydown', 'touchstart'] as const;
@@ -205,6 +211,11 @@ export function createSound(deps: SoundDeps): Sound {
     setNight(on) {
       if (night === on) return;
       night = on;
+      if (hum) api.startHum(); // a running hum follows at once
+    },
+    setMuffle(on) {
+      if (muffle === on) return;
+      muffle = on;
       if (hum) api.startHum(); // a running hum follows at once
     },
     dispose() {

@@ -7,3 +7,4 @@ export {
 } from './blocking';
 export { pushLog, rollbackAfter } from './snapshots';
 export { startBlocking } from './defaults';
+export { deviceLocked } from './device';

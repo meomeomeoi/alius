@@ -1347,6 +1347,15 @@
     ]
   },
   {
+    "id": "device_out_of_reach",
+    "term": "Device out of reach",
+    "short": "Busy hands or a covered face: the PDA cannot be used, and every tab is locked until the contact or the item is gone.",
+    "long": "AUTHOR TO WRITE: Some items and contacts leave no hand free for the device (paw mitts, a smothering hold). While one is in place the tabs are locked and only the scene chat works. The lock lifts as soon as it ends; tabs the opening days keep locked stay locked.",
+    "see": [
+      "blocking"
+    ]
+  },
+  {
     "id": "lead",
     "term": "Lead",
     "short": "Who drives a romantic scene: the soldier, the commander or both. The game decides it from her style, her Impunity and what happened lately.",

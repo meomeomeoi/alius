@@ -1037,6 +1037,7 @@ function effectChecks(entry: Entry, regs: Regs): RegistryCheck[] {
     const at = `effects[${i}]`;
     switch (fx.type) {
       case 'physics': return known(regs, 'contactPhysics', fx.id, `${at}.id`, 'contact physics');
+      case 'sound': return known(regs, 'uiSounds', fx.id, `${at}.id`, 'UI sound');
       case 'status_after': return known(regs, 'commanderConditions', fx.id, `${at}.id`, 'commander condition');
       case 'escalation': return known(regs, 'escalationVerbs', fx.verb, `${at}.verb`, 'escalation verb');
       case 'visibility': return knownEach(regs, 'blockingPostures', fx.unlessPosture, `${at}.unlessPosture`, 'posture');

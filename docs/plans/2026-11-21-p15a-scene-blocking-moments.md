@@ -883,15 +883,15 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `deviceLocked(state, reg): boolean`, `Sound.setMuffle(on: boolean)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `paw_mitts lock every tab` and the scene line shows; removing them unlocks; a P11 locked tab stays locked.
   - `muffle under a hood` (fake audio gain × 0.4).
   - `the bell rings on a move`.
   - `no network`: `tests/assets.test.ts` still passes (no file for the new sounds).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/blockingDevice.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the device out of reach and the muffled sound`
+- [x] **Step 2: Run** `npx vitest run tests/ui/blockingDevice.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the device out of reach and the muffled sound`
 
 ---
 

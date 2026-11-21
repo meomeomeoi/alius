@@ -8337,7 +8337,7 @@ var DeviceSkinSchema = BaseEntrySchema.extend({
   }
 });
 Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
-var SOUND_IDS = ["open", "close", "tab", "notify", "alert", "stamp", "typing", "hum", "knock"];
+var SOUND_IDS = ["open", "close", "tab", "notify", "alert", "stamp", "typing", "hum", "knock", "bell", "steps"];
 var UiSoundSchema = BaseEntrySchema.extend({
   id: external_exports.enum(SOUND_IDS),
   file: str.optional(),
@@ -26045,6 +26045,11 @@ function startBlocking(draft, reg) {
   }
 }
 
+// src/engine/blocking/device.ts
+function deviceLocked(state, reg) {
+  return blockingLive(state, reg) && personEffects(state, reg, COMMANDER).some((e) => e.type === "device" && e.lock === "tabs");
+}
+
 // src/engine/life/dayStep.ts
 function noteBusy(draft, unitIds, activityId, blockingActivityId) {
   if (lifeMode(draft) === "off") return;
@@ -36458,6 +36463,24 @@ function clearBlockingDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(BLOCKING_PREFIX));
 }
 
+// src/blocking/sync.ts
+function deviceTabLocks(state, reg, allTabs, base) {
+  return state !== null && deviceLocked(state, reg) ? new Set(allTabs) : new Set(base);
+}
+function muffled(state, reg) {
+  return state !== null && blockingLive(state, reg) && personEffects(state, reg, COMMANDER).some((e) => e.type === "sound" && e.muffle === true);
+}
+function bellsFor(events, state, reg) {
+  if (state === null || !blockingLive(state, reg)) return [];
+  const out = [];
+  for (const e of events) {
+    if (e.type !== "blocking_changed" || typeof e.person !== "string") continue;
+    const bell = personEffects(state, reg, e.person).find((x) => x.type === "sound" && typeof x.id === "string");
+    if (bell?.id !== void 0) out.push(bell.id);
+  }
+  return out;
+}
+
 // src/engine/blocking/vocabulary.ts
 var affordancesOf = (e) => {
   const r = e.requires;
@@ -42325,6 +42348,7 @@ function screenBox(skin) {
 
 // src/ui/sound/sound.ts
 var NIGHT_GAIN = 0.5;
+var MUFFLE_GAIN = 0.4;
 var TYPING_GAP_MS = 60;
 var ATTACK_S = 5e-3;
 var SILENCE = 1e-4;
@@ -42343,9 +42367,10 @@ function createSound(deps) {
   let humWanted = false;
   const files = /* @__PURE__ */ new Map();
   let night = false;
+  let muffle = false;
   const level = () => {
     const s = deps.settings();
-    return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1);
+    return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1);
   };
   const GESTURES = ["pointerdown", "keydown", "touchstart"];
   const userActive = () => gestured || typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true;
@@ -42464,6 +42489,11 @@ function createSound(deps) {
     setNight(on) {
       if (night === on) return;
       night = on;
+      if (hum) api.startHum();
+    },
+    setMuffle(on) {
+      if (muffle === on) return;
+      muffle = on;
       if (hum) api.startHum();
     },
     dispose() {
@@ -46107,6 +46137,7 @@ function renderSceneScreen(host, ctx2) {
   let disciplineMenus;
   let letsHost;
   let banner;
+  let deviceHost;
   let busyHost;
   let caption;
   let input;
@@ -46402,6 +46433,10 @@ function renderSceneScreen(host, ctx2) {
     const state2 = controller.rerollState();
     if (state2.enabled || state2.reason !== "Nothing was read yet.") drawSiteReroll(genTools, ui, "scene.intents", "last", () => controller.rerollLast(), state2);
   }
+  function drawDevice(s) {
+    deviceHost.replaceChildren();
+    if (deviceLocked(s, registries)) deviceHost.append(h("p", { class: "alius-device-out alius-dim", role: "note", ...analyzeAttrs("glossary:device_out_of_reach") }, "The device is out of reach."));
+  }
   function drawBanner() {
     banner.replaceChildren();
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
@@ -46452,6 +46487,7 @@ function renderSceneScreen(host, ctx2) {
     disciplineMenus = h("div", { class: "alius-discipline-units" });
     letsHost = h("div", { class: "alius-lets-host" });
     banner = h("div", { class: "alius-pacing-host" });
+    deviceHost = h("div", { class: "alius-device-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
@@ -46537,6 +46573,7 @@ function renderSceneScreen(host, ctx2) {
         )
       ),
       banner,
+      deviceHost,
       busyHost,
       h("div", { class: "alius-stage" }, bg, spriteHost, caption),
       hud,
@@ -46589,6 +46626,7 @@ function renderSceneScreen(host, ctx2) {
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
+    drawDevice(s);
     placeSprites();
   }
   function pulse(e) {
@@ -49866,8 +49904,12 @@ function createApp(st, deps) {
   registerMemoryContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldOptionsContext(context, { registries: () => registries });
   function syncLocks() {
-    const locked = state ? lockedTabs(state, registries) : /* @__PURE__ */ new Set();
+    const locked = deviceTabLocks(state, registries, TAB_IDS, state ? lockedTabs(state, registries) : /* @__PURE__ */ new Set());
     for (const id of TAB_IDS) shell.setTabLocked(id, locked.has(id));
+  }
+  function syncSound(events) {
+    sound.setMuffle(muffled(state, registries));
+    for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
   function announceUnlocks(before, after) {
     for (const row2 of unlockedBetween(before, after, registries)) toast("info", String(row2.notice), { voice: VOICE_OF.toast });
@@ -52104,6 +52146,7 @@ function createApp(st, deps) {
       if (r.state !== before) announceUnlocks(before, r.state);
       applyContext();
       syncBadges();
+      syncSound(r.events);
       drawDilemma();
       if (r.events.some((e) => e.type === "error" && e.code === "dilemma_open")) openDilemmaModal();
       if (r.events.some((e) => e.type === "error" && /deal with it first/.test(String(e.message)))) openConfrontationModal();
@@ -52119,6 +52162,7 @@ function createApp(st, deps) {
       syncMinConfidence();
       applyContext();
       syncBadges();
+      syncSound([]);
       shell.refresh();
       return true;
     },
@@ -52977,6 +53021,8 @@ function effectChecks(entry, regs) {
     switch (fx2.type) {
       case "physics":
         return known(regs, "contactPhysics", fx2.id, `${at}.id`, "contact physics");
+      case "sound":
+        return known(regs, "uiSounds", fx2.id, `${at}.id`, "UI sound");
       case "status_after":
         return known(regs, "commanderConditions", fx2.id, `${at}.id`, "commander condition");
       case "escalation":
