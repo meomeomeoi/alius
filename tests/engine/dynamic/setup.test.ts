@@ -82,6 +82,18 @@ describe('SetupResult.dynamic', () => {
     expect(errs(result({ content: { enabled: ['worship'] }, dynamic: { holders: 1, pace: 'normal', frequency: 'normal', units: { 'cat.png': { seeded: true } } } }))).toEqual([]);
   });
 
+  it('a balanced seed is an error: the Impunity route cannot exist on day 0', () => {
+    const weak = [unitSetup('Ann', { bond: bond({ leadStyle: 'balanced' }) }), unitSetup('Bea', { bond: bond({ leadStyle: 'assertive' }) })];
+    const e = errs(result({ units: weak, dynamic: { holders: 2, pace: 'normal', frequency: 'normal', units: { 'ann.png': { seeded: true }, 'bea.png': { seeded: true } } } }));
+    expect(e).toHaveLength(1);
+    expect(e[0]).toMatch(/Ann cannot hold: .*lead style/);
+    expect(seedProblem(reg, weak[0])).toMatch(/lead style/);
+    expect(seedProblem(reg, unitSetup('Fay', { bond: bond({ leadStyle: 'yielding' }) }))).toMatch(/lead style/);
+    expect(seedProblem(reg, weak[1])).toBeNull();
+    // the same unit unseeded is no error
+    expect(errs(result({ units: weak }))).toEqual([]);
+  });
+
   it('startFrame without a seed is an error', () => {
     const e = errs(result({ dynamic: { holders: 1, pace: 'normal', frequency: 'normal', units: { 'ann.png': { startFrame: 'role' } } } }));
     expect(e.join()).toMatch(/starting frame/i);

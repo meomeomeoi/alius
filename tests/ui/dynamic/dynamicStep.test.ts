@@ -130,6 +130,28 @@ describe('the wizard: DYNAMIC', () => {
     expect(wizard.result()!.headStart).toEqual({ days: 14, newArrivals: [] });
   });
 
+  it('a seed with a profile that cannot hold is warned about and not seeded', () => {
+    const { wizard, host } = make('ann', 'bea');
+    wizard.setContent(['restraint']);
+    wizard.setDynamic({ holders: 2 });
+    const bond = (leadStyle: 'balanced' | 'assertive') => ({
+      leadStyle, attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known',
+      practice: { categories: { restraint: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate' },
+    }) as never;
+    wizard.update(0, { bond: bond('balanced') });
+    wizard.update(1, { bond: bond('assertive') });
+    const rowOf = (avatar: string) => block(host)!.querySelector<HTMLElement>(`[data-avatar="${avatar}"]`)!;
+    expect(rowOf('ann.png').querySelector('.alius-dynamic-problem')!.textContent).toMatch(/lead style/);
+    expect(rowOf('bea.png').querySelector('.alius-dynamic-problem')).toBeNull();
+    rowOf('ann.png').querySelector<HTMLButtonElement>('.alius-dynamic-seed')!.click();
+    expect(wizard.state.dynamic.units['ann.png']).toBeUndefined();
+    wizard.setDynamicUnit('ann.png', { seeded: true });
+    expect(wizard.state.dynamic.units['ann.png']).toBeUndefined();
+    wizard.setDynamicUnit('bea.png', { seeded: true });
+    expect(wizard.state.dynamic.units['bea.png']).toEqual({ seeded: true });
+    expect(wizard.result()!.dynamic!.units).toEqual({ 'bea.png': { seeded: true } });
+  });
+
   it('seeds are capped by the holders, and a removed unit leaves no pick', () => {
     const { wizard } = make('ann', 'bea');
     wizard.setContent(['restraint']);

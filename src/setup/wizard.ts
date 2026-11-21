@@ -7,6 +7,7 @@ import { TUNING } from '../engine/tuning';
 import { defectAllowedFor, validateBond } from '../engine/bonds';
 import { keepLockedExpectations } from '../engine/dynamic/expectations';
 import { keepLockedPractice, practiceEnabled } from '../engine/dynamic/profile';
+import { seedProblem } from '../engine/dynamic/seeds';
 import type { UnitDynamicSetup } from '../engine/dynamic/state';
 import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES, START_FRAMES, type Frequency, type HolderCap, type Pace, type StartFrame } from '../engine/dynamic/types';
 import type { Bond, DevelopmentMode, LifeMode, SignatureInstance, Unit } from '../engine/state/types';
@@ -255,6 +256,16 @@ export class Wizard {
     for (const d of Object.values(this.s.dynamic.units)) delete d.underway;
   }
 
+  /**
+   * P15 (spec §7): why a chosen unit with a practice profile cannot be seeded, or `null`. A unit with no profile is not turned away here (the
+   * setup check names it at the end); one with a profile that cannot hold is warned about in the DYNAMIC block and is not seeded.
+   */
+  seedBlock(avatar: string): string | null {
+    const unit = this.s.units.find((u) => u.avatar === avatar);
+    if (unit?.choice.bond?.practice === undefined) return null;
+    return seedProblem(this.deps.registries, { bond: unit.choice.bond }, { enabled: this.s.content.enabled, mayHold: this.s.dynamic.units[avatar]?.mayHold });
+  }
+
   private seedCount(): number {
     return Object.values(this.s.dynamic.units).filter((d) => d.seeded === true).length;
   }
@@ -293,7 +304,7 @@ export class Wizard {
     const unit: UnitDynamicDraft = { ...d.units[avatar] };
     if (patch.mayHold !== undefined && (MAY_HOLD as readonly unknown[]).includes(patch.mayHold)) { if (patch.mayHold === 'auto') delete unit.mayHold; else unit.mayHold = patch.mayHold; }
     if (patch.sensitivity !== undefined && (SENSITIVITIES as readonly unknown[]).includes(patch.sensitivity)) { if (patch.sensitivity === 'normal') delete unit.sensitivity; else unit.sensitivity = patch.sensitivity; }
-    if (patch.seeded === true && unit.seeded !== true && (d.holders === 'any' || this.seedCount() < d.holders)) unit.seeded = true;
+    if (patch.seeded === true && unit.seeded !== true && (d.holders === 'any' || this.seedCount() < d.holders) && this.seedBlock(avatar) === null) unit.seeded = true;
     if (patch.seeded === false) { delete unit.seeded; delete unit.startFrame; }
     if (patch.startFrame === null) delete unit.startFrame;
     else if (patch.startFrame !== undefined && (START_FRAMES as readonly unknown[]).includes(patch.startFrame) && unit.seeded === true) unit.startFrame = patch.startFrame;

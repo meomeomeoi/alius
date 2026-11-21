@@ -1,5 +1,4 @@
 import type { Registries } from '../../content/types';
-import { seedProblem } from '../../engine/dynamic/seeds';
 import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES, START_FRAMES } from '../../engine/dynamic/types';
 import type { Wizard } from '../../setup/wizard';
 import { analyzeNative } from '../analyze/mark';
@@ -29,7 +28,7 @@ function selectField(label: string, address: string, name: string, options: Arra
  * plain labels, no fiction voice. Redrawn with the screen.
  */
 export function renderDynamicStep(host: HTMLElement, ctx: DynamicStepCtx): void {
-  const { wizard, registries: reg } = ctx;
+  const { wizard } = ctx;
   if (!wizard.dynamicAvailable) return;
   const s = wizard.state;
   const d = s.dynamic;
@@ -40,15 +39,13 @@ export function renderDynamicStep(host: HTMLElement, ctx: DynamicStepCtx): void 
   const unitRow = (u: (typeof s.units)[number]): HTMLElement => {
     const pick = d.units[u.avatar] ?? {};
     const seeded = pick.seeded === true;
-    const problem = seeded && u.choice.bond !== undefined
-      ? seedProblem(reg, { bond: u.choice.bond }, { enabled: s.content.enabled, mayHold: pick.mayHold })
-      : null;
+    const problem = wizard.seedBlock(u.avatar); // a profile that cannot hold: warned about here, and not seeded
     return h('div', { class: 'alius-dynamic-unit', 'data-avatar': u.avatar },
       h('h4', {}, u.displayName),
       selectField('May hold', 'glossary:dynamic_may_hold', 'mayHold', MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick.mayHold ?? 'auto', (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v as never })),
       selectField('Sensitivity', 'glossary:dynamic_sensitivity', 'sensitivity', SENSITIVITIES.map((v) => [v, v]), pick.sensitivity ?? 'normal', (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v as never })),
       h('button', {
-        type: 'button', class: 'alius-btn alius-option alius-dynamic-seed', 'aria-pressed': String(seeded), 'aria-disabled': String(!seeded && full),
+        type: 'button', class: 'alius-btn alius-option alius-dynamic-seed', 'aria-pressed': String(seeded), 'aria-disabled': String(!seeded && (full || problem !== null)),
         ...analyzeNative('glossary:dynamic_seeded'), onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded }),
       }, seeded ? 'SEEDED' : 'SEED'),
       seeded ? selectField('Starting frame', 'glossary:dynamic_start_frame', 'startFrame', [['', 'none (equal)'], ...START_FRAMES.map((v): [string, string] => [v, v])], pick.startFrame ?? '', (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === '' ? null : (v as never) })) : null,
@@ -58,7 +55,7 @@ export function renderDynamicStep(host: HTMLElement, ctx: DynamicStepCtx): void 
           ...analyzeNative('glossary:dynamic_underway'), onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick.underway !== true }),
         }, 'ALREADY UNDERWAY')
         : null,
-      problem !== null ? h('p', { class: 'alius-dim alius-dynamic-problem' }, `Cannot hold yet: ${problem}.`) : null);
+      problem !== null ? h('p', { class: 'alius-dim alius-dynamic-problem' }, `Cannot be seeded: ${problem}.`) : null);
   };
 
   host.append(h('section', { class: 'alius-section alius-dynamic' },

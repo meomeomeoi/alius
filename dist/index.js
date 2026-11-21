@@ -25889,7 +25889,8 @@ function seedProblem(reg, unit3, opts = {}) {
   const limits = unit3.bond?.ownLimits.categories ?? [];
   const lead = unit3.bond?.leadStyle ?? "balanced";
   const leads = Object.entries(practice.categories).some(([id, c]) => on.includes(id) && !limits.includes(id) && (c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && leadRank(lead) === leadRank("dominant")));
-  return leads ? null : "no enabled practice she would lead in";
+  if (!leads) return "no enabled practice she would lead in";
+  return leadRank(lead) < leadRank("assertive") ? "her lead style is too weak to hold from the first day" : null;
 }
 function seedHold(draft, reg, unitId, floor = 0) {
   const events = ensureDynamic(draft, reg, unitId);
@@ -43289,6 +43290,15 @@ var Wizard = class {
     this.s.dynamic.underway = false;
     for (const d of Object.values(this.s.dynamic.units)) delete d.underway;
   }
+  /**
+   * P15 (spec §7): why a chosen unit with a practice profile cannot be seeded, or `null`. A unit with no profile is not turned away here (the
+   * setup check names it at the end); one with a profile that cannot hold is warned about in the DYNAMIC block and is not seeded.
+   */
+  seedBlock(avatar) {
+    const unit3 = this.s.units.find((u) => u.avatar === avatar);
+    if (unit3?.choice.bond?.practice === void 0) return null;
+    return seedProblem(this.deps.registries, { bond: unit3.choice.bond }, { enabled: this.s.content.enabled, mayHold: this.s.dynamic.units[avatar]?.mayHold });
+  }
   seedCount() {
     return Object.values(this.s.dynamic.units).filter((d) => d.seeded === true).length;
   }
@@ -43331,7 +43341,7 @@ var Wizard = class {
       if (patch.sensitivity === "normal") delete unit3.sensitivity;
       else unit3.sensitivity = patch.sensitivity;
     }
-    if (patch.seeded === true && unit3.seeded !== true && (d.holders === "any" || this.seedCount() < d.holders)) unit3.seeded = true;
+    if (patch.seeded === true && unit3.seeded !== true && (d.holders === "any" || this.seedCount() < d.holders) && this.seedBlock(avatar) === null) unit3.seeded = true;
     if (patch.seeded === false) {
       delete unit3.seeded;
       delete unit3.startFrame;
@@ -45458,7 +45468,7 @@ function selectField(label2, address, name, options2, value, commit) {
   return h("label", { class: "alius-field alius-option", ...analyzeNative(address) }, h("span", { class: "alius-field-label" }, label2), select);
 }
 function renderDynamicStep(host, ctx2) {
-  const { wizard, registries: reg } = ctx2;
+  const { wizard } = ctx2;
   if (!wizard.dynamicAvailable) return;
   const s = wizard.state;
   const d = s.dynamic;
@@ -45468,7 +45478,7 @@ function renderDynamicStep(host, ctx2) {
   const unitRow = (u) => {
     const pick3 = d.units[u.avatar] ?? {};
     const seeded = pick3.seeded === true;
-    const problem = seeded && u.choice.bond !== void 0 ? seedProblem(reg, { bond: u.choice.bond }, { enabled: s.content.enabled, mayHold: pick3.mayHold }) : null;
+    const problem = wizard.seedBlock(u.avatar);
     return h(
       "div",
       { class: "alius-dynamic-unit", "data-avatar": u.avatar },
@@ -45479,7 +45489,7 @@ function renderDynamicStep(host, ctx2) {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-seed",
         "aria-pressed": String(seeded),
-        "aria-disabled": String(!seeded && full),
+        "aria-disabled": String(!seeded && (full || problem !== null)),
         ...analyzeNative("glossary:dynamic_seeded"),
         onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded })
       }, seeded ? "SEEDED" : "SEED"),
@@ -45492,7 +45502,7 @@ function renderDynamicStep(host, ctx2) {
         ...analyzeNative("glossary:dynamic_underway"),
         onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick3.underway !== true })
       }, "ALREADY UNDERWAY") : null,
-      problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot hold yet: ${problem}.`) : null
+      problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot be seeded: ${problem}.`) : null
     );
   };
   host.append(h(

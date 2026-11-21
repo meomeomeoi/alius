@@ -15,7 +15,8 @@ import type { MayHold, StartFrame } from './types';
 
 /**
  * Why a unit the player means to seed cannot hold, or `null`. The profile rules of `canHold` minus the cap, the dynamic being on and the
- * Impunity route (she has no Impunity before the campaign exists, so a weak lead style is not turned away here). `enabled` is the content
+ * Impunity route: she has no Impunity on day 0, so a seed needs a lead style of at least `assertive` (spec §7: a seeded unit whose profile cannot hold is
+ * warned about and not seeded). `enabled` is the content
  * switched on (default: every practice category).
  */
 export function seedProblem(reg: Registries, unit: Pick<UnitSetup, 'bond'>, opts: { enabled?: readonly string[]; mayHold?: MayHold } = {}): string | null {
@@ -27,7 +28,8 @@ export function seedProblem(reg: Registries, unit: Pick<UnitSetup, 'bond'>, opts
   const lead = unit.bond?.leadStyle ?? 'balanced'; // P14b: raw profile (a seed is checked before any development exists)
   const leads = Object.entries(practice.categories).some(([id, c]) => on.includes(id) && !limits.includes(id)
     && (c.as === 'craves' || c.as === 'enjoys' || (c.as === 'tolerates' && leadRank(lead) === leadRank('dominant'))));
-  return leads ? null : 'no enabled practice she would lead in';
+  if (!leads) return 'no enabled practice she would lead in';
+  return leadRank(lead) < leadRank('assertive') ? 'her lead style is too weak to hold from the first day' : null;
 }
 
 /** A seed's hold, once: `seedHold`, or the floor of a starting frame if that is higher. Returns the events of what changed. */
