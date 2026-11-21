@@ -17,6 +17,7 @@ import { TUNING } from '../tuning';
 import { capabilitiesOf, grantCapability, reconcileDomains } from './domains';
 import { canHold, dynamicOn } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
+import { addCompromat } from './compromat';
 import { practiceOf } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 import { trackCap } from './tracks';
@@ -139,6 +140,9 @@ export function applyMilestone(draft: CampaignState, ctx: Ctx, unitId: string, m
     } else if (effect.type === 'sworn') {
       dyn.sworn = { day: draft.day };
       events.push({ type: 'sworn', unitId, day: draft.day });
+      // a vow said before others is hers to hold: she was there, and so were they (compromat, spec §11)
+      const seen = (draft.scene?.participants ?? []).filter((id) => id !== unitId && draft.squad.some((u) => u.id === id && u.kind === 'named' && isLiving(u)));
+      if (seen.length > 0) addCompromat(draft, unitId, `AUTHOR TO WRITE: ${draft.squad.find((u) => u.id === unitId)?.displayName ?? 'She'} heard the commander swear to her before ${seen.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(' and ')}.`, seen);
     } else if (effect.type === 'claim') {
       events.push(...grantCapability(draft, ctx, unitId, effect.capability));
     }

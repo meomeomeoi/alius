@@ -17779,6 +17779,76 @@ function metAtScene(draft, reg, participants) {
   return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
 }
 
+// src/engine/dynamic/compromat.ts
+var COMPROMAT_TAG = "compromat";
+var holderTag = (holderId) => `holder:${holderId}`;
+var COMMANDER_PRONOUN3 = /\b(he|him|his|himself|he's)\b/i;
+var MENTIONED = "mentioned";
+function compromatOf(state, holderId) {
+  return state.memory.facts.filter((f) => f.tags.includes(COMPROMAT_TAG) && f.tags.includes(holderTag(holderId)));
+}
+function addCompromat(draft, holderId, text2, witnesses) {
+  return tagHolder(addFact(draft, {
+    about: ["commander", ...new Set(witnesses.filter((id) => id !== holderId))],
+    text: text2,
+    tags: [COMPROMAT_TAG],
+    importance: 4,
+    day: draft.day,
+    knownBy: [holderId],
+    hiddenFromCommander: true
+  }), holderId);
+}
+function tagHolder(fact, holderId) {
+  if (!fact.tags.includes(holderTag(holderId))) fact.tags.push(holderTag(holderId));
+  return fact;
+}
+var wordsOf = (text2) => new Set(text2.toLowerCase().match(/[a-z]{4,}/g) ?? []);
+function overlap(summary, factText) {
+  const mine = wordsOf(summary);
+  if (mine.size === 0) return 0;
+  const theirs = wordsOf(factText);
+  let shared2 = 0;
+  for (const w of mine) if (theirs.has(w)) shared2++;
+  return shared2 >= 2 || shared2 / mine.size >= 0.5 ? shared2 / mine.size : 0;
+}
+function reveal(fact, holderId) {
+  if (fact.hiddenFromCommander !== true) return [];
+  delete fact.hiddenFromCommander;
+  if (!fact.tags.includes(MENTIONED)) fact.tags.push(MENTIONED);
+  return [{ type: "compromat_revealed", unitId: holderId, factId: fact.id }];
+}
+function mentionCompromat(draft, _ctx, holderId, factId, summary) {
+  const mine = compromatOf(draft, holderId);
+  const named4 = factId === void 0 ? void 0 : mine.find((f) => f.id === factId);
+  if (named4 !== void 0) return reveal(named4, holderId);
+  const text2 = (summary ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+  if (text2 === "") return [];
+  let best;
+  for (const f of mine) {
+    const score = overlap(text2, f.text);
+    if (score > 0 && (best === void 0 || score > best.score)) best = { fact: f, score };
+  }
+  if (best !== void 0) return reveal(best.fact, holderId);
+  if (COMMANDER_PRONOUN3.test(text2)) return [];
+  const fact = tagHolder(addFact(draft, { about: ["commander"], text: text2.slice(0, factTextMax(draft)), tags: [COMPROMAT_TAG, MENTIONED], importance: 3, day: draft.day, knownBy: [holderId] }), holderId);
+  return [{ type: "compromat_revealed", unitId: holderId, factId: fact.id }];
+}
+function threatFactOf(state, holderId) {
+  return compromatOf(state, holderId)[0] ?? null;
+}
+function tellCompromat(draft, holderId, threat, outsideOpen) {
+  const fact = draft.memory.facts.find((f) => f.id === threat.factId);
+  if (fact === void 0) return [];
+  for (const u of draft.squad) if (u.kind === "named" && isLiving(u) && !fact.knownBy.includes(u.id)) fact.knownBy.push(u.id);
+  delete fact.hiddenFromCommander;
+  if (threat.audience === "outside" && outsideOpen) fact.spread = "fast";
+  return [{ type: "compromat_told", unitId: holderId, factId: fact.id, audience: threat.audience }];
+}
+function noteLeashOnHer(draft, holderId) {
+  const witnesses = (draft.scene?.participants ?? []).filter((id) => id !== holderId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+  return addCompromat(draft, holderId, `AUTHOR TO WRITE: ${draft.squad.find((u) => u.id === holderId)?.displayName ?? "She"} saw the commander file the Leash against her.`, witnesses);
+}
+
 // src/engine/dynamic/tracks.ts
 var trackEntry = (reg, trackId) => reg.dynamicTracks.get(trackId);
 var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
@@ -17882,6 +17952,8 @@ function applyMilestone(draft, ctx2, unitId, milestoneId) {
     } else if (effect.type === "sworn") {
       dyn.sworn = { day: draft.day };
       events.push({ type: "sworn", unitId, day: draft.day });
+      const seen2 = (draft.scene?.participants ?? []).filter((id) => id !== unitId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+      if (seen2.length > 0) addCompromat(draft, unitId, `AUTHOR TO WRITE: ${draft.squad.find((u) => u.id === unitId)?.displayName ?? "She"} heard the commander swear to her before ${seen2.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(" and ")}.`, seen2);
     } else if (effect.type === "claim") {
       events.push(...grantCapability(draft, ctx2, unitId, effect.capability));
     }
@@ -18390,6 +18462,9 @@ function yieldPartial(draft, ctx2, claimId) {
 // src/engine/dynamic/aftermath.ts
 var bandReader = null;
 var compromatReader = null;
+function registerCompromatCount(reader) {
+  compromatReader = reader;
+}
 var regardBandOf = (state, reg, unitId) => bandReader?.(state, reg, unitId) ?? null;
 var compromatCount = (state, holderId) => compromatReader?.(state, holderId) ?? 0;
 var rowsOf = (reg) => [...reg.aftermaths.values()];
@@ -18440,6 +18515,12 @@ function pickKind(weights, roll) {
   const live3 = AFTERMATH_KINDS.filter((k) => weights[k] > 0);
   return live3.find((k) => (r -= weights[k]) < 0) ?? live3[live3.length - 1];
 }
+function threatOf(state, reg, unitId) {
+  const a = dynamicOf(state, unitId)?.aftermath;
+  const tell2 = a === void 0 ? void 0 : aftermathRowOf(reg, a.kind)?.stages[a.stage]?.effects.find((e) => e.type === "threaten_tell");
+  const fact = tell2 === void 0 ? null : threatFactOf(state, unitId);
+  return tell2?.type === "threaten_tell" && fact !== null ? { factId: fact.id, audience: tell2.audience } : void 0;
+}
 function runAftermathEffect(draft, ctx2, unitId, fx2) {
   const reg = ctx2.registries;
   const unit3 = draft.squad.find((u) => u.id === unitId);
@@ -18460,7 +18541,10 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
     case "demand": {
       if (!mayAsk(draft, reg, unitId)) return [];
       const roll = dynamicRoll(draft, unitId, `aftermath:demand:${fx2.kind}`);
-      return openDemand(draft, ctx2, unitId, { roll, ...fx2.kind === "desire" ? { desire: true } : { only: fx2.kind } })?.events ?? [];
+      const opened = openDemand(draft, ctx2, unitId, { roll, ...fx2.kind === "desire" ? { desire: true } : { only: fx2.kind } });
+      const threat = opened === null ? void 0 : threatOf(draft, reg, unitId);
+      if (opened !== null && threat !== void 0) opened.demand.threat = threat;
+      return opened?.events ?? [];
     }
     case "booking": {
       if (bookingProblem(draft, reg, unitId) !== null) return [];
@@ -18475,7 +18559,7 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
       return proposeRuleHashed(draft, reg, unitId, dynamicRoll(draft, unitId, "aftermath:rule"));
     case "threaten_tell":
       return [];
-    // the threat is made with compromat of hers: chunk (i)
+    // the threat is carried by the demand the same stage opens (`threatOf`): refused, the squad learns what she holds
     case "rumor": {
       const name = unit3.displayName;
       addFact(draft, {
@@ -19235,17 +19319,19 @@ function dynamicIntentInput(state, reg, participants, _channel) {
     const dyn = dynamicOf(state, id);
     return dyn !== void 0 && (frameRank(dyn.frame) >= frameRank("role") || slipsOpen(state, reg, id));
   }) : [];
+  const compromat = present2.filter((id) => compromatOf(state, id).length > 0);
   const types = [
     ...probes2.length > 0 ? ["probe_answered"] : [],
     ...observed.length > 0 ? ["probe_observed"] : [],
     ...milestoneRows2.length > 0 ? ["milestone_accepted", "milestone_refused"] : [],
     ...claims2.length > 0 || exits.length > 0 ? ["compromise_reached"] : [],
     ...offers.length > 0 ? ["offer_answered"] : [],
+    ...compromat.length > 0 ? ["compromat_mentioned"] : [],
     ...slips2.length > 0 ? ["protocol_slip"] : []
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims2, exits, offers, compromat: [], slips: slips2, probeAxes, milestoneLabels }
+    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims2, exits, offers, compromat, slips: slips2, probeAxes, milestoneLabels }
   };
 }
 function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
@@ -19261,6 +19347,8 @@ function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
       const open3 = ev.milestoneId === void 0 ? void 0 : draft.dynamic?.open.milestones.find((m) => m.id === ev.milestoneId && m.unitId === unitId);
       return open3 === void 0 ? [] : answerMilestone(draft, ctx2, open3.id, ev.type === "milestone_accepted" ? "accept" : "refuse", "text");
     }
+    case "compromat_mentioned":
+      return dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.compromat.includes(unitId) === true ? mentionCompromat(draft, ctx2, unitId, ev.factId, ev.summary) : [];
     case "protocol_slip":
       return slipSeen(draft, ctx2, unitId);
     default:
@@ -25542,11 +25630,11 @@ function buildFixedMap(layers) {
 function nextNodes(map, at) {
   return at === null ? [...map.layers[0]] : [...map.nodes[at]?.edges ?? []];
 }
-function visibleTypes(map, at, reveal) {
+function visibleTypes(map, at, reveal2) {
   const seen2 = new Set(Object.values(map.nodes).filter((n) => n.visited).map((n) => n.id));
   if (at !== null) seen2.add(at);
   let frontier = nextNodes(map, at);
-  for (let depth = 1; depth <= reveal && frontier.length > 0; depth++) {
+  for (let depth = 1; depth <= reveal2 && frontier.length > 0; depth++) {
     const next = [];
     for (const id of frontier) {
       seen2.add(id);
@@ -27033,6 +27121,7 @@ function answerDemand(draft, ctx2, demandId, answer, opts = {}) {
     }));
   } else {
     events.push(...refuseLikeDemand(draft, ctx2, unit3.id, { templateId: demand.templateId, evidence: opts.expired === true ? "a demand ran out" : "a demand was refused", lapsed: opts.expired === true }));
+    if (demand.threat !== void 0) events.push(...tellCompromat(draft, unit3.id, demand.threat, (draft.content?.enabled ?? []).includes("public_humiliation")));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit3.id, { type: "broke_promise", actor: "commander", targets: [unit3.id], severity: "moderate", evidence: "an owed demand was refused", confidence: 1 }));
     }
@@ -29063,10 +29152,10 @@ function wentUp(m) {
   }
   return m.to === "yes";
 }
-var wordsOf = (reg, m) => axisWords(reg, m.axis, wentUp(m));
+var wordsOf2 = (reg, m) => axisWords(reg, m.axis, wentUp(m));
 function momentDirective(state, reg, unitId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
-  const words3 = stampedMoments(state, unitId).map((m) => wordsOf(reg, m)).filter((w) => w !== null && w !== "");
+  const words3 = stampedMoments(state, unitId).map((m) => wordsOf2(reg, m)).filter((w) => w !== null && w !== "");
   if (!unit3 || words3.length === 0) return null;
   return { id: `development:${unitId}`, text: `${unit3.displayName} has changed lately: ${words3.join("; ")}. Let it show in how she acts this scene; never announce it.`, expiresAfter: "scene" };
 }
@@ -29150,7 +29239,7 @@ var isOutside = (id) => id === OUTSIDE || id.startsWith(`${OUTSIDE}:`);
 var centre = (r) => [r.x + r.w / 2, r.y + r.h / 2];
 var dist = (a, b) => Math.hypot(centre(a)[0] - centre(b)[0], centre(a)[1] - centre(b)[1]);
 var contains = (r, x, y) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
-var overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+var overlap2 = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 function shared(a, b) {
   const xs = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
   const ys = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
@@ -29215,15 +29304,15 @@ function planGraph(reg) {
         const b = rooms[j];
         const ra = rectOf(a);
         const rb = rectOf(b);
-        const openPair = isOpenSpace(a) && isOpenSpace(b) && (overlap(ra, rb) || shared(ra, rb) > 0);
-        const stairIn = (a.kind === "stair" || b.kind === "stair") && overlap(ra, rb);
+        const openPair = isOpenSpace(a) && isOpenSpace(b) && (overlap2(ra, rb) || shared(ra, rb) > 0);
+        const stairIn = (a.kind === "stair" || b.kind === "stair") && overlap2(ra, rb);
         if (openPair || stairIn) add(String(a.id), String(b.id), "open", dist(ra, rb));
       }
     }
   }
   for (const e of all) {
     if (typeof e.stairTo !== "string") continue;
-    const there = (byFloor.get(e.stairTo) ?? []).find((o) => o.kind === "stair" && overlap(rectOf(o), rectOf(e)));
+    const there = (byFloor.get(e.stairTo) ?? []).find((o) => o.kind === "stair" && overlap2(rectOf(o), rectOf(e)));
     if (there) add(String(e.id), String(there.id), "stair", STAIR_LENGTH);
   }
   graphs.set(reg, g);
@@ -29801,11 +29890,11 @@ function lapseMoments(draft) {
 }
 var QUOTES = /[\u0022\u201c\u201d]/g;
 var EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
-var COMMANDER_PRONOUN3 = /\b(he|him|his|himself)\b/i;
+var COMMANDER_PRONOUN4 = /\b(he|him|his|himself)\b/i;
 function cleanLabels(raw) {
   if (!Array.isArray(raw) || raw.length !== 3 || !raw.every((l) => typeof l === "string")) return null;
   const cleaned = raw.map((l) => l.replace(/<[^>]*>/g, " ").replace(/[\u0000-\u001f\u007f<>`]/g, " ").replace(QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, TUNING.moments.labelMax).trim());
-  return cleaned.every((l) => l !== "" && !COMMANDER_PRONOUN3.test(l)) ? cleaned : null;
+  return cleaned.every((l) => l !== "" && !COMMANDER_PRONOUN4.test(l)) ? cleaned : null;
 }
 function setLabels(draft, raw) {
   const open3 = momentsOf(draft.scene).open;
@@ -29896,6 +29985,9 @@ function vitalsOf(state, reg, unitId) {
 
 // src/engine/moments/live.ts
 var triggers = /* @__PURE__ */ new Map();
+function registerMomentTrigger(sourceId, fn) {
+  triggers.set(sourceId, fn);
+}
 var kindsOf = (s) => Array.isArray(s.live) ? s.live : [];
 var unitOf11 = (state, id) => state.squad.find((u) => u.id === id);
 function moodOf(state, reg, unitId) {
@@ -34650,7 +34742,7 @@ function oversightActs(draft, ctx2, holderId) {
     if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
     const rel = draft.relations[holderId];
     if (rel !== void 0 && !rel.flags.includes("leashed")) rel.flags.push("leashed");
-    events.push({ type: "leash_used", kind: "compel", unitId: holderId, no, outcome: "done" }, ...addStress3(draft, holderId, TUNING.leash.compel.stress));
+    events.push({ type: "leash_used", kind: "compel", unitId: holderId, no, outcome: "done", by: "oversight" }, ...addStress3(draft, holderId, TUNING.leash.compel.stress));
   }
   return events;
 }
@@ -34938,12 +35030,18 @@ function expectation(state, reg, moment) {
   const pick3 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
   return wanted2 !== void 0 && pick3 !== void 0 ? { key: pick3.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
 }
+function compromatHint(state, reg, unitId) {
+  const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== void 0 ? dynamicOf(state, unitId) : void 0;
+  return dyn !== void 0 && frameRank(dyn.frame) >= frameRank("role") && compromatOf(state, unitId).length > 0 && dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
+}
 function installDynamicHooks() {
   registerFrameReader(frameReader);
   registerBlockingGate(gate);
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
   registerExpectation(expectation);
+  registerMomentTrigger("compromat_hint", compromatHint);
+  registerCompromatCount((state, holderId) => compromatOf(state, holderId).length);
 }
 
 // src/engine/dynamic/bypass.ts
@@ -35004,6 +35102,7 @@ function bypassLeash(draft, ctx2, p) {
       const applied = applyRelationDelta(draft, p.allyId, "trust", TUNING.dynamic.bypass.allyTrust, "leash_bypass");
       if (applied !== 0) events.push({ type: "relation_changed", unitId: p.allyId, axis: "trust", delta: applied, applied });
     }
+    addCompromat(draft, holderId, `AUTHOR TO WRITE: ${holder2.displayName} caught the commander going around her hold on the Leash requests.`, p.allyId !== void 0 ? [p.allyId] : []);
   }
   const x = draft.dynamic;
   (x.oversight ??= { blocked: [] }).pass = { unitId: p.unitId, kind: p.kind };
@@ -35030,6 +35129,15 @@ registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
 registerAfterAction((draft) => {
   revealKnown(draft);
+  return [];
+});
+registerAfterAction((draft, ctx2, events) => {
+  if (!dynamicOn(draft, ctx2.registries)) return [];
+  for (const e of events) {
+    if (e.type !== "leash_used" || e.by === "oversight" || typeof e.unitId !== "string") continue;
+    const dyn = dynamicOf(draft, e.unitId);
+    if (dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play")) noteLeashOnHer(draft, e.unitId);
+  }
   return [];
 });
 registerEnforced(commandKeptEnforced);
@@ -35693,7 +35801,7 @@ function sanitizeHabitWording(raw) {
   return text2;
 }
 var FRAGMENT_MAX3 = 160;
-var COMMANDER_PRONOUN4 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN5 = /\b(he|him|his|himself|he's)\b/i;
 registerFlavorKind("frequency_fragment", {
   system: () => [
     "You word one fragment of a soldier's overheard inner voice for a dark, near-future squad-command RPG: a mind-reading device in the commander's head catches it.",
@@ -35714,7 +35822,7 @@ registerFlavorKind("frequency_fragment", {
 function sanitizeFragment(raw) {
   if (typeof raw !== "string") return null;
   const t = raw.trim();
-  if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN4.test(t) || /[<>]/.test(t)) return null;
+  if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN5.test(t) || /[<>]/.test(t)) return null;
   return t;
 }
 var LIFE_SHARE_MAX = 300;
@@ -35762,7 +35870,7 @@ function lifeLine(raw, max) {
   const t = raw.text;
   if (typeof t !== "string") return null;
   const text2 = t.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'\u201c\u201d\u2018\u2019]+|["'\u201c\u201d\u2018\u2019]+$/g, "").trim().replace(/^(?:message|text|dm|note|reply|answer)\s*:\s*/i, "").slice(0, max).trim();
-  return text2 === "" || COMMANDER_PRONOUN4.test(text2) ? null : text2;
+  return text2 === "" || COMMANDER_PRONOUN5.test(text2) ? null : text2;
 }
 var sanitizeLifeShare = (raw) => lifeLine(raw, LIFE_SHARE_MAX);
 var sanitizeLifeTrace = (raw) => lifeLine(raw, LIFE_TRACE_MAX);
@@ -37710,8 +37818,8 @@ function plain3(text2, max) {
   if (typeof text2 !== "string") return "";
   return text2.replace(/```[a-z]*/gi, " ").replace(/[*_`~#>]+/g, "").replace(/\s+/g, " ").trim().replace(LABEL3, "").replace(/^["“”]+|["“”]+$/g, "").trim().slice(0, max).trim();
 }
-var COMMANDER_PRONOUN5 = /\b(he|him|his|himself|he's)\b/i;
-var noPronoun = (t) => COMMANDER_PRONOUN5.test(t) ? "" : t;
+var COMMANDER_PRONOUN6 = /\b(he|him|his|himself|he's)\b/i;
+var noPronoun = (t) => COMMANDER_PRONOUN6.test(t) ? "" : t;
 var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeReview(raw, input) {
   if (!isObj40(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
@@ -37728,7 +37836,7 @@ function sanitizeReview(raw, input) {
   for (const f of Array.isArray(raw.facts) ? raw.facts : []) {
     if (!isObj40(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
     const text2 = plain3(f.text, TUNING.development.factTextMax);
-    if (text2 === "" || COMMANDER_PRONOUN5.test(text2)) continue;
+    if (text2 === "" || COMMANDER_PRONOUN6.test(text2)) continue;
     facts.push({ text: text2, kind: f.kind });
     if (facts.length === TUNING.development.maxFacts) break;
   }
@@ -37945,6 +38053,7 @@ function holderDirective(state, reg, unit3) {
   const override = state.dynamic?.override;
   const arguing = override !== void 0 && override.unitId === unit3.id && state.scene !== void 0 && override.arguing === state.scene.id ? override : void 0;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
+  const kept = compromatOf(state, unit3.id).slice(-3).map((f) => sentence2(f.text.replace(/^AUTHOR TO WRITE:\s*/, ""))).filter((t) => t !== "");
   const parts = [
     ...holds4 ? [`${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`] : [],
     ...holds4 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
@@ -37953,6 +38062,7 @@ function holderDirective(state, reg, unit3) {
     ...holds4 && asking !== void 0 ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === void 0 ? "that the commander give way to her" : sentence2(String(reg.dynamicDomains.get(asking.domainId)?.promptHint ?? "a part of the commander's life"))}.`] : [],
     ...arguing !== void 0 ? [`${name} has overridden the commander's order: ${sentence2(describeOrder(state, reg, arguing.order))}. She wants: ${sentence2(arguing.altLabel)}. She can be talked round only by a real compromise.`] : [],
     ...holds4 && refused ? ["She has not forgotten a recent refusal and will answer it in her own way."] : [],
+    ...holds4 && kept.length > 0 ? [`She holds something over the commander, and uses it only when it serves her, never all at once: ${kept.join("; ")}.`] : [],
     "Show it in how she acts and speaks; never name it as a mechanic."
   ];
   return { id: `${DYNAMIC_PREFIX}${unit3.id}`, expiresAfter: "scene", text: parts.filter((p) => p !== "").join(" ") };
@@ -38103,7 +38213,7 @@ function createDynamic(deps) {
 var CARD_MAX3 = 600;
 var OpinionFormRawSchema = external_exports.object({ position: external_exports.unknown().optional(), text: external_exports.unknown().optional() }).passthrough();
 var LABEL4 = /^(?:her words|opinion|position|text|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
-var COMMANDER_PRONOUN6 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
 var isObj41 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeOpinion(raw, input) {
   if (!isObj41(raw) || typeof raw.position !== "string" || typeof raw.text !== "string") return null;
@@ -38111,7 +38221,7 @@ function sanitizeOpinion(raw, input) {
   const position = input.topic.positions.find((p) => p.id === asked)?.id;
   if (position === void 0) return null;
   const text2 = raw.text.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL4, "").slice(0, TUNING.life.opinion.textMax).trim();
-  if (text2 === "" || COMMANDER_PRONOUN6.test(text2)) return null;
+  if (text2 === "" || COMMANDER_PRONOUN7.test(text2)) return null;
   return { position, text: text2 };
 }
 var one = (s) => s.replace(/[\r\n]+/g, " ");
@@ -43022,7 +43132,7 @@ function clearPhysicsDirectives(builder) {
 var CUE_LINE_MAX = 120;
 var CUE_LINES_MIN = 3;
 var CUE_LINES_MAX = 5;
-var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN8 = /\b(he|him|his|himself|he's)\b/i;
 var isObj44 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PhysicsCuesRawSchema = external_exports.object({ cues: external_exports.unknown().optional() }).passthrough();
 var clean9 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
@@ -43037,7 +43147,7 @@ function sanitizeCues(raw) {
     for (const l of list5) {
       if (typeof l !== "string") continue;
       const c = clean9(l);
-      if (c === "" || COMMANDER_PRONOUN7.test(c) || lines.includes(c)) continue;
+      if (c === "" || COMMANDER_PRONOUN8.test(c) || lines.includes(c)) continue;
       if (lines.length < CUE_LINES_MAX) lines.push(c);
     }
     if (lines.length >= CUE_LINES_MIN) out[kind] = lines;

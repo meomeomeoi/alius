@@ -32,6 +32,7 @@ import { canHold, dynamicOn } from './gate';
 import { addHold, bandMinAt, holdBandOf } from './hold';
 import { applyMilestone, milestonesDue, nextFreeEvening, rekindleMilestone } from './milestones';
 import { dynamicOf, type DynamicRelation, type DynamicUndo } from './state';
+import { threatFactOf } from './compromat';
 import { commandStruggleOf } from './struggle';
 export { commandStruggleOf };
 import { AFTERMATH_KINDS, type AftermathEffect, type AftermathEntry, type AftermathKind, type ExitRoute } from './types';
@@ -126,6 +127,20 @@ function pickKind(weights: Record<AftermathKind, number>, roll: number): Afterma
 }
 
 // ---------------------------------------------------------------------------------------------
+// Blackmail
+
+/**
+ * The threat her running stage makes (R15): when the stage lists `threaten_tell` and she holds compromat, the one she would use and who she would tell
+ * (`audience`); `undefined` otherwise. Pure.
+ */
+function threatOf(state: CampaignState, reg: Registries, unitId: string): { factId: string; audience: 'squad' | 'outside' } | undefined {
+  const a = dynamicOf(state, unitId)?.aftermath;
+  const tell = a === undefined ? undefined : aftermathRowOf(reg, a.kind)?.stages[a.stage]?.effects.find((e) => e.type === 'threaten_tell');
+  const fact = tell === undefined ? null : threatFactOf(state, unitId);
+  return tell?.type === 'threaten_tell' && fact !== null ? { factId: fact.id, audience: tell.audience } : undefined;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Effects (run once, when the stage begins)
 
 /**
@@ -133,7 +148,7 @@ function pickKind(weights: Record<AftermathKind, number>, roll: number): Afterma
  * `stress` and `want` move her numbers; `night_knock` queues the visit Want makes; `demand` opens a P9 demand of that kind (`desire` is Want's);
  * `booking` books her the next free evening; `rule_interfere` proposes a rule in her name; `rumor` writes a spreading fact; `squad_impunity` raises
  * the Impunity record of everyone who knows of the dynamic; `defiance` is a moderate `defied`; `trust` is a Trust change. `vote_sabotage`
- * is read by the ballots while the stage stands and `threaten_tell` waits for compromat, so neither writes anything here; `return_offer` opens the card
+ * is read by the ballots while the stage stands and `threaten_tell` is carried by the demand its stage opens (`threatOf`), so neither writes anything here; `return_offer` opens the card
  * `answerReturn` answers, `successor` raises the next unit (`raiseSuccessor`) and `protocol_slips` is read by the intent offer. Nothing for a unit who is not a living named unit. Draws nothing.
  */
 export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'> & Partial<Pick<EngineCtx, 'rng'>>, unitId: string, fx: AftermathEffect): EngineEvent[] {
@@ -156,7 +171,11 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'demand': {
       if (!mayAsk(draft, reg, unitId)) return [];
       const roll = dynamicRoll(draft, unitId, `aftermath:demand:${fx.kind}`);
-      return openDemand(draft, ctx, unitId, { roll, ...(fx.kind === 'desire' ? { desire: true } : { only: fx.kind }) })?.events ?? [];
+      const opened = openDemand(draft, ctx, unitId, { roll, ...(fx.kind === 'desire' ? { desire: true } : { only: fx.kind }) });
+      // blackmail: the stage that threatens to tell carries her compromat on the demand it opens; refused, the squad learns it (`answerDemand`)
+      const threat = opened === null ? undefined : threatOf(draft, reg, unitId);
+      if (opened !== null && threat !== undefined) opened.demand.threat = threat;
+      return opened?.events ?? [];
     }
     case 'booking': {
       if (bookingProblem(draft, reg, unitId) !== null) return []; // the gates of any booking: access, restrictions, one open, consent (review M5)
@@ -170,7 +189,7 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'rule_interfere':
       return proposeRuleHashed(draft, reg, unitId, dynamicRoll(draft, unitId, 'aftermath:rule'));
     case 'threaten_tell':
-      return []; // the threat is made with compromat of hers: chunk (i)
+      return []; // the threat is carried by the demand the same stage opens (`threatOf`): refused, the squad learns what she holds
     case 'rumor': {
       const name = unit.displayName;
       addFact(draft, {

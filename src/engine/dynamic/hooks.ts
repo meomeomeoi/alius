@@ -1,6 +1,6 @@
 /**
  * The P15a stand-ins, replaced (P15, plan R10): the frame of her relationship, whether a scene is live, her physics style pair, what she
- * holds the commander until, and the option she expects of a moment. `installDynamicHooks` registers the five readers once (from
+ * holds the commander until, and the option she expects of a moment. `installDynamicHooks` registers the five readers once, and with them the moment source `compromat_hint` and the count blackmail reads (from
  * `actions/dynamic.ts`, at module load); registering twice gives the same answers, so a test that reset the hooks may install again.
  *
  * Every reader answers `null` unless the dynamic is on AND she has her own dynamic (`Relation.dynamic`) AND she practises something that is
@@ -16,15 +16,19 @@ import { frameRank, type Frame } from '../blocking/state';
 import { registerBlockingGate, registerFrameReader } from '../blocking/gate';
 import { isLiving } from '../economy';
 import { registerExpectation } from '../moments/answer';
+import { registerMomentTrigger } from '../moments/live';
 import type { OpenMoment } from '../moments/state';
 import { registerHoldsUntil, registerPhysicsStyle } from '../physics/style';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
+import { registerCompromatCount } from './aftermath';
+import { compromatOf } from './compromat';
 import { holdsUntilOfUnit, expectationsOf } from './expectations';
 import { dynamicOn, herPracticeLive } from './gate';
 import { styleOf } from './profile';
 import { defaultExpectation, leadingStyle } from './style';
 import { dynamicOf, type DynamicRelation } from './state';
+import { TUNING } from '../tuning';
 
 /** Her dynamic, only while the block exists, holders is not 0 and she is a named unit in service; `undefined` otherwise (the state-only "off" check). */
 function liveDynamic(state: CampaignState, unitId: string): DynamicRelation | undefined {
@@ -75,6 +79,16 @@ function expectation(state: CampaignState, reg: Parameters<typeof dynamicOn>[1],
   return wanted !== undefined && pick !== undefined ? { key: pick.key, strength: wanted.strength } : defaultExpectation(state, reg, moment as OpenMoment);
 }
 
+/**
+ * The moment source `compromat_hint` (spec §11): live for a holder who is present (the engine asks per soldier in the scene) at `role` or beyond, who holds
+ * some compromat, and whose own refusal of the commander is at most `directives.refusalDays` days old. Off while the dynamic is off.
+ */
+function compromatHint(state: CampaignState, reg: Registries, unitId: string): boolean {
+  const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== undefined ? dynamicOf(state, unitId) : undefined;
+  return dyn !== undefined && frameRank(dyn.frame) >= frameRank('role') && compromatOf(state, unitId).length > 0
+    && dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
+}
+
 /** Registers the dynamic's readers on the P15a hooks. Idempotent in effect: a second call adds readers that answer the same. */
 export function installDynamicHooks(): void {
   registerFrameReader(frameReader);
@@ -82,4 +96,6 @@ export function installDynamicHooks(): void {
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
   registerExpectation(expectation as Parameters<typeof registerExpectation>[0]);
+  registerMomentTrigger('compromat_hint', compromatHint); // P15 (compromat): the one source of the dynamic that is live from the start
+  registerCompromatCount((state, holderId) => compromatOf(state, holderId).length); // blackmail needs some
 }

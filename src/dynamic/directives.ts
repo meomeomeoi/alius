@@ -2,6 +2,7 @@ import type { Registries } from '../content/types';
 import { frameRank } from '../engine/blocking/state';
 import { aftermathRowOf } from '../engine/dynamic/aftermath';
 import { hasCapability } from '../engine/dynamic/capabilities';
+import { compromatOf } from '../engine/dynamic/compromat';
 import { herPracticeLive, dynamicOn } from '../engine/dynamic/gate';
 import { leashBlockOf } from '../engine/dynamic/leashBlock';
 import { frameEntry } from '../engine/dynamic/hold';
@@ -65,6 +66,8 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
   const override = state.dynamic?.override;
   const arguing = override !== undefined && override.unitId === unit.id && state.scene !== undefined && override.arguing === state.scene.id ? override : undefined;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
+  // her compromat is hers: she knows it whether or not the commander does (the player's view, `Knowledge`, is not what this reads); the newest few, no count
+  const kept = compromatOf(state, unit.id).slice(-3).map((f) => sentence(f.text.replace(/^AUTHOR TO WRITE:\s*/, ''))).filter((t) => t !== '');
   const parts = [
     ...(holds ? [`${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`] : []),
     ...(holds && claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
@@ -73,6 +76,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
     ...(holds && asking !== undefined ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === undefined ? 'that the commander give way to her' : sentence(String((reg.dynamicDomains.get(asking.domainId) as unknown as DynamicDomainEntry | undefined)?.promptHint ?? 'a part of the commander\'s life'))}.`] : []),
     ...(arguing !== undefined ? [`${name} has overridden the commander's order: ${sentence(describeOrder(state, reg, arguing.order))}. She wants: ${sentence(arguing.altLabel)}. She can be talked round only by a real compromise.`] : []),
     ...(holds && refused ? ['She has not forgotten a recent refusal and will answer it in her own way.'] : []),
+    ...(holds && kept.length > 0 ? [`She holds something over the commander, and uses it only when it serves her, never all at once: ${kept.join('; ')}.`] : []),
     'Show it in how she acts and speaks; never name it as a mechanic.',
   ];
   return { id: `${DYNAMIC_PREFIX}${unit.id}`, expiresAfter: 'scene', text: parts.filter((p) => p !== '').join(' ') };

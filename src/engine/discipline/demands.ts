@@ -25,6 +25,7 @@ import { addRecord, disciplineOf, holdDefiance } from './record';
 import { addRestriction, restrictionReason } from './restrictions';
 import { commandStance, stanceEntry } from './stance';
 import { dislikesOf, likesOf } from '../development/profile';
+import { tellCompromat } from '../dynamic/compromat';
 
 /** Stances whose demands are "buying loyalty" when granted. */
 const DRIVEN: readonly string[] = ['open_defiance', 'defiant_loyal'];
@@ -303,6 +304,8 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
     }));
   } else {
     events.push(...refuseLikeDemand(draft, ctx, unit.id, { templateId: demand.templateId, evidence: opts.expired === true ? 'a demand ran out' : 'a demand was refused', lapsed: opts.expired === true }));
+    // P15: a blackmail demand turned down: she tells, as she said she would
+    if (demand.threat !== undefined) events.push(...tellCompromat(draft, unit.id, demand.threat, (draft.content?.enabled ?? []).includes('public_humiliation')));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit.id, { type: 'broke_promise', actor: 'commander', targets: [unit.id], severity: 'moderate', evidence: 'an owed demand was refused', confidence: 1 }));
     }

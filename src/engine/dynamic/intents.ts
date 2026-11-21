@@ -12,6 +12,7 @@ import { isLiving } from '../economy';
 import type { EventIntent } from '../relations/intents';
 import { DYNAMIC_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
+import { compromatOf, mentionCompromat } from './compromat';
 import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { slipSeen } from './knowledge';
 import { answerMilestone } from './milestones';
@@ -33,7 +34,7 @@ export type DynamicIntentInput = DynamicOffer & { probeAxes: Record<string, stri
  * The offer for the units in `participants` (named, living, who practise something that is switched on). `{}` while the dynamic is off or nothing
  * is offered. At most one probe a scene. `probe_observed` is offered for a unit who could start to hold (eligible, at `equal` or with no block yet)
  * with a lead style of assertive or more and no probe of hers pending; `protocol_slip` for a unit at `role` or beyond (or in a `habits` aftermath)
- * when another unit is present. An open negotiated exit (`compromise_reached { exitId }`) is offered while she is present; compromat is offered by its own task.
+ * when another unit is present. An open negotiated exit (`compromise_reached { exitId }`) is offered while she is present; `compromat_mentioned` while a present unit holds some (named by holder only, never by content).
  */
 export function dynamicIntentInput(
   state: CampaignState, reg: Registries, participants: readonly string[], _channel: 'scene' | 'dm',
@@ -67,21 +68,22 @@ export function dynamicIntentInput(
       return dyn !== undefined && (frameRank(dyn.frame) >= frameRank('role') || slipsOpen(state, reg, id)); // a stage with `protocol_slips` (habits) lets it slip for its days
     })
     : [];
+  const compromat = present.filter((id) => compromatOf(state, id).length > 0);
   const types = [
     ...(probes.length > 0 ? ['probe_answered'] : []), ...(observed.length > 0 ? ['probe_observed'] : []),
     ...(milestoneRows.length > 0 ? ['milestone_accepted', 'milestone_refused'] : []), ...(claims.length > 0 || exits.length > 0 ? ['compromise_reached'] : []),
-    ...(offers.length > 0 ? ['offer_answered'] : []), ...(slips.length > 0 ? ['protocol_slip'] : []),
+    ...(offers.length > 0 ? ['offer_answered'] : []), ...(compromat.length > 0 ? ['compromat_mentioned'] : []), ...(slips.length > 0 ? ['protocol_slip'] : []),
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits, offers, compromat: [], slips, probeAxes, milestoneLabels },
+    dynamic: { types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits, offers, compromat, slips, probeAxes, milestoneLabels },
   };
 }
 
 /**
  * Routes one validated event of the dynamic to its effect on the unit it is about. The offer is rebuilt from the state (an answer to a probe that
- * is no longer pending, or a gesture the unit may no longer make, does nothing). The probe and milestone types are handled here; the offer,
- * compromat and slip types arrive with their own tasks and do nothing yet. `batch`: the events of the same applied batch so far (a threat to the commander in it makes a probe answer read as fear). Returns the engine events.
+ * is no longer pending, or a gesture the unit may no longer make, does nothing). The probe, milestone, compromat and slip types are handled here; the offer
+ * type arrives with its own task and does nothing yet. `batch`: the events of the same applied batch so far (a threat to the commander in it makes a probe answer read as fear). Returns the engine events.
  */
 export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: EventIntent, batch: readonly EngineEvent[] = []): EngineEvent[] {
   const reg = ctx.registries;
@@ -97,6 +99,9 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
       const open = ev.milestoneId === undefined ? undefined : draft.dynamic?.open.milestones.find((m) => m.id === ev.milestoneId && m.unitId === unitId);
       return open === undefined ? [] : answerMilestone(draft, ctx, open.id, ev.type === 'milestone_accepted' ? 'accept' : 'refuse', 'text');
     }
+    case 'compromat_mentioned':
+      // she holds some and is in the room (the offer was built from the same state); the commander learns the fact she named, or what she said
+      return dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.compromat.includes(unitId) === true ? mentionCompromat(draft, ctx, unitId, ev.factId, ev.summary) : [];
     case 'protocol_slip':
       // the habit slips out with others in the room: each of them sees it (R14); in a DM, or alone, nobody does
       return slipSeen(draft, ctx, unitId);

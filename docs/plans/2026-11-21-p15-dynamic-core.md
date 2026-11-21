@@ -1881,17 +1881,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `compromatOf(state, holderId): Fact[]`;
   - `mentionCompromat(draft, ctx, holderId, factId?: string, summary?: string): EngineEvent[]` (turns the matching fact, or a new one, known to the commander).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `compromat is invisible`: no `Knowledge` reading, count or hint shows it (`Knowledge.facts()` excludes it; the hub and dossier render no count).
   - `a mention reveals the matching fact`; `a mention with no matching fact writes a new known one with the summary` (cut to `factTextMax`, a pronoun for the commander dropped).
   - `compromat_mentioned is offered only while a present holder holds some`.
   - `her directive lists hers, never the player's view`.
   - `compromat_hint is live under its condition only`.
   - `blackmail's threaten_tell spreads it to the squad on refuse`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/compromat.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in spec §11.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): compromat`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/compromat.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in spec §11.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): compromat`
 
 ---
 

@@ -11,6 +11,7 @@ import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
 import { answerReturn, commandKeptEnforced, restoreCommandKept } from '../dynamic/aftermath';
 import { bypassLeash } from '../dynamic/bypass';
+import { noteLeashOnHer } from '../dynamic/compromat';
 import { requestTransfer } from '../dynamic/oversight';
 import { answerClaim } from '../dynamic/domains';
 import { registerEnforced, registerUndone } from '../discipline/record';
@@ -51,6 +52,16 @@ registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
 // What a woman knows turns known to the commander once she has shown it in a scene or a DM: the flag goes (the prompt and `Knowledge` read the same one) (R14).
 registerAfterAction((draft) => { revealKnown(draft); return []; });
+// A Leash request the commander filed on a holder (done, denied or held by her own block) is something she saw and keeps (compromat); oversight's own is not the commander's doing.
+registerAfterAction((draft, ctx, events) => {
+  if (!dynamicOn(draft, ctx.registries)) return [];
+  for (const e of events) {
+    if (e.type !== 'leash_used' || e.by === 'oversight' || typeof e.unitId !== 'string') continue;
+    const dyn = dynamicOf(draft, e.unitId);
+    if (dyn !== undefined && frameRank(dyn.frame) >= frameRank('play')) noteLeashOnHer(draft, e.unitId);
+  }
+  return [];
+});
 // A severe enforcement on the one who kept the command (a bench, a brig, the Leash) ends the struggle for it (R15a); nothing for anyone else.
 registerEnforced(commandKeptEnforced);
 // ... and UNDO of that enforcement (a punishment read from dialogue) gives the struggle back (the Inverse carries what it took).

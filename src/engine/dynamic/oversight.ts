@@ -105,7 +105,7 @@ export function oversightActs(draft: CampaignState, ctx: Ctx, holderId: string):
     if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
     const rel = draft.relations[holderId];
     if (rel !== undefined && !rel.flags.includes('leashed')) rel.flags.push('leashed');
-    events.push({ type: 'leash_used', kind: 'compel', unitId: holderId, no, outcome: 'done' }, ...addStress(draft, holderId, TUNING.leash.compel.stress));
+    events.push({ type: 'leash_used', kind: 'compel', unitId: holderId, no, outcome: 'done', by: 'oversight' }, ...addStress(draft, holderId, TUNING.leash.compel.stress));
   }
   return events;
 }

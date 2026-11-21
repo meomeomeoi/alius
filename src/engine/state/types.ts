@@ -898,6 +898,8 @@ export interface Demand {
   /** Her stance at opening was `open_defiance` or `defiant_loyal`: granting it gives `R` +4. */
   impunityDriven: boolean;
   dmId?: string;
+  /** P15: a blackmail demand: refused (or left to run out), her threat is carried out and the squad learns the compromat she named. */
+  threat?: { factId: string; audience: 'squad' | 'outside' };
 }
 
 /** P9b: the decisions the squad can vote on (the `voteKinds` registry has one entry each). */

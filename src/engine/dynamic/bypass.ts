@@ -19,6 +19,7 @@ import { TUNING } from '../tuning';
 import { isTech } from '../warden/intrigue';
 import { checkLeash } from '../leash/use';
 import { BYPASS_ROUTES, type BypassRoute } from './types';
+import { addCompromat } from './compromat';
 import { leashBlockOf } from './leashBlock';
 
 export { BYPASS_ROUTES };
@@ -101,6 +102,7 @@ export function bypassLeash(draft: CampaignState, ctx: EngineCtx, p: { route: By
       const applied = applyRelationDelta(draft, p.allyId, 'trust', TUNING.dynamic.bypass.allyTrust, 'leash_bypass');
       if (applied !== 0) events.push({ type: 'relation_changed', unitId: p.allyId, axis: 'trust', delta: applied, applied });
     }
+    addCompromat(draft, holderId, `AUTHOR TO WRITE: ${holder.displayName} caught the commander going around her hold on the Leash requests.`, p.allyId !== undefined ? [p.allyId] : []);
     // P15 Task 36: her Regard falls by TUNING.dynamic.bypass.regardFall (`regardFall`) here, once Regard exists
   }
   // the request goes through once, with no block: a pass for exactly this request, always dropped afterwards (the warden may have stopped it first)
