@@ -1,6 +1,7 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
 import { physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { nextSegment, physicsInput, typedBeats } from '../physics/segment';
 
 // Importing this module registers the physics actions (P15a) and, through `physics/run`, what keeps a run in step with the blocking.
 
@@ -37,4 +38,25 @@ registerAction('physics/signal', (draft, _payload, ctx) => {
 registerAction('physics/stop_word', (draft, _payload, ctx) => {
   if (!draft.scene) throw new Error('physics/stop_word: no scene is open');
   return stopWord(draft, ctx);
+});
+
+/** `physics/next_segment { runId }`: plans the next segment of a held run and starts it (the controller calls it once no reply is pending). Draws the plan. */
+registerAction('physics/next_segment', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/next_segment');
+  if (!isObj(payload) || str(payload.runId) === undefined) throw new Error('physics/next_segment needs { runId }');
+  return nextSegment(draft, ctx, payload.runId as string);
+});
+
+/** `physics/segment_end { runId, segment, inputs }`: the inputs of the segment that ended; resolves it and decides the boundary. Draws no rng here. */
+registerAction('physics/segment_end', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/segment_end');
+  if (!isObj(payload) || str(payload.runId) === undefined || typeof payload.segment !== 'number') throw new Error('physics/segment_end needs { runId, segment, inputs }');
+  return physicsInput(draft, ctx, payload.runId as string, payload.segment, payload.inputs ?? []);
+});
+
+/** `physics/typed { chars, beat? }`: a message was typed in turn-based play; its beats lapse. Nothing while no segment runs. */
+registerAction('physics/typed', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/typed');
+  if (!isObj(payload) || typeof payload.chars !== 'number' || !Number.isFinite(payload.chars) || payload.chars < 0) throw new Error('physics/typed needs { chars }');
+  return typedBeats(draft, payload.chars, typeof payload.beat === 'number' ? Math.trunc(payload.beat) : 0);
 });

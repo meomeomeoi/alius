@@ -1174,7 +1174,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `commanderSkill(state, physicsId): number`;
   - `herSkillOf(state, unitId)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - One test per interaction with the TUNING numbers: breath caught / missed / false / drain; weight drain and the uneven shift; saturation by band and mouth breath; tongue order; passive progress; jaw degrade and rest.
   - `seal by contact and her skill` (`leaky` +4, `firm` +1, `tight` 0; skill 2 tightens one step).
   - `capacity grows, windows do not` (level 3 → capacity 130 and the same widths).
@@ -1184,10 +1184,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `endurance xp by the three routes` and the thresholds; `training once a day`.
   - `her skill grows per 8 practices with the style mult` (via a registered style).
   - `resolveSegment draws nothing` (a spy rng).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/segment.test.ts tests/engine/physics/skill.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The plan stores the drawn widths; the resolution reads only the plan and the inputs.
-- [ ] **Step 4: Run** both files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): physics segments, seal, chains, her rhythm and both skills`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/segment.test.ts tests/engine/physics/skill.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The plan stores the drawn widths; the resolution reads only the plan and the inputs.
+- [x] **Step 4: Run** both files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): physics segments, seal, chains, her rhythm and both skills`
 
 ---
 

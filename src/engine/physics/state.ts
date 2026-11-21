@@ -23,6 +23,8 @@ export interface PlannedBeat {
   /** An opening of her rhythm (the chance to breathe): how wide it is, and whether it is false (open and shut at once). */
   opening?: { widthMs: number; false?: true };
   cue?: CueKind;
+  /** The part she wants next (a tongue work: `TUNING.physics.tongue.parts`). */
+  part?: string;
   /** A shift of her weight: how much it costs when the hold was uneven. */
   shift?: number;
   attention: Attention;
@@ -50,6 +52,34 @@ export interface SegmentSummary {
   warning?: boolean;
 }
 
+/** The scent bands (plan R13); the saturation physics reads them. */
+export type ScentBand = 'faint' | 'noticeable' | 'strong' | 'overwhelming';
+
+/** What a segment came to once the inputs were resolved (pure: no draw). The gauge is the run's new gauge; the rest feed the summary, xp and the boundary. */
+export interface SegmentResult {
+  gauge: number;
+  caught: number;
+  missed: number;
+  falseTaken: number;
+  slips: number;
+  gasps: number;
+  reliefs: number;
+  /** The relief inputs that were taken (a cheat on a watching beat is rolled at the boundary). */
+  reliefInputs: Array<{ beat: number; kind: InputKind }>;
+  /** Caught openings in a row at the end (carried into the next segment) and how many of them came after the third. */
+  streak: number;
+  streakBonus: number;
+  warning: boolean;
+  checked: boolean;
+  complete: boolean;
+  degraded: boolean;
+  askedRest: boolean;
+  restGranted: boolean;
+  beatsRun: number;
+  cues: CueKind[];
+  noise: number;
+}
+
 export interface PhysicsRun {
   /** `p<n>`: a late `segment_end` for another run is refused. */
   id: string;
@@ -64,7 +94,7 @@ export interface PhysicsRun {
   seal?: Seal;
   pressure?: number;
   /** `held`: the body waits in a neutral state (nothing drains) until the next segment starts. */
-  segment: { n: number; state: 'running' | 'held'; plan?: SegmentPlan };
+  segment: { n: number; state: 'running' | 'held'; plan?: SegmentPlan; /** Beats whose inputs lapsed because a message was typed (turn-based). */ lapsed?: number[] };
   startedExchange: number;
   /** Taps that a `limit` holder ignored. */
   taps: number;

@@ -98,6 +98,24 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   return [{ type: 'physics_started', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(o.duration !== undefined ? { duration: o.duration } : {}) }];
 }
 
+/**
+ * A slip opens the physics its entry chains to (a spilled swallow: tongue work on the floor at dirt 60): the run goes on with the same source and
+ * holder in the new physics, at the chain's starting gauge. Nothing when the physics has no chain.
+ */
+export function chainRun(draft: CampaignState, reg: Registries, run: PhysicsRun): EngineEvent[] {
+  const chain = (reg.contactPhysics.get(run.physicsId)?.chains as Array<{ on: string; to: string; start?: number }> | undefined)?.find((c) => c.on === 'slip');
+  const to = chain ? reg.contactPhysics.get(chain.to) : undefined;
+  if (!chain || !to) return [];
+  const from = run.physicsId;
+  const g = gaugeFor(draft, to);
+  run.physicsId = chain.to;
+  run.capacity = g.capacity;
+  run.gauge = chain.start ?? g.gauge;
+  delete run.seal;
+  delete run.sealRange;
+  return [{ type: 'physics_started', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
+}
+
 /** Ends the run with a result and takes its contact or item out of the scene (the hold is over). Nothing when no run is open. */
 export function stopPhysics(draft: CampaignState, _reg: Registries, result: Outcome): EngineEvent[] {
   const run = draft.scene?.physics;

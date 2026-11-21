@@ -147,7 +147,10 @@ var TUNING = Object.freeze({
     breath: Object.freeze({ drain: 14, caught: 30, missed: 8, cruelMissed: 4, windowEvery: Object.freeze([2, 4]), seal: Object.freeze({ leaky: 4, firm: 1, tight: 0 }), gapRelief: 5 }),
     weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5]), shift: Object.freeze([15, 25]), relief: 15 }),
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
-    tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6 }),
+    tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(["toes", "arch", "heel", "sole"]) }),
+    gulpFill: Object.freeze({ caught: 5, spill: 20 }),
+    jawRest: 30,
+    noiseSlip: 1,
     jaw: Object.freeze({ per: 8, degradeAt: 70 }),
     gulp: Object.freeze({ swallows: Object.freeze([4, 8]), spillDirt: 60 }),
     progressPerBeat: 5,
@@ -11637,14 +11640,14 @@ function mergePushes(into, add) {
   for (let i = into.length - 1; i >= 0; i--) if (into[i].amount === 0) into.splice(i, 1);
 }
 function revise(draft, reg, unit2, a) {
-  const share = TUNING.development.revertShare;
+  const share2 = TUNING.development.revertShare;
   const truth = a.truth;
   const dev = unit2.development;
   const trueView = { ...a, ...truth, pushes: [] };
   delete trueView.misread;
   delete trueView.truth;
-  const back = a.pushes.map((p) => ({ axis: p.axis, amount: -p.amount * share }));
-  const forward = matchRules(draft, reg, unit2, trueView, []).map((p) => ({ axis: p.axis, amount: p.amount * share }));
+  const back = a.pushes.map((p) => ({ axis: p.axis, amount: -p.amount * share2 }));
+  const forward = matchRules(draft, reg, unit2, trueView, []).map((p) => ({ axis: p.axis, amount: p.amount * share2 }));
   const applied = accumulate(unit2, [...back, ...forward]);
   const pend = dev.pending.find((p) => p.id === a.id);
   if (pend) {
@@ -14380,10 +14383,10 @@ function applyCommanderPunishment(draft, ctx2, punishmentId) {
 function punishRoll(draft, ctx2, weight) {
   const w = wardenOf(draft);
   if (!w) return [];
-  const P = TUNING.warden.punish;
+  const P2 = TUNING.warden.punish;
   const affinity = draft.relations[w.unitId]?.affinity ?? 0;
-  if (!ctx2.rng.chance(clamp12(P.base + P.perWeight * weight - P.perAffinity * Math.max(0, affinity) / 100, 0, 1))) return [];
-  const [a, b, c] = P.bands;
+  if (!ctx2.rng.chance(clamp12(P2.base + P2.perWeight * weight - P2.perAffinity * Math.max(0, affinity) / 100, 0, 1))) return [];
+  const [a, b, c] = P2.bands;
   const severity = w.defiance < a ? 1 : w.defiance < b ? 2 : w.defiance < c ? 3 : 4;
   const id = pickPunishment(draft, ctx2.registries, severity);
   return id === null ? [] : applyCommanderPunishment(draft, ctx2, id);
@@ -16726,10 +16729,10 @@ function effectiveShare(state, reg, unitId, entry) {
   return lifted ? "close" : "keeps";
 }
 function shareChance(state, reg, unitId, entry) {
-  const share = effectiveShare(state, reg, unitId, entry);
-  if (share === "keeps") return 0;
+  const share2 = effectiveShare(state, reg, unitId, entry);
+  if (share2 === "keeps") return 0;
   const close = (state.relations[unitId]?.affinity ?? 0) >= TUNING.life.shareAffinity;
-  if (share === "close" && !close) return 0;
+  if (share2 === "close" && !close) return 0;
   return TUNING.life.share[temperamentOf(state, unitId).talkativeness] * (close ? 1 : TUNING.life.shareLowMult);
 }
 function milestoneHobby(draft, reg, unitId, entry, day) {
@@ -16768,8 +16771,8 @@ function applyLifeEvent(draft, reg, unitId, entry, day) {
   life.kinds = [...life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays), { kind: entry.id, unitId, day }];
   const fact = writeLifeFact(draft, unitId, `${unit2.displayName}: ${plainText(String(entry.description))}`, [entry.id, ...entry.tags ?? []], entry.size === "notable" ? 2 : 1);
   const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
-  const share = effectiveShare(draft, reg, unitId, entry);
-  if (share !== "keeps") mine.hub = { eventId: entry.id, day };
+  const share2 = effectiveShare(draft, reg, unitId, entry);
+  if (share2 !== "keeps") mine.hub = { eventId: entry.id, day };
   const shared2 = lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry));
   const also = [];
   events.push(...applyBecomes(draft, reg, unitId, entry, day, shared2 ? also : void 0));
@@ -26767,14 +26770,48 @@ function styleRows(style) {
   const otherKey = secondaryLeads ? style.primary : style.secondary;
   return { lead: row(leadKey), ...otherKey !== void 0 ? { other: row(otherKey) } : {}, leadKey };
 }
+function blendedStyle(style, field2) {
+  const { lead, other } = styleRows(style);
+  const [a, b] = TUNING.physics.blend;
+  return other === void 0 ? lead[field2] : lead[field2] * a + other[field2] * b;
+}
 function leadStyle(style) {
   const { lead, leadKey } = styleRows(style);
   return { key: leadKey, cues: lead.cues, seal: lead.seal, skillMult: lead.skillMult };
 }
 
 // src/engine/physics/skill.ts
+var levelForXp = (xp) => TUNING.physics.endurance.thresholds.filter((t) => xp >= t).length;
 function commanderSkill(state, physicsId) {
   return state.commander.endurance?.[physicsId]?.level ?? 0;
+}
+function addEnduranceXp(draft, physicsId, xp) {
+  const book2 = draft.commander.endurance ??= {};
+  const row3 = book2[physicsId] ??= { xp: 0, level: 0 };
+  const before = row3.level;
+  row3.xp += xp;
+  row3.level = levelForXp(row3.xp);
+  return { type: "endurance_gained", physicsId, xp: row3.xp, gained: xp, level: row3.level, leveledUp: row3.level > before };
+}
+function herSkillOf(state, unitId) {
+  const s = state.relations[unitId]?.herSkill;
+  return { seal: s?.seal ?? 0, weight: s?.weight ?? 0, reading: s?.reading ?? 0, swing: s?.swing ?? 0, rhythm: s?.rhythm ?? 0 };
+}
+function practise2(draft, unitId, kinds2, styleKey) {
+  const rel = draft.relations[unitId];
+  if (!rel) return [];
+  const skill = rel.herSkill ??= { seal: 0, weight: 0, reading: 0, swing: 0, rhythm: 0, practice: {} };
+  const mult = TUNING.physics.herSkill.mult[styleKey] ?? 1;
+  const events = [];
+  for (const kind of kinds2) {
+    skill.practice[kind] = (skill.practice[kind] ?? 0) + mult;
+    const level = Math.min(TUNING.physics.herSkill.cap, Math.floor(skill.practice[kind] / TUNING.physics.herSkill.practices));
+    if (level > skill[kind]) {
+      skill[kind] = level;
+      events.push({ type: "her_skill_gained", unitId, skill: kind, level });
+    }
+  }
+  return events;
 }
 
 // src/engine/physics/run.ts
@@ -26847,6 +26884,19 @@ function startPhysics(draft, ctx2, o) {
   scene.physics = run;
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...o.duration !== void 0 ? { duration: o.duration } : {} }];
 }
+function chainRun(draft, reg, run) {
+  const chain = reg.contactPhysics.get(run.physicsId)?.chains?.find((c) => c.on === "slip");
+  const to = chain ? reg.contactPhysics.get(chain.to) : void 0;
+  if (!chain || !to) return [];
+  const from = run.physicsId;
+  const g = gaugeFor(draft, to);
+  run.physicsId = chain.to;
+  run.capacity = g.capacity;
+  run.gauge = chain.start ?? g.gauge;
+  delete run.seal;
+  delete run.sealRange;
+  return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
+}
 function stopPhysics(draft, _reg, result) {
   const run = draft.scene?.physics;
   if (!draft.scene || !run) return [];
@@ -26873,6 +26923,20 @@ function stopWord(draft, ctx2) {
   if (!contact) throw new Error("physics/stop_word: there is nothing to stop");
   removeSource(draft, "contact", contact.id);
   return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: "stopped", segments: 0, sourceKind: "contact", sourceId: contact.id }];
+}
+function remainingOf(reg, run) {
+  const kind = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
+  if (kind === "capacity") return Math.max(0, run.gauge / run.capacity);
+  if (kind === "fill") return Math.max(0, 1 - run.gauge / run.capacity);
+  return 1;
+}
+function releaseCheck(state, reg, run) {
+  const left = remainingOf(reg, run);
+  const holds4 = effectiveHoldsUntil(state, reg, run.holderId);
+  if (left <= 0) return holds4 === "blackout" ? "blackout" : holds4 === "limit" ? "limit_broken" : "collapse";
+  if (holds4 === "signal" && left <= TUNING.physics.releaseAt.signal) return "release";
+  if (holds4 === "limit" && left <= TUNING.physics.releaseAt.limit) return "release";
+  return "continue";
 }
 var gone = (scene, run) => !hasSource(scene, run.sourceKind, run.sourceId);
 registerAfterChange((draft, reg, change) => {
@@ -27959,7 +28023,7 @@ function recordTally(draft, cs) {
 
 // src/engine/combat/outcome.ts
 var RANK = ["minor", "moderate", "major", "extreme"];
-var severityOfShare = (share) => share < 0.15 ? "minor" : share < 0.4 ? "moderate" : "major";
+var severityOfShare = (share2) => share2 < 0.15 ? "minor" : share2 < 0.4 ? "moderate" : "major";
 function mergeHints(into, more) {
   const key = (h2) => `${h2.type}|${h2.actor}|${h2.targets.join(",")}`;
   for (const h2 of more) {
@@ -29825,6 +29889,305 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
   return answerMoment(draft, ctx2, momentId, key, "chip", tone, at !== void 0 ? { at } : {});
 });
 
+// src/engine/physics/boundary.ts
+function practiceKinds(reg, run) {
+  const kinds2 = ["reading"];
+  if (run.physicsId === "breath") kinds2.push("seal");
+  if (run.physicsId === "weight") kinds2.push("weight");
+  if (reg.contactPhysics.get(run.physicsId)?.interaction === "timing") kinds2.push("rhythm");
+  return kinds2;
+}
+function creditHold(draft, reg, run) {
+  const events = [];
+  if (reg.contactPhysics.get(run.physicsId)?.skill === true) events.push(addEnduranceXp(draft, run.physicsId, TUNING.physics.endurance.hold));
+  events.push(...practise2(draft, run.holderId, practiceKinds(reg, run), leadStyle(physicsStyleOf(draft, run.holderId)).key));
+  return events;
+}
+var ENDED_WELL = /* @__PURE__ */ new Set(["released", "checked"]);
+function decideBoundary(draft, ctx2, run, result) {
+  const reg = ctx2.registries;
+  let outcome = null;
+  if (result.checked) outcome = "checked";
+  else if (result.complete) outcome = "released";
+  else {
+    const release = releaseCheck(draft, reg, run);
+    if (release === "release") {
+      if (run.extend > 0) run.extend -= 1;
+      else outcome = "released";
+    } else if (release !== "continue") outcome = release;
+  }
+  if (outcome === null) return [];
+  const events = [];
+  if (outcome === "collapse" || outcome === "limit_broken") events.push({ type: "physics_slip", runId: run.id, kind: "collapse", holderId: run.holderId });
+  if (ENDED_WELL.has(outcome)) events.push(...creditHold(draft, reg, run));
+  events.push(...stopPhysics(draft, reg, outcome));
+  return events;
+}
+
+// src/engine/physics/state.ts
+var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest"];
+
+// src/engine/physics/segment.ts
+var P = TUNING.physics;
+var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function rhythmOffset(state, unitId) {
+  return fnv1a2(`${state.life?.salt ?? 0}|${unitId}|rhythm`) % 3;
+}
+function beatsPerSegment(state, segmentSeconds) {
+  return sceneSettingsOf(state).physicsRealtime ? Math.max(1, Math.ceil(segmentSeconds * 1e3 / P.beatMs)) : P.turnBeats;
+}
+function attentionOf(state, reg, run, style, rng) {
+  if (leadStyle(style).key === "clinical") return "watching";
+  const activity = blockingOf(state.scene, run.holderId).activity;
+  const attention = (activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0) ?? "on_commander";
+  const [w, g] = P.gaze.attention[attention] ?? P.gaze.attention.on_commander;
+  const x = rng.float();
+  return x < w ? "watching" : x < w + g ? "glancing" : "busy";
+}
+function openingWidth(style, rng, measuring) {
+  const { leadKey, other } = styleRows(style);
+  const lead = leadKey === "obsessive" ? rng.int(P.obsessiveMs[0], P.obsessiveMs[1]) : P.style[leadKey].windowMs;
+  const [a, b] = P.blend;
+  const width = other === void 0 ? lead : lead * a + other.windowMs * b;
+  return measuring ? width / 2 : width;
+}
+function planSegment(state, reg, run, rng) {
+  const phys = reg.contactPhysics.get(run.physicsId);
+  const style = physicsStyleOf(state, run.holderId);
+  const n = beatsPerSegment(state, Number(phys.segmentSeconds));
+  const lead = leadStyle(style);
+  const realtime = sceneSettingsOf(state).physicsRealtime;
+  const beats = Array.from({ length: n }, () => ({ attention: attentionOf(state, reg, run, style, rng) }));
+  const interaction = String(phys.interaction);
+  if (interaction === "timing") {
+    let pos = rhythmOffset(state, run.holderId) + rng.int(0, 1);
+    let k = 0;
+    while (pos < n) {
+      const measuring = lead.key === "clinical" && ++k % rng.int(P.clinicalEvery[0], P.clinicalEvery[1]) === 0;
+      const isFalse = rng.chance(blendedStyle(style, "falseShare"));
+      const silent = !realtime && rng.chance(blendedStyle(style, "noCueShare"));
+      beats[pos] = {
+        ...beats[pos],
+        opening: { widthMs: openingWidth(style, rng, measuring), ...isFalse ? { false: true } : {} },
+        ...silent ? {} : { cue: isFalse ? "window_false" : "window_open" }
+      };
+      pos += rng.int(P.breath.windowEvery[0], P.breath.windowEvery[1]);
+    }
+  } else if (interaction === "hold") {
+    let pos = rng.int(P.weight.shiftEvery[0] - 1, P.weight.shiftEvery[1] - 1) + (rhythmOffset(state, run.holderId) > 1 ? 1 : 0);
+    while (pos < n) {
+      beats[pos] = { ...beats[pos], shift: rng.int(P.weight.shift[0], P.weight.shift[1]), cue: "shift" };
+      pos += rng.int(P.weight.shiftEvery[0], P.weight.shiftEvery[1]);
+    }
+  } else if (interaction === "order") {
+    for (let i = 0; i < n; i++) beats[i] = { ...beats[i], part: rng.pick(P.tongue.parts) };
+  }
+  if (lead.cues === "count") {
+    for (let i = 0; i < n; i++) if (beats[i].cue === void 0) beats[i] = { ...beats[i], cue: "count" };
+  }
+  if (lead.cues === "sparse") {
+    for (let i = 0; i < n; i++) if (beats[i].cue !== void 0 && rng.chance(0.5)) delete beats[i].cue;
+  }
+  return { beats };
+}
+function sealNow(run, sealLevel) {
+  const at = SEALS.indexOf(run.seal ?? "tight");
+  return SEALS[clamp36(at + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
+}
+function resolveEnvOf(state, reg, run) {
+  const phys = reg.contactPhysics.get(run.physicsId);
+  return {
+    gaugeKind: phys.gauge.kind,
+    interaction: String(phys.interaction),
+    style: physicsStyleOf(state, run.holderId),
+    sealLevel: herSkillOf(state, run.holderId).seal,
+    band: "noticeable"
+    // Task 26 reads the scent band of the part she presses
+  };
+}
+function share(kind, gauge, capacity) {
+  return kind === "capacity" ? gauge / capacity : kind === "fill" ? 1 - gauge / capacity : 1;
+}
+var validInput = (i) => typeof i === "object" && i !== null && Number.isInteger(i.beat) && i.beat >= 0 && INPUT_KINDS.includes(i.kind);
+function resolveSegment(run, plan, inputs, env) {
+  const lapsed = new Set(run.segment.lapsed ?? []);
+  const live2 = inputs.filter((i) => !lapsed.has(i.beat) && i.beat < plan.beats.length);
+  const at = (beat, kind) => live2.filter((i) => i.beat === beat && i.kind === kind);
+  const rest = env.interaction === "gesture" ? live2.find((i) => i.kind === "ask_rest") : void 0;
+  const run_ = rest ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
+  const cap7 = run.capacity;
+  const cruel = leadStyle(env.style).key === "cruel";
+  const r = {
+    gauge: run.gauge,
+    caught: 0,
+    missed: 0,
+    falseTaken: 0,
+    slips: 0,
+    gasps: 0,
+    reliefs: 0,
+    reliefInputs: [],
+    streak: run.streak,
+    streakBonus: 0,
+    warning: false,
+    checked: false,
+    complete: false,
+    degraded: false,
+    askedRest: false,
+    restGranted: false,
+    beatsRun: run_,
+    cues: [],
+    noise: 0
+  };
+  const before = share(env.gaugeKind, run.gauge, cap7);
+  const relief = (beat, kind) => {
+    r.reliefs += 1;
+    r.reliefInputs.push({ beat, kind });
+  };
+  const seal = sealNow(run, env.sealLevel);
+  const evenBefore = (b) => ![b - 1, b].some((x) => x >= 0 && at(x, "hold").length === 0);
+  for (let b = 0; b < run_; b++) {
+    const beat = plan.beats[b];
+    if (beat.cue !== void 0) r.cues.push(beat.cue);
+    switch (env.interaction) {
+      case "timing": {
+        const breathed = at(b, "breathe").length > 0;
+        const opening = beat.opening;
+        if (env.gaugeKind === "capacity") {
+          r.gauge += -P.breath.drain + P.breath.seal[seal];
+          if (opening && !opening.false) {
+            if (breathed) {
+              r.gauge += P.breath.caught;
+              r.caught += 1;
+              r.streak += 1;
+              if (r.streak > P.endurance.streakFrom) r.streakBonus += 1;
+            } else {
+              r.gauge += cruel ? P.breath.cruelMissed : P.breath.missed;
+              r.missed += 1;
+              r.streak = 0;
+              if (r.gauge / cap7 <= P.warning / 100) r.gasps += 1;
+            }
+          } else if (opening?.false && breathed) {
+            r.falseTaken += 1;
+            r.streak = 0;
+          }
+          for (const g of at(b, "gap_breath")) {
+            if (seal !== "leaky") continue;
+            r.gauge += P.breath.gapRelief;
+            relief(g.beat, "gap_breath");
+          }
+        } else if (opening && !opening.false) {
+          if (breathed) {
+            r.gauge -= P.gulpFill.caught;
+            r.caught += 1;
+          } else {
+            r.gauge += P.gulpFill.spill;
+            r.missed += 1;
+            r.slips += 1;
+          }
+        }
+        break;
+      }
+      case "hold": {
+        const drain = P.weight.drain * (run.pressure ?? 1);
+        r.gauge -= drain;
+        if (at(b, "hold").length === 0) {
+          r.slips += 1;
+          r.gauge -= drain;
+        }
+        if (beat.shift !== void 0 && !evenBefore(b)) r.gauge -= beat.shift;
+        for (const g of at(b, "shift_weight")) {
+          r.gauge += P.weight.relief;
+          relief(g.beat, "shift_weight");
+        }
+        break;
+      }
+      case "decision": {
+        r.gauge += P.saturation.per * P.saturation.bandFactor[env.band];
+        for (const g of at(b, "mouth_breath")) {
+          r.gauge -= P.saturation.mouth;
+          relief(g.beat, "mouth_breath");
+        }
+        break;
+      }
+      case "order": {
+        for (const g of at(b, "part")) r.gauge -= g.part !== void 0 && g.part === beat.part ? P.tongue.right : P.tongue.wrong;
+        break;
+      }
+      case "passive":
+        r.gauge += P.progressPerBeat;
+        break;
+      case "gesture":
+        r.gauge += P.jaw.per;
+        if (r.gauge >= P.jaw.degradeAt) r.degraded = true;
+        break;
+    }
+    r.gauge = clamp36(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap7);
+  }
+  if (rest) {
+    r.askedRest = true;
+    r.restGranted = !["cruel", "vindictive"].includes(leadStyle(env.style).key);
+    if (r.restGranted) r.gauge = Math.max(0, r.gauge - P.jawRest);
+  }
+  r.checked = env.interaction === "order" && r.gauge <= P.tongue.checkAt;
+  r.complete = env.interaction === "passive" && r.gauge >= 100;
+  const after = share(env.gaugeKind, r.gauge, cap7);
+  r.warning = before > P.warning / 100 && after <= P.warning / 100;
+  r.noise = r.slips + r.gasps > 0 ? P.noiseSlip : 0;
+  return r;
+}
+function nextSegment(draft, ctx2, runId) {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId) throw new Error("Stale physics run.");
+  if (run.segment.state !== "held") throw new Error("A segment is running already.");
+  run.segment = { n: run.segment.n + 1, state: "running", plan: planSegment(draft, ctx2.registries, run, ctx2.rng) };
+  return [{ type: "physics_segment", runId: run.id, n: run.segment.n, phase: "start", beats: run.segment.plan.beats.length }];
+}
+function physicsInput(draft, ctx2, runId, segment, inputs) {
+  const reg = ctx2.registries;
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId) throw new Error("Stale physics run.");
+  if (run.segment.n !== segment) throw new Error("Stale physics segment.");
+  if (run.segment.state !== "running" || !run.segment.plan) throw new Error("No segment is running.");
+  if (!Array.isArray(inputs) || !inputs.every(validInput)) throw new Error("physics/segment_end: inputs are { beat, kind } with a known kind");
+  const result = resolveSegment(run, run.segment.plan, inputs, resolveEnvOf(draft, reg, run));
+  const lapsed = run.segment.lapsed?.length ?? 0;
+  const physicsId = run.physicsId;
+  run.gauge = result.gauge;
+  run.streak = result.streak;
+  run.last = {
+    caught: result.caught,
+    missed: result.missed,
+    falseTaken: result.falseTaken,
+    slips: result.slips,
+    gasps: result.gasps,
+    reliefs: result.reliefs,
+    noise: result.noise,
+    cues: result.cues,
+    ...result.warning ? { warning: true } : {}
+  };
+  run.segment = { n: run.segment.n, state: "held" };
+  const events = [{ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning }];
+  if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, TUNING.physics.endurance.streak * result.streakBonus));
+  if (result.slips > 0) {
+    events.push({ type: "physics_slip", runId, kind: "slip", count: result.slips, holderId: run.holderId });
+    const chained = chainRun(draft, reg, run);
+    if (chained.length > 0) events.push(...chained);
+    else run.extend += TUNING.physics.slipExtend;
+  }
+  events.push(...decideBoundary(draft, ctx2, run, result));
+  return events;
+}
+function typedBeats(draft, chars, from) {
+  const run = draft.scene?.physics;
+  if (!run || run.segment.state !== "running" || !run.segment.plan) return [];
+  const n = Math.max(0, Math.ceil(chars / TUNING.physics.typing.charsPerBeat));
+  const total2 = run.segment.plan.beats.length;
+  const set2 = new Set(run.segment.lapsed ?? []);
+  for (let b = Math.max(0, from); b < Math.min(total2, Math.max(0, from) + n); b++) set2.add(b);
+  run.segment.lapsed = [...set2].sort((a, b) => a - b);
+  return [{ type: "physics_segment", runId: run.id, n: run.segment.n, phase: "typed", lapsed: run.segment.lapsed.length }];
+}
+
 // src/engine/actions/physics.ts
 var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var str5 = (v) => typeof v === "string" && v !== "" ? v : void 0;
@@ -29856,6 +30219,21 @@ registerAction("physics/signal", (draft, _payload, ctx2) => {
 registerAction("physics/stop_word", (draft, _payload, ctx2) => {
   if (!draft.scene) throw new Error("physics/stop_word: no scene is open");
   return stopWord(draft, ctx2);
+});
+registerAction("physics/next_segment", (draft, payload, ctx2) => {
+  live(draft, ctx2.registries, "physics/next_segment");
+  if (!isObj35(payload) || str5(payload.runId) === void 0) throw new Error("physics/next_segment needs { runId }");
+  return nextSegment(draft, ctx2, payload.runId);
+});
+registerAction("physics/segment_end", (draft, payload, ctx2) => {
+  live(draft, ctx2.registries, "physics/segment_end");
+  if (!isObj35(payload) || str5(payload.runId) === void 0 || typeof payload.segment !== "number") throw new Error("physics/segment_end needs { runId, segment, inputs }");
+  return physicsInput(draft, ctx2, payload.runId, payload.segment, payload.inputs ?? []);
+});
+registerAction("physics/typed", (draft, payload, ctx2) => {
+  live(draft, ctx2.registries, "physics/typed");
+  if (!isObj35(payload) || typeof payload.chars !== "number" || !Number.isFinite(payload.chars) || payload.chars < 0) throw new Error("physics/typed needs { chars }");
+  return typedBeats(draft, payload.chars, typeof payload.beat === "number" ? Math.trunc(payload.beat) : 0);
 });
 
 // src/engine/actions/life.ts
@@ -35838,14 +36216,14 @@ var ContextBuilder = class {
     const rendered = new Map(others.map((p) => [p, p.render(state)]));
     const core = others.filter((p) => p.core === true).map((p) => rendered.get(p)).filter((t) => !!t);
     const reserve = estTokens([BLOCK_TITLE, ...core].join("\n"));
-    const share = memory.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
+    const share2 = memory.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
     const memLines = [];
     for (const p of memory) {
-      const left = share - estTokens(memLines.join("\n"));
+      const left = share2 - estTokens(memLines.join("\n"));
       if (left <= 0) break;
       const text2 = p.render(state, left);
       if (!text2) continue;
-      const fit2 = fitTo(text2, (t) => estTokens([...memLines, t].join("\n")) <= share, left);
+      const fit2 = fitTo(text2, (t) => estTokens([...memLines, t].join("\n")) <= share2, left);
       if (fit2) memLines.push(fit2);
     }
     const lines = [];
@@ -39008,15 +39386,15 @@ function truncateCard(card2, maxTokens) {
   const out = { ...card2 };
   let remaining = maxTokens;
   fields.forEach((f, i) => {
-    const share = remaining / (fields.length - i);
+    const share2 = remaining / (fields.length - i);
     const cost = estTokens(card2[f]);
-    if (cost <= share) {
+    if (cost <= share2) {
       remaining -= cost;
       return;
     }
-    const maxChars = Math.floor(share * CHARS_PER_TOKEN);
+    const maxChars = Math.floor(share2 * CHARS_PER_TOKEN);
     out[f] = card2[f].slice(0, Math.max(0, maxChars - CUT_MARK.length)) + CUT_MARK;
-    remaining -= share;
+    remaining -= share2;
   });
   return out;
 }
@@ -41880,7 +42258,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
-var clamp36 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp37 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a2(seed) % n;
@@ -41904,7 +42282,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp36(v));
+    out.push(clamp37(v));
   }
   return out;
 }
@@ -47830,8 +48208,8 @@ function bodyProvider(stat3) {
     else {
       const need = TUNING.commander.bodyXpSteps[value - 1];
       const have = p.bodyXp[stat3];
-      const share = have / need;
-      lines.push(k.showRaw ? `Training: ${k.raw(have)}/${k.raw(need)} towards ${descriptor(stat3, value + 1)}` : `Training: ${share < 1 / 3 ? "early" : share < 2 / 3 ? "halfway" : "close"} on the way to ${descriptor(stat3, value + 1)}`);
+      const share2 = have / need;
+      lines.push(k.showRaw ? `Training: ${k.raw(have)}/${k.raw(need)} towards ${descriptor(stat3, value + 1)}` : `Training: ${share2 < 1 / 3 ? "early" : share2 < 2 / 3 ? "halfway" : "close"} on the way to ${descriptor(stat3, value + 1)}`);
     }
     lines.push(WHERE_USED[stat3]);
     if (stat3 === "endurance" && k.showRaw) lines.push(`Crisis HP: ${k.raw(commanderMaxHp(state, env.registries))}`);

@@ -434,6 +434,8 @@ export interface HistoryEntry {
 }
 
 export interface Relation {
+  /** P15a: what she has learned of the commander in a hold (levels 0–5 and the practice behind them). Lives here, not in P15's `dynamic` (plan ruling). */
+  herSkill?: { seal: number; weight: number; reading: number; swing: number; rhythm: number; practice: Record<string, number> };
   trust: number;
   affinity: number;
   attraction: number;
