@@ -55,6 +55,15 @@ export interface StartOptions {
   sourceId: string;
   holderId: string;
   duration?: { hours: number } | 'unknown';
+  /** A second physics on the same beats (her escalation adds one); absent: the source's own second entry, when it has one and may run. */
+  second?: string;
+}
+
+/** Whether this physics may run for this holder: its interaction is on and its category and her limits allow it. */
+function whyNotAllowed(state: CampaignState, reg: Registries, phys: Entry, holderId: string): string | null {
+  if (!sceneSettingsOf(state).physicsInteractions[phys.interaction as keyof ReturnType<typeof sceneSettingsOf>['physicsInteractions']]) return 'That kind of interaction is switched off.';
+  if (!contentAllowed(state, reg, phys) || !contentAllowed(state, reg, phys, holderId)) return 'That is not available here.';
+  return null;
 }
 
 /** Why a run cannot start now, or `null`. */
@@ -68,8 +77,14 @@ export function whyNotStart(state: CampaignState, reg: Registries, o: StartOptio
   if (!scene.participants.includes(o.holderId)) return `${o.holderId} is not in the scene.`;
   if (!hasSource(scene, o.sourceKind, o.sourceId)) return `Nothing in the scene is "${o.sourceId}".`;
   if (!physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
-  if (!sceneSettingsOf(state).physicsInteractions[phys.interaction as keyof ReturnType<typeof sceneSettingsOf>['physicsInteractions']]) return 'That kind of interaction is switched off.';
-  if (!contentAllowed(state, reg, phys) || !contentAllowed(state, reg, phys, o.holderId)) return 'That is not available here.';
+  const gate = whyNotAllowed(state, reg, phys, o.holderId);
+  if (gate !== null) return gate;
+  if (o.second !== undefined) {
+    if (o.second === o.physicsId || !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
+    const second = reg.contactPhysics.get(o.second);
+    const why = second ? whyNotAllowed(state, reg, second, o.holderId) : 'Unknown physics.';
+    if (why !== null) return why;
+  }
   return null;
 }
 
@@ -94,8 +109,19 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
     segment: { n: 0, state: 'held' }, startedExchange: scene.exchanges, taps: 0, streak: 0, extend: 0,
     ...(o.duration !== undefined ? { duration: o.duration } : {}),
   };
+  // a second physics: the one asked for, or the source's own second entry when it may run (it is left out quietly when it may not)
+  const list = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
+  const secondRef = o.second !== undefined ? list.find((p) => p.id === o.second) : list.find((p) => p.id !== o.physicsId);
+  const secondPhys = secondRef ? reg.contactPhysics.get(secondRef.id) : undefined;
+  if (secondRef && secondPhys && whyNotAllowed(draft, reg, secondPhys, o.holderId) === null) {
+    const sr = secondRef.seal ? [...secondRef.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
+    run.second = {
+      physicsId: secondRef.id, ...gaugeFor(draft, secondPhys), streak: 0, ...(sr ? { sealRange: sr, seal: sr[lead === 'loosest' ? 0 : lead === 'tightest' ? sr.length - 1 : Math.floor(sr.length / 2)]! } : {}),
+      ...(secondRef.pressure !== undefined ? { pressure: secondRef.pressure } : {}),
+    };
+  }
   scene.physics = run;
-  return [{ type: 'physics_started', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(o.duration !== undefined ? { duration: o.duration } : {}) }];
+  return [{ type: 'physics_started', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(o.duration !== undefined ? { duration: o.duration } : {}) }];
 }
 
 /**
@@ -122,7 +148,7 @@ export function stopPhysics(draft: CampaignState, _reg: Registries, result: Outc
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   removeSource(draft, run.sourceKind, run.sourceId);
-  return [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId }];
+  return [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}) }];
 }
 
 /** The tap (the signal inside the fiction): what it does is what she holds the commander until. */
@@ -161,19 +187,44 @@ export function remainingOf(reg: Registries, run: PhysicsRun): number {
 }
 
 export type Release = 'continue' | 'release' | 'limit_broken' | 'collapse' | 'blackout';
+const WORST: Release[] = ['continue', 'release', 'collapse', 'limit_broken', 'blackout'];
 
-/**
- * Whether the run ends at a boundary by what she holds the commander until: a spent gauge is a blackout for a blackout holder, a broken limit
- * for a limit holder and a collapse for a signal holder; short of that she lets go at 15 % (signal) or 5 % (limit). A blackout holder
- * goes on to zero.
- */
-export function releaseCheck(state: CampaignState, reg: Registries, run: PhysicsRun): Release {
+/** Air is the gauge of a breathing physics (timing, a capacity): only it can go to blackout. */
+export const isAir = (reg: Registries, physicsId: string): boolean => {
+  const p = reg.contactPhysics.get(physicsId);
+  return p?.interaction === 'timing' && (p.gauge as { kind: string }).kind === 'capacity';
+};
+
+/** One physics of the run as a run of its own (the main one, or the second with its own gauge). */
+export const coreRun = (run: PhysicsRun, which: 'main' | 'second'): PhysicsRun | null =>
+  which === 'main' ? run : run.second ? withoutLeak({ ...run, physicsId: run.second.physicsId, gauge: run.second.gauge, capacity: run.second.capacity, streak: run.second.streak, ...(run.second.seal ? { seal: run.second.seal } : {}), ...(run.second.pressure !== undefined ? { pressure: run.second.pressure } : {}) }, run.second) : null;
+
+/** The second physics has its own seal and pressure: the first one's must not leak into its view. */
+function withoutLeak(view: PhysicsRun, second: NonNullable<PhysicsRun['second']>): PhysicsRun {
+  if (second.seal === undefined) delete view.seal;
+  if (second.pressure === undefined) delete view.pressure;
+  delete view.second;
+  return view;
+}
+
+function releaseOf(state: CampaignState, reg: Registries, run: PhysicsRun): Release {
   const left = remainingOf(reg, run);
   const holds: HoldsUntil = effectiveHoldsUntil(state, reg, run.holderId);
-  if (left <= 0) return holds === 'blackout' ? 'blackout' : holds === 'limit' ? 'limit_broken' : 'collapse';
+  if (left <= 0) return holds === 'blackout' && isAir(reg, run.physicsId) ? 'blackout' : holds === 'signal' ? 'collapse' : 'limit_broken';
   if (holds === 'signal' && left <= TUNING.physics.releaseAt.signal) return 'release';
   if (holds === 'limit' && left <= TUNING.physics.releaseAt.limit) return 'release';
   return 'continue';
+}
+
+/**
+ * Whether the run ends at a boundary by what she holds the commander until: a spent gauge is a blackout for a blackout holder (the air only),
+ * a broken limit for a limit holder (and for a blackout holder whose weight gave out) and a collapse for a signal holder; short of that she
+ * lets go at 15 % (signal) or 5 % (limit). With two physics the worst of them decides.
+ */
+export function releaseCheck(state: CampaignState, reg: Registries, run: PhysicsRun): Release {
+  const second = coreRun(run, 'second');
+  const all = [releaseOf(state, reg, run), ...(second ? [releaseOf(state, reg, second)] : [])];
+  return all.reduce((w, r) => (WORST.indexOf(r) > WORST.indexOf(w) ? r : w), 'continue' as Release);
 }
 
 // ---------------------------------------------------------------------------------------------

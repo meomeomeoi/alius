@@ -104,7 +104,9 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
     }
   };
 
-  const controls: Control[] = running ? [...controlsOf(interaction, run), { kind: 'wait', text: '[ WAIT ]' }] : [];
+  const secondPhys = run.second ? reg.contactPhysics.get(run.second.physicsId) : undefined;
+  const owned = running ? [...controlsOf(interaction, run), ...(run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...(run.second.seal ? { seal: run.second.seal } : {}) }) : [])] : [];
+  const controls: Control[] = running ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: 'wait', text: '[ WAIT ]' }] : [];
   const button = (c: Control): HTMLElement => h('button', {
     type: 'button', class: 'alius-btn alius-option alius-physics-input', 'data-input': c.kind, ...(c.part !== undefined ? { 'data-part': c.part } : {}), ...stamp(c.kind),
     ...(realtime ? { onpointerdown: () => press(c), onpointerup: () => letGo(), onpointerleave: () => letGo() } : { onclick: () => press(c) }),
@@ -122,7 +124,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
   const root = h('div', {
     class: `alius-physics${tremor ? ' alius-physics-tremor' : ''}${tint ? ' alius-physics-tint' : ''}`, role: 'group', 'aria-label': 'A hold', 'data-run': run.id,
   },
-    h('div', { class: 'alius-physics-title' }, `[ ${String(phys?.label ?? run.physicsId).toUpperCase()} ]`),
+    h('div', { class: 'alius-physics-title' }, `[ ${[phys?.label ?? run.physicsId, ...(secondPhys ? [secondPhys.label] : [])].map((x) => String(x).toUpperCase()).join(' + ')} ]`),
     run.segment.state === 'held' ? h('p', { class: 'alius-physics-held alius-dim', role: 'status' }, 'She takes her time.') : null,
     cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null,
     running && !realtime ? h('div', { class: 'alius-physics-beats', 'aria-hidden': 'true' }, ...Array.from({ length: total }, (_, i) => h('span', { class: i < pointer.beat ? 'alius-pip alius-pip-done' : 'alius-pip' }, i < pointer.beat ? '●' : '○'))) : null,

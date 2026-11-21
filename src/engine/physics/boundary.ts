@@ -12,7 +12,7 @@ import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { setCondition } from './conditions';
-import { releaseCheck, stopPhysics } from './run';
+import { coreRun, releaseCheck, stopPhysics } from './run';
 import { addEnduranceXp, practise, type HerSkill } from './skill';
 import { leadStyle, physicsStyleOf } from './style';
 import type { Outcome, PhysicsRun, SegmentResult } from './state';
@@ -31,8 +31,15 @@ function practiceKinds(reg: Registries, run: PhysicsRun): HerSkill[] {
 /** A hold that was endured: the commander's xp and her practice, once, when it ends well. */
 export function creditHold(draft: CampaignState, reg: Registries, run: PhysicsRun): EngineEvent[] {
   const events: EngineEvent[] = [];
-  if (reg.contactPhysics.get(run.physicsId)?.skill === true) events.push(addEnduranceXp(draft, run.physicsId, P.endurance.hold));
-  events.push(...practise(draft, run.holderId, practiceKinds(reg, run), leadStyle(physicsStyleOf(draft, run.holderId)).key));
+  const style = leadStyle(physicsStyleOf(draft, run.holderId)).key;
+  const kinds = new Set<HerSkill>();
+  for (const which of ['main', 'second'] as const) {
+    const core = coreRun(run, which);
+    if (!core) continue;
+    if (reg.contactPhysics.get(core.physicsId)?.skill === true) events.push(addEnduranceXp(draft, core.physicsId, P.endurance.hold));
+    for (const k of practiceKinds(reg, core)) kinds.add(k);
+  }
+  events.push(...practise(draft, run.holderId, [...kinds], style)); // one hold is one practice of each kind, however many physics it had
   return events;
 }
 

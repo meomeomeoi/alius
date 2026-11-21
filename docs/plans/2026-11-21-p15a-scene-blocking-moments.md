@@ -1343,16 +1343,16 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `PhysicsRun.second?: PhysicsCore`; `mergeInputs(main, second, inputs): { main: SegmentInput[]; second: SegmentInput[]; notices: number }`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `breath + weight`: a held breath steadies the weight (drain −25 %).
   - `breath + saturation`: mouth breath in a window is caught and noticed.
   - `her_activity + breath`: progress and air both move.
   - `a slip in either is a slip of the run`.
   - `the stop word ends both`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/combined.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): two physics at once`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/combined.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): two physics at once`
 
 ---
 

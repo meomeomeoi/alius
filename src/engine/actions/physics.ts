@@ -17,14 +17,15 @@ function live(draft: Parameters<typeof blockingLive>[0], reg: Parameters<typeof 
 registerAction('physics/start', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/start');
   if (!isObj(payload)) throw new Error('physics/start needs a payload');
-  const { physicsId, sourceId, holderId, sourceKind, duration } = payload;
+  const { physicsId, sourceId, holderId, sourceKind, duration, second } = payload;
+  if (second !== undefined && str(second) === undefined) throw new Error('physics/start: second is a physics id');
   if (str(physicsId) === undefined || str(sourceId) === undefined || str(holderId) === undefined || (sourceKind !== 'contact' && sourceKind !== 'item')) {
     throw new Error('physics/start needs { physicsId, sourceKind: contact | item, sourceId, holderId }');
   }
   const hours = isObj(duration) && typeof duration.hours === 'number' && Number.isFinite(duration.hours) && duration.hours > 0 ? { hours: duration.hours } : undefined;
   if (duration !== undefined && duration !== 'unknown' && hours === undefined) throw new Error('physics/start: duration is { hours } or "unknown"');
   return startPhysics(draft, ctx, {
-    physicsId: physicsId as string, sourceKind, sourceId: sourceId as string, holderId: holderId as string, ...(duration === 'unknown' ? { duration: 'unknown' as const } : hours ? { duration: hours } : {}),
+    physicsId: physicsId as string, sourceKind, sourceId: sourceId as string, holderId: holderId as string, ...(second !== undefined ? { second: second as string } : {}), ...(duration === 'unknown' ? { duration: 'unknown' as const } : hours ? { duration: hours } : {}),
   });
 });
 

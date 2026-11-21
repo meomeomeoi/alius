@@ -67,7 +67,8 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   const style = leadStyle(physicsStyleOf(state, run.holderId)).key;
   const source = run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
-  const parts = [`${name} has the commander in a hold (${what}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
+  const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : '';
+  const parts = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
   const last = run.last;
   if (last) {
     const said: string[] = [];

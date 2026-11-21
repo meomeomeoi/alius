@@ -15,8 +15,9 @@ import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
 import { momentPass } from '../moments/fire';
 import { decideBoundary } from './boundary';
-import { chainRun } from './run';
-import { attentionCue, attentionPlan, cheatRoll, segmentNoise } from './gaze';
+import { mergeInputs, STEADY_DRAIN } from './combined';
+import { chainRun, coreRun } from './run';
+import { attentionCue, attentionPlan, cheatRoll, segmentNoise, type NoiseKind } from './gaze';
 import { addEnduranceXp, herSkillOf } from './skill';
 import {
   INPUT_KINDS, type Attention, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
@@ -36,6 +37,8 @@ export interface ResolveEnv {
   /** Her `seal` level: one step tighter per 2 levels. */
   sealLevel: number;
   band: ScentBand;
+  /** Beats on which the breath was held while a hold runs with it: the strength drains 25 % less there (`combined.ts`). */
+  steady?: ReadonlySet<number>;
 }
 
 const P = TUNING.physics;
@@ -68,14 +71,14 @@ function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean): number
 export function planSegment(state: CampaignState, reg: Registries, run: PhysicsRun, rng: Rng): SegmentPlan {
   const phys = reg.contactPhysics.get(run.physicsId)!;
   const style = physicsStyleOf(state, run.holderId);
-  const n = beatsPerSegment(state, Number(phys.segmentSeconds));
+  const n = beatsPerSegment(state, Number(phys.segmentSeconds)); // a second physics runs on the same beats: the first one's length
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
   const activity = blockingOf(state.scene, run.holderId).activity;
   const attention = attentionPlan(n, activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined, style, rng);
   const beats: PlannedBeat[] = attention.map((a) => ({ attention: a }));
-  const interaction = String(phys.interaction);
-  if (interaction === 'timing') {
+  const interactions = [String(phys.interaction), ...(run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : [])];
+  if (interactions.includes('timing')) {
     let pos = ((rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3) + rng.int(0, 1);
     let k = 0;
     while (pos < n) {
@@ -88,13 +91,15 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
       };
       pos += rng.int(P.breath.windowEvery[0], P.breath.windowEvery[1]);
     }
-  } else if (interaction === 'hold') {
+  }
+  if (interactions.includes('hold')) {
     let pos = rng.int(P.weight.shiftEvery[0] - 1, P.weight.shiftEvery[1] - 1) + (rhythmOffset(state, run.holderId) > 1 ? 1 : 0);
     while (pos < n) {
       beats[pos] = { ...beats[pos]!, shift: rng.int(P.weight.shift[0], P.weight.shift[1]), cue: 'shift' };
       pos += rng.int(P.weight.shiftEvery[0], P.weight.shiftEvery[1]);
     }
-  } else if (interaction === 'order') {
+  }
+  if (interactions.includes('order')) {
     for (let i = 0; i < n; i++) beats[i] = { ...beats[i]!, part: rng.pick(P.tongue.parts) };
   }
   // the signs of her attention: a cue where it changed (she starts watching, she looks away); the player reads her gaze from these alone
@@ -199,7 +204,7 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         break;
       }
       case 'hold': {
-        const drain = P.weight.drain * (run.pressure ?? 1);
+        const drain = P.weight.drain * (run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
         r.gauge -= drain;
         if (at(b, 'hold').length === 0) {
           r.slips += 1;
@@ -267,7 +272,33 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   if (run.segment.n !== segment) throw new Error('Stale physics segment.');
   if (run.segment.state !== 'running' || !run.segment.plan) throw new Error('No segment is running.');
   if (!Array.isArray(inputs) || !inputs.every(validInput)) throw new Error('physics/segment_end: inputs are { beat, kind } with a known kind');
-  const result = resolveSegment(run, run.segment.plan, inputs, resolveEnvOf(draft, reg, run));
+  const plan = run.segment.plan;
+  const envMain = resolveEnvOf(draft, reg, run);
+  const second = coreRun(run, 'second');
+  let result: SegmentResult;
+  let notices = 0;
+  let secondBonus = 0;
+  let sounds: Array<{ kind: NoiseKind; loudness: number }> = [];
+  let secondPart: { gasps: number; slips: number; reliefs: number; interaction: string } | null = null;
+  if (!second) result = resolveSegment(run, plan, inputs, envMain);
+  else {
+    // two physics on the same beats: each input goes to its owner and the pair's conflicts apply (`combined.ts`)
+    const envSecond = resolveEnvOf(draft, reg, second);
+    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs);
+    const steady = new Set(merged.steady);
+    const m = resolveSegment(run, plan, merged.main, envMain.interaction === 'hold' ? { ...envMain, steady } : envMain);
+    const x = resolveSegment(second, plan, merged.second, envSecond.interaction === 'hold' ? { ...envSecond, steady } : envSecond);
+    notices = merged.notices;
+    secondBonus = x.streakBonus;
+    secondPart = { gasps: x.gasps, slips: x.slips, reliefs: x.reliefs, interaction: envSecond.interaction };
+    run.second!.gauge = x.gauge;
+    run.second!.streak = x.streak;
+    result = {
+      ...m, caught: m.caught + x.caught, missed: m.missed + x.missed, falseTaken: m.falseTaken + x.falseTaken, slips: m.slips + x.slips, gasps: m.gasps + x.gasps,
+      reliefs: m.reliefs + x.reliefs, reliefInputs: [...m.reliefInputs, ...x.reliefInputs], warning: m.warning || x.warning, checked: m.checked || x.checked,
+      complete: m.complete || x.complete, degraded: m.degraded || x.degraded, askedRest: m.askedRest || x.askedRest,
+    };
+  }
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
   const events: EngineEvent[] = [];
@@ -281,7 +312,24 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
       events.push({ type: 'physics_caught', runId, holderId: run.holderId, kind: rel.kind, beat: rel.beat });
     }
   }
-  const sounds = segmentNoise(result, resolveEnvOf(draft, reg, run).interaction, stillnessOf(draft));
+  // a mouth breath in an opening is noticed by rule (0.6), whatever her attention
+  for (let i = 0; i < notices; i++) {
+    events.push({ type: 'physics_cheat', runId, holderId: run.holderId, kind: 'mouth_breath', beat: -1 });
+    if (ctx.rng.chance(TUNING.physics.saturation.noticed)) {
+      result.slips += 2;
+      events.push({ type: 'physics_caught', runId, holderId: run.holderId, kind: 'mouth_breath', beat: -1 });
+    }
+  }
+  // every slip is a sound, by the physics it came from (the extra slips of a catch are the first one's)
+  const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) };
+  sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft));
+  if (secondPart) {
+    for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft))) {
+      const have = sounds.find((y) => y.kind === x.kind);
+      if (have) have.loudness += x.loudness;
+      else sounds.push(x);
+    }
+  }
   result.noise = sounds.reduce((n, x) => n + x.loudness, 0);
   for (const x of sounds) events.push({ type: 'physics_noise', runId, holderId: run.holderId, kind: x.kind, loudness: x.loudness });
   run.gauge = result.gauge;
@@ -293,6 +341,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   run.segment = { n: run.segment.n, state: 'held' };
   events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, TUNING.physics.endurance.streak * result.streakBonus));
+  if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   if (result.slips > 0) {
     events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId });
     const chained = chainRun(draft, reg, run);

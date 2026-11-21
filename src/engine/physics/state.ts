@@ -80,6 +80,17 @@ export interface SegmentResult {
   noise: number;
 }
 
+/** The state of the second physics of a hold (plan R13): its own gauge, seal and streak, on the same beats as the first. */
+export interface PhysicsCore {
+  physicsId: string;
+  gauge: number;
+  capacity: number;
+  sealRange?: Seal[];
+  seal?: Seal;
+  pressure?: number;
+  streak: number;
+}
+
 export interface PhysicsRun {
   /** `p<n>`: a late `segment_end` for another run is refused. */
   id: string;
@@ -105,6 +116,8 @@ export interface PhysicsRun {
   /** Segments added by a slip (a weight slip makes the hold last longer). */
   extend: number;
   last?: SegmentSummary;
+  /** A second physics on the same beats (a contact that names two, or her escalation): the inputs merge by rule (`combined.ts`). */
+  second?: PhysicsCore;
   /** A marathon: how long it lasts in the fiction (`unknown`: nobody says). Absent = an ordinary hold. */
   duration?: { hours: number } | 'unknown';
 }
