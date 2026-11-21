@@ -1404,7 +1404,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `applyWay(draft, ctx, way, kind, depth?): EngineEvent[]`;
   - `perceptionWord(state, reg, kind): string`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the scent band`: feet after a run is `strong`; armpits at rest are `noticeable`.
   - `tolerance rises by session and slips back by days apart, floored at half the best`.
   - `the reflex above tolerance × 1.2`; `the inhale zone widens with tolerance`; `overshoot → reflex and noise`.
@@ -1414,10 +1414,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `craving / adoring while she is present → the rules; absent → none`.
   - `something is missing`: a kind at `craving` or above with no exposure for `TUNING.stimuli.missingDays` (3, `AUTHOR TO TUNE`) adds commander stress `TUNING.stimuli.missingStress` (3) once a day (`addCommanderStress`), and the perception word is `missing` until the next exposure (spec §16.8 consequences).
   - `the directive carries perception, never feeling`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/stimuli.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): tolerance, reflex, the ways of breathing her in and the trajectory`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/stimuli.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): tolerance, reflex, the ways of breathing her in and the trajectory`
 
 ---
 

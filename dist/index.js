@@ -208,6 +208,39 @@ var TUNING = Object.freeze({
     obsessiveMs: Object.freeze([200, 700]),
     clinicalEvery: Object.freeze([3, 4])
   }),
+  /**
+   * P15a: the scent of a soldier's body (plan R13; AUTHOR TO TUNE): the level is a base per body part × her hygiene × the situation, and the band
+   * is read from it. `afterRun` counts on the day she came back (×2) and the day after (×1.5), `afterTraining` this slot.
+   */
+  scent: Object.freeze({
+    base: Object.freeze({ feet: 2, soles: 2, toes: 2, armpits: 1.5, rest: 0.75 }),
+    hygiene: Object.freeze({ fastidious: 0.6, normal: 1, careless: 1.4 }),
+    afterRun: Object.freeze({ day: 2, nextDay: 1.5 }),
+    afterTraining: 1.5,
+    bands: Object.freeze({ noticeable: 1, strong: 2, overwhelming: 3.5 })
+  }),
+  /**
+   * P15a: the commander's body layer (plan R13, spec §16.8; AUTHOR TO TUNE). Tolerance starts at `startTolerance` and gains `tolerancePerSession` a
+   * scene of exposure, loses 1 per `decayDays` apart (never below half the best). The reflex comes at tolerance × `reflexMult` in stimulus units
+   * (scent level × 25). The trajectory is a moving average (`seekAlpha`) with stage boundaries and `hysteresis` updates. A kind at craving or above that
+   * is missed for `missingDays` costs `missingStress` commander stress a day.
+   */
+  stimuli: Object.freeze({
+    startTolerance: 20,
+    tolerancePerSession: 2,
+    decayDays: 7,
+    reflexMult: 1.2,
+    unitsPerLevel: 25,
+    faintFadeAt: 40,
+    seekAlpha: 0.15,
+    stages: Object.freeze([0.2, 0.4, 0.6, 0.8]),
+    hysteresis: 3,
+    separatedDays: 7,
+    missingDays: 3,
+    missingStress: 3,
+    inhale: Object.freeze({ fillMs: 1500, zoneBase: 10, zoneTolerance: 5, depths: Object.freeze({ shallow: 1, deep: 2, very_deep: 3 }) }),
+    noticed: 0.6
+  }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */
@@ -7276,6 +7309,7 @@ var RESERVED_EVENT_TYPES = [
   "marathon_done",
   "reflex",
   "stimulus_stage_changed",
+  "stimulus_way",
   "condition_set",
   "condition_ended",
   // P10c
@@ -9902,17 +9936,17 @@ function defaultFormation(state, reg, unitIds) {
   const front = [];
   const back = [];
   const max = TUNING.combat.maxPerRow;
-  const rowOf = (id) => {
+  const rowOf2 = (id) => {
     const u = state.squad.find((x) => x.id === id);
     return (u && reg.roles.get(u.roleId)?.row) ?? "either";
   };
   for (const id of unitIds) {
-    const row3 = rowOf(id);
+    const row3 = rowOf2(id);
     if (row3 === "front") (front.length < max ? front : back).push(id);
     else if (row3 === "back") (back.length < max ? back : front).push(id);
   }
   for (const id of unitIds) {
-    if (rowOf(id) !== "either") continue;
+    if (rowOf2(id) !== "either") continue;
     (front.length < back.length && front.length < max ? front : back.length < max ? back : front).push(id);
   }
   const order = (xs) => [...xs].sort((a, b) => unitIds.indexOf(a) - unitIds.indexOf(b));
@@ -10471,7 +10505,7 @@ function sheLeads(state, unitId) {
   return unit2 !== void 0 && leadRank(bondOf(unit2)?.leadStyle ?? "balanced") >= leadRank("assertive");
 }
 function publicReactions(draft, herId) {
-  const T4 = TUNING.bonds.publicity.reactions;
+  const T5 = TUNING.bonds.publicity.reactions;
   const events = [];
   for (const u of draft.squad) {
     const rel = draft.relations[u.id];
@@ -10479,8 +10513,8 @@ function publicReactions(draft, herId) {
     if (u.id === herId || u.kind !== "named" || !isLiving(u) || !rel || rel.flags.includes(flag)) continue;
     rel.flags.push(flag);
     const v = valuesOf(u);
-    if (v.corporate >= 1 || v.ingroup <= -1) events.push(...addRecord(draft, u.id, T4.lostRespectRecord, "relationship_public"));
-    else if (v.autonomy >= 1 || v.mercy >= 1) applyRelationDelta(draft, u.id, "trust", T4.respectTrust, "relationship_public");
+    if (v.corporate >= 1 || v.ingroup <= -1) events.push(...addRecord(draft, u.id, T5.lostRespectRecord, "relationship_public"));
+    else if (v.autonomy >= 1 || v.mercy >= 1) applyRelationDelta(draft, u.id, "trust", T5.respectTrust, "relationship_public");
   }
   return events;
 }
@@ -10523,12 +10557,12 @@ function setPublicity(draft, reg, unitId, level, opts) {
 }
 function rollReveal(draft, reg, rng, presentIds) {
   const events = [];
-  const T4 = TUNING.relations.affair;
+  const T5 = TUNING.relations.affair;
   if (presentIds.length < 2 || !intimacyOf(draft).romance) return events;
   for (const unit2 of draft.squad) {
     const rel = draft.relations[unit2.id];
     if (!rel?.publicity || rel.publicity.level !== "secret" || rel.stateId === "secret_affair" || !isLiving(unit2) || !presentIds.includes(unit2.id)) continue;
-    if (rng.chance(T4.base + T4.perOther * (presentIds.length - 1))) events.push(...setPublicity(draft, reg, unit2.id, "known", { cause: "revealed" }));
+    if (rng.chance(T5.base + T5.perOther * (presentIds.length - 1))) events.push(...setPublicity(draft, reg, unit2.id, "known", { cause: "revealed" }));
   }
   return events;
 }
@@ -10844,8 +10878,8 @@ var unitObeys = (state, unitId) => {
 function heldTerm(state, unitId) {
   const used = (state.personal?.secrets ?? []).filter((x) => x.status === "used" && (x.usedUntil ?? 0) > state.day && x.knownBy.includes(unitId)).length;
   if (used === 0) return 0;
-  const T4 = TUNING.personal.secret;
-  return -Math.min(T4.heldMax, used * T4.heldPerSecret);
+  const T5 = TUNING.personal.secret;
+  return -Math.min(T5.heldMax, used * T5.heldPerSecret);
 }
 
 // src/engine/power/leader.ts
@@ -10895,15 +10929,15 @@ function baseOf(state, reg, unit2) {
   return own + nick;
 }
 function leashTerm(state) {
-  const T4 = TUNING.impunity.leash;
+  const T5 = TUNING.impunity.leash;
   const log = leashLog(state);
   let l = 0;
-  if (state.leash.authorizationsLeft <= 0) l += T4.noneLeft;
+  if (state.leash.authorizationsLeft <= 0) l += T5.noneLeft;
   const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : void 0;
-  const grown = Math.min(T4.bluffDays, Math.max(0, state.day - 1)) / T4.bluffDays;
-  const faded = firstUse === void 0 ? 0 : Math.min(T4.bluffDays, Math.max(0, state.day - firstUse)) / T4.bluffDays;
-  l += Math.round(T4.neverUsed * Math.max(0, grown - faded));
-  if (log.some((e) => e.outcome === "done" && state.day - e.day >= 0 && state.day - e.day < T4.recentDays)) l += T4.recentUse;
+  const grown = Math.min(T5.bluffDays, Math.max(0, state.day - 1)) / T5.bluffDays;
+  const faded = firstUse === void 0 ? 0 : Math.min(T5.bluffDays, Math.max(0, state.day - firstUse)) / T5.bluffDays;
+  l += Math.round(T5.neverUsed * Math.max(0, grown - faded));
+  if (log.some((e) => e.outcome === "done" && state.day - e.day >= 0 && state.day - e.day < T5.recentDays)) l += T5.recentUse;
   return l;
 }
 function dependencyTerm(state, reg, unit2) {
@@ -10958,7 +10992,7 @@ function leverageOf(state, reg, unitId) {
 function impunityOf(state, reg, unitId) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   if (!unit2 || unit2.kind !== "named" || !isLiving(unit2) || !state.relations[unitId]) return null;
-  const T4 = TUNING.impunity;
+  const T5 = TUNING.impunity;
   const terms = {
     base: baseOf(state, reg, unit2),
     record: recordOf(state, unitId),
@@ -10966,7 +11000,7 @@ function impunityOf(state, reg, unitId) {
     presence: int2(-presenceOf(state, reg) * firstImpressionWeight(state, unitId)),
     dependency: int2(-dependencyTerm(state, reg, unit2)),
     contagion: contagionTerm(state, reg, unit2),
-    leverage: Math.min(T4.secretCap, leverageOf(state, reg, unitId).length * T4.secret),
+    leverage: Math.min(T5.secretCap, leverageOf(state, reg, unitId).length * T5.secret),
     held: heldTerm(state, unitId)
   };
   const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage + terms.held;
@@ -12159,9 +12193,9 @@ function setRecord(draft, unitId, value) {
 }
 function addRecord(draft, unitId, amount, reason) {
   if (!draft.relations[unitId]) return [];
-  const T4 = TUNING.impunity;
+  const T5 = TUNING.impunity;
   const before = recordOf(draft, unitId);
-  const after = Math.min(T4.recordMax, Math.max(T4.recordMin, before + amount));
+  const after = Math.min(T5.recordMax, Math.max(T5.recordMin, before + amount));
   const delta = after - before;
   if (delta === 0) return [];
   setRecord(draft, unitId, after);
@@ -12465,11 +12499,11 @@ function commandStance(state, reg, unitId) {
   return stanceAt(rel.trust, i.value);
 }
 function stanceAt(trust, impunity) {
-  const T4 = TUNING.impunity.stance;
-  const Z = T4.indifferent;
-  if (trust >= Z.trustMin && trust < T4.trustHigh && impunity >= Z.impunityMin && impunity <= Z.impunityMax) return "indifferent";
-  const trustHigh = trust >= T4.trustHigh;
-  const impunityHigh = impunity >= T4.impunityHigh;
+  const T5 = TUNING.impunity.stance;
+  const Z = T5.indifferent;
+  if (trust >= Z.trustMin && trust < T5.trustHigh && impunity >= Z.impunityMin && impunity <= Z.impunityMax) return "indifferent";
+  const trustHigh = trust >= T5.trustHigh;
+  const impunityHigh = impunity >= T5.impunityHigh;
   return trustHigh ? impunityHigh ? "defiant_loyal" : "disciplined" : impunityHigh ? "open_defiance" : "fearful";
 }
 var stanceEntry = (reg, stance) => reg.commandStances.get(stance);
@@ -12482,23 +12516,23 @@ function leadScoreParts(state, reg, unitId) {
   const unit2 = state.squad.find((u) => u.id === unitId);
   const bond = unit2 ? bondOf(unit2) : null;
   if (!unit2 || !bond) return null;
-  const T4 = TUNING.bonds.lead;
+  const T5 = TUNING.bonds.lead;
   const rel = state.relations[unitId];
-  const recent2 = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T4.windowDays).length;
-  const styleBase = T4.styleBase[bond.leadStyle];
-  const impunity = T4.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T4.impunityRef) - T4.impunityRef);
+  const recent2 = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T5.windowDays).length;
+  const styleBase = T5.styleBase[bond.leadStyle];
+  const impunity = T5.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T5.impunityRef) - T5.impunityRef);
   const defect = unit2.defects.filter((d) => d.arc !== "cure").reduce((n, d) => n + Number(reg.defects.get(d.id)?.leadBonus ?? 0), 0);
-  const yielded = Math.min(T4.yieldCap, T4.perYield * recent2(YIELDS));
-  const enforced = -Math.min(T4.enforcedCap, T4.perEnforced * recent2(["commander_enforced"]));
+  const yielded = Math.min(T5.yieldCap, T5.perYield * recent2(YIELDS));
+  const enforced = -Math.min(T5.enforcedCap, T5.perEnforced * recent2(["commander_enforced"]));
   const stateBonus = leadRank(bond.leadStyle) >= leadRank("assertive") ? Number(reg.relationshipStates.get(rel?.stateId ?? "")?.leadBonus ?? 0) : 0;
   return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
 }
 function decideLead(state, reg, unitId) {
   const parts = leadScoreParts(state, reg, unitId);
   if (!parts) return null;
-  const T4 = TUNING.bonds.lead;
+  const T5 = TUNING.bonds.lead;
   const score = Math.round(Math.min(100, Math.max(0, parts.total)));
-  return { by: score >= T4.unitAtLeast ? "unit" : score <= T4.commanderAtMost ? "commander" : "shared", score };
+  return { by: score >= T5.unitAtLeast ? "unit" : score <= T5.commanderAtMost ? "commander" : "shared", score };
 }
 function decideSceneLead(draft, reg) {
   const scene = draft.scene;
@@ -12745,39 +12779,39 @@ function slips(state, reg, unitId) {
 function rollSceneDiscovery(draft, ctx2, presentIds) {
   const secrets = draft.personal?.secrets;
   if (!secrets) return [];
-  const T4 = TUNING.personal.secret;
+  const T5 = TUNING.personal.secret;
   const events = [];
   for (const x of [...secrets]) {
     if (x.status !== "kept") continue;
     const here = x.knownBy.filter((id) => presentIds.includes(id) && namedLiving2(draft, id));
     if (here.length === 0) continue;
-    if (here.some((id) => (draft.relations[id]?.trust ?? 100) < T4.insightTrust) && ctx2.rng.chance(Math.min(T4.insightCap, T4.insightBase * socialRank(draft, "insight")))) {
+    if (here.some((id) => (draft.relations[id]?.trust ?? 100) < T5.insightTrust) && ctx2.rng.chance(Math.min(T5.insightCap, T5.insightBase * socialRank(draft, "insight")))) {
       events.push(...discoverSecret(draft, ctx2, x.id, "insight"));
       continue;
     }
-    if (here.some((id) => slips(draft, ctx2.registries, id)) && ctx2.rng.chance(T4.slipChance)) events.push(...discoverSecret(draft, ctx2, x.id, "slip"));
+    if (here.some((id) => slips(draft, ctx2.registries, id)) && ctx2.rng.chance(T5.slipChance)) events.push(...discoverSecret(draft, ctx2, x.id, "slip"));
   }
   return events;
 }
 function rollSecretNight(draft, ctx2) {
-  const T4 = TUNING.personal.secret;
+  const T5 = TUNING.personal.secret;
   const events = [];
   const waiting2 = (id) => draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND) || draft.calendar.nightEvent?.unitId === id && draft.calendar.nightEvent.kind === SECRET_NIGHT_KIND;
   for (const x of draft.personal?.secrets ?? []) {
     if (x.status !== "kept") continue;
     const knower = x.knownBy.find((id) => {
       const rel = draft.relations[id];
-      return namedLiving2(draft, id) && rel !== void 0 && rel.affinity >= T4.nightAffinity && rel.trust >= T4.nightTrust && !waiting2(id);
+      return namedLiving2(draft, id) && rel !== void 0 && rel.affinity >= T5.nightAffinity && rel.trust >= T5.nightTrust && !waiting2(id);
     });
-    if (knower === void 0 || !ctx2.rng.chance(T4.nightChance)) continue;
+    if (knower === void 0 || !ctx2.rng.chance(T5.nightChance)) continue;
     const entry = {
       id: nextId(draft, "n"),
       unitId: knower,
       kind: SECRET_NIGHT_KIND,
-      priority: T4.nightPriority,
+      priority: T5.nightPriority,
       framing: `${unitOf(draft, knower)?.displayName ?? "A soldier"} is at your door. She has been carrying something for the squad and wants to say it.`,
       ignore: { event: "dismissed", severity: "minor" },
-      expiresDay: draft.day + T4.nightExpiresDays
+      expiresDay: draft.day + T5.nightExpiresDays
     };
     if (enqueueNight(draft, entry)) events.push({ type: "night_queued", entry });
   }
@@ -15640,17 +15674,17 @@ function isCovert(state, reg, unitId) {
   return stance !== null && stanceEntry(reg, stance)?.covert === true;
 }
 function sabotageDayStep(draft, ctx2) {
-  const T4 = TUNING.impunity.sabotage;
+  const T5 = TUNING.impunity.sabotage;
   const queued = draft.discipline?.sabotage?.queued ?? [];
   let fire = queued.length > 0;
   if (draft.discipline?.sabotage) draft.discipline.sabotage.queued = [];
   const last = draft.discipline?.sabotage?.lastDay;
-  const resting2 = last !== void 0 && draft.day - last < T4.cooldownDays;
+  const resting2 = last !== void 0 && draft.day - last < T5.cooldownDays;
   if (!fire && !resting2) {
     for (const u of draft.squad) {
       if (u.kind !== "named" || !isLiving(u) || !isCovert(draft, ctx2.registries, u.id) || inAcquaintance(draft, ctx2.registries, u.id)) continue;
       const depth = (TUNING.impunity.stance.impunityHigh - (impunityOf(draft, ctx2.registries, u.id)?.value ?? TUNING.impunity.stance.impunityHigh)) / TUNING.impunity.stance.impunityHigh;
-      if (depth > 0 && ctx2.rng.chance(T4.chancePerDay * depth)) {
+      if (depth > 0 && ctx2.rng.chance(T5.chancePerDay * depth)) {
         fire = true;
         break;
       }
@@ -15660,8 +15694,8 @@ function sabotageDayStep(draft, ctx2) {
   const waiting2 = draft.discipline?.sabotage?.gear !== void 0;
   const kinds2 = waiting2 ? ["supplies", "credits"] : ["supplies", "credits", "gear"];
   const kind = ctx2.rng.pick(kinds2);
-  if (kind === "supplies") draft.resources.supplies = Math.max(0, draft.resources.supplies - T4.supplies);
-  else if (kind === "credits") draft.resources.credits = Math.max(0, draft.resources.credits - T4.credits);
+  if (kind === "supplies") draft.resources.supplies = Math.max(0, draft.resources.supplies - T5.supplies);
+  else if (kind === "credits") draft.resources.credits = Math.max(0, draft.resources.credits - T5.credits);
   else {
     const by = queued[0]?.unitId ?? draft.squad.find((u) => u.kind === "named" && isLiving(u) && isCovert(draft, ctx2.registries, u.id))?.id ?? "";
     const d2 = disciplineOf(draft);
@@ -16380,11 +16414,11 @@ var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName 
 var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
 var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
 function bookingChance(state, reg, unitId) {
-  const T4 = TUNING.personal.booking;
+  const T5 = TUNING.personal.booking;
   const affinity = state.relations[unitId]?.affinity ?? 0;
   const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
-  const raw = T4.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
-  return Math.min(T4.cap, raw);
+  const raw = T5.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
+  return Math.min(T5.cap, raw);
 }
 function dueBooking(state) {
   const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
@@ -17446,7 +17480,7 @@ function affairKnown(draft, unitId, hiddenFrom) {
 }
 function rollDiscovery(draft, reg, rng, presentIds) {
   const events = [];
-  const T4 = TUNING.relations.affair;
+  const T5 = TUNING.relations.affair;
   for (const unit2 of draft.squad) {
     const affair = draft.relations[unit2.id]?.affair;
     if (!affair || !isLiving(unit2)) continue;
@@ -17464,7 +17498,7 @@ function rollDiscovery(draft, reg, rng, presentIds) {
     const certain = affairKnown(draft, unit2.id, hidden);
     const present2 = presentIds.includes(unit2.id);
     if (!certain && !present2) continue;
-    const p = T4.base + T4.perOther * Math.max(0, presentIds.length - 1) + (hidden.some((h2) => presentIds.includes(h2)) ? T4.partnerPresent : 0);
+    const p = T5.base + T5.perOther * Math.max(0, presentIds.length - 1) + (hidden.some((h2) => presentIds.includes(h2)) ? T5.partnerPresent : 0);
     const roll = rng.chance(p);
     if (!certain && !roll) continue;
     const rel = draft.relations[unit2.id];
@@ -18393,16 +18427,16 @@ function standingOf(state, reg, unitId) {
   if (!unit2 || !bond || !isLiving(unit2) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S = TUNING.power.standing;
-  const raw = S.merit * meritOf(state, unitId) + S.respect * respectOf(state, unitId) + S.impunity * (impunity.value / 100);
+  const S2 = TUNING.power.standing;
+  const raw = S2.merit * meritOf(state, unitId) + S2.respect * respectOf(state, unitId) + S2.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
-  return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra;
+  return Math.round(100 * raw * S2.factor[bond.leadStyle]) + extra;
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S = TUNING.power.standing;
+  const S2 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -18413,7 +18447,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S2.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const from = old?.leaderId;
   if (leader === void 0) delete h2.leaderId;
   else h2.leaderId = leader;
@@ -19167,21 +19201,21 @@ function premonitionLine(reg, p, name) {
 function actOnWarning(draft, ctx2, unitId, act) {
   const open3 = openPremonition(draft, unitId);
   if (!open3) return [];
-  const T4 = TUNING.special.paranoia;
+  const T5 = TUNING.special.paranoia;
   const events = [{ type: "premonition_acted", unitId, act }];
   if (open3.real) {
     open3.acted = "preempted";
-    (paranoiaOf(draft).preempt ??= []).push({ unitId, untilDay: draft.day + T4.preemptDays, about: open3.about });
+    (paranoiaOf(draft).preempt ??= []).push({ unitId, untilDay: draft.day + T5.preemptDays, about: open3.about });
     if (open3.about === "doubt" || open3.about === "desertion") {
       const rec = loyaltyRecord(draft, unitId);
-      rec.nextCheckDay = Math.max(rec.nextCheckDay ?? 0, draft.day + T4.preemptPause);
+      rec.nextCheckDay = Math.max(rec.nextCheckDay ?? 0, draft.day + T5.preemptPause);
     } else if (open3.about === "mutiny") {
-      if (ctx2.rng.chance(T4.mutinyAvert)) {
+      if (ctx2.rng.chance(T5.mutinyAvert)) {
         const rec = draft.disloyalty?.units[unitId];
         if (rec) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
       }
     } else {
-      events.push(...addRecord(draft, unitId, T4.defianceRecord, "preempt"));
+      events.push(...addRecord(draft, unitId, T5.defianceRecord, "preempt"));
     }
     return events;
   }
@@ -19433,13 +19467,13 @@ function falseValue(kind, value, rng) {
 var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var stressOf = (state, unitId) => state.squad.find((u) => u.id === unitId)?.stress ?? 0;
 function catchChance(state, unitId, o) {
-  const T4 = TUNING.special.frequency;
-  const p = T4.catchBase + (o.private ? T4.privateBonus : 0) - (stressOf(state, unitId) >= T4.catchStressAt ? T4.catchStressPenalty : 0);
-  return clamp21(p, 0, 1) * (o.dm ? T4.dmMult : 1);
+  const T5 = TUNING.special.frequency;
+  const p = T5.catchBase + (o.private ? T5.privateBonus : 0) - (stressOf(state, unitId) >= T5.catchStressAt ? T5.catchStressPenalty : 0);
+  return clamp21(p, 0, 1) * (o.dm ? T5.dmMult : 1);
 }
 function distortChance(state, unitId) {
-  const T4 = TUNING.special.frequency;
-  return T4.distortBase + (stressOf(state, unitId) >= T4.distortStressAt ? T4.distortStress : 0);
+  const T5 = TUNING.special.frequency;
+  return T5.distortBase + (stressOf(state, unitId) >= T5.distortStressAt ? T5.distortStress : 0);
 }
 function frequencyOf(draft) {
   return specialOf(draft).frequency ??= newFrequency();
@@ -20084,8 +20118,8 @@ function wardenSource(state) {
   return { kind: "warden", unitId: w.unitId, authority: (100 - w.satisfaction) / 100, leniency: 1 - 0.5 * Math.max(0, affinity) / 100, expectations: w.expectations };
 }
 function overrideChance(weight, source) {
-  const T4 = TUNING.warden.override;
-  return clamp23(weight * source.authority * source.leniency * T4.scale, 0, T4.cap);
+  const T5 = TUNING.warden.override;
+  return clamp23(weight * source.authority * source.leniency * T5.scale, 0, T5.cap);
 }
 var contextOf = (order) => order.kind === "combat_order" ? "combat" : order.kind === "dilemma" ? "dilemma" : "base";
 function hersToGive(order, unitId) {
@@ -20214,7 +20248,7 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   }
   if (answer !== "comply" && answer !== "argue" && answer !== "defy") throw new Error("warden/answer: the answer is comply, argue or defy.");
   if (w.compelled && answer !== "comply") throw new Error("The commander is compelled: only COMPLY is open.");
-  const T4 = TUNING.warden;
+  const T5 = TUNING.warden;
   const base = ov.payload ?? {};
   const done = (a) => ({ type: "override_answered", overrideId: ov.id, answer: a, context: ov.context });
   if (answer === "argue") {
@@ -20231,15 +20265,15 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   delete w.override;
   if (answer === "comply") {
     const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : [];
-    addTo(w, "satisfaction", T4.satisfaction.comply);
-    events2.push(...addDefiance(draft, ctx2, -T4.defiance.comply));
+    addTo(w, "satisfaction", T5.satisfaction.comply);
+    events2.push(...addDefiance(draft, ctx2, -T5.defiance.comply));
     delete w.compelled;
     return [...events2, ...relationEvent(draft, ctx2, "warden_complied", "minor", "followed the warden's call"), done("comply")];
   }
   const events = runOrder(draft, ctx2, ov.order, base);
-  addTo(w, "satisfaction", -round3(T4.override.defySatisfaction * ov.weight));
-  const rose = addDefiance(draft, ctx2, round3(T4.override.defyDefiance * ov.weight));
-  events.push(...rose, ...relationEvent(draft, ctx2, "warden_defied", ov.weight >= T4.override.majorAt ? "major" : "moderate", "defied the warden's call"), done("defy"));
+  addTo(w, "satisfaction", -round3(T5.override.defySatisfaction * ov.weight));
+  const rose = addDefiance(draft, ctx2, round3(T5.override.defyDefiance * ov.weight));
+  events.push(...rose, ...relationEvent(draft, ctx2, "warden_defied", ov.weight >= T5.override.majorAt ? "major" : "moderate", "defied the warden's call"), done("defy"));
   if (!rose.some((e) => e.type === "commander_terminated")) events.push(...afterDefy(draft, ctx2, ov.weight));
   return events;
 }
@@ -21195,8 +21229,8 @@ function challenge2(draft, ctx2, p) {
   if (!stake || !stakeOffered(draft, reg, p.unitId, stake)) throw new Error("She is not offered that stake.");
   if (openOf(draft).some((w2) => w2.unitId === p.unitId)) throw new Error("She already has a wager open.");
   checkPick(draft, reg, String(game.id), p.unitId, p.pick);
-  const T4 = TUNING.personal.wager;
-  if ((draft.relations[p.unitId]?.affinity ?? -100) < T4.acceptAffinity && (impunityOf(draft, reg, p.unitId)?.value ?? 0) < T4.acceptImpunity) {
+  const T5 = TUNING.personal.wager;
+  if ((draft.relations[p.unitId]?.affinity ?? -100) < T5.acceptAffinity && (impunityOf(draft, reg, p.unitId)?.value ?? 0) < T5.acceptImpunity) {
     return [{ type: "wager_refused", unitId: p.unitId }];
   }
   const w = { id: nextPersonalId(draft, "wg"), unitId: p.unitId, by: "commander", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: agreedStatus(reg, String(game.id)), ...p.pick !== void 0 ? { pick: p.pick } : {} };
@@ -21296,7 +21330,7 @@ function applyStake(draft, ctx2, w, winner, resolved) {
   if (!stake || !u) return [];
   const p = personalOf(draft);
   const events = [];
-  const T4 = TUNING.personal.wager;
+  const T5 = TUNING.personal.wager;
   switch (stake.effect) {
     case "obedience":
       p.obedience = { unitId: u.id, day: draft.day, who: winner === "unit" ? "commander" : "unit" };
@@ -21307,12 +21341,12 @@ function applyStake(draft, ctx2, w, winner, resolved) {
         const kind = kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
         if (kind) events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "wager" }));
       } else {
-        (p.noBookUntil ??= {})[u.id] = draft.day + T4.noBookDays;
+        (p.noBookUntil ??= {})[u.id] = draft.day + T5.noBookDays;
       }
       break;
     }
     case "privilege":
-      events.push(...addRecord(draft, u.id, winner === "unit" ? T4.privilegeRecord : -T4.privilegeRecord, "wager"));
+      events.push(...addRecord(draft, u.id, winner === "unit" ? T5.privilegeRecord : -T5.privilegeRecord, "wager"));
       break;
     case "drop_demand": {
       const d = disciplineOf(draft);
@@ -21351,10 +21385,10 @@ function applyStake(draft, ctx2, w, winner, resolved) {
     case "mark":
       if (!contentAllowed(draft, reg, stake, u.id)) break;
       if (winner === "unit") {
-        p.mark = { unitId: u.id, untilDay: draft.day + T4.markDays };
+        p.mark = { unitId: u.id, untilDay: draft.day + T5.markDays };
         events.push({ type: "mark_set", unitId: u.id, untilDay: p.mark.untilDay });
       } else {
-        const next = Math.min(100, u.stress + T4.markLoseStress);
+        const next = Math.min(100, u.stress + T5.markLoseStress);
         if (next !== u.stress) events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
         u.stress = next;
       }
@@ -21433,16 +21467,16 @@ function actorWeight(state, reg, unitId) {
   const bond = unit2 ? bondOf(unit2) : null;
   const impunity = impunityOf(state, reg, unitId);
   if (!bond || !impunity) return 0;
-  const T4 = TUNING.herCall;
-  return (1 + T4.leadBonus[bond.leadStyle]) * T4.band[impunityBand(impunity.value)] * (leaderOf(state)?.id === unitId ? T4.leaderMult : 1);
+  const T5 = TUNING.herCall;
+  return (1 + T5.leadBonus[bond.leadStyle]) * T5.band[impunityBand(impunity.value)] * (leaderOf(state)?.id === unitId ? T5.leaderMult : 1);
 }
 function herCallChance(state, reg) {
   return Math.min(TUNING.herCall.chanceCap, TUNING.herCall.chance * assertiveness(state, reg).privilegeMult);
 }
 function herCallOdds(state, reg, unitId, spec) {
   const unit2 = unitOf9(state, unitId);
-  const T4 = TUNING.herCall.odds;
-  if (!unit2) return T4.base;
+  const T5 = TUNING.herCall.odds;
+  if (!unit2) return T5.base;
   const values = effectiveValues(state, reg, unit2);
   const score = (id) => {
     const lean = spec.outcomes.find((o) => o.id === id)?.lean ?? {};
@@ -21450,7 +21484,7 @@ function herCallOdds(state, reg, unitId, spec) {
   };
   const categories = new Set(unit2.defects.map((d) => String(reg.defects.get(d.id)?.category)));
   const tilt = (spec.defectTilt ?? []).reduce((sum, t) => sum + (categories.has(t.category) ? t.shift : 0), 0);
-  return clamp25(T4.base + T4.perPoint * (score("good") - score("bad")) + tilt, T4.min, T4.max);
+  return clamp25(T5.base + T5.perPoint * (score("good") - score("bad")) + tilt, T5.min, T5.max);
 }
 function rollHerCall(state, reg, rng, spec, partyIds) {
   const candidates3 = herCallCandidates(state, reg, spec, partyIds);
@@ -21472,24 +21506,24 @@ function markHerCall(draft, mission, p) {
 function applyHerCall(draft, ctx2, p) {
   const exp = draft.expedition;
   const { call } = p;
-  const T4 = TUNING.herCall;
+  const T5 = TUNING.herCall;
   const outcome = p.spec.outcomes.find((o) => o.id === call.outcome);
   const unit2 = unitOf9(draft, call.unitId);
   const events = applyWorldEffects(draft, ctx2, outcome.effects, { kind: "event", id: p.templateId, label: p.title });
   let marked = false;
   if (call.outcome === "good") {
-    (powerOf(draft).merit ??= []).push({ day: draft.day, unitId: call.unitId, points: T4.meritGood });
-    events.push(...addRecord(draft, call.unitId, T4.recordGood, "her_call"));
+    (powerOf(draft).merit ??= []).push({ day: draft.day, unitId: call.unitId, points: T5.meritGood });
+    events.push(...addRecord(draft, call.unitId, T5.recordGood, "her_call"));
     addFact(draft, {
       about: [call.unitId],
       day: draft.day,
       knownBy: [...exp.party],
       tags: ["her_call"],
-      importance: T4.factImportance,
+      importance: T5.factImportance,
       text: `${unit2.displayName} took a decision in the field herself, and it went well: ${outcome.text}`
     });
   } else {
-    events.push(...addRecord(draft, call.unitId, T4.recordBad, "her_call"));
+    events.push(...addRecord(draft, call.unitId, T5.recordBad, "her_call"));
     const mission = draft.missions.active.find((m) => m.id === exp.missionId);
     const tutorial = mission !== void 0 && ctx2.registries.missionTemplates.get(mission.templateId)?.tutorial === true;
     if (mission && !tutorial) {
@@ -23673,11 +23707,11 @@ function demandChance(state, reg, unitId) {
   const i = impunityOf(state, reg, unitId);
   const stance = commandStance(state, reg, unitId);
   if (!unit2 || !i || stance === null) return 0;
-  const T4 = TUNING.demands;
+  const T5 = TUNING.demands;
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit2).refusalMult);
   const squad = assertiveness(state, reg).demandMult;
-  return clamp30(T4.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T4.maxChance);
+  return clamp30(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
 }
 var openedThisWeek = (state, unitId) => (state.discipline?.demandLog ?? []).filter((e) => e.unitId === unitId && state.day - e.day < TUNING.demands.weekDays).length;
 var hasOpen = (state, unitId) => (state.discipline?.demands ?? []).some((d) => d.unitId === unitId);
@@ -24179,20 +24213,20 @@ function rollVisit(draft, ctx2) {
   if (!hasTraitEffect(draft, ctx2.registries, "debts")) return [];
   const d = draft.special?.debts;
   if (!d || d.ended !== void 0 || d.visit !== void 0) return [];
-  const T4 = TUNING.special.debts;
+  const T5 = TUNING.special.debts;
   const since = draft.day - (d.lastVisitDay ?? 0);
-  if (since < T4.minDays) return [];
+  if (since < T5.minDays) return [];
   const items = intelOf(draft, ctx2.registries);
   if (items.length === 0) return [];
-  if (!ctx2.rng.chance(Math.min(1, (since - T4.minDays + 1) / T4.rampDays))) return [];
+  if (!ctx2.rng.chance(Math.min(1, (since - T5.minDays + 1) / T5.rampDays))) return [];
   const entry = {
     id: nextId(draft, "n"),
     unitId: HANDLER_UNIT,
     kind: HANDLER_VISIT_KIND,
-    priority: T4.priority,
-    framing: T4.framing,
+    priority: T5.priority,
+    framing: T5.framing,
     ignore: { event: "dismissed", severity: "minor" },
-    expiresDay: draft.day + T4.expiresDays
+    expiresDay: draft.day + T5.expiresDays
   };
   if (!enqueueNight(draft, entry)) return [];
   d.visitSeq += 1;
@@ -25042,6 +25076,11 @@ var holder = (draft, event) => {
 };
 registerMemoryResolver("physics_outcome", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
 registerMemoryResolver("physics_caught", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
+registerMemoryResolver("stimulus_stage_changed", (draft, event, reg) => {
+  const her = subjectOf2(draft, event.holderId);
+  const kind = reg.stimulusKinds.get(String(event.kind));
+  return her && kind ? { ids: { her: [her.id] }, vars: { name: her.name, to: str2(event.to) ?? "", herPresent: yes(event.herPresent === true), what: String(kind.label).toLowerCase() } } : null;
+}, { ids: ["her"], vars: ["name", "to", "herPresent", "what"] });
 registerMemoryResolver("hobby_taught", (draft, event, reg) => {
   const her = subjectOf2(draft, event.unitId);
   const hobby = reg.hobbies.get(String(event.hobbyId));
@@ -26902,6 +26941,44 @@ function leadStyle(style) {
   return { key: leadKey, cues: lead.cues, seal: lead.seal, skillMult: lead.skillMult };
 }
 
+// src/engine/physics/gaze.ts
+var G = TUNING.physics.gaze;
+function attentionPlan(n, attention, style, rng) {
+  if (leadStyle(style).key === "clinical") return Array.from({ length: n }, () => "watching");
+  const [w, g] = G.attention[attention ?? "on_commander"] ?? G.attention.on_commander;
+  return Array.from({ length: n }, () => {
+    const x = rng.float();
+    return x < w ? "watching" : x < w + g ? "glancing" : "busy";
+  });
+}
+function attentionCue(prev, now) {
+  if (now === prev || now === "glancing") return null;
+  return now === "watching" ? "watch" : "look_away";
+}
+function cheatRoll(rng, attention, reading2) {
+  return rng.chance(G.caught[attention] * (1 + G.readingMult * reading2));
+}
+function noiseOf(source, stillness = 0) {
+  const kind = source === "miss" ? "gasp" : source === "slip" ? "creak" : source === "relief" ? "rustle" : "cough";
+  return { loudness: 1 * (1 - stillness), kind };
+}
+function segmentNoise(result, interaction, stillness = 0) {
+  const out = /* @__PURE__ */ new Map();
+  const add = (source, n) => {
+    if (n <= 0) return;
+    const s = noiseOf(source, stillness);
+    out.set(s.kind, (out.get(s.kind) ?? 0) + s.loudness * n);
+  };
+  add("miss", result.gasps);
+  add(interaction === "timing" ? "spill" : "slip", result.slips);
+  add("relief", result.reliefs);
+  return [...out].map(([kind, loudness]) => ({ kind, loudness }));
+}
+function averageCaught(attention, style, reading2) {
+  const [w, g, b] = leadStyle(style).key === "clinical" ? [1, 0, 0] : G.attention[attention ?? "on_commander"] ?? G.attention.on_commander;
+  return Math.min(1, (w * G.caught.watching + g * G.caught.glancing + b * G.caught.busy) * (1 + G.readingMult * reading2));
+}
+
 // src/engine/physics/marathon.ts
 var M = TUNING.physics.marathon;
 var isMarathon = (duration) => duration === "unknown" || duration !== void 0 && duration.hours >= 1;
@@ -26948,10 +27025,8 @@ function resolveSkip(state, reg, run, strategy, rng) {
     case "cheat": {
       const reading2 = herSkillOf(state, run.holderId).reading;
       const activity = state.scene?.blocking?.[run.holderId]?.activity;
-      const attention = (activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0) ?? "on_commander";
-      const [w, g, b] = leadStyle(physicsStyleOf(state, run.holderId)).key === "clinical" ? [1, 0, 0] : TUNING.physics.gaze.attention[attention] ?? TUNING.physics.gaze.attention.on_commander;
-      const c = TUNING.physics.gaze.caught;
-      const p = Math.min(1, (w * c.watching + g * c.glancing + b * c.busy) * (1 + TUNING.physics.gaze.readingMult * reading2));
+      const attention = activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0;
+      const p = averageCaught(attention, physicsStyleOf(state, run.holderId), reading2);
       const hit = rng.chance(p);
       return { held: !hit, summary: hit ? SUMMARY.cheat.bad : SUMMARY.cheat.good, delta: hit ? -M.failCost : M.cheatRelief, caught: hit, slip: hit };
     }
@@ -27916,8 +27991,8 @@ function rollIntercept(draft, ctx2, p) {
   if (draft.personal?.intercepts?.open !== void 0) return [{ type: "device_intercept", hit: false }];
   const unitId = interceptEditor(draft, reg, p.channel, p.toUnitId);
   if (unitId === null) return [{ type: "device_intercept", hit: false }];
-  const T4 = TUNING.personal.intercept;
-  const chance = Math.min(T4.cap, T4.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, unitId));
+  const T5 = TUNING.personal.intercept;
+  const chance = Math.min(T5.cap, T5.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, unitId));
   if (!ctx2.rng.chance(chance)) return [{ type: "device_intercept", hit: false }];
   const personal = personalOf(draft);
   const id = nextPersonalId(draft, "icp");
@@ -29540,24 +29615,24 @@ function fondestUnit(draft) {
 }
 function rollNightmare(draft, ctx2) {
   if (!hasTraitEffect(draft, ctx2.registries, "paranoia")) return [];
-  const T4 = TUNING.special.paranoia.nightmare;
-  const chance = T4.chance * (commanderStress(draft) >= T4.stressAt ? T4.stressMult : 1);
+  const T5 = TUNING.special.paranoia.nightmare;
+  const chance = T5.chance * (commanderStress(draft) >= T5.stressAt ? T5.stressMult : 1);
   if (!ctx2.rng.chance(chance)) return [];
   const events = addCommanderStress(draft, TUNING.special.commanderStress.nightmare, "nightmare");
   paranoiaOf(draft).lastNightmareDay = draft.day;
-  const lostMorning = ctx2.rng.chance(T4.loseMorning);
+  const lostMorning = ctx2.rng.chance(T5.loseMorning);
   if (lostMorning) draft.calendar.loseMorning = true;
   const visitorId = fondestUnit(draft);
   let visitor;
-  if (visitorId !== null && ctx2.rng.chance(T4.visitor)) {
+  if (visitorId !== null && ctx2.rng.chance(T5.visitor)) {
     const unit2 = draft.squad.find((u) => u.id === visitorId);
     const queued = queueNightSpec(draft, unit2, {
       id: NIGHTMARE_KNOCK_KIND,
       kind: NIGHTMARE_KNOCK_KIND,
       chance: 1,
-      priority: T4.priority,
+      priority: T5.priority,
       trigger: "daily",
-      framing: T4.framing,
+      framing: T5.framing,
       ignore: { event: "dismissed", severity: "minor" },
       contentTags: []
     });
@@ -30212,6 +30287,172 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
   return answerMoment(draft, ctx2, momentId, key, "chip", tone, at !== void 0 ? { at } : {});
 });
 
+// src/engine/physics/scent.ts
+var S = TUNING.scent;
+function scentLevel(state, _reg, unitId, part) {
+  const base = S.base[part ?? ""] ?? S.base.rest;
+  const hygiene = S.hygiene.normal;
+  let situation = 1;
+  const run = state.lastExpedition;
+  if (run && run.party.includes(unitId)) {
+    if (run.day === state.day) situation *= S.afterRun.day;
+    else if (run.day === state.day - 1) situation *= S.afterRun.nextDay;
+  }
+  const slot2 = busySlot(state.day, state.slot);
+  if (state.life?.busy.some((b) => b.unitId === unitId && b.slot === slot2 && b.activityId === "train")) situation *= S.afterTraining;
+  return base * hygiene * situation;
+}
+function bandOfLevel(level) {
+  return level >= S.bands.overwhelming ? "overwhelming" : level >= S.bands.strong ? "strong" : level >= S.bands.noticeable ? "noticeable" : "faint";
+}
+var BAND_INDEX = { faint: 0, noticeable: 1, strong: 2, overwhelming: 3 };
+
+// src/engine/physics/stimuli.ts
+var T4 = TUNING.stimuli;
+var WAYS = ["avoid", "sniff", "inhale", "nuzzle", "ordered", "secret", "taste"];
+var SEEKING = /* @__PURE__ */ new Set(["sniff", "inhale", "nuzzle", "ordered", "secret", "taste"]);
+var rowOf = (state, kind) => state.commander.stimuli?.[kind];
+var stageIndex = (stage) => STAGES.indexOf(stage);
+var stageOf = (seek) => STAGES[T4.stages.filter((b) => seek >= b).length];
+function inhaleZone(band2, tolerance) {
+  const b = BAND_INDEX[band2];
+  return [b * 20, b * 20 + T4.inhale.zoneBase + tolerance / T4.inhale.zoneTolerance];
+}
+function exposedKinds(state, reg) {
+  const scene = state.scene;
+  if (!scene || !blockingLive(state, reg)) return [];
+  const out = /* @__PURE__ */ new Map();
+  const first2 = scene.participants[0];
+  const add = (kinds2, holderId, part) => {
+    if (!Array.isArray(kinds2) || holderId === void 0) return;
+    for (const k of kinds2) {
+      const e = reg.stimulusKinds.get(k);
+      if (e && contentAllowed(state, reg, e) && !out.has(k)) out.set(k, { kind: k, holderId, ...part !== void 0 ? { part } : {} });
+    }
+  };
+  const contact = contactOf(scene);
+  if (contact) {
+    const entry = reg.blockingContacts.get(contact.id);
+    const holder2 = scene.participants.includes(contact.with) ? contact.with : Object.entries(scene.blocking ?? {}).find(([, b]) => b.contact === contact)?.[0] ?? first2;
+    add(entry?.stimuli, holder2, contact.target);
+    if (contact.target !== void 0) add(reg.worshipTargets.get(contact.target)?.stimuli, holder2, contact.target);
+  }
+  for (const w of Object.values(blockingOf(scene, COMMANDER).worn ?? {})) add(w ? reg.blockingItems.get(w.id)?.stimuli : void 0, first2);
+  const run = state.lastExpedition;
+  const anyone = [...out.values()][0];
+  if (anyone && run && run.day === state.day && run.party.includes(anyone.holderId)) add(["sweat_exertion"], anyone.holderId, anyone.part);
+  return [...out.values()];
+}
+function stimulusUnits(state, reg, ex) {
+  const family = String(reg.stimulusKinds.get(ex.kind)?.family);
+  const level = family === "taste" ? 1 : scentLevel(state, reg, ex.holderId, ex.part);
+  return level * T4.unitsPerLevel;
+}
+var bandOf = (state, reg, ex) => bandOfLevel(stimulusUnits(state, reg, ex) / T4.unitsPerLevel);
+function updateTrajectory(row3, seeking) {
+  row3.seek += T4.seekAlpha * ((seeking ? 1 : 0) - row3.seek);
+  const target = stageIndex(stageOf(row3.seek));
+  const at = stageIndex(row3.stage);
+  if (target === at) {
+    delete row3.pending;
+    return null;
+  }
+  const step = STAGES[at + (target > at ? 1 : -1)];
+  row3.pending = row3.pending?.stage === step ? { stage: step, n: row3.pending.n + 1 } : { stage: step, n: 1 };
+  if (row3.pending.n < T4.hysteresis) return null;
+  const from = row3.stage;
+  row3.stage = step;
+  delete row3.pending;
+  return { from, to: step };
+}
+function perceptionWord(state, reg, kind, band2) {
+  const entry = reg.stimulusKinds.get(kind);
+  const row3 = rowOf(state, kind);
+  if (!entry) return null;
+  const words3 = entry.perception;
+  if (band2 === "faint" && (row3?.tolerance ?? T4.startTolerance) >= T4.faintFadeAt) return null;
+  if (!row3) return words3.aversion ?? null;
+  const apart = state.day - row3.lastDay;
+  if (stageIndex(row3.stage) >= stageIndex("craving") && apart >= T4.missingDays) return "Something is missing: it has been too long.";
+  if (apart >= T4.separatedDays) return words3.separated ?? null;
+  return words3[row3.stage] ?? null;
+}
+function decayStimuli(draft) {
+  const events = [];
+  for (const row3 of Object.values(draft.commander.stimuli ?? {})) {
+    if (draft.day - Math.max(row3.lastDay, row3.decayDay ?? row3.lastDay) >= T4.decayDays) {
+      row3.tolerance = Math.max(Math.min(row3.tolerance, row3.best / 2), row3.tolerance - 1);
+      row3.decayDay = draft.day;
+    }
+    if (stageIndex(row3.stage) >= stageIndex("craving") && draft.day - row3.lastDay >= T4.missingDays && row3.missedDay !== draft.day) {
+      row3.missedDay = draft.day;
+      events.push(...addCommanderStress(draft, T4.missingStress, "stimulus"));
+    }
+  }
+  return events;
+}
+var isStr = (v) => typeof v === "string";
+function applyWay(draft, ctx2, way, kind, depth) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  if (!scene || !blockingLive(draft, reg)) throw new Error("physics/stimulus: the blocking is not live in this scene");
+  if (!isStr(way) || !WAYS.includes(way)) throw new Error(`physics/stimulus: way is one of ${WAYS.join(", ")}`);
+  const ex = exposedKinds(draft, reg).find((e) => e.kind === kind);
+  if (!ex) throw new Error("physics/stimulus: the commander is not exposed to that");
+  const family = String(reg.stimulusKinds.get(ex.kind).family);
+  const w = way;
+  if (w === "taste" && family !== "taste") throw new Error("physics/stimulus: only a taste can be tasted");
+  if ((w === "inhale" || w === "sniff" || w === "nuzzle") && family === "taste") throw new Error("physics/stimulus: a taste is not breathed in");
+  if (w === "inhale" && !sceneSettingsOf(draft).physicsInteractions.inhale) throw new Error("physics/stimulus: the deep inhale is switched off");
+  const rows = draft.commander.stimuli ??= {};
+  const row3 = rows[ex.kind] ??= { tolerance: T4.startTolerance, exposure: 0, lastDay: draft.day, best: T4.startTolerance, seek: 0, stage: "aversion" };
+  if (row3.session !== scene.id) {
+    row3.session = scene.id;
+    row3.exposure += 1;
+    row3.tolerance = Math.min(100, row3.tolerance + T4.tolerancePerSession);
+    row3.best = Math.max(row3.best, row3.tolerance);
+  }
+  row3.lastDay = draft.day;
+  delete row3.missedDay;
+  const band2 = bandOf(draft, reg, ex);
+  const units = stimulusUnits(draft, reg, ex);
+  const events = [];
+  let result = "ok";
+  let noticed = false;
+  let caught = false;
+  if (w === "inhale") {
+    const n = typeof depth === "number" ? depth : isStr(depth) ? T4.inhale.depths[depth] : void 0;
+    if (n === void 0 || !Number.isFinite(n)) throw new Error("physics/stimulus: an inhale needs a depth");
+    if (typeof depth === "number") {
+      const [lo, hi] = inhaleZone(band2, row3.tolerance);
+      result = n < lo ? "shallow" : n <= hi ? "ok" : "reflex";
+    } else {
+      const target = BAND_INDEX[band2] + 1;
+      result = n < target ? "shallow" : n === target ? "ok" : "reflex";
+    }
+  } else if ((w === "nuzzle" || w === "taste") && units > row3.tolerance * T4.reflexMult) result = "reflex";
+  else if (w === "avoid") noticed = ctx2.rng.chance(T4.noticed);
+  else if (w === "secret") {
+    const activity = blockingOf(scene, ex.holderId).activity;
+    const attention = activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0;
+    caught = ctx2.rng.chance(averageCaught(attention, physicsStyleOf(draft, ex.holderId), herSkillOf(draft, ex.holderId).reading));
+  }
+  events.push({ type: "stimulus_way", kind: ex.kind, way: w, result, holderId: ex.holderId, noticed, caught });
+  if (result === "reflex") {
+    const s = noiseOf("reflex");
+    events.push({ type: "reflex", kind: ex.kind, way: w, holderId: ex.holderId }, { type: "physics_slip", runId: scene.physics?.id ?? null, kind: "reflex", count: 1, holderId: ex.holderId });
+    events.push({ type: "physics_noise", runId: scene.physics?.id ?? null, holderId: ex.holderId, kind: s.kind, loudness: s.loudness });
+    if (scene.physics?.last) {
+      scene.physics.last.slips += 1;
+      scene.physics.last.noise += s.loudness;
+    }
+  }
+  if (caught) events.push({ type: "physics_caught", runId: scene.physics?.id ?? null, holderId: ex.holderId, kind: "secret", beat: -1 });
+  const moved = updateTrajectory(row3, SEEKING.has(w));
+  if (moved) events.push({ type: "stimulus_stage_changed", kind: ex.kind, from: moved.from, to: moved.to, herPresent: scene.participants.includes(ex.holderId), holderId: ex.holderId });
+  return events;
+}
+
 // src/engine/physics/combined.ts
 var OWNS = {
   timing: ["breathe", "gap_breath"],
@@ -30250,40 +30491,6 @@ function mergeInputs(mainI, secondI, plan, inputs) {
     for (let b = 0; b < plan.beats.length; b++) if (!breathing.has(b)) steady.push(b);
   }
   return { main: main2, second, notices, steady };
-}
-
-// src/engine/physics/gaze.ts
-var G = TUNING.physics.gaze;
-function attentionPlan(n, attention, style, rng) {
-  if (leadStyle(style).key === "clinical") return Array.from({ length: n }, () => "watching");
-  const [w, g] = G.attention[attention ?? "on_commander"] ?? G.attention.on_commander;
-  return Array.from({ length: n }, () => {
-    const x = rng.float();
-    return x < w ? "watching" : x < w + g ? "glancing" : "busy";
-  });
-}
-function attentionCue(prev, now) {
-  if (now === prev || now === "glancing") return null;
-  return now === "watching" ? "watch" : "look_away";
-}
-function cheatRoll(rng, attention, reading2) {
-  return rng.chance(G.caught[attention] * (1 + G.readingMult * reading2));
-}
-function noiseOf(source, stillness = 0) {
-  const kind = source === "miss" ? "gasp" : source === "slip" ? "creak" : source === "relief" ? "rustle" : "cough";
-  return { loudness: 1 * (1 - stillness), kind };
-}
-function segmentNoise(result, interaction, stillness = 0) {
-  const out = /* @__PURE__ */ new Map();
-  const add = (source, n) => {
-    if (n <= 0) return;
-    const s = noiseOf(source, stillness);
-    out.set(s.kind, (out.get(s.kind) ?? 0) + s.loudness * n);
-  };
-  add("miss", result.gasps);
-  add(interaction === "timing" ? "spill" : "slip", result.slips);
-  add("relief", result.reliefs);
-  return [...out].map(([kind, loudness]) => ({ kind, loudness }));
 }
 
 // src/engine/physics/state.ts
@@ -30733,6 +30940,12 @@ registerAction("physics/skip", (draft, payload, ctx2) => {
   if (!isObj35(payload)) throw new Error("physics/skip needs { strategy }");
   return marathonSkip(draft, ctx2, payload.strategy);
 });
+registerAction("physics/stimulus", (draft, payload, ctx2) => {
+  live(draft, ctx2.registries, "physics/stimulus");
+  if (!isObj35(payload)) throw new Error("physics/stimulus needs { way, kind }");
+  return applyWay(draft, ctx2, payload.way, payload.kind, payload.depth);
+});
+registerDayEndStep("director_tick", (draft) => decayStimuli(draft));
 
 // src/engine/actions/life.ts
 registerAction("life/set_frequency", (draft, payload, ctx2) => {
@@ -38347,10 +38560,19 @@ var OUTCOME = {
   limit_broken: "The commander is pushed past the limit before she lets go.",
   blackout: "The commander blacks out."
 };
+function perceptionLines(state, reg) {
+  const lines = exposedKinds(state, reg).flatMap((ex) => {
+    const w = perceptionWord(state, reg, ex.kind, bandOf(state, reg, ex));
+    return w === null ? [] : [w.replace(/[.\s]+$/, "")];
+  });
+  return lines.length === 0 ? null : { id: `${PHYSICS_PREFIX}perception`, text: `What reaches the commander: ${lines.join("; ")}.`, expiresAfter: "manual" };
+}
 function refreshPhysicsDirectives(builder, state, reg) {
   builder.clearMatching((d2) => d2.id.startsWith(PHYSICS_PREFIX) && d2.expiresAfter === "manual");
   const d = state ? physicsLines(state, reg) : null;
   if (d) builder.setDirective(d);
+  const p = state ? perceptionLines(state, reg) : null;
+  if (p) builder.setDirective(p);
 }
 function clearPhysicsDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(PHYSICS_PREFIX));
@@ -38570,6 +38792,9 @@ function createStaging(deps) {
     endSegment,
     stopWord() {
       return dispatch2({ type: "physics/stop_word", payload: {} });
+    },
+    stimulus(way, kind, depth) {
+      return active ? dispatch2({ type: "physics/stimulus", payload: { way, kind, ...depth !== void 0 ? { depth } : {} } }) : [];
     },
     skip(strategy) {
       return active && run() ? dispatch2({ type: "physics/skip", payload: { strategy } }) : [];
@@ -43516,6 +43741,25 @@ function contactPhysicsReading(subject, env) {
   if (phys?.skill === true && env.state) lines.push(`Your endurance for this: ${ENDURANCE_WORDS[commanderSkill(env.state, subject.id)]}.`);
   return lines.length > 0 ? { lines } : null;
 }
+var WAY_TEXT = {
+  avoid: "Breathe through the mouth, turn the face: she may notice.",
+  sniff: "A short test.",
+  inhale: "Breathe it in as far as the body takes: too far and the body protests.",
+  nuzzle: "Press the face in and stay.",
+  secret: "Take it while she is not looking: she may catch it.",
+  taste: "Taste it."
+};
+function stimulusReading(subject, env) {
+  const lines = [];
+  const way = typeof subject.data.way === "string" ? WAY_TEXT[subject.data.way] : void 0;
+  if (way !== void 0) lines.push(way);
+  if (env.state) {
+    const ex = exposedKinds(env.state, env.registries).find((e) => e.kind === subject.id);
+    const word = ex ? perceptionWord(env.state, env.registries, subject.id, bandOf(env.state, env.registries, ex)) : null;
+    if (word !== null) lines.push(`What reaches you: ${word}.`);
+  }
+  return lines.length > 0 ? { lines } : null;
+}
 function registerBlockingProviders() {
   registerAnalyzeProvider("blockingPostures", reading(FIELD.postures));
   registerAnalyzeProvider("blockingAnchors", reading(FIELD.anchors));
@@ -43524,6 +43768,7 @@ function registerBlockingProviders() {
   registerAnalyzeProvider("blockingActivities", reading(FIELD.activities));
   registerAnalyzeProvider("momentSources", momentOption2);
   registerAnalyzeProvider("contactPhysics", contactPhysicsReading);
+  registerAnalyzeProvider("stimulusKinds", stimulusReading);
 }
 
 // src/ui/personal/tokens.ts
@@ -46280,7 +46525,7 @@ function renderPlanner(host, ctx2) {
   draft.picked = draft.picked.filter((id) => living2.some((u) => u.id === id));
   const full = draft.picked.length >= TUNING.expedition.partyMax;
   const defaults = defaultFormation(state, reg, draft.picked);
-  const rowOf = (id) => draft.rows[id] ?? (defaults.front.includes(id) ? "front" : "back");
+  const rowOf2 = (id) => draft.rows[id] ?? (defaults.front.includes(id) ? "front" : "back");
   root.append(h("h3", {}, "SQUAD"));
   for (const u of living2) {
     const reason2 = unitReason(state, u);
@@ -46310,10 +46555,10 @@ function renderPlanner(host, ctx2) {
           class: "alius-btn",
           "data-row": u.id,
           onclick: () => {
-            draft.rows[u.id] = rowOf(u.id) === "front" ? "back" : "front";
+            draft.rows[u.id] = rowOf2(u.id) === "front" ? "back" : "front";
             ctx2.redraw();
           }
-        }, rowOf(u.id) === "front" ? "[ FRONT ]" : "[ BACK ]"));
+        }, rowOf2(u.id) === "front" ? "[ FRONT ]" : "[ BACK ]"));
       }
     }
     root.append(row3);
@@ -46333,8 +46578,8 @@ function renderPlanner(host, ctx2) {
     h("p", { class: "alius-dim" }, `REST NEEDS ${(rest?.suppliesPerUnit ?? 1) * Math.max(1, draft.picked.length)} PER STOP`)
   );
   const formation = {
-    front: draft.picked.filter((id) => rowOf(id) === "front"),
-    back: draft.picked.filter((id) => rowOf(id) === "back")
+    front: draft.picked.filter((id) => rowOf2(id) === "front"),
+    back: draft.picked.filter((id) => rowOf2(id) === "back")
   };
   const payload = { ..."missionId" in ctx2.target ? { missionId: ctx2.target.missionId } : { poi: ctx2.target.poi }, unitIds: [...draft.picked], formation, supplies: draft.supplies };
   const reason = checkExpedition(state, reg, payload);
@@ -48460,6 +48705,11 @@ var holding = /* @__PURE__ */ new WeakMap();
 function renderPhysicsPanel(host, ctx2) {
   const { state, registries: reg, staging } = ctx2;
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : void 0;
+  const exposures = state && !run ? exposedKinds(state, reg) : [];
+  if (state && !run && exposures.length > 0) {
+    drawWays(host, ctx2, exposures);
+    return;
+  }
   if (!state || !run) {
     const t = holding.get(host);
     if (t !== void 0) clearInterval(t);
@@ -48538,6 +48788,7 @@ function renderPhysicsPanel(host, ctx2) {
     cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null,
     running2 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null,
     ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
+    ...wayGroups(ctx2, exposedKinds(state, reg)),
     h(
       "div",
       { class: "alius-physics-controls" },
@@ -48569,6 +48820,65 @@ function renderPhysicsPanel(host, ctx2) {
       holding.delete(host);
     });
   }
+}
+var WAY_BUTTONS = [
+  { way: "avoid", text: "[ AVOID ]", family: "body" },
+  { way: "sniff", text: "[ SNIFF ]", family: "body" },
+  { way: "nuzzle", text: "[ NUZZLE ]", family: "body" },
+  { way: "taste", text: "[ TASTE ]", family: "taste" },
+  { way: "secret", text: "[ IN SECRET ]", family: "body" }
+];
+var DEPTHS = [["shallow", "[ SHALLOW INHALE ]"], ["deep", "[ DEEP INHALE ]"], ["very_deep", "[ VERY DEEP INHALE ]"]];
+var inhaling = /* @__PURE__ */ new WeakMap();
+function wayGroups(ctx2, exposures) {
+  const { registries: reg, staging } = ctx2;
+  const realtime = ctx2.settings.physicsRealtime === true;
+  const now = ctx2.now ?? Date.now;
+  const inhaleOn = ctx2.settings.physicsInteractions?.inhale !== false;
+  return exposures.map((ex) => {
+    const kind = reg.stimulusKinds.get(ex.kind);
+    const taste = kind?.family === "taste";
+    const stamp = (way) => analyzeNative(`stimulusKinds:${ex.kind}`, { way });
+    const plain6 = WAY_BUTTONS.filter((b) => b.family === "taste" === taste || b.way === "avoid" || b.way === "secret").filter((b) => !(taste && (b.way === "sniff" || b.way === "nuzzle")));
+    const push = (way, depth) => () => {
+      staging.stimulus(way, ex.kind, depth);
+    };
+    const inhale = taste || !inhaleOn ? [] : realtime ? [h("button", {
+      type: "button",
+      class: "alius-btn alius-option alius-way",
+      "data-way": "inhale",
+      ...stamp("inhale"),
+      onpointerdown: (e) => {
+        inhaling.set(e.currentTarget, now());
+      },
+      onpointerup: (e) => {
+        const t = inhaling.get(e.currentTarget);
+        inhaling.delete(e.currentTarget);
+        if (t !== void 0) staging.stimulus("inhale", ex.kind, Math.min(100, Math.round((now() - t) / TUNING.stimuli.inhale.fillMs * 100)));
+      }
+    }, "[ HOLD TO INHALE ]")] : DEPTHS.map(([d, text2]) => h("button", { type: "button", class: "alius-btn alius-option alius-way", "data-way": "inhale", "data-depth": d, ...stamp("inhale"), onclick: push("inhale", d) }, text2));
+    return h(
+      "div",
+      { class: "alius-physics-ways", "data-kind": ex.kind, role: "group", "aria-label": String(kind?.label ?? ex.kind) },
+      h("span", { class: "alius-dim" }, `${String(kind?.label ?? ex.kind)}: `),
+      ...plain6.map((b) => h("button", { type: "button", class: "alius-btn alius-option alius-way", "data-way": b.way, ...stamp(b.way), onclick: push(b.way) }, b.text)),
+      ...inhale
+    );
+  });
+}
+function drawWays(host, ctx2, exposures) {
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-physics", role: "group", "aria-label": "What reaches the body" },
+    ...wayGroups(ctx2, exposures),
+    h(
+      "div",
+      { class: "alius-physics-controls" },
+      h("button", { type: "button", class: "alius-btn alius-option alius-physics-stop", "data-action": "stop-word", ...analyzeNative("glossary:stop_word"), onclick: () => {
+        ctx2.staging.stopWord();
+      } }, "[ STOP WORD ]")
+    )
+  ));
 }
 
 // src/ui/scene/sceneScreen.ts
@@ -49344,10 +49654,10 @@ var registered = false;
 function commanderStressProvider(_subject, env, k) {
   const state = env.state;
   if (!state) return null;
-  const T4 = TUNING.special.commanderStress;
+  const T5 = TUNING.special.commanderStress;
   const value = commanderStress(state);
   const lines = [`Now: ${commanderStressBand(state)}${k.raw(value) !== null ? ` (${k.raw(value)})` : ""}`];
-  if (value >= T4.empathyAt) lines.push("The commander reads people worse: Empathy is one rank lower.");
+  if (value >= T5.empathyAt) lines.push("The commander reads people worse: Empathy is one rank lower.");
   lines.push("It eases a little each day, more after a night slept through and with the medbay; nightmares, a false alarm acted on and a fall in combat raise it.");
   return { lines };
 }
@@ -49608,8 +49918,8 @@ function publicityProvider(subject, env, k) {
   const lines = [`The relationship is ${open3.level}${pref !== void 0 ? `; she prefers ${pref}` : ""}.`];
   if (pref !== void 0 && pref !== open3.level) lines.push("She would like to talk about it.");
   if (open3.level === "secret") {
-    const T4 = TUNING.relations.affair;
-    const chance = k.raw(Math.round((T4.base + T4.perOther) * 100));
+    const T5 = TUNING.relations.affair;
+    const chance = k.raw(Math.round((T5.base + T5.perOther) * 100));
     lines.push(chance !== null ? `It can come out when others are with her: about ${chance} % with one other present.` : "It can come out when others are with her.");
   }
   return { lines };
@@ -53087,6 +53397,7 @@ function createApp(st, deps) {
           endSegment: () => staging.endSegment(),
           stopWord: () => staging.stopWord(),
           skip: (st2) => staging.skip(st2),
+          stimulus: (w, k, d) => staging.stimulus(w, k, d),
           cue: (k, b) => staging.cue(k, b),
           beat: () => staging.beat(),
           keystroke: () => staging.keystroke(),

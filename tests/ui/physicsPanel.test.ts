@@ -55,6 +55,7 @@ const fake = () => {
     endSegment: () => { calls.push(['end', null]); return []; },
     stopWord: () => { calls.push(['stop', null]); return []; },
     skip: (st) => { calls.push(['skip', st]); return []; },
+    stimulus: (way, kind, depth) => { calls.push(['stimulus', { way, kind, depth }]); return []; },
     cue: (kind) => `[${kind}]`,
     beat: () => 0,
   };
@@ -77,7 +78,7 @@ const env = (state: CampaignState | null) => ({ registries: reg, state, settings
 describe('the physics panel', () => {
   it('is absent without a run, without a scene and while the blocking is not live', () => {
     expect(draw(null).host.innerHTML).toBe('');
-    const s = hold();
+    const s = hold('footrest'); // a weight hold exposes nothing to breathe in
     delete s.scene!.physics;
     expect(draw(s).host.innerHTML).toBe('');
     const far = hold();
@@ -374,5 +375,75 @@ describe('a marathon in the panel', () => {
     expect(markedWithout(v.host)).toEqual([]);
     expect(unresolved(v.host, env(s))).toEqual([]);
     expect(unreachable(v.host)).toEqual([]);
+  });
+});
+
+describe('the ways of breathing her in', () => {
+  /** The commander at Ann's feet: no hold runs, but the scent of her feet and the salt of her skin reach the body. */
+  function worship(): CampaignState {
+    registerFrameReader(() => 'play');
+    const s = campaign(reg, 4);
+    setRelation(s, ANN, { stateId: 'confidant' });
+    enable(s, 'worship', 'bodily_fluids', 'humiliation');
+    const st = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    setBlocking(st, { registries: reg }, { person: COMMANDER, field: 'contact', value: 'foot_worship', with: ANN, target: 'feet' }, { at: 3, source: 'chip' });
+    return st;
+  }
+
+  it('with no hold running the panel offers the ways for each kind that reaches the body, and the stop word', () => {
+    const v = draw(worship());
+    const group = (kind: string) => v.qa(`[data-kind="${kind}"] button`).map((b) => b.textContent);
+    expect(group('scent_feet')).toEqual(['[ AVOID ]', '[ SNIFF ]', '[ NUZZLE ]', '[ IN SECRET ]', '[ SHALLOW INHALE ]', '[ DEEP INHALE ]', '[ VERY DEEP INHALE ]']);
+    expect(group('taste_salt')).toEqual(['[ AVOID ]', '[ TASTE ]', '[ IN SECRET ]']);
+    expect(texts(v.qa('.alius-physics-controls button'))).toEqual(['[ STOP WORD ]']);
+    expect(v.host.innerHTML).not.toMatch(/\b(he|him|his)\b/i);
+    expect(draw(hold('footrest')).q('[data-kind]')).toBeNull(); // a weight hold exposes nothing
+  });
+
+  it('a press sends the way and the kind; the inhale sends its depth', () => {
+    const v = draw(worship());
+    v.qa('[data-kind="scent_feet"] button').find((b) => b.dataset.way === 'sniff')!.click();
+    v.qa('[data-kind="scent_feet"] button').find((b) => b.dataset.depth === 'deep')!.click();
+    v.qa('[data-kind="taste_salt"] button').find((b) => b.dataset.way === 'taste')!.click();
+    expect(v.calls).toEqual([
+      ['stimulus', { way: 'sniff', kind: 'scent_feet', depth: undefined }],
+      ['stimulus', { way: 'inhale', kind: 'scent_feet', depth: 'deep' }],
+      ['stimulus', { way: 'taste', kind: 'taste_salt', depth: undefined }],
+    ]);
+  });
+
+  it('real time: one hold-to-inhale button; the bar released after the time sends its fill (0–100)', () => {
+    let t = 1000;
+    const host = h('div');
+    document.body.append(host);
+    const f = fake();
+    renderPhysicsPanel(host, { state: worship(), registries: reg, settings: settings({ physicsRealtime: true }), staging: f.staging, onTap: vi.fn(), now: () => t });
+    const btns = [...host.querySelectorAll<HTMLButtonElement>('[data-kind="scent_feet"] [data-way="inhale"]')];
+    expect(btns.map((b) => b.textContent)).toEqual(['[ HOLD TO INHALE ]']);
+    btns[0]!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    t += 750;
+    btns[0]!.dispatchEvent(new Event('pointerup', { bubbles: true }));
+    t += 5000;
+    btns[0]!.dispatchEvent(new Event('pointerup', { bubbles: true })); // a release with nothing held sends nothing
+    expect(f.calls).toEqual([['stimulus', { way: 'inhale', kind: 'scent_feet', depth: 50 }]]);
+  });
+
+  it('the inhale is not offered when it is switched off', () => {
+    const v = draw(worship(), { settings: { physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, inhale: false } } });
+    expect(v.qa('[data-way="inhale"]')).toEqual([]);
+    expect(v.qa('[data-way="sniff"]').length).toBeGreaterThan(0);
+  });
+
+  it('every way resolves, is marked and can be reached; the reading says what it does and what reaches the commander', () => {
+    const s = worship();
+    const v = draw(s);
+    expect(markedWithout(v.host)).toEqual([]);
+    expect(unresolved(v.host, env(s))).toEqual([]);
+    expect(unreachable(v.host)).toEqual([]);
+    const lines = analyze('stimulusKinds:scent_feet', env(s), { way: 'avoid' }).join(' ');
+    expect(lines).toContain('she may notice');
+    expect(lines).toContain('What reaches you:');
+    expect(lines).not.toMatch(/\d|expect|rhythm/);
+    expect(analyze('stimulusKinds:scent_feet', env(campaign(reg, 4))).join(' ')).toBe('');
   });
 });

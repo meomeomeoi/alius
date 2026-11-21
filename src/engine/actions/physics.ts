@@ -1,6 +1,8 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
 import { physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { applyWay, decayStimuli } from '../physics/stimuli';
+import { registerDayEndStep } from '../calendar';
 import { marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
 
 // Importing this module registers the physics actions (P15a) and, through `physics/run`, what keeps a run in step with the blocking.
@@ -74,3 +76,13 @@ registerAction('physics/skip', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('physics/skip needs { strategy }');
   return marathonSkip(draft, ctx, payload.strategy);
 });
+
+/** `physics/stimulus { way, kind, depth? }`: the commander's way with a stimulus (avoid, sniff, inhale, nuzzle, ordered, secret, taste). Draws only for avoid and secret. */
+registerAction('physics/stimulus', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/stimulus');
+  if (!isObj(payload)) throw new Error('physics/stimulus needs { way, kind }');
+  return applyWay(draft, ctx, payload.way, payload.kind, payload.depth);
+});
+
+// the body layer: tolerance slips back with days apart and a craved kind that is missed costs a little stress (once a day)
+registerDayEndStep('director_tick', (draft) => decayStimuli(draft));

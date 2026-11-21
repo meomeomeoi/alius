@@ -11,6 +11,7 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { motionReduced } from '../motion';
 import { clockText, STRATEGIES } from '../../engine/physics/marathon';
+import { exposedKinds } from '../../engine/physics/stimuli';
 
 /** What the panel needs of the staging controller (the controller passes it as it is). */
 export interface PhysicsPanelStaging {
@@ -18,6 +19,7 @@ export interface PhysicsPanelStaging {
   endSegment(): EngineEvent[];
   stopWord(): EngineEvent[];
   skip(strategy: string): EngineEvent[];
+  stimulus(way: string, kind: string, depth?: number | string): EngineEvent[];
   cue(kind: CueKind, beat: number): string | null;
   beat(): number;
 }
@@ -29,6 +31,8 @@ export interface PhysicsPanelCtx {
   staging: PhysicsPanelStaging;
   /** The tap: the signal inside the fiction (`physics/signal`, dispatched straight to the engine, never staged). */
   onTap: () => void;
+  /** The clock for the deep inhale's bar (default `Date.now`). */
+  now?: () => number;
 }
 
 interface Control { kind: InputKind | 'wait'; text: string; part?: string; relief?: true; main?: true }
@@ -67,6 +71,11 @@ const holding = new WeakMap<HTMLElement, ReturnType<typeof setInterval>>();
 export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): void {
   const { state, registries: reg, staging } = ctx;
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : undefined;
+  const exposures = state && !run ? exposedKinds(state, reg) : [];
+  if (state && !run && exposures.length > 0) {
+    drawWays(host, ctx, exposures);
+    return;
+  }
   if (!state || !run) {
     const t = holding.get(host);
     if (t !== undefined) clearInterval(t);
@@ -136,6 +145,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
     cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null,
     running && !realtime ? h('div', { class: 'alius-physics-beats', 'aria-hidden': 'true' }, ...Array.from({ length: total }, (_, i) => h('span', { class: i < pointer.beat ? 'alius-pip alius-pip-done' : 'alius-pip' }, i < pointer.beat ? '●' : '○'))) : null,
     ctx.settings.showRawValues ? h('p', { class: 'alius-physics-raw alius-dim' }, `${gauge ?? 'gauge'}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
+    ...wayGroups(ctx, exposedKinds(state, reg)),
     h('div', { class: 'alius-physics-controls' },
       ...controls.map(button),
       h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-tap', 'data-action': 'tap', ...analyzeNative('glossary:tap_signal'), onclick: () => ctx.onTap() }, '[ TAP ]'),
@@ -164,4 +174,50 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
       holding.delete(host);
     });
   }
+}
+
+const WAY_BUTTONS: Array<{ way: string; text: string; family: 'body' | 'taste'; depth?: string }> = [
+  { way: 'avoid', text: '[ AVOID ]', family: 'body' }, { way: 'sniff', text: '[ SNIFF ]', family: 'body' },
+  { way: 'nuzzle', text: '[ NUZZLE ]', family: 'body' }, { way: 'taste', text: '[ TASTE ]', family: 'taste' },
+  { way: 'secret', text: '[ IN SECRET ]', family: 'body' },
+];
+const DEPTHS: Array<[string, string]> = [['shallow', '[ SHALLOW INHALE ]'], ['deep', '[ DEEP INHALE ]'], ['very_deep', '[ VERY DEEP INHALE ]']];
+const inhaling = new WeakMap<HTMLElement, number>();
+
+/** The ways the commander can take what reaches the body: one group per kind. The deep inhale is three depths turn-based, and a bar held down and released in real time. */
+function wayGroups(ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKinds>): HTMLElement[] {
+  const { registries: reg, staging } = ctx;
+  const realtime = ctx.settings.physicsRealtime === true;
+  const now = ctx.now ?? Date.now;
+  const inhaleOn = ctx.settings.physicsInteractions?.inhale !== false;
+  return exposures.map((ex) => {
+    const kind = reg.stimulusKinds.get(ex.kind);
+    const taste = kind?.family === 'taste';
+    const stamp = (way: string) => analyzeNative(`stimulusKinds:${ex.kind}`, { way });
+    const plain = WAY_BUTTONS.filter((b) => (b.family === 'taste') === taste || b.way === 'avoid' || b.way === 'secret').filter((b) => !(taste && (b.way === 'sniff' || b.way === 'nuzzle')));
+    const push = (way: string, depth?: number | string) => () => { staging.stimulus(way, ex.kind, depth); };
+    const inhale: HTMLElement[] = taste || !inhaleOn ? [] : realtime
+      ? [h('button', {
+        type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': 'inhale', ...stamp('inhale'),
+        onpointerdown: (e: Event) => { inhaling.set(e.currentTarget as HTMLElement, now()); },
+        onpointerup: (e: Event) => {
+          const t = inhaling.get(e.currentTarget as HTMLElement);
+          inhaling.delete(e.currentTarget as HTMLElement);
+          if (t !== undefined) staging.stimulus('inhale', ex.kind, Math.min(100, Math.round(((now() - t) / TUNING.stimuli.inhale.fillMs) * 100)));
+        },
+      }, '[ HOLD TO INHALE ]')]
+      : DEPTHS.map(([d, text]) => h('button', { type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': 'inhale', 'data-depth': d, ...stamp('inhale'), onclick: push('inhale', d) }, text));
+    return h('div', { class: 'alius-physics-ways', 'data-kind': ex.kind, role: 'group', 'aria-label': String(kind?.label ?? ex.kind) },
+      h('span', { class: 'alius-dim' }, `${String(kind?.label ?? ex.kind)}: `),
+      ...plain.map((b) => h('button', { type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': b.way, ...stamp(b.way), onclick: push(b.way) }, b.text)),
+      ...inhale);
+  }) as HTMLElement[];
+}
+
+/** The panel with no hold running: only what reaches the body, and the stop word (which ends the contact all the same). */
+function drawWays(host: HTMLElement, ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKinds>): void {
+  host.replaceChildren(h('div', { class: 'alius-physics', role: 'group', 'aria-label': 'What reaches the body' },
+    ...wayGroups(ctx, exposures),
+    h('div', { class: 'alius-physics-controls' },
+      h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]'))));
 }

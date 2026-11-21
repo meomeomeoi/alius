@@ -904,5 +904,41 @@
       "physics",
       "caught"
     ]
+  },
+  {
+    "id": "stimulus_craving",
+    "event": "stimulus_stage_changed",
+    "when": {
+      "to": "craving",
+      "herPresent": "yes"
+    },
+    "text": "The commander keeps seeking out {name}: {what} has become a habit.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "stimulus",
+      "craving"
+    ]
+  },
+  {
+    "id": "stimulus_adoring",
+    "event": "stimulus_stage_changed",
+    "when": {
+      "to": "adoring",
+      "herPresent": "yes"
+    },
+    "text": "The commander worships {name}: {what} is openly adored.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "stimulus",
+      "adoring"
+    ]
   }
 ]

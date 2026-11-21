@@ -757,6 +757,8 @@ export interface Commander {
   deeds?: Partial<Record<DeedCounter, number>>;
   /** P15a: the commander's endurance per contact physics (xp and level 0–5); read through `commanderSkill`. */
   endurance?: Record<string, { xp: number; level: number; trainedDay?: number }>;
+  /** P15a: the commander's body layer per stimulus kind (plan R13): tolerance, exposure, the share of seeking over avoiding and the stage it gives. Read through `stimuli.ts`. */
+  stimuli?: Record<string, { tolerance: number; exposure: number; lastDay: number; best: number; seek: number; stage: 'aversion' | 'enduring' | 'accustomed' | 'craving' | 'adoring'; pending?: { stage: 'aversion' | 'enduring' | 'accustomed' | 'craving' | 'adoring'; n: number }; session?: string; decayDay?: number; missedDay?: number }>;
   /** P15a: conditions the commander bears (dizzy after a blackout, stiff after a long hold) until their time; read through `conditionsOf`. */
   conditions?: Array<{ id: string; until: { day: number; slot?: Slot }; /** The change of every social rank, copied from the condition when it was set. */ rank?: number }>;
   /** P14c: how well the commander has learned each hobby from her (0..100, by hobby id); shown only as a descriptor, no mechanical value. */

@@ -328,6 +328,13 @@ const holder: MemoryResolver = (draft, event) => {
 registerMemoryResolver('physics_outcome', holder, { ids: ['her'], vars: ['name', 'result', 'physics'] });
 registerMemoryResolver('physics_caught', holder, { ids: ['her'], vars: ['name', 'result', 'physics'] });
 
+// the body layer (P15a): a stage that a stimulus of hers has reached for the commander, while she was there
+registerMemoryResolver('stimulus_stage_changed', (draft, event, reg) => {
+  const her = subjectOf(draft, event.holderId);
+  const kind = reg.stimulusKinds.get(String(event.kind));
+  return her && kind ? { ids: { her: [her.id] }, vars: { name: her.name, to: str(event.to) ?? '', herPresent: yes(event.herPresent === true), what: String(kind.label).toLowerCase() } } : null;
+}, { ids: ['her'], vars: ['name', 'to', 'herPresent', 'what'] });
+
 // ---------------------------------------------------------------------------------------------
 // what she taught the commander (P14c): the first time a hobby is taught; her other hobby events are facts written at their sites
 

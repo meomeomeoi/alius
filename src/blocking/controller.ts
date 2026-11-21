@@ -50,6 +50,8 @@ export interface StagingController {
   endSegment(): EngineEvent[];
   /** The player's stop word: always ends the hold. */
   stopWord(): EngineEvent[];
+  /** The commander's way with a stimulus (`physics/stimulus`). */
+  stimulus(way: string, kind: string, depth?: number | string): EngineEvent[];
   /** A marathon between two phases: how the commander spends the stretch (`physics/skip`). */
   skip(strategy: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
@@ -214,6 +216,9 @@ export function createStaging(deps: StagingDeps): StagingController {
     endSegment,
     stopWord() {
       return dispatch({ type: 'physics/stop_word', payload: {} });
+    },
+    stimulus(way, kind, depth) {
+      return active ? dispatch({ type: 'physics/stimulus', payload: { way, kind, ...(depth !== undefined ? { depth } : {}) } }) : [];
     },
     skip(strategy) {
       return active && run() ? dispatch({ type: 'physics/skip', payload: { strategy } }) : [];

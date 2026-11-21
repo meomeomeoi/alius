@@ -165,6 +165,28 @@ export const TUNING = Object.freeze({
     /** `obsessive` draws its width at random between these; `clinical` measures with a half-width opening every 3rd–4th. */
     obsessiveMs: Object.freeze([200, 700] as const), clinicalEvery: Object.freeze([3, 4] as const),
   }),
+  /**
+   * P15a: the scent of a soldier's body (plan R13; AUTHOR TO TUNE): the level is a base per body part × her hygiene × the situation, and the band
+   * is read from it. `afterRun` counts on the day she came back (×2) and the day after (×1.5), `afterTraining` this slot.
+   */
+  scent: Object.freeze({
+    base: Object.freeze({ feet: 2, soles: 2, toes: 2, armpits: 1.5, rest: 0.75 } as Record<string, number>),
+    hygiene: Object.freeze({ fastidious: 0.6, normal: 1, careless: 1.4 } as Record<string, number>),
+    afterRun: Object.freeze({ day: 2, nextDay: 1.5 }), afterTraining: 1.5,
+    bands: Object.freeze({ noticeable: 1, strong: 2, overwhelming: 3.5 }),
+  }),
+  /**
+   * P15a: the commander's body layer (plan R13, spec §16.8; AUTHOR TO TUNE). Tolerance starts at `startTolerance` and gains `tolerancePerSession` a
+   * scene of exposure, loses 1 per `decayDays` apart (never below half the best). The reflex comes at tolerance × `reflexMult` in stimulus units
+   * (scent level × 25). The trajectory is a moving average (`seekAlpha`) with stage boundaries and `hysteresis` updates. A kind at craving or above that
+   * is missed for `missingDays` costs `missingStress` commander stress a day.
+   */
+  stimuli: Object.freeze({
+    startTolerance: 20, tolerancePerSession: 2, decayDays: 7, reflexMult: 1.2, unitsPerLevel: 25, faintFadeAt: 40, seekAlpha: 0.15,
+    stages: Object.freeze([0.2, 0.4, 0.6, 0.8] as const), hysteresis: 3, separatedDays: 7, missingDays: 3, missingStress: 3,
+    inhale: Object.freeze({ fillMs: 1500, zoneBase: 10, zoneTolerance: 5, depths: Object.freeze({ shallow: 1, deep: 2, very_deep: 3 } as Record<string, number>) }),
+    noticed: 0.6,
+  }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */

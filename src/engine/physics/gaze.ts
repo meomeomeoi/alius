@@ -54,3 +54,12 @@ export function segmentNoise(result: Pick<SegmentResult, 'gasps' | 'slips' | 're
   add('relief', result.reliefs);
   return [...out].map(([kind, loudness]) => ({ kind, loudness }));
 }
+
+/**
+ * The chance that she catches a cheat made at a moment of unknown attention: the three catch chances averaged over her activity's attention (a
+ * `clinical` holder is always watching), × (1 + 0.1 × `reading`). One draw instead of two.
+ */
+export function averageCaught(attention: string | undefined, style: PhysicsStyle, reading: number): number {
+  const [w, g, b] = (leadStyle(style).key === 'clinical' ? [1, 0, 0] : G.attention[attention ?? 'on_commander'] ?? G.attention.on_commander!) as number[];
+  return Math.min(1, (w! * G.caught.watching + g! * G.caught.glancing + b! * G.caught.busy) * (1 + G.readingMult * reading));
+}

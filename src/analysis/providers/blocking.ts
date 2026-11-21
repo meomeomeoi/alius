@@ -2,6 +2,7 @@ import { COMMANDER, WORN_SLOTS, type StagingSnapshot } from '../../engine/blocki
 import type { ResponseType } from '../../engine/blocking';
 import { momentsOf } from '../../engine/moments/state';
 import { commanderSkill } from '../../engine/physics/skill';
+import { bandOf, exposedKinds, perceptionWord } from '../../engine/physics/stimuli';
 import type { CampaignState } from '../../engine/state/types';
 import type { Subject } from '../subject';
 import type { AnalyzeEnv } from '../model';
@@ -112,6 +113,31 @@ function contactPhysicsReading(subject: Subject, env: AnalyzeEnv): { lines: stri
   return lines.length > 0 ? { lines } : null;
 }
 
+const WAY_TEXT: Record<string, string> = {
+  avoid: 'Breathe through the mouth, turn the face: she may notice.',
+  sniff: 'A short test.',
+  inhale: 'Breathe it in as far as the body takes: too far and the body protests.',
+  nuzzle: 'Press the face in and stay.',
+  secret: 'Take it while she is not looking: she may catch it.',
+  taste: 'Taste it.',
+};
+
+/**
+ * The reading of a stimulus: what a way does, and what reaches the commander now (the language of perception for the stage the record has
+ * reached). Never a number, never her view of it.
+ */
+function stimulusReading(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const lines: string[] = [];
+  const way = typeof subject.data.way === 'string' ? WAY_TEXT[subject.data.way] : undefined;
+  if (way !== undefined) lines.push(way);
+  if (env.state) {
+    const ex = exposedKinds(env.state, env.registries).find((e) => e.kind === subject.id);
+    const word = ex ? perceptionWord(env.state, env.registries, subject.id, bandOf(env.state, env.registries, ex)) : null;
+    if (word !== null) lines.push(`What reaches you: ${word}.`);
+  }
+  return lines.length > 0 ? { lines } : null;
+}
+
 /** Registers the P15a readings (called from `registerCoreProviders`). */
 export function registerBlockingProviders(): void {
   registerAnalyzeProvider('blockingPostures', reading(FIELD.postures));
@@ -121,5 +147,6 @@ export function registerBlockingProviders(): void {
   registerAnalyzeProvider('blockingActivities', reading(FIELD.activities));
   registerAnalyzeProvider('momentSources', momentOption);
   registerAnalyzeProvider('contactPhysics', contactPhysicsReading);
+  registerAnalyzeProvider('stimulusKinds', stimulusReading);
 }
 

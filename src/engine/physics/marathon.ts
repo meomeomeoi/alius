@@ -8,6 +8,7 @@ import { sceneSettingsOf, type MarathonPace } from '../moments/settings';
 import type { Rng } from '../rng';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
+import { averageCaught } from './gaze';
 import { commanderSkill, herSkillOf } from './skill';
 import { leadStyle, physicsStyleOf } from './style';
 import type { MarathonState, PhysicsRun } from './state';
@@ -83,10 +84,8 @@ export function resolveSkip(state: CampaignState, reg: Registries, run: PhysicsR
     case 'cheat': {
       const reading = herSkillOf(state, run.holderId).reading;
       const activity = state.scene?.blocking?.[run.holderId]?.activity;
-      const attention = (activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined) ?? 'on_commander';
-      const [w, g, b] = (leadStyle(physicsStyleOf(state, run.holderId)).key === 'clinical' ? [1, 0, 0] : TUNING.physics.gaze.attention[attention] ?? TUNING.physics.gaze.attention.on_commander!) as number[];
-      const c = TUNING.physics.gaze.caught;
-      const p = Math.min(1, (w! * c.watching + g! * c.glancing + b! * c.busy) * (1 + TUNING.physics.gaze.readingMult * reading));
+      const attention = activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined;
+      const p = averageCaught(attention, physicsStyleOf(state, run.holderId), reading);
       const hit = rng.chance(p);
       return { held: !hit, summary: hit ? SUMMARY.cheat.bad : SUMMARY.cheat.good, delta: hit ? -M.failCost : M.cheatRelief, caught: hit, slip: hit };
     }

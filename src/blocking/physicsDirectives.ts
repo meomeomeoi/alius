@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { bandOf, exposedKinds, perceptionWord } from '../engine/physics/stimuli';
 import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../engine/physics/style';
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
@@ -92,11 +93,26 @@ const OUTCOME: Record<string, string> = {
   limit_broken: 'The commander is pushed past the limit before she lets go.', blackout: 'The commander blacks out.',
 };
 
+/**
+ * What reaches the commander through the senses while a contact or an item exposes a stimulus: the kind's line for the stage the record has
+ * reached (`physics:perception`, derived). Perception only: never what the commander thinks or feels. A faint scent that tolerance has worn
+ * past is not mentioned. `null` when nothing is exposed or nothing reaches.
+ */
+export function perceptionLines(state: CampaignState, reg: Registries): Directive | null {
+  const lines = exposedKinds(state, reg).flatMap((ex) => {
+    const w = perceptionWord(state, reg, ex.kind, bandOf(state, reg, ex));
+    return w === null ? [] : [w.replace(/[.\s]+$/, '')];
+  });
+  return lines.length === 0 ? null : { id: `${PHYSICS_PREFIX}perception`, text: `What reaches the commander: ${lines.join('; ')}.`, expiresAfter: 'manual' };
+}
+
 /** Sets or clears the derived `physics:` directive for the open scene (call with every context refresh). */
 export function refreshPhysicsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
   builder.clearMatching((d) => d.id.startsWith(PHYSICS_PREFIX) && d.expiresAfter === 'manual');
   const d = state ? physicsLines(state, reg) : null;
   if (d) builder.setDirective(d);
+  const p = state ? perceptionLines(state, reg) : null;
+  if (p) builder.setDirective(p);
 }
 
 /** Every `physics:` directive goes (the scene ended, the chat switched, no campaign). */

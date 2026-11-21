@@ -31,6 +31,7 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   blockingActivities: 'blockingActivities:on_comms', // P15a
   momentSources: 'momentSources:her_offer', // P15a
   contactPhysics: 'contactPhysics:breath', // P15a
+  stimulusKinds: 'stimulusKinds:scent_feet', // P15a
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */
