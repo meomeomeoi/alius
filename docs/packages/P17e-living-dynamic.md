@@ -66,3 +66,9 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 - **Appraisals:** `recordAppraisal(draft, reg, unitId, event, role)` / `recordWitnesses` / `recordActivity` store how a soldier read an event; a practice event adds an `eventDeltas[].appraisal` row (or the model's `reading`) and `developmentRules` rows. Misreading and revision are automatic (no rng draw).
 - **Counters and habits:** `countActivity`, `countCompanions`, `countRun`, `checkHabits`, `habitEffect`; `habits` rows are read by `counter.kind`. P17e's emergent rituals can use the same `Development.counters` keys (`activity:<id>`, `companion:<id>`, `region:<id>`; add a key kind and a registry `counter.kind`).
 - **Quiet moments:** a discrete change is a `DevMoment` stamped at `scene/start` and shown at `scene/end`; the scene carries the directive `development:<unitId>`; keep new directive ids away from it.
+
+## Left to this package by P15a (plan 2026-11-21, not implemented yet)
+
+Rulings of `docs/plans/2026-11-21-p15a-scene-blocking-moments.md` (R1). P15a builds the parts below as hooks or data only; this package completes them. When P15a is implemented this note becomes an **Interfaces already provided by P15a** section.
+
+- **Triggers to register:** `her_test` and `ritual_due` are live only through `registerMomentTrigger`. A test entry maps its own options onto the frame's response types.

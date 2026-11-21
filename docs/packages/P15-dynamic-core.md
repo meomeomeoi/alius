@@ -604,3 +604,19 @@ Temperament for every named unit (`talkativeness`, `volatility`, `humor`) is P14
 - **Appraisals:** `recordAppraisal(draft, reg, unitId, event, role)` / `recordWitnesses` / `recordActivity` store how a soldier read an event; a practice event adds an `eventDeltas[].appraisal` row (or the model's `reading`) and `developmentRules` rows. Misreading and revision are automatic (no rng draw).
 - **Counters and habits:** `countActivity`, `countCompanions`, `countRun`, `checkHabits`, `habitEffect`; `habits` rows are read by `counter.kind`. P17e's emergent rituals can use the same `Development.counters` keys (`activity:<id>`, `companion:<id>`, `region:<id>`; add a key kind and a registry `counter.kind`).
 - **Quiet moments:** a discrete change is a `DevMoment` stamped at `scene/start` and shown at `scene/end`; the scene carries the directive `development:<unitId>`; keep new directive ids away from it.
+
+## Left to this package by P15a (plan 2026-11-21, not implemented yet)
+
+Rulings of `docs/plans/2026-11-21-p15a-scene-blocking-moments.md` (R1). P15a builds the parts below as hooks or data only; this package completes them. When P15a is implemented this note becomes an **Interfaces already provided by P15a** section.
+
+- **Categories already added by P15a:** `service`, `denial`, `exposure_risk` (with `requires` support on `contentCategories`). Do not add them again; add their profile entries and mechanics.
+- **The frame gate:** every `scope: dynamic` blocking entry and moment source is off until a frame reader is registered (`registerFrameReader(fn)`, frame ≥ `play`). Register `registerBlockingGate(fn)` too, so a dynamic without a romantic or close state makes the blocking live (B1).
+- **Physics stand-ins to replace:**
+  - `registerPhysicsStyle(fn)` gives the style pair and the phase that leads; until then the style is `neutral`. `TUNING.physics.style` already has a row per style key.
+  - `registerHoldsUntil(fn)` gives `holdsUntil` (`signal` until then).
+  - `registerExpectation(fn)` gives her expected moment option and its strength (until then: the `returned` option, else `yielded`, strength 1).
+- **Moments as probes:** `moment_answered { type, gap, tone, via }` moves no axis in P15a. The position axes and her reading of them are yours to move from it.
+- **Power-laden sources:** `her_demand` and `compromat_hint` are live only through `registerMomentTrigger(sourceId, fn)`.
+- **Not built:** the `notice` channel reader (squad knowledge, `knows_dynamic`); worship meanings per target; tells (blocking.md §12); the body map (the `worshipTargets[].zone` coordinates are stored as placeholders); the insult when she sees the commander avoid her scent while her meaning is `intimacy` (a hook in `applyWay`).
+- **Cheats and slips:** what `physics_caught` / `physics_slip` cost in Regard and the motive is yours.
+- **Where her skills live:** `Relation.herSkill` (seal, weight, reading, swing, rhythm) is on the relation, **not** inside `Relation.dynamic`.
