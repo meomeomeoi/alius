@@ -306,3 +306,10 @@ registerMemoryResolver('hobby_taught', (draft, event, reg) => {
   const hobby = reg.hobbies.get(String(event.hobbyId));
   return her && hobby ? { ids: { her: [her.id] }, vars: { name: her.name, hobby: String(hobby.label) } } : null;
 }, { ids: ['her'], vars: ['name', 'hobby'] });
+
+// a first between her and the commander (P14c): six rules, one per kind (`when.kind`); the row and the journal phrase belong to the event's row
+registerMemoryResolver('first_moment_kept', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  const kind = str(event.kind);
+  return her && kind !== undefined ? { ids: { her: [her.id] }, vars: { name: her.name, kind } } : null;
+}, { ids: ['her'], vars: ['name', 'kind'] });

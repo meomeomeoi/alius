@@ -7,6 +7,7 @@ import { TUNING } from '../tuning';
 import { bumpInterest, pushHobby } from './hobbies';
 import { closeNews, pendingNews } from './news';
 import { returnJoke, jokeCandidates } from './jokes';
+import { keepFirst, missingFirsts } from './meetings';
 import { plainText } from './facts';
 import { agreeOpinion, challengeOpinion, voiceOpinion } from './opinions';
 import { unitOf } from './places';
@@ -34,7 +35,7 @@ export function lifeIntentInput(
   state: CampaignState, reg: Registries, participants: readonly string[], scene: SceneRecord | null, channel: 'scene' | 'dm',
 ): { life?: LifeOffer } {
   if (lifeMode(state) === 'off' || !state.life) return {};
-  const offer: LifeOffer = { news: [], hobbies: [], topics: [], jokes: [], firsts: false };
+  const offer: LifeOffer = { news: [], hobbies: [], topics: [], jokes: [], firsts: false, firstKinds: [] };
   const present = participants.map((id) => unitOf(state, id)).filter((u): u is NonNullable<typeof u> => u !== undefined && u.kind === 'named' && isLiving(u));
   for (const unit of present) {
     const first = pendingNews(state, unit.id)[0];
@@ -67,7 +68,8 @@ export function lifeIntentInput(
     }
   }
   if (channel === 'scene' && scene !== null && scene.mode === 'private' && present.length === 1) {
-    offer.firsts = true;
+    offer.firstKinds = missingFirsts(state, present[0].id); // only what the pair has not had yet
+    offer.firsts = offer.firstKinds.length > 0;
     offer.jokes.push(...jokeCandidates(state, present[0].id, state.day).map((j) => ({ ...j, unitId: present[0].id })));
   }
   const empty = offer.news.length + offer.hobbies.length + offer.topics.length + offer.jokes.length === 0 && !offer.firsts;
@@ -108,6 +110,8 @@ export function applyLifeIntent(draft: CampaignState, ctx: EngineCtx, unitId: st
     }
     case 'opinion_agreed':
       return ev.topicId === undefined ? [] : agreeOpinion(draft, ctx, unitId, ev.topicId, ev);
+    case 'first_moment':
+      return ev.kind === undefined ? [] : keepFirst(draft, ctx, unitId, ev.kind, ev);
     case 'joke_returned':
       return ev.factId === undefined ? [] : returnJoke(draft, reg, unitId, ev.factId, draft.day);
     default:
@@ -115,5 +119,5 @@ export function applyLifeIntent(draft: CampaignState, ctx: EngineCtx, unitId: st
   }
 }
 
-/** The events whose own row `applyIntents` leaves to `applyLifeIntent` (an agreement is worth something only on a strong opinion). */
-export const ROW_IS_CONDITIONAL: readonly string[] = ['opinion_agreed'];
+/** The events whose own row `applyIntents` leaves to `applyLifeIntent` (an agreement is worth something only on a strong opinion; a first only the first time). */
+export const ROW_IS_CONDITIONAL: readonly string[] = ['opinion_agreed', 'first_moment'];

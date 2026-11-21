@@ -15537,6 +15537,644 @@ function pickJoke(draft, unitId, sceneId, day) {
   return newest;
 }
 
+// src/engine/bonds/violations.ts
+var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var MARKS_MAX = 50;
+function markSceneViolation(draft, reg, raw) {
+  const scene = draft.scene;
+  if (!scene || !isObj3(raw) || typeof raw.index !== "number" || !Number.isInteger(raw.index) || raw.index < 0) return;
+  const categories = flaggedCategories(draft, reg, raw.categories);
+  if (categories.length === 0) return;
+  const marks = (scene.violations ?? []).filter((v) => v.index !== raw.index);
+  marks.push({ index: raw.index, categories });
+  marks.sort((a, b) => a.index - b.index);
+  scene.violations = marks.slice(-MARKS_MAX);
+}
+function markDmViolation(draft, reg, unitId, messageRef, raw) {
+  if (typeof messageRef !== "string" || !messageRef.startsWith("dm:") || !isObj3(raw)) return;
+  const categories = flaggedCategories(draft, reg, raw.categories);
+  if (categories.length === 0) return;
+  const message = (draft.dms[unitId] ?? []).find((m) => m.id === messageRef.slice(3) && m.from === unitId);
+  if (message) message.violation = categories;
+}
+
+// src/engine/personal/bookings.ts
+var bookingsOf = (state) => state.personal?.bookings ?? [];
+var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
+var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
+function bookingChance(state, reg, unitId) {
+  const T4 = TUNING.personal.booking;
+  const affinity = state.relations[unitId]?.affinity ?? 0;
+  const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
+  const raw = T4.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
+  return Math.min(T4.cap, raw);
+}
+function dueBooking(state) {
+  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
+  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
+}
+function bookingPlayable(state, booking) {
+  const unit2 = state.squad.find((u) => u.id === booking.unitId);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return false;
+  if (unit2.status === "injured" || (unit2.injuryDays ?? 0) > 0) return false;
+  if (state.expedition?.party.includes(unit2.id)) return false;
+  return restrictionReason(state, unit2.id, "scene") === null;
+}
+function bookingGuard(state, action) {
+  const blocked = action.type.startsWith("activity/") || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
+  if (!blocked || state.personal?.bookings === void 0) return null;
+  const due = dueBooking(state);
+  if (!due || !bookingPlayable(state, due)) return null;
+  if (action.type === "scene/start") {
+    const ids = action.payload?.participants;
+    if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
+  }
+  return { code: "booking_due", message: `${unitName(state, due.unitId)} has booked this slot: go to her or cancel it.` };
+}
+function nextSlotAfter(day, slot2) {
+  if (slot2 === "morning") return { day, slot: "afternoon" };
+  if (slot2 === "afternoon") return { day, slot: "evening" };
+  return { day: day + 1, slot: "morning" };
+}
+function syncConflicts(draft, day, slot2) {
+  const same = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
+  for (const b of same) {
+    if (same.length > 1) b.conflict = true;
+    else delete b.conflict;
+  }
+  return same;
+}
+function book(draft, _ctx, p) {
+  const booking = {
+    id: nextPersonalId(draft, "bk"),
+    unitId: p.unitId,
+    kindId: p.kindId,
+    day: p.day,
+    slot: p.slot,
+    status: "booked",
+    source: p.source,
+    made: draft.day
+  };
+  (personalOf(draft).bookings ??= []).push(booking);
+  const events = [{ type: "booking_made", bookingId: booking.id, unitId: p.unitId, kindId: p.kindId, day: p.day, slot: p.slot, source: p.source }];
+  if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
+  return events;
+}
+function bookingKindsFor(state, reg, unitId) {
+  const tier = bondTierOf(state, reg, unitId);
+  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
+}
+function rollBookings(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const u of draft.squad) {
+    if (u.kind !== "named") continue;
+    if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
+    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
+    if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
+    const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
+    if (mine.some((b) => b.status === "booked")) continue;
+    if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
+    if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
+    const kinds2 = bookingKindsFor(draft, reg, u.id);
+    if (kinds2.length === 0) continue;
+    let pick2 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick2 -= Number(k.weight)) < 0) ?? kinds2[0];
+    events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "roll" }));
+    pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
+  }
+  return events;
+}
+var holdRank = (state, unitId) => {
+  const bond = bondOf(state.squad.find((u) => u.id === unitId) ?? { kind: "grunt" });
+  return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
+};
+function settleWinner(state, reg, contenders) {
+  const order = (b) => state.squad.findIndex((u) => u.id === b.unitId);
+  return [...contenders].sort((a, b) => holdRank(state, b.unitId) - holdRank(state, a.unitId) || (impunityOf(state, reg, b.unitId)?.value ?? 0) - (impunityOf(state, reg, a.unitId)?.value ?? 0) || order(a) - order(b))[0];
+}
+function resolveConflict(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  let day;
+  let slot2;
+  let keepId;
+  if ("bookingId" in p) {
+    const b = bookingsOf(draft).find((x) => x.id === p.bookingId);
+    if (!b || b.status !== "booked" || b.conflict !== true) throw new Error("That booking is not in a conflict.");
+    ({ day, slot: slot2 } = b);
+    keepId = b.id;
+  } else {
+    ({ day, slot: slot2 } = p);
+  }
+  const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
+  if (rivals.length < 2) throw new Error("Nothing is in conflict there.");
+  const winner = keepId !== void 0 ? rivals.find((b) => b.id === keepId) : settleWinner(draft, reg, rivals);
+  const events = [];
+  for (const loser of rivals.filter((b) => b !== winner)) {
+    loser.status = "cancelled";
+    delete loser.conflict;
+    if (keepId !== void 0) {
+      events.push(...hitHer(draft, reg, loser.unitId, "rejected_advance", "moderate", "her booking lost the slot"));
+    } else {
+      const unit2 = draft.squad.find((u) => u.id === loser.unitId);
+      if (unit2) {
+        const next = Math.min(100, unit2.stress + TUNING.personal.booking.settleStress);
+        if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
+        unit2.stress = next;
+      }
+    }
+    events.push({ type: "booking_cancelled", bookingId: loser.id, unitId: loser.unitId, lost: true });
+  }
+  delete winner.conflict;
+  events.push({ type: "booking_resolved", day, slot: slot2, kept: winner.id, unitId: winner.unitId, settled: keepId === void 0 });
+  return events;
+}
+function cancelBooking(draft, ctx2, bookingId) {
+  const b = bookingsOf(draft).find((x) => x.id === bookingId);
+  if (!b || b.status !== "booked") throw new Error("That booking cannot be canceled.");
+  const reg = ctx2.registries;
+  b.status = "cancelled";
+  delete b.conflict;
+  syncConflicts(draft, b.day, b.slot);
+  const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
+  if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
+  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was canceled" }));
+  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was canceled"));
+  else events.push(...evaluateAutomatic(draft, reg, b.unitId));
+  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "canceled her booking on the day of obedience"));
+  return events;
+}
+function markPlayed(draft, reg, booking) {
+  booking.status = "played";
+  delete booking.conflict;
+  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
+  return relieveWant(draft, booking.unitId, relief, "booking");
+}
+function playBooking(draft, ctx2, id) {
+  const reg = ctx2.registries;
+  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
+  if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
+  const events = [];
+  if (target.conflict) {
+    const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot);
+    const winner = settleWinner(draft, reg, rivals);
+    events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
+    target = winner;
+  }
+  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
+  const kind = kindOf2(reg, target.kindId);
+  events.push(...markPlayed(draft, reg, target));
+  const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
+  events.push({ type: "booking_played", bookingId: target.id, unitId: target.unitId, scene });
+  return { events, scene };
+}
+var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
+function metAtScene(draft, reg, participants) {
+  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
+  if (!due) return [];
+  const events = markPlayed(draft, reg, due);
+  syncConflicts(draft, due.day, due.slot);
+  return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
+}
+
+// src/engine/bonds/smother.ts
+function smotherActive(state) {
+  const s = state.bonds?.smother;
+  if (!s || s.untilDay < state.day) return null;
+  const unit2 = state.squad.find((u) => u.id === s.unitId);
+  return unit2 && isLiving(unit2) ? s : null;
+}
+var isSmotherDefect = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown?.kind === "smother";
+function startSmother(draft, unitId, reg) {
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (!unit2 || !isLiving(unit2) || smotherActive(draft)) return [];
+  const bonds = draft.bonds ??= { rules: [] };
+  bonds.smother = { unitId, untilDay: draft.day + 1 };
+  const events = [{ type: "smother_started", unitId, untilDay: draft.day + 1 }];
+  if (reg) {
+    const next = nextSlotAfter(draft.day, draft.slot);
+    const kinds2 = [...reg.bookingKinds.values()];
+    const kind = kinds2.find((k) => k.slot === next.slot) ?? kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
+    if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: "smother" }));
+  }
+  return events;
+}
+function clearSmother(draft, unitId) {
+  const s = draft.bonds?.smother;
+  if (!s || unitId !== void 0 && s.unitId !== unitId) return [];
+  delete draft.bonds.smother;
+  return [{ type: "smother_ended", unitId: s.unitId }];
+}
+function expireSmother(draft) {
+  const s = draft.bonds?.smother;
+  return s && s.untilDay < draft.day ? clearSmother(draft) : [];
+}
+function smotherRefusal(state) {
+  const s = smotherActive(state);
+  if (!s) return null;
+  const name = state.squad.find((u) => u.id === s.unitId)?.displayName ?? "She";
+  return `${name} has locked the hangar: the commander stays at base today.`;
+}
+
+// src/engine/bonds/breakdown.ts
+var wantBreakdownSpec = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown ?? null;
+function startWantBreakdown(draft, ctx2, unitId, defectId) {
+  const reg = ctx2.registries;
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  const spec = wantBreakdownSpec(reg, defectId);
+  if (!unit2 || !spec || unit2.breakdown || !unit2.defects.some((d) => d.id === defectId)) return [];
+  unit2.breakdown = { defectId, day: draft.day, until: draft.day + spec.days };
+  const events = [{ type: "want_breakdown", unitId, defectId, kind: spec.kind }];
+  if (spec.kind === "withdrawal") {
+    const knock = (reg.defects.get(defectId)?.nightEvents ?? []).find((n) => n.kind === spec.kind);
+    if (knock) events.push(...queueNightSpec(draft, unit2, knock));
+  } else if (spec.kind === "smother") {
+    events.push(...startSmother(draft, unitId, ctx2.registries));
+  } else if (spec.kind === "binge") {
+    const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
+    if (cost > 0) {
+      draft.resources.credits -= cost;
+      events.push({ type: "resource_changed", resource: "credits", amount: -cost });
+    }
+  }
+  return events;
+}
+function releaseWantBreakdowns(draft) {
+  const events = [];
+  for (const u of draft.squad) {
+    if (!u.breakdown || u.breakdown.until === void 0 || draft.day <= u.breakdown.until) continue;
+    delete u.breakdown;
+    events.push({ type: "breakdown_released", unitId: u.id });
+  }
+  return events;
+}
+function startCrossedBreakdowns(draft, ctx2) {
+  const events = [];
+  for (const unit2 of draft.squad) {
+    const rel = draft.relations[unit2.id];
+    if (unit2.kind !== "named" || !rel || !isLiving(unit2) || rel.wantBreakDay !== void 0) continue;
+    if (!wantEligible(draft, ctx2.registries, unit2.id) || effectiveWant(draft, ctx2.registries, unit2.id) < TUNING.bonds.want.bands.desperate) continue;
+    for (const d of unit2.defects) {
+      const started = startWantBreakdown(draft, ctx2, unit2.id, d.id);
+      if (started.length > 0) {
+        rel.wantBreakDay = draft.day;
+        events.push(...started);
+        break;
+      }
+    }
+  }
+  return events;
+}
+
+// src/engine/bonds/desire.ts
+function openDesireDemands(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const unit2 of draft.squad) {
+    if (unit2.kind !== "named" || !isLiving(unit2) || wantBandOf(draft, reg, unit2.id) === "calm") continue;
+    const last = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit2.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
+    if (draft.day - last < TUNING.bonds.want.demandEveryDays) continue;
+    const opened = openDemand(draft, ctx2, unit2.id, { desire: true });
+    if (opened) events.push(...opened.events);
+  }
+  return events;
+}
+
+// src/engine/bonds/dayStep.ts
+function bondsDayStep(draft, ctx2) {
+  return [
+    ...syncAllPublicity(draft, ctx2.registries),
+    ...deliverStaleRules(draft),
+    ...releaseWantBreakdowns(draft),
+    ...wantStep(draft, ctx2.registries),
+    ...startCrossedBreakdowns(draft, ctx2),
+    ...openDesireDemands(draft, ctx2),
+    ...checkDailyContact(draft, ctx2),
+    ...rollRules(draft, ctx2),
+    ...expireSmother(draft)
+  ];
+}
+
+// src/engine/life/events.ts
+var eventsOf = (reg) => [...reg.lifeEvents.values()];
+function roomsToday(state, reg, unitId, day, cache) {
+  return placesOf(state, reg, unitId, day, cache).map((w) => {
+    const room2 = w.roomId ? reg.hubRooms.get(w.roomId) : void 0;
+    return { reason: w.reason, locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
+  });
+}
+function requiresHold(state, reg, unitId, req, day, cache) {
+  if (!req) return true;
+  const unit2 = unitOf2(state, unitId);
+  if (!unit2) return false;
+  const life = state.life;
+  const rel = state.relations[unitId];
+  const run = state.expedition;
+  for (const [field2, value] of Object.entries(req)) {
+    let ok;
+    switch (field2) {
+      case "hobby":
+        ok = (unit2.hobbies ?? []).some((h2) => h2.state === "active" && (value === "any" || h2.id === value));
+        break;
+      case "location":
+        ok = roomsToday(state, reg, unitId, day, cache).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
+        break;
+      case "activity": {
+        const lo = day * SLOTS_PER_DAY;
+        ok = (life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= lo && b.slot < lo + SLOTS_PER_DAY && b.activityId !== void 0 && value.includes(b.activityId));
+        break;
+      }
+      case "afterRun": {
+        const last = state.lastExpedition;
+        ok = last !== void 0 && last.day >= day - 1 && last.party.includes(unitId) && (value.hurt !== true || last.injuries.includes(unitId));
+        break;
+      }
+      case "noRunDays": {
+        const last = state.lastExpedition;
+        ok = run?.party.includes(unitId) !== true && !(last?.party.includes(unitId) === true && day - last.day < value);
+        break;
+      }
+      case "stressMin":
+        ok = unit2.stress >= value;
+        break;
+      case "stressMax":
+        ok = unit2.stress <= value;
+        break;
+      case "defectCategory":
+        ok = unit2.defects.some((d) => reg.defects.get(d.id)?.category === value);
+        break;
+      case "injured":
+        ok = unit2.injuries.length > 0;
+        break;
+      case "otherNamed":
+        ok = state.squad.some((u) => u.id !== unitId && takesPart(state, u.id));
+        break;
+      case "affinityMin":
+        ok = rel !== void 0 && rel.affinity >= value;
+        break;
+      case "trustMin":
+        ok = rel !== void 0 && rel.trust >= value;
+        break;
+      case "romantic":
+        ok = bondTierOf(state, reg, unitId) === "romantic";
+        break;
+      case "leaderNotHer": {
+        const leader = leaderOf(state);
+        ok = leader !== null && leader.id !== unitId;
+        break;
+      }
+      case "gruntDiedDays":
+        ok = (life?.deaths ?? []).some((d) => d.old !== true && d.grunt && day - d.day >= 0 && day - d.day <= value);
+        break;
+      case "deathAgo":
+        ok = (life?.deaths ?? []).some((d) => d.old !== true && day - d.day >= value && (day - d.day) % value === 0);
+        break;
+      case "rumour":
+        ok = state.rumors.length > 0;
+        break;
+      case "rationsShort":
+        ok = rationsOf(state) !== "equal" || life?.shortageDay !== void 0 && day - life.shortageDay <= TUNING.life.shortageDays;
+        break;
+      case "sparring": {
+        const winner = value === "won" ? "unit" : "commander";
+        ok = (state.personal?.wagers?.log ?? []).some((w) => w.unitId === unitId && day - w.day <= TUNING.life.sparringDays && w.winner === winner && reg.wagerGames.get(w.gameId)?.kind === "sparring");
+        break;
+      }
+      case "bloomHalf":
+        ok = state.world.clocks.some((c) => c.regionId !== void 0 && c.filled * 2 >= c.segments);
+        break;
+      case "missionBoard":
+        ok = state.missions.offered.length > 0;
+        break;
+      case "afterEvent": {
+        const at = life?.units[unitId]?.last[value];
+        ok = at !== void 0 && day - at <= TUNING.life.afterEventDays;
+        break;
+      }
+      case "otherHadThisWeek":
+        ok = Object.entries(life?.units ?? {}).some(([id, l]) => id !== unitId && l.last[value] !== void 0 && day - l.last[value] <= TUNING.life.otherWeekDays);
+        break;
+      default:
+        ok = false;
+    }
+    if (!ok) return false;
+  }
+  return true;
+}
+function weekAllowance(state, unitId, week) {
+  const mode = lifeMode(state);
+  if (mode === "off" || !state.life) return 0;
+  const perWeek = TUNING.life.perWeek[mode];
+  if (perWeek >= 1) return perWeek;
+  return (week + lifeHash(state.life, unitId)) % 2 === 0 ? 1 : 0;
+}
+function weekOf2(state, unitId, day) {
+  const week = Math.floor(day / 7);
+  const w = state.life?.units[unitId]?.week;
+  return w !== void 0 && w.n === week ? w : { n: week, events: 0, notable: 0 };
+}
+function eventPool(state, reg, unitId, day, cache = /* @__PURE__ */ new Map()) {
+  const life = state.life;
+  if (!life || !takesPart(state, unitId)) return [];
+  const mine = life.units[unitId]?.last ?? {};
+  const week = weekOf2(state, unitId, day);
+  return eventsOf(reg).filter((e) => {
+    if (e.size === "notable" && e.yearly !== true && week.notable >= TUNING.life.notablePerWeek) return false;
+    const cooldown = e.yearly === true ? TUNING.life.cooldown.yearly : e.cooldownDays ?? TUNING.life.cooldown[e.size];
+    if (mine[e.id] !== void 0 && day - mine[e.id] < cooldown) return false;
+    if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
+    if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
+    return requiresHold(state, reg, unitId, e.requires, day, cache);
+  });
+}
+function pickLifeEvent(state, reg, unitId, day, cache) {
+  const life = state.life;
+  const mode = lifeMode(state);
+  if (!life || mode === "off" || !takesPart(state, unitId)) return null;
+  const week = weekOf2(state, unitId, day);
+  const pool = eventPool(state, reg, unitId, day, cache);
+  if (pool.length === 0) return null;
+  const yearly = pool.filter((e) => e.yearly === true);
+  if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
+  if (yearly.length === 0 && !lifeChance(life, `${unitId}|life|${day}`, Math.min(1, TUNING.life.perWeek[mode] / 7 * TUNING.life.dayBoost))) return null;
+  const from = yearly.length > 0 ? yearly : pool;
+  return from[lifeHash(life, `${unitId}|life|${day}|pick`) % from.length];
+}
+function effectiveShare(state, reg, unitId, entry) {
+  if (entry.share !== "keeps") return entry.share;
+  const rel = state.relations[unitId];
+  const u = entry.keepsUnless;
+  const lifted = u !== void 0 && (u.affinityMin !== void 0 && rel !== void 0 && rel.affinity >= u.affinityMin || u.romantic === true && bondTierOf(state, reg, unitId) === "romantic");
+  return lifted ? "close" : "keeps";
+}
+function shareChance(state, reg, unitId, entry) {
+  const share = effectiveShare(state, reg, unitId, entry);
+  if (share === "keeps") return 0;
+  const close = (state.relations[unitId]?.affinity ?? 0) >= TUNING.life.shareAffinity;
+  if (share === "close" && !close) return 0;
+  return TUNING.life.share[temperamentOf(state, unitId).talkativeness] * (close ? 1 : TUNING.life.shareLowMult);
+}
+function milestoneHobby(draft, reg, unitId, entry, day) {
+  const unit2 = unitOf2(draft, unitId);
+  const named3 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
+  const movable = (unit2?.hobbies ?? []).filter((h2) => h2.state === "active" && h2.mastered !== true && h2.ceiling !== true && h2.milestones.length < 4 && reg.hobbies.has(h2.id));
+  if (named3 !== void 0) return movable.some((h2) => h2.id === named3) ? named3 : null;
+  return movable.length === 0 ? null : movable[lifeHash(draft.life, `${unitId}|${day}|milestone`) % movable.length].id;
+}
+function applyBecomes(draft, reg, unitId, entry, day, facts) {
+  const events = [];
+  const unit2 = unitOf2(draft, unitId);
+  const becomes = entry.becomes;
+  if (!unit2 || !becomes) return events;
+  if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
+    const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
+    if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
+    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, "event", facts));
+  }
+  if (becomes.milestone === true) {
+    const id = milestoneHobby(draft, reg, unitId, entry, day);
+    const h2 = id === null ? void 0 : unit2.hobbies?.find((x) => x.id === id);
+    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, { told: true, facts }));
+  }
+  if (becomes.opinionTopic !== void 0) openTopic(draft, reg, unitId, becomes.opinionTopic);
+  return events;
+}
+function applyLifeEvent(draft, reg, unitId, entry, day) {
+  const life = draft.life;
+  const unit2 = unitOf2(draft, unitId);
+  if (!life || !unit2) return [];
+  const mine = life.units[unitId] ??= { last: {} };
+  const week = weekOf2(draft, unitId, day);
+  mine.week = { n: week.n, events: week.events + 1, notable: week.notable + (entry.size === "notable" ? 1 : 0) };
+  mine.last[entry.id] = day;
+  life.kinds = [...life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays), { kind: entry.id, unitId, day }];
+  const fact = writeLifeFact(draft, unitId, `${unit2.displayName}: ${plainText(String(entry.description))}`, [entry.id, ...entry.tags ?? []], entry.size === "notable" ? 2 : 1);
+  const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
+  const share = effectiveShare(draft, reg, unitId, entry);
+  if (share !== "keeps") mine.hub = { eventId: entry.id, day };
+  const also = [];
+  events.push(...applyBecomes(draft, reg, unitId, entry, day, also));
+  if (lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry))) {
+    events.push(...enqueue(draft, {
+      unitId,
+      kind: "event",
+      ref: entry.id,
+      what: "event",
+      factId: fact.id,
+      category: entry.category,
+      day,
+      ...also.length > 0 ? { alsoFacts: also } : {},
+      ...entry.size === "notable" ? { notable: true } : {},
+      ...entry.urgent === true ? { urgent: true } : {}
+    }));
+    events.push({ type: "life_shared", unitId, eventId: entry.id });
+  }
+  return events;
+}
+
+// src/engine/life/meetings.ts
+var hobbyEntry = (reg, id) => reg.hobbies.get(id);
+function keenestHobby(reg, unit2) {
+  const order = [...reg.hobbies.keys()];
+  const rank2 = (id) => {
+    const i = order.indexOf(id);
+    return i < 0 ? order.length : i;
+  };
+  return (unit2.hobbies ?? []).filter((h2) => h2.state === "active").sort((a, b) => b.interest - a.interest || rank2(a.id) - rank2(b.id))[0];
+}
+function openAt(reg, locationId, slot2) {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return false;
+  const slots = loc.slots;
+  return !slots || slots.includes(slot2);
+}
+function candidateLocations(reg, pastime, unit2) {
+  if (pastime.hobby !== true) return pastime.locations;
+  const h2 = unit2 ? keenestHobby(reg, unit2) : void 0;
+  return h2 ? hobbyEntry(reg, h2.id)?.locations ?? [] : [];
+}
+function pastimeLocation(state, reg, pastime, unitId) {
+  const unit2 = unitId !== void 0 ? unitOf2(state, unitId) : void 0;
+  return candidateLocations(reg, pastime, unit2).find((id) => openAt(reg, id, state.slot)) ?? null;
+}
+var deserting = (state, unitId) => state.disloyalty?.open?.kind === "desertion" && state.disloyalty.open.unitId === unitId;
+function pastimeProblem(state, reg, unitId, pastimeId, at) {
+  if (lifeMode(state) === "off" || !state.life) return "Her life is switched off.";
+  const pastime = reg.pastimes.get(pastimeId);
+  if (!pastime) return `Unknown pastime "${pastimeId}".`;
+  const unit2 = unitOf2(state, unitId);
+  if (!unit2 || unit2.kind !== "named") return "Only a named soldier has quiet meetings.";
+  const name = unit2.displayName;
+  if (unit2.status === "deserted" || deserting(state, unitId)) return `${name} is deserting.`;
+  if (!takesPart(state, unitId)) return `${name} is not at the base.`;
+  if ((state.relations[unitId]?.affinity ?? 0) <= TUNING.life.meeting.affinityMin) return `${name} wants nothing to do with the commander right now.`;
+  if (state.life.units[unitId]?.meetingDay === state.day) return `${name} has had a quiet hour with the commander today.`;
+  const slot2 = at?.slot ?? state.slot;
+  if (!pastime.slots.includes(slot2)) return `${pastime.label} is not for the ${slot2}.`;
+  if (at !== void 0) {
+    if (!candidateLocations(reg, pastime, unit2).includes(at.locationId)) return `${pastime.label} is not held here.`;
+  } else {
+    if (pastimeLocation(state, reg, pastime, unitId) === null) return `Nowhere is open for ${pastime.label} now.`;
+    const activity = pastimeActivity(reg);
+    if (!activity) return "This pack has no time together.";
+    const held3 = restrictionReason(state, unitId, "companion", String(activity.id));
+    if (held3) return held3;
+    const blocked = checkActivity(state, reg, { activityId: String(activity.id), companionId: unitId });
+    if (blocked) return blocked;
+  }
+  const req = pastime.requires;
+  if (req?.afterRun === true && !requiresHold(state, reg, unitId, { afterRun: {} }, state.day)) return `${pastime.label} is for after a run.`;
+  if (req?.firstSlot === true && slot2 !== "morning") return `${pastime.label} is for the first slot of the day.`;
+  if (req?.hobby !== void 0 && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
+  if (pastime.hobby === true && keenestHobby(reg, unit2) === void 0) return `${name} has no hobby to show.`;
+  return null;
+}
+function teachCommander(draft, hobby, entry) {
+  const t = TUNING.life.commanderSkill;
+  const gain = entry.teachable && hobby.milestones.length >= 2 ? t.taught : t.meeting;
+  const skill = draft.commander.hobbySkill ??= {};
+  skill[hobby.id] = Math.min(100, (skill[hobby.id] ?? 0) + gain);
+  return gain;
+}
+var meetingEvent = (unitId) => ({ type: "time_together", actor: "commander", targets: [unitId], severity: "minor", evidence: "a quiet meeting", confidence: 1 });
+function finishMeeting(draft, ctx2, scene) {
+  const meeting = scene.pastime;
+  const unit2 = meeting ? unitOf2(draft, meeting.unitId) : void 0;
+  const reg = ctx2.registries;
+  if (!meeting || !unit2 || unit2.kind !== "named" || !draft.life) return [];
+  const pastime = reg.pastimes.get(meeting.id);
+  const events = applyEventToUnit(draft, reg, unit2.id, meetingEvent(unit2.id));
+  const mine = draft.life.units[unit2.id] ??= { last: {} };
+  mine.meetingDay = draft.day;
+  if (pastime?.hobby !== true) return events;
+  const keen = keenestHobby(reg, unit2);
+  const entry = keen ? hobbyEntry(reg, keen.id) : void 0;
+  if (!keen || !entry) return events;
+  events.push(...practise(draft, reg, unit2.id, keen.id, draft.day, draft.slot, { push: true, caused: true }));
+  const gain = teachCommander(draft, keen, entry);
+  const taught = mine.taught ??= [];
+  if (gain === TUNING.life.commanderSkill.taught && !taught.includes(keen.id)) {
+    taught.push(keen.id);
+    events.push({ type: "hobby_taught", unitId: unit2.id, hobbyId: keen.id });
+  }
+  if (taught.length === 0) delete mine.taught;
+  return events;
+}
+function missingFirsts(state, unitId) {
+  const had = state.life?.units[unitId]?.firsts ?? [];
+  return FIRST_KINDS.filter((k) => !had.includes(k));
+}
+function keepFirst(draft, ctx2, unitId, kind, ev) {
+  const unit2 = unitOf2(draft, unitId);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2) || !draft.life || !FIRST_KINDS.includes(kind)) return [];
+  const mine = draft.life.units[unitId] ??= { last: {} };
+  if ((mine.firsts ?? []).includes(kind)) return [];
+  (mine.firsts ??= []).push(kind);
+  const event = ev ?? { type: "first_moment", actor: unitId, targets: [], severity: "minor", evidence: "a first", confidence: 1, kind };
+  return [...applyEventToUnit(draft, ctx2.registries, unitId, event), { type: "first_moment_kept", unitId, kind }];
+}
+
 // src/engine/life/opinions.ts
 var topicOf = (reg, id) => reg.opinionTopics.get(id);
 function defaultPosition(state, reg, unitId, topicId) {
@@ -15715,7 +16353,7 @@ function agreeOpinion(draft, ctx2, unitId, topicId, ev) {
 // src/engine/life/intents.ts
 function lifeIntentInput(state, reg, participants, scene, channel) {
   if (lifeMode(state) === "off" || !state.life) return {};
-  const offer = { news: [], hobbies: [], topics: [], jokes: [], firsts: false };
+  const offer = { news: [], hobbies: [], topics: [], jokes: [], firsts: false, firstKinds: [] };
   const present2 = participants.map((id) => unitOf2(state, id)).filter((u) => u !== void 0 && u.kind === "named" && isLiving(u));
   for (const unit2 of present2) {
     const first2 = pendingNews(state, unit2.id)[0];
@@ -15751,7 +16389,8 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
     }
   }
   if (channel === "scene" && scene !== null && scene.mode === "private" && present2.length === 1) {
-    offer.firsts = true;
+    offer.firstKinds = missingFirsts(state, present2[0].id);
+    offer.firsts = offer.firstKinds.length > 0;
     offer.jokes.push(...jokeCandidates(state, present2[0].id, state.day).map((j) => ({ ...j, unitId: present2[0].id })));
   }
   const empty = offer.news.length + offer.hobbies.length + offer.topics.length + offer.jokes.length === 0 && !offer.firsts;
@@ -15783,13 +16422,15 @@ function applyLifeIntent(draft, ctx2, unitId, ev) {
     }
     case "opinion_agreed":
       return ev.topicId === void 0 ? [] : agreeOpinion(draft, ctx2, unitId, ev.topicId, ev);
+    case "first_moment":
+      return ev.kind === void 0 ? [] : keepFirst(draft, ctx2, unitId, ev.kind, ev);
     case "joke_returned":
       return ev.factId === void 0 ? [] : returnJoke(draft, reg, unitId, ev.factId, draft.day);
     default:
       return [];
   }
 }
-var ROW_IS_CONDITIONAL = ["opinion_agreed"];
+var ROW_IS_CONDITIONAL = ["opinion_agreed", "first_moment"];
 
 // src/engine/relations/intents.ts
 var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], stressHints: [] });
@@ -15802,7 +16443,7 @@ var DECISION_TYPES = ["decision_aligned", "decision_violated"];
 var RULE_EVENTS = ["rule_kept", "rule_broken", "compromise_reached"];
 var COMMANDER_DISCIPLINE = ["commander_enforced", "commander_yielded", "threatened"];
 var NO_MEASURE_ENFORCEMENT = ["leash", "unspecified"];
-var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var arr = (v) => Array.isArray(v) ? v : [];
 var oneOf = (list5, v) => typeof v === "string" && list5.includes(v) ? v : null;
 function evidenceOf(v) {
@@ -15814,7 +16455,7 @@ var INITIATORS = ["target", "actor", "mutual"];
 var HARMS = ["none", "minor", "serious"];
 var OUTCOMES = ["good", "mixed", "bad"];
 function readingOf2(v) {
-  if (!isObj3(v)) return null;
+  if (!isObj4(v)) return null;
   const wanted = oneOf(WANTED, v.wanted);
   const initiator = oneOf(INITIATORS, v.initiator);
   const harm = oneOf(HARMS, v.harm);
@@ -15871,7 +16512,8 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "first_moment": {
-      const kind = FIRST_KINDS.includes(e.kind) ? e.kind : null;
+      const open3 = life.firstKinds ?? FIRST_KINDS;
+      const kind = FIRST_KINDS.includes(e.kind) && open3.includes(e.kind) ? e.kind : null;
       who = candidates3[0];
       if (!life.firsts || kind === null || who === void 0) return null;
       intent.kind = kind;
@@ -15903,13 +16545,13 @@ function lifeFields(type, e, intent, life) {
 }
 function validateIntents(raw, ctx2) {
   const out = emptyIntents();
-  if (!isObj3(raw)) return out;
+  if (!isObj4(raw)) return out;
   const known = new Set(ctx2.squad.map((u) => u.id));
   const present2 = new Set(ctx2.participants.filter((id) => known.has(id)));
   const isUnit = (v) => typeof v === "string" && present2.has(v);
   const seenLife = /* @__PURE__ */ new Set();
   for (const e of arr(raw.events)) {
-    if (!isObj3(e)) continue;
+    if (!isObj4(e)) continue;
     const type = oneOf(EVENT_TYPES, e.type);
     const severity = oneOf(SEVERITIES, e.severity);
     const evidence = evidenceOf(e.evidence);
@@ -15965,7 +16607,7 @@ function validateIntents(raw, ctx2) {
     if (DECISION_TYPES.includes(type)) {
       const axes = [];
       for (const a of arr(e.valueAxes)) {
-        if (!isObj3(a)) continue;
+        if (!isObj4(a)) continue;
         const axis = oneOf(VALUE_AXES, a.axis);
         if (axis && (a.direction === 1 || a.direction === -1)) axes.push({ axis, direction: a.direction });
       }
@@ -15977,7 +16619,7 @@ function validateIntents(raw, ctx2) {
     if (out.events.length >= (ctx2.maxEvents ?? TUNING.relations.maxEventsPerExchange)) break;
   }
   for (const f of arr(raw.facts)) {
-    if (!isObj3(f) || typeof f.text !== "string") continue;
+    if (!isObj4(f) || typeof f.text !== "string") continue;
     const text2 = f.text.trim().slice(0, ctx2.factTextMax ?? TUNING.memory.factTextMax).trim();
     if (text2 === "") continue;
     let about2;
@@ -15990,7 +16632,7 @@ function validateIntents(raw, ctx2) {
     out.facts.push({ about: about2, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf2(f.tags) });
   }
   for (const p of arr(raw.proposals)) {
-    if (!isObj3(p)) continue;
+    if (!isObj4(p)) continue;
     const kind = oneOf(PROPOSAL_KINDS, p.kind);
     if (!kind) continue;
     const pair = p.from === "commander" && isUnit(p.to) || isUnit(p.from) && p.to === "commander";
@@ -15998,7 +16640,7 @@ function validateIntents(raw, ctx2) {
     if (out.proposals.length < MAX_PROPOSALS) out.proposals.push({ from: p.from, to: p.to, kind, evidence: evidenceOf(p.evidence) });
   }
   for (const p of arr(raw.promises)) {
-    if (!isObj3(p)) continue;
+    if (!isObj4(p)) continue;
     const kind = oneOf(["made", "kept", "broken"], p.kind);
     const pair = p.by === "commander" && isUnit(p.to) || isUnit(p.by) && p.to === "commander";
     if (!kind || !pair) continue;
@@ -16007,7 +16649,7 @@ function validateIntents(raw, ctx2) {
     if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by, to: p.to, text: text2, kind });
   }
   for (const h2 of arr(raw.stressHints)) {
-    if (!isObj3(h2) || !isUnit(h2.unitId)) continue;
+    if (!isObj4(h2) || !isUnit(h2.unitId)) continue;
     const severity = oneOf(SEVERITIES, h2.severity);
     if (!severity || h2.direction !== 1 && h2.direction !== -1) continue;
     if (!out.stressHints.some((x) => x.unitId === h2.unitId)) out.stressHints.push({ unitId: h2.unitId, direction: h2.direction, severity });
@@ -16364,186 +17006,6 @@ function learnExpectation(draft, expectationId) {
   return [{ type: "expectation_learned", expectationId }];
 }
 
-// src/engine/personal/bookings.ts
-var bookingsOf = (state) => state.personal?.bookings ?? [];
-var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
-var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
-function bookingChance(state, reg, unitId) {
-  const T4 = TUNING.personal.booking;
-  const affinity = state.relations[unitId]?.affinity ?? 0;
-  const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
-  const raw = T4.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
-  return Math.min(T4.cap, raw);
-}
-function dueBooking(state) {
-  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
-  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
-}
-function bookingPlayable(state, booking) {
-  const unit2 = state.squad.find((u) => u.id === booking.unitId);
-  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return false;
-  if (unit2.status === "injured" || (unit2.injuryDays ?? 0) > 0) return false;
-  if (state.expedition?.party.includes(unit2.id)) return false;
-  return restrictionReason(state, unit2.id, "scene") === null;
-}
-function bookingGuard(state, action) {
-  const blocked = action.type.startsWith("activity/") || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
-  if (!blocked || state.personal?.bookings === void 0) return null;
-  const due = dueBooking(state);
-  if (!due || !bookingPlayable(state, due)) return null;
-  if (action.type === "scene/start") {
-    const ids = action.payload?.participants;
-    if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
-  }
-  return { code: "booking_due", message: `${unitName(state, due.unitId)} has booked this slot: go to her or cancel it.` };
-}
-function nextSlotAfter(day, slot2) {
-  if (slot2 === "morning") return { day, slot: "afternoon" };
-  if (slot2 === "afternoon") return { day, slot: "evening" };
-  return { day: day + 1, slot: "morning" };
-}
-function syncConflicts(draft, day, slot2) {
-  const same = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
-  for (const b of same) {
-    if (same.length > 1) b.conflict = true;
-    else delete b.conflict;
-  }
-  return same;
-}
-function book(draft, _ctx, p) {
-  const booking = {
-    id: nextPersonalId(draft, "bk"),
-    unitId: p.unitId,
-    kindId: p.kindId,
-    day: p.day,
-    slot: p.slot,
-    status: "booked",
-    source: p.source,
-    made: draft.day
-  };
-  (personalOf(draft).bookings ??= []).push(booking);
-  const events = [{ type: "booking_made", bookingId: booking.id, unitId: p.unitId, kindId: p.kindId, day: p.day, slot: p.slot, source: p.source }];
-  if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
-  return events;
-}
-function bookingKindsFor(state, reg, unitId) {
-  const tier = bondTierOf(state, reg, unitId);
-  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
-}
-function rollBookings(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const u of draft.squad) {
-    if (u.kind !== "named") continue;
-    if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
-    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
-    if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
-    const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
-    if (mine.some((b) => b.status === "booked")) continue;
-    if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
-    if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
-    const kinds2 = bookingKindsFor(draft, reg, u.id);
-    if (kinds2.length === 0) continue;
-    let pick2 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick2 -= Number(k.weight)) < 0) ?? kinds2[0];
-    events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "roll" }));
-    pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
-  }
-  return events;
-}
-var holdRank = (state, unitId) => {
-  const bond = bondOf(state.squad.find((u) => u.id === unitId) ?? { kind: "grunt" });
-  return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
-};
-function settleWinner(state, reg, contenders) {
-  const order = (b) => state.squad.findIndex((u) => u.id === b.unitId);
-  return [...contenders].sort((a, b) => holdRank(state, b.unitId) - holdRank(state, a.unitId) || (impunityOf(state, reg, b.unitId)?.value ?? 0) - (impunityOf(state, reg, a.unitId)?.value ?? 0) || order(a) - order(b))[0];
-}
-function resolveConflict(draft, ctx2, p) {
-  const reg = ctx2.registries;
-  let day;
-  let slot2;
-  let keepId;
-  if ("bookingId" in p) {
-    const b = bookingsOf(draft).find((x) => x.id === p.bookingId);
-    if (!b || b.status !== "booked" || b.conflict !== true) throw new Error("That booking is not in a conflict.");
-    ({ day, slot: slot2 } = b);
-    keepId = b.id;
-  } else {
-    ({ day, slot: slot2 } = p);
-  }
-  const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
-  if (rivals.length < 2) throw new Error("Nothing is in conflict there.");
-  const winner = keepId !== void 0 ? rivals.find((b) => b.id === keepId) : settleWinner(draft, reg, rivals);
-  const events = [];
-  for (const loser of rivals.filter((b) => b !== winner)) {
-    loser.status = "cancelled";
-    delete loser.conflict;
-    if (keepId !== void 0) {
-      events.push(...hitHer(draft, reg, loser.unitId, "rejected_advance", "moderate", "her booking lost the slot"));
-    } else {
-      const unit2 = draft.squad.find((u) => u.id === loser.unitId);
-      if (unit2) {
-        const next = Math.min(100, unit2.stress + TUNING.personal.booking.settleStress);
-        if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
-        unit2.stress = next;
-      }
-    }
-    events.push({ type: "booking_cancelled", bookingId: loser.id, unitId: loser.unitId, lost: true });
-  }
-  delete winner.conflict;
-  events.push({ type: "booking_resolved", day, slot: slot2, kept: winner.id, unitId: winner.unitId, settled: keepId === void 0 });
-  return events;
-}
-function cancelBooking(draft, ctx2, bookingId) {
-  const b = bookingsOf(draft).find((x) => x.id === bookingId);
-  if (!b || b.status !== "booked") throw new Error("That booking cannot be canceled.");
-  const reg = ctx2.registries;
-  b.status = "cancelled";
-  delete b.conflict;
-  syncConflicts(draft, b.day, b.slot);
-  const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
-  if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
-  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was canceled" }));
-  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was canceled"));
-  else events.push(...evaluateAutomatic(draft, reg, b.unitId));
-  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "canceled her booking on the day of obedience"));
-  return events;
-}
-function markPlayed(draft, reg, booking) {
-  booking.status = "played";
-  delete booking.conflict;
-  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
-  return relieveWant(draft, booking.unitId, relief, "booking");
-}
-function playBooking(draft, ctx2, id) {
-  const reg = ctx2.registries;
-  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
-  if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
-  const events = [];
-  if (target.conflict) {
-    const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot);
-    const winner = settleWinner(draft, reg, rivals);
-    events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
-    target = winner;
-  }
-  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
-  const kind = kindOf2(reg, target.kindId);
-  events.push(...markPlayed(draft, reg, target));
-  const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
-  events.push({ type: "booking_played", bookingId: target.id, unitId: target.unitId, scene });
-  return { events, scene };
-}
-var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
-function metAtScene(draft, reg, participants) {
-  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
-  if (!due) return [];
-  const events = markPlayed(draft, reg, due);
-  syncConflicts(draft, due.day, due.slot);
-  return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
-}
-
 // src/engine/warden/intrigue.ts
 var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
@@ -16893,45 +17355,6 @@ function requireOpen(draft, kind) {
 }
 function closeNight(draft, ctx2, open3) {
   return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
-}
-
-// src/engine/bonds/smother.ts
-function smotherActive(state) {
-  const s = state.bonds?.smother;
-  if (!s || s.untilDay < state.day) return null;
-  const unit2 = state.squad.find((u) => u.id === s.unitId);
-  return unit2 && isLiving(unit2) ? s : null;
-}
-var isSmotherDefect = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown?.kind === "smother";
-function startSmother(draft, unitId, reg) {
-  const unit2 = draft.squad.find((u) => u.id === unitId);
-  if (!unit2 || !isLiving(unit2) || smotherActive(draft)) return [];
-  const bonds = draft.bonds ??= { rules: [] };
-  bonds.smother = { unitId, untilDay: draft.day + 1 };
-  const events = [{ type: "smother_started", unitId, untilDay: draft.day + 1 }];
-  if (reg) {
-    const next = nextSlotAfter(draft.day, draft.slot);
-    const kinds2 = [...reg.bookingKinds.values()];
-    const kind = kinds2.find((k) => k.slot === next.slot) ?? kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
-    if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: "smother" }));
-  }
-  return events;
-}
-function clearSmother(draft, unitId) {
-  const s = draft.bonds?.smother;
-  if (!s || unitId !== void 0 && s.unitId !== unitId) return [];
-  delete draft.bonds.smother;
-  return [{ type: "smother_ended", unitId: s.unitId }];
-}
-function expireSmother(draft) {
-  const s = draft.bonds?.smother;
-  return s && s.untilDay < draft.day ? clearSmother(draft) : [];
-}
-function smotherRefusal(state) {
-  const s = smotherActive(state);
-  if (!s) return null;
-  const name = state.squad.find((u) => u.id === s.unitId)?.displayName ?? "She";
-  return `${name} has locked the hangar: the commander stays at base today.`;
 }
 
 // src/engine/notes/state.ts
@@ -17446,7 +17869,7 @@ function challenge(draft, ctx2, stat3) {
 // src/engine/arcs.ts
 var ARC_PATHS = ["manage", "embrace", "cure"];
 var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function arcAlignment(unit2, path) {
   const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + valuesOf(unit2)[axis] * direction, 0);
   return clamp18(sum / 3, -1, 1);
@@ -17459,7 +17882,7 @@ var crimeHas = (reg, crimeId, type) => {
   const crime = crimeId === null ? void 0 : reg.crimes.get(crimeId);
   return [crime?.perk, crime?.flaw].some((part) => {
     const list5 = part?.effects;
-    return Array.isArray(list5) && list5.some((e) => isObj4(e) && e.type === type);
+    return Array.isArray(list5) && list5.some((e) => isObj5(e) && e.type === type);
   });
 };
 var stageCap = (state, reg) => facilityEffect(state, reg, "medbay", "arcStageCap") + (crimeHas(reg, state.commander.crimeId, "defect_arc_early") ? 1 : 0);
@@ -17474,7 +17897,7 @@ var afford = (state, cost) => {
   return null;
 };
 function writtenArcPaths(def) {
-  const texts = isObj4(def?.arc) ? def.arc : {};
+  const texts = isObj5(def?.arc) ? def.arc : {};
   return ARC_PATHS.filter((p) => typeof texts[p] === "string" && texts[p].trim() !== "");
 }
 function arcLine(def) {
@@ -20854,7 +21277,7 @@ function buildDigest(state, reg) {
   return digest;
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
-var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function plain(v, max) {
   if (typeof v !== "string") return "";
@@ -20875,7 +21298,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
   const reject = (part, reason) => {
     rejected.push({ part, reason });
   };
-  if (!isObj5(raw)) {
+  if (!isObj6(raw)) {
     reject("output", "the answer is not an object");
     return { output, rejected };
   }
@@ -20893,7 +21316,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
   let proposedNow;
   if (!only && raw.storyBeatProposal !== void 0) {
     const p = raw.storyBeatProposal;
-    if (!isObj5(p) || typeof p.beatId !== "string") reject("storyBeatProposal", "not a beat proposal");
+    if (!isObj6(p) || typeof p.beatId !== "string") reject("storyBeatProposal", "not a beat proposal");
     else {
       const problem = checkProposal(state, reg, p.beatId, opts.cooldownDays);
       if (problem) reject("storyBeatProposal", problem);
@@ -20905,11 +21328,11 @@ function validateDirectorOutput(state, reg, raw, opts) {
   }
   if (!only && raw.objectiveHint !== void 0) {
     const hint = raw.objectiveHint;
-    const text2 = isObj5(hint) ? plain(hint.text, 100) : "";
-    const days = isObj5(hint) ? hint.dueDays : void 0;
+    const text2 = isObj6(hint) ? plain(hint.text, 100) : "";
+    const days = isObj6(hint) ? hint.dueDays : void 0;
     if (!onboardingDone(state)) reject("objectiveHint", "the prologue is not over: it sets the objective");
-    else if (!isObj5(hint) || text2 === "") reject("objectiveHint", "the hint needs a text");
-    else if (isObj5(hint) && typeof hint.text === "string" && plain(hint.text, 1e4).length > 100) reject("objectiveHint", "the text is longer than 100 characters");
+    else if (!isObj6(hint) || text2 === "") reject("objectiveHint", "the hint needs a text");
+    else if (isObj6(hint) && typeof hint.text === "string" && plain(hint.text, 1e4).length > 100) reject("objectiveHint", "the text is longer than 100 characters");
     else if (text2.split(" ").length > 16) reject("objectiveHint", "the text is longer than 16 words");
     else if (days !== void 0 && !(Number.isInteger(days) && days >= 1 && days <= 14)) reject("objectiveHint", "dueDays is a whole number from 1 to 14");
     else output.objectiveHint = { text: text2, ...days !== void 0 ? { dueDays: days } : {} };
@@ -20920,7 +21343,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
     list5("missionOffers").forEach((o, i) => {
       const part = `missionOffers[${i}]`;
       if (i >= TUNING.director.maxOffers) return reject(part, `more than ${TUNING.director.maxOffers} offers`);
-      if (!isObj5(o) || typeof o.templateId !== "string" || typeof o.regionId !== "string") return reject(part, "not a mission offer");
+      if (!isObj6(o) || typeof o.templateId !== "string" || typeof o.regionId !== "string") return reject(part, "not a mission offer");
       const offer = { templateId: o.templateId, regionId: o.regionId };
       let source;
       if (o.spineBeat !== void 0) {
@@ -20958,7 +21381,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
   list5("rumors").forEach((r, i) => {
     const part = `rumors[${i}]`;
     if (i >= TUNING.director.maxRumors) return reject(part, `more than ${TUNING.director.maxRumors} rumors`);
-    if (!isObj5(r)) return reject(part, "not a rumor");
+    if (!isObj6(r)) return reject(part, "not a rumor");
     const text2 = words2(plain(r.text, 600), TUNING.director.rumorWords);
     if (text2 === "") return reject(part, "the rumor has no text");
     if (room2 <= 0) return reject(part, "no room for more rumors today");
@@ -20971,7 +21394,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
     const rumor = { text: text2, leadsTo, tags };
     if (leadsTo === "mission") {
       const lead = r.lead;
-      if (!isObj5(lead) || typeof lead.templateId !== "string" || typeof lead.regionId !== "string") return reject(part, "a mission lead needs a lead");
+      if (!isObj6(lead) || typeof lead.templateId !== "string" || typeof lead.regionId !== "string") return reject(part, "a mission lead needs a lead");
       const problem = checkOffer(state, reg, { templateId: lead.templateId, regionId: lead.regionId, source: "rumor" });
       if (problem) return reject(part, `bad lead: ${problem}`);
       rumor.lead = { templateId: lead.templateId, regionId: lead.regionId };
@@ -20986,7 +21409,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
   const flagCount = new Map(state.world.threads.map((t) => [t.id, t.flags.length]));
   list5("threadUpdates").forEach((u, i) => {
     const part = `threadUpdates[${i}]`;
-    if (!isObj5(u) || typeof u.threadId !== "string") return reject(part, "not a thread update");
+    if (!isObj6(u) || typeof u.threadId !== "string") return reject(part, "not a thread update");
     const isNew = u.threadId === "new";
     const update = { threadId: u.threadId };
     if (isNew) {
@@ -21017,8 +21440,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
     (Array.isArray(u.addFlags) ? u.addFlags : []).forEach((f, j) => {
       const fp = `${part}.addFlags[${j}]`;
       if (j >= 3) return reject(fp, "at most 3 flags per update");
-      const s = typeof f === "string" ? slug(f) : isObj5(f) && typeof f.slug === "string" ? slug(f.slug) : "";
-      const description = typeof f === "string" ? plain(f, TUNING.director.reasonMax) : isObj5(f) ? plain(f.description, TUNING.director.reasonMax) : "";
+      const s = typeof f === "string" ? slug(f) : isObj6(f) && typeof f.slug === "string" ? slug(f.slug) : "";
+      const description = typeof f === "string" ? plain(f, TUNING.director.reasonMax) : isObj6(f) ? plain(f.description, TUNING.director.reasonMax) : "";
       if (s === "") return reject(fp, "the flag has no usable name");
       if (have >= TUNING.world.threadFlagsMax) return reject(fp, `a thread holds at most ${TUNING.world.threadFlagsMax} flags`);
       have++;
@@ -21036,7 +21459,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
   const perClock = /* @__PURE__ */ new Map();
   list5("clockAdvances").forEach((c, i) => {
     const part = `clockAdvances[${i}]`;
-    if (!isObj5(c) || typeof c.clockId !== "string") return reject(part, "not a clock advance");
+    if (!isObj6(c) || typeof c.clockId !== "string") return reject(part, "not a clock advance");
     const clock = state.world.clocks.find((x) => x.id === c.clockId);
     if (!clock || clock.engine === true) return reject(part, `unknown clock "${c.clockId}"`);
     const repeat = reg.clocks.get(clock.id)?.repeat === true;
@@ -21873,7 +22296,7 @@ function fixedMapEvents(reg) {
   }
   return out;
 }
-function eventPool(state, reg, regionId) {
+function eventPool2(state, reg, regionId) {
   const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x) => typeof x === "string"));
   for (const id of fixedMapEvents(reg)) pinned.add(id);
   const exp = state.expedition;
@@ -21896,7 +22319,7 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
     if (typeof pinned === "string" && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
   }
   if (templateId === void 0) {
-    const pool = eventPool(draft, reg, exp.regionId);
+    const pool = eventPool2(draft, reg, exp.regionId);
     if (pool.length > 0) templateId = String(ctx2.rng.pick(pool).id);
   }
   if (templateId === void 0) {
@@ -21998,7 +22421,7 @@ function chooseOption(draft, ctx2, index2, route) {
 // src/engine/dilemma/effects.ts
 var EFFECT_KINDS = ["resource", "unit_event", "faction", "clock", "flag", "stress", "social_check"];
 var MAGNITUDES = ["small", "medium", "large"];
-var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var slot = (m) => m === "small" ? 0 : m === "medium" ? 1 : 2;
 var shape = (reason) => ({ rule: "shape", reason });
 var flagRule = (reason) => ({ rule: 6, reason });
@@ -22007,7 +22430,7 @@ function plainText2(v, max) {
   return t.slice(0, max).trim();
 }
 function toWorldEffect(raw, ctx2) {
-  if (!isObj6(raw)) return shape("An effect must be an object.");
+  if (!isObj7(raw)) return shape("An effect must be an object.");
   const { kind, target, direction, magnitude } = raw;
   if (!EFFECT_KINDS.includes(kind)) return shape(`Unknown effect kind "${String(kind)}".`);
   if (typeof target !== "string" || target === "") return shape("An effect needs a target.");
@@ -22065,12 +22488,12 @@ function toWorldEffect(raw, ctx2) {
 }
 
 // src/engine/dilemma/validate.ts
-var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index2, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index2, reason });
-  if (!isObj7(raw)) return at("An option must be an object."), null;
+  if (!isObj8(raw)) return at("An option must be an object."), null;
   if (typeof raw.label !== "string" || plainText2(raw.label, 400) === "") return at("An option needs a label."), null;
   if (!Array.isArray(raw.effects) || raw.effects.length === 0 || raw.effects.length > 6) return at("An option needs 1 to 6 effects."), null;
   const option2 = {
@@ -22102,8 +22525,8 @@ function parseOption(raw, index2, ctx2, bad) {
   }
   if (raw.requires !== void 0) {
     const r = raw.requires;
-    const stat3 = isObj7(r) ? r.socialStat ?? r.stat : void 0;
-    if (!isObj7(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
+    const stat3 = isObj8(r) ? r.socialStat ?? r.stat : void 0;
+    if (!isObj8(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
       failed = true;
     } else option2.requires = { stat: stat3, rank: r.rank };
@@ -22117,7 +22540,7 @@ function parseOption(raw, index2, ctx2, bad) {
 function parseDilemmaOutput(raw, ctx2) {
   const bad = [];
   try {
-    if (!isObj7(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
+    if (!isObj8(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
     if (typeof raw.title !== "string" || plainText2(raw.title, 200) === "") bad.push({ rule: "shape", reason: "A dilemma needs a title." });
     if (typeof raw.setup !== "string" || plainText2(raw.setup, 2e3) === "") bad.push({ rule: "shape", reason: "A dilemma needs a setup." });
     const want = ctx2.template.optionCount ?? 3;
@@ -23937,6 +24360,11 @@ registerMemoryResolver("hobby_taught", (draft, event, reg) => {
   const hobby = reg.hobbies.get(String(event.hobbyId));
   return her && hobby ? { ids: { her: [her.id] }, vars: { name: her.name, hobby: String(hobby.label) } } : null;
 }, { ids: ["her"], vars: ["name", "hobby"] });
+registerMemoryResolver("first_moment_kept", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  const kind = str2(event.kind);
+  return her && kind !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, kind } } : null;
+}, { ids: ["her"], vars: ["name", "kind"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -24202,7 +24630,7 @@ function gruntRelation(state, reg, grunt) {
 
 // src/engine/actions/squad.ts
 var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions"];
-var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
   values: "values",
@@ -24224,7 +24652,7 @@ var SECTION_OF = {
   opinions: "opinions"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
-  if (!isObj8(payload) || typeof payload.unitId !== "string" || !isObj8(payload.patch)) {
+  if (!isObj9(payload) || typeof payload.unitId !== "string" || !isObj9(payload.patch)) {
     throw new Error("squad/resync needs { unitId, patch }");
   }
   const unit2 = draft.squad.find((u) => u.id === payload.unitId);
@@ -24349,8 +24777,8 @@ function checkIncoming(state) {
 registerAction("squad/add_named", (draft, payload, ctx2) => {
   const reason = checkIncoming(draft);
   if (reason) throw new Error(reason);
-  const u = isObj8(payload) ? payload.unit : void 0;
-  if (!isObj8(u)) throw new Error("squad/add_named needs { unit }");
+  const u = isObj9(payload) ? payload.unit : void 0;
+  if (!isObj9(u)) throw new Error("squad/add_named needs { unit }");
   const problems = validateIncomingUnit(u, ctx2.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
   if (draft.squad.some((x) => x.cardRef !== void 0 && x.cardRef === u.cardRef)) problems.push(`Card "${String(u.cardRef)}" is already in the squad`);
   if (problems.length > 0) throw new Error(problems.join("; "));
@@ -24392,9 +24820,9 @@ registerAction("squad/decline_incoming", (draft, _payload, ctx2) => {
 });
 
 // src/engine/actions/calendar.ts
-var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("calendar/consume_slot", (draft, payload, ctx2) => {
-  const p = isObj9(payload) ? payload : {};
+  const p = isObj10(payload) ? payload : {};
   const slots = p.slots ?? 1;
   if (typeof slots !== "number" || !Number.isInteger(slots) || slots < 1) {
     throw new Error("calendar/consume_slot: slots must be a positive integer");
@@ -24415,7 +24843,7 @@ registerAction("calendar/sleep", (draft, _payload, ctx2) => {
 });
 registerAction("activity/do", (draft, payload, ctx2) => runActivity(draft, ctx2, payload));
 registerAction("commander/injure", (draft, payload) => {
-  const days = isObj9(payload) ? payload.days : void 0;
+  const days = isObj10(payload) ? payload.days : void 0;
   if (typeof days !== "number" || !Number.isInteger(days) || days < 1) throw new Error("commander/injure: days must be a positive integer");
   return injureCommander(draft, days);
 });
@@ -24428,9 +24856,9 @@ registerAction("calendar/cancel_scene", (draft) => {
 });
 
 // src/engine/actions/base.ts
-var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("base/upgrade", (draft, payload, ctx2) => {
-  const id = isObj10(payload) ? payload.facilityId : void 0;
+  const id = isObj11(payload) ? payload.facilityId : void 0;
   if (typeof id !== "string") throw new Error("base/upgrade needs { facilityId }");
   const reason = checkUpgrade(draft, ctx2.registries, id);
   if (reason) throw new Error(reason);
@@ -24446,7 +24874,7 @@ registerAction("base/upgrade", (draft, payload, ctx2) => {
   ];
 });
 registerAction("base/requisition", (draft, payload, ctx2) => {
-  const n = isObj10(payload) ? payload.supplies : void 0;
+  const n = isObj11(payload) ? payload.supplies : void 0;
   if (typeof n !== "number" || !Number.isInteger(n) || n < 1) throw new Error("base/requisition: supplies must be a positive integer");
   const credits = requisitionCost(draft, ctx2.registries, n);
   if (draft.resources.credits < credits) throw new Error(`Not enough credits: ${n} supplies cost ${credits}.`);
@@ -24455,7 +24883,7 @@ registerAction("base/requisition", (draft, payload, ctx2) => {
   return [{ type: "requisitioned", supplies: n, credits }];
 });
 registerAction("roster/set_active", (draft, payload, ctx2) => {
-  const ids = isObj10(payload) ? payload.activeIds : void 0;
+  const ids = isObj11(payload) ? payload.activeIds : void 0;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("roster/set_active needs { activeIds: string[] }");
   if (ids.length === 0 && draft.squad.some(isLiving)) throw new Error("The active roster needs at least one unit.");
   if (ids.length > TUNING.rosterActiveMax) throw new Error(`The active roster holds at most ${TUNING.rosterActiveMax} units.`);
@@ -24464,7 +24892,7 @@ registerAction("roster/set_active", (draft, payload, ctx2) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Unit "${id}" cannot join the active roster.`);
   }
-  if (!isObj10(payload) || payload.wardenChecked !== true) {
+  if (!isObj11(payload) || payload.wardenChecked !== true) {
     const overridden = rollOverride(draft, ctx2, { kind: "roster", activeIds: [...ids] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
     if (overridden) return overridden;
   }
@@ -24495,7 +24923,7 @@ registerAction("base/recruit_grunt", (draft, _payload, ctx2) => {
   ];
 });
 registerAction("squad/set_flavor", (draft, payload) => {
-  const p = isObj10(payload) ? payload : {};
+  const p = isObj11(payload) ? payload : {};
   const unit2 = draft.squad.find((u) => u.id === p.unitId);
   if (!unit2 || unit2.kind !== "grunt") throw new Error("squad/set_flavor: only grunts take a generated name");
   const name = typeof p.name === "string" ? p.name.trim() : "";
@@ -24505,27 +24933,6 @@ registerAction("squad/set_flavor", (draft, payload) => {
   unit2.bio = p.bio.trim();
   return [{ type: "unit_flavored", unitId: unit2.id, name }];
 });
-
-// src/engine/bonds/violations.ts
-var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var MARKS_MAX = 50;
-function markSceneViolation(draft, reg, raw) {
-  const scene = draft.scene;
-  if (!scene || !isObj11(raw) || typeof raw.index !== "number" || !Number.isInteger(raw.index) || raw.index < 0) return;
-  const categories = flaggedCategories(draft, reg, raw.categories);
-  if (categories.length === 0) return;
-  const marks = (scene.violations ?? []).filter((v) => v.index !== raw.index);
-  marks.push({ index: raw.index, categories });
-  marks.sort((a, b) => a.index - b.index);
-  scene.violations = marks.slice(-MARKS_MAX);
-}
-function markDmViolation(draft, reg, unitId, messageRef, raw) {
-  if (typeof messageRef !== "string" || !messageRef.startsWith("dm:") || !isObj11(raw)) return;
-  const categories = flaggedCategories(draft, reg, raw.categories);
-  if (categories.length === 0) return;
-  const message = (draft.dms[unitId] ?? []).find((m) => m.id === messageRef.slice(3) && m.from === unitId);
-  if (message) message.violation = categories;
-}
 
 // src/engine/memory/audience.ts
 function visibleToAll(knownBy, viewers) {
@@ -24654,302 +25061,6 @@ function momentDirective(state, reg, unitId) {
   return { id: `development:${unitId}`, text: `${unit2.displayName} has changed lately: ${words3.join("; ")}. Let it show in how she acts this scene; never announce it.`, expiresAfter: "scene" };
 }
 
-// src/engine/bonds/breakdown.ts
-var wantBreakdownSpec = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown ?? null;
-function startWantBreakdown(draft, ctx2, unitId, defectId) {
-  const reg = ctx2.registries;
-  const unit2 = draft.squad.find((u) => u.id === unitId);
-  const spec = wantBreakdownSpec(reg, defectId);
-  if (!unit2 || !spec || unit2.breakdown || !unit2.defects.some((d) => d.id === defectId)) return [];
-  unit2.breakdown = { defectId, day: draft.day, until: draft.day + spec.days };
-  const events = [{ type: "want_breakdown", unitId, defectId, kind: spec.kind }];
-  if (spec.kind === "withdrawal") {
-    const knock = (reg.defects.get(defectId)?.nightEvents ?? []).find((n) => n.kind === spec.kind);
-    if (knock) events.push(...queueNightSpec(draft, unit2, knock));
-  } else if (spec.kind === "smother") {
-    events.push(...startSmother(draft, unitId, ctx2.registries));
-  } else if (spec.kind === "binge") {
-    const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
-    if (cost > 0) {
-      draft.resources.credits -= cost;
-      events.push({ type: "resource_changed", resource: "credits", amount: -cost });
-    }
-  }
-  return events;
-}
-function releaseWantBreakdowns(draft) {
-  const events = [];
-  for (const u of draft.squad) {
-    if (!u.breakdown || u.breakdown.until === void 0 || draft.day <= u.breakdown.until) continue;
-    delete u.breakdown;
-    events.push({ type: "breakdown_released", unitId: u.id });
-  }
-  return events;
-}
-function startCrossedBreakdowns(draft, ctx2) {
-  const events = [];
-  for (const unit2 of draft.squad) {
-    const rel = draft.relations[unit2.id];
-    if (unit2.kind !== "named" || !rel || !isLiving(unit2) || rel.wantBreakDay !== void 0) continue;
-    if (!wantEligible(draft, ctx2.registries, unit2.id) || effectiveWant(draft, ctx2.registries, unit2.id) < TUNING.bonds.want.bands.desperate) continue;
-    for (const d of unit2.defects) {
-      const started = startWantBreakdown(draft, ctx2, unit2.id, d.id);
-      if (started.length > 0) {
-        rel.wantBreakDay = draft.day;
-        events.push(...started);
-        break;
-      }
-    }
-  }
-  return events;
-}
-
-// src/engine/bonds/desire.ts
-function openDesireDemands(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const unit2 of draft.squad) {
-    if (unit2.kind !== "named" || !isLiving(unit2) || wantBandOf(draft, reg, unit2.id) === "calm") continue;
-    const last = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit2.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
-    if (draft.day - last < TUNING.bonds.want.demandEveryDays) continue;
-    const opened = openDemand(draft, ctx2, unit2.id, { desire: true });
-    if (opened) events.push(...opened.events);
-  }
-  return events;
-}
-
-// src/engine/bonds/dayStep.ts
-function bondsDayStep(draft, ctx2) {
-  return [
-    ...syncAllPublicity(draft, ctx2.registries),
-    ...deliverStaleRules(draft),
-    ...releaseWantBreakdowns(draft),
-    ...wantStep(draft, ctx2.registries),
-    ...startCrossedBreakdowns(draft, ctx2),
-    ...openDesireDemands(draft, ctx2),
-    ...checkDailyContact(draft, ctx2),
-    ...rollRules(draft, ctx2),
-    ...expireSmother(draft)
-  ];
-}
-
-// src/engine/life/events.ts
-var eventsOf = (reg) => [...reg.lifeEvents.values()];
-function roomsToday(state, reg, unitId, day, cache) {
-  return placesOf(state, reg, unitId, day, cache).map((w) => {
-    const room2 = w.roomId ? reg.hubRooms.get(w.roomId) : void 0;
-    return { reason: w.reason, locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
-  });
-}
-function requiresHold(state, reg, unitId, req, day, cache) {
-  if (!req) return true;
-  const unit2 = unitOf2(state, unitId);
-  if (!unit2) return false;
-  const life = state.life;
-  const rel = state.relations[unitId];
-  const run = state.expedition;
-  for (const [field2, value] of Object.entries(req)) {
-    let ok;
-    switch (field2) {
-      case "hobby":
-        ok = (unit2.hobbies ?? []).some((h2) => h2.state === "active" && (value === "any" || h2.id === value));
-        break;
-      case "location":
-        ok = roomsToday(state, reg, unitId, day, cache).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
-        break;
-      case "activity": {
-        const lo = day * SLOTS_PER_DAY;
-        ok = (life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= lo && b.slot < lo + SLOTS_PER_DAY && b.activityId !== void 0 && value.includes(b.activityId));
-        break;
-      }
-      case "afterRun": {
-        const last = state.lastExpedition;
-        ok = last !== void 0 && last.day >= day - 1 && last.party.includes(unitId) && (value.hurt !== true || last.injuries.includes(unitId));
-        break;
-      }
-      case "noRunDays": {
-        const last = state.lastExpedition;
-        ok = run?.party.includes(unitId) !== true && !(last?.party.includes(unitId) === true && day - last.day < value);
-        break;
-      }
-      case "stressMin":
-        ok = unit2.stress >= value;
-        break;
-      case "stressMax":
-        ok = unit2.stress <= value;
-        break;
-      case "defectCategory":
-        ok = unit2.defects.some((d) => reg.defects.get(d.id)?.category === value);
-        break;
-      case "injured":
-        ok = unit2.injuries.length > 0;
-        break;
-      case "otherNamed":
-        ok = state.squad.some((u) => u.id !== unitId && takesPart(state, u.id));
-        break;
-      case "affinityMin":
-        ok = rel !== void 0 && rel.affinity >= value;
-        break;
-      case "trustMin":
-        ok = rel !== void 0 && rel.trust >= value;
-        break;
-      case "romantic":
-        ok = bondTierOf(state, reg, unitId) === "romantic";
-        break;
-      case "leaderNotHer": {
-        const leader = leaderOf(state);
-        ok = leader !== null && leader.id !== unitId;
-        break;
-      }
-      case "gruntDiedDays":
-        ok = (life?.deaths ?? []).some((d) => d.old !== true && d.grunt && day - d.day >= 0 && day - d.day <= value);
-        break;
-      case "deathAgo":
-        ok = (life?.deaths ?? []).some((d) => d.old !== true && day - d.day >= value && (day - d.day) % value === 0);
-        break;
-      case "rumour":
-        ok = state.rumors.length > 0;
-        break;
-      case "rationsShort":
-        ok = rationsOf(state) !== "equal" || life?.shortageDay !== void 0 && day - life.shortageDay <= TUNING.life.shortageDays;
-        break;
-      case "sparring": {
-        const winner = value === "won" ? "unit" : "commander";
-        ok = (state.personal?.wagers?.log ?? []).some((w) => w.unitId === unitId && day - w.day <= TUNING.life.sparringDays && w.winner === winner && reg.wagerGames.get(w.gameId)?.kind === "sparring");
-        break;
-      }
-      case "bloomHalf":
-        ok = state.world.clocks.some((c) => c.regionId !== void 0 && c.filled * 2 >= c.segments);
-        break;
-      case "missionBoard":
-        ok = state.missions.offered.length > 0;
-        break;
-      case "afterEvent": {
-        const at = life?.units[unitId]?.last[value];
-        ok = at !== void 0 && day - at <= TUNING.life.afterEventDays;
-        break;
-      }
-      case "otherHadThisWeek":
-        ok = Object.entries(life?.units ?? {}).some(([id, l]) => id !== unitId && l.last[value] !== void 0 && day - l.last[value] <= TUNING.life.otherWeekDays);
-        break;
-      default:
-        ok = false;
-    }
-    if (!ok) return false;
-  }
-  return true;
-}
-function weekAllowance(state, unitId, week) {
-  const mode = lifeMode(state);
-  if (mode === "off" || !state.life) return 0;
-  const perWeek = TUNING.life.perWeek[mode];
-  if (perWeek >= 1) return perWeek;
-  return (week + lifeHash(state.life, unitId)) % 2 === 0 ? 1 : 0;
-}
-function weekOf2(state, unitId, day) {
-  const week = Math.floor(day / 7);
-  const w = state.life?.units[unitId]?.week;
-  return w !== void 0 && w.n === week ? w : { n: week, events: 0, notable: 0 };
-}
-function eventPool2(state, reg, unitId, day, cache = /* @__PURE__ */ new Map()) {
-  const life = state.life;
-  if (!life || !takesPart(state, unitId)) return [];
-  const mine = life.units[unitId]?.last ?? {};
-  const week = weekOf2(state, unitId, day);
-  return eventsOf(reg).filter((e) => {
-    if (e.size === "notable" && e.yearly !== true && week.notable >= TUNING.life.notablePerWeek) return false;
-    const cooldown = e.yearly === true ? TUNING.life.cooldown.yearly : e.cooldownDays ?? TUNING.life.cooldown[e.size];
-    if (mine[e.id] !== void 0 && day - mine[e.id] < cooldown) return false;
-    if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
-    if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
-    return requiresHold(state, reg, unitId, e.requires, day, cache);
-  });
-}
-function pickLifeEvent(state, reg, unitId, day, cache) {
-  const life = state.life;
-  const mode = lifeMode(state);
-  if (!life || mode === "off" || !takesPart(state, unitId)) return null;
-  const week = weekOf2(state, unitId, day);
-  const pool = eventPool2(state, reg, unitId, day, cache);
-  if (pool.length === 0) return null;
-  const yearly = pool.filter((e) => e.yearly === true);
-  if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
-  if (yearly.length === 0 && !lifeChance(life, `${unitId}|life|${day}`, Math.min(1, TUNING.life.perWeek[mode] / 7 * TUNING.life.dayBoost))) return null;
-  const from = yearly.length > 0 ? yearly : pool;
-  return from[lifeHash(life, `${unitId}|life|${day}|pick`) % from.length];
-}
-function effectiveShare(state, reg, unitId, entry) {
-  if (entry.share !== "keeps") return entry.share;
-  const rel = state.relations[unitId];
-  const u = entry.keepsUnless;
-  const lifted = u !== void 0 && (u.affinityMin !== void 0 && rel !== void 0 && rel.affinity >= u.affinityMin || u.romantic === true && bondTierOf(state, reg, unitId) === "romantic");
-  return lifted ? "close" : "keeps";
-}
-function shareChance(state, reg, unitId, entry) {
-  const share = effectiveShare(state, reg, unitId, entry);
-  if (share === "keeps") return 0;
-  const close = (state.relations[unitId]?.affinity ?? 0) >= TUNING.life.shareAffinity;
-  if (share === "close" && !close) return 0;
-  return TUNING.life.share[temperamentOf(state, unitId).talkativeness] * (close ? 1 : TUNING.life.shareLowMult);
-}
-function milestoneHobby(draft, reg, unitId, entry, day) {
-  const unit2 = unitOf2(draft, unitId);
-  const named3 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
-  const movable = (unit2?.hobbies ?? []).filter((h2) => h2.state === "active" && h2.mastered !== true && h2.ceiling !== true && h2.milestones.length < 4 && reg.hobbies.has(h2.id));
-  if (named3 !== void 0) return movable.some((h2) => h2.id === named3) ? named3 : null;
-  return movable.length === 0 ? null : movable[lifeHash(draft.life, `${unitId}|${day}|milestone`) % movable.length].id;
-}
-function applyBecomes(draft, reg, unitId, entry, day, facts) {
-  const events = [];
-  const unit2 = unitOf2(draft, unitId);
-  const becomes = entry.becomes;
-  if (!unit2 || !becomes) return events;
-  if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
-    const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
-    if (have) events.push(...pushHobby(draft, reg, unitId, becomes.hobby, day));
-    else events.push(...startHobby(draft, reg, unitId, becomes.hobby, day, "event", facts));
-  }
-  if (becomes.milestone === true) {
-    const id = milestoneHobby(draft, reg, unitId, entry, day);
-    const h2 = id === null ? void 0 : unit2.hobbies?.find((x) => x.id === id);
-    if (id !== null && h2) events.push(...grantMilestone(draft, reg, unitId, id, h2.milestones.length, { told: true, facts }));
-  }
-  if (becomes.opinionTopic !== void 0) openTopic(draft, reg, unitId, becomes.opinionTopic);
-  return events;
-}
-function applyLifeEvent(draft, reg, unitId, entry, day) {
-  const life = draft.life;
-  const unit2 = unitOf2(draft, unitId);
-  if (!life || !unit2) return [];
-  const mine = life.units[unitId] ??= { last: {} };
-  const week = weekOf2(draft, unitId, day);
-  mine.week = { n: week.n, events: week.events + 1, notable: week.notable + (entry.size === "notable" ? 1 : 0) };
-  mine.last[entry.id] = day;
-  life.kinds = [...life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays), { kind: entry.id, unitId, day }];
-  const fact = writeLifeFact(draft, unitId, `${unit2.displayName}: ${plainText(String(entry.description))}`, [entry.id, ...entry.tags ?? []], entry.size === "notable" ? 2 : 1);
-  const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
-  const share = effectiveShare(draft, reg, unitId, entry);
-  if (share !== "keeps") mine.hub = { eventId: entry.id, day };
-  const also = [];
-  events.push(...applyBecomes(draft, reg, unitId, entry, day, also));
-  if (lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry))) {
-    events.push(...enqueue(draft, {
-      unitId,
-      kind: "event",
-      ref: entry.id,
-      what: "event",
-      factId: fact.id,
-      category: entry.category,
-      day,
-      ...also.length > 0 ? { alsoFacts: also } : {},
-      ...entry.size === "notable" ? { notable: true } : {},
-      ...entry.urgent === true ? { urgent: true } : {}
-    }));
-    events.push({ type: "life_shared", unitId, eventId: entry.id });
-  }
-  return events;
-}
-
 // src/engine/life/dayStep.ts
 function noteBusy(draft, unitIds, activityId) {
   if (lifeMode(draft) === "off") return;
@@ -25006,95 +25117,6 @@ function lifeDayStep(draft, ctx2) {
   events.push(...hobbyPass(draft, reg, day, places));
   events.push(...staleSweep(draft, day), ...deliverNews(draft, reg, day));
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
-  return events;
-}
-
-// src/engine/life/meetings.ts
-var hobbyEntry = (reg, id) => reg.hobbies.get(id);
-function keenestHobby(reg, unit2) {
-  const order = [...reg.hobbies.keys()];
-  const rank2 = (id) => {
-    const i = order.indexOf(id);
-    return i < 0 ? order.length : i;
-  };
-  return (unit2.hobbies ?? []).filter((h2) => h2.state === "active").sort((a, b) => b.interest - a.interest || rank2(a.id) - rank2(b.id))[0];
-}
-function openAt(reg, locationId, slot2) {
-  const loc = reg.locations.get(locationId);
-  if (!loc) return false;
-  const slots = loc.slots;
-  return !slots || slots.includes(slot2);
-}
-function candidateLocations(reg, pastime, unit2) {
-  if (pastime.hobby !== true) return pastime.locations;
-  const h2 = unit2 ? keenestHobby(reg, unit2) : void 0;
-  return h2 ? hobbyEntry(reg, h2.id)?.locations ?? [] : [];
-}
-function pastimeLocation(state, reg, pastime, unitId) {
-  const unit2 = unitId !== void 0 ? unitOf2(state, unitId) : void 0;
-  return candidateLocations(reg, pastime, unit2).find((id) => openAt(reg, id, state.slot)) ?? null;
-}
-var deserting = (state, unitId) => state.disloyalty?.open?.kind === "desertion" && state.disloyalty.open.unitId === unitId;
-function pastimeProblem(state, reg, unitId, pastimeId, at) {
-  if (lifeMode(state) === "off" || !state.life) return "Her life is switched off.";
-  const pastime = reg.pastimes.get(pastimeId);
-  if (!pastime) return `Unknown pastime "${pastimeId}".`;
-  const unit2 = unitOf2(state, unitId);
-  if (!unit2 || unit2.kind !== "named") return "Only a named soldier has quiet meetings.";
-  const name = unit2.displayName;
-  if (unit2.status === "deserted" || deserting(state, unitId)) return `${name} is deserting.`;
-  if (!takesPart(state, unitId)) return `${name} is not at the base.`;
-  if ((state.relations[unitId]?.affinity ?? 0) <= TUNING.life.meeting.affinityMin) return `${name} wants nothing to do with the commander right now.`;
-  if (state.life.units[unitId]?.meetingDay === state.day) return `${name} has had a quiet hour with the commander today.`;
-  const slot2 = at?.slot ?? state.slot;
-  if (!pastime.slots.includes(slot2)) return `${pastime.label} is not for the ${slot2}.`;
-  if (at !== void 0) {
-    if (!candidateLocations(reg, pastime, unit2).includes(at.locationId)) return `${pastime.label} is not held here.`;
-  } else {
-    if (pastimeLocation(state, reg, pastime, unitId) === null) return `Nowhere is open for ${pastime.label} now.`;
-    const activity = pastimeActivity(reg);
-    if (!activity) return "This pack has no time together.";
-    const held3 = restrictionReason(state, unitId, "companion", String(activity.id));
-    if (held3) return held3;
-    const blocked = checkActivity(state, reg, { activityId: String(activity.id), companionId: unitId });
-    if (blocked) return blocked;
-  }
-  const req = pastime.requires;
-  if (req?.afterRun === true && !requiresHold(state, reg, unitId, { afterRun: {} }, state.day)) return `${pastime.label} is for after a run.`;
-  if (req?.firstSlot === true && slot2 !== "morning") return `${pastime.label} is for the first slot of the day.`;
-  if (req?.hobby !== void 0 && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
-  if (pastime.hobby === true && keenestHobby(reg, unit2) === void 0) return `${name} has no hobby to show.`;
-  return null;
-}
-function teachCommander(draft, hobby, entry) {
-  const t = TUNING.life.commanderSkill;
-  const gain = entry.teachable && hobby.milestones.length >= 2 ? t.taught : t.meeting;
-  const skill = draft.commander.hobbySkill ??= {};
-  skill[hobby.id] = Math.min(100, (skill[hobby.id] ?? 0) + gain);
-  return gain;
-}
-var meetingEvent = (unitId) => ({ type: "time_together", actor: "commander", targets: [unitId], severity: "minor", evidence: "a quiet meeting", confidence: 1 });
-function finishMeeting(draft, ctx2, scene) {
-  const meeting = scene.pastime;
-  const unit2 = meeting ? unitOf2(draft, meeting.unitId) : void 0;
-  const reg = ctx2.registries;
-  if (!meeting || !unit2 || unit2.kind !== "named" || !draft.life) return [];
-  const pastime = reg.pastimes.get(meeting.id);
-  const events = applyEventToUnit(draft, reg, unit2.id, meetingEvent(unit2.id));
-  const mine = draft.life.units[unit2.id] ??= { last: {} };
-  mine.meetingDay = draft.day;
-  if (pastime?.hobby !== true) return events;
-  const keen = keenestHobby(reg, unit2);
-  const entry = keen ? hobbyEntry(reg, keen.id) : void 0;
-  if (!keen || !entry) return events;
-  events.push(...practise(draft, reg, unit2.id, keen.id, draft.day, draft.slot, { push: true, caused: true }));
-  const gain = teachCommander(draft, keen, entry);
-  const taught = mine.taught ??= [];
-  if (gain === TUNING.life.commanderSkill.taught && !taught.includes(keen.id)) {
-    taught.push(keen.id);
-    events.push({ type: "hobby_taught", unitId: unit2.id, hobbyId: keen.id });
-  }
-  if (taught.length === 0) delete mine.taught;
   return events;
 }
 
@@ -34175,7 +34197,7 @@ function system3(raw) {
     `MEASURE: ${(input.measures ?? []).join(", ")}`,
     `PROPOSAL_KIND: ${proposalKinds.join(", ")}`,
     `EXPRESSION_LABEL: ${EXPRESSION_LABELS.join(", ")}`,
-    ...life.firsts ? [`FIRST_KIND: ${FIRST_KINDS.join(", ")}`] : [],
+    ...life.firsts ? [`FIRST_KIND: ${(input.life?.firstKinds ?? FIRST_KINDS).join(", ")}`] : [],
     ...excluded.length > 0 ? ["EXCLUDED (id: label):", ...excluded.map((e) => `- ${e.id}: ${e.label}`)] : [],
     "",
     `Rules: "actor" is "commander" when the commander does it to a unit; a unit's own act toward the commander (shared_secret, apologized) has that unit as actor and no targets.`,

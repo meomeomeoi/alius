@@ -11,4 +11,4 @@ export { applyLifeIntent, lifeIntentInput } from './intents';
 export {
   defaultPosition, endSceneLife, formOpinion, heardOpinions, recentEventTopics, startSceneLife, topicsAt, topicsInText, triggerTopics, unformedTopics, voiceOpinion,
 } from './opinions';
-export { availablePastimes, commanderHobbyWord, finishMeeting, keenestHobby, pastimeLocation, pastimeProblem } from './meetings';
+export { availablePastimes, commanderHobbyWord, finishMeeting, keenestHobby, keepFirst, missingFirsts, pastimeLocation, pastimeProblem } from './meetings';

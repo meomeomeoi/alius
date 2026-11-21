@@ -660,5 +660,101 @@
       "hobby",
       "taught"
     ]
+  },
+  {
+    "id": "first_laughed",
+    "event": "first_moment_kept",
+    "when": {
+      "kind": "laughed"
+    },
+    "text": "{name} laughed with the commander, properly, for the first time.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "first",
+      "laughed"
+    ]
+  },
+  {
+    "id": "first_fell_asleep_beside",
+    "event": "first_moment_kept",
+    "when": {
+      "kind": "fell_asleep_beside"
+    },
+    "text": "{name} fell asleep beside the commander for the first time.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "first",
+      "fell_asleep_beside"
+    ]
+  },
+  {
+    "id": "first_told_her_past",
+    "event": "first_moment_kept",
+    "when": {
+      "kind": "told_her_past"
+    },
+    "text": "{name} told the commander something of her past for the first time.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "first",
+      "told_her_past"
+    ]
+  },
+  {
+    "id": "first_cried",
+    "event": "first_moment_kept",
+    "when": {
+      "kind": "cried"
+    },
+    "text": "{name} cried in front of the commander for the first time.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "first",
+      "cried"
+    ]
+  },
+  {
+    "id": "first_taught",
+    "event": "first_moment_kept",
+    "when": {
+      "kind": "taught"
+    },
+    "text": "{name} taught the commander something for the first time.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "first",
+      "taught"
+    ]
+  },
+  {
+    "id": "first_asked_about_commander",
+    "event": "first_moment_kept",
+    "when": {
+      "kind": "asked_about_commander"
+    },
+    "text": "{name} asked about the commander's own life for the first time.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "first",
+      "asked_about_commander"
+    ]
   }
 ]

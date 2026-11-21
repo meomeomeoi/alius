@@ -179,7 +179,7 @@ function system(raw: unknown): string {
     `MEASURE: ${(input.measures ?? []).join(', ')}`,
     `PROPOSAL_KIND: ${proposalKinds.join(', ')}`,
     `EXPRESSION_LABEL: ${EXPRESSION_LABELS.join(', ')}`,
-    ...(life.firsts ? [`FIRST_KIND: ${FIRST_KINDS.join(', ')}`] : []),
+    ...(life.firsts ? [`FIRST_KIND: ${(input.life?.firstKinds ?? FIRST_KINDS).join(', ')}`] : []),
     ...(excluded.length > 0 ? ['EXCLUDED (id: label):', ...excluded.map((e) => `- ${e.id}: ${e.label}`)] : []),
     '',
     'Rules: "actor" is "commander" when the commander does it to a unit; a unit\'s own act toward the commander (shared_secret, apologized) has that unit as actor and no targets.',

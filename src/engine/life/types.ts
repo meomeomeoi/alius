@@ -145,6 +145,8 @@ export interface LifeOffer {
   topics: Array<{ id: string; unitId: string; label: string; positions: string[]; pick?: true; voiced?: true; /** Her current position in words (only for a voiced topic: the commander has heard it). */ view?: string }>;
   /** Jokes that may come back: the id of the fact, her id, its text. */
   jokes: Array<{ id: string; unitId: string; text: string }>;
-  /** A private scene with a named woman: a first moment may be reported. */
+  /** A private scene with a named woman, and a kind the pair has not had: a first moment may be reported. */
   firsts: boolean;
+  /** The kinds of first moment still open for this pair (`firsts` is true only while there is one); absent = every kind (an older list). */
+  firstKinds?: string[];
 }

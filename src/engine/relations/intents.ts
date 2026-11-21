@@ -177,7 +177,8 @@ function lifeFields(type: string, e: Record<string, unknown>, intent: EventInten
       break;
     }
     case 'first_moment': {
-      const kind = (FIRST_KINDS as readonly unknown[]).includes(e.kind) ? (e.kind as string) : null;
+      const open: readonly unknown[] = life.firstKinds ?? FIRST_KINDS; // only a kind the pair has not had
+      const kind = (FIRST_KINDS as readonly unknown[]).includes(e.kind) && open.includes(e.kind) ? (e.kind as string) : null;
       who = candidates[0]; // the woman of a private scene
       if (!life.firsts || kind === null || who === undefined) return null;
       intent.kind = kind;

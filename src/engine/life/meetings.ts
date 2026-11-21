@@ -2,7 +2,9 @@ import type { Registries } from '../../content/types';
 import { checkActivity } from '../activities';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { restrictionReason } from '../discipline/restrictions';
+import { isLiving } from '../economy';
 import type { EventIntent } from '../relations/intents';
+import { FIRST_KINDS } from '../relations/vocab';
 import { applyEventToUnit } from '../relations/effects';
 import type { CampaignState, SceneRecord, Slot, Unit } from '../state/types';
 import { TUNING } from '../tuning';
@@ -148,4 +150,26 @@ export function finishMeeting(draft: CampaignState, ctx: EngineCtx, scene: Pick<
   }
   if (taught.length === 0) delete mine.taught;
   return events;
+}
+
+/** The first moments (kinds of `FIRST_KINDS`) she and the commander have not had yet, in the order of the vocabulary. */
+export function missingFirsts(state: Pick<CampaignState, 'life'>, unitId: string): string[] {
+  const had = state.life?.units[unitId]?.firsts ?? [];
+  return FIRST_KINDS.filter((k) => !had.includes(k));
+}
+
+/**
+ * A first between her and the commander is kept, once per kind: it is recorded in her `firsts`, its row (`first_moment`: Affinity +2,
+ * diminishing through the gain handler, with its journal phrase) is applied and `first_moment_kept` is emitted, which the six `first_<kind>`
+ * memory rules turn into a fact. A kind outside the vocabulary, a kind the pair already had and a woman who is not named and living
+ * change nothing. `ev` is the reported event (its severity and confidence are kept).
+ */
+export function keepFirst(draft: CampaignState, ctx: EngineCtx, unitId: string, kind: string, ev?: EventIntent): EngineEvent[] {
+  const unit = unitOf(draft, unitId);
+  if (!unit || unit.kind !== 'named' || !isLiving(unit) || !draft.life || !(FIRST_KINDS as readonly string[]).includes(kind)) return [];
+  const mine = (draft.life.units[unitId] ??= { last: {} });
+  if ((mine.firsts ?? []).includes(kind)) return [];
+  (mine.firsts ??= []).push(kind);
+  const event: EventIntent = ev ?? { type: 'first_moment', actor: unitId, targets: [], severity: 'minor', evidence: 'a first', confidence: 1, kind };
+  return [...applyEventToUnit(draft, ctx.registries, unitId, event), { type: 'first_moment_kept', unitId, kind }];
 }

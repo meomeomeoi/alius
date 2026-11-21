@@ -55,6 +55,13 @@ describe('the intent prompt and her life', () => {
     });
   }
 
+  it('lists only the kinds of first moment the pair has not had', () => {
+    const some = system(withLife(life({ firsts: true, firstKinds: ['cried', 'taught'] })));
+    expect(some).toContain('FIRST_KIND: cried, taught');
+    expect(some).not.toContain('laughed');
+    expect(system(withLife(life({ firsts: true })))).toContain('FIRST_KIND: laughed, fell_asleep_beside, told_her_past, cried, taught, asked_about_commander');
+  });
+
   it('voicing and arguing are offered by their own flags on a topic', () => {
     const voiceOnly = system(withLife(life({ topics: [{ ...TOPIC, pick: true }] }))).split('\n').find((l) => l.startsWith('EVENT_TYPE:'))!;
     expect(voiceOnly).toContain('opinion_voiced');
