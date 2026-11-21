@@ -101,12 +101,13 @@ export function eligibleTemplates(state: CampaignState, reg: Registries, unitId:
  * It opens `undelivered`; the app words it and delivers it, or the day step delivers the template text. `null` when she is
  * not a named living unit, cannot take part in a scene (the brig, extra duty), already has an open demand, is over `perWeek` openings this week or nothing is eligible.
  */
-export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean; /** P9d: open a `desire` demand (Want's own cadence replaces the weekly cap). */ desire?: boolean } = {}): { demand: Demand; events: EngineEvent[] } | null {
+export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean; /** P9d: open a `desire` demand (Want's own cadence replaces the weekly cap). */ desire?: boolean; /** P15: only a template of this `kind` (the dynamic's reaction asks an `interpersonal` one). */ only?: string } = {}): { demand: Demand; events: EngineEvent[] } | null {
   const reg = ctx.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit) || unitObeys(draft, unitId) || hasOpen(draft, unitId) || (opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek)) return null;
   if (restrictionReason(draft, unitId, 'scene') !== null) return null; // in the brig or on duty she cannot be talked to: its [TALK] would always fail
   let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? 'desire' : undefined);
+  if (opts.only !== undefined) pool = pool.filter((t) => t.kind === opts.only);
   const last = [...(draft.discipline?.demandLog ?? [])].reverse().find((e) => e.unitId === unitId)?.templateId;
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;

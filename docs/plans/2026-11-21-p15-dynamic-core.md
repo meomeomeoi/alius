@@ -1663,17 +1663,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `reactToDynamic(draft, ctx, observerId, holderId): EngineEvent[]` (called on `knows_dynamic`); `dynamicTerm(state, reg, unitId): number`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `drawn and eligible: her own hold +5`; `drawn at the cap: nothing`.
   - `indifferent: a fact only`.
   - `dislikes: Impunity term +5, the holder's standing −5, and a hashed demand about it` (the same seed gives the same demand day; no rng draw).
   - `a possessive holder who learns of another competes` (a claim against the other's strongest domain); `a ritual holder respects it` (a fact).
   - `the witness directive is cautious at suspects and full at knows`, and only while the holder or the commander is present.
   - `impunityOf is unchanged without a dynamic` (`dynamic: 0`; the discipline suites stay green).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/reactions.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the squad reacts to a dynamic by profile`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/reactions.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the squad reacts to a dynamic by profile`
 
 ---
 

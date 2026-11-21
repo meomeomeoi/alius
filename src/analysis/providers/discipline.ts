@@ -32,6 +32,7 @@ function termLines(t: ImpunityTerms, k: Knowledge): string[] {
   if (t.contagion !== 0) out.push(`Squad mood: ${t.contagion > 0 ? 'the others are getting bolder' : 'the others are careful'}${numberOf(k, t.contagion)}`);
   if (t.leverage !== 0) out.push(`Leverage: she holds something over the commander${numberOf(k, t.leverage)}`);
   if (t.held !== 0) out.push(`Held over her: the commander knows what the squad kept back and has used it${numberOf(k, t.held)}`);
+  if (t.dynamic !== undefined && t.dynamic !== 0) out.push(`The dynamic: she knows what another woman holds over the commander, and does not like it${numberOf(k, t.dynamic)}`);
   return out;
 }
 

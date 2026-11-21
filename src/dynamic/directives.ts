@@ -5,6 +5,7 @@ import { herPracticeLive, dynamicOn } from '../engine/dynamic/gate';
 import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { dynamicOf } from '../engine/dynamic/state';
+import { reactionOf, type Reaction } from '../engine/dynamic/witness';
 import { leadingStyle } from '../engine/dynamic/style';
 import type { DynamicDomainEntry, DynamicMilestoneEntry, PracticeStyleEntry, ProbeAxisEntry } from '../engine/dynamic/types';
 import { isLiving } from '../engine/economy';
@@ -28,6 +29,7 @@ const sentence = (text: string): string => clean(text).replace(/[.\s]+$/, '');
 export const DYNAMIC_PREFIX = 'dynamic:';
 export const PROBE_PREFIX = 'dynamic:probe:';
 export const COMMAND_PREFIX = 'dynamic:command:';
+export const WITNESS_PREFIX = 'dynamic:witness:';
 
 /** Her style pair in words, the secondary's side named while it leads. */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
@@ -89,6 +91,7 @@ function probeDirective(reg: Registries, unit: Unit, axisId: string): Directive 
  *    and an answer she is waiting for (an open milestone, a recent refusal); before the first frame, only an open milestone.
  *  - `dynamic:probe:<unitId>`: her probe is pending (at most one a scene); gone when it is answered or lapses.
  *  - `dynamic:command:<unitId>`: she holds the command and someone else is in the room: who gives the orders now. Her own line, while the argument over her override is the scene, adds what she overrode.
+ *  - `dynamic:witness:<observerId>`: she suspects (cautious) or knows (her reaction by profile) a holder's dynamic and is in the room.
  * Nothing while the dynamic is off.
  */
 export function dynamicDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
@@ -104,6 +107,43 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== undefined) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId)!, probe.probe.axis));
   out.push(...commandDirectives(state, reg, present));
+  out.push(...witnessDirectives(state, reg, present));
+  return out;
+}
+
+/** What she does about it, in her own words, once she knows (R14): by her reaction. No line states what the commander feels. */
+const REACTION_LINE: Readonly<Record<Reaction, (holder: string) => string>> = {
+  drawn: (h) => `She is drawn to it: she watches ${h} with interest and may ask about it.`,
+  indifferent: () => 'She does not care either way: it is no business of hers, and she treats it so.',
+  dislikes: (h) => `She dislikes it and lets it show in how she speaks to ${h} and to the commander; she may say it plainly.`,
+  respects: (h) => `She holds a place of her own and respects ${h}'s claim.`,
+  competes: (h) => `She holds a place of her own and resents ${h}'s; she competes for what ${h} holds.`,
+};
+
+/**
+ * What a woman who has noticed or learned of a holder's dynamic does in the scene (`dynamic:witness:<observerId>`): at `suspects_dynamic` she is
+ * cautious (hints and small questions, nothing outright), at `knows_dynamic` she reacts by her profile. One line per observer, a sentence for each holder
+ * she has a level for. She need not practise anything herself. The commander is the one in the scene, so a woman present is with the commander
+ * (and with the holder when she is there too).
+ */
+function witnessDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const rows = state.dynamic?.knowledge ?? {};
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    if (unit === undefined || unit.kind !== 'named' || !isLiving(unit) || rows[id] === undefined) continue;
+    const lines: string[] = [];
+    for (const [holderId, rec] of Object.entries(rows[id])) {
+      const holder = state.squad.find((u) => u.id === holderId);
+      if (holder === undefined || !isLiving(holder) || dynamicOf(state, holderId) === undefined) continue;
+      if (rec.level === 'suspects_dynamic') {
+        lines.push(`${unit.displayName} suspects that ${holder.displayName} has something over the commander and gives the orders when the two are alone. She is cautious: she hints and asks small questions, and says nothing outright.`);
+      } else if (rec.level === 'knows_dynamic') {
+        lines.push(`${unit.displayName} knows that ${holder.displayName} holds authority over the commander. ${REACTION_LINE[reactionOf(state, reg, id, holderId)](holder.displayName)}`);
+      }
+    }
+    if (lines.length > 0) out.push({ id: `${WITNESS_PREFIX}${id}`, expiresAfter: 'scene', text: [...lines, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') });
+  }
   return out;
 }
 

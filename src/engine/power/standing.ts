@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import { bondOf, leadRank } from '../bonds/profile';
 import type { CombatState } from '../combat/types';
 import { hasCapability, holderWith } from '../dynamic/capabilities';
+import { standingMalus } from '../dynamic/witness';
 import { impunityOf } from '../discipline/impunity';
 import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -93,7 +94,7 @@ export function standingOf(state: CampaignState, reg: Registries, unitId: string
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, 'co_leader') ? TUNING.dynamic.coLeaderStanding : 0; // P15: addressed as the one in command
-  return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra + coLeader;
+  return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId); // P15: the witnesses who dislike what she holds over the commander
 }
 
 /**

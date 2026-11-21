@@ -16,26 +16,14 @@ import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { dynamicOn } from './gate';
 import { practiceOf } from './profile';
-import { dynamicHash, dynamicOf, type KnowledgeRecord } from './state';
+import { reactToDynamic } from './reactions';
+import { dynamicRoll } from './witness';
+import { dynamicOf, type KnowledgeRecord } from './state';
 import { DYNAMIC_KNOWLEDGE_TAG, type DynamicSignEntry, type KnowledgeLevel, type SignKind } from './types';
 
 type Ctx = Pick<EngineCtx, 'registries'>;
 
 const RANK: Readonly<Record<KnowledgeLevel, number>> = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
-/**
- * A hashed chance in [0, 1): `dynamicHash` with a murmur finalizer on top. `dynamicHash` is FNV-1a over a string whose last characters are the day, so
- * two consecutive days give two nearby numbers (0.480, 0.492, 0.488, ...); a chance read straight from it would come up on the same stretch of days for
- * every pair. The finalizer spreads them. Deterministic; draws nothing.
- */
-function roll(state: CampaignState, unitId: string, key: string): number {
-  let x = Math.floor(dynamicHash(state, unitId, key) * 2 ** 32) >>> 0;
-  x ^= x >>> 16;
-  x = Math.imul(x, 0x85ebca6b) >>> 0;
-  x ^= x >>> 13;
-  x = Math.imul(x, 0xc2b2ae35) >>> 0;
-  x ^= x >>> 16;
-  return (x >>> 0) / 2 ** 32;
-}
 const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 
 /** The row of the registry for a kind of sign (read by `kind`, never by id). */
@@ -92,8 +80,8 @@ const FACT_TEXT: Readonly<Record<KnowledgeLevel, (observer: string, holder: stri
   knows_dynamic: (o, h) => `${o} knows that ${h} holds authority over the commander.`,
 };
 
-/** Raises her level to `level` (never lowers it): the record, the fact and `dynamic_known`; Nothing when she is there already. */
-function raise(draft: CampaignState, _ctx: Ctx, observerId: string, holderId: string, rec: KnowledgeRecord, level: KnowledgeLevel): EngineEvent[] {
+/** Raises her level to `level` (never lowers it): the record, the fact and `dynamic_known`; `knows_dynamic` then runs her reaction (`reactToDynamic`); Nothing when she is there already. */
+function raise(draft: CampaignState, ctx: Ctx, observerId: string, holderId: string, rec: KnowledgeRecord, level: KnowledgeLevel): EngineEvent[] {
   if (rec.level !== undefined && RANK[rec.level] >= RANK[level]) return [];
   rec.level = level;
   rec.levelDay = draft.day;
@@ -101,7 +89,9 @@ function raise(draft: CampaignState, _ctx: Ctx, observerId: string, holderId: st
     about: [observerId, holderId], text: FACT_TEXT[level](nameOf(draft, observerId), nameOf(draft, holderId)), tags: [DYNAMIC_KNOWLEDGE_TAG, level], importance: 3,
     day: draft.day, knownBy: [observerId], hiddenFromCommander: true,
   });
-  return [{ type: 'dynamic_known', observerId, holderId, level }];
+  const events: EngineEvent[] = [{ type: 'dynamic_known', observerId, holderId, level }];
+  if (level === 'knows_dynamic') events.push(...reactToDynamic(draft, ctx, observerId, holderId));
+  return events;
 }
 
 /** Reads the level her suspicion gives and raises to it. */
@@ -249,7 +239,7 @@ function tells(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[]
       if (levelOf(draft, o, h) === 'knows_dynamic') continue;
       const tells = audience === 'show_off'
         ? draft.day % T.showOffEvery === index % T.showOffEvery
-        : audience === 'select_few' && (isClose(draft, o) || o === leaderId) && roll(draft, o, `tell:${h}`) < 1 / T.tellOneIn;
+        : audience === 'select_few' && (isClose(draft, o) || o === leaderId) && dynamicRoll(draft, o, `tell:${h}`) < 1 / T.tellOneIn;
       if (tells) events.push(...knowInstantly(draft, ctx, o, h, 'holder_tells'));
     }
   }
@@ -272,7 +262,7 @@ function gossip(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[
       let total = 0;
       for (const [y, level] of before) {
         if (y === o || (level !== 'knows_dynamic' && level !== 'suspects_dynamic')) continue;
-        if (roll(draft, o, `gossip:${y}:${h}`) >= T.gossipChance) continue;
+        if (dynamicRoll(draft, o, `gossip:${y}:${h}`) >= T.gossipChance) continue;
         const row = signRow(reg, level === 'knows_dynamic' ? 'gossip_knows' : 'gossip_suspects');
         if (row !== undefined && contentAllowed(draft, reg, row)) total += row.amount * multiplier(draft, reg, o, h);
       }

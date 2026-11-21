@@ -7,6 +7,7 @@ import { heldTerm } from '../personal/state';
 import { leaderOf } from '../power/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { dynamicTerm } from '../dynamic/witness';
 import { dispositionFor } from '../worldOptions';
 import { recordOf } from './record';
 
@@ -21,6 +22,8 @@ export interface ImpunityTerms {
   leverage: number;
   /** P9c: the commander used a secret of the squad's against her (−8 for each she knows, at least −16, for 14 days). */
   held: number;
+  /** P15: she knows what a holder has over the commander and dislikes it (+5 each); absent while 0, so a campaign without a dynamic has the same terms as before. */
+  dynamic?: number;
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -137,7 +140,9 @@ export function impunityOf(state: CampaignState, reg: Registries, unitId: string
     leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret),
     held: heldTerm(state, unitId),
   };
-  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage + terms.held;
+  const dynamic = dynamicTerm(state, reg, unitId);
+  if (dynamic !== 0) terms.dynamic = dynamic;
+  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage + terms.held + dynamic;
   return { value: clamp(Math.round(sum), 0, 100), terms };
 }
 
