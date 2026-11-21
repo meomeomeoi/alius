@@ -32,7 +32,7 @@ function holderOfDomain(state: CampaignState, domainId: string, except: string):
 }
 
 /** Whether her frame and her hold meet a domain's `requires`. */
-const meets = (reg: Registries, dyn: DynamicRelation, entry: DynamicDomainEntry): boolean =>
+export const meets = (reg: Registries, dyn: DynamicRelation, entry: DynamicDomainEntry): boolean =>
   frameRank(dyn.frame) >= frameRank(entry.requires.frame) && dyn.hold >= bandMin(reg, entry);
 
 /** Removes a domain from her list (no hold change) and says why. */

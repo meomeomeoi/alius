@@ -18307,8 +18307,10 @@ var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?
 function reactionFact(draft, observerId, holderId, text2) {
   addFact(draft, { about: [observerId, holderId], text: text2, tags: [DYNAMIC_KNOWLEDGE_TAG, "reaction"], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
 }
-function strongestDomain(draft, reg, holderId) {
-  const rows = (dynamicOf(draft, holderId)?.domains ?? []).filter((d) => standing(d, draft.day)).map((d) => ({ id: d.id, entry: domainEntry(reg, d.id) })).filter((r) => r.entry !== void 0);
+function contestableDomain(draft, reg, rivalId, holderId) {
+  const rival = dynamicOf(draft, rivalId);
+  if (rival === void 0) return void 0;
+  const rows = (dynamicOf(draft, holderId)?.domains ?? []).filter((d) => standing(d, draft.day)).map((d) => ({ id: d.id, entry: domainEntry(reg, d.id) })).filter((r) => r.entry !== void 0).filter((r) => r.entry.claim === "demand" && meets2(reg, rival, r.entry));
   let best;
   for (const r of rows) if (best === void 0 || bandMin(reg, r.entry) > bandMin(reg, best.entry)) best = r;
   return best?.id;
@@ -18329,7 +18331,7 @@ function reactToDynamic(draft, ctx2, observerId, holderId) {
   else if (reaction === "dislikes") events.push(...askAbout(draft, ctx2, observerId, holderId));
   else if (reaction === "respects") reactionFact(draft, observerId, holderId, `${observer.displayName} respects what ${holder2} holds and keeps out of its way.`);
   else if (reaction === "competes") {
-    const domainId = strongestDomain(draft, reg, holderId);
+    const domainId = contestableDomain(draft, reg, observerId, holderId);
     reactionFact(draft, observerId, holderId, `${observer.displayName} wants what ${holder2} holds and means to take it.`);
     if (domainId !== void 0 && dynamicOf(draft, observerId) !== void 0) events.push(...settleDomainConflict(draft, ctx2, observerId, holderId, domainId));
   }

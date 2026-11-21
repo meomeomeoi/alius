@@ -111,14 +111,37 @@ describe('what a woman does when she knows', () => {
     expect(asked.length).toBeLessThan(20);
   });
 
-  it('a possessive holder who learns of another competes: a claim against the other\'s strongest domain', () => {
+  it('a possessive holder who learns of another competes: a claim against a domain she could claim herself', () => {
     const s = world('role', 'indifferent', { hold: 70 });
     s.relations[ANN].dynamic!.domains = [{ id: 'private_time', since: 1 }, { id: 'command', since: 2 }];
     practise(s, BEA, { style: 'possessive', lead: 'dominant' });
     s.relations[BEA].dynamic = { ...blankDynamic(s.day), frame: 'play', hold: 45 };
     const events = know(s);
-    const fight = events.find((e) => e.type === 'domain_contested');
-    expect(fight).toMatchObject({ domainId: 'command', claimantId: BEA, holderId: ANN });
+    const fight = events.filter((e) => e.type === 'domain_contested');
+    // the command is only ever handed over by a milestone, and the rest need more than she has: private time is the one she could ask for
+    expect(fight).toHaveLength(1);
+    expect(fight[0]).toMatchObject({ domainId: 'private_time', claimantId: BEA, holderId: ANN });
+  });
+
+  it('a play competitor against a rule holder with the command takes nothing', () => {
+    const s = world('rule', 'indifferent', { hold: 85 });
+    s.relations[ANN].dynamic!.domains = [{ id: 'command', since: 2 }, { id: 'device', since: 3 }, { id: 'body', since: 3 }];
+    practise(s, BEA, { style: 'possessive', lead: 'dominant' });
+    s.relations[BEA].dynamic = { ...blankDynamic(s.day), frame: 'play', hold: 45 };
+    const events = know(s);
+    expect(events.some((e) => e.type === 'domain_contested')).toBe(false);
+    expect(dynamicOf(s, ANN)!.domains.map((d) => d.id)).toEqual(['command', 'device', 'body']);
+    expect(dynamicOf(s, BEA)!.domains).toEqual([]);
+    expect(dynamicOf(s, ANN)!.hold).toBe(85); // she lost nothing
+    expect(facts(s).some((f) => /wants what/.test(f.text))).toBe(true); // her intent is still a fact
+    // a rival at role with the hold for it takes a domain that can be claimed, but still never the command
+    const strong = world('rule', 'indifferent', { hold: 85 });
+    strong.relations[ANN].dynamic!.domains = [{ id: 'command', since: 2 }, { id: 'body', since: 3 }];
+    practise(strong, BEA, { style: 'possessive', lead: 'dominant' });
+    strong.relations[BEA].dynamic = { ...blankDynamic(strong.day), frame: 'role', hold: 60 };
+    const fight = know(strong).filter((e) => e.type === 'domain_contested');
+    expect(fight.map((e) => e.domainId)).toEqual(['body']);
+    expect(dynamicOf(strong, ANN)!.domains.map((d) => d.id)).toContain('command');
   });
 
   it('a ritual holder respects it: a fact, no claim', () => {
