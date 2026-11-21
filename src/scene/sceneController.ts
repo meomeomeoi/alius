@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
+import { stagingInput } from '../blocking/input';
 import { lifeIntentInput } from '../engine/life/intents';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
@@ -295,6 +296,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       ...expectationInput(s0, deps.registries(), scene.participants), // P13: her expectations, while she is present
       ...conspireInput(s0, deps.registries(), scene.participants), // P13: who the commander may enlist against her, while she is not present
       ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, 'scene'), // P14c: what she may tell, her hobbies, her views (nothing while life is off)
+      ...stagingInput(s0, deps.registries(), scene.participants), // P15a: the closed vocabulary of the blocking and the ripe sources (nothing while it is not live)
     };
   }
 
@@ -374,6 +376,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
           channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}`,
           ...(flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {}),
           ...(result.sceneTone !== null ? { tone: result.sceneTone } : {}),
+          ...(result.staging ? { staging: { blocking: result.staging.blocking } } : {}), // P15a
         },
       }, expect);
       if (events.some((e) => e.type === 'error')) return { stale: true };

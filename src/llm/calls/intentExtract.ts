@@ -56,12 +56,36 @@ export interface IntentExtractInput {
   conspire?: string[];
   /** P14c: what she may tell, her hobbies, the opinions she has voiced and the jokes that may come back, as lists of ids the model may name; each type of her life is offered only while its list is not empty. Absent or empty = the prompt is byte-identical to before her life existed. */
   life?: LifeOffer;
+  /** P15a: the scene blocking, offered only while it is live (absent = the prompt is byte-identical to before the package). */
+  staging?: StagingInput;
   /** P14b: ask for each event's `reading` (how the person it happened to took it); absent = the prompt is byte-identical to before development existed. */
   reading?: true;
 }
 
+/** P15a (plan R9): who is present, the ids a report may use, the sources it may call ripe and the moment that is open. */
+export interface StagingInput {
+  persons: Array<{ id: string; name: string }>;
+  vocabulary: { posture: string[]; anchor: string[]; contact: string[]; worn: string[] };
+  ripe: string[];
+  /** An unanswered moment: its id, source, the three generic words, and the option keys (`0`, `1`, `2` and any extra such as `lock`). */
+  open?: { id: string; sourceId: string; options: string[]; keys?: string[] };
+}
+
+export const STAGING_FIELDS = ['posture', 'anchor', 'contact', 'worn', 'removed'] as const;
+export const TONES = ['sincere', 'ironic', 'transactional', 'flat'] as const;
+
+/** What a reading reported about the staging, checked against what it was offered (P15a). */
+export interface StagingOutput {
+  blocking: Array<{ person: string; field: (typeof STAGING_FIELDS)[number]; value: string; relTo?: string; with?: string; direction?: 'from' | 'to'; confidence: number }>;
+  ripe: string | null;
+  answer: { key: string; confidence: number; tone?: (typeof TONES)[number] } | null;
+  labels: [string, string, string] | null;
+}
+
 /** What one reading found besides events (P9d). */
 export interface IntentOutput {
+  /** P15a: only when the input offered `staging`. */
+  staging?: StagingOutput;
   intents: Intents;
   emotions: Array<{ unitId: string; label: ExpressionLabel }>;
   /** Replies that depict an excluded category: the category id and a short quote (the quote is for the debug log). */
@@ -74,7 +98,7 @@ export interface IntentOutput {
 const list = z.array(z.unknown()).catch([]);
 export const IntentExtractRawSchema = z.object({
   events: list, facts: list, proposals: list, promises: list, emotions: list, stressHints: list,
-  contentViolations: list, sceneTone: z.unknown().optional(),
+  contentViolations: list, sceneTone: z.unknown().optional(), staging: z.unknown().optional(),
 }).strip();
 
 const DM_EXCHANGE_MESSAGES = 2;
@@ -124,6 +148,25 @@ function lifeBlock(life: LifeOffer): string[] {
   return out.length > 0 ? ['LIFE (what the units may bring up; a report may name only the ids listed here):', ...out] : [];
 }
 
+/** P15a: the `staging` key of the output shape (the ripe, answer and labels lines only while there is something to report on). */
+function stagingShape(s: StagingInput): string {
+  return [
+    '  "staging": {',
+    `    "blocking": [{ "person": "<id from PERSONS>", "field": ${STAGING_FIELDS.map((f) => `"${f}"`).join(' | ')}, "value": "<id from the lists under STAGING>", "relTo": "<person id>", "with": "<person id>", "direction": "from" | "to", "confidence": 0.0-1.0 }]${s.ripe.length > 0 || s.open ? ',' : ''}`,
+    ...(s.ripe.length > 0 ? [`    "ripe": "<id from RIPE>" | null${s.open ? ',' : ''}`] : []),
+    ...(s.open ? [`    "answer": { "option": 0 | 1 | 2 | "<extra key from OPEN>", "confidence": 0.0-1.0, "tone": ${TONES.map((t) => `"${t}"`).join(' | ')} } | null,`, '    "labels": ["<label of option 0>", "<label of option 1>", "<label of option 2>"] | null'] : []),
+    '  }',
+  ].join('\n');
+}
+
+function stagingRules(s: StagingInput): string[] {
+  return [
+    '"staging": report where people are and what they wear or touch only when the exchange shows it, and only with ids from the lists under STAGING; a position that did not change is not reported. "contact" needs "with" (the other person), and "direction" when the contact works both ways ("from": a unit acts on the commander, "to": the commander acts toward a unit). "removed" names the id of a worn item or a contact that ended. "relTo" only for a place that is relative to someone.',
+    ...(s.ripe.length > 0 ? ['"ripe": the id of one RIPE source that the exchange has just made fitting, or null.'] : []),
+    ...(s.open ? ['"answer": the commander\'s answer to the OPEN moment, as the number of the option it matches (or the extra key), with the "tone" of how it was said; null when the exchange does not answer it. "labels": exactly three short labels (at most 40 characters each) for the three options in order, worded for this scene; they are for display only.'] : []),
+  ];
+}
+
 function system(raw: unknown): string {
   const input = raw as IntentExtractInput;
   const excluded = input.excluded ?? [];
@@ -141,6 +184,7 @@ function system(raw: unknown): string {
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),
+    ...(input.staging ? [stagingShape(input.staging)] : []),
   ];
   const proposalKinds = PROPOSAL_KINDS.filter((k) => input.romance || !(ROMANTIC_PROPOSALS as readonly string[]).includes(k));
   return [
@@ -209,8 +253,25 @@ function system(raw: unknown): string {
     ...(life.voiced ? ['"opinion_challenged": the commander argues against what a unit has told about a topic in TOPICS marked "has told"; the unit is the target; set "topicId", and "positionId" when the commander clearly argues for one of its positions; "severity" is how hard the commander pushes (minor or moderate: a remark; major or extreme: a full argument). "opinion_agreed": the commander agrees with what she holds on such a topic.'] : []),
     ...(life.firsts ? ['"first_moment": something happens for the first time between the commander and the unit; set "kind" to the word from FIRST_KIND that fits. Report it only when the exchange plainly shows it.'] : []),
     ...(life.jokes ? ['"joke_returned": the commander and a unit bring back a joke from JOKES; set "factId". Report it only when the exchange plainly refers to it.'] : []),
+    ...(input.staging ? stagingRules(input.staging) : []),
     ...(hasLimits ? ['If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders).'] : []),
   ].join('\n');
+}
+
+/** P15a: the `STAGING` data block: the persons, one id list per field, the ripe sources and the open moment. */
+function stagingBlock(s: StagingInput): string[] {
+  const v = s.vocabulary;
+  const extra = (s.open?.keys ?? []).filter((k) => !['0', '1', '2'].includes(k));
+  return [
+    'STAGING (positions, places, contacts and what is worn; a report may use only these ids):',
+    `PERSONS: ${s.persons.map((p) => `${p.id} (${p.name})`).join(', ')}`,
+    `posture: ${v.posture.join(', ') || '-'}`,
+    `anchor: ${v.anchor.join(', ') || '-'}`,
+    `contact: ${v.contact.join(', ') || '-'}`,
+    `worn: ${v.worn.join(', ') || '-'}`,
+    ...(s.ripe.length > 0 ? [`RIPE: ${s.ripe.join(', ')}`] : []),
+    ...(s.open ? [`OPEN (id — source): ${s.open.id} — ${s.open.sourceId}; options: ${s.open.options.map((o, i) => `${i} ${oneLine(o)}`).join('; ')}${extra.length > 0 ? `; extra keys: ${extra.join(', ')}` : ''}`] : []),
+  ];
 }
 
 function prompt(raw: unknown): string {
@@ -238,6 +299,7 @@ function prompt(raw: unknown): string {
   if ((input.warned ?? []).length > 0) out.push('', `WARNED (units the commander has been warned about): ${input.warned!.join(', ')}`);
   const lifeList = input.life;
   if (lifeList && lifeBlock(lifeList).length > 0) out.push('', ...lifeBlock(lifeList));
+  if (input.staging) out.push('', ...stagingBlock(input.staging));
   if (input.openPromises.length > 0) {
     out.push('', 'Open promises:', ...input.openPromises.map((p) => `- ${p.by} → ${p.to}: ${p.text}`));
   }
@@ -285,10 +347,54 @@ export function sanitizeIntentOutput(
   return { intents, emotions, contentViolations, sceneTone };
 }
 
+const CLEAN_QUOTES = /[\u0022\u201c\u201d]/g;
+const EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
+
+/**
+ * The staging half of a reading, checked against what the input offered: only the five fields of the closed vocabulary (never a
+ * side activity), ids from the lists, persons who are there, confidence at least `TUNING.blocking.minConfidence`, at most
+ * `TUNING.blocking.maxChanges` changes; a ripe source from the list; an answer only with an open moment and enough confidence, its key
+ * one of the moment's; labels exactly three, cleaned and cut to 40 characters. Anything else is dropped; never throws.
+ */
+export function sanitizeStaging(raw: unknown, input: StagingInput): StagingOutput {
+  const src = isObj(raw) ? raw : {};
+  const people = new Set(input.persons.map((p) => p.id));
+  const lists: Record<string, string[]> = { posture: input.vocabulary.posture, anchor: input.vocabulary.anchor, contact: input.vocabulary.contact, worn: input.vocabulary.worn, removed: [...input.vocabulary.worn, ...input.vocabulary.contact] };
+  const blocking: StagingOutput['blocking'] = [];
+  for (const c of Array.isArray(src.blocking) ? src.blocking : []) {
+    if (!isObj(c) || blocking.length >= TUNING.blocking.maxChanges) continue;
+    const { person, field, value, relTo, with: other, direction, confidence } = c;
+    if (typeof person !== 'string' || !people.has(person) || typeof field !== 'string' || !(STAGING_FIELDS as readonly string[]).includes(field)) continue;
+    if (typeof value !== 'string' || !lists[field]!.includes(value)) continue;
+    if (typeof confidence !== 'number' || confidence < TUNING.blocking.minConfidence) continue;
+    if (relTo !== undefined && (typeof relTo !== 'string' || !people.has(relTo))) continue;
+    if (other !== undefined && (typeof other !== 'string' || !people.has(other))) continue;
+    if (direction !== undefined && direction !== 'from' && direction !== 'to') continue;
+    blocking.push({ person, field: field as StagingOutput['blocking'][number]['field'], value, ...(relTo !== undefined ? { relTo } : {}), ...(other !== undefined ? { with: other } : {}), ...(direction !== undefined ? { direction } : {}), confidence });
+  }
+  const ripe = typeof src.ripe === 'string' && input.ripe.includes(src.ripe) ? src.ripe : null;
+  let answer: StagingOutput['answer'] = null;
+  if (input.open && isObj(src.answer)) {
+    const keys = input.open.keys ?? ['0', '1', '2'];
+    const key = typeof src.answer.option === 'number' || typeof src.answer.option === 'string' ? String(src.answer.option) : '';
+    const confidence = src.answer.confidence;
+    if (keys.includes(key) && typeof confidence === 'number' && confidence >= TUNING.moments.answerConfidence) {
+      const tone = (TONES as readonly unknown[]).includes(src.answer.tone) ? (src.answer.tone as (typeof TONES)[number]) : undefined;
+      answer = { key, confidence, ...(tone !== undefined ? { tone } : {}) };
+    }
+  }
+  let labels: StagingOutput['labels'] = null;
+  if (input.open && Array.isArray(src.labels) && src.labels.length === 3 && src.labels.every((l) => typeof l === 'string')) {
+    const cleaned = (src.labels as string[]).map((l) => l.replace(CLEAN_QUOTES, '').replace(/\s+/g, ' ').trim().replace(EDGE_QUOTES, '').trim().slice(0, 40).trim());
+    if (cleaned.every((l) => l !== '')) labels = cleaned as [string, string, string];
+  }
+  return { blocking, ripe, answer, labels };
+}
+
 /** The engine intents of a model answer (the pure half of a reading: the envelope makes the call). `minConfidence` is the floor an event needs. */
 export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: { minConfidence: number }): IntentOutput {
   const ids = input.units.map((u) => u.id);
-  return sanitizeIntentOutput(raw, {
+  const base = sanitizeIntentOutput(raw, {
     participants: ids, squad: ids.map((id) => ({ id })),
     minConfidence: opts.minConfidence, romance: input.romance, measures: input.measures,
     excluded: (input.excluded ?? []).map((e) => e.id), rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
@@ -297,4 +403,5 @@ export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: 
     ...(input.life ? { life: input.life } : {}),
     ...(input.factTextMax !== undefined ? { factTextMax: input.factTextMax } : {}),
   });
+  return input.staging ? { ...base, staging: sanitizeStaging(isObj(raw) ? raw.staging : undefined, input.staging) } : base; // P15a
 }

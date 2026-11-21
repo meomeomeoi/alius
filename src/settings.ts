@@ -104,7 +104,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   requestFloor: 2000,
   budgets: {
     profile_import: 1800,
-    intent_extract: 600,
+    intent_extract: 700, // P15a: 600 + the staging block
     scene_summary: 800,
     dilemma_generate: 1000,
     director_tick: 1200,

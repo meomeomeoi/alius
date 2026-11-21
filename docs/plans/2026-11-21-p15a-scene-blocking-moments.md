@@ -854,16 +854,16 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `stagingInput`, `sanitizeStaging(raw, input): StagingOutput | null`, and `IntentOutput.staging`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `prompt without staging is byte-identical` (the pinned fixture).
   - `vocabulary is filtered`: a disabled tag, a dynamic contact, her own limit and an anchor whose affordance is missing are absent from the prompt.
   - `sanitize drops`: unknown ids, a fifth change, low confidence, an `activity` field, an answer with no open moment, two labels, a `ripe` outside the list, a label over 40 characters (cut).
   - `a reading's change lands and rolls back with the reading` (harness).
   - `budget default 700`.
-- [ ] **Step 2: Run** `npx vitest run tests/llm/intentExtractStaging.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the reading reports blocking changes in the closed vocabulary`
+- [x] **Step 2: Run** `npx vitest run tests/llm/intentExtractStaging.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the reading reports blocking changes in the closed vocabulary`
 
 ---
 

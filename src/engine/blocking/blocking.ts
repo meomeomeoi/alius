@@ -5,6 +5,7 @@
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState, SceneRecord } from '../state/types';
+import { TUNING } from '../tuning';
 import { entryAllowed, sceneAffordances } from './gate';
 import { pushLog } from './snapshots';
 import { COMMANDER, INTIMACIES, NOTE_MAX, type Blocking, type BlockingContact } from './state';
@@ -350,6 +351,32 @@ export function setBlocking(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   pushLog(draft, opts.at);
   apply(draft, ctx.registries, change);
   return [{ type: 'blocking_changed', person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
+}
+
+/**
+ * The changes a reading reported (already sanitized against its offer): each goes through the same gates as a chip, with source `reading`
+ * and `at` = the chunk's read index. One that a gate refuses is dropped silently; the rest still land. Draws nothing.
+ */
+export function applyReading(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, changes: unknown, at: number): EngineEvent[] {
+  if (!Array.isArray(changes)) return [];
+  const events: EngineEvent[] = [];
+  for (const c of changes.slice(0, TUNING.blocking.maxChanges)) {
+    if (typeof c !== 'object' || c === null) continue;
+    const r = c as Record<string, unknown>;
+    if (typeof r.person !== 'string' || typeof r.field !== 'string' || typeof r.value !== 'string') continue;
+    if (!['posture', 'anchor', 'contact', 'worn', 'removed'].includes(r.field)) continue;
+    const change: BlockingChange = {
+      person: r.person, field: r.field as BlockingField, value: r.value,
+      ...(typeof r.relTo === 'string' ? { relTo: r.relTo } : {}), ...(typeof r.with === 'string' ? { with: r.with } : {}),
+      ...(r.direction === 'from' || r.direction === 'to' ? { direction: r.direction } : {}),
+    };
+    try {
+      events.push(...setBlocking(draft, ctx, change, { at, source: 'reading' }));
+    } catch {
+      // a gate refused it: the reading's other changes still land
+    }
+  }
+  return events;
 }
 
 /**

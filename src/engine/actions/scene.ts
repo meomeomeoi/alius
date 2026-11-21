@@ -17,6 +17,7 @@ import { recordSceneRange } from '../memory/scenes';
 import { applyIntents } from '../relations/apply';
 import { showMoments, stampMoments, unstampMoments } from '../development/moments';
 import { countCompanions } from '../development/habits';
+import { applyReading, blockingLive } from '../blocking';
 import { startBlocking } from '../blocking/defaults';
 import { noteBusy } from '../life/dayStep';
 import { finishMeeting } from '../life/meetings';
@@ -143,6 +144,9 @@ registerAction('intents/apply', (draft, payload, ctx) => {
     // P9d: what the same reading found, stored on the scene so a swipe or an edit that rolls the reading back takes it too
     markSceneViolation(draft, ctx.registries, payload.violations);
     events.push(...raiseTone(draft, ctx.registries, payload.tone));
+    // P15a: what the reading found about the staging goes in with the same step (so a swipe or an edit takes it too); nothing while not live
+    const staging = isObj(payload.staging) ? payload.staging : undefined;
+    if (staging && blockingLive(draft, ctx.registries)) events.push(...applyReading(draft, ctx, staging.blocking, draft.scene.readIndex ?? draft.scene.startIndex));
     return events;
   }
   if (payload.channel === 'dm') {

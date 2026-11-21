@@ -12,7 +12,7 @@ describe('settings', () => {
       contextTokenCap: 1600, palette: 'amber', scanlines: true, flicker: false, debug: false, editLock: true,
     });
     expect(s.budgets).toEqual({
-      profile_import: 1800, intent_extract: 600, scene_summary: 800, dilemma_generate: 1000,
+      profile_import: 1800, intent_extract: 700, scene_summary: 800, dilemma_generate: 1000,
       director_tick: 1200, flavor: 400, dm_reply: 300, expedition_recap: 700, emotion_pick: 50, ping: 100,
       activity_vignette: 150, chronicle_compact: 400, commander_import: 600, memory_fold: 500, rumor_retell: 200, warden_agenda: 800, epilogue: 700, warden_judge: 120, head_start_recap: 900, development_review: 700, opinion_form: 150,
     });

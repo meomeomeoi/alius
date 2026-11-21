@@ -100,6 +100,8 @@ export const TUNING = Object.freeze({
   scene: Object.freeze({ maxParticipants: 4 }),
   /** P15a: the scene blocking (plan R6, R7, R9). `minConfidence`: a change the reading reports below it is dropped; `logMax`: snapshots kept for the swipe; `maxChanges`: per reading. */
   blocking: Object.freeze({ minConfidence: 0.6, logMax: 40, maxChanges: 4 }),
+  /** P15a: moments (plan R10; later tasks add the rest). `answerConfidence`: a reading's answer to an open moment needs at least this. */
+  moments: Object.freeze({ answerConfidence: 0.55 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */

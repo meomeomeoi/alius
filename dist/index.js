@@ -114,6 +114,8 @@ var TUNING = Object.freeze({
   scene: Object.freeze({ maxParticipants: 4 }),
   /** P15a: the scene blocking (plan R6, R7, R9). `minConfidence`: a change the reading reports below it is dropped; `logMax`: snapshots kept for the swipe; `maxChanges`: per reading. */
   blocking: Object.freeze({ minConfidence: 0.6, logMax: 40, maxChanges: 4 }),
+  /** P15a: moments (plan R10; later tasks add the rest). `answerConfidence`: a reading's answer to an open moment needs at least this. */
+  moments: Object.freeze({ answerConfidence: 0.55 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */
@@ -25555,6 +25557,13 @@ function momentDirective(state, reg, unitId) {
   return { id: `development:${unitId}`, text: `${unit2.displayName} has changed lately: ${words3.join("; ")}. Let it show in how she acts this scene; never announce it.`, expiresAfter: "scene" };
 }
 
+// src/engine/blocking/state.ts
+var COMMANDER = "commander";
+var INTIMACIES = ["none", "close", "intimate", "explicit"];
+var FRAMES = ["equal", "play", "role", "rule"];
+var frameRank = (f) => FRAMES.indexOf(f);
+var NOTE_MAX2 = 120;
+
 // src/engine/basePlan.ts
 var rectOf = (e) => e.rect;
 var doorsOf = (e) => e.doors ?? [];
@@ -25630,13 +25639,6 @@ var markProviders = [];
 function planMarks(state, reg) {
   return markProviders.flatMap((p) => p(state, reg)).filter((m) => reg.planRooms.has(m.planRoomId));
 }
-
-// src/engine/blocking/state.ts
-var COMMANDER = "commander";
-var INTIMACIES = ["none", "close", "intimate", "explicit"];
-var FRAMES = ["equal", "play", "role", "rule"];
-var frameRank = (f) => FRAMES.indexOf(f);
-var NOTE_MAX2 = 120;
 
 // src/engine/blocking/gate.ts
 var frameReaders = [];
@@ -25984,6 +25986,29 @@ function setBlocking(draft, ctx2, change, opts) {
   apply(draft, ctx2.registries, change);
   return [{ type: "blocking_changed", person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
 }
+function applyReading(draft, ctx2, changes, at) {
+  if (!Array.isArray(changes)) return [];
+  const events = [];
+  for (const c of changes.slice(0, TUNING.blocking.maxChanges)) {
+    if (typeof c !== "object" || c === null) continue;
+    const r = c;
+    if (typeof r.person !== "string" || typeof r.field !== "string" || typeof r.value !== "string") continue;
+    if (!["posture", "anchor", "contact", "worn", "removed"].includes(r.field)) continue;
+    const change = {
+      person: r.person,
+      field: r.field,
+      value: r.value,
+      ...typeof r.relTo === "string" ? { relTo: r.relTo } : {},
+      ...typeof r.with === "string" ? { with: r.with } : {},
+      ...r.direction === "from" || r.direction === "to" ? { direction: r.direction } : {}
+    };
+    try {
+      events.push(...setBlocking(draft, ctx2, change, { at, source: "reading" }));
+    } catch {
+    }
+  }
+  return events;
+}
 function setQuietly(draft, reg, change) {
   if (checkChange(draft, reg, change) !== null) return false;
   apply(draft, reg, change);
@@ -26186,6 +26211,8 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
     if (typeof payload.readIndex === "number" && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
     markSceneViolation(draft, ctx2.registries, payload.violations);
     events.push(...raiseTone(draft, ctx2.registries, payload.tone));
+    const staging = isObj12(payload.staging) ? payload.staging : void 0;
+    if (staging && blockingLive(draft, ctx2.registries)) events.push(...applyReading(draft, ctx2, staging.blocking, draft.scene.readIndex ?? draft.scene.startIndex));
     return events;
   }
   if (payload.channel === "dm") {
@@ -33381,7 +33408,8 @@ var DEFAULT_SETTINGS = {
   requestFloor: 2e3,
   budgets: {
     profile_import: 1800,
-    intent_extract: 600,
+    intent_extract: 700,
+    // P15a: 600 + the staging block
     scene_summary: 800,
     dilemma_generate: 1e3,
     director_tick: 1200,
@@ -35128,6 +35156,8 @@ var EXPRESSION_LABELS = [
   "surprise",
   "neutral"
 ];
+var STAGING_FIELDS = ["posture", "anchor", "contact", "worn", "removed"];
+var TONES = ["sincere", "ironic", "transactional", "flat"];
 var list3 = external_exports.array(external_exports.unknown()).catch([]);
 var IntentExtractRawSchema = external_exports.object({
   events: list3,
@@ -35137,7 +35167,8 @@ var IntentExtractRawSchema = external_exports.object({
   emotions: list3,
   stressHints: list3,
   contentViolations: list3,
-  sceneTone: external_exports.unknown().optional()
+  sceneTone: external_exports.unknown().optional(),
+  staging: external_exports.unknown().optional()
 }).strip();
 var DM_EXCHANGE_MESSAGES = 2;
 var RULE_TYPES = ["rule_kept", "rule_broken", "compromise_reached"];
@@ -35179,6 +35210,22 @@ function lifeBlock(life) {
   if (f.jokes) out.push("JOKES (id \u2014 unit: what it is about):", ...life.jokes.map((j) => `- ${j.id} \u2014 ${j.unitId}: ${oneLine(j.text)}`));
   return out.length > 0 ? ["LIFE (what the units may bring up; a report may name only the ids listed here):", ...out] : [];
 }
+function stagingShape(s) {
+  return [
+    '  "staging": {',
+    `    "blocking": [{ "person": "<id from PERSONS>", "field": ${STAGING_FIELDS.map((f) => `"${f}"`).join(" | ")}, "value": "<id from the lists under STAGING>", "relTo": "<person id>", "with": "<person id>", "direction": "from" | "to", "confidence": 0.0-1.0 }]${s.ripe.length > 0 || s.open ? "," : ""}`,
+    ...s.ripe.length > 0 ? [`    "ripe": "<id from RIPE>" | null${s.open ? "," : ""}`] : [],
+    ...s.open ? [`    "answer": { "option": 0 | 1 | 2 | "<extra key from OPEN>", "confidence": 0.0-1.0, "tone": ${TONES.map((t) => `"${t}"`).join(" | ")} } | null,`, '    "labels": ["<label of option 0>", "<label of option 1>", "<label of option 2>"] | null'] : [],
+    "  }"
+  ].join("\n");
+}
+function stagingRules(s) {
+  return [
+    '"staging": report where people are and what they wear or touch only when the exchange shows it, and only with ids from the lists under STAGING; a position that did not change is not reported. "contact" needs "with" (the other person), and "direction" when the contact works both ways ("from": a unit acts on the commander, "to": the commander acts toward a unit). "removed" names the id of a worn item or a contact that ended. "relTo" only for a place that is relative to someone.',
+    ...s.ripe.length > 0 ? ['"ripe": the id of one RIPE source that the exchange has just made fitting, or null.'] : [],
+    ...s.open ? [`"answer": the commander's answer to the OPEN moment, as the number of the option it matches (or the extra key), with the "tone" of how it was said; null when the exchange does not answer it. "labels": exactly three short labels (at most 40 characters each) for the three options in order, worded for this scene; they are for display only.`] : []
+  ];
+}
 function system3(raw) {
   const input = raw;
   const excluded = input.excluded ?? [];
@@ -35195,7 +35242,8 @@ function system3(raw) {
   const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (hasRules || hasOverride && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
-    ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []
+    ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : [],
+    ...input.staging ? [stagingShape(input.staging)] : []
   ];
   const proposalKinds = PROPOSAL_KINDS.filter((k) => input.romance || !ROMANTIC_PROPOSALS.includes(k));
   return [
@@ -35262,8 +35310,23 @@ function system3(raw) {
     ...life.voiced ? ['"opinion_challenged": the commander argues against what a unit has told about a topic in TOPICS marked "has told"; the unit is the target; set "topicId", and "positionId" when the commander clearly argues for one of its positions; "severity" is how hard the commander pushes (minor or moderate: a remark; major or extreme: a full argument). "opinion_agreed": the commander agrees with what she holds on such a topic.'] : [],
     ...life.firsts ? ['"first_moment": something happens for the first time between the commander and the unit; set "kind" to the word from FIRST_KIND that fits. Report it only when the exchange plainly shows it.'] : [],
     ...life.jokes ? ['"joke_returned": the commander and a unit bring back a joke from JOKES; set "factId". Report it only when the exchange plainly refers to it.'] : [],
+    ...input.staging ? stagingRules(input.staging) : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");
+}
+function stagingBlock(s) {
+  const v = s.vocabulary;
+  const extra = (s.open?.keys ?? []).filter((k) => !["0", "1", "2"].includes(k));
+  return [
+    "STAGING (positions, places, contacts and what is worn; a report may use only these ids):",
+    `PERSONS: ${s.persons.map((p) => `${p.id} (${p.name})`).join(", ")}`,
+    `posture: ${v.posture.join(", ") || "-"}`,
+    `anchor: ${v.anchor.join(", ") || "-"}`,
+    `contact: ${v.contact.join(", ") || "-"}`,
+    `worn: ${v.worn.join(", ") || "-"}`,
+    ...s.ripe.length > 0 ? [`RIPE: ${s.ripe.join(", ")}`] : [],
+    ...s.open ? [`OPEN (id \u2014 source): ${s.open.id} \u2014 ${s.open.sourceId}; options: ${s.open.options.map((o, i) => `${i} ${oneLine(o)}`).join("; ")}${extra.length > 0 ? `; extra keys: ${extra.join(", ")}` : ""}`] : []
+  ];
 }
 function prompt3(raw) {
   const input = raw;
@@ -35290,6 +35353,7 @@ function prompt3(raw) {
   if ((input.warned ?? []).length > 0) out.push("", `WARNED (units the commander has been warned about): ${input.warned.join(", ")}`);
   const lifeList = input.life;
   if (lifeList && lifeBlock(lifeList).length > 0) out.push("", ...lifeBlock(lifeList));
+  if (input.staging) out.push("", ...stagingBlock(input.staging));
   if (input.openPromises.length > 0) {
     out.push("", "Open promises:", ...input.openPromises.map((p) => `- ${p.by} \u2192 ${p.to}: ${p.text}`));
   }
@@ -35328,9 +35392,45 @@ function sanitizeIntentOutput(raw, ctx2) {
   const sceneTone = ctx2.romance && (src.sceneTone === "romantic" || src.sceneTone === "intimate") ? src.sceneTone : null;
   return { intents, emotions, contentViolations, sceneTone };
 }
+var CLEAN_QUOTES = /[\u0022\u201c\u201d]/g;
+var EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
+function sanitizeStaging(raw, input) {
+  const src = isObj38(raw) ? raw : {};
+  const people = new Set(input.persons.map((p) => p.id));
+  const lists = { posture: input.vocabulary.posture, anchor: input.vocabulary.anchor, contact: input.vocabulary.contact, worn: input.vocabulary.worn, removed: [...input.vocabulary.worn, ...input.vocabulary.contact] };
+  const blocking = [];
+  for (const c of Array.isArray(src.blocking) ? src.blocking : []) {
+    if (!isObj38(c) || blocking.length >= TUNING.blocking.maxChanges) continue;
+    const { person, field: field2, value, relTo, with: other, direction, confidence } = c;
+    if (typeof person !== "string" || !people.has(person) || typeof field2 !== "string" || !STAGING_FIELDS.includes(field2)) continue;
+    if (typeof value !== "string" || !lists[field2].includes(value)) continue;
+    if (typeof confidence !== "number" || confidence < TUNING.blocking.minConfidence) continue;
+    if (relTo !== void 0 && (typeof relTo !== "string" || !people.has(relTo))) continue;
+    if (other !== void 0 && (typeof other !== "string" || !people.has(other))) continue;
+    if (direction !== void 0 && direction !== "from" && direction !== "to") continue;
+    blocking.push({ person, field: field2, value, ...relTo !== void 0 ? { relTo } : {}, ...other !== void 0 ? { with: other } : {}, ...direction !== void 0 ? { direction } : {}, confidence });
+  }
+  const ripe = typeof src.ripe === "string" && input.ripe.includes(src.ripe) ? src.ripe : null;
+  let answer = null;
+  if (input.open && isObj38(src.answer)) {
+    const keys = input.open.keys ?? ["0", "1", "2"];
+    const key = typeof src.answer.option === "number" || typeof src.answer.option === "string" ? String(src.answer.option) : "";
+    const confidence = src.answer.confidence;
+    if (keys.includes(key) && typeof confidence === "number" && confidence >= TUNING.moments.answerConfidence) {
+      const tone = TONES.includes(src.answer.tone) ? src.answer.tone : void 0;
+      answer = { key, confidence, ...tone !== void 0 ? { tone } : {} };
+    }
+  }
+  let labels = null;
+  if (input.open && Array.isArray(src.labels) && src.labels.length === 3 && src.labels.every((l) => typeof l === "string")) {
+    const cleaned = src.labels.map((l) => l.replace(CLEAN_QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, 40).trim());
+    if (cleaned.every((l) => l !== "")) labels = cleaned;
+  }
+  return { blocking, ripe, answer, labels };
+}
 function readIntentOutput(raw, input, opts) {
   const ids = input.units.map((u) => u.id);
-  return sanitizeIntentOutput(raw, {
+  const base = sanitizeIntentOutput(raw, {
     participants: ids,
     squad: ids.map((id) => ({ id })),
     minConfidence: opts.minConfidence,
@@ -35346,6 +35446,7 @@ function readIntentOutput(raw, input, opts) {
     ...input.life ? { life: input.life } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
+  return input.staging ? { ...base, staging: sanitizeStaging(isObj38(raw) ? raw.staging : void 0, input.staging) } : base;
 }
 
 // src/scene/comms.ts
@@ -36357,6 +36458,48 @@ function clearBlockingDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(BLOCKING_PREFIX));
 }
 
+// src/engine/blocking/vocabulary.ts
+var affordancesOf = (e) => {
+  const r = e.requires;
+  return Array.isArray(r?.affordances) ? r.affordances : [];
+};
+function blockingVocabulary(state, reg) {
+  const scene = state.scene;
+  if (!scene) return { posture: [], anchor: [], contact: [], item: [], activity: [] };
+  const units = scene.participants;
+  const have = sceneAffordances(state, reg);
+  const fits = (e) => affordancesOf(e).every((a) => have.has(a));
+  return {
+    posture: [...reg.blockingPostures.values()],
+    anchor: [...reg.blockingAnchors.values()].filter(fits),
+    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units)),
+    item: [...reg.blockingItems.values()].filter((e) => entryAllowed(state, reg, e, units)),
+    activity: [...reg.blockingActivities.values()].filter((e) => entryAllowed(state, reg, e, units))
+  };
+}
+function sourceAllowed(state, reg, source) {
+  const scene = state.scene;
+  if (!scene || !entryAllowed(state, reg, source, scene.participants)) return false;
+  if (scene.pastime === void 0) return true;
+  const own = reg.pastimes.get(scene.pastime.id)?.momentSources;
+  return Array.isArray(own) && own.length > 0 ? own.includes(source.id) : source.generalMeeting === true;
+}
+function ripeSources(state, reg) {
+  return [...reg.momentSources.values()].filter((s) => Array.isArray(s.live) && s.live.includes("extracted") && sourceAllowed(state, reg, s));
+}
+
+// src/blocking/input.ts
+function stagingInput(state, reg, participants) {
+  if (!blockingLive(state, reg)) return {};
+  const v = blockingVocabulary(state, reg);
+  const ids = (list5) => list5.map((e) => e.id);
+  const persons = [
+    ...participants.map((id) => ({ id, name: state.squad.find((u) => u.id === id)?.displayName ?? id })),
+    { id: COMMANDER, name: state.commander.name }
+  ];
+  return { staging: { persons, vocabulary: { posture: ids(v.posture), anchor: ids(v.anchor), contact: ids(v.contact), worn: ids(v.item) }, ripe: ids(ripeSources(state, reg)) } };
+}
+
 // src/llm/calls/emotionPick.ts
 var EmotionSchema = external_exports.object({ label: external_exports.string() }).strip();
 registerCallType({
@@ -37080,8 +37223,10 @@ function createSceneController(deps) {
       // P13: her expectations, while she is present
       ...conspireInput(s0, deps.registries(), scene.participants),
       // P13: who the commander may enlist against her, while she is not present
-      ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, "scene")
+      ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, "scene"),
       // P14c: what she may tell, her hobbies, her views (nothing while life is off)
+      ...stagingInput(s0, deps.registries(), scene.participants)
+      // P15a: the closed vocabulary of the blocking and the ripe sources (nothing while it is not live)
     };
   }
   function dropSuperseded(_s0, sceneId, from, key) {
@@ -37154,7 +37299,9 @@ function createSceneController(deps) {
           readIndex: nextPointer,
           messageRef: `chat:${lastReply.index}`,
           ...flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {},
-          ...result.sceneTone !== null ? { tone: result.sceneTone } : {}
+          ...result.sceneTone !== null ? { tone: result.sceneTone } : {},
+          ...result.staging ? { staging: { blocking: result.staging.blocking } } : {}
+          // P15a
         }
       }, expect);
       if (events.some((e) => e.type === "error")) return { stale: true };
