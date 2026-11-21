@@ -9199,13 +9199,13 @@ Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });
 
 // src/engine/onboarding/prologue.ts
 function prologueFor(reg, startId, mode) {
-  let plain5 = null;
+  let plain6 = null;
   for (const p of reg.prologues.values()) {
     if (p.startId !== startId) continue;
-    if (p.mode === void 0) plain5 ??= p;
+    if (p.mode === void 0) plain6 ??= p;
     else if (p.mode === mode) return p;
   }
-  return plain5;
+  return plain6;
 }
 function stepsOf(entry) {
   const steps = entry.steps ?? {};
@@ -19777,9 +19777,9 @@ function herAlternative(state, reg, order, expectationId) {
     case "dilemma": {
       const options2 = dilemmaOptions(state, reg);
       const hers = herPick(state, reg, w.unitId);
-      const plain5 = (i) => options2[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === void 0;
-      const ok = (i) => i !== order.index && plain5(i) && conflictOf(state, reg, { kind: "dilemma", index: i }) === null;
-      const index2 = hers !== null && hers !== order.index && plain5(hers) ? hers : options2.findIndex((_, i) => ok(i));
+      const plain6 = (i) => options2[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === void 0;
+      const ok = (i) => i !== order.index && plain6(i) && conflictOf(state, reg, { kind: "dilemma", index: i }) === null;
+      const index2 = hers !== null && hers !== order.index && plain6(hers) ? hers : options2.findIndex((_, i) => ok(i));
       return index2 >= 0 ? { order: { kind: "dilemma", index: index2 }, label: options2[index2].label } : HOLD();
     }
     case "combat_order":
@@ -26162,6 +26162,114 @@ function deviceLocked(state, reg) {
   return blockingLive(state, reg) && personEffects(state, reg, COMMANDER).some((e) => e.type === "device" && e.lock === "tabs");
 }
 
+// src/engine/moments/state.ts
+var EMPTY2 = Object.freeze({ fired: Object.freeze([]) });
+function momentsOf(scene) {
+  return scene?.moments ?? EMPTY2;
+}
+
+// src/engine/moments/answer.ts
+var expectations = [];
+var FRAME_KEYS = ["0", "1", "2"];
+var atOf = (scene) => scene.readIndex ?? scene.startIndex;
+function expectedOption(state, reg, moment) {
+  for (const read of expectations) {
+    const e = read(state, reg, moment);
+    if (e !== null && moment.options.some((o) => o.key === e.key)) return e;
+  }
+  const frame = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
+  const pick3 = frame.find((o) => o.type === "returned") ?? frame.find((o) => o.type === "yielded") ?? frame[0];
+  return { key: pick3?.key ?? "0", strength: 1 };
+}
+function gapOf(expected, chosen) {
+  if (expected === chosen) return "matched";
+  const pair = /* @__PURE__ */ new Set([expected, chosen]);
+  return pair.has("yielded") && pair.has("resisted") || pair.has("returned") && pair.has("deflected") ? "opposite" : "partial";
+}
+function escalationVerb(state, reg) {
+  const carried = new Set(personEffects(state, reg, COMMANDER).flatMap((e) => e.type === "escalation" ? [e.verb] : []));
+  return ESCALATION_ORDER.find((v) => carried.has(v)) ?? "look";
+}
+function answerMoment(draft, ctx2, momentId, key, via, tone, opts = {}) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  const open3 = momentsOf(scene).open;
+  if (!scene || !open3 || open3.id !== momentId) throw new Error("Stale moment answer.");
+  const option2 = open3.options.find((o) => o.key === key);
+  if (!option2) throw new Error(`Moment ${momentId} has no option "${key}".`);
+  const expected = expectedOption(draft, reg, open3);
+  const expectedType = open3.options.find((o) => o.key === expected.key)?.type ?? option2.type;
+  const gap = gapOf(expectedType, option2.type);
+  pushLog(draft, opts.at ?? atOf(scene), { person: open3.unitId, field: "answer", value: open3.sourceId, source: via === "chip" ? "chip" : "reading" });
+  const events = [];
+  let verb;
+  if (gap === "opposite" && ctx2.rng.chance(TUNING.moments.escalation * expected.strength)) verb = escalationVerb(draft, reg);
+  const record2 = {
+    momentId,
+    sourceId: open3.sourceId,
+    unitId: open3.unitId,
+    key: option2.key,
+    type: option2.type,
+    gap,
+    via,
+    exchange: scene.exchanges,
+    ...tone !== void 0 ? { tone } : {},
+    ...verb !== void 0 ? { escalated: true, verb } : {}
+  };
+  scene.moments.lastAnswer = record2;
+  delete scene.moments.open;
+  events.push({
+    type: "moment_answered",
+    momentId,
+    sourceId: open3.sourceId,
+    unitId: open3.unitId,
+    key: option2.key,
+    responseType: option2.type,
+    gap,
+    via,
+    ...tone !== void 0 ? { tone } : {},
+    ...verb !== void 0 ? { escalated: true, verb } : {},
+    ...open3.visitorId !== void 0 ? { visitorId: open3.visitorId } : {},
+    present: [...scene.participants]
+  });
+  if (verb !== void 0) events.push({ type: "moment_escalated", momentId, sourceId: open3.sourceId, unitId: open3.unitId, verb });
+  return events;
+}
+function lapseMoments(draft) {
+  const scene = draft.scene;
+  const open3 = momentsOf(scene).open;
+  if (!scene || !open3) return [];
+  const passes2 = (open3.passes ?? 0) + 1;
+  if (passes2 < TUNING.moments.lapseExchanges) {
+    scene.moments.open.passes = passes2;
+    return [];
+  }
+  pushLog(draft, atOf(scene), { person: open3.unitId, field: "lapse", value: open3.sourceId, source: "engine" });
+  delete scene.moments.open;
+  return [{ type: "moment_lapsed", momentId: open3.id, sourceId: open3.sourceId, unitId: open3.unitId }];
+}
+var QUOTES = /[\u0022\u201c\u201d]/g;
+var EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
+var COMMANDER_PRONOUN2 = /\b(he|him|his|himself)\b/i;
+function cleanLabels(raw) {
+  if (!Array.isArray(raw) || raw.length !== 3 || !raw.every((l) => typeof l === "string")) return null;
+  const cleaned = raw.map((l) => l.replace(/<[^>]*>/g, " ").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, TUNING.moments.labelMax).trim());
+  return cleaned.every((l) => l !== "" && !COMMANDER_PRONOUN2.test(l)) ? cleaned : null;
+}
+function setLabels(draft, raw) {
+  const open3 = momentsOf(draft.scene).open;
+  const labels = cleanLabels(raw);
+  if (open3 && labels) draft.scene.moments.open.labels = labels;
+}
+function applyReadingAnswer(draft, ctx2, answer) {
+  const open3 = momentsOf(draft.scene).open;
+  if (!open3 || typeof answer !== "object" || answer === null || Array.isArray(answer)) return [];
+  const a = answer;
+  if (typeof a.key !== "string" || typeof a.confidence !== "number" || a.confidence < TUNING.moments.answerConfidence) return [];
+  if (!open3.options.some((o) => o.key === a.key)) return [];
+  return answerMoment(draft, ctx2, open3.id, a.key, "text", typeof a.tone === "string" ? a.tone : void 0);
+}
+
 // src/engine/blocking/vocabulary.ts
 var affordancesOf = (e) => {
   const r = e.requires;
@@ -26233,12 +26341,6 @@ function vitalsOf(state, reg, unitId) {
   const now = slotIndex(state.day, state.slot);
   const flicker = pattern === "flat" && (state.ledger ?? []).some((e) => isFlicker(e, unitId) && now - slotIndex(e.day, e.slot) <= 1);
   return { unitId, pattern, heart, temp, spikes, flicker };
-}
-
-// src/engine/moments/state.ts
-var EMPTY2 = Object.freeze({ fired: Object.freeze([]) });
-function momentsOf(scene) {
-  return scene?.moments ?? EMPTY2;
 }
 
 // src/engine/moments/live.ts
@@ -26429,7 +26531,7 @@ var GENERIC_KEYS = ["0", "1", "2"];
 function momentsDraft(scene) {
   return scene.moments ??= { fired: [] };
 }
-var atOf = (scene) => scene.readIndex ?? scene.startIndex;
+var atOf2 = (scene) => scene.readIndex ?? scene.startIndex;
 var obscuredCommander = (effects2) => effects2.some((e) => e.type === "perception" && e.others === "obscured" || e.type === "camera" && e.mode === "pov_dark");
 function cannotHide(state, reg) {
   const posture = blockingOf(state.scene, COMMANDER).posture;
@@ -26475,7 +26577,7 @@ function fireMoment(draft, ctx2, sourceId, unitId) {
   const scene = draft.scene;
   const source = reg.momentSources.get(sourceId);
   if (!scene || !source) throw new Error(`fireMoment: unknown source "${sourceId}" or no scene is open`);
-  pushLog(draft, atOf(scene), { person: unitId, field: "moment", value: sourceId, source: "engine" });
+  pushLog(draft, atOf2(scene), { person: unitId, field: "moment", value: sourceId, source: "engine" });
   const moments = momentsDraft(scene);
   const exposing = source.exposes === true ? exposingElement(draft, reg) : void 0;
   const visitorId = kindsOf2(source).includes("visitor") ? pickVisitor(draft, reg) : void 0;
@@ -26708,7 +26810,12 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
     events.push(...raiseTone(draft, ctx2.registries, payload.tone));
     const staging = isObj12(payload.staging) ? payload.staging : void 0;
     if (staging && blockingLive(draft, ctx2.registries)) events.push(...applyReading(draft, ctx2, staging.blocking, draft.scene.readIndex ?? draft.scene.startIndex));
-    events.push(...momentPass(draft, ctx2, "exchange"));
+    if (blockingLive(draft, ctx2.registries)) {
+      if (staging) events.push(...applyReadingAnswer(draft, ctx2, staging.answer));
+      if (staging) setLabels(draft, staging.labels);
+      events.push(...lapseMoments(draft));
+    }
+    events.push(...momentPass(draft, ctx2, "exchange", typeof staging?.ripe === "string" ? { ripe: staging.ripe } : {}));
     return events;
   }
   if (payload.channel === "dm") {
@@ -29451,6 +29558,19 @@ registerAction("campaign/set_scene_settings", (draft, payload) => {
   return [];
 });
 
+// src/engine/actions/moments.ts
+var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("moment/answer", (draft, payload, ctx2) => {
+  if (!isObj34(payload)) throw new Error("moment/answer needs a payload");
+  if (!draft.scene) throw new Error("moment/answer: no scene is open");
+  if (!blockingLive(draft, ctx2.registries)) throw new Error("moment/answer: the blocking is not live in this scene");
+  const { momentId, key, tone, at } = payload;
+  if (typeof momentId !== "string" || typeof key !== "string") throw new Error("moment/answer needs { momentId, key }");
+  if (at !== void 0 && (typeof at !== "number" || !Number.isInteger(at) || at < 0)) throw new Error("moment/answer: at must be a non-negative integer (the chat index)");
+  if (tone !== void 0 && typeof tone !== "string") throw new Error("moment/answer: tone must be a word");
+  return answerMoment(draft, ctx2, momentId, key, "chip", tone, at !== void 0 ? { at } : {});
+});
+
 // src/engine/actions/life.ts
 registerAction("life/set_frequency", (draft, payload, ctx2) => {
   const mode = payload?.mode;
@@ -30090,7 +30210,7 @@ function sanitizeHabitWording(raw) {
   return text2;
 }
 var FRAGMENT_MAX3 = 160;
-var COMMANDER_PRONOUN2 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN3 = /\b(he|him|his|himself|he's)\b/i;
 registerFlavorKind("frequency_fragment", {
   system: () => [
     "You word one fragment of a soldier's overheard inner voice for a dark, near-future squad-command RPG: a mind-reading device in the commander's head catches it.",
@@ -30111,7 +30231,7 @@ registerFlavorKind("frequency_fragment", {
 function sanitizeFragment(raw) {
   if (typeof raw !== "string") return null;
   const t = raw.trim();
-  if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN2.test(t) || /[<>]/.test(t)) return null;
+  if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN3.test(t) || /[<>]/.test(t)) return null;
   return t;
 }
 var LIFE_SHARE_MAX = 300;
@@ -30159,7 +30279,7 @@ function lifeLine(raw, max) {
   const t = raw.text;
   if (typeof t !== "string") return null;
   const text2 = t.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'\u201c\u201d\u2018\u2019]+|["'\u201c\u201d\u2018\u2019]+$/g, "").trim().replace(/^(?:message|text|dm|note|reply|answer)\s*:\s*/i, "").slice(0, max).trim();
-  return text2 === "" || COMMANDER_PRONOUN2.test(text2) ? null : text2;
+  return text2 === "" || COMMANDER_PRONOUN3.test(text2) ? null : text2;
 }
 var sanitizeLifeShare = (raw) => lifeLine(raw, LIFE_SHARE_MAX);
 var sanitizeLifeTrace = (raw) => lifeLine(raw, LIFE_TRACE_MAX);
@@ -31042,7 +31162,7 @@ function revealPending(state, reg) {
 }
 
 // src/engine/warden/describe.ts
-var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var strs2 = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 function describeOrder(state, reg, order) {
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -31068,7 +31188,7 @@ function overrideInput(state, reg, participants) {
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
 }
 function orderOfAction(action, reg) {
-  const p = isObj34(action.payload) ? action.payload : {};
+  const p = isObj35(action.payload) ? action.payload : {};
   switch (action.type) {
     case "activity/do":
       return typeof p.activityId === "string" ? { kind: "activity", activityId: p.activityId, ...typeof p.companionId === "string" ? { companionId: p.companionId } : {}, ...Array.isArray(p.unitIds) ? { unitIds: strs2(p.unitIds) } : {} } : null;
@@ -32107,15 +32227,15 @@ function plain3(text2, max) {
   if (typeof text2 !== "string") return "";
   return text2.replace(/```[a-z]*/gi, " ").replace(/[*_`~#>]+/g, "").replace(/\s+/g, " ").trim().replace(LABEL3, "").replace(/^["“”]+|["“”]+$/g, "").trim().slice(0, max).trim();
 }
-var COMMANDER_PRONOUN3 = /\b(he|him|his|himself|he's)\b/i;
-var noPronoun = (t) => COMMANDER_PRONOUN3.test(t) ? "" : t;
-var isObj35 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var COMMANDER_PRONOUN4 = /\b(he|him|his|himself|he's)\b/i;
+var noPronoun = (t) => COMMANDER_PRONOUN4.test(t) ? "" : t;
+var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeReview(raw, input) {
-  if (!isObj35(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
+  if (!isObj36(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
   const listed2 = new Set(input.axes.map((a) => a.axis));
   const shifts = [];
   for (const s of Array.isArray(raw.shifts) ? raw.shifts : []) {
-    if (!isObj35(s) || typeof s.axis !== "string" || !listed2.has(s.axis)) continue;
+    if (!isObj36(s) || typeof s.axis !== "string" || !listed2.has(s.axis)) continue;
     if (s.direction !== "up" && s.direction !== "down") continue;
     if (s.size !== "nudge" && s.size !== "step") continue;
     shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: noPronoun(plain3(s.reason, TUNING.development.reasonMax)) });
@@ -32123,9 +32243,9 @@ function sanitizeReview(raw, input) {
   }
   const facts = [];
   for (const f of Array.isArray(raw.facts) ? raw.facts : []) {
-    if (!isObj35(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
+    if (!isObj36(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
     const text2 = plain3(f.text, TUNING.development.factTextMax);
-    if (text2 === "" || COMMANDER_PRONOUN3.test(text2)) continue;
+    if (text2 === "" || COMMANDER_PRONOUN4.test(text2)) continue;
     facts.push({ text: text2, kind: f.kind });
     if (facts.length === TUNING.development.maxFacts) break;
   }
@@ -32316,15 +32436,15 @@ function createDevelopment(deps) {
 var CARD_MAX3 = 600;
 var OpinionFormRawSchema = external_exports.object({ position: external_exports.unknown().optional(), text: external_exports.unknown().optional() }).passthrough();
 var LABEL4 = /^(?:her words|opinion|position|text|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
-var COMMANDER_PRONOUN4 = /\b(he|him|his|himself|he's)\b/i;
-var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var COMMANDER_PRONOUN5 = /\b(he|him|his|himself|he's)\b/i;
+var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeOpinion(raw, input) {
-  if (!isObj36(raw) || typeof raw.position !== "string" || typeof raw.text !== "string") return null;
+  if (!isObj37(raw) || typeof raw.position !== "string" || typeof raw.text !== "string") return null;
   const asked = raw.position.trim();
   const position = input.topic.positions.find((p) => p.id === asked)?.id;
   if (position === void 0) return null;
   const text2 = raw.text.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL4, "").slice(0, TUNING.life.opinion.textMax).trim();
-  if (text2 === "" || COMMANDER_PRONOUN4.test(text2)) return null;
+  if (text2 === "" || COMMANDER_PRONOUN5.test(text2)) return null;
   return { position, text: text2 };
 }
 var one = (s) => s.replace(/[\r\n]+/g, " ");
@@ -34006,16 +34126,16 @@ var fieldSchemas = {
   marathonPace: external_exports.enum(MARATHON_PACES)
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj37(over) ? over : {};
+  const src = isObj38(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj37(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj38(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -34320,8 +34440,8 @@ function motionReduced(s, media = systemReduced) {
 }
 function visualFlags(s, media) {
   const motion = !motionReduced(s, media);
-  const plain5 = s.readableMode;
-  return { scanlines: !plain5 && s.scanlines, flicker: !plain5 && s.flicker, glitch: !plain5 && motion, dither: !plain5 && s.ditheredPortraits, motion };
+  const plain6 = s.readableMode;
+  return { scanlines: !plain6 && s.scanlines, flicker: !plain6 && s.flicker, glitch: !plain6 && motion, dither: !plain6 && s.ditheredPortraits, motion };
 }
 
 // src/ui/leash/requestForm.ts
@@ -35840,39 +35960,37 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj39 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj38(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj38(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj39(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj39(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj38(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj39(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj38(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj39(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
   const sceneTone = ctx2.romance && (src.sceneTone === "romantic" || src.sceneTone === "intimate") ? src.sceneTone : null;
   return { intents, emotions, contentViolations, sceneTone };
 }
-var CLEAN_QUOTES = /[\u0022\u201c\u201d]/g;
-var EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
 function sanitizeStaging(raw, input) {
-  const src = isObj38(raw) ? raw : {};
+  const src = isObj39(raw) ? raw : {};
   const people = new Set(input.persons.map((p) => p.id));
   const lists = { posture: input.vocabulary.posture, anchor: input.vocabulary.anchor, contact: input.vocabulary.contact, worn: input.vocabulary.worn, removed: [...input.vocabulary.worn, ...input.vocabulary.contact] };
   const blocking = [];
   for (const c of Array.isArray(src.blocking) ? src.blocking : []) {
-    if (!isObj38(c) || blocking.length >= TUNING.blocking.maxChanges) continue;
+    if (!isObj39(c) || blocking.length >= TUNING.blocking.maxChanges) continue;
     const { person, field: field2, value, relTo, with: other, direction, confidence } = c;
     if (typeof person !== "string" || !people.has(person) || typeof field2 !== "string" || !STAGING_FIELDS.includes(field2)) continue;
     if (typeof value !== "string" || !lists[field2].includes(value)) continue;
@@ -35884,7 +36002,7 @@ function sanitizeStaging(raw, input) {
   }
   const ripe = typeof src.ripe === "string" && input.ripe.includes(src.ripe) ? src.ripe : null;
   let answer = null;
-  if (input.open && isObj38(src.answer)) {
+  if (input.open && isObj39(src.answer)) {
     const keys = input.open.keys ?? ["0", "1", "2"];
     const key = typeof src.answer.option === "number" || typeof src.answer.option === "string" ? String(src.answer.option) : "";
     const confidence = src.answer.confidence;
@@ -35893,11 +36011,7 @@ function sanitizeStaging(raw, input) {
       answer = { key, confidence, ...tone !== void 0 ? { tone } : {} };
     }
   }
-  let labels = null;
-  if (input.open && Array.isArray(src.labels) && src.labels.length === 3 && src.labels.every((l) => typeof l === "string")) {
-    const cleaned = src.labels.map((l) => l.replace(CLEAN_QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, 40).trim());
-    if (cleaned.every((l) => l !== "")) labels = cleaned;
-  }
+  const labels = input.open ? cleanLabels(src.labels) : null;
   return { blocking, ripe, answer, labels };
 }
 function readIntentOutput(raw, input, opts) {
@@ -35918,7 +36032,7 @@ function readIntentOutput(raw, input, opts) {
     ...input.life ? { life: input.life } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
-  return input.staging ? { ...base, staging: sanitizeStaging(isObj38(raw) ? raw.staging : void 0, input.staging) } : base;
+  return input.staging ? { ...base, staging: sanitizeStaging(isObj39(raw) ? raw.staging : void 0, input.staging) } : base;
 }
 
 // src/scene/comms.ts
@@ -36930,6 +37044,55 @@ function clearBlockingDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(BLOCKING_PREFIX));
 }
 
+// src/blocking/momentDirectives.ts
+var MOMENT_PREFIX = "moment:";
+var ADDITION_WORDS = {
+  lock: "ask her to lock the door",
+  look: "ask her with a look",
+  ally: "look at an ally"
+};
+var plain4 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
+var GAP_WORDS = { matched: "what she expected", partial: "only partly what she expected", opposite: "the opposite of what she expected" };
+function genericWord(reg, sourceId, key) {
+  const frame = reg.momentSources.get(sourceId)?.frame;
+  return ["0", "1", "2"].includes(key) ? frame?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
+}
+function momentDirective2(event, state, reg) {
+  const { open: open3, lastAnswer: a } = momentsOf(state.scene);
+  const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  if (event.type === "moment_fired" && open3 !== void 0 && open3.id === event.momentId) {
+    const source = reg.momentSources.get(open3.sourceId);
+    if (!source) return null;
+    const exposing = open3.exposing !== void 0 ? ` ${open3.exposing} may give the commander away.` : "";
+    return { id: `${MOMENT_PREFIX}${open3.sourceId}`, expiresAfter: "next_reply", text: `A moment of tension: ${plain4(String(source.description))}.${exposing}` };
+  }
+  if (event.type === "moment_answered" && a !== void 0 && a.momentId === event.momentId) {
+    const word = genericWord(reg, a.sourceId, a.key);
+    const hint = a.verb !== void 0 ? ` ${String(reg.escalationVerbs.get(a.verb)?.promptHint ?? "").trim()}` : "";
+    return {
+      id: `${MOMENT_PREFIX}${a.sourceId}`,
+      expiresAfter: "next_reply",
+      text: `The commander chose to ${word}. ${name(a.unitId)} takes it as ${GAP_WORDS[a.gap]}; she answers in character.${hint}`
+    };
+  }
+  return null;
+}
+function applyMomentDirectives(builder, events, state, reg) {
+  if (state === null) return false;
+  let any = false;
+  for (const e of events) {
+    const d = momentDirective2(e, state, reg);
+    if (d) {
+      builder.setDirective(d);
+      any = true;
+    }
+  }
+  return any;
+}
+function clearMomentDirectives(builder) {
+  builder.clearMatching((d) => d.id.startsWith(MOMENT_PREFIX));
+}
+
 // src/blocking/sync.ts
 function deviceTabLocks(state, reg, allTabs, base) {
   return state !== null && deviceLocked(state, reg) ? new Set(allTabs) : new Set(base);
@@ -36962,7 +37125,16 @@ function stagingInput(state, reg, participants) {
     ...participants.map((id) => ({ id, name: state.squad.find((u) => u.id === id)?.displayName ?? id })),
     { id: COMMANDER, name: state.commander.name }
   ];
-  return { staging: { persons, vocabulary: { posture: ids(v.posture), anchor: ids(v.anchor), contact: ids(v.contact), worn: ids(v.item) }, ripe: ids(ripeSources(state, reg)) } };
+  const open3 = momentsOf(state.scene).open;
+  return {
+    staging: {
+      persons,
+      vocabulary: { posture: ids(v.posture), anchor: ids(v.anchor), contact: ids(v.contact), worn: ids(v.item) },
+      ripe: ids(ripeSources(state, reg)),
+      // the moment that waits for an answer: its three generic words (the reading words them for the scene) and every key an answer may name
+      ...open3 ? { open: { id: open3.id, sourceId: open3.sourceId, options: ["0", "1", "2"].map((k) => genericWord(reg, open3.sourceId, k)), keys: open3.options.map((o) => o.key) } } : {}
+    }
+  };
 }
 
 // src/llm/calls/emotionPick.ts
@@ -37765,7 +37937,7 @@ function createSceneController(deps) {
           messageRef: `chat:${lastReply.index}`,
           ...flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {},
           ...result.sceneTone !== null ? { tone: result.sceneTone } : {},
-          ...result.staging ? { staging: { blocking: result.staging.blocking } } : {}
+          ...result.staging ? { staging: { blocking: result.staging.blocking, ripe: result.staging.ripe, answer: result.staging.answer, labels: result.staging.labels } } : {}
           // P15a
         }
       }, expect);
@@ -37918,7 +38090,7 @@ function createSceneController(deps) {
       clearSceneDirectives(app.context);
       app.context.clearDirective("night");
       const now = state();
-      app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:") || d.id.startsWith("blocking:"));
+      app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:") || d.id.startsWith("blocking:") || d.id.startsWith("moment:"));
       app.refreshContext();
       const living2 = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
       try {
@@ -38458,7 +38630,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj39 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -38467,7 +38639,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj39(raw) ? raw : {};
+  const src = isObj40(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -38483,7 +38655,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj39(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj40(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -38492,7 +38664,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap3(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj39(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj40(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -38580,7 +38752,7 @@ function developmentAxisKeys(registries) {
   const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any"));
   return [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
 }
-var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj41 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num4 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -38598,7 +38770,7 @@ function tagList3(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj40(raw) ? raw : {};
+  const src = isObj41(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -38607,7 +38779,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj40(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj41(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -38655,11 +38827,11 @@ function sanitizeProfile(raw, ctx2) {
     const read = validateBond(src.bond, ctx2.registries);
     profile.bond = read.bond;
     bond = read.bond;
-    const reason = cap4(isObj40(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap4(isObj41(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read.valid.length === 0) missing2.push("bond");
-    if (!isObj40(src.bond)) delete profile.bond;
+    if (!isObj41(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick3(
@@ -38676,7 +38848,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj40(src.values)) {
+    if (isObj41(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num4(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -38701,25 +38873,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj40(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj41(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num4(src.dispositionOffset.offset, -2, 2, 0), reason: cap4(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj40(src.worldStances) ? src.worldStances : {};
+      const given = isObj41(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj40(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj41(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap4(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("development")) {
-    const dev = isObj40(src.development) ? src.development : {};
+    const dev = isObj41(src.development) ? src.development : {};
     const anchors = [];
     for (const raw2 of Array.isArray(dev.anchors) ? dev.anchors : []) {
       const key = anchorKey(ctx2.registries, raw2);
@@ -38732,7 +38904,7 @@ function sanitizeProfile(raw, ctx2) {
     profile.anchors = anchors;
     profile.insight = dev.insight === "low" || dev.insight === "high" ? dev.insight : "mid";
   }
-  if (want("temperament") && isObj40(src.temperament)) {
+  if (want("temperament") && isObj41(src.temperament)) {
     const given = src.temperament;
     const t = { ...TEMPERAMENT_DEFAULTS };
     for (const field2 of Object.keys(TEMPERAMENT_VALUES)) {
@@ -38759,7 +38931,7 @@ function sanitizeProfile(raw, ctx2) {
       return out;
     };
     profile.hobbies = list5(src.hobbies, "hobbies", TUNING.life.maxActive);
-    if (isObj40(src.aptitudes)) {
+    if (isObj41(src.aptitudes)) {
       const high = list5(src.aptitudes.high, "aptitudes", 3);
       const low = list5(src.aptitudes.low, "aptitudes", 3);
       const both = high.filter((h2) => low.includes(h2));
@@ -38773,9 +38945,9 @@ function sanitizeProfile(raw, ctx2) {
     const out = {};
     const max = TUNING.life.opinion.importMax;
     for (const item of Array.isArray(src.opinions) ? src.opinions : []) {
-      const topicId = isObj40(item) && typeof item.topic === "string" ? item.topic : null;
+      const topicId = isObj41(item) && typeof item.topic === "string" ? item.topic : null;
       const topic = topicId === null ? void 0 : ctx2.registries.opinionTopics.get(topicId);
-      const position = isObj40(item) && typeof item.position === "string" ? item.position : null;
+      const position = isObj41(item) && typeof item.position === "string" ? item.position : null;
       if (topicId === null || !topic || !topic.positions.some((p) => p.id === position) || topicId in out || Object.keys(out).length >= max) {
         dropped.push(`opinions:${topicId ?? "(invalid)"}`);
         continue;
@@ -38786,7 +38958,7 @@ function sanitizeProfile(raw, ctx2) {
     profile.opinions = out;
   }
   if (want("baseline")) {
-    if (isObj40(src.emotionalBaseline)) {
+    if (isObj41(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -47519,7 +47691,7 @@ function registerImmersionProviders() {
 // src/analysis/providers/bonds.ts
 var orderedCategories2 = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
 var link = (id, label2) => `[[contentCategories:${id}|${label2}]]`;
-var plain4 = (t) => t.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim();
+var plain5 = (t) => t.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim();
 function categoryProvider(subject, env) {
   if (!env.state || !env.registries.contentCategories.has(subject.id)) return null;
   const lines = [enabledCategories(env.state).includes(subject.id) ? "In this campaign: switched on." : "In this campaign: off. It is excluded from every generation."];
@@ -47542,7 +47714,7 @@ function bondProvider(subject, env) {
   if (bond.caretaker) lines.push("A caretaker: she looks after others at her own cost.");
   lines.push(`She wants a relationship to be: ${bond.publicity}.`);
   const cats = orderedCategories2(env.registries).filter((c) => bond.ownLimits.categories.includes(String(c.id))).map((c) => link(String(c.id), String(c.label)));
-  const note = plain4(bond.ownLimits.note ?? "");
+  const note = plain5(bond.ownLimits.note ?? "");
   if (cats.length > 0) lines.push(`She will not take part in: ${cats.join(", ")}.${note !== "" ? ` ${note}` : ""}`);
   else if (note !== "") lines.push(`Her own limit: ${note}`);
   return { lines };
@@ -50457,7 +50629,7 @@ function createShell(deps) {
       return;
     }
     if (modals?.isOpen()) return;
-    const plain5 = !e.ctrlKey && !e.metaKey && !e.altKey;
+    const plain6 = !e.ctrlKey && !e.metaKey && !e.altKey;
     const typing = isEditable2(e.target);
     const where = router.current();
     if (e.key === "Escape") {
@@ -50468,14 +50640,14 @@ function createShell(deps) {
       return;
     }
     if (e.key === "Tab") {
-      if (!plain5 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
+      if (!plain6 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
       }
       return;
     }
-    if (/^[0-8]$/.test(e.key) && plain5 && !typing) {
+    if (/^[0-8]$/.test(e.key) && plain6 && !typing) {
       const id = e.key === "0" ? "home" : KEY_TABS[Number(e.key) - 1];
       if (where === "pda") selectTab(id);
       else if (where === "hub") api.showTab(id);
@@ -50517,6 +50689,7 @@ function createApp(st, deps) {
       refreshBlockingDirectives(context, state, registries);
     } else {
       clearBlockingDirectives(context);
+      clearMomentDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -51037,6 +51210,7 @@ function createApp(st, deps) {
         if (e.type === "unit_deserted") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} HAS DESERTED`);
         if (e.type === "unit_terminated") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} DEACTIVATED`);
       }
+      if (applyMomentDirectives(context, events, state, registries)) applyContext();
       discipline.onEvents(events);
       bonds.onEvents(events);
       personal.onEvents(events);
@@ -53903,13 +54077,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj41 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj42 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
     const m = chat[index2];
-    if (!isObj41(m) || m.is_system === true) continue;
+    if (!isObj42(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index: index2,
@@ -53926,7 +54100,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj41(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj42(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -53957,7 +54131,7 @@ function unhideRuns(ranges, length) {
 }
 var isSystemMessage = (chat, index2) => {
   const m = Array.isArray(chat) ? chat[index2] : void 0;
-  return !isObj41(m) || m.is_system === true;
+  return !isObj42(m) || m.is_system === true;
 };
 
 // src/st/slash.ts
@@ -53989,17 +54163,17 @@ function toStLorebook(book2, template) {
 }
 
 // src/st/sprites.ts
-var isObj42 = (v) => typeof v === "object" && v !== null;
+var isObj43 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj42(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj43(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj42(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj43(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

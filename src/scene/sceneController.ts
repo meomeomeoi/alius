@@ -551,7 +551,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       clearSceneDirectives(app.context);
       app.context.clearDirective('night');
       const now = state();
-      app.context.clearMatching((d) => d.id.startsWith('proposal:') || d.id.startsWith('ask:') || d.id.startsWith('blocking:')); // P15a: blocking:
+      app.context.clearMatching((d) => d.id.startsWith('proposal:') || d.id.startsWith('ask:') || d.id.startsWith('blocking:') || d.id.startsWith('moment:')); // P15a: blocking:, moment:
       app.refreshContext();
       const living = (now?.squad ?? []).filter((u) => u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
       try {

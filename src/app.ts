@@ -28,6 +28,7 @@ import './engine/actions/generations'; // registers generation/* (failure record
 import './engine/actions/headStart'; // registers head_start/recap (P11b)
 import './engine/actions/development'; // registers development/set_mode and the review actions (P14b)
 import './engine/actions/blocking'; // registers blocking/set (P15a)
+import './engine/actions/moments'; // registers moment/answer (P15a)
 import './engine/actions/life'; // registers life/set_frequency and, later, the life and profile actions (P14c)
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
@@ -100,6 +101,7 @@ import { registerMemoryContext } from './scene/memoryContext';
 import { registerDevelopmentContext } from './scene/developmentContext';
 import { registerBlockingContext } from './scene/blockingContext';
 import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
+import { applyMomentDirectives, clearMomentDirectives } from './blocking/momentDirectives';
 import { bellsFor, deviceTabLocks, muffled, sceneSettingsPatch } from './blocking/sync';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
@@ -311,6 +313,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       refreshBlockingDirectives(context, state, registries); // P15a: the limits and the point of view of the blocking (nothing while it is not live)
     } else {
       clearBlockingDirectives(context);
+      clearMomentDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -832,6 +835,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_deserted') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} HAS DESERTED`);
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
+      if (applyMomentDirectives(context, events, state, registries)) applyContext(); // P15a: the tension of a moment, or what the commander chose, for her next reply
       discipline.onEvents(events);
       bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
       personal.onEvents(events); // P9c: a clash of bookings, a claim, a peeled decor

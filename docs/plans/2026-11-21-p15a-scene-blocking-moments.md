@@ -1029,7 +1029,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - when fired: "A moment of tension: <tension>. <Exposing element> may give the commander away.";
   - when answered: "The commander chose to <generic word>. She takes it as <matched / partial / opposite>; she answers in character. <She escalates: escalationVerbs.promptHint.>"
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the neutral expected option` is the `returned` option, else `yielded`; a registered expectation wins.
   - `the gap table` (all 16 pairs).
   - `opposite may escalate`: seeded, about 50 %; the verb is `nudge_with_foot` under the desk, `tug_leash` with a leash, else `look`.
@@ -1038,10 +1038,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `a stale moment id is refused` (`Stale moment answer.`).
   - `a reading answer below 0.55 is dropped`; `a lapse after two passes`.
   - `the directive lasts one reply` and has no commander pronoun.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/moments/answer.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): her answer to a moment with the gap and the escalation channel`
+- [x] **Step 2: Run** `npx vitest run tests/engine/moments/answer.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): her answer to a moment with the gap and the escalation channel`
 
 ---
 

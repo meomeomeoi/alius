@@ -19,6 +19,7 @@ import { showMoments, stampMoments, unstampMoments } from '../development/moment
 import { countCompanions } from '../development/habits';
 import { applyReading, blockingLive } from '../blocking';
 import { startBlocking } from '../blocking/defaults';
+import { applyReadingAnswer, lapseMoments, setLabels } from '../moments/answer';
 import { momentPass } from '../moments/fire';
 import { noteBusy } from '../life/dayStep';
 import { finishMeeting } from '../life/meetings';
@@ -148,7 +149,13 @@ registerAction('intents/apply', (draft, payload, ctx) => {
     // P15a: what the reading found about the staging goes in with the same step (so a swipe or an edit takes it too); nothing while not live
     const staging = isObj(payload.staging) ? payload.staging : undefined;
     if (staging && blockingLive(draft, ctx.registries)) events.push(...applyReading(draft, ctx, staging.blocking, draft.scene.readIndex ?? draft.scene.startIndex));
-    events.push(...momentPass(draft, ctx, 'exchange')); // P15a: a moment may come up (a no-op, and no draw, while the blocking is not live)
+    if (blockingLive(draft, ctx.registries)) {
+      // P15a: what the reading found about the open moment (her answer, the model's words for the options), then its lapse; nothing while not live
+      if (staging) events.push(...applyReadingAnswer(draft, ctx, staging.answer));
+      if (staging) setLabels(draft, staging.labels);
+      events.push(...lapseMoments(draft));
+    }
+    events.push(...momentPass(draft, ctx, 'exchange', typeof staging?.ripe === 'string' ? { ripe: staging.ripe } : {})); // a moment may come up (a no-op, and no draw, while the blocking is not live)
     return events;
   }
   if (payload.channel === 'dm') {
