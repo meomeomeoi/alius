@@ -2513,5 +2513,35 @@
       "moment",
       "blocking"
     ]
+  },
+  {
+    "id": "wake_up",
+    "term": "Waking up",
+    "short": "After a blackout the scene is cut, time moves on and the commander comes to somewhere else. Dizzy until the day ends.",
+    "long": "AUTHOR TO WRITE: A blackout only happens with breath play switched on and a holder who goes on to the end. The scene ends, one more slot is spent, every check is one lower until the day ends, and the card tells where the commander came to.",
+    "see": [
+      "tap_signal",
+      "stop_word"
+    ]
+  },
+  {
+    "id": "tap_signal",
+    "term": "The tap",
+    "short": "A signal inside the story. What she does with it depends on how she holds: she lets go, ignores the first, or ignores them all.",
+    "long": "AUTHOR TO WRITE: The tap is a move the commander makes in the fiction. A holder who lets go at a signal stops at once; one who holds to a limit ignores the first; one who goes to blackout ignores every tap. The stop word is different: it always works.",
+    "see": [
+      "stop_word",
+      "contact_physics"
+    ]
+  },
+  {
+    "id": "stop_word",
+    "term": "Stop word",
+    "short": "Your own signal, outside the story. It always ends the hold and takes away the contact or item, whatever she holds to.",
+    "long": "AUTHOR TO WRITE: The stop word is never part of the fiction and never refused. It ends the hold at once, mid-segment or between segments, in either mode, and she stops what she is doing for the next reply.",
+    "see": [
+      "tap_signal",
+      "blocking"
+    ]
   }
 ]

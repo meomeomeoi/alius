@@ -8,7 +8,8 @@ import { clearSmother } from '../bonds/smother';
 import { relieveAtSceneEnd } from '../bonds/want';
 import { rollReveal } from '../bonds/publicity';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
-import { consumeSlots, registerDayEndStep } from '../calendar';
+import { consumeSlots, registerDayEndStep, slotsLeftToday } from '../calendar';
+import { setCondition } from '../physics/conditions';
 import type { Registries } from '../../content/types';
 import { registerAction, type EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -22,6 +23,7 @@ import { startBlocking } from '../blocking/defaults';
 import { applyReadingAnswer, lapseMoments, setLabels } from '../moments/answer';
 import { momentPass } from '../moments/fire';
 import '../physics/run'; // a contact set by a reading may start a physics run
+import { wakeSleepers } from '../physics/boundary';
 import { noteBusy } from '../life/dayStep';
 import { finishMeeting } from '../life/meetings';
 import { endSceneNews } from '../life/news';
@@ -131,6 +133,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
 registerAction('scene/exchange', (draft) => {
   if (!draft.scene) throw new Error('scene/exchange: no scene is open');
   draft.scene.exchanges += 1;
+  wakeSleepers(draft); // P15a: whoever dozed off in a hold wakes when her exchanges are up
   return [{ type: 'scene_exchange', exchanges: draft.scene.exchanges }];
 });
 
@@ -242,6 +245,13 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });
   events.push(...argueEnded(draft, ctx, scene.id)); // P13: the argument with the warden ends: a compromise runs the order, none leaves COMPLY and DEFY
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx));
+  // P15a: the slots a blackout or a marathon cost beyond the scene's own (never past the end of the day), and the wake card says where she came to
+  const extra = Math.min(scene.extraSlots ?? 0, slotsLeftToday(draft.slot));
+  if (extra > 0) events.push(...consumeSlots(draft, extra, ctx));
+  if (scene.blackout && draft.lastWake) {
+    draft.lastWake = { ...draft.lastWake, day: draft.day, slot: draft.slot };
+    if (draft.commander.conditions?.some((c) => c.id === 'dizzy')) events.push(...setCondition(draft, reg, 'dizzy', { day: draft.day }));
+  }
   return events;
 });
 

@@ -2,6 +2,7 @@ import { quartersOf } from '../engine/backdrops';
 import type { Registries } from '../content/types';
 import { firstImpressionWeight } from '../engine/commander/presence';
 import { commanderLine } from '../engine/commander/profile';
+import { conditionsOf } from '../engine/physics/conditions';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
 import { lifeMode, temperamentOf } from '../engine/life/state';
 import { intimacyOf } from '../engine/relations/gain';
@@ -85,6 +86,7 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
       const lines = [
         `Commander: ${s.commander.name}${corp ? ` (${String(corp.name)})` : ''}.${notable.length > 0 ? ` Notable: ${notable.join(', ')}.` : ''}`,
         commanderLine(s),
+        ...conditionsOf(s).flatMap((c) => { const hint = reg.commanderConditions.get(c.id)?.promptHint; return typeof hint === 'string' && hint !== '' ? [hint] : []; }), // P15a: dizzy, stiff
       ];
       const crime = s.commander.crimeId ? reg.crimes.get(s.commander.crimeId) : undefined;
       if (crime) {

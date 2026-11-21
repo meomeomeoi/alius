@@ -93,6 +93,8 @@ export interface PhysicsRun {
   sealRange?: Seal[];
   seal?: Seal;
   pressure?: number;
+  /** Her pattern moved on (a change of rhythm): added to the personal offset when the next segment is planned. */
+  rhythmShift?: number;
   /** `held`: the body waits in a neutral state (nothing drains) until the next segment starts. */
   segment: { n: number; state: 'running' | 'held'; plan?: SegmentPlan; /** Beats whose inputs lapsed because a message was typed (turn-based). */ lapsed?: number[] };
   startedExchange: number;

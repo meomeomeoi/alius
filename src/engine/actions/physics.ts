@@ -60,3 +60,9 @@ registerAction('physics/typed', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.chars !== 'number' || !Number.isFinite(payload.chars) || payload.chars < 0) throw new Error('physics/typed needs { chars }');
   return typedBeats(draft, payload.chars, typeof payload.beat === 'number' ? Math.trunc(payload.beat) : 0);
 });
+
+/** `physics/wake_seen`: the commander has seen the wake card; it goes. Draws no rng. */
+registerAction('physics/wake_seen', (draft) => {
+  delete draft.lastWake;
+  return [];
+});

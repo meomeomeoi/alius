@@ -1216,7 +1216,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `conditionsOf(state)`;
   - `CampaignState.lastWake?: { day, slot, unitId, line? }` (the wake card after the scene, shown once).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `asleep only at night or after rest` (seeded): her activity becomes `sleeping`, and `her_absence` is live.
   - `forgets with Impunity`.
   - `blackout only with breath_play and holdsUntil blackout` (a registered reader): the scene ends, one more slot is spent, `dizzy` lowers every social rank by 1 until the day ends, commander stress +5, and the wake card is stored.
@@ -1224,10 +1224,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `limit broken` (a gauge below the release point at a `limit` holder) → the memory rule; `caught` → the rule.
   - `dizzy expires at the day's end`.
   - `the commander line names the condition` without a pronoun.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/boundary.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): her moves at the boundary, the blackout and the commander's conditions`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/boundary.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): her moves at the boundary, the blackout and the commander's conditions`
 
 ---
 

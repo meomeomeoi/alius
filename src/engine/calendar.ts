@@ -4,6 +4,7 @@ import type { EngineCtx, EngineEvent } from './dispatch';
 import { facilityEffect, facilityLevels, isLiving, recoverUnit, rosterCapacityFor, runUpkeep } from './economy';
 import type { CampaignState, Slot } from './state/types';
 import { lapseBookingsThrough } from './personal/state';
+import { expireConditions } from './physics/conditions';
 import { TUNING } from './tuning';
 
 export const SLOT_ORDER: readonly Slot[] = ['morning', 'afternoon', 'evening', 'night'];
@@ -162,6 +163,7 @@ export function consumeSlots(draft: CampaignState, count: number, ctx: EngineCtx
       draft.slot = SLOT_ORDER[SLOT_ORDER.indexOf(from) + 1];
       events.push({ type: 'slot_advanced', from, to: draft.slot, day: draft.day });
     }
+    events.push(...expireConditions(draft)); // P15a: dizzy and stiff pass with the time
   }
   return events;
 }

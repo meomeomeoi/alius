@@ -78,7 +78,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   const beats: PlannedBeat[] = Array.from({ length: n }, () => ({ attention: attentionOf(state, reg, run, style, rng) }));
   const interaction = String(phys.interaction);
   if (interaction === 'timing') {
-    let pos = rhythmOffset(state, run.holderId) + rng.int(0, 1);
+    let pos = ((rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3) + rng.int(0, 1);
     let k = 0;
     while (pos < n) {
       const measuring = lead.key === 'clinical' && ++k % rng.int(P.clinicalEvery[0], P.clinicalEvery[1]) === 0;
@@ -282,7 +282,9 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     if (chained.length > 0) events.push(...chained);
     else run.extend += TUNING.physics.slipExtend;
   }
-  events.push(...decideBoundary(draft, ctx, run, result));
+  const boundary = decideBoundary(draft, ctx, run, result);
+  if (boundary.move !== undefined) (events[0] as { move?: string }).move = boundary.move;
+  events.push(...boundary.events);
   return events;
 }
 

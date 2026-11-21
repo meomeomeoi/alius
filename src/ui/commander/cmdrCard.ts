@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import { commanderProfile, descriptor } from '../../engine/commander/profile';
 import { commanderHobbyWord } from '../../engine/life/meetings';
+import { conditionsOf } from '../../engine/physics/conditions';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
@@ -75,6 +76,13 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
               `${String(reg.hobbies.get(id)!.label).toUpperCase()}: ${word === 'none' ? 'NOT YET' : word.toUpperCase()}`),
           ];
         })),
+      // P15a: what the commander bears after a hold, as chips (until the day or the slot ends)
+      conditionsOf(state).length === 0
+        ? null
+        : h('p', { 'data-commander-conditions': '' }, 'CONDITION — ', ...conditionsOf(state).flatMap((c, i): Child[] => [
+          i === 0 ? '' : ' · ',
+          h('span', { class: 'alius-chip', 'data-commander-condition': c.id, ...analyzeAttrs(`commanderConditions:${c.id}`) }, String(reg.commanderConditions.get(c.id)?.label ?? c.id).toUpperCase()),
+        ])),
       renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
   renderInterceptLog(file, state, reg); // P12: nothing without the frequency
   renderPremonitions(file, state, reg); // P12: nothing without the paranoia

@@ -859,5 +859,50 @@
       "moment",
       "memory"
     ]
+  },
+  {
+    "id": "physics_blackout",
+    "event": "physics_outcome",
+    "when": {
+      "result": "blackout"
+    },
+    "text": "{name} held the commander until the commander blacked out.",
+    "importance": 4,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "blackout"
+    ]
+  },
+  {
+    "id": "physics_limit_broken",
+    "event": "physics_outcome",
+    "when": {
+      "result": "limit_broken"
+    },
+    "text": "{name} held the commander past a limit.",
+    "importance": 4,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "limit_broken"
+    ]
+  },
+  {
+    "id": "physics_caught",
+    "event": "physics_caught",
+    "text": "{name} caught the commander cheating in a hold.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "caught"
+    ]
   }
 ]

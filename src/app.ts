@@ -104,6 +104,7 @@ import { registerBlockingContext } from './scene/blockingContext';
 import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
 import { applyMomentDirectives, clearMomentDirectives } from './blocking/momentDirectives';
 import { applyPhysicsDirectives } from './blocking/physicsDirectives';
+import { wakeCard } from './ui/scene/wakeCard';
 import { bellsFor, deviceTabLocks, muffled, sceneSettingsPatch } from './blocking/sync';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
@@ -850,6 +851,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (has('campaign_ended')) {
         shell.showScreen('hub'); // P13: the END screen takes the hub's place; nothing else of the campaign can change now
         shell.open();
+      }
+      if (has('scene_ended') && state?.lastWake && !state.scene) {
+        // P15a: a blackout cut the scene: where the commander came to, shown once
+        const card = wakeCard(state, registries);
+        if (card) void shell.modal({ title: 'You come to', body: card, actions: [{ label: 'OK', value: 'ok' }] }).then(() => api.dispatch({ type: 'physics/wake_seen', payload: {} }, { expectChatId: chatId }));
       }
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();

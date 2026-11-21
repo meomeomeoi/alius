@@ -319,6 +319,16 @@ registerMemoryResolver('moment_answered', (draft, event) => {
 }, { ids: ['her', 'present', 'visitor'], vars: ['name', 'source', 'key', 'type', 'visitor', 'exposed'] });
 
 // ---------------------------------------------------------------------------------------------
+// holds (P15a): how a contact physics ended, and being caught cheating; the pair remembers (the commander is not a unit)
+
+const holder: MemoryResolver = (draft, event) => {
+  const her = subjectOf(draft, event.holderId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, result: str(event.result) ?? '', physics: str(event.physicsId) ?? '' } } : null;
+};
+registerMemoryResolver('physics_outcome', holder, { ids: ['her'], vars: ['name', 'result', 'physics'] });
+registerMemoryResolver('physics_caught', holder, { ids: ['her'], vars: ['name', 'result', 'physics'] });
+
+// ---------------------------------------------------------------------------------------------
 // what she taught the commander (P14c): the first time a hobby is taught; her other hobby events are facts written at their sites
 
 registerMemoryResolver('hobby_taught', (draft, event, reg) => {

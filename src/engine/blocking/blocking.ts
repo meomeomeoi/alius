@@ -444,3 +444,11 @@ export function removeSource(draft: CampaignState, kind: 'contact' | 'item', id:
 export function hasSource(scene: Pick<SceneRecord, 'blocking'> | undefined, kind: 'contact' | 'item', id: string): boolean {
   return Object.values(scene?.blocking ?? {}).some((b) => (kind === 'contact' ? b.contact?.id === id : Object.values(b.worn ?? {}).some((w) => w?.id === id)));
 }
+
+/** Takes a person's activity away quietly (no gate, no log, no event): she woke, or it ended. */
+export function unsetActivity(draft: CampaignState, personId: string): void {
+  const rec = draft.scene?.blocking?.[personId];
+  if (!rec) return;
+  delete rec.activity;
+  tidy(draft);
+}
