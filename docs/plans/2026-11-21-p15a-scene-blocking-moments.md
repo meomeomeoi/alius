@@ -639,7 +639,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - activities with `attention`, `pairTags`, `fits`, `presence`, `judged` and `sources`;
   - `fromActivities`: `repairing_gear` ← `workshop`; `working_out` ← `train`; `tending_own_wound` ← `medbay`; `eating` ← `mess`; `reading_book` ← `study`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `ids match blocking.md §3.1–§3.5, §4, §5` (and §3.6 is absent).
   - `weight-bearing contacts declare implies`: `human_chair`, `footrest`, `standing_on`, `straddled`, `under_her_seat`, `feet_on_face` and `on_lap` (spec §2.2).
   - `scope by section`: §3.1–§3.3 and §3.5 are `dynamic`; §3.4 is `any`; the "inside a dynamic" activities and every commander service activity are `dynamic`.
@@ -649,10 +649,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `kneeling_between_legs` has `escalation nudge_with_foot`, `visibility hiddenFromDoor`, `backdrop frame_under_desk`, `requires desk` and `sources { third_party: 1, remote: 1 }`.
   - `the reference case`: `on_comms` has `attention elsewhere`, `pairTags [focused]` and `sources { remote: 2 }`.
   - `mouth contacts`: `foot_worship`, `boot_worship`, `sole_to_mouth`, `oral_service` and `face_in_her_neck` carry `mouth: true`.
-- [ ] **Step 2: Run** `npx vitest run tests/content/blockingContacts.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as data, with the R4 notes.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): contacts and activities as data`
+- [x] **Step 2: Run** `npx vitest run tests/content/blockingContacts.test.ts` → FAIL.
+- [x] **Step 3: Implement** as data, with the R4 notes.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): contacts and activities as data`
 
 ---
 

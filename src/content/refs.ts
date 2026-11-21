@@ -1017,7 +1017,7 @@ registerChecks('habits', (entry) => {
 
 // ---------------------------------------------------------------------------------------------
 // P15a: the scene blocking, moment and physics registries point at each other by id (never by position). Every name must exist, a furniture
-// anchor needs an affordance some plan room has, and a pastime's `momentSources` are sources open to everyone (scope `any`).
+// anchor needs an affordance some plan room has, and the P14c hand-offs hold (below).
 
 type Regs = Record<RegistryName, Map<string, Entry>>;
 const known = (regs: Regs, registry: RegistryName, id: unknown, path: string, label: string): RegistryCheck[] =>
@@ -1075,8 +1075,15 @@ registerChecks('contactPhysics', (entry, regs) =>
   Array.isArray(entry.chains) ? (entry.chains as Array<{ to?: unknown }>).flatMap((c, i) => known(regs, 'contactPhysics', c.to, `chains[${i}].to`, 'contact physics')) : []);
 registerChecks('physicsCues', (entry, regs) => knownEach(regs, 'contactPhysics', entry.physics, 'physics', 'contact physics'));
 
-// P14c hand-off: a pastime's `momentSources` are sources open to everyone (scope `any`). (The other one, a hobby's `activityIds` being her
-// activities, is checked from Task 4 on, when the core pack has them.)
+// P14c hand-offs: a hobby's `activityIds` are activities SHE does, a pastime's `momentSources` are sources open to everyone (scope `any`).
+registerChecks('hobbies', (entry, regs) => {
+  if (!Array.isArray(entry.activityIds)) return [];
+  return (entry.activityIds as unknown[]).flatMap((id, i) => {
+    const a = regs.blockingActivities.get(String(id));
+    if (a === undefined) return [{ path: `activityIds[${i}]`, message: `unknown blocking activity "${String(id)}"` }];
+    return a.actor === 'her' ? [] : [{ path: `activityIds[${i}]`, message: `"${String(id)}" is an activity of the commander; a hobby is something she does` }];
+  });
+});
 registerChecks('pastimes', (entry, regs) =>
   Array.isArray(entry.momentSources)
     ? (entry.momentSources as unknown[]).flatMap((id, i) => {

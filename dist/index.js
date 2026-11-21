@@ -52286,6 +52286,14 @@ registerChecks("blockingActivities", (entry, regs) => [
 ]);
 registerChecks("contactPhysics", (entry, regs) => Array.isArray(entry.chains) ? entry.chains.flatMap((c, i) => known(regs, "contactPhysics", c.to, `chains[${i}].to`, "contact physics")) : []);
 registerChecks("physicsCues", (entry, regs) => knownEach(regs, "contactPhysics", entry.physics, "physics", "contact physics"));
+registerChecks("hobbies", (entry, regs) => {
+  if (!Array.isArray(entry.activityIds)) return [];
+  return entry.activityIds.flatMap((id, i) => {
+    const a = regs.blockingActivities.get(String(id));
+    if (a === void 0) return [{ path: `activityIds[${i}]`, message: `unknown blocking activity "${String(id)}"` }];
+    return a.actor === "her" ? [] : [{ path: `activityIds[${i}]`, message: `"${String(id)}" is an activity of the commander; a hobby is something she does` }];
+  });
+});
 registerChecks("pastimes", (entry, regs) => Array.isArray(entry.momentSources) ? entry.momentSources.flatMap((id, i) => {
   const s = regs.momentSources.get(String(id));
   if (s === void 0) return [{ path: `momentSources[${i}]`, message: `unknown moment source "${String(id)}"` }];

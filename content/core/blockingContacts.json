@@ -1,1 +1,1159 @@
-[]
+[
+  {
+    "id": "smothered_armpit",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "restraint"
+    ],
+    "dir": "her",
+    "target": [
+      "armpits"
+    ],
+    "implies": {
+      "receiver": {
+        "anchor": "on_person"
+      }
+    },
+    "physics": [
+      {
+        "id": "breath",
+        "seal": [
+          "firm",
+          "leaky"
+        ]
+      },
+      {
+        "id": "saturation"
+      }
+    ],
+    "label": "Smothered armpit",
+    "description": "AUTHOR TO WRITE: She presses the commander's face into her armpit.",
+    "promptHint": "her armpit pressed over the commander's face",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "muffled"
+      },
+      {
+        "type": "perception",
+        "self": "obscured"
+      },
+      {
+        "type": "sensory",
+        "kind": "scent",
+        "intensity": "high"
+      },
+      {
+        "type": "camera",
+        "mode": "pov_dark"
+      },
+      {
+        "type": "escalation",
+        "verb": "tighten_hold"
+      },
+      {
+        "type": "device",
+        "lock": "tabs"
+      }
+    ]
+  },
+  {
+    "id": "smothered_breasts",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "explicit_scenes",
+      "restraint"
+    ],
+    "dir": "her",
+    "target": [
+      "breasts"
+    ],
+    "implies": {
+      "receiver": {
+        "anchor": "on_person"
+      }
+    },
+    "physics": [
+      {
+        "id": "breath",
+        "seal": [
+          "tight",
+          "firm"
+        ]
+      }
+    ],
+    "label": "Smothered breasts",
+    "description": "AUTHOR TO WRITE: Face pressed between her breasts.",
+    "promptHint": "the commander's face pressed between her breasts",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "muffled"
+      },
+      {
+        "type": "camera",
+        "mode": "pov_dark"
+      },
+      {
+        "type": "escalation",
+        "verb": "tighten_hold"
+      },
+      {
+        "type": "device",
+        "lock": "tabs"
+      }
+    ]
+  },
+  {
+    "id": "under_her_seat",
+    "scope": "dynamic",
+    "contentTags": [
+      "objectification",
+      "restraint"
+    ],
+    "dir": "her",
+    "target": [
+      "bottom"
+    ],
+    "implies": {
+      "actor": {
+        "posture": "sitting",
+        "anchor": "on_person"
+      },
+      "receiver": {
+        "posture": "lying_back"
+      }
+    },
+    "physics": [
+      {
+        "id": "breath",
+        "seal": [
+          "tight",
+          "firm"
+        ]
+      },
+      {
+        "id": "her_activity"
+      }
+    ],
+    "label": "Under her seat",
+    "description": "AUTHOR TO WRITE: She sits on the commander's face as on a cushion, busy with her own thing.",
+    "promptHint": "she sits on the commander's face, busy with her own thing",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "no_speech"
+      },
+      {
+        "type": "perception",
+        "self": "obscured"
+      },
+      {
+        "type": "camera",
+        "mode": "pov_dark"
+      },
+      {
+        "type": "escalation",
+        "verb": "shift_weight"
+      },
+      {
+        "type": "device",
+        "lock": "tabs"
+      }
+    ]
+  },
+  {
+    "id": "face_to_bottom",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "explicit_scenes",
+      "humiliation"
+    ],
+    "dir": "commander",
+    "target": [
+      "bottom"
+    ],
+    "implies": {
+      "actor": {
+        "anchor": "behind_her"
+      }
+    },
+    "physics": [
+      {
+        "id": "breath",
+        "seal": [
+          "firm"
+        ]
+      },
+      {
+        "id": "saturation"
+      }
+    ],
+    "label": "Face to bottom",
+    "description": "AUTHOR TO WRITE: The commander's face to her bottom.",
+    "promptHint": "the commander's face against her bottom",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "no_speech"
+      },
+      {
+        "type": "camera",
+        "mode": "pov_dark"
+      }
+    ]
+  },
+  {
+    "id": "feet_on_face",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "humiliation"
+    ],
+    "dir": "her",
+    "target": [
+      "soles"
+    ],
+    "implies": {
+      "actor": {
+        "posture": "lying_back",
+        "anchor": "on_bunk"
+      },
+      "receiver": {
+        "posture": "lying_back",
+        "anchor": "beside_bunk"
+      }
+    },
+    "requires": {
+      "affordances": [
+        "bunk"
+      ]
+    },
+    "physics": [
+      {
+        "id": "saturation"
+      },
+      {
+        "id": "her_activity"
+      }
+    ],
+    "label": "Feet on face",
+    "description": "AUTHOR TO WRITE: She lies on the bunk, her feet resting on the commander's face, reading or on the PDA.",
+    "promptHint": "she lies on her bunk, her feet resting on the commander's face",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_dark"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "feet_overhead"
+      }
+    ]
+  },
+  {
+    "id": "foot_on_head",
+    "scope": "dynamic",
+    "contentTags": [
+      "humiliation"
+    ],
+    "dir": "her",
+    "target": [
+      "feet"
+    ],
+    "implies": {
+      "receiver": {
+        "posture": "bowing"
+      }
+    },
+    "label": "Foot on head",
+    "description": "AUTHOR TO WRITE: Her foot pressing the commander's head down.",
+    "promptHint": "her foot presses the commander's head down",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_floor"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "feet_overhead"
+      },
+      {
+        "type": "escalation",
+        "verb": "press"
+      }
+    ]
+  },
+  {
+    "id": "sole_to_mouth",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "humiliation"
+    ],
+    "dir": "her",
+    "target": [
+      "soles",
+      "toes"
+    ],
+    "implies": {
+      "actor": {
+        "posture": "sitting"
+      },
+      "receiver": {
+        "posture": "kneeling_upright"
+      }
+    },
+    "physics": [
+      {
+        "id": "jaw"
+      }
+    ],
+    "mouth": true,
+    "label": "Sole to mouth",
+    "description": "AUTHOR TO WRITE: Her sole at the commander's lips.",
+    "promptHint": "her sole at the commander's lips",
+    "effects": [
+      {
+        "type": "input",
+        "limit": "no_speech"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "feet_dangling"
+      }
+    ]
+  },
+  {
+    "id": "foot_worship",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship"
+    ],
+    "dir": "commander",
+    "target": [
+      "feet",
+      "toes"
+    ],
+    "implies": {
+      "actor": {
+        "posture": "kneeling_upright"
+      },
+      "receiver": {
+        "posture": "sitting"
+      }
+    },
+    "mouth": true,
+    "label": "Foot worship",
+    "description": "AUTHOR TO WRITE: Kissing and worshipping her feet.",
+    "promptHint": "the commander worships her feet",
+    "effects": [
+      {
+        "type": "pose_shot",
+        "kind": "feet_dangling"
+      }
+    ]
+  },
+  {
+    "id": "boot_worship",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "humiliation"
+    ],
+    "dir": "commander",
+    "target": [
+      "boots"
+    ],
+    "implies": {
+      "actor": {
+        "posture": "kneeling_upright"
+      }
+    },
+    "physics": [
+      {
+        "id": "tongue_work"
+      }
+    ],
+    "mouth": true,
+    "label": "Boot worship",
+    "description": "AUTHOR TO WRITE: Lips to her boots; dirty after a run.",
+    "promptHint": "the commander's lips on her boots",
+    "effects": [
+      {
+        "type": "pose_shot",
+        "kind": "legs_standing"
+      }
+    ]
+  },
+  {
+    "id": "oral_service",
+    "scope": "dynamic",
+    "contentTags": [
+      "worship",
+      "explicit_scenes",
+      "service"
+    ],
+    "dir": "commander",
+    "target": [
+      "genitalia"
+    ],
+    "implies": {
+      "actor": {
+        "posture": "kneeling_upright"
+      }
+    },
+    "physics": [
+      {
+        "id": "jaw"
+      }
+    ],
+    "mouth": true,
+    "label": "Oral service",
+    "description": "AUTHOR TO WRITE: Service with the mouth, she leads.",
+    "promptHint": "service with the mouth, at her lead"
+  },
+  {
+    "id": "kneeling_between_legs",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "commander",
+    "implies": {
+      "actor": {
+        "posture": "kneeling_upright",
+        "anchor": "under_desk"
+      },
+      "receiver": {
+        "posture": "sitting",
+        "anchor": "at_desk"
+      }
+    },
+    "requires": {
+      "affordances": [
+        "desk"
+      ]
+    },
+    "sources": {
+      "third_party": 1,
+      "remote": 1
+    },
+    "label": "Kneeling between legs",
+    "description": "AUTHOR TO WRITE: The author's reference case: under her desk, between her knees.",
+    "promptHint": "under her desk, between her knees",
+    "effects": [
+      {
+        "type": "backdrop",
+        "id": "frame_under_desk"
+      },
+      {
+        "type": "visibility",
+        "hiddenFromDoor": true
+      },
+      {
+        "type": "escalation",
+        "verb": "nudge_with_foot"
+      }
+    ]
+  },
+  {
+    "id": "footrest",
+    "scope": "dynamic",
+    "contentTags": [
+      "objectification"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "sitting"
+      },
+      "receiver": {
+        "posture": "all_fours"
+      }
+    },
+    "physics": [
+      {
+        "id": "weight"
+      }
+    ],
+    "label": "Footrest",
+    "description": "AUTHOR TO WRITE: Her feet resting on the commander's back.",
+    "promptHint": "her feet rest on the commander's back",
+    "effects": [
+      {
+        "type": "strain",
+        "condition": "stillness",
+        "rate": 1
+      },
+      {
+        "type": "camera",
+        "mode": "ignored"
+      }
+    ]
+  },
+  {
+    "id": "human_chair",
+    "scope": "dynamic",
+    "contentTags": [
+      "objectification"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "sitting",
+        "anchor": "on_person"
+      },
+      "receiver": {
+        "posture": "all_fours"
+      }
+    },
+    "physics": [
+      {
+        "id": "weight"
+      }
+    ],
+    "label": "Human chair",
+    "description": "AUTHOR TO WRITE: She sits on the commander.",
+    "promptHint": "she sits on the commander as on a chair",
+    "effects": [
+      {
+        "type": "strain",
+        "condition": "stillness",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "standing_on",
+    "scope": "dynamic",
+    "contentTags": [
+      "pain_rough",
+      "objectification"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "standing",
+        "anchor": "on_person"
+      },
+      "receiver": {
+        "posture": "lying_front"
+      }
+    },
+    "physics": [
+      {
+        "id": "weight"
+      }
+    ],
+    "label": "Standing on",
+    "description": "AUTHOR TO WRITE: She stands on the commander's back.",
+    "promptHint": "she stands on the commander's back",
+    "effects": [
+      {
+        "type": "escalation",
+        "verb": "shift_weight"
+      }
+    ]
+  },
+  {
+    "id": "straddled",
+    "scope": "dynamic",
+    "contentTags": [
+      "restraint"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "sitting",
+        "anchor": "on_person"
+      },
+      "receiver": {
+        "posture": "lying_back"
+      }
+    },
+    "label": "Straddled",
+    "description": "AUTHOR TO WRITE: She sits astride the chest pinning the arms.",
+    "promptHint": "she sits astride the chest, pinning the arms",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "none"
+      },
+      {
+        "type": "camera",
+        "mode": "from_below"
+      },
+      {
+        "type": "escalation",
+        "verb": "shift_weight"
+      }
+    ]
+  },
+  {
+    "id": "boot_on_chest",
+    "scope": "dynamic",
+    "contentTags": [
+      "humiliation",
+      "pain_rough"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "standing"
+      },
+      "receiver": {
+        "posture": "lying_back"
+      }
+    },
+    "physics": [
+      {
+        "id": "weight"
+      }
+    ],
+    "label": "Boot on chest",
+    "description": "AUTHOR TO WRITE: Her boot on the commander's chest.",
+    "promptHint": "her boot on the commander's chest",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "from_below"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "from_below"
+      }
+    ]
+  },
+  {
+    "id": "on_hands",
+    "scope": "dynamic",
+    "contentTags": [
+      "humiliation",
+      "pain_rough"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "standing"
+      },
+      "receiver": {
+        "posture": "kneeling_upright"
+      }
+    },
+    "physics": [
+      {
+        "id": "weight",
+        "pressure": 0.5
+      }
+    ],
+    "label": "On hands",
+    "description": "AUTHOR TO WRITE: Her foot on the commander's open palms.",
+    "promptHint": "her foot on the commander's open palms",
+    "effects": [
+      {
+        "type": "escalation",
+        "verb": "shift_weight"
+      }
+    ]
+  },
+  {
+    "id": "between_thighs",
+    "scope": "dynamic",
+    "contentTags": [
+      "restraint",
+      "pain_rough"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "sitting"
+      }
+    },
+    "physics": [
+      {
+        "id": "breath",
+        "seal": [
+          "leaky"
+        ],
+        "pressure": 0.5
+      },
+      {
+        "id": "weight"
+      }
+    ],
+    "label": "Between thighs",
+    "description": "AUTHOR TO WRITE: Head locked between her thighs.",
+    "promptHint": "the commander's head locked between her thighs",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "none"
+      },
+      {
+        "type": "input",
+        "limit": "muffled"
+      },
+      {
+        "type": "escalation",
+        "verb": "squeeze"
+      },
+      {
+        "type": "pose_shot",
+        "kind": "legs_seated"
+      }
+    ]
+  },
+  {
+    "id": "held_by_hair",
+    "scope": "dynamic",
+    "contentTags": [
+      "pain_rough"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "standing"
+      },
+      "receiver": {
+        "posture": "kneeling_upright"
+      }
+    },
+    "label": "Held by hair",
+    "description": "AUTHOR TO WRITE: She holds the commander by the hair, face up to hers.",
+    "promptHint": "she holds the commander by the hair, face up to hers",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "face_close"
+      },
+      {
+        "type": "escalation",
+        "verb": "tug_hair"
+      }
+    ]
+  },
+  {
+    "id": "pinned_to_wall",
+    "scope": "dynamic",
+    "contentTags": [
+      "restraint"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "standing"
+      },
+      "receiver": {
+        "posture": "standing",
+        "anchor": "by_wall"
+      }
+    },
+    "label": "Pinned to wall",
+    "description": "AUTHOR TO WRITE: She pins the commander to the wall.",
+    "promptHint": "she pins the commander to the wall",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "none"
+      },
+      {
+        "type": "camera",
+        "mode": "face_close"
+      },
+      {
+        "type": "escalation",
+        "verb": "press_harder"
+      }
+    ]
+  },
+  {
+    "id": "knee_on_back",
+    "scope": "dynamic",
+    "contentTags": [
+      "restraint",
+      "pain_rough"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "kneeling_upright",
+        "anchor": "on_person"
+      },
+      "receiver": {
+        "posture": "lying_front"
+      }
+    },
+    "physics": [
+      {
+        "id": "weight"
+      }
+    ],
+    "label": "Knee on back",
+    "description": "AUTHOR TO WRITE: Her knee on the commander's back.",
+    "promptHint": "her knee on the commander's back",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "pov_floor"
+      },
+      {
+        "type": "mobility",
+        "level": "none"
+      }
+    ]
+  },
+  {
+    "id": "over_her_knee",
+    "scope": "dynamic",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "dir": "her",
+    "implies": {
+      "actor": {
+        "posture": "sitting"
+      },
+      "receiver": {
+        "posture": "lying_front",
+        "anchor": "on_person"
+      }
+    },
+    "label": "Over her knee",
+    "description": "AUTHOR TO WRITE: The position for a punishment.",
+    "promptHint": "the commander lies across her lap for a punishment",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "ignored"
+      }
+    ]
+  },
+  {
+    "id": "tied_to_bedpost",
+    "scope": "dynamic",
+    "contentTags": [
+      "restraint"
+    ],
+    "dir": "her",
+    "implies": {
+      "receiver": {
+        "anchor": "beside_bunk"
+      }
+    },
+    "requires": {
+      "affordances": [
+        "bunk"
+      ]
+    },
+    "sources": {
+      "her_absence": 1,
+      "time": 1
+    },
+    "label": "Tied to bedpost",
+    "description": "AUTHOR TO WRITE: Tied to her bunk.",
+    "promptHint": "the commander is tied to her bunk",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "none"
+      }
+    ]
+  },
+  {
+    "id": "tethered",
+    "scope": "dynamic",
+    "contentTags": [
+      "restraint",
+      "pet_play"
+    ],
+    "dir": "her",
+    "sources": {
+      "time": 1,
+      "third_party": 1
+    },
+    "label": "Tethered",
+    "description": "AUTHOR TO WRITE: Left tethered, she is not there.",
+    "promptHint": "the commander is tethered to furniture",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "none"
+      }
+    ]
+  },
+  {
+    "id": "crawling_on_leash",
+    "scope": "dynamic",
+    "contentTags": [
+      "pet_play"
+    ],
+    "dir": "her",
+    "implies": {
+      "receiver": {
+        "posture": "all_fours",
+        "anchor": "beside_her"
+      }
+    },
+    "sources": {
+      "third_party": 1
+    },
+    "label": "Crawling on a lead",
+    "description": "AUTHOR TO WRITE: Led on the lead.",
+    "promptHint": "the commander crawls after her on a lead",
+    "effects": [
+      {
+        "type": "mobility",
+        "level": "crawl"
+      },
+      {
+        "type": "escalation",
+        "verb": "tug_leash"
+      }
+    ]
+  },
+  {
+    "id": "chin_lifted",
+    "scope": "dynamic",
+    "dir": "her",
+    "label": "Chin lifted",
+    "description": "AUTHOR TO WRITE: Her finger under the chin.",
+    "promptHint": "her finger under the commander's chin",
+    "effects": [
+      {
+        "type": "camera",
+        "mode": "face_close"
+      }
+    ]
+  },
+  {
+    "id": "head_pushed_down",
+    "scope": "dynamic",
+    "dir": "her",
+    "label": "Head pushed down",
+    "description": "AUTHOR TO WRITE: Her hand on the head pushing down.",
+    "promptHint": "her hand pushes the commander's head down"
+  },
+  {
+    "id": "cheek_on_her_thigh",
+    "scope": "dynamic",
+    "dir": "commander",
+    "label": "Cheek on her thigh",
+    "description": "AUTHOR TO WRITE: At her feet, cheek on her thigh.",
+    "promptHint": "the commander's cheek on her thigh",
+    "effects": [
+      {
+        "type": "pose_shot",
+        "kind": "legs_seated"
+      }
+    ]
+  },
+  {
+    "id": "step_behind",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "none",
+    "label": "Step behind",
+    "description": "AUTHOR TO WRITE: One step behind her before everyone.",
+    "promptHint": "the commander a step behind her"
+  },
+  {
+    "id": "kneeling_at_door",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "none",
+    "sources": {
+      "time": 1
+    },
+    "label": "Kneeling at door",
+    "description": "AUTHOR TO WRITE: Waiting at her door.",
+    "promptHint": "the commander kneels waiting at her door"
+  },
+  {
+    "id": "holding_hands",
+    "scope": "any",
+    "dir": "either",
+    "label": "Holding hands",
+    "description": "AUTHOR TO WRITE: Hands held.",
+    "promptHint": "holding hands"
+  },
+  {
+    "id": "spooning",
+    "scope": "any",
+    "dir": "either",
+    "label": "Spooning",
+    "description": "AUTHOR TO WRITE: Lying together, who is behind set by direction.",
+    "promptHint": "lying together, spooned"
+  },
+  {
+    "id": "on_lap",
+    "scope": "any",
+    "dir": "either",
+    "implies": {
+      "actor": {
+        "posture": "sitting"
+      },
+      "receiver": {
+        "posture": "sitting",
+        "anchor": "on_person"
+      }
+    },
+    "label": "On lap",
+    "description": "AUTHOR TO WRITE: One on the other's lap.",
+    "promptHint": "on the other's lap"
+  },
+  {
+    "id": "forehead_to_forehead",
+    "scope": "any",
+    "dir": "none",
+    "label": "Forehead to forehead",
+    "description": "AUTHOR TO WRITE: Foreheads together.",
+    "promptHint": "foreheads together"
+  },
+  {
+    "id": "back_to_back",
+    "scope": "any",
+    "dir": "none",
+    "label": "Back to back",
+    "description": "AUTHOR TO WRITE: Back to back, guarding.",
+    "promptHint": "back to back"
+  },
+  {
+    "id": "carrying",
+    "scope": "any",
+    "dir": "either",
+    "label": "Carrying",
+    "description": "AUTHOR TO WRITE: She carries the wounded commander, or the reverse.",
+    "promptHint": "carrying the other"
+  },
+  {
+    "id": "tending_wounds",
+    "scope": "any",
+    "dir": "either",
+    "label": "Tending wounds",
+    "description": "AUTHOR TO WRITE: Bandaging.",
+    "promptHint": "bandaging a wound"
+  },
+  {
+    "id": "foot_rub",
+    "scope": "any",
+    "dir": "commander",
+    "stimuli": [
+      "scent_feet"
+    ],
+    "label": "Foot rub",
+    "description": "AUTHOR TO WRITE: Rubbing her feet.",
+    "promptHint": "the commander rubs her feet"
+  },
+  {
+    "id": "hair_brushing",
+    "scope": "any",
+    "dir": "either",
+    "label": "Hair brushing",
+    "description": "AUTHOR TO WRITE: Brushing hair.",
+    "promptHint": "brushing hair"
+  },
+  {
+    "id": "hand_feeding",
+    "scope": "any",
+    "dir": "either",
+    "label": "Hand feeding",
+    "description": "AUTHOR TO WRITE: Feeding by hand.",
+    "promptHint": "feeding by hand"
+  },
+  {
+    "id": "reading_to_her",
+    "scope": "any",
+    "dir": "commander",
+    "label": "Reading to her",
+    "description": "AUTHOR TO WRITE: Reading aloud while she lies.",
+    "promptHint": "the commander reads aloud to her"
+  },
+  {
+    "id": "hand_over_mouth",
+    "scope": "any",
+    "dir": "her",
+    "label": "Hand over mouth",
+    "description": "AUTHOR TO WRITE: She covers the commander's mouth when someone enters.",
+    "promptHint": "her hand over the commander's mouth"
+  },
+  {
+    "id": "face_in_her_neck",
+    "scope": "any",
+    "dir": "commander",
+    "stimuli": [
+      "scent_body"
+    ],
+    "mouth": true,
+    "label": "Face in her neck",
+    "description": "AUTHOR TO WRITE: Face at her neck, her scent.",
+    "promptHint": "the commander's face at her neck"
+  },
+  {
+    "id": "dressing_her",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "commander",
+    "label": "Dressing her",
+    "description": "AUTHOR TO WRITE: Fastening her armor, lacing her boots before a sortie.",
+    "promptHint": "the commander dresses her"
+  },
+  {
+    "id": "undressing_her",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "commander",
+    "label": "Undressing her",
+    "description": "AUTHOR TO WRITE: Taking off her boots and uniform.",
+    "promptHint": "the commander undresses her"
+  },
+  {
+    "id": "bathing_her",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "commander",
+    "requires": {
+      "affordances": [
+        "water"
+      ]
+    },
+    "label": "Bathing her",
+    "description": "AUTHOR TO WRITE: Washing her.",
+    "promptHint": "the commander bathes her"
+  },
+  {
+    "id": "painting_her_nails",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "commander",
+    "label": "Painting her nails",
+    "description": "AUTHOR TO WRITE: Painting her nails, hands or feet.",
+    "promptHint": "the commander paints her nails"
+  },
+  {
+    "id": "massaging_shoulders",
+    "scope": "dynamic",
+    "contentTags": [
+      "service"
+    ],
+    "dir": "commander",
+    "label": "Massaging shoulders",
+    "description": "AUTHOR TO WRITE: Shoulders while she reads or writes.",
+    "promptHint": "the commander massages her shoulders"
+  }
+]

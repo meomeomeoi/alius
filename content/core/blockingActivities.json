@@ -1,1 +1,924 @@
-[]
+[
+  {
+    "id": "attending",
+    "scope": "any",
+    "actor": "her",
+    "attention": "on_commander",
+    "label": "Attending",
+    "description": "AUTHOR TO WRITE: Fully on the commander; the default in a two-person scene without an outside reason.",
+    "promptHint": "attending"
+  },
+  {
+    "id": "idle",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Idle",
+    "description": "AUTHOR TO WRITE: Nothing in particular.",
+    "promptHint": "idle"
+  },
+  {
+    "id": "reading_reports",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "impliedPosture": "sitting",
+    "pairTags": [
+      "focused"
+    ],
+    "sources": {
+      "her_silence": 1,
+      "endurance": 1
+    },
+    "label": "Reading reports",
+    "description": "AUTHOR TO WRITE: The best point for \"while she works\"; her_silence, endurance.",
+    "promptHint": "reading reports"
+  },
+  {
+    "id": "writing_report",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "impliedPosture": "sitting",
+    "pairTags": [
+      "focused"
+    ],
+    "sources": {
+      "object_at_hand": 1
+    },
+    "label": "Writing report",
+    "description": "AUTHOR TO WRITE: Can be distracted, she dislikes it; maybe she writes about the commander (object_at_hand).",
+    "promptHint": "writing report"
+  },
+  {
+    "id": "on_comms",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "impliedPosture": "sitting",
+    "pairTags": [
+      "focused"
+    ],
+    "sources": {
+      "remote": 2
+    },
+    "label": "On comms",
+    "description": "AUTHOR TO WRITE: With oversight or another unit; silence required, every sound is heard on the line; remote.",
+    "promptHint": "on comms"
+  },
+  {
+    "id": "leading_briefing",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Leading briefing",
+    "description": "AUTHOR TO WRITE: Before everyone; the commander beside her or under the table.",
+    "promptHint": "leading briefing"
+  },
+  {
+    "id": "cleaning_weapon",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Cleaning weapon",
+    "description": "AUTHOR TO WRITE: Calm; hands busy, talks readily.",
+    "promptHint": "cleaning weapon"
+  },
+  {
+    "id": "repairing_gear",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "focused"
+    ],
+    "fromActivities": [
+      "workshop"
+    ],
+    "label": "Repairing gear",
+    "description": "AUTHOR TO WRITE: The commander can help (handing tools = soft service).",
+    "promptHint": "repairing gear"
+  },
+  {
+    "id": "planning_map",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Planning map",
+    "description": "AUTHOR TO WRITE: Asks the commander's opinion, or pointedly does not.",
+    "promptHint": "planning map"
+  },
+  {
+    "id": "on_watch",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "interruptible": false,
+    "impliedPosture": "standing",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "On watch",
+    "description": "AUTHOR TO WRITE: Night, roof; no distraction allowed, only quiet.",
+    "promptHint": "on watch"
+  },
+  {
+    "id": "showering",
+    "scope": "any",
+    "actor": "her",
+    "attention": "none",
+    "impliedPosture": "standing",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Showering",
+    "description": "AUTHOR TO WRITE: The commander waits, hands a towel, or comes in on order; later with water.",
+    "promptHint": "showering"
+  },
+  {
+    "id": "changing_clothes",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Changing clothes",
+    "description": "AUTHOR TO WRITE: Her things, her scent; an opening for worship.",
+    "promptHint": "changing clothes"
+  },
+  {
+    "id": "taking_off_boots",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "impliedPosture": "sitting",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Taking off boots",
+    "description": "AUTHOR TO WRITE: After a run; a natural entry into foot_rub / boot_worship.",
+    "promptHint": "taking off boots"
+  },
+  {
+    "id": "stretching",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "impliedPosture": "standing",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Stretching",
+    "description": "AUTHOR TO WRITE: After training the scent is stronger.",
+    "promptHint": "stretching"
+  },
+  {
+    "id": "working_out",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "impliedPosture": "standing",
+    "pairTags": [
+      "body"
+    ],
+    "fromActivities": [
+      "train"
+    ],
+    "label": "Working out",
+    "description": "AUTHOR TO WRITE: Sweat; the mirror (future).",
+    "promptHint": "working out"
+  },
+  {
+    "id": "cooling_down",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Cooling down",
+    "description": "AUTHOR TO WRITE: Right after a run; tired, irritated or elated by the outcome.",
+    "promptHint": "cooling down"
+  },
+  {
+    "id": "tending_own_wound",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "body"
+    ],
+    "fromActivities": [
+      "medbay"
+    ],
+    "label": "Tending own wound",
+    "description": "AUTHOR TO WRITE: A real P4 wound; the commander offers help, she refuses proudly or accepts.",
+    "promptHint": "tending own wound"
+  },
+  {
+    "id": "doing_hair",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Doing hair",
+    "description": "AUTHOR TO WRITE: A bridge to hair_brushing.",
+    "promptHint": "doing hair"
+  },
+  {
+    "id": "reading_book",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "fromActivities": [
+      "study"
+    ],
+    "label": "Reading book",
+    "description": "AUTHOR TO WRITE: What she reads is part of her; \"don't disturb\" or \"read to me\".",
+    "promptHint": "reading book"
+  },
+  {
+    "id": "playing_cards",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Playing cards",
+    "description": "AUTHOR TO WRITE: A friend present (aware); P9c wagers; footrest / human_chair.",
+    "promptHint": "playing cards"
+  },
+  {
+    "id": "music",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Music",
+    "description": "AUTHOR TO WRITE: Headphones: does not hear the commander come in.",
+    "promptHint": "music"
+  },
+  {
+    "id": "eating",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "fromActivities": [
+      "mess"
+    ],
+    "label": "Eating",
+    "description": "AUTHOR TO WRITE: Mess or her quarters; hand feeding, tasting first (P17b).",
+    "promptHint": "eating"
+  },
+  {
+    "id": "drinking",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "sources": {
+      "her_weakness": 1,
+      "her_affection": 1
+    },
+    "label": "Drinking",
+    "description": "AUTHOR TO WRITE: Lowers her restraint: her_weakness, her_affection more likely.",
+    "promptHint": "drinking"
+  },
+  {
+    "id": "smoking",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Smoking",
+    "description": "AUTHOR TO WRITE: Roof, night; quiet talks.",
+    "promptHint": "smoking"
+  },
+  {
+    "id": "chatting_on_pda",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "sources": {
+      "her_jealousy": 1
+    },
+    "label": "Chatting on pda",
+    "description": "AUTHOR TO WRITE: Smiles at the screen: her_jealousy the other way between equals.",
+    "promptHint": "chatting on pda"
+  },
+  {
+    "id": "writing_journal",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Writing journal",
+    "description": "AUTHOR TO WRITE: Closes it when the commander enters.",
+    "promptHint": "writing journal"
+  },
+  {
+    "id": "sketching",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Sketching",
+    "description": "AUTHOR TO WRITE: What she draws (maybe the commander).",
+    "promptHint": "sketching"
+  },
+  {
+    "id": "mending_clothes",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Mending clothes",
+    "description": "AUTHOR TO WRITE: Needle and thread; hands busy.",
+    "promptHint": "mending clothes"
+  },
+  {
+    "id": "tinkering",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Tinkering",
+    "description": "AUTHOR TO WRITE: Building something of her own; a secret until done.",
+    "promptHint": "tinkering"
+  },
+  {
+    "id": "caring_for_plant",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Caring for plant",
+    "description": "AUTHOR TO WRITE: A Bloom-free plant in a dead world; vulnerable softness.",
+    "promptHint": "caring for plant"
+  },
+  {
+    "id": "playing_instrument",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Playing instrument",
+    "description": "AUTHOR TO WRITE: Shy if walked in on at the wrong moment (also singing).",
+    "promptHint": "playing instrument"
+  },
+  {
+    "id": "sleeping",
+    "scope": "any",
+    "actor": "her",
+    "attention": "none",
+    "impliedPosture": "lying_side",
+    "pairTags": [
+      "asleep"
+    ],
+    "sources": {
+      "time": 1
+    },
+    "label": "Sleeping",
+    "description": "AUTHOR TO WRITE: The commander tethered or at her bunk; source time; her waking is a moment.",
+    "promptHint": "sleeping"
+  },
+  {
+    "id": "dozing",
+    "scope": "any",
+    "actor": "her",
+    "attention": "none",
+    "pairTags": [
+      "asleep"
+    ],
+    "label": "Dozing",
+    "description": "AUTHOR TO WRITE: On_shoulder, head_in_lap; wake her or not.",
+    "promptHint": "dozing"
+  },
+  {
+    "id": "restless",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "label": "Restless",
+    "description": "AUTHOR TO WRITE: Cannot sleep, a nightmare (P12); comfort.",
+    "promptHint": "restless"
+  },
+  {
+    "id": "sick",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Sick",
+    "description": "AUTHOR TO WRITE: Fever, Bloom; roles soften.",
+    "promptHint": "sick"
+  },
+  {
+    "id": "firmware_flash",
+    "scope": "any",
+    "actor": "her",
+    "attention": "none",
+    "interruptible": false,
+    "label": "Firmware flash",
+    "description": "AUTHOR TO WRITE: Being flashed; an hour motionless and offline; vulnerable; the commander there or not.",
+    "promptHint": "firmware flash"
+  },
+  {
+    "id": "implant_calibration",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Implant calibration",
+    "description": "AUTHOR TO WRITE: Leash implant calibration; unpleasant; who holds her hand.",
+    "promptHint": "implant calibration"
+  },
+  {
+    "id": "suppressant_dose",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Suppressant dose",
+    "description": "AUTHOR TO WRITE: A Bloom suppressant shot; irritable and nauseous after.",
+    "promptHint": "suppressant dose"
+  },
+  {
+    "id": "med_scan",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "body"
+    ],
+    "label": "Med scan",
+    "description": "AUTHOR TO WRITE: A corporate check-up; the commander outside or present as the commander.",
+    "promptHint": "med scan"
+  },
+  {
+    "id": "diagnostics_glitch",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "label": "Diagnostics glitch",
+    "description": "AUTHOR TO WRITE: A defect glitch (P4/P12); her behavior is odd, it is not mood.",
+    "promptHint": "diagnostics glitch"
+  },
+  {
+    "id": "mourning",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "label": "Mourning",
+    "description": "AUTHOR TO WRITE: For a fallen squadmate (a real P4 death); the commander is to blame or not.",
+    "promptHint": "mourning"
+  },
+  {
+    "id": "celebrating",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Celebrating",
+    "description": "AUTHOR TO WRITE: After a won mission; loud, she allows herself more.",
+    "promptHint": "celebrating"
+  },
+  {
+    "id": "pacing_angry",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "label": "Pacing angry",
+    "description": "AUTHOR TO WRITE: After a breakdown, a quarrel, an order; touching her is risky.",
+    "promptHint": "pacing angry"
+  },
+  {
+    "id": "crying_alone",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "sources": {
+      "her_weakness": 1
+    },
+    "label": "Crying alone",
+    "description": "AUTHOR TO WRITE: Found by chance; her_weakness, pride against comfort.",
+    "promptHint": "crying alone"
+  },
+  {
+    "id": "rereading_messages",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "label": "Rereading messages",
+    "description": "AUTHOR TO WRITE: Old messages of a vat sister or a former commander; closes the screen.",
+    "promptHint": "rereading messages"
+  },
+  {
+    "id": "training_rookie",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Training rookie",
+    "description": "AUTHOR TO WRITE: Strict with another; the commander sees her style from outside.",
+    "promptHint": "training rookie"
+  },
+  {
+    "id": "gossiping",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "relaxed"
+    ],
+    "label": "Gossiping",
+    "description": "AUTHOR TO WRITE: The mess; what she says about the commander.",
+    "promptHint": "gossiping"
+  },
+  {
+    "id": "arguing_with_unit",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "label": "Arguing with unit",
+    "description": "AUTHOR TO WRITE: A squad conflict; step in as the commander or as her person.",
+    "promptHint": "arguing with unit"
+  },
+  {
+    "id": "comforting_friend",
+    "scope": "any",
+    "actor": "her",
+    "attention": "elsewhere",
+    "label": "Comforting friend",
+    "description": "AUTHOR TO WRITE: The commander is extra here; leave or stay.",
+    "promptHint": "comforting friend"
+  },
+  {
+    "id": "pre_mission_nerves",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "label": "Pre mission nerves",
+    "description": "AUTHOR TO WRITE: Before a sortie; each fears in her own way.",
+    "promptHint": "pre mission nerves"
+  },
+  {
+    "id": "in_transit",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "sources": {
+      "remote": 1
+    },
+    "label": "In transit",
+    "description": "AUTHOR TO WRITE: In a vehicle cab, cramped, the radio (remote).",
+    "promptHint": "in transit"
+  },
+  {
+    "id": "camp_night",
+    "scope": "any",
+    "actor": "her",
+    "attention": "divided",
+    "label": "Camp night",
+    "description": "AUTHOR TO WRITE: A tent, thin walls, others asleep (0.3 and the P5 field).",
+    "promptHint": "camp night"
+  },
+  {
+    "id": "waiting_for_commander",
+    "scope": "any",
+    "actor": "her",
+    "attention": "on_commander",
+    "sources": {
+      "time": 1
+    },
+    "label": "Waiting for commander",
+    "description": "AUTHOR TO WRITE: The commander is late? time the other way.",
+    "promptHint": "waiting for commander"
+  },
+  {
+    "id": "inspecting",
+    "scope": "dynamic",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Inspecting",
+    "description": "AUTHOR TO WRITE: P17a inspection in progress.",
+    "promptHint": "inspecting"
+  },
+  {
+    "id": "writing_task",
+    "scope": "dynamic",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Writing task",
+    "description": "AUTHOR TO WRITE: Writing a task by hand (P10b); the commander waits.",
+    "promptHint": "writing task"
+  },
+  {
+    "id": "choosing_equipment",
+    "scope": "dynamic",
+    "actor": "her",
+    "attention": "elsewhere",
+    "pairTags": [
+      "focused"
+    ],
+    "label": "Choosing equipment",
+    "description": "AUTHOR TO WRITE: Choosing what to put on the commander; the commander waits and sees the choice.",
+    "promptHint": "choosing equipment"
+  },
+  {
+    "id": "ignoring",
+    "scope": "dynamic",
+    "actor": "her",
+    "attention": "elsewhere",
+    "sources": {
+      "her_silence": 1
+    },
+    "label": "Ignoring",
+    "description": "AUTHOR TO WRITE: P17b object time; busy with anything, pointedly.",
+    "promptHint": "ignoring"
+  },
+  {
+    "id": "polishing_her_boots",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "any"
+    ],
+    "judged": true,
+    "label": "Polishing her boots",
+    "description": "AUTHOR TO WRITE: At her feet, boots off (on her feet it is boot_worship).",
+    "promptHint": "polishing her boots"
+  },
+  {
+    "id": "tidying_her_quarters",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "any"
+    ],
+    "judged": true,
+    "label": "Tidying her quarters",
+    "description": "AUTHOR TO WRITE: While she watches or pointedly does not (ignoring); an inspection in reverse.",
+    "promptHint": "tidying her quarters"
+  },
+  {
+    "id": "doing_her_laundry",
+    "scope": "dynamic",
+    "actor": "commander",
+    "judged": true,
+    "label": "Doing her laundry",
+    "description": "AUTHOR TO WRITE: Her things, her scent (worship when enabled).",
+    "promptHint": "doing her laundry"
+  },
+  {
+    "id": "taking_dictation",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "focused"
+    ],
+    "judged": true,
+    "label": "Taking dictation",
+    "description": "AUTHOR TO WRITE: She dictates a report, the commander types: the secretary of one's own subordinate; typos are slips.",
+    "promptHint": "taking dictation"
+  },
+  {
+    "id": "refilling",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "focused",
+      "relaxed"
+    ],
+    "judged": true,
+    "sources": {
+      "her_silence": 1
+    },
+    "label": "Refilling",
+    "description": "AUTHOR TO WRITE: Standing by and guessing when to refill; her_silence in pure form.",
+    "promptHint": "refilling"
+  },
+  {
+    "id": "holding_for_her",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "focused"
+    ],
+    "judged": true,
+    "label": "Holding for her",
+    "description": "AUTHOR TO WRITE: Holding papers, a lamp, a tablet; the \"function\" step of P17b (as furniture it is a contact).",
+    "promptHint": "holding for her"
+  },
+  {
+    "id": "reading_aloud",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "relaxed",
+      "asleep"
+    ],
+    "judged": true,
+    "label": "Reading aloud",
+    "description": "AUTHOR TO WRITE: The voice as presence; she may fall asleep.",
+    "promptHint": "reading aloud"
+  },
+  {
+    "id": "fanning_cooling",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "body"
+    ],
+    "judged": true,
+    "label": "Fanning cooling",
+    "description": "AUTHOR TO WRITE: She cools down after a fight; fanning her, handing water.",
+    "promptHint": "fanning cooling"
+  },
+  {
+    "id": "preparing_her_gear",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "focused"
+    ],
+    "judged": true,
+    "label": "Preparing her gear",
+    "description": "AUTHOR TO WRITE: Packing her kit for a mission; a mistake shows in combat.",
+    "promptHint": "preparing her gear"
+  },
+  {
+    "id": "cleaning_her_weapon",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "any"
+    ],
+    "judged": true,
+    "label": "Cleaning her weapon",
+    "description": "AUTHOR TO WRITE: Weapons are personal in the lore: being trusted with it is a **privilege**, not a duty.",
+    "promptHint": "cleaning her weapon"
+  },
+  {
+    "id": "warming_her_bed",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "asleep"
+    ],
+    "judged": true,
+    "label": "Warming her bed",
+    "description": "AUTHOR TO WRITE: Lying in her bunk beforehand, leaving or staying at her word; her scent stays (P17d).",
+    "promptHint": "warming her bed"
+  },
+  {
+    "id": "tasting_first",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "eating"
+    ],
+    "judged": true,
+    "label": "Tasting first",
+    "description": "AUTHOR TO WRITE: Tasting her food first (P17b).",
+    "promptHint": "tasting first"
+  },
+  {
+    "id": "standing_by",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "any"
+    ],
+    "judged": true,
+    "label": "Standing by",
+    "description": "AUTHOR TO WRITE: By the wall until called; doing nothing is service too; strain stillness.",
+    "promptHint": "standing by",
+    "effects": [
+      {
+        "type": "strain",
+        "condition": "stillness",
+        "rate": 1
+      }
+    ]
+  },
+  {
+    "id": "waiting",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "any"
+    ],
+    "judged": true,
+    "label": "Waiting",
+    "description": "AUTHOR TO WRITE: Waiting where she said.",
+    "promptHint": "waiting"
+  },
+  {
+    "id": "facing_wall",
+    "scope": "dynamic",
+    "actor": "commander",
+    "fits": [
+      "any"
+    ],
+    "judged": true,
+    "label": "Facing wall",
+    "description": "AUTHOR TO WRITE: Facing the wall (a corner punishment when the origin is her discipline).",
+    "promptHint": "facing wall"
+  },
+  {
+    "id": "c_writing_report",
+    "scope": "any",
+    "actor": "commander",
+    "label": "Writing report",
+    "description": "AUTHOR TO WRITE: The commander's own work.",
+    "promptHint": "writing report"
+  },
+  {
+    "id": "c_on_comms",
+    "scope": "any",
+    "actor": "commander",
+    "sources": {
+      "duty_call": 1,
+      "remote": 1
+    },
+    "label": "On comms",
+    "description": "AUTHOR TO WRITE: The commander's own comms session (duty_call, remote).",
+    "promptHint": "on comms"
+  },
+  {
+    "id": "c_eating",
+    "scope": "any",
+    "actor": "commander",
+    "label": "Eating",
+    "description": "AUTHOR TO WRITE: Eating.",
+    "promptHint": "eating"
+  },
+  {
+    "id": "c_idle",
+    "scope": "any",
+    "actor": "commander",
+    "label": "Idle",
+    "description": "AUTHOR TO WRITE: Nothing in particular.",
+    "promptHint": "idle"
+  }
+]
