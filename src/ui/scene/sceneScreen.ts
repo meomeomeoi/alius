@@ -12,6 +12,7 @@ import { motionReduced } from '../motion';
 import { cssUrl } from '../fx';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
+import { drawMilestoneCards } from '../dynamic/cards';
 import { renderDisciplineMenu } from '../discipline/menu';
 import { renderFreqChip } from '../special/freqChip';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
@@ -48,6 +49,8 @@ export interface SceneScreenCtx {
   onUndoDiscipline?: (id: string) => void;
   /** P9: [GRANT] / [REFUSE] on the demand of a unit in the scene. */
   onAnswerDemand?: (demandId: string, answer: 'grant' | 'refuse') => void;
+  /** P15: [ACCEPT] / [REFUSE] on the open milestone of a unit in the scene (the open id). */
+  onAnswerMilestone?: (milestoneId: string, answer: 'accept' | 'refuse') => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P14: the failure chips of the scene's readings and REROLL of the last exchange. Absent = none drawn. */
@@ -199,6 +202,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let chips: HTMLElement;
   let disciplineChips: HTMLElement;
   let demandChips: HTMLElement;
+  let milestoneCards: HTMLElement;
   let freqChips: HTMLElement;
   let genChips: HTMLElement;
   let genTools: HTMLElement;
@@ -382,6 +386,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function drawDiscipline(s: CampaignState): void {
     const ids = new Set(s.scene?.participants ?? []);
     drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), generation: ctx.generation });
+    drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerMilestone?.(id, answer)); // P15: her step
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
     // an open menu stays open across a redraw
@@ -600,6 +605,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
+    milestoneCards = h('div', { class: 'alius-milestone-cards' });
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
@@ -700,6 +706,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       ruleChips,
       disciplineChips,
       demandChips,
+      milestoneCards,
       freqChips,
       disciplineMenus,
       letsHost,

@@ -4,7 +4,7 @@ export type Voice = 'terminal' | 'corporate' | 'paper' | 'personal';
 /** Who is speaking is declared here, in one table, never at the call sites that show the text. */
 export type VoiceSource =
   | 'toast' | 'dm' | 'unit_note' | 'chronicle' | 'dossier' | 'commander_file'
-  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit' | 'squad_secret' | 'frequency' | 'premonition' | 'handler' | 'warden_reveal' | 'warden_notice' | 'head_start';
+  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit' | 'squad_secret' | 'frequency' | 'premonition' | 'handler' | 'warden_reveal' | 'warden_notice' | 'head_start' | 'dynamic';
 
 export const VOICE_OF: Record<VoiceSource, Voice> = {
   toast: 'terminal',
@@ -39,4 +39,6 @@ export const VOICE_OF: Record<VoiceSource, Voice> = {
   warden_notice: 'corporate',
   // P11b: the first weeks are a file of the squad's recollections, like the intake forms
   head_start: 'paper',
+  // P15: what she asks of the commander (a milestone card) and her notice of a frame that moved are hers, not the system's
+  dynamic: 'personal',
 };

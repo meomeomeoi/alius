@@ -1512,6 +1512,18 @@
   opacity: 0.6;
 }
 
+/* Her milestone card (P15): her words, then the two answers side by side. */
+#alius-shell .alius-milestone-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-milestone-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 /*
  * P11: the prologue's paper forms (cold open, intake, medical exam, signed dossier) and, later, the hub card, the coach
  * strip and locked tabs. The paper voice supplies colours; this file only lays the forms out. Typing reveals are CSS so the

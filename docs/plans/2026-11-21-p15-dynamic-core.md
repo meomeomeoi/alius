@@ -1453,14 +1453,14 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `renderMilestoneCard(host, ctx: { state; reg; milestone: OpenMilestone; onAnswer(a: 'accept' | 'refuse') })`; `tonightItems` gains the `dynamic` kind.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - jsdom: `the card shows her text in her voice with ACCEPT / REFUSE, both with data-analyze`; `the Tonight list shows one dynamic chip per waiting unit and still keeps generation last`.
   - `tests/sim/dynamicLongRun.test.ts`: `no frame_changed without a milestone` over 120 seeded days with an eager holder and a sim that accepts half of everything. Every `frame_changed` in the log is preceded in the same action by `milestone_offered`'s answer or an automatic milestone.
   - The same sim logs the day of `play` and `role`, informational only, not asserted (pace targets are balance targets, spec §4).
-- [ ] **Step 2: Run** both files → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the milestone card and the long-run frame guard`
+- [x] **Step 2: Run** both files → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the milestone card and the long-run frame guard`
 
 ---
 

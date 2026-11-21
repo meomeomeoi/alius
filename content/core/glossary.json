@@ -2765,5 +2765,35 @@
     "see": [
       "practice_profile"
     ]
+  },
+  {
+    "id": "milestone",
+    "term": "Her step",
+    "short": "Something she asks that would change what is between her and the commander: a first yes, a rule to keep, a handover. Accept it or refuse it, here or in words.",
+    "long": "AUTHOR TO WRITE: Accepting moves the dynamic on a step and costs nothing. Refusing is not leaving: it costs her a measure of the hold she has, and she may ask again after a week.",
+    "see": [
+      "frame",
+      "vow"
+    ]
+  },
+  {
+    "id": "vow",
+    "term": "The vow",
+    "short": "The status said aloud and kept. After it, leaving is a break, not an ending.",
+    "long": "AUTHOR TO WRITE: Once sworn, every way out of the dynamic is a break, and what follows is heavier. The vow is remembered and never fades.",
+    "see": [
+      "milestone",
+      "frame"
+    ]
+  },
+  {
+    "id": "frame",
+    "term": "Frame",
+    "short": "How serious it is between them: equal, play, role or rule. It moves only through a step she asks, or when the weight goes out of it.",
+    "long": "AUTHOR TO WRITE: A number alone never moves a frame. Play is a game they play in scenes; role is a role held all day; rule is her word standing over what she has claimed.",
+    "see": [
+      "milestone",
+      "vow"
+    ]
   }
 ]

@@ -12,6 +12,8 @@ export interface DynamicController {
   onSceneOpened(): void;
   /** The scene closed, or the chat changed: every directive of the dynamic goes. */
   onSceneClosed(): void;
+  /** `[ ACCEPT ]` or `[ REFUSE ]` on her open milestone (the open id). Toasts the reason and returns false when the engine refuses. */
+  answerMilestone(milestoneId: string, answer: 'accept' | 'refuse'): boolean;
 }
 
 const OWN: readonly string[] = DYNAMIC_EVENT_TYPES;
@@ -35,6 +37,16 @@ export function createDynamic(deps: DynamicDeps): DynamicController {
     onSceneClosed() {
       clearDynamicDirectives(deps.context);
       deps.refreshContext();
+    },
+    answerMilestone(milestoneId, answer) {
+      const events = deps.app.dispatch({ type: 'dynamic/answer_milestone', payload: { milestoneId, answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
     },
   };
 }

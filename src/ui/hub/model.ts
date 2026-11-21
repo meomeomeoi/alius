@@ -1,4 +1,5 @@
 import { fullOpenRecords } from '../../llm/sites';
+import { dynamicOn } from '../../engine/dynamic/gate';
 import type { Registries } from '../../content/types';
 import { HANDLER_VISIT_KIND } from '../../engine/special/state';
 import { isLiving } from '../../engine/economy';
@@ -66,7 +67,7 @@ export function currentObjective(state: CampaignState, reg: Registries): Objecti
 }
 
 export interface TonightItem {
-  kind: 'knock' | 'dm' | 'note' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking' | 'generation';
+  kind: 'knock' | 'dm' | 'note' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking' | 'dynamic' | 'generation';
   text: string;
   unitId?: string;
   tone: MarkerTone;
@@ -83,7 +84,7 @@ const KNOCK_KIND = 'we_need_to_talk';
 const unreadFrom = (state: CampaignState, unitId: string): number => (state.dms[unitId] ?? []).filter((m) => m.from !== 'commander' && !m.read).length;
 
 /** What is waiting by the end of the day, in a fixed order, at most six lines. */
-export function tonightItems(state: CampaignState, _reg: Registries): TonightItem[] {
+export function tonightItems(state: CampaignState, reg: Registries): TonightItem[] {
   const out: TonightItem[] = [];
   const living = state.squad.filter(isLiving);
   const nameOf = (id: string): string => living.find((u) => u.id === id)?.displayName ?? '';
@@ -127,6 +128,16 @@ export function tonightItems(state: CampaignState, _reg: Registries): TonightIte
       kind: 'booking', text: `${nameOf(booked.unitId)} has booked ${booked.day === state.day ? 'today' : 'tomorrow'}'s ${booked.slot}.`, unitId: booked.unitId,
       tone: booked.day === state.day ? 'warn' : 'neutral', analyze: 'glossary:booking',
     });
+  }
+  // P15: a holder who waits for an answer (an open milestone, claim or return offer): one line for each woman, after the booking, naming nobody's number and no frame
+  if (dynamicOn(state, reg)) {
+    const open = state.dynamic!.open;
+    const waiting = new Set<string>();
+    const milestoneFor = new Set<string>(open.milestones.map((m) => m.unitId));
+    for (const id of [...open.milestones.map((m) => m.unitId), ...open.claims.map((c) => c.unitId), ...(open.returnOffer ? [open.returnOffer.unitId] : [])]) if (nameOf(id)) waiting.add(id);
+    for (const id of waiting) {
+      out.push({ kind: 'dynamic', text: `${nameOf(id)} has something to ask.`, unitId: id, tone: 'warn', analyze: milestoneFor.has(id) ? 'glossary:milestone' : 'glossary:frame' });
+    }
   }
   // P14: failed generations that wait for a retry, always the last line (the cut keeps room for it, so a full list never drops it)
   const failed = fullOpenRecords(state).length;

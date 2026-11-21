@@ -926,6 +926,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
+        onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
         physics: { // P15a: the hold panel's inputs go to the staging controller, never through `stage` (a hold is not rolled back by a swipe)
@@ -2068,6 +2069,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const root = document.getElementById('alius-shell');
       if (n.cutIn && root) cutIn(root, 'warden', n.title);
     }
+    // P15: a frame that moved is her notice (a toast in her voice, in the words of the milestone) and a cut-in; the frame's name only while the numbers are shown
+    for (const e of events) {
+      if (e.type !== 'frame_changed' || !state) continue;
+      const name = state.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She';
+      toast('info', String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? '').replaceAll('{name}', name), { voice: VOICE_OF.dynamic, title: name });
+      const root = document.getElementById('alius-shell');
+      if (root) cutIn(root, 'dynamic', (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
+    }
     if (events.some((e) => e.type === 'warden_override')) setTimeout(showOverrideModal, 0);
     if (events.some((e) => e.type === 'error' && typeof e.message === 'string' && e.message.startsWith('The warden has overridden an order'))) setTimeout(showOverrideModal, 0);
     for (const e of events) {
@@ -2423,6 +2432,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onSend: (unitId, text) => void comms.send(unitId, text),
       onUndoDiscipline: (id) => void discipline.undo(id),
       onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
+      onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onAnswerRule: answerRule,
       onRead: (unitId) => {

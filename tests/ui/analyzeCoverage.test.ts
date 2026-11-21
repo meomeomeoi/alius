@@ -22,6 +22,10 @@ import { renderOpsTab } from '../../src/ui/ops/opsTab';
 import { renderHub, type HubCtx } from '../../src/ui/hub/hubScreen';
 import { renderBlockingStrip } from '../../src/ui/scene/blockingStrip';
 import { renderMomentCard } from '../../src/ui/scene/momentCard';
+import '../../src/engine/actions/dynamic';
+import { milestonesDue } from '../../src/engine/dynamic/milestones';
+import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
+import { renderMilestoneCard } from '../../src/ui/dynamic/cards';
 import { renderPhysicsPanel } from '../../src/ui/scene/physicsPanel';
 import '../../src/engine/actions/blocking';
 import '../../src/engine/actions/moments';
@@ -670,6 +674,60 @@ describe('coverage: hub (P10)', () => {
     for (const id of reg.hubRooms.keys()) {
       const cabins = [...reg.planRooms.values()].some((p) => p.hubRoomId === id && p.cabin !== undefined);
       expect(addresses.has(cabins ? 'glossary:cabin' : `hubRooms:${id}`), id).toBe(true);
+    }
+  });
+});
+
+describe('coverage: her milestone (P15)', () => {
+  it('the card and its Tonight line mark every element, and every one opens a panel with no network or model call', () => {
+    const state = campaign(reg, 4);
+    state.squad[0].bond = {
+      leadStyle: 'dominant', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known',
+      practice: { categories: { restraint: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate' },
+    };
+    state.content = { enabled: ['restraint'] };
+    state.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+    state.relations[state.squad[0].id].dynamic = { ...blankDynamic(state.day), hold: 25 };
+    milestonesDue(state, ctxOf(state, reg), state.squad[0].id);
+    expect(state.dynamic.open.milestones).toHaveLength(1);
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    try {
+      const card = h('div');
+      root.append(card);
+      renderMilestoneCard(card, { state, reg, milestone: state.dynamic.open.milestones[0], onAnswer: vi.fn() });
+      const hubCtx: HubCtx = {
+        getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => ({ ...DEFAULT_SETTINGS }),
+        ops: { getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn() },
+        onTalk: vi.fn(), onEndSlot: vi.fn(), onOpenPda: vi.fn(), avatar: () => null,
+      };
+      const hubHost = h('div');
+      root.append(hubHost);
+      renderHub(hubHost, h('div'), hubCtx);
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(state))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      const addresses = new Set(unitIdsIn(root));
+      expect(addresses.has('glossary:milestone')).toBe(true);
+      expect(addresses.has('dynamicMilestones:first_yes')).toBe(true);
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
+      for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze="glossary:milestone"], [data-analyze="dynamicMilestones:first_yes"]')]) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
     }
   });
 });

@@ -36345,6 +36345,16 @@ function createDynamic(deps) {
     onSceneClosed() {
       clearDynamicDirectives(deps.context);
       deps.refreshContext();
+    },
+    answerMilestone(milestoneId, answer) {
+      const events = deps.app.dispatch({ type: "dynamic/answer_milestone", payload: { milestoneId, answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
     }
   };
 }
@@ -36956,7 +36966,9 @@ var VOICE_OF = {
   // P13: the warden's moves (warnings, punishments, the Leash, her panel) are the corporation's too
   warden_notice: "corporate",
   // P11b: the first weeks are a file of the squad's recollections, like the intake forms
-  head_start: "paper"
+  head_start: "paper",
+  // P15: what she asks of the commander (a milestone card) and her notice of a frame that moved are hers, not the system's
+  dynamic: "personal"
 };
 
 // src/ui/power/votePanel.ts
@@ -48280,7 +48292,7 @@ var TONIGHT_MAX = 6;
 var SLOT_RANK2 = { morning: 0, afternoon: 1, evening: 2, night: 3 };
 var KNOCK_KIND = "we_need_to_talk";
 var unreadFrom = (state, unitId) => (state.dms[unitId] ?? []).filter((m) => m.from !== "commander" && !m.read).length;
-function tonightItems(state, _reg) {
+function tonightItems(state, reg) {
   const out = [];
   const living2 = state.squad.filter(isLiving);
   const nameOf18 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
@@ -48321,6 +48333,15 @@ function tonightItems(state, _reg) {
       tone: booked.day === state.day ? "warn" : "neutral",
       analyze: "glossary:booking"
     });
+  }
+  if (dynamicOn(state, reg)) {
+    const open3 = state.dynamic.open;
+    const waiting2 = /* @__PURE__ */ new Set();
+    const milestoneFor = new Set(open3.milestones.map((m) => m.unitId));
+    for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf18(id)) waiting2.add(id);
+    for (const id of waiting2) {
+      out.push({ kind: "dynamic", text: `${nameOf18(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : "glossary:frame" });
+    }
   }
   const failed = fullOpenRecords(state).length;
   const line2 = failed > 0 ? { kind: "generation", text: `${failed} generation${failed === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
@@ -50877,6 +50898,42 @@ function drawDemandChips(host, state, reg, pick3, on) {
   }
 }
 
+// src/ui/dynamic/cards.ts
+function renderMilestoneCard(host, ctx2) {
+  const { state, reg, milestone } = ctx2;
+  const entry = reg.dynamicMilestones.get(milestone.milestoneId);
+  const unit3 = state.squad.find((u) => u.id === milestone.unitId);
+  if (entry === void 0 || unit3 === void 0) return;
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-milestone-answer": kind,
+    "data-milestone": milestone.id,
+    ...analyzeNative("glossary:milestone", { unitId: unit3.id }),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const body = h(
+    "div",
+    { class: "alius-milestone-body" },
+    h("p", { class: "alius-milestone-text" }, entry.text.replaceAll("{name}", unit3.displayName)),
+    h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-milestone");
+  card2.setAttribute("data-milestone", milestone.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit3.id }))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawMilestoneCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const milestone of state.dynamic?.open.milestones ?? []) {
+    if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
+  }
+}
+
 // src/ui/comms/living.ts
 var TYPING_MS = 2500;
 var SVG_NS6 = "http://www.w3.org/2000/svg";
@@ -51113,6 +51170,8 @@ function renderCommsTab(host, ctx2) {
       talk: (id) => ctx2.onTalkDemand?.(id),
       generation: ctx2.generation
     });
+    const milestoneCards = h("div", { class: "alius-milestone-cards" });
+    drawMilestoneCards(milestoneCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
     for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers, { motion: ctx2.motion?.() ?? true }));
@@ -51121,7 +51180,7 @@ function renderCommsTab(host, ctx2) {
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
     const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
-    thread.append(chips, disciplineChips, demandChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit3.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
@@ -52259,6 +52318,7 @@ function renderSceneScreen(host, ctx2) {
   let chips;
   let disciplineChips;
   let demandChips;
+  let milestoneCards;
   let freqChips;
   let genChips;
   let genTools;
@@ -52427,6 +52487,7 @@ function renderSceneScreen(host, ctx2) {
   function drawDiscipline(s) {
     const ids = new Set(s.scene?.participants ?? []);
     drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx2.onAnswerDemand?.(id, "grant"), refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse"), generation: ctx2.generation });
+    drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
@@ -52646,6 +52707,7 @@ function renderSceneScreen(host, ctx2) {
     ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
+    milestoneCards = h("div", { class: "alius-milestone-cards" });
     freqChips = h("div", { class: "alius-chips alius-freq-chips" });
     genChips = h("div", { class: "alius-generation-chips" });
     genTools = h("span", { class: "alius-scene-reroll" });
@@ -52757,6 +52819,7 @@ function renderSceneScreen(host, ctx2) {
       ruleChips,
       disciplineChips,
       demandChips,
+      milestoneCards,
       freqChips,
       disciplineMenus,
       letsHost,
@@ -56708,6 +56771,8 @@ function createApp(st, deps) {
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
+        onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer),
+        // P15: her step
         onAnswerRule: answerRule2,
         onStage: (action) => {
           scene.stage(action);
@@ -57794,6 +57859,13 @@ function createApp(st, deps) {
       const root = document.getElementById("alius-shell");
       if (n.cutIn && root) cutIn(root, "warden", n.title);
     }
+    for (const e of events) {
+      if (e.type !== "frame_changed" || !state) continue;
+      const name = state.squad.find((u) => u.id === e.unitId)?.displayName ?? "She";
+      toast("info", String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? "").replaceAll("{name}", name), { voice: VOICE_OF.dynamic, title: name });
+      const root = document.getElementById("alius-shell");
+      if (root) cutIn(root, "dynamic", (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
+    }
     if (events.some((e) => e.type === "warden_override")) setTimeout(showOverrideModal, 0);
     if (events.some((e) => e.type === "error" && typeof e.message === "string" && e.message.startsWith("The warden has overridden an order"))) setTimeout(showOverrideModal, 0);
     for (const e of events) {
@@ -58170,6 +58242,8 @@ function createApp(st, deps) {
       onSend: (unitId, text2) => void comms.send(unitId, text2),
       onUndoDiscipline: (id) => void discipline.undo(id),
       onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
+      onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer),
+      // P15: her step
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => {
         if (ok) shell.open();
       }),

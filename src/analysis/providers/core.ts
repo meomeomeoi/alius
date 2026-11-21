@@ -327,6 +327,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'practice_profile', 'practice_as', 'practice_witness', 'practice_style', 'practice_audience', 'inclination', 'fairness', 'hint_style', 'drive', 'expectation_profile',
   // P15 (the DYNAMIC block of WORLD PARAMETERS; `setting_dynamic_*` are settings, checked with the settings)
   'dynamic_may_hold', 'dynamic_sensitivity', 'dynamic_seeded', 'dynamic_start_frame', 'dynamic_underway',
+  // P15 (her milestone card, the vow, the frame; the Tonight chip)
+  'milestone', 'vow', 'frame',
 ];
 
 let registered = false;

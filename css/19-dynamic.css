@@ -30,3 +30,15 @@
 #alius-shell .alius-calib-section .alius-dyn-row [aria-disabled='true'] {
   opacity: 0.6;
 }
+
+/* Her milestone card (P15): her words, then the two answers side by side. */
+#alius-shell .alius-milestone-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-milestone-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
