@@ -62,6 +62,36 @@ describe('what may come back', () => {
     expect(TUNING.life.joke.offerMax).toBe(5);
   });
 
+  it('the joke picked for the scene is offered first however many newer facts there are (so it can be closed); then the jokes already hers, then the newest', () => {
+    const s = world();
+    const joke = fact(s, 'The old joke.', 1);
+    const warm = fact(s, 'A joke on its way.', 2);
+    for (const d of [30, 31, 32]) returnJoke(s, reg, ANN, joke.id, d);
+    returnJoke(s, reg, ANN, warm.id, 35);
+    for (let i = 0; i < 8; i++) fact(s, `Newer fact ${i}.`, 10 + i); // eight newer eligible facts push the joke far out of the newest five
+    const open = inScene(s);
+    open.life!.units[ANN].scene!.joke = joke.id;
+    const offered = jokeCandidates(open, ANN, 40).map((c) => c.id);
+    expect(offered).toHaveLength(5);
+    expect(offered.slice(0, 2)).toEqual([joke.id, warm.id]);
+    expect(new Set(offered).size).toBe(5);
+    expect(offered.slice(2).every((id) => open.memory.facts.find((f) => f.id === id)!.text.startsWith('Newer fact'))).toBe(true);
+    // the offer reaches the intent model, and reporting it closes the directive
+    expect(lifeIntentInput(open, reg, [ANN], open.scene!, 'scene').life!.jokes.map((j) => j.id)).toContain(joke.id);
+    expect(lifeDirectives(open, reg, [ANN]).map((d) => d.id)).toContain(`life:joke:${ANN}`);
+    const out = run(open, reg, { type: 'intents/apply', payload: { channel: 'scene', intents: { events: [{ type: 'joke_returned', actor: ANN, targets: [], severity: 'minor', evidence: 'the old joke', confidence: 0.9, factId: joke.id }] } } });
+    expect(errors(out.events)).toEqual([]);
+    expect(out.state.life!.units[ANN].jokes![joke.id].count).toBe(4);
+    expect(lifeDirectives(out.state, reg, [ANN]).filter((d) => d.id.startsWith('life:joke:'))).toEqual([]);
+    expect(out.state.life!.units[ANN].jokeDay).toBe(40);
+  });
+
+  it('a pick that is not jokeable any more (the fact is gone) is not offered', () => {
+    const s = inScene(world());
+    s.life!.units[ANN].scene!.joke = 'f_gone';
+    expect(jokeCandidates(s, ANN, 40)).toEqual([]);
+  });
+
   it('nothing for a unit that is not named, and nothing from a fact that is gone', () => {
     const s = world();
     expect(jokeCandidates(s, 'nobody', 40)).toEqual([]);
@@ -115,13 +145,32 @@ describe('a running joke', () => {
     expect(runningJokes(s, ANN, 20)).toEqual([b.id, a.id]);
   });
 
-  it('returning one sets the day she last brought one back and draws no rng', () => {
-    const s = world();
+  it('returning the joke picked for the scene sets the day she last brought one back and uses the pick up; draws no rng', () => {
+    const s = inScene(world());
     const f = fact(s, 'The boot.', 5);
+    s.life!.units[ANN].scene!.joke = f.id;
     const rng = structuredClone(s.rng);
     returnJoke(s, reg, ANN, f.id, 12);
     expect(s.life!.units[ANN].jokeDay).toBe(12);
+    expect(s.life!.units[ANN].scene!.joke).toBeUndefined();
     expect(s.rng).toEqual(rng);
+  });
+
+  it('any other return only counts: no jokeDay, and the picked joke stays', () => {
+    const s = inScene(world());
+    const picked = fact(s, 'The picked joke.', 5);
+    const other = fact(s, 'Another story.', 6);
+    s.life!.units[ANN].scene!.joke = picked.id;
+    const events = returnJoke(s, reg, ANN, other.id, 12);
+    expect(events).toEqual([{ type: 'joke_counted', unitId: ANN }]);
+    expect(s.life!.units[ANN].jokes![other.id]).toEqual({ count: 1, last: 12 });
+    expect(s.life!.units[ANN].jokeDay).toBeUndefined();
+    expect(s.life!.units[ANN].scene!.joke).toBe(picked.id);
+    // and with no scene at all it counts and sets nothing else
+    const bare = world();
+    const g = fact(bare, 'A story.', 5);
+    returnJoke(bare, reg, ANN, g.id, 12);
+    expect(bare.life!.units[ANN].jokeDay).toBeUndefined();
   });
 
   it('nothing for a unit that is gone or an unknown fact', () => {

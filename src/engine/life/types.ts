@@ -142,7 +142,7 @@ export interface LifeOffer {
   /** Her active hobbies: the hobby id, her id, its label. */
   hobbies: Array<{ id: string; unitId: string; label: string }>;
   /** Opinions: the topic id, her id, the label, the ids of its positions in order; `pick`: she may voice it now; `voiced`: she has told it, so it may be argued or agreed with. */
-  topics: Array<{ id: string; unitId: string; label: string; positions: string[]; pick?: true; voiced?: true }>;
+  topics: Array<{ id: string; unitId: string; label: string; positions: string[]; pick?: true; voiced?: true; /** Her current position in words (only for a voiced topic: the commander has heard it). */ view?: string }>;
   /** Jokes that may come back: the id of the fact, her id, its text. */
   jokes: Array<{ id: string; unitId: string; text: string }>;
   /** A private scene with a named woman: a first moment may be reported. */

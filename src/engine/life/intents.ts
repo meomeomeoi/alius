@@ -7,6 +7,7 @@ import { TUNING } from '../tuning';
 import { bumpInterest, pushHobby } from './hobbies';
 import { closeNews, pendingNews } from './news';
 import { returnJoke, jokeCandidates } from './jokes';
+import { plainText } from './facts';
 import { agreeOpinion, challengeOpinion, voiceOpinion } from './opinions';
 import { unitOf } from './places';
 import { applyRelationDelta } from '../relationGain';
@@ -44,15 +45,24 @@ export function lifeIntentInput(
       if (entry) offer.hobbies.push({ id: h.id, unitId: unit.id, label: entry.label });
     }
     if (channel !== 'scene' || scene === null) continue;
-    const picked = state.life.units[unit.id]?.scene?.topic;
+    const sc = state.life.units[unit.id]?.scene;
+    const picked = sc?.sceneId === scene.id ? sc.topic : undefined;
+    const triggered = sc?.sceneId === scene.id ? sc.topics : [];
+    // what may be argued or agreed with: the topics triggered in this scene that she has voiced, and her five most recently voiced ones
+    const voiced = Object.entries(unit.opinions ?? {}).filter(([, o]) => o.voicedDay !== undefined);
+    const recent = [...voiced].sort((a, b) => b[1].voicedDay! - a[1].voicedDay! || a[0].localeCompare(b[0])).slice(0, TUNING.life.opinion.offerVoiced).map(([id]) => id);
+    const listed = new Set([...voiced.map(([id]) => id).filter((id) => triggered.includes(id)), ...recent]);
     for (const [topicId, o] of Object.entries(unit.opinions ?? {})) {
       const isPick = picked === topicId;
-      if (!isPick && o.voicedDay === undefined) continue;
+      const isVoiced = o.voicedDay !== undefined && listed.has(topicId);
+      if (!isPick && !isVoiced) continue;
       const topic = reg.opinionTopics.get(topicId) as unknown as OpinionTopicEntry | undefined;
       if (!topic) continue;
+      const view = isVoiced ? topic.positions.find((p) => p.id === o.position)?.description : undefined; // known to the commander: she has told it
       offer.topics.push({
         id: topicId, unitId: unit.id, label: topic.label, positions: topic.positions.map((p) => p.id),
-        ...(isPick ? { pick: true as const } : {}), ...(o.voicedDay !== undefined ? { voiced: true as const } : {}),
+        ...(isPick ? { pick: true as const } : {}), ...(isVoiced ? { voiced: true as const } : {}),
+        ...(view !== undefined ? { view: plainText(view) } : {}),
       });
     }
   }

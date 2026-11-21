@@ -119,6 +119,40 @@ describe('lifeIntentInput', () => {
   });
 });
 
+describe('what may be argued or agreed with', () => {
+  const topicIds = (): string[] => [...reg.opinionTopics.keys()];
+
+  it('offers the topics triggered in this scene that she has voiced and her five most recently voiced, with her position in words', () => {
+    const s = world();
+    const ids = topicIds().slice(0, 9);
+    mine(s).opinions = Object.fromEntries(ids.slice(0, 8).map((id, i) => [id, { position: (reg.opinionTopics.get(id) as unknown as { positions: Array<{ id: string }> }).positions[0].id, strength: 'held' as const, formedDay: 1, voicedDay: 10 + i }]));
+    mine(s).opinions![ids[8]] = { position: 'x', strength: 'held', formedDay: 1 }; // never voiced
+    s.life!.units[ANN].scene!.topics = [ids[0], ids[8]]; // an old voiced one is triggered again; an unvoiced one is triggered
+    const topics = lifeIntentInput(s, reg, [ANN], s.scene!, 'scene').life!.topics;
+    const offered = topics.map((t) => t.id);
+    expect(offered).toHaveLength(6); // 5 most recent (ids 3..7) + this scene's ids[0]
+    expect(new Set(offered)).toEqual(new Set([...ids.slice(3, 8), ids[0]]));
+    expect(offered).not.toContain(ids[8]);
+    expect(offered).not.toContain(ids[1]);
+    for (const t of topics) {
+      const entry = reg.opinionTopics.get(t.id) as unknown as { positions: Array<{ description: string }> };
+      expect(t.view).toBe(entry.positions[0].description.replace(/^\s*AUTHOR TO WRITE:\s*/, '').trim());
+      expect(t.voiced).toBe(true);
+    }
+  });
+
+  it('a woman with at most five voiced topics offers them all, and the picked topic carries no view until she has voiced it', () => {
+    const s = world();
+    const [a, b] = topicIds();
+    mine(s).opinions = { [a]: { position: 'x', strength: 'held', formedDay: 1, voicedDay: 5 }, [b]: { position: 'y', strength: 'held', formedDay: 1 } };
+    s.life!.units[ANN].scene!.topic = b;
+    const topics = lifeIntentInput(s, reg, [ANN], s.scene!, 'scene').life!.topics;
+    expect(topics.map((t) => t.id).sort()).toEqual([a, b].sort());
+    expect(topics.find((t) => t.id === b)).toMatchObject({ pick: true });
+    expect(topics.find((t) => t.id === b)!.view).toBeUndefined();
+  });
+});
+
 describe('validation drops', () => {
   const squad = [{ id: ANN }, { id: BEA }];
   const ctx = (life: LifeOffer) => ({ participants: [ANN], squad, life });

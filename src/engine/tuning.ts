@@ -592,7 +592,7 @@ export const TUNING = Object.freeze({
       newer: -2, ceiling: -10, ceilingMoody: -20, cooling: 25, active: 40, dropAfterDays: 30,
     }),
     friendHobby: 0.02,
-    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7, moodyHit: -1 }),
+    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7, moodyHit: -1, offerVoiced: 5 }),
     meeting: Object.freeze({ affinityMin: -30 }),
     joke: Object.freeze({
       windowDays: 30, running: 3, gapDays: 5, base: 0.3, humor: Object.freeze({ warm: 1, mocking: 1, dry: 0.6, none: 0 }), offerMax: 5, minAgeDays: 3,

@@ -117,7 +117,7 @@ function lifeBlock(life: LifeOffer): string[] {
     for (const t of life.topics) {
       if (t.pick !== true && t.voiced !== true) continue;
       const marks = [...(t.pick === true ? ['may voice'] : []), ...(t.voiced === true ? ['has told'] : [])].join(', ');
-      out.push(`- ${t.id} — ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(', ')}; ${marks}`);
+      out.push(`- ${t.id} — ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(', ')}; ${marks}${t.view !== undefined ? `; her view now: ${oneLine(t.view)}` : ''}`);
     }
   }
   if (f.jokes) out.push('JOKES (id — unit: what it is about):', ...life.jokes.map((j) => `- ${j.id} — ${j.unitId}: ${oneLine(j.text)}`));

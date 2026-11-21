@@ -783,7 +783,7 @@ var TUNING = Object.freeze({
       dropAfterDays: 30
     }),
     friendHobby: 0.02,
-    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7, moodyHit: -1 }),
+    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7, moodyHit: -1, offerVoiced: 5 }),
     meeting: Object.freeze({ affinityMin: -30 }),
     joke: Object.freeze({
       windowDays: 30,
@@ -15484,7 +15484,14 @@ var jokeable = (f, unitId, day) => f.about.includes(unitId) && f.knownBy.include
 function jokeCandidates(state, unitId, day) {
   const unit2 = unitOf2(state, unitId);
   if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return [];
-  return state.memory.facts.map((f, at) => ({ f, at })).filter(({ f }) => jokeable(f, unitId, day)).sort((a, b) => b.f.day - a.f.day || b.at - a.at).slice(0, TUNING.life.joke.offerMax).map(({ f }) => ({ id: f.id, text: f.text }));
+  const mine = state.life?.units[unitId];
+  const eligible3 = state.memory.facts.filter((f) => jokeable(f, unitId, day));
+  const byId = new Map(eligible3.map((f) => [f.id, f]));
+  const picked = mine?.scene !== void 0 && mine.scene.sceneId === state.scene?.id ? mine.scene.joke : void 0;
+  const already = Object.entries(mine?.jokes ?? {}).filter(([, j]) => day - j.last <= TUNING.life.joke.windowDays).sort((a, b) => b[1].last - a[1].last || a[0].localeCompare(b[0])).map(([id]) => id);
+  const newest = eligible3.map((f, at) => ({ f, at })).sort((a, b) => b.f.day - a.f.day || b.at - a.at).map(({ f }) => f.id);
+  const ids = [.../* @__PURE__ */ new Set([...picked !== void 0 ? [picked] : [], ...already, ...newest])].filter((id) => byId.has(id)).slice(0, TUNING.life.joke.offerMax);
+  return ids.map((id) => ({ id, text: byId.get(id).text }));
 }
 function returnJoke(draft, reg, unitId, factId, day) {
   const unit2 = unitOf2(draft, unitId);
@@ -15494,8 +15501,10 @@ function returnJoke(draft, reg, unitId, factId, day) {
   const jokes = mine.jokes ??= {};
   const was = jokes[factId];
   jokes[factId] = { count: was !== void 0 && day - was.last <= TUNING.life.joke.windowDays ? was.count + 1 : 1, last: day };
-  mine.jokeDay = day;
-  if (mine.scene !== void 0) delete mine.scene.joke;
+  if (mine.scene?.joke === factId) {
+    mine.jokeDay = day;
+    delete mine.scene.joke;
+  }
   return [{ type: "joke_counted", unitId }, ...countJoke(draft, reg, unitId, factId)];
 }
 function runningJokes(state, unitId, day) {
@@ -15705,19 +15714,27 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
       if (entry) offer.hobbies.push({ id: h2.id, unitId: unit2.id, label: entry.label });
     }
     if (channel !== "scene" || scene === null) continue;
-    const picked = state.life.units[unit2.id]?.scene?.topic;
+    const sc = state.life.units[unit2.id]?.scene;
+    const picked = sc?.sceneId === scene.id ? sc.topic : void 0;
+    const triggered = sc?.sceneId === scene.id ? sc.topics : [];
+    const voiced = Object.entries(unit2.opinions ?? {}).filter(([, o]) => o.voicedDay !== void 0);
+    const recent2 = [...voiced].sort((a, b) => b[1].voicedDay - a[1].voicedDay || a[0].localeCompare(b[0])).slice(0, TUNING.life.opinion.offerVoiced).map(([id]) => id);
+    const listed2 = /* @__PURE__ */ new Set([...voiced.map(([id]) => id).filter((id) => triggered.includes(id)), ...recent2]);
     for (const [topicId, o] of Object.entries(unit2.opinions ?? {})) {
       const isPick = picked === topicId;
-      if (!isPick && o.voicedDay === void 0) continue;
+      const isVoiced = o.voicedDay !== void 0 && listed2.has(topicId);
+      if (!isPick && !isVoiced) continue;
       const topic = reg.opinionTopics.get(topicId);
       if (!topic) continue;
+      const view = isVoiced ? topic.positions.find((p) => p.id === o.position)?.description : void 0;
       offer.topics.push({
         id: topicId,
         unitId: unit2.id,
         label: topic.label,
         positions: topic.positions.map((p) => p.id),
         ...isPick ? { pick: true } : {},
-        ...o.voicedDay !== void 0 ? { voiced: true } : {}
+        ...isVoiced ? { voiced: true } : {},
+        ...view !== void 0 ? { view: plainText(view) } : {}
       });
     }
   }
@@ -33940,7 +33957,7 @@ function lifeBlock(life) {
     for (const t of life.topics) {
       if (t.pick !== true && t.voiced !== true) continue;
       const marks = [...t.pick === true ? ["may voice"] : [], ...t.voiced === true ? ["has told"] : []].join(", ");
-      out.push(`- ${t.id} \u2014 ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(", ")}; ${marks}`);
+      out.push(`- ${t.id} \u2014 ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(", ")}; ${marks}${t.view !== void 0 ? `; her view now: ${oneLine(t.view)}` : ""}`);
     }
   }
   if (f.jokes) out.push("JOKES (id \u2014 unit: what it is about):", ...life.jokes.map((j) => `- ${j.id} \u2014 ${j.unitId}: ${oneLine(j.text)}`));
