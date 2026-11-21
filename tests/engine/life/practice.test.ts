@@ -10,6 +10,7 @@ import { lifeChance, newLife } from '../../../src/engine/life/state';
 import type { HobbyEntry, LifeEventEntry } from '../../../src/engine/life/types';
 import type { CampaignState, HobbyState, Slot, Unit } from '../../../src/engine/state/types';
 import { placesOf } from '../../../src/engine/life/places';
+import { toldMilestones } from '../../../src/engine/life/known';
 import { retrieveFacts } from '../../../src/engine/memory';
 import { campaign, ctxOf, errors, loadCore, ofType, run, stubExpedition } from '../../helpers/world';
 
@@ -445,6 +446,7 @@ describe('mastery', () => {
     expect(mine(s).development?.facts ?? []).toEqual([]);
     const fact = squadFact(s);
     s.life!.outbox.push({ itemId: s.life!.queue[0].id, unitId: ANN, channel: 'dm', day: 30 });
+    s.settings.unitDms = true;
     const r = run(s, reg, { type: 'life/share_done', payload: { itemId: s.life!.queue[0].id, text: 'They call me the reading hand now.' } });
     expect(errors(r.events)).toEqual([]);
     const after = r.state.memory.facts.find((f) => f.id === fact.id)!;
@@ -464,13 +466,24 @@ describe('mastery', () => {
     expect(s.squad[0].development).toBeUndefined();
   });
 
-  it('a mastery nobody queues (the commander was there, or the event told it) is known at once', () => {
-    for (const opts of [{ caused: true as const }, { told: true as const }]) {
-      const { s } = master('normal', opts);
-      expect(s.life!.queue).toEqual([]);
-      expect(squadFact(s).hiddenFromCommander).toBeUndefined();
-      expect(mine(s).development!.facts).toHaveLength(1);
-    }
+  it('a mastery the commander was there for is known at once', () => {
+    const { s } = master('normal', { caused: true });
+    expect(s.life!.queue).toEqual([]);
+    expect(squadFact(s).hiddenFromCommander).toBeUndefined();
+    expect(mine(s).development!.facts).toHaveLength(1);
+  });
+
+  it('a mastery a shared event brought stays hidden until that event is told (R13), then reveals with the trait', () => {
+    const facts: string[] = [];
+    const { s } = master('normal', { told: true, facts });
+    expect(s.life!.queue).toEqual([]);
+    expect(squadFact(s).hiddenFromCommander).toBe(true); // nothing was told yet
+    expect(mine(s).development?.facts ?? []).toEqual([]);
+    expect(facts).toContain(squadFact(s).id);
+    s.life!.queue.push({ id: 'ln99', unitId: ANN, kind: 'event', ref: 'x', what: 'event', category: 'things', day: 30, alsoFacts: facts });
+    closeNews(s, 'ln99');
+    expect(squadFact(s).hiddenFromCommander).toBeUndefined();
+    expect(mine(s).development!.facts).toHaveLength(1);
   });
 
   it('a mastery that goes stale untold stays hidden and writes no DevFact', () => {
@@ -594,12 +607,35 @@ describe('a shared practice slot (once a week for the pair, never in her own qua
 describe('a life event that moves a hobby on', () => {
   const events = (id: string) => reg.lifeEvents.get(id) as unknown as LifeEventEntry;
 
-  it('a milestone event grants the next milestone and queues only the event', () => {
-    const s = world();
+  /** A salt under which the event is told (`shared`) or not (the share roll is a hash of the salt). */
+  const withSalt = (shared: boolean, make: () => CampaignState, id: string): CampaignState => {
+    for (let salt = 1; salt < 400; salt++) {
+      const s = make();
+      s.life!.salt = salt;
+      applyLifeEvent(s, reg, ANN, events(id), 30);
+      if (s.life!.queue.some((q) => q.kind === 'event') === shared) { const t = make(); t.life!.salt = salt; return t; }
+    }
+    throw new Error('no salt');
+  };
+
+  it('a milestone event a shared event brings is told with the event (only the event is queued)', () => {
+    const s = withSalt(true, () => world(), 'finished_book');
     const out = applyLifeEvent(s, reg, ANN, events('finished_book'), 30);
     expect(mine(s).hobbies![0].milestones).toEqual(['first_book']);
     expect(ofType(out, 'hobby_milestone')).toHaveLength(1);
     expect(s.life!.queue.every((q) => q.kind === 'event')).toBe(true);
+    expect(s.life!.queue[0].alsoFacts).toHaveLength(1);
+  });
+
+  it('an unshared event that brings a milestone queues its own hobby item (R13), so the milestone can be told on schedule', () => {
+    const s = withSalt(false, () => world(), 'finished_book');
+    applyLifeEvent(s, reg, ANN, events('finished_book'), 30);
+    expect(mine(s).hobbies![0].milestones).toEqual(['first_book']);
+    expect(s.life!.queue).toHaveLength(1);
+    expect(s.life!.queue[0]).toMatchObject({ kind: 'hobby', ref: 'reading', what: 'milestone', milestoneId: 'first_book' });
+    expect(toldMilestones(s, ANN, mine(s).hobbies![0])).toEqual([]); // untold until the item is told
+    closeNews(s, s.life!.queue[0].id);
+    expect(toldMilestones(s, ANN, mine(s).hobbies![0])).toEqual(['first_book']);
   });
 
   it('a milestone event of any hobby picks one of hers by hash; none, no change', () => {

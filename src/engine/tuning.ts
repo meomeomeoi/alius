@@ -584,6 +584,8 @@ export const TUNING = Object.freeze({
     cooldown: Object.freeze({ small: 21, notable: 45, yearly: 360 }), squadKindDays: 5,
     share: Object.freeze({ talkative: 0.7, terse: 0.4, silent: 0.15 }), shareAffinity: 40, shareLowMult: 0.5,
     newsDays: 3, staleDays: 7, dmChance: 0.5, perDay: Object.freeze({ rare: 0.5, normal: 1, often: 2 }), hobbyWeek: 2, sameWomanDays: 2, deliveredKeep: 14,
+    /** An untold fact nobody is waiting to tell goes after `untoldKeepDays` (hobby facts excepted: they say what she has not told of); a woman keeps her newest `keepsMax` kept facts. AUTHOR TO TUNE. */
+    untoldKeepDays: 30, keepsMax: 10,
     aptitude: Object.freeze({ low: 0.5, standard: 1, high: 1.6 }), interestDiv: 60, interestCap: 1.3,
     milestones: Object.freeze([10, 30, 60, 100]), milestoneShift: 0.15, plateauAt: 0.7, breakthrough: 0.06, lowCeiling: 60,
     decayPerWeek: 1, maxActive: 3, practiceStressMax: 70, hobbyRoomWeight: 2,

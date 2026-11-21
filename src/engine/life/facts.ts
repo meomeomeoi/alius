@@ -35,13 +35,18 @@ export function revealFact(draft: CampaignState, factId: string): boolean {
 
 /**
  * The base's best hand at something becomes known: the squad fact of the mastery (written hidden and `untold`) is revealed and, while character
- * development runs, it joins her as a trait (`DevFact`, source `life`, kind `skill`). Called when the `mastered` item is told, or at once when
- * nothing is queued for it (the commander was there, or the life event told it). Nothing for a fact that is not there or was revealed.
+ * development runs, it joins her as a trait (`DevFact`, source `life`, kind `skill`). Called only when the commander is told: the `mastered` item
+ * (or a later item of the hobby, or the event that brought it) is told, or the commander was there. Nothing for a fact that is not there or was revealed.
  */
 export function revealMastery(draft: CampaignState, unitId: string, hobbyId: string): boolean {
   const fact = draft.memory.facts.find((f) => f.about.includes(unitId) && f.tags.includes('mastered') && f.tags.includes(hobbyId));
-  if (!fact || !revealFact(draft, fact.id)) return false;
-  const unit = draft.squad.find((u) => u.id === unitId);
+  return fact !== undefined && revealMasteryFact(draft, fact);
+}
+
+/** `revealMastery` for the fact itself (the one tagged `mastered`): revealed, and a trait of hers while character development runs. */
+export function revealMasteryFact(draft: CampaignState, fact: Fact): boolean {
+  if (!revealFact(draft, fact.id)) return false;
+  const unit = draft.squad.find((u) => fact.about.includes(u.id) && u.kind === 'named');
   if (unit && developmentMode(draft) !== 'off') {
     const dev = ensureDevelopment(unit);
     const df: DevFact = { id: nextDevId(dev, 'df'), text: fact.text, kind: 'skill', day: draft.day, source: 'life' };

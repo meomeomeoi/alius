@@ -3,7 +3,7 @@ import { UNTOLD_TAG } from '../life/state';
 import { normalizeTag } from '../setup';
 import { TUNING } from '../tuning';
 import { factTextMax, memoryConfig } from './config';
-import { sweepCovered } from './fold';
+import { countedFacts, sweepCovered } from './fold';
 
 /** `f12`, `p3`, `c40`, `s7`, …: one campaign-wide counter so ids never repeat inside a save. */
 export function nextId(draft: CampaignState, prefix: string): string {
@@ -48,11 +48,11 @@ export function addFact(draft: CampaignState, f: Omit<Fact, 'id'>, opts: { remem
 function pruneFacts(draft: CampaignState): void {
   sweepCovered(draft); // a fact that was folded into all its dossiers goes before anything is deleted
   const ceiling = Math.floor(memoryConfig(draft).factsMax * TUNING.memory.hardCeiling);
-  const extra = draft.memory.facts.length - ceiling;
+  const extra = countedFacts(draft.memory.facts) - ceiling; // P14c: an untold life fact is neither counted nor deleted here (the life day step sweeps them)
   if (extra <= 0) return;
   const at = new Map(draft.memory.facts.map((f, i) => [f.id, i]));
   const doomed = new Set(
-    draft.memory.facts.filter((f) => !f.pinned)
+    draft.memory.facts.filter((f) => !f.pinned && !f.tags.includes(UNTOLD_TAG))
       .sort((a, b) => a.importance - b.importance || a.day - b.day || at.get(a.id)! - at.get(b.id)!)
       .slice(0, extra).map((f) => f.id),
   );

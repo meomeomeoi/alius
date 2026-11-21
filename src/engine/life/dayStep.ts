@@ -3,7 +3,7 @@ import type { Registries } from '../../content/types';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyLifeEvent, pickLifeEvent } from './events';
-import { deliverNews, staleSweep } from './news';
+import { deliverNews, staleSweep, sweepUntold } from './news';
 import { friendHobbies, interestTick, practise, practiceSlots, sharePractice } from './hobbies';
 import { busySlot, isPrivateRoom, takesPart, type DayPlaces } from './places';
 import { ensureLife, lifeMode } from './state';
@@ -89,6 +89,7 @@ export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[]
   }
   events.push(...hobbyPass(draft, reg, day, places));
   events.push(...staleSweep(draft, day), ...deliverNews(draft, reg, day)); // the news last: what the day brought is paced out
+  sweepUntold(draft, reg, day);
   life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
   return events;
 }

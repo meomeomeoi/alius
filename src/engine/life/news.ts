@@ -1,12 +1,12 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
-import type { CampaignState, LifeState, NewsItem } from '../state/types';
+import type { CampaignState, Fact, LifeState, NewsItem } from '../state/types';
 import { TUNING } from '../tuning';
 import { isLiving } from '../economy';
-import { revealFact, revealMastery } from './facts';
+import { LIFE_TAG, revealFact, revealMastery, revealMasteryFact } from './facts';
 import { takesPart } from './places';
-import { ensureLife, lifeChance, lifeHash, lifeMode, nextLifeId, temperamentOf } from './state';
-import type { HobbyEntry } from './types';
+import { UNTOLD_TAG, ensureLife, lifeChance, lifeHash, lifeMode, nextLifeId, temperamentOf } from './state';
+import type { HobbyEntry, LifeEventEntry } from './types';
 
 /**
  * The news queue (P14c): what has happened to her and has not been told yet. An item waits in `queue` until it is told. When it is delivered
@@ -85,6 +85,31 @@ export function staleSweep(draft: CampaignState, day: number): EngineEvent[] {
   return events;
 }
 
+/**
+ * The sweep of facts nobody will tell (P14c, ruling R12), run by the life day step after the news. An `untold` fact of her life that no item
+ * of the queue carries (its event was never queued, or its item was dropped, stale or gone with her) is deleted `untoldKeepDays` after it was
+ * written, so unshared days do not pile up in the save; the facts of her hobbies stay (a missing `started` or milestone fact would show a hobby she has
+ * not told of), except the one of a hobby put away. A fact of an event she keeps (`share: 'keeps'`) is not deleted (P15a reads it) but only
+ * her newest `keepsMax` are kept. Facts the commander has been told of are not touched.
+ */
+export function sweepUntold(draft: CampaignState, reg: Pick<Registries, 'lifeEvents'>, day: number): void {
+  const life = draft.life;
+  if (!life || lifeMode(draft) === 'off') return;
+  const carried = new Set(life.queue.flatMap((q) => [...(q.factId !== undefined ? [q.factId] : []), ...(q.alsoFacts ?? [])]));
+  const keepsTag = (f: { tags: string[] }): boolean => f.tags.some((t) => (reg.lifeEvents.get(t) as unknown as LifeEventEntry | undefined)?.share === 'keeps');
+  const mine = (f: { tags: string[] }): boolean => f.tags.includes(LIFE_TAG) && f.tags.includes(UNTOLD_TAG);
+  const doomed = new Set<string>();
+  for (const f of draft.memory.facts) {
+    if (!mine(f) || carried.has(f.id) || keepsTag(f)) continue;
+    if (f.tags.includes('hobby') && !f.tags.includes('dropped')) continue;
+    if (day - f.day >= TUNING.life.untoldKeepDays) doomed.add(f.id);
+  }
+  const keeps = new Map<string, string[]>();
+  for (const f of draft.memory.facts) if (mine(f) && keepsTag(f) && !carried.has(f.id)) for (const id of f.about) keeps.set(id, [...(keeps.get(id) ?? []), f.id]);
+  for (const ids of keeps.values()) for (const id of ids.slice(0, Math.max(0, ids.length - TUNING.life.keepsMax))) doomed.add(id); // facts are in the order written: the oldest go
+  if (doomed.size > 0) draft.memory.facts = draft.memory.facts.filter((f) => !doomed.has(f.id));
+}
+
 /** A scene with her has ended: whatever she had to tell and did not is gone (a told item was closed already). Called from `scene/end`. */
 export function endSceneNews(draft: CampaignState, unitIds: readonly string[]): EngineEvent[] {
   const life = draft.life;
@@ -157,17 +182,58 @@ export function pendingNews(state: Pick<CampaignState, 'life' | 'memory'>, unitI
   return out.sort((a, b) => a.day - b.day || a.at - b.at).map(({ itemId, text, passing }) => ({ itemId, text, ...(passing === true ? { passing: true as const } : {}) }));
 }
 
+/** The commander learns a fact of hers: the mastery one also becomes a trait of hers (`revealMasteryFact`). */
+const tell = (draft: CampaignState, fact: Fact): void => {
+  if (fact.tags.includes('mastered')) revealMasteryFact(draft, fact);
+  else revealFact(draft, fact.id);
+};
+
+/**
+ * What else of her hobby the commander learns when an item of it is told (ruling R13): her hobby's facts written before the one just told that
+ * are still untold (the start, earlier milestones, a mastery before a drop) are revealed with it, and the items still waiting to tell them go
+ * (they would tell what is known). The hobbies are the ones the told facts are about, and the item's own when it is a hobby item. A fact the
+ * item names that is gone leaves the day to go by.
+ */
+function earlierHobbyFacts(draft: CampaignState, item: NewsItem, told: readonly Fact[]): void {
+  const life = draft.life;
+  const unit = draft.squad.find((u) => u.id === item.unitId);
+  if (!life || !unit) return;
+  const have = (unit.hobbies ?? []).map((h) => h.id);
+  const hobbies = new Set<string>(item.kind === 'hobby' ? [item.ref] : []);
+  for (const f of told) if (f.tags.includes('hobby')) for (const id of have) if (f.tags.includes(id)) hobbies.add(id);
+  if (hobbies.size === 0) return;
+  const at = new Map(draft.memory.facts.map((f, i) => [f.id, i]));
+  const limit = Math.max(-1, ...told.map((f) => at.get(f.id) ?? -1));
+  const earlier = (f: Fact): boolean => (limit >= 0 ? at.get(f.id)! < limit : f.day <= item.day);
+  const revealed = new Set<string>();
+  for (const f of [...draft.memory.facts]) {
+    if (!f.about.includes(item.unitId) || !f.tags.includes('hobby') || !f.tags.includes(UNTOLD_TAG) || !earlier(f)) continue;
+    if (!have.some((id) => hobbies.has(id) && f.tags.includes(id))) continue;
+    tell(draft, f);
+    revealed.add(f.id);
+  }
+  const gone = (q: { id: string; unitId: string; kind: string; ref: string; factId?: string }): boolean =>
+    q.id !== item.id && q.unitId === item.unitId && q.kind === 'hobby' && hobbies.has(q.ref) && q.factId !== undefined && revealed.has(q.factId);
+  const out = new Set(life.queue.filter(gone).map((q) => q.id));
+  life.queue = life.queue.filter((q) => !out.has(q.id));
+  life.outbox = life.outbox.filter((o) => !out.has(o.itemId));
+  life.news = life.news.filter((n) => !out.has(n.itemId));
+}
+
 /**
  * The commander has been told: the fact is revealed (no longer hidden or `untold`), the item leaves the queue, the outbox and the news, and
- * `life_noted` says so. Nothing for an item that is not there (it was told already).
+ * `life_noted` says so. Whatever the item brought with it (`alsoFacts`) and what the commander learns of her hobby with it (`earlierHobbyFacts`)
+ * comes out too. Nothing for an item that is not there (it was told already).
  */
 export function closeNews(draft: CampaignState, itemId: string): EngineEvent[] {
   const life = draft.life;
   const item = life?.queue.find((q) => q.id === itemId);
   if (!life || !item) return [];
-  if (item.factId !== undefined) revealFact(draft, item.factId);
-  for (const id of item.alsoFacts ?? []) revealFact(draft, id); // what the event brought comes out with it
+  const told = [...(item.factId !== undefined ? [item.factId] : []), ...(item.alsoFacts ?? [])]
+    .map((id) => draft.memory.facts.find((f) => f.id === id)).filter((f): f is Fact => f !== undefined);
+  for (const f of told) tell(draft, f); // what the event brought comes out with it
   if (item.what === 'mastered') revealMastery(draft, item.unitId, item.ref); // the base's best hand is known now, and a trait of hers
+  earlierHobbyFacts(draft, item, told);
   life.queue = life.queue.filter((q) => q.id !== itemId);
   life.outbox = life.outbox.filter((o) => o.itemId !== itemId);
   life.news = life.news.filter((n) => n.itemId !== itemId);

@@ -167,21 +167,22 @@ export function practiceSlots(
  * The base's best hand at something: a fact the whole squad knows and the commander does not yet (hidden, `untold`, like her other news; it is
  * revealed, with the trait it gives her, when the item is told: `revealMastery`).
  */
-function masterHobby(draft: CampaignState, unit: Unit, h: HobbyState, entry: HobbyEntry): EngineEvent[] {
+function masterHobby(draft: CampaignState, unit: Unit, h: HobbyState, entry: HobbyEntry, facts?: string[]): EngineEvent[] {
   h.mastered = true;
-  addFact(draft, {
+  const fact = addFact(draft, {
     about: [unit.id], text: `${unit.displayName} is the base's ${entry.label} hand.`, tags: ['life', UNTOLD_TAG, 'hobby', 'mastered', h.id], importance: 2, day: draft.day,
     knownBy: draft.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id), hiddenFromCommander: true,
   });
+  facts?.push(fact.id); // told with the event that brought the milestone: revealed (with the trait) when that event is told
   return [{ type: 'hobby_mastered', unitId: unit.id, hobbyId: h.id }];
 }
 
 /**
  * She reaches the `n`-th (0..3) milestone of a hobby: skill at least its threshold, the plateau gone, interest +15, a hidden fact and (unless
- * `caused`, told in the scene the commander was in, or `told`, the news of the life event that brought it) an item in the news queue; a
+ * `caused`, told in the scene the commander was in, or `told`, the news of a shared life event that brought it) an item in the news queue; a
  * milestone with an `opinion` trace opens the hobby's topic for her. The fourth is mastery. Low aptitude stops at the third (ceiling).
- * A `caused` milestone is known to the commander at once (it was there); a `told` one adds its fact id to `opts.facts`, so the item of the
- * event that brought it reveals it with the event.
+ * A `caused` milestone is known to the commander at once (it was there); a `told` one adds its fact id (and the mastery's) to `opts.facts`, so the
+ * item of the event that brought it reveals it with the event. A milestone an unshared event brings is neither: it has its own item (R13).
  */
 export function grantMilestone(
   draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, n: number, opts: { caused?: true; told?: true; facts?: string[] } = {},
@@ -218,8 +219,8 @@ export function grantMilestone(
     events.push(...bumpInterest(draft, unitId, hobbyId, temperamentOf(draft, unitId).volatility === 'moody' ? TUNING.life.interest.ceilingMoody : TUNING.life.interest.ceiling, draft.day));
   }
   if (n === 3) {
-    events.push(...masterHobby(draft, unit, h, entry));
-    if (opts.caused === true || opts.told === true) revealMastery(draft, unitId, hobbyId); // nothing is queued for it: it is known now
+    events.push(...masterHobby(draft, unit, h, entry, opts.told === true ? opts.facts : undefined));
+    if (opts.caused === true) revealMastery(draft, unitId, hobbyId); // the commander was there: it is known now (a mastery told with an event waits for the telling)
   }
   return events;
 }
@@ -361,11 +362,12 @@ export function interestTick(draft: CampaignState, reg: Registries, unitId: stri
 
 /**
  * She takes up a hobby she does not have: skill 0, the novelty interest, active (the least keen of the others cools past three). From an
- * `event` the life event is the news (its fact id goes to `facts`, so the event's item reveals it with the event); from a `friend` it is news
- * of its own (a hidden fact and a queue item); an `import` is a starting hobby and silent.
+ * `event` the life event is the news (its fact id goes to `facts`, so the event's item reveals it with the event); from a `friend`, or from an
+ * `unshared` event (one she does not tell, so nothing carries its fact) it is news of its own (a hidden fact and a queue item); an `import` is a
+ * starting hobby and silent.
  */
 export function startHobby(
-  draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number, source: 'event' | 'friend' | 'import', facts?: string[],
+  draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number, source: 'event' | 'unshared' | 'friend' | 'import', facts?: string[],
 ): EngineEvent[] {
   const unit = unitOf(draft, unitId);
   const entry = reg.hobbies.get(hobbyId) as HobbyEntry | undefined;
@@ -374,7 +376,7 @@ export function startHobby(
   if (source === 'import') return events;
   const fact = writeLifeFact(draft, unitId, `${unit.displayName} has taken up ${entry.label}.`, ['hobby', hobbyId, 'started'], 1);
   if (source === 'event') facts?.push(fact.id);
-  if (source === 'friend') events.push(...enqueue(draft, { unitId, kind: 'hobby', ref: hobbyId, what: 'started', factId: fact.id, category: 'hobby', day }));
+  if (source === 'friend' || source === 'unshared') events.push(...enqueue(draft, { unitId, kind: 'hobby', ref: hobbyId, what: 'started', factId: fact.id, category: 'hobby', day }));
   return events;
 }
 

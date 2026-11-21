@@ -1,6 +1,7 @@
 import type { CampaignState, Fact } from '../state/types';
 import { TUNING } from '../tuning';
 import { isLiving } from '../economy';
+import { UNTOLD_TAG } from '../life/state';
 import { memoryConfig } from './config';
 
 /** The world dossier's key (`memory.dossiers['*']`): facts about nobody in particular. */
@@ -44,6 +45,12 @@ export function sweepCovered(draft: CampaignState): void {
   if (draft.memory.facts.some((f) => f.foldedInto !== undefined)) draft.memory.facts = draft.memory.facts.filter((f) => !covered(draft, f));
 }
 
+/**
+ * How many facts count toward `factsMax`: every one but a life fact the commander has not been told (tag `untold`, P14c). Those wait for their
+ * telling or for the life day step's own sweep and are not the fold's to count or to prune (a campaign without life has none, so this is its length).
+ */
+export const countedFacts = (facts: readonly Fact[]): number => facts.filter((f) => !f.tags.includes(UNTOLD_TAG)).length;
+
 export interface FoldDue {
   target: string;
   own: Fact[];
@@ -52,7 +59,7 @@ export interface FoldDue {
 
 /**
  * The next fold, or null. First, a target with at least `foldBatch` foldable facts it has not had yet (the one with the most; ties in
- * squad order, the world last). Otherwise, when the save holds more than `factsMax` facts, the target with the most. A fact about
+ * squad order, the world last). Otherwise, when the save holds more than `factsMax` facts (the untold ones of her life do not count), the target with the most. A fact about
  * several units is offered to each of them in turn and stays until all have had it.
  */
 export function foldDue(state: CampaignState): FoldDue | null {
@@ -65,7 +72,7 @@ export function foldDue(state: CampaignState): FoldDue | null {
   const order = [...state.squad.map((u) => u.id), WORLD];
   const rank = (t: string): number => (order.indexOf(t) === -1 ? order.length : order.indexOf(t));
   const best = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank(a[0]) - rank(b[0]))[0];
-  if (best[1].length < TUNING.memory.foldBatch && state.memory.facts.length <= memoryConfig(state).factsMax) return null;
+  if (best[1].length < TUNING.memory.foldBatch && countedFacts(state.memory.facts) <= memoryConfig(state).factsMax) return null;
   const own = best[1].filter((f) => foldPart(state, f) === 'own');
   return { target: best[0], own, shared: best[1].filter((f) => !own.includes(f)) };
 }
