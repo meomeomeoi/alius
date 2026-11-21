@@ -281,7 +281,7 @@ export interface LifeUnit {
   meetingDay?: number;
   taught?: string[];
   /** The open scene's triggers and picks. */
-  scene?: { sceneId: string; topics: string[]; topic?: string; joke?: string };
+  scene?: { sceneId: string; topics: string[]; topic?: string; joke?: string; /** A topic was picked for her this scene (voiced or not): no second one. */ picked?: true };
   /** Topics opened by an event or a trace, waiting to be formed. */
   pendingTopics?: string[];
 }

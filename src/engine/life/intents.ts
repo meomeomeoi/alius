@@ -6,6 +6,7 @@ import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { bumpInterest, pushHobby } from './hobbies';
 import { closeNews, pendingNews } from './news';
+import { voiceOpinion } from './opinions';
 import { unitOf } from './places';
 import { lifeMode } from './state';
 import type { HobbyEntry, LifeOffer, OpinionTopicEntry } from './types';
@@ -76,6 +77,9 @@ export function applyLifeIntent(draft: CampaignState, ctx: EngineCtx, unitId: st
     case 'hobby_praised':
       // the commander is there: a plateau she was on breaks and the step is told in the scene (not queued)
       return ev.hobbyId === undefined ? [] : pushHobby(draft, reg, unitId, ev.hobbyId, draft.day, { caused: true });
+    case 'opinion_voiced':
+      // only the topic picked for this scene (the offer was rebuilt from it); a topic nothing triggered is never voiced
+      return ev.topicId === undefined ? [] : voiceOpinion(draft, reg, unitId, ev.topicId);
     default:
       return [];
   }

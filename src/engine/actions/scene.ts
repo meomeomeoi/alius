@@ -19,6 +19,8 @@ import { showMoments, stampMoments, unstampMoments } from '../development/moment
 import { countCompanions } from '../development/habits';
 import { noteBusy } from '../life/dayStep';
 import { endSceneNews } from '../life/news';
+import { endSceneLife, startSceneLife } from '../life/opinions';
+import { busySlot } from '../life/places';
 import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
@@ -100,10 +102,11 @@ registerAction('scene/start', (draft, payload, ctx) => {
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   stampMoments(draft, participants, sceneId); // P14b: a quiet change of hers shows in this scene
   noteBusy(draft, participants); // P14c: they are with the commander this slot (a no-op while life is off)
+  const topics = startSceneLife(draft, reg, { id: sceneId, locationId: loc.id, participants }, (id) => (origin === 'activity' ? draft.life?.busy.find((b) => b.unitId === id && b.slot === busySlot(draft.day, draft.slot) && b.activityId !== undefined)?.activityId : undefined)); // P14c: what the place and her week bring up (nothing while life is off)
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day; // P9d: judges a daily-contact rule
   // P12: Secret Frequency listens once per present unit (nothing is drawn without the trait)
   const heard = rollIntercepts(draft, ctx, participants, { private: participants.length === 1, dm: false, sceneId });
-  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
+  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard, ...topics]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
 });
 
 registerAction('scene/exchange', (draft) => {
@@ -198,6 +201,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id)); // P9d: a scene with her ends her hold
   events.push(...endSceneNews(draft, scene.participants)); // P14c: what she had to tell and did not is gone
+  endSceneLife(draft, scene.participants); // P14c: what the scene triggered and picked is gone
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });
@@ -234,6 +238,7 @@ registerAction('scene/abort', (draft, _payload, ctx) => {
   if (!scene) throw new Error('scene/abort: no scene is open');
   const settled = settleDefiance(draft, ctx, { sceneId: scene.id });
   unstampMoments(draft, scene.id); // P14b: the scene never happened
+  endSceneLife(draft, scene.participants); // P14c: what it triggered and picked is gone
   delete draft.scene;
   // an activity talk keeps its hold so the app can cancel it with `calendar/cancel_scene`
   if (scene.origin !== 'activity') delete draft.calendar.pendingScene;

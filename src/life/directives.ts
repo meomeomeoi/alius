@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
-import { lifeMode, pendingNews } from '../engine/life';
-import type { CampaignState } from '../engine/state/types';
+import { lifeMode, pendingNews, plainText } from '../engine/life';
+import type { OpinionTopicEntry } from '../engine/life/types';
+import type { CampaignState, Unit } from '../engine/state/types';
 import type { ContextBuilder, Directive } from '../llm/context';
 
 const clean = (text: string): string => text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -16,30 +17,52 @@ const clean = (text: string): string => text.replace(/[\u0000-\u001f\u007f]/g, '
 export const LIFE_DERIVED = ['life:'] as const;
 
 export const NEWS_PREFIX = 'life:news:';
+export const OPINION_PREFIX = 'life:opinion:';
+
+/** The directive of the topic picked for her in the open scene, or null: her view in the topic's own words (the position's neutral description and her words when she has them). */
+function opinionDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
+  const sc = state.life?.units[unit.id]?.scene;
+  if (!sc || sc.sceneId !== state.scene?.id || sc.topic === undefined) return null;
+  const opinion = unit.opinions?.[sc.topic];
+  const topic = reg.opinionTopics.get(sc.topic) as unknown as OpinionTopicEntry | undefined;
+  const position = topic?.positions.find((p) => p.id === opinion?.position);
+  if (!opinion || !topic || !position) return null;
+  const hint = clean(plainText(position.description));
+  const words = opinion.text !== undefined && opinion.text !== '' ? ` In her words: "${clean(opinion.text)}"` : '';
+  return {
+    id: `${OPINION_PREFIX}${unit.id}`, expiresAfter: 'scene',
+    text: `If it fits, ${unit.displayName} may say what she thinks about ${clean(topic.label)}: ${hint}${words} Lightly, once.`,
+  };
+}
 
 /**
  * Derived directives for the women in the scene (`present`):
  *  - `life:news:<unitId>`: the oldest thing she has to tell the commander and has not (an item the queue delivered as a directive). A
  *    stale item reads as a passing mention ("recently").
+ *  - `life:opinion:<unitId>`: the one topic picked for her in this scene (a trigger fired, she has a view and it is off cooldown), until she
+ *    voices it (`opinion_voiced` clears the pick). Never an opinion nothing triggered.
  * Nothing while life is off.
  */
-export function lifeDirectives(state: CampaignState, _reg: Registries, present: string[]): Directive[] {
+export function lifeDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
   if (lifeMode(state) === 'off') return [];
   const out: Directive[] = [];
   for (const id of present) {
     const unit = state.squad.find((u) => u.id === id);
     if (!unit || unit.kind !== 'named') continue;
-    const first = pendingNews(state, id)[0];
-    if (!first) continue;
     const name = unit.displayName;
-    const raw = clean(first.text);
-    const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
-    out.push({
-      id: `${NEWS_PREFIX}${id}`, expiresAfter: 'scene',
-      text: first.passing === true
-        ? `If it fits, ${name} may mention in passing something that happened to her recently: ${what} A word or two, once.`
-        : `If it fits, ${name} may tell the commander about something that happened to her: ${what} Once, in her own words.`,
-    });
+    const first = pendingNews(state, id)[0];
+    if (first) {
+      const raw = clean(first.text);
+      const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
+      out.push({
+        id: `${NEWS_PREFIX}${id}`, expiresAfter: 'scene',
+        text: first.passing === true
+          ? `If it fits, ${name} may mention in passing something that happened to her recently: ${what} A word or two, once.`
+          : `If it fits, ${name} may tell the commander about something that happened to her: ${what} Once, in her own words.`,
+      });
+    }
+    const opinion = opinionDirective(state, reg, unit);
+    if (opinion) out.push(opinion);
   }
   return out;
 }

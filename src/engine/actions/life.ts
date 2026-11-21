@@ -7,6 +7,7 @@ import { leaveLifeNote } from '../notes/write';
 import { lifeDayStep, noteBusy, recordDeaths } from '../life/dayStep';
 import { newHobby, seedLife } from '../life/hobbies';
 import { LIFE_MODES, TEMPERAMENT_FIELDS, ensureLife, temperamentOf, temperamentProblems } from '../life/state';
+import { formOpinion, triggerTopics } from '../life/opinions';
 import type { OpinionTopicEntry } from '../life/types';
 import { aptitudeProblems } from '../setup';
 import { TUNING } from '../tuning';
@@ -193,4 +194,28 @@ registerAction('life/trace_note', (draft, payload) => {
   const text = typeof p?.text === 'string' ? p.text.trim() : '';
   if (text === '' || text.length > TRACE_NOTE_MAX) throw new Error(`A note is 1 to ${TRACE_NOTE_MAX} characters.`);
   return [...leaveLifeNote(draft, unit, text, item?.ref ?? 'hobby'), ...closeNews(draft, entry.itemId)];
+});
+
+/**
+ * `life/opinion_formed { unitId, topicId, position, text, strength, source }`: her view on a topic is written, once (the model's answer, validated, or
+ * the fallback). `strength` is `held` or `loose` (`strong` comes from the import or an edit), `source` is `model` or `fallback`.
+ */
+registerAction('life/opinion_formed', (draft, payload, ctx) => {
+  const p = payload as { unitId?: unknown; topicId?: unknown; position?: unknown; text?: unknown; strength?: unknown; source?: unknown } | undefined;
+  if (typeof p?.unitId !== 'string' || typeof p.topicId !== 'string' || typeof p.position !== 'string') throw new Error('life/opinion_formed needs { unitId, topicId, position }.');
+  if (p.strength !== 'held' && p.strength !== 'loose') throw new Error('A formed opinion is held or loose.');
+  if (p.source !== 'model' && p.source !== 'fallback') throw new Error('An opinion is formed by the model or by the fallback.');
+  if (p.text !== undefined && typeof p.text !== 'string') throw new Error('The opinion text must be text.');
+  return formOpinion(draft, ctx.registries, p.unitId, p.topicId, p.position, p.text ?? '', p.strength, p.source);
+});
+
+/**
+ * `life/topics_triggered { topicIds }`: something in the open scene brought these topics up (the commander's own words, a keyword): they are stored
+ * for each woman present and the one she may voice is picked. Nothing while life is off.
+ */
+registerAction('life/topics_triggered', (draft, payload, ctx) => {
+  const ids = (payload as { topicIds?: unknown } | undefined)?.topicIds;
+  if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string')) throw new Error('life/topics_triggered needs { topicIds } as a list of ids.');
+  if (!draft.scene) throw new Error('life/topics_triggered: no scene is open');
+  return triggerTopics(draft, ctx.registries, draft.scene.participants, ids as string[], draft.scene.id);
 });

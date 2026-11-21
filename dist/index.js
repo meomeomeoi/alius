@@ -783,7 +783,7 @@ var TUNING = Object.freeze({
       dropAfterDays: 30
     }),
     friendHobby: 0.02,
-    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12 }),
+    opinion: Object.freeze({ cooldownDays: 21, persuadeAt: 6, strongMult: 2, harden: 0.5, textMax: 200, importMin: 8, importMax: 12, recentDays: 7 }),
     meeting: Object.freeze({ affinityMin: -30 }),
     joke: Object.freeze({
       windowDays: 30,
@@ -15407,6 +15407,111 @@ var measureList = (reg, state) => [
   "unspecified"
 ];
 
+// src/engine/life/opinions.ts
+var topicOf = (reg, id) => reg.opinionTopics.get(id);
+function topicsAt(reg, at) {
+  const out = [];
+  for (const [id, entry] of reg.opinionTopics) {
+    const t = entry.triggers;
+    if (t.locations?.includes(at.locationId) === true || at.activityId !== void 0 && t.activities?.includes(at.activityId) === true) out.push(id);
+  }
+  return out;
+}
+function recentEventTopics(state, reg, unitId, day) {
+  const last = state.life?.units[unitId]?.last;
+  if (!last) return [];
+  const out = [];
+  for (const [id, entry] of reg.opinionTopics) {
+    const events = entry.triggers.lifeEvents ?? [];
+    if (events.some((e) => last[e] !== void 0 && day - last[e] < TUNING.life.opinion.recentDays)) out.push(id);
+  }
+  return out;
+}
+var ready = (unit2, topicId, day) => {
+  const o = unit2.opinions?.[topicId];
+  return o !== void 0 && (o.voicedDay === void 0 || day - o.voicedDay >= TUNING.life.opinion.cooldownDays);
+};
+function pickTopic(draft, unitId, sceneId) {
+  const life = draft.life;
+  const unit2 = unitOf2(draft, unitId);
+  const sc = life?.units[unitId]?.scene;
+  if (!life || !unit2 || !sc || sc.sceneId !== sceneId || sc.picked === true) return [];
+  const eligible3 = sc.topics.filter((t) => ready(unit2, t, draft.day));
+  if (eligible3.length === 0) return [];
+  sc.topic = eligible3[lifeHash(life, `${sceneId}|${unitId}`) % eligible3.length];
+  sc.picked = true;
+  return [{ type: "topic_picked", unitId }];
+}
+function triggerTopics(draft, reg, unitIds, topicIds, sceneId) {
+  const life = draft.life;
+  if (!life || lifeMode(draft) === "off") return [];
+  const topics = topicIds.filter((t) => reg.opinionTopics.has(t));
+  const events = [];
+  for (const id of unitIds) {
+    const unit2 = unitOf2(draft, id);
+    if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) continue;
+    const mine = life.units[id] ??= { last: {} };
+    if (mine.scene?.sceneId !== sceneId) mine.scene = { sceneId, topics: [] };
+    for (const t of topics) if (!mine.scene.topics.includes(t)) mine.scene.topics.push(t);
+    events.push(...pickTopic(draft, id, sceneId));
+  }
+  return events;
+}
+function startSceneLife(draft, reg, scene, activityOf) {
+  if (lifeMode(draft) === "off") return [];
+  const life = ensureLife(draft);
+  const events = [];
+  for (const id of scene.participants) {
+    const unit2 = unitOf2(draft, id);
+    if (!unit2 || unit2.kind !== "named") continue;
+    (life.units[id] ??= { last: {} }).scene = { sceneId: scene.id, topics: [] };
+    const act = activityOf(id);
+    const topics = [...topicsAt(reg, { locationId: scene.locationId, ...act !== void 0 ? { activityId: act } : {} }), ...recentEventTopics(draft, reg, id, draft.day)];
+    events.push(...triggerTopics(draft, reg, [id], [...new Set(topics)], scene.id));
+  }
+  return events;
+}
+function endSceneLife(draft, unitIds) {
+  const life = draft.life;
+  if (!life) return;
+  for (const id of unitIds) if (life.units[id]?.scene !== void 0) delete life.units[id].scene;
+}
+function formOpinion(draft, reg, unitId, topicId, position, text2, strength, source) {
+  const unit2 = unitOf2(draft, unitId);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) throw new Error("An opinion is formed for a named soldier who is still with the squad.");
+  const topic = topicOf(reg, topicId);
+  if (!topic) throw new Error(`Unknown opinion topic "${topicId}".`);
+  if (!topic.positions.some((p) => p.id === position)) throw new Error(`Topic "${topicId}" has no position "${position}".`);
+  if (unit2.opinions?.[topicId] !== void 0) throw new Error(`${unit2.displayName} already has a view on this.`);
+  const words3 = text2.trim().slice(0, TUNING.life.opinion.textMax).trim();
+  const opinion = { position, strength, formedDay: draft.day, ...words3 !== "" ? { text: words3 } : {} };
+  (unit2.opinions ??= {})[topicId] = opinion;
+  const mine = draft.life?.units[unitId];
+  if (mine?.pendingTopics) mine.pendingTopics = mine.pendingTopics.filter((t) => t !== topicId);
+  const picked = draft.scene?.participants.includes(unitId) ? pickTopic(draft, unitId, draft.scene.id) : [];
+  return [{ type: "opinion_formed", unitId, topicId, source }, ...picked];
+}
+function voiceOpinion(draft, reg, unitId, topicId) {
+  const unit2 = unitOf2(draft, unitId);
+  const opinion = unit2?.opinions?.[topicId];
+  const topic = topicOf(reg, topicId);
+  const sc = draft.life?.units[unitId]?.scene;
+  if (!unit2 || !opinion || !topic || !sc || sc.sceneId !== draft.scene?.id || sc.topic !== topicId) return [];
+  opinion.voicedDay = draft.day;
+  delete sc.topic;
+  const position = topic.positions.find((p) => p.id === opinion.position);
+  const said = opinion.text !== void 0 && opinion.text !== "" ? opinion.text : plainText(position?.description ?? "");
+  addFact(draft, {
+    about: [unitId],
+    text: `${unit2.displayName}'s view on ${topic.label}: ${said}`,
+    tags: ["opinion", topicId],
+    importance: opinion.strength === "strong" ? 2 : 1,
+    day: draft.day,
+    knownBy: [unitId]
+  });
+  return [{ type: "life_noted", unitId, topicId }];
+}
+
 // src/engine/life/intents.ts
 function lifeIntentInput(state, reg, participants, scene, channel) {
   if (lifeMode(state) === "off" || !state.life) return {};
@@ -15453,6 +15558,8 @@ function applyLifeIntent(draft, ctx2, unitId, ev) {
     }
     case "hobby_praised":
       return ev.hobbyId === void 0 ? [] : pushHobby(draft, reg, unitId, ev.hobbyId, draft.day, { caused: true });
+    case "opinion_voiced":
+      return ev.topicId === void 0 ? [] : voiceOpinion(draft, reg, unitId, ev.topicId);
     default:
       return [];
   }
@@ -24803,9 +24910,10 @@ registerAction("scene/start", (draft, payload, ctx2) => {
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   stampMoments(draft, participants, sceneId);
   noteBusy(draft, participants);
+  const topics = startSceneLife(draft, reg, { id: sceneId, locationId: loc.id, participants }, (id) => origin === "activity" ? draft.life?.busy.find((b) => b.unitId === id && b.slot === busySlot(draft.day, draft.slot) && b.activityId !== void 0)?.activityId : void 0);
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day;
   const heard = rollIntercepts(draft, ctx2, participants, { private: participants.length === 1, dm: false, sceneId });
-  return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard];
+  return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard, ...topics];
 });
 registerAction("scene/exchange", (draft) => {
   if (!draft.scene) throw new Error("scene/exchange: no scene is open");
@@ -24901,6 +25009,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id));
   events.push(...endSceneNews(draft, scene.participants));
+  endSceneLife(draft, scene.participants);
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
@@ -24930,6 +25039,7 @@ registerAction("scene/abort", (draft, _payload, ctx2) => {
   if (!scene) throw new Error("scene/abort: no scene is open");
   const settled = settleDefiance(draft, ctx2, { sceneId: scene.id });
   unstampMoments(draft, scene.id);
+  endSceneLife(draft, scene.participants);
   delete draft.scene;
   if (scene.origin !== "activity") delete draft.calendar.pendingScene;
   return [{ type: "scene_aborted", sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants), ...argueEnded(draft, ctx2, scene.id)];
@@ -27693,6 +27803,20 @@ registerAction("life/trace_note", (draft, payload) => {
   if (text2 === "" || text2.length > TRACE_NOTE_MAX) throw new Error(`A note is 1 to ${TRACE_NOTE_MAX} characters.`);
   return [...leaveLifeNote(draft, unit2, text2, item?.ref ?? "hobby"), ...closeNews(draft, entry.itemId)];
 });
+registerAction("life/opinion_formed", (draft, payload, ctx2) => {
+  const p = payload;
+  if (typeof p?.unitId !== "string" || typeof p.topicId !== "string" || typeof p.position !== "string") throw new Error("life/opinion_formed needs { unitId, topicId, position }.");
+  if (p.strength !== "held" && p.strength !== "loose") throw new Error("A formed opinion is held or loose.");
+  if (p.source !== "model" && p.source !== "fallback") throw new Error("An opinion is formed by the model or by the fallback.");
+  if (p.text !== void 0 && typeof p.text !== "string") throw new Error("The opinion text must be text.");
+  return formOpinion(draft, ctx2.registries, p.unitId, p.topicId, p.position, p.text ?? "", p.strength, p.source);
+});
+registerAction("life/topics_triggered", (draft, payload, ctx2) => {
+  const ids = payload?.topicIds;
+  if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("life/topics_triggered needs { topicIds } as a list of ids.");
+  if (!draft.scene) throw new Error("life/topics_triggered: no scene is open");
+  return triggerTopics(draft, ctx2.registries, draft.scene.participants, ids, draft.scene.id);
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -30367,22 +30491,41 @@ function createDevelopment(deps) {
 var clean4 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var LIFE_DERIVED = ["life:"];
 var NEWS_PREFIX = "life:news:";
-function lifeDirectives(state, _reg, present2) {
+var OPINION_PREFIX = "life:opinion:";
+function opinionDirective(state, reg, unit2) {
+  const sc = state.life?.units[unit2.id]?.scene;
+  if (!sc || sc.sceneId !== state.scene?.id || sc.topic === void 0) return null;
+  const opinion = unit2.opinions?.[sc.topic];
+  const topic = reg.opinionTopics.get(sc.topic);
+  const position = topic?.positions.find((p) => p.id === opinion?.position);
+  if (!opinion || !topic || !position) return null;
+  const hint = clean4(plainText(position.description));
+  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean4(opinion.text)}"` : "";
+  return {
+    id: `${OPINION_PREFIX}${unit2.id}`,
+    expiresAfter: "scene",
+    text: `If it fits, ${unit2.displayName} may say what she thinks about ${clean4(topic.label)}: ${hint}${words3} Lightly, once.`
+  };
+}
+function lifeDirectives(state, reg, present2) {
   if (lifeMode(state) === "off") return [];
   const out = [];
   for (const id of present2) {
     const unit2 = state.squad.find((u) => u.id === id);
     if (!unit2 || unit2.kind !== "named") continue;
-    const first2 = pendingNews(state, id)[0];
-    if (!first2) continue;
     const name = unit2.displayName;
-    const raw = clean4(first2.text);
-    const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
-    out.push({
-      id: `${NEWS_PREFIX}${id}`,
-      expiresAfter: "scene",
-      text: first2.passing === true ? `If it fits, ${name} may mention in passing something that happened to her recently: ${what} A word or two, once.` : `If it fits, ${name} may tell the commander about something that happened to her: ${what} Once, in her own words.`
-    });
+    const first2 = pendingNews(state, id)[0];
+    if (first2) {
+      const raw = clean4(first2.text);
+      const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
+      out.push({
+        id: `${NEWS_PREFIX}${id}`,
+        expiresAfter: "scene",
+        text: first2.passing === true ? `If it fits, ${name} may mention in passing something that happened to her recently: ${what} A word or two, once.` : `If it fits, ${name} may tell the commander about something that happened to her: ${what} Once, in her own words.`
+      });
+    }
+    const opinion = opinionDirective(state, reg, unit2);
+    if (opinion) out.push(opinion);
   }
   return out;
 }
@@ -30497,7 +30640,7 @@ function createLife(deps) {
   return {
     run,
     onEvents(events) {
-      if (events.some((e) => e.type === "news_delivered" || e.type === "news_stale" || e.type === "life_noted")) deps.refreshContext();
+      if (events.some((e) => e.type === "news_delivered" || e.type === "news_stale" || e.type === "life_noted" || e.type === "topic_picked")) deps.refreshContext();
     },
     onSceneOpened() {
       const s = state();

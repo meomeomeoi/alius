@@ -7,3 +7,7 @@ export {
 export { channelFor, closeNews, deliverNews, endSceneNews, enqueue, pendingNews, staleSweep } from './news';
 export { hobbyPass, lifeDayStep, noteBusy } from './dayStep';
 export { UNTOLD_TAG, ensureLife, lifeChance, lifeHash, lifeMode, lifeOf, newLife, nextLifeId, temperamentOf } from './state';
+export { applyLifeIntent, lifeIntentInput } from './intents';
+export {
+  defaultPosition, endSceneLife, formOpinion, heardOpinions, recentEventTopics, startSceneLife, topicsAt, topicsInText, triggerTopics, unformedTopics, voiceOpinion,
+} from './opinions';

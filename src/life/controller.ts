@@ -16,7 +16,7 @@ const SITE_OF = { dm: SHARE_SITE, note: TRACE_SITE } as const;
 export interface LifeController {
   /** After a settled dispatch: words one waiting DM or note (one call per run; the next waits for the next run). */
   run(): Promise<void>;
-  /** The events of a settled dispatch: news that was delivered, gone stale or told changes the directives. */
+  /** The events of a settled dispatch: news that was delivered, gone stale or told, or a topic picked, changes the directives. */
   onEvents(events: Array<{ type: string; [k: string]: unknown }>): void;
   /** A scene opened: her news directive is set for each present woman who has something to tell. */
   onSceneOpened(): void;
@@ -146,7 +146,7 @@ export function createLife(deps: LifeDeps): LifeController {
   return {
     run,
     onEvents(events) {
-      if (events.some((e) => e.type === 'news_delivered' || e.type === 'news_stale' || e.type === 'life_noted')) deps.refreshContext();
+      if (events.some((e) => e.type === 'news_delivered' || e.type === 'news_stale' || e.type === 'life_noted' || e.type === 'topic_picked')) deps.refreshContext();
     },
     onSceneOpened() {
       const s = state();
