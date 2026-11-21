@@ -8,6 +8,7 @@ import type { CampaignState, DeedCounter } from '../state/types';
 import { TUNING } from '../tuning';
 import { deedsOf } from './deeds';
 import { valuesOf } from '../development/profile';
+import { nicknameTone } from '../dynamic/regard';
 import type { ValueAxis } from '../state/types';
 
 type Pattern = { sum: DeedCounter[]; min: number; against?: DeedCounter[]; minShare?: number };
@@ -41,6 +42,9 @@ export function reputationDayStep(draft: CampaignState, ctx: EngineCtx): EngineE
   const events: EngineEvent[] = [];
   const rep = draft.commander.reputation;
   const lookup = (id: string): Entry | undefined => reg.reputations.get(id);
+  // P15: a nickname of the dynamic has a tone and is queued only while the squad's average Regard gives that tone; one with no tone fits always
+  const tone = nicknameTone(draft, reg);
+  const fits = (e: Entry): boolean => e.tone === undefined || e.tone === tone;
 
   // mark and drop the active ones that no longer hold
   if (rep) {
@@ -60,14 +64,14 @@ export function reputationDayStep(draft: CampaignState, ctx: EngineCtx): EngineE
   if (rep?.pending) {
     // a pattern that stopped holding while it waited (a ratio, an UNDO) is not said aloud: the queue is free again
     const waiting = lookup(rep.pending.id);
-    if (waiting && patternHolds(draft, waiting)) return events;
+    if (waiting && patternHolds(draft, waiting) && fits(waiting)) return events;
     delete rep.pending;
   }
 
   const active = rep?.active ?? [];
   const holding = (id: string): boolean => { const e = lookup(id); return e !== undefined && patternHolds(draft, e); };
   const candidates = [...reg.reputations.values()]
-    .filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e))
+    .filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e) && fits(e))
     .sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
   for (const c of candidates) {
     const sameGroup = active.find((a) => lookup(a.id)?.group === c.group);

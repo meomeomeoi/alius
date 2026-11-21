@@ -1158,7 +1158,7 @@ var TUNING = Object.freeze({
    * bad takes `crime` off. A fall is `humiliation x fall x her style's factor x its speed (x witness when she only saw it)` down to the style's
    * floor; `speed` turns the word of the style row into a number (the spec gives only the words). A rise is `rise[kind]`, a `value` one takes its
    * amount from `value` (1 to 4); a style of `drill.styles` multiplies the rises that are mastery (`mastery`) by `drill.mult`, a style of `vindictive.styles` gets `vindictive.rise` for each
-   * `vindictive.days` she has served without a slip. `acts` are the humiliation of the acts P15 sees (a caught cheat, a slip; the Leash route found out is `dynamic.bypass.regardFall`). `disappointment`: Trust at least `trust` and a fall across a band within `days`. `question`: her question comes `cooldownDays` apart for one
+   * `vindictive.days` she has served without a slip. `acts` are the humiliation of the acts P15 sees (a caught cheat, a slip, a protocol slip seen; the Leash route found out is `dynamic.bypass.regardFall`). `disappointment`: Trust at least `trust` and a fall across a band within `days`. `question`: her question comes `cooldownDays` apart for one
    * woman and `weekDays` apart overall; the answer her style values moves her Regard by `gain`. `tone`: the squad's average Regard from which a nickname is
    * respectful or pitying (below `pitying` it is mocking). `AUTHOR TO TUNE` (the spec's drafts).
    */
@@ -1176,11 +1176,14 @@ var TUNING = Object.freeze({
     /** The styles (closed enum keys, as `dynamic.style.peakLeads`) whose rises double / that count served days. */
     drill: Object.freeze({ styles: ["drill"], mult: 2 }),
     vindictive: Object.freeze({ styles: ["vindictive"], days: 7, rise: 1 }),
-    acts: Object.freeze({ caught: 2, slip: 1 }),
+    acts: Object.freeze({ caught: 2, slip: 1, protocol: 1 }),
     /** A witness who dislikes what a holder has over the commander counts this much more while her own Regard is low or none (R14, R18). */
     dislikes: 1.5,
     disappointment: Object.freeze({ trust: 60, days: 14 }),
-    question: Object.freeze({ cooldownDays: 14, weekDays: 7, gain: 2 }),
+    /** `valued`: the answer key her primary style values (`clinical` the honest one, key 0; `affectionate` the gentle one, key 1). */
+    question: Object.freeze({ cooldownDays: 14, weekDays: 7, gain: 2, valued: Object.freeze({ clinical: "0", affectionate: "1" }) }),
+    /** The days a habit of respect lapses after disappointment, and the tag that marks it (`habits[].tags`). */
+    lapse: Object.freeze({ tag: "respect", days: 14 }),
     tone: Object.freeze({ respectful: 60, pitying: 30 })
   })
 });
@@ -1205,7 +1208,14 @@ var DEED_COUNTERS = [
   "demands_granted",
   "demands_refused",
   "threats_kept",
-  "threats_empty"
+  "threats_empty",
+  // P15: what the squad saw of the dynamic (P15 counts `protocol_public`; the others are P16's, `spoken_for` has no producer yet)
+  "protocol_public",
+  "spoken_for",
+  "public_worship",
+  "knelt_at_door",
+  "slapped_public",
+  "demonstrated"
 ];
 var VOTE_KINDS = ["mission", "upgrade", "punish", "rations", "scapegoat"];
 var OUTSIDE_TRIGGERS = ["crisis_cover", "ordered_mission", "negotiation"];
@@ -8776,6 +8786,8 @@ var ReputationSchema = BaseEntrySchema.extend({
   /** One nickname per group is active at a time. */
   group: str,
   description: str.max(DESCRIPTION_MAX),
+  /** P15: the squad's average Regard it fits (a nickname of the dynamic; absent = any). `reputationDayStep` queues only the one whose tone matches. */
+  tone: external_exports.enum(["respectful", "pitying", "mocking"]).optional(),
   pattern: external_exports.object({
     sum: external_exports.array(deedCounter).min(1),
     min: int.min(1),
@@ -9434,6 +9446,8 @@ var HabitSchema = BaseEntrySchema.extend({
   fallback: str.max(140),
   effect: external_exports.object({ type: external_exports.enum(["unit_stress", "unit_xp"]), amount: int.min(-20).max(20).refine((n) => n !== 0, "an effect amount is not 0"), activityId: str }).strict().optional(),
   contentTags: external_exports.array(str).optional(),
+  /** P15: what kind of habit it is (`respect`: the small habits of respect a disappointed woman lets lapse). */
+  tags: external_exports.array(str).optional(),
   description: str
 }).strict();
 registrySchemas.habits = HabitSchema;
@@ -11418,8 +11432,8 @@ function dynamicTerm(state, reg, unitId) {
 }
 function standingMalus(state, reg, holderId) {
   if (!dynamicLive(state, reg)) return 0;
-  const R3 = TUNING.squadKnowledge.reaction;
-  return Math.min(R3.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R3.dislikesStanding));
+  const R4 = TUNING.squadKnowledge.reaction;
+  return Math.min(R4.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R4.dislikesStanding));
 }
 
 // src/engine/discipline/impunity.ts
@@ -17382,6 +17396,186 @@ function memoryConfig(state) {
 }
 var factTextMax = (state) => memoryConfig(state).factTextMax;
 
+// src/engine/dynamic/regard.ts
+var R2 = TUNING.regard;
+var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var round4 = (n) => Math.round(n * 1e4) / 1e4;
+function holderOf(state, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && state.relations[unitId] !== void 0 ? unit3 : void 0;
+}
+var bandsOf = (reg) => [...reg.regardBands.values()].sort((a, b) => b.min - a.min);
+function regardBandOf(reg, n) {
+  const bands = bandsOf(reg);
+  return (bands.find((b) => n >= b.min) ?? bands[bands.length - 1])?.id ?? "";
+}
+function regardBandRank(reg, n) {
+  const bands = bandsOf(reg);
+  const i = bands.findIndex((b) => n >= b.min);
+  return i < 0 ? Math.max(0, bands.length - 1) : i;
+}
+function isLow(reg, n) {
+  const bands = bandsOf(reg);
+  return bands.length >= 2 && regardBandRank(reg, n) >= bands.length - 2;
+}
+function styleRow(state, reg, unit3) {
+  const key = styleOf(unit3)?.primary;
+  const row3 = key === void 0 ? void 0 : reg.practiceStyles.get(key);
+  if (row3 === void 0) return { factor: 1, speed: R2.speed.normal, floor: 0, form: void 0, key };
+  return { factor: row3.regardFactor, speed: R2.speed[row3.regardSpeed] ?? R2.speed.normal, floor: row3.regardFloor, form: row3.regardForm, key };
+}
+function regardStart(state, reg, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0) return R2.start;
+  const mult = matchedTastes(state, reg, unit3).reduce((m, t) => m * (typeof t.presenceMult === "number" ? t.presenceMult : 1), 1);
+  let n = R2.start + clamp14(presenceOf(state, reg) * mult * R2.impression, -R2.impressionMax, R2.impressionMax);
+  if (state.relations[unitId]?.flags.includes("knows_crime") === true && state.commander.crimeId !== null) {
+    const reactions = reg.crimes.get(state.commander.crimeId)?.valueReactions ?? [];
+    const values = valuesOf(unit3);
+    const felt = reactions.filter((r) => r.sign === "+" ? values[r.axis] > 0 : values[r.axis] < 0).reduce((sum, r) => sum + r.weight, 0);
+    if (felt < 0) n -= R2.crime;
+  }
+  return round4(clamp14(n, 0, 100));
+}
+function regardOf(state, reg, unitId) {
+  return state.relations[unitId]?.regard ?? regardStart(state, reg, unitId);
+}
+function ensureRegard(draft, reg, unitId) {
+  const stored = draft.relations[unitId]?.regard;
+  if (stored !== void 0) return stored;
+  const start = regardStart(draft, reg, unitId);
+  if (dynamicOn(draft, reg) && holderOf(draft, unitId) !== void 0) draft.relations[unitId].regard = start;
+  return start;
+}
+function squadRegardAverage(state, reg) {
+  if (!dynamicOn(state, reg)) return null;
+  const ids = state.squad.filter((u) => u.kind === "named" && isLiving(u) && state.relations[u.id] !== void 0).map((u) => u.id);
+  return ids.length === 0 ? null : ids.reduce((sum, id) => sum + regardOf(state, reg, id), 0) / ids.length;
+}
+function nicknameTone(state, reg) {
+  const avg = squadRegardAverage(state, reg);
+  return avg === null ? null : avg >= R2.tone.respectful ? "respectful" : avg >= R2.tone.pitying ? "pitying" : "mocking";
+}
+function regardTone(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return null;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named") return null;
+  const form = styleRow(state, reg, unit3).form;
+  return form !== void 0 && isLow(reg, regardOf(state, reg, unitId)) ? form : null;
+}
+var watchers = [];
+function registerRegardWatcher(fn) {
+  if (!watchers.includes(fn)) watchers.push(fn);
+}
+function write(draft, reg, unitId, next, cause) {
+  const from = ensureRegard(draft, reg, unitId);
+  const to = round4(clamp14(next, 0, 100));
+  if (to === from) return [];
+  draft.relations[unitId].regard = to;
+  const events = [{ type: "regard_changed", unitId, from, to, cause }];
+  const was = regardBandOf(reg, from);
+  const now = regardBandOf(reg, to);
+  if (was !== now) events.push({ type: "regard_band_changed", unitId, from: was, to: now });
+  if (to < from) for (const watch of watchers) events.push(...watch(draft, reg, unitId, from, to));
+  return events;
+}
+function regardFall(draft, reg, unitId, humiliation, opts) {
+  const unit3 = dynamicOn(draft, reg) ? holderOf(draft, unitId) : void 0;
+  if (unit3 === void 0 || !(humiliation > 0)) return [];
+  const row3 = styleRow(draft, reg, unit3);
+  const fall = humiliation * R2.fall * row3.factor * row3.speed * (opts.witness ? R2.witness : 1);
+  const now = ensureRegard(draft, reg, unitId);
+  return write(draft, reg, unitId, Math.min(now, Math.max(row3.floor, now - fall)), opts.cause ?? "act");
+}
+function regardRise(draft, reg, unitId, kind, amount) {
+  const unit3 = dynamicOn(draft, reg) ? holderOf(draft, unitId) : void 0;
+  if (unit3 === void 0) return [];
+  if (kind === "cost") {
+    const r = dynamicOf(draft, unitId)?.readOf.r;
+    if (r === void 0 || r > 0) return [];
+  }
+  const V = R2.value;
+  let gain2 = kind === "value" ? clamp14(amount ?? V.min, V.min, V.max) : amount ?? R2.rise[kind];
+  const key = styleRow(draft, reg, unit3).key;
+  if (R2.mastery.includes(kind) && key !== void 0 && R2.drill.styles.includes(key)) gain2 *= R2.drill.mult;
+  if (!(gain2 > 0)) return [];
+  return write(draft, reg, unitId, ensureRegard(draft, reg, unitId) + gain2, kind);
+}
+function resetServed(draft, unitId) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn?.served !== void 0) dyn.served = { since: draft.day };
+}
+function regardDayStep(draft, reg, holders2) {
+  const T5 = R2.vindictive;
+  const events = [];
+  for (const id of holders2) {
+    const dyn = dynamicOf(draft, id);
+    const unit3 = holderOf(draft, id);
+    if (dyn === void 0 || unit3 === void 0) continue;
+    const key = styleRow(draft, reg, unit3).key;
+    if (key === void 0 || !T5.styles.includes(key) || frameRank(dyn.frame) < frameRank("play")) continue;
+    if (dyn.served === void 0) {
+      dyn.served = { since: draft.day };
+      continue;
+    }
+    const served = draft.day - dyn.served.since;
+    if (served > 0 && served % T5.days === 0) events.push(...regardRise(draft, reg, id, "dignity", T5.rise));
+  }
+  return events;
+}
+var namedInService = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+var idOf = (v) => typeof v === "string" ? v : void 0;
+function regardFromEvents(draft, reg, events) {
+  if (!dynamicOn(draft, reg)) return [];
+  const V = R2.value;
+  const out = [];
+  const noted2 = () => draft.dynamic.noted ??= {};
+  for (const e of events) {
+    const holder2 = idOf(e.holderId);
+    const runId = idOf(e.runId);
+    switch (e.type) {
+      case "physics_started":
+        if (e.chained !== true && draft.dynamic.noted?.dirtyRun !== void 0) delete draft.dynamic.noted.dirtyRun;
+        break;
+      case "physics_caught":
+      case "physics_slip":
+        if (runId !== void 0) noted2().dirtyRun = runId;
+        if (holder2 !== void 0) {
+          out.push(...regardFall(draft, reg, holder2, e.type === "physics_caught" ? R2.acts.caught : R2.acts.slip, { witness: false, cause: e.type }));
+          resetServed(draft, holder2);
+        }
+        break;
+      case "physics_outcome": {
+        const clean10 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
+        if (clean10 && holder2 !== void 0) out.push(...regardRise(draft, reg, holder2, "dignity"));
+        if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
+        break;
+      }
+      case "marathon_done": {
+        const unit3 = idOf(e.unitId);
+        if (e.result !== "stopped" && unit3 !== void 0) out.push(...regardRise(draft, reg, unit3, "record"));
+        break;
+      }
+      case "outside_feat":
+        for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V.feat));
+        break;
+      case "expedition_ended": {
+        const report = draft.lastExpedition;
+        if (e.outcome !== "success" || report === void 0 || report.id !== e.reportId) break;
+        for (const id of report.party) out.push(...regardRise(draft, reg, id, "value", V.run));
+        break;
+      }
+    }
+  }
+  return out;
+}
+function regardFeed(draft, reg, unitId, event) {
+  if (event.actor !== "commander") return [];
+  if (event.type === "kept_promise") return regardRise(draft, reg, unitId, "value", R2.value.promise);
+  if (event.type === "time_together") return regardRise(draft, reg, unitId, "value", R2.value.meeting);
+  return [];
+}
+
 // src/engine/discipline/reputation.ts
 var patternOf = (e) => e.pattern;
 var total = (deeds, list5) => (list5 ?? []).reduce((n, c) => n + (deeds[c] ?? 0), 0);
@@ -17403,6 +17597,8 @@ function reputationDayStep(draft, ctx2) {
   const events = [];
   const rep = draft.commander.reputation;
   const lookup = (id) => reg.reputations.get(id);
+  const tone = nicknameTone(draft, reg);
+  const fits = (e) => e.tone === void 0 || e.tone === tone;
   if (rep) {
     for (const a of [...rep.active]) {
       const e = lookup(a.id);
@@ -17419,7 +17615,7 @@ function reputationDayStep(draft, ctx2) {
   }
   if (rep?.pending) {
     const waiting2 = lookup(rep.pending.id);
-    if (waiting2 && patternHolds(draft, waiting2)) return events;
+    if (waiting2 && patternHolds(draft, waiting2) && fits(waiting2)) return events;
     delete rep.pending;
   }
   const active = rep?.active ?? [];
@@ -17427,7 +17623,7 @@ function reputationDayStep(draft, ctx2) {
     const e = lookup(id);
     return e !== void 0 && patternHolds(draft, e);
   };
-  const candidates3 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
+  const candidates3 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e) && fits(e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
   for (const c of candidates3) {
     const sameGroup = active.find((a) => lookup(a.id)?.group === c.group);
     let replaces;
@@ -17511,7 +17707,7 @@ function disciplineDayStep(draft, ctx2) {
 
 // src/engine/discipline/undo.ts
 var RANGE5 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
-var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function canUndo(state, id) {
   const d = state.discipline;
   if (id.startsWith("th")) {
@@ -17536,7 +17732,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
   if (rel) {
     for (const axis of ["trust", "affinity", "attraction"]) {
       const delta = inv.axes?.[axis];
-      if (delta) rel[axis] = clamp14(rel[axis] - delta, RANGE5[axis][0], RANGE5[axis][1]);
+      if (delta) rel[axis] = clamp15(rel[axis] - delta, RANGE5[axis][0], RANGE5[axis][1]);
       const daily = inv.dailyGain?.[axis];
       if (daily) rel.dailyGain[axis] = Math.max(0, rel.dailyGain[axis] - daily);
     }
@@ -17553,7 +17749,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
     }
     for (const { at, line: line2 } of inv.historyDropped ?? []) rel.history.splice(Math.min(at, rel.history.length), 0, structuredClone(line2));
   }
-  if (unit3 && inv.stress) unit3.stress = clamp14(unit3.stress - inv.stress, 0, 100);
+  if (unit3 && inv.stress) unit3.stress = clamp15(unit3.stress - inv.stress, 0, 100);
   if (inv.record) events.push(...addRecord(draft, unitId, -inv.record, "undo"));
   for (const resource of ["credits", "supplies", "plyx"]) {
     const delta = inv.resources?.[resource];
@@ -18104,8 +18300,8 @@ function leadStyle(style) {
 }
 
 // src/engine/dynamic/reading.ts
-var round4 = (n) => Math.round(n * 1e4) / 1e4;
-var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var round42 = (n) => Math.round(n * 1e4) / 1e4;
+var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var THREAT_EVENTS = ["commander_punished", "commander_leashed"];
 var threatIn = (events) => events.some((e) => THREAT_EVENTS.includes(e.type));
 function blended(m, declared) {
@@ -18115,19 +18311,19 @@ function blended(m, declared) {
 }
 var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
 function regionOf(reading2, declared) {
-  const R3 = TUNING.position.region;
+  const R4 = TUNING.position.region;
   const m = blended(reading2.motive, declared);
   const { r, f, p } = reading2;
-  if (reading2.flat >= R3.flat) return "hollow";
-  if (reading2.deflect >= R3.deflect) return "elusive";
+  if (reading2.flat >= R4.flat) return "hollow";
+  if (reading2.deflect >= R4.deflect) return "elusive";
   if (largest(m, "fear")) return "cowed";
-  if (f >= R3.friction && largest(m, "gain")) return "double_game";
-  if (f < R3.friction && largest(m, "gain")) return "calculating";
-  if (f >= R3.friction && p >= R3.play) return "bratty";
-  if (f >= R3.friction) return "proud";
-  if (r >= R3.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (f >= R4.friction && largest(m, "gain")) return "double_game";
+  if (f < R4.friction && largest(m, "gain")) return "calculating";
+  if (f >= R4.friction && p >= R4.play) return "bratty";
+  if (f >= R4.friction) return "proud";
+  if (r >= R4.ready && f >= 0 && largest(m, "process")) return "hungry";
   if (r < 0) return "reluctant";
-  if (r >= R3.ready && largest(m, "order")) return "dutiful";
+  if (r >= R4.ready && largest(m, "order")) return "dutiful";
   return "devoted";
 }
 function motiveOf(sample) {
@@ -18180,13 +18376,13 @@ function updateReading(rel, sample, alpha, style, insight) {
   const bias = TUNING.position.insight[insight];
   if (lead === "possessive" || lead === "obsessive") for (const k of MOTIVES) rd.motive[k] = toward(rd.motive[k], k === "her" ? 1 : 0, TUNING.position.bias.herToward * bias);
   if (lead === "cruel" || lead === "vindictive") rd.r += TUNING.position.bias.readiness * bias;
-  rd.r = round4(clamp15(rd.r, -1, 1));
-  rd.f = round4(clamp15(rd.f, -1, 1));
-  rd.p = round4(clamp15(rd.p, 0, 1));
-  rd.flat = round4(clamp15(rd.flat, 0, 1));
-  rd.deflect = round4(clamp15(rd.deflect, 0, 1));
-  if (rd.sincere !== void 0) rd.sincere = round4(clamp15(rd.sincere, 0, 1));
-  for (const k of MOTIVES) rd.motive[k] = round4(rd.motive[k]);
+  rd.r = round42(clamp16(rd.r, -1, 1));
+  rd.f = round42(clamp16(rd.f, -1, 1));
+  rd.p = round42(clamp16(rd.p, 0, 1));
+  rd.flat = round42(clamp16(rd.flat, 0, 1));
+  rd.deflect = round42(clamp16(rd.deflect, 0, 1));
+  if (rd.sincere !== void 0) rd.sincere = round42(clamp16(rd.sincere, 0, 1));
+  for (const k of MOTIVES) rd.motive[k] = round42(rd.motive[k]);
   rd.updates += 1;
   const region = settle(rel);
   return region === void 0 ? {} : { region };
@@ -18203,7 +18399,7 @@ function fadeDeclarations(draft, ids) {
   for (const id of ids) {
     const rel = dynamicOf(draft, id);
     if (rel?.declared === void 0) continue;
-    rel.declared.weight = round4(rel.declared.weight - TUNING.position.declaration.fadePerDay);
+    rel.declared.weight = round42(rel.declared.weight - TUNING.position.declaration.fadePerDay);
     if (rel.declared.weight <= 0) delete rel.declared;
     const shift = resettleReading(rel).region;
     if (shift !== void 0) events.push({ type: "position_shifted", unitId: id, from: shift.from, to: shift.to });
@@ -18228,22 +18424,22 @@ function readMoments(draft, ctx2, events) {
 }
 
 // src/engine/dynamic/hold.ts
-var round42 = (n) => Math.round(n * 1e4) / 1e4;
-function bandsOf(reg) {
+var round43 = (n) => Math.round(n * 1e4) / 1e4;
+function bandsOf2(reg) {
   return [...reg.holdBands.values()].map((b) => b).sort((a, b) => a.min - b.min);
 }
 function bandIndex(reg, hold) {
-  const bands = bandsOf(reg);
+  const bands = bandsOf2(reg);
   let at = 0;
   for (let i = 0; i < bands.length; i++) if (hold >= bands[i].min) at = i;
   return at;
 }
 function bandMinAt(reg, index2) {
-  const bands = bandsOf(reg);
+  const bands = bandsOf2(reg);
   return bands[Math.min(Math.max(0, index2), bands.length - 1)]?.min ?? 0;
 }
 function holdBandOf(reg, hold) {
-  return bandsOf(reg)[bandIndex(reg, hold)]?.id ?? "";
+  return bandsOf2(reg)[bandIndex(reg, hold)]?.id ?? "";
 }
 function frameEntry(reg, frame) {
   return reg.dynamicFrames.get(frame);
@@ -18295,7 +18491,7 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   const floor = frame?.holdFloor ?? 0;
   const ceiling = frame?.holdCeiling ?? 100;
   const from = dyn.hold;
-  let to = round42(Math.min(ceiling, Math.max(floor, from + delta)));
+  let to = round43(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain2 && to < from) to = from;
   if (!gain2 && to > from) to = from;
   if (gain2 && opts.practice !== false) dyn.lastPracticeDay = draft.day;
@@ -18505,7 +18701,7 @@ function registerRegardBand(reader) {
 function registerCompromatCount(reader) {
   compromatReader = reader;
 }
-var regardBandOf = (state, reg, unitId) => bandReader?.(state, reg, unitId) ?? null;
+var regardBandOf2 = (state, reg, unitId) => bandReader?.(state, reg, unitId) ?? null;
 var compromatCount = (state, holderId) => compromatReader?.(state, holderId) ?? 0;
 var rowsOf = (reg) => [...reg.aftermaths.values()];
 var aftermathRowOf = (reg, kind) => rowsOf(reg).find((r) => r.kind === kind);
@@ -18517,7 +18713,7 @@ function aftermathWeights(state, reg, unitId, ctx2) {
   if (dyn === void 0 || unit3 === void 0) return out;
   const style = unit3.bond?.practice?.style;
   const values = unit3.kind === "named" ? effectiveValues(state, reg, unit3) : void 0;
-  const band2 = regardBandOf(state, reg, unitId);
+  const band2 = regardBandOf2(state, reg, unitId);
   const holdsCommand = hasCapability(state, reg, unitId, "countermand");
   const mult = ctx2.force ? TUNING.dynamic.aftermath.forceMult : 1;
   for (const row3 of rowsOf(reg)) {
@@ -18991,7 +19187,7 @@ function reactToDynamic(draft, ctx2, observerId, holderId) {
 
 // src/engine/dynamic/knowledge.ts
 var RANK = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
-var round43 = (n) => Math.round(n * 1e4) / 1e4;
+var round44 = (n) => Math.round(n * 1e4) / 1e4;
 var signRow = (reg, kind) => [...reg.dynamicSigns.values()].find((r) => r.kind === kind);
 var observerUnit = (state, id) => {
   const u = state.squad.find((x) => x.id === id);
@@ -19048,7 +19244,7 @@ function refresh(draft, ctx2, observerId, holderId, rec) {
 }
 function gain(draft, ctx2, observerId, holderId, amount) {
   const rec = recordFor(draft, observerId, holderId);
-  rec.suspicion = Math.min(TUNING.squadKnowledge.knowsAt, round43(rec.suspicion + amount));
+  rec.suspicion = Math.min(TUNING.squadKnowledge.knowsAt, round44(rec.suspicion + amount));
   rec.peakDay = draft.day;
   return refresh(draft, ctx2, observerId, holderId, rec);
 }
@@ -19058,7 +19254,7 @@ function addSign(draft, ctx2, observerId, holderId, kind) {
   if (row3 === void 0 || !mayObserve(draft, reg, observerId, holderId) || !contentAllowed(draft, reg, row3)) return [];
   if (row3.instant === true) return knowInstantly(draft, ctx2, observerId, holderId, kind);
   if (row3.closenessOnly === true) return raise(draft, ctx2, observerId, holderId, recordFor(draft, observerId, holderId), "suspects_close");
-  return gain(draft, ctx2, observerId, holderId, round43(row3.amount * multiplier2(draft, reg, observerId, holderId)));
+  return gain(draft, ctx2, observerId, holderId, round44(row3.amount * multiplier2(draft, reg, observerId, holderId)));
 }
 function knowInstantly(draft, ctx2, observerId, holderId, cause) {
   const reg = ctx2.registries;
@@ -19120,7 +19316,12 @@ function signsFromEvents(draft, ctx2, events) {
   return out;
 }
 function slipSeen(draft, ctx2, holderId) {
-  return seen(draft, ctx2, presentIn(draft), [holderId], "protocol_slip");
+  const witnesses = presentIn(draft).filter((id) => id !== holderId);
+  const events = seen(draft, ctx2, presentIn(draft), [holderId], "protocol_slip");
+  if (witnesses.length === 0) return events;
+  countDeed(draft, "protocol_public");
+  for (const id of witnesses) events.push(...regardFall(draft, ctx2.registries, id, TUNING.regard.acts.protocol, { witness: true, cause: "protocol_slip" }));
+  return events;
 }
 function decay2(draft) {
   const T5 = TUNING.squadKnowledge;
@@ -19128,7 +19329,7 @@ function decay2(draft) {
     for (const rec of Object.values(row3)) {
       if (rec.suspicion <= 0 || rec.peakDay === draft.day || rec.level === "knows_dynamic") continue;
       const floor = rec.level === "suspects_dynamic" && draft.day - (rec.levelDay ?? draft.day) <= T5.floorDays ? T5.suspectsAt : 0;
-      rec.suspicion = Math.max(floor, round43(rec.suspicion - T5.decayPerDay));
+      rec.suspicion = Math.max(floor, round44(rec.suspicion - T5.decayPerDay));
       if (rec.level === "suspects_dynamic" && rec.suspicion < T5.suspectsAt) {
         rec.level = "suspects_close";
         rec.levelDay = draft.day;
@@ -19189,7 +19390,7 @@ function gossip(draft, ctx2, holders2) {
         const row3 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
         if (row3 !== void 0 && contentAllowed(draft, reg, row3)) total2 += row3.amount * multiplier2(draft, reg, o, h2);
       }
-      if (total2 > 0 && mayObserve(draft, reg, o, h2)) events.push(...gain(draft, ctx2, o, h2, round43(Math.min(T5.gossipCap, total2))));
+      if (total2 > 0 && mayObserve(draft, reg, o, h2)) events.push(...gain(draft, ctx2, o, h2, round44(Math.min(T5.gossipCap, total2))));
     }
   }
   return events;
@@ -19461,11 +19662,23 @@ function countRun(draft, reg, ids, regionId) {
   events.push(...countCompanions(draft, reg, ids));
   return events;
 }
+function lapseHabits(draft, reg, unitId, tag2, days) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (!unit3 || developmentMode(draft) === "off") return [];
+  const have = developmentOf(unit3).habits;
+  const ids = [...reg.habits.values()].filter((h2) => have.includes(h2.id) && (h2.tags ?? []).includes(tag2)).map((h2) => String(h2.id));
+  if (ids.length === 0) return [];
+  const dev = ensureDevelopment(unit3);
+  const lapsed = dev.lapsed ??= {};
+  for (const id of ids) lapsed[id] = draft.day + days;
+  return ids;
+}
+var habitLapsed = (state, unit3, habitId) => (developmentOf(unit3).lapsed?.[habitId] ?? 0) > state.day;
 function habitEffect(state, reg, unitId, activityId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
   if (!unit3 || developmentMode(state) === "off") return [];
   const have = developmentOf(unit3).habits;
-  return [...reg.habits.values()].filter((h2) => have.includes(h2.id) && h2.effect?.activityId === activityId).map((h2) => ({ type: h2.effect.type, amount: h2.effect.amount }));
+  return [...reg.habits.values()].filter((h2) => have.includes(h2.id) && h2.effect?.activityId === activityId && !habitLapsed(state, unit3, String(h2.id))).map((h2) => ({ type: h2.effect.type, amount: h2.effect.amount }));
 }
 
 // src/engine/life/jokes.ts
@@ -20775,7 +20988,7 @@ function rollDiscovery(draft, reg, rng, presentIds) {
 }
 
 // src/engine/warden/intrigue.ts
-var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
 var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ?? false;
 function allies(state) {
@@ -20785,7 +20998,7 @@ function allies(state) {
 function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp16(ls.intrigue.suspicion + noise2 * coverMult(draft, ctx2.registries), 0, 100);
+  ls.intrigue.suspicion = clamp17(ls.intrigue.suspicion + noise2 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
@@ -20794,7 +21007,7 @@ function allyChance(state, _reg, unitId) {
   const A = TUNING.warden.intrigue.ally;
   const unit3 = unitOf4(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp16(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit3 ? valuesOf(unit3).autonomy : 0) - A.corporate * (unit3 ? valuesOf(unit3).corporate : 0), A.min, A.max);
+  return clamp17(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit3 ? valuesOf(unit3).autonomy : 0) - A.corporate * (unit3 ? valuesOf(unit3).corporate : 0), A.min, A.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
@@ -20827,7 +21040,7 @@ function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   if (!ls || !w) return [];
   const D3 = TUNING.warden.intrigue.discovered;
   const events = [{ type: "intrigue_discovered", cause }];
-  w.satisfaction = clamp16(w.satisfaction + D3.satisfaction, 0, 100);
+  w.satisfaction = clamp17(w.satisfaction + D3.satisfaction, 0, 100);
   const rose = addDefiance(draft, ctx2, D3.defiance);
   events.push(...rose);
   events.push({ type: "warden_betrayed", unitId: w.unitId, severity: "extreme" });
@@ -21161,6 +21374,12 @@ function forgetDynamic(draft, unitId) {
       if (Object.keys(row3).length === 0) delete x.knowledge[observer];
     }
     x.queue = x.queue.filter((id) => id !== unitId);
+    if (x.noted !== void 0) {
+      delete x.noted.regardMark?.[unitId];
+      delete x.noted.regardFell?.[unitId];
+      delete x.noted.disappointed?.[unitId];
+      delete x.noted.question?.by[unitId];
+    }
     if (x.override?.unitId === unitId) delete x.override;
     const o = x.oversight;
     if (o !== void 0) {
@@ -21185,7 +21404,7 @@ function forgetDynamic(draft, unitId) {
 }
 
 // src/engine/leash/use.ts
-var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
 function leashCost(state, reg, unitId, kind) {
   const unit3 = unitOf5(state, unitId);
@@ -21253,7 +21472,7 @@ function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
 function addStress2(draft, unitId, amount) {
   const u = unitOf5(draft, unitId);
   if (!u || amount === 0) return [];
-  const next = clamp17(u.stress + amount, 0, 100);
+  const next = clamp18(u.stress + amount, 0, 100);
   const delta = next - u.stress;
   u.stress = next;
   return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
@@ -21275,7 +21494,7 @@ function payCost(draft, reg, unitId, cost, opts = {}) {
 }
 var witnessScale = (u) => {
   const w = TUNING.leash.witness;
-  return clamp17(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
+  return clamp18(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
 };
 var COERCED = { type: "coerced", actor: "commander", evidence: "witnessed the Leash", confidence: 1 };
 function compel(draft, ctx2, p) {
@@ -21369,7 +21588,7 @@ function terminateChance(state, reg) {
   const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
   const t = TUNING.leash.terminate;
   const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
-  return clamp17(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+  return clamp18(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
 }
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
@@ -21601,11 +21820,11 @@ function challenge(draft, ctx2, stat3) {
 
 // src/engine/arcs.ts
 var ARC_PATHS = ["manage", "embrace", "cure"];
-var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function arcAlignment(unit3, path) {
   const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + valuesOf(unit3)[axis] * direction, 0);
-  return clamp18(sum / 3, -1, 1);
+  return clamp19(sum / 3, -1, 1);
 }
 function wantedPath(unit3, paths) {
   const order = [...paths].sort((a, b) => ARC_PATHS.indexOf(a) - ARC_PATHS.indexOf(b));
@@ -21777,7 +21996,7 @@ function arcDayStep(draft, ctx2) {
 }
 
 // src/engine/loyalty/desertion.ts
-var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function desertionChance(state, reg, unitId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
@@ -21787,7 +22006,7 @@ function desertionChance(state, reg, unitId) {
   p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
   p += t.perStressAbove * Math.max(0, unit3.stress - t.stressRef);
   for (const d of unit3.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp19(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
+  return clamp20(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
 }
 function mayDesert(state, unitId) {
   if (state.disloyalty?.open) return false;
@@ -21836,7 +22055,7 @@ function talkDown(draft, ctx2, stat3) {
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit3.stress >= t.highStress ? 1 : 0);
   const bonus = stat3 === "authority" ? intimidationBonus(draft) : 0;
-  const chance = clamp19(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
+  const chance = clamp20(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -22208,7 +22427,7 @@ function falseAlarmChance(state) {
   const nightmare = state.special?.paranoia?.lastNightmareDay === state.day - 1;
   return Math.max(0, T().falseBase - T().falsePerInsight * (socialRank(state, "insight") - 1)) + (nightmare ? T().falseAfterNightmare : 0);
 }
-function write(draft, unitId, about2, real) {
+function write2(draft, unitId, about2, real) {
   const p = paranoiaOf(draft);
   p.seq += 1;
   const x = { id: `pm${p.seq}`, unitId, about: about2, day: draft.day, expiresDay: draft.day + T().openDays, real };
@@ -22226,12 +22445,12 @@ function paranoiaDayStep(draft, ctx2) {
     const open3 = openPremonition(draft, unitId);
     if (open3?.real) continue;
     if (open3) p.premonitions = p.premonitions.filter((x) => x !== open3);
-    events.push(write(draft, unitId, about2, true));
+    events.push(write2(draft, unitId, about2, true));
   }
   const chance = falseAlarmChance(draft);
   for (const u of draft.squad) {
     if (u.kind !== "named" || !isLiving(u) || openPremonition(draft, u.id)) continue;
-    if (ctx2.rng.chance(chance)) events.push(write(draft, u.id, ctx2.rng.pick(PREMONITION_ABOUT), false));
+    if (ctx2.rng.chance(chance)) events.push(write2(draft, u.id, ctx2.rng.pick(PREMONITION_ABOUT), false));
   }
   return events;
 }
@@ -22283,7 +22502,7 @@ function actOnWarning(draft, ctx2, unitId, act) {
 }
 
 // src/engine/relations/apply.ts
-var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function openOverrideIds(state, participants) {
   const o = openOverrideOf(state);
   return o !== null && participants.includes(o.unitId) && o.context !== "combat" ? [o.id] : [];
@@ -22357,7 +22576,7 @@ function applyIntents(draft, ctx2, p) {
   for (const h2 of intents.stressHints) {
     const unit3 = draft.squad.find((u) => u.id === h2.unitId);
     if (!unit3) continue;
-    const next = clamp20(unit3.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
+    const next = clamp21(unit3.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
     if (next !== unit3.stress) events.push({ type: "stress_changed", unitId: unit3.id, delta: next - unit3.stress });
     unit3.stress = next;
     touched.add(unit3.id);
@@ -22519,12 +22738,12 @@ function falseValue(kind, value, rng) {
 }
 
 // src/engine/special/frequency/intercepts.ts
-var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp22 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var stressOf = (state, unitId) => state.squad.find((u) => u.id === unitId)?.stress ?? 0;
 function catchChance(state, unitId, o) {
   const T5 = TUNING.special.frequency;
   const p = T5.catchBase + (o.private ? T5.privateBonus : 0) - (stressOf(state, unitId) >= T5.catchStressAt ? T5.catchStressPenalty : 0);
-  return clamp21(p, 0, 1) * (o.dm ? T5.dmMult : 1);
+  return clamp22(p, 0, 1) * (o.dm ? T5.dmMult : 1);
 }
 function distortChance(state, unitId) {
   const T5 = TUNING.special.frequency;
@@ -22665,7 +22884,7 @@ function activityCost(state, reg, a) {
   for (const k of ["credits", "supplies", "plyx"]) if (out[k] === 0) delete out[k];
   return out;
 }
-var clamp22 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var asReq = (v) => {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
   const r = v;
@@ -22805,7 +23024,7 @@ function runActivity(draft, ctx2, request) {
         break;
       case "unit_stress":
         for (const u of unitsOf3(fx2.target)) {
-          const next = clamp22(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
+          const next = clamp23(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
           events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }
@@ -23040,7 +23259,7 @@ function herAlternative(state, reg, order, expectationId, source) {
 
 // src/engine/power/ballot.ts
 var kindEntry = (reg, kind) => reg.voteKinds.get(kind);
-var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var addLean = (into, from, mult = 1) => {
   if (!from || mult === 0) return;
   for (const axis of VALUE_AXES) {
@@ -23066,7 +23285,7 @@ function leanFor(state, reg, kind, subject) {
   }
   const out = {};
   for (const axis of VALUE_AXES) {
-    const n = clamp23(sum[axis] ?? 0, -2, 2);
+    const n = clamp24(sum[axis] ?? 0, -2, 2);
     if (n !== 0) out[axis] = n;
   }
   return out;
@@ -23092,7 +23311,7 @@ function ballotFor(state, reg, unit3, kind, subject) {
   const values = effectiveValues(state, reg, unit3);
   const parts = {
     values: VALUE_AXES.reduce((sum, axis) => sum + values[axis] * (lean[axis] ?? 0), 0),
-    trust: clamp23(((state.relations[unit3.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
+    trust: clamp24(((state.relations[unit3.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
     stance: Number((() => {
       const s = commandStance(state, reg, unit3.id);
       return s === null ? 0 : stanceEntry(reg, s)?.voteBias;
@@ -23261,7 +23480,7 @@ function overruleVote(draft, ctx2, voteId, means, punish) {
 }
 
 // src/engine/warden/override.ts
-var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var round3 = Math.round;
 var STALE = "There is no override to answer.";
 var OPEN_FIRST = "The warden has overridden an order: answer it first.";
@@ -23274,7 +23493,7 @@ function wardenSource(state) {
 }
 function overrideChance(weight, source) {
   const T5 = TUNING.warden.override;
-  return clamp24(weight * source.authority * source.leniency * T5.scale, 0, T5.cap);
+  return clamp25(weight * source.authority * source.leniency * T5.scale, 0, T5.cap);
 }
 var contextOf = (order) => order.kind === "combat_order" ? "combat" : order.kind === "dilemma" ? "dilemma" : "base";
 function hersToGive(order, unitId) {
@@ -23416,11 +23635,11 @@ function argueChance(state, _reg, holder2) {
   const her = holder2 ?? (w ? { unitId: w.unitId, satisfaction: w.satisfaction } : null);
   if (!her) return 0;
   const rank2 = Math.max(socialRank(state, "authority"), socialRank(state, "empathy"));
-  const herRank = clamp24(round3((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
-  return clamp24(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
+  const herRank = clamp25(round3((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
+  return clamp25(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
 }
 var addTo = (w, key, n) => {
-  w[key] = clamp24(w[key] + n, 0, 100);
+  w[key] = clamp25(w[key] + n, 0, 100);
 };
 function afterDefy(draft, ctx2, weight) {
   return punishRoll(draft, ctx2, weight);
@@ -23707,7 +23926,7 @@ function readRoutePick(v) {
 
 // src/engine/special/debts/consequences.ts
 var T2 = () => TUNING.special.debts;
-var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function scheduleConsequences(draft, ctx2, visit, answers) {
   const d = draft.special?.debts;
   if (!d) return;
@@ -23753,7 +23972,7 @@ function runConsequences(draft, ctx2) {
   const events = [];
   for (const x of due) {
     if (x.falsified) {
-      if (ctx2.rng.chance(T2().foundOut)) d.handlerSuspicion = clamp25(d.handlerSuspicion + T2().foundOutGain, 0, 100);
+      if (ctx2.rng.chance(T2().foundOut)) d.handlerSuspicion = clamp26(d.handlerSuspicion + T2().foundOutGain, 0, 100);
       continue;
     }
     if (x.kind === "plan") {
@@ -23768,7 +23987,7 @@ function runConsequences(draft, ctx2) {
         { type: "faction", factionId: "own", amount: -Math.round(T2().ownLoss * x.strength) }
       ], { kind: "event", id: "debts" }));
     }
-    d.oversightSuspicion = clamp25(d.oversightSuspicion + oversightGain(draft, ctx2.registries, x.strength), 0, 100);
+    d.oversightSuspicion = clamp26(d.oversightSuspicion + oversightGain(draft, ctx2.registries, x.strength), 0, 100);
     events.push({ type: "debts_consequence", kind: x.kind });
   }
   d.exposures = d.exposures.filter((e) => e.untilDay >= draft.day);
@@ -24674,7 +24893,7 @@ function wagerDayStep(draft, ctx2) {
 }
 
 // src/engine/power/herCall.ts
-var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf9 = (state, id) => state.squad.find((u) => u.id === id);
 function herCallSpecOf(template) {
   return template?.herCall ?? null;
@@ -24718,7 +24937,7 @@ function herCallOdds(state, reg, unitId, spec) {
   };
   const categories = new Set(unit3.defects.map((d) => String(reg.defects.get(d.id)?.category)));
   const tilt = (spec.defectTilt ?? []).reduce((sum, t) => sum + (categories.has(t.category) ? t.shift : 0), 0);
-  return clamp26(T5.base + T5.perPoint * (score("good") - score("bad")) + tilt, T5.min, T5.max);
+  return clamp27(T5.base + T5.perPoint * (score("good") - score("bad")) + tilt, T5.min, T5.max);
 }
 function rollHerCall(state, reg, rng, spec, partyIds) {
   const candidates3 = herCallCandidates(state, reg, spec, partyIds);
@@ -25206,7 +25425,7 @@ function buildDigest(state, reg) {
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function plain(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
@@ -25287,7 +25506,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
         offer.danger = o.danger;
       }
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
-        offer.deadlineDays = clamp27(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+        offer.deadlineDays = clamp28(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
       const title3 = plain(o.title, TUNING.director.titleMax);
       if (title3 !== "") offer.title = title3;
@@ -25492,7 +25711,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const pending4 = draft.world.director?.pending;
   if (!pending4 || pending4.id !== requestId) throw new Error("Stale director answer.");
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp27(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp28(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending4), {
     cooldownDays,
     only: pending4.reason === "scout" ? "rumors" : void 0
@@ -25963,7 +26182,7 @@ function treat(draft, ctx2, unitId, kind) {
   addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
   return [{ type: "expedition_treated", unitId, kind }];
 }
-var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp29 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function enterCombat(draft, ctx2, nodeId, def, mission) {
   const exp = draft.expedition;
   const reg = ctx2.registries;
@@ -25974,7 +26193,7 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   try {
     encounter = generateEncounter(draft, reg, ctx2.rng, {
       table: region.enemyTable,
-      danger: clamp28(mission.danger + combat2.dangerDelta + ambush, 1, 5),
+      danger: clamp29(mission.danger + combat2.dangerDelta + ambush, 1, 5),
       squadPower: squadPower(draft, reg, ableParty(draft)),
       exposesCommander: combat2.exposesCommander,
       lootTableId: combat2.lootTableId
@@ -26417,7 +26636,7 @@ function toWorldEffect(raw, ctx2) {
 
 // src/engine/dilemma/validate.ts
 var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp29 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp30 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index2, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index2, reason });
@@ -26509,7 +26728,7 @@ function parseDilemmaOutput(raw, ctx2) {
 function alignment(fx2, unit3) {
   if (fx2.valueAxes && fx2.valueAxes.length > 0) {
     const sum = fx2.valueAxes.reduce((n, a) => n + (valuesOf(unit3)[a.axis] ?? 0) * a.direction, 0);
-    return clamp29(sum / 3, -1, 1);
+    return clamp30(sum / 3, -1, 1);
   }
   return ["sided_against", "decision_violated", "endangered", "coerced", "dismissed", "insulted", "lied_detected", "broke_promise", "mocked_defect", "crime_revealed", "rejected_advance"].includes(fx2.event) ? -1 : 1;
 }
@@ -26603,7 +26822,7 @@ function checkDefining(state, beatId) {
 }
 
 // src/engine/dilemma/flow.ts
-var clamp30 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var STALE2 = "Stale dilemma answer.";
 var capital2 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function presentUnits(state) {
@@ -26823,7 +27042,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
-    const chance = clamp30(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
+    const chance = clamp31(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
@@ -26933,7 +27152,7 @@ function herVote(state, _reg, vote) {
 
 // src/engine/discipline/demands.ts
 var DRIVEN = ["open_defiance", "defiant_loyal"];
-var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var costsOf = (t) => t.grantCost ?? [];
 var namedLiving6 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
 function demandChance(state, reg, unitId) {
@@ -26945,7 +27164,7 @@ function demandChance(state, reg, unitId) {
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit3).refusalMult);
   const squad = assertiveness(state, reg).demandMult;
-  return clamp31(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
+  return clamp32(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
 }
 var openedThisWeek = (state, unitId) => (state.discipline?.demandLog ?? []).filter((e) => e.unitId === unitId && state.day - e.day < TUNING.demands.weekDays).length;
 var hasOpen = (state, unitId) => (state.discipline?.demands ?? []).some((d) => d.unitId === unitId);
@@ -27074,7 +27293,7 @@ function pay(draft, ctx2, unit3, cost) {
     case "squad_stress": {
       const out = [];
       for (const u of draft.squad.filter((x) => x.id !== unit3.id && isLiving(x))) {
-        const next = clamp31(u.stress + cost.amount, 0, 100);
+        const next = clamp32(u.stress + cost.amount, 0, 100);
         if (next !== u.stress) out.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
         u.stress = next;
       }
@@ -27186,7 +27405,7 @@ function demandDayStep(draft, ctx2) {
 
 // src/engine/special/debts/discovery.ts
 var T3 = () => TUNING.special.debts;
-var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 var named3 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
 function templateOf2(ctx2, context) {
@@ -27303,14 +27522,14 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
       const own = draft.commander.corporationId;
       if (own !== null) draft.world.factions[own] = Math.min(draft.world.factions[own] ?? 0, T3().hostileAt);
       const rival = d.corporationId;
-      draft.world.factions[rival] = clamp32((draft.world.factions[rival] ?? 0) + 20, -100, 100);
+      draft.world.factions[rival] = clamp33((draft.world.factions[rival] ?? 0) + 20, -100, 100);
       d.ended = "fled";
     }
     events.push({ type: "defector_arc", outcome: optionId });
     return events;
   }
   if (context !== "debts_unit" || subjectId === void 0) return [];
-  if (optionId === "report") d.oversightSuspicion = clamp32(d.oversightSuspicion + 40, 0, 100);
+  if (optionId === "report") d.oversightSuspicion = clamp33(d.oversightSuspicion + 40, 0, 100);
   else if (optionId === "protect_commander") {
     const kind = [...reg.secretKinds.values()].find((k) => k.source === "debts");
     const name = draft.squad.find((u) => u.id === subjectId)?.displayName ?? "";
@@ -27320,7 +27539,7 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
 }
 
 // src/engine/special/debts/intel.ts
-var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function intelOf(state, reg) {
   const d = state.special?.debts;
   const seen2 = new Set(d?.answered ?? []);
@@ -27372,7 +27591,7 @@ function leak(draft, ctx2, d) {
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
   addFact(draft, { about: ["commander"], text: "The commander sold intel to a rival corporation, and the rival has made it public.", tags: ["debts"], importance: 5, day: draft.day, knownBy: ["*"] });
-  d.oversightSuspicion = clamp33(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
+  d.oversightSuspicion = clamp34(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
   d.ended = "leaked";
   events.push({ type: "handler_leak" });
   return events;
@@ -27397,7 +27616,7 @@ function settle3(draft, ctx2, d, answers, spendNight) {
       events.push({ type: "resource_changed", resource: k, amount: pay2[k] });
     }
   }
-  d.handlerPressure = clamp33(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
+  d.handlerPressure = clamp34(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
   scheduleConsequences(draft, ctx2, visit, answers);
   d.answered.push(...visit.items.map((i) => i.id));
   delete d.visit;
@@ -27900,7 +28119,7 @@ var slug2 = (name) => {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s === "" ? "unit" : s;
 };
-var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf3(crime.perk), ...effectsOf3(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -27917,7 +28136,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp34(o.trust, 0, 100);
+  const trust = clamp35(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -28352,28 +28571,28 @@ registerMemoryResolver("activity_done", (draft, event, reg) => {
     }
   };
 }, { ids: ["subject"], vars: ["name", "activity", "slot", "scene"] });
-var holderOf = (draft) => {
+var holderOf2 = (draft) => {
   const w = wardenOf(draft);
   return w ? { id: w.unitId, name: nameOf9(draft, w.unitId) } : null;
 };
 registerMemoryResolver("override_answered", (draft, event) => {
   if (event.source === "holder") return null;
-  const her = holderOf(draft);
+  const her = holderOf2(draft);
   if (!her) return null;
   return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str2(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
 }, { ids: ["subject"], vars: ["name", "answer", "witnessed"] });
 registerMemoryResolver("commander_punished", (draft, event, reg) => {
-  const her = holderOf(draft);
+  const her = holderOf2(draft);
   if (!her || event.remote === true) return null;
   const severity = Number(event.severity);
   return { ids: { subject: [her.id] }, vars: { name: her.name, label: String(reg.commanderPunishments.get(String(event.punishmentId))?.label ?? "a punishment"), heavy: yes(severity >= 3) } };
 }, { ids: ["subject"], vars: ["name", "label", "heavy"] });
 registerMemoryResolver("commander_leashed", (draft, event) => {
-  const her = holderOf(draft);
+  const her = holderOf2(draft);
   return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str2(event.kind) ?? "" } } : null;
 }, { ids: ["subject"], vars: ["name", "kind"] });
 registerMemoryResolver("warden_warning", (draft, event) => {
-  const her = holderOf(draft);
+  const her = holderOf2(draft);
   return her ? { ids: { subject: [her.id] }, vars: { name: her.name, level: String(event.level ?? "") } } : null;
 }, { ids: ["subject"], vars: ["name", "level"] });
 registerMemoryResolver("warden_removed", (draft, event) => {
@@ -28475,6 +28694,10 @@ registerMemoryResolver("domain_yielded", (draft, event, reg) => {
   const domain = reg.dynamicDomains.get(String(event.domainId));
   return her && domain ? { ids: { her: [her.id] }, vars: { name: her.name, domain: String(domain.label), partial: yes(event.partial === true) } } : null;
 }, { ids: ["her"], vars: ["name", "domain", "partial"] });
+registerMemoryResolver("disappointed", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ["her"], vars: ["name"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -29976,8 +30199,20 @@ function sourceAllowed(state, reg, source, unitIds) {
   const own = reg.pastimes.get(scene.pastime.id)?.momentSources;
   return Array.isArray(own) && own.length > 0 ? own.includes(source.id) : source.generalMeeting === true;
 }
+var ripeReaders = [];
+function registerRipeSource(fn) {
+  if (!ripeReaders.includes(fn)) ripeReaders.push(fn);
+}
+var ripeIdsFor = (state, reg, unitId) => [...new Set(ripeReaders.flatMap((fn) => fn(state, reg, unitId)))];
+function engineRipe(state, reg, sourceId, unitId) {
+  return ripeReaders.length > 0 && ripeIdsFor(state, reg, unitId).includes(sourceId);
+}
 function ripeSources(state, reg) {
-  return [...reg.momentSources.values()].filter((s) => Array.isArray(s.live) && s.live.includes("extracted") && sourceAllowed(state, reg, s));
+  const named4 = state.scene === void 0 || ripeReaders.length === 0 ? /* @__PURE__ */ new Set() : new Set(state.scene.participants.flatMap((id) => ripeIdsFor(state, reg, id).filter((sid) => {
+    const s = reg.momentSources.get(sid);
+    return s !== void 0 && sourceAllowed(state, reg, s, [id]);
+  })));
+  return [...reg.momentSources.values()].filter((s) => named4.has(s.id) || Array.isArray(s.live) && s.live.includes("extracted") && sourceAllowed(state, reg, s));
 }
 
 // src/engine/vitals.ts
@@ -30158,7 +30393,7 @@ function liveSources(state, reg, opts = {}) {
             break;
         }
       }
-      const ripe = opts.ripe === source.id && kinds2.includes("extracted") && unitId === scene.participants[0];
+      const ripe = kinds2.includes("extracted") && (opts.ripe === source.id && unitId === scene.participants[0] || engineRipe(state, reg, source.id, unitId));
       if (ripe) weight += 1;
       if (weight > 0 && !kinds2.includes("blocking")) weight += bw;
       if (ripe) weight *= 2;
@@ -30438,7 +30673,7 @@ function physicsOf(entry) {
   return Array.isArray(entry?.physics) ? entry.physics : [];
 }
 var sourceEntry = (reg, kind, id) => kind === "contact" ? reg.blockingContacts.get(id) : reg.blockingItems.get(id);
-function holderOf2(state, kind, id) {
+function holderOf3(state, kind, id) {
   const scene = state.scene;
   if (!scene) return void 0;
   if (kind === "contact") {
@@ -30639,7 +30874,7 @@ registerAfterChange((draft, reg, change) => {
   if (change.field !== "contact" && change.field !== "worn" || change.value === void 0 || draft.scene?.physics) return events;
   const kind = change.field === "contact" ? "contact" : "item";
   const main2 = physicsOf(sourceEntry(reg, kind, change.value))[0];
-  const holder2 = holderOf2(draft, kind, change.value);
+  const holder2 = holderOf3(draft, kind, change.value);
   if (main2 && holder2 && whyNotStart(draft, reg, { physicsId: main2.id, sourceKind: kind, sourceId: change.value, holderId: holder2 }) === null) {
     events.push(...startPhysics(draft, { registries: reg }, { physicsId: main2.id, sourceKind: kind, sourceId: change.value, holderId: holder2 }));
   }
@@ -31583,7 +31818,7 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
 // src/engine/warden/leash.ts
-var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var SLOTS2 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
@@ -31591,7 +31826,7 @@ function cosignChance(state, _reg, _targetId) {
   const C = TUNING.warden.cosign;
   const unit3 = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp35(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit3 ? valuesOf(unit3).corporate : 0) - C.mercy * (unit3 ? valuesOf(unit3).mercy : 0) + C.perAffinity * affinity, C.min, C.max);
+  return clamp36(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit3 ? valuesOf(unit3).corporate : 0) - C.mercy * (unit3 ? valuesOf(unit3).mercy : 0) + C.perAffinity * affinity, C.min, C.max);
 }
 function rollCosign(draft, ctx2, targetId, kind) {
   const w = wardenOf(draft);
@@ -31626,7 +31861,7 @@ function refreshWardenLeash(draft, _reg) {
 }
 
 // src/engine/dynamic/leashBlock.ts
-var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function leashBlockOf(state, reg) {
   if (!dynamicOn(state, reg)) return null;
   for (const u of state.squad) {
@@ -31643,7 +31878,7 @@ function leashBlockOf(state, reg) {
 function blockCosignChance(state, _reg, holderId) {
   const B2 = TUNING.dynamic.block;
   const favour = dynamicOf(state, holderId)?.favour ?? 0;
-  return clamp36(B2.base + B2.perFavour * favour / TUNING.dynamic.favour.max, B2.min, B2.max);
+  return clamp37(B2.base + B2.perFavour * favour / TUNING.dynamic.favour.max, B2.min, B2.max);
 }
 function noteBlocked(draft, holderId) {
   const x = draft.dynamic;
@@ -31668,7 +31903,7 @@ function rollBlock(draft, ctx2, targetId, kind) {
 
 // src/engine/warden/removal.ts
 var INVESTIGATION_CLOCK = "investigation";
-var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp38 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill4 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 function reactionAxes(draft, wardenId, route) {
   const her = draft.squad.find((u) => u.id === wardenId);
@@ -31710,8 +31945,8 @@ function wardenGone(draft, ctx2, how) {
   return startRemoval(draft, ctx2, "death");
 }
 function reportChance(state, _reg) {
-  const R3 = TUNING.warden.verdict.report;
-  return clamp37(R3.base + R3.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R3.perCunning * (socialRank(state, "cunning") - 1), R3.min, R3.max);
+  const R4 = TUNING.warden.verdict.report;
+  return clamp38(R4.base + R4.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R4.perCunning * (socialRank(state, "cunning") - 1), R4.min, R4.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -31779,16 +32014,16 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
 }
 function remoteExpectations(state) {
   if (!state.leashswap?.remote) return [];
-  const R3 = TUNING.warden.remote;
+  const R4 = TUNING.warden.remote;
   return [
-    { id: "remote_quota", kind: "meet_quota", weight: R3.quota, source: "corporate", known: true },
-    { id: "remote_obey", kind: "obey_oversight", weight: R3.obey, source: "corporate", known: true }
+    { id: "remote_quota", kind: "meet_quota", weight: R4.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R4.obey, source: "corporate", known: true }
   ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
   if (!ls?.remote || wardenOf(draft)) return [];
-  const R3 = TUNING.warden.remote;
+  const R4 = TUNING.warden.remote;
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
@@ -31796,7 +32031,7 @@ function remoteDayStep(draft, ctx2) {
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
-  if (since > 0 && since % R3.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R3.missionDays && m.outcomeDay <= draft.day)) {
+  if (since > 0 && since % R4.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R4.missionDays && m.outcomeDay <= draft.day)) {
     const id = pickPunishment(draft, ctx2.registries, 1);
     if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
@@ -31807,7 +32042,7 @@ function verdictChance(state, _reg) {
   const V = TUNING.warden.verdict;
   const route = ls?.removal?.route ?? "death";
   const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
-  return clamp37(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
+  return clamp38(V.base[route] + V.perCunning * (socialRank(state, "cunning") - 1) - V.discovered * discovered + V.perAlly * allies(state).length, V.min, V.max);
 }
 function rollVerdict(draft, ctx2) {
   const ls = leashswapOf(draft);
@@ -33966,7 +34201,7 @@ var RUNS = {
   pet: { interaction: "timing", gauge: "capacity" },
   mouth: { interaction: "gesture" }
 };
-var holderOf3 = (state) => {
+var holderOf4 = (state) => {
   const scene = state.scene;
   const contact = scene ? contactOf(scene) : void 0;
   if (!scene || !contact) return void 0;
@@ -33976,7 +34211,7 @@ function actsFor(state, reg) {
   const scene = state.scene;
   const contact = scene && blockingLive(state, reg) ? contactOf(scene) : void 0;
   if (!scene || !contact || reg.blockingContacts.get(contact.id)?.mouth !== true) return [];
-  const holder2 = holderOf3(state);
+  const holder2 = holderOf4(state);
   if (!contentAllowed(state, reg, { contentTags: ["worship"] }, holder2)) return [];
   return ACT_KINDS.filter((k) => k !== "pet" || contentAllowed(state, reg, { contentTags: ["pet_play"] }, holder2));
 }
@@ -34003,7 +34238,7 @@ function startAct(draft, ctx2, kind) {
   if (scene.physics) throw new Error("physics/act: a hold is running");
   if (scene.act) throw new Error("physics/act: the kisses are still being counted");
   const contact = contactOf(scene);
-  const holder2 = holderOf3(draft);
+  const holder2 = holderOf4(draft);
   const events = [];
   for (const ex of exposedKinds(draft, reg).filter((e) => reg.stimulusKinds.get(e.kind)?.family === "taste")) events.push(...applyWay(draft, ctx2, "taste", ex.kind));
   if (k === "kiss") return [{ type: "mouth_act", kind: k, unitId: holder2 }, ...events];
@@ -34020,7 +34255,7 @@ function finishCounted(draft, _ctx, typed) {
   const act = draft.scene?.act;
   if (!act) throw new Error("physics/act_finish: no count is waiting");
   if (typeof typed !== "number" || !Number.isFinite(typed)) throw new Error("physics/act_finish needs { typed } as a number");
-  const holder2 = holderOf3(draft) ?? draft.scene.participants[0];
+  const holder2 = holderOf4(draft) ?? draft.scene.participants[0];
   if (Math.round(typed) === act.n) {
     delete draft.scene.act;
     return [{ type: "mouth_act_done", kind: "counted", n: act.n, tries: act.tries, unitId: holder2 }];
@@ -34072,7 +34307,7 @@ function mergeInputs(mainI, secondI, plan, inputs) {
 // src/engine/physics/segment.ts
 var stillnessOf = (_state) => 0;
 var P2 = TUNING.physics;
-var clamp38 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp39 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function rhythmOffset(state, unitId) {
   return fnv1a2(`${state.life?.salt ?? 0}|${unitId}|rhythm`) % 3;
 }
@@ -34135,7 +34370,7 @@ function planSegment(state, reg, run, rng) {
 }
 function sealNow(run, sealLevel) {
   const at = SEALS.indexOf(run.seal ?? "tight");
-  return SEALS[clamp38(at + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
+  return SEALS[clamp39(at + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
 }
 function resolveEnvOf(state, reg, run) {
   const phys = reg.contactPhysics.get(run.physicsId);
@@ -34275,7 +34510,7 @@ function resolveSegment(run, plan, inputs, env) {
         break;
     }
     if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
-    r.gauge = clamp38(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap7);
+    r.gauge = clamp39(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap7);
   }
   if (rest) {
     r.askedRest = true;
@@ -34729,7 +34964,7 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
 var OVERSIGHT_CLOCK = "oversight_inquiry";
 var THREAD = "oversight_inquiry";
 var OVERSIGHT_ACTS = ["reprimand", "transfer_threat", "forced_leash"];
-var clamp39 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp40 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var stage = (s, extra = {}) => ({ type: "oversight_inquiry", stage: s, ...extra });
 function oversightActOf(state, holderId) {
   return OVERSIGHT_ACTS[Math.min(OVERSIGHT_ACTS.length - 1, Math.floor(dynamicRoll(state, holderId, "oversight_acts") * OVERSIGHT_ACTS.length))];
@@ -34760,7 +34995,7 @@ var NOTICE_TEXT = {
 function addStress3(draft, unitId, amount) {
   const u = draft.squad.find((x) => x.id === unitId);
   if (u === void 0 || amount === 0) return [];
-  const next = clamp39(u.stress + amount, 0, 100);
+  const next = clamp40(u.stress + amount, 0, 100);
   const delta = next - u.stress;
   u.stress = next;
   return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
@@ -34846,174 +35081,6 @@ function requestTransfer(draft, unitId) {
   const requests = o.requests ??= [];
   if (!requests.some((r) => r.unitId === unitId && r.day === draft.day)) requests.push({ unitId, day: draft.day });
   return [stage("transfer_requested", { unitId })];
-}
-
-// src/engine/dynamic/regard.ts
-var R2 = TUNING.regard;
-var clamp40 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var round44 = (n) => Math.round(n * 1e4) / 1e4;
-function holderOf4(state, unitId) {
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && state.relations[unitId] !== void 0 ? unit3 : void 0;
-}
-var bandsOf2 = (reg) => [...reg.regardBands.values()].sort((a, b) => b.min - a.min);
-function regardBandOf2(reg, n) {
-  const bands = bandsOf2(reg);
-  return (bands.find((b) => n >= b.min) ?? bands[bands.length - 1])?.id ?? "";
-}
-function regardBandRank(reg, n) {
-  const bands = bandsOf2(reg);
-  const i = bands.findIndex((b) => n >= b.min);
-  return i < 0 ? Math.max(0, bands.length - 1) : i;
-}
-function isLow(reg, n) {
-  const bands = bandsOf2(reg);
-  return bands.length >= 2 && regardBandRank(reg, n) >= bands.length - 2;
-}
-function styleRow(state, reg, unit3) {
-  const key = styleOf(unit3)?.primary;
-  const row3 = key === void 0 ? void 0 : reg.practiceStyles.get(key);
-  if (row3 === void 0) return { factor: 1, speed: R2.speed.normal, floor: 0, form: void 0, key };
-  return { factor: row3.regardFactor, speed: R2.speed[row3.regardSpeed] ?? R2.speed.normal, floor: row3.regardFloor, form: row3.regardForm, key };
-}
-function regardStart(state, reg, unitId) {
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  if (unit3 === void 0) return R2.start;
-  const mult = matchedTastes(state, reg, unit3).reduce((m, t) => m * (typeof t.presenceMult === "number" ? t.presenceMult : 1), 1);
-  let n = R2.start + clamp40(presenceOf(state, reg) * mult * R2.impression, -R2.impressionMax, R2.impressionMax);
-  if (state.relations[unitId]?.flags.includes("knows_crime") === true && state.commander.crimeId !== null) {
-    const reactions = reg.crimes.get(state.commander.crimeId)?.valueReactions ?? [];
-    const values = valuesOf(unit3);
-    const felt = reactions.filter((r) => r.sign === "+" ? values[r.axis] > 0 : values[r.axis] < 0).reduce((sum, r) => sum + r.weight, 0);
-    if (felt < 0) n -= R2.crime;
-  }
-  return round44(clamp40(n, 0, 100));
-}
-function regardOf(state, reg, unitId) {
-  return state.relations[unitId]?.regard ?? regardStart(state, reg, unitId);
-}
-function ensureRegard(draft, reg, unitId) {
-  const stored = draft.relations[unitId]?.regard;
-  if (stored !== void 0) return stored;
-  const start = regardStart(draft, reg, unitId);
-  if (dynamicOn(draft, reg) && holderOf4(draft, unitId) !== void 0) draft.relations[unitId].regard = start;
-  return start;
-}
-function regardTone(state, reg, unitId) {
-  if (!dynamicOn(state, reg)) return null;
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  if (unit3 === void 0 || unit3.kind !== "named") return null;
-  const form = styleRow(state, reg, unit3).form;
-  return form !== void 0 && isLow(reg, regardOf(state, reg, unitId)) ? form : null;
-}
-var watchers = [];
-function write2(draft, reg, unitId, next, cause) {
-  const from = ensureRegard(draft, reg, unitId);
-  const to = round44(clamp40(next, 0, 100));
-  if (to === from) return [];
-  draft.relations[unitId].regard = to;
-  const events = [{ type: "regard_changed", unitId, from, to, cause }];
-  const was = regardBandOf2(reg, from);
-  const now = regardBandOf2(reg, to);
-  if (was !== now) events.push({ type: "regard_band_changed", unitId, from: was, to: now });
-  if (to < from) for (const watch of watchers) events.push(...watch(draft, reg, unitId, from, to));
-  return events;
-}
-function regardFall(draft, reg, unitId, humiliation, opts) {
-  const unit3 = dynamicOn(draft, reg) ? holderOf4(draft, unitId) : void 0;
-  if (unit3 === void 0 || !(humiliation > 0)) return [];
-  const row3 = styleRow(draft, reg, unit3);
-  const fall = humiliation * R2.fall * row3.factor * row3.speed * (opts.witness ? R2.witness : 1);
-  const now = ensureRegard(draft, reg, unitId);
-  return write2(draft, reg, unitId, Math.min(now, Math.max(row3.floor, now - fall)), opts.cause ?? "act");
-}
-function regardRise(draft, reg, unitId, kind, amount) {
-  const unit3 = dynamicOn(draft, reg) ? holderOf4(draft, unitId) : void 0;
-  if (unit3 === void 0) return [];
-  if (kind === "cost") {
-    const r = dynamicOf(draft, unitId)?.readOf.r;
-    if (r === void 0 || r > 0) return [];
-  }
-  const V = R2.value;
-  let gain2 = kind === "value" ? clamp40(amount ?? V.min, V.min, V.max) : amount ?? R2.rise[kind];
-  const key = styleRow(draft, reg, unit3).key;
-  if (R2.mastery.includes(kind) && key !== void 0 && R2.drill.styles.includes(key)) gain2 *= R2.drill.mult;
-  if (!(gain2 > 0)) return [];
-  return write2(draft, reg, unitId, ensureRegard(draft, reg, unitId) + gain2, kind);
-}
-function resetServed(draft, unitId) {
-  const dyn = dynamicOf(draft, unitId);
-  if (dyn?.served !== void 0) dyn.served = { since: draft.day };
-}
-function regardDayStep(draft, reg, holders2) {
-  const T5 = R2.vindictive;
-  const events = [];
-  for (const id of holders2) {
-    const dyn = dynamicOf(draft, id);
-    const unit3 = holderOf4(draft, id);
-    if (dyn === void 0 || unit3 === void 0) continue;
-    const key = styleRow(draft, reg, unit3).key;
-    if (key === void 0 || !T5.styles.includes(key) || frameRank(dyn.frame) < frameRank("play")) continue;
-    if (dyn.served === void 0) {
-      dyn.served = { since: draft.day };
-      continue;
-    }
-    const served = draft.day - dyn.served.since;
-    if (served > 0 && served % T5.days === 0) events.push(...regardRise(draft, reg, id, "dignity", T5.rise));
-  }
-  return events;
-}
-var namedInService = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
-var idOf = (v) => typeof v === "string" ? v : void 0;
-function regardFromEvents(draft, reg, events) {
-  if (!dynamicOn(draft, reg)) return [];
-  const V = R2.value;
-  const out = [];
-  const noted = () => draft.dynamic.noted ??= {};
-  for (const e of events) {
-    const holder2 = idOf(e.holderId);
-    const runId = idOf(e.runId);
-    switch (e.type) {
-      case "physics_started":
-        if (e.chained !== true && draft.dynamic.noted?.dirtyRun !== void 0) delete draft.dynamic.noted.dirtyRun;
-        break;
-      case "physics_caught":
-      case "physics_slip":
-        if (runId !== void 0) noted().dirtyRun = runId;
-        if (holder2 !== void 0) {
-          out.push(...regardFall(draft, reg, holder2, e.type === "physics_caught" ? R2.acts.caught : R2.acts.slip, { witness: false, cause: e.type }));
-          resetServed(draft, holder2);
-        }
-        break;
-      case "physics_outcome": {
-        const clean10 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
-        if (clean10 && holder2 !== void 0) out.push(...regardRise(draft, reg, holder2, "dignity"));
-        if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
-        break;
-      }
-      case "marathon_done": {
-        const unit3 = idOf(e.unitId);
-        if (e.result !== "stopped" && unit3 !== void 0) out.push(...regardRise(draft, reg, unit3, "record"));
-        break;
-      }
-      case "outside_feat":
-        for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V.feat));
-        break;
-      case "expedition_ended": {
-        const report = draft.lastExpedition;
-        if (e.outcome !== "success" || report === void 0 || report.id !== e.reportId) break;
-        for (const id of report.party) out.push(...regardRise(draft, reg, id, "value", V.run));
-        break;
-      }
-    }
-  }
-  return out;
-}
-function regardFeed(draft, reg, unitId, event) {
-  if (event.actor !== "commander") return [];
-  if (event.type === "kept_promise") return regardRise(draft, reg, unitId, "value", R2.value.promise);
-  if (event.type === "time_together") return regardRise(draft, reg, unitId, "value", R2.value.meeting);
-  return [];
 }
 
 // src/engine/dynamic/dayStep.ts
@@ -35108,6 +35175,69 @@ function holdFeed(draft, reg, unitId, event, _severity) {
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);
 }
 
+// src/engine/dynamic/shame.ts
+var R3 = TUNING.regard;
+function nonHolder(state, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const frame = dynamicOf(state, unitId)?.frame;
+  return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && (frame === void 0 || frameRank(frame) < frameRank("play"));
+}
+var noted = (draft) => draft.dynamic.noted ??= {};
+function checkDisappointment(draft, ctx2, unitId, from, to) {
+  const reg = ctx2.registries;
+  if (draft.dynamic === void 0 || !dynamicOn(draft, reg) || to >= from || !nonHolder(draft, unitId)) return [];
+  (noted(draft).regardFell ??= {})[unitId] = draft.day;
+  const marks = noted(draft).regardMark ??= {};
+  let mark = marks[unitId];
+  if (mark === void 0 || draft.day - mark.day > R3.disappointment.days) mark = marks[unitId] = { day: draft.day, value: from };
+  if (regardBandRank(reg, to) <= regardBandRank(reg, mark.value)) return [];
+  marks[unitId] = { day: draft.day, value: to };
+  if ((draft.relations[unitId]?.trust ?? 0) < R3.disappointment.trust) return [];
+  (noted(draft).disappointed ??= {})[unitId] = draft.day;
+  lapseHabits(draft, reg, unitId, R3.lapse.tag, R3.lapse.days);
+  return [{ type: "disappointed", unitId }];
+}
+function disappointedSince(state, unitId) {
+  const day = state.dynamic?.noted?.disappointed?.[unitId];
+  return day !== void 0 && state.day - day <= R3.disappointment.days ? day : void 0;
+}
+function falling(state, reg, unitId) {
+  const day = state.dynamic?.noted?.regardFell?.[unitId];
+  return day !== void 0 && state.day - day <= R3.disappointment.days && regardBandRank(reg, regardOf(state, reg, unitId)) < Math.max(0, reg.regardBands.size - 1);
+}
+function questionRipe(state, reg, unitId) {
+  if (!dynamicOn(state, reg) || !nonHolder(state, unitId)) return false;
+  const q = state.dynamic?.noted?.question;
+  if (q?.by[unitId] !== void 0 && state.day - q.by[unitId] < R3.question.cooldownDays) return false;
+  if (q?.day !== void 0 && state.day - q.day < R3.question.weekDays) return false;
+  return falling(state, reg, unitId) || dynamicTerm(state, reg, unitId) > 0;
+}
+var ripeQuestions = (state, reg, unitId) => questionRipe(state, reg, unitId) ? ["her_question"] : [];
+function noteQuestionAsked(draft, ctx2, events) {
+  if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
+  const out = [];
+  for (const e of events) {
+    if (e.type !== "moment_fired" || e.sourceId !== "her_question" || typeof e.unitId !== "string") continue;
+    const q = noted(draft).question ??= { by: {} };
+    q.day = draft.day;
+    q.by[e.unitId] = draft.day;
+    out.push({ type: "regard_question_asked", unitId: e.unitId, ...typeof e.momentId === "string" ? { momentId: e.momentId } : {} });
+  }
+  return out;
+}
+function answerQuestion2(draft, ctx2, unitId, key) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  const primary = unit3 === void 0 ? void 0 : styleOf(unit3)?.primary;
+  if (primary === void 0 || R3.question.valued[primary] !== key) return [];
+  return regardRise(draft, ctx2.registries, unitId, "value", R3.question.gain);
+}
+function questionEvents(draft, ctx2, events) {
+  if (!dynamicOn(draft, ctx2.registries)) return [];
+  const out = noteQuestionAsked(draft, ctx2, events);
+  for (const e of events) if (e.type === "moment_answered" && e.sourceId === "her_question" && typeof e.unitId === "string") out.push(...answerQuestion2(draft, ctx2, e.unitId, String(e.key)));
+  return out;
+}
+
 // src/engine/dynamic/style.ts
 var FRAME_KEYS2 = ["0", "1", "2"];
 var entryOf2 = (reg, key) => reg.practiceStyles.get(key);
@@ -35200,11 +35330,11 @@ function defaultExpectation(state, reg, moment) {
 }
 function noteEvents(draft, ctx2, events) {
   if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
-  const noted = () => draft.dynamic.noted ??= {};
+  const noted2 = () => draft.dynamic.noted ??= {};
   for (const e of events) {
-    if (e.type === "endurance_gained") noted().enduranceDay = draft.day;
-    if (e.type === "intents_applied" && Array.isArray(e.landed) && e.landed.includes("crime_revealed")) noted().crimeDay = draft.day;
-    if (e.type === "intents_applied" && Array.isArray(e.landed) && (e.landed.includes("praised") || e.landed.includes("opinion_agreed"))) noted().praisedDay = draft.day;
+    if (e.type === "endurance_gained") noted2().enduranceDay = draft.day;
+    if (e.type === "intents_applied" && Array.isArray(e.landed) && e.landed.includes("crime_revealed")) noted2().crimeDay = draft.day;
+    if (e.type === "intents_applied" && Array.isArray(e.landed) && (e.landed.includes("praised") || e.landed.includes("opinion_agreed"))) noted2().praisedDay = draft.day;
   }
   return [];
 }
@@ -35243,6 +35373,7 @@ function compromatHint(state, reg, unitId) {
   const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== void 0 ? dynamicOf(state, unitId) : void 0;
   return dyn !== void 0 && frameRank(dyn.frame) >= frameRank("role") && compromatOf(state, unitId).length > 0 && dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
 }
+var disappointed = (draft, reg, unitId, from, to) => checkDisappointment(draft, { registries: reg }, unitId, from, to);
 function installDynamicHooks() {
   registerFrameReader(frameReader);
   registerBlockingGate(gate);
@@ -35251,7 +35382,9 @@ function installDynamicHooks() {
   registerExpectation(expectation);
   registerMomentTrigger("compromat_hint", compromatHint);
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length);
-  registerRegardBand((state, reg, unitId) => dynamicOn(state, reg) ? regardBandOf2(reg, regardOf(state, reg, unitId)) : null);
+  registerRegardBand((state, reg, unitId) => dynamicOn(state, reg) ? regardBandOf(reg, regardOf(state, reg, unitId)) : null);
+  registerRipeSource(ripeQuestions);
+  registerRegardWatcher(disappointed);
   registerDislikeScale((state, reg, unitId) => regardBandRank(reg, regardOf(state, reg, unitId)) >= Math.max(0, reg.regardBands.size - 2) ? TUNING.regard.dislikes : 1);
 }
 
@@ -35346,6 +35479,7 @@ registerAfterAction((draft) => {
   return [];
 });
 registerAfterAction((draft, ctx2, events) => regardFromEvents(draft, ctx2.registries, events));
+registerAfterAction((draft, ctx2, events) => questionEvents(draft, ctx2, events));
 registerAfterAction((draft, ctx2, events) => {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   for (const e of events) {
@@ -38247,6 +38381,7 @@ var COMMAND_PREFIX = "dynamic:command:";
 var WITNESS_PREFIX = "dynamic:witness:";
 var AFTERMATH_PREFIX = "dynamic:aftermath:";
 var LEASH_BLOCK_PREFIX = "dynamic:leash_block:";
+var DISAPPOINTED_PREFIX = "dynamic:disappointed:";
 function styleLine(state, reg, unit3) {
   const pair = unit3.bond?.practice?.style;
   if (pair === void 0) return "";
@@ -38312,6 +38447,7 @@ function dynamicDirectives(state, reg, present2) {
   out.push(...leashBlockDirectives(state, reg, present2));
   out.push(...commandDirectives(state, reg, present2));
   out.push(...witnessDirectives(state, reg, present2));
+  out.push(...disappointedDirectives(state, present2));
   return out;
 }
 function aftermathDirective2(state, reg, unit3) {
@@ -38320,6 +38456,21 @@ function aftermathDirective2(state, reg, unit3) {
   const stage2 = a === void 0 ? void 0 : row3?.stages[a.stage];
   if (stage2 === void 0) return null;
   return { id: `${AFTERMATH_PREFIX}${unit3.id}`, expiresAfter: "scene", text: `${sentence2(stage2.directive.replaceAll("{name}", unit3.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
+}
+function disappointedDirectives(state, present2) {
+  const holders2 = holdersAtPlay(state);
+  const out = [];
+  for (const id of present2) {
+    const unit3 = state.squad.find((u) => u.id === id);
+    const holder2 = state.squad.find((u) => present2.includes(u.id) && u.id !== id && holders2.includes(u.id));
+    if (unit3 === void 0 || holder2 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || disappointedSince(state, id) === void 0) continue;
+    out.push({
+      id: `${DISAPPOINTED_PREFIX}${id}`,
+      expiresAfter: "scene",
+      text: `AUTHOR TO WRITE: ${unit3.displayName} has stopped turning to the commander for advice; when she speaks she addresses ${holder2.displayName}. She does not argue and does not lecture: she is simply quieter and more distant with the commander. Show it in how she acts and speaks; never name it as a mechanic.`
+    });
+  }
+  return out;
 }
 var REACTION_LINE = {
   drawn: (h2) => `AUTHOR TO WRITE: She is drawn to it: she watches ${h2} with interest and may ask about it.`,

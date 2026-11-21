@@ -34,6 +34,8 @@ export interface HabitEntry {
   fallback: string;
   effect?: { type: 'unit_stress' | 'unit_xp'; amount: number; activityId: string };
   contentTags?: string[];
+  /** P15: what kind of habit it is (`respect`: the small habits of respect a disappointed woman lets lapse). */
+  tags?: string[];
   description: string;
 }
 

@@ -15,6 +15,7 @@ import type { Registries } from '../../content/types';
 import { frameRank, type Frame } from '../blocking/state';
 import { registerBlockingGate, registerFrameReader } from '../blocking/gate';
 import { isLiving } from '../economy';
+import { registerRipeSource } from '../blocking/vocabulary';
 import { registerExpectation } from '../moments/answer';
 import { registerMomentTrigger } from '../moments/live';
 import type { OpenMoment } from '../moments/state';
@@ -26,7 +27,8 @@ import { compromatOf } from './compromat';
 import { holdsUntilOfUnit, expectationsOf } from './expectations';
 import { dynamicOn, herPracticeLive } from './gate';
 import { styleOf } from './profile';
-import { regardBandOf, regardBandRank, regardOf } from './regard';
+import { regardBandOf, regardBandRank, regardOf, registerRegardWatcher } from './regard';
+import { checkDisappointment, ripeQuestions } from './shame';
 import { registerDislikeScale } from './witness';
 import { defaultExpectation, leadingStyle } from './style';
 import { dynamicOf, type DynamicRelation } from './state';
@@ -91,6 +93,9 @@ function compromatHint(state: CampaignState, reg: Registries, unitId: string): b
     && dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
 }
 
+/** A fall of her Regard is shown to disappointment (one function, so a second install registers nothing new). */
+const disappointed = (draft: CampaignState, reg: Registries, unitId: string, from: number, to: number) => checkDisappointment(draft, { registries: reg }, unitId, from, to);
+
 /** Registers the dynamic's readers on the P15a hooks. Idempotent in effect: a second call adds readers that answer the same. */
 export function installDynamicHooks(): void {
   registerFrameReader(frameReader);
@@ -102,5 +107,7 @@ export function installDynamicHooks(): void {
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length); // blackmail needs some
   registerRegardBand((state, reg, unitId) => (dynamicOn(state, reg) ? regardBandOf(reg, regardOf(state, reg, unitId)) : null)); // the aftermath weights read her Regard band (R15, R18)
   // a witness who dislikes what a holder has over the commander weighs more while her own Regard is low or none (R14, R18): the lowest two bands of the registry
+  registerRipeSource(ripeQuestions); // `her_question` is ripe for a woman who is losing respect, or who dislikes what a holder has (Task 37)
+  registerRegardWatcher(disappointed);
   registerDislikeScale((state, reg, unitId) => (regardBandRank(reg, regardOf(state, reg, unitId)) >= Math.max(0, reg.regardBands.size - 2) ? TUNING.regard.dislikes : 1));
 }

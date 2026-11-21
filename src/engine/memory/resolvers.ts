@@ -398,3 +398,9 @@ registerMemoryResolver('domain_yielded', (draft, event, reg) => {
   const domain = reg.dynamicDomains.get(String(event.domainId));
   return her && domain ? { ids: { her: [her.id] }, vars: { name: her.name, domain: String(domain.label), partial: yes(event.partial === true) } } : null;
 }, { ids: ['her'], vars: ['name', 'domain', 'partial'] });
+
+// the dynamic (P15, shame without a narrator): a woman who is not a holder lost respect for the commander and said nothing; hers alone, hidden from the commander
+registerMemoryResolver('disappointed', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ['her'], vars: ['name'] });

@@ -2,7 +2,7 @@ import type { Registries } from '../../content/types';
 import { contentAllowed, type ContentHolder } from '../bonds/content';
 import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
-import type { CampaignState, DevFact } from '../state/types';
+import type { CampaignState, DevFact, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { developmentMode, developmentOf, ensureDevelopment, nextDevId } from './state';
 import type { HabitEntry } from './types';
@@ -93,12 +93,32 @@ export function countRun(draft: CampaignState, reg: Registries, ids: string[], r
   return events;
 }
 
+/**
+ * Her formed habits of a kind (`habits[].tags` has `tag`) lapse until `day + days` (P15: a woman disappointed in the commander lets the small habits of
+ * respect go for a while); `habitEffect` gives nothing for them meanwhile and they are not lost. Nothing while development is off or when she has none of
+ * that kind. Returns the ids that lapse. Draws nothing.
+ */
+export function lapseHabits(draft: CampaignState, reg: Registries, unitId: string, tag: string, days: number): string[] {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || developmentMode(draft) === 'off') return [];
+  const have = developmentOf(unit).habits;
+  const ids = [...reg.habits.values()].filter((h) => have.includes(h.id) && ((h.tags as string[] | undefined) ?? []).includes(tag)).map((h) => String(h.id));
+  if (ids.length === 0) return [];
+  const dev = ensureDevelopment(unit);
+  const lapsed = (dev.lapsed ??= {});
+  for (const id of ids) lapsed[id] = draft.day + days;
+  return ids;
+}
+
+/** Whether a formed habit of hers is lapsed today (`lapseHabits`). */
+export const habitLapsed = (state: Pick<CampaignState, 'day'>, unit: Pick<Unit, 'development'>, habitId: string): boolean => (developmentOf(unit).lapsed?.[habitId] ?? 0) > state.day;
+
 /** What her formed habits do on this activity (as its companion): the registry effects, by `effect.activityId`. */
 export function habitEffect(state: CampaignState, reg: Registries, unitId: string, activityId: string): Array<{ type: 'unit_stress' | 'unit_xp'; amount: number }> {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit || developmentMode(state) === 'off') return [];
   const have = developmentOf(unit).habits;
   return [...reg.habits.values()]
-    .filter((h) => have.includes(h.id) && (h.effect as HabitEntry['effect'])?.activityId === activityId)
+    .filter((h) => have.includes(h.id) && (h.effect as HabitEntry['effect'])?.activityId === activityId && !habitLapsed(state, unit, String(h.id)))
     .map((h) => ({ type: (h.effect as NonNullable<HabitEntry['effect']>).type, amount: (h.effect as NonNullable<HabitEntry['effect']>).amount }));
 }

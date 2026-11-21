@@ -164,6 +164,8 @@ export interface DynamicCampaign {
     enduranceDay?: number; crimeDay?: number; praisedDay?: number;
     /** Regard (Task 36, 37): per woman, the value her Regard had when the span of its recent fall began (disappointment and the question read it). */
     regardMark?: Record<string, { day: number; value: number }>;
+    /** The day of each woman's latest fall of Regard (the question reads whether it is still falling). */
+    regardFell?: Record<string, number>;
     /** The day each woman was disappointed (her line lasts `TUNING.regard.disappointment.days`). */
     disappointed?: Record<string, number>;
     /** The question without a good answer: the day of the last one asked, and per woman. */

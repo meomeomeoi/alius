@@ -1950,15 +1950,15 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `checkDisappointment(draft, ctx, unitId, from: number, to: number): EngineEvent[]`; `questionRipe(state, reg, unitId): boolean`; `answerQuestion(draft, ctx, unitId, key: string): EngineEvent[]`; `squadRegardAverage(state, reg): number | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `disappointment`: a non-holder whose Trust was ≥ 60 and whose Regard crosses a band within 14 days → `disappointed`, a hidden fact, her `respect` habits paused, a directive with no lecture.
   - `the question is ripe under its conditions, 14 days per woman and one a week overall`; `clinical +2 for the honest key`.
   - `the nickname tone follows the squad's average Regard` (≥ 60 respectful, 30–59 pitying, < 30 mocking), and P9's existing nickname tests stay green.
   - `ripeSources is unchanged with no registered source` (P15a suites green).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/shame.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R19b.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): shame without a narrator`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/shame.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R19b.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): shame without a narrator`
 
 ---
 

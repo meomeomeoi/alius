@@ -38,6 +38,12 @@ export function forgetDynamic(draft: CampaignState, unitId: string): EngineEvent
       if (Object.keys(row).length === 0) delete x.knowledge[observer];
     }
     x.queue = x.queue.filter((id) => id !== unitId);
+    if (x.noted !== undefined) { // what Regard kept of her (Task 36, 37): the span of her fall, her disappointment and the question put to her
+      delete x.noted.regardMark?.[unitId];
+      delete x.noted.regardFell?.[unitId];
+      delete x.noted.disappointed?.[unitId];
+      delete x.noted.question?.by[unitId];
+    }
     if (x.override?.unitId === unitId) delete x.override;
     const o = x.oversight; // oversight's threat, requests and the block it was counting are hers
     if (o !== undefined) {

@@ -876,7 +876,7 @@ export const TUNING = Object.freeze({
    * bad takes `crime` off. A fall is `humiliation x fall x her style's factor x its speed (x witness when she only saw it)` down to the style's
    * floor; `speed` turns the word of the style row into a number (the spec gives only the words). A rise is `rise[kind]`, a `value` one takes its
    * amount from `value` (1 to 4); a style of `drill.styles` multiplies the rises that are mastery (`mastery`) by `drill.mult`, a style of `vindictive.styles` gets `vindictive.rise` for each
-   * `vindictive.days` she has served without a slip. `acts` are the humiliation of the acts P15 sees (a caught cheat, a slip; the Leash route found out is `dynamic.bypass.regardFall`). `disappointment`: Trust at least `trust` and a fall across a band within `days`. `question`: her question comes `cooldownDays` apart for one
+   * `vindictive.days` she has served without a slip. `acts` are the humiliation of the acts P15 sees (a caught cheat, a slip, a protocol slip seen; the Leash route found out is `dynamic.bypass.regardFall`). `disappointment`: Trust at least `trust` and a fall across a band within `days`. `question`: her question comes `cooldownDays` apart for one
    * woman and `weekDays` apart overall; the answer her style values moves her Regard by `gain`. `tone`: the squad's average Regard from which a nickname is
    * respectful or pitying (below `pitying` it is mocking). `AUTHOR TO TUNE` (the spec's drafts).
    */
@@ -890,11 +890,14 @@ export const TUNING = Object.freeze({
     /** The styles (closed enum keys, as `dynamic.style.peakLeads`) whose rises double / that count served days. */
     drill: Object.freeze({ styles: ['drill'] as readonly string[], mult: 2 }),
     vindictive: Object.freeze({ styles: ['vindictive'] as readonly string[], days: 7, rise: 1 }),
-    acts: Object.freeze({ caught: 2, slip: 1 }),
+    acts: Object.freeze({ caught: 2, slip: 1, protocol: 1 }),
     /** A witness who dislikes what a holder has over the commander counts this much more while her own Regard is low or none (R14, R18). */
     dislikes: 1.5,
     disappointment: Object.freeze({ trust: 60, days: 14 }),
-    question: Object.freeze({ cooldownDays: 14, weekDays: 7, gain: 2 }),
+    /** `valued`: the answer key her primary style values (`clinical` the honest one, key 0; `affectionate` the gentle one, key 1). */
+    question: Object.freeze({ cooldownDays: 14, weekDays: 7, gain: 2, valued: Object.freeze({ clinical: '0', affectionate: '1' }) as Readonly<Record<string, string>> }),
+    /** The days a habit of respect lapses after disappointment, and the tag that marks it (`habits[].tags`). */
+    lapse: Object.freeze({ tag: 'respect', days: 14 }),
     tone: Object.freeze({ respectful: 60, pitying: 30 }),
   }),
 });

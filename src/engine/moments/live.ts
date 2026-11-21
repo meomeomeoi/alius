@@ -7,7 +7,7 @@ import type { Entry, Registries } from '../../content/types';
 import { wantBandOf } from '../bonds/want';
 import { blockingOf, blockingLive, contactOf, personEffects, COMMANDER, type Blocking } from '../blocking';
 import { sceneRoom } from '../blocking/gate';
-import { sourceAllowed } from '../blocking/vocabulary';
+import { engineRipe, sourceAllowed } from '../blocking/vocabulary';
 import type { LiveKind, MomentSourceEntry } from '../blocking/types';
 import { isOpenSpace, neighbours, roomOfPerson } from '../basePlan';
 import { stressBand } from '../combat/stress';
@@ -180,7 +180,7 @@ export function liveSources(state: CampaignState, reg: Registries, opts: { ripe?
         }
       }
       // a value that lists a source without the `blocking` kind makes it likelier once it is live some other way
-      const ripe = opts.ripe === source.id && kinds.includes('extracted') && unitId === scene.participants[0];
+      const ripe = kinds.includes('extracted') && ((opts.ripe === source.id && unitId === scene.participants[0]) || engineRipe(state, reg, source.id, unitId)); // P15: the engine calls her question ripe too
       if (ripe) weight += 1;
       if (weight > 0 && !kinds.includes('blocking')) weight += bw;
       if (ripe) weight *= 2;

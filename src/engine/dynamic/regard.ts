@@ -112,6 +112,12 @@ export function squadRegardAverage(state: CampaignState, reg: Registries): numbe
   return ids.length === 0 ? null : ids.reduce((sum, id) => sum + regardOf(state, reg, id), 0) / ids.length;
 }
 
+/** The tone of the nickname the squad gives (P9 `reputations[].tone`, R19b): by the squad's average Regard, `respectful` from 60, `pitying` from 30, else `mocking`; `null` while there is no Regard. */
+export function nicknameTone(state: CampaignState, reg: Registries): 'respectful' | 'pitying' | 'mocking' | null {
+  const avg = squadRegardAverage(state, reg);
+  return avg === null ? null : avg >= R.tone.respectful ? 'respectful' : avg >= R.tone.pitying ? 'pitying' : 'mocking';
+}
+
 /** What she calls the commander in her tone while her Regard is low or none: her style's form; nothing above that and nothing for a unit with no style. */
 export function regardTone(state: CampaignState, reg: Registries, unitId: string): string | null {
   if (!dynamicOn(state, reg)) return null;

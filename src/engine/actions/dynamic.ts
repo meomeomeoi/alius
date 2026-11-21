@@ -20,6 +20,7 @@ import { frameRank } from '../blocking/state';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { regardFeed, regardFromEvents } from '../dynamic/regard';
+import { questionEvents } from '../dynamic/shame';
 import { dynamicOf } from '../dynamic/state';
 import { noteEvents } from '../dynamic/style';
 import { registerEventLanded } from '../relations/effects';
@@ -57,6 +58,8 @@ registerAfterAction(signsFromEvents);
 registerAfterAction((draft) => { revealKnown(draft); return []; });
 // What a hold, a record, a feat and a won run do to her Regard (R18); hidden, never changes hold or frame; nothing while off.
 registerAfterAction((draft, ctx, events) => regardFromEvents(draft, ctx.registries, events));
+// Her question without a good answer (R19b): when it is asked the cooldowns start, and the answer moves her Regard by what her own style values; nothing while off.
+registerAfterAction((draft, ctx, events) => questionEvents(draft, ctx, events));
 // A Leash request the commander filed on a holder (done, denied or held by her own block) is something she saw and keeps (compromat); oversight's own is not the commander's doing.
 registerAfterAction((draft, ctx, events) => {
   if (!dynamicOn(draft, ctx.registries)) return [];

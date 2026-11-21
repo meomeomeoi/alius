@@ -26,9 +26,9 @@ const step = (s: CampaignState, r: Registries = reg) => reputationDayStep(s, { r
 const deed = (s: CampaignState, counters: Record<string, number>) => { for (const [k, n] of Object.entries(counters)) countDeed(s, k as never, n); return s; };
 
 describe('the registry', () => {
-  it('seven drafts in four groups', () => {
-    expect([...reg.reputations.keys()]).toEqual(['leash_holder', 'iron_rule', 'soft_touch', 'merchant', 'meatgrinder', 'shield', 'liar']);
-    expect([...new Set([...reg.reputations.values()].map((e) => e.group))].sort()).toEqual(['authority', 'force', 'losses', 'word']);
+  it('ten drafts in five groups (the three of the dynamic share one group, one per tone)', () => {
+    expect([...reg.reputations.keys()]).toEqual(['leash_holder', 'iron_rule', 'soft_touch', 'merchant', 'meatgrinder', 'shield', 'liar', 'kept_standing', 'poor_thing', 'lapdog']);
+    expect([...new Set([...reg.reputations.values()].map((e) => e.group))].sort()).toEqual(['authority', 'dynamic', 'force', 'losses', 'word']);
   });
 });
 

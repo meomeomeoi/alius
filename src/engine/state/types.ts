@@ -428,6 +428,8 @@ export interface Development {
   facts: DevFact[];
   moments: DevMoment[];
   habits: string[];
+  /** P15: habits that lapse until the day (a disappointed woman's small habits of respect): `habitEffect` skips them meanwhile. Absent = none. */
+  lapsed?: Record<string, number>;
   /** The day of the last review (absent = 0). */
   lastReview?: number;
   lastApplied?: ReviewInverse;
@@ -801,6 +803,8 @@ export const DEED_COUNTERS = [
   'leash_compel', 'leash_suppress', 'leash_terminate', 'grunts_lost', 'protected', 'defiance_tolerated',
   'punish_1', 'punish_2', 'punish_3', 'punish_4', 'promises_kept', 'promises_broken',
   'demands_granted', 'demands_refused', 'threats_kept', 'threats_empty',
+  // P15: what the squad saw of the dynamic (P15 counts `protocol_public`; the others are P16's, `spoken_for` has no producer yet)
+  'protocol_public', 'spoken_for', 'public_worship', 'knelt_at_door', 'slapped_public', 'demonstrated',
 ] as const;
 export type DeedCounter = (typeof DEED_COUNTERS)[number];
 

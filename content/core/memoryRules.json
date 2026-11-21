@@ -1097,5 +1097,19 @@
       "dynamic",
       "aftermath_return_refused"
     ]
+  },
+  {
+    "id": "disappointed",
+    "event": "disappointed",
+    "text": "AUTHOR TO WRITE: {name} lost some of her respect for the commander and told no one.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "hiddenFromCommander": true,
+    "tags": [
+      "dynamic",
+      "disappointed"
+    ]
   }
 ]

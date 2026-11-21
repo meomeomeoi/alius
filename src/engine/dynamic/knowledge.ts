@@ -7,6 +7,7 @@
  */
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
+import { countDeed } from '../discipline/deeds';
 import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -18,6 +19,7 @@ import { TUNING } from '../tuning';
 import { hasCapability } from './capabilities';
 import { dynamicOn } from './gate';
 import { practiceOf } from './profile';
+import { regardFall } from './regard';
 import { reactToDynamic } from './reactions';
 import { dynamicRoll } from './witness';
 import { dynamicOf, type KnowledgeRecord } from './state';
@@ -221,7 +223,13 @@ export function signsFromEvents(draft: CampaignState, ctx: Ctx, events: readonly
 
 /** The commander's protocol slips with others present (the intent `protocol_slip`): everybody else in the scene sees it. Nothing in a DM or alone. */
 export function slipSeen(draft: CampaignState, ctx: Ctx, holderId: string): EngineEvent[] {
-  return seen(draft, ctx, presentIn(draft), [holderId], 'protocol_slip');
+  const witnesses = presentIn(draft).filter((id) => id !== holderId);
+  const events = seen(draft, ctx, presentIn(draft), [holderId], 'protocol_slip');
+  if (witnesses.length === 0) return events;
+  // before others it is a public one: the squad's deed (P9 nickname) and, for each who saw it, a small fall of her Regard (R18)
+  countDeed(draft, 'protocol_public');
+  for (const id of witnesses) events.push(...regardFall(draft, ctx.registries, id, TUNING.regard.acts.protocol, { witness: true, cause: 'protocol_slip' }));
+  return events;
 }
 
 // ---------------------------------------------------------------------------------------------

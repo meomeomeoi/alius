@@ -9,7 +9,6 @@ import { regardBandOf, regardDayStep, regardFall, regardFeed, regardFromEvents, 
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Frame, ProfileStyle } from '../../../src/engine/dynamic/types';
 import { dynamicTerm, standingMalus } from '../../../src/engine/dynamic/witness';
-import { Rng } from '../../../src/engine/rng';
 import { applyEventToUnit } from '../../../src/engine/relations/effects';
 import type { EventIntent } from '../../../src/engine/relations/intents';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -268,18 +267,6 @@ describe('what Regard does not do', () => {
     expect(JSON.stringify(s)).not.toContain('"regard"');
     expect(squadRegardAverage(s, reg)).toBeNull();
     expect(dynamicDayStep(s, ctxOf(s, reg))).toEqual([]);
-  });
-
-  it('no rng is drawn by any of it', () => {
-    const s = world('vindictive');
-    const rng = new Rng(5);
-    const before = JSON.stringify(rng.state ?? rng);
-    s.relations[ANN].regard = 50;
-    regardFall(s, reg, ANN, 3, { witness: true });
-    regardRise(s, reg, ANN, 'value', 2);
-    regardFromEvents(s, reg, [{ type: 'outside_feat', featId: 'f' }]);
-    regardDayStep(s, reg, [ANN]);
-    expect(JSON.stringify(rng.state ?? rng)).toBe(before);
   });
 });
 

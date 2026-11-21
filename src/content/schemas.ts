@@ -1642,6 +1642,8 @@ export const ReputationSchema = BaseEntrySchema.extend({
   /** One nickname per group is active at a time. */
   group: str,
   description: str.max(DESCRIPTION_MAX),
+  /** P15: the squad's average Regard it fits (a nickname of the dynamic; absent = any). `reputationDayStep` queues only the one whose tone matches. */
+  tone: z.enum(['respectful', 'pitying', 'mocking']).optional(),
   pattern: z.object({
     sum: z.array(deedCounter).min(1),
     min: int.min(1),
@@ -2452,6 +2454,8 @@ export const HabitSchema = BaseEntrySchema.extend({
   fallback: str.max(140),
   effect: z.object({ type: z.enum(['unit_stress', 'unit_xp']), amount: int.min(-20).max(20).refine((n) => n !== 0, 'an effect amount is not 0'), activityId: str }).strict().optional(),
   contentTags: z.array(str).optional(),
+  /** P15: what kind of habit it is (`respect`: the small habits of respect a disappointed woman lets lapse). */
+  tags: z.array(str).optional(),
   description: str,
 }).strict();
 registrySchemas.habits = HabitSchema;

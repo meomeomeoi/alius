@@ -3,13 +3,14 @@ import { frameRank } from '../engine/blocking/state';
 import { aftermathRowOf } from '../engine/dynamic/aftermath';
 import { hasCapability } from '../engine/dynamic/capabilities';
 import { compromatOf } from '../engine/dynamic/compromat';
-import { herPracticeLive, dynamicOn } from '../engine/dynamic/gate';
+import { herPracticeLive, dynamicOn, holdersAtPlay } from '../engine/dynamic/gate';
 import { leashBlockOf } from '../engine/dynamic/leashBlock';
 import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { dynamicOf } from '../engine/dynamic/state';
 import { reactionOf, type Reaction } from '../engine/dynamic/witness';
 import { regardTone } from '../engine/dynamic/regard';
+import { disappointedSince } from '../engine/dynamic/shame';
 import { leadingStyle } from '../engine/dynamic/style';
 import type { DynamicDomainEntry, DynamicMilestoneEntry, PracticeStyleEntry, ProbeAxisEntry } from '../engine/dynamic/types';
 import { isLiving } from '../engine/economy';
@@ -36,6 +37,7 @@ export const COMMAND_PREFIX = 'dynamic:command:';
 export const WITNESS_PREFIX = 'dynamic:witness:';
 export const AFTERMATH_PREFIX = 'dynamic:aftermath:';
 export const LEASH_BLOCK_PREFIX = 'dynamic:leash_block:';
+export const DISAPPOINTED_PREFIX = 'dynamic:disappointed:';
 
 /** Her style pair in words, the secondary's side named while it leads. */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
@@ -125,6 +127,7 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   out.push(...leashBlockDirectives(state, reg, present));
   out.push(...commandDirectives(state, reg, present));
   out.push(...witnessDirectives(state, reg, present));
+  out.push(...disappointedDirectives(state, present));
   return out;
 }
 
@@ -135,6 +138,25 @@ function aftermathDirective(state: CampaignState, reg: Registries, unit: Unit): 
   const stage = a === undefined ? undefined : row?.stages[a.stage];
   if (stage === undefined) return null;
   return { id: `${AFTERMATH_PREFIX}${unit.id}`, expiresAfter: 'scene', text: `${sentence(stage.directive.replaceAll('{name}', unit.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
+}
+
+/**
+ * A woman who lost respect for the commander without a word (`dynamic:disappointed:<unitId>`, R19b): while her disappointment lasts and a holder is in the room
+ * with her, she turns to the holder rather than the commander, and does not lecture. Her Regard is nowhere in it, and neither is a number.
+ */
+function disappointedDirectives(state: CampaignState, present: string[]): Directive[] {
+  const holders = holdersAtPlay(state);
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    const holder = state.squad.find((u) => present.includes(u.id) && u.id !== id && holders.includes(u.id));
+    if (unit === undefined || holder === undefined || unit.kind !== 'named' || !isLiving(unit) || disappointedSince(state, id) === undefined) continue;
+    out.push({
+      id: `${DISAPPOINTED_PREFIX}${id}`, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: ${unit.displayName} has stopped turning to the commander for advice; when she speaks she addresses ${holder.displayName}. She does not argue and does not lecture: she is simply quieter and more distant with the commander. Show it in how she acts and speaks; never name it as a mechanic.`,
+    });
+  }
+  return out;
 }
 
 /** What she does about it, in her own words, once she knows (R14): by her reaction. No line states what the commander feels. */

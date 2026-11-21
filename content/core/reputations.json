@@ -186,5 +186,71 @@
         }
       ]
     }
+  },
+  {
+    "id": "kept_standing",
+    "name": "the Steady One",
+    "group": "dynamic",
+    "description": "AUTHOR TO WRITE: the squad has seen the commander kneel, be spoken for and be shown off, and still gives the commander its respect.",
+    "tone": "respectful",
+    "pattern": {
+      "sum": [
+        "protocol_public",
+        "spoken_for",
+        "public_worship",
+        "knelt_at_door",
+        "slapped_public",
+        "demonstrated"
+      ],
+      "min": 3
+    },
+    "effects": {
+      "impunityBase": -3,
+      "directive": "AUTHOR TO WRITE: the squad speaks of the commander with respect for what the commander carries."
+    }
+  },
+  {
+    "id": "poor_thing",
+    "name": "the Poor Dear",
+    "group": "dynamic",
+    "description": "AUTHOR TO WRITE: the squad has seen the commander kneel, be spoken for and be shown off, and pities the commander for it.",
+    "tone": "pitying",
+    "pattern": {
+      "sum": [
+        "protocol_public",
+        "spoken_for",
+        "public_worship",
+        "knelt_at_door",
+        "slapped_public",
+        "demonstrated"
+      ],
+      "min": 3
+    },
+    "effects": {
+      "impunityBase": 3,
+      "directive": "AUTHOR TO WRITE: the squad speaks of the commander gently, with pity."
+    }
+  },
+  {
+    "id": "lapdog",
+    "name": "Lapdog",
+    "group": "dynamic",
+    "description": "AUTHOR TO WRITE: the squad has seen the commander kneel, be spoken for and be shown off, and mocks the commander for it.",
+    "tone": "mocking",
+    "pattern": {
+      "sum": [
+        "protocol_public",
+        "spoken_for",
+        "public_worship",
+        "knelt_at_door",
+        "slapped_public",
+        "demonstrated"
+      ],
+      "min": 3
+    },
+    "effects": {
+      "impunityBase": 6,
+      "directive": "AUTHOR TO WRITE: the squad speaks of the commander with open mockery."
+    }
   }
 ]

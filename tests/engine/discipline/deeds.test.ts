@@ -43,7 +43,7 @@ describe('countDeed and deedsOf', () => {
     countDeed(s, 'leash_compel');
     countDeed(s, 'leash_compel', 2);
     expect(deeds(s).leash_compel).toBe(3);
-    expect(Object.keys(deeds(s))).toHaveLength(16);
+    expect(Object.keys(deeds(s))).toHaveLength(22);
     countDeed(s, 'leash_compel', -3);
     expect(s.commander.deeds).toBeUndefined();
     countDeed(s, 'protected', -2); // never below 0
