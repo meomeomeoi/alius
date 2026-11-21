@@ -10,6 +10,9 @@ import { handOf } from '../../engine/hand';
 import { notesFor } from '../../engine/notes';
 import { pinnedNotes } from '../../engine/personal/decor';
 import { renderNote } from '../notes/note';
+import { lifeMode } from '../../engine/life/state';
+import { pastimeActivity } from '../../engine/life/types';
+import { renderHubDayLine, renderPastimePicker } from '../life/lifeViews';
 import { activityCard } from '../ops/opsTab';
 import type { HubCtx } from './hubScreen';
 import { renderMarker } from './marker';
@@ -75,14 +78,21 @@ export function renderRoomPanel(
         },
       }, '[ TALK ]')
       : null;
-    return h(
+    // P14c: a quiet hour with her (the card of that activity opens the pastime picker) and the line under her name
+    const quiet = pastimeActivity(reg);
+    const hasQuiet = !opts.readOnly && unit.kind === 'named' && quiet !== undefined && ctx.ops.onTimeTogether !== undefined && lifeMode(state) !== 'off' && endSlotBlock(state) === null;
+    const quietMenu = hasQuiet ? quietHour(state, ctx, unit, quiet!) : null;
+    const row = h(
       'li', { class: 'alius-room-person', 'data-unit': unit.id },
       avatar ? h('span', { class: 'alius-room-avatar' }, avatar) : null,
       renderMarker(state, reg, unit),
       h('span', { class: 'alius-room-name' }, unit.kind === 'grunt' ? `${unit.displayName} (grunt)` : unit.displayName),
       button,
+      quietMenu,
       reason !== null && canTalk ? h('span', { class: 'alius-dim alius-reason' }, reason) : null,
     );
+    if (unit.kind === 'named') renderHubDayLine(row, state, reg, unit.id);
+    return row;
   });
 
   // P11: the activity cards are the OPS module's; while it is offline the room offers talk and nothing else
@@ -109,6 +119,14 @@ export function renderRoomPanel(
     ...(noteCards.length > 0 ? [h('h3', {}, 'NOTES'), ...noteCards] : []),
     ...(cards.length > 0 ? [h('h3', {}, 'ACTIVITIES'), ...cards] : []),
   );
+}
+
+/** P14c: `[ TIME TOGETHER ]` with her: a menu that opens her pastime picker; picking one holds the slot and opens the scene at its place. */
+function quietHour(state: CampaignState, ctx: HubCtx, unit: Unit, activity: Entry): HTMLElement {
+  const body = h('div', { class: 'alius-room-pastimes' });
+  renderPastimePicker(body, { state, registries: ctx.registries, unitId: unit.id, onPick: (id) => ctx.ops.onTimeTogether?.(unit.id, id) });
+  return h('details', { class: 'alius-room-quiet', 'data-quiet-hour': unit.id },
+    h('summary', { class: 'alius-btn alius-option', ...analyzeAttrs(`activities:${String(activity.id)}`) }, '[ TIME TOGETHER ]'), body);
 }
 
 const unitName = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;

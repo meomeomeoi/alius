@@ -4,6 +4,7 @@ import { analyzeNative } from '../analyze/mark';
 import { renderContentSection } from '../bonds/content';
 import { renderModeSection } from '../warden/modeSection';
 import { renderDevelopmentSection } from './developmentStep';
+import { renderLifeSection } from './lifeStep';
 import { renderHeadStartSection } from './headStart';
 import { h } from '../dom';
 
@@ -64,6 +65,8 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
   renderHeadStartSection(headStartHost, wizard); // P11b: how long the squad has known the commander
   const developmentHost = h('div', { class: 'alius-world-development' });
   renderDevelopmentSection(developmentHost, wizard); // P14b: how fast soldiers change
+  const lifeHost = h('div', { class: 'alius-world-life' });
+  renderLifeSection(lifeHost, wizard); // P14c: how often her days off-screen bring something
   const contentHost = h('div', { class: 'alius-section alius-world-content' });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
@@ -82,6 +85,7 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
     modeHost,
     headStartHost,
     developmentHost,
+    lifeHost,
     contentHost,
     h('section', { class: 'alius-section alius-world-summary' },
       h('h3', {}, 'WHAT THIS CHANGES'),

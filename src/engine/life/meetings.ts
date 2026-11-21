@@ -103,9 +103,12 @@ export function pastimeProblem(
   return null;
 }
 
-/** The pastimes she can have now (`pastimeProblem` null), in registry order; a silent woman is offered the quiet ones before those that need talk. */
-export function availablePastimes(state: CampaignState, reg: Registries, unitId: string): PastimeEntry[] {
-  const open = pastimesOf(reg).filter((p) => pastimeProblem(state, reg, unitId, String(p.id)) === null);
+/**
+ * The pastimes she can have now (`pastimeProblem` null), in registry order; a silent woman is offered the quiet ones before those that need
+ * talk. With `at` (a scene already open) the pastimes that fit that place and slot.
+ */
+export function availablePastimes(state: CampaignState, reg: Registries, unitId: string, at?: { locationId: string; slot: Slot }): PastimeEntry[] {
+  const open = pastimesOf(reg).filter((p) => pastimeProblem(state, reg, unitId, String(p.id), at) === null);
   if (temperamentOf(state, unitId).talkativeness !== 'silent') return open;
   return [...open.filter((p) => p.talk === 'quiet'), ...open.filter((p) => p.talk !== 'quiet')];
 }

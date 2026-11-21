@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, Unit } from '../../engine/state/types';
+import { hubLine } from '../../engine/life/known';
 import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 import { markerTone, TONE_GLYPH, TONE_LABEL } from './model';
@@ -24,11 +25,14 @@ export function renderMarker(state: CampaignState, reg: Registries, unit: Unit):
   const analyze = st && rel
     ? analyzeAttrs(`relationshipStates:${rel.stateId}`, { unitId: unit.id })
     : analyzeAttrs('glossary:whereabouts');
+  // P14c: the line under her name (what she is doing today), shown by CSS on hover or focus; nothing with life off or for what she keeps to herself
+  const life = unit.kind === 'named' ? hubLine(state, reg, unit.id) : null;
   return h(
     'span',
     {
       class: 'alius-marker alius-chip', 'data-unit': unit.id, 'data-tone': tone,
-      'aria-label': `${unit.displayName}${st ? `, ${String(st.name)}` : ''}, ${TONE_LABEL[tone]}`,
+      'aria-label': `${unit.displayName}${st ? `, ${String(st.name)}` : ''}, ${TONE_LABEL[tone]}${life ? `, ${life.text}` : ''}`,
+      ...(life ? { 'data-life-line': life.text } : {}),
       ...analyze,
     },
     h('span', { class: 'alius-marker-ring', 'aria-hidden': 'true' }, initialsOf(unit)),

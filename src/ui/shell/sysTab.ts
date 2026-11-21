@@ -17,6 +17,7 @@ import { renderGenerationsSection } from './generationsSection';
 import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
 import { developmentMode } from '../../engine/development/state';
+import { LIFE_MODES, lifeMode } from '../../engine/life/state';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -139,6 +140,28 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
         ctx.toast('warn', String(err.message ?? 'The setting could not be changed.'));
         const now = ctx.getState();
         el.value = now ? developmentMode(now) : 'off';
+      }
+    });
+    return el;
+  };
+
+  /** P14c: how often her days off-screen bring something (off, rare, normal, often); a campaign without the setting (an old save) reads `off`. Goes through the engine. */
+  const lifeSelect = (): HTMLElement => {
+    const state = ctx.getState();
+    const value = state ? lifeMode(state) : 'off';
+    const el = h(
+      'select',
+      { name: 'lifeEvents', class: 'alius-input', disabled: !state || !ctx.dispatch },
+      ...LIFE_MODES.map((v) => h('option', { value: v, selected: v === value }, v)),
+    ) as HTMLSelectElement;
+    el.value = value;
+    el.addEventListener('change', () => {
+      const events = ctx.dispatch?.({ type: 'life/set_frequency', payload: { mode: el.value } }) ?? [];
+      const err = events.find((e) => e.type === 'error');
+      if (err) {
+        ctx.toast('warn', String(err.message ?? 'The setting could not be changed.'));
+        const now = ctx.getState();
+        el.value = now ? lifeMode(now) : 'off';
       }
     });
     return el;
@@ -267,6 +290,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Story director (mechanic model)', checkbox('directorEnabled', settings.directorEnabled), 'directorEnabled'),
     field('Story beat cooldown (days, 1–14)', numberInput('beatCooldownDays', settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: '1', max: '14' }), 'beatCooldownDays'),
     field('Expedition recap (main model)', checkbox('expeditionRecap', settings.expeditionRecap), 'expeditionRecap'),
+    h('label', { class: 'alius-field alius-option', ...analyzeNative('glossary:setting_life_events') }, h('span', { class: 'alius-field-label' }, 'Life events (this campaign)'), lifeSelect()), // P14c
     h('h3', {}, 'World options'),
     ...worldOptionRows(),
     h('h3', {}, 'Relationships'),

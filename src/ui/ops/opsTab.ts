@@ -5,11 +5,13 @@ import { activityCost, checkActivity, type ActivityRequest } from '../../engine/
 import { clockText, isQuietNight } from '../../engine/calendar';
 import { isLiving, requisitionCost } from '../../engine/economy';
 import { objectiveList, type ObjectiveSource } from '../../engine/onboarding';
+import { lifeMode } from '../../engine/life/state';
 import type { CampaignState, Slot, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { renderPastimePicker } from '../life/lifeViews';
 import { renderSchedule } from '../personal/schedule';
 import { renderMissionBoard } from './missionBoard';
 
@@ -33,6 +35,8 @@ export interface OpsTabCtx {
   onCancelBooking?: (bookingId: string) => void;
   onKeepBooking?: (bookingId: string) => void;
   onSettleBooking?: (day: number, slot: Slot) => void;
+  /** P14c: a quiet hour with her (`life/time_together`): her and the pastime picked. Absent = the card is not drawn. */
+  onTimeTogether?: (unitId: string, pastimeId: string) => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number } };
@@ -123,6 +127,28 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
   );
 }
 
+/**
+ * P14c: the activity that carries `pastime: true` (a quiet hour with her), as a card whose button is her pastime picker: pick a companion and the
+ * pastimes open to the two of you are listed; picking one calls `onTimeTogether` (the app holds the slot and opens the scene at its place).
+ */
+function pastimeCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLElement {
+  const named = state.squad.filter((u) => isLiving(u) && u.kind === 'named');
+  const sel = h('select', { name: 'companion', 'aria-label': `Companion for ${String(a.name)}` },
+    h('option', { value: '' }, '— choose —'), ...named.map((u) => h('option', { value: u.id }, u.displayName))) as HTMLSelectElement;
+  const picker = h('div', { class: 'alius-pastime-picker' });
+  const draw = (): void => {
+    picker.replaceChildren();
+    if (sel.value === '') return;
+    renderPastimePicker(picker, { state, registries: ctx.registries, unitId: sel.value, onPick: (id) => ctx.onTimeTogether?.(sel.value, id) });
+  };
+  sel.addEventListener('change', draw);
+  return h('article', { class: 'alius-activity', 'data-activity': String(a.id), 'data-pastime-card': '' },
+    h('h3', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(`activities:${String(a.id)}`) }, String(a.name))),
+    h('p', { class: 'alius-dim' }, String(a.summary)),
+    h('div', { class: 'alius-activity-controls' }, sel),
+    picker);
+}
+
 /** The typed amount survives a re-render (the tab redraws after every action). */
 const remembered = new WeakMap<HTMLElement, string>();
 
@@ -181,7 +207,9 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO ACTIVE CAMPAIGN IN THIS CHAT')));
     return;
   }
-  const all = [...ctx.registries.activities.values()].filter((a) => a.pastime !== true); // P14c: a quiet meeting is picked from her pastimes, not from this list
+  // P14c: a quiet meeting is picked from her pastimes (its card is the picker, drawn only while her life is on and the app can start it)
+  const quiet = ctx.onTimeTogether !== undefined && lifeMode(state) !== 'off';
+  const all = [...ctx.registries.activities.values()].filter((a) => a.pastime !== true || quiet);
   if (ctx.onCountermand) {
     const chips = h('div', { class: 'alius-chips alius-countermand-chips' });
     drawCountermandChips(chips, state, ctx.registries, ctx.onCountermand);
@@ -204,7 +232,7 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
           h('button', { type: 'button', class: 'alius-btn alius-option', 'data-sleep': '', ...analyzeNative('glossary:quiet_night'), onclick: ctx.onSleep }, '[ SLEEP ]'),
           ' Nobody knocks tonight. Sleep costs nothing; spending the night awake costs tomorrow.')
         : null,
-      ...all.map((a) => activityCard(a, state, ctx)),
+      ...all.map((a) => (a.pastime === true ? pastimeCard(a, state, ctx) : activityCard(a, state, ctx))),
     ),
     requisition(state, ctx, host),
   );

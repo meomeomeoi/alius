@@ -4,7 +4,10 @@ import { renderDeviceBlock } from '../personal/deviceBlock';
 import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderDevelopmentBlock } from '../development/developmentBlock';
 import { renderHobbiesEditor, renderOpinionsEditor, renderTemperamentBlock } from '../life/profileBlocks';
-import { temperamentOf } from '../../engine/life/state';
+import { temperamentOf, lifeMode } from '../../engine/life/state';
+import { toldMilestones } from '../../engine/life/known';
+import { buildKnowledge } from '../../analysis/knowledge';
+import { renderHobbies, renderThoughts, renderToldNews } from '../life/lifeViews';
 import { renderVitalsBlock } from '../vitals/block';
 import { motionReduced } from '../motion';
 import { renderChallenge, type WagerChoice } from '../personal/wagerForm';
@@ -373,9 +376,11 @@ function lifeProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
     onSet: (field, value) => send({ type: 'profile/set_temperament', payload: { unitId: unit.id, temperament: { [field]: value } } }), // only the changed field: a locked one in the patch refuses it all
     onLock: (field, on) => send({ type: 'profile/lock_temperament', payload: { unitId: unit.id, field, on } }),
   });
+  // with the lock on only what the commander has been told: a hobby she took up off-screen is left out until it is told, and the dots count told milestones
+  const known = new Set(buildKnowledge(state, ctx.settings()).life(unit.id, ctx.registries).hobbies.map((x) => x.id));
   renderHobbiesEditor(part('alius-life-hobbies'), {
     unit: who, registries: ctx.registries, editable,
-    hobbies: (unit.hobbies ?? []).map((x) => ({ id: x.id, state: x.state, milestones: x.milestones.length })),
+    hobbies: (unit.hobbies ?? []).filter((x) => editable || known.has(x.id)).map((x) => ({ id: x.id, state: x.state, milestones: editable ? x.milestones.length : toldMilestones(state, unit.id, x).length })),
     aptitudes: unit.aptitudes ?? { high: [], low: [] },
     onSet: (hobbies, aptitudes) => send({ type: 'profile/set_hobbies', payload: { unitId: unit.id, hobbies, aptitudes } }),
   });
@@ -384,6 +389,23 @@ function lifeProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
     opinions: Object.fromEntries(Object.entries(unit.opinions ?? {}).map(([t, o]) => [t, { position: o.position, ...(o.text ? { text: o.text } : {}), voiced: o.voicedDay !== undefined }])),
     onSet: (topicId, patch) => send({ type: 'profile/set_opinion', payload: { unitId: unit.id, topicId, ...patch } }),
   });
+  return host;
+}
+
+/**
+ * P14c: what the commander has been told of her life, under the editors: THOUGHTS (the opinions she has voiced, and what she used to think), what
+ * she does (her hobbies as milestones told and a word) and what she has told of her days. Read through `Knowledge.life`; drawn only when her life
+ * has anything to do with her (life on or once on, or a hobby or an opinion on her card).
+ */
+function lifeViewBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
+  if (unit.kind !== 'named') return null;
+  if (lifeMode(state) === 'off' && state.life === undefined && (unit.hobbies ?? []).length === 0 && Object.keys(unit.opinions ?? {}).length === 0) return null;
+  const view = { state, registries: ctx.registries, unitId: unit.id, knowledge: buildKnowledge(state, ctx.settings()) };
+  const host = h('div', { class: 'alius-life-views' });
+  const part = (cls: string): HTMLElement => host.appendChild(h('div', { class: cls }));
+  renderThoughts(part('alius-life-thoughts'), view);
+  renderHobbies(part('alius-life-hobbies-view'), view);
+  renderToldNews(part('alius-life-told'), view);
   return host;
 }
 
@@ -442,6 +464,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       unit.kind === 'named' ? memoryBlock(unit, ctx, state) : null,
       unit.kind === 'named' ? developmentBlock(unit, ctx, state) : null, // P14b
       gone ? null : lifeProfileBlock(unit, ctx, state), // P14c
+      gone ? null : lifeViewBlock(unit, ctx, state), // P14c: what she has told and said
       gone || !ctx.onWager ? null : renderChallenge(state, ctx.registries, unit.id, (choice) => ctx.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),

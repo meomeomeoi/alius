@@ -16,6 +16,9 @@ import { renderDisciplineMenu } from '../discipline/menu';
 import { renderFreqChip } from '../special/freqChip';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { cutIn } from './cutIn';
+import { lifeMode } from '../../engine/life/state';
+import { renderLetsMenu } from '../life/lifeViews';
+import { analyzeAttrs } from '../analyze/mark';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -44,6 +47,8 @@ export interface SceneScreenCtx {
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P14: the failure chips of the scene's readings and REROLL of the last exchange. Absent = none drawn. */
   generation?: GenerationUi;
+  /** P14c: the `[ LET'S … ]` of a private scene with one named woman: she and the pastime picked (the app dispatches `life/pastime_in_scene`). Absent = no menu. */
+  onPastime?: (unitId: string, pastimeId: string) => void;
 }
 
 export interface SceneScreen {
@@ -191,6 +196,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let leadChips: HTMLElement;
   let ruleChips: HTMLElement;
   let disciplineMenus: HTMLElement;
+  let letsHost: HTMLElement;
   let banner: HTMLElement;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
@@ -372,6 +378,22 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }));
   }
 
+  /** P14c: `[ LET'S … ]` (the pastimes that fit this place and slot) in a private scene with one named woman; once one is set, a chip says so. */
+  function drawLets(s: CampaignState): void {
+    const open = letsHost.querySelector('details[open]') !== null;
+    letsHost.replaceChildren();
+    const sc = s.scene;
+    const named = present(s).filter((u) => u.kind === 'named');
+    if (!sc || !ctx.onPastime || lifeMode(s) === 'off' || sc.mode !== 'private' || named.length !== 1) return;
+    const unit = named[0];
+    if (sc.pastime) {
+      const p = registries.pastimes.get(sc.pastime.id);
+      if (p) letsHost.append(h('span', { class: 'alius-chip', 'data-quiet-hour': sc.pastime.id, ...analyzeAttrs(`pastimes:${p.id}`) }, `TIME TOGETHER: ${String(p.label).toUpperCase()}`));
+      return;
+    }
+    renderLetsMenu(letsHost, { state: s, registries, unitId: unit.id, at: { locationId: sc.locationId, slot: sc.slot }, open, onPick: (id) => ctx.onPastime!(unit.id, id) });
+  }
+
   function stopTyping(): void {
     if (timer) clearInterval(timer);
     timer = null;
@@ -538,6 +560,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
+    letsHost = h('div', { class: 'alius-lets-host' });
     banner = h('div', { class: 'alius-pacing-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
@@ -625,6 +648,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       demandChips,
       freqChips,
       disciplineMenus,
+      letsHost,
       h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who),
     );
     drawBackground(s);
@@ -662,6 +686,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawLog(s);
     drawChips(s);
     drawDiscipline(s);
+    drawLets(s);
     drawFreq(s);
     drawGeneration(s);
     drawBanner();

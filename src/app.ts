@@ -871,6 +871,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerRule: answerRule,
+        onPastime: (_unitId, pastimeId) => { // P14c: the "let's ..." of the scene; the pastime's own checks refuse what does not fit
+          const events = api.dispatch({ type: 'life/pastime_in_scene', payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
+          const failed = events.find((e) => e.type === 'error');
+          if (failed) toast('warn', String(failed.message ?? failed.code));
+          else sceneScreen?.refresh();
+        },
       });
       return;
     }
@@ -2242,6 +2248,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onDismiss: (missionId) => void act({ type: 'mission/dismiss', payload: { missionId } }),
     onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
     onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
+    onTimeTogether: (unitId, pastimeId) => void api.life.timeTogether(unitId, pastimeId), // P14c: a quiet hour with her
     onCountermand: (answer) => void power.answerCountermand(answer), // P9b: the squad leader's countermand
     onCancelBooking: (id) => void personal.cancelBooking(id), // P9c: the schedule
     onKeepBooking: (id) => void personal.resolveConflict({ bookingId: id }),

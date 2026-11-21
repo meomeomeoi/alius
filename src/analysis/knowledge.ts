@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
 import { wentUp } from '../engine/development/moments';
 import { axisWords } from '../engine/development/words';
+import { lifeView, type LifeView } from '../engine/life/known';
 import type { CampaignState, DevFact, Fact } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
 
@@ -24,7 +25,16 @@ export interface Knowledge {
    * anything not shown yet never appear here.
    */
   development(unitId: string, reg: Registries): DevelopmentView;
+  /**
+   * P14c: what the commander may read of her life: the opinions she has voiced (her words, and what she used to think), her hobbies as the
+   * milestones she has told and a word for how keen she is, what she has told of her days, what the commander has learned from her as words,
+   * and the hub line. Built from told and voiced items only: an untold or kept event, an unvoiced opinion, skill, interest, aptitude, the
+   * queue, a persuasion count and a joke count never appear here.
+   */
+  life(unitId: string, reg: Registries): LifeView;
 }
+
+export type { LifeView };
 
 export interface DevelopmentView {
   axes: Array<{ axis: string; words: string; up: boolean; reason: string; shownDay: number; held: boolean }>;
@@ -70,6 +80,7 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
     factVisible,
     flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds(() => r.flag!(id, state))),
     facts: () => (state?.memory?.facts ?? []).filter(factVisible),
+    life: (unitId, reg) => (state === null ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null } : lifeView(state, reg, unitId, factVisible)),
     development(unitId, reg) {
       const unit = state?.squad.find((u) => u.id === unitId);
       const dev = unit?.development;

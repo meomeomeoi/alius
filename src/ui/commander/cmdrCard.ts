@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { commanderProfile, descriptor } from '../../engine/commander/profile';
+import { commanderHobbyWord } from '../../engine/life/meetings';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
@@ -36,6 +37,8 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
   const reputation = state.commander.reputation?.active ?? [];
   const traitIds = [...p.traits.regular, ...(p.traits.special !== undefined ? [p.traits.special] : [])];
 
+  // P14c: what the commander has learned from her, as words (never a number: it has no mechanical value)
+  const learned = Object.entries(state.commander.hobbySkill ?? {}).filter(([id]) => reg.hobbies.has(id));
   const file = h('div', {},
       crime
         ? h('p', {}, 'CRIME: ', h('span', { class: 'alius-chip', ...analyzeAttrs(`crimes:${crime.id}`) }, String(crime.name)))
@@ -62,6 +65,16 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
           i === 0 ? '' : ' · ',
           h('span', { class: 'alius-chip', ...analyzeAttrs(`reputations:${a.id}`) }, a.name),
         ])),
+      learned.length === 0
+        ? null
+        : h('p', { 'data-commander-hobbies': '' }, 'HOBBIES — ', ...learned.flatMap(([id, skill], i): Child[] => {
+          const word = commanderHobbyWord(skill);
+          return [
+            i === 0 ? '' : ' · ',
+            h('span', { class: 'alius-chip', 'data-commander-hobby': id, ...analyzeAttrs('glossary:commander_hobby_skill', { hobbyId: id }) },
+              `${String(reg.hobbies.get(id)!.label).toUpperCase()}: ${word === 'none' ? 'NOT YET' : word.toUpperCase()}`),
+          ];
+        })),
       renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
   renderInterceptLog(file, state, reg); // P12: nothing without the frequency
   renderPremonitions(file, state, reg); // P12: nothing without the paranoia

@@ -3616,6 +3616,86 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   opacity: 0.6;
 }
 
+/* Her life, as the commander sees it (P14c): THOUGHTS, what she does, what she has told, the hub line, the pastime picker and the LET'S menu. */
+#alius-shell .alius-life-views {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-life-lines {
+  flex-basis: 100%;
+  margin: 2px 0 2px 12px;
+  padding: 0;
+  list-style: square;
+}
+
+#alius-shell .alius-thought-text {
+  flex: 1 1 12em;
+}
+
+#alius-shell .alius-thought-was {
+  flex-basis: 100%;
+  margin-left: 12px;
+}
+
+#alius-shell .alius-hub-line {
+  flex-basis: 100%;
+  font-size: 0.85em;
+}
+
+/* the hub line of a marker shows on hover or keyboard focus, drawn from the attribute: no node, no animation */
+#alius-shell .alius-marker[data-life-line] {
+  position: relative;
+}
+
+#alius-shell .alius-marker[data-life-line]:hover::after,
+#alius-shell .alius-marker[data-life-line]:focus-visible::after {
+  content: attr(data-life-line);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 5;
+  max-width: 22em;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  font-size: 0.8em;
+  white-space: normal;
+}
+
+/* in the room panel the line is written under her name, so the hover copy is not repeated there */
+#alius-shell .alius-room-panel .alius-marker[data-life-line]:hover::after,
+#alius-shell .alius-room-panel .alius-marker[data-life-line]:focus-visible::after {
+  content: none;
+}
+
+#alius-shell .alius-pastimes {
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+#alius-shell .alius-pastimes li {
+  margin: 3px 0;
+}
+
+#alius-shell .alius-lets,
+#alius-shell .alius-room-quiet {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-lets > summary,
+#alius-shell .alius-room-quiet > summary {
+  cursor: pointer;
+  display: inline-block;
+}
+
+#alius-shell .alius-lets-body,
+#alius-shell .alius-room-pastimes {
+  padding-left: 8px;
+  border-left: 1px solid currentColor;
+}
+
 /* P13: LEASHSWAP. The MODE section, the warden pick and the WARDEN ASSIGNED notice. Everything draws from the shared variables. */
 .alius-mode .alius-cards { margin-block: 0.5rem; }
 .alius-death-rule[aria-pressed="true"],

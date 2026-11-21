@@ -795,6 +795,10 @@ var TUNING = Object.freeze({
       minAgeDays: 3
     }),
     commanderSkill: Object.freeze({ meeting: 2, taught: 4 }),
+    /** What the player may read: the interest from which an active hobby is called `keen`, the days a hub line stays up, and how many told items THOUGHTS-side lists show. */
+    keenAt: 70,
+    hubDays: 2,
+    toldShown: 8,
     /** Windows of `LifeRequires`: a shortage within `shortageDays`, a sparring bout within `sparringDays`, her own event within `afterEventDays`, another woman's within `otherWeekDays`; the squad-wide kinds are kept `kindsKeepDays`. */
     shortageDays: 3,
     sparringDays: 2,
@@ -16074,7 +16078,14 @@ function applyLifeEvent(draft, reg, unitId, entry, day) {
 }
 
 // src/engine/life/meetings.ts
+var pastimesOf = (reg) => [...reg.pastimes.values()];
 var hobbyEntry = (reg, id) => reg.hobbies.get(id);
+function commanderHobbyWord(skill) {
+  if (skill < 10) return "none";
+  if (skill < 30) return "a beginner";
+  if (skill < 60) return "getting there";
+  return "good at it";
+}
 function keenestHobby(reg, unit2) {
   const order = [...reg.hobbies.keys()];
   const rank2 = (id) => {
@@ -16129,6 +16140,11 @@ function pastimeProblem(state, reg, unitId, pastimeId, at) {
   if (req?.hobby !== void 0 && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
   if (pastime.hobby === true && keenestHobby(reg, unit2) === void 0) return `${name} has no hobby to show.`;
   return null;
+}
+function availablePastimes(state, reg, unitId, at) {
+  const open3 = pastimesOf(reg).filter((p) => pastimeProblem(state, reg, unitId, String(p.id), at) === null);
+  if (temperamentOf(state, unitId).talkativeness !== "silent") return open3;
+  return [...open3.filter((p) => p.talk === "quiet"), ...open3.filter((p) => p.talk !== "quiet")];
 }
 function teachCommander(draft, hobby, entry) {
   const t = TUNING.life.commanderSkill;
@@ -16312,6 +16328,14 @@ function voiceOpinion(draft, reg, unitId, topicId) {
     knownBy: [unitId]
   });
   return [{ type: "life_noted", unitId, topicId }];
+}
+function heardOpinions(state, unitId) {
+  const unit2 = unitOf2(state, unitId);
+  const out = [];
+  for (const [topicId, o] of Object.entries(unit2?.opinions ?? {})) {
+    if (o.voicedDay !== void 0) out.push({ topicId, position: o.position, ...o.text !== void 0 ? { text: o.text } : {}, voicedDay: o.voicedDay });
+  }
+  return out.sort((a, b) => a.voicedDay - b.voicedDay || a.topicId.localeCompare(b.topicId));
 }
 function challengeOpinion(draft, reg, unitId, topicId, weight, positionId) {
   const life = draft.life;
@@ -21361,8 +21385,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
         offer.deadlineDays = clamp26(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
-      const title2 = plain(o.title, TUNING.director.titleMax);
-      if (title2 !== "") offer.title = title2;
+      const title3 = plain(o.title, TUNING.director.titleMax);
+      if (title3 !== "") offer.title = title3;
       const brief = plain(o.brief, TUNING.director.briefMax);
       if (brief !== "") offer.brief = brief;
       for (const key of ["objectiveNode", "rewardsTier", "threadId"]) {
@@ -21413,11 +21437,11 @@ function validateDirectorOutput(state, reg, raw, opts) {
     const isNew = u.threadId === "new";
     const update = { threadId: u.threadId };
     if (isNew) {
-      const title2 = plain(u.title, 60);
-      if (title2 === "") return reject(part, "a new thread needs a title");
+      const title3 = plain(u.title, 60);
+      if (title3 === "") return reject(part, "a new thread needs a title");
       if (newThread) return reject(part, "at most one new thread per tick");
       if (openCount >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
-      update.title = title2;
+      update.title = title3;
     } else {
       if (u.threadId.startsWith("spine:")) return reject(part, "spine threads belong to the story");
       if (!state.world.threads.some((t) => t.id === u.threadId)) return reject(part, `unknown thread "${u.threadId}"`);
@@ -22331,8 +22355,8 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
   const her = herCallSpecOf(template);
   const call = her === null || isTutorialRun(draft, reg) ? null : rollHerCall(draft, reg, ctx2.rng, her, ableParty(draft));
   if (her !== null && call !== null) {
-    const title2 = String(template.fixed.title);
-    const events = applyHerCall(draft, ctx2, { templateId, nodeId, title: title2, spec: her, call });
+    const title3 = String(template.fixed.title);
+    const events = applyHerCall(draft, ctx2, { templateId, nodeId, title: title3, spec: her, call });
     const said = her.outcomes.find((o) => o.id === call.outcome).text;
     const name = draft.squad.find((u) => u.id === call.unitId)?.displayName ?? call.unitId;
     addLog(exp, "event", `${name} took the decision herself: ${said}`, nodeId, { templateId, herCall: { unitId: call.unitId, outcome: call.outcome } });
@@ -22899,11 +22923,11 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
-  const title2 = open3.title ?? open3.templateId;
+  const title3 = open3.title ?? open3.templateId;
   const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, {
     kind: "event",
     id: open3.templateId,
-    label: title2,
+    label: title3,
     units: open3.units,
     ...open3.subjectId !== void 0 ? { subjectId: open3.subjectId } : {},
     ...open3.witnessIds !== void 0 ? { witnessIds: open3.witnessIds } : {}
@@ -22918,7 +22942,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   if (open3.context === "expedition_event" && draft.expedition?.pending?.kind === "event") {
     const nodeId = draft.expedition.pending.nodeId;
-    finishEventNode(draft, nodeId, `${title2}: ${chosen.label}.`, { templateId: open3.templateId, option: chosen.label });
+    finishEventNode(draft, nodeId, `${title3}: ${chosen.label}.`, { templateId: open3.templateId, option: chosen.label });
     events.push({ type: "expedition_choice", nodeId, templateId: open3.templateId, option: index2, label: chosen.label });
   }
   delete d.open;
@@ -22929,7 +22953,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     templateId: open3.templateId,
     option: index2,
     label: chosen.label,
-    title: title2,
+    title: title3,
     affected,
     // P3b: what the open dilemma took with it (it is deleted above), so memory can tell a scapegoat answer from any other
     context: open3.context,
@@ -28824,10 +28848,10 @@ function bandDirective(unitId, name, band2) {
   }
   return null;
 }
-var aftermathDirective = (title2, label2, expiresAfter = "next_reply") => ({
+var aftermathDirective = (title3, label2, expiresAfter = "next_reply") => ({
   id: "dilemma",
   expiresAfter,
-  text: `The commander has just decided "${title2}": ${label2}. Narrate the immediate aftermath; the decision is final and cannot be talked back.`
+  text: `The commander has just decided "${title3}": ${label2}. Narrate the immediate aftermath; the decision is final and cannot be talked back.`
 });
 var STATE_REASON = {
   resentful: "she resents the commander",
@@ -32292,6 +32316,68 @@ function renderEndScreen(host, state, deps) {
   host.append(h("div", { class: "alius-end-screen" }, card2));
 }
 
+// src/engine/life/known.ts
+var factOf2 = (state, unitId, tags) => state.memory.facts.find((f) => f.about.includes(unitId) && tags.every((t) => f.tags.includes(t)));
+var untold = (f) => f.tags.includes(UNTOLD_TAG) || f.hiddenFromCommander === true;
+function toldMilestones(state, unitId, hobby) {
+  return hobby.milestones.filter((id) => {
+    const fact = factOf2(state, unitId, ["hobby", hobby.id, id]);
+    if (fact !== void 0 && untold(fact)) return false;
+    return !(state.life?.queue ?? []).some((q) => q.unitId === unitId && q.kind === "hobby" && q.ref === hobby.id && q.milestoneId === id);
+  });
+}
+function hobbyUntold(state, unitId, hobbyId) {
+  const fact = factOf2(state, unitId, ["hobby", hobbyId, "started"]);
+  if (fact !== void 0 && untold(fact)) return true;
+  return (state.life?.queue ?? []).some((q) => q.unitId === unitId && q.kind === "hobby" && q.ref === hobbyId && q.what === "started");
+}
+function hobbyWord(h2) {
+  if (h2.state === "dropped") return "put away";
+  if (h2.state === "cooling") return "cooling";
+  return h2.interest >= TUNING.life.keenAt ? "keen" : "steady";
+}
+function hubLine(state, reg, unitId) {
+  if (lifeMode(state) === "off") return null;
+  const hub = state.life?.units[unitId]?.hub;
+  if (!hub || state.day - hub.day > TUNING.life.hubDays || state.day < hub.day) return null;
+  const entry = reg.lifeEvents.get(hub.eventId);
+  const text2 = entry === void 0 ? "" : plainText(String(entry.hub));
+  return text2 === "" ? null : { eventId: hub.eventId, text: text2 };
+}
+function lifeView(state, reg, unitId, visible = () => true) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  const empty = { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null };
+  if (!unit2 || unit2.kind !== "named") return empty;
+  const opinions = [];
+  for (const o of heardOpinions(state, unitId)) {
+    const topic = reg.opinionTopics.get(o.topicId);
+    if (!topic) continue;
+    const words3 = (id) => plainText(String(topic.positions.find((p) => p.id === id)?.description ?? ""));
+    const history = (unit2.opinions?.[o.topicId]?.history ?? []).map((row2) => words3(row2.from)).filter((t) => t !== "");
+    opinions.push({ topicId: o.topicId, label: String(topic.label), text: o.text !== void 0 && o.text !== "" ? o.text : words3(o.position), history });
+  }
+  const hobbies = [];
+  for (const h2 of unit2.hobbies ?? []) {
+    const entry = reg.hobbies.get(h2.id);
+    if (!entry || hobbyUntold(state, unitId, h2.id)) continue;
+    const told2 = toldMilestones(state, unitId, h2);
+    const lines = entry.milestones.filter((m) => told2.includes(m.id));
+    hobbies.push({
+      id: h2.id,
+      label: String(entry.label),
+      word: hobbyWord(h2),
+      milestones: lines.map((m) => plainText(String(m.line))),
+      traces: lines.some((m) => m.trace === "prop") && entry.traceText !== void 0 ? [`in her quarters: ${plainText(String(entry.traceText))}`] : []
+    });
+  }
+  const told = state.memory.facts.filter((f) => f.about.includes(unitId) && f.tags.includes("life") && !f.tags.includes("hobby") && !untold(f) && visible(f)).reverse().slice(0, TUNING.life.toldShown).map((f) => f.text);
+  const commanderSkills = Object.entries(state.commander.hobbySkill ?? {}).flatMap(([id, skill]) => {
+    const entry = reg.hobbies.get(id);
+    return entry ? [{ id, label: String(entry.label), word: commanderHobbyWord(skill) }] : [];
+  });
+  return { opinions, hobbies, told, commanderSkills, hub: hubLine(state, reg, unitId) };
+}
+
 // src/analysis/knowledge.ts
 var rules = [];
 function registerKnowledgeRule(rule) {
@@ -32315,6 +32401,7 @@ function buildKnowledge(state, settings) {
     factVisible,
     flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds3(() => r.flag(id, state))),
     facts: () => (state?.memory?.facts ?? []).filter(factVisible),
+    life: (unitId, reg) => state === null ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null } : lifeView(state, reg, unitId, factVisible),
     development(unitId, reg) {
       const unit2 = state?.squad.find((u) => u.id === unitId);
       const dev = unit2?.development;
@@ -32511,8 +32598,8 @@ function renderRecapCard(host, ctx2) {
   const { state } = ctx2;
   const hs = state.headStart;
   if (!hs || recapCommitted(state) !== null) return;
-  const title2 = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
-  const body = h("div", { class: "alius-head-start-body" }, title2);
+  const title3 = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
+  const body = h("div", { class: "alius-head-start-body" }, title3);
   if (hs.recap === void 0) {
     body.append(h("p", { class: "alius-dim" }, "The first weeks are being written."));
   } else {
@@ -32816,7 +32903,7 @@ function consequence(o) {
 }
 var line = (key, id, value) => h("div", { class: "alius-form-line", "data-line": id }, h("span", { class: "alius-form-key" }, key), h("span", { class: "alius-form-val" }, value));
 async function fileLeashRequest(shell, o) {
-  const title2 = `OVERSIGHT REQUEST #${String(o.no).padStart(4, "0")}`;
+  const title3 = `OVERSIGHT REQUEST #${String(o.no).padStart(4, "0")}`;
   const form = h(
     "div",
     { class: "alius-form" },
@@ -32828,7 +32915,7 @@ async function fileLeashRequest(shell, o) {
   );
   const paper2 = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
   const choice = await shell.modal({
-    title: title2,
+    title: title3,
     body: paper2(form),
     actions: [
       { label: "[ FILE REQUEST ]", value: "file", ...o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} },
@@ -32838,7 +32925,7 @@ async function fileLeashRequest(shell, o) {
   if (choice !== "file") return false;
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
-  void shell.modal({ title: title2, body: paper2(h("div", { class: "alius-form" }, form, status)), actions: [] });
+  void shell.modal({ title: title3, body: paper2(h("div", { class: "alius-form" }, form, status)), actions: [] });
   const add = (text2) => void status.append(h("div", { class: "alius-form-line" }, text2));
   add("TRANSMITTING\u2026");
   if (delay > 0) await sleep(delay / 3);
@@ -38023,13 +38110,13 @@ function renderCalibration(host, ctx2) {
   );
   if (draft.status === "loading" || draft.status === "idle") return;
   const options2 = manualOptions(reg, ctx2.desireBondDefects, ch.bond ?? null);
-  const section = (id, title2, ...body) => h(
+  const section = (id, title3, ...body) => h(
     "section",
     { class: "alius-section alius-calib-section", "data-section": id },
     h(
       "div",
       { class: "alius-calib-title" },
-      h("h3", {}, title2),
+      h("h3", {}, title3),
       // in manual mode too: after a failed import the AI can be retried section by section
       draft.status === "ready" || draft.status === "manual" ? h(
         "button",
@@ -38639,7 +38726,7 @@ var LINE_GAP_MS = 300;
 function fillLine(template, vars) {
   return template.replace(/\{([A-Z_]+)\}/g, (whole, key) => Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole);
 }
-var paper = (title2, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title: title2, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
+var paper = (title3, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title: title3, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
 var linesOf = (ctx2) => {
   const step = ctx2.wizard.prologueStep();
   return { ...step?.lines ?? {}, ...ctx2.wizard.state.headStart.days > 0 ? step?.headStartLines ?? {} : {} };
@@ -38867,6 +38954,33 @@ function renderDevelopmentSection(host, wizard) {
   ));
 }
 
+// src/ui/setup/lifeStep.ts
+var LIFE_LABEL = { off: "OFF", rare: "RARE", normal: "NORMAL", often: "OFTEN" };
+var TEXT3 = {
+  off: "Soldiers have no days off-screen: nothing happens to them between scenes.",
+  rare: "Something happens to a soldier every other week or so, and she tells of it now and then.",
+  normal: "Something happens to a soldier about once a week, and the news reaches the commander a little at a time.",
+  often: "Something happens to a soldier twice a week, and the news comes more often."
+};
+function renderLifeSection(host, wizard) {
+  const current = wizard.state.lifeEvents;
+  const select = h(
+    "select",
+    { name: "lifeEvents", class: "alius-input" },
+    ...["off", "rare", "normal", "often"].map((m) => h("option", { value: m, selected: m === current }, LIFE_LABEL[m]))
+  );
+  select.value = current;
+  select.addEventListener("change", () => wizard.setLifeEvents(select.value));
+  host.append(h(
+    "section",
+    { class: "alius-section alius-life-events" },
+    h("h3", {}, "LIFE EVENTS"),
+    h("p", { class: "alius-hint" }, "Soldiers have days of their own: hobbies, opinions and things that happen off-screen. Nothing is announced; it reaches the commander through talk, messages and notes."),
+    h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:setting_life_events") }, h("span", { class: "alius-field-label" }, "How often"), select),
+    h("p", { class: "alius-dim", "data-life-text": current }, TEXT3[current])
+  ));
+}
+
 // src/ui/setup/worldParams.ts
 var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
@@ -38925,6 +39039,8 @@ function renderWorldParams(host, ctx2) {
   renderHeadStartSection(headStartHost, wizard);
   const developmentHost = h("div", { class: "alius-world-development" });
   renderDevelopmentSection(developmentHost, wizard);
+  const lifeHost = h("div", { class: "alius-world-life" });
+  renderLifeSection(lifeHost, wizard);
   const contentHost = h("div", { class: "alius-section alius-world-content" });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
@@ -38949,6 +39065,7 @@ function renderWorldParams(host, ctx2) {
     modeHost,
     headStartHost,
     developmentHost,
+    lifeHost,
     contentHost,
     h(
       "section",
@@ -38983,15 +39100,15 @@ function renderSetupScreen(host, ctx2) {
   const render = () => {
     if (root && !host.contains(root)) return;
     const s = wizard.state;
-    let title2;
+    let title3;
     const scrollTop = root !== null && lastStep === s.step ? root.scrollTop : 0;
     renderKeepingFocus(host, () => {
       host.replaceChildren();
-      title2 = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
+      title3 = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
       root = h(
         "div",
         { class: "alius-setup" },
-        title2,
+        title3,
         h("ol", { class: "alius-steps" }, ...wizard.stepsFor().map((id, i) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, `${String(i + 1).padStart(2, "0")} ${STEP_LABELS[id]}`))),
         stepBody(s),
         footer(s)
@@ -38999,7 +39116,7 @@ function renderSetupScreen(host, ctx2) {
       host.append(root);
       root.scrollTop = scrollTop;
     });
-    if (lastStep !== null && lastStep !== s.step) title2.focus();
+    if (lastStep !== null && lastStep !== s.step) title3.focus();
     lastStep = s.step;
   };
   function stepBody(s) {
@@ -39503,6 +39620,94 @@ function renderDevelopmentBlock(host, ctx2) {
   host.append(...view.axes.map(axisRow), ...[...view.facts].reverse().map(factRow), ...loneRows);
 }
 
+// src/ui/life/lifeViews.ts
+var title2 = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+function renderThoughts(host, ctx2) {
+  const live = { unitId: ctx2.unitId };
+  const heard = ctx2.knowledge.life(ctx2.unitId, ctx2.registries).opinions;
+  host.replaceChildren(h("p", { class: "alius-stat", "data-view": "thoughts", ...analyzeAttrs("glossary:thoughts", live) }, "THOUGHTS"));
+  if (heard.length === 0) {
+    host.append(h("p", { class: "alius-dim", "data-empty": "thoughts" }, "Nothing she has said yet."));
+    return;
+  }
+  for (const o of heard) {
+    host.append(h(
+      "div",
+      { class: "alius-life-row alius-thought", "data-thought": o.topicId },
+      h("span", { class: "alius-chip", ...analyzeAttrs(`opinionTopics:${o.topicId}`, live) }, title2(o.label)),
+      h("span", { class: "alius-thought-text" }, o.text),
+      ...o.history.map((was) => h("span", { class: "alius-dim alius-thought-was", "data-was": "" }, `She used to think: ${was}`))
+    ));
+  }
+}
+function renderHobbies(host, ctx2) {
+  const live = { unitId: ctx2.unitId };
+  const shown = ctx2.knowledge.life(ctx2.unitId, ctx2.registries).hobbies;
+  host.replaceChildren(h("p", { class: "alius-stat", "data-view": "hobbies", ...analyzeAttrs("glossary:hobby_cycle", live) }, "WHAT SHE DOES"));
+  if (shown.length === 0) {
+    host.append(h("p", { class: "alius-dim", "data-empty": "hobbies-view" }, "Nothing she has shown yet."));
+    return;
+  }
+  for (const hb of shown) {
+    host.append(h(
+      "div",
+      { class: "alius-life-row alius-hobby-view", "data-hobby-view": hb.id },
+      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${hb.id}`, live) }, title2(hb.label)),
+      h("span", { class: "alius-stat", "data-word": hb.word, ...analyzeAttrs("glossary:hobby_cycle", live) }, hb.word.toUpperCase()),
+      hb.milestones.length > 0 ? h("ul", { class: "alius-life-lines" }, ...hb.milestones.map((line2) => h("li", { "data-milestone": "" }, line2))) : null,
+      ...hb.traces.map((t) => h("p", { class: "alius-dim", "data-trace": "" }, t))
+    ));
+  }
+}
+function renderToldNews(host, ctx2) {
+  const told = ctx2.knowledge.life(ctx2.unitId, ctx2.registries).told;
+  host.replaceChildren();
+  if (told.length === 0) return;
+  host.append(
+    h("p", { class: "alius-stat", "data-view": "told", ...analyzeAttrs("glossary:life_events", { unitId: ctx2.unitId }) }, "WHAT SHE HAS TOLD"),
+    h("ul", { class: "alius-life-lines" }, ...told.map((t) => h("li", { "data-told": "" }, t)))
+  );
+}
+function renderPastimePicker(host, ctx2) {
+  const items = availablePastimes(ctx2.state, ctx2.registries, ctx2.unitId, ctx2.at);
+  host.replaceChildren();
+  if (items.length === 0) {
+    host.append(h("p", { class: "alius-dim", "data-empty": "pastimes" }, "Nothing quiet is open to the two of you right now."));
+    return;
+  }
+  host.append(h("ul", { class: "alius-pastimes" }, ...items.map((p) => h(
+    "li",
+    {},
+    h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-pastime": String(p.id),
+      "data-talk": p.talk,
+      title: plainText(String(p.description)),
+      ...analyzeNative(`pastimes:${p.id}`),
+      onclick: () => ctx2.onPick(String(p.id))
+    }, String(p.label)),
+    h("span", { class: "alius-dim" }, p.talk === "quiet" ? " quiet" : " some talk")
+  ))));
+}
+function renderLetsMenu(host, ctx2) {
+  const body = h("div", { class: "alius-lets-body" });
+  renderPastimePicker(body, ctx2);
+  const menu = h(
+    "details",
+    { class: "alius-lets", "data-lets": ctx2.unitId },
+    h("summary", { class: "alius-btn alius-option", ...analyzeAttrs("glossary:quiet_meeting") }, "[ LET'S \u2026 ]"),
+    body
+  );
+  if (ctx2.open === true) menu.open = true;
+  host.replaceChildren(menu);
+}
+function renderHubDayLine(host, state, reg, unitId) {
+  const line2 = hubLine(state, reg, unitId);
+  if (!line2) return;
+  host.append(h("span", { class: "alius-dim alius-hub-line alius-stat", "data-hub-line": unitId, ...analyzeAttrs(`lifeEvents:${line2.eventId}`, { unitId }) }, line2.text));
+}
+
 // src/ui/vitals/trace.ts
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
@@ -39915,6 +40120,7 @@ function renderCmdrCard(host, ctx2) {
   const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : void 0;
   const reputation = state.commander.reputation?.active ?? [];
   const traitIds2 = [...p.traits.regular, ...p.traits.special !== void 0 ? [p.traits.special] : []];
+  const learned = Object.entries(state.commander.hobbySkill ?? {}).filter(([id]) => reg.hobbies.has(id));
   const file = h(
     "div",
     {},
@@ -39948,6 +40154,17 @@ function renderCmdrCard(host, ctx2) {
       i === 0 ? "" : " \xB7 ",
       h("span", { class: "alius-chip", ...analyzeAttrs(`reputations:${a.id}`) }, a.name)
     ])),
+    learned.length === 0 ? null : h("p", { "data-commander-hobbies": "" }, "HOBBIES \u2014 ", ...learned.flatMap(([id, skill], i) => {
+      const word2 = commanderHobbyWord(skill);
+      return [
+        i === 0 ? "" : " \xB7 ",
+        h(
+          "span",
+          { class: "alius-chip", "data-commander-hobby": id, ...analyzeAttrs("glossary:commander_hobby_skill", { hobbyId: id }) },
+          `${String(reg.hobbies.get(id).label).toUpperCase()}: ${word2 === "none" ? "NOT YET" : word2.toUpperCase()}`
+        )
+      ];
+    })),
     renderTokens(state, reg, { onWear: (id) => ctx2.onWear?.(id), onTakeOff: (id) => ctx2.onTakeOff?.(id) })
   );
   renderInterceptLog(file, state, reg);
@@ -40275,11 +40492,12 @@ function lifeProfileBlock(unit2, ctx2, state) {
     // only the changed field: a locked one in the patch refuses it all
     onLock: (field2, on) => send({ type: "profile/lock_temperament", payload: { unitId: unit2.id, field: field2, on } })
   });
+  const known = new Set(buildKnowledge(state, ctx2.settings()).life(unit2.id, ctx2.registries).hobbies.map((x) => x.id));
   renderHobbiesEditor(part("alius-life-hobbies"), {
     unit: who,
     registries: ctx2.registries,
     editable,
-    hobbies: (unit2.hobbies ?? []).map((x) => ({ id: x.id, state: x.state, milestones: x.milestones.length })),
+    hobbies: (unit2.hobbies ?? []).filter((x) => editable || known.has(x.id)).map((x) => ({ id: x.id, state: x.state, milestones: editable ? x.milestones.length : toldMilestones(state, unit2.id, x).length })),
     aptitudes: unit2.aptitudes ?? { high: [], low: [] },
     onSet: (hobbies, aptitudes) => send({ type: "profile/set_hobbies", payload: { unitId: unit2.id, hobbies, aptitudes } })
   });
@@ -40290,6 +40508,17 @@ function lifeProfileBlock(unit2, ctx2, state) {
     opinions: Object.fromEntries(Object.entries(unit2.opinions ?? {}).map(([t, o]) => [t, { position: o.position, ...o.text ? { text: o.text } : {}, voiced: o.voicedDay !== void 0 }])),
     onSet: (topicId, patch) => send({ type: "profile/set_opinion", payload: { unitId: unit2.id, topicId, ...patch } })
   });
+  return host;
+}
+function lifeViewBlock(unit2, ctx2, state) {
+  if (unit2.kind !== "named") return null;
+  if (lifeMode(state) === "off" && state.life === void 0 && (unit2.hobbies ?? []).length === 0 && Object.keys(unit2.opinions ?? {}).length === 0) return null;
+  const view = { state, registries: ctx2.registries, unitId: unit2.id, knowledge: buildKnowledge(state, ctx2.settings()) };
+  const host = h("div", { class: "alius-life-views" });
+  const part = (cls) => host.appendChild(h("div", { class: cls }));
+  renderThoughts(part("alius-life-thoughts"), view);
+  renderHobbies(part("alius-life-hobbies-view"), view);
+  renderToldNews(part("alius-life-told"), view);
   return host;
 }
 function memoryBlock(unit2, ctx2, state) {
@@ -40347,6 +40576,8 @@ function unitBlock(unit2, ctx2, state) {
       // P14b
       gone ? null : lifeProfileBlock(unit2, ctx2, state),
       // P14c
+      gone ? null : lifeViewBlock(unit2, ctx2, state),
+      // P14c: what she has told and said
       gone || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit2.id, (choice) => ctx2.onWager?.(unit2.id, choice)),
       gone ? null : restrictionLine(unit2, state),
       gone || !ctx2.onPunish || unit2.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit2.id, onPunish: (measure, days) => ctx2.onPunish(unit2.id, measure, days) }),
@@ -40670,6 +40901,30 @@ function activityCard(a, state, ctx2) {
     btn
   );
 }
+function pastimeCard(a, state, ctx2) {
+  const named3 = state.squad.filter((u) => isLiving(u) && u.kind === "named");
+  const sel = h(
+    "select",
+    { name: "companion", "aria-label": `Companion for ${String(a.name)}` },
+    h("option", { value: "" }, "\u2014 choose \u2014"),
+    ...named3.map((u) => h("option", { value: u.id }, u.displayName))
+  );
+  const picker2 = h("div", { class: "alius-pastime-picker" });
+  const draw2 = () => {
+    picker2.replaceChildren();
+    if (sel.value === "") return;
+    renderPastimePicker(picker2, { state, registries: ctx2.registries, unitId: sel.value, onPick: (id) => ctx2.onTimeTogether?.(sel.value, id) });
+  };
+  sel.addEventListener("change", draw2);
+  return h(
+    "article",
+    { class: "alius-activity", "data-activity": String(a.id), "data-pastime-card": "" },
+    h("h3", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`activities:${String(a.id)}`) }, String(a.name))),
+    h("p", { class: "alius-dim" }, String(a.summary)),
+    h("div", { class: "alius-activity-controls" }, sel),
+    picker2
+  );
+}
 var remembered = /* @__PURE__ */ new WeakMap();
 function requisition(state, ctx2, host) {
   const rate = +(requisitionCost(state, ctx2.registries, 10) / 10).toFixed(2);
@@ -40727,7 +40982,8 @@ function renderOpsTab(host, ctx2) {
     host.append(h("section", { class: "alius-section" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT")));
     return;
   }
-  const all = [...ctx2.registries.activities.values()].filter((a) => a.pastime !== true);
+  const quiet = ctx2.onTimeTogether !== void 0 && lifeMode(state) !== "off";
+  const all = [...ctx2.registries.activities.values()].filter((a) => a.pastime !== true || quiet);
   if (ctx2.onCountermand) {
     const chips = h("div", { class: "alius-chips alius-countermand-chips" });
     drawCountermandChips(chips, state, ctx2.registries, ctx2.onCountermand);
@@ -40753,7 +41009,7 @@ function renderOpsTab(host, ctx2) {
         h("button", { type: "button", class: "alius-btn alius-option", "data-sleep": "", ...analyzeNative("glossary:quiet_night"), onclick: ctx2.onSleep }, "[ SLEEP ]"),
         " Nobody knocks tonight. Sleep costs nothing; spending the night awake costs tomorrow."
       ) : null,
-      ...all.map((a) => activityCard(a, state, ctx2))
+      ...all.map((a) => a.pastime === true ? pastimeCard(a, state, ctx2) : activityCard(a, state, ctx2))
     ),
     requisition(state, ctx2, host)
   );
@@ -41131,13 +41387,15 @@ function renderMarker(state, reg, unit2) {
   const st = unit2.kind === "named" && rel ? reg.relationshipStates.get(rel.stateId) : void 0;
   const glyphs = [st ? String(st.glyph) : "", TONE_GLYPH[tone]].filter(Boolean).join(" ");
   const analyze = st && rel ? analyzeAttrs(`relationshipStates:${rel.stateId}`, { unitId: unit2.id }) : analyzeAttrs("glossary:whereabouts");
+  const life = unit2.kind === "named" ? hubLine(state, reg, unit2.id) : null;
   return h(
     "span",
     {
       class: "alius-marker alius-chip",
       "data-unit": unit2.id,
       "data-tone": tone,
-      "aria-label": `${unit2.displayName}${st ? `, ${String(st.name)}` : ""}, ${TONE_LABEL[tone]}`,
+      "aria-label": `${unit2.displayName}${st ? `, ${String(st.name)}` : ""}, ${TONE_LABEL[tone]}${life ? `, ${life.text}` : ""}`,
+      ...life ? { "data-life-line": life.text } : {},
       ...analyze
     },
     h("span", { class: "alius-marker-ring", "aria-hidden": "true" }, initialsOf(unit2)),
@@ -41180,33 +41438,49 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
         if (reason === null) ctx2.onTalk(unit2.id, locationId);
       }
     }, "[ TALK ]") : null;
-    return h(
+    const quiet = pastimeActivity(reg);
+    const hasQuiet = !opts.readOnly && unit2.kind === "named" && quiet !== void 0 && ctx2.ops.onTimeTogether !== void 0 && lifeMode(state) !== "off" && endSlotBlock(state) === null;
+    const quietMenu = hasQuiet ? quietHour(state, ctx2, unit2, quiet) : null;
+    const row2 = h(
       "li",
       { class: "alius-room-person", "data-unit": unit2.id },
       avatar ? h("span", { class: "alius-room-avatar" }, avatar) : null,
       renderMarker(state, reg, unit2),
       h("span", { class: "alius-room-name" }, unit2.kind === "grunt" ? `${unit2.displayName} (grunt)` : unit2.displayName),
       button2,
+      quietMenu,
       reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
     );
+    if (unit2.kind === "named") renderHubDayLine(row2, state, reg, unit2.id);
+    return row2;
   });
   const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
   const noteCards = room2.commanderCell === true && (view === void 0 || view.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
-  const title2 = view?.title ?? String(room2.label);
+  const title3 = view?.title ?? String(room2.label);
   return h(
     "section",
-    { class: "alius-room-panel", "data-room": String(room2.id), ...view ? { "data-plan": view.planRoomId } : {}, role: "region", "aria-label": `${title2} room` },
+    { class: "alius-room-panel", "data-room": String(room2.id), ...view ? { "data-plan": view.planRoomId } : {}, role: "region", "aria-label": `${title3} room` },
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : view?.cabin === "commander" ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title2)),
-      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title2}`, onclick: opts.onClose }, "[X]")
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : view?.cabin === "commander" ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title3)),
+      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title3}`, onclick: opts.onClose }, "[X]")
     ),
     h("p", { class: "alius-dim" }, view?.description ?? String(room2.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
     ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
     ...cards.length > 0 ? [h("h3", {}, "ACTIVITIES"), ...cards] : []
+  );
+}
+function quietHour(state, ctx2, unit2, activity) {
+  const body = h("div", { class: "alius-room-pastimes" });
+  renderPastimePicker(body, { state, registries: ctx2.registries, unitId: unit2.id, onPick: (id) => ctx2.ops.onTimeTogether?.(unit2.id, id) });
+  return h(
+    "details",
+    { class: "alius-room-quiet", "data-quiet-hour": unit2.id },
+    h("summary", { class: "alius-btn alius-option", ...analyzeAttrs(`activities:${String(activity.id)}`) }, "[ TIME TOGETHER ]"),
+    body
   );
 }
 var unitName2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -42446,7 +42720,7 @@ function renderHerCallCard(state, reg, onAck) {
   if (!exp || pending4?.kind !== "event" || !pending4.herCall) return null;
   const { unitId, outcome } = pending4.herCall;
   const template = reg.dilemmaTemplates.get(pending4.templateId);
-  const title2 = template?.fixed?.title ?? "A decision in the field";
+  const title3 = template?.fixed?.title ?? "A decision in the field";
   const said = herCallSpecOf(template)?.outcomes.find((o) => o.id === outcome)?.text;
   const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const mission = state.missions.active.find((m) => m.id === exp.missionId);
@@ -42459,7 +42733,7 @@ function renderHerCallCard(state, reg, onAck) {
     marked ? h("p", { class: "alius-banner" }, "Oversight will want a name if this run fails.") : null,
     h("button", { type: "button", class: "alius-btn alius-option", "data-ack-her-call": "", ...analyzeNative("glossary:her_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title: title2, body, accent: unitAccent(unitId), level: 3 });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title: title3, body, accent: unitAccent(unitId), level: 3 });
   card2.setAttribute("data-her-call", pending4.nodeId);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:her_call", ctx2))) card2.setAttribute(k, v);
   return card2;
@@ -43683,14 +43957,14 @@ function drawDemandChips(host, state, reg, pick2, on) {
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
     const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
-    const button2 = (kind, text2, run, disabled = false, title2) => {
+    const button2 = (kind, text2, run, disabled = false, title3) => {
       const b = h("button", {
         type: "button",
         class: "alius-btn alius-tagchip",
         "data-demand-answer": kind,
         "data-demand": d.id,
         ...desire ? analyzeNative("glossary:want") : {},
-        ...disabled ? { "aria-disabled": "true", ...title2 ? { title: title2 } : {} } : {},
+        ...disabled ? { "aria-disabled": "true", ...title3 ? { title: title3 } : {} } : {},
         onclick: () => {
           if (b.getAttribute("aria-disabled") !== "true") run();
         }
@@ -44682,6 +44956,7 @@ function renderSceneScreen(host, ctx2) {
   let leadChips;
   let ruleChips;
   let disciplineMenus;
+  let letsHost;
   let banner;
   let busyHost;
   let caption;
@@ -44848,6 +45123,20 @@ function renderSceneScreen(host, ctx2) {
       return h("div", { class: "alius-discipline-unit" }, h("span", { class: "alius-dim" }, u.displayName), menu);
     }));
   }
+  function drawLets(s) {
+    const open3 = letsHost.querySelector("details[open]") !== null;
+    letsHost.replaceChildren();
+    const sc = s.scene;
+    const named3 = present2(s).filter((u) => u.kind === "named");
+    if (!sc || !ctx2.onPastime || lifeMode(s) === "off" || sc.mode !== "private" || named3.length !== 1) return;
+    const unit2 = named3[0];
+    if (sc.pastime) {
+      const p = registries.pastimes.get(sc.pastime.id);
+      if (p) letsHost.append(h("span", { class: "alius-chip", "data-quiet-hour": sc.pastime.id, ...analyzeAttrs(`pastimes:${p.id}`) }, `TIME TOGETHER: ${String(p.label).toUpperCase()}`));
+      return;
+    }
+    renderLetsMenu(letsHost, { state: s, registries, unitId: unit2.id, at: { locationId: sc.locationId, slot: sc.slot }, open: open3, onPick: (id) => ctx2.onPastime(unit2.id, id) });
+  }
   function stopTyping() {
     if (timer) clearInterval(timer);
     timer = null;
@@ -45012,6 +45301,7 @@ function renderSceneScreen(host, ctx2) {
     genChips = h("div", { class: "alius-generation-chips" });
     genTools = h("span", { class: "alius-scene-reroll" });
     disciplineMenus = h("div", { class: "alius-discipline-units" });
+    letsHost = h("div", { class: "alius-lets-host" });
     banner = h("div", { class: "alius-pacing-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
@@ -45110,6 +45400,7 @@ function renderSceneScreen(host, ctx2) {
       demandChips,
       freqChips,
       disciplineMenus,
+      letsHost,
       h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose, who)
     );
     drawBackground(s);
@@ -45145,6 +45436,7 @@ function renderSceneScreen(host, ctx2) {
     drawLog(s);
     drawChips(s);
     drawDiscipline(s);
+    drawLets(s);
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
@@ -46758,7 +47050,7 @@ function linked(text2, view, on) {
     return h("button", { type: "button", class: "alius-analyze-link", "data-target": address, onclick: () => on.link(address) }, label2);
   });
 }
-var block = (title2, cls, lines) => h("div", { class: `alius-analyze-block ${cls}` }, h("div", { class: "alius-analyze-label" }, title2), ...lines.map((l) => h("div", { class: "alius-analyze-line" }, ...l)));
+var block = (title3, cls, lines) => h("div", { class: `alius-analyze-block ${cls}` }, h("div", { class: "alius-analyze-label" }, title3), ...lines.map((l) => h("div", { class: "alius-analyze-line" }, ...l)));
 function renderPanel(host, view, on) {
   const { model } = view;
   host.classList.add("alius-analyze");
@@ -46781,9 +47073,9 @@ function renderPanel(host, view, on) {
     if (view.crumbs.length > 1) {
       const last = view.crumbs.length - 1;
       const trail = [];
-      view.crumbs.forEach((title2, i) => {
+      view.crumbs.forEach((title3, i) => {
         if (i > 0) trail.push(" \u203A ");
-        trail.push(i === last ? title2 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title2));
+        trail.push(i === last ? title3 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title3));
       });
       body.append(h("div", { class: "alius-analyze-crumbs" }, ...trail));
     }
@@ -47476,6 +47768,26 @@ function renderSysTab(host, ctx2) {
     });
     return el;
   };
+  const lifeSelect = () => {
+    const state = ctx2.getState();
+    const value = state ? lifeMode(state) : "off";
+    const el = h(
+      "select",
+      { name: "lifeEvents", class: "alius-input", disabled: !state || !ctx2.dispatch },
+      ...LIFE_MODES.map((v) => h("option", { value: v, selected: v === value }, v))
+    );
+    el.value = value;
+    el.addEventListener("change", () => {
+      const events = ctx2.dispatch?.({ type: "life/set_frequency", payload: { mode: el.value } }) ?? [];
+      const err = events.find((e) => e.type === "error");
+      if (err) {
+        ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
+        const now = ctx2.getState();
+        el.value = now ? lifeMode(now) : "off";
+      }
+    });
+    return el;
+  };
   const worldOptionRows = () => {
     const state = ctx2.getState();
     const reg = ctx2.getRegistries?.();
@@ -47602,6 +47914,8 @@ function renderSysTab(host, ctx2) {
     field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled), "directorEnabled"),
     field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" }), "beatCooldownDays"),
     field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap), "expeditionRecap"),
+    h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:setting_life_events") }, h("span", { class: "alius-field-label" }, "Life events (this campaign)"), lifeSelect()),
+    // P14c
     h("h3", {}, "World options"),
     ...worldOptionRows(),
     h("h3", {}, "Relationships"),
@@ -48564,7 +48878,7 @@ function createApp(st, deps) {
     ...worldDeps,
     context,
     refreshContext: applyContext,
-    notice: (kind, text2, title2, source) => toast(kind, text2, { voice: VOICE_OF[source], title: title2 }),
+    notice: (kind, text2, title3, source) => toast(kind, text2, { voice: VOICE_OF[source], title: title3 }),
     // P12: the device's own readout
     cutIn: (text2) => {
       const root = document.getElementById("alius-shell");
@@ -48883,7 +49197,13 @@ function createApp(st, deps) {
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
-        onAnswerRule: answerRule2
+        onAnswerRule: answerRule2,
+        onPastime: (_unitId, pastimeId) => {
+          const events = api.dispatch({ type: "life/pastime_in_scene", payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
+          const failed = events.find((e) => e.type === "error");
+          if (failed) toast("warn", String(failed.message ?? failed.code));
+          else sceneScreen?.refresh();
+        }
       });
       return;
     }
@@ -50190,6 +50510,8 @@ function createApp(st, deps) {
     onDismiss: (missionId) => void act({ type: "mission/dismiss", payload: { missionId } }),
     onFollowRumor: (rumorId) => void act({ type: "rumor/follow", payload: { rumorId } }),
     onSleep: () => void act({ type: "calendar/sleep", payload: {} }),
+    onTimeTogether: (unitId, pastimeId) => void api.life.timeTogether(unitId, pastimeId),
+    // P14c: a quiet hour with her
     onCountermand: (answer) => void power.answerCountermand(answer),
     // P9b: the squad leader's countermand
     onCancelBooking: (id) => void personal.cancelBooking(id),
@@ -52019,11 +52341,11 @@ function addDrawer(host, actions) {
   drawer.className = "inline-drawer";
   const header = document.createElement("div");
   header.className = "inline-drawer-toggle inline-drawer-header";
-  const title2 = document.createElement("b");
-  title2.textContent = "Alius";
+  const title3 = document.createElement("b");
+  title3.textContent = "Alius";
   const chevron = document.createElement("div");
   chevron.className = "inline-drawer-icon fa-solid fa-circle-chevron-down down";
-  header.append(title2, chevron);
+  header.append(title3, chevron);
   const content = document.createElement("div");
   content.className = "inline-drawer-content";
   const row2 = document.createElement("div");

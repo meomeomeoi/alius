@@ -598,6 +598,8 @@ export const TUNING = Object.freeze({
       windowDays: 30, running: 3, gapDays: 5, base: 0.3, humor: Object.freeze({ warm: 1, mocking: 1, dry: 0.6, none: 0 }), offerMax: 5, minAgeDays: 3,
     }),
     commanderSkill: Object.freeze({ meeting: 2, taught: 4 }),
+    /** What the player may read: the interest from which an active hobby is called `keen`, the days a hub line stays up, and how many told items THOUGHTS-side lists show. */
+    keenAt: 70, hubDays: 2, toldShown: 8,
     /** Windows of `LifeRequires`: a shortage within `shortageDays`, a sparring bout within `sparringDays`, her own event within `afterEventDays`, another woman's within `otherWeekDays`; the squad-wide kinds are kept `kindsKeepDays`. */
     shortageDays: 3, sparringDays: 2, afterEventDays: 30, otherWeekDays: 7, kindsKeepDays: 7,
   }),
