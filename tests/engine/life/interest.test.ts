@@ -7,7 +7,7 @@ import {
   bumpInterest, friendHobbies, interestTick, milestoneAt, practiceSlots, pushHobby, startHobby, takeUpHobbies,
 } from '../../../src/engine/life';
 import { decay } from '../../../src/engine/life/hobbies';
-import { placesOf } from '../../../src/engine/life/places';
+import { isPrivateRoom, placesOf } from '../../../src/engine/life/places';
 import { newLife } from '../../../src/engine/life/state';
 import type { CampaignState, HobbyState, Unit } from '../../../src/engine/state/types';
 import { campaign, loadCore, ofType } from '../../helpers/world';
@@ -251,7 +251,7 @@ describe('a friend\'s hobby', () => {
       const bea = placesOf(base, reg, BEA, day, cache);
       for (const p of practiceSlots(base, reg, ANN, day, cache)) {
         const w = bea[slots.indexOf(p.slot)];
-        if (w.reason === 'routine' && w.roomId === p.roomId) {
+        if (w.reason === 'routine' && w.roomId === p.roomId && !isPrivateRoom(reg, p.roomId)) {
           out.set(day, (out.get(day) ?? 0) + 1);
           trials++;
         }
@@ -280,6 +280,21 @@ describe('a friend\'s hobby', () => {
     const rate = picked / trials;
     expect(rate).toBeGreaterThan(0.01);
     expect(rate).toBeLessThan(0.035);
+  });
+
+  it('never passes through the wall: in her own quarters (a perUnit room) nobody learns anything', () => {
+    const base = world([take('reading'), take('journal')]); // both are quarters_unit hobbies
+    let together = 0;
+    for (let day = 1; day <= 600; day++) {
+      const cache = new Map();
+      const bea = placesOf(base, reg, BEA, day, cache);
+      const stands = practiceSlots(base, reg, ANN, day, cache).some((p) => bea[['morning', 'afternoon', 'evening'].indexOf(p.slot)].roomId === p.roomId);
+      if (!stands) continue;
+      together++;
+      const s = world([take('reading'), take('journal')]);
+      expect(ofType(friendHobbies(s, reg, day), 'hobby_started')).toEqual([]);
+    }
+    expect(together).toBeGreaterThan(50);
   });
 
   it('is nothing for a woman who already has it, and nothing from a woman who did not practise', () => {

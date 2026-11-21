@@ -1,5 +1,7 @@
+import { developmentMode, ensureDevelopment, nextDevId } from '../development/state';
 import { addFact } from '../memory';
-import type { CampaignState, Fact } from '../state/types';
+import type { CampaignState, DevFact, Fact } from '../state/types';
+import { TUNING } from '../tuning';
 import { UNTOLD_TAG } from './state';
 
 /** The tag every fact of her life carries (with `untold` until the commander is told, and the id of the event, hobby or topic it is about). */
@@ -29,4 +31,26 @@ export function revealFact(draft: CampaignState, factId: string): boolean {
   delete fact.hiddenFromCommander;
   fact.tags = fact.tags.filter((t) => t !== UNTOLD_TAG);
   return was;
+}
+
+/**
+ * The base's best hand at something becomes known: the squad fact of the mastery (written hidden and `untold`) is revealed and, while character
+ * development runs, it joins her as a trait (`DevFact`, source `life`, kind `skill`). Called when the `mastered` item is told, or at once when
+ * nothing is queued for it (the commander was there, or the life event told it). Nothing for a fact that is not there or was revealed.
+ */
+export function revealMastery(draft: CampaignState, unitId: string, hobbyId: string): boolean {
+  const fact = draft.memory.facts.find((f) => f.about.includes(unitId) && f.tags.includes('mastered') && f.tags.includes(hobbyId));
+  if (!fact || !revealFact(draft, fact.id)) return false;
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (unit && developmentMode(draft) !== 'off') {
+    const dev = ensureDevelopment(unit);
+    const df: DevFact = { id: nextDevId(dev, 'df'), text: fact.text, kind: 'skill', day: draft.day, source: 'life' };
+    dev.facts.push(df);
+    while (dev.facts.length > TUNING.development.factsMax) {
+      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== df.id);
+      if (i < 0) break;
+      dev.facts.splice(i, 1);
+    }
+  }
+  return true;
 }

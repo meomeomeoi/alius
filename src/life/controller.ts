@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { isLiving } from '../engine/economy';
 import { lifeHash, lifeMode, plainText, temperamentOf } from '../engine/life';
 import type { HobbyEntry, LifeEventEntry } from '../engine/life/types';
 import type { CampaignState, NewsItem, Unit } from '../engine/state/types';
@@ -75,7 +76,7 @@ export function createLife(deps: LifeDeps): LifeController {
     const entry = life?.outbox.find((o) => o.itemId === key && o.channel === channel);
     const item = life?.queue.find((q) => q.id === key);
     const unit = s?.squad.find((u) => u.id === entry?.unitId);
-    if (!s || !entry || !item || !unit || unit.kind !== 'named') return { expired: 'Already told.' };
+    if (!s || !entry || !item || !unit || unit.kind !== 'named' || !isLiving(unit)) return { expired: 'Already told.' };
     return { item, unit };
   }
 

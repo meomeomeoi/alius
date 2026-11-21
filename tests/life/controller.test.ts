@@ -204,6 +204,25 @@ describe('the share DM', () => {
   });
 });
 
+describe('a woman who is no longer living', () => {
+  it('her DM or note is never asked for: no call, no record, and no new ask after a scene closes', async () => {
+    for (const kind of ['dm', 'note'] as const) {
+      const { s } = world(kind);
+      s.squad[0].status = 'dead';
+      const { h, ctl } = rig(s);
+      h.st.mainReplies = [answer('Hello.'), answer('Hello.')];
+      await ctl.run();
+      ctl.onSceneClosed();
+      await ctl.run();
+      ctl.onSceneClosed();
+      await ctl.run();
+      expect(h.st.calls).toHaveLength(0);
+      expect(records(h)).toEqual([]);
+      expect(dms(h)).toEqual([]);
+    }
+  });
+});
+
 describe('the trace note', () => {
   it('a note item becomes a note in her quarters, in the words of the model', async () => {
     const { s, itemId } = world('note');

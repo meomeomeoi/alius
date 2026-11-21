@@ -220,6 +220,60 @@ describe('staleness', () => {
   });
 });
 
+describe('a woman who is no longer with the squad', () => {
+  it('staleSweep drops her items, outbox entries and news (news_stale each), and leaves the others', () => {
+    const s = world();
+    const dm = queue(s, { unitId: ANN, category: 'body' });
+    const note = queue(s, { unitId: ANN, category: 'luck' });
+    const wait = queue(s, { unitId: ANN, category: 'people' });
+    const keep = queue(s, { unitId: BEA, category: 'body' });
+    s.life!.outbox.push({ itemId: dm.id, unitId: ANN, channel: 'dm', day: 20 }, { itemId: keep.id, unitId: BEA, channel: 'dm', day: 20 });
+    s.life!.news.push({ itemId: note.id, unitId: ANN, until: 23 });
+    s.squad[0].status = 'dead';
+    const events = staleSweep(s, 21);
+    expect(ofType(events, 'news_stale').map((e) => e.itemId).sort()).toEqual([dm.id, note.id, wait.id].sort());
+    expect(s.life!.queue.map((q) => q.id)).toEqual([keep.id]);
+    expect(s.life!.outbox.map((o) => o.itemId)).toEqual([keep.id]);
+    expect(s.life!.news).toEqual([]);
+    expect(staleSweep(s, 22)).toEqual([]);
+  });
+
+  it('the same for a deserter and for one who is not in the squad any more', () => {
+    for (const gone of ['deserted', 'removed'] as const) {
+      const s = world();
+      const item = queue(s, { unitId: ANN });
+      s.life!.outbox.push({ itemId: item.id, unitId: ANN, channel: 'dm', day: 20 });
+      if (gone === 'deserted') s.squad[0].status = 'deserted';
+      else s.squad.splice(0, 1);
+      expect(ofType(staleSweep(s, 21), 'news_stale')).toHaveLength(1);
+      expect(s.life!.outbox).toEqual([]);
+    }
+  });
+
+  it('the day step runs the sweep, so a dead woman\'s DM is gone the next day end', () => {
+    const s = world();
+    const item = queue(s, { unitId: ANN });
+    s.life!.outbox.push({ itemId: item.id, unitId: ANN, channel: 'dm', day: 20 });
+    s.squad[0].status = 'dead';
+    s.day = 21;
+    lifeDayStep(s, ctxOf(s, reg));
+    expect(s.life!.outbox).toEqual([]);
+    expect(s.life!.queue).toEqual([]);
+  });
+
+  it('share_done and trace_note refuse her, and change nothing', () => {
+    for (const channel of ['dm', 'note'] as const) {
+      const s = world();
+      const item = queue(s, { unitId: ANN, kind: 'hobby', ref: 'sketching', what: 'milestone', category: 'hobby' });
+      s.life!.outbox.push({ itemId: item.id, unitId: ANN, channel, day: 20 });
+      s.squad[0].status = 'dead';
+      const r = run(s, reg, { type: channel === 'dm' ? 'life/share_done' : 'life/trace_note', payload: { itemId: item.id, text: 'Hello.' } });
+      expect(errors(r.events)).toHaveLength(1);
+      expect(r.state).toEqual(s);
+    }
+  });
+});
+
 describe('the channel', () => {
   const item = (s: CampaignState, over: Partial<NewsItem> = {}): NewsItem => ({
     id: 'ln0', unitId: ANN, kind: 'event', ref: 'found_something', what: 'event', category: 'things', day: 20, ...over,

@@ -1,16 +1,14 @@
 import type { Registries } from '../../content/types';
-import { developmentMode } from '../development/state';
-import { ensureDevelopment, nextDevId } from '../development/state';
 import { activeRestrictions } from '../discipline/restrictions';
 import { isLiving } from '../economy';
 import { addFact } from '../memory';
 import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
-import type { CampaignState, DevFact, HobbyState, Slot, Unit } from '../state/types';
-import { plainText, writeLifeFact } from './facts';
+import type { CampaignState, HobbyState, Slot, Unit } from '../state/types';
+import { plainText, revealMastery, writeLifeFact } from './facts';
 import { enqueue } from './news';
-import { DAY_SLOTS, busySlot, placesOf, takesPart, unitOf, type DayPlaces } from './places';
-import { lifeChance, lifeHash, lifeMode, temperamentOf } from './state';
+import { DAY_SLOTS, busySlot, isPrivateRoom, placesOf, takesPart, unitOf, type DayPlaces } from './places';
+import { UNTOLD_TAG, lifeChance, lifeHash, lifeMode, temperamentOf } from './state';
 import type { HobbyEntry } from './types';
 
 /**
@@ -165,26 +163,16 @@ export function practiceSlots(
   return out;
 }
 
-const factsMax = (): number => TUNING.development.factsMax;
-
-/** The base's best hand at something: a fact the whole squad knows (and the commander may), and a trait of hers while development runs. */
+/**
+ * The base's best hand at something: a fact the whole squad knows and the commander does not yet (hidden, `untold`, like her other news; it is
+ * revealed, with the trait it gives her, when the item is told: `revealMastery`).
+ */
 function masterHobby(draft: CampaignState, unit: Unit, h: HobbyState, entry: HobbyEntry): EngineEvent[] {
   h.mastered = true;
-  const text = `${unit.displayName} is the base's ${entry.label} hand.`;
   addFact(draft, {
-    about: [unit.id], text, tags: ['life', 'hobby', 'mastered', h.id], importance: 2, day: draft.day,
-    knownBy: draft.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id),
+    about: [unit.id], text: `${unit.displayName} is the base's ${entry.label} hand.`, tags: ['life', UNTOLD_TAG, 'hobby', 'mastered', h.id], importance: 2, day: draft.day,
+    knownBy: draft.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id), hiddenFromCommander: true,
   });
-  if (developmentMode(draft) !== 'off') {
-    const dev = ensureDevelopment(unit);
-    const fact: DevFact = { id: nextDevId(dev, 'df'), text, kind: 'skill', day: draft.day, source: 'life' };
-    dev.facts.push(fact);
-    while (dev.facts.length > factsMax()) {
-      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== fact.id);
-      if (i < 0) break;
-      dev.facts.splice(i, 1);
-    }
-  }
   return [{ type: 'hobby_mastered', unitId: unit.id, hobbyId: h.id }];
 }
 
@@ -206,6 +194,7 @@ export function grantMilestone(
   if (h.ceiling === true || (low && n >= 3)) return [];
   const idx = n as 0 | 1 | 2 | 3;
   h.milestones.push(m.id);
+  h.lastMilestoneDay = draft.day;
   h.skill = Math.max(h.skill, milestoneAt(life.salt, unitId, hobbyId, idx));
   delete h.plateau;
   const events: EngineEvent[] = [{ type: 'hobby_milestone', unitId, hobbyId, milestoneId: m.id }];
@@ -223,7 +212,10 @@ export function grantMilestone(
     h.ceiling = true;
     events.push(...bumpInterest(draft, unitId, hobbyId, temperamentOf(draft, unitId).volatility === 'moody' ? TUNING.life.interest.ceilingMoody : TUNING.life.interest.ceiling, draft.day));
   }
-  if (n === 3) events.push(...masterHobby(draft, unit, h, entry));
+  if (n === 3) {
+    events.push(...masterHobby(draft, unit, h, entry));
+    if (opts.caused === true || opts.told === true) revealMastery(draft, unitId, hobbyId); // nothing is queued for it: it is known now
+  }
   return events;
 }
 
@@ -233,6 +225,9 @@ export function breakthrough(
 ): EngineEvent[] {
   const h = unitOf(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
   if (!h || h.ceiling === true || h.milestones.length >= 4) return [];
+  // two women never reach the same milestone of the same hobby on one day: whoever comes second waits for another slot, another day
+  const n = h.milestones.length;
+  if (draft.squad.some((u) => u.id !== unitId && u.hobbies?.some((o) => o.id === hobbyId && o.milestones.length > n && o.lastMilestoneDay === draft.day))) return [];
   const got = grantMilestone(draft, reg, unitId, hobbyId, h.milestones.length, opts);
   return got.length === 0 ? [] : [{ type: 'hobby_breakthrough', unitId, hobbyId }, ...got];
 }
@@ -377,6 +372,7 @@ export function friendHobbies(
   const planOf = (id: string) => plans?.get(id) ?? practiceSlots(draft, reg, id, day, places);
   for (const teacher of draft.squad) {
     for (const p of planOf(teacher.id)) {
+      if (isPrivateRoom(reg, p.roomId)) continue; // her own quarters: nobody is there to learn from her
       const i = DAY_SLOTS.indexOf(p.slot);
       for (const other of draft.squad) {
         if (other.id === teacher.id || learned.has(other.id) || !takesPart(draft, other.id)) continue;
@@ -390,5 +386,29 @@ export function friendHobbies(
       }
     }
   }
+  return events;
+}
+
+/**
+ * Two women practised the same hobby in the same shared room this slot. At most once a week for the pair (a week is `floor(day / 7)`) it is
+ * worth something: both feel the company (interest +5) and the one who is less far along (a tie: a hash of the pair and the week) gets the
+ * push, so a plateau she is on breaks at once. The other gets nothing but the company. Bookkeeping in `life.shared`.
+ */
+export function sharePractice(draft: CampaignState, reg: Registries, aId: string, bId: string, hobbyId: string, day: number): EngineEvent[] {
+  const life = draft.life;
+  const a = unitOf(draft, aId)?.hobbies?.find((h) => h.id === hobbyId);
+  const b = unitOf(draft, bId)?.hobbies?.find((h) => h.id === hobbyId);
+  if (!life || !a || !b) return [];
+  const [x, y] = aId < bId ? [aId, bId] : [bId, aId];
+  const week = Math.floor(day / 7);
+  const shared = (life.shared ??= {});
+  const key = `${x}|${y}`;
+  if (shared[key] === week) return [];
+  for (const k of Object.keys(shared)) if (shared[k] < week - 1) delete shared[k];
+  shared[key] = week;
+  const lower = a.skill !== b.skill ? (a.skill < b.skill ? aId : bId) : lifeHash(life, `${x}|${y}|shared|${week}`) % 2 === 0 ? x : y;
+  const events: EngineEvent[] = [];
+  if (unitOf(draft, lower)?.hobbies?.find((h) => h.id === hobbyId)?.plateau) events.push(...breakthrough(draft, reg, lower, hobbyId, day));
+  for (const id of [aId, bId]) events.push(...bumpInterest(draft, id, hobbyId, TUNING.life.interest.share, day));
   return events;
 }

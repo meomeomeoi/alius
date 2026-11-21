@@ -234,6 +234,8 @@ export interface HobbyState {
   milestones: string[];
   ceiling?: true;
   mastered?: true;
+  /** The day she reached her last milestone (bookkeeping: two women never reach the same milestone of the same hobby on one day). */
+  lastMilestoneDay?: number;
 }
 
 /** P14c: a formed opinion on a topic of the library. */
@@ -300,6 +302,8 @@ export interface LifeState {
   deaths: Array<{ unitId: string; day: number; grunt: boolean; old?: true }>;
   busy: Array<{ unitId: string; slot: number; activityId?: string }>;
   shortageDay?: number;
+  /** Bookkeeping: the week (`floor(day / 7)`) a pair last shared a practice slot, keyed by the two ids sorted (a shared slot counts once a week). */
+  shared?: Record<string, number>;
   /** A `time_together` waiting for its scene. */
   pending?: { unitId: string; pastimeId: string; locationId: string; day: number; slot: Slot };
 }

@@ -4,8 +4,8 @@ import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyLifeEvent, pickLifeEvent } from './events';
 import { deliverNews, staleSweep } from './news';
-import { friendHobbies, interestTick, practise, practiceSlots } from './hobbies';
-import { busySlot, takesPart, type DayPlaces } from './places';
+import { friendHobbies, interestTick, practise, practiceSlots, sharePractice } from './hobbies';
+import { busySlot, isPrivateRoom, takesPart, type DayPlaces } from './places';
 import { ensureLife, lifeMode } from './state';
 
 /**
@@ -37,16 +37,19 @@ export function recordDeaths(draft: CampaignState, old = false): void {
 }
 
 /**
- * Each woman practises in the slots `practiceSlots` lists. A slot shared with another woman who has the same hobby in the same room is a push
- * for both (they practise together); the plans are all made before anyone practises. Returns what was planned too, for the friends' hobbies.
+ * Each woman practises in the slots `practiceSlots` lists (the plans are all made before anyone practises). Two women who practise the same
+ * hobby in the same shared room (never her own quarters) in a slot are company for each other: once a week for the pair (`sharePractice`).
+ * Returns what was planned too, for the friends' hobbies.
  */
 function practicePass(draft: CampaignState, reg: Registries, day: number, places: DayPlaces): { events: EngineEvent[]; plans: Map<string, Array<{ slot: Slot; hobbyId: string; roomId: string }>> } {
   const plans = new Map(draft.squad.map((u) => [u.id, practiceSlots(draft, reg, u.id, day, places)] as const).filter(([, slots]) => slots.length > 0));
   const events: EngineEvent[] = [];
-  for (const [unitId, slots] of plans) {
-    for (const p of slots) {
-      const together = [...plans].some(([o, theirs]) => o !== unitId && theirs.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
-      events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot, together ? { push: true } : {}));
+  for (const [unitId, slots] of plans) for (const p of slots) events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot));
+  const ids = [...plans.keys()];
+  for (const [i, aId] of ids.entries()) {
+    for (const bId of ids.slice(i + 1)) {
+      const together = plans.get(aId)!.find((p) => !isPrivateRoom(reg, p.roomId) && plans.get(bId)!.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      if (together) events.push(...sharePractice(draft, reg, aId, bId, together.hobbyId, day));
     }
   }
   return { events, plans };

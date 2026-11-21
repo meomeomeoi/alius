@@ -36,3 +36,9 @@ export function placesOf(state: CampaignState, reg: Registries, unitId: string, 
   cache?.set(key, places);
   return places;
 }
+
+/** A room whose scene location is a woman's own (`perUnit`: her quarters) is private: nobody shares a slot there, and no hobby passes through the wall. */
+export function isPrivateRoom(reg: Registries, roomId: string): boolean {
+  const loc = reg.locations.get(String(reg.hubRooms.get(roomId)?.sceneLocationId));
+  return loc?.perUnit === true;
+}

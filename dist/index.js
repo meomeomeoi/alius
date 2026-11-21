@@ -13081,6 +13081,22 @@ function revealFact(draft, factId) {
   fact.tags = fact.tags.filter((t) => t !== UNTOLD_TAG);
   return was;
 }
+function revealMastery(draft, unitId, hobbyId) {
+  const fact = draft.memory.facts.find((f) => f.about.includes(unitId) && f.tags.includes("mastered") && f.tags.includes(hobbyId));
+  if (!fact || !revealFact(draft, fact.id)) return false;
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (unit2 && developmentMode(draft) !== "off") {
+    const dev = ensureDevelopment(unit2);
+    const df = { id: nextDevId(dev, "df"), text: fact.text, kind: "skill", day: draft.day, source: "life" };
+    dev.facts.push(df);
+    while (dev.facts.length > TUNING.development.factsMax) {
+      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== df.id);
+      if (i < 0) break;
+      dev.facts.splice(i, 1);
+    }
+  }
+  return true;
+}
 
 // src/engine/life/places.ts
 var DAY_SLOTS = ["morning", "afternoon", "evening"];
@@ -13098,6 +13114,10 @@ function placesOf(state, reg, unitId, day, cache) {
   const places = DAY_SLOTS.map((slot2) => whereaboutAt(state, reg, unitId, day, slot2));
   cache?.set(key, places);
   return places;
+}
+function isPrivateRoom(reg, roomId) {
+  const loc = reg.locations.get(String(reg.hubRooms.get(roomId)?.sceneLocationId));
+  return loc?.perUnit === true;
 }
 
 // src/engine/life/news.ts
@@ -13135,6 +13155,12 @@ function staleSweep(draft, day) {
   const life = draft.life;
   if (!life || lifeMode(draft) === "off") return [];
   const events = [];
+  for (const item of [...life.queue]) {
+    const u = draft.squad.find((x) => x.id === item.unitId);
+    if (u && u.kind === "named" && isLiving(u)) continue;
+    life.outbox = life.outbox.filter((o) => o.itemId !== item.id);
+    events.push(...drop(life, item.id, item.unitId));
+  }
   for (const n of [...life.news]) if (day >= n.until) events.push(...drop(life, n.itemId, n.unitId));
   const standing = held(life);
   for (const item of life.queue) {
@@ -13199,6 +13225,7 @@ function closeNews(draft, itemId) {
   const item = life?.queue.find((q) => q.id === itemId);
   if (!life || !item) return [];
   if (item.factId !== void 0) revealFact(draft, item.factId);
+  if (item.what === "mastered") revealMastery(draft, item.unitId, item.ref);
   life.queue = life.queue.filter((q) => q.id !== itemId);
   life.outbox = life.outbox.filter((o) => o.itemId !== itemId);
   life.news = life.news.filter((n) => n.itemId !== itemId);
@@ -13302,28 +13329,17 @@ function practiceSlots(state, reg, unitId, day, cache) {
   }
   return out;
 }
-var factsMax = () => TUNING.development.factsMax;
 function masterHobby(draft, unit2, h2, entry) {
   h2.mastered = true;
-  const text2 = `${unit2.displayName} is the base's ${entry.label} hand.`;
   addFact(draft, {
     about: [unit2.id],
-    text: text2,
-    tags: ["life", "hobby", "mastered", h2.id],
+    text: `${unit2.displayName} is the base's ${entry.label} hand.`,
+    tags: ["life", UNTOLD_TAG, "hobby", "mastered", h2.id],
     importance: 2,
     day: draft.day,
-    knownBy: draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id)
+    knownBy: draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id),
+    hiddenFromCommander: true
   });
-  if (developmentMode(draft) !== "off") {
-    const dev = ensureDevelopment(unit2);
-    const fact = { id: nextDevId(dev, "df"), text: text2, kind: "skill", day: draft.day, source: "life" };
-    dev.facts.push(fact);
-    while (dev.facts.length > factsMax()) {
-      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== fact.id);
-      if (i < 0) break;
-      dev.facts.splice(i, 1);
-    }
-  }
   return [{ type: "hobby_mastered", unitId: unit2.id, hobbyId: h2.id }];
 }
 function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
@@ -13337,6 +13353,7 @@ function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
   if (h2.ceiling === true || low && n >= 3) return [];
   const idx = n;
   h2.milestones.push(m.id);
+  h2.lastMilestoneDay = draft.day;
   h2.skill = Math.max(h2.skill, milestoneAt(life.salt, unitId, hobbyId, idx));
   delete h2.plateau;
   const events = [{ type: "hobby_milestone", unitId, hobbyId, milestoneId: m.id }];
@@ -13361,12 +13378,17 @@ function grantMilestone(draft, reg, unitId, hobbyId, n, opts = {}) {
     h2.ceiling = true;
     events.push(...bumpInterest(draft, unitId, hobbyId, temperamentOf(draft, unitId).volatility === "moody" ? TUNING.life.interest.ceilingMoody : TUNING.life.interest.ceiling, draft.day));
   }
-  if (n === 3) events.push(...masterHobby(draft, unit2, h2, entry));
+  if (n === 3) {
+    events.push(...masterHobby(draft, unit2, h2, entry));
+    if (opts.caused === true || opts.told === true) revealMastery(draft, unitId, hobbyId);
+  }
   return events;
 }
 function breakthrough(draft, reg, unitId, hobbyId, _day, opts = {}) {
   const h2 = unitOf2(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
   if (!h2 || h2.ceiling === true || h2.milestones.length >= 4) return [];
+  const n = h2.milestones.length;
+  if (draft.squad.some((u) => u.id !== unitId && u.hobbies?.some((o) => o.id === hobbyId && o.milestones.length > n && o.lastMilestoneDay === draft.day))) return [];
   const got = grantMilestone(draft, reg, unitId, hobbyId, h2.milestones.length, opts);
   return got.length === 0 ? [] : [{ type: "hobby_breakthrough", unitId, hobbyId }, ...got];
 }
@@ -13472,6 +13494,7 @@ function friendHobbies(draft, reg, day, places = /* @__PURE__ */ new Map(), plan
   const planOf = (id) => plans?.get(id) ?? practiceSlots(draft, reg, id, day, places);
   for (const teacher of draft.squad) {
     for (const p of planOf(teacher.id)) {
+      if (isPrivateRoom(reg, p.roomId)) continue;
       const i = DAY_SLOTS.indexOf(p.slot);
       for (const other of draft.squad) {
         if (other.id === teacher.id || learned.has(other.id) || !takesPart(draft, other.id)) continue;
@@ -13485,6 +13508,24 @@ function friendHobbies(draft, reg, day, places = /* @__PURE__ */ new Map(), plan
       }
     }
   }
+  return events;
+}
+function sharePractice(draft, reg, aId, bId, hobbyId, day) {
+  const life = draft.life;
+  const a = unitOf2(draft, aId)?.hobbies?.find((h2) => h2.id === hobbyId);
+  const b = unitOf2(draft, bId)?.hobbies?.find((h2) => h2.id === hobbyId);
+  if (!life || !a || !b) return [];
+  const [x, y] = aId < bId ? [aId, bId] : [bId, aId];
+  const week = Math.floor(day / 7);
+  const shared = life.shared ??= {};
+  const key = `${x}|${y}`;
+  if (shared[key] === week) return [];
+  for (const k of Object.keys(shared)) if (shared[k] < week - 1) delete shared[k];
+  shared[key] = week;
+  const lower = a.skill !== b.skill ? a.skill < b.skill ? aId : bId : lifeHash(life, `${x}|${y}|shared|${week}`) % 2 === 0 ? x : y;
+  const events = [];
+  if (unitOf2(draft, lower)?.hobbies?.find((h2) => h2.id === hobbyId)?.plateau) events.push(...breakthrough(draft, reg, lower, hobbyId, day));
+  for (const id of [aId, bId]) events.push(...bumpInterest(draft, id, hobbyId, TUNING.life.interest.share, day));
   return events;
 }
 
@@ -24518,10 +24559,12 @@ function recordDeaths(draft, old = false) {
 function practicePass(draft, reg, day, places) {
   const plans = new Map(draft.squad.map((u) => [u.id, practiceSlots(draft, reg, u.id, day, places)]).filter(([, slots]) => slots.length > 0));
   const events = [];
-  for (const [unitId, slots] of plans) {
-    for (const p of slots) {
-      const together = [...plans].some(([o, theirs]) => o !== unitId && theirs.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
-      events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot, together ? { push: true } : {}));
+  for (const [unitId, slots] of plans) for (const p of slots) events.push(...practise(draft, reg, unitId, p.hobbyId, day, p.slot));
+  const ids = [...plans.keys()];
+  for (const [i, aId] of ids.entries()) {
+    for (const bId of ids.slice(i + 1)) {
+      const together = plans.get(aId).find((p) => !isPrivateRoom(reg, p.roomId) && plans.get(bId).some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      if (together) events.push(...sharePractice(draft, reg, aId, bId, together.hobbyId, day));
     }
   }
   return { events, plans };
@@ -27494,17 +27537,22 @@ function outboxItem(draft, itemId, channel) {
   if (!entry || entry.channel !== channel) throw new Error("Already told.");
   return { entry, item: draft.life.queue.find((q) => q.id === itemId) };
 }
+function livingNamed4(draft, id, action) {
+  const unit2 = draft.squad.find((u) => u.id === id);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) throw new Error(`${action} needs a named soldier who is still with the squad.`);
+  return unit2;
+}
 registerAction("life/share_done", (draft, payload, ctx2) => {
   const p = payload;
   const { entry } = outboxItem(draft, p?.itemId, "dm");
+  livingNamed4(draft, entry.unitId, "life/share_done");
   return runHandler("dm/receive", draft, { unitId: entry.unitId, text: p?.text, initiated: true, lifeItemId: entry.itemId }, ctx2);
 });
 registerAction("life/trace_note", (draft, payload) => {
   const p = payload;
   const { entry, item } = outboxItem(draft, p?.itemId, "note");
-  const unit2 = draft.squad.find((u) => u.id === entry.unitId);
+  const unit2 = livingNamed4(draft, entry.unitId, "life/trace_note");
   const text2 = typeof p?.text === "string" ? p.text.trim() : "";
-  if (!unit2 || unit2.kind !== "named") throw new Error("life/trace_note needs a named soldier.");
   if (text2 === "" || text2.length > TRACE_NOTE_MAX) throw new Error(`A note is 1 to ${TRACE_NOTE_MAX} characters.`);
   return [...leaveLifeNote(draft, unit2, text2, item?.ref ?? "hobby"), ...closeNews(draft, entry.itemId)];
 });
@@ -30245,7 +30293,7 @@ function createLife(deps) {
     const entry = life?.outbox.find((o) => o.itemId === key && o.channel === channel);
     const item = life?.queue.find((q) => q.id === key);
     const unit2 = s?.squad.find((u) => u.id === entry?.unitId);
-    if (!s || !entry || !item || !unit2 || unit2.kind !== "named") return { expired: "Already told." };
+    if (!s || !entry || !item || !unit2 || unit2.kind !== "named" || !isLiving(unit2)) return { expired: "Already told." };
     return { item, unit: unit2 };
   }
   const factText = (s, item) => plainText(s.memory.facts.find((f) => f.id === item.factId)?.text ?? "");

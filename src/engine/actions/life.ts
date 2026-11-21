@@ -1,3 +1,4 @@
+import { isLiving } from '../economy';
 import { registerActivityHook } from '../activities';
 import { registerDayEndStep } from '../calendar';
 import { registerAction, runHandler } from '../dispatch';
@@ -162,6 +163,13 @@ function outboxItem(draft: { life?: { outbox: Array<{ itemId: string; unitId: st
   return { entry, item: draft.life!.queue.find((q) => q.id === itemId) };
 }
 
+/** The named soldier who is still with the squad, or the refusal (the dead, the deserted and those who left tell nothing). */
+function livingNamed(draft: { squad: Unit[] }, id: string, action: string): Unit {
+  const unit = draft.squad.find((u) => u.id === id);
+  if (!unit || unit.kind !== 'named' || !isLiving(unit)) throw new Error(`${action} needs a named soldier who is still with the squad.`);
+  return unit;
+}
+
 /**
  * `life/share_done { itemId, text }`: her DM about what happened to her arrives (the controller worded it, or the line of the registry did).
  * The same path as any DM she starts, `dm/receive` with `initiated`, and it closes the outbox entry and tells the commander the fact.
@@ -170,6 +178,7 @@ function outboxItem(draft: { life?: { outbox: Array<{ itemId: string; unitId: st
 registerAction('life/share_done', (draft, payload, ctx) => {
   const p = payload as { itemId?: unknown; text?: unknown } | undefined;
   const { entry } = outboxItem(draft, p?.itemId, 'dm');
+  livingNamed(draft, entry.unitId, 'life/share_done');
   return runHandler('dm/receive', draft, { unitId: entry.unitId, text: p?.text, initiated: true, lifeItemId: entry.itemId }, ctx);
 });
 
@@ -180,9 +189,8 @@ registerAction('life/share_done', (draft, payload, ctx) => {
 registerAction('life/trace_note', (draft, payload) => {
   const p = payload as { itemId?: unknown; text?: unknown } | undefined;
   const { entry, item } = outboxItem(draft, p?.itemId, 'note');
-  const unit = draft.squad.find((u) => u.id === entry.unitId);
+  const unit = livingNamed(draft, entry.unitId, 'life/trace_note');
   const text = typeof p?.text === 'string' ? p.text.trim() : '';
-  if (!unit || unit.kind !== 'named') throw new Error('life/trace_note needs a named soldier.');
   if (text === '' || text.length > TRACE_NOTE_MAX) throw new Error(`A note is 1 to ${TRACE_NOTE_MAX} characters.`);
   return [...leaveLifeNote(draft, unit, text, item?.ref ?? 'hobby'), ...closeNews(draft, entry.itemId)];
 });

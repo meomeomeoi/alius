@@ -4,13 +4,14 @@ import '../../../src/engine/actions/life';
 import '../../../src/engine/actions/memory';
 import '../../../src/engine/actions/scene';
 import { whereaboutAt, whereabouts } from '../../../src/engine/hub';
-import { applyLifeEvent, breakthrough, grantMilestone, milestoneAt, practise, practiceSlots, lifeDayStep } from '../../../src/engine/life';
+import { applyLifeEvent, breakthrough, closeNews, grantMilestone, milestoneAt, practise, practiceSlots, lifeDayStep, sharePractice, staleSweep } from '../../../src/engine/life';
 import { busySlot } from '../../../src/engine/life/events';
 import { lifeChance, newLife } from '../../../src/engine/life/state';
 import type { HobbyEntry, LifeEventEntry } from '../../../src/engine/life/types';
 import type { CampaignState, HobbyState, Slot, Unit } from '../../../src/engine/state/types';
 import { placesOf } from '../../../src/engine/life/places';
-import { campaign, ctxOf, loadCore, ofType, stubExpedition } from '../../helpers/world';
+import { retrieveFacts } from '../../../src/engine/memory';
+import { campaign, ctxOf, errors, loadCore, ofType, run, stubExpedition } from '../../helpers/world';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -417,32 +418,67 @@ describe('milestones', () => {
 });
 
 describe('mastery', () => {
-  const master = (dev: 'off' | 'normal'): { s: CampaignState; events: ReturnType<typeof grantMilestone> } => {
+  const master = (dev: 'off' | 'normal', opts: Parameters<typeof grantMilestone>[5] = {}): { s: CampaignState; events: ReturnType<typeof grantMilestone> } => {
     const s = world();
     if (dev !== 'off') s.settings.characterDevelopment = dev;
     mine(s).hobbies![0].milestones = ['first_book', 'shelf', 'favourite'];
-    return { s, events: grantMilestone(s, reg, ANN, 'reading', 3, {}) };
+    return { s, events: grantMilestone(s, reg, ANN, 'reading', 3, opts) };
   };
+  const squadFact = (s: CampaignState) => s.memory.facts.find((f) => f.tags.includes('mastered'))!;
+  const retrieved = (s: CampaignState) => retrieveFacts(s, { participants: [ANN], tags: [] }, 50);
 
-  it('sets mastered and writes a squad fact the commander may know', () => {
+  it('sets mastered and writes the squad fact hidden and untold until the item is told', () => {
     const { s, events } = master('off');
     expect(mine(s).hobbies![0].mastered).toBe(true);
     expect(ofType(events, 'hobby_mastered')).toEqual([{ type: 'hobby_mastered', unitId: ANN, hobbyId: 'reading' }]);
-    const fact = s.memory.facts.find((f) => f.tags.includes('mastered'))!;
+    const fact = squadFact(s);
     expect(fact.text).toContain('reading');
-    expect(fact.hiddenFromCommander).toBeUndefined();
-    expect(fact.tags).not.toContain('untold');
+    expect(fact.hiddenFromCommander).toBe(true);
+    expect(fact.tags).toContain('untold');
     expect(fact.knownBy).toEqual(s.squad.filter((u) => u.kind === 'named' && u.status !== 'dead').map((u) => u.id));
     expect(s.life!.queue[0]).toMatchObject({ what: 'mastered', ref: 'reading' });
+    expect(retrieved(s).some((f) => f.id === fact.id)).toBe(false); // no prompt carries it yet
   });
 
-  it('with development on it writes a DevFact; with it off, none', () => {
-    expect(master('off').s.squad[0].development).toBeUndefined();
-    const on = master('normal').s;
-    const facts = mine(on).development!.facts;
+  it('telling the mastered item reveals the fact (retrieved now) and, with development on, writes the DevFact; before that, no DevFact', () => {
+    const { s } = master('normal');
+    expect(mine(s).development?.facts ?? []).toEqual([]);
+    const fact = squadFact(s);
+    s.life!.outbox.push({ itemId: s.life!.queue[0].id, unitId: ANN, channel: 'dm', day: 30 });
+    const r = run(s, reg, { type: 'life/share_done', payload: { itemId: s.life!.queue[0].id, text: 'They call me the reading hand now.' } });
+    expect(errors(r.events)).toEqual([]);
+    const after = r.state.memory.facts.find((f) => f.id === fact.id)!;
+    expect(after.hiddenFromCommander).toBeUndefined();
+    expect(after.tags).not.toContain('untold');
+    expect(retrieveFacts(r.state, { participants: [ANN], tags: [] }, 50).some((f) => f.id === fact.id)).toBe(true);
+    const facts = r.state.squad[0].development!.facts;
     expect(facts).toHaveLength(1);
     expect(facts[0]).toMatchObject({ source: 'life', kind: 'skill', day: 30 });
     expect(facts[0].text).toContain('reading');
+  });
+
+  it('with development off the reveal writes no DevFact', () => {
+    const { s } = master('off');
+    closeNews(s, s.life!.queue[0].id);
+    expect(squadFact(s).hiddenFromCommander).toBeUndefined();
+    expect(s.squad[0].development).toBeUndefined();
+  });
+
+  it('a mastery nobody queues (the commander was there, or the event told it) is known at once', () => {
+    for (const opts of [{ caused: true as const }, { told: true as const }]) {
+      const { s } = master('normal', opts);
+      expect(s.life!.queue).toEqual([]);
+      expect(squadFact(s).hiddenFromCommander).toBeUndefined();
+      expect(mine(s).development!.facts).toHaveLength(1);
+    }
+  });
+
+  it('a mastery that goes stale untold stays hidden and writes no DevFact', () => {
+    const { s } = master('normal');
+    s.life!.news.push({ itemId: s.life!.queue[0].id, unitId: ANN, until: 33 });
+    staleSweep(s, 33);
+    expect(squadFact(s).hiddenFromCommander).toBe(true);
+    expect(mine(s).development?.facts ?? []).toEqual([]);
   });
 });
 
@@ -457,21 +493,101 @@ describe('the practice pass of the day step', () => {
     expect(mine(s).hobbies![0].skill).toBeGreaterThan(0);
     expect(s.rng).toEqual(rng);
   });
+});
 
-  it('a shared slot with another woman who has the same hobby is a push', () => {
-    const s = world([take('reading')]);
-    mine(s, BEA).hobbies = [take('reading')];
-    // find a day on which both stand in the same room in the same slot
-    let found: { day: number; slot: Slot } | null = null;
-    for (let day = 1; day <= 200 && !found; day++) {
-      for (const p of practiceSlots(s, reg, ANN, day)) if (practiceSlots(s, reg, BEA, day).some((q) => q.slot === p.slot && q.roomId === p.roomId)) { found = { day, slot: p.slot }; break; }
+/** Days on which both practise `hobbyId` in the same room in the same slot (the stand-ins' hobbies must be set). */
+function sharedDays(s: CampaignState, a: string, b: string, max: number, from = 1): Array<{ day: number; slot: Slot; roomId: string }> {
+  const out: Array<{ day: number; slot: Slot; roomId: string }> = [];
+  for (let day = from; day <= from + 400 && out.length < max; day++) {
+    for (const p of practiceSlots(s, reg, a, day)) if (practiceSlots(s, reg, b, day).some((q) => q.slot === p.slot && q.roomId === p.roomId)) out.push({ day, slot: p.slot, roomId: p.roomId });
+  }
+  return out;
+}
+const duo = (hobby: string, over: Partial<HobbyState> = {}, overB: Partial<HobbyState> = {}): CampaignState => {
+  const s = world([take(hobby, over)]);
+  mine(s, BEA).hobbies = [take(hobby, overB)];
+  return s;
+};
+
+describe('a shared practice slot (once a week for the pair, never in her own quarters)', () => {
+  it('is worth +5 interest to both and no more at the first, and not again within the week', () => {
+    const s = duo('cooking'); // the mess hall: a room two women can share
+    const days = sharedDays(s, ANN, BEA, 40);
+    expect(days.length).toBeGreaterThan(5);
+    expect(reg.locations.get(String(reg.hubRooms.get(days[0].roomId)!.sceneLocationId))!.perUnit).toBeUndefined();
+    s.day = days[0].day;
+    const [a0, b0] = [mine(s).hobbies![0].interest, mine(s, BEA).hobbies![0].interest];
+    const events = sharePractice(s, reg, ANN, BEA, 'cooking', s.day);
+    expect(mine(s).hobbies![0].interest).toBe(a0 + 5);
+    expect(mine(s, BEA).hobbies![0].interest).toBe(b0 + 5);
+    expect(s.life!.shared).toEqual({ [`${ANN}|${BEA}`]: Math.floor(s.day / 7) });
+    expect(ofType(events, 'hobby_breakthrough')).toEqual([]); // nobody was on a plateau
+    // the same week again (either order of the pair): nothing
+    expect(sharePractice(s, reg, BEA, ANN, 'cooking', s.day)).toEqual([]);
+    expect(mine(s).hobbies![0].interest).toBe(a0 + 5);
+    // the next week again
+    expect(ofType(sharePractice(s, reg, ANN, BEA, 'cooking', s.day + 7), 'hobby_breakthrough')).toEqual([]);
+    expect(mine(s).hobbies![0].interest).toBe(a0 + 10);
+  });
+
+  it('the push goes to the woman who is less far along, and only to her', () => {
+    const s = duo('cooking', { skill: 7, plateau: { at: 7, since: 3 } }, { skill: 3 });
+    mine(s, BEA).hobbies![0].plateau = { at: 7, since: 3 };
+    const events = sharePractice(s, reg, ANN, BEA, 'cooking', 30);
+    expect(ofType(events, 'hobby_breakthrough')).toEqual([{ type: 'hobby_breakthrough', unitId: BEA, hobbyId: 'cooking' }]);
+    expect(mine(s, BEA).hobbies![0].plateau).toBeUndefined();
+    expect(mine(s).hobbies![0].plateau).toBeDefined(); // the other one stays on hers
+    // and the other way round
+    const t = duo('cooking', { skill: 3 }, { skill: 7 });
+    mine(t).hobbies![0].plateau = { at: 7, since: 3 };
+    mine(t, BEA).hobbies![0].plateau = { at: 7, since: 3 };
+    expect(ofType(sharePractice(t, reg, ANN, BEA, 'cooking', 30), 'hobby_breakthrough')).toEqual([{ type: 'hobby_breakthrough', unitId: ANN, hobbyId: 'cooking' }]);
+  });
+
+  it('a tie of skill is broken by a hash of the pair and the week, the same every time', () => {
+    const winners = new Set<string>();
+    for (let week = 5; week < 45; week++) {
+      const s = duo('cooking', { skill: 7, plateau: { at: 7, since: 3 } }, { skill: 7, plateau: { at: 7, since: 3 } });
+      const out = ofType(sharePractice(s, reg, ANN, BEA, 'cooking', week * 7), 'hobby_breakthrough');
+      expect(out).toHaveLength(1);
+      winners.add(String(out[0].unitId));
+      const again = duo('cooking', { skill: 7, plateau: { at: 7, since: 3 } }, { skill: 7, plateau: { at: 7, since: 3 } });
+      expect(ofType(sharePractice(again, reg, BEA, ANN, 'cooking', week * 7), 'hobby_breakthrough')[0].unitId).toBe(out[0].unitId);
     }
-    expect(found).not.toBeNull();
-    s.day = found!.day;
-    const interestBefore = mine(s).hobbies![0].interest;
+    expect(winners.size).toBe(2);
+  });
+
+  it('the day step applies it: a shared mess-hall slot gives the pair one share in the week', () => {
+    const s = duo('cooking');
+    const days = sharedDays(s, ANN, BEA, 40);
+    s.day = days[0].day;
     lifeDayStep(s, ctxOf(s, reg));
-    expect(mine(s).hobbies![0].interest).toBeGreaterThan(interestBefore);
+    expect(s.life!.shared![`${ANN}|${BEA}`]).toBe(Math.floor(days[0].day / 7));
     expect(mine(s, CAT).hobbies).toBeUndefined();
+  });
+
+  it('two women in their own quarters (a perUnit room) never share, however often they stand there together', () => {
+    const s = duo('reading'); // quarters_unit only
+    const quarters = [...reg.hubRooms.values()].find((r) => r.sceneLocationId === 'quarters_unit')!;
+    expect(reg.locations.get('quarters_unit')!.perUnit).toBe(true);
+    const days = sharedDays(s, ANN, BEA, 20);
+    expect(days.length).toBeGreaterThan(10); // they do stand there together
+    expect(days.every((d) => d.roomId === quarters.id)).toBe(true);
+    for (const d of days) {
+      const t = structuredClone(s);
+      t.day = d.day;
+      lifeDayStep(t, ctxOf(t, reg));
+      expect(t.life!.shared).toBeUndefined();
+    }
+  });
+
+  it('two women never reach the same milestone of the same hobby on one day', () => {
+    const s = duo('cooking', { skill: 7, plateau: { at: 7, since: 3 } }, { skill: 7, plateau: { at: 7, since: 3 } });
+    expect(ofType(breakthrough(s, reg, ANN, 'cooking', 30), 'hobby_milestone')).toHaveLength(1);
+    expect(breakthrough(s, reg, BEA, 'cooking', 30)).toEqual([]); // she waits
+    expect(mine(s, BEA).hobbies![0].plateau).toBeDefined();
+    s.day = 31;
+    expect(ofType(breakthrough(s, reg, BEA, 'cooking', 31), 'hobby_milestone')).toHaveLength(1); // the next day it is hers
   });
 });
 

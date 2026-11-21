@@ -2,7 +2,8 @@ import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import type { CampaignState, LifeState, NewsItem } from '../state/types';
 import { TUNING } from '../tuning';
-import { revealFact } from './facts';
+import { isLiving } from '../economy';
+import { revealFact, revealMastery } from './facts';
 import { takesPart } from './places';
 import { ensureLife, lifeChance, lifeHash, lifeMode, nextLifeId, temperamentOf } from './state';
 import type { HobbyEntry } from './types';
@@ -68,6 +69,13 @@ export function staleSweep(draft: CampaignState, day: number): EngineEvent[] {
   const life = draft.life;
   if (!life || lifeMode(draft) === 'off') return [];
   const events: EngineEvent[] = [];
+  // a woman who is no longer living (dead, deserted, gone) tells nothing: her items, her outbox entries and her news go
+  for (const item of [...life.queue]) {
+    const u = draft.squad.find((x) => x.id === item.unitId);
+    if (u && u.kind === 'named' && isLiving(u)) continue;
+    life.outbox = life.outbox.filter((o) => o.itemId !== item.id);
+    events.push(...drop(life, item.id, item.unitId));
+  }
   for (const n of [...life.news]) if (day >= n.until) events.push(...drop(life, n.itemId, n.unitId));
   const standing = held(life);
   for (const item of life.queue) {
@@ -158,6 +166,7 @@ export function closeNews(draft: CampaignState, itemId: string): EngineEvent[] {
   const item = life?.queue.find((q) => q.id === itemId);
   if (!life || !item) return [];
   if (item.factId !== undefined) revealFact(draft, item.factId);
+  if (item.what === 'mastered') revealMastery(draft, item.unitId, item.ref); // the base's best hand is known now, and a trait of hers
   life.queue = life.queue.filter((q) => q.id !== itemId);
   life.outbox = life.outbox.filter((o) => o.itemId !== itemId);
   life.news = life.news.filter((n) => n.itemId !== itemId);
