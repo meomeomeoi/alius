@@ -3,6 +3,8 @@ import { createCampaign } from './state/create';
 import { Rng } from './rng';
 import { enterStep, initialOnboarding, stepIndex } from './onboarding';
 import { defectAllowedFor, validateBond } from './bonds/profile';
+import { EXPECTATION_FIELDS, validateExpectations, type ExpectationProfile } from './dynamic/expectations';
+import { PRACTICE_LOCK_FIELDS } from './dynamic/types';
 import { TUNING } from './tuning';
 import { DEVELOPMENT_MODES } from './development/state';
 import { LIFE_MODES, TEMPERAMENT_FIELDS, newLife, temperamentProblems } from './life/state';
@@ -66,6 +68,10 @@ export interface UnitSetup {
   worldStances?: Record<string, WorldStance>;
   /** P9d: her bond profile (absent = modest). */
   bond?: Bond;
+  /** P15: what she expects and wants to see (absent = no stated profile), and the locks on it and on her practice (`Unit.expectationLocks`, `Unit.practiceLocks`). */
+  expectations?: ExpectationProfile;
+  expectationLocks?: string[];
+  practiceLocks?: string[];
   /** P14b: the axes her card states strongly (at most 4 axis keys) and how well she reads people (absent = mid). */
   anchors?: string[];
   insight?: Insight;
@@ -205,6 +211,7 @@ function validateUnit(
   validateDisposition(u, label, reg, out);
   validateDevelopmentProfile(u, label, reg, out);
   validateTemperament(u, label, out);
+  validateDynamicProfile(u, label, reg, out);
   validateLifeProfile(u, label, reg, out, opts.inactiveHobbies);
   if (u.bond !== undefined) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label}: bond: ${issue}`);
 
@@ -237,6 +244,31 @@ function validateDevelopmentProfile(u: Pick<UnitSetup, 'anchors' | 'insight'>, l
     if (anchorKey(reg, a) !== a) out.push(`${label}: anchor "${String(a)}" is not an axis`);
     if (seen.has(a)) out.push(`${label}: anchor "${String(a)}" is listed twice`);
     seen.add(a);
+  }
+}
+
+/** P15: her expectation profile is a legal one and her locks (on it and on her practice) name fields. A lock on `worship.<id>` or `moments.<id>` names an entry. */
+function validateDynamicProfile(u: Pick<UnitSetup, 'expectations' | 'expectationLocks' | 'practiceLocks'>, label: string, reg: Registries, out: string[]): void {
+  if (u.expectations !== undefined) for (const p of validateExpectations(u.expectations, reg, {}).issues) out.push(`${label}: ${p}`);
+  if (u.expectationLocks !== undefined) {
+    if (!Array.isArray(u.expectationLocks)) out.push(`${label}: expectation locks must be a list of fields`);
+    else {
+      for (const f of u.expectationLocks) {
+        const [head, id] = String(f).split('.');
+        const known = (EXPECTATION_FIELDS as readonly string[]).includes(head)
+          && (id === undefined || (head === 'worship' && reg.worshipTargets.has(id)) || (head === 'moments' && reg.momentSources.has(id)));
+        if (!known) out.push(`${label}: cannot lock "${String(f)}": an expectation field is ${EXPECTATION_FIELDS.join(', ')}`);
+      }
+    }
+  }
+  if (u.practiceLocks !== undefined) {
+    if (!Array.isArray(u.practiceLocks)) out.push(`${label}: practice locks must be a list of fields`);
+    else {
+      for (const f of u.practiceLocks) {
+        const cat = String(f).startsWith('categories.') ? String(f).slice('categories.'.length) : undefined;
+        if (!(PRACTICE_LOCK_FIELDS as readonly string[]).includes(String(f)) && !(cat !== undefined && reg.contentCategories.has(cat))) out.push(`${label}: cannot lock "${String(f)}": a practice field is ${PRACTICE_LOCK_FIELDS.join(', ')} or categories.<id>`);
+      }
+    }
   }
 }
 
@@ -486,6 +518,9 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     ...(u.insight !== undefined && u.insight !== 'mid' ? { insight: u.insight } : {}),
     ...(u.temperament ? { temperament: { ...u.temperament } } : {}),
     ...(u.temperamentLocks && u.temperamentLocks.length > 0 ? { temperamentLocks: [...new Set(u.temperamentLocks)] } : {}),
+    ...(u.expectations && Object.keys(u.expectations).length > 0 ? { expectations: structuredClone(u.expectations) } : {}),
+    ...(u.expectationLocks && u.expectationLocks.length > 0 ? { expectationLocks: [...new Set(u.expectationLocks)] } : {}),
+    ...(u.practiceLocks && u.practiceLocks.length > 0 ? { practiceLocks: [...new Set(u.practiceLocks)] } : {}),
     ...(u.hobbies && u.hobbies.length > 0 ? { hobbies: u.hobbies.map((h) => newHobby(h, day)) } : {}),
     ...(u.aptitudes && (u.aptitudes.high.length > 0 || u.aptitudes.low.length > 0) ? { aptitudes: { high: [...u.aptitudes.high], low: [...u.aptitudes.low] } } : {}),
     ...(u.opinions && Object.keys(u.opinions).length > 0

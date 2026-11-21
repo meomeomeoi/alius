@@ -875,17 +875,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `expectationsOf(state, reg, unitId): ExpectationProfile` (profile values minus targets whose gate is closed);
   - `lockedExpectation(unit, field): boolean`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `unknown ids are dropped`: an unknown source in `moments` and an unknown target in `worship` are gone, with issues.
   - `a gated worship target is dropped`: `genitalia` without `explicit_scenes` is not in `expectationsOf`.
   - `texts are cut and cleaned`: `tells.irritation` of 200 chars → 80; control characters stripped; "he blushes" (a pronoun for the commander) → dropped.
   - `offset is clamped to ±0.3`; `build` weights clamp 0–1; `traits` ≤ 6 × ≤ 40.
   - `blackout is stored but acts as limit without breath_play` (through P15a `effectiveHoldsUntil` once Task 13's reader is in; here: stored as given).
   - `a locked field cannot be patched` (`worship.feet` locked; a patch naming it throws).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/expectations.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R6.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the expectation profile`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/expectations.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R6.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the expectation profile`
 
 ---
 

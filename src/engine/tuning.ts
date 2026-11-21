@@ -694,4 +694,11 @@ export const TUNING = Object.freeze({
     /** Windows of `LifeRequires`: a shortage within `shortageDays`, a sparring bout within `sparringDays`, her own event within `afterEventDays`, another woman's within `otherWeekDays`; the squad-wide kinds are kept `kindsKeepDays`. */
     shortageDays: 3, sparringDays: 2, afterEventDays: 30, otherWeekDays: 7, kindsKeepDays: 7,
   }),
+  /**
+   * P15: the dynamic. `profile` bounds her expectation profile (texts are cut to these; `offsetMax` is the most her point may move from her style's).
+   * Every value is `AUTHOR TO TUNE`; the rest of the block arrives with the holder layer.
+   */
+  dynamic: Object.freeze({
+    profile: Object.freeze({ tellMax: 80, howMax: 60, traitsMax: 6, traitMax: 40, offsetMax: 0.3 }),
+  }),
 });

@@ -1,4 +1,5 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
+import type { ExpectationProfile } from '../dynamic/expectations';
 import type { Practice } from '../dynamic/types';
 import type { MomentsState } from '../moments/state';
 import type { PhysicsRun } from '../physics/state';
@@ -213,6 +214,10 @@ export interface Unit {
   temperamentLocks?: Array<keyof Temperament>;
   /** P15: the `bond.practice` fields the player locked (`style`, `audience`, `inclination`, `fairness`, `hintStyle`, `drive`, `categories.<id>`); a re-sync and drift leave them alone. */
   practiceLocks?: string[];
+  /** P15: what she expects of the commander and wants to see; hidden in play (absent = she has no stated profile). Read through `expectationsOf`. */
+  expectations?: ExpectationProfile;
+  /** P15: the fields of `expectations` the player locked (a top-level field, or `worship.<targetId>` / `moments.<sourceId>`); a re-sync and drift leave them alone. */
+  expectationLocks?: string[];
   /** P14c: her hobbies and how far each has come (absent = none). */
   hobbies?: HobbyState[];
   /** P14c: what she picks up quickly and what she does not (absent = every hobby is standard). */
