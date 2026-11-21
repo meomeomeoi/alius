@@ -15,3 +15,5 @@ export { answerProbe, pendingProbe, probeDayStep, probeQueueRoom, sceneProbe } f
 export { distanceToPoint, fadeDeclarations, newReading, readMoments, regionOf, resettleReading, updateReading } from './reading';
 export type { ReadingSample } from './reading';
 export { defaultExpectation, leadingStyle, noteEvents, surfaceHolds } from './style';
+export { applyDynamicIntent, dynamicIntentInput, DYNAMIC_ROW_IS_CONDITIONAL } from './intents';
+export type { DynamicIntentInput } from './intents';

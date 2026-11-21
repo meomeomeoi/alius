@@ -1,5 +1,6 @@
 import { clockText } from '../engine/calendar';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
+import { dynamicIntentInput } from '../engine/dynamic/intents';
 import { lifeIntentInput } from '../engine/life/intents';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { dmMode, threadOf } from '../engine/dms';
@@ -106,6 +107,7 @@ export function createComms(deps: CommsDeps): Comms {
       ...leakInput(s, deps.registries(), [unitId]), // P12: what the frequency caught about her (nothing without the trait)
       ...warnedInput(s, [unitId]), // P12: the units the commander has an open warning about
       ...lifeIntentInput(s, deps.registries(), [unitId], null, 'dm'), // P14c: her news and her hobbies only
+      ...dynamicIntentInput(s, deps.registries(), [unitId], 'dm'), // P15: her probe, an open milestone, claim or offer (nothing while off or with no subject)
     };
   }
 

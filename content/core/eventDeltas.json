@@ -1592,5 +1592,108 @@
       "major": {},
       "extreme": {}
     }
+  },
+  {
+    "id": "probe_answered",
+    "cause": "She tested the commander and the commander answered",
+    "journal": "the commander answered her probe",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "probe_observed",
+    "cause": "She made a gesture and the commander answered",
+    "journal": "the commander answered her gesture",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "milestone_accepted",
+    "cause": "The commander accepted what she asked",
+    "journal": "the commander accepted her step",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "milestone_refused",
+    "cause": "The commander refused what she asked",
+    "journal": "the commander refused her step",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "compromat_mentioned",
+    "cause": "Something she holds was mentioned",
+    "journal": "something she holds was mentioned",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "protocol_slip",
+    "cause": "A slip of the form she keeps",
+    "journal": "a slip of the form she keeps",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "offer_answered",
+    "cause": "She answered what the commander offered",
+    "journal": "she answered the commander's offer",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "dynamic_exit",
+    "cause": "The commander left what she held",
+    "journal": "the commander left what she held",
+    "rows": {
+      "minor": {
+        "trust": -2,
+        "affinity": -2
+      },
+      "moderate": {
+        "trust": -5,
+        "affinity": -5,
+        "stress": 5
+      },
+      "major": {
+        "trust": -10,
+        "affinity": -10,
+        "stress": 10
+      },
+      "extreme": {
+        "trust": -20,
+        "affinity": -20,
+        "stress": 20
+      }
+    }
   }
 ]

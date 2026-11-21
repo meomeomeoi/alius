@@ -744,6 +744,8 @@ export const TUNING = Object.freeze({
     favour: Object.freeze({ max: 20, decayPerDay: 1 }),
     /** Track xp (spec §6: tracks decay much slower than hold): after `idleDays` without a practice, `decayPerDay` xp a day. `AUTHOR TO TUNE`. */
     tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
+    /** The longest texts a model-reported dynamic event keeps: a compromat summary and an offer's correction. */
+    intents: Object.freeze({ summaryMax: 160, correctionMax: 80 }),
     /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
     backoffDays: 14,
     /**

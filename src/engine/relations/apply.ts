@@ -9,6 +9,7 @@ import { applyDisciplineEvent } from '../discipline/record';
 import { recordWitnesses } from '../development/appraisal';
 import { measureList } from '../discipline';
 import { evaluateAutomatic } from './graph';
+import { applyDynamicIntent, DYNAMIC_ROW_IS_CONDITIONAL, dynamicIntentInput } from '../dynamic/intents';
 import { applyLifeIntent, lifeIntentInput, ROW_IS_CONDITIONAL } from '../life/intents';
 import { validateIntents } from './intents';
 import { LIFE_EVENT_TYPES } from './vocab';
@@ -66,7 +67,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     overrides: openOverrideIds(draft, p.participants), // P13: the warden's override a compromise may settle
     expectations: expectationIds(draft, p.participants), // P13: her expectations, while she is present
     ...conspireInput(draft, reg, p.participants), // P13: the units the commander may enlist against her
-    ...lifeIntentInput(draft, reg, p.participants, p.channel === 'scene' ? draft.scene ?? null : null, p.channel) }); // P14c: what she may tell, her hobbies, her views
+    ...lifeIntentInput(draft, reg, p.participants, p.channel === 'scene' ? draft.scene ?? null : null, p.channel), // P14c: what she may tell, her hobbies, her views
+    ...dynamicIntentInput(draft, reg, p.participants, p.channel) }); // P15: a probe to answer, an open milestone, claim or offer (nothing while off)
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -86,11 +88,12 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     for (const id of believed) {
       events.push(...(DISCIPLINE_EVENTS.includes(e.type)
         ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
-        : ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only
+        : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only; P15: the dynamic's rows are zero, its effect is applyDynamicIntent's
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'conspired') events.push(...tryAlly(draft, ctx, id)); // P13: the ally check
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx, id, e)); // P14c: her news told, a hobby praised, ...
+      if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx, id, e)); // P15: a probe answered or observed, ...
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)

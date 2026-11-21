@@ -1,6 +1,6 @@
 import type { Severity } from '../state/types';
 
-/** The event types the mechanic model may report (the 26 of P3 spec §3, then P9, P9d, P12, P13 and P14c's seven). Content (`eventDeltas`) must have a row for each. */
+/** The event types the mechanic model may report (the 26 of P3 spec §3, then P9, P9d, P12, P13, P14c's seven and P15's seven). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
@@ -20,10 +20,15 @@ export const EVENT_TYPES = [
   'conspired',
   // P14c: her life (offered to the model only while there is something of the kind to report; the engine's own offered lists decide)
   'news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned',
+  // P15: the dynamic (each offered to the model only while its subject exists: a pending probe, an open milestone or offer, a holder's compromat, a holder at role in company)
+  'probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered',
 ] as const;
 
 /** P14c: the model-reportable types of her life. The intent prompt offers each only with its own list, and `validateIntents` drops one it was not offered. */
 export const LIFE_EVENT_TYPES: readonly string[] = ['news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned'];
+
+/** P15: the model-reportable types of the dynamic. The intent prompt offers each only while its subject exists, and `validateIntents` drops one it was not offered. */
+export const DYNAMIC_INTENT_TYPES: readonly string[] = ['probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered'];
 
 /** P14c: the kinds of a `first_moment` (a closed enum; a kind the pair has not had yet is kept). */
 export const FIRST_KINDS = ['laughed', 'fell_asleep_beside', 'told_her_past', 'cried', 'taught', 'asked_about_commander'] as const;
@@ -45,6 +50,8 @@ export const ENGINE_EVENT_TYPES = ['warden_complied', 'warden_defied', 'warden_b
   'debts_exposed',
   // P14c: a quiet meeting with her (a pastime) ended; never reported by the model
   'time_together',
+  // P15: the commander left a dynamic (the exit, by route and severity); the engine's own
+  'dynamic_exit',
 ] as const;
 
 /** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */

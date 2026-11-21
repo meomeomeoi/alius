@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import type { DynamicOffer } from '../../engine/dynamic/types';
 import type { LifeOffer } from '../../engine/life/types';
-import { EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
+import { DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
 import { cleanLabels } from '../../engine/moments/answer';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
@@ -57,6 +58,8 @@ export interface IntentExtractInput {
   conspire?: string[];
   /** P14c: what she may tell, her hobbies, the opinions she has voiced and the jokes that may come back, as lists of ids the model may name; each type of her life is offered only while its list is not empty. Absent or empty = the prompt is byte-identical to before her life existed. */
   life?: LifeOffer;
+  /** P15: the dynamic: the types that have a subject right now, the ids a report may name, her probe axes in words and the labels of the open milestones. Absent or with nothing in it = the prompt is byte-identical to before the dynamic existed. */
+  dynamic?: DynamicOffer & { probeAxes: Record<string, string>; milestoneLabels: Record<string, string> };
   /** P15a: the scene blocking, offered only while it is live (absent = the prompt is byte-identical to before the package). */
   staging?: StagingInput;
   /** P14b: ask for each event's `reading` (how the person it happened to took it); absent = the prompt is byte-identical to before development existed. */
@@ -131,6 +134,32 @@ function lifeFlags(life: LifeOffer | undefined): { news: boolean; hobbies: boole
 
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ');
 
+/** P15: which parts of the dynamic are offered (each only while its list is not empty; an empty offer is the old prompt). */
+function dynamicFlags(d: IntentExtractInput['dynamic']): { probe: boolean; observed: boolean; milestones: boolean; claims: boolean; exits: boolean; offers: boolean; compromat: boolean; slips: boolean; types: Set<string> } {
+  const types = new Set(d?.types ?? []);
+  return {
+    probe: (d?.probes ?? []).length > 0 && types.has('probe_answered'), observed: (d?.observed ?? []).length > 0 && types.has('probe_observed'),
+    milestones: (d?.milestones ?? []).length > 0 && types.has('milestone_accepted'), claims: (d?.claims ?? []).length > 0 && types.has('compromise_reached'),
+    exits: (d?.exits ?? []).length > 0 && types.has('compromise_reached'), offers: (d?.offers ?? []).length > 0 && types.has('offer_answered'),
+    compromat: (d?.compromat ?? []).length > 0 && types.has('compromat_mentioned'), slips: (d?.slips ?? []).length > 0 && types.has('protocol_slip'), types,
+  };
+}
+
+/** P15: the `DYNAMIC` data block of the prompt: each list that is offered, one id per line with her words, never a number (empty when nothing is offered). */
+function dynamicBlock(d: NonNullable<IntentExtractInput['dynamic']>): string[] {
+  const f = dynamicFlags(d);
+  const out: string[] = [];
+  if (f.probe) out.push('PROBES (unit: what she is testing, in words):', ...d.probes.map((id) => `- ${id}: ${oneLine(d.probeAxes[id] ?? '')}`));
+  if (f.observed) out.push(`OBSERVED (units who may lead with a gesture of their own): ${d.observed!.join(', ')}`);
+  if (f.milestones) out.push('MILESTONES (id: what she asked):', ...d.milestones.map((id) => `- ${id}: ${oneLine(d.milestoneLabels[id] ?? '')}`));
+  if (f.claims) out.push(`CLAIMS (ids): ${d.claims.join(', ')}`);
+  if (f.exits) out.push(`EXITS (ids): ${d.exits.join(', ')}`);
+  if (f.offers) out.push(`OFFERS (ids): ${d.offers.join(', ')}`);
+  if (f.compromat) out.push(`HOLDER COMPROMAT (units who hold something over the commander): ${d.compromat.join(', ')}`);
+  if (f.slips) out.push(`PROTOCOL (units whose forms may slip): ${d.slips!.join(', ')}`);
+  return out.length > 0 ? ['DYNAMIC (what the commander may be answering; a report may name only the ids listed here):', ...out] : [];
+}
+
 /** P14c: the `LIFE` data block of the prompt: each list that is not empty, one id per line (empty when nothing is offered). */
 function lifeBlock(life: LifeOffer): string[] {
   const f = lifeFlags(life);
@@ -181,7 +210,8 @@ function system(raw: unknown): string {
   const hasConspire = (input.conspire ?? []).length > 0;
   const asksReading = input.reading === true;
   const life = lifeFlags(input.life);
-  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (hasRules || (hasOverride && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const dyn = dynamicFlags(input.dynamic);
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) /* P15: each type of the dynamic only with its subject */ && (hasRules || (hasOverride && t === 'compromise_reached') || ((dyn.claims || dyn.exits) && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),
@@ -210,6 +240,12 @@ function system(raw: unknown): string {
     ...(life.topics ? ['               "topicId": "<id from TOPICS>", "positionId": "<a position id of that topic>"   // topicId for opinion_voiced / opinion_challenged / opinion_agreed; positionId only for opinion_challenged, optional'] : []),
     ...(life.firsts ? ['               "kind": FIRST_KIND   // only for first_moment'] : []),
     ...(life.jokes ? ['               "factId": "<id from JOKES>"   // only for joke_returned'] : []),
+    ...(dyn.probe || dyn.observed ? ['               "response": "yielded" | "deflected" | "resisted" | "returned", "tone": "sincere" | "ironic" | "transactional" | "flat"   // only for probe_answered / probe_observed; tone optional'] : []),
+    ...(dyn.milestones ? ['               "milestoneId": "<id from MILESTONES>"   // only for milestone_accepted / milestone_refused'] : []),
+    ...(dyn.claims ? ['               "claimId": "<id from CLAIMS>"   // only for compromise_reached about a claim'] : []),
+    ...(dyn.exits ? ['               "exitId": "<id from EXITS>"   // only for compromise_reached about an exit'] : []),
+    ...(dyn.offers ? ['               "offerId": "<id from OFFERS>", "answer": "accepted" | "corrected" | "mocked" | "refused" | "tonight", "correction": "<a few words>"   // only for offer_answered; correction only with corrected'] : []),
+    ...(dyn.compromat ? ['               "summary": "<one short line>", "factId": "<its id, when one is named>"   // only for compromat_mentioned'] : []),
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -254,6 +290,13 @@ function system(raw: unknown): string {
     ...(life.voiced ? ['"opinion_challenged": the commander argues against what a unit has told about a topic in TOPICS marked "has told"; the unit is the target; set "topicId", and "positionId" when the commander clearly argues for one of its positions; "severity" is how hard the commander pushes (minor or moderate: a remark; major or extreme: a full argument). "opinion_agreed": the commander agrees with what she holds on such a topic.'] : []),
     ...(life.firsts ? ['"first_moment": something happens for the first time between the commander and the unit; set "kind" to the word from FIRST_KIND that fits. Report it only when the exchange plainly shows it.'] : []),
     ...(life.jokes ? ['"joke_returned": the commander and a unit bring back a joke from JOKES; set "factId". Report it only when the exchange plainly refers to it.'] : []),
+    ...(dyn.probe ? ['"probe_answered": a unit listed under PROBES just tried something small and deniable (a request, a correction, a small decision made for the commander, a touch she leads) and the commander answers it in this exchange; the unit is the target. "response": "yielded" when the commander lets it stand or goes along with it, "returned" when the commander takes the lead back, "resisted" when the commander openly refuses it, "deflected" when the commander dodges or changes the subject; "tone" is how the commander said it. Skip it when the exchange shows no answer.'] : []),
+    ...(dyn.observed ? ['"probe_observed": a unit listed under OBSERVED makes a small gesture of her own to take the lead and the commander answers it; the unit is the target; same "response" and "tone" as probe_answered. A gesture no one answered is not reported.'] : []),
+    ...(dyn.milestones ? ['"milestone_accepted" / "milestone_refused": the commander accepts or refuses what a unit asked, one of MILESTONES; the unit is the target; set "milestoneId". Report it only when the exchange shows the answer.'] : []),
+    ...(dyn.claims || dyn.exits ? ['"compromise_reached" about a claim or an exit: the commander and the unit agree a smaller or a different version; set "claimId" (from CLAIMS) or "exitId" (from EXITS) and put the agreed wording in "text" (at most 160 characters). Report it only when the exchange shows both accepting it.'] : []),
+    ...(dyn.offers ? ['"offer_answered": a unit answers what the commander offered her, one of OFFERS; the unit is the target; set "offerId" and "answer": "accepted", "corrected" (she takes it with a change: put it in "correction"), "mocked", "refused" or "tonight" (she takes it up now).'] : []),
+    ...(dyn.compromat ? ['"compromat_mentioned": the commander or a unit speaks of something a unit listed under HOLDER COMPROMAT holds over the commander; that unit is the target; "summary" is one short line of what was said, "factId" an id only when the exchange names one.'] : []),
+    ...(dyn.slips ? ['"protocol_slip": the commander lapses, with others present, from the form of address or the manner a unit listed under PROTOCOL expects of the commander; that unit is the target. Report it only when the exchange plainly shows the lapse.'] : []),
     ...(input.staging ? stagingRules(input.staging) : []),
     ...(hasLimits ? ['If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders).'] : []),
   ].join('\n');
@@ -300,6 +343,7 @@ function prompt(raw: unknown): string {
   if ((input.warned ?? []).length > 0) out.push('', `WARNED (units the commander has been warned about): ${input.warned!.join(', ')}`);
   const lifeList = input.life;
   if (lifeList && lifeBlock(lifeList).length > 0) out.push('', ...lifeBlock(lifeList));
+  if (input.dynamic && dynamicBlock(input.dynamic).length > 0) out.push('', ...dynamicBlock(input.dynamic));
   if (input.staging) out.push('', ...stagingBlock(input.staging));
   if (input.openPromises.length > 0) {
     out.push('', 'Open promises:', ...input.openPromises.map((p) => `- ${p.by} → ${p.to}: ${p.text}`));
@@ -323,14 +367,14 @@ const LABELS: readonly string[] = EXPRESSION_LABELS;
  */
 export function sanitizeIntentOutput(
   raw: unknown,
-  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P14c: what was offered about her life (the lists the model was shown). */ life?: LifeOffer; /** P11b: the campaign's fact length. */ factTextMax?: number },
+  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P14c: what was offered about her life (the lists the model was shown). */ life?: LifeOffer; /** P15: what was offered about the dynamic. */ dynamic?: DynamicOffer; /** P11b: the campaign's fact length. */ factTextMax?: number },
 ): IntentOutput {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: undefined };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
   // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.life ? { life: ctx.life } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.life ? { life: ctx.life } : {}), ...(ctx.dynamic ? { dynamic: ctx.dynamic } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {
@@ -396,6 +440,7 @@ export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: 
     intercepted: (input.intercepted ?? []).map((i) => i.id), warned: input.warned ?? [],
     overrides: (input.overrides ?? []).map((o) => o.id), expectations: (input.expectations ?? []).map((x) => x.id), conspire: input.conspire ?? [],
     ...(input.life ? { life: input.life } : {}),
+    ...(input.dynamic ? { dynamic: input.dynamic } : {}),
     ...(input.factTextMax !== undefined ? { factTextMax: input.factTextMax } : {}),
   });
   return input.staging ? { ...base, staging: sanitizeStaging(isObj(raw) ? raw.staging : undefined, input.staging) } : base; // P15a

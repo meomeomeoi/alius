@@ -1,8 +1,10 @@
+import { RESPONSE_TYPES, type ResponseType } from '../blocking/types';
+import { OFFER_ANSWERS, TONES, type DynamicOffer, type OfferAnswer, type Tone } from '../dynamic/types';
 import { normalizeTag } from '../setup';
 import type { LifeOffer } from '../life/types';
 import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
-import { EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
+import { DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
 export { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES };
 export type { EventType, ProposalKind };
@@ -34,6 +36,17 @@ export interface EventIntent {
   positionId?: string;
   kind?: string;
   factId?: string;
+  /** P15: a probe answer's response and tone, the milestone, claim, exit or offer an event is about, her answer to an offer and its correction, and a compromat summary (each an id or a word from what the model was offered). */
+  response?: ResponseType;
+  tone?: Tone;
+  axis?: string;
+  milestoneId?: string;
+  claimId?: string;
+  exitId?: string;
+  offerId?: string;
+  answer?: OfferAnswer;
+  correction?: string;
+  summary?: string;
   /** P14b: how the person it happened to took it, read by the model (character development); only a complete, valid reading is kept. */
   reading?: Reading;
   evidence: string;
@@ -209,6 +222,60 @@ function lifeFields(type: string, e: Record<string, unknown>, intent: EventInten
   return { key: `${type}|${who}|${key}` };
 }
 
+const oneLineText = (v: unknown, max: number): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max).trim() : '');
+
+/**
+ * P15: validates one event of the dynamic against what the model was offered (`DynamicOffer`), filling its fields. The unit is the one the event is
+ * about, whichever side the model wrote her on; the commander is the actor. A response outside `RESPONSE_TYPES` drops a probe event, a tone outside
+ * `TONES` only the tone. Returns a dedupe key, or `null` to drop the event.
+ */
+function dynamicFields(type: EventType, e: Record<string, unknown>, intent: EventIntent, offer: DynamicOffer | undefined): { key: string } | null {
+  if (offer === undefined || !offer.types.includes(type)) return null;
+  const who = intent.actor !== 'commander' ? intent.actor : intent.targets[0];
+  if (who === undefined) return null;
+  intent.actor = 'commander';
+  intent.targets = [who];
+  const D = TUNING.dynamic.intents;
+  const response = (RESPONSE_TYPES as readonly unknown[]).includes(e.response) ? (e.response as ResponseType) : undefined;
+  const tone = (TONES as readonly unknown[]).includes(e.tone) ? (e.tone as Tone) : undefined;
+  switch (type) {
+    case 'probe_answered':
+    case 'probe_observed': {
+      if (response === undefined || !(type === 'probe_answered' ? offer.probes : offer.observed ?? []).includes(who)) return null;
+      intent.response = response;
+      if (tone !== undefined) intent.tone = tone;
+      if (typeof e.axis === 'string' && /^[a-z_]{1,32}$/.test(e.axis)) intent.axis = e.axis;
+      return { key: `${type}|${who}` };
+    }
+    case 'milestone_accepted':
+    case 'milestone_refused': {
+      if (typeof e.milestoneId !== 'string' || !offer.milestones.includes(e.milestoneId)) return null;
+      intent.milestoneId = e.milestoneId;
+      return { key: `${type}|${who}|${e.milestoneId}` };
+    }
+    case 'compromat_mentioned': {
+      const summary = oneLineText(e.summary, D.summaryMax);
+      if (summary === '' || !offer.compromat.includes(who)) return null;
+      intent.summary = summary;
+      if (typeof e.factId === 'string' && /^[A-Za-z0-9_:-]{1,24}$/.test(e.factId)) intent.factId = e.factId;
+      return { key: `${type}|${who}` };
+    }
+    case 'protocol_slip':
+      return (offer.slips ?? []).includes(who) ? { key: `${type}|${who}` } : null;
+    case 'offer_answered': {
+      const answer = (OFFER_ANSWERS as readonly unknown[]).includes(e.answer) ? (e.answer as OfferAnswer) : undefined;
+      if (typeof e.offerId !== 'string' || !offer.offers.includes(e.offerId) || answer === undefined) return null;
+      intent.offerId = e.offerId;
+      intent.answer = answer;
+      const correction = oneLineText(e.correction, D.correctionMax);
+      if (answer === 'corrected' && correction !== '') intent.correction = correction;
+      return { key: `${type}|${who}|${e.offerId}` };
+    }
+    default:
+      return null;
+  }
+}
+
 /**
  * Re-validates whatever the mechanic model returned. Never throws; drops what it cannot trust: unknown enums,
  * ids that are not scene participants (or not in the squad), unit→unit events, events without evidence,
@@ -236,6 +303,8 @@ export function validateIntents(
     conspire?: string[];
     /** P14c: what the model was offered about her life (`lifeIntentInput`). Without it, or for a list that is empty, a report of that type is dropped. */
     life?: LifeOffer;
+    /** P15: what the model was offered about the dynamic (`dynamicIntentInput`). Without it, or for a type or an id it does not list, a report of the dynamic is dropped. */
+    dynamic?: DynamicOffer;
     /** P11b: the longest text a fact or a promise keeps (the campaign's memory setting); default `TUNING.memory.factTextMax`. */
     factTextMax?: number;
   },
@@ -268,6 +337,14 @@ export function validateIntents(
       if (text === '') continue;
       intent.overrideId = e.overrideId;
       intent.text = text;
+    } else if (type === 'compromise_reached' && (typeof e.claimId === 'string' || typeof e.exitId === 'string')) {
+      // P15: a compromise settles one of her open claims or an exit she was offered; only an id it was shown, and only the commander reaches it
+      const claim = typeof e.claimId === 'string' && (ctx.dynamic?.claims ?? []).includes(e.claimId) ? e.claimId : undefined;
+      const exit = typeof e.exitId === 'string' && (ctx.dynamic?.exits ?? []).includes(e.exitId) ? e.exitId : undefined;
+      if (actor !== 'commander' || (claim === undefined && exit === undefined)) continue;
+      if (claim !== undefined) intent.claimId = claim;
+      if (exit !== undefined) intent.exitId = exit;
+      if (typeof e.text === 'string') intent.text = e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim();
     } else if (RULE_EVENTS.includes(type)) {
       // a rule event names a rule of one of the units it lands on; an unknown or missing id drops it
       const rule = typeof e.ruleId === 'string' ? (ctx.rules ?? []).find((r) => r.id === e.ruleId && targets.includes(r.unitId)) : undefined;
@@ -302,6 +379,12 @@ export function validateIntents(
       const life = lifeFields(type, e, intent, ctx.life);
       if (life === null || seenLife.has(life.key)) continue;
       seenLife.add(life.key);
+    }
+    if (DYNAMIC_INTENT_TYPES.includes(type)) {
+      // the dynamic: the type and the ids it names must be among what was offered, for a woman who is here; the sides are the type's own
+      const dyn = dynamicFields(type, e, intent, ctx.dynamic);
+      if (dyn === null || seenLife.has(dyn.key)) continue;
+      seenLife.add(dyn.key);
     }
     if (type === 'commander_enforced' || type === 'threatened') {
       const word = typeof e.measure === 'string' ? e.measure : '';

@@ -1331,16 +1331,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `dynamicIntentInput(state, reg, participants: string[], channel: 'scene' | 'dm'): { dynamic?: DynamicOffer & { probeAxes: Record<string, string>; milestoneLabels: Record<string, string> } }`;
   - `applyDynamicIntent(draft, ctx, unitId, ev: EventIntent): EngineEvent[]` (this task handles `probe_answered` / `probe_observed`; later tasks add their types).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `prompt without dynamic is byte-identical` (the pinned fixture, with and without every content category on and a holder in the squad but none present).
   - `only offered types are listed`: a pending probe for a present unit lists `probe_answered` and not `milestone_accepted`.
   - `an unoffered type or id is dropped`: `milestone_accepted { milestoneId: 'dm9' }` with no open milestone → dropped; `probe_answered` for a unit without a pending probe → dropped.
   - `a probe answer through intents/apply closes the probe and moves hold and the reading`.
   - `tone outside TONES is dropped from the event, the event stays`.
-- [ ] **Step 2: Run** both files → FAIL.
-- [ ] **Step 3: Implement** as in R22.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS (all four pinned-fixture tests green).
-- [ ] **Step 5: Commit** `feat(P15): dynamic intents, offered only while their subject exists`
+- [x] **Step 2: Run** both files → FAIL.
+- [x] **Step 3: Implement** as in R22.
+- [x] **Step 4: Run** the files, then `npm test` → PASS (all four pinned-fixture tests green).
+- [x] **Step 5: Commit** `feat(P15): dynamic intents, offered only while their subject exists`
 
 ---
 

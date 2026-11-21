@@ -68,7 +68,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('journal phrases of the event deltas (P3b)', () => {
     const texts = fields('eventDeltas', ['journal']);
-    expect(texts.length).toBe(69); // P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
+    expect(texts.length).toBe(77); // P15: + the seven dynamic intents and dynamic_exit; P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 

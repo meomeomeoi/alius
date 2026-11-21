@@ -289,3 +289,22 @@ export const DYNAMIC_EVENT_TYPES = [
   'probe_issued', 'probe_backoff', 'position_shifted', 'offer_made', 'zone_revealed', 'mastery_gained',
   'regard_changed', 'regard_band_changed', 'disappointed', 'regard_question_asked',
 ] as const;
+
+/**
+ * What the intent prompt may offer about the dynamic (R22): the reportable types that have a subject right now and the ids a report may name.
+ * Built from the state each time (`dynamicIntentInput`), never stored; `validateIntents` drops any type or id that is not in it. `observed` lists
+ * the units who may lead with a gesture of their own, `slips` those whose protocol may slip in company.
+ */
+export interface DynamicOffer {
+  types: string[];
+  /** Units whose probe is pending (at most one a scene). */
+  probes: string[];
+  milestones: string[];
+  claims: string[];
+  exits: string[];
+  offers: string[];
+  /** The holders who hold something over the commander (their ids only). */
+  compromat: string[];
+  observed?: string[];
+  slips?: string[];
+}
