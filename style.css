@@ -3583,6 +3583,39 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 .alius-report-line, .alius-recap { margin: 0.2em 0; }
 .alius-recap { border-left: 2px solid currentColor; padding-left: 0.6em; }
 
+/* Her life (P14c): the TEMPERAMENT, HOBBIES and OPINIONS editors of the calibration and the dossier. Palette variables and currentColor only; no semantic colours (readable mode safe). */
+#alius-shell .alius-life-profile {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-life-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
+
+#alius-shell .alius-life-row .alius-input {
+  max-width: 100%;
+}
+
+#alius-shell .alius-life-dots {
+  letter-spacing: 2px;
+}
+
+#alius-shell .alius-life-profile [aria-pressed='true'],
+#alius-shell .alius-calib-section .alius-life-row [aria-pressed='true'] {
+  text-decoration: underline;
+}
+
+#alius-shell .alius-life-profile [aria-disabled='true'],
+#alius-shell .alius-calib-section .alius-life-row [aria-disabled='true'] {
+  opacity: 0.6;
+}
+
 /* P13: LEASHSWAP. The MODE section, the warden pick and the WARDEN ASSIGNED notice. Everything draws from the shared variables. */
 .alius-mode .alius-cards { margin-block: 0.5rem; }
 .alius-death-rule[aria-pressed="true"],

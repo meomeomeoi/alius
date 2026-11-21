@@ -10,6 +10,8 @@ import { manualOptions, type StartPreview, type UnitDraft } from '../../setup/wi
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { arcLine } from '../../engine/arcs';
+import { renderHobbiesEditor, renderOpinionsEditor, renderTemperamentBlock } from '../life/profileBlocks';
+import { TEMPERAMENT_DEFAULTS } from '../../engine/life/state';
 
 type Choice = UnitDraft['choice'];
 export type CalibrationPatch = Partial<Choice> & { secondDefect?: boolean };
@@ -363,6 +365,37 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
           anchors.length > 0 ? `Holds firmly: ${anchors.map(words).join(', ')}` : 'Holds nothing firmly.'),
         h('p', { class: 'alius-dev-insight', 'data-development': 'insight', ...analyzeAttrs('glossary:character_development') }, `Reads people: ${ch.insight ?? 'mid'}`)),
     );
+  }
+
+  // --- temperament, hobbies and opinions (P14c): what the card says about how she talks, what she does for herself and what she thinks
+  const who = { id: draft.avatar, displayName: draft.displayName };
+  if (shown.has('temperament')) {
+    const temperament = { ...TEMPERAMENT_DEFAULTS, ...ch.temperament };
+    const body = h('div', { class: 'alius-life-temperament' });
+    renderTemperamentBlock(body, {
+      unit: who, temperament, locks: ch.temperamentLocks ?? [], editable: true,
+      onSet: (field, value) => onUpdate({ temperament: { ...temperament, [field]: value } }),
+      onLock: (field, on) => onUpdate({ temperamentLocks: [...(ch.temperamentLocks ?? []).filter((f) => f !== field), ...(on ? [field] : [])] }),
+    });
+    host.append(section('temperament', 'TEMPERAMENT', body));
+  }
+  if (shown.has('hobbies')) {
+    const body = h('div', { class: 'alius-life-hobbies' });
+    renderHobbiesEditor(body, {
+      unit: who, registries: reg, editable: true, hobbies: (ch.hobbies ?? []).map((id) => ({ id })), aptitudes: ch.aptitudes ?? { high: [], low: [] },
+      onSet: (hobbies, aptitudes) => onUpdate({ hobbies, aptitudes }),
+    });
+    host.append(section('hobbies', 'HOBBIES', body));
+  }
+  if (shown.has('opinions')) {
+    const body = h('div', { class: 'alius-life-opinions' });
+    const opinions = ch.opinions ?? {};
+    renderOpinionsEditor(body, {
+      unit: who, registries: reg, editable: true, opinions, max: TUNING.life.opinion.importMax,
+      onSet: (topicId, patch) => onUpdate({ opinions: { ...opinions, [topicId]: { ...opinions[topicId], ...patch } } }),
+      onRemove: (topicId) => onUpdate({ opinions: Object.fromEntries(Object.entries(opinions).filter(([t]) => t !== topicId)) }),
+    });
+    host.append(section('opinions', 'OPINIONS', body));
   }
 
   // --- baseline

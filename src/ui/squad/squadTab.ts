@@ -3,6 +3,8 @@ import { renderHierarchyBlock } from '../power/hierarchy';
 import { renderDeviceBlock } from '../personal/deviceBlock';
 import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderDevelopmentBlock } from '../development/developmentBlock';
+import { renderHobbiesEditor, renderOpinionsEditor, renderTemperamentBlock } from '../life/profileBlocks';
+import { temperamentOf } from '../../engine/life/state';
 import { renderVitalsBlock } from '../vitals/block';
 import { motionReduced } from '../motion';
 import { renderChallenge, type WagerChoice } from '../personal/wagerForm';
@@ -82,6 +84,8 @@ export interface SquadTabCtx {
   /** P3b: the MEMORY block of each named unit's dossier; absent = no block. */
   /** P14b: the DEVELOPMENT view of each named unit (HOLD and fact editing go through `dispatch`); absent = no block. */
   development?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
+  /** P14c: the TEMPERAMENT block and the HOBBIES and OPINIONS editors of each named unit's dossier (every edit goes through `dispatch`); absent = no block. */
+  life?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
   memory?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; confirm: (text: string) => Promise<boolean>; onChanged?: () => void };
 }
 
@@ -349,6 +353,40 @@ function developmentBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
   return host;
 }
 
+/**
+ * P14c: her temperament (with a padlock per field), hobbies and opinions, under DEVELOPMENT. Editable only with the mechanics edit lock off;
+ * with it on every control is drawn `aria-disabled`, her aptitudes are not drawn and an opinion she has not voiced is left out.
+ */
+function lifeProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
+  if (!ctx.life || unit.kind !== 'named') return null;
+  const { dispatch, onChanged } = ctx.life;
+  const editable = !ctx.settings().editLock;
+  const who = { id: unit.id, displayName: unit.displayName };
+  const send = (action: { type: string; payload?: unknown }): void => {
+    dispatch(action);
+    onChanged?.();
+  };
+  const host = h('div', { class: 'alius-life-profile' });
+  const part = (cls: string): HTMLElement => host.appendChild(h('div', { class: cls }));
+  renderTemperamentBlock(part('alius-life-temperament'), {
+    unit: who, temperament: temperamentOf(state, unit.id), locks: unit.temperamentLocks ?? [], editable,
+    onSet: (field, value) => send({ type: 'profile/set_temperament', payload: { unitId: unit.id, temperament: { [field]: value } } }), // only the changed field: a locked one in the patch refuses it all
+    onLock: (field, on) => send({ type: 'profile/lock_temperament', payload: { unitId: unit.id, field, on } }),
+  });
+  renderHobbiesEditor(part('alius-life-hobbies'), {
+    unit: who, registries: ctx.registries, editable,
+    hobbies: (unit.hobbies ?? []).map((x) => ({ id: x.id, state: x.state, milestones: x.milestones.length })),
+    aptitudes: unit.aptitudes ?? { high: [], low: [] },
+    onSet: (hobbies, aptitudes) => send({ type: 'profile/set_hobbies', payload: { unitId: unit.id, hobbies, aptitudes } }),
+  });
+  renderOpinionsEditor(part('alius-life-opinions'), {
+    unit: who, registries: ctx.registries, editable,
+    opinions: Object.fromEntries(Object.entries(unit.opinions ?? {}).map(([t, o]) => [t, { position: o.position, ...(o.text ? { text: o.text } : {}), voiced: o.voicedDay !== undefined }])),
+    onSet: (topicId, patch) => send({ type: 'profile/set_opinion', payload: { unitId: unit.id, topicId, ...patch } }),
+  });
+  return host;
+}
+
 /** P3b: the unit's MEMORY block (dossier and facts, with PIN / FORGET and, with the edit lock off, EDIT). */
 function memoryBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
   if (!ctx.memory) return null;
@@ -403,6 +441,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : renderDeviceBlock(state, ctx.registries, unit.id, { onPeel: (id, part) => ctx.onPeel?.(id, part), onCancel: (id) => ctx.onCancelBooking?.(id) }),
       unit.kind === 'named' ? memoryBlock(unit, ctx, state) : null,
       unit.kind === 'named' ? developmentBlock(unit, ctx, state) : null, // P14b
+      gone ? null : lifeProfileBlock(unit, ctx, state), // P14c
       gone || !ctx.onWager ? null : renderChallenge(state, ctx.registries, unit.id, (choice) => ctx.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),

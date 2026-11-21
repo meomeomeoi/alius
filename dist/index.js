@@ -2876,8 +2876,8 @@ var ZodType = class {
   promise() {
     return ZodPromise.create(this, this._def);
   }
-  or(option) {
-    return ZodUnion.create([this, option], this._def);
+  or(option2) {
+    return ZodUnion.create([this, option2], this._def);
   }
   and(incoming) {
     return ZodIntersection.create(this, incoming, this._def);
@@ -4727,7 +4727,7 @@ var ZodUnion = class extends ZodType {
       return INVALID;
     }
     if (ctx2.common.async) {
-      return Promise.all(options2.map(async (option) => {
+      return Promise.all(options2.map(async (option2) => {
         const childCtx = {
           ...ctx2,
           common: {
@@ -4737,7 +4737,7 @@ var ZodUnion = class extends ZodType {
           parent: null
         };
         return {
-          result: await option._parseAsync({
+          result: await option2._parseAsync({
             data: ctx2.data,
             path: ctx2.path,
             parent: childCtx
@@ -4748,7 +4748,7 @@ var ZodUnion = class extends ZodType {
     } else {
       let dirty = void 0;
       const issues = [];
-      for (const option of options2) {
+      for (const option2 of options2) {
         const childCtx = {
           ...ctx2,
           common: {
@@ -4757,7 +4757,7 @@ var ZodUnion = class extends ZodType {
           },
           parent: null
         };
-        const result = option._parseSync({
+        const result = option2._parseSync({
           data: ctx2.data,
           path: ctx2.path,
           parent: childCtx
@@ -4838,8 +4838,8 @@ var ZodDiscriminatedUnion = class _ZodDiscriminatedUnion extends ZodType {
     }
     const discriminator = this.discriminator;
     const discriminatorValue = ctx2.data[discriminator];
-    const option = this.optionsMap.get(discriminatorValue);
-    if (!option) {
+    const option2 = this.optionsMap.get(discriminatorValue);
+    if (!option2) {
       addIssueToContext(ctx2, {
         code: ZodIssueCode.invalid_union_discriminator,
         options: Array.from(this.optionsMap.keys()),
@@ -4848,13 +4848,13 @@ var ZodDiscriminatedUnion = class _ZodDiscriminatedUnion extends ZodType {
       return INVALID;
     }
     if (ctx2.common.async) {
-      return option._parseAsync({
+      return option2._parseAsync({
         data: ctx2.data,
         path: ctx2.path,
         parent: ctx2
       });
     } else {
-      return option._parseSync({
+      return option2._parseSync({
         data: ctx2.data,
         path: ctx2.path,
         parent: ctx2
@@ -9663,16 +9663,16 @@ var initialLoyaltyBand = (trust, shift = NO_SHIFT) => {
 // src/engine/worldOptions/options.ts
 var NON_NEUTRAL = ["expression_norm", "enable_family", "mission_reward_pct"];
 var optionEntries = (reg) => [...reg.worldOptions.values()];
-function pick(option, stored) {
-  return option.choices.find((c) => c.id === stored) ?? option.choices.find((c) => c.id === option.default) ?? option.choices[0];
+function pick(option2, stored) {
+  return option2.choices.find((c) => c.id === stored) ?? option2.choices.find((c) => c.id === option2.default) ?? option2.choices[0];
 }
 function worldChoice(state, reg, optionId) {
-  const option = reg.worldOptions.get(optionId);
-  if (!option) return null;
-  return { option, choice: pick(option, state.world.options?.[optionId]) };
+  const option2 = reg.worldOptions.get(optionId);
+  if (!option2) return null;
+  return { option: option2, choice: pick(option2, state.world.options?.[optionId]) };
 }
 function worldChoices(state, reg) {
-  return optionEntries(reg).map((option) => ({ option, choice: pick(option, state.world.options?.[option.id]) }));
+  return optionEntries(reg).map((option2) => ({ option: option2, choice: pick(option2, state.world.options?.[option2.id]) }));
 }
 function worldEffects(state, reg, type) {
   return worldChoices(state, reg).flatMap(({ choice }) => choice.effects.filter((e) => e.type === type));
@@ -9686,9 +9686,9 @@ function defaultWorldOptions(reg) {
 function validateWorldOptions(options2, reg) {
   const out = [];
   for (const [optionId, choiceId] of Object.entries(options2 ?? {})) {
-    const option = reg.worldOptions.get(optionId);
-    if (!option) out.push(`Unknown world option "${optionId}"`);
-    else if (!option.choices.some((c) => c.id === choiceId)) out.push(`Unknown choice "${String(choiceId)}" for world option "${optionId}"`);
+    const option2 = reg.worldOptions.get(optionId);
+    if (!option2) out.push(`Unknown world option "${optionId}"`);
+    else if (!option2.choices.some((c) => c.id === choiceId)) out.push(`Unknown choice "${String(choiceId)}" for world option "${optionId}"`);
   }
   return out;
 }
@@ -9724,11 +9724,11 @@ function stanceOf(state, reg, unit2, optionId) {
 }
 function stanceEffects(state, reg, unit2, type) {
   const out = [];
-  for (const option of reg.worldOptions.values()) {
-    const s = stanceOf(state, reg, unit2, option.id);
+  for (const option2 of reg.worldOptions.values()) {
+    const s = stanceOf(state, reg, unit2, option2.id);
     if (!s || s.stance === "indifferent") continue;
     for (const entry of reg.stanceEffects.values()) {
-      if (entry.option !== option.id || entry.stance !== s.stance || entry.strength !== s.strength) continue;
+      if (entry.option !== option2.id || entry.stance !== s.stance || entry.strength !== s.strength) continue;
       for (const fx2 of entry.effects) if (fx2.type === type) out.push(fx2);
     }
   }
@@ -9749,15 +9749,15 @@ function effectiveValues(state, reg, unit2) {
 }
 function rollGruntStances(state, reg, rng) {
   const out = {};
-  for (const { option, choice } of worldChoices(state, reg)) {
-    if (option.squadStance !== true || isNeutralChoice(choice)) continue;
+  for (const { option: option2, choice } of worldChoices(state, reg)) {
+    if (option2.squadStance !== true || isNeutralChoice(choice)) continue;
     const weights = choice.effects.find((e) => e.type === "grunt_stances");
     if (!weights || weights.type !== "grunt_stances") continue;
     const total2 = weights.shares + weights.indifferent + weights.opposes;
     if (total2 <= 0) continue;
     const roll = rng.float() * total2;
     const stance = roll < weights.shares ? "shares" : roll < weights.shares + weights.indifferent ? "indifferent" : "opposes";
-    out[option.id] = { stance, strength: 1, reason: "" };
+    out[option2.id] = { stance, strength: 1, reason: "" };
   }
   return Object.keys(out).length > 0 ? out : void 0;
 }
@@ -12574,8 +12574,8 @@ function responsibleFor(vote, isNamed = () => true) {
   }
   return best?.id ?? null;
 }
-function scapegoatOptionId(option) {
-  return option?.id === "take_blame" || option?.id === "shift_blame" ? option.id : null;
+function scapegoatOptionId(option2) {
+  return option2?.id === "take_blame" || option2?.id === "shift_blame" ? option2.id : null;
 }
 var named = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
 function markDecidedBy(draft, missionId, voteId) {
@@ -20068,8 +20068,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
         offer.deadlineDays = clamp26(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
-      const title = plain(o.title, TUNING.director.titleMax);
-      if (title !== "") offer.title = title;
+      const title2 = plain(o.title, TUNING.director.titleMax);
+      if (title2 !== "") offer.title = title2;
       const brief = plain(o.brief, TUNING.director.briefMax);
       if (brief !== "") offer.brief = brief;
       for (const key of ["objectiveNode", "rewardsTier", "threadId"]) {
@@ -20120,11 +20120,11 @@ function validateDirectorOutput(state, reg, raw, opts) {
     const isNew = u.threadId === "new";
     const update = { threadId: u.threadId };
     if (isNew) {
-      const title = plain(u.title, 60);
-      if (title === "") return reject(part, "a new thread needs a title");
+      const title2 = plain(u.title, 60);
+      if (title2 === "") return reject(part, "a new thread needs a title");
       if (newThread) return reject(part, "at most one new thread per tick");
       if (openCount >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
-      update.title = title;
+      update.title = title2;
     } else {
       if (u.threadId.startsWith("spine:")) return reject(part, "spine threads belong to the story");
       if (!state.world.threads.some((t) => t.id === u.threadId)) return reject(part, `unknown thread "${u.threadId}"`);
@@ -21038,8 +21038,8 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
   const her = herCallSpecOf(template);
   const call = her === null || isTutorialRun(draft, reg) ? null : rollHerCall(draft, reg, ctx2.rng, her, ableParty(draft));
   if (her !== null && call !== null) {
-    const title = String(template.fixed.title);
-    const events = applyHerCall(draft, ctx2, { templateId, nodeId, title, spec: her, call });
+    const title2 = String(template.fixed.title);
+    const events = applyHerCall(draft, ctx2, { templateId, nodeId, title: title2, spec: her, call });
     const said = her.outcomes.find((o) => o.id === call.outcome).text;
     const name = draft.squad.find((u) => u.id === call.unitId)?.displayName ?? call.unitId;
     addLog(exp, "event", `${name} took the decision herself: ${said}`, nodeId, { templateId, herCall: { unitId: call.unitId, outcome: call.outcome } });
@@ -21106,9 +21106,9 @@ function chooseOption(draft, ctx2, index2, route) {
     finishEventNode(draft, exp.pending.nodeId, "Nothing here.");
     return [];
   }
-  const option = eventOptions(draft, ctx2.registries)[index2];
-  if (!Number.isInteger(index2) || !option) throw new Error(`There is no option ${String(index2)}.`);
-  if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
+  const option2 = eventOptions(draft, ctx2.registries)[index2];
+  if (!Number.isInteger(index2) || !option2) throw new Error(`There is no option ${String(index2)}.`);
+  if (option2.disabled !== null) throw new Error(`${option2.label}: ${option2.disabled}.`);
   const { nodeId, templateId } = exp.pending;
   const chosen = found.options[index2];
   let effects2 = chosen.effects;
@@ -21120,8 +21120,8 @@ function chooseOption(draft, ctx2, index2, route) {
     if (!taken.passed) effects2 = afterFailedRoute(effects2);
   }
   const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: templateId, label: found.title })];
-  finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
-  events.push({ type: "expedition_choice", nodeId, templateId, option: index2, label: option.label });
+  finishEventNode(draft, nodeId, `${found.title}: ${option2.label}.`, { templateId, option: option2.label });
+  events.push({ type: "expedition_choice", nodeId, templateId, option: index2, label: option2.label });
   return events;
 }
 
@@ -21203,7 +21203,7 @@ function parseOption(raw, index2, ctx2, bad) {
   if (!isObj7(raw)) return at("An option must be an object."), null;
   if (typeof raw.label !== "string" || plainText(raw.label, 400) === "") return at("An option needs a label."), null;
   if (!Array.isArray(raw.effects) || raw.effects.length === 0 || raw.effects.length > 6) return at("An option needs 1 to 6 effects."), null;
-  const option = {
+  const option2 = {
     label: cutWords3(plainText(raw.label, 400), TUNING.dilemma.labelWords),
     effects: [],
     magnitudes: []
@@ -21219,15 +21219,15 @@ function parseOption(raw, index2, ctx2, bad) {
     }
     const magnitude = e.magnitude;
     if ("check" in mapped) {
-      if (option.check) {
+      if (option2.check) {
         at("An option has at most one social check.");
         failed = true;
-      } else option.check = mapped.check;
-      option.magnitudes.push(magnitude);
+      } else option2.check = mapped.check;
+      option2.magnitudes.push(magnitude);
       continue;
     }
-    option.effects.push(mapped);
-    option.magnitudes.push(magnitude);
+    option2.effects.push(mapped);
+    option2.magnitudes.push(magnitude);
     if (mapped.type === "flag") flags.push(mapped.flagId);
   }
   if (raw.requires !== void 0) {
@@ -21236,13 +21236,13 @@ function parseOption(raw, index2, ctx2, bad) {
     if (!isObj7(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
       failed = true;
-    } else option.requires = { stat: stat3, rank: r.rank };
+    } else option2.requires = { stat: stat3, rank: r.rank };
   }
-  if (!failed && option.effects.length === 0) {
+  if (!failed && option2.effects.length === 0) {
     at("An option needs at least one effect besides its check.");
     failed = true;
   }
-  return failed ? null : { option, flags };
+  return failed ? null : { option: option2, flags };
 }
 function parseDilemmaOutput(raw, ctx2) {
   const bad = [];
@@ -21578,9 +21578,9 @@ var isBookkeeping = (fx2) => fx2.type === "flag" || fx2.type === "thread_flag";
 function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, raw) {
   const open3 = draft.dilemmas?.open;
   if (!open3 || open3.id !== id || open3.status !== "presented" || !open3.options) throw new Error(STALE2);
-  const option = dilemmaOptions(draft, ctx2.registries)[index2];
-  if (typeof index2 !== "number" || !Number.isInteger(index2) || !option) throw new Error(`There is no option ${String(index2)}.`);
-  if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
+  const option2 = dilemmaOptions(draft, ctx2.registries)[index2];
+  if (typeof index2 !== "number" || !Number.isInteger(index2) || !option2) throw new Error(`There is no option ${String(index2)}.`);
+  if (option2.disabled !== null) throw new Error(`${option2.label}: ${option2.disabled}.`);
   const chosen = open3.options[index2];
   if (!wardenChecked) {
     const overridden = rollOverride(draft, ctx2, { kind: "dilemma", index: index2 }, { payload: { ...plainPayload(raw), id, index: index2 }, judged: judgedOf(raw) });
@@ -21606,11 +21606,11 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
-  const title = open3.title ?? open3.templateId;
+  const title2 = open3.title ?? open3.templateId;
   const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, {
     kind: "event",
     id: open3.templateId,
-    label: title,
+    label: title2,
     units: open3.units,
     ...open3.subjectId !== void 0 ? { subjectId: open3.subjectId } : {},
     ...open3.witnessIds !== void 0 ? { witnessIds: open3.witnessIds } : {}
@@ -21625,7 +21625,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   if (open3.context === "expedition_event" && draft.expedition?.pending?.kind === "event") {
     const nodeId = draft.expedition.pending.nodeId;
-    finishEventNode(draft, nodeId, `${title}: ${chosen.label}.`, { templateId: open3.templateId, option: chosen.label });
+    finishEventNode(draft, nodeId, `${title2}: ${chosen.label}.`, { templateId: open3.templateId, option: chosen.label });
     events.push({ type: "expedition_choice", nodeId, templateId: open3.templateId, option: index2, label: chosen.label });
   }
   delete d.open;
@@ -21636,7 +21636,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     templateId: open3.templateId,
     option: index2,
     label: chosen.label,
-    title,
+    title: title2,
     affected,
     // P3b: what the open dilemma took with it (it is deleted above), so memory can tell a scapegoat answer from any other
     context: open3.context,
@@ -21680,11 +21680,11 @@ function herPick(state, reg, unitId) {
   if (!open3 || open3.status !== "presented" || !open3.options) return null;
   const enabled = dilemmaOptions(state, reg);
   let best = null;
-  open3.options.forEach((option, index2) => {
+  open3.options.forEach((option2, index2) => {
     if (enabled[index2]?.disabled !== null) return;
     let touched = false;
     let score = 0;
-    for (const fx2 of option.effects) {
+    for (const fx2 of option2.effects) {
       if (fx2.type !== "unit_event") continue;
       const reached2 = fx2.targets === "subject" ? open3.subjectId === unitId : fx2.targets === "witnesses" ? (open3.witnessIds ?? []).includes(unitId) : open3.units.includes(unitId);
       if (!reached2) continue;
@@ -25165,10 +25165,10 @@ registerAction("world/set_option", (draft, payload, ctx2) => {
   const p = isObj17(payload) ? payload : {};
   const optionId = typeof p.optionId === "string" ? p.optionId : "";
   const choiceId = typeof p.choiceId === "string" ? p.choiceId : "";
-  const option = ctx2.registries.worldOptions.get(optionId);
-  if (!option) throw new Error(`Unknown world option "${optionId}".`);
-  if (option.live !== true) throw new Error(`World option "${optionId}" is locked after the campaign start.`);
-  if (!option.choices.some((c) => c.id === choiceId)) throw new Error(`Unknown choice "${choiceId}" for world option "${optionId}".`);
+  const option2 = ctx2.registries.worldOptions.get(optionId);
+  if (!option2) throw new Error(`Unknown world option "${optionId}".`);
+  if (option2.live !== true) throw new Error(`World option "${optionId}" is locked after the campaign start.`);
+  if (!option2.choices.some((c) => c.id === choiceId)) throw new Error(`Unknown choice "${choiceId}" for world option "${optionId}".`);
   const from = worldChoice(draft, ctx2.registries, optionId).choice.id;
   if (from === choiceId) return [];
   draft.world.options = { ...draft.world.options ?? {}, [optionId]: choiceId };
@@ -25226,9 +25226,9 @@ registerAction("expedition/treat", (draft, payload, ctx2) => {
 });
 registerAction("expedition/resolve_combat", (draft, _payload, ctx2) => resolveCombat(draft, ctx2));
 registerAction("expedition/choose", (draft, payload, ctx2) => {
-  const option = isObj18(payload) ? payload.option : void 0;
-  if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
-  return chooseOption(draft, ctx2, option, readRoutePick(isObj18(payload) ? payload.route : void 0));
+  const option2 = isObj18(payload) ? payload.option : void 0;
+  if (typeof option2 !== "number") throw new Error("expedition/choose needs { option }.");
+  return chooseOption(draft, ctx2, option2, readRoutePick(isObj18(payload) ? payload.route : void 0));
 });
 registerAction("expedition/ack_her_call", (draft) => acknowledgeHerCall(draft));
 registerAction("expedition/return", (draft, _payload, ctx2) => returnFromExpedition(draft, ctx2));
@@ -27402,10 +27402,10 @@ function bandDirective(unitId, name, band2) {
   }
   return null;
 }
-var aftermathDirective = (title, label2, expiresAfter = "next_reply") => ({
+var aftermathDirective = (title2, label2, expiresAfter = "next_reply") => ({
   id: "dilemma",
   expiresAfter,
-  text: `The commander has just decided "${title}": ${label2}. Narrate the immediate aftermath; the decision is final and cannot be talked back.`
+  text: `The commander has just decided "${title2}": ${label2}. Narrate the immediate aftermath; the decision is final and cannot be talked back.`
 });
 var STATE_REASON = {
   resentful: "she resents the commander",
@@ -29704,14 +29704,14 @@ function renderVotePanel(host, vote, lines, ctx2) {
     }
   } else if (vote.status === "failed") {
     const leashed = state.leash.authorizationsLeft < 1;
-    const picker = h("div", { class: "alius-vote-punish", hidden: true });
+    const picker2 = h("div", { class: "alius-vote-punish", hidden: true });
     const showPicker = () => {
-      picker.hidden = false;
-      if (picker.childElementCount > 0) return;
+      picker2.hidden = false;
+      if (picker2.childElementCount > 0) return;
       const dissent = vote.ballots.filter((b) => b.vote === "against" && state.squad.find((u) => u.id === b.unitId)?.kind === "named");
       const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf16(b.unitId))));
       const how = h("select", { class: "alius-select", "data-punish-measure": "", "aria-label": "Measure" }, ...measures(state, reg).map((e) => h("option", { value: String(e.id) }, String(e.label))));
-      picker.append(who, how, act("punish-confirm", "[ CONFIRM ]", () => ctx2.onOverrule("punish", { unitId: who.value, measure: how.value })));
+      picker2.append(who, how, act("punish-confirm", "[ CONFIRM ]", () => ctx2.onOverrule("punish", { unitId: who.value, measure: how.value })));
     };
     actions.push(
       act("accept", "[ ACCEPT ]", ctx2.onDrop),
@@ -29726,7 +29726,7 @@ function renderVotePanel(host, vote, lines, ctx2) {
         leashed ? { "aria-disabled": "true", title: "No Leash authorization is left this week." } : {}
       ),
       h("p", { class: "alius-dim" }, "Overruling costs Trust with every soldier who voted against, raises their Impunity and lets them push back openly until the day ends."),
-      picker
+      picker2
     );
   }
   if (against !== null && vote.status === "failed") {
@@ -30760,8 +30760,8 @@ function renderRecapCard(host, ctx2) {
   const { state } = ctx2;
   const hs = state.headStart;
   if (!hs || recapCommitted(state) !== null) return;
-  const title = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
-  const body = h("div", { class: "alius-head-start-body" }, title);
+  const title2 = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
+  const body = h("div", { class: "alius-head-start-body" }, title2);
   if (hs.recap === void 0) {
     body.append(h("p", { class: "alius-dim" }, "The first weeks are being written."));
   } else {
@@ -30951,7 +30951,7 @@ function renderDilemma(host, ctx2) {
   const buttons = [];
   const list5 = h("div", { class: "alius-dilemma-options" });
   for (const o of ctx2.options) {
-    const picker = o.routes && o.disabled === null ? renderRoutePicker({
+    const picker2 = o.routes && o.disabled === null ? renderRoutePicker({
       routes: o.routes,
       unitName: ctx2.unitName,
       locked: () => chosen,
@@ -30967,7 +30967,7 @@ function renderDilemma(host, ctx2) {
         });
       }
     }) : null;
-    if (picker) picker.hidden = true;
+    if (picker2) picker2.hidden = true;
     const button2 = h("button", {
       // soft-disabled (aria-disabled, not `disabled`): a greyed option stays focusable and hoverable, so the analysis panel can
       // explain the requirement that greys it out
@@ -30978,15 +30978,15 @@ function renderDilemma(host, ctx2) {
       ...analyzeNative("glossary:decision_option", { scale: ctx2.scale, ...o.check ? { check: o.check } : {}, ...o.requires ? { requires: o.requires } : {} }),
       onclick: () => {
         if (chosen || o.disabled !== null) return;
-        if (picker) {
-          picker.hidden = !picker.hidden;
+        if (picker2) {
+          picker2.hidden = !picker2.hidden;
           return;
         }
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
         ctx2.onChoose(o.index);
       }
-    }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${picker ? " \u2014 CHOOSE HOW" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
+    }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${picker2 ? " \u2014 CHOOSE HOW" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
     buttons.push(button2);
     list5.append(button2);
     if (ctx2.herPick) {
@@ -31001,7 +31001,7 @@ function renderDilemma(host, ctx2) {
         ...effects2.lines.map((line2) => h("li", {}, h("span", { class: "alius-stat", "data-effect-line": "", ...analyzeAttrs("glossary:scapegoat", { answer: effects2.answer }) }, line2)))
       ));
     }
-    if (picker) list5.append(picker);
+    if (picker2) list5.append(picker2);
   }
   const gen = h("div", { class: "alius-generation-chips" });
   if (ctx2.generation && !ctx2.scapegoat) {
@@ -31065,7 +31065,7 @@ function consequence(o) {
 }
 var line = (key, id, value) => h("div", { class: "alius-form-line", "data-line": id }, h("span", { class: "alius-form-key" }, key), h("span", { class: "alius-form-val" }, value));
 async function fileLeashRequest(shell, o) {
-  const title = `OVERSIGHT REQUEST #${String(o.no).padStart(4, "0")}`;
+  const title2 = `OVERSIGHT REQUEST #${String(o.no).padStart(4, "0")}`;
   const form = h(
     "div",
     { class: "alius-form" },
@@ -31077,7 +31077,7 @@ async function fileLeashRequest(shell, o) {
   );
   const paper2 = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
   const choice = await shell.modal({
-    title,
+    title: title2,
     body: paper2(form),
     actions: [
       { label: "[ FILE REQUEST ]", value: "file", ...o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} },
@@ -31087,7 +31087,7 @@ async function fileLeashRequest(shell, o) {
   if (choice !== "file") return false;
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
-  void shell.modal({ title, body: paper2(h("div", { class: "alius-form" }, form, status)), actions: [] });
+  void shell.modal({ title: title2, body: paper2(h("div", { class: "alius-form" }, form, status)), actions: [] });
   const add = (text2) => void status.append(h("div", { class: "alius-form-line" }, text2));
   add("TRANSMITTING\u2026");
   if (delay > 0) await sleep(delay / 3);
@@ -31881,14 +31881,14 @@ function renderInvTab(host, ctx2) {
       const d = (mine[k] ?? 0) - (theirs[k] ?? 0);
       return h("span", { class: `${d >= 0 ? "alius-delta-up" : "alius-delta-down"} alius-stat`, "data-stat": k, ...analyzeAttrs(`glossary:stat_${k}`) }, `${upper(k)} ${d > 0 ? "+" : ""}${d}  `);
     });
-    const picker = h(
+    const picker2 = h(
       "select",
       { class: "alius-input", "data-compare-unit": "true", "aria-label": "Compare for" },
       ...units.map((u) => h("option", { value: u.id, selected: u.id === compareUnit }, u.displayName))
     );
-    picker.value = compareUnit ?? "";
-    picker.addEventListener("change", () => {
-      compareUnit = picker.value;
+    picker2.value = compareUnit ?? "";
+    picker2.addEventListener("change", () => {
+      compareUnit = picker2.value;
       render();
     });
     const reason = unit2 ? canEquip(reg, unit2, item) : "NO UNIT";
@@ -31910,7 +31910,7 @@ function renderInvTab(host, ctx2) {
       "section",
       { class: "alius-section alius-inv-compare" },
       h("h3", {}, `COMPARE: ${reg.items.get(item.itemId)?.name ?? item.itemId}`),
-      h("div", {}, "FOR ", picker, worn && worn.uid !== item.uid ? ` (WEARS ${reg.items.get(worn.itemId)?.name ?? worn.itemId})` : " (STANDARD ISSUE)"),
+      h("div", {}, "FOR ", picker2, worn && worn.uid !== item.uid ? ` (WEARS ${reg.items.get(worn.itemId)?.name ?? worn.itemId})` : " (STANDARD ISSUE)"),
       h("p", { class: "alius-inv-deltas" }, ...deltas),
       afterLine,
       h("button", {
@@ -34794,7 +34794,7 @@ function renderCommanderFile(host, ctx2) {
       h("p", {}, "BUILD: ", h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, archetype))
     )
   );
-  const picker = (kind, current) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word, i) => h("button", {
+  const picker2 = (kind, current) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word, i) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     [`data-${kind}`]: String(i + 1),
@@ -34803,8 +34803,8 @@ function renderCommanderFile(host, ctx2) {
     onclick: () => onChange({ kind, value: i + 1 })
   }, word)));
   host.append(
-    h("section", { class: "alius-section" }, h("h3", {}, "EXPRESSION"), picker("expression", c.expression)),
-    h("section", { class: "alius-section" }, h("h3", {}, "SEASONING"), picker("seasoning", c.seasoning))
+    h("section", { class: "alius-section" }, h("h3", {}, "EXPRESSION"), picker2("expression", c.expression)),
+    h("section", { class: "alius-section" }, h("h3", {}, "SEASONING"), picker2("seasoning", c.seasoning))
   );
   const chosen = /* @__PURE__ */ new Set([...c.traits.regular, ...c.traits.special !== void 0 ? [c.traits.special] : []]);
   const reasons = ctx2.importStatus?.reasons ?? {};
@@ -34970,7 +34970,7 @@ function truncateCard(card2, maxTokens) {
 }
 function stanceOptionIds(registries, world) {
   if (!world) return [];
-  return worldChoices({ world: { options: world } }, registries).filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option }) => option.id);
+  return worldChoices({ world: { options: world } }, registries).filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2 }) => option2.id);
 }
 function worldImportInfo(registries, world) {
   const str5 = (v) => typeof v === "string" ? v : "";
@@ -34978,7 +34978,7 @@ function worldImportInfo(registries, world) {
   const picked = worldChoices({ world: { options: world } }, registries);
   return {
     disposition: { name: str5(level.name), description: str5(level.description) },
-    options: picked.filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option, choice }) => ({ id: option.id, label: str5(option.label), choice: str5(choice.label), description: str5(choice.description) }))
+    options: picked.filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2, choice }) => ({ id: option2.id, label: str5(option2.label), choice: str5(choice.label), description: str5(choice.description) }))
   };
 }
 function buildImportInput(card2, registries, settings, sections, world, bond) {
@@ -35471,8 +35471,8 @@ var Wizard = class {
     const reg = this.deps.registries;
     const matters = Object.keys(after).some((id) => {
       if (after[id] === before[id]) return false;
-      const option = reg.worldOptions.get(id);
-      return option !== void 0 && (option.squadStance === true || option.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
+      const option2 = reg.worldOptions.get(id);
+      return option2 !== void 0 && (option2.squadStance === true || option2.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
     });
     if (!matters) return;
     for (const u of this.s.units) if (u.status === "ready" || u.status === "manual" || u.status === "loading") u.worldStale = true;
@@ -35488,8 +35488,8 @@ var Wizard = class {
   }
   /** Sets one option's choice; the preset mark follows (null unless the options still equal one). Unknown ids are ignored. */
   setWorldOption(optionId, choiceId) {
-    const option = this.deps.registries.worldOptions.get(optionId);
-    if (!option || !option.choices.some((c) => c.id === choiceId)) return;
+    const option2 = this.deps.registries.worldOptions.get(optionId);
+    if (!option2 || !option2.choices.some((c) => c.id === choiceId)) return;
     const before = { ...this.s.world.options };
     const options2 = { ...before, [optionId]: choiceId };
     this.s.world = { options: options2, preset: this.presetOf(options2) };
@@ -35499,10 +35499,10 @@ var Wizard = class {
   /** "What this changes": the description of every choice that is not its option's default, never a number. */
   worldSummary() {
     const out = [];
-    for (const option of this.deps.registries.worldOptions.values()) {
-      const chosen = this.s.world.options[option.id] ?? String(option.default);
-      if (chosen === option.default) continue;
-      const choice = option.choices.find((c) => c.id === chosen);
+    for (const option2 of this.deps.registries.worldOptions.values()) {
+      const chosen = this.s.world.options[option2.id] ?? String(option2.default);
+      if (chosen === option2.default) continue;
+      const choice = option2.choices.find((c) => c.id === chosen);
       if (choice) out.push(choice.description);
     }
     return out;
@@ -36006,6 +36006,179 @@ function renderKeepingFocus(host, draw2) {
   }
 }
 
+// src/ui/life/profileBlocks.ts
+function control(label2, attrs, address, ctx2, enabled, run, pressed) {
+  return h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    "aria-disabled": enabled ? null : "true",
+    ...pressed !== void 0 ? { "aria-pressed": String(pressed) } : {},
+    ...attrs,
+    ...analyzeNative(address, ctx2),
+    onclick: () => {
+      if (enabled) run();
+    }
+  }, label2);
+}
+function picker(label2, attrs, enabled, options2, onPick) {
+  const el = h("select", { class: "alius-input", "aria-label": label2, "aria-disabled": enabled ? null : "true", ...attrs }, ...options2);
+  el.addEventListener("change", () => {
+    const value = el.value;
+    el.value = "";
+    if (enabled && value !== "") onPick(value);
+  });
+  return el;
+}
+var option = (value, text2, selected2 = false) => h("option", { value, selected: selected2 }, text2);
+var title = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+function renderTemperamentBlock(host, ctx2) {
+  const live = { unitId: ctx2.unit.id };
+  const { temperament: current } = ctx2;
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:temperament", live) }, "TEMPERAMENT"));
+  for (const field2 of TEMPERAMENT_FIELDS) {
+    const locked = ctx2.locks.includes(field2);
+    const words3 = TEMPERAMENT_VALUES[field2];
+    host.append(h(
+      "div",
+      { class: "alius-life-row", "data-temperament": field2 },
+      h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:${field2}`, live) }, `${title(field2)}:`),
+      ...words3.map((word) => control(
+        word.toUpperCase(),
+        { "data-temperament": field2, "data-id": word },
+        `glossary:${field2}`,
+        live,
+        ctx2.editable && !locked,
+        () => {
+          if (current[field2] !== word) ctx2.onSet(field2, word);
+        },
+        current[field2] === word
+      )),
+      control(locked ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, "glossary:temperament", live, ctx2.editable, () => ctx2.onLock(field2, !locked), locked)
+    ));
+  }
+}
+var STATE_WORD = { active: "", cooling: "COOLING", dropped: "PUT AWAY" };
+var MILESTONES = 4;
+function renderHobbiesEditor(host, ctx2) {
+  const { unit: unit2, registries: reg } = ctx2;
+  const live = { unitId: unit2.id };
+  const label2 = (id) => String(reg.hobbies.get(id)?.label ?? id);
+  const ids = ctx2.hobbies.map((x) => x.id);
+  const apt = { high: [...ctx2.aptitudes.high], low: [...ctx2.aptitudes.low] };
+  const active = ctx2.hobbies.filter((x) => (x.state ?? "active") === "active").length;
+  const rated = /* @__PURE__ */ new Set([...apt.high, ...apt.low]);
+  const send = (hobbies, aptitudes = apt) => ctx2.onSet(hobbies, { high: [...aptitudes.high], low: [...aptitudes.low] });
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live) }, "HOBBIES"));
+  if (ctx2.hobbies.length === 0) host.append(h("p", { class: "alius-dim", "data-empty": "hobbies" }, "No hobby yet."));
+  for (const row2 of ctx2.hobbies) {
+    const dots = row2.milestones === void 0 ? null : h(
+      "span",
+      { class: "alius-stat alius-life-dots", "data-milestones": String(row2.milestones), ...analyzeAttrs("glossary:hobby_cycle", live) },
+      `${"\u25C6".repeat(Math.min(MILESTONES, row2.milestones))}${"\u25C7".repeat(Math.max(0, MILESTONES - row2.milestones))}`
+    );
+    const word = STATE_WORD[row2.state ?? "active"];
+    host.append(h(
+      "div",
+      { class: "alius-life-row", "data-hobby": row2.id },
+      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${row2.id}`, live) }, label2(row2.id)),
+      dots,
+      word ? h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live) }, word) : null,
+      control("[ REMOVE ]", { "data-remove-hobby": row2.id }, `hobbies:${row2.id}`, live, ctx2.editable, () => send(ids.filter((x) => x !== row2.id)))
+    ));
+  }
+  const addable = [...reg.hobbies.values()].filter((e) => !ids.includes(e.id));
+  host.append(h(
+    "div",
+    { class: "alius-life-row", "data-add": "hobby" },
+    picker(
+      "Take up a hobby",
+      { "data-add-hobby": unit2.id },
+      ctx2.editable && active < TUNING.life.maxActive && addable.length > 0,
+      [option("", "(add a hobby)"), ...addable.map((e) => option(e.id, label2(e.id)))],
+      (id) => send([...ids, id])
+    )
+  ));
+  if (!ctx2.editable) return;
+  for (const [key, text2] of [["high", "Gifted at"], ["low", "Hopeless at"]]) {
+    const free = [...reg.hobbies.values()].filter((e) => !rated.has(e.id));
+    host.append(h(
+      "div",
+      { class: "alius-life-row", "data-aptitude": key },
+      h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live) }, `${text2}:`),
+      ...apt[key].map((id) => control(`${label2(id)} \u2715`, { "data-aptitude": key, "data-id": id }, `hobbies:${id}`, live, true, () => send(ids, { ...apt, [key]: apt[key].filter((x) => x !== id) }))),
+      picker(
+        text2,
+        { "data-add-aptitude": key },
+        apt[key].length < 3 && free.length > 0,
+        [option("", "(add)"), ...free.map((e) => option(e.id, label2(e.id)))],
+        (id) => send(ids, { ...apt, [key]: [...apt[key], id] })
+      )
+    ));
+  }
+}
+function renderOpinionsEditor(host, ctx2) {
+  const { unit: unit2, registries: reg } = ctx2;
+  const live = { unitId: unit2.id };
+  const topic = (id) => reg.opinionTopics.get(id);
+  const shown = Object.entries(ctx2.opinions).filter(([id, o]) => topic(id) !== void 0 && (ctx2.editable || o.voiced === true));
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:thoughts", live) }, "OPINIONS"));
+  if (shown.length === 0) host.append(h("p", { class: "alius-dim", "data-empty": "opinions" }, ctx2.editable ? "No opinion yet." : "Nothing she has said yet."));
+  for (const [topicId, op] of shown) {
+    const t = topic(topicId);
+    const select = h("select", {
+      class: "alius-input",
+      "aria-label": `${String(t.label)}: her position`,
+      "aria-disabled": ctx2.editable ? null : "true",
+      "data-opinion-position": topicId
+    }, ...t.positions.map((p) => option(p.id, p.description, p.id === op.position)));
+    select.value = op.position;
+    select.addEventListener("change", () => {
+      if (!ctx2.editable) {
+        select.value = op.position;
+        return;
+      }
+      if (select.value !== op.position) ctx2.onSet(topicId, { position: select.value });
+    });
+    const input = h("input", {
+      type: "text",
+      class: "alius-input",
+      maxlength: String(TUNING.life.opinion.textMax),
+      "aria-label": `${String(t.label)}: her words`,
+      "aria-disabled": ctx2.editable ? null : "true",
+      "data-opinion-text": topicId
+    });
+    input.value = op.text ?? "";
+    input.readOnly = !ctx2.editable;
+    input.addEventListener("change", () => {
+      if (ctx2.editable && input.value !== (op.text ?? "")) ctx2.onSet(topicId, { position: op.position, text: input.value });
+    });
+    host.append(h(
+      "div",
+      { class: "alius-life-row", "data-opinion": topicId },
+      h("span", { class: "alius-chip", ...analyzeAttrs(`opinionTopics:${topicId}`, live) }, String(t.label)),
+      select,
+      input,
+      ctx2.onRemove ? control("[ REMOVE ]", { "data-remove-opinion": topicId }, `opinionTopics:${topicId}`, live, ctx2.editable, () => ctx2.onRemove(topicId)) : null
+    ));
+  }
+  const free = [...reg.opinionTopics.values()].filter((e) => !(e.id in ctx2.opinions));
+  const full = ctx2.max !== void 0 && Object.keys(ctx2.opinions).length >= ctx2.max;
+  host.append(h(
+    "div",
+    { class: "alius-life-row", "data-add": "opinion" },
+    picker(
+      "Add an opinion",
+      { "data-add-opinion": unit2.id },
+      ctx2.editable && !full && free.length > 0,
+      [option("", "(add an opinion)"), ...free.map((e) => option(e.id, String(e.label)))],
+      (id) => {
+        const t = topic(id);
+        ctx2.onSet(id, { position: t.positions[Math.floor(t.positions.length / 2)].id });
+      }
+    )
+  ));
+}
+
 // src/ui/setup/calibration.ts
 var TAG_FIELDS = [
   ["likes", "Likes", SETUP_LIMITS.likes],
@@ -36043,13 +36216,13 @@ function renderCalibration(host, ctx2) {
   );
   if (draft.status === "loading" || draft.status === "idle") return;
   const options2 = manualOptions(reg, ctx2.desireBondDefects, ch.bond ?? null);
-  const section = (id, title, ...body) => h(
+  const section = (id, title2, ...body) => h(
     "section",
     { class: "alius-section alius-calib-section", "data-section": id },
     h(
       "div",
       { class: "alius-calib-title" },
-      h("h3", {}, title),
+      h("h3", {}, title2),
       // in manual mode too: after a failed import the AI can be retried section by section
       draft.status === "ready" || draft.status === "manual" ? h(
         "button",
@@ -36421,6 +36594,46 @@ function renderCalibration(host, ctx2) {
       )
     );
   }
+  const who = { id: draft.avatar, displayName: draft.displayName };
+  if (shown.has("temperament")) {
+    const temperament = { ...TEMPERAMENT_DEFAULTS, ...ch.temperament };
+    const body = h("div", { class: "alius-life-temperament" });
+    renderTemperamentBlock(body, {
+      unit: who,
+      temperament,
+      locks: ch.temperamentLocks ?? [],
+      editable: true,
+      onSet: (field2, value) => onUpdate({ temperament: { ...temperament, [field2]: value } }),
+      onLock: (field2, on) => onUpdate({ temperamentLocks: [...(ch.temperamentLocks ?? []).filter((f) => f !== field2), ...on ? [field2] : []] })
+    });
+    host.append(section("temperament", "TEMPERAMENT", body));
+  }
+  if (shown.has("hobbies")) {
+    const body = h("div", { class: "alius-life-hobbies" });
+    renderHobbiesEditor(body, {
+      unit: who,
+      registries: reg,
+      editable: true,
+      hobbies: (ch.hobbies ?? []).map((id) => ({ id })),
+      aptitudes: ch.aptitudes ?? { high: [], low: [] },
+      onSet: (hobbies, aptitudes) => onUpdate({ hobbies, aptitudes })
+    });
+    host.append(section("hobbies", "HOBBIES", body));
+  }
+  if (shown.has("opinions")) {
+    const body = h("div", { class: "alius-life-opinions" });
+    const opinions = ch.opinions ?? {};
+    renderOpinionsEditor(body, {
+      unit: who,
+      registries: reg,
+      editable: true,
+      opinions,
+      max: TUNING.life.opinion.importMax,
+      onSet: (topicId, patch) => onUpdate({ opinions: { ...opinions, [topicId]: { ...opinions[topicId], ...patch } } }),
+      onRemove: (topicId) => onUpdate({ opinions: Object.fromEntries(Object.entries(opinions).filter(([t]) => t !== topicId)) })
+    });
+    host.append(section("opinions", "OPINIONS", body));
+  }
   if (shown.has("baseline")) {
     host.append(
       section(
@@ -36619,7 +36832,7 @@ var LINE_GAP_MS = 300;
 function fillLine(template, vars) {
   return template.replace(/\{([A-Z_]+)\}/g, (whole, key) => Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole);
 }
-var paper = (title, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
+var paper = (title2, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title: title2, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
 var linesOf = (ctx2) => {
   const step = ctx2.wizard.prologueStep();
   return { ...step?.lines ?? {}, ...ctx2.wizard.state.headStart.days > 0 ? step?.headStartLines ?? {} : {} };
@@ -36963,15 +37176,15 @@ function renderSetupScreen(host, ctx2) {
   const render = () => {
     if (root && !host.contains(root)) return;
     const s = wizard.state;
-    let title;
+    let title2;
     const scrollTop = root !== null && lastStep === s.step ? root.scrollTop : 0;
     renderKeepingFocus(host, () => {
       host.replaceChildren();
-      title = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
+      title2 = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
       root = h(
         "div",
         { class: "alius-setup" },
-        title,
+        title2,
         h("ol", { class: "alius-steps" }, ...wizard.stepsFor().map((id, i) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, `${String(i + 1).padStart(2, "0")} ${STEP_LABELS[id]}`))),
         stepBody(s),
         footer(s)
@@ -36979,7 +37192,7 @@ function renderSetupScreen(host, ctx2) {
       host.append(root);
       root.scrollTop = scrollTop;
     });
-    if (lastStep !== null && lastStep !== s.step) title.focus();
+    if (lastStep !== null && lastStep !== s.step) title2.focus();
     lastStep = s.step;
   };
   function stepBody(s) {
@@ -37228,7 +37441,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   }
   if (!isLeader) return;
   const left = challengeCooldown(state);
-  const picker = h("div", { class: "alius-challenge-picker", hidden: true });
+  const picker2 = h("div", { class: "alius-challenge-picker", hidden: true });
   const row2 = h("p", { class: "alius-hierarchy-actions" });
   if (!endorsed) {
     row2.append(h("button", { type: "button", class: "alius-btn alius-option", "data-power-act": "endorse", ...analyzeNative("glossary:endorse"), onclick: handlers2.onEndorse }, "[ ENDORSE ]"), " ");
@@ -37241,11 +37454,11 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
     ...left > 0 ? { "aria-disabled": "true", title: `The last challenge is too recent: ${left} days left.` } : {},
     onclick: () => {
       if (left > 0) return;
-      picker.hidden = !picker.hidden;
-      if (picker.childElementCount > 0) return;
+      picker2.hidden = !picker2.hidden;
+      if (picker2.childElementCount > 0) return;
       for (const stat3 of CHALLENGE_STATS) {
         const p = challengeChance(state, reg, stat3);
-        picker.append(h("button", {
+        picker2.append(h("button", {
           type: "button",
           class: "alius-btn alius-option",
           "data-challenge-stat": stat3,
@@ -37257,7 +37470,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   }, "[ CHALLENGE ]"));
   host.append(row2);
   if (left > 0) host.append(h("p", { class: "alius-dim alius-reason" }, `CHALLENGE AVAILABLE IN ${left} DAYS`));
-  host.append(picker);
+  host.append(picker2);
 }
 
 // src/ui/personal/deviceBlock.ts
@@ -37426,7 +37639,7 @@ function renderDevelopmentBlock(host, ctx2) {
   host.replaceChildren();
   const head = h("p", { class: "alius-stat", ...analyzeAttrs("glossary:character_development", { unitId }) }, "DEVELOPMENT");
   host.append(head);
-  const control = (label2, action, address, run, pressed) => h("button", {
+  const control2 = (label2, action, address, run, pressed) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     "data-action": action,
@@ -37441,7 +37654,7 @@ function renderDevelopmentBlock(host, ctx2) {
     "div",
     { class: "alius-dev-axis", "data-axis": a.axis },
     h("span", { class: "alius-stat", ...analyzeAttrs(`developmentAxes:${axisEntry(ctx2.registries, a.axis)?.id ?? a.axis}`, { unitId, axis: a.axis }) }, `${a.words.charAt(0).toUpperCase()}${a.words.slice(1)}.`),
-    control(a.held ? "[ HELD ]" : "[ HOLD ]", "hold", "glossary:development_hold", () => send({ type: "development/hold", payload: { unitId, axis: a.axis, on: !a.held } }), a.held)
+    control2(a.held ? "[ HELD ]" : "[ HOLD ]", "hold", "glossary:development_hold", () => send({ type: "development/hold", payload: { unitId, axis: a.axis, on: !a.held } }), a.held)
   );
   const factRow = (f) => {
     const row2 = h("div", { class: "alius-dev-fact", "data-fact": f.id });
@@ -37452,7 +37665,7 @@ function renderDevelopmentBlock(host, ctx2) {
         row2.replaceChildren(ta, h(
           "div",
           { class: "alius-dev-actions" },
-          control("[ SAVE ]", "save", "glossary:development_fact", () => send({ type: "development/edit_fact", payload: { unitId, factId: f.id, text: ta.value } })),
+          control2("[ SAVE ]", "save", "glossary:development_fact", () => send({ type: "development/edit_fact", payload: { unitId, factId: f.id, text: ta.value } })),
           h("button", { type: "button", class: "alius-btn", onclick: () => draw2(false) }, "[ CANCEL ]")
         ));
         return;
@@ -37463,8 +37676,8 @@ function renderDevelopmentBlock(host, ctx2) {
         h(
           "div",
           { class: "alius-dev-actions" },
-          control("[ EDIT ]", "edit", "glossary:development_fact", () => draw2(true)),
-          control("[ REMOVE ]", "remove", "glossary:development_fact", () => send({ type: "development/remove_fact", payload: { unitId, factId: f.id } }))
+          control2("[ EDIT ]", "edit", "glossary:development_fact", () => draw2(true)),
+          control2("[ REMOVE ]", "remove", "glossary:development_fact", () => send({ type: "development/remove_fact", payload: { unitId, factId: f.id } }))
         )
       );
     };
@@ -38050,16 +38263,16 @@ function equipmentBlock(unit2, ctx2, state) {
       flag = canEquip(reg, unit2, inst);
     }
     const options2 = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot2 && canEquip(reg, unit2, i) === null);
-    const picker = ctx2.onEquip && ctx2.onUnequip ? h(
+    const picker2 = ctx2.onEquip && ctx2.onUnequip ? h(
       "select",
       { class: "alius-input", "data-equip": slot2, "data-unit": unit2.id, "aria-label": `${slot2} of ${unit2.displayName}` },
       h("option", { value: "", selected: !uid }, "(standard issue)"),
       ...options2.map((i) => h("option", { value: i.uid, selected: i.uid === uid }, `${String(reg.items.get(i.itemId)?.name)} [${i.rarity}]${i.upgrade > 0 ? ` +${i.upgrade}` : ""}`))
     ) : null;
-    if (picker) {
-      picker.value = uid ?? "";
-      picker.addEventListener("change", () => {
-        const v = picker.value;
+    if (picker2) {
+      picker2.value = uid ?? "";
+      picker2.addEventListener("change", () => {
+        const v = picker2.value;
         if (v) ctx2.onEquip(unit2.id, v);
         else if (uid) ctx2.onUnequip(unit2.id, slot2);
       });
@@ -38069,7 +38282,7 @@ function equipmentBlock(unit2, ctx2, state) {
       { class: "alius-equip-row", "data-slot": slot2 },
       h("span", {}, `${slot2.toUpperCase()}: `, text2),
       flag ? h("span", { class: "alius-equip-flag" }, ` ${flag}`) : null,
-      picker
+      picker2
     );
   });
   return h("div", { class: "alius-equipment" }, ...rows);
@@ -38235,6 +38448,43 @@ function developmentBlock(unit2, ctx2, state) {
   renderDevelopmentBlock(host, { state, registries: ctx2.registries, settings: ctx2.settings(), unitId: unit2.id, dispatch: ctx2.development.dispatch, ...ctx2.development.onChanged ? { onChanged: ctx2.development.onChanged } : {} });
   return host;
 }
+function lifeProfileBlock(unit2, ctx2, state) {
+  if (!ctx2.life || unit2.kind !== "named") return null;
+  const { dispatch: dispatch2, onChanged } = ctx2.life;
+  const editable = !ctx2.settings().editLock;
+  const who = { id: unit2.id, displayName: unit2.displayName };
+  const send = (action) => {
+    dispatch2(action);
+    onChanged?.();
+  };
+  const host = h("div", { class: "alius-life-profile" });
+  const part = (cls) => host.appendChild(h("div", { class: cls }));
+  renderTemperamentBlock(part("alius-life-temperament"), {
+    unit: who,
+    temperament: temperamentOf(state, unit2.id),
+    locks: unit2.temperamentLocks ?? [],
+    editable,
+    onSet: (field2, value) => send({ type: "profile/set_temperament", payload: { unitId: unit2.id, temperament: { [field2]: value } } }),
+    // only the changed field: a locked one in the patch refuses it all
+    onLock: (field2, on) => send({ type: "profile/lock_temperament", payload: { unitId: unit2.id, field: field2, on } })
+  });
+  renderHobbiesEditor(part("alius-life-hobbies"), {
+    unit: who,
+    registries: ctx2.registries,
+    editable,
+    hobbies: (unit2.hobbies ?? []).map((x) => ({ id: x.id, state: x.state, milestones: x.milestones.length })),
+    aptitudes: unit2.aptitudes ?? { high: [], low: [] },
+    onSet: (hobbies, aptitudes) => send({ type: "profile/set_hobbies", payload: { unitId: unit2.id, hobbies, aptitudes } })
+  });
+  renderOpinionsEditor(part("alius-life-opinions"), {
+    unit: who,
+    registries: ctx2.registries,
+    editable,
+    opinions: Object.fromEntries(Object.entries(unit2.opinions ?? {}).map(([t, o]) => [t, { position: o.position, ...o.text ? { text: o.text } : {}, voiced: o.voicedDay !== void 0 }])),
+    onSet: (topicId, patch) => send({ type: "profile/set_opinion", payload: { unitId: unit2.id, topicId, ...patch } })
+  });
+  return host;
+}
 function memoryBlock(unit2, ctx2, state) {
   if (!ctx2.memory) return null;
   const host = h("div", { class: "alius-memory-host" });
@@ -38288,6 +38538,8 @@ function unitBlock(unit2, ctx2, state) {
       unit2.kind === "named" ? memoryBlock(unit2, ctx2, state) : null,
       unit2.kind === "named" ? developmentBlock(unit2, ctx2, state) : null,
       // P14b
+      gone ? null : lifeProfileBlock(unit2, ctx2, state),
+      // P14c
       gone || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit2.id, (choice) => ctx2.onWager?.(unit2.id, choice)),
       gone ? null : restrictionLine(unit2, state),
       gone || !ctx2.onPunish || unit2.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit2.id, onPunish: (measure, days) => ctx2.onPunish(unit2.id, measure, days) }),
@@ -38324,9 +38576,9 @@ function handSelect(unit2, state, ctx2) {
   const current = handOf(state, ctx2.registries, unit2.id);
   if (!ctx2.onSetHand || !current) return null;
   const select = h("select", { class: "alius-input", "data-hand": unit2.id, "aria-label": `Handwriting of ${unit2.displayName}` }, ...[...ctx2.registries.handFonts.values()].map((e) => {
-    const option = h("option", { value: String(e.id) }, String(e.name));
-    if (e.id === current.id) option.setAttribute("selected", "");
-    return option;
+    const option2 = h("option", { value: String(e.id) }, String(e.name));
+    if (e.id === current.id) option2.setAttribute("selected", "");
+    return option2;
   }));
   select.value = String(current.id);
   select.addEventListener("change", () => ctx2.onSetHand(unit2.id, select.value));
@@ -38336,9 +38588,9 @@ function quartersSelect(unit2, state, ctx2) {
   const current = quartersOf(state, ctx2.registries, unit2.id);
   if (!ctx2.onSetQuarters || !current) return null;
   const select = h("select", { class: "alius-input", "data-quarters": unit2.id, "aria-label": `Quarters of ${unit2.displayName}` }, ...[...ctx2.registries.quartersStyles.values()].map((e) => {
-    const option = h("option", { value: String(e.id), title: String(e.description) }, String(e.name));
-    if (e.id === current.id) option.setAttribute("selected", "");
-    return option;
+    const option2 = h("option", { value: String(e.id), title: String(e.description) }, String(e.name));
+    if (e.id === current.id) option2.setAttribute("selected", "");
+    return option2;
   }));
   select.value = String(current.id);
   select.addEventListener("change", () => ctx2.onSetQuarters(unit2.id, select.value));
@@ -39133,15 +39385,15 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
   });
   const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
   const noteCards = room2.commanderCell === true && (view === void 0 || view.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
-  const title = view?.title ?? String(room2.label);
+  const title2 = view?.title ?? String(room2.label);
   return h(
     "section",
-    { class: "alius-room-panel", "data-room": String(room2.id), ...view ? { "data-plan": view.planRoomId } : {}, role: "region", "aria-label": `${title} room` },
+    { class: "alius-room-panel", "data-room": String(room2.id), ...view ? { "data-plan": view.planRoomId } : {}, role: "region", "aria-label": `${title2} room` },
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : view?.cabin === "commander" ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title)),
-      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title}`, onclick: opts.onClose }, "[X]")
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : view?.cabin === "commander" ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title2)),
+      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title2}`, onclick: opts.onClose }, "[X]")
     ),
     h("p", { class: "alius-dim" }, view?.description ?? String(room2.description)),
     h("h3", {}, "HERE"),
@@ -40387,7 +40639,7 @@ function renderHerCallCard(state, reg, onAck) {
   if (!exp || pending4?.kind !== "event" || !pending4.herCall) return null;
   const { unitId, outcome } = pending4.herCall;
   const template = reg.dilemmaTemplates.get(pending4.templateId);
-  const title = template?.fixed?.title ?? "A decision in the field";
+  const title2 = template?.fixed?.title ?? "A decision in the field";
   const said = herCallSpecOf(template)?.outcomes.find((o) => o.id === outcome)?.text;
   const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const mission = state.missions.active.find((m) => m.id === exp.missionId);
@@ -40400,7 +40652,7 @@ function renderHerCallCard(state, reg, onAck) {
     marked ? h("p", { class: "alius-banner" }, "Oversight will want a name if this run fails.") : null,
     h("button", { type: "button", class: "alius-btn alius-option", "data-ack-her-call": "", ...analyzeNative("glossary:her_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title, body, accent: unitAccent(unitId), level: 3 });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title: title2, body, accent: unitAccent(unitId), level: 3 });
   card2.setAttribute("data-her-call", pending4.nodeId);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:her_call", ctx2))) card2.setAttribute(k, v);
   return card2;
@@ -40780,13 +41032,13 @@ function renderExpeditionScreen(host, ctx2) {
     }
     let picked = false;
     for (const o of options2) {
-      const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick2) => {
+      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick2) => {
         picked = true;
         controller.choose(o.index, pick2);
       }, unlock: () => {
         picked = false;
       } }) : null;
-      if (picker) picker.hidden = true;
+      if (picker2) picker2.hidden = true;
       panel.append(h(
         "div",
         {},
@@ -40797,11 +41049,11 @@ function renderExpeditionScreen(host, ctx2) {
           disabled: o.disabled !== null,
           onclick: () => {
             if (o.disabled !== null) return;
-            if (picker) picker.hidden = !picker.hidden;
+            if (picker2) picker2.hidden = !picker2.hidden;
             else controller.choose(o.index);
           }
-        }, `[ ${o.label} ]${picker ? " \u2014 CHOOSE HOW" : ""}${o.disabled ? ` \u2014 ${o.disabled}` : ""}`),
-        picker
+        }, `[ ${o.label} ]${picker2 ? " \u2014 CHOOSE HOW" : ""}${o.disabled ? ` \u2014 ${o.disabled}` : ""}`),
+        picker2
       ));
     }
     root.append(panel);
@@ -40910,24 +41162,24 @@ function clearWorldDirectives(builder) {
 }
 function worldDirectives(builder, state, reg) {
   clearWorldDirectives(builder);
-  for (const { option, choice } of worldChoices(state, reg)) {
+  for (const { option: option2, choice } of worldChoices(state, reg)) {
     const texts = choice.effects.flatMap((e) => e.type === "scene_directive" ? [e.text] : []);
-    if (texts.length > 0) builder.setDirective({ id: `world:${option.id}`, text: texts.join(" "), expiresAfter: "manual" });
+    if (texts.length > 0) builder.setDirective({ id: `world:${option2.id}`, text: texts.join(" "), expiresAfter: "manual" });
   }
   const present2 = (state.scene?.participants ?? []).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
-  for (const option of reg.worldOptions.values()) {
-    if (option.squadStance !== true) continue;
+  for (const option2 of reg.worldOptions.values()) {
+    if (option2.squadStance !== true) continue;
     for (const u of present2) {
-      for (const fx2 of optionStanceEffects(state, reg, u, option.id)) {
+      for (const fx2 of optionStanceEffects(state, reg, u, option2.id)) {
         if (fx2.type !== "directive") continue;
         if (fx2.whileEarly === true && (firstImpressionWeight(state, u.id) <= EARLY_WEIGHT || normDistance(state, reg) === 0)) continue;
-        builder.setDirective({ id: `stance:${u.id}:${option.id}`, text: fx2.text.replaceAll("{name}", u.displayName), expiresAfter: "scene" });
+        builder.setDirective({ id: `stance:${u.id}:${option2.id}`, text: fx2.text.replaceAll("{name}", u.displayName), expiresAfter: "scene" });
       }
     }
-    const stances = present2.map((u) => stanceOf(state, reg, u, option.id)?.stance);
+    const stances = present2.map((u) => stanceOf(state, reg, u, option2.id)?.stance);
     if (stances.includes("shares") && stances.includes("opposes")) {
-      const friction = present2.flatMap((u) => optionStanceEffects(state, reg, u, option.id)).find((fx2) => fx2.type === "friction_directive");
-      if (friction && friction.type === "friction_directive") builder.setDirective({ id: `friction:${option.id}`, text: friction.text, expiresAfter: "scene" });
+      const friction = present2.flatMap((u) => optionStanceEffects(state, reg, u, option2.id)).find((fx2) => fx2.type === "friction_directive");
+      if (friction && friction.type === "friction_directive") builder.setDirective({ id: `friction:${option2.id}`, text: friction.text, expiresAfter: "scene" });
     }
   }
 }
@@ -41624,14 +41876,14 @@ function drawDemandChips(host, state, reg, pick2, on) {
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
     const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
-    const button2 = (kind, text2, run, disabled = false, title) => {
+    const button2 = (kind, text2, run, disabled = false, title2) => {
       const b = h("button", {
         type: "button",
         class: "alius-btn alius-tagchip",
         "data-demand-answer": kind,
         "data-demand": d.id,
         ...desire ? analyzeNative("glossary:want") : {},
-        ...disabled ? { "aria-disabled": "true", ...title ? { title } : {} } : {},
+        ...disabled ? { "aria-disabled": "true", ...title2 ? { title: title2 } : {} } : {},
         onclick: () => {
           if (b.getAttribute("aria-disabled") !== "true") run();
         }
@@ -42368,7 +42620,7 @@ function renderDoor(host, ctx2) {
     clocks.delete(entry.id);
     fn();
   };
-  const option = (action, text2, onclick) => {
+  const option2 = (action, text2, onclick) => {
     const b = h("button", { type: "button", class: "alius-btn alius-option", "data-action": action, ...analyzeNative("glossary:night_door"), onclick });
     b.textContent = text2;
     buttons.push(b);
@@ -42403,9 +42655,9 @@ function renderDoor(host, ctx2) {
       else renderDoor(host, ctx2);
     });
   }
-  const row2 = h("div", { class: "alius-row" }, option("open", "[ OPEN ]", press(ctx2.onOpen)));
-  if (!entry.door) row2.append(option("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
-  row2.append(option("ignore", "[ STAY SILENT ]", press(ctx2.onSilent)));
+  const row2 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press(ctx2.onOpen)));
+  if (!entry.door) row2.append(option2("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
+  row2.append(option2("ignore", "[ STAY SILENT ]", press(ctx2.onSilent)));
   host.append(h(
     "section",
     { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
@@ -44699,7 +44951,7 @@ function linked(text2, view, on) {
     return h("button", { type: "button", class: "alius-analyze-link", "data-target": address, onclick: () => on.link(address) }, label2);
   });
 }
-var block = (title, cls, lines) => h("div", { class: `alius-analyze-block ${cls}` }, h("div", { class: "alius-analyze-label" }, title), ...lines.map((l) => h("div", { class: "alius-analyze-line" }, ...l)));
+var block = (title2, cls, lines) => h("div", { class: `alius-analyze-block ${cls}` }, h("div", { class: "alius-analyze-label" }, title2), ...lines.map((l) => h("div", { class: "alius-analyze-line" }, ...l)));
 function renderPanel(host, view, on) {
   const { model } = view;
   host.classList.add("alius-analyze");
@@ -44722,9 +44974,9 @@ function renderPanel(host, view, on) {
     if (view.crumbs.length > 1) {
       const last = view.crumbs.length - 1;
       const trail = [];
-      view.crumbs.forEach((title, i) => {
+      view.crumbs.forEach((title2, i) => {
         if (i > 0) trail.push(" \u203A ");
-        trail.push(i === last ? title : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title));
+        trail.push(i === last ? title2 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title2));
       });
       body.append(h("div", { class: "alius-analyze-crumbs" }, ...trail));
     }
@@ -45330,8 +45582,8 @@ function renderMemorySection(host, ctx2) {
 
 // src/ui/shell/sysTab.ts
 var errText2 = (e) => e instanceof Error ? e.message : String(e);
-function field(label2, control, setting) {
-  return h("label", { class: "alius-field alius-option", ...analyzeNative(`setting:${setting}`) }, h("span", { class: "alius-field-label" }, label2), control);
+function field(label2, control2, setting) {
+  return h("label", { class: "alius-field alius-option", ...analyzeNative(`setting:${setting}`) }, h("span", { class: "alius-field-label" }, label2), control2);
 }
 function renderSysTab(host, ctx2) {
   const { st } = ctx2;
@@ -45421,16 +45673,16 @@ function renderSysTab(host, ctx2) {
     const state = ctx2.getState();
     const reg = ctx2.getRegistries?.();
     if (!state || !reg || reg.worldOptions.size === 0) return [h("p", { class: "alius-dim" }, "World options are set when a campaign is started.")];
-    return [...reg.worldOptions.values()].map((option) => {
-      const id = String(option.id);
+    return [...reg.worldOptions.values()].map((option2) => {
+      const id = String(option2.id);
       const current = worldChoice(state, reg, id).choice;
-      const live = option.live === true;
-      let control;
+      const live = option2.live === true;
+      let control2;
       if (live && ctx2.dispatch) {
         const el = h(
           "select",
           { name: `world:${id}`, class: "alius-input" },
-          ...option.choices.map((c) => h("option", { value: c.id, selected: c.id === current.id }, c.label))
+          ...option2.choices.map((c) => h("option", { value: c.id, selected: c.id === current.id }, c.label))
         );
         el.value = current.id;
         el.addEventListener("change", () => {
@@ -45441,13 +45693,13 @@ function renderSysTab(host, ctx2) {
             el.value = ctx2.getState() ? worldChoice(ctx2.getState(), reg, id).choice.id : current.id;
           }
         });
-        control = el;
-      } else control = h("span", { class: "alius-world-value" }, String(current.label));
+        control2 = el;
+      } else control2 = h("span", { class: "alius-world-value" }, String(current.label));
       return h(
         "div",
         { class: "alius-field alius-option alius-world-row", "data-option": id, ...analyzeAttrs(`worldOptions:${id}`) },
-        h("span", { class: "alius-field-label" }, String(option.label)),
-        control,
+        h("span", { class: "alius-field-label" }, String(option2.label)),
+        control2,
         h("span", { class: "alius-lock", "data-live": String(live) }, live ? "CHANGEABLE LATER" : "LOCKED AT START")
       );
     });
@@ -46493,7 +46745,7 @@ function createApp(st, deps) {
     ...worldDeps,
     context,
     refreshContext: applyContext,
-    notice: (kind, text2, title, source) => toast(kind, text2, { voice: VOICE_OF[source], title }),
+    notice: (kind, text2, title2, source) => toast(kind, text2, { voice: VOICE_OF[source], title: title2 }),
     // P12: the device's own readout
     cutIn: (text2) => {
       const root = document.getElementById("alius-shell");
@@ -47546,7 +47798,7 @@ function createApp(st, deps) {
     const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
     const resetBox = h("input", { type: "checkbox", "data-reset-development": unitId });
     const resetLifeBox = h("input", { type: "checkbox", "data-reset-life": unitId });
-    const picker = await shell.modal({
+    const picker2 = await shell.modal({
       title: "Re-sync from card",
       body: h(
         "div",
@@ -47558,7 +47810,7 @@ function createApp(st, deps) {
       ),
       actions: [{ label: "Import", value: "go" }, { label: "Cancel", value: "cancel" }]
     });
-    if (picker !== "go") return;
+    if (picker2 !== "go") return;
     const sections = offered2.filter((_, i) => boxes[i].checked);
     if (sections.length === 0) return toast("warn", "Choose at least one section to re-sync.");
     const wizard = new Wizard(
@@ -48064,6 +48316,8 @@ function createApp(st, deps) {
       // P3b: the MEMORY block of each unit (pin, forget, and with the edit lock off edit)
       development: { dispatch: (a) => act(a), onChanged: () => shell.refresh() },
       // P14b: HOLD and fact editing
+      life: { dispatch: (a) => act(a), onChanged: () => shell.refresh() },
+      // P14c: temperament, hobbies and opinions (the edit lock gates the controls)
       memory: {
         dispatch: (a) => act(a),
         confirm: async (text2) => await shell.modal({ title: "FORGET", body: text2, actions: [{ label: "[ FORGET ]", value: "yes" }, { label: "[ CANCEL ]", value: "no" }] }) === "yes",
@@ -48991,9 +49245,9 @@ registerChecks("worldPresets", (entry, regs) => {
     if (!(optionId in chosen)) out.push({ path: "choices", message: `preset "${entry.id}" does not name option "${optionId}"` });
   }
   for (const [optionId, choiceId] of Object.entries(chosen)) {
-    const option = regs.worldOptions.get(optionId);
-    if (!option) out.push({ path: `choices.${optionId}`, message: `preset names unknown option "${optionId}"` });
-    else if (!choicesOf(option).some((c) => c.id === choiceId)) {
+    const option2 = regs.worldOptions.get(optionId);
+    if (!option2) out.push({ path: `choices.${optionId}`, message: `preset names unknown option "${optionId}"` });
+    else if (!choicesOf(option2).some((c) => c.id === choiceId)) {
       out.push({ path: `choices.${optionId}`, message: `"${choiceId}" is not a choice of option "${optionId}"` });
     }
   }
@@ -49916,11 +50170,11 @@ function addDrawer(host, actions) {
   drawer.className = "inline-drawer";
   const header = document.createElement("div");
   header.className = "inline-drawer-toggle inline-drawer-header";
-  const title = document.createElement("b");
-  title.textContent = "Alius";
+  const title2 = document.createElement("b");
+  title2.textContent = "Alius";
   const chevron = document.createElement("div");
   chevron.className = "inline-drawer-icon fa-solid fa-circle-chevron-down down";
-  header.append(title, chevron);
+  header.append(title2, chevron);
   const content = document.createElement("div");
   content.className = "inline-drawer-content";
   const row2 = document.createElement("div");

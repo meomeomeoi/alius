@@ -2170,6 +2170,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onTakeOff: (id) => void personal.takeOffToken(id),
       // P3b: the MEMORY block of each unit (pin, forget, and with the edit lock off edit)
       development: { dispatch: (a) => act(a), onChanged: () => shell.refresh() }, // P14b: HOLD and fact editing
+      life: { dispatch: (a) => act(a), onChanged: () => shell.refresh() }, // P14c: temperament, hobbies and opinions (the edit lock gates the controls)
       memory: {
         dispatch: (a) => act(a),
         confirm: async (text) => (await shell.modal({ title: 'FORGET', body: text, actions: [{ label: '[ FORGET ]', value: 'yes' }, { label: '[ CANCEL ]', value: 'no' }] })) === 'yes',
