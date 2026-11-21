@@ -763,7 +763,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `stripTagged(draft, reg, removed: string[])`;
   - action `blocking/set` → `blocking_changed { person, field, value, source }`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `not live without a close relation`: a scene with a `comrade` → false; `confidant` → true; a grunt → false; a registered gate → true.
   - `set refuses what the gates refuse`: a tagged item with its category off; a `dynamic` contact at frame `equal`; her own limit; `under_desk` in a room without a desk; a person not present; a second item on a used slot. Each returns its reason and leaves the state unchanged.
   - `implies writes both sides`: `human_chair` (frame reader stubbed to `play`) sets the commander `all_fours` and her `sitting` / `on_person` (relTo commander); removing it restores her previous anchor.
@@ -771,10 +771,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `effectsOf by channel` (`ring_gag` → `input`, `camera`, `physics`).
   - `category off mid-scene strips`: wearing `blindfold` (restraint), turn `restraint` off → `worn.eyes` gone; with a physics running on a tagged contact the run ends (`physics_outcome stopped`) once Task 18 exists (the test is skipped until then with `it.todo` and completed in Task 18).
   - `no rng draw`: `state.rng` unchanged by any `blocking/set`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/blocking/blocking.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R6.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): the blocking state, its gate, validation and effects`
+- [x] **Step 2: Run** `npx vitest run tests/engine/blocking/blocking.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R6.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): the blocking state, its gate, validation and effects`
 
 ---
 

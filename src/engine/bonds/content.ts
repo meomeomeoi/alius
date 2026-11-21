@@ -72,6 +72,14 @@ export function setCategories(draft: CampaignState, reg: Registries, enabled: st
   return [{ type: 'content_changed', added, removed }];
 }
 
+type Withdrawal = (draft: CampaignState, reg: Registries, removed: string[]) => void;
+const withdrawals: Withdrawal[] = [];
+
+/** A later package's state that holds tagged content (P15a: the scene blocking) registers how it lets go of a removed category. Quiet: no events. */
+export function registerWithdrawal(fn: Withdrawal): void {
+  if (!withdrawals.includes(fn)) withdrawals.push(fn);
+}
+
 /** Drops the open items tagged with a removed category: no deltas, no events. */
 function withdrawTagged(draft: CampaignState, reg: Registries, removed: string[]): void {
   const hit = (tags: string[]) => tags.some((t) => removed.includes(t));
@@ -94,6 +102,7 @@ function withdrawTagged(draft: CampaignState, reg: Registries, removed: string[]
   if (draft.personal?.intercepts?.open && hit(['jealousy_games'])) delete draft.personal.intercepts.open;
   draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));
   if (draft.calendar.nightEvent && hit(draft.calendar.nightEvent.contentTags ?? [])) delete draft.calendar.nightEvent;
+  for (const w of withdrawals) w(draft, reg, removed); // P15a
 }
 
 /** The categories that are switched off, in registry order, with their labels (what the extraction is told to watch for). */

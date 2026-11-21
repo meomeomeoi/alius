@@ -1,3 +1,4 @@
+import type { Blocking, StagingSnapshot } from '../blocking/state';
 import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
 import type { RngState } from '../rng';
@@ -611,6 +612,14 @@ export interface SceneRecord {
   violations?: Array<{ index: number; categories: string[] }>;
   /** P14c: this scene is a quiet meeting (a pastime with her); set when the scene starts, read at its end. */
   pastime?: { id: string; unitId: string };
+  /** P15a: who is where, in what posture, touching whom, wearing what, doing what (a person with no field set is absent). Gone with the scene. */
+  blocking?: Record<string, Blocking>;
+  /** P15a: the P2 activity that opened the scene (`scene/start` payload), read for her starting activity. */
+  activityId?: string;
+  /** P15a: the state before each change to the blocking, newest last, so a swipe or an edit takes the change back (at most `TUNING.blocking.logMax`). */
+  stagingLog?: StagingSnapshot[];
+  /** P15a: moments (Task 13 gives it its shape); part of the staging snapshots. */
+  moments?: unknown;
 }
 
 export interface PendingProposal {
