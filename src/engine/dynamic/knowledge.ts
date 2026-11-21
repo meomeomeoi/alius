@@ -3,7 +3,7 @@
  * `suspects_dynamic`, `knows_dynamic`), the signs that feed it, and the day step that ages it. Each level writes one fact, hidden from the commander
  * until the observer has shown it in a later scene or DM (the knowledge rule of `analysis/providers/dynamic.ts`), and emits `dynamic_known`.
  * A sign is a `dynamicSigns` row read by `kind`; a row whose content is off adds nothing (M9). Nothing here draws: the gossip, the holder's telling
- * and every other pick are hashed (`dynamicHash`). Everything answers `[]` while the dynamic is off.
+ * and every other pick are hashed (`dynamicRoll`). Everything answers `[]` while the dynamic is off.
  */
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
@@ -136,6 +136,29 @@ export function knowInstantly(draft: CampaignState, ctx: Ctx, observerId: string
   rec.suspicion = TUNING.squadKnowledge.knowsAt;
   rec.peakDay = draft.day;
   return refresh(draft, ctx, observerId, holderId, rec);
+}
+
+// ---------------------------------------------------------------------------------------------
+// What she has shown
+
+/** Has the observer been with the commander, in a scene or in a DM, on a day after this one? The scene on record, an ended scene's mark, the chronicle and the DMs are looked at. */
+export function sharedAfter(state: CampaignState, observerId: string, day: number): boolean {
+  const scene = state.scene;
+  if (scene !== undefined && scene.day > day && scene.participants.includes(observerId)) return true;
+  if ((state.memory.scenes ?? []).some((m) => (m.day ?? 0) > day && m.participants?.includes(observerId) === true)) return true;
+  if (state.memory.chronicle.some((c) => c.kind === 'scene' && c.day > day && (c.audience === '*' || (Array.isArray(c.audience) && c.audience.includes(observerId))))) return true;
+  return (state.dms[observerId] ?? []).some((m) => m.day > day);
+}
+
+/**
+ * The commander learns what a woman knows once she has shown it (review I7): a fact of the squad's knowledge (`dynamic_knowledge`) loses
+ * `hiddenFromCommander` when its observer and the commander shared a scene or a DM on a day after the fact's. The engine's own step, so the prompt's
+ * fact line ("she does not tell the commander") and `Knowledge` read the same flag; it runs after every action and writes nothing else. Draws nothing.
+ */
+export function revealKnown(draft: CampaignState): void {
+  for (const f of draft.memory.facts) {
+    if (f.hiddenFromCommander === true && f.tags.includes(DYNAMIC_KNOWLEDGE_TAG) && sharedAfter(draft, f.about[0], f.day)) delete f.hiddenFromCommander;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

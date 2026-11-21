@@ -5,7 +5,8 @@ import { registerMemoryProviders } from '../../../src/analysis/providers/memory'
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
-import { addSign, knowInstantly, knowledgeDayStep, levelOf, signsFromEvents } from '../../../src/engine/dynamic/knowledge';
+import { factLine } from '../../../src/engine/memory/audience';
+import { addSign, knowInstantly, knowledgeDayStep, levelOf, revealKnown, signsFromEvents } from '../../../src/engine/dynamic/knowledge';
 import { blankDynamic, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Frame, SignKind } from '../../../src/engine/dynamic/types';
 import { applyDynamicIntent } from '../../../src/engine/dynamic/intents';
@@ -135,21 +136,47 @@ describe('levels', () => {
     expect(knowInstantly(s, ctxOf(s, reg), BEA, ANN, 'holder_tells')).toEqual([]); // she knows already
   });
 
-  it('the fact becomes known to the commander after a shared scene (or a DM) after its day', () => {
+  it('the fact becomes known to the commander after a shared scene (or a DM) after its day: the prompt line and Knowledge agree before and after (I7)', () => {
     registerMemoryProviders();
     registerDynamicProviders();
     const s = world('role');
     knowInstantly(s, ctxOf(s, reg), BEA, ANN, 'holder_tells');
     knowInstantly(s, ctxOf(s, reg), CAT, ANN, 'holder_tells');
     const visible = (st: CampaignState) => buildKnowledge(st, DEFAULT_SETTINGS).facts().filter((f) => f.tags.includes('dynamic_knowledge')).map((f) => f.about[0]);
+    const lineOf = (st: CampaignState, id: string) => factLine(st, st.memory.facts.find((f) => f.tags.includes('dynamic_knowledge') && f.about[0] === id)!, [id]);
+    // before: hidden from the commander in the UI reading and in the prompt line
     expect(visible(s)).toEqual([]);
+    expect(lineOf(s, BEA)).toContain('(the commander does not)');
     s.day = 21;
     s.memory.scenes = [{ sceneId: 'sc1', from: 0, to: 4, summarized: false, day: 20, participants: [BEA] }]; // the day of the fact: not after it
+    revealKnown(s);
     expect(visible(s)).toEqual([]);
+    expect(lineOf(s, BEA)).toContain('(the commander does not)');
+    // after a scene with her on a later day: the engine drops the flag, so both agree
     s.memory.scenes = [{ sceneId: 'sc1', from: 0, to: 4, summarized: false, day: 21, participants: [BEA, DEE] }];
+    expect(visible(s)).toEqual([]); // the flag is the one truth: nothing changes until the engine step has run
+    expect(lineOf(s, BEA)).toContain('(the commander does not)');
+    revealKnown(s);
     expect(visible(s)).toEqual([BEA]);
+    expect(lineOf(s, BEA)).not.toContain('the commander does not');
+    expect(lineOf(s, CAT)).toContain('(the commander does not)'); // hers is still hidden, in both
     s.dms[CAT] = [{ id: 'd1', from: CAT, text: 'ma\'am', day: 21, slot: 'morning', read: true }];
+    revealKnown(s);
     expect(visible(s).sort()).toEqual([BEA, CAT]);
+    expect(lineOf(s, CAT)).not.toContain('the commander does not');
+  });
+
+  it('a scene opened with her drops the flag by itself (an after-action step), only for the observer who is there', () => {
+    registerMemoryProviders();
+    const s = world('role');
+    knowInstantly(s, ctxOf(s, reg), BEA, ANN, 'holder_tells');
+    knowInstantly(s, ctxOf(s, reg), CAT, ANN, 'holder_tells');
+    s.day = 21;
+    const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [BEA], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(r.events)).toEqual([]);
+    const flag = (id: string) => r.state.memory.facts.find((f) => f.tags.includes('dynamic_knowledge') && f.about[0] === id)!.hiddenFromCommander;
+    expect(flag(BEA)).toBeUndefined();
+    expect(flag(CAT)).toBe(true);
   });
 });
 

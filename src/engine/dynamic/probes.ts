@@ -4,7 +4,7 @@
  * main model invents the gesture from a directive, and `intent_extract` reports the answer. An answer moves hold (R8) and her reading of the
  * commander's position (R10). Backing off is the way a refusal works: consistent deflection and she leaves it alone for a long time.
  *
- * Draws: one `ctx.rng.chance` per unit that is eligible and has room, and nothing else (the axis is hashed, `dynamicHash`). A day with
+ * Draws: one `ctx.rng.chance` per unit that is eligible and has room, and nothing else (the axis and the order are hashed, `dynamicRoll`). A day with
  * nobody eligible draws nothing. At most one probe is issued a day.
  */
 import type { Registries } from '../../content/types';
@@ -21,7 +21,8 @@ import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap } fr
 import { addHold, bandIndex } from './hold';
 import { practiceOf } from './profile';
 import { updateReading } from './reading';
-import { dynamicHash, dynamicOf, type DynamicRelation } from './state';
+import { dynamicOf, type DynamicRelation } from './state';
+import { dynamicRoll } from './witness';
 import type { ProbeAxisEntry, Tone } from './types';
 
 const livingNamed = (draft: Pick<CampaignState, 'squad'>) => draft.squad.filter((u) => u.kind === 'named' && isLiving(u));
@@ -76,7 +77,7 @@ function pickAxis(draft: CampaignState, reg: Registries, unitId: string, tier: 1
   const skip = recent.slice(-TUNING.probes.skipRecent);
   const fresh = axes.filter((a) => !skip.includes(a.id));
   const pool = fresh.length > 0 ? fresh : axes;
-  return pool[Math.min(pool.length - 1, Math.floor(dynamicHash(draft, unitId, 'probe_axis') * pool.length))];
+  return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, 'probe_axis') * pool.length))];
 }
 
 /** She stays in the queue while she can still be probing: not at `play`, not backed off, probed within the idle days or pending. */
@@ -114,7 +115,7 @@ export function probeDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registr
       if (dyn?.probes.backoffUntil !== undefined && draft.day < dyn.probes.backoffUntil) return false;
       return canHold(draft, reg, id) === null;
     })
-    .sort((a, b) => dynamicHash(draft, a, 'probe_order') - dynamicHash(draft, b, 'probe_order'));
+    .sort((a, b) => dynamicRoll(draft, a, 'probe_order') - dynamicRoll(draft, b, 'probe_order'));
   for (const id of candidates) {
     if (!campaign.queue.includes(id) && probeQueueRoom(draft) <= 0) continue;
     const p = probeChance(draft, reg, id);

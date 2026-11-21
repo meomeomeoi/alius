@@ -9,7 +9,7 @@ import { isLiving } from '../economy';
 import { pushMessage } from '../dms';
 import { holdersAtPlay } from '../dynamic/gate';
 import { hasCapability, holderWith } from '../dynamic/capabilities';
-import { dynamicHash } from '../dynamic/state';
+import { dynamicRoll } from '../dynamic/witness';
 import { addFact } from '../memory';
 import { assertiveness } from '../power/options';
 import { evaluateAutomatic } from '../relations/graph';
@@ -142,7 +142,7 @@ export function rollBookings(draft: CampaignState, ctx: EngineCtx): EngineEvent[
       continue;
     }
     // P15: `book_ahead` lets her book up to `bookAhead` days ahead, the day a hash picks (nothing drawn)
-    const ahead = hasCapability(draft, reg, u.id, 'book_ahead') ? 1 + Math.floor(dynamicHash(draft, u.id, 'book_ahead') * TUNING.dynamic.bookAhead) : 1;
+    const ahead = hasCapability(draft, reg, u.id, 'book_ahead') ? 1 + Math.floor(dynamicRoll(draft, u.id, 'book_ahead') * TUNING.dynamic.bookAhead) : 1;
     events.push(...book(draft, ctx, { unitId: u.id, kindId: String(kind.id), day: draft.day + ahead, slot: kind.slot as Slot, source: 'roll' }));
     pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll('{name}', u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
   }

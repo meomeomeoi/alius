@@ -17608,7 +17608,7 @@ function rollBookings(draft, ctx2) {
       addFact(draft, { about: [keeper, u.id], text: problem, tags: ["dynamic", "booking_consent"], importance: 2, day: draft.day, knownBy: [keeper, u.id] });
       continue;
     }
-    const ahead = hasCapability(draft, reg, u.id, "book_ahead") ? 1 + Math.floor(dynamicHash(draft, u.id, "book_ahead") * TUNING.dynamic.bookAhead) : 1;
+    const ahead = hasCapability(draft, reg, u.id, "book_ahead") ? 1 + Math.floor(dynamicRoll(draft, u.id, "book_ahead") * TUNING.dynamic.bookAhead) : 1;
     events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + ahead, slot: kind.slot, source: "roll" }));
     pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
   }
@@ -18873,6 +18873,18 @@ function knowInstantly(draft, ctx2, observerId, holderId, cause) {
   rec.peakDay = draft.day;
   return refresh(draft, ctx2, observerId, holderId, rec);
 }
+function sharedAfter(state, observerId, day) {
+  const scene = state.scene;
+  if (scene !== void 0 && scene.day > day && scene.participants.includes(observerId)) return true;
+  if ((state.memory.scenes ?? []).some((m) => (m.day ?? 0) > day && m.participants?.includes(observerId) === true)) return true;
+  if (state.memory.chronicle.some((c) => c.kind === "scene" && c.day > day && (c.audience === "*" || Array.isArray(c.audience) && c.audience.includes(observerId)))) return true;
+  return (state.dms[observerId] ?? []).some((m) => m.day > day);
+}
+function revealKnown(draft) {
+  for (const f of draft.memory.facts) {
+    if (f.hiddenFromCommander === true && f.tags.includes(DYNAMIC_KNOWLEDGE_TAG) && sharedAfter(draft, f.about[0], f.day)) delete f.hiddenFromCommander;
+  }
+}
 var presentIn = (draft) => (draft.scene?.participants ?? []).filter((id) => observerUnit(draft, id) !== void 0);
 function pairHolders(draft, present2) {
   const holds4 = (id) => {
@@ -19031,7 +19043,7 @@ function pickAxis(draft, reg, unitId, tier, recent2) {
   const skip = recent2.slice(-TUNING.probes.skipRecent);
   const fresh = axes.filter((a) => !skip.includes(a.id));
   const pool = fresh.length > 0 ? fresh : axes;
-  return pool[Math.min(pool.length - 1, Math.floor(dynamicHash(draft, unitId, "probe_axis") * pool.length))];
+  return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, "probe_axis") * pool.length))];
 }
 function staysInQueue(draft, id) {
   const dyn = dynamicOf(draft, id);
@@ -19057,7 +19069,7 @@ function probeDayStep(draft, ctx2) {
     if (dyn !== void 0 && (frameRank(dyn.frame) >= frameRank("play") || dyn.probes.pending !== void 0)) return false;
     if (dyn?.probes.backoffUntil !== void 0 && draft.day < dyn.probes.backoffUntil) return false;
     return canHold(draft, reg, id) === null;
-  }).sort((a, b) => dynamicHash(draft, a, "probe_order") - dynamicHash(draft, b, "probe_order"));
+  }).sort((a, b) => dynamicRoll(draft, a, "probe_order") - dynamicRoll(draft, b, "probe_order"));
   for (const id of candidates3) {
     if (!campaign.queue.includes(id) && probeQueueRoom(draft) <= 0) continue;
     const p = probeChance(draft, reg, id);
@@ -34673,6 +34685,10 @@ installDynamicHooks();
 registerAfterAction(readMoments);
 registerAfterAction(noteEvents);
 registerAfterAction(signsFromEvents);
+registerAfterAction((draft) => {
+  revealKnown(draft);
+  return [];
+});
 registerEnforced(commandKeptEnforced);
 registerUndone(restoreCommandKept);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -54693,18 +54709,7 @@ function registerBondsProviders() {
 }
 
 // src/analysis/providers/dynamic.ts
-function sharedAfter(state, observerId, day) {
-  const scene = state.scene;
-  if (scene !== void 0 && scene.day > day && scene.participants.includes(observerId)) return true;
-  if ((state.memory.scenes ?? []).some((m) => (m.day ?? 0) > day && m.participants?.includes(observerId) === true)) return true;
-  if (state.memory.chronicle.some((c) => c.kind === "scene" && c.day > day && (c.audience === "*" || Array.isArray(c.audience) && c.audience.includes(observerId)))) return true;
-  return (state.dms[observerId] ?? []).some((m) => m.day > day);
-}
-var dynamicKnowledgeRule = {
-  fact: (f, state) => !(f.hiddenFromCommander === true && f.tags.includes(DYNAMIC_KNOWLEDGE_TAG)) || sharedAfter(state, f.about[0], f.day)
-};
 function registerDynamicProviders() {
-  registerKnowledgeRule(dynamicKnowledgeRule);
 }
 
 // src/analysis/providers/memory.ts
@@ -54785,7 +54790,7 @@ function factLengthProvider(_subject, env) {
   return { lines: [`A fact keeps at most ${n} characters${n === 200 ? " (the default)" : ""}.`] };
 }
 function registerMemoryProviders() {
-  registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true || f.tags.includes(DYNAMIC_KNOWLEDGE_TAG) });
+  registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true });
   registerAnalyzeProvider("glossary:memory_preset", presetProvider);
   registerAnalyzeProvider("glossary:memory_fill", fillProvider);
   registerAnalyzeProvider("glossary:memory_budget", budgetProvider);

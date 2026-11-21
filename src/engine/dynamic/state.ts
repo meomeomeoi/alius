@@ -170,8 +170,9 @@ function fnv1a(s: string): number {
 }
 
 /**
- * A stable number in [0, 1) from the campaign's dynamic salt, the unit, a key and the day: `fnv1a(<salt>|<unitId>|dynamic|<key>|<day>)`. The
- * source of every pick that is not one of the spec's rolls (the probe axis, the gossip spread, the head start). Never draws. Without
+ * A stable number in [0, 1) from the campaign's dynamic salt, the unit, a key and the day: `fnv1a(<salt>|<unitId>|dynamic|<key>|<day>)`. For a
+ * stable value only: two consecutive days give two nearby numbers, so a chance-like pick (the probe axis and order, a booking's offset, the gossip and
+ * the tells) reads `dynamicRoll` (`witness.ts`), which finishes it (review I8). Never draws. Without
  * `state.dynamic` the salt is 0, so a reader that runs off will still answer.
  */
 export function dynamicHash(state: Pick<CampaignState, 'dynamic' | 'day'>, unitId: string, key: string): number {

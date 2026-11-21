@@ -1,4 +1,3 @@
-import { DYNAMIC_KNOWLEDGE_TAG } from '../../engine/dynamic/types';
 import { memoryConfig } from '../../engine/memory/config';
 import type { Knowledge } from '../knowledge';
 import { registerKnowledgeRule } from '../knowledge';
@@ -99,7 +98,7 @@ function factLengthProvider(_subject: Subject, env: AnalyzeEnv): Reading {
 
 /** Registers the knowledge rule and the readings (called from `registerCoreProviders`). */
 export function registerMemoryProviders(): void {
-  registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true || f.tags.includes(DYNAMIC_KNOWLEDGE_TAG) }); // P15: the squad's knowledge is shown or not by the dynamic's own rule
+  registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true });
   registerAnalyzeProvider('glossary:memory_preset', presetProvider);
   registerAnalyzeProvider('glossary:memory_fill', fillProvider);
   registerAnalyzeProvider('glossary:memory_budget', budgetProvider);

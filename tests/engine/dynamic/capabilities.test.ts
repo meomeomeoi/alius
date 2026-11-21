@@ -73,6 +73,21 @@ describe('bookings', () => {
     expect(ofType(rollBookings(a, sure(a)), 'booking_made')[0].day).toBe(ofType(rollBookings(b, sure(b)), 'booking_made')[0].day);
   });
 
+  it('book_ahead does not book the same offset for weeks: consecutive days spread over 1 to 3 (review I8)', () => {
+    const offsets: number[] = [];
+    for (let day = 10; day < 70; day++) {
+      const s = holder(eager(), ANN, ['private_time']);
+      s.day = day;
+      const made = ofType(rollBookings(s, sure(s)), 'booking_made')[0];
+      offsets.push(Number(made.day) - day);
+    }
+    for (const n of [1, 2, 3]) expect(offsets.filter((o) => o === n).length).toBeGreaterThanOrEqual(10);
+    let run = 1;
+    let best = 1;
+    for (let i = 1; i < offsets.length; i++) { run = offsets[i] === offsets[i - 1] ? run + 1 : 1; best = Math.max(best, run); }
+    expect(best).toBeLessThanOrEqual(7);
+  });
+
   it('possessive booking_consent refuses another holder\'s booking with a fact for both; cold grants it', () => {
     const world = (style: ProfileStyle): CampaignState => {
       const s = atImpunity(partner(plain(reg), BEA, { lead: 'assertive', stateId: 'lover', affinity: 90, want: 50 }), reg, BEA, 55);

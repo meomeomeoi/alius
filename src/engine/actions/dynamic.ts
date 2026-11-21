@@ -6,7 +6,7 @@ import { contentAllowed } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
 import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
-import { signsFromEvents } from '../dynamic/knowledge';
+import { revealKnown, signsFromEvents } from '../dynamic/knowledge';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
 import { answerReturn, commandKeptEnforced, restoreCommandKept } from '../dynamic/aftermath';
@@ -46,6 +46,8 @@ registerAfterAction(readMoments);
 registerAfterAction(noteEvents);
 // What the squad sees on the stage (an item or a contact of the dynamic, a visitor who walks in): instant knowledge for the witnesses (R14); nothing while off.
 registerAfterAction(signsFromEvents);
+// What a woman knows turns known to the commander once she has shown it in a scene or a DM: the flag goes (the prompt and `Knowledge` read the same one) (R14).
+registerAfterAction((draft) => { revealKnown(draft); return []; });
 // A severe enforcement on the one who kept the command (a bench, a brig, the Leash) ends the struggle for it (R15a); nothing for anyone else.
 registerEnforced(commandKeptEnforced);
 // ... and UNDO of that enforcement (a punishment read from dialogue) gives the struggle back (the Inverse carries what it took).

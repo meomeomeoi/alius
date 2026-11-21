@@ -205,6 +205,30 @@ describe('the queue and the schedule', () => {
     }
   });
 
+  it('the axis and the order of the queue are spread over consecutive days, not stuck on one pick for weeks (review I8)', () => {
+    const sure = { chance: () => true } as unknown as Rng;
+    const longest = (xs: string[]): number => { let best = 1; let run = 1; for (let i = 1; i < xs.length; i++) { run = xs[i] === xs[i - 1] ? run + 1 : 1; best = Math.max(best, run); } return best; };
+    // the order: three eager units, one probe a day (the first in the order), sixty days in a row
+    const first: string[] = [];
+    for (let day = 1; day <= 60; day++) {
+      const s = world({ units: [[ANN, 'eager'], [BEA, 'eager'], [CAT, 'eager']], holders: 'any', frequency: 'often' });
+      s.day = day;
+      first.push(String(probeDayStep(s, { registries: reg, rng: sure }).find((e) => e.type === 'probe_issued')?.unitId));
+    }
+    for (const id of [ANN, BEA, CAT]) expect(first.filter((x) => x === id).length).toBeGreaterThanOrEqual(8);
+    expect(longest(first)).toBeLessThanOrEqual(6);
+    // the axis: one unit, nothing recent, sixty days in a row: every axis of the tier comes up and none sticks
+    const axes: string[] = [];
+    for (let day = 1; day <= 60; day++) {
+      const s = world({ frequency: 'often' });
+      s.day = day;
+      axes.push(String(probeDayStep(s, { registries: reg, rng: sure }).find((e) => e.type === 'probe_issued')?.axis));
+    }
+    const tier1 = [...reg.probeAxes.values()].filter((a) => Number(a.tier) <= 1).map((a) => String(a.id));
+    for (const id of tier1) expect(axes).toContain(id);
+    expect(longest(axes)).toBeLessThanOrEqual(5);
+  });
+
   it('recent keeps the axes she used, at most 8', () => {
     const s = world({ frequency: 'often' });
     const rng = new Rng(seedRng(2));
