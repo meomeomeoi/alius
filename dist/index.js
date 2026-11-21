@@ -793,7 +793,13 @@ var TUNING = Object.freeze({
       offerMax: 5,
       minAgeDays: 3
     }),
-    commanderSkill: Object.freeze({ meeting: 2, taught: 4 })
+    commanderSkill: Object.freeze({ meeting: 2, taught: 4 }),
+    /** Windows of `LifeRequires`: a shortage within `shortageDays`, a sparring bout within `sparringDays`, her own event within `afterEventDays`, another woman's within `otherWeekDays`; the squad-wide kinds are kept `kindsKeepDays`. */
+    shortageDays: 3,
+    sparringDays: 2,
+    afterEventDays: 30,
+    otherWeekDays: 7,
+    kindsKeepDays: 7
   })
 });
 
@@ -1901,6 +1907,60 @@ function requisitionCost(state, reg, n) {
   const pct5 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
   const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct5 / 100);
   return Math.max(n, Math.ceil(raw - 1e-9));
+}
+
+// src/engine/life/state.ts
+var LIFE_MODES = ["off", "rare", "normal", "often"];
+var UNTOLD_TAG = "untold";
+function lifeMode(state) {
+  const m = state.settings.lifeEvents;
+  return m === "rare" || m === "normal" || m === "often" ? m : "off";
+}
+var TEMPERAMENT_VALUES = Object.freeze({
+  talkativeness: Object.freeze(["silent", "terse", "talkative"]),
+  volatility: Object.freeze(["steady", "moody"]),
+  humor: Object.freeze(["none", "dry", "mocking", "warm"])
+});
+var TEMPERAMENT_FIELDS = Object.freeze(["talkativeness", "volatility", "humor"]);
+function temperamentProblems(t) {
+  if (typeof t !== "object" || t === null || Array.isArray(t)) return ["temperament must be an object of talkativeness, volatility and humor"];
+  const out = [];
+  for (const [k, v] of Object.entries(t)) {
+    const words3 = TEMPERAMENT_VALUES[k];
+    if (words3 === void 0) out.push(`temperament has no field "${k}"`);
+    else if (typeof v !== "string" || !words3.includes(v)) out.push(`temperament ${k} must be ${words3.join(", ")}`);
+  }
+  return out;
+}
+var TEMPERAMENT_DEFAULTS = Object.freeze({ talkativeness: "terse", volatility: "steady", humor: "dry" });
+function temperamentOf(state, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  return { ...TEMPERAMENT_DEFAULTS, ...u?.kind === "named" ? u.temperament : void 0 };
+}
+function newLife(salt) {
+  return { salt, nextId: 0, units: {}, queue: [], delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [] };
+}
+function ensureLife(draft) {
+  return draft.life ??= newLife(fnv1a(JSON.stringify(draft.rng)));
+}
+function nextLifeId(life, prefix) {
+  const n = life.nextId;
+  life.nextId = n + 1;
+  return `${prefix}${n}`;
+}
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+function lifeHash(life, key) {
+  return fnv1a(`${life.salt}|${key}`);
+}
+function lifeChance(life, key, p) {
+  return lifeHash(life, key) % 1e3 < Math.round(p * 1e3);
 }
 
 // src/engine/rng.ts
@@ -9475,7 +9535,7 @@ function deedsOf(state) {
 }
 
 // src/engine/hub.ts
-function fnv1a(s) {
+function fnv1a2(s) {
   let h2 = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h2 ^= s.charCodeAt(i);
@@ -9510,7 +9570,7 @@ function place(state, reg, rooms, unit2) {
   const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit2));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit2.id, roomId: null, reason: "nowhere" };
-  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit2.id}`) % total2;
+  let pick2 = fnv1a2(`${state.day}|${state.slot}|${unit2.id}`) % total2;
   for (let i = 0; i < rooms.length; i++) {
     if (pick2 < weights[i]) return { unitId: unit2.id, roomId: rooms[i].id, reason: "routine" };
     pick2 -= weights[i];
@@ -11132,7 +11192,7 @@ function misreadChance(state, unit2, subject) {
   return Math.min(TUNING.development.misreadCap, secret ? base * TUNING.development.secretMult : base);
 }
 function misreads(state, unit2, appraisalId, subject) {
-  return fnv1a(`${unit2.id}|appraisal|${appraisalId}`) / 2 ** 32 < misreadChance(state, unit2, subject);
+  return fnv1a2(`${unit2.id}|appraisal|${appraisalId}`) / 2 ** 32 < misreadChance(state, unit2, subject);
 }
 function flipReading(r) {
   return {
@@ -12987,51 +13047,6 @@ function objectiveList(state, reg) {
   return out;
 }
 
-// src/engine/life/state.ts
-var LIFE_MODES = ["off", "rare", "normal", "often"];
-function lifeMode(state) {
-  const m = state.settings.lifeEvents;
-  return m === "rare" || m === "normal" || m === "often" ? m : "off";
-}
-var TEMPERAMENT_VALUES = Object.freeze({
-  talkativeness: Object.freeze(["silent", "terse", "talkative"]),
-  volatility: Object.freeze(["steady", "moody"]),
-  humor: Object.freeze(["none", "dry", "mocking", "warm"])
-});
-var TEMPERAMENT_FIELDS = Object.freeze(["talkativeness", "volatility", "humor"]);
-function temperamentProblems(t) {
-  if (typeof t !== "object" || t === null || Array.isArray(t)) return ["temperament must be an object of talkativeness, volatility and humor"];
-  const out = [];
-  for (const [k, v] of Object.entries(t)) {
-    const words3 = TEMPERAMENT_VALUES[k];
-    if (words3 === void 0) out.push(`temperament has no field "${k}"`);
-    else if (typeof v !== "string" || !words3.includes(v)) out.push(`temperament ${k} must be ${words3.join(", ")}`);
-  }
-  return out;
-}
-var TEMPERAMENT_DEFAULTS = Object.freeze({ talkativeness: "terse", volatility: "steady", humor: "dry" });
-function temperamentOf(state, unitId) {
-  const u = state.squad.find((x) => x.id === unitId);
-  return { ...TEMPERAMENT_DEFAULTS, ...u?.kind === "named" ? u.temperament : void 0 };
-}
-function newLife(salt) {
-  return { salt, nextId: 0, units: {}, queue: [], delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [] };
-}
-function ensureLife(draft) {
-  return draft.life ??= newLife(fnv1a2(JSON.stringify(draft.rng)));
-}
-function fnv1a2(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-function lifeHash(life, key) {
-  return fnv1a2(`${life.salt}|${key}`);
-}
-
 // src/engine/life/hobbies.ts
 function milestoneAt(salt, unitId, hobbyId, n) {
   const t = TUNING.life;
@@ -13060,7 +13075,7 @@ function seedLife(draft, reg) {
 }
 
 // src/engine/headStart/hash.ts
-var headStartRaw = (seed, unitId, key) => fnv1a(`${seed}|${unitId}|head_start|${key}`);
+var headStartRaw = (seed, unitId, key) => fnv1a2(`${seed}|${unitId}|head_start|${key}`);
 var headStartHash = (seed, unitId, key) => headStartRaw(seed, unitId, key) / 2 ** 32;
 
 // src/engine/headStart/develop.ts
@@ -15722,7 +15737,7 @@ function dig(draft, ctx2, allyId) {
     if (!newest.tags.includes("kompromat")) newest.tags.push("kompromat");
     events.push({ type: "kompromat_found", factId: newest.id });
   } else {
-    const key = fnv1a(`${draft.day}|${ls.intrigue.seq}`);
+    const key = fnv1a2(`${draft.day}|${ls.intrigue.seq}`);
     const unknown2 = w.expectations.filter((x) => !x.known);
     const left = TUNING.warden.kompromat.lines.filter((line2) => !draft.memory.facts.some((f) => f.about.includes(w.unitId) && f.text === line2));
     if (unknown2.length > 0 && (key % 2 === 0 || left.length === 0)) events.push(...learnExpectation(draft, unknown2[0].id));
@@ -15792,7 +15807,7 @@ function valueWord(reg, x) {
 function fallbackFragment(reg, x, name) {
   const entry = reg.frequencyFragments.get(x.kind);
   const lines = (x.partial ? entry?.subjectOnly : entry?.lines) ?? [];
-  const line2 = lines.length === 0 ? "\u2026{name}\u2026" : lines[fnv1a(x.id) % lines.length];
+  const line2 = lines.length === 0 ? "\u2026{name}\u2026" : lines[fnv1a2(x.id) % lines.length];
   return line2.replaceAll("{name}", name).replaceAll("{value}", valueWord(reg, x));
 }
 var IMPUNITY_GIST = {
@@ -17087,7 +17102,7 @@ var paranoiaOf = (draft) => specialOf(draft).paranoia ??= newParanoia();
 function openPremonition(state, unitId) {
   return (state.special?.paranoia?.premonitions ?? []).find((p) => p.unitId === unitId && p.acted === void 0 && p.expiresDay >= state.day);
 }
-var leadDays = (unitId, day) => fnv1a(`${unitId}|${day}`) % T().leadDays + 1;
+var leadDays = (unitId, day) => fnv1a2(`${unitId}|${day}`) % T().leadDays + 1;
 function ledgerSum(state, key) {
   const since = state.day - (T().lookbackDays - 1);
   return (state.ledger ?? []).filter((e) => e.key === key && e.day >= since).reduce((n, e) => n + e.delta, 0);
@@ -17153,7 +17168,7 @@ function warnedInput(state, unitIds) {
 }
 function premonitionLine(reg, p, name) {
   const lines = [...reg.premonitionLines.values()].find((e) => e.about === p.about)?.lines ?? ["{name} is a worry."];
-  return lines[fnv1a(p.id) % lines.length].replaceAll("{name}", name);
+  return lines[fnv1a2(p.id) % lines.length].replaceAll("{name}", name);
 }
 
 // src/engine/special/paranoia/accusations.ts
@@ -22113,7 +22128,7 @@ function intelOf(state, reg) {
   if (plan) add("plan", plan.id, `The squad plans "${plan.title}".`);
   const named3 = state.squad.filter((u) => u.kind === "named" && isLiving(u) && !seen.has(`squad:${u.id}`));
   if (named3.length > 0) {
-    const u = named3[fnv1a(`intel|${state.day}`) % named3.length];
+    const u = named3[fnv1a2(`intel|${state.day}`) % named3.length];
     const role = String(reg.roles.get(u.roleId)?.name ?? u.roleId);
     const defect = u.defects[0] ? String(reg.defects.get(u.defects[0].id)?.name ?? u.defects[0].id) : null;
     add("squad", u.id, `${u.displayName} is a ${role.toLowerCase()}${defect ? ` with ${defect}` : ""}.`);
@@ -22220,7 +22235,7 @@ function pickHandler(state, reg) {
     return serves.length === 0 || serves.includes(corporationId);
   });
   if (pool.length === 0) return null;
-  return { corporationId, handlerId: pool[fnv1a(JSON.stringify(state.rng)) % pool.length].id };
+  return { corporationId, handlerId: pool[fnv1a2(JSON.stringify(state.rng)) % pool.length].id };
 }
 function rollVisit(draft, ctx2) {
   if (!hasTraitEffect(draft, ctx2.registries, "debts")) return [];
@@ -22847,7 +22862,7 @@ function retrieveFacts(state, q, k = memoryConfig(state).retrievalK) {
   const score = (f) => 3 * f.about.filter((a) => people.has(a)).length + 2 * f.tags.filter((t) => tags.has(t)).length + f.importance + 3 * recencyBase ** Math.max(0, state.day - f.day) + (f.pinned ? TUNING.memory.pinnedBonus : 0);
   const at = new Map(state.memory.facts.map((f, i) => [f.id, i]));
   const order = (f) => at.get(f.id) ?? 0;
-  return factsVisibleTo(state, q.participants).map((f) => ({ f, s: score(f) })).sort((a, b) => b.s - a.s || b.f.day - a.f.day || order(b.f) - order(a.f)).slice(0, k).map((x) => x.f);
+  return factsVisibleTo(state, q.participants).filter((f) => !f.tags.includes(UNTOLD_TAG)).map((f) => ({ f, s: score(f) })).sort((a, b) => b.s - a.s || b.f.day - a.f.day || order(b.f) - order(a.f)).slice(0, k).map((x) => x.f);
 }
 
 // src/engine/headStart/tag.ts
@@ -23772,6 +23787,371 @@ function momentDirective(state, reg, unitId) {
   return { id: `development:${unitId}`, text: `${unit2.displayName} has changed lately: ${words3.join("; ")}. Let it show in how she acts this scene; never announce it.`, expiresAfter: "scene" };
 }
 
+// src/engine/bonds/breakdown.ts
+var wantBreakdownSpec = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown ?? null;
+function startWantBreakdown(draft, ctx2, unitId, defectId) {
+  const reg = ctx2.registries;
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  const spec = wantBreakdownSpec(reg, defectId);
+  if (!unit2 || !spec || unit2.breakdown || !unit2.defects.some((d) => d.id === defectId)) return [];
+  unit2.breakdown = { defectId, day: draft.day, until: draft.day + spec.days };
+  const events = [{ type: "want_breakdown", unitId, defectId, kind: spec.kind }];
+  if (spec.kind === "withdrawal") {
+    const knock = (reg.defects.get(defectId)?.nightEvents ?? []).find((n) => n.kind === spec.kind);
+    if (knock) events.push(...queueNightSpec(draft, unit2, knock));
+  } else if (spec.kind === "smother") {
+    events.push(...startSmother(draft, unitId, ctx2.registries));
+  } else if (spec.kind === "binge") {
+    const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
+    if (cost > 0) {
+      draft.resources.credits -= cost;
+      events.push({ type: "resource_changed", resource: "credits", amount: -cost });
+    }
+  }
+  return events;
+}
+function releaseWantBreakdowns(draft) {
+  const events = [];
+  for (const u of draft.squad) {
+    if (!u.breakdown || u.breakdown.until === void 0 || draft.day <= u.breakdown.until) continue;
+    delete u.breakdown;
+    events.push({ type: "breakdown_released", unitId: u.id });
+  }
+  return events;
+}
+function startCrossedBreakdowns(draft, ctx2) {
+  const events = [];
+  for (const unit2 of draft.squad) {
+    const rel = draft.relations[unit2.id];
+    if (unit2.kind !== "named" || !rel || !isLiving(unit2) || rel.wantBreakDay !== void 0) continue;
+    if (!wantEligible(draft, ctx2.registries, unit2.id) || effectiveWant(draft, ctx2.registries, unit2.id) < TUNING.bonds.want.bands.desperate) continue;
+    for (const d of unit2.defects) {
+      const started = startWantBreakdown(draft, ctx2, unit2.id, d.id);
+      if (started.length > 0) {
+        rel.wantBreakDay = draft.day;
+        events.push(...started);
+        break;
+      }
+    }
+  }
+  return events;
+}
+
+// src/engine/bonds/desire.ts
+function openDesireDemands(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const unit2 of draft.squad) {
+    if (unit2.kind !== "named" || !isLiving(unit2) || wantBandOf(draft, reg, unit2.id) === "calm") continue;
+    const last = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit2.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
+    if (draft.day - last < TUNING.bonds.want.demandEveryDays) continue;
+    const opened = openDemand(draft, ctx2, unit2.id, { desire: true });
+    if (opened) events.push(...opened.events);
+  }
+  return events;
+}
+
+// src/engine/bonds/dayStep.ts
+function bondsDayStep(draft, ctx2) {
+  return [
+    ...syncAllPublicity(draft, ctx2.registries),
+    ...deliverStaleRules(draft),
+    ...releaseWantBreakdowns(draft),
+    ...wantStep(draft, ctx2.registries),
+    ...startCrossedBreakdowns(draft, ctx2),
+    ...openDesireDemands(draft, ctx2),
+    ...checkDailyContact(draft, ctx2),
+    ...rollRules(draft, ctx2),
+    ...expireSmother(draft)
+  ];
+}
+
+// src/engine/life/facts.ts
+var LIFE_TAG = "life";
+var plainText2 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
+function writeLifeFact(draft, unitId, text2, tags, importance) {
+  return addFact(draft, {
+    about: [unitId],
+    text: text2,
+    tags: [LIFE_TAG, UNTOLD_TAG, ...tags],
+    importance,
+    day: draft.day,
+    knownBy: [unitId],
+    hiddenFromCommander: true
+  });
+}
+
+// src/engine/life/news.ts
+function enqueue(draft, item) {
+  const life = ensureLife(draft);
+  const queued = { id: nextLifeId(life, "ln"), ...item };
+  life.queue.push(queued);
+  return [{ type: "news_queued", itemId: queued.id, unitId: queued.unitId }];
+}
+
+// src/engine/life/events.ts
+var DAY_SLOTS = ["morning", "afternoon", "evening"];
+var SLOTS_PER_DAY = 4;
+var eventsOf = (reg) => [...reg.lifeEvents.values()];
+var unitOf9 = (state, id) => state.squad.find((u) => u.id === id);
+function takesPart(state, unitId) {
+  const u = unitOf9(state, unitId);
+  return u !== void 0 && u.kind === "named" && isLiving(u) && state.expedition?.party.includes(u.id) !== true;
+}
+function roomsToday(state, reg, unitId, day) {
+  return DAY_SLOTS.map((slot2) => {
+    const w = whereabouts({ ...state, day, slot: slot2 }, reg).find((x) => x.unitId === unitId);
+    const room2 = w?.roomId ? reg.hubRooms.get(w.roomId) : void 0;
+    return { reason: w?.reason ?? "nowhere", locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
+  });
+}
+var busySlot = (day, slot2) => day * SLOTS_PER_DAY + ["morning", "afternoon", "evening", "night"].indexOf(slot2);
+function requiresHold(state, reg, unitId, req, day) {
+  if (!req) return true;
+  const unit2 = unitOf9(state, unitId);
+  if (!unit2) return false;
+  const life = state.life;
+  const rel = state.relations[unitId];
+  const run = state.expedition;
+  for (const [field2, value] of Object.entries(req)) {
+    let ok;
+    switch (field2) {
+      case "hobby":
+        ok = (unit2.hobbies ?? []).some((h2) => h2.state === "active" && (value === "any" || h2.id === value));
+        break;
+      case "location":
+        ok = roomsToday(state, reg, unitId, day).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
+        break;
+      case "activity": {
+        const lo = day * SLOTS_PER_DAY;
+        ok = (life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= lo && b.slot < lo + SLOTS_PER_DAY && b.activityId !== void 0 && value.includes(b.activityId));
+        break;
+      }
+      case "afterRun": {
+        const last = state.lastExpedition;
+        ok = last !== void 0 && last.day >= day - 1 && last.party.includes(unitId) && (value.hurt !== true || last.injuries.includes(unitId));
+        break;
+      }
+      case "noRunDays": {
+        const last = state.lastExpedition;
+        ok = run?.party.includes(unitId) !== true && !(last?.party.includes(unitId) === true && day - last.day < value);
+        break;
+      }
+      case "stressMin":
+        ok = unit2.stress >= value;
+        break;
+      case "stressMax":
+        ok = unit2.stress <= value;
+        break;
+      case "defectCategory":
+        ok = unit2.defects.some((d) => reg.defects.get(d.id)?.category === value);
+        break;
+      case "injured":
+        ok = unit2.injuries.length > 0;
+        break;
+      case "otherNamed":
+        ok = state.squad.some((u) => u.id !== unitId && takesPart(state, u.id));
+        break;
+      case "affinityMin":
+        ok = rel !== void 0 && rel.affinity >= value;
+        break;
+      case "trustMin":
+        ok = rel !== void 0 && rel.trust >= value;
+        break;
+      case "romantic":
+        ok = bondTierOf(state, reg, unitId) === "romantic";
+        break;
+      case "leaderNotHer": {
+        const leader = leaderOf(state);
+        ok = leader !== null && leader.id !== unitId;
+        break;
+      }
+      case "gruntDiedDays":
+        ok = (life?.deaths ?? []).some((d) => d.grunt && day - d.day >= 0 && day - d.day <= value);
+        break;
+      case "deathAgo":
+        ok = (life?.deaths ?? []).some((d) => day - d.day >= value && (day - d.day) % value === 0);
+        break;
+      case "rumour":
+        ok = state.rumors.length > 0;
+        break;
+      case "rationsShort":
+        ok = rationsOf(state) !== "equal" || life?.shortageDay !== void 0 && day - life.shortageDay <= TUNING.life.shortageDays;
+        break;
+      case "sparring": {
+        const winner = value === "won" ? "unit" : "commander";
+        ok = (state.personal?.wagers?.log ?? []).some((w) => w.unitId === unitId && day - w.day <= TUNING.life.sparringDays && w.winner === winner && reg.wagerGames.get(w.gameId)?.kind === "sparring");
+        break;
+      }
+      case "bloomHalf":
+        ok = state.world.clocks.some((c) => c.regionId !== void 0 && c.filled * 2 >= c.segments);
+        break;
+      case "missionBoard":
+        ok = state.missions.offered.length > 0;
+        break;
+      case "afterEvent": {
+        const at = life?.units[unitId]?.last[value];
+        ok = at !== void 0 && day - at <= TUNING.life.afterEventDays;
+        break;
+      }
+      case "otherHadThisWeek":
+        ok = Object.entries(life?.units ?? {}).some(([id, l]) => id !== unitId && l.last[value] !== void 0 && day - l.last[value] <= TUNING.life.otherWeekDays);
+        break;
+      default:
+        ok = false;
+    }
+    if (!ok) return false;
+  }
+  return true;
+}
+function weekAllowance(state, unitId, week) {
+  const mode = lifeMode(state);
+  if (mode === "off" || !state.life) return 0;
+  const perWeek = TUNING.life.perWeek[mode];
+  if (perWeek >= 1) return perWeek;
+  return (week + lifeHash(state.life, unitId)) % 2 === 0 ? 1 : 0;
+}
+function weekOf2(state, unitId, day) {
+  const week = Math.floor(day / 7);
+  const w = state.life?.units[unitId]?.week;
+  return w !== void 0 && w.n === week ? w : { n: week, events: 0, notable: 0 };
+}
+function eventPool2(state, reg, unitId, day) {
+  const life = state.life;
+  if (!life || !takesPart(state, unitId)) return [];
+  const mine = life.units[unitId]?.last ?? {};
+  const week = weekOf2(state, unitId, day);
+  return eventsOf(reg).filter((e) => {
+    if (e.size === "notable" && e.yearly !== true && week.notable >= TUNING.life.notablePerWeek) return false;
+    const cooldown = e.yearly === true ? TUNING.life.cooldown.yearly : e.cooldownDays ?? TUNING.life.cooldown[e.size];
+    if (mine[e.id] !== void 0 && day - mine[e.id] < cooldown) return false;
+    if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
+    if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
+    return requiresHold(state, reg, unitId, e.requires, day);
+  });
+}
+function pickLifeEvent(state, reg, unitId, day) {
+  const life = state.life;
+  const mode = lifeMode(state);
+  if (!life || mode === "off" || !takesPart(state, unitId)) return null;
+  const week = weekOf2(state, unitId, day);
+  const pool = eventPool2(state, reg, unitId, day);
+  if (pool.length === 0) return null;
+  const yearly = pool.filter((e) => e.yearly === true);
+  if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
+  if (yearly.length === 0 && !lifeChance(life, `${unitId}|life|${day}`, Math.min(1, TUNING.life.perWeek[mode] / 7 * TUNING.life.dayBoost))) return null;
+  const from = yearly.length > 0 ? yearly : pool;
+  return from[lifeHash(life, `${unitId}|life|${day}|pick`) % from.length];
+}
+function effectiveShare(state, reg, unitId, entry) {
+  if (entry.share !== "keeps") return entry.share;
+  const rel = state.relations[unitId];
+  const u = entry.keepsUnless;
+  const lifted = u !== void 0 && (u.affinityMin !== void 0 && rel !== void 0 && rel.affinity >= u.affinityMin || u.romantic === true && bondTierOf(state, reg, unitId) === "romantic");
+  return lifted ? "close" : "keeps";
+}
+function shareChance(state, reg, unitId, entry) {
+  const share = effectiveShare(state, reg, unitId, entry);
+  if (share === "keeps") return 0;
+  const close = (state.relations[unitId]?.affinity ?? 0) >= TUNING.life.shareAffinity;
+  if (share === "close" && !close) return 0;
+  return TUNING.life.share[temperamentOf(state, unitId).talkativeness] * (close ? 1 : TUNING.life.shareLowMult);
+}
+function applyBecomes(draft, reg, unitId, entry, day) {
+  const events = [];
+  const unit2 = unitOf9(draft, unitId);
+  const becomes = entry.becomes;
+  if (!unit2 || !becomes) return events;
+  if (becomes.hobby !== void 0 && reg.hobbies.has(becomes.hobby)) {
+    const have = (unit2.hobbies ??= []).find((h2) => h2.id === becomes.hobby);
+    if (have) {
+      have.interest = Math.min(100, have.interest + TUNING.life.interest.push);
+    } else {
+      unit2.hobbies.push(newHobby(becomes.hobby, day));
+      events.push({ type: "hobby_started", unitId, hobbyId: becomes.hobby });
+      const active = unit2.hobbies.filter((h2) => h2.state === "active");
+      if (active.length > TUNING.life.maxActive) {
+        const least = active.filter((h2) => h2.id !== becomes.hobby).sort((a, b) => a.interest - b.interest)[0];
+        least.state = "cooling";
+        least.coolingSince = day;
+        events.push({ type: "hobby_cooling", unitId, hobbyId: least.id });
+      }
+    }
+  }
+  if (becomes.opinionTopic !== void 0 && reg.opinionTopics.has(becomes.opinionTopic) && unit2.opinions?.[becomes.opinionTopic] === void 0) {
+    const mine = draft.life.units[unitId] ??= { last: {} };
+    const pending4 = mine.pendingTopics ??= [];
+    if (!pending4.includes(becomes.opinionTopic)) pending4.push(becomes.opinionTopic);
+  }
+  return events;
+}
+function applyLifeEvent(draft, reg, unitId, entry, day) {
+  const life = draft.life;
+  const unit2 = unitOf9(draft, unitId);
+  if (!life || !unit2) return [];
+  const mine = life.units[unitId] ??= { last: {} };
+  const week = weekOf2(draft, unitId, day);
+  mine.week = { n: week.n, events: week.events + 1, notable: week.notable + (entry.size === "notable" ? 1 : 0) };
+  mine.last[entry.id] = day;
+  life.kinds = [...life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays), { kind: entry.id, unitId, day }];
+  const fact = writeLifeFact(draft, unitId, `${unit2.displayName}: ${plainText2(String(entry.description))}`, [entry.id, ...entry.tags ?? []], entry.size === "notable" ? 2 : 1);
+  const events = [{ type: "life_event", unitId, eventId: entry.id, size: entry.size }];
+  const share = effectiveShare(draft, reg, unitId, entry);
+  if (share !== "keeps") mine.hub = { eventId: entry.id, day };
+  events.push(...applyBecomes(draft, reg, unitId, entry, day));
+  if (lifeChance(life, `${unitId}|share|${day}|${entry.id}`, shareChance(draft, reg, unitId, entry))) {
+    events.push(...enqueue(draft, {
+      unitId,
+      kind: "event",
+      ref: entry.id,
+      what: "event",
+      factId: fact.id,
+      category: entry.category,
+      day,
+      ...entry.size === "notable" ? { notable: true } : {},
+      ...entry.urgent === true ? { urgent: true } : {}
+    }));
+    events.push({ type: "life_shared", unitId, eventId: entry.id });
+  }
+  return events;
+}
+
+// src/engine/life/dayStep.ts
+function noteBusy(draft, unitIds, activityId) {
+  if (lifeMode(draft) === "off") return;
+  const life = ensureLife(draft);
+  const slot2 = busySlot(draft.day, draft.slot);
+  const keepFrom = busySlot(draft.day - 1, "morning");
+  life.busy = life.busy.filter((b) => b.slot >= keepFrom);
+  for (const unitId of new Set(unitIds)) {
+    const have = life.busy.find((b) => b.unitId === unitId && b.slot === slot2 && (activityId === void 0 || b.activityId === activityId));
+    if (!have) life.busy.push({ unitId, slot: slot2, ...activityId !== void 0 ? { activityId } : {} });
+  }
+}
+function recordDeaths(draft) {
+  const life = ensureLife(draft);
+  for (const u of draft.squad) {
+    if (u.status !== "dead" || life.deaths.some((d) => d.unitId === u.id)) continue;
+    life.deaths.push({ unitId: u.id, day: draft.day, grunt: u.kind === "grunt" });
+  }
+}
+function lifeDayStep(draft, ctx2) {
+  if (lifeMode(draft) === "off") return [];
+  const life = ensureLife(draft);
+  const reg = ctx2.registries;
+  const day = draft.day;
+  if ((draft.calendar.shortageStreak ?? 0) > 0) life.shortageDay = day;
+  recordDeaths(draft);
+  const events = [];
+  for (const unit2 of draft.squad) {
+    if (!takesPart(draft, unit2.id)) continue;
+    const entry = pickLifeEvent(draft, reg, unit2.id, day);
+    if (entry) events.push(...applyLifeEvent(draft, reg, unit2.id, entry, day));
+  }
+  life.kinds = life.kinds.filter((k) => day - k.day < TUNING.life.kindsKeepDays);
+  return events;
+}
+
 // src/engine/actions/scene.ts
 installRelationAccounting();
 var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -23841,6 +24221,7 @@ registerAction("scene/start", (draft, payload, ctx2) => {
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   stampMoments(draft, participants, sceneId);
+  noteBusy(draft, participants);
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day;
   const heard = rollIntercepts(draft, ctx2, participants, { private: participants.length === 1, dm: false, sceneId });
   return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard];
@@ -24020,7 +24401,7 @@ registerAction("memory/compact", (draft, payload) => {
 
 // src/engine/memory/rumors.ts
 function hashDay(factId, unitId, span) {
-  return fnv1a(`${factId}\0${unitId}`) % Math.max(1, span);
+  return fnv1a2(`${factId}\0${unitId}`) % Math.max(1, span);
 }
 var spanOf = (spread2, importance) => {
   const w = TUNING.memory.rumor[spread2];
@@ -24149,7 +24530,7 @@ registerAction("memory/hidden", (draft, payload) => {
 registerDayEndStep("dm_rumors", spreadRumors);
 
 // src/engine/vitals.ts
-var unitOf9 = (state, id) => state.squad.find((u) => u.id === id);
+var unitOf10 = (state, id) => state.squad.find((u) => u.id === id);
 var isInjured2 = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
 function hidesInjury(state, reg, unitId) {
   return (state.personal?.secrets ?? []).some((x) => x.status === "kept" && x.subjectId === unitId && reg.secretKinds.get(x.kindId)?.source === "hidden_injury");
@@ -24178,7 +24559,7 @@ function flickersOf(state, unitId) {
   return [...seen.entries()].sort((a, b) => b[0] - a[0]).slice(0, TUNING.vitals.flickerLog).map(([, at]) => at);
 }
 function vitalsOf(state, reg, unitId) {
-  const unit2 = unitOf9(state, unitId);
+  const unit2 = unitOf10(state, unitId);
   if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return null;
   const spikes = spikesOf(state, reg, unitId);
   const band2 = stressBand2(unit2.stress);
@@ -24198,7 +24579,7 @@ var behaviours = (reg) => [...reg.dmBehaviours.values()].map((e) => ({
   chance: Number(e.chance),
   ...e.when !== void 0 ? { when: e.when } : {}
 }));
-var passes = (key, chance) => fnv1a(key) % 1e3 < Math.round(chance * 1e3);
+var passes = (key, chance) => fnv1a2(key) % 1e3 < Math.round(chance * 1e3);
 var namedLiving7 = (state, unitId) => {
   const u = state.squad.find((x) => x.id === unitId);
   return u !== void 0 && u.kind === "named" && isLiving(u) ? u : null;
@@ -24821,16 +25202,16 @@ function finalizeCombat(draft, reg, rng, outcome) {
   fireTrigger(ctx2, "onCombatEnd", {});
   const events = [];
   const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
-  const unitOf11 = (c) => draft.squad.find((u) => u.id === c.unitId);
+  const unitOf12 = (c) => draft.squad.find((u) => u.id === c.unitId);
   const unitIdOf5 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
-  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf11(c).stress]));
+  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf12(c).stress]));
   const injuries = [];
   const deaths = [];
   const breakdowns = [];
   const levelUps = [];
   const lost = outcome !== "won";
   for (const c of squad) {
-    const unit2 = unitOf11(c);
+    const unit2 = unitOf12(c);
     unit2.stress = Math.min(100, Math.max(0, c.stress + (lost ? TUNING.combat.stress.loss : 0)));
     if (c.breakdown) {
       unit2.breakdown = { defectId: c.breakdown.defectId, day: draft.day };
@@ -24860,7 +25241,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   if (outcome === "won") {
     xp = combatXp(draft, reg, cs);
     for (const c of squad) {
-      const unit2 = unitOf11(c);
+      const unit2 = unitOf12(c);
       if (unit2.status === "dead") continue;
       unit2.xp += xp[unit2.id] ?? 0;
       events.push({ type: "xp_gained", unitId: unit2.id, amount: xp[unit2.id] ?? 0 });
@@ -24910,7 +25291,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     injuries,
     deaths,
     breakdowns,
-    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf11(c).stress - stressBefore[c.unitId]])),
+    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf12(c).stress - stressBefore[c.unitId]])),
     relationHints: relationHints(cs, unitIdOf5),
     commanderInjured,
     ...compels.length > 0 ? { compels: [...compels] } : {},
@@ -25378,85 +25759,6 @@ registerAction("reputation/introduce", (draft, payload, ctx2) => {
   return introduceNickname(draft, ctx2, payload.unitId);
 });
 
-// src/engine/bonds/breakdown.ts
-var wantBreakdownSpec = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown ?? null;
-function startWantBreakdown(draft, ctx2, unitId, defectId) {
-  const reg = ctx2.registries;
-  const unit2 = draft.squad.find((u) => u.id === unitId);
-  const spec = wantBreakdownSpec(reg, defectId);
-  if (!unit2 || !spec || unit2.breakdown || !unit2.defects.some((d) => d.id === defectId)) return [];
-  unit2.breakdown = { defectId, day: draft.day, until: draft.day + spec.days };
-  const events = [{ type: "want_breakdown", unitId, defectId, kind: spec.kind }];
-  if (spec.kind === "withdrawal") {
-    const knock = (reg.defects.get(defectId)?.nightEvents ?? []).find((n) => n.kind === spec.kind);
-    if (knock) events.push(...queueNightSpec(draft, unit2, knock));
-  } else if (spec.kind === "smother") {
-    events.push(...startSmother(draft, unitId, ctx2.registries));
-  } else if (spec.kind === "binge") {
-    const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
-    if (cost > 0) {
-      draft.resources.credits -= cost;
-      events.push({ type: "resource_changed", resource: "credits", amount: -cost });
-    }
-  }
-  return events;
-}
-function releaseWantBreakdowns(draft) {
-  const events = [];
-  for (const u of draft.squad) {
-    if (!u.breakdown || u.breakdown.until === void 0 || draft.day <= u.breakdown.until) continue;
-    delete u.breakdown;
-    events.push({ type: "breakdown_released", unitId: u.id });
-  }
-  return events;
-}
-function startCrossedBreakdowns(draft, ctx2) {
-  const events = [];
-  for (const unit2 of draft.squad) {
-    const rel = draft.relations[unit2.id];
-    if (unit2.kind !== "named" || !rel || !isLiving(unit2) || rel.wantBreakDay !== void 0) continue;
-    if (!wantEligible(draft, ctx2.registries, unit2.id) || effectiveWant(draft, ctx2.registries, unit2.id) < TUNING.bonds.want.bands.desperate) continue;
-    for (const d of unit2.defects) {
-      const started = startWantBreakdown(draft, ctx2, unit2.id, d.id);
-      if (started.length > 0) {
-        rel.wantBreakDay = draft.day;
-        events.push(...started);
-        break;
-      }
-    }
-  }
-  return events;
-}
-
-// src/engine/bonds/desire.ts
-function openDesireDemands(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const unit2 of draft.squad) {
-    if (unit2.kind !== "named" || !isLiving(unit2) || wantBandOf(draft, reg, unit2.id) === "calm") continue;
-    const last = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit2.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
-    if (draft.day - last < TUNING.bonds.want.demandEveryDays) continue;
-    const opened = openDemand(draft, ctx2, unit2.id, { desire: true });
-    if (opened) events.push(...opened.events);
-  }
-  return events;
-}
-
-// src/engine/bonds/dayStep.ts
-function bondsDayStep(draft, ctx2) {
-  return [
-    ...syncAllPublicity(draft, ctx2.registries),
-    ...deliverStaleRules(draft),
-    ...releaseWantBreakdowns(draft),
-    ...wantStep(draft, ctx2.registries),
-    ...startCrossedBreakdowns(draft, ctx2),
-    ...openDesireDemands(draft, ctx2),
-    ...checkDailyContact(draft, ctx2),
-    ...rollRules(draft, ctx2),
-    ...expireSmother(draft)
-  ];
-}
-
 // src/engine/actions/bonds.ts
 registerDayEndStep("dm_rumors", bondsDayStep);
 registerActivityHook((draft, ctx2, done) => {
@@ -25525,7 +25827,7 @@ function pinnedNotes(state, reg) {
   for (const u of state.squad) {
     if (u.kind !== "named" || !accessCan(state, reg, u.id, "notes")) continue;
     const lines = activeRules(state, u.id).map((r) => r.text);
-    if (authored.length > 0) lines.push(authored[fnv1a(`${state.day}|${u.id}`) % authored.length].replaceAll("{name}", u.displayName));
+    if (authored.length > 0) lines.push(authored[fnv1a2(`${state.day}|${u.id}`) % authored.length].replaceAll("{name}", u.displayName));
     if (lines.length > 0) out.push({ unitId: u.id, lines });
   }
   return out;
@@ -25552,7 +25854,7 @@ function decorDayStep(draft, ctx2) {
       (personalOf(draft).decor ??= {})[u.id] = {
         since: draft.day,
         parts: [...DECOR_PARTS],
-        contactName: names[fnv1a(u.id) % names.length].replaceAll("{name}", u.displayName)
+        contactName: names[fnv1a2(u.id) % names.length].replaceAll("{name}", u.displayName)
       };
       events.push({ type: "decor_placed", unitId: u.id });
     } else if (access >= 1) {
@@ -26038,7 +26340,7 @@ registerAction("onboarding/guide_dm_sent", (draft) => {
 var NIGHTMARE_KNOCK_KIND = "nightmare_heard";
 function nightmareLine(day) {
   const lines = TUNING.special.paranoia.nightmare.lines;
-  return lines[fnv1a(`nightmare|${day}`) % lines.length].replace(/^AUTHOR TO WRITE:\s*/, "");
+  return lines[fnv1a2(`nightmare|${day}`) % lines.length].replace(/^AUTHOR TO WRITE:\s*/, "");
 }
 function fondestUnit(draft) {
   const min = TUNING.special.paranoia.nightmare.affinityMin;
@@ -26681,6 +26983,13 @@ registerAction("life/set_frequency", (draft, payload, ctx2) => {
   if (mode !== "off") ensureLife(draft);
   if (wasOff && mode !== "off") seedLife(draft, ctx2.registries);
   return [{ type: "life_frequency_set", mode }];
+});
+registerDayEndStep("dm_rumors", lifeDayStep);
+registerActivityHook((draft, ctx2, done) => {
+  const activity = ctx2.registries.activities.get(done.activityId);
+  const roster2 = (activity?.effects ?? []).some((fx2) => fx2.target === "roster");
+  noteBusy(draft, [...done.companionId ? [done.companionId] : [], ...roster2 ? done.rosterIds : []], done.activityId);
+  return [];
 });
 function namedUnit2(draft, id, action) {
   const unit2 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
@@ -27867,7 +28176,7 @@ function createPersonal(deps) {
       if (out.kind === "applied") return out.value;
     }
     const lines = [...reg().deviceAccessRules.values()].find((r) => Number(r.level) === 4)?.editLines ?? [];
-    const line2 = lines.length > 0 ? lines[fnv1a(open3.id) % lines.length] : "{text} \u2014 {name} added this.";
+    const line2 = lines.length > 0 ? lines[fnv1a2(open3.id) % lines.length] : "{text} \u2014 {name} added this.";
     return line2.replaceAll("{text}", original).replaceAll("{name}", unit2?.displayName ?? "She");
   }
   function canIntercept(channel, toUnitId) {
@@ -29571,7 +29880,7 @@ function cssUrl(path) {
 
 // src/ui/voice/voiceCard.ts
 var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
-var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
+var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a2(unitId) % UNIT_ACCENTS.length];
 function redacted(text2, ranges) {
   const parts = [];
   let cursor = 0;
@@ -31274,9 +31583,9 @@ function renderCombatScreen(host, ctx2) {
       }
     }, `${PRESENCE_LABEL2[p.kind]}${p.used ? " \u2014 USED" : ""}`);
   }
-  const unitOf11 = (state, c) => state.squad.find((u) => u.id === c.unitId);
+  const unitOf12 = (state, c) => state.squad.find((u) => u.id === c.unitId);
   const nameOf16 = (state, c) => {
-    if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf11(state, c)?.displayName ?? c.nameKey;
+    if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf12(state, c)?.displayName ?? c.nameKey;
     const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
   };
@@ -31497,7 +31806,7 @@ function renderCombatScreen(host, ctx2) {
       box.append(pre);
       return box;
     }
-    const unit2 = unitOf11(state, c);
+    const unit2 = unitOf12(state, c);
     if (!unit2) return box;
     if (unit2.kind === "grunt" || !unit2.cardRef) {
       const pre = h("pre", { class: "alius-cc-ascii" });
@@ -31753,7 +32062,7 @@ function handOf(state, reg, unitId) {
   const chosen = unit2.hand === void 0 ? void 0 : reg.handFonts.get(unit2.hand);
   if (chosen) return chosen;
   const all = [...reg.handFonts.values()];
-  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+  return all.length === 0 ? null : all[fnv1a2(unitId) % all.length];
 }
 var handFamily = (hand) => String(hand.family);
 
@@ -32802,7 +33111,7 @@ function quartersOf(state, reg, unitId) {
   const all = [...reg.quartersStyles.values()];
   return all.length === 0 ? null : all[roomHash(unitId) % all.length];
 }
-var roomHash = (unitId) => fnv1a(`${unitId}|quarters`) >>> 8;
+var roomHash = (unitId) => fnv1a2(`${unitId}|quarters`) >>> 8;
 function slotLight(slot2) {
   return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
 }
@@ -37699,11 +38008,11 @@ function renderDevelopmentBlock(host, ctx2) {
 // src/ui/vitals/trace.ts
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
-var unit = (seed, i) => fnv1a(`${seed}${i}`) % 1e3 / 1e3;
+var unit = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
 var clamp36 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
-  const blip = fnv1a(seed) % n;
+  const blip = fnv1a2(seed) % n;
   for (let i = 0; i < n; i++) {
     const noise2 = unit(seed, i) - 0.5;
     let v;
@@ -38960,7 +39269,7 @@ function stickerFor(state, reg, unitId) {
   if (!unit2 || unit2.kind !== "named" || all.length === 0) return null;
   const likes = new Set(likesOf(unit2).map((l) => l.toLowerCase()));
   const tagged = all.find((e) => (e.likeTags ?? []).some((t) => likes.has(t.toLowerCase())));
-  return tagged ?? all[fnv1a(unitId) % all.length];
+  return tagged ?? all[fnv1a2(unitId) % all.length];
 }
 function art(entry) {
   if (typeof entry.svg === "string") {
@@ -40261,13 +40570,13 @@ function cabinTitle(state, reg, cabinId) {
 }
 function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const reg = ctx2.registries;
-  const unitOf11 = (id) => state.squad.find((u) => u.id === id);
+  const unitOf12 = (id) => state.squad.find((u) => u.id === id);
   const { stage, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
   const frame = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage), floorBar, panelHost);
-  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
+  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf12(w.unitId)).filter((u) => u !== void 0);
   const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
-  const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf11(w.unitId)).filter((u) => u !== void 0);
+  const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf12(w.unitId)).filter((u) => u !== void 0);
   const section = h(
     "section",
     { class: "alius-hub-main", "aria-label": "Plan of the outpost" },
@@ -41938,7 +42247,7 @@ function waveform(id) {
   svg3.setAttribute("class", "alius-wave");
   svg3.setAttribute("aria-hidden", "true");
   for (let i = 0; i < 16; i++) {
-    const height = 3 + fnv1a(`${id}|${i}`) % 11;
+    const height = 3 + fnv1a2(`${id}|${i}`) % 11;
     const bar2 = document.createElementNS(SVG_NS6, "rect");
     bar2.setAttribute("x", String(i * 4));
     bar2.setAttribute("y", String((16 - height) / 2));
@@ -44639,7 +44948,7 @@ function arrow(k, net) {
   const r = k.raw(Math.abs(net));
   return `${net > 0 ? "\u25B2" : "\u25BC"}${r === null ? "" : ` (${net > 0 ? "+" : MINUS2}${r})`}`;
 }
-function unitOf10(state, data) {
+function unitOf11(state, data) {
   const id = data.unitId;
   if (typeof id !== "string") return null;
   const unit2 = state.squad.find((u) => u.id === id);
@@ -44649,7 +44958,7 @@ function unitOf10(state, data) {
 var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
 var axisProvider2 = (axis) => (subject, env, knowledge) => {
   const state = env.state;
-  const found = unitOf10(state, subject.data);
+  const found = unitOf11(state, subject.data);
   if (!found) return null;
   const { unit: unit2, relation } = found;
   if (axis !== "trust" && unit2.kind === "grunt") return { lines: ["Grunts track Trust only."] };
@@ -44681,7 +44990,7 @@ function liveStress(state, unit2) {
 }
 var stressProvider = (subject, env, knowledge) => {
   const state = env.state;
-  const found = unitOf10(state, subject.data);
+  const found = unitOf11(state, subject.data);
   if (!found) return null;
   const { unit: unit2 } = found;
   const stress = liveStress(state, unit2);

@@ -1,4 +1,5 @@
 import type { CampaignState, Fact } from '../state/types';
+import { UNTOLD_TAG } from '../life/state';
 import { normalizeTag } from '../setup';
 import { TUNING } from '../tuning';
 import { factTextMax, memoryConfig } from './config';
@@ -79,6 +80,7 @@ export function retrieveFacts(
   const at = new Map(state.memory.facts.map((f, i) => [f.id, i]));
   const order = (f: Fact): number => at.get(f.id) ?? 0;
   return factsVisibleTo(state, q.participants)
+    .filter((f) => !f.tags.includes(UNTOLD_TAG)) // P14c: a life fact the commander has not been told never reaches a prompt (revealing it takes the tag off)
     .map((f) => ({ f, s: score(f) }))
     .sort((a, b) => b.s - a.s || b.f.day - a.f.day || order(b.f) - order(a.f))
     .slice(0, k)

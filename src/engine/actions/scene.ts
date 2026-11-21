@@ -17,6 +17,7 @@ import { recordSceneRange } from '../memory/scenes';
 import { applyIntents } from '../relations/apply';
 import { showMoments, stampMoments, unstampMoments } from '../development/moments';
 import { countCompanions } from '../development/habits';
+import { noteBusy } from '../life/dayStep';
 import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
@@ -97,6 +98,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   stampMoments(draft, participants, sceneId); // P14b: a quiet change of hers shows in this scene
+  noteBusy(draft, participants); // P14c: they are with the commander this slot (a no-op while life is off)
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day; // P9d: judges a daily-contact rule
   // P12: Secret Frequency listens once per present unit (nothing is drawn without the trait)
   const heard = rollIntercepts(draft, ctx, participants, { private: participants.length === 1, dm: false, sceneId });

@@ -10,6 +10,9 @@ export type {
 
 export const LIFE_MODES: readonly LifeMode[] = ['off', 'rare', 'normal', 'often'];
 
+/** The tag of a life fact the commander has not been told: the facts a prompt retrieves skip it, and revealing the fact takes it off. */
+export const UNTOLD_TAG = 'untold';
+
 /** The setting `lifeEvents`: absent or invalid = off (an old save, or a test campaign, picks, practises, queues and forms nothing). */
 export function lifeMode(state: Pick<CampaignState, 'settings'>): LifeMode {
   const m = state.settings.lifeEvents;

@@ -1,4 +1,7 @@
+import { registerActivityHook } from '../activities';
+import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { lifeDayStep, noteBusy } from '../life/dayStep';
 import { newHobby, seedLife } from '../life/hobbies';
 import { LIFE_MODES, TEMPERAMENT_FIELDS, ensureLife, lifeMode, temperamentOf, temperamentProblems } from '../life/state';
 import type { OpinionTopicEntry } from '../life/types';
@@ -22,6 +25,17 @@ registerAction('life/set_frequency', (draft, payload, ctx) => {
   // the hobbies she starts with get their starting skill the first time life is on (the same call that seeds a built campaign)
   if (wasOff && mode !== 'off') seedLife(draft, ctx.registries);
   return [{ type: 'life_frequency_set', mode }];
+});
+
+// Her days off-screen (P14c): the day step runs after development's (this module is imported after `actions/development`), and with life off it does nothing.
+registerDayEndStep('dm_rumors', lifeDayStep);
+
+// A companion, and the roster of an activity that works on the roster (`rest`, `mess`: an effect with `target: 'roster'`), are with the commander this slot.
+registerActivityHook((draft, ctx, done) => {
+  const activity = ctx.registries.activities.get(done.activityId);
+  const roster = ((activity?.effects ?? []) as Array<{ target?: unknown }>).some((fx) => fx.target === 'roster');
+  noteBusy(draft, [...(done.companionId ? [done.companionId] : []), ...(roster ? done.rosterIds : [])], done.activityId);
+  return [];
 });
 
 /** A named unit by id, or a refusal: her temperament is a named soldier's (grunts have none). */
