@@ -1008,6 +1008,17 @@ var TUNING = Object.freeze({
      * form looks `bookingSearchDays` ahead for a free evening. `AUTHOR TO TUNE`.
      */
     milestones: Object.freeze({ refuseDrop: 20, refuseCooldownDays: 7, afterDownDays: 14, bookingSearchDays: 14 }),
+    /**
+     * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
+     * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
+     * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing. `AUTHOR TO TUNE`.
+     */
+    claimChance: 0.2,
+    claimCooldownDays: 7,
+    partialDays: 7,
+    contestedLoss: 10,
+    bookAhead: 3,
+    coLeaderStanding: 15,
     /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
     contestAt: 3,
     contestWindowDays: 14,
@@ -11412,9 +11423,9 @@ function leashWeekly(state, reg) {
   n += traitEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   n += worldEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   if (id !== null) {
-    const standing = factionStanding(state, id);
-    if (standing >= TUNING.leash.standingStep) n += 1;
-    else if (standing <= -TUNING.leash.standingStep) n -= 1;
+    const standing2 = factionStanding(state, id);
+    if (standing2 >= TUNING.leash.standingStep) n += 1;
+    else if (standing2 <= -TUNING.leash.standingStep) n -= 1;
   }
   return Math.max(0, Math.min(TUNING.leash.weeklyMax, n));
 }
@@ -14649,9 +14660,9 @@ function staleSweep(draft, day) {
     events.push(...drop(life, item.id, item.unitId));
   }
   for (const n of [...life.news]) if (day >= n.until) events.push(...drop(life, n.itemId, n.unitId));
-  const standing = held(life);
+  const standing2 = held(life);
   for (const item of life.queue) {
-    if (standing.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
+    if (standing2.has(item.id) || day - item.day <= TUNING.life.staleDays) continue;
     life.news.push({ itemId: item.id, unitId: item.unitId, until: day + TUNING.life.newsDays, passing: true });
   }
   return events;
@@ -14694,8 +14705,8 @@ function deliverNews(draft, reg, day) {
   const t = TUNING.life;
   const events = [];
   const inQueue = () => {
-    const standing = held(life);
-    return life.queue.filter((i) => !standing.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
+    const standing2 = held(life);
+    return life.queue.filter((i) => !standing2.has(i.id) && day - i.day <= t.staleDays && takesPart(draft, i.unitId));
   };
   const told = () => life.delivered.filter((r) => r.caused !== true);
   const lastIndex = (category) => told().map((r) => r.category).lastIndexOf(category);
@@ -16242,7 +16253,7 @@ function resolveTargets(ctx2, owner, e, ev) {
   const { cs } = ctx2;
   const kind = e.target ?? (ev.targets ? "target" : "self");
   const side = owner.side;
-  const standing = (s) => living(cs, s);
+  const standing2 = (s) => living(cs, s);
   switch (kind) {
     case "self":
       return [owner.cid];
@@ -16251,26 +16262,26 @@ function resolveTargets(ctx2, owner, e, ev) {
     case "source":
       return ev.sourceCid ? [ev.sourceCid] : [];
     case "allies":
-      return standing(side).map((c) => c.cid);
+      return standing2(side).map((c) => c.cid);
     case "allies_other":
-      return standing(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
+      return standing2(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
     case "allies_front":
-      return standing(side).filter((c) => c.row === "front").map((c) => c.cid);
+      return standing2(side).filter((c) => c.row === "front").map((c) => c.cid);
     case "enemies":
-      return standing(opposite(side)).map((c) => c.cid);
+      return standing2(opposite(side)).map((c) => c.cid);
     case "own_row":
-      return standing(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
+      return standing2(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
     case "target_row": {
       const ref = ev.targetCid ?? ev.sourceCid;
       const r = ref && ref !== "commander" ? cs.combatants.find((c) => c.cid === ref) : void 0;
       return r ? cs.combatants.filter((c) => c.side === r.side && c.row === r.row && isStanding(c)).map((c) => c.cid) : [];
     }
     case "random_enemy": {
-      const pool = standing(opposite(side));
+      const pool = standing2(opposite(side));
       return pool.length > 0 ? [ctx2.rng.pick(pool).cid] : [];
     }
     case "lowest_hp_ally": {
-      const pool = standing(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
+      const pool = standing2(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
       return pool.length > 0 ? [pool[0].cid] : [];
     }
     case "commander":
@@ -16987,6 +16998,189 @@ var measureList = (reg, state) => [
   "unspecified"
 ];
 
+// src/engine/personal/bookings.ts
+var bookingsOf = (state) => state.personal?.bookings ?? [];
+var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
+var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
+function bookingChance(state, reg, unitId) {
+  const T5 = TUNING.personal.booking;
+  const affinity = state.relations[unitId]?.affinity ?? 0;
+  const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
+  const raw = T5.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
+  return Math.min(T5.cap, raw);
+}
+function dueBooking(state) {
+  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
+  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
+}
+function bookingPlayable(state, booking) {
+  const unit3 = state.squad.find((u) => u.id === booking.unitId);
+  if (!unit3 || unit3.kind !== "named" || !isLiving(unit3)) return false;
+  if (unit3.status === "injured" || (unit3.injuryDays ?? 0) > 0) return false;
+  if (state.expedition?.party.includes(unit3.id)) return false;
+  return restrictionReason(state, unit3.id, "scene") === null;
+}
+function bookingGuard(state, action) {
+  const blocked = action.type.startsWith("activity/") || action.type === "life/time_together" || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
+  if (!blocked || state.personal?.bookings === void 0) return null;
+  const due = dueBooking(state);
+  if (!due || !bookingPlayable(state, due)) return null;
+  if (action.type === "scene/start") {
+    const ids = action.payload?.participants;
+    if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
+  }
+  return { code: "booking_due", message: `${unitName(state, due.unitId)} has booked this slot: go to her or cancel it.` };
+}
+function nextSlotAfter(day, slot2) {
+  if (slot2 === "morning") return { day, slot: "afternoon" };
+  if (slot2 === "afternoon") return { day, slot: "evening" };
+  return { day: day + 1, slot: "morning" };
+}
+function syncConflicts(draft, day, slot2) {
+  const same = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
+  for (const b of same) {
+    if (same.length > 1) b.conflict = true;
+    else delete b.conflict;
+  }
+  return same;
+}
+function book(draft, _ctx, p) {
+  const booking = {
+    id: nextPersonalId(draft, "bk"),
+    unitId: p.unitId,
+    kindId: p.kindId,
+    day: p.day,
+    slot: p.slot,
+    status: "booked",
+    source: p.source,
+    made: draft.day
+  };
+  (personalOf(draft).bookings ??= []).push(booking);
+  const events = [{ type: "booking_made", bookingId: booking.id, unitId: p.unitId, kindId: p.kindId, day: p.day, slot: p.slot, source: p.source }];
+  if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
+  return events;
+}
+function bookingKindsFor(state, reg, unitId) {
+  const tier = bondTierOf(state, reg, unitId);
+  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
+}
+function rollBookings(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const u of draft.squad) {
+    if (u.kind !== "named") continue;
+    if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
+    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
+    if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
+    const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
+    if (mine.some((b) => b.status === "booked")) continue;
+    if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
+    if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
+    const kinds2 = bookingKindsFor(draft, reg, u.id);
+    if (kinds2.length === 0) continue;
+    let pick3 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick3 -= Number(k.weight)) < 0) ?? kinds2[0];
+    events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "roll" }));
+    pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
+  }
+  return events;
+}
+var holdRank = (state, unitId) => {
+  const bond = bondOf(state.squad.find((u) => u.id === unitId) ?? { kind: "grunt" });
+  return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
+};
+var byOrder = (state, reg, a, b) => holdRank(state, b) - holdRank(state, a) || (impunityOf(state, reg, b)?.value ?? 0) - (impunityOf(state, reg, a)?.value ?? 0) || state.squad.findIndex((u) => u.id === a) - state.squad.findIndex((u) => u.id === b);
+function settleWinner(state, reg, contenders) {
+  return [...contenders].sort((a, b) => byOrder(state, reg, a.unitId, b.unitId))[0];
+}
+function settleOrder(state, reg, a, b) {
+  return byOrder(state, reg, a, b) <= 0 ? a : b;
+}
+function resolveConflict(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  let day;
+  let slot2;
+  let keepId;
+  if ("bookingId" in p) {
+    const b = bookingsOf(draft).find((x) => x.id === p.bookingId);
+    if (!b || b.status !== "booked" || b.conflict !== true) throw new Error("That booking is not in a conflict.");
+    ({ day, slot: slot2 } = b);
+    keepId = b.id;
+  } else {
+    ({ day, slot: slot2 } = p);
+  }
+  const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
+  if (rivals.length < 2) throw new Error("Nothing is in conflict there.");
+  const winner = keepId !== void 0 ? rivals.find((b) => b.id === keepId) : settleWinner(draft, reg, rivals);
+  const events = [];
+  for (const loser of rivals.filter((b) => b !== winner)) {
+    loser.status = "cancelled";
+    delete loser.conflict;
+    if (keepId !== void 0) {
+      events.push(...hitHer(draft, reg, loser.unitId, "rejected_advance", "moderate", "her booking lost the slot"));
+    } else {
+      const unit3 = draft.squad.find((u) => u.id === loser.unitId);
+      if (unit3) {
+        const next = Math.min(100, unit3.stress + TUNING.personal.booking.settleStress);
+        if (next !== unit3.stress) events.push({ type: "stress_changed", unitId: unit3.id, delta: next - unit3.stress });
+        unit3.stress = next;
+      }
+    }
+    events.push({ type: "booking_cancelled", bookingId: loser.id, unitId: loser.unitId, lost: true });
+  }
+  delete winner.conflict;
+  events.push({ type: "booking_resolved", day, slot: slot2, kept: winner.id, unitId: winner.unitId, settled: keepId === void 0 });
+  return events;
+}
+function cancelBooking(draft, ctx2, bookingId) {
+  const b = bookingsOf(draft).find((x) => x.id === bookingId);
+  if (!b || b.status !== "booked") throw new Error("That booking cannot be canceled.");
+  const reg = ctx2.registries;
+  b.status = "cancelled";
+  delete b.conflict;
+  syncConflicts(draft, b.day, b.slot);
+  const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
+  if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
+  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was canceled" }));
+  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was canceled"));
+  else events.push(...evaluateAutomatic(draft, reg, b.unitId));
+  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "canceled her booking on the day of obedience"));
+  return events;
+}
+function markPlayed(draft, reg, booking) {
+  booking.status = "played";
+  delete booking.conflict;
+  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
+  return relieveWant(draft, booking.unitId, relief, "booking");
+}
+function playBooking(draft, ctx2, id) {
+  const reg = ctx2.registries;
+  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
+  if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
+  const events = [];
+  if (target.conflict) {
+    const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot);
+    const winner = settleWinner(draft, reg, rivals);
+    events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
+    target = winner;
+  }
+  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
+  const kind = kindOf2(reg, target.kindId);
+  events.push(...markPlayed(draft, reg, target));
+  const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
+  events.push({ type: "booking_played", bookingId: target.id, unitId: target.unitId, scene });
+  return { events, scene };
+}
+var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
+function metAtScene(draft, reg, participants) {
+  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
+  if (!due) return [];
+  const events = markPlayed(draft, reg, due);
+  syncConflicts(draft, due.day, due.slot);
+  return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
+}
+
 // src/engine/dynamic/state.ts
 function dynamicOf(state, unitId) {
   return state.relations[unitId]?.dynamic;
@@ -17082,184 +17276,171 @@ function ensureDynamic(draft, reg, unitId) {
   return [{ type: "dynamic_started", unitId }];
 }
 
-// src/engine/personal/bookings.ts
-var bookingsOf = (state) => state.personal?.bookings ?? [];
-var unitName = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-var kindOf2 = (reg, id) => reg.bookingKinds.get(id);
-var ATTACHMENT_RANK = { intense: 3, steady: 2, slow: 1, avoidant: 0 };
-function bookingChance(state, reg, unitId) {
-  const T5 = TUNING.personal.booking;
-  const affinity = state.relations[unitId]?.affinity ?? 0;
-  const impunity = impunityOf(state, reg, unitId)?.value ?? 0;
-  const raw = T5.base * Math.max(0, 1 + affinity / 100) * (1 + wantOf(state, unitId) / 100) * (impunity / 50) * assertiveness(state, reg).demandMult * pressureMultOf(state, reg, unitId);
-  return Math.min(T5.cap, raw);
+// src/engine/dynamic/tracks.ts
+var trackEntry = (reg, trackId) => reg.dynamicTracks.get(trackId);
+var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
+function trackOpen(state, reg, unitId, trackId) {
+  const entry = trackEntry(reg, trackId);
+  if (entry === void 0 || !dynamicOn(state, reg) || dynamicOf(state, unitId) === void 0) return false;
+  return entry.category === void 0 || (practiceOf(state, reg, unitId)?.allowed.includes(entry.category) ?? false);
 }
-function dueBooking(state) {
-  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
-  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
+function trackLevel(state, unitId, trackId) {
+  return dynamicOf(state, unitId)?.tracks[trackId]?.level ?? 0;
 }
-function bookingPlayable(state, booking) {
-  const unit3 = state.squad.find((u) => u.id === booking.unitId);
-  if (!unit3 || unit3.kind !== "named" || !isLiving(unit3)) return false;
-  if (unit3.status === "injured" || (unit3.injuryDays ?? 0) > 0) return false;
-  if (state.expedition?.party.includes(unit3.id)) return false;
-  return restrictionReason(state, unit3.id, "scene") === null;
+function trackCap(state, reg, unitId, trackId) {
+  return trackOpen(state, reg, unitId, trackId) ? trackLevel(state, unitId, trackId) : 0;
 }
-function bookingGuard(state, action) {
-  const blocked = action.type.startsWith("activity/") || action.type === "life/time_together" || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
-  if (!blocked || state.personal?.bookings === void 0) return null;
-  const due = dueBooking(state);
-  if (!due || !bookingPlayable(state, due)) return null;
-  if (action.type === "scene/start") {
-    const ids = action.payload?.participants;
-    if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
+
+// src/engine/dynamic/milestones.ts
+var milestoneRows = (reg) => [...reg.dynamicMilestones.values()];
+var milestoneEntry = (reg, id) => reg.dynamicMilestones.get(id);
+function requiresMet(state, reg, unitId, m) {
+  const dyn = dynamicOf(state, unitId);
+  if (dyn === void 0 || !contentAllowed(state, reg, m, unitId)) return false;
+  const r = m.requires;
+  if (r.holdBand !== void 0) {
+    const band2 = reg.holdBands.get(r.holdBand);
+    if (band2 === void 0 || dyn.hold < Number(band2.min)) return false;
   }
-  return { code: "booking_due", message: `${unitName(state, due.unitId)} has booked this slot: go to her or cancel it.` };
-}
-function nextSlotAfter(day, slot2) {
-  if (slot2 === "morning") return { day, slot: "afternoon" };
-  if (slot2 === "afternoon") return { day, slot: "evening" };
-  return { day: day + 1, slot: "morning" };
-}
-function syncConflicts(draft, day, slot2) {
-  const same = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
-  for (const b of same) {
-    if (same.length > 1) b.conflict = true;
-    else delete b.conflict;
+  if (r.tracks !== void 0 && Object.entries(r.tracks).some(([id, level]) => trackCap(state, reg, unitId, id) < level)) return false;
+  const caps = new Set(capabilitiesOf(state, reg, unitId));
+  if (r.capabilities !== void 0 && !r.capabilities.every((c) => caps.has(c))) return false;
+  if (r.noCapability !== void 0 && caps.has(r.noCapability)) return false;
+  if (r.categories !== void 0) {
+    const view = practiceOf(state, reg, unitId);
+    if (view === null || !r.categories.every((c) => view.allowed.includes(c) && view.categories[c]?.as !== "none")) return false;
   }
-  return same;
+  if (r.styles !== void 0) {
+    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+    if (primary === void 0 || !r.styles.includes(primary)) return false;
+  }
+  if (r.romantic === true && bondTierOf(state, reg, unitId) !== "romantic") return false;
+  if (r.coolingDays !== void 0 && state.day - dyn.lastPracticeDay < r.coolingDays) return false;
+  if (r.formerHolder === true && dyn.formerHolder === void 0) return false;
+  return true;
 }
-function book(draft, _ctx, p) {
-  const booking = {
-    id: nextPersonalId(draft, "bk"),
-    unitId: p.unitId,
-    kindId: p.kindId,
-    day: p.day,
-    slot: p.slot,
-    status: "booked",
-    source: p.source,
-    made: draft.day
-  };
-  (personalOf(draft).bookings ??= []).push(booking);
-  const events = [{ type: "booking_made", bookingId: booking.id, unitId: p.unitId, kindId: p.kindId, day: p.day, slot: p.slot, source: p.source }];
-  if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
-  return events;
+function holdsFrameWithoutIt(state, reg, unitId, m) {
+  if (m.requires.noCapability === void 0) return false;
+  return milestoneRows(reg).some((e) => e.to === m.from && e.from !== e.to && e.offer !== "automatic" && !e.effects.some((x) => x.type === "claim") && requiresMet(state, reg, unitId, e));
 }
-function bookingKindsFor(state, reg, unitId) {
-  const tier = bondTierOf(state, reg, unitId);
-  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
+function eligible2(state, reg, unitId, dyn, m) {
+  if (m.from !== dyn.frame || state.day < (dyn.cooldowns[m.id] ?? -Infinity)) return false;
+  if (m.from === m.to && dyn.milestones.includes(m.id)) return false;
+  if (!requiresMet(state, reg, unitId, m) || holdsFrameWithoutIt(state, reg, unitId, m)) return false;
+  return m.from !== "equal" || canHold(state, reg, unitId) === null;
 }
-function rollBookings(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const u of draft.squad) {
-    if (u.kind !== "named") continue;
-    if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
-    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
-    if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
-    const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
-    if (mine.some((b) => b.status === "booked")) continue;
-    if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
-    if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
-    const kinds2 = bookingKindsFor(draft, reg, u.id);
-    if (kinds2.length === 0) continue;
-    let pick3 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick3 -= Number(k.weight)) < 0) ?? kinds2[0];
-    events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "roll" }));
-    pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName), day: draft.day, slot: draft.slot, read: false, initiated: true });
+function nextFreeEvening(state) {
+  const taken = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && b.slot === "evening").map((b) => b.day);
+  const from = state.slot === "evening" || state.slot === "night" ? state.day + 1 : state.day;
+  for (let d = from; d <= from + TUNING.dynamic.milestones.bookingSearchDays; d++) if (!taken.includes(d)) return d;
+  return null;
+}
+function openMilestone(draft, ctx2, unitId, m) {
+  const x = draft.dynamic;
+  const id = `dm${x.seq++}`;
+  x.open.milestones.push({ id, unitId, milestoneId: m.id, day: draft.day, form: m.offer });
+  const events = [{ type: "milestone_offered", unitId, id, milestoneId: m.id, form: m.offer }];
+  if (m.offer === "booking") {
+    const day = nextFreeEvening(draft);
+    const kind = bookingKindsFor(draft, ctx2.registries, unitId).find((k) => k.slot === "evening");
+    if (day !== null && kind !== void 0) events.push(...book(draft, ctx2, { unitId, kindId: String(kind.id), day, slot: "evening", source: "milestone" }));
+  }
+  if (m.offer === "booking" || m.offer === "demand") {
+    const name = draft.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+    pushMessage(draft, unitId, { from: unitId, text: m.text.replaceAll("{name}", name), day: draft.day, slot: draft.slot, read: false, initiated: true });
   }
   return events;
 }
-var holdRank = (state, unitId) => {
-  const bond = bondOf(state.squad.find((u) => u.id === unitId) ?? { kind: "grunt" });
-  return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
-};
-function settleWinner(state, reg, contenders) {
-  const order = (b) => state.squad.findIndex((u) => u.id === b.unitId);
-  return [...contenders].sort((a, b) => holdRank(state, b.unitId) - holdRank(state, a.unitId) || (impunityOf(state, reg, b.unitId)?.value ?? 0) - (impunityOf(state, reg, a.unitId)?.value ?? 0) || order(a) - order(b))[0];
-}
-function resolveConflict(draft, ctx2, p) {
+function applyMilestone(draft, ctx2, unitId, milestoneId) {
   const reg = ctx2.registries;
-  let day;
-  let slot2;
-  let keepId;
-  if ("bookingId" in p) {
-    const b = bookingsOf(draft).find((x) => x.id === p.bookingId);
-    if (!b || b.status !== "booked" || b.conflict !== true) throw new Error("That booking is not in a conflict.");
-    ({ day, slot: slot2 } = b);
-    keepId = b.id;
-  } else {
-    ({ day, slot: slot2 } = p);
-  }
-  const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === day && b.slot === slot2);
-  if (rivals.length < 2) throw new Error("Nothing is in conflict there.");
-  const winner = keepId !== void 0 ? rivals.find((b) => b.id === keepId) : settleWinner(draft, reg, rivals);
+  const m = milestoneEntry(reg, milestoneId);
+  const dyn = dynamicOf(draft, unitId);
+  if (m === void 0 || dyn === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  for (const loser of rivals.filter((b) => b !== winner)) {
-    loser.status = "cancelled";
-    delete loser.conflict;
-    if (keepId !== void 0) {
-      events.push(...hitHer(draft, reg, loser.unitId, "rejected_advance", "moderate", "her booking lost the slot"));
-    } else {
-      const unit3 = draft.squad.find((u) => u.id === loser.unitId);
-      if (unit3) {
-        const next = Math.min(100, unit3.stress + TUNING.personal.booking.settleStress);
-        if (next !== unit3.stress) events.push({ type: "stress_changed", unitId: unit3.id, delta: next - unit3.stress });
-        unit3.stress = next;
+  for (const effect of m.effects) {
+    if (effect.type === "frame") {
+      const from = dyn.frame;
+      dyn.frame = m.to;
+      events.push({ type: "frame_changed", unitId, from, to: m.to, milestoneId: m.id });
+      const floor = frameEntry(reg, m.to)?.holdFloor ?? 0;
+      if (dyn.hold < floor) {
+        const was = dyn.hold;
+        dyn.hold = floor;
+        events.push({ type: "hold_changed", unitId, from: was, to: floor, cause: "frame" });
+        if (holdBandOf(reg, was) !== holdBandOf(reg, floor)) events.push({ type: "hold_band_changed", unitId, from: holdBandOf(reg, was), to: holdBandOf(reg, floor) });
       }
+      if (frameRank(m.to) < frameRank(from)) {
+        for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
+      }
+    } else if (effect.type === "sworn") {
+      dyn.sworn = { day: draft.day };
+      events.push({ type: "sworn", unitId, day: draft.day });
+    } else if (effect.type === "claim") {
+      events.push(...grantCapability(draft, ctx2, unitId, effect.capability));
     }
-    events.push({ type: "booking_cancelled", bookingId: loser.id, unitId: loser.unitId, lost: true });
   }
-  delete winner.conflict;
-  events.push({ type: "booking_resolved", day, slot: slot2, kept: winner.id, unitId: winner.unitId, settled: keepId === void 0 });
+  dyn.milestones.push(m.id);
+  const x = draft.dynamic;
+  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
   return events;
 }
-function cancelBooking(draft, ctx2, bookingId) {
-  const b = bookingsOf(draft).find((x) => x.id === bookingId);
-  if (!b || b.status !== "booked") throw new Error("That booking cannot be canceled.");
+function answerMilestone(draft, ctx2, milestoneId, answer, via) {
   const reg = ctx2.registries;
-  b.status = "cancelled";
-  delete b.conflict;
-  syncConflicts(draft, b.day, b.slot);
-  const events = [{ type: "booking_cancelled", bookingId: b.id, unitId: b.unitId }];
-  if (!draft.squad.some((u) => u.id === b.unitId && isLiving(u))) return events;
-  events.push(...refuseLikeDemand(draft, ctx2, b.unitId, { evidence: "a booking was canceled" }));
-  if (b.source === "wager") events.push(...hitHer(draft, reg, b.unitId, "broke_promise", "moderate", "a wagered booking was canceled"));
-  else events.push(...evaluateAutomatic(draft, reg, b.unitId));
-  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx2, b.unitId, "canceled her booking on the day of obedience"));
-  return events;
+  const row3 = draft.dynamic?.open.milestones.find((m2) => m2.id === milestoneId);
+  const unit3 = row3 === void 0 ? void 0 : draft.squad.find((u) => u.id === row3.unitId);
+  const m = row3 === void 0 ? void 0 : milestoneEntry(reg, row3.milestoneId);
+  const dyn = row3 === void 0 ? void 0 : dynamicOf(draft, row3.unitId);
+  if (!dynamicOn(draft, reg) || row3 === void 0 || unit3 === void 0 || m === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("That milestone is not open.");
+  draft.dynamic.open.milestones = draft.dynamic.open.milestones.filter((o) => o.id !== row3.id);
+  const base = { unitId: row3.unitId, id: row3.id, milestoneId: m.id, via };
+  if (answer === "accept") return [{ type: "milestone_accepted", ...base }, ...applyMilestone(draft, ctx2, row3.unitId, m.id)];
+  dyn.cooldowns[m.id] = draft.day + TUNING.dynamic.milestones.refuseCooldownDays;
+  return [
+    { type: "milestone_refused", ...base },
+    ...addHold(draft, ctx2, row3.unitId, -TUNING.dynamic.milestones.refuseDrop, "milestone_refused"),
+    ...refusalCost(draft, ctx2, row3.unitId, "milestone")
+  ];
 }
-function markPlayed(draft, reg, booking) {
-  booking.status = "played";
-  delete booking.conflict;
-  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
-  return relieveWant(draft, booking.unitId, relief, "booking");
-}
-function playBooking(draft, ctx2, id) {
+function milestonesDue(draft, ctx2, unitId) {
   const reg = ctx2.registries;
-  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
-  if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (!dynamicOn(draft, reg) || draft.dynamic === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return [];
   const events = [];
-  if (target.conflict) {
-    const rivals = bookingsOf(draft).filter((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot);
-    const winner = settleWinner(draft, reg, rivals);
-    events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
-    target = winner;
+  for (let again = true, guard = 0; again && guard < 4; guard++) {
+    const dyn2 = dynamicOf(draft, unitId);
+    const auto = dyn2 === void 0 ? void 0 : milestoneRows(reg).find((m) => m.offer === "automatic" && m.requires.formerHolder !== true && eligible2(draft, reg, unitId, dyn2, m));
+    again = auto !== void 0;
+    if (auto !== void 0) events.push(...applyMilestone(draft, ctx2, unitId, auto.id));
   }
-  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
-  const kind = kindOf2(reg, target.kindId);
-  events.push(...markPlayed(draft, reg, target));
-  const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
-  events.push({ type: "booking_played", bookingId: target.id, unitId: target.unitId, scene });
-  return { events, scene };
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0) return events;
+  const x = draft.dynamic;
+  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
+  if (x.open.milestones.some((o) => o.unitId === unitId)) return events;
+  const next = milestoneRows(reg).find((m) => m.offer !== "automatic" && eligible2(draft, reg, unitId, dyn, m));
+  if (next !== void 0) events.push(...openMilestone(draft, ctx2, unitId, next));
+  return events;
 }
-var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
-function metAtScene(draft, reg, participants) {
-  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
-  if (!due) return [];
-  const events = markPlayed(draft, reg, due);
-  syncConflicts(draft, due.day, due.slot);
-  return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
+function refusalCost(draft, ctx2, unitId, what) {
+  const reg = ctx2.registries;
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0 || !dynamicOn(draft, reg)) return [];
+  const kind = frameEntry(reg, dyn.frame)?.refusal ?? "minor";
+  const events = what === "milestone" ? [] : addHold(draft, ctx2, unitId, TUNING.dynamic.refusalCost[kind], "refusal");
+  if (kind === "minor") return events;
+  const days = TUNING.dynamic.contestWindowDays;
+  dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];
+  events.push({ type: "refusal_noted", unitId, what });
+  if (kind === "contest") {
+    dyn.contest = [...dyn.contest.filter((d) => draft.day - d <= days), draft.day];
+    const x = draft.dynamic;
+    if (dyn.contest.length >= TUNING.dynamic.contestAt && !x.open.claims.some((c) => c.unitId === unitId)) {
+      const claimId = `dc${x.seq++}`;
+      x.open.claims.push({ id: claimId, unitId, submit: true, day: draft.day });
+      events.push({ type: "domain_claimed", unitId, claimId, submit: true });
+    }
+  }
+  return events;
 }
 
 // src/engine/physics/style.ts
@@ -17504,6 +17685,7 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   const was = holdBandOf(reg, from);
   const now = holdBandOf(reg, to);
   if (was !== now) events.push({ type: "hold_band_changed", unitId, from: was, to: now });
+  events.push(...reconcileDomains(draft, reg, unitId));
   events.push(...milestonesDue(draft, ctx2, unitId));
   return events;
 }
@@ -17514,179 +17696,156 @@ function addFavour(draft, unitId, n) {
   dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
 }
 
-// src/engine/dynamic/tracks.ts
-var trackEntry = (reg, trackId) => reg.dynamicTracks.get(trackId);
-var levelOfXp = (thresholds, xp) => thresholds.filter((t) => xp >= t).length;
-function trackOpen(state, reg, unitId, trackId) {
-  const entry = trackEntry(reg, trackId);
-  if (entry === void 0 || !dynamicOn(state, reg) || dynamicOf(state, unitId) === void 0) return false;
-  return entry.category === void 0 || (practiceOf(state, reg, unitId)?.allowed.includes(entry.category) ?? false);
-}
-function trackLevel(state, unitId, trackId) {
-  return dynamicOf(state, unitId)?.tracks[trackId]?.level ?? 0;
-}
-function trackCap(state, reg, unitId, trackId) {
-  return trackOpen(state, reg, unitId, trackId) ? trackLevel(state, unitId, trackId) : 0;
-}
-
-// src/engine/dynamic/milestones.ts
-var milestoneRows = (reg) => [...reg.dynamicMilestones.values()];
-var milestoneEntry = (reg, id) => reg.dynamicMilestones.get(id);
-function capabilitiesHeld(dyn, reg) {
-  const held3 = /* @__PURE__ */ new Set();
-  for (const d of dyn.domains) for (const c of reg.dynamicDomains.get(d.id)?.grants ?? []) held3.add(c);
-  return held3;
-}
-function requiresMet(state, reg, unitId, m) {
+// src/engine/dynamic/domains.ts
+var domainEntry = (reg, id) => reg.dynamicDomains.get(id);
+var domainRows = (reg) => [...reg.dynamicDomains.values()];
+var standing = (d, day) => d.partialUntil === void 0 || d.partialUntil > day;
+var bandMin = (reg, entry) => Number(reg.holdBands.get(entry.requires.holdBand)?.min ?? Infinity);
+function capabilitiesOf(state, reg, unitId) {
   const dyn = dynamicOf(state, unitId);
-  if (dyn === void 0 || !contentAllowed(state, reg, m, unitId)) return false;
-  const r = m.requires;
-  if (r.holdBand !== void 0) {
-    const band2 = reg.holdBands.get(r.holdBand);
-    if (band2 === void 0 || dyn.hold < Number(band2.min)) return false;
-  }
-  if (r.tracks !== void 0 && Object.entries(r.tracks).some(([id, level]) => trackCap(state, reg, unitId, id) < level)) return false;
-  const caps = capabilitiesHeld(dyn, reg);
-  if (r.capabilities !== void 0 && !r.capabilities.every((c) => caps.has(c))) return false;
-  if (r.noCapability !== void 0 && caps.has(r.noCapability)) return false;
-  if (r.categories !== void 0) {
-    const view = practiceOf(state, reg, unitId);
-    if (view === null || !r.categories.every((c) => view.allowed.includes(c) && view.categories[c]?.as !== "none")) return false;
-  }
-  if (r.styles !== void 0) {
-    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
-    if (primary === void 0 || !r.styles.includes(primary)) return false;
-  }
-  if (r.romantic === true && bondTierOf(state, reg, unitId) !== "romantic") return false;
-  if (r.coolingDays !== void 0 && state.day - dyn.lastPracticeDay < r.coolingDays) return false;
-  if (r.formerHolder === true && dyn.formerHolder === void 0) return false;
-  return true;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || !dynamicOn(state, reg)) return [];
+  const held3 = /* @__PURE__ */ new Set();
+  for (const d of dyn.domains) if (standing(d, state.day)) for (const c of domainEntry(reg, d.id)?.grants ?? []) held3.add(c);
+  return [...held3];
 }
-function holdsFrameWithoutIt(state, reg, unitId, m) {
-  if (m.requires.noCapability === void 0) return false;
-  return milestoneRows(reg).some((e) => e.to === m.from && e.from !== e.to && e.offer !== "automatic" && !e.effects.some((x) => x.type === "claim") && requiresMet(state, reg, unitId, e));
+var hasCapability = (state, reg, unitId, cap7) => capabilitiesOf(state, reg, unitId).includes(cap7);
+function holderOfDomain(state, domainId, except) {
+  return state.squad.find((u) => u.id !== except && u.kind === "named" && isLiving(u) && dynamicOf(state, u.id)?.domains.some((d) => d.id === domainId && standing(d, state.day)) === true)?.id ?? null;
 }
-function eligible2(state, reg, unitId, dyn, m) {
-  if (m.from !== dyn.frame || state.day < (dyn.cooldowns[m.id] ?? -Infinity)) return false;
-  if (m.from === m.to && dyn.milestones.includes(m.id)) return false;
-  if (!requiresMet(state, reg, unitId, m) || holdsFrameWithoutIt(state, reg, unitId, m)) return false;
-  return m.from !== "equal" || canHold(state, reg, unitId) === null;
-}
-function nextFreeEvening(state) {
-  const taken = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && b.slot === "evening").map((b) => b.day);
-  const from = state.slot === "evening" || state.slot === "night" ? state.day + 1 : state.day;
-  for (let d = from; d <= from + TUNING.dynamic.milestones.bookingSearchDays; d++) if (!taken.includes(d)) return d;
-  return null;
-}
-function openMilestone(draft, ctx2, unitId, m) {
-  const x = draft.dynamic;
-  const id = `dm${x.seq++}`;
-  x.open.milestones.push({ id, unitId, milestoneId: m.id, day: draft.day, form: m.offer });
-  const events = [{ type: "milestone_offered", unitId, id, milestoneId: m.id, form: m.offer }];
-  if (m.offer === "booking") {
-    const day = nextFreeEvening(draft);
-    const kind = bookingKindsFor(draft, ctx2.registries, unitId).find((k) => k.slot === "evening");
-    if (day !== null && kind !== void 0) events.push(...book(draft, ctx2, { unitId, kindId: String(kind.id), day, slot: "evening", source: "milestone" }));
-  }
-  if (m.offer === "booking" || m.offer === "demand") {
-    const name = draft.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
-    pushMessage(draft, unitId, { from: unitId, text: m.text.replaceAll("{name}", name), day: draft.day, slot: draft.slot, read: false, initiated: true });
-  }
-  return events;
-}
-function applyMilestone(draft, ctx2, unitId, milestoneId) {
-  const reg = ctx2.registries;
-  const m = milestoneEntry(reg, milestoneId);
+var meets2 = (reg, dyn, entry) => frameRank(dyn.frame) >= frameRank(entry.requires.frame) && dyn.hold >= bandMin(reg, entry);
+function loseDomain(draft, unitId, domainId, reason) {
   const dyn = dynamicOf(draft, unitId);
-  if (m === void 0 || dyn === void 0 || !dynamicOn(draft, reg)) return [];
+  if (dyn !== void 0) dyn.domains = dyn.domains.filter((d) => d.id !== domainId);
+  return { type: "domain_lost", unitId, domainId, reason };
+}
+function reconcileDomains(draft, reg, unitId) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0) return [];
   const events = [];
-  for (const effect of m.effects) {
-    if (effect.type === "frame") {
-      const from = dyn.frame;
-      dyn.frame = m.to;
-      events.push({ type: "frame_changed", unitId, from, to: m.to, milestoneId: m.id });
-      const floor = frameEntry(reg, m.to)?.holdFloor ?? 0;
-      if (dyn.hold < floor) {
-        const was = dyn.hold;
-        dyn.hold = floor;
-        events.push({ type: "hold_changed", unitId, from: was, to: floor, cause: "frame" });
-        if (holdBandOf(reg, was) !== holdBandOf(reg, floor)) events.push({ type: "hold_band_changed", unitId, from: holdBandOf(reg, was), to: holdBandOf(reg, floor) });
-      }
-      if (frameRank(m.to) < frameRank(from)) {
-        for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
-      }
-    } else if (effect.type === "sworn") {
-      dyn.sworn = { day: draft.day };
-      events.push({ type: "sworn", unitId, day: draft.day });
-    } else if (effect.type === "claim") {
-      if (!capabilitiesHeld(dyn, reg).has(effect.capability)) {
-        const domain = [...reg.dynamicDomains.values()].find((d) => d.grants.includes(effect.capability));
-        if (domain !== void 0) dyn.domains.push({ id: String(domain.id), since: draft.day });
-      }
-    }
+  for (const d of [...dyn.domains]) {
+    const entry = domainEntry(reg, d.id);
+    if (entry !== void 0 && dyn.hold < bandMin(reg, entry)) events.push(loseDomain(draft, unitId, d.id, "band"));
   }
-  dyn.milestones.push(m.id);
   const x = draft.dynamic;
-  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
+  if (x !== void 0) {
+    x.open.claims = x.open.claims.filter((c) => {
+      if (c.unitId !== unitId || c.domainId === void 0) return true;
+      const entry = domainEntry(reg, c.domainId);
+      return entry !== void 0 && meets2(reg, dyn, entry);
+    });
+  }
   return events;
 }
-function answerMilestone(draft, ctx2, milestoneId, answer, via) {
-  const reg = ctx2.registries;
-  const row3 = draft.dynamic?.open.milestones.find((m2) => m2.id === milestoneId);
-  const unit3 = row3 === void 0 ? void 0 : draft.squad.find((u) => u.id === row3.unitId);
-  const m = row3 === void 0 ? void 0 : milestoneEntry(reg, row3.milestoneId);
-  const dyn = row3 === void 0 ? void 0 : dynamicOf(draft, row3.unitId);
-  if (!dynamicOn(draft, reg) || row3 === void 0 || unit3 === void 0 || m === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("That milestone is not open.");
-  draft.dynamic.open.milestones = draft.dynamic.open.milestones.filter((o) => o.id !== row3.id);
-  const base = { unitId: row3.unitId, id: row3.id, milestoneId: m.id, via };
-  if (answer === "accept") return [{ type: "milestone_accepted", ...base }, ...applyMilestone(draft, ctx2, row3.unitId, m.id)];
-  dyn.cooldowns[m.id] = draft.day + TUNING.dynamic.milestones.refuseCooldownDays;
-  return [
-    { type: "milestone_refused", ...base },
-    ...addHold(draft, ctx2, row3.unitId, -TUNING.dynamic.milestones.refuseDrop, "milestone_refused"),
-    ...refusalCost(draft, ctx2, row3.unitId, "milestone")
-  ];
+function dueDomain(state, reg, dyn) {
+  return domainRows(reg).find((e) => e.claim === "demand" && meets2(reg, dyn, e) && state.day >= (dyn.cooldowns[e.id] ?? -Infinity) && !dyn.domains.some((d) => d.id === e.id && standing(d, state.day)));
 }
-function milestonesDue(draft, ctx2, unitId) {
+function claimsDue(draft, ctx2) {
   const reg = ctx2.registries;
-  const unit3 = draft.squad.find((u) => u.id === unitId);
-  if (!dynamicOn(draft, reg) || draft.dynamic === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return [];
+  const x = draft.dynamic;
+  if (x === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  for (let again = true, guard = 0; again && guard < 4; guard++) {
-    const dyn2 = dynamicOf(draft, unitId);
-    const auto = dyn2 === void 0 ? void 0 : milestoneRows(reg).find((m) => m.offer === "automatic" && m.requires.formerHolder !== true && eligible2(draft, reg, unitId, dyn2, m));
-    again = auto !== void 0;
-    if (auto !== void 0) events.push(...applyMilestone(draft, ctx2, unitId, auto.id));
+  for (const unit3 of draft.squad) {
+    const dyn = unit3.kind === "named" && isLiving(unit3) ? dynamicOf(draft, unit3.id) : void 0;
+    if (dyn === void 0 || dyn.aftermath !== void 0 || x.open.claims.some((c) => c.unitId === unit3.id)) continue;
+    const entry = dueDomain(draft, reg, dyn);
+    if (entry === void 0 || !ctx2.rng.chance(TUNING.dynamic.claimChance * TUNING.dynamic.frequency[x.setup.frequency])) continue;
+    const rival = holderOfDomain(draft, entry.id, unit3.id);
+    if (rival !== null) {
+      events.push(...settleDomainConflict(draft, ctx2, unit3.id, rival, entry.id));
+      continue;
+    }
+    const claimId = `dc${x.seq++}`;
+    x.open.claims.push({ id: claimId, unitId: unit3.id, domainId: entry.id, day: draft.day });
+    events.push({ type: "domain_claimed", unitId: unit3.id, claimId, domainId: entry.id });
   }
-  const dyn = dynamicOf(draft, unitId);
-  if (dyn === void 0) return events;
-  const x = draft.dynamic;
-  x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
-  if (x.open.milestones.some((o) => o.unitId === unitId)) return events;
-  const next = milestoneRows(reg).find((m) => m.offer !== "automatic" && eligible2(draft, reg, unitId, dyn, m));
-  if (next !== void 0) events.push(...openMilestone(draft, ctx2, unitId, next));
   return events;
 }
-function refusalCost(draft, ctx2, unitId, what) {
+function grantCapability(draft, ctx2, unitId, cap7) {
   const reg = ctx2.registries;
   const dyn = dynamicOf(draft, unitId);
-  if (dyn === void 0 || !dynamicOn(draft, reg)) return [];
-  const kind = frameEntry(reg, dyn.frame)?.refusal ?? "minor";
-  const events = what === "milestone" ? [] : addHold(draft, ctx2, unitId, TUNING.dynamic.refusalCost[kind], "refusal");
-  if (kind === "minor") return events;
-  const days = TUNING.dynamic.contestWindowDays;
-  dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];
-  events.push({ type: "refusal_noted", unitId, what });
-  if (kind === "contest") {
-    dyn.contest = [...dyn.contest.filter((d) => draft.day - d <= days), draft.day];
-    const x = draft.dynamic;
-    if (dyn.contest.length >= TUNING.dynamic.contestAt && !x.open.claims.some((c) => c.unitId === unitId)) {
-      const claimId = `dc${x.seq++}`;
-      x.open.claims.push({ id: claimId, unitId, submit: true, day: draft.day });
-      events.push({ type: "domain_claimed", unitId, claimId, submit: true });
-    }
+  const entry = domainRows(reg).find((d) => d.grants.includes(cap7));
+  if (dyn === void 0 || entry === void 0 || hasCapability(draft, reg, unitId, cap7)) return [];
+  const yielded = { type: "domain_yielded", unitId, domainId: entry.id, via: "milestone" };
+  const rival = holderOfDomain(draft, entry.id, unitId);
+  if (rival !== null) return settleDomainConflict(draft, ctx2, unitId, rival, entry.id);
+  dyn.domains = [...dyn.domains.filter((d) => d.id !== entry.id), { id: entry.id, since: draft.day }];
+  return [yielded];
+}
+function settleDomainConflict(draft, ctx2, claimantId, holderId, domainId) {
+  const winnerId = settleOrder(draft, ctx2.registries, claimantId, holderId);
+  const loserId = winnerId === claimantId ? holderId : claimantId;
+  const events = [];
+  const claimant = dynamicOf(draft, claimantId);
+  if (winnerId === claimantId && claimant !== void 0) {
+    events.push(loseDomain(draft, holderId, domainId, "contest"));
+    claimant.domains = [...claimant.domains.filter((d) => d.id !== domainId), { id: domainId, since: draft.day }];
   }
+  events.push({ type: "domain_contested", domainId, winnerId, loserId, claimantId, holderId });
+  events.push(...addHold(draft, ctx2, loserId, -TUNING.dynamic.contestedLoss, "contested"));
   return events;
+}
+function openClaim(draft, reg, claimId) {
+  const claim2 = draft.dynamic?.open.claims.find((c) => c.id === claimId);
+  const unit3 = claim2 === void 0 ? void 0 : draft.squad.find((u) => u.id === claim2.unitId);
+  const dyn = claim2 === void 0 ? void 0 : dynamicOf(draft, claim2.unitId);
+  if (claim2 === void 0 || unit3 === void 0 || dyn === void 0 || !isLiving(unit3) || !dynamicOn(draft, reg)) return null;
+  return { claim: claim2, dyn };
+}
+var closeClaim = (draft, claimId) => {
+  draft.dynamic.open.claims = draft.dynamic.open.claims.filter((c) => c.id !== claimId);
+};
+function answerClaim(draft, ctx2, claimId, answer) {
+  const reg = ctx2.registries;
+  const open3 = openClaim(draft, reg, claimId);
+  if (open3 === null) throw new Error("That claim is not open.");
+  const { claim: claim2, dyn } = open3;
+  if (answer === "talk") return [];
+  const base = { unitId: claim2.unitId, claimId };
+  if (claim2.domainId === void 0) {
+    closeClaim(draft, claimId);
+    if (answer === "yield") {
+      dyn.contest = [];
+      return [{ type: "domain_yielded", ...base, submit: true }];
+    }
+    const events = [{ type: "domain_refused", ...base, submit: true }, ...addHold(draft, ctx2, claim2.unitId, -TUNING.dynamic.milestones.refuseDrop, "refusal")];
+    for (const [observer, row3] of Object.entries(draft.dynamic.knowledge)) {
+      if (row3[claim2.unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, TUNING.dynamic.contestImpunity, "dynamic_contest"));
+    }
+    return events;
+  }
+  const entry = domainEntry(reg, claim2.domainId);
+  if (entry === void 0 || !meets2(reg, dyn, entry)) {
+    closeClaim(draft, claimId);
+    throw new Error("That claim is not open.");
+  }
+  closeClaim(draft, claimId);
+  if (answer === "yield") {
+    const rival = holderOfDomain(draft, claim2.domainId, claim2.unitId);
+    if (rival !== null) return settleDomainConflict(draft, ctx2, claim2.unitId, rival, claim2.domainId);
+    dyn.domains = [...dyn.domains.filter((d) => d.id !== claim2.domainId), { id: claim2.domainId, since: draft.day }];
+    return [{ type: "domain_yielded", ...base, domainId: claim2.domainId }];
+  }
+  dyn.domains = dyn.domains.filter((d) => d.id !== claim2.domainId);
+  dyn.cooldowns[claim2.domainId] = draft.day + TUNING.dynamic.claimCooldownDays;
+  return [{ type: "domain_refused", ...base, domainId: claim2.domainId }, ...refusalCost(draft, ctx2, claim2.unitId, "claim")];
+}
+function yieldPartial(draft, ctx2, claimId) {
+  const open3 = openClaim(draft, ctx2.registries, claimId);
+  if (open3 === null) return [];
+  const { claim: claim2, dyn } = open3;
+  closeClaim(draft, claimId);
+  const base = { unitId: claim2.unitId, claimId, partial: true };
+  if (claim2.domainId === void 0) {
+    dyn.contest = [];
+    return [{ type: "domain_yielded", ...base, submit: true }];
+  }
+  const entry = domainEntry(ctx2.registries, claim2.domainId);
+  if (entry === void 0 || !meets2(ctx2.registries, dyn, entry)) return [];
+  const rival = holderOfDomain(draft, claim2.domainId, claim2.unitId);
+  if (rival !== null) return settleDomainConflict(draft, ctx2, claim2.unitId, rival, claim2.domainId);
+  dyn.domains = [...dyn.domains.filter((d) => d.id !== claim2.domainId), { id: claim2.domainId, since: draft.day, partialUntil: draft.day + TUNING.dynamic.partialDays }];
+  return [{ type: "domain_yielded", ...base, domainId: claim2.domainId }];
 }
 
 // src/engine/dynamic/probes.ts
@@ -17839,7 +17998,7 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   const milestoneRows2 = open3.milestones.filter((m) => present2.includes(m.unitId));
   const milestoneLabels = {};
   for (const m of milestoneRows2) milestoneLabels[m.id] = String(reg.dynamicMilestones.get(m.milestoneId)?.promptHint ?? m.milestoneId);
-  const claims = open3.claims.filter((c) => present2.includes(c.unitId)).map((c) => c.id);
+  const claims2 = open3.claims.filter((c) => present2.includes(c.unitId)).map((c) => c.id);
   const offers = open3.offers.filter((o) => present2.includes(o.unitId)).map((o) => o.id);
   const slips2 = participants.length >= 2 ? present2.filter((id) => {
     const dyn = dynamicOf(state, id);
@@ -17849,13 +18008,13 @@ function dynamicIntentInput(state, reg, participants, _channel) {
     ...probes2.length > 0 ? ["probe_answered"] : [],
     ...observed.length > 0 ? ["probe_observed"] : [],
     ...milestoneRows2.length > 0 ? ["milestone_accepted", "milestone_refused"] : [],
-    ...claims.length > 0 ? ["compromise_reached"] : [],
+    ...claims2.length > 0 ? ["compromise_reached"] : [],
     ...offers.length > 0 ? ["offer_answered"] : [],
     ...slips2.length > 0 ? ["protocol_slip"] : []
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims, exits: [], offers, compromat: [], slips: slips2, probeAxes, milestoneLabels }
+    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims2, exits: [], offers, compromat: [], slips: slips2, probeAxes, milestoneLabels }
   };
 }
 function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
@@ -20274,8 +20433,8 @@ var CHALLENGE_STATS = ["authority", "empathy", "strength", "endurance", "reflexe
 var isSocial = (stat3) => stat3 === "authority" || stat3 === "empathy";
 function leaderRank(state, reg) {
   const leader = leaderOf(state);
-  const standing = leader ? standingOf(state, reg, leader.id) ?? 0 : 0;
-  return Math.min(5, Math.max(1, Math.round(standing / TUNING.power.challenge.standingPerRank)));
+  const standing2 = leader ? standingOf(state, reg, leader.id) ?? 0 : 0;
+  return Math.min(5, Math.max(1, Math.round(standing2 / TUNING.power.challenge.standingPerRank)));
 }
 function challengeChance(state, reg, stat3) {
   const C = TUNING.power.challenge;
@@ -21064,7 +21223,9 @@ function applyIntents(draft, ctx2, p) {
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx2, id, e, events));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
-      else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
+      else if (e.type === "compromise_reached" && (e.claimId !== void 0 || e.exitId !== void 0)) {
+        if (e.claimId !== void 0 && draft.dynamic?.open.claims.some((c) => c.id === e.claimId && c.unitId === id)) events.push(...yieldPartial(draft, ctx2, e.claimId));
+      } else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
       if (e.type === "knowledge_leak" && e.itemId !== void 0) events.push(...frequencyLeak(draft, ctx2, id, e.itemId, e.severity));
       touched.add(id);
@@ -26995,6 +27156,11 @@ registerMemoryResolver("sworn", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ["her"], vars: ["name"] });
+registerMemoryResolver("domain_yielded", (draft, event, reg) => {
+  const her = subjectOf2(draft, event.unitId);
+  const domain = reg.dynamicDomains.get(String(event.domainId));
+  return her && domain ? { ids: { her: [her.id] }, vars: { name: her.name, domain: String(domain.label), partial: yes(event.partial === true) } } : null;
+}, { ids: ["her"], vars: ["name", "domain", "partial"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -33234,7 +33400,8 @@ var favourDecay = (draft, _ctx, holders2) => {
 var probes = (draft, ctx2) => probeDayStep(draft, ctx2);
 var declarations = (draft, _ctx, holders2) => fadeDeclarations(draft, holders2);
 var milestones = (draft, ctx2, holders2) => holders2.flatMap((id) => milestonesDue(draft, ctx2, id));
-var STEPS = [decay2, slowTerm, trackDecay, favourDecay, probes, declarations, milestones];
+var claims = (draft, ctx2) => claimsDue(draft, ctx2);
+var STEPS = [decay2, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims];
 function dynamicDayStep(draft, ctx2) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
   const holders2 = holdersOf(draft);
@@ -33571,6 +33738,12 @@ registerAction("dynamic/answer_milestone", (draft, payload, ctx2) => {
   if (typeof p.milestoneId !== "string") throw new Error("dynamic/answer_milestone needs a milestoneId.");
   if (p.answer !== "accept" && p.answer !== "refuse") throw new Error("The answer must be accept or refuse.");
   return answerMilestone(draft, ctx2, p.milestoneId, p.answer, "card");
+});
+registerAction("dynamic/answer_claim", (draft, payload, ctx2) => {
+  const p = payload ?? {};
+  if (typeof p.claimId !== "string") throw new Error("dynamic/answer_claim needs a claimId.");
+  if (p.answer !== "yield" && p.answer !== "refuse" && p.answer !== "talk") throw new Error("The answer must be yield, refuse or talk.");
+  return answerClaim(draft, ctx2, p.claimId, p.answer);
 });
 
 // src/llm/callTypes.ts
@@ -46109,8 +46282,8 @@ var standingBand2 = (n) => n < 40 ? "low" : n < 70 ? "notable" : "dominant";
 var oddsWord = (p) => p < 0.35 ? "UNLIKELY" : p < 0.65 ? "EVEN" : "LIKELY";
 function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   host.replaceChildren();
-  const standing = standingOf(state, reg, unitId);
-  if (standing === null) return;
+  const standing2 = standingOf(state, reg, unitId);
+  if (standing2 === null) return;
   const raw = opts.raw === true;
   const live2 = { unitId };
   const leader = leaderOf(state);
@@ -46119,7 +46292,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   const line2 = h(
     "p",
     { class: "alius-hierarchy-line" },
-    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live2) }, `STANDING: ${standingBand2(standing).toUpperCase()}${raw ? ` (${standing})` : ""}`)
+    h("span", { class: "alius-chip", "data-standing": unitId, ...analyzeAttrs("glossary:standing", live2) }, `STANDING: ${standingBand2(standing2).toUpperCase()}${raw ? ` (${standing2})` : ""}`)
   );
   if (isLeader) {
     line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live2) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));

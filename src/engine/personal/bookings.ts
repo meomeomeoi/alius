@@ -128,13 +128,20 @@ const holdRank = (state: CampaignState, unitId: string): number => {
   return bond === null ? 0 : (ATTACHMENT_RANK[bond.attachment] ?? 0) + leadRank(bond.leadStyle);
 };
 
+/** The order of two contenders: the higher attachment + lead rank, then the higher Impunity, then squad order (no draw). Negative when `a` wins. */
+const byOrder = (state: CampaignState, reg: Registries, a: string, b: string): number =>
+  holdRank(state, b) - holdRank(state, a)
+  || (impunityOf(state, reg, b)?.value ?? 0) - (impunityOf(state, reg, a)?.value ?? 0)
+  || state.squad.findIndex((u) => u.id === a) - state.squad.findIndex((u) => u.id === b);
+
 /** Who wins a contested slot: the higher attachment + lead rank, then the higher Impunity, then squad order (no draw). */
 function settleWinner(state: CampaignState, reg: Registries, contenders: Booking[]): Booking {
-  const order = (b: Booking) => state.squad.findIndex((u) => u.id === b.unitId);
-  return [...contenders].sort((a, b) =>
-    holdRank(state, b.unitId) - holdRank(state, a.unitId)
-    || (impunityOf(state, reg, b.unitId)?.value ?? 0) - (impunityOf(state, reg, a.unitId)?.value ?? 0)
-    || order(a) - order(b))[0];
+  return [...contenders].sort((a, b) => byOrder(state, reg, a.unitId, b.unitId))[0];
+}
+
+/** P15: who wins when two units want the same thing (a domain): `settleWinner`'s order over two unit ids. The winner's id. */
+export function settleOrder(state: CampaignState, reg: Registries, a: string, b: string): string {
+  return byOrder(state, reg, a, b) <= 0 ? a : b;
 }
 
 /**

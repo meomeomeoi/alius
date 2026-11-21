@@ -9,6 +9,7 @@ import { applyDisciplineEvent } from '../discipline/record';
 import { recordWitnesses } from '../development/appraisal';
 import { measureList } from '../discipline';
 import { evaluateAutomatic } from './graph';
+import { yieldPartial } from '../dynamic/domains';
 import { applyDynamicIntent, DYNAMIC_ROW_IS_CONDITIONAL, dynamicIntentInput } from '../dynamic/intents';
 import { applyLifeIntent, lifeIntentInput, ROW_IS_CONDITIONAL } from '../life/intents';
 import { validateIntents } from './intents';
@@ -95,7 +96,10 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx, id, e)); // P14c: her news told, a hobby praised, ...
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx, id, e, events)); // P15: a probe answered or observed, ...
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
-      else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
+      else if (e.type === 'compromise_reached' && (e.claimId !== undefined || e.exitId !== undefined)) {
+        // P15: a compromise with her over a claim yields the domain for a week; only her own open claim (an exit's compromise arrives with the exit)
+        if (e.claimId !== undefined && draft.dynamic?.open.claims.some((c) => c.id === e.claimId && c.unitId === id)) events.push(...yieldPartial(draft, ctx, e.claimId));
+      } else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)
       if (e.type === 'accused') events.push(...actOnWarning(draft, ctx, id, 'accused')); // P12: scored by the warning's truth
       if (e.type === 'knowledge_leak' && e.itemId !== undefined) events.push(...frequencyLeak(draft, ctx, id, e.itemId, e.severity));

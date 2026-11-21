@@ -372,3 +372,10 @@ registerMemoryResolver('sworn', (draft, event) => {
   const her = subjectOf(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ['her'], vars: ['name'] });
+
+// the dynamic (P15): the commander let her have a domain (a claim yielded, or the command at the handover); the pair's own. The submit card is no domain and writes nothing.
+registerMemoryResolver('domain_yielded', (draft, event, reg) => {
+  const her = subjectOf(draft, event.unitId);
+  const domain = reg.dynamicDomains.get(String(event.domainId));
+  return her && domain ? { ids: { her: [her.id] }, vars: { name: her.name, domain: String(domain.label), partial: yes(event.partial === true) } } : null;
+}, { ids: ['her'], vars: ['name', 'domain', 'partial'] });

@@ -747,6 +747,12 @@ export const TUNING = Object.freeze({
      * form looks `bookingSearchDays` ahead for a free evening. `AUTHOR TO TUNE`.
      */
     milestones: Object.freeze({ refuseDrop: 20, refuseCooldownDays: 7, afterDownDays: 14, bookingSearchDays: 14 }),
+    /**
+     * Domains (R12): `claimChance` is the daily chance she claims a domain she is due (x frequency); a refused claim waits `claimCooldownDays`; a
+     * compromise yields it for `partialDays`; the loser of two holders' claim on one domain loses `contestedLoss` hold; `bookAhead` is how many days
+     * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing. `AUTHOR TO TUNE`.
+     */
+    claimChance: 0.2, claimCooldownDays: 7, partialDays: 7, contestedLoss: 10, bookAhead: 3, coLeaderStanding: 15,
     /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
     contestAt: 3,
     contestWindowDays: 14,

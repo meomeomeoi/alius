@@ -8,6 +8,7 @@ import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
 import { installDynamicHooks } from '../dynamic/hooks';
 import { dynamicOn, holdReason } from '../dynamic/gate';
+import { answerClaim } from '../dynamic/domains';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
@@ -245,4 +246,20 @@ registerAction('dynamic/answer_milestone', (draft, payload, ctx) => {
   if (typeof p.milestoneId !== 'string') throw new Error('dynamic/answer_milestone needs a milestoneId.');
   if (p.answer !== 'accept' && p.answer !== 'refuse') throw new Error('The answer must be accept or refuse.');
   return answerMilestone(draft, ctx, p.milestoneId, p.answer, 'card');
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Her claim (R12)
+
+/**
+ * `dynamic/answer_claim { claimId, answer }`: the card's YIELD, REFUSE or TALK on her open claim (the open id, `dc<n>`; a domain she asks for, or
+ * her submit card at `rule`). A claim that is not open is refused with nothing changed. TALK changes nothing in the engine: the card opens a scene
+ * with her, and a compromise reached there (`compromise_reached { claimId }`) yields the domain for a week. Draws nothing.
+ */
+registerAction('dynamic/answer_claim', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { claimId?: unknown; answer?: unknown };
+  if (typeof p.claimId !== 'string') throw new Error('dynamic/answer_claim needs a claimId.');
+  if (p.answer !== 'yield' && p.answer !== 'refuse' && p.answer !== 'talk') throw new Error('The answer must be yield, refuse or talk.');
+  return answerClaim(draft, ctx, p.claimId, p.answer);
 });

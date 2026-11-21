@@ -1019,5 +1019,18 @@
       "dynamic",
       "sworn"
     ]
+  },
+  {
+    "id": "dynamic_domain_yielded",
+    "event": "domain_yielded",
+    "text": "{name} was given a say over the commander's life: {domain}.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "domain"
+    ]
   }
 ]

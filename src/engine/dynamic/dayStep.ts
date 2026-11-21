@@ -12,6 +12,7 @@ import { leaderOf } from '../power/state';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
+import { claimsDue } from './domains';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
 import { milestonesDue } from './milestones';
@@ -86,8 +87,11 @@ const declarations: SubStep = (draft, _ctx, holders) => fadeDeclarations(draft, 
 /** 6. Milestones (Task 19): what time alone makes due (a cooling, a cooldown that ran out) applies or opens; the hold changes asked it already. Draws nothing. */
 const milestones: SubStep = (draft, ctx, holders) => holders.flatMap((id) => milestonesDue(draft, ctx, id));
 
+/** 7. Claims (Task 22): a holder who is due a domain draws once and may open her claim; a claim of a held domain is settled between the holders. */
+const claims: SubStep = (draft, ctx) => claimsDue(draft, ctx);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

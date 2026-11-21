@@ -160,6 +160,7 @@ describe('off', () => {
   it('draws nothing (steps 1 to 4)', () => {
     const s = world('role', 60);
     impunity(s, 50);
+    for (const id of reg.dynamicDomains.keys()) dynamicOf(s, ANN)!.cooldowns[id] = s.day + 30; // a due claim is the one draw of its own step (Task 22): none is due
     const ctx = ctxOf(s, reg);
     const rngBefore = [...ctx.rng.state];
     dynamicDayStep(s, ctx);

@@ -14,24 +14,18 @@ import { isLiving } from '../economy';
 import { book, bookingKindsFor } from '../personal/bookings';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
+import { capabilitiesOf, grantCapability } from './domains';
 import { canHold, dynamicOn } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
 import { practiceOf } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 import { trackCap } from './tracks';
-import type { Capability, DynamicDomainEntry, DynamicMilestoneEntry } from './types';
+import type { DynamicMilestoneEntry } from './types';
 
 type Ctx = Pick<EngineCtx, 'registries'>;
 
 const milestoneRows = (reg: Registries): DynamicMilestoneEntry[] => [...reg.dynamicMilestones.values()] as unknown as DynamicMilestoneEntry[];
 const milestoneEntry = (reg: Registries, id: string): DynamicMilestoneEntry | undefined => reg.dynamicMilestones.get(id) as unknown as DynamicMilestoneEntry | undefined;
-
-/** What her domains grant, by capability (a domain id is never read). Chunk (f)'s `capabilitiesOf` is the same thing with skip rules. */
-function capabilitiesHeld(dyn: DynamicRelation, reg: Registries): Set<Capability> {
-  const held = new Set<Capability>();
-  for (const d of dyn.domains) for (const c of (reg.dynamicDomains.get(d.id) as unknown as DynamicDomainEntry | undefined)?.grants ?? []) held.add(c);
-  return held;
-}
 
 /**
  * Whether every `requires` of the milestone holds right now for her: the hold band (at least), track levels (a closed track reads 0),
@@ -48,7 +42,7 @@ export function requiresMet(state: CampaignState, reg: Registries, unitId: strin
     if (band === undefined || dyn.hold < Number(band.min)) return false;
   }
   if (r.tracks !== undefined && Object.entries(r.tracks).some(([id, level]) => trackCap(state, reg, unitId, id) < level)) return false;
-  const caps = capabilitiesHeld(dyn, reg);
+  const caps = new Set(capabilitiesOf(state, reg, unitId));
   if (r.capabilities !== undefined && !r.capabilities.every((c) => caps.has(c))) return false;
   if (r.noCapability !== undefined && caps.has(r.noCapability)) return false;
   if (r.categories !== undefined) {
@@ -140,10 +134,7 @@ export function applyMilestone(draft: CampaignState, ctx: Ctx, unitId: string, m
       dyn.sworn = { day: draft.day };
       events.push({ type: 'sworn', unitId, day: draft.day });
     } else if (effect.type === 'claim') {
-      if (!capabilitiesHeld(dyn, reg).has(effect.capability)) {
-        const domain = [...reg.dynamicDomains.values()].find((d) => (d as unknown as DynamicDomainEntry).grants.includes(effect.capability));
-        if (domain !== undefined) dyn.domains.push({ id: String(domain.id), since: draft.day });
-      }
+      events.push(...grantCapability(draft, ctx, unitId, effect.capability));
     }
   }
   dyn.milestones.push(m.id);

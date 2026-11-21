@@ -7,6 +7,7 @@ import { bondTierOf } from '../bonds/profile';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { reconcileDomains } from './domains';
 import { canHold, dynamicOn, ensureDynamic } from './gate';
 import { milestonesDue } from './milestones';
 import { distanceToPoint } from './reading';
@@ -73,7 +74,7 @@ export function compatibilityOf(state: CampaignState, reg: Registries, unitId: s
  * scales both ways; a gain is also scaled by compatibility and by the romantic tier (`affectionate` / `possessive` primary warm, `cold`
  * cold, only while the pair's state is romantic). The result is clamped to the frame's floor and ceiling and is never moved the wrong
  * way by the clamp. A gain starts the dynamic of an eligible unit who has none and sets `lastPracticeDay` (unless `opts.practice` is
- * false: the day step's slow term is a gain that is not practice); a loss on a unit with no dynamic does nothing. Emits `hold_changed` and, across a band, `hold_band_changed`, then asks which milestones are due (`milestonesDue`). Writes nothing while the dynamic is off.
+ * false: the day step's slow term is a gain that is not practice); a loss on a unit with no dynamic does nothing. Emits `hold_changed` and, across a band, `hold_band_changed`, takes the domains whose band she has left (`domain_lost`), then asks which milestones are due (`milestonesDue`). Writes nothing while the dynamic is off.
  */
 export function addHold(
   draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, base: number, cause: string, opts: { practice?: boolean } = {},
@@ -111,6 +112,7 @@ export function addHold(
   const was = holdBandOf(reg, from);
   const now = holdBandOf(reg, to);
   if (was !== now) events.push({ type: 'hold_band_changed', unitId, from: was, to: now });
+  events.push(...reconcileDomains(draft, reg, unitId)); // a domain whose band she has fallen below is lost at once (R12)
   events.push(...milestonesDue(draft, ctx, unitId)); // a frame moves only through a milestone: the hold only makes one due
   return events;
 }

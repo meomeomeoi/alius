@@ -1489,17 +1489,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `capabilitiesOf(state, reg, unitId): Capability[]`, `hasCapability`, `holderWith(state, reg, cap): string | null`;
   - `settleDomainConflict(draft, ctx, claimantId, holderId, domainId): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a claim opens only when frame and band meet the domain, with one draw`; `no due claim → no draw`.
   - `yield adds the domain and its capabilities`; `refuse costs by frame and cools down 7 days`.
   - `talk then compromise yields partially for 7 days, then she claims again`.
   - `falling below the band loses the domain at once` (`domain_lost { reason: 'band' }`).
   - `one domain, one holder`: a second holder's claim runs `settleOrder`; the loser −10 hold and `domain_contested`.
   - `capabilitiesOf never reads a domain id` (a fixture pack renames every domain; the capabilities still work).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/domains.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R12.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): domains claimed, yielded, lost and contested`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/domains.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R12.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): domains claimed, yielded, lost and contested`
 
 ---
 
