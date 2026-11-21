@@ -117,3 +117,20 @@ export function practiceOf(state: Pick<CampaignState, 'squad' | 'content'>, reg:
   }
   return { ...stored, categories, style: { ...stored.style }, allowed };
 }
+
+/**
+ * A re-import of the practice (a re-sync, a regenerate) keeps what she locked: a locked field of `old` replaces the same field of `next`
+ * (`categories.<id>` is one category; a category the card no longer has is dropped unless it is locked). Pure; `next` is not changed.
+ */
+export function keepLockedPractice(old: Practice | undefined, next: Practice, locks: readonly string[]): Practice {
+  const out = structuredClone(next);
+  if (old === undefined) return out;
+  for (const f of locks) {
+    if (f.startsWith('categories.')) {
+      const id = f.slice('categories.'.length);
+      if (old.categories[id] !== undefined) out.categories[id] = { ...old.categories[id] };
+      else delete out.categories[id];
+    } else if (f in old) (out as unknown as Record<string, unknown>)[f] = structuredClone((old as unknown as Record<string, unknown>)[f]);
+  }
+  return out;
+}

@@ -9853,6 +9853,14 @@ var PRACTICE_DEFAULTS = Object.freeze({
 });
 var NONE = Object.freeze({ as: "none", witness: "indifferent" });
 var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function practiceCategories(reg) {
+  const out = [];
+  for (const t of reg.dynamicTracks.values()) {
+    const c = t.category;
+    if (typeof c === "string" && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
 function validatePractice(raw, reg) {
   const issues = [];
   const dropped = [];
@@ -9905,6 +9913,18 @@ function validatePractice(raw, reg) {
     drive: pick3("drive", DRIVE, PRACTICE_DEFAULTS.drive)
   };
   return { practice, issues, dropped };
+}
+function keepLockedPractice(old, next, locks) {
+  const out = structuredClone(next);
+  if (old === void 0) return out;
+  for (const f of locks) {
+    if (f.startsWith("categories.")) {
+      const id = f.slice("categories.".length);
+      if (old.categories[id] !== void 0) out.categories[id] = { ...old.categories[id] };
+      else delete out.categories[id];
+    } else if (f in old) out[f] = structuredClone(old[f]);
+  }
+  return out;
 }
 
 // src/engine/bonds/profile.ts
@@ -14156,6 +14176,26 @@ function validateExpectations(raw, reg, ctx2) {
 function lockedExpectation(unit3, field2) {
   const locks = unit3.expectationLocks ?? [];
   return locks.includes(field2) || locks.includes(field2.split(".")[0]);
+}
+function keepLockedExpectations(old, next, locks) {
+  if (locks.length === 0) return next;
+  const out = structuredClone(next ?? {});
+  const was = old ?? {};
+  for (const f of locks) {
+    const [head, id] = f.split(".");
+    if (id === void 0) {
+      if (was[head] !== void 0) out[head] = structuredClone(was[head]);
+      else delete out[head];
+      continue;
+    }
+    const rec = { ...out[head] };
+    const oldEntry = was[head]?.[id];
+    if (oldEntry !== void 0) rec[id] = structuredClone(oldEntry);
+    else delete rec[id];
+    if (Object.keys(rec).length > 0) out[head] = rec;
+    else delete out[head];
+  }
+  return Object.keys(out).length > 0 ? out : void 0;
 }
 
 // src/engine/life/facts.ts
@@ -25967,7 +26007,7 @@ function gruntRelation(state, reg, grunt) {
 }
 
 // src/engine/actions/squad.ts
-var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions"];
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions", "practice", "expectations"];
 var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
@@ -25987,7 +26027,9 @@ var SECTION_OF = {
   temperament: "temperament",
   hobbies: "hobbies",
   aptitudes: "hobbies",
-  opinions: "opinions"
+  opinions: "opinions",
+  practice: "practice",
+  expectations: "expectations"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
   if (!isObj11(payload) || typeof payload.unitId !== "string" || !isObj11(payload.patch)) {
@@ -26012,7 +26054,9 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     dispositionOffset: patch.dispositionOffset ?? unit3.dispositionOffset,
     dispositionReason: patch.dispositionReason ?? unit3.dispositionReason,
     worldStances: patch.worldStances ?? unit3.worldStances,
-    bond: patch.bond ?? unit3.bond,
+    // P15: a practice in the patch is validated with the bond it joins
+    bond: patch.practice !== void 0 ? { ...patch.bond ?? unit3.bond ?? MODEST_BOND, practice: patch.practice } : patch.bond ?? unit3.bond,
+    expectations: patch.expectations,
     anchors: patch.anchors ?? unit3.development?.anchors,
     insight: patch.insight ?? unit3.insight,
     temperament: patch.temperament,
@@ -26059,7 +26103,21 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     if (Object.keys(patch.worldStances).length > 0) unit3.worldStances = structuredClone(patch.worldStances);
     else delete unit3.worldStances;
   }
-  if (patch.bond !== void 0) unit3.bond = structuredClone(patch.bond);
+  if (patch.bond !== void 0) {
+    const kept = unit3.bond?.practice;
+    unit3.bond = structuredClone(patch.bond);
+    delete unit3.bond.practice;
+    if (kept !== void 0) unit3.bond.practice = kept;
+  }
+  if (patch.practice !== void 0) {
+    unit3.bond ??= { ...MODEST_BOND, ownLimits: { categories: [] } };
+    unit3.bond.practice = keepLockedPractice(unit3.bond.practice, patch.practice, unit3.practiceLocks ?? []);
+  }
+  if (patch.expectations !== void 0) {
+    const next2 = keepLockedExpectations(unit3.expectations, patch.expectations, unit3.expectationLocks ?? []);
+    if (next2 === void 0) delete unit3.expectations;
+    else unit3.expectations = next2;
+  }
   if (payload.resetDevelopment === true) delete unit3.development;
   if (patch.anchors !== void 0) {
     if (patch.anchors.length > 0) ensureDevelopment(unit3).anchors = [...patch.anchors];
@@ -32008,7 +32066,8 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
-var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions"];
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond", "development", "temperament", "hobbies", "opinions", "practice", "expectations"];
+var PRACTICE_SECTIONS = ["practice", "expectations"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -32027,6 +32086,8 @@ var ProfileImportRawSchema = external_exports.object({
   hobbies: external_exports.unknown().optional(),
   aptitudes: external_exports.unknown().optional(),
   opinions: external_exports.unknown().optional(),
+  practice: external_exports.unknown().optional(),
+  expectations: external_exports.unknown().optional(),
   notes: external_exports.unknown().optional()
 }).passthrough();
 var VALUE_AXES_TEXT = [
@@ -32051,6 +32112,8 @@ var SCHEMA_PART = {
   temperament: '  "temperament": { "talkativeness": "silent"|"terse"|"talkative", "volatility": "steady"|"moody", "humor": "none"|"dry"|"mocking"|"warm" }',
   hobbies: '  "hobbies": ["<id from HOBBIES>"],   // 1 to 3: what she does for herself, only if the card suggests it\n  "aptitudes": { "high": ["<id from HOBBIES>"], "low": ["<id from HOBBIES>"] },   // 2 to 3 ids in each list, none in both: what she is gifted at and what she is hopeless at',
   opinions: `  "opinions": [{ "topic": "<id from OPINION TOPICS>", "position": "<one of that topic's positions>", "text": "<her view in her own voice, one sentence, at most 200 characters>" }],   // 8 to 12 views the card states or strongly implies, one per topic`,
+  practice: '  "practice": { "categories": { "<id from PRACTICE CATEGORIES>": { "as": "none"|"tolerates"|"enjoys"|"craves", "witness": "dislikes"|"indifferent"|"drawn" } }, "style": { "primary": "<style>", "secondary": "<style>" }, "audience": "private_only"|"select_few"|"show_off"|"indifferent", "inclination": "none"|"latent"|"curious"|"eager", "fairness": "fair"|"strict"|"capricious"|"unfair", "hintStyle": "offers"|"hints"|"expects", "drive": "low"|"moderate"|"high" }',
+  expectations: '  "expectations": { "moments": { "<id from MOMENT SOURCES>": { "type": "yielded"|"resisted"|"returned"|"deflected", "strength": 1|2|3 } }, "offset": { "r": 0, "f": 0 }, "tells": { "irritation": "<=80", "pleasure": "<=80" }, "holdsUntil": "signal"|"limit"|"blackout", "worship": { "<id from WORSHIP TARGETS>": { "attitude": "craves"|"enjoys"|"indifferent"|"dislikes", "how": "<=60", "meaning": "reward"|"duty"|"humiliation"|"intimacy"|"play"|"comfort" } }, "body": { "<id from WORSHIP TARGETS>": "proud"|"ashamed"|"indifferent" }, "scent": { "base": { "<id from WORSHIP TARGETS>": 1..5 }, "hygiene": "meticulous"|"normal"|"lax" }, "build": { "slim": 0, "athletic": 0, "curvy": 0 }, "hair": "short"|"bob"|"long"|"tail", "traits": ["<=40 chars"] }',
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20'
 };
 var has2 = (i, s) => i.sections.includes(s);
@@ -32093,6 +32156,13 @@ function system(raw) {
   if (has2(input, "opinions")) {
     lines.push("", "An opinion is a stand she takes on one of the topics under OPINION TOPICS: pick the position (listed in order, roughly from one end of the argument to the other) that fits the card best, and write her view in her own voice. Choose the topics the card speaks to most, 8 to 12 in all; skip a topic the card does not touch.");
   }
+  if (has2(input, "practice")) {
+    lines.push("", "The practice section says what she would do herself as the one who leads in a dynamic of authority, read from the card; never invent. For each category listed under PRACTICE CATEGORIES: as is whether she would do it herself (craves, enjoys, tolerates or none), witness is how she feels seeing it done by anyone (drawn, indifferent or dislikes). A card that does not say is none and indifferent.");
+    lines.push("style.primary is how she leads, one of: cold (distance and control), playful (teasing and games), cruel (she enjoys the hurt), ritual (forms and protocol), possessive (ownership), affectionate (she humbles because she loves), clinical (she studies and tests), obsessive (she holds through obsession), drill (an instructor), regal (vain, wants admiring), vindictive (retribution). style.secondary is optional and differs from the primary. audience is who she would let see it, inclination how readily she would take the lead (none when the card shows no sign of it), fairness how fair she is, hintStyle how she invites (offers it, hints, or expects to be understood) and drive how strong her desire is. Leave out anything the card does not suggest.");
+  }
+  if (has2(input, "expectations")) {
+    lines.push("", "The expectations are what she wants from the commander and wants to see, read from the card; never invent, and leave out what the card does not suggest. moments name a moment source and the answer she expects (type) with how strongly (strength 1 to 3). holdsUntil is how far she holds someone down: signal (lets go at the first sign), limit (to the edge) or blackout (past it). worship names the targets under WORSHIP TARGETS she craves, enjoys, ignores or dislikes, with how she wants it done and what it means to her. offset is how far she sits from her style's usual place, -0.3 to 0.3. tells are one short phrase each for how her irritation and her pleasure show. Never give the commander a pronoun in any text.");
+  }
   if (has2(input, "values")) lines.push("", "Value axes:", VALUE_AXES_TEXT);
   lines.push("", "Output JSON shape:", "{", parts.join(",\n"), "}");
   return lines.join("\n");
@@ -32118,6 +32188,11 @@ function prompt(raw) {
   if (has2(input, "development") && input.development) out.push("", "DEVELOPMENT AXES (keys an anchor may name):", input.development.axes.join(", "));
   if (has2(input, "hobbies") && input.hobbies) out.push("", "HOBBIES (id: what it is):", ...input.hobbies.map((x) => `- ${x.id}: ${x.description}`));
   if (has2(input, "opinions") && input.topics) out.push("", "OPINION TOPICS (id: positions in order):", ...input.topics.map((t) => `- ${t.id}: ${t.positions.join(", ")}`));
+  if (has2(input, "practice") && input.practice) out.push("", "PRACTICE CATEGORIES (id):", ...input.practice.categories.map((c2) => `- ${c2}`));
+  if (has2(input, "expectations") && input.expectations) {
+    out.push("", "WORSHIP TARGETS (id):", ...input.expectations.targets.map((t) => `- ${t}`));
+    out.push("", "MOMENT SOURCES (id):", ...input.expectations.sources.map((t) => `- ${t}`));
+  }
   if (has2(input, "disposition") && input.world) out.push("", `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has2(input, "stances") && input.world) out.push("", "WORLD OPTIONS (id: current choice, what it means):", ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push("", `Produce the requested sections: ${input.sections.join(", ")}.`);
@@ -41341,10 +41416,12 @@ function worldImportInfo(registries, world) {
     options: picked.filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2, choice }) => ({ id: option2.id, label: str7(option2.label), choice: str7(choice.label), description: str7(choice.description) }))
   };
 }
-function buildImportInput(card2, registries, settings, sections, world, bond) {
+function buildImportInput(card2, registries, settings, sections, world, bond, content) {
   const str7 = (v) => typeof v === "string" ? v : "";
   const info = world ? worldImportInfo(registries, world) : void 0;
-  const asked = sections.filter((s) => s !== "disposition" && s !== "stances" || info !== void 0 && (s === "disposition" || info.options.length > 0));
+  const enabledPractice = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
+  const holder2 = { content: { enabled: [...content ?? []] } };
+  const asked = sections.filter((s) => s !== "disposition" && s !== "stances" || info !== void 0 && (s === "disposition" || info.options.length > 0)).filter((s) => !PRACTICE_SECTIONS.includes(s) || enabledPractice.length > 0);
   return {
     card: card2,
     sections: asked,
@@ -41356,11 +41433,19 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str7(c.label) })) } : {},
     ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries) } } : {},
     ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str7(h2.description) })) } : {},
-    ...sections.includes("opinions") ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: t.positions.map((p) => p.id) })) } : {}
+    ...sections.includes("opinions") ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: t.positions.map((p) => p.id) })) } : {},
+    ...asked.includes("practice") ? { practice: { categories: enabledPractice } } : {},
+    ...asked.includes("expectations") ? {
+      expectations: {
+        targets: [...registries.worshipTargets.values()].filter((t) => contentAllowed(holder2, registries, t)).map((t) => t.id),
+        sources: [...registries.momentSources.values()].filter((t) => contentAllowed(holder2, registries, t)).map((t) => t.id)
+      }
+    } : {}
   };
 }
-function resyncSectionsOffered(registries, world) {
-  return RESYNC_SECTIONS.filter((s) => s !== "stances" || stanceOptionIds(registries, world).length > 0);
+function resyncSectionsOffered(registries, world, content) {
+  const dynamic = practiceCategories(registries).some((c) => (content ?? []).includes(c));
+  return RESYNC_SECTIONS.filter((s) => (s !== "stances" || stanceOptionIds(registries, world).length > 0) && (dynamic || !PRACTICE_SECTIONS.includes(s)));
 }
 function developmentAxisKeys(registries) {
   const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any"));
@@ -41571,6 +41656,18 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.opinions = out;
   }
+  if (want("practice")) {
+    const read = validatePractice(src.practice, ctx2.registries);
+    for (const id of read.dropped) dropped.push(id);
+    if (read.practice !== void 0) profile.practice = read.practice;
+    else missing2.push("practice");
+  }
+  if (want("expectations")) {
+    const read = validateExpectations(src.expectations, ctx2.registries, { state: { content: { enabled: [...ctx2.content ?? []] } } });
+    for (const id of read.dropped) dropped.push(id);
+    if (read.expectations !== void 0) profile.expectations = read.expectations;
+    else missing2.push("expectations");
+  }
   if (want("baseline")) {
     if (isObj46(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
@@ -41593,8 +41690,10 @@ async function importProfile(avatar, sections, deps) {
   try {
     const loaded2 = await st.loadCharacterCard(avatar);
     if (!loaded2) return { kind: "manual", reason: "card not found" };
-    const input = buildImportInput(truncateCard(loaded2, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
-    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
+    const input = buildImportInput(truncateCard(loaded2, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond, deps.content);
+    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond, content: deps.content };
+    const extra = (input.sections.includes("practice") ? 300 : 0) + (input.sections.includes("expectations") ? 400 : 0);
+    const budgetMult = extra > 0 ? 1 + extra / settings.budgets.profile_import : void 0;
     const key = `${avatar}:${input.sections.join(",")}`;
     inFlight.set(key, { input, ctx: ctx2 });
     deps.generations.bind("setup.profile_import", {
@@ -41604,7 +41703,7 @@ async function importProfile(avatar, sections, deps) {
     });
     let out;
     try {
-      out = await deps.generations.generate("setup.profile_import", key, { noRecord: true });
+      out = await deps.generations.generate("setup.profile_import", key, { noRecord: true, ...budgetMult !== void 0 ? { budgetMult } : {} });
     } finally {
       inFlight.delete(key);
     }
@@ -42192,7 +42291,14 @@ var Wizard = class {
     } else if (section === "development") {
       c.anchors = p.anchors;
       c.insight = p.insight;
-    } else {
+    } else if (section === "temperament") c.temperament = p.temperament;
+    else if (section === "hobbies") {
+      c.hobbies = p.hobbies;
+      c.aptitudes = p.aptitudes;
+    } else if (section === "opinions") c.opinions = p.opinions;
+    else if (section === "practice") c.practice = p.practice;
+    else if (section === "expectations") c.expectations = p.expectations;
+    else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
       c.triggers = p.triggers;
@@ -42244,8 +42350,19 @@ var Wizard = class {
         if (p.worldStances) ch.worldStances = structuredClone(p.worldStances);
         break;
       case "bond":
-        if (p.bond) ch.bond = structuredClone(p.bond);
+        if (p.bond) ch.bond = { ...structuredClone(p.bond), ...ch.bond?.practice !== void 0 && p.bond.practice === void 0 ? { practice: ch.bond.practice } : {} };
         break;
+      case "practice":
+        if (p.practice) ch.bond = { ...ch.bond ?? validateBond(void 0, this.deps.registries).bond, practice: keepLockedPractice(ch.bond?.practice, p.practice, ch.practiceLocks ?? []) };
+        break;
+      case "expectations": {
+        if (p.expectations) {
+          const kept = keepLockedExpectations(ch.expectations, p.expectations, ch.expectationLocks ?? []);
+          if (kept) ch.expectations = kept;
+          else delete ch.expectations;
+        }
+        break;
+      }
       case "development":
         if (p.anchors) ch.anchors = [...p.anchors];
         if (p.insight) ch.insight = p.insight;
@@ -55082,7 +55199,9 @@ function createApp(st, deps) {
     development: "What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)",
     temperament: "Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)",
     hobbies: "Hobbies and aptitudes: what she does for herself and what she is gifted or hopeless at (a hobby she has keeps its progress)",
-    opinions: "Strong opinions: the stands her card takes (one she has voiced or changed her mind about is kept)"
+    opinions: "Strong opinions: the stands her card takes (one she has voiced or changed her mind about is kept)",
+    practice: "Practice: what she would do as the one who leads, her style and her inclination (a field you locked is kept)",
+    expectations: "Expectations: what she wants from the commander and wants to see (a field you locked is kept)"
   };
   async function resyncUnit(unitId) {
     const unit3 = state?.squad.find((u) => u.id === unitId);
@@ -55091,7 +55210,7 @@ function createApp(st, deps) {
     const desireBond = state.settings.desireBondDefects === true;
     const temperament = temperamentOf(state, unitId);
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered2 = resyncSectionsOffered(registries, world);
+    const offered2 = resyncSectionsOffered(registries, world, state.content?.enabled);
     const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
     const resetBox = h("input", { type: "checkbox", "data-reset-development": unitId });
     const resetLifeBox = h("input", { type: "checkbox", "data-reset-life": unitId });
@@ -55121,7 +55240,8 @@ function createApp(st, deps) {
           registries,
           generations,
           world,
-          bond: unit3.bond ?? null
+          bond: unit3.bond ?? null,
+          content: state?.content?.enabled ?? []
         }),
         onChange: () => {
         }
@@ -55147,6 +55267,10 @@ function createApp(st, deps) {
       ...unit3.dispositionReason !== void 0 ? { dispositionReason: unit3.dispositionReason } : {},
       ...unit3.worldStances !== void 0 ? { worldStances: structuredClone(unit3.worldStances) } : {},
       ...unit3.bond !== void 0 ? { bond: structuredClone(unit3.bond) } : {},
+      ...unit3.expectations !== void 0 ? { expectations: structuredClone(unit3.expectations) } : {},
+      // P15
+      ...unit3.practiceLocks !== void 0 ? { practiceLocks: [...unit3.practiceLocks] } : {},
+      ...unit3.expectationLocks !== void 0 ? { expectationLocks: [...unit3.expectationLocks] } : {},
       temperament,
       // P14c: the words she has now (the defaults when none is stored)
       ...unit3.hobbies !== void 0 ? { hobbies: unit3.hobbies.map((x) => x.id) } : {},
@@ -55192,7 +55316,12 @@ function createApp(st, deps) {
       patch.dispositionReason = c.dispositionReason ?? "";
     }
     if (sections.includes("stances")) patch.worldStances = c.worldStances ?? {};
-    if (sections.includes("bond") && c.bond) patch.bond = c.bond;
+    if (sections.includes("bond") && c.bond) {
+      const { practice: _practice, ...bondOnly } = c.bond;
+      patch.bond = bondOnly;
+    }
+    if (sections.includes("practice") && c.bond?.practice) patch.practice = c.bond.practice;
+    if (sections.includes("expectations") && c.expectations) patch.expectations = c.expectations;
     if (sections.includes("development")) {
       patch.anchors = c.anchors ?? [];
       patch.insight = c.insight ?? "mid";
@@ -55203,8 +55332,11 @@ function createApp(st, deps) {
       if (c.aptitudes) patch.aptitudes = c.aptitudes;
     }
     if (sections.includes("opinions")) patch.opinions = c.opinions ?? {};
+    const { practice: currentPractice, ...currentBond } = unit3.bond ?? {};
     const current = {
-      ...unit3.bond !== void 0 ? { bond: unit3.bond } : {},
+      ...unit3.bond !== void 0 ? { bond: currentBond } : {},
+      ...currentPractice !== void 0 ? { practice: currentPractice } : {},
+      ...unit3.expectations !== void 0 ? { expectations: unit3.expectations } : {},
       dispositionOffset: unit3.dispositionOffset ?? 0,
       dispositionReason: unit3.dispositionReason ?? "",
       worldStances: unit3.worldStances ?? {},
@@ -55275,7 +55407,7 @@ function createApp(st, deps) {
       {
         registries,
         desireBondDefects: desireBond,
-        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world: s.world.options ?? defaultWorldOptions(registries) }),
+        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world: s.world.options ?? defaultWorldOptions(registries), content: s.content?.enabled ?? [] }),
         onChange: () => {
         }
       },
@@ -55338,7 +55470,8 @@ function createApp(st, deps) {
         desireBondDefects: desireBond,
         explicitContent: getSettings(st).explicitContent,
         // P9d: carried into CONTENT as `explicit_scenes`
-        importer: (avatar, sections, world) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world }),
+        importer: (avatar, sections, world) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world, content: wizard.state.content.enabled }),
+        // P15: read when the import runs
         commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations }),
         onChange: () => {
         }

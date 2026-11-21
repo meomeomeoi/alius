@@ -54,7 +54,7 @@ import { checkLeash, leashCost } from './engine/leash/use';
 import { leashLog } from './engine/leash/weekly';
 import { loyalUnits } from './engine/loyalty/mutiny';
 import { CONFRONTATION_KINDS } from './engine/loyalty/state';
-import type { DecorPart, LeashKind } from './engine/state/types';
+import type { Bond, DecorPart, LeashKind } from './engine/state/types';
 import { createDilemmas, type DilemmaController } from './loyalty/dilemmaController';
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
@@ -1745,6 +1745,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     temperament: 'Temperament: how much she talks, how steady she is and what her humor is like (a field you locked is kept)',
     hobbies: 'Hobbies and aptitudes: what she does for herself and what she is gifted or hopeless at (a hobby she has keeps its progress)',
     opinions: 'Strong opinions: the stands her card takes (one she has voiced or changed her mind about is kept)',
+    practice: 'Practice: what she would do as the one who leads, her style and her inclination (a field you locked is kept)',
+    expectations: 'Expectations: what she wants from the commander and wants to see (a field you locked is kept)',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1757,7 +1759,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     // P8: the world the unit lives in; the stances section only makes sense while some norm is not neutral
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered = resyncSectionsOffered(registries, world);
+    const offered = resyncSectionsOffered(registries, world, state.content?.enabled);
 
     // 1. which sections
     const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
@@ -1786,7 +1788,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         // the first call imports every re-sync section, a "regenerate" asks for one
         importer: (avatar, wanted) =>
           importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
-            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world, bond: unit.bond ?? null,
+            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world, bond: unit.bond ?? null, content: state?.content?.enabled ?? [],
           }),
         onChange: () => {},
       },
@@ -1807,6 +1809,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       ...(unit.dispositionReason !== undefined ? { dispositionReason: unit.dispositionReason } : {}),
       ...(unit.worldStances !== undefined ? { worldStances: structuredClone(unit.worldStances) } : {}),
       ...(unit.bond !== undefined ? { bond: structuredClone(unit.bond) } : {}),
+      ...(unit.expectations !== undefined ? { expectations: structuredClone(unit.expectations) } : {}), // P15
+      ...(unit.practiceLocks !== undefined ? { practiceLocks: [...unit.practiceLocks] } : {}),
+      ...(unit.expectationLocks !== undefined ? { expectationLocks: [...unit.expectationLocks] } : {}),
       temperament, // P14c: the words she has now (the defaults when none is stored)
       ...(unit.hobbies !== undefined ? { hobbies: unit.hobbies.map((x) => x.id) } : {}), // P14c: raw profile
       ...(unit.aptitudes !== undefined ? { aptitudes: structuredClone(unit.aptitudes) } : {}), // P14c: raw profile
@@ -1853,7 +1858,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       patch.dispositionReason = c.dispositionReason ?? '';
     }
     if (sections.includes('stances')) patch.worldStances = c.worldStances ?? {};
-    if (sections.includes('bond') && c.bond) patch.bond = c.bond;
+    if (sections.includes('bond') && c.bond) {
+      const { practice: _practice, ...bondOnly } = c.bond; // P15: the practice has its own section
+      patch.bond = bondOnly;
+    }
+    if (sections.includes('practice') && c.bond?.practice) patch.practice = c.bond.practice;
+    if (sections.includes('expectations') && c.expectations) patch.expectations = c.expectations;
     if (sections.includes('development')) {
       patch.anchors = c.anchors ?? [];
       patch.insight = c.insight ?? 'mid';
@@ -1864,8 +1874,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (c.aptitudes) patch.aptitudes = c.aptitudes;
     }
     if (sections.includes('opinions')) patch.opinions = c.opinions ?? {};
+    // P15: the practice has its own section, so the bond is compared without it
+    const { practice: currentPractice, ...currentBond } = (unit.bond ?? {}) as Partial<Bond>; // P14b: raw profile (a re-sync compares against the import)
     const current: ResyncPatch = {
-      ...(unit.bond !== undefined ? { bond: unit.bond } : {}),
+      ...(unit.bond !== undefined ? { bond: currentBond as Bond } : {}),
+      ...(currentPractice !== undefined ? { practice: currentPractice } : {}),
+      ...(unit.expectations !== undefined ? { expectations: unit.expectations } : {}),
       dispositionOffset: unit.dispositionOffset ?? 0, dispositionReason: unit.dispositionReason ?? '', worldStances: unit.worldStances ?? {},
       roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, // P14b: raw profile
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
@@ -1922,7 +1936,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         registries,
         desireBondDefects: desireBond,
         importer: (avatar, sections) =>
-          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world: s.world.options ?? defaultWorldOptions(registries) }),
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world: s.world.options ?? defaultWorldOptions(registries), content: s.content?.enabled ?? [] }),
         onChange: () => {},
       },
       { personaName: '', canBindCurrent: false },
@@ -1981,13 +1995,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     endSetup();
     const chat = st.getActiveChat();
     const desireBond = getSettings(st).desireBondDefects; // pinned for the whole form
-    const wizard = new Wizard(
+    const wizard: Wizard = new Wizard(
       {
         registries,
         desireBondDefects: desireBond,
         explicitContent: getSettings(st).explicitContent, // P9d: carried into CONTENT as `explicit_scenes`
         importer: (avatar, sections, world) =>
-          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world }),
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations, world, content: wizard.state.content.enabled }), // P15: read when the import runs
         commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, generations }),
         onChange: () => {},
       },

@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { registerCallType } from '../callTypes';
 import type { CardInfo } from '../../st/adapter';
 
-export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances' | 'bond' | 'development' | 'temperament' | 'hobbies' | 'opinions';
-export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament', 'hobbies', 'opinions'];
+export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances' | 'bond' | 'development' | 'temperament' | 'hobbies' | 'opinions' | 'practice' | 'expectations';
+export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament', 'hobbies', 'opinions', 'practice', 'expectations'];
+/** P15: the two sections of the dynamic. `buildImportInput` offers them only while a practice category is switched on. */
+export const PRACTICE_SECTIONS = ['practice', 'expectations'] as const satisfies readonly ImportSection[];
 
 export interface ProfileImportInput {
   card: CardInfo;
@@ -26,6 +28,10 @@ export interface ProfileImportInput {
   hobbies?: Array<{ id: string; description: string }>;
   /** P14c: the topics a card may take a view on, with their positions in order (registry `opinionTopics`). Present only when the `opinions` section is asked for. */
   topics?: Array<{ id: string; positions: string[] }>;
+  /** P15: the practice categories that are switched on (ids). Present only when the `practice` section is asked for. */
+  practice?: { categories: string[] };
+  /** P15: the worship targets and the moment sources her profile may name (the ones the campaign allows). Present only when the `expectations` section is asked for. */
+  expectations?: { targets: string[]; sources: string[] };
 }
 
 /**
@@ -51,6 +57,8 @@ export const ProfileImportRawSchema = z
     hobbies: z.unknown().optional(),
     aptitudes: z.unknown().optional(),
     opinions: z.unknown().optional(),
+    practice: z.unknown().optional(),
+    expectations: z.unknown().optional(),
     notes: z.unknown().optional(),
   })
   .passthrough();
@@ -89,6 +97,10 @@ const SCHEMA_PART: Record<ImportSection, string> = {
     '  "hobbies": ["<id from HOBBIES>"],   // 1 to 3: what she does for herself, only if the card suggests it\n  "aptitudes": { "high": ["<id from HOBBIES>"], "low": ["<id from HOBBIES>"] },   // 2 to 3 ids in each list, none in both: what she is gifted at and what she is hopeless at',
   opinions:
     '  "opinions": [{ "topic": "<id from OPINION TOPICS>", "position": "<one of that topic\'s positions>", "text": "<her view in her own voice, one sentence, at most 200 characters>" }],   // 8 to 12 views the card states or strongly implies, one per topic',
+  practice:
+    '  "practice": { "categories": { "<id from PRACTICE CATEGORIES>": { "as": "none"|"tolerates"|"enjoys"|"craves", "witness": "dislikes"|"indifferent"|"drawn" } }, "style": { "primary": "<style>", "secondary": "<style>" }, "audience": "private_only"|"select_few"|"show_off"|"indifferent", "inclination": "none"|"latent"|"curious"|"eager", "fairness": "fair"|"strict"|"capricious"|"unfair", "hintStyle": "offers"|"hints"|"expects", "drive": "low"|"moderate"|"high" }',
+  expectations:
+    '  "expectations": { "moments": { "<id from MOMENT SOURCES>": { "type": "yielded"|"resisted"|"returned"|"deflected", "strength": 1|2|3 } }, "offset": { "r": 0, "f": 0 }, "tells": { "irritation": "<=80", "pleasure": "<=80" }, "holdsUntil": "signal"|"limit"|"blackout", "worship": { "<id from WORSHIP TARGETS>": { "attitude": "craves"|"enjoys"|"indifferent"|"dislikes", "how": "<=60", "meaning": "reward"|"duty"|"humiliation"|"intimacy"|"play"|"comfort" } }, "body": { "<id from WORSHIP TARGETS>": "proud"|"ashamed"|"indifferent" }, "scent": { "base": { "<id from WORSHIP TARGETS>": 1..5 }, "hygiene": "meticulous"|"normal"|"lax" }, "build": { "slim": 0, "athletic": 0, "curvy": 0 }, "hair": "short"|"bob"|"long"|"tail", "traits": ["<=40 chars"] }',
   baseline:
     '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20',
 };
@@ -134,6 +146,13 @@ function system(raw: unknown): string {
   if (has(input, 'opinions')) {
     lines.push('', 'An opinion is a stand she takes on one of the topics under OPINION TOPICS: pick the position (listed in order, roughly from one end of the argument to the other) that fits the card best, and write her view in her own voice. Choose the topics the card speaks to most, 8 to 12 in all; skip a topic the card does not touch.');
   }
+  if (has(input, 'practice')) {
+    lines.push('', 'The practice section says what she would do herself as the one who leads in a dynamic of authority, read from the card; never invent. For each category listed under PRACTICE CATEGORIES: as is whether she would do it herself (craves, enjoys, tolerates or none), witness is how she feels seeing it done by anyone (drawn, indifferent or dislikes). A card that does not say is none and indifferent.');
+    lines.push('style.primary is how she leads, one of: cold (distance and control), playful (teasing and games), cruel (she enjoys the hurt), ritual (forms and protocol), possessive (ownership), affectionate (she humbles because she loves), clinical (she studies and tests), obsessive (she holds through obsession), drill (an instructor), regal (vain, wants admiring), vindictive (retribution). style.secondary is optional and differs from the primary. audience is who she would let see it, inclination how readily she would take the lead (none when the card shows no sign of it), fairness how fair she is, hintStyle how she invites (offers it, hints, or expects to be understood) and drive how strong her desire is. Leave out anything the card does not suggest.');
+  }
+  if (has(input, 'expectations')) {
+    lines.push('', 'The expectations are what she wants from the commander and wants to see, read from the card; never invent, and leave out what the card does not suggest. moments name a moment source and the answer she expects (type) with how strongly (strength 1 to 3). holdsUntil is how far she holds someone down: signal (lets go at the first sign), limit (to the edge) or blackout (past it). worship names the targets under WORSHIP TARGETS she craves, enjoys, ignores or dislikes, with how she wants it done and what it means to her. offset is how far she sits from her style\'s usual place, -0.3 to 0.3. tells are one short phrase each for how her irritation and her pleasure show. Never give the commander a pronoun in any text.');
+  }
   if (has(input, 'values')) lines.push('', 'Value axes:', VALUE_AXES_TEXT);
   lines.push('', 'Output JSON shape:', '{', parts.join(',\n'), '}');
   return lines.join('\n');
@@ -161,6 +180,11 @@ function prompt(raw: unknown): string {
   if (has(input, 'development') && input.development) out.push('', 'DEVELOPMENT AXES (keys an anchor may name):', input.development.axes.join(', '));
   if (has(input, 'hobbies') && input.hobbies) out.push('', 'HOBBIES (id: what it is):', ...input.hobbies.map((x) => `- ${x.id}: ${x.description}`));
   if (has(input, 'opinions') && input.topics) out.push('', 'OPINION TOPICS (id: positions in order):', ...input.topics.map((t) => `- ${t.id}: ${t.positions.join(', ')}`));
+  if (has(input, 'practice') && input.practice) out.push('', 'PRACTICE CATEGORIES (id):', ...input.practice.categories.map((c) => `- ${c}`));
+  if (has(input, 'expectations') && input.expectations) {
+    out.push('', 'WORSHIP TARGETS (id):', ...input.expectations.targets.map((t) => `- ${t}`));
+    out.push('', 'MOMENT SOURCES (id):', ...input.expectations.sources.map((t) => `- ${t}`));
+  }
   if (has(input, 'disposition') && input.world) out.push('', `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has(input, 'stances') && input.world) out.push('', 'WORLD OPTIONS (id: current choice, what it means):', ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push('', `Produce the requested sections: ${input.sections.join(', ')}.`);

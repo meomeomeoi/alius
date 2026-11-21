@@ -1,14 +1,17 @@
 import type { Entry, Registries } from '../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../engine/setup';
 import { TUNING } from '../engine/tuning';
-import { defectAllowedFor, validateBond } from '../engine/bonds';
+import { contentAllowed, defectAllowedFor, validateBond } from '../engine/bonds';
+import { validateExpectations, type ExpectationProfile } from '../engine/dynamic/expectations';
+import { practiceCategories, validatePractice } from '../engine/dynamic/profile';
+import type { Practice } from '../engine/dynamic/types';
 import { anchorKey } from '../engine/development/axes';
 import { RESYNC_SECTIONS, type ResyncSection } from '../engine/actions/squad';
 import { TEMPERAMENT_DEFAULTS, TEMPERAMENT_VALUES } from '../engine/life/state';
 import type { OpinionTopicEntry } from '../engine/life/types';
 import type { Bond, Insight, Temperament, Unit, WorldStance } from '../engine/state/types';
 import { isNeutralChoice, worldChoices, worldDispositionLevel } from '../engine/worldOptions';
-import type { ImportSection, ProfileImportInput } from '../llm/calls/profileImport';
+import { PRACTICE_SECTIONS, type ImportSection, type ProfileImportInput } from '../llm/calls/profileImport';
 import { describeFailure } from '../llm/describe';
 import type { Envelope } from '../llm/envelope';
 import { estTokens } from '../llm/text';
@@ -69,11 +72,17 @@ export function buildImportInput(
   card: CardInfo, registries: Registries, settings: AliusSettings, sections: ImportSection[], world?: Record<string, string>,
   /** P9d: her bond when the `bond` section is not being imported (a re-sync of the defects alone). */
   bond?: Bond | null,
+  /** P15: the content categories switched on; the two sections of the dynamic are asked for only while one of them is a practice category. */
+  content?: readonly string[],
 ): ProfileImportInput {
   const str = (v: unknown) => (typeof v === 'string' ? v : '');
   const info = world ? worldImportInfo(registries, world) : undefined;
+  const enabledPractice = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
+  const holder = { content: { enabled: [...(content ?? [])] } };
   // the world sections are asked for only when the caller knows a world, and stances only when some norm is not neutral
-  const asked = sections.filter((s) => (s !== 'disposition' && s !== 'stances') || (info !== undefined && (s === 'disposition' || info.options.length > 0)));
+  const asked = sections
+    .filter((s) => (s !== 'disposition' && s !== 'stances') || (info !== undefined && (s === 'disposition' || info.options.length > 0)))
+    .filter((s) => !(PRACTICE_SECTIONS as readonly ImportSection[]).includes(s) || enabledPractice.length > 0);
   return {
     card,
     sections: asked,
@@ -94,12 +103,25 @@ export function buildImportInput(
     ...(sections.includes('opinions')
       ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: (t.positions as Array<{ id: string }>).map((p) => p.id) })) }
       : {}),
+    ...(asked.includes('practice') ? { practice: { categories: enabledPractice } } : {}),
+    ...(asked.includes('expectations')
+      ? {
+        expectations: {
+          targets: [...registries.worshipTargets.values()].filter((t) => contentAllowed(holder, registries, t)).map((t) => t.id),
+          sources: [...registries.momentSources.values()].filter((t) => contentAllowed(holder, registries, t)).map((t) => t.id),
+        },
+      }
+      : {}),
   };
 }
 
-/** The sections a re-sync offers: every section of `RESYNC_SECTIONS`, and the stances only while some norm of the world is not neutral. */
-export function resyncSectionsOffered(registries: Registries, world: Record<string, string> | undefined): ResyncSection[] {
-  return RESYNC_SECTIONS.filter((s) => s !== 'stances' || stanceOptionIds(registries, world).length > 0);
+/**
+ * The sections a re-sync offers: every section of `RESYNC_SECTIONS`, the stances only while some norm of the world is not neutral, and
+ * (P15) the practice and the expectations only while a practice category is switched on (`content` = the categories that are on).
+ */
+export function resyncSectionsOffered(registries: Registries, world: Record<string, string> | undefined, content?: readonly string[]): ResyncSection[] {
+  const dynamic = practiceCategories(registries).some((c) => (content ?? []).includes(c));
+  return RESYNC_SECTIONS.filter((s) => (s !== 'stances' || stanceOptionIds(registries, world).length > 0) && (dynamic || !(PRACTICE_SECTIONS as readonly string[]).includes(s)));
 }
 
 /** P14b: the axis keys an anchor may name: the registry's value and bond axes, and `taste:<id>` for each taste (the wildcards are not keys). */
@@ -134,6 +156,9 @@ export interface ImportedProfile {
   hobbies?: string[];
   aptitudes?: { high: string[]; low: string[] };
   opinions?: Record<string, { position: string; text?: string }>;
+  /** P15: what she practises, her style pair and her inclination (read field by field), and what she expects and wants to see. */
+  practice?: Practice;
+  expectations?: ExpectationProfile;
   notes: string;
 }
 
@@ -166,6 +191,8 @@ export function sanitizeProfile(
     registries: Registries; desireBondDefects: boolean; sections: ImportSection[]; world?: Record<string, string>;
     /** P9d: her current bond, read by a defects-only import (the imported bond wins when the bond section is asked for). */
     bond?: Bond | null;
+    /** P15: the content categories switched on (a worship target of a closed category is dropped from the expectations). */
+    content?: readonly string[];
   },
 ): { profile: ImportedProfile; dropped: string[]; missing: ImportSection[] } {
   const src = isObj(raw) ? raw : {};
@@ -368,6 +395,21 @@ export function sanitizeProfile(
     profile.opinions = out;
   }
 
+  // P15: neither is ever critical; a card that says nothing leaves them out and they count as missing (the review keeps what the player has)
+  if (want('practice')) {
+    const read = validatePractice(src.practice, ctx.registries);
+    for (const id of read.dropped) dropped.push(id);
+    if (read.practice !== undefined) profile.practice = read.practice;
+    else missing.push('practice');
+  }
+
+  if (want('expectations')) {
+    const read = validateExpectations(src.expectations, ctx.registries, { state: { content: { enabled: [...(ctx.content ?? [])] } } });
+    for (const id of read.dropped) dropped.push(id);
+    if (read.expectations !== undefined) profile.expectations = read.expectations;
+    else missing.push('expectations');
+  }
+
   if (want('baseline')) {
     if (isObj(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
@@ -402,14 +444,19 @@ export async function importProfile(
     st: StAdapter; settings: AliusSettings; registries: Registries; /** P14: the envelope the call runs through (no record: there is no campaign yet, the wizard shows the reason). */ generations: Envelope; /** P8: the world's choices; absent = the world sections are not asked for. */ world?: Record<string, string>;
     /** P9d: her current bond, for a defects-only re-sync. */
     bond?: Bond | null;
+    /** P15: the content categories switched on; the practice and expectations sections are asked for only while one of them is a practice category. */
+    content?: readonly string[];
   },
 ): Promise<ImportOutcome> {
   const { st, settings, registries } = deps;
   try {
     const loaded = await st.loadCharacterCard(avatar);
     if (!loaded) return { kind: 'manual', reason: 'card not found' };
-    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
-    const ctx = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
+    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond, deps.content);
+    const ctx = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond, content: deps.content };
+    // P15: the two sections ask for room (+300 and +400 tokens of the budget); a call without them sends the budget it always did
+    const extra = (input.sections.includes('practice') ? 300 : 0) + (input.sections.includes('expectations') ? 400 : 0);
+    const budgetMult = extra > 0 ? 1 + extra / settings.budgets.profile_import : undefined;
 
     // the `setup.profile_import` site: the sanitized candidates. A critical section the answer lacks is a rejected answer: it is asked
     // again within the automatic retries (the second try the wizard always made), then the import goes to the manual form
@@ -422,7 +469,7 @@ export async function importProfile(
     });
     let out: Awaited<ReturnType<Envelope['generate']>>;
     try {
-      out = await deps.generations.generate<Sanitized>('setup.profile_import', key, { noRecord: true });
+      out = await deps.generations.generate<Sanitized>('setup.profile_import', key, { noRecord: true, ...(budgetMult !== undefined ? { budgetMult } : {}) });
     } finally {
       inFlight.delete(key);
     }

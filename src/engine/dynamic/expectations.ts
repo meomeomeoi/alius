@@ -5,7 +5,7 @@
  */
 import type { Registries } from '../../content/types';
 import { RESPONSE_TYPES, type ResponseType } from '../blocking/types';
-import { contentAllowed } from '../bonds/content';
+import { contentAllowed, type ContentHolder } from '../bonds/content';
 import type { HoldsUntil } from '../physics/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
@@ -52,7 +52,7 @@ const clean = (v: string): string => v.replace(/[\t\n\r]/g, ' ').replace(/[\u000
  * are cleaned, cut, and dropped whole when they carry a pronoun for the commander. Never throws.
  */
 export function validateExpectations(
-  raw: unknown, reg: Registries, ctx: { state?: CampaignState; unitId?: string },
+  raw: unknown, reg: Registries, ctx: { state?: ContentHolder; unitId?: string },
 ): { expectations?: ExpectationProfile; issues: string[]; dropped: string[] } {
   const issues: string[] = [];
   const dropped: string[] = [];
@@ -242,4 +242,29 @@ export function expectationsOf(state: Pick<CampaignState, 'squad' | 'content'>, 
 export function lockedExpectation(unit: Pick<Unit, 'expectationLocks'>, field: string): boolean {
   const locks = unit.expectationLocks ?? [];
   return locks.includes(field) || locks.includes(field.split('.')[0]);
+}
+
+/**
+ * A re-import of the profile keeps what she locked: a locked top-level field of `old` replaces the same field of `next`, and a locked
+ * `worship.<id>` / `moments.<id>` replaces that one entry (an entry `old` lacks is removed from `next`). Pure; nothing is changed in place.
+ */
+export function keepLockedExpectations(old: ExpectationProfile | undefined, next: ExpectationProfile | undefined, locks: readonly string[]): ExpectationProfile | undefined {
+  if (locks.length === 0) return next;
+  const out = structuredClone(next ?? {}) as Record<string, unknown>;
+  const was = (old ?? {}) as Record<string, unknown>;
+  for (const f of locks) {
+    const [head, id] = f.split('.');
+    if (id === undefined) {
+      if (was[head] !== undefined) out[head] = structuredClone(was[head]);
+      else delete out[head];
+      continue;
+    }
+    const rec = { ...(out[head] as Record<string, unknown> | undefined) };
+    const oldEntry = (was[head] as Record<string, unknown> | undefined)?.[id];
+    if (oldEntry !== undefined) rec[id] = structuredClone(oldEntry);
+    else delete rec[id];
+    if (Object.keys(rec).length > 0) out[head] = rec;
+    else delete out[head];
+  }
+  return Object.keys(out).length > 0 ? (out as ExpectationProfile) : undefined;
 }

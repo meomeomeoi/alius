@@ -910,16 +910,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Consumes: `validatePractice` (Task 2), `validateExpectations` (Task 3).
 - Produces: `PRACTICE_SECTIONS = ['practice','expectations']`; `ImportedProfile.practice`, `.expectations`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `no practice category: the sections are not offered`: `buildImportInput(..., ALL_SECTIONS)` has no `practice` input, and the system text matches the old one byte for byte (compare with the prompt built before the change for the same card; pin it as `tests/fixtures/profile_import/no_practice.txt`, written by the test's first run from the pre-change code and committed in Step 1).
   - `the prompt names only enabled categories`: with `restraint` and `service` on, the text lists those two and not `pain_rough`.
   - `the answer is sanitised`: a hostile `practice` gives the Task 2 result, and the dropped ids are in `dropped` as `practice:<id>`.
   - `regenerate one section`: `applySection('practice')` changes `practice` only (likes, temperament untouched).
   - `re-sync keeps locked fields`: `squad/resync { patch: { practice } }` with `practiceLocks: ['style']` keeps the old style.
-- [ ] **Step 2: Run** `npx vitest run tests/setup/practiceImport.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS. The pinned `intent_extract` fixture is untouched.
-- [ ] **Step 5: Commit** `feat(P15): import and re-sync the practice and expectation sections`
+- [x] **Step 2: Run** `npx vitest run tests/setup/practiceImport.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS. The pinned `intent_extract` fixture is untouched.
+- [x] **Step 5: Commit** `feat(P15): import and re-sync the practice and expectation sections`
 
 ---
 

@@ -12,13 +12,17 @@ import { seedLife, takeUpHobbies } from '../life/hobbies';
 import { TUNING } from '../tuning';
 import { refundTree } from '../progression';
 import { temperamentOf } from '../life/state';
+import { keepLockedExpectations, type ExpectationProfile } from '../dynamic/expectations';
+import { keepLockedPractice } from '../dynamic/profile';
+import type { Practice } from '../dynamic/types';
+import { MODEST_BOND } from '../bonds/profile';
 import type { Bond, CampaignState, Insight, Temperament, WorldStance } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament', 'hobbies', 'opinions'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development', 'temperament', 'hobbies', 'opinions', 'practice', 'expectations'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
 export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
@@ -40,6 +44,10 @@ export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' 
   aptitudes?: { high: string[]; low: string[] };
   /** P14c: the card's strong opinions; they replace only a `strong` opinion she never voiced and never moved. */
   opinions?: Record<string, { position: string; text?: string }>;
+  /** P15: replaces her practice section (a field she has locked keeps its value). The `bond` section never touches the practice. */
+  practice?: Practice;
+  /** P15: replaces her expectation profile (a locked field or entry keeps its value). */
+  expectations?: ExpectationProfile;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -47,7 +55,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
   commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond', anchors: 'development', insight: 'development', temperament: 'temperament',
-  hobbies: 'hobbies', aptitudes: 'hobbies', opinions: 'opinions',
+  hobbies: 'hobbies', aptitudes: 'hobbies', opinions: 'opinions', practice: 'practice', expectations: 'expectations',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -74,7 +82,9 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     dispositionOffset: patch.dispositionOffset ?? unit.dispositionOffset,
     dispositionReason: patch.dispositionReason ?? unit.dispositionReason,
     worldStances: patch.worldStances ?? unit.worldStances,
-    bond: patch.bond ?? unit.bond,
+    // P15: a practice in the patch is validated with the bond it joins
+    bond: patch.practice !== undefined ? { ...(patch.bond ?? unit.bond ?? MODEST_BOND), practice: patch.practice } : patch.bond ?? unit.bond,
+    expectations: patch.expectations,
     anchors: patch.anchors ?? unit.development?.anchors,
     insight: patch.insight ?? unit.insight,
     temperament: patch.temperament as Temperament | undefined, // P14c: only the patch is checked (the words); a partial block is fine here
@@ -121,7 +131,23 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     if (Object.keys(patch.worldStances).length > 0) unit.worldStances = structuredClone(patch.worldStances);
     else delete unit.worldStances;
   }
-  if (patch.bond !== undefined) unit.bond = structuredClone(patch.bond);
+  if (patch.bond !== undefined) {
+    // P15: the bond section never touches the practice (its own section does)
+    const kept = unit.bond?.practice;
+    unit.bond = structuredClone(patch.bond);
+    delete unit.bond.practice;
+    if (kept !== undefined) unit.bond.practice = kept;
+  }
+  if (patch.practice !== undefined) {
+    // P15: locked fields keep their value; the rest take the import
+    unit.bond ??= { ...MODEST_BOND, ownLimits: { categories: [] } };
+    unit.bond.practice = keepLockedPractice(unit.bond.practice, patch.practice, unit.practiceLocks ?? []);
+  }
+  if (patch.expectations !== undefined) {
+    const next = keepLockedExpectations(unit.expectations, patch.expectations, unit.expectationLocks ?? []);
+    if (next === undefined) delete unit.expectations;
+    else unit.expectations = next;
+  }
   // P14b: "Reset development" starts her over; anchors and insight come from the card, drift and facts never do
   if (payload.resetDevelopment === true) delete unit.development;
   if (patch.anchors !== undefined) {

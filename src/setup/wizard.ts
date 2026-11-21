@@ -4,7 +4,9 @@ import { commandStance, impunityBand, impunityOf, stanceEntry, type CommandStanc
 import { SETUP_LIMITS, buildCampaign, validateSetup, type HeadStartDays, type SetupResult, type UnitSetup } from '../engine/setup';
 import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
-import { defectAllowedFor } from '../engine/bonds';
+import { defectAllowedFor, validateBond } from '../engine/bonds';
+import { keepLockedExpectations } from '../engine/dynamic/expectations';
+import { keepLockedPractice } from '../engine/dynamic/profile';
 import type { Bond, DevelopmentMode, LifeMode, SignatureInstance, Unit } from '../engine/state/types';
 import { EXPLICIT_CATEGORY } from '../bonds/directives';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
@@ -762,7 +764,14 @@ export class Wizard {
     } else if (section === 'development') {
       c.anchors = p.anchors;
       c.insight = p.insight;
-    } else {
+    } else if (section === 'temperament') c.temperament = p.temperament;
+    else if (section === 'hobbies') {
+      c.hobbies = p.hobbies;
+      c.aptitudes = p.aptitudes;
+    } else if (section === 'opinions') c.opinions = p.opinions;
+    else if (section === 'practice') c.practice = p.practice;
+    else if (section === 'expectations') c.expectations = p.expectations;
+    else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
       c.triggers = p.triggers;
@@ -815,8 +824,20 @@ export class Wizard {
         if (p.worldStances) ch.worldStances = structuredClone(p.worldStances);
         break;
       case 'bond':
-        if (p.bond) ch.bond = structuredClone(p.bond);
+        // P15: the bond section never touches the practice she already has in the choice
+        if (p.bond) ch.bond = { ...structuredClone(p.bond), ...(ch.bond?.practice !== undefined && p.bond.practice === undefined ? { practice: ch.bond.practice } : {}) };
         break;
+      case 'practice':
+        if (p.practice) ch.bond = { ...(ch.bond ?? validateBond(undefined, this.deps.registries).bond), practice: keepLockedPractice(ch.bond?.practice, p.practice, ch.practiceLocks ?? []) };
+        break;
+      case 'expectations': {
+        if (p.expectations) {
+          const kept = keepLockedExpectations(ch.expectations, p.expectations, ch.expectationLocks ?? []);
+          if (kept) ch.expectations = kept;
+          else delete ch.expectations;
+        }
+        break;
+      }
       case 'development':
         if (p.anchors) ch.anchors = [...p.anchors];
         if (p.insight) ch.insight = p.insight;
