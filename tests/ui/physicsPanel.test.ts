@@ -54,7 +54,7 @@ const fake = () => {
     input: (i) => { calls.push(['input', i]); },
     endSegment: () => { calls.push(['end', null]); return []; },
     stopWord: () => { calls.push(['stop', null]); return []; },
-    cue: (kind, beat) => `[${kind}@${beat}]`,
+    cue: (kind) => `[${kind}]`,
     beat: () => 0,
   };
   return { calls, staging };
@@ -124,7 +124,7 @@ describe('the physics panel', () => {
     const v = draw(hold('footrest'));
     const plan = hold('footrest').scene!.physics!.segment.plan!;
     const cue = plan.beats[0]!.cue;
-    expect(v.q('.alius-physics-cue')?.textContent ?? '').toBe(cue === undefined ? '' : `[${cue}@0]`);
+    expect(v.q('.alius-physics-cue')?.textContent ?? '').toBe(cue === undefined ? '' : `[${cue}]`);
     const held = draw(hold('footrest', { segment: 'held' }));
     expect(held.q('.alius-physics-held')!.textContent).toBe('She takes her time.');
     expect(held.qa('button.alius-option').map((b) => b.textContent)).toEqual(['[ TAP ]', '[ STOP WORD ]']); // nothing to do while it waits

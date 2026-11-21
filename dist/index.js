@@ -11009,7 +11009,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit2.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit2);
   const lead = leadRank(bond.leadStyle);
-  const G = TUNING.personal.gates;
+  const G2 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -11021,7 +11021,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G2.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -11036,11 +11036,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G2.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G2.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G2.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G2.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -21681,19 +21681,19 @@ function generateEncounter(state, reg, rng, input) {
     list5.push(e.id);
     byCategory.set(e.categoryId, list5);
   }
-  const weighted = [];
+  const weighted2 = [];
   for (const [id, w] of Object.entries(input.table.categories)) {
     const cat = reg.enemyCategories.get(id);
     if (!cat || w <= 0 || !byCategory.has(id)) continue;
-    weighted.push({ id, weight: w * FREQUENCY[cat.frequency] });
+    weighted2.push({ id, weight: w * FREQUENCY[cat.frequency] });
   }
-  if (weighted.length === 0) throw new Error("The enemy table has no known category with enemies.");
-  const total2 = weighted.reduce((s, c) => s + c.weight, 0);
+  if (weighted2.length === 0) throw new Error("The enemy table has no known category with enemies.");
+  const total2 = weighted2.reduce((s, c) => s + c.weight, 0);
   const affixPool = [...reg.affixes.values()].filter((a) => a.appliesTo === "enemy" && (a.id !== "elite" || danger >= 3)).map((a) => a.id);
   const maxAffixes = Math.min(2, danger - 1);
   const draw2 = () => {
     let r = rng.float() * total2;
-    const cat = weighted.find((c) => (r -= c.weight) < 0) ?? weighted[weighted.length - 1];
+    const cat = weighted2.find((c) => (r -= c.weight) < 0) ?? weighted2[weighted2.length - 1];
     const enemyId = rng.pick(byCategory.get(cat.id));
     const affixes = [];
     if (maxAffixes > 0 && rng.chance(0.1 * danger)) {
@@ -26818,6 +26818,10 @@ function refreshSeen(draft, reg) {
     (m.seen ??= {})[id] = now;
   }
 }
+function weighted(state, reg, live2) {
+  if ((state.scene?.physics?.last?.noise ?? 0) <= 0) return live2;
+  return live2.map((l) => kindsOf2(reg.momentSources.get(l.sourceId) ?? {}).includes("visitor") ? { ...l, weight: l.weight + TUNING.moments.noiseBoost } : l);
+}
 function momentPass(draft, ctx2, _cause, opts = {}) {
   const reg = ctx2.registries;
   const scene = draft.scene;
@@ -26826,7 +26830,7 @@ function momentPass(draft, ctx2, _cause, opts = {}) {
   const open3 = momentsOf(scene).open !== void 0;
   const { ok, rested } = cooledDown(draft);
   if (!open3 && ok) {
-    const live2 = liveSources(draft, reg, opts).filter((l) => rested(l.sourceId));
+    const live2 = weighted(draft, reg, liveSources(draft, reg, opts).filter((l) => rested(l.sourceId)));
     if (live2.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
       const total2 = live2.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
@@ -30054,10 +30058,45 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
   return answerMoment(draft, ctx2, momentId, key, "chip", tone, at !== void 0 ? { at } : {});
 });
 
+// src/engine/physics/gaze.ts
+var G = TUNING.physics.gaze;
+function attentionPlan(n, attention, style, rng) {
+  if (leadStyle(style).key === "clinical") return Array.from({ length: n }, () => "watching");
+  const [w, g] = G.attention[attention ?? "on_commander"] ?? G.attention.on_commander;
+  return Array.from({ length: n }, () => {
+    const x = rng.float();
+    return x < w ? "watching" : x < w + g ? "glancing" : "busy";
+  });
+}
+function attentionCue(prev, now) {
+  if (now === prev || now === "glancing") return null;
+  return now === "watching" ? "watch" : "look_away";
+}
+function cheatRoll(rng, attention, reading2) {
+  return rng.chance(G.caught[attention] * (1 + G.readingMult * reading2));
+}
+function noiseOf(source, stillness = 0) {
+  const kind = source === "miss" ? "gasp" : source === "slip" ? "creak" : source === "relief" ? "rustle" : "cough";
+  return { loudness: 1 * (1 - stillness), kind };
+}
+function segmentNoise(result, interaction, stillness = 0) {
+  const out = /* @__PURE__ */ new Map();
+  const add = (source, n) => {
+    if (n <= 0) return;
+    const s = noiseOf(source, stillness);
+    out.set(s.kind, (out.get(s.kind) ?? 0) + s.loudness * n);
+  };
+  add("miss", result.gasps);
+  add(interaction === "timing" ? "spill" : "slip", result.slips);
+  add("relief", result.reliefs);
+  return [...out].map(([kind, loudness]) => ({ kind, loudness }));
+}
+
 // src/engine/physics/state.ts
 var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest"];
 
 // src/engine/physics/segment.ts
+var stillnessOf = (_state) => 0;
 var P2 = TUNING.physics;
 var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function rhythmOffset(state, unitId) {
@@ -30065,14 +30104,6 @@ function rhythmOffset(state, unitId) {
 }
 function beatsPerSegment(state, segmentSeconds) {
   return sceneSettingsOf(state).physicsRealtime ? Math.max(1, Math.ceil(segmentSeconds * 1e3 / P2.beatMs)) : P2.turnBeats;
-}
-function attentionOf(state, reg, run, style, rng) {
-  if (leadStyle(style).key === "clinical") return "watching";
-  const activity = blockingOf(state.scene, run.holderId).activity;
-  const attention = (activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0) ?? "on_commander";
-  const [w, g] = P2.gaze.attention[attention] ?? P2.gaze.attention.on_commander;
-  const x = rng.float();
-  return x < w ? "watching" : x < w + g ? "glancing" : "busy";
 }
 function openingWidth(style, rng, measuring) {
   const { leadKey, other } = styleRows(style);
@@ -30087,7 +30118,9 @@ function planSegment(state, reg, run, rng) {
   const n = beatsPerSegment(state, Number(phys.segmentSeconds));
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
-  const beats = Array.from({ length: n }, () => ({ attention: attentionOf(state, reg, run, style, rng) }));
+  const activity = blockingOf(state.scene, run.holderId).activity;
+  const attention = attentionPlan(n, activity !== void 0 ? reg.blockingActivities.get(activity)?.attention : void 0, style, rng);
+  const beats = attention.map((a) => ({ attention: a }));
   const interaction = String(phys.interaction);
   if (interaction === "timing") {
     let pos = (rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3 + rng.int(0, 1);
@@ -30111,6 +30144,10 @@ function planSegment(state, reg, run, rng) {
     }
   } else if (interaction === "order") {
     for (let i = 0; i < n; i++) beats[i] = { ...beats[i], part: rng.pick(P2.tongue.parts) };
+  }
+  for (let i = 0; i < n; i++) {
+    const sign2 = attentionCue(attention[i - 1], attention[i]);
+    if (sign2 !== null && beats[i].cue === void 0) beats[i] = { ...beats[i], cue: sign2 };
   }
   if (lead.cues === "count") {
     for (let i = 0; i < n; i++) if (beats[i].cue === void 0) beats[i] = { ...beats[i], cue: "count" };
@@ -30282,6 +30319,19 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   const result = resolveSegment(run, run.segment.plan, inputs, resolveEnvOf(draft, reg, run));
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
+  const events = [];
+  const reading2 = herSkillOf(draft, run.holderId).reading;
+  for (const rel of result.reliefInputs) {
+    const attention = run.segment.plan.beats[rel.beat]?.attention ?? "busy";
+    events.push({ type: "physics_cheat", runId, holderId: run.holderId, kind: rel.kind, beat: rel.beat });
+    if (cheatRoll(ctx2.rng, attention, reading2)) {
+      result.slips += 2;
+      events.push({ type: "physics_caught", runId, holderId: run.holderId, kind: rel.kind, beat: rel.beat });
+    }
+  }
+  const sounds = segmentNoise(result, resolveEnvOf(draft, reg, run).interaction, stillnessOf(draft));
+  result.noise = sounds.reduce((n, x) => n + x.loudness, 0);
+  for (const x of sounds) events.push({ type: "physics_noise", runId, holderId: run.holderId, kind: x.kind, loudness: x.loudness });
   run.gauge = result.gauge;
   run.streak = result.streak;
   run.last = {
@@ -30296,7 +30346,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     ...result.warning ? { warning: true } : {}
   };
   run.segment = { n: run.segment.n, state: "held" };
-  const events = [{ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning }];
+  events.unshift({ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, TUNING.physics.endurance.streak * result.streakBonus));
   if (result.slips > 0) {
     events.push({ type: "physics_slip", runId, kind: "slip", count: result.slips, holderId: run.holderId });

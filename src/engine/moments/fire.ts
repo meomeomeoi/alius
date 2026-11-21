@@ -142,6 +142,12 @@ function refreshSeen(draft: CampaignState, reg: Registries): void {
   }
 }
 
+/** Noise in the last segment of a hold makes a visitor likelier: a source that lives on a `visitor` gets `noiseBoost` added to its weight. */
+export function weighted<T extends { sourceId: string; weight: number }>(state: CampaignState, reg: Registries, live: T[]): T[] {
+  if ((state.scene?.physics?.last?.noise ?? 0) <= 0) return live;
+  return live.map((l) => (kindsOf(reg.momentSources.get(l.sourceId) ?? ({} as Entry)).includes('visitor') ? { ...l, weight: l.weight + TUNING.moments.noiseBoost } : l));
+}
+
 /**
  * One pass over the moments. A no-op (no draw, nothing written) while the blocking is not live. Otherwise she is seen (`seen`), and unless
  * a moment is open, a cooldown holds or nothing is live, ONE `chance` is drawn; when it hits, one weighted pick over the live sources.
@@ -156,7 +162,7 @@ export function momentPass(draft: CampaignState, ctx: Pick<EngineCtx, 'registrie
   const open = momentsOf(scene).open !== undefined;
   const { ok, rested } = cooledDown(draft);
   if (!open && ok) {
-    const live = liveSources(draft, reg, opts).filter((l) => rested(l.sourceId));
+    const live = weighted(draft, reg, liveSources(draft, reg, opts).filter((l) => rested(l.sourceId)));
     if (live.length > 0 && ctx.rng.chance(chanceOf(draft))) {
       const total = live.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx.rng.int(0, total - 1);

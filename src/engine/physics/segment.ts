@@ -16,11 +16,15 @@ import type { EngineEvent } from '../dispatch';
 import { momentPass } from '../moments/fire';
 import { decideBoundary } from './boundary';
 import { chainRun } from './run';
+import { attentionCue, attentionPlan, cheatRoll, segmentNoise } from './gaze';
 import { addEnduranceXp, herSkillOf } from './skill';
 import {
   INPUT_KINDS, type Attention, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
+
+/** The commander's stillness skill (P16b): reads 0 until it lands, so every slip is as loud as it is. */
+export const stillnessOf = (_state: CampaignState): number => 0;
 
 export type GaugeKind = 'capacity' | 'fill' | 'dirt' | 'progress';
 
@@ -47,15 +51,6 @@ export function beatsPerSegment(state: Pick<CampaignState, 'settings'>, segmentS
   return sceneSettingsOf(state).physicsRealtime ? Math.max(1, Math.ceil((segmentSeconds * 1000) / P.beatMs)) : P.turnBeats;
 }
 
-function attentionOf(state: CampaignState, reg: Registries, run: PhysicsRun, style: PhysicsStyle, rng: Rng): Attention {
-  if (leadStyle(style).key === 'clinical') return 'watching'; // always watching (AUTHOR TO TUNE)
-  const activity = blockingOf(state.scene, run.holderId).activity;
-  const attention = (activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined) ?? 'on_commander';
-  const [w, g] = P.gaze.attention[attention] ?? P.gaze.attention.on_commander!;
-  const x = rng.float();
-  return x < w! ? 'watching' : x < w! + g! ? 'glancing' : 'busy';
-}
-
 /** The width of her next opening: the lead's (an obsessive one draws it), blended with the other style of the pair. */
 function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean): number {
   const { leadKey, other } = styleRows(style);
@@ -76,7 +71,9 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   const n = beatsPerSegment(state, Number(phys.segmentSeconds));
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
-  const beats: PlannedBeat[] = Array.from({ length: n }, () => ({ attention: attentionOf(state, reg, run, style, rng) }));
+  const activity = blockingOf(state.scene, run.holderId).activity;
+  const attention = attentionPlan(n, activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined, style, rng);
+  const beats: PlannedBeat[] = attention.map((a) => ({ attention: a }));
   const interaction = String(phys.interaction);
   if (interaction === 'timing') {
     let pos = ((rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3) + rng.int(0, 1);
@@ -99,6 +96,11 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
     }
   } else if (interaction === 'order') {
     for (let i = 0; i < n; i++) beats[i] = { ...beats[i]!, part: rng.pick(P.tongue.parts) };
+  }
+  // the signs of her attention: a cue where it changed (she starts watching, she looks away); the player reads her gaze from these alone
+  for (let i = 0; i < n; i++) {
+    const sign = attentionCue(attention[i - 1], attention[i]!);
+    if (sign !== null && beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: sign };
   }
   if (lead.cues === 'count') for (let i = 0; i < n; i++) if (beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: 'count' };
   if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
@@ -268,6 +270,20 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   const result = resolveSegment(run, run.segment.plan, inputs, resolveEnvOf(draft, reg, run));
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
+  const events: EngineEvent[] = [];
+  // a relief input is a cheat: she may catch it, by her attention on that beat and her `reading` skill (one draw per relief; none without one)
+  const reading = herSkillOf(draft, run.holderId).reading;
+  for (const rel of result.reliefInputs) {
+    const attention = run.segment.plan.beats[rel.beat]?.attention ?? 'busy';
+    events.push({ type: 'physics_cheat', runId, holderId: run.holderId, kind: rel.kind, beat: rel.beat });
+    if (cheatRoll(ctx.rng, attention, reading)) {
+      result.slips += 2; // caught: a double slip
+      events.push({ type: 'physics_caught', runId, holderId: run.holderId, kind: rel.kind, beat: rel.beat });
+    }
+  }
+  const sounds = segmentNoise(result, resolveEnvOf(draft, reg, run).interaction, stillnessOf(draft));
+  result.noise = sounds.reduce((n, x) => n + x.loudness, 0);
+  for (const x of sounds) events.push({ type: 'physics_noise', runId, holderId: run.holderId, kind: x.kind, loudness: x.loudness });
   run.gauge = result.gauge;
   run.streak = result.streak;
   run.last = {
@@ -275,7 +291,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     ...(result.warning ? { warning: true } : {}),
   };
   run.segment = { n: run.segment.n, state: 'held' };
-  const events: EngineEvent[] = [{ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning }];
+  events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, TUNING.physics.endurance.streak * result.streakBonus));
   if (result.slips > 0) {
     events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId });

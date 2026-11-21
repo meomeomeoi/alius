@@ -220,7 +220,7 @@ describe('planSegment', () => {
     registerPhysicsStyle(() => ({ primary: 'cruel' }));
     s.settings.physicsRealtime = false; // turn-based: a cruel holder gives no cue to 40 % of her openings
     let silent = 0, total = 0;
-    for (let seed = 1; seed <= 60; seed++) for (const b of planOf('breath', s, seed).beats) if (b.opening) { total++; if (b.cue === undefined) silent++; }
+    for (let seed = 1; seed <= 60; seed++) for (const b of planOf('breath', s, seed).beats) if (b.opening) { total++; if (b.cue !== 'window_open' && b.cue !== 'window_false') silent++; }
     expect(silent / total).toBeGreaterThan(0.3);
     expect(silent / total).toBeLessThan(0.5);
   });

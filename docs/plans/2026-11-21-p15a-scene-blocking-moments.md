@@ -1318,7 +1318,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `attentionPlan(run, activity, style, rng): Attention[]`, `cheatRoll(rng, attention, reading): boolean` and `noiseOf(slip): { loudness: number; kind }`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `attention follows her activity` (`reading_reports` is mostly busy; `attending` mostly watching).
   - `relief restores` (+15 strength, −20 saturation, +5 air only when leaky).
   - `caught rates` (seeded 10 000: watching ≈ 0.6, busy ≈ 0.08; reading 3 ×1.3).
@@ -1326,10 +1326,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `every slip is a sound; stillness 0`.
   - `noise raises third_party's weight`.
   - `no reading names her attention` (hidden sentinel).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/gaze.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): her gaze, cheating and the noise of the body`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/gaze.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): her gaze, cheating and the noise of the body`
 
 ---
 
