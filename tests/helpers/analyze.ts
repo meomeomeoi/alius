@@ -20,6 +20,10 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   wagerStakes: 'wagerStakes:privilege', // P9c
   secretKinds: 'secretKinds:hidden_injury', // P9c
   developmentAxes: 'developmentAxes:value:mercy', // P14b
+  opinionTopics: 'opinionTopics:corporations', // P14c
+  hobbies: 'hobbies:reading', // P14c
+  lifeEvents: 'lifeEvents:wrote_journal', // P14c: an event she keeps to herself: the reading must stay empty
+  pastimes: 'pastimes:patch_each_other', // P14c
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

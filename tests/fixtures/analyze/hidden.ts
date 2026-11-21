@@ -2,6 +2,7 @@ import { registerKnowledgeRule } from '../../../src/analysis/knowledge';
 import { specialKnowledgeRule } from '../../../src/analysis/providers/special';
 import { wardenKnowledgeRule } from '../../../src/analysis/providers/warden';
 import type { Registries } from '../../../src/content/types';
+import type { LifeEventEntry } from '../../../src/engine/life/types';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign } from '../../helpers/world';
 
@@ -120,12 +121,35 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     },
   } as CampaignState['dilemmas'];
 
+  // P14c: her life that no panel may show. An event she has not told and one she keeps to herself (their text AND their ids travel on `life_event` /
+  // `life_shared`, so no describe, toast, log or reading may render either), an opinion she has not voiced, the persuasion on one she has, a joke count,
+  // skill and interest as numbers, a queued item, and her aptitudes (drawn only while the edit lock is off)
+  const events = [...reg.lifeEvents.values()] as unknown as LifeEventEntry[];
+  const untoldEvent = events.find((e) => e.share === 'anyone' && e.becomes === undefined)!;
+  const keepsEvent = events.find((e) => e.share === 'keeps' && e.keepsUnless === undefined && e.becomes === undefined)!;
+  state.settings.lifeEvents = 'normal';
+  state.memory.facts.push(
+    { id: 'fact_untold', about: [unit.id], text: 'SENTINEL-UNTOLD', tags: ['life', 'untold', 'sentinel', untoldEvent.id], importance: 1, day: 7, knownBy: [unit.id], hiddenFromCommander: true },
+    { id: 'fact_keeps', about: [unit.id], text: 'SENTINEL-KEEPS', tags: ['life', 'untold', 'sentinel', keepsEvent.id], importance: 1, day: 7, knownBy: [unit.id], hiddenFromCommander: true },
+  );
+  state.life = {
+    salt: 5, nextId: 1, queue: [{ id: 'ln_SENTINEL-QUEUED', unitId: unit.id, kind: 'event', ref: untoldEvent.id, what: 'event', factId: 'fact_untold', category: 'things', day: 7 }],
+    delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [],
+    units: { [unit.id]: { last: { [untoldEvent.id]: 7, [keepsEvent.id]: 7 }, jokes: { fact_sentinel: { count: 19, last: 7 } } } },
+  };
+  state.squad[0].hobbies = [{ id: 'reading', skill: 47.31, interest: 63.17, state: 'active', since: 1, milestones: [], plateau: { at: 47.31, since: 5 } }];
+  state.squad[0].aptitudes = { high: ['stargazing'], low: ['woodcarving'] };
+  state.squad[0].opinions = {
+    books: { position: 'SENTINEL-UNVOICED-POSITION', strength: 'strong', formedDay: 3, text: 'SENTINEL-UNVOICED' },
+    corporations: { position: 'necessary', strength: 'held', formedDay: 3, voicedDay: 6, push: { toward: 'last', amount: 5.13 } },
+  };
+
   return {
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19],
-      texts: ['SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19],
+      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT'],
     },
   };
 }

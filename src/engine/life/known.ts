@@ -1,7 +1,7 @@
 import type { Registries } from '../../content/types';
-import type { CampaignState, Fact, HobbyState } from '../state/types';
+import type { CampaignState, Fact, HobbyState, LifeMode, Temperament } from '../state/types';
 import { TUNING } from '../tuning';
-import { UNTOLD_TAG, lifeMode } from './state';
+import { UNTOLD_TAG, lifeMode, temperamentOf } from './state';
 import { plainText } from './facts';
 import { commanderHobbyWord } from './meetings';
 import { heardOpinions } from './opinions';
@@ -57,6 +57,9 @@ export interface LifeView {
   commanderSkills: Array<{ id: string; label: string; word: string }>;
   /** The line under her name on the hub, from the newest event of the last days (nothing for what she keeps to herself). */
   hub: { eventId: string; text: string } | null;
+  /** Her three temperament words (through `temperamentOf`) and the campaign's frequency (off for an old save). */
+  temperWords: Temperament;
+  mode: LifeMode;
 }
 
 /** The hub line of her newest event, within `hubDays`, with the event's own id and its text. Null while life is off or when none stands. */
@@ -72,7 +75,7 @@ export function hubLine(state: Pick<CampaignState, 'life' | 'settings' | 'day'>,
 /** The view of her life as it stands, for a campaign whose life is on or has been (an old save with no trace of it reads empty). */
 export function lifeView(state: CampaignState, reg: Registries, unitId: string, visible: (f: Fact) => boolean = () => true): LifeView {
   const unit = state.squad.find((u) => u.id === unitId);
-  const empty: LifeView = { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null };
+  const empty: LifeView = { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null, temperWords: temperamentOf(state, unitId), mode: lifeMode(state) };
   if (!unit || unit.kind !== 'named') return empty;
   const opinions: LifeView['opinions'] = [];
   for (const o of heardOpinions(state, unitId)) {
@@ -100,5 +103,5 @@ export function lifeView(state: CampaignState, reg: Registries, unitId: string, 
     const entry = reg.hobbies.get(id) as unknown as HobbyEntry | undefined;
     return entry ? [{ id, label: String(entry.label), word: commanderHobbyWord(skill) }] : [];
   });
-  return { opinions, hobbies, told, commanderSkills, hub: hubLine(state, reg, unitId) };
+  return { opinions, hobbies, told, commanderSkills, hub: hubLine(state, reg, unitId), temperWords: temperamentOf(state, unitId), mode: lifeMode(state) };
 }

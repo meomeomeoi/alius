@@ -20,6 +20,7 @@ import { registerSpecialProviders } from './special';
 import { registerWardenProviders } from './warden';
 import { registerHeadStartProviders } from './headStart';
 import { registerDevelopmentProviders } from './development';
+import { registerLifeProviders } from './life';
 import { registerPowerProviders } from './power';
 import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
@@ -346,4 +347,5 @@ export function registerCoreProviders(): void {
   registerWardenProviders(); // P13
   registerHeadStartProviders(); // P11b
   registerDevelopmentProviders(); // P14b
+  registerLifeProviders(); // P14c
 }

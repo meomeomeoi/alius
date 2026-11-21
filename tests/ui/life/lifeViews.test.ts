@@ -26,6 +26,8 @@ import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
 import { renderWorldParams } from '../../../src/ui/setup/worldParams';
 import { renderSysTab } from '../../../src/ui/shell/sysTab';
 import { renderSquadTab } from '../../../src/ui/squad/squadTab';
+import { hiddenFixture } from '../../fixtures/analyze/hidden';
+import { resetKnowledgeRules } from '../../../src/analysis/knowledge';
 import { campaign, errors, loadCore, run } from '../../helpers/world';
 import { markedWithout, markerCount, unreachable, unresolved } from '../../helpers/analyzeCoverage';
 
@@ -219,6 +221,35 @@ describe('the squad dossier', () => {
     const s = campaign(reg, 4);
     const host = squad(s);
     expect(host.querySelector('[data-view]')).toBeNull();
+  });
+});
+
+describe('the dossier hides what she has not told (the sentinels of the hidden fixture)', () => {
+  function dossier(editLock: boolean): { text: string; host: HTMLElement } {
+    const { state } = hiddenFixture(reg);
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const host = mount();
+    renderSquadTab(host, {
+      st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => ({ ...getSettings(st), editLock }),
+      onNewCampaign: vi.fn(), life: { dispatch: () => [] },
+    });
+    return { text: host.textContent ?? '', host };
+  }
+  afterEach(() => resetKnowledgeRules());
+
+  it('with the edit lock on nothing she keeps, has not told or has not voiced is drawn, and no number', () => {
+    const { text, host } = dossier(true);
+    for (const t of ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED']) expect(text, t).not.toContain(t);
+    expect(host.querySelector('[data-aptitude]')).toBeNull(); // her aptitudes are drawn only while editing (the picker still lists every hobby)
+    expect(text).not.toMatch(/47\.31|63\.17|5\.13/);
+    expect(text).toContain('THOUGHTS');
+  });
+
+  it('with the edit lock off the aptitudes are drawn (the editing view), and still no untold text', () => {
+    const { text, host } = dossier(false);
+    expect(host.querySelector('[data-aptitude="high"][data-id="stargazing"]')).not.toBeNull();
+    expect(text).not.toContain('SENTINEL-UNTOLD');
+    expect(text).not.toContain('SENTINEL-KEEPS');
   });
 });
 

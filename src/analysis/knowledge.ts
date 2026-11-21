@@ -80,7 +80,9 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
     factVisible,
     flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds(() => r.flag!(id, state))),
     facts: () => (state?.memory?.facts ?? []).filter(factVisible),
-    life: (unitId, reg) => (state === null ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null } : lifeView(state, reg, unitId, factVisible)),
+    life: (unitId, reg) => (state === null
+      ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null, temperWords: { talkativeness: 'terse', volatility: 'steady', humor: 'dry' }, mode: 'off' }
+      : lifeView(state, reg, unitId, factVisible)),
     development(unitId, reg) {
       const unit = state?.squad.find((u) => u.id === unitId);
       const dev = unit?.development;

@@ -40,6 +40,18 @@ describe('hidden state never reaches a reading', () => {
     }
   });
 
+  it('her life is read (so the checks are not vacuous) and its sentinels never are, raw values on or off', () => {
+    const { state, unitId, sentinels } = hiddenFixture(reg);
+    for (const raw of [false, true]) {
+      const text = allReadings(envOf(state, raw), unitId);
+      expect(text, `raw values ${raw}`).toContain('STEADY'); // `hobbies:reading`: the word for how keen she is, never the interest
+      expect(text, `raw values ${raw}`).toContain('Held in the'); // `pastimes:`: from the entry
+      expect(text, `raw values ${raw}`).toContain('terse'); // `glossary:temperament`
+      expect(leaks(text, { numbers: [47.31, 63.17, 5.13, 19], texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving'] }), `raw values ${raw}`).toEqual([]);
+    }
+    expect(sentinels.texts).toEqual(expect.arrayContaining(['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED']));
+  });
+
   it('every bare-source provider has a sample address', () => {
     expect(keysWithoutSample()).toEqual([]);
   });
