@@ -145,8 +145,10 @@ export function runOrder(draft: CampaignState, ctx: EngineCtx, order: WardenOrde
   switch (order.kind) {
     case 'activity': {
       const keep = sameAsOriginal ? { focus: base.focus } : {};
+      // P14c: a quiet hour keeps its pastime (checked again for the companion who is really there; a pastime that does not fit gives a plain scene)
+      const pastime = ctx.registries.activities.get(order.activityId)?.pastime === true && typeof base.pastimeId === 'string' ? { pastimeId: base.pastimeId } : {};
       return runActivity(draft, ctx, {
-        ...keep, activityId: order.activityId,
+        ...keep, ...pastime, activityId: order.activityId,
         ...(order.companionId !== undefined ? { companionId: order.companionId } : {}), ...(order.unitIds !== undefined ? { unitIds: order.unitIds } : {}),
         wardenChecked: true, countermandChecked: true,
       });

@@ -9,6 +9,8 @@ import { newLife } from '../../../src/engine/life/state';
 import type { HobbyEntry, PastimeEntry } from '../../../src/engine/life/types';
 import type { CampaignState, HobbyState, Slot } from '../../../src/engine/state/types';
 import { lifeDirectives } from '../../../src/life/directives';
+import { personalOf } from '../../../src/engine/personal/state';
+import { writeLifeFact } from '../../../src/engine/life/facts';
 import { campaign, errors, loadCore, ofType, run } from '../../helpers/world';
 
 let reg: Registries;
@@ -303,6 +305,58 @@ describe('the activity of a quiet hour', () => {
     expect(errors(done.events)).toHaveLength(1);
     expect(done.state.calendar.pendingScene).toBeUndefined();
     expect(done.state.slot).toBe('afternoon');
+  });
+});
+
+describe('the guards of a slot-spending action', () => {
+  const ask: { type: string; payload: unknown } = { type: 'life/time_together', payload: { unitId: ANN, pastimeId: 'tidy_her_quarters' } };
+
+  it('a presented dilemma refuses a quiet hour like any activity', () => {
+    const s = world('afternoon');
+    s.dilemmas = { seq: 1, open: { id: 'dl1', templateId: 't', scale: 'minor', context: 'base', day: 40, status: 'presented', attempts: 1, units: [], beatId: 'b' } } as CampaignState['dilemmas'];
+    const r = run(s, reg, ask);
+    expect(r.events).toEqual([{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }]);
+    expect(r.state).toBe(s);
+    expect(run(s, reg, { type: 'activity/do', payload: { activityId: 'rest' } }).events[0]).toMatchObject({ code: 'dilemma_open' }); // the same refusal
+  });
+
+  it('a due booking refuses a quiet hour with another woman, like any activity', () => {
+    const s = world('evening');
+    personalOf(s).bookings = [{ id: 'b1', unitId: BEA, kindId: 'evening_with_me', day: 40, slot: 'evening', status: 'booked', source: 'roll', made: 39 }];
+    const r = run(s, reg, ask);
+    expect(r.events[0]).toMatchObject({ type: 'error', code: 'booking_due', message: 'Bea has booked this slot: go to her or cancel it.' });
+    expect(r.state).toBe(s);
+  });
+
+  it('labelling a scene that is already open spends nothing and is not refused by a waiting dilemma (it would strand the scene)', () => {
+    const s = world('afternoon');
+    const started = run(s, reg, { type: 'scene/start', payload: { locationId: 'workshop', participants: [ANN], origin: 'event', startIndex: 0 } }).state;
+    started.dilemmas = { seq: 1, open: { id: 'dl1', templateId: 't', scale: 'minor', context: 'base', day: 40, status: 'presented', attempts: 1, units: [], beatId: 'b' } } as CampaignState['dilemmas'];
+    const r = run(started, reg, { type: 'life/pastime_in_scene', payload: { pastimeId: 'fix_gear' } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.scene!.pastime).toEqual({ id: 'fix_gear', unitId: ANN });
+  });
+});
+
+describe('her_hobby shows only a hobby the commander knows she has', () => {
+  it('an untold hobby is never the one: not offered alone, not in the place, the directive or the commander skills', () => {
+    const s = world('morning');
+    mine(s).hobbies = [take('chess', { interest: 95 })]; // taken up off-screen, not told
+    writeLifeFact(s, ANN, 'Ann has taken up chess.', ['hobby', 'chess', 'started'], 1);
+    expect(problem(s, 'her_hobby')).toEqual(expect.any(String));
+    expect(pastimeLocation(s, reg, pastime('her_hobby'), ANN)).toBeNull();
+    expect(availablePastimes(s, reg, ANN).map((p) => p.id)).not.toContain('her_hobby');
+    // with a told hobby beside it the told one is picked, however keen she is on the other
+    mine(s).hobbies = [take('chess', { interest: 95 }), take('tinkering', { interest: 60 })];
+    expect(problem(s, 'her_hobby')).toBeNull();
+    expect(pastimeLocation(s, reg, pastime('her_hobby'), ANN)).toBe('workshop');
+    const open = meet(s, 'her_hobby');
+    const d = lifeDirectives(open, reg, [ANN]).find((x) => x.id === `life:pastime:${ANN}`)!;
+    expect(d.text).toContain(hobby('tinkering').label);
+    expect(d.text).not.toContain(hobby('chess').label);
+    const ended = run(open, reg, { type: 'scene/end', payload: {} }).state;
+    expect(Object.keys(ended.commander.hobbySkill ?? {})).toEqual(['tinkering']);
+    expect(mine(ended).hobbies!.find((x) => x.id === 'chess')).toMatchObject({ skill: 0, interest: 95 });
   });
 });
 

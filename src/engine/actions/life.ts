@@ -222,23 +222,37 @@ registerAction('life/topics_triggered', (draft, payload, ctx) => {
 });
 
 /**
- * `life/time_together { unitId, pastimeId }`: a quiet hour with her. It refuses with `pastimeProblem`'s reason, runs the activity that carries
- * `pastime: true` with her as the companion (which holds the slot until the scene ends, as a talk does) and stores the pastime for the scene
- * the app opens next (`scene/start` copies it onto the scene). Nothing applies until `scene/end`. An order the squad leader countermands or the
- * warden overrides spends nothing and stores nothing.
+ * `life/time_together { unitId, pastimeId }`: a quiet hour with her. It refuses with `pastimeProblem`'s reason and runs the activity that carries
+ * `pastime: true` with her as the companion and the pastime in the request (which holds the slot until the scene ends, as a talk does); the hook
+ * below stores the pastime for the scene the app opens next (`scene/start` copies it onto the scene). Nothing applies until `scene/end`. An order
+ * the squad leader countermands or the warden overrides spends nothing here and stores nothing; when the override is answered the order runs
+ * again with the same pastime (`runOrder`), and the hook decides again for the companion who is really there. Like `activity/*` it is refused
+ * while a presented dilemma waits and while a booking is due (`dispatch.ts`, `bookingGuard`).
  */
 registerAction('life/time_together', (draft, payload, ctx) => {
-  const p = payload as { unitId?: unknown; pastimeId?: unknown } | undefined;
+  const p = payload as { unitId?: unknown; pastimeId?: unknown; wardenJudged?: unknown } | undefined;
   if (typeof p?.unitId !== 'string' || typeof p.pastimeId !== 'string') throw new Error('life/time_together needs { unitId, pastimeId }.');
   const reg = ctx.registries;
   const why = pastimeProblem(draft, reg, p.unitId, p.pastimeId);
   if (why) throw new Error(why);
-  const pastime = reg.pastimes.get(p.pastimeId) as unknown as PastimeEntry;
-  const locationId = pastimeLocation(draft, reg, pastime, p.unitId) as string; // `pastimeProblem` found one
-  const events = runActivity(draft, ctx, { activityId: String(pastimeActivity(reg)!.id), companionId: p.unitId });
-  if (!events.some((e) => e.type === 'activity_done')) return events;
-  ensureLife(draft).pending = { unitId: p.unitId, pastimeId: p.pastimeId, locationId, day: draft.day, slot: draft.slot };
-  return [...events, { type: 'pastime_set', unitId: p.unitId, pastimeId: p.pastimeId }];
+  const events = runActivity(draft, ctx, {
+    activityId: String(pastimeActivity(reg)!.id), companionId: p.unitId, pastimeId: p.pastimeId,
+    ...(p.wardenJudged !== undefined ? { wardenJudged: p.wardenJudged } : {}),
+  });
+  return draft.life?.pending?.pastimeId === p.pastimeId ? [...events, { type: 'pastime_set', unitId: p.unitId, pastimeId: p.pastimeId }] : events;
+});
+
+// A quiet hour that has been done (by `life/time_together`, or by an override answered later) stores its pastime for the scene that follows. The
+// pastime is checked for the companion who is really there: one that does not fit leaves a plain scene (the slot is held either way) and no stale wait.
+registerActivityHook((draft, ctx, done) => {
+  if (ctx.registries.activities.get(done.activityId)?.pastime !== true || done.companionId === undefined || done.pastimeId === undefined) return [];
+  if (draft.life) delete draft.life.pending;
+  const pastime = ctx.registries.pastimes.get(done.pastimeId) as unknown as PastimeEntry | undefined;
+  if (!pastime || pastimeProblem(draft, ctx.registries, done.companionId, done.pastimeId) !== null) return [];
+  const locationId = pastimeLocation(draft, ctx.registries, pastime, done.companionId);
+  if (locationId === null) return [];
+  ensureLife(draft).pending = { unitId: done.companionId, pastimeId: done.pastimeId, locationId, day: draft.day, slot: draft.slot };
+  return [];
 });
 
 /**

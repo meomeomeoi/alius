@@ -2479,7 +2479,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           toast('warn', why);
           return false;
         }
-        const events = api.dispatch({ type: 'life/time_together', payload: { unitId, pastimeId } }, { expectChatId: chatId });
+        const action: Action = { type: 'life/time_together', payload: { unitId, pastimeId } };
+        const events = warden.needsJudge(action) ? await warden.judgeThen(action) : api.dispatch(action, { expectChatId: chatId }); // P13: her optional judge, like any activity
         const failed = events.find((e) => e.type === 'error');
         if (failed) {
           toast('error', String(failed.message ?? failed.code));

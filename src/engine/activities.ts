@@ -28,6 +28,8 @@ export interface ActivityRequest {
   countermandChecked?: boolean;
   /** P13: the warden's override was answered (or there is none to roll): run the activity without asking her again. */
   wardenChecked?: boolean;
+  /** P14c: the pastime of a quiet hour (the activity that carries `pastime: true`); it travels with the request so an override answered later runs the same pastime. */
+  pastimeId?: string;
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
@@ -40,6 +42,8 @@ export interface ActivityDone {
   companionId?: string;
   /** Living units on the active roster when the activity ran. */
   rosterIds: string[];
+  /** P14c: the pastime the request named (a quiet hour). */
+  pastimeId?: string;
 }
 /** Runs after the activity's effects and before its slot is consumed; the events it returns join the activity's events. */
 export type ActivityHook = (draft: CampaignState, ctx: EngineCtx, done: ActivityDone) => EngineEvent[];
@@ -296,6 +300,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   });
   const done: ActivityDone = {
     activityId: a.id, ...(companion ? { companionId: companion.id } : {}), rosterIds: activeRosterUnits(draft).map((u) => u.id),
+    ...(typeof req.pastimeId === 'string' ? { pastimeId: req.pastimeId } : {}),
   };
   for (const hook of activityHooks) events.push(...hook(draft, ctx, done));
   if (a.startsScene === true) {

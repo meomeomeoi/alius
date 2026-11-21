@@ -57,7 +57,7 @@ function pastimeDirective(state: CampaignState, reg: Registries, unit: Unit): Di
   const meeting = state.scene?.pastime;
   const pastime = meeting?.unitId === unit.id ? (reg.pastimes.get(meeting.id) as unknown as PastimeEntry | undefined) : undefined;
   if (!pastime) return null;
-  const hobby = pastime.hobby === true ? keenestHobby(reg, unit) : undefined;
+  const hobby = pastime.hobby === true ? keenestHobby(state, reg, unit) : undefined;
   const label = hobby ? (reg.hobbies.get(hobby.id) as unknown as HobbyEntry | undefined)?.label : undefined;
   const what = clean(plainText(pastime.description)).replace(/\.$/, '');
   const hers = label !== undefined ? clean(label) : clean(pastime.herActivity);

@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { pastimeActivity } from '../life/types';
 import type { CampaignState } from '../state/types';
 import { overrideOpen, wardenOf, type WardenOrder } from './state';
 
@@ -32,13 +33,17 @@ export function overrideInput(state: CampaignState, reg: Registries, participant
 }
 
 /** The order an out-of-combat action stands for, or null for any other action (a combat order never goes to the judge). */
-export function orderOfAction(action: { type: string; payload?: unknown }): WardenOrder | null {
+export function orderOfAction(action: { type: string; payload?: unknown }, reg?: Pick<Registries, 'activities'>): WardenOrder | null {
   const p = isObj(action.payload) ? action.payload : {};
   switch (action.type) {
     case 'activity/do':
       return typeof p.activityId === 'string'
         ? { kind: 'activity', activityId: p.activityId, ...(typeof p.companionId === 'string' ? { companionId: p.companionId } : {}), ...(Array.isArray(p.unitIds) ? { unitIds: strs(p.unitIds) } : {}) }
         : null;
+    case 'life/time_together': { // P14c: a quiet hour is the activity that carries `pastime: true`, with her as the companion
+      const activity = reg ? pastimeActivity(reg) : undefined;
+      return activity && typeof p.unitId === 'string' ? { kind: 'activity', activityId: String(activity.id), companionId: p.unitId } : null;
+    }
     case 'roster/set_active': return { kind: 'roster', activeIds: strs(p.activeIds) };
     case 'expedition/start': return { kind: 'expedition', ...(typeof p.missionId === 'string' ? { missionId: p.missionId } : {}), unitIds: strs(p.unitIds) };
     case 'dilemma/choose': return typeof p.index === 'number' ? { kind: 'dilemma', index: p.index } : null;

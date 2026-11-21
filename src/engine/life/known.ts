@@ -3,7 +3,6 @@ import type { CampaignState, Fact, HobbyState, LifeMode, Temperament } from '../
 import { TUNING } from '../tuning';
 import { UNTOLD_TAG, lifeMode, temperamentOf } from './state';
 import { plainText } from './facts';
-import { commanderHobbyWord } from './meetings';
 import { heardOpinions } from './opinions';
 import type { HobbyEntry, LifeEventEntry, OpinionTopicEntry } from './types';
 
@@ -37,6 +36,14 @@ export function hobbyUntold(state: Pick<CampaignState, 'memory' | 'life'>, unitI
   const fact = factOf(state, unitId, ['hobby', hobbyId, 'started']);
   if (fact !== undefined && untold(fact)) return true;
   return (state.life?.queue ?? []).some((q) => q.unitId === unitId && q.kind === 'hobby' && q.ref === hobbyId && q.what === 'started');
+}
+
+/** How well the commander has learned a hobby from her, as a word (the number has no mechanical value and is never shown): 10, 30 and 60 are the steps. */
+export function commanderHobbyWord(skill: number): 'none' | 'a beginner' | 'getting there' | 'good at it' {
+  if (skill < 10) return 'none';
+  if (skill < 30) return 'a beginner';
+  if (skill < 60) return 'getting there';
+  return 'good at it';
 }
 
 /** How keen she is, as a word: `keen` from the interest at which a hobby is, `steady` below that, `cooling` and `put away` for the cycle's other two states. */

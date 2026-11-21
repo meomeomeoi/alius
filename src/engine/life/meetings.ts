@@ -9,6 +9,7 @@ import { applyEventToUnit } from '../relations/effects';
 import type { CampaignState, SceneRecord, Slot, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { practise } from './hobbies';
+import { commanderHobbyWord, hobbyUntold } from './known';
 import { requiresHold } from './events';
 import { takesPart, unitOf } from './places';
 import { lifeMode, temperamentOf } from './state';
@@ -24,19 +25,17 @@ import { pastimeActivity, type HobbyEntry, type PastimeEntry } from './types';
 const pastimesOf = (reg: Pick<Registries, 'pastimes'>): PastimeEntry[] => [...reg.pastimes.values()] as unknown as PastimeEntry[];
 const hobbyEntry = (reg: Pick<Registries, 'hobbies'>, id: string): HobbyEntry | undefined => reg.hobbies.get(id) as unknown as HobbyEntry | undefined;
 
-/** How well the commander has learned a hobby from her, as a word (the number has no mechanical value and is never shown): 10, 30 and 60 are the steps. */
-export function commanderHobbyWord(skill: number): 'none' | 'a beginner' | 'getting there' | 'good at it' {
-  if (skill < 10) return 'none';
-  if (skill < 30) return 'a beginner';
-  if (skill < 60) return 'getting there';
-  return 'good at it';
-}
+export { commanderHobbyWord };
 
-/** Her keenest active hobby: the highest interest, a tie going to the one that comes first in the registry. Undefined with none active. */
-export function keenestHobby(reg: Pick<Registries, 'hobbies'>, unit: Pick<Unit, 'hobbies'>): NonNullable<Unit['hobbies']>[number] | undefined {
+/**
+ * Her keenest active hobby **that the commander knows she has**: the highest interest, a tie going to the one that comes first in the registry.
+ * A hobby she took up off-screen and has not told is never the one she shows (it would leak through the pastime's place and directive).
+ * Undefined with none.
+ */
+export function keenestHobby(state: Pick<CampaignState, 'memory' | 'life'>, reg: Pick<Registries, 'hobbies'>, unit: Pick<Unit, 'id' | 'hobbies'>): NonNullable<Unit['hobbies']>[number] | undefined {
   const order = [...reg.hobbies.keys()];
   const rank = (id: string): number => { const i = order.indexOf(id); return i < 0 ? order.length : i; };
-  return (unit.hobbies ?? []).filter((h) => h.state === 'active').sort((a, b) => b.interest - a.interest || rank(a.id) - rank(b.id))[0];
+  return (unit.hobbies ?? []).filter((h) => h.state === 'active' && !hobbyUntold(state, unit.id, h.id)).sort((a, b) => b.interest - a.interest || rank(a.id) - rank(b.id))[0];
 }
 
 /** Whether a scene location is open in a slot (a location with no `slots` is always open). */
@@ -48,16 +47,16 @@ function openAt(reg: Pick<Registries, 'locations'>, locationId: string, slot: Sl
 }
 
 /** The scene locations a pastime may be held at: its own, or, for the pastime that is her hobby, those of her keenest active hobby. */
-function candidateLocations(reg: Registries, pastime: PastimeEntry, unit: Unit | undefined): string[] {
+function candidateLocations(state: CampaignState, reg: Registries, pastime: PastimeEntry, unit: Unit | undefined): string[] {
   if (pastime.hobby !== true) return pastime.locations;
-  const h = unit ? keenestHobby(reg, unit) : undefined;
+  const h = unit ? keenestHobby(state, reg, unit) : undefined;
   return h ? hobbyEntry(reg, h.id)?.locations ?? [] : [];
 }
 
 /** The scene location of a pastime today: the first of its locations that is open in the current slot, or null. `unitId` is needed for her hobby. */
 export function pastimeLocation(state: CampaignState, reg: Registries, pastime: PastimeEntry, unitId?: string): string | null {
   const unit = unitId !== undefined ? unitOf(state, unitId) : undefined;
-  return candidateLocations(reg, pastime, unit).find((id) => openAt(reg, id, state.slot)) ?? null;
+  return candidateLocations(state, reg, pastime, unit).find((id) => openAt(reg, id, state.slot)) ?? null;
 }
 
 /** Whether an open desertion is about her (she is about to walk out). */
@@ -85,7 +84,7 @@ export function pastimeProblem(
   const slot = at?.slot ?? state.slot;
   if (!pastime.slots.includes(slot)) return `${pastime.label} is not for the ${slot}.`;
   if (at !== undefined) {
-    if (!candidateLocations(reg, pastime, unit).includes(at.locationId)) return `${pastime.label} is not held here.`;
+    if (!candidateLocations(state, reg, pastime, unit).includes(at.locationId)) return `${pastime.label} is not held here.`;
   } else {
     if (pastimeLocation(state, reg, pastime, unitId) === null) return `Nowhere is open for ${pastime.label} now.`;
     const activity = pastimeActivity(reg);
@@ -99,7 +98,7 @@ export function pastimeProblem(
   if (req?.afterRun === true && !requiresHold(state, reg, unitId, { afterRun: {} }, state.day)) return `${pastime.label} is for after a run.`;
   if (req?.firstSlot === true && slot !== 'morning') return `${pastime.label} is for the first slot of the day.`;
   if (req?.hobby !== undefined && !requiresHold(state, reg, unitId, { hobby: req.hobby }, state.day)) return `${pastime.label} needs a hobby ${name} does not have.`;
-  if (pastime.hobby === true && keenestHobby(reg, unit) === undefined) return `${name} has no hobby to show.`;
+  if (pastime.hobby === true && keenestHobby(state, reg, unit) === undefined) return `${name} has no hobby to show.`;
   return null;
 }
 
@@ -141,7 +140,7 @@ export function finishMeeting(draft: CampaignState, ctx: EngineCtx, scene: Pick<
   const mine = (draft.life.units[unit.id] ??= { last: {} });
   mine.meetingDay = draft.day;
   if (pastime?.hobby !== true) return events;
-  const keen = keenestHobby(reg, unit);
+  const keen = keenestHobby(draft, reg, unit);
   const entry = keen ? hobbyEntry(reg, keen.id) : undefined;
   if (!keen || !entry) return events;
   events.push(...practise(draft, reg, unit.id, keen.id, draft.day, draft.slot, { push: true, caused: true }));

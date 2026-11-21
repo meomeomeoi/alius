@@ -203,7 +203,7 @@ export function createWarden(deps: WardenDeps): WardenController {
 
   function needsJudge(action: Action): boolean {
     const s = state();
-    return s !== null && deps.settings().wardenJudge === true && orderOfAction(action) !== null && personalOf(s).length > 0 && s.combat === undefined;
+    return s !== null && deps.settings().wardenJudge === true && orderOfAction(action, deps.registries()) !== null && personalOf(s).length > 0 && s.combat === undefined;
   }
 
   /** The orders being judged, by action type (the site's key): `build` rebuilds the input from the order and the state. */
@@ -214,7 +214,7 @@ export function createWarden(deps: WardenDeps): WardenController {
     build(actionType) {
       const s = state();
       const action = judging.get(actionType);
-      const order = action ? orderOfAction(action) : null;
+      const order = action ? orderOfAction(action, deps.registries()) : null;
       if (!s || !action || !order || !needsJudge(action)) return { expired: 'There is nothing to judge.' };
       return { order: describeOrder(s, deps.registries(), order), expectations: personalOf(s).map((x) => ({ id: x.id, text: x.text! })) };
     },
@@ -226,7 +226,7 @@ export function createWarden(deps: WardenDeps): WardenController {
     const expect = chatId();
     const send = (a: Action): EngineEvent[] => (deps.act ? deps.act(a) : deps.app.dispatch(a, { expectChatId: expect }));
     const s = state();
-    const order = orderOfAction(action);
+    const order = orderOfAction(action, deps.registries());
     if (!s || !order || !needsJudge(action)) return send(action);
     judging.set(action.type, action);
     let judged: WardenJudged | null = null;

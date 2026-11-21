@@ -34,7 +34,8 @@ const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/
 const ENDED_OK_PREFIXES = ['debug/', 'campaign/epilogue', 'generation/'];
 /** P13: allowed while a combat or an expedition is open (the death that closes the campaign, and its epilogue, must always be able to run). */
 const ALWAYS_OPEN = ['warden/no_snapshot', 'campaign/epilogue', 'warden/answer', 'generation/failed', 'generation/close', 'generation/expire'];
-const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start', 'intrigue/act'];
+/** P14c: `life/time_together` spends a slot through the activity, so it is refused like `activity/*` (`life/pastime_in_scene` spends none: it only labels a scene that is already open, and refusing it would strand that scene). */
+const BLOCKED_BY_DILEMMA = ['activity/', 'life/time_together', 'calendar/consume_slot', 'scene/start', 'expedition/start', 'intrigue/act'];
 
 /** P13: runs another action's handler on the same draft (the warden's COMPLY and DEFY re-run the order that was overridden). Throws when the action is unknown. */
 export function runHandler(type: string, draft: CampaignState, payload: unknown, ctx: EngineCtx): EngineEvent[] {
