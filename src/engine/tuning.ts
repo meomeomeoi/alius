@@ -740,5 +740,9 @@ export const TUNING = Object.freeze({
     contestAt: 3,
     contestWindowDays: 14,
     contestImpunity: 5,
+    /** Favour (R7): clamped to ±`max`, and drawn toward 0 by `decayPerDay` each day. */
+    favour: Object.freeze({ max: 20, decayPerDay: 1 }),
+    /** Track xp (spec §6: tracks decay much slower than hold): after `idleDays` without a practice, `decayPerDay` xp a day. `AUTHOR TO TUNE`. */
+    tracks: Object.freeze({ idleDays: 14, decayPerDay: 0.1 }),
   }),
 });

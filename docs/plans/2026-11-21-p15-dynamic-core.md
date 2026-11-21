@@ -1099,7 +1099,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `addFavour(draft, unitId, n): void`;
   - `compatibilityOf` (stub returning 1 until Task 15 replaces it).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `hold at equal stops at 39`: 20 gains of +4 at `equal` end at 39.
   - `never below the frame floor`: at `role`, −50 → 40.
   - `pace`: +4 at `fast` → +5.6, at `slow` → +2.8 (the stored hold is a float; bands read it).
@@ -1108,10 +1108,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `addHold on an ineligible unit with no dynamic does nothing`.
   - `tracks`: xp 30 → level 2 with thresholds 10/30/…; `trackCap` is 0 with the category off.
   - `favour clamps to ±20`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/hold.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R8.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): hold, bands, tracks and favour`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/hold.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R8.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): hold, bands, tracks and favour`
 
 ---
 

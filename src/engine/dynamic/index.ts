@@ -6,3 +6,5 @@ export type {
   AftermathState, DynamicCampaign, DynamicRelation, DynamicSetup, HerReading, KnowledgeRecord, OpenClaim, OpenMilestone, OpenOffer, OpenReturn, UnitDynamicSetup,
 } from './state';
 export { forgetDynamic, holdsDynamic } from './forget';
+export { addFavour, addHold, bandIndex, compatibilityOf, frameEntry, holdBandOf } from './hold';
+export { addTrackXp, levelOfXp, trackCap, trackLevel, trackOpen } from './tracks';
