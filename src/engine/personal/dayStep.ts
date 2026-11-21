@@ -8,6 +8,7 @@ import { interceptDayStep } from './intercept';
 import { rollSecretNight, secretDayStep } from './secrets';
 import { tokenDayStep } from './tokens';
 import { wagerDayStep } from './wagers';
+import { forgetDynamic, holdsDynamic } from '../dynamic/forget';
 import { forgetPersonal, holdsPersonal } from './state';
 
 /**
@@ -22,5 +23,7 @@ export function personalDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
       if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
     }
   }
-  return [...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx), ...rollClaims(draft, ctx), ...tokenDayStep(draft, ctx), ...wagerDayStep(draft, ctx), ...secretDayStep(draft, ctx.registries), ...rollSecretNight(draft, ctx)];
+  // P15: the same for what the dynamic holds of her (a no-op without it; draws nothing)
+  const gone = draft.squad.filter((u) => !isLiving(u) && holdsDynamic(draft, u.id)).flatMap((u) => forgetDynamic(draft, u.id));
+  return [...gone, ...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx), ...rollClaims(draft, ctx), ...tokenDayStep(draft, ctx), ...wagerDayStep(draft, ctx), ...secretDayStep(draft, ctx.registries), ...rollSecretNight(draft, ctx)];
 }

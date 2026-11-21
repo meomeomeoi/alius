@@ -18894,6 +18894,43 @@ function forgetNotes(draft, unitId) {
   if (draft.notes) draft.notes.list = draft.notes.list.filter((n) => n.unitId !== unitId);
 }
 
+// src/engine/dynamic/forget.ts
+function holdsDynamic(state, unitId) {
+  const x = state.dynamic;
+  const rel = state.relations[unitId]?.dynamic;
+  if (rel !== void 0 && (rel.domains.length > 0 || rel.aftermath !== void 0 || rel.probes.pending !== void 0 || rel.leashBlock !== void 0)) return true;
+  if (x === void 0) return false;
+  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.queue.includes(unitId) || x.override?.unitId === unitId || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row3) => row3[unitId] !== void 0);
+}
+function forgetDynamic(draft, unitId) {
+  const events = [];
+  const x = draft.dynamic;
+  if (x !== void 0) {
+    x.open.claims = x.open.claims.filter((c) => c.unitId !== unitId);
+    x.open.milestones = x.open.milestones.filter((m) => m.unitId !== unitId);
+    x.open.offers = x.open.offers.filter((o) => o.unitId !== unitId);
+    if (x.open.returnOffer?.unitId === unitId) delete x.open.returnOffer;
+    delete x.knowledge[unitId];
+    for (const [observer, row3] of Object.entries(x.knowledge)) {
+      delete row3[unitId];
+      if (Object.keys(row3).length === 0) delete x.knowledge[observer];
+    }
+    x.queue = x.queue.filter((id) => id !== unitId);
+    if (x.override?.unitId === unitId) delete x.override;
+  }
+  const rel = draft.relations[unitId]?.dynamic;
+  if (rel !== void 0) {
+    rel.domains = [];
+    delete rel.probes.pending;
+    delete rel.leashBlock;
+    if (rel.aftermath !== void 0) {
+      events.push({ type: "aftermath_ended", unitId, id: rel.aftermath.id, kind: rel.aftermath.kind, reason: "gone" });
+      delete rel.aftermath;
+    }
+  }
+  return events;
+}
+
 // src/engine/leash/use.ts
 var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
@@ -19054,12 +19091,13 @@ function removeFromService(draft, unitId, status, ctx2) {
   forgetBonds(draft, unitId);
   forgetPower(draft, unitId);
   forgetPersonal(draft, unitId);
+  const gone3 = forgetDynamic(draft, unitId);
   forgetNotes(draft, unitId);
   forgetSpecial(draft, unitId);
   forgetWarden(draft, unitId);
-  if (!wasWarden) return [];
+  if (!wasWarden) return gone3;
   if (!ctx2) throw new Error("The warden leaves the service: removeFromService needs the engine context to open the investigation.");
-  return notifyWardenGone(draft, ctx2, status);
+  return [...gone3, ...notifyWardenGone(draft, ctx2, status)];
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -30211,7 +30249,8 @@ function personalDayStep(draft, ctx2) {
       if (!isLiving(unit3) && holdsPersonal(draft, unit3.id)) forgetPersonal(draft, unit3.id);
     }
   }
-  return [...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries), ...rollSecretNight(draft, ctx2)];
+  const gone3 = draft.squad.filter((u) => !isLiving(u) && holdsDynamic(draft, u.id)).flatMap((u) => forgetDynamic(draft, u.id));
+  return [...gone3, ...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries), ...rollSecretNight(draft, ctx2)];
 }
 
 // src/engine/actions/personal.ts

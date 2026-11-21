@@ -1065,17 +1065,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `forgetDynamic(draft, unitId): EngineEvent[]`. It is extended by later tasks (claims, overrides, knowledge, aftermaths); each later task adds its own assertion to this test file.
 
-- [ ] **Step 1: Write the failing test** `forgetDynamic clears every trace` (built from a hand-made state):
+- [x] **Step 1: Write the failing test** `forgetDynamic clears every trace` (built from a hand-made state):
   - her open claims, milestones, offers and return offer are gone;
   - the knowledge rows with her as observer or holder are gone;
   - she leaves the probe queue;
   - `state.dynamic.override` is gone if it is hers;
   - her own `Relation.dynamic` stays (history), but `domains` is `[]`;
   - an aftermath of hers ends with `aftermath_ended { reason: 'gone' }`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/forget.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): forget a removed holder`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/forget.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): forget a removed holder`
 
 ---
 

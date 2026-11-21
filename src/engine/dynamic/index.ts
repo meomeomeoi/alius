@@ -5,3 +5,4 @@ export { blankDynamic, blankReading, dynamicHash, dynamicOf, dynamicSaltOf, newD
 export type {
   AftermathState, DynamicCampaign, DynamicRelation, DynamicSetup, HerReading, KnowledgeRecord, OpenClaim, OpenMilestone, OpenOffer, OpenReturn, UnitDynamicSetup,
 } from './state';
+export { forgetDynamic, holdsDynamic } from './forget';
