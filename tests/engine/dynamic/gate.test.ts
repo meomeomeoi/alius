@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import { impunityOf } from '../../../src/engine/discipline/impunity';
-import { canHold, dynamicOn, ensureDynamic, holderCap, holdersAtPlay, mayHoldOf } from '../../../src/engine/dynamic/gate';
+import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap, holdersAtPlay, mayHoldOf } from '../../../src/engine/dynamic/gate';
 import { blankDynamic, dynamicHash, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Practice } from '../../../src/engine/dynamic/types';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -75,6 +75,29 @@ describe('canHold', () => {
     const off = world();
     off.content = { enabled: [] };
     expect(canHold(off, reg, ANN)).toMatch(/off/);
+  });
+
+  it('mayHold yes overrides inclination none', () => {
+    const s = world({ practice: { inclination: 'none' } });
+    expect(canHold(s, reg, ANN)).toMatch(/inclination/);
+    expect(effectiveInclination(s, ANN)).toBe('none');
+    s.dynamic!.setup.units[ANN] = { mayHold: 'yes' };
+    expect(canHold(s, reg, ANN)).toBeNull();
+    expect(effectiveInclination(s, ANN)).toBe('curious');
+    // yes changes nothing for a unit that has an inclination, and nothing for one without a profile
+    expect(effectiveInclination(world({ practice: { inclination: 'eager' } }), ANN)).toBe('eager');
+    s.dynamic!.setup.units[BEA] = { mayHold: 'yes' };
+    expect(effectiveInclination(s, BEA)).toBe('none');
+    expect(canHold(s, reg, BEA)).toMatch(/profile/);
+  });
+
+  it('auto with inclination none is not eligible, and no blocks an unseeded eager unit', () => {
+    const s = world({ practice: { inclination: 'none' } });
+    s.dynamic!.setup.units[ANN] = { mayHold: 'auto' };
+    expect(canHold(s, reg, ANN)).toMatch(/inclination/);
+    const eager = world({ practice: { inclination: 'eager' } });
+    eager.dynamic!.setup.units[ANN] = { mayHold: 'no' };
+    expect(canHold(eager, reg, ANN)).toMatch(/may not hold/);
   });
 
   it('tolerates passes with a dominant lead only', () => {

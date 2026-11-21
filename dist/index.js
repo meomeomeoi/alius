@@ -25220,6 +25220,11 @@ function dynamicOn(state, reg) {
 function mayHoldOf(state, unitId) {
   return state.dynamic?.setup.units[unitId]?.mayHold ?? "auto";
 }
+function effectiveInclination(state, unitId) {
+  const own = state.squad.find((u) => u.id === unitId)?.bond?.practice?.inclination;
+  if (own === void 0) return "none";
+  return own === "none" && mayHoldOf(state, unitId) === "yes" ? "curious" : own;
+}
 function holderCap(state) {
   const h2 = state.dynamic?.setup.holders;
   return h2 === void 0 ? 0 : h2 === "any" ? Infinity : h2;
@@ -25235,7 +25240,7 @@ function holdReason(state, reg, unitId, opts) {
   const unit3 = state.squad.find((u) => u.id === unitId);
   const may = mayHoldOf(state, unitId);
   if (may === "no") return "the setup says she may not hold";
-  if (view.inclination === "none" && !opts.seeded) return "her inclination is none";
+  if (effectiveInclination(state, unitId) === "none" && !opts.seeded) return "her inclination is none";
   const lead = bondOf(unit3)?.leadStyle ?? "balanced";
   const leads = Object.values(view.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
   if (!leads) return "no enabled practice she would lead in";

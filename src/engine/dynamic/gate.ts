@@ -12,7 +12,7 @@ import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
 import { practiceEnabled, practiceOf } from './profile';
 import { blankDynamic } from './state';
-import type { MayHold } from './types';
+import type { Inclination, MayHold } from './types';
 
 /** The one gate: the campaign has the block, holders are not 0, and a practice category is switched on. */
 export function dynamicOn(state: Pick<CampaignState, 'dynamic' | 'content'>, reg: Registries): boolean {
@@ -22,6 +22,16 @@ export function dynamicOn(state: Pick<CampaignState, 'dynamic' | 'content'>, reg
 /** What the setup says about her; `auto` leaves it to her inclination. */
 export function mayHoldOf(state: Pick<CampaignState, 'dynamic'>, unitId: string): MayHold {
   return state.dynamic?.setup.units[unitId]?.mayHold ?? 'auto';
+}
+
+/**
+ * Her inclination as the dynamic reads it (spec §15.1): `curious` when the setup says `yes` and her profile says `none`, else the profile's
+ * own; `none` when she has no practice section. Probing and `canHold` both ask this, never the raw field.
+ */
+export function effectiveInclination(state: Pick<CampaignState, 'dynamic' | 'squad'>, unitId: string): Inclination {
+  const own = state.squad.find((u) => u.id === unitId)?.bond?.practice?.inclination; // P14b: raw profile (inclination never drifts)
+  if (own === undefined) return 'none';
+  return own === 'none' && mayHoldOf(state, unitId) === 'yes' ? 'curious' : own;
 }
 
 /** How many may hold at once: `any` is unlimited; no block is none. */
@@ -38,7 +48,7 @@ export function holdersAtPlay(state: Pick<CampaignState, 'relations' | 'squad'>)
 
 /**
  * Why a unit may not hold (R2), or `null` when she may: the dynamic is off, she has no profile, the setup says no, she has no inclination
- * (unless seeded), no category she would lead in, a lead style too weak for her Impunity, or the cap is reached. `ignoreCap` leaves the
+ * (unless seeded, or the setup says `yes`), no category she would lead in, a lead style too weak for her Impunity, or the cap is reached. `ignoreCap` leaves the
  * last one out (a seed and a unit that already holds are not turned away by it). Reads only; draws nothing.
  */
 export function canHold(state: CampaignState, reg: Registries, unitId: string, opts: { ignoreCap?: boolean } = {}): string | null {
@@ -53,7 +63,7 @@ export function holdReason(state: CampaignState, reg: Registries, unitId: string
   const unit = state.squad.find((u) => u.id === unitId)!;
   const may = mayHoldOf(state, unitId);
   if (may === 'no') return 'the setup says she may not hold';
-  if (view.inclination === 'none' && !opts.seeded) return 'her inclination is none';
+  if (effectiveInclination(state, unitId) === 'none' && !opts.seeded) return 'her inclination is none';
   const lead = bondOf(unit)?.leadStyle ?? 'balanced';
   const leads = Object.values(view.categories).some((c) => c.as === 'craves' || c.as === 'enjoys' || (c.as === 'tolerates' && lead === 'dominant'));
   if (!leads) return 'no enabled practice she would lead in';

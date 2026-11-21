@@ -1,4 +1,4 @@
-export { canHold, dynamicOn, ensureDynamic, holdersAtPlay, holderCap, holdReason, mayHoldOf } from './gate';
+export { canHold, dynamicOn, effectiveInclination, ensureDynamic, holdersAtPlay, holderCap, holdReason, mayHoldOf } from './gate';
 export { practiceCategories, practiceEnabled, practiceOf } from './profile';
 export { applySeeds, seedHold, seedProblem } from './seeds';
 export { blankDynamic, blankReading, dynamicHash, dynamicOf, dynamicSaltOf, newDynamicCampaign } from './state';
