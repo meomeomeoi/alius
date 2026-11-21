@@ -253,6 +253,10 @@ Read by `fairness` (P15 §16.7), weighted by style and mood (`volatility`, P14c)
 
 - `Relation.dynamic` (frame, domains, tracks, `recent`, favour), the capability readers, holder eligibility, the frequency setting, `knows_dynamic` facts and the reaction table, compromat writers, `protocol_slip`.
 
+## Left to this package by P15 (user ruling, 2026-11-21)
+
+- **Threat sources for her reading of the commander's motive.** P15 (§16.4, §16.9) reads a yield as `fear` when a threat came in the same exchange, which is what reaches the `cowed` region. No 0.1 intent can say "she threatened the commander" (`threatened` and `coerced` have the commander as the actor), so P15 counts only `commander_punished` and `commander_leashed` (`THREAT_EVENTS` in `src/engine/dynamic/reading.ts`, read by `threatIn(events)`). In play, fear and `cowed` stay quiet until this package lands. **P16 must make every one of her threats a threat source**, and add each one to `THREAT_EVENTS`: the slap and physical discipline (R.2 and the slap), her punishments issued or carried out (`punishment_issued`, `punishment_answered`), her discipline after a refusal, and any threat she voices (a new intent reported by `intent_extract`, offered only while she holds a dynamic). A test should show that a yield right after each of them moves the `fear` weight and that a run of them reaches `cowed`.
+
 ## Interfaces already provided by P10d (implemented — use, do not rebuild)
 
 - **The plan** (`planRooms`, `src/engine/basePlan.ts`): every place on two floors and the roof, with doors. **Affordances live on plan rooms** (`affordances`: `desk`, `bunk`, `lock`, `line`, `curtain`, `cupboard`, `crowd`, `exposed`, `window`, `water`, `mirror` in the core data); read them there, not on `hubRooms` / `locations`. A new place (shower block, briefing room, corridor) already exists as a closed plan room: give it a hub room and it opens.
