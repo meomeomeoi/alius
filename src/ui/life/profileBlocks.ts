@@ -172,10 +172,12 @@ export function renderOpinionsEditor(host: HTMLElement, ctx: OpinionsEditorCtx):
       select, input,
       ctx.onRemove ? control('[ REMOVE ]', { 'data-remove-opinion': topicId }, `opinionTopics:${topicId}`, live, ctx.editable, () => ctx.onRemove!(topicId)) : null));
   }
+  // the picker lists every topic she holds no opinion on: drawn only while editing, or it would tell which topics hold an unvoiced one
+  if (!ctx.editable) return;
   const free = [...reg.opinionTopics.values()].filter((e) => !(e.id in ctx.opinions));
   const full = ctx.max !== undefined && Object.keys(ctx.opinions).length >= ctx.max;
   host.append(h('div', { class: 'alius-life-row', 'data-add': 'opinion' },
-    picker('Add an opinion', { 'data-add-opinion': unit.id }, ctx.editable && !full && free.length > 0,
+    picker('Add an opinion', { 'data-add-opinion': unit.id }, !full && free.length > 0,
       [option('', '(add an opinion)'), ...free.map((e) => option(e.id, String(e.label)))],
       (id) => {
         const t = topic(id) as OpinionTopicEntry;

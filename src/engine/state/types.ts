@@ -296,7 +296,8 @@ export interface LifeState {
   news: Array<{ itemId: string; unitId: string; until: number; passing?: true }>;
   /** The last 7 days of event kinds, for the squad-wide gap. */
   kinds: Array<{ kind: string; unitId: string; day: number }>;
-  deaths: Array<{ unitId: string; day: number; grunt: boolean }>;
+  /** `old`: she was already dead when life was turned on, so the day is not the day she died (no event reads it as recent). */
+  deaths: Array<{ unitId: string; day: number; grunt: boolean; old?: true }>;
   busy: Array<{ unitId: string; slot: number; activityId?: string }>;
   shortageDay?: number;
   /** A `time_together` waiting for its scene. */

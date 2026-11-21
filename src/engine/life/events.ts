@@ -8,7 +8,7 @@ import { rationsOf } from '../power/state';
 import { TUNING } from '../tuning';
 import type { CampaignState, Slot, Unit } from '../state/types';
 import { writeLifeFact, plainText } from './facts';
-import { newHobby } from './hobbies';
+import { takeUpHobby } from './hobbies';
 import { enqueue } from './news';
 import { lifeChance, lifeHash, lifeMode, temperamentOf } from './state';
 import type { LifeEventEntry, LifeRequires, LifeShare } from './types';
@@ -85,8 +85,8 @@ export function requiresHold(state: CampaignState, reg: Registries, unitId: stri
       case 'trustMin': ok = rel !== undefined && rel.trust >= (value as number); break;
       case 'romantic': ok = bondTierOf(state, reg, unitId) === 'romantic'; break;
       case 'leaderNotHer': { const leader = leaderOf(state); ok = leader !== null && leader.id !== unitId; break; }
-      case 'gruntDiedDays': ok = (life?.deaths ?? []).some((d) => d.grunt && day - d.day >= 0 && day - d.day <= (value as number)); break;
-      case 'deathAgo': ok = (life?.deaths ?? []).some((d) => day - d.day >= (value as number) && (day - d.day) % (value as number) === 0); break;
+      case 'gruntDiedDays': ok = (life?.deaths ?? []).some((d) => d.old !== true && d.grunt && day - d.day >= 0 && day - d.day <= (value as number)); break;
+      case 'deathAgo': ok = (life?.deaths ?? []).some((d) => d.old !== true && day - d.day >= (value as number) && (day - d.day) % (value as number) === 0); break;
       case 'rumour': ok = state.rumors.length > 0; break;
       case 'rationsShort': ok = rationsOf(state) !== 'equal' || (life?.shortageDay !== undefined && day - life.shortageDay <= TUNING.life.shortageDays); break;
       case 'sparring': {
@@ -194,16 +194,7 @@ function applyBecomes(draft: CampaignState, reg: Registries, unitId: string, ent
       // a push: the interest rises (the plateau a push breaks is the practice pass's)
       have.interest = Math.min(100, have.interest + TUNING.life.interest.push);
     } else {
-      unit.hobbies!.push(newHobby(becomes.hobby, day));
-      events.push({ type: 'hobby_started', unitId, hobbyId: becomes.hobby });
-      const active = unit.hobbies!.filter((h) => h.state === 'active');
-      if (active.length > TUNING.life.maxActive) {
-        // a fourth active pushes the one she cares least about to cooling (ties: the older one)
-        const least = active.filter((h) => h.id !== becomes.hobby).sort((a, b) => a.interest - b.interest)[0];
-        least.state = 'cooling';
-        least.coolingSince = day;
-        events.push({ type: 'hobby_cooling', unitId, hobbyId: least.id });
-      }
+      events.push({ type: 'hobby_started', unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit, becomes.hobby, day));
     }
   }
   if (becomes.opinionTopic !== undefined && reg.opinionTopics.has(becomes.opinionTopic) && unit.opinions?.[becomes.opinionTopic] === undefined) {

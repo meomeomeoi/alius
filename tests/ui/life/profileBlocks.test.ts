@@ -147,7 +147,7 @@ describe('the dossier blocks (P14c)', () => {
     click(unit.querySelector(`[data-remove-hobby="${h0}"]`));
     change(unit.querySelector('[data-add-hobby]'), ids('hobbies')[7]);
     change(unit.querySelector(`[data-opinion-position="${t0.id}"]`), posIds(t0)[1]);
-    change(unit.querySelector('[data-add-opinion]'), ids('opinionTopics')[5]);
+    expect(unit.querySelector('[data-add-opinion]')).toBeNull(); // not drawn while locked
     expect(calls).toEqual([]);
     for (const el of unit.querySelectorAll('.alius-life-profile .alius-option')) expect(el.getAttribute('data-analyze'), el.outerHTML.slice(0, 80)).not.toBeNull();
   });
@@ -188,11 +188,14 @@ describe('the dossier blocks (P14c)', () => {
     expect(on.unit.querySelector(`[data-opinion="${on.t1.id}"]`)).toBeNull();
     expect(on.unit.textContent).not.toContain('Secret words.');
     expect(on.unit.querySelector('.alius-life-profile')!.innerHTML).not.toContain('Secret words.');
+    expect(on.unit.querySelector('.alius-life-profile')!.innerHTML).not.toContain(on.t1.id); // nor the topic she holds it on (no picker to diff)
+    expect(on.unit.querySelector('[data-add-opinion]')).toBeNull();
     document.body.innerHTML = '';
     const off = dossier({ editLock: false });
     expect(off.unit.querySelector(`[data-aptitude="high"][data-id="${off.h2}"]`)).not.toBeNull();
     expect(off.unit.querySelector('[data-add-aptitude="low"]')).not.toBeNull();
     expect(off.unit.querySelector(`[data-opinion="${off.t1.id}"]`)).not.toBeNull();
+    expect(off.unit.querySelector('[data-add-opinion]')).not.toBeNull();
   });
 
   it('renders no number: skill is a count of milestones as marks, interest a word', () => {

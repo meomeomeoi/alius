@@ -1,9 +1,9 @@
 import { registerActivityHook } from '../activities';
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
-import { lifeDayStep, noteBusy } from '../life/dayStep';
+import { lifeDayStep, noteBusy, recordDeaths } from '../life/dayStep';
 import { newHobby, seedLife } from '../life/hobbies';
-import { LIFE_MODES, TEMPERAMENT_FIELDS, ensureLife, lifeMode, temperamentOf, temperamentProblems } from '../life/state';
+import { LIFE_MODES, TEMPERAMENT_FIELDS, ensureLife, temperamentOf, temperamentProblems } from '../life/state';
 import type { OpinionTopicEntry } from '../life/types';
 import { aptitudeProblems } from '../setup';
 import { TUNING } from '../tuning';
@@ -19,11 +19,15 @@ import type { LifeMode, Opinion, Temperament, Unit } from '../state/types';
 registerAction('life/set_frequency', (draft, payload, ctx) => {
   const mode = (payload as { mode?: unknown } | undefined)?.mode;
   if (typeof mode !== 'string' || !LIFE_MODES.includes(mode as LifeMode)) throw new Error('Life events must be off, rare, normal or often.');
-  const wasOff = lifeMode(draft) === 'off';
+  const first = draft.life === undefined && mode !== 'off';
   draft.settings.lifeEvents = mode;
   if (mode !== 'off') ensureLife(draft);
-  // the hobbies she starts with get their starting skill the first time life is on (the same call that seeds a built campaign)
-  if (wasOff && mode !== 'off') seedLife(draft, ctx.registries);
+  if (first) {
+    // life exists from now on: the hobbies she starts with get their starting skill (only this once, so a hobby taken up since is never one),
+    // and whoever was already dead is not a recent death
+    recordDeaths(draft, true);
+    seedLife(draft, ctx.registries);
+  }
   return [{ type: 'life_frequency_set', mode }];
 });
 

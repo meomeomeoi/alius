@@ -8,7 +8,7 @@ import { livingUnits } from '../economy';
 import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
-import { newHobby, seedLife } from '../life/hobbies';
+import { seedLife, takeUpHobby } from '../life/hobbies';
 import { TUNING } from '../tuning';
 import { refundTree } from '../progression';
 import { temperamentOf } from '../life/state';
@@ -87,7 +87,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   });
   if (errors.length > 0) throw new Error(errors.join('; '));
 
-  const extra: Array<{ type: 'unit_respec'; unitId: string; refunded: number }> = [];
+  const extra: Array<{ type: string; [k: string]: unknown }> = [];
   if (patch.roleId !== undefined && patch.roleId !== unit.roleId) {
     // the old role's nodes are not in the new tree: give their points back first, free (a role change is not a paid respec)
     if (unit.unlockedNodes.length > 0 || unit.loadout !== undefined) {
@@ -148,11 +148,10 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     else delete unit.aptitudes;
   }
   if (patch.hobbies !== undefined && unit.kind === 'named') {
-    const have = unit.hobbies ?? [];
-    const added = patch.hobbies.filter((id) => !have.some((h) => h.id === id)).map((id) => newHobby(id, draft.day));
-    // a re-sync adds starting hobbies; it never deletes a hobby or its progress
-    if (have.length + added.length > 0) unit.hobbies = [...have, ...added];
-    if (added.length > 0) seedLife(draft, ctx.registries);
+    // a re-sync adds starting hobbies (past three active the coolest goes to cooling); it never deletes a hobby or its progress
+    const added = patch.hobbies.filter((id) => !(unit.hobbies ?? []).some((h) => h.id === id));
+    for (const id of added) extra.push(...takeUpHobby(unit, id, draft.day));
+    if (added.length > 0) seedLife(draft, ctx.registries, { unitId: unit.id, hobbyIds: added });
   }
   if (patch.opinions !== undefined && unit.kind === 'named') {
     // only a strong opinion that was never voiced and never moved is the card's to replace; the rest is hers now
@@ -218,7 +217,7 @@ registerAction('squad/add_named', (draft, payload, ctx) => {
   }
   draft.roster.activeIds = active;
   draft.squad.push(unit);
-  seedLife(draft, reg); // P14c: her starting skills, when life is on (a no-op otherwise)
+  seedLife(draft, reg, { unitId: unit.id }); // P14c: her starting skills, when life is on (a no-op otherwise); nobody else's
   draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
   return [{ type: 'unit_joined', unitId: unit.id, kind: 'named' }];
 });

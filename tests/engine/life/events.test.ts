@@ -618,6 +618,30 @@ describe('the bookkeeping', () => {
     expect(s.life!.deaths).toEqual([{ unitId: CAT, day: DAY, grunt: false }, { unitId: DEE, day: DAY, grunt: true }]);
   });
 
+  it('soldiers already dead when life is turned on are old deaths: no recent loss, no anniversary', () => {
+    const s = world(null);
+    s.squad[3].kind = 'grunt';
+    s.squad[3].status = 'dead';
+    const on = run(s, reg, { type: 'life/set_frequency', payload: { mode: 'normal' } }).state;
+    expect(on.life!.deaths).toEqual([{ unitId: DEE, day: DAY, grunt: true, old: true }]);
+    step(on);
+    on.day = DAY + 3;
+    expect(holds(on, { gruntDiedDays: 7 })).toBe(false);
+    on.day = DAY + 30;
+    expect(holds(on, { deathAgo: 30 })).toBe(false);
+    on.day = DAY + 31;
+    on.squad[2].status = 'dead'; // a death after life began is recorded as usual
+    step(on);
+    expect(on.life!.deaths.at(-1)).toEqual({ unitId: CAT, day: DAY + 31, grunt: false });
+    expect(holds(on, { deathAgo: 30 }, ANN, DAY + 61)).toBe(true);
+    // the setting written without the action: the first day step does the same
+    const raw = world(null);
+    raw.settings.lifeEvents = 'normal';
+    raw.squad[3].status = 'dead';
+    step(raw);
+    expect(raw.life!.deaths).toEqual([{ unitId: DEE, day: DAY, grunt: false, old: true }]);
+  });
+
   it('a shortage at the day end is noted (today, from the upkeep that just ran)', () => {
     const s = world();
     s.calendar.shortageStreak = 1;

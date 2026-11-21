@@ -217,7 +217,11 @@ describe('squad/resync of hobbies and opinions', () => {
     const h = r.state.squad[0].hobbies!;
     expect(h.map((x) => x.id)).toEqual([a, b, c, d]);
     expect(h[0].skill).toBe(55);
-    expect(h[3]).toMatchObject({ id: d, state: 'active' });
+    // she had three active: the fourth starts active and the one she cares least about is put to cooling (never more than three active)
+    expect(h.filter((x) => x.state === 'active')).toHaveLength(3);
+    expect(h[3]).toMatchObject({ id: d, state: 'active', skill: expect.any(Number) });
+    expect(h.filter((x) => x.state === 'cooling')).toHaveLength(1);
+    expect(ofType(r.events, 'hobby_cooling')).toHaveLength(1);
     expect(r.state.squad[0].aptitudes).toEqual({ high: [d, e], low: [a, b] });
     expect(ofType(r.events, 'unit_resynced')[0].sections).toEqual(['hobbies']);
   });
@@ -245,4 +249,45 @@ it('a campaign built without life carries no new field', () => {
   const s = campaign(reg, 2);
   expect(s.life).toBeUndefined();
   for (const u of s.squad) for (const k of ['hobbies', 'aptitudes', 'opinions']) expect(k in u).toBe(false);
+});
+
+describe('only a starting hobby is seeded', () => {
+  const [a, , , d, e] = [0, 1, 2, 3, 4].map((i) => () => hobbyIds()[i]);
+  const addNamed = (s: CampaignState) => {
+    s.world.incomingUnits = 1;
+    return run(s, reg, { type: 'squad/add_named', payload: { unit: unitSetup('Fay', { hobbies: [d()] }) } });
+  };
+
+  it('a recruit is seeded alone: another woman\'s new hobby stays at 0 after squad/add_named', () => {
+    const s = lifeCampaign();
+    s.squad[1].hobbies!.push({ id: e(), skill: 0, interest: 50, state: 'cooling', since: 3, milestones: [] }); // taken up since, e.g. by an event
+    s.squad[1].hobbies = s.squad[1].hobbies!.map((h) => (h.id === e() ? { ...h, state: 'active' as const } : h)).slice(0, 3);
+    const r = addNamed(s);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.squad[1].hobbies!.find((h) => h.id === e())).toMatchObject({ skill: 0, milestones: [] });
+    const fay = r.state.squad.at(-1)!;
+    expect(fay.hobbies![0].skill).toBeLessThan(milestoneAt(r.state.life!.salt, fay.id, d(), 1)); // she is seeded
+    expect(fay.hobbies![0].id).toBe(d());
+  });
+
+  it('turning life off and on again does not seed a hobby taken up since', () => {
+    const s = lifeCampaign();
+    s.squad[1].hobbies!.push({ id: e(), skill: 0, interest: 50, state: 'cooling', since: 3, milestones: [] });
+    const off = run(s, reg, { type: 'life/set_frequency', payload: { mode: 'off' } }).state;
+    const on = run(off, reg, { type: 'life/set_frequency', payload: { mode: 'normal' } }).state;
+    expect(on.squad[1].hobbies!.find((h) => h.id === e())).toMatchObject({ skill: 0, milestones: [] });
+    expect(on.life!.salt).toBe(s.life!.salt);
+  });
+
+  it('a re-sync seeds only the hobby it adds', () => {
+    const s = lifeCampaign();
+    s.squad[0].hobbies = s.squad[0].hobbies!.slice(0, 1);
+    s.squad[0].hobbies.push({ id: e(), skill: 0, interest: 50, state: 'active', since: 3, milestones: [] }); // taken up since
+    const r = run(s, reg, { type: 'squad/resync', payload: { unitId: ANN, patch: { hobbies: [d()] } } });
+    expect(errors(r.events)).toEqual([]);
+    const h = r.state.squad[0].hobbies!;
+    expect(h.find((x) => x.id === e())).toMatchObject({ skill: 0, milestones: [] });
+    expect(h.find((x) => x.id === d())!.skill).toBeLessThan(milestoneAt(r.state.life!.salt, ANN, d(), 1));
+    void a;
+  });
 });

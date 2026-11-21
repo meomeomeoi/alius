@@ -13057,12 +13057,26 @@ function milestoneAt(salt, unitId, hobbyId, n) {
 function newHobby(id, day) {
   return { id, skill: 0, interest: TUNING.life.interest.start, state: "active", since: day, milestones: [] };
 }
-function seedLife(draft, reg) {
+function takeUpHobby(unit2, id, day) {
+  const list5 = unit2.hobbies ??= [];
+  list5.push(newHobby(id, day));
+  const events = [];
+  const active = list5.filter((h2) => h2.state === "active");
+  if (active.length > TUNING.life.maxActive) {
+    const least = active.filter((h2) => h2.id !== id).sort((a, b) => a.interest - b.interest)[0];
+    least.state = "cooling";
+    least.coolingSince = day;
+    events.push({ type: "hobby_cooling", unitId: unit2.id, hobbyId: least.id });
+  }
+  return events;
+}
+function seedLife(draft, reg, only) {
   if (lifeMode(draft) === "off" || !draft.life) return [];
   const salt = draft.life.salt;
   for (const unit2 of draft.squad) {
-    if (unit2.kind !== "named") continue;
+    if (unit2.kind !== "named" || only !== void 0 && unit2.id !== only.unitId) continue;
     for (const h2 of unit2.hobbies ?? []) {
+      if (only?.hobbyIds !== void 0 && !only.hobbyIds.includes(h2.id)) continue;
       if (h2.skill !== 0 || h2.milestones.length > 0 || !reg.hobbies.has(h2.id)) continue;
       const entry = reg.hobbies.get(h2.id);
       h2.skill = lifeHash({ salt }, `${unit2.id}|hobby|${h2.id}`) % milestoneAt(salt, unit2.id, h2.id, 1);
@@ -23451,10 +23465,9 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     else delete unit2.aptitudes;
   }
   if (patch.hobbies !== void 0 && unit2.kind === "named") {
-    const have = unit2.hobbies ?? [];
-    const added = patch.hobbies.filter((id) => !have.some((h2) => h2.id === id)).map((id) => newHobby(id, draft.day));
-    if (have.length + added.length > 0) unit2.hobbies = [...have, ...added];
-    if (added.length > 0) seedLife(draft, ctx2.registries);
+    const added = patch.hobbies.filter((id) => !(unit2.hobbies ?? []).some((h2) => h2.id === id));
+    for (const id of added) extra.push(...takeUpHobby(unit2, id, draft.day));
+    if (added.length > 0) seedLife(draft, ctx2.registries, { unitId: unit2.id, hobbyIds: added });
   }
   if (patch.opinions !== void 0 && unit2.kind === "named") {
     const mine = unit2.opinions ?? {};
@@ -23510,7 +23523,7 @@ registerAction("squad/add_named", (draft, payload, ctx2) => {
   }
   draft.roster.activeIds = active;
   draft.squad.push(unit2);
-  seedLife(draft, reg);
+  seedLife(draft, reg, { unitId: unit2.id });
   draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
   return [{ type: "unit_joined", unitId: unit2.id, kind: "named" }];
 });
@@ -23967,10 +23980,10 @@ function requiresHold(state, reg, unitId, req, day) {
         break;
       }
       case "gruntDiedDays":
-        ok = (life?.deaths ?? []).some((d) => d.grunt && day - d.day >= 0 && day - d.day <= value);
+        ok = (life?.deaths ?? []).some((d) => d.old !== true && d.grunt && day - d.day >= 0 && day - d.day <= value);
         break;
       case "deathAgo":
-        ok = (life?.deaths ?? []).some((d) => day - d.day >= value && (day - d.day) % value === 0);
+        ok = (life?.deaths ?? []).some((d) => d.old !== true && day - d.day >= value && (day - d.day) % value === 0);
         break;
       case "rumour":
         ok = state.rumors.length > 0;
@@ -24067,15 +24080,7 @@ function applyBecomes(draft, reg, unitId, entry, day) {
     if (have) {
       have.interest = Math.min(100, have.interest + TUNING.life.interest.push);
     } else {
-      unit2.hobbies.push(newHobby(becomes.hobby, day));
-      events.push({ type: "hobby_started", unitId, hobbyId: becomes.hobby });
-      const active = unit2.hobbies.filter((h2) => h2.state === "active");
-      if (active.length > TUNING.life.maxActive) {
-        const least = active.filter((h2) => h2.id !== becomes.hobby).sort((a, b) => a.interest - b.interest)[0];
-        least.state = "cooling";
-        least.coolingSince = day;
-        events.push({ type: "hobby_cooling", unitId, hobbyId: least.id });
-      }
+      events.push({ type: "hobby_started", unitId, hobbyId: becomes.hobby }, ...takeUpHobby(unit2, becomes.hobby, day));
     }
   }
   if (becomes.opinionTopic !== void 0 && reg.opinionTopics.has(becomes.opinionTopic) && unit2.opinions?.[becomes.opinionTopic] === void 0) {
@@ -24128,20 +24133,21 @@ function noteBusy(draft, unitIds, activityId) {
     if (!have) life.busy.push({ unitId, slot: slot2, ...activityId !== void 0 ? { activityId } : {} });
   }
 }
-function recordDeaths(draft) {
+function recordDeaths(draft, old = false) {
   const life = ensureLife(draft);
   for (const u of draft.squad) {
     if (u.status !== "dead" || life.deaths.some((d) => d.unitId === u.id)) continue;
-    life.deaths.push({ unitId: u.id, day: draft.day, grunt: u.kind === "grunt" });
+    life.deaths.push({ unitId: u.id, day: draft.day, grunt: u.kind === "grunt", ...old ? { old: true } : {} });
   }
 }
 function lifeDayStep(draft, ctx2) {
   if (lifeMode(draft) === "off") return [];
+  const created = draft.life === void 0;
   const life = ensureLife(draft);
   const reg = ctx2.registries;
   const day = draft.day;
   if ((draft.calendar.shortageStreak ?? 0) > 0) life.shortageDay = day;
-  recordDeaths(draft);
+  recordDeaths(draft, created);
   const events = [];
   for (const unit2 of draft.squad) {
     if (!takesPart(draft, unit2.id)) continue;
@@ -26978,10 +26984,13 @@ registerAction("development/remove_fact", (draft, payload) => {
 registerAction("life/set_frequency", (draft, payload, ctx2) => {
   const mode = payload?.mode;
   if (typeof mode !== "string" || !LIFE_MODES.includes(mode)) throw new Error("Life events must be off, rare, normal or often.");
-  const wasOff = lifeMode(draft) === "off";
+  const first2 = draft.life === void 0 && mode !== "off";
   draft.settings.lifeEvents = mode;
   if (mode !== "off") ensureLife(draft);
-  if (wasOff && mode !== "off") seedLife(draft, ctx2.registries);
+  if (first2) {
+    recordDeaths(draft, true);
+    seedLife(draft, ctx2.registries);
+  }
   return [{ type: "life_frequency_set", mode }];
 });
 registerDayEndStep("dm_rumors", lifeDayStep);
@@ -36470,6 +36479,7 @@ function renderOpinionsEditor(host, ctx2) {
       ctx2.onRemove ? control("[ REMOVE ]", { "data-remove-opinion": topicId }, `opinionTopics:${topicId}`, live, ctx2.editable, () => ctx2.onRemove(topicId)) : null
     ));
   }
+  if (!ctx2.editable) return;
   const free = [...reg.opinionTopics.values()].filter((e) => !(e.id in ctx2.opinions));
   const full = ctx2.max !== void 0 && Object.keys(ctx2.opinions).length >= ctx2.max;
   host.append(h(
@@ -36478,7 +36488,7 @@ function renderOpinionsEditor(host, ctx2) {
     picker(
       "Add an opinion",
       { "data-add-opinion": unit2.id },
-      ctx2.editable && !full && free.length > 0,
+      !full && free.length > 0,
       [option("", "(add an opinion)"), ...free.map((e) => option(e.id, String(e.label)))],
       (id) => {
         const t = topic(id);

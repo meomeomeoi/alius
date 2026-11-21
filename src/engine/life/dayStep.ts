@@ -20,12 +20,15 @@ export function noteBusy(draft: CampaignState, unitIds: readonly string[], activ
   }
 }
 
-/** The units that died since the last day end are recorded once (a grunt or a named soldier), for the events that remember a loss. */
-function recordDeaths(draft: CampaignState): void {
+/**
+ * The units that died since the last day end are recorded once (a grunt or a named soldier), for the events that remember a loss. With
+ * `old` they are marked as dead before life began (an old save turned on): their day is not the day they died, so nothing reads it.
+ */
+export function recordDeaths(draft: CampaignState, old = false): void {
   const life = ensureLife(draft);
   for (const u of draft.squad) {
     if (u.status !== 'dead' || life.deaths.some((d) => d.unitId === u.id)) continue;
-    life.deaths.push({ unitId: u.id, day: draft.day, grunt: u.kind === 'grunt' });
+    life.deaths.push({ unitId: u.id, day: draft.day, grunt: u.kind === 'grunt', ...(old ? { old: true as const } : {}) });
   }
 }
 
@@ -36,11 +39,12 @@ function recordDeaths(draft: CampaignState): void {
  */
 export function lifeDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   if (lifeMode(draft) === 'off') return [];
+  const created = draft.life === undefined; // the setting was set without the action: whoever is already dead is not a recent death
   const life = ensureLife(draft);
   const reg = ctx.registries;
   const day = draft.day;
   if ((draft.calendar.shortageStreak ?? 0) > 0) life.shortageDay = day; // today's upkeep fell short (it ran earlier in this day end)
-  recordDeaths(draft);
+  recordDeaths(draft, created);
   const events: EngineEvent[] = [];
   for (const unit of draft.squad) {
     if (!takesPart(draft, unit.id)) continue;
