@@ -2795,5 +2795,113 @@
       "milestone",
       "vow"
     ]
+  },
+  {
+    "id": "domain",
+    "term": "Domain",
+    "short": "A part of the commander's life she has asked for and been given: her time, the device, the command. The card lists what it lets her do.",
+    "long": "AUTHOR TO WRITE: A domain is lost when the hold behind it falls below its band, when she leaves, or to another holder who wants the same one. What each lets her do is read from what it grants, never from its name.",
+    "see": [
+      "claim",
+      "frame"
+    ]
+  },
+  {
+    "id": "claim",
+    "term": "Her claim",
+    "short": "She asks for a domain, or, at the top, for the commander to give way. Yield, refuse, or talk it over: a compromise gives it to her for a week.",
+    "long": "AUTHOR TO WRITE: Refusing costs what the frame says and she waits a week before asking again. A claim asked before another holder's own is settled between the two of them.",
+    "see": [
+      "domain",
+      "milestone"
+    ]
+  },
+  {
+    "id": "capability_booking_uncapped",
+    "term": "No limit on her evenings",
+    "short": "Her bookings are not held to the weekly limit.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_book_ahead",
+    "term": "Books ahead",
+    "short": "She may book the commander's evenings up to three days ahead.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_body_conditions",
+    "term": "Conditions on the body",
+    "short": "She may set standing conditions on the commander's body and appearance.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_device_floor",
+    "term": "Holds the device",
+    "short": "She has the full run of the commander's device, whatever the usual access would be.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_leash_block",
+    "term": "Answers for the Leash",
+    "short": "She may block or cancel the commander's requests to the Leash.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_household_protocol",
+    "term": "Service and protocol",
+    "short": "Service and protocol hold outside scenes, in her quarters.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_second_place",
+    "term": "Her quarters",
+    "short": "Her quarters are a second home: an evening she books is spent there.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_relation_rules",
+    "term": "Rules on others",
+    "short": "She may set rules on whom else the commander sees.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_booking_consent",
+    "term": "Her consent for others",
+    "short": "Another holder's booking of the commander's time waits for her consent.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_countermand",
+    "term": "Countermands orders",
+    "short": "She may overrule the commander's orders; the commander can comply, argue or defy.",
+    "see": [
+      "domain"
+    ]
+  },
+  {
+    "id": "capability_co_leader",
+    "term": "Addressed as in command",
+    "short": "The squad starts to address her as the one in command.",
+    "see": [
+      "domain"
+    ]
   }
 ]

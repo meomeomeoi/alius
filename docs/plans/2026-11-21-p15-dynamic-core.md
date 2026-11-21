@@ -1542,11 +1542,11 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `renderClaimCard(host, ctx: { state; reg; claim: OpenClaim; onAnswer(a: 'yield' | 'refuse' | 'talk') })`.
 
-- [ ] **Step 1: Write the failing tests** (jsdom): `the card names the domain by label and lists what it grants in plain words`; `YIELD / REFUSE / TALK carry data-analyze`; `the submit claim (R1 contest) uses the same card with her words`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the claim card`
+- [x] **Step 1: Write the failing tests** (jsdom): `the card names the domain by label and lists what it grants in plain words`; `YIELD / REFUSE / TALK carry data-analyze`; `the submit claim (R1 contest) uses the same card with her words`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the claim card`
 
 ---
 

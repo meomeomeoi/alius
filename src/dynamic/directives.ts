@@ -44,6 +44,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
   const dyn = dynamicOf(state, unit.id);
   const frame = dyn === undefined ? undefined : frameEntry(reg, dyn.frame);
   const waiting = state.dynamic?.open.milestones.find((m) => m.unitId === unit.id);
+  const asking = state.dynamic?.open.claims.find((c) => c.unitId === unit.id);
   const holds = dyn !== undefined && frameRank(dyn.frame) >= frameRank('play');
   if (dyn === undefined || frame === undefined || (!holds && waiting === undefined)) return null;
   const name = unit.displayName;
@@ -58,6 +59,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
     ...(holds && claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
     styleLine(state, reg, unit),
     ...(milestone !== undefined ? [`${holds ? 'She' : name} is waiting for the commander's answer to something she asked: ${sentence(milestone.promptHint)}.`] : []),
+    ...(holds && asking !== undefined ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === undefined ? 'that the commander give way to her' : sentence(String((reg.dynamicDomains.get(asking.domainId) as unknown as DynamicDomainEntry | undefined)?.promptHint ?? 'a part of the commander\'s life'))}.`] : []),
     ...(holds && refused ? ['She has not forgotten a recent refusal and will answer it in her own way.'] : []),
     'Show it in how she acts and speaks; never name it as a mechanic.',
   ];

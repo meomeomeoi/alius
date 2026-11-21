@@ -36488,6 +36488,7 @@ function holderDirective(state, reg, unit3) {
   const dyn = dynamicOf(state, unit3.id);
   const frame = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
   const waiting2 = state.dynamic?.open.milestones.find((m) => m.unitId === unit3.id);
+  const asking = state.dynamic?.open.claims.find((c) => c.unitId === unit3.id);
   const holds4 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
   if (dyn === void 0 || frame === void 0 || !holds4 && waiting2 === void 0) return null;
   const name = unit3.displayName;
@@ -36499,6 +36500,7 @@ function holderDirective(state, reg, unit3) {
     ...holds4 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit3),
     ...milestone !== void 0 ? [`${holds4 ? "She" : name} is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
+    ...holds4 && asking !== void 0 ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === void 0 ? "that the commander give way to her" : sentence2(String(reg.dynamicDomains.get(asking.domainId)?.promptHint ?? "a part of the commander's life"))}.`] : [],
     ...holds4 && refused ? ["She has not forgotten a recent refusal and will answer it in her own way."] : [],
     "Show it in how she acts and speaks; never name it as a mechanic."
   ];
@@ -36561,6 +36563,23 @@ function createDynamic(deps) {
       }
       deps.refreshContext();
       return true;
+    },
+    answerClaim(claimId, answer) {
+      const events = deps.app.dispatch({ type: "dynamic/answer_claim", payload: { claimId, answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
+    async talk(claimId) {
+      const claim2 = state()?.dynamic?.open.claims.find((c) => c.id === claimId);
+      if (claim2 === void 0 || deps.startScene === void 0) return false;
+      const ok = await deps.startScene({ locationId: "quarters_unit", participants: [claim2.unitId], origin: "event" });
+      if (ok) deps.refreshContext();
+      return ok;
     }
   };
 }
@@ -46330,6 +46349,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   if (isLeader) {
     line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live2) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));
   }
+  if (state.power?.hierarchy?.coLeaderId === unitId) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-co-leader": unitId, ...analyzeAttrs("glossary:capability_co_leader", live2) }, "CO-LEADER"));
   const asksFirst = askFirstHolds(state, unitId);
   if (asksFirst) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-asks-first": unitId, ...analyzeAttrs("glossary:ask_first", live2) }, "ASKS FIRST"));
   host.append(line2);
@@ -48544,9 +48564,10 @@ function tonightItems(state, reg) {
     const open3 = state.dynamic.open;
     const waiting2 = /* @__PURE__ */ new Set();
     const milestoneFor = new Set(open3.milestones.map((m) => m.unitId));
+    const claimFor = new Set(open3.claims.map((c) => c.unitId));
     for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf18(id)) waiting2.add(id);
     for (const id of waiting2) {
-      out.push({ kind: "dynamic", text: `${nameOf18(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : "glossary:frame" });
+      out.push({ kind: "dynamic", text: `${nameOf18(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : claimFor.has(id) ? "glossary:claim" : "glossary:frame" });
     }
   }
   const failed = fullOpenRecords(state).length;
@@ -51139,6 +51160,46 @@ function drawMilestoneCards(host, state, reg, pick3, onAnswer) {
     if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
   }
 }
+var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
+function renderClaimCard(host, ctx2) {
+  const { state, reg, claim: claim2 } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === claim2.unitId);
+  const entry = claim2.domainId === void 0 ? void 0 : reg.dynamicDomains.get(claim2.domainId);
+  if (unit3 === void 0 || claim2.domainId !== void 0 && entry === void 0) return;
+  const live2 = { unitId: unit3.id };
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-claim-answer": kind,
+    "data-claim": claim2.id,
+    ...analyzeNative("glossary:claim", live2),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
+  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live2) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
+  const body = h(
+    "div",
+    { class: "alius-claim-body" },
+    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live2) }, String(entry.label).toUpperCase()))],
+    h("p", { class: "alius-claim-text" }, words3),
+    ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
+    h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-claim");
+  card2.setAttribute("data-claim", claim2.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live2))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawClaimCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const claim2 of state.dynamic?.open.claims ?? []) {
+    if (pick3({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) });
+  }
+}
 
 // src/ui/comms/living.ts
 var TYPING_MS = 2500;
@@ -51378,6 +51439,8 @@ function renderCommsTab(host, ctx2) {
     });
     const milestoneCards = h("div", { class: "alius-milestone-cards" });
     drawMilestoneCards(milestoneCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
+    const claimCards = h("div", { class: "alius-claim-cards" });
+    drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
     for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers, { motion: ctx2.motion?.() ?? true }));
@@ -51386,7 +51449,7 @@ function renderCommsTab(host, ctx2) {
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
     const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit3.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
@@ -51633,7 +51696,7 @@ function renderHomeTab(host, ctx2) {
 }
 
 // src/ui/personal/claimCard.ts
-function renderClaimCard(state, reg, claim2, handlers2) {
+function renderClaimCard2(state, reg, claim2, handlers2) {
   const name = state.squad.find((u) => u.id === claim2.unitId)?.displayName ?? claim2.unitId;
   const chip2 = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:claimed", { unitId: claim2.unitId }) }, "CLAIMED");
   chip2.style.setProperty("--unit-accent", unitAccent(claim2.unitId));
@@ -52525,6 +52588,7 @@ function renderSceneScreen(host, ctx2) {
   let disciplineChips;
   let demandChips;
   let milestoneCards;
+  let claimCards;
   let freqChips;
   let genChips;
   let genTools;
@@ -52694,6 +52758,7 @@ function renderSceneScreen(host, ctx2) {
     const ids = new Set(s.scene?.participants ?? []);
     drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx2.onAnswerDemand?.(id, "grant"), refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse"), generation: ctx2.generation });
     drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
+    drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
@@ -52914,6 +52979,7 @@ function renderSceneScreen(host, ctx2) {
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
     milestoneCards = h("div", { class: "alius-milestone-cards" });
+    claimCards = h("div", { class: "alius-claim-cards" });
     freqChips = h("div", { class: "alius-chips alius-freq-chips" });
     genChips = h("div", { class: "alius-generation-chips" });
     genTools = h("span", { class: "alius-scene-reroll" });
@@ -53026,6 +53092,7 @@ function renderSceneScreen(host, ctx2) {
       disciplineChips,
       demandChips,
       milestoneCards,
+      claimCards,
       freqChips,
       disciplineMenus,
       letsHost,
@@ -56671,7 +56738,7 @@ function createApp(st, deps) {
   const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext });
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
-  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext });
+  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -56697,7 +56764,7 @@ function createApp(st, deps) {
       const done = () => {
         shell.closeModal?.();
       };
-      host.append(renderClaimCard(s, registries, claim2, {
+      host.append(renderClaimCard2(s, registries, claim2, {
         onLetStand: (id) => {
           personal.answerClaim(id, false);
           done();
@@ -56734,6 +56801,12 @@ function createApp(st, deps) {
       return answer === "keep" ? "keep" : "revert";
     }
   });
+  const answerClaim2 = (claimId, answer) => {
+    if (answer === "talk") void dynamic.talk(claimId).then((ok) => {
+      if (ok) shell.open();
+    });
+    else dynamic.answerClaim(claimId, answer);
+  };
   const answerRule2 = (ruleId, how) => {
     if (how === "negotiate") void bonds.negotiateRule(ruleId).then((ok) => {
       if (ok) shell.open();
@@ -56979,6 +57052,8 @@ function createApp(st, deps) {
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer),
         // P15: her step
+        onAnswerClaim: (id, answer) => answerClaim2(id, answer),
+        // P15: her claim
         onAnswerRule: answerRule2,
         onStage: (action) => {
           scene.stage(action);
@@ -58450,6 +58525,8 @@ function createApp(st, deps) {
       onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
       onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer),
       // P15: her step
+      onAnswerClaim: (id, answer) => answerClaim2(id, answer),
+      // P15: her claim
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => {
         if (ok) shell.open();
       }),

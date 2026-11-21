@@ -42,6 +42,7 @@ export function renderHierarchyBlock(
   if (isLeader) {
     line.append(' · ', h('span', { class: 'alius-chip', 'data-leader-badge': unitId, ...analyzeAttrs('glossary:squad_leader', live) }, endorsed ? 'SECOND-IN-COMMAND' : 'SQUAD LEADER'));
   }
+  if (state.power?.hierarchy?.coLeaderId === unitId) line.append(' · ', h('span', { class: 'alius-chip', 'data-co-leader': unitId, ...analyzeAttrs('glossary:capability_co_leader', live) }, 'CO-LEADER')); // P15: the command is hers
   const asksFirst = askFirstHolds(state, unitId);
   if (asksFirst) line.append(' · ', h('span', { class: 'alius-chip', 'data-asks-first': unitId, ...analyzeAttrs('glossary:ask_first', live) }, 'ASKS FIRST'));
   host.append(line);

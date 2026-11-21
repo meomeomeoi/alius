@@ -1524,6 +1524,27 @@
   margin-top: 6px;
 }
 
+/* Her claim card (P15): the domain, what it would give her in plain words, then the three answers side by side. */
+#alius-shell .alius-claim-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-claim-domain {
+  margin: 0 0 4px;
+}
+
+#alius-shell .alius-claim-grants {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+#alius-shell .alius-claim-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 /*
  * P11: the prologue's paper forms (cold open, intake, medical exam, signed dossier) and, later, the hub card, the coach
  * strip and locked tabs. The paper voice supplies colours; this file only lays the forms out. Typing reveals are CSS so the

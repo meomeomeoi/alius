@@ -14,6 +14,10 @@ export interface DynamicController {
   onSceneClosed(): void;
   /** `[ ACCEPT ]` or `[ REFUSE ]` on her open milestone (the open id). Toasts the reason and returns false when the engine refuses. */
   answerMilestone(milestoneId: string, answer: 'accept' | 'refuse'): boolean;
+  /** `[ YIELD ]` or `[ REFUSE ]` on her open claim (the open id). Toasts the reason and returns false when the engine refuses. */
+  answerClaim(claimId: string, answer: 'yield' | 'refuse'): boolean;
+  /** `[ TALK ]` on her open claim: opens a one-to-one scene with her (her quarters) while the claim stays open. False when it is not open or no scene can open. */
+  talk(claimId: string): Promise<boolean>;
 }
 
 const OWN: readonly string[] = DYNAMIC_EVENT_TYPES;
@@ -47,6 +51,23 @@ export function createDynamic(deps: DynamicDeps): DynamicController {
       }
       deps.refreshContext();
       return true;
+    },
+    answerClaim(claimId, answer) {
+      const events = deps.app.dispatch({ type: 'dynamic/answer_claim', payload: { claimId, answer } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
+    async talk(claimId) {
+      const claim = state()?.dynamic?.open.claims.find((c) => c.id === claimId);
+      if (claim === undefined || deps.startScene === undefined) return false;
+      const ok = await deps.startScene({ locationId: 'quarters_unit', participants: [claim.unitId], origin: 'event' });
+      if (ok) deps.refreshContext();
+      return ok;
     },
   };
 }

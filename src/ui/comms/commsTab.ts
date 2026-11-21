@@ -11,7 +11,7 @@ import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
-import { drawMilestoneCards } from '../dynamic/cards';
+import { drawClaimCards, drawMilestoneCards, type ClaimAnswer } from '../dynamic/cards';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
 import { armTyping, clearTyping, renderHerMessage, renderReceipt, renderTyping, stampText, typingPlayed } from './living';
@@ -34,6 +34,8 @@ export interface CommsTabCtx {
   onTalkDemand?: (demandId: string) => void;
   /** P15: [ACCEPT] / [REFUSE] on her open milestone (the open id). */
   onAnswerMilestone?: (milestoneId: string, answer: 'accept' | 'refuse') => void;
+  /** P15: [YIELD] / [REFUSE] / [TALK] on her open claim (the open id). */
+  onAnswerClaim?: (claimId: string, answer: ClaimAnswer) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule she proposed. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P10: a small portrait for each contact row (absent = none). */
@@ -175,6 +177,8 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     });
     const milestoneCards = h('div', { class: 'alius-milestone-cards' });
     drawMilestoneCards(milestoneCards, state, ctx.registries, (c) => c.unitId === current, (id, answer) => ctx.onAnswerMilestone?.(id, answer)); // P15: her step, under the thread
+    const claimCards = h('div', { class: 'alius-claim-cards' });
+    drawClaimCards(claimCards, state, ctx.registries, (c) => c.unitId === current, (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim, under the thread
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
     const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse'), generation: ctx.generation };
@@ -186,7 +190,7 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       ? editChip(waiting, editor?.displayName ?? waiting.editorId, () => ctx.onAnswerEdit?.(true), () => ctx.onAnswerEdit?.(false))
       : null;
     const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', ...(waiting ? { 'aria-disabled': 'true' } : {}), onclick: send }, '[ SEND ]');
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }

@@ -134,9 +134,10 @@ export function tonightItems(state: CampaignState, reg: Registries): TonightItem
     const open = state.dynamic!.open;
     const waiting = new Set<string>();
     const milestoneFor = new Set<string>(open.milestones.map((m) => m.unitId));
+    const claimFor = new Set<string>(open.claims.map((c) => c.unitId));
     for (const id of [...open.milestones.map((m) => m.unitId), ...open.claims.map((c) => c.unitId), ...(open.returnOffer ? [open.returnOffer.unitId] : [])]) if (nameOf(id)) waiting.add(id);
     for (const id of waiting) {
-      out.push({ kind: 'dynamic', text: `${nameOf(id)} has something to ask.`, unitId: id, tone: 'warn', analyze: milestoneFor.has(id) ? 'glossary:milestone' : 'glossary:frame' });
+      out.push({ kind: 'dynamic', text: `${nameOf(id)} has something to ask.`, unitId: id, tone: 'warn', analyze: milestoneFor.has(id) ? 'glossary:milestone' : claimFor.has(id) ? 'glossary:claim' : 'glossary:frame' });
     }
   }
   // P14: failed generations that wait for a retry, always the last line (the cut keeps room for it, so a full list never drops it)
