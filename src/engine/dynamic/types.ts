@@ -121,6 +121,24 @@ export const CLAIM_FORMS = ['demand', 'milestone'] as const;
 export type ClaimForm = (typeof CLAIM_FORMS)[number];
 
 // ---------------------------------------------------------------------------------------------
+// The practice section of a bond profile (R5)
+
+export interface PracticeCategory { as: PracticeAs; witness: Witness }
+/** `bond.practice`: what she does as the holder, what she thinks of seeing it done, her style pair and how she goes about it. Every field is hers; mayHold is in the campaign setup. */
+export interface Practice {
+  categories: Record<string, PracticeCategory>;
+  style: { primary: ProfileStyle; secondary?: ProfileStyle };
+  audience: Audience;
+  inclination: Inclination;
+  fairness: Fairness;
+  hintStyle: HintStyle;
+  drive: Drive;
+}
+
+/** The fields of a practice a lock may name (a category is `categories.<id>`). */
+export const PRACTICE_LOCK_FIELDS = ['style', 'audience', 'inclination', 'fairness', 'hintStyle', 'drive'] as const;
+
+// ---------------------------------------------------------------------------------------------
 // Entry types (the validated shape of a row; the schemas live in `src/content/schemas.ts`)
 
 export interface PracticeStyleEntry {

@@ -32,7 +32,7 @@ describe('the eleven registries (P15)', () => {
     const styles = rows('practiceStyles');
     expect(styles).toHaveLength(11);
     expect(styles.map((s) => s.id)).not.toContain('neutral');
-    const bands = rows('holdBands').map((b) => [b.min, b.max]).sort((a, b) => a[0] - b[0]);
+    const bands = rows('holdBands').map((b) => [Number(b.min), Number(b.max)]).sort((a, b) => a[0] - b[0]);
     expect(bands).toHaveLength(5);
     expect(bands[0][0]).toBe(0);
     expect(bands[4][1]).toBe(100);
@@ -52,7 +52,7 @@ describe('the eleven registries (P15)', () => {
     const aftermaths = rows('aftermaths');
     expect(aftermaths).toHaveLength(9);
     expect(aftermaths.map((a) => a.kind).sort()).toEqual([...AFTERMATH_KINDS].sort());
-    const regard = rows('regardBands').map((b) => [b.min, b.max]).sort((a, b) => a[0] - b[0]);
+    const regard = rows('regardBands').map((b) => [Number(b.min), Number(b.max)]).sort((a, b) => a[0] - b[0]);
     expect(regard).toHaveLength(5);
     expect(regard[0][0]).toBe(0);
     expect(regard[4][1]).toBe(100);

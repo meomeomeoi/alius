@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import type { Bond, CampaignState, DesireLevel, LeadStyle, Unit } from '../state/types';
+import { validatePractice } from '../dynamic/profile';
 import { TUNING } from '../tuning';
 
 /** Ranked weakest first: `leadRank` makes "at least assertive" a rank test. */
@@ -96,6 +97,15 @@ export function validateBond(raw: unknown, reg: Registries): { bond: Bond; issue
           if (note !== '') bond.ownLimits.note = note.slice(0, NOTE_MAX).trim();
         }
       }
+    }
+  }
+  if (raw.practice !== undefined) {
+    // P15: the practice section is read field by field (`validatePractice`); a section with no legal primary style is no section
+    const read = validatePractice(raw.practice, reg);
+    for (const issue of read.issues) issues.push(issue);
+    if (read.practice !== undefined) {
+      bond.practice = read.practice;
+      valid.push('practice');
     }
   }
   return { bond, issues, valid };

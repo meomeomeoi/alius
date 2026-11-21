@@ -845,17 +845,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `practiceCategories(reg): string[]`;
   - `PRACTICE_DEFAULTS`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `hostile fields are sanitised`: an unknown category is dropped with an issue; `as: 'loves'` → `none`; `secondary === primary` is dropped; `fairness: 7` → `fair`; a missing `style.primary` → `practice` undefined.
   - `limits and disabled categories read none`: `restraint` in `ownLimits.categories` → `practiceOf(...).categories.restraint` is `{ as: 'none', witness: 'indifferent' }`; a category switched off → same; switched back on → the stored value again.
   - `a grunt and an absent section give null`.
   - `practiceCategories lists the tracks' categories once, in order`.
   - `set_practice respects locks`: locking `style` and then patching it throws "That field is locked."; an empty lock list deletes `practiceLocks`.
   - `validateBond keeps a valid practice and reports its issues`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/profile.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in Interfaces and R5.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the practice section of the bond profile`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/profile.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in Interfaces and R5.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the practice section of the bond profile`
 
 ---
 

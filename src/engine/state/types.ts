@@ -1,4 +1,5 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
+import type { Practice } from '../dynamic/types';
 import type { MomentsState } from '../moments/state';
 import type { PhysicsRun } from '../physics/state';
 import type { CombatResult, CombatState } from '../combat/types';
@@ -122,6 +123,8 @@ export interface Bond {
   ownLimits: { categories: string[]; note?: string };
   /** HER preference for how open the relationship is. */
   publicity: Publicity;
+  /** P15: what she practises as a holder, her style pair and her inclination (absent = she never holds). Read through `practiceOf`. */
+  practice?: Practice;
 }
 
 /** P9d: a relationship rule a leading partner proposed (the registry `relationshipRuleTemplates` comes with chunk (b)). */
@@ -208,6 +211,8 @@ export interface Unit {
   temperament?: Temperament;
   /** P14c: the temperament fields the player locked (a re-sync and a future drift leave them alone). */
   temperamentLocks?: Array<keyof Temperament>;
+  /** P15: the `bond.practice` fields the player locked (`style`, `audience`, `inclination`, `fairness`, `hintStyle`, `drive`, `categories.<id>`); a re-sync and drift leave them alone. */
+  practiceLocks?: string[];
   /** P14c: her hobbies and how far each has come (absent = none). */
   hobbies?: HobbyState[];
   /** P14c: what she picks up quickly and what she does not (absent = every hobby is standard). */
