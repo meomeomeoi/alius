@@ -30,7 +30,7 @@ const rule = (over: Record<string, unknown> = {}) => ({
 
 describe('the core pack (P14b)', () => {
   it('loads the three registries', () => {
-    expect(reg.developmentAxes.size).toBe(13);
+    expect(reg.developmentAxes.size).toBe(18); // P15: + the practice, holds-until and worship axes
     expect(reg.developmentRules.size).toBe(16);
     expect(reg.habits.size).toBe(6); // P14c: + running_joke
   });

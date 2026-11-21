@@ -1,6 +1,7 @@
 import { CONTENT_GATED_REGISTRIES } from '../engine/bonds/content';
 import { RESOLVER_SHAPES } from '../engine/memory/resolvers';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
+import { dynamicAxis, dynamicAxisEntryId } from '../engine/development/axes';
 import { ALL_EVENT_TYPES, INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
 import { VALUE_AXES } from '../engine/state/types';
@@ -903,13 +904,21 @@ registerChecks('headStartMoments', (entry) => {
 // `like:{tag}` takes the event's tags); `match.kind` names event types, activities or dilemma contexts; a habit's counter and
 // effect name activities and regions.
 
-const axisKeyKinds = ['value', 'bond', 'taste', 'like', 'dislike'];
+const axisKeyKinds = ['value', 'bond', 'taste', 'like', 'dislike', 'practice', 'expect'];
 function axisKeyProblem(key: string, regs: Record<RegistryName, Map<string, Entry>>, allowTag: boolean): string | null {
   if (allowTag && (key === 'like:{tag}' || key === 'dislike:{tag}')) return regs.developmentAxes.has(`${key.split(':')[0]}:.any`) ? null : `no axis entry words "${key}"`;
   const i = key.indexOf(':');
   const kind = i > 0 ? key.slice(0, i) : '';
   if (!axisKeyKinds.includes(kind)) return `"${key}" is not an axis key (value:…, bond:…, taste:…, like:…, dislike:…)`;
   if (kind === 'taste' && !regs.tastes.has(key.slice(i + 1))) return `"${key}" names no taste`;
+  if (kind === 'practice' || kind === 'expect') {
+    // P15: a practice or expectation axis names a content category or a worship target that exists, and an entry words it
+    const d = dynamicAxis(key);
+    if (d === null || d.field === 'fixed') return `"${key}" is not a practice or expectation axis (practice:<category>.as, practice:<category>.witness, practice:style.secondary, expect:holds_until, expect:worship.<target>)`;
+    if ((d.field === 'as' || d.field === 'witness') && !regs.contentCategories.has(d.category)) return `"${key}" names no content category`;
+    if (d.field === 'worship' && !regs.worshipTargets.has(d.target)) return `"${key}" names no worship target`;
+    return regs.developmentAxes.has(dynamicAxisEntryId(d)!) ? null : `no axis entry words "${key}"`;
+  }
   if (!regs.developmentAxes.has(key) && !regs.developmentAxes.has(`${kind}:.any`)) return `no axis entry words "${key}"`;
   return null;
 }

@@ -218,7 +218,7 @@ export function validateExpectations(
 
 /**
  * Her profile as the engine reads it: what is stored, minus the worship, body and scent entries of targets whose content gate is closed
- * (a category switched off, or one of her limits). `{}` when nothing is stored or she is not a named unit. Nothing is rewritten, so a
+ * (a category switched off, or one of her limits), with what she has become folded in (`development.expect`). `{}` when nothing is stored or she is not a named unit. Nothing is rewritten, so a
  * target that opens again reads again.
  */
 export function expectationsOf(state: Pick<CampaignState, 'squad' | 'content'>, reg: Registries, unitId: string): ExpectationProfile {
@@ -226,6 +226,9 @@ export function expectationsOf(state: Pick<CampaignState, 'squad' | 'content'>, 
   const stored = unit?.kind === 'named' ? unit.expectations : undefined;
   if (stored === undefined) return {};
   const out = structuredClone(stored);
+  const drift = unit?.development?.expect; // P14b: what she has become sits on top of the import
+  if (drift?.holdsUntil !== undefined && out.holdsUntil !== undefined) out.holdsUntil = drift.holdsUntil;
+  for (const [id, attitude] of Object.entries(drift?.worship ?? {})) if (out.worship?.[id] !== undefined) out.worship[id] = { ...out.worship[id], attitude };
   const open = (id: string): boolean => {
     const t = reg.worshipTargets.get(id);
     return t !== undefined && contentAllowed(state, reg, t, unitId);

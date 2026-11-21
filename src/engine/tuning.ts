@@ -662,6 +662,12 @@ export const TUNING = Object.freeze({
       attachment: Object.freeze(['avoidant', 'slow', 'steady', 'intense'] as const),
       leadStyle: Object.freeze(['yielding', 'balanced', 'assertive', 'dominant'] as const),
       caretaker: Object.freeze([false, true] as const),
+      // P15 (low to high; `secondary` runs from the gentlest style to the harshest, AUTHOR TO TUNE)
+      practiceAs: Object.freeze(['none', 'tolerates', 'enjoys', 'craves'] as const),
+      practiceWitness: Object.freeze(['dislikes', 'indifferent', 'drawn'] as const),
+      secondary: Object.freeze(['affectionate', 'playful', 'regal', 'ritual', 'drill', 'clinical', 'possessive', 'obsessive', 'cold', 'vindictive', 'cruel'] as const),
+      holdsUntil: Object.freeze(['signal', 'limit', 'blackout'] as const),
+      attitude: Object.freeze(['dislikes', 'indifferent', 'enjoys', 'craves'] as const),
     }),
   }),
   /**

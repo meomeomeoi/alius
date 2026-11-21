@@ -1,6 +1,7 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
-import type { ExpectationProfile } from '../dynamic/expectations';
-import type { Practice } from '../dynamic/types';
+import type { Attitude, ExpectationProfile } from '../dynamic/expectations';
+import type { Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
+import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
 import type { PhysicsRun } from '../physics/state';
 import type { CombatResult, CombatState } from '../combat/types';
@@ -384,6 +385,9 @@ export interface DevMoment {
 export interface ReviewInverse {
   drift: Partial<Record<ValueAxis, number>>;
   bond: Development['bond'];
+  /** P15: what the review changed in her practice and her expectations. */
+  practice?: Development['practice'];
+  expect?: Development['expect'];
   gained: Development['gained'];
   lost: Development['lost'];
   /** What the review took out of the accumulators, signed (UNDO adds it back; pushes recorded since stay). */
@@ -404,6 +408,10 @@ export interface Development {
   acc: Record<string, number>;
   /** Discrete changes, applied on top of the import. */
   bond?: Partial<Pick<Bond, 'attachment' | 'desire' | 'caretaker' | 'leadStyle'>>;
+  /** P15: how her practice has moved from the import: a category's `as` / `witness` and the secondary style (read through `practiceOf`). Only where it differs from the import. */
+  practice?: { categories?: Record<string, Partial<PracticeCategory>>; secondary?: ProfileStyle };
+  /** P15: how her expectations have moved: how far she holds and her attitude to a worship target (read through `expectationsOf`). */
+  expect?: { holdsUntil?: HoldsUntil; worship?: Record<string, Attitude> };
   gained?: { likes?: string[]; dislikes?: string[]; tastes?: string[] };
   lost?: { likes?: string[]; dislikes?: string[]; tastes?: string[] };
   /** Axis keys the card states strongly (from the import, at most 4). */

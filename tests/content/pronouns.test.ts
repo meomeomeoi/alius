@@ -92,7 +92,7 @@ describe('no pronoun for the commander in content', () => {
       ...['character_development', 'development_moment', 'development_fact', 'habit', 'development_hold', 'appraisal'].flatMap((id) =>
         ['short', 'long'].map((k): [string, string] => [`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')])),
     ];
-    expect(texts).toHaveLength(13 * 3 + 16 + 6 * 2 + 12); // P14c: the running joke habit
+    expect(texts).toHaveLength(18 * 3 + 16 + 6 * 2 + 12); // P14c: the running joke habit; P15: five more axes
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 

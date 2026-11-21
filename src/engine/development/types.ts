@@ -3,7 +3,7 @@ import type { Attachment, Harm, Initiator, Insight, LeadStyle, Outcome, Reading,
 /** Registry entry shapes of character development (P14b). Plain types that match the zod schemas in `content/schemas.ts`. */
 export type { Reading };
 
-export type AxisKind = 'value' | 'bond' | 'taste' | 'like' | 'dislike';
+export type AxisKind = 'value' | 'bond' | 'taste' | 'like' | 'dislike' | 'practice' | 'expect';
 
 /** `developmentAxes`: the words of one drifting field. `id` is an axis key (`value:mercy`) or a wildcard (`like:*`). `up` and `down` read "more X than her file says". */
 export interface DevelopmentAxisEntry {

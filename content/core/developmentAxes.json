@@ -89,5 +89,40 @@
     "up": "AUTHOR TO WRITE: has come to dislike {tag}",
     "down": "AUTHOR TO WRITE: no longer dislikes {tag}",
     "description": "AUTHOR TO WRITE: Something she came to dislike or stopped disliking."
+  },
+  {
+    "id": "practice:.any.as",
+    "kind": "practice",
+    "up": "AUTHOR TO WRITE: more drawn to doing it herself than her file says",
+    "down": "AUTHOR TO WRITE: less drawn to doing it herself than her file says",
+    "description": "AUTHOR TO WRITE: A step of what she would do herself, away from what her file says."
+  },
+  {
+    "id": "practice:.any.witness",
+    "kind": "practice",
+    "up": "AUTHOR TO WRITE: more drawn to seeing it done than her file says",
+    "down": "AUTHOR TO WRITE: less drawn to seeing it done than her file says",
+    "description": "AUTHOR TO WRITE: A step of how she feels seeing it done, away from what her file says."
+  },
+  {
+    "id": "practice:style.secondary",
+    "kind": "practice",
+    "up": "AUTHOR TO WRITE: harder in her second manner than her file says",
+    "down": "AUTHOR TO WRITE: gentler in her second manner than her file says",
+    "description": "AUTHOR TO WRITE: A step of her second style, away from what her file says."
+  },
+  {
+    "id": "expect:holds_until",
+    "kind": "expect",
+    "up": "AUTHOR TO WRITE: holds on longer than her file says",
+    "down": "AUTHOR TO WRITE: lets go sooner than her file says",
+    "description": "AUTHOR TO WRITE: A step of how far she holds, away from what her file says."
+  },
+  {
+    "id": "expect:worship.any",
+    "kind": "expect",
+    "up": "AUTHOR TO WRITE: warmer to it than her file says",
+    "down": "AUTHOR TO WRITE: colder to it than her file says",
+    "description": "AUTHOR TO WRITE: A step of her attitude to a place she is worshipped, away from what her file says."
   }
 ]

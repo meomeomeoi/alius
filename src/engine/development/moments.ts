@@ -1,9 +1,8 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, DevMoment } from '../state/types';
-import { axisKind, bondField } from './axes';
+import { axisKind, scaleOfAxis } from './axes';
 import { axisWords } from './words';
 import { developmentOf } from './state';
-import { TUNING } from '../tuning';
 
 /**
  * Development moments (P14b §5), quiet: a discrete change is stamped with the next scene she is in (so that scene carries a one-time cue
@@ -48,9 +47,8 @@ export function stampedMoments(state: CampaignState, unitId: string): DevMoment[
 export function wentUp(m: Pick<DevMoment, 'axis' | 'from' | 'to'>): boolean {
   const kind = axisKind(m.axis);
   if (kind === 'value') return Number(m.to) > Number(m.from);
-  if (kind === 'bond') {
-    const field = bondField(m.axis);
-    const scale = field === null ? [] : (TUNING.development.scales[field] as readonly (string | boolean)[]).map(String);
+  if (kind === 'bond' || kind === 'practice' || kind === 'expect') {
+    const scale = (scaleOfAxis(m.axis) ?? []).map(String);
     return scale.indexOf(m.to) > scale.indexOf(m.from);
   }
   return m.to === 'yes';

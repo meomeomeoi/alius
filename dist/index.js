@@ -859,7 +859,13 @@ var TUNING = Object.freeze({
       desire: Object.freeze(["low", "medium", "high"]),
       attachment: Object.freeze(["avoidant", "slow", "steady", "intense"]),
       leadStyle: Object.freeze(["yielding", "balanced", "assertive", "dominant"]),
-      caretaker: Object.freeze([false, true])
+      caretaker: Object.freeze([false, true]),
+      // P15 (low to high; `secondary` runs from the gentlest style to the harshest, AUTHOR TO TUNE)
+      practiceAs: Object.freeze(["none", "tolerates", "enjoys", "craves"]),
+      practiceWitness: Object.freeze(["dislikes", "indifferent", "drawn"]),
+      secondary: Object.freeze(["affectionate", "playful", "regal", "ritual", "drill", "clinical", "possessive", "obsessive", "cold", "vindictive", "cruel"]),
+      holdsUntil: Object.freeze(["signal", "limit", "blackout"]),
+      attitude: Object.freeze(["dislikes", "indifferent", "enjoys", "craves"])
     })
   }),
   /**
@@ -9106,8 +9112,8 @@ var HeadStartMomentSchema = BaseEntrySchema.extend({
 }).strict();
 registrySchemas.headStartMoments = HeadStartMomentSchema;
 var DevelopmentAxisSchema = BaseEntrySchema.extend({
-  id: external_exports.string().regex(/^(value|bond|taste|like|dislike):[a-z0-9_.-]+$/, "an axis id is <kind>:<name> or <kind>:.any"),
-  kind: external_exports.enum(["value", "bond", "taste", "like", "dislike"]),
+  id: external_exports.string().regex(/^(value|bond|taste|like|dislike|practice|expect):[a-z0-9_.-]+$/, "an axis id is <kind>:<name> or <kind>:.any"),
+  kind: external_exports.enum(["value", "bond", "taste", "like", "dislike", "practice", "expect"]),
   up: str.max(120),
   down: str.max(120),
   description: str
@@ -9117,6 +9123,8 @@ var DevelopmentAxisSchema = BaseEntrySchema.extend({
   if (name === ".any" && !["taste", "like", "dislike"].includes(a.kind)) ctx2.addIssue({ code: "custom", path: ["id"], message: "only taste, like and dislike axes may be wildcards" });
   if (a.kind === "bond" && !["attachment", "desire", "caretaker", "lead_style"].includes(name)) ctx2.addIssue({ code: "custom", path: ["id"], message: `"${a.id}" cannot drift (her own limits and her publicity preference never do)` });
   if (a.kind === "value" && !VALUE_AXES.includes(name)) ctx2.addIssue({ code: "custom", path: ["id"], message: `"${name}" is not a value axis` });
+  if (a.kind === "practice" && ![".any.as", ".any.witness", "style.secondary"].includes(name)) ctx2.addIssue({ code: "custom", path: ["id"], message: `"${a.id}" cannot drift (a practice axis is practice:.any.as, practice:.any.witness or practice:style.secondary)` });
+  if (a.kind === "expect" && !["holds_until", "worship.any"].includes(name)) ctx2.addIssue({ code: "custom", path: ["id"], message: `"${a.id}" cannot drift (an expectation axis is expect:holds_until or expect:worship.any)` });
 });
 registrySchemas.developmentAxes = DevelopmentAxisSchema;
 var readingWords = (values) => external_exports.array(external_exports.enum(values)).min(1);
@@ -11971,12 +11979,299 @@ function flaggedCategories(state, reg, raw) {
   return out.slice(0, TUNING.bonds.limits.maxViolations);
 }
 
+// src/engine/dynamic/expectations.ts
+var ATTITUDES = ["craves", "enjoys", "indifferent", "dislikes"];
+var MEANINGS = ["reward", "duty", "humiliation", "intimacy", "play", "comfort"];
+var BODY_FEELINGS = ["proud", "ashamed", "indifferent"];
+var HYGIENE = ["meticulous", "normal", "lax"];
+var HAIR = ["short", "bob", "long", "tail"];
+var HOLDS_UNTIL = ["signal", "limit", "blackout"];
+var EXPECTATION_FIELDS = ["moments", "offset", "tells", "holdsUntil", "worship", "body", "scent", "build", "hair", "traits"];
+var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
+var clean2 = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
+function validateExpectations(raw, reg, ctx2) {
+  const issues = [];
+  const dropped = [];
+  if (raw === void 0) return { issues, dropped };
+  if (!isObj4(raw)) return { issues: ["expectations must be an object"], dropped };
+  const out = {};
+  const L = TUNING.dynamic.profile;
+  const drop2 = (field2, id, why) => {
+    issues.push(`expectations.${field2} ${why} "${id}"`);
+    dropped.push(`expectations:${field2}.${id}`);
+  };
+  const text2 = (field2, v, max) => {
+    if (typeof v !== "string") return void issues.push(`expectations.${field2} must be text`);
+    const t = clean2(v);
+    if (t === "") return void 0;
+    if (COMMANDER_PRONOUN.test(t)) return void issues.push(`expectations.${field2} has a pronoun for the commander and was dropped`);
+    if (t.length > max) issues.push(`expectations.${field2} was cut to ${max} characters`);
+    return t.slice(0, max).trim();
+  };
+  const num5 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : void 0;
+  const target = (id) => reg.worshipTargets.get(id);
+  const open3 = (id) => ctx2.state === void 0 || contentAllowed(ctx2.state, reg, target(id), ctx2.unitId);
+  for (const key of Object.keys(raw)) if (!EXPECTATION_FIELDS.includes(key)) issues.push(`expectations has no field "${key}"`);
+  if (raw.moments !== void 0) {
+    if (!isObj4(raw.moments)) issues.push("expectations.moments must be an object");
+    else {
+      const moments = {};
+      for (const [id, m] of Object.entries(raw.moments)) {
+        const source = reg.momentSources.get(id);
+        if (source === void 0) {
+          drop2("moments", id, "names unknown moment source");
+          continue;
+        }
+        const type = isObj4(m) ? m.type : void 0;
+        const strength = isObj4(m) ? m.strength : void 0;
+        const offered2 = (source.frame ?? []).map((o) => o.type);
+        if (typeof type !== "string" || !RESPONSE_TYPES.includes(type)) {
+          issues.push(`expectations.moments.${id}.type must be one of ${RESPONSE_TYPES.join(", ")}`);
+          continue;
+        }
+        if (!offered2.includes(type)) {
+          issues.push(`expectations.moments.${id}: that moment does not offer "${type}"`);
+          continue;
+        }
+        if (strength !== 1 && strength !== 2 && strength !== 3) {
+          issues.push(`expectations.moments.${id}.strength must be 1, 2 or 3`);
+          continue;
+        }
+        moments[id] = { type, strength };
+      }
+      if (Object.keys(moments).length > 0) out.moments = moments;
+    }
+  }
+  if (raw.offset !== void 0) {
+    const r = isObj4(raw.offset) ? num5(raw.offset.r, -L.offsetMax, L.offsetMax) : void 0;
+    const f = isObj4(raw.offset) ? num5(raw.offset.f, -L.offsetMax, L.offsetMax) : void 0;
+    if (r === void 0 || f === void 0) issues.push("expectations.offset needs numbers r and f");
+    else {
+      if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L.offsetMax || Math.abs(Number(raw.offset.f)) > L.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L.offsetMax}`);
+      out.offset = { r, f };
+    }
+  }
+  if (raw.tells !== void 0) {
+    if (!isObj4(raw.tells)) issues.push("expectations.tells must be an object");
+    else {
+      const tells = {};
+      for (const k of ["irritation", "pleasure"]) {
+        if (raw.tells[k] === void 0) continue;
+        const t = text2(`tells.${k}`, raw.tells[k], L.tellMax);
+        if (t !== void 0) tells[k] = t;
+      }
+      for (const k of Object.keys(raw.tells)) if (k !== "irritation" && k !== "pleasure") issues.push(`expectations.tells has no field "${k}"`);
+      if (Object.keys(tells).length > 0) out.tells = tells;
+    }
+  }
+  if (raw.holdsUntil !== void 0) {
+    if (typeof raw.holdsUntil === "string" && HOLDS_UNTIL.includes(raw.holdsUntil)) out.holdsUntil = raw.holdsUntil;
+    else issues.push(`expectations.holdsUntil must be one of ${HOLDS_UNTIL.join(", ")}`);
+  }
+  if (raw.worship !== void 0) {
+    if (!isObj4(raw.worship)) issues.push("expectations.worship must be an object");
+    else {
+      const worship = {};
+      for (const [id, w] of Object.entries(raw.worship)) {
+        if (target(id) === void 0) {
+          drop2("worship", id, "names unknown target");
+          continue;
+        }
+        if (!open3(id)) {
+          drop2("worship", id, "names a target that is closed here:");
+          continue;
+        }
+        if (!isObj4(w) || typeof w.attitude !== "string" || !ATTITUDES.includes(w.attitude)) {
+          issues.push(`expectations.worship.${id}.attitude must be one of ${ATTITUDES.join(", ")}`);
+          continue;
+        }
+        const entry = { attitude: w.attitude };
+        if (w.how !== void 0) {
+          const how = text2(`worship.${id}.how`, w.how, L.howMax);
+          if (how !== void 0) entry.how = how;
+        }
+        if (w.meaning !== void 0) {
+          if (typeof w.meaning === "string" && MEANINGS.includes(w.meaning)) entry.meaning = w.meaning;
+          else issues.push(`expectations.worship.${id}.meaning must be one of ${MEANINGS.join(", ")}`);
+        }
+        worship[id] = entry;
+      }
+      if (Object.keys(worship).length > 0) out.worship = worship;
+    }
+  }
+  if (raw.body !== void 0) {
+    if (!isObj4(raw.body)) issues.push("expectations.body must be an object");
+    else {
+      const body = {};
+      for (const [id, v] of Object.entries(raw.body)) {
+        if (target(id) === void 0) {
+          drop2("body", id, "names unknown target");
+          continue;
+        }
+        if (typeof v === "string" && BODY_FEELINGS.includes(v)) body[id] = v;
+        else issues.push(`expectations.body.${id} must be one of ${BODY_FEELINGS.join(", ")}`);
+      }
+      if (Object.keys(body).length > 0) out.body = body;
+    }
+  }
+  if (raw.scent !== void 0) {
+    if (!isObj4(raw.scent)) issues.push("expectations.scent must be an object");
+    else {
+      const scent = {};
+      if (raw.scent.base !== void 0) {
+        if (!isObj4(raw.scent.base)) issues.push("expectations.scent.base must be an object");
+        else {
+          const base = {};
+          for (const [id, v] of Object.entries(raw.scent.base)) {
+            if (target(id) === void 0) {
+              drop2("scent", id, "names unknown target");
+              continue;
+            }
+            if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) base[id] = v;
+            else issues.push(`expectations.scent.base.${id} must be 1 to 5`);
+          }
+          if (Object.keys(base).length > 0) scent.base = base;
+        }
+      }
+      if (raw.scent.hygiene !== void 0) {
+        if (typeof raw.scent.hygiene === "string" && HYGIENE.includes(raw.scent.hygiene)) scent.hygiene = raw.scent.hygiene;
+        else issues.push(`expectations.scent.hygiene must be one of ${HYGIENE.join(", ")}`);
+      }
+      if (Object.keys(scent).length > 0) out.scent = scent;
+    }
+  }
+  if (raw.build !== void 0) {
+    const b = isObj4(raw.build) ? raw.build : {};
+    const slim = num5(b.slim, 0, 1);
+    const athletic = num5(b.athletic, 0, 1);
+    const curvy = num5(b.curvy, 0, 1);
+    if (slim === void 0 || athletic === void 0 || curvy === void 0) issues.push("expectations.build needs the weights slim, athletic and curvy");
+    else out.build = { slim, athletic, curvy };
+  }
+  if (raw.hair !== void 0) {
+    if (typeof raw.hair === "string" && HAIR.includes(raw.hair)) out.hair = raw.hair;
+    else issues.push(`expectations.hair must be one of ${HAIR.join(", ")}`);
+  }
+  if (raw.traits !== void 0) {
+    if (!Array.isArray(raw.traits)) issues.push("expectations.traits must be a list");
+    else {
+      const traits = [];
+      for (const [i, t] of raw.traits.entries()) {
+        const v = text2(`traits[${i}]`, t, L.traitMax);
+        if (v !== void 0 && !traits.includes(v)) traits.push(v);
+      }
+      if (traits.length > L.traitsMax) issues.push(`expectations.traits was cut to ${L.traitsMax}`);
+      if (traits.length > 0) out.traits = traits.slice(0, L.traitsMax);
+    }
+  }
+  return { ...Object.keys(out).length > 0 ? { expectations: out } : {}, issues, dropped };
+}
+function lockedExpectation(unit3, field2) {
+  const locks = unit3.expectationLocks ?? [];
+  return locks.includes(field2) || locks.includes(field2.split(".")[0]);
+}
+function keepLockedExpectations(old, next, locks) {
+  if (locks.length === 0) return next;
+  const out = structuredClone(next ?? {});
+  const was = old ?? {};
+  for (const f of locks) {
+    const [head, id] = f.split(".");
+    if (id === void 0) {
+      if (was[head] !== void 0) out[head] = structuredClone(was[head]);
+      else delete out[head];
+      continue;
+    }
+    const rec = { ...out[head] };
+    const oldEntry = was[head]?.[id];
+    if (oldEntry !== void 0) rec[id] = structuredClone(oldEntry);
+    else delete rec[id];
+    if (Object.keys(rec).length > 0) out[head] = rec;
+    else delete out[head];
+  }
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+function mergeExpectations(have, patch) {
+  const merged = { ...have };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null) delete merged[k];
+    else if ((k === "worship" || k === "moments") && isObj4(v)) {
+      const rec = { ...merged[k] };
+      for (const [id, entry] of Object.entries(v)) {
+        if (entry === null) delete rec[id];
+        else rec[id] = entry;
+      }
+      if (Object.keys(rec).length > 0) merged[k] = rec;
+      else delete merged[k];
+    } else merged[k] = v;
+  }
+  return merged;
+}
+
 // src/engine/development/axes.ts
 function axisKind(key) {
   const i = key.indexOf(":");
   if (i <= 0 || i === key.length - 1) return null;
   const kind = key.slice(0, i);
-  return kind === "value" || kind === "bond" || kind === "taste" || kind === "like" || kind === "dislike" ? kind : null;
+  return kind === "value" || kind === "bond" || kind === "taste" || kind === "like" || kind === "dislike" || kind === "practice" || kind === "expect" ? kind : null;
+}
+function dynamicAxis(key) {
+  if (key.startsWith("practice:")) {
+    const name = key.slice("practice:".length);
+    if (name === "style.secondary") return { kind: "practice", field: "secondary" };
+    if (name === "fairness" || name === "hint_style" || name === "drive") return { kind: "practice", field: "fixed", name };
+    const m = /^([a-z0-9_-]+)\.(as|witness)$/.exec(name);
+    return m ? { kind: "practice", field: m[2], category: m[1] } : null;
+  }
+  if (key.startsWith("expect:")) {
+    const name = key.slice("expect:".length);
+    if (name === "holds_until") return { kind: "expect", field: "holds_until" };
+    const m = /^worship\.([a-z0-9_-]+)$/.exec(name);
+    return m ? { kind: "expect", field: "worship", target: m[1] } : null;
+  }
+  return null;
+}
+function dynamicAxisEntryId(d) {
+  if (d === null) return null;
+  if (d.kind === "practice") return d.field === "as" || d.field === "witness" ? `practice:.any.${d.field}` : d.field === "secondary" ? "practice:style.secondary" : null;
+  return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
+}
+function scaleOfAxis(key) {
+  const S2 = TUNING.development.scales;
+  const field2 = bondField(key);
+  if (field2 !== null) return S2[field2];
+  const d = dynamicAxis(key);
+  if (d === null || d.field === "fixed") return null;
+  if (d.kind === "practice") return d.field === "as" ? S2.practiceAs : d.field === "witness" ? S2.practiceWitness : S2.secondary;
+  return d.field === "holds_until" ? S2.holdsUntil : S2.attitude;
+}
+function discreteAxis(unit3, key) {
+  const scale = scaleOfAxis(key);
+  if (scale === null) return null;
+  const dev = unit3.development;
+  const field2 = bondField(key);
+  if (field2 !== null) {
+    if (unit3.bond === void 0) return null;
+    const imported2 = unit3.bond[field2];
+    return { scale, imported: imported2, now: dev?.bond?.[field2] ?? imported2 };
+  }
+  const d = dynamicAxis(key);
+  if (d === null || d.field === "fixed") return null;
+  if (d.kind === "practice") {
+    const practice = unit3.bond?.practice;
+    if (practice === void 0) return null;
+    if (d.field === "secondary") {
+      const imported3 = practice.style.secondary;
+      return imported3 === void 0 ? null : { scale: scale.filter((x) => x !== practice.style.primary), imported: imported3, now: dev?.practice?.secondary ?? imported3 };
+    }
+    const imported2 = practice.categories[d.category]?.[d.field] ?? (d.field === "as" ? "none" : "indifferent");
+    return { scale, imported: imported2, now: dev?.practice?.categories?.[d.category]?.[d.field] ?? imported2 };
+  }
+  const profile = unit3.expectations;
+  if (profile === void 0) return null;
+  if (d.field === "holds_until") return profile.holdsUntil === void 0 ? null : { scale, imported: profile.holdsUntil, now: dev?.expect?.holdsUntil ?? profile.holdsUntil };
+  const imported = profile.worship?.[d.target]?.attitude;
+  return imported === void 0 ? null : { scale, imported, now: dev?.expect?.worship?.[d.target] ?? imported };
 }
 var WILDCARD = ".any";
 function bondField(key) {
@@ -11997,6 +12292,10 @@ function axisEntry(reg, key) {
   const exact = reg.developmentAxes.get(key);
   if (exact) return exact;
   const kind = axisKind(key);
+  if (kind === "practice" || kind === "expect") {
+    const id = dynamicAxisEntryId(dynamicAxis(key));
+    return id === null ? null : reg.developmentAxes.get(id) ?? null;
+  }
   const wild = kind ? reg.developmentAxes.get(`${kind}:${WILDCARD}`) : void 0;
   return wild ?? null;
 }
@@ -12005,11 +12304,14 @@ function isAnchored(unit3, key) {
 }
 function axisForbidden(state, reg, unit3, key) {
   const kind = axisKind(key);
+  const dyn = kind === "practice" || kind === "expect" ? dynamicAxis(key) : null;
+  if (dyn?.field === "fixed") return "her fairness, hint style and drive never drift";
   if (kind === null || axisEntry(reg, key) === null) return `"${key}" is not an axis`;
   if (unit3.kind !== "named") return "a grunt does not develop";
   if (kind === "bond" && (bondField(key) === null || unit3.bond === void 0)) return "bond axes need an imported bond";
   if (kind === "taste" && !reg.tastes.has(key.slice("taste:".length))) return `"${key}" names no taste`;
   if (unit3.development?.held?.includes(key) === true) return "held by the player";
+  if (dyn !== null) return dynamicAxisForbidden(state, reg, unit3, dyn);
   if (kind === "like" || kind === "dislike") {
     const tag2 = key.slice(kind.length + 1);
     const on = state.content?.enabled ?? [];
@@ -12022,12 +12324,48 @@ function axisForbidden(state, reg, unit3, key) {
   }
   return null;
 }
+function dynamicAxisForbidden(state, reg, unit3, d) {
+  const on = state.content?.enabled ?? [];
+  const limits = unit3.bond?.ownLimits.categories ?? [];
+  if (d.kind === "practice") {
+    const practice = unit3.bond?.practice;
+    if (practice === void 0) return "practice axes need an imported practice";
+    const locks = unit3.practiceLocks ?? [];
+    if (d.field === "secondary") {
+      if (practice.style.secondary === void 0) return "she has no secondary style to drift";
+      return locks.includes("style") ? "locked by the player" : null;
+    }
+    if (d.field === "fixed") return "her fairness, hint style and drive never drift";
+    if (!reg.contentCategories.has(d.category)) return `"${d.category}" is no content category`;
+    if (!on.includes(d.category) || limits.includes(d.category)) return "a disabled or limited content category";
+    return locks.includes(`categories.${d.category}`) ? "locked by the player" : null;
+  }
+  if (unit3.expectations === void 0) return "expectation axes need an imported profile";
+  const locked = (field2) => lockedExpectation(unit3, field2);
+  if (d.field === "holds_until") {
+    if (unit3.expectations.holdsUntil === void 0) return "she has stated no limit to drift";
+    return locked("holdsUntil") ? "locked by the player" : null;
+  }
+  const target = reg.worshipTargets.get(d.target);
+  if (target === void 0) return `"${d.target}" is no worship target`;
+  if (locked(`worship.${d.target}`)) return "locked by the player";
+  if (unit3.expectations.worship?.[d.target] === void 0) return "she has no word on that target";
+  if (tagsOf(target).some((t) => !on.includes(t) || limits.includes(t))) return "a closed target";
+  return null;
+}
 var isTag = (s) => s.length > 0 && s.length <= 32 && /^[a-z0-9'_-]+( [a-z0-9'_-]+)*$/.test(s);
 function anchorKey(reg, raw) {
   if (typeof raw !== "string") return null;
   const key = raw === "bond:leadStyle" ? "bond:lead_style" : raw;
   const kind = axisKind(key);
   if (kind === null) return null;
+  if (kind === "practice" || kind === "expect") {
+    const d = dynamicAxis(key);
+    if (d === null || d.field === "fixed") return null;
+    if (d.field === "worship" && !reg.worshipTargets.has(d.target)) return null;
+    if ((d.field === "as" || d.field === "witness") && !reg.contentCategories.has(d.category)) return null;
+    return reg.developmentAxes.has(dynamicAxisEntryId(d)) ? key : null;
+  }
   const name = key.slice(kind.length + 1);
   if (kind === "like" || kind === "dislike") return reg.developmentAxes.has(`${kind}:${WILDCARD}`) && isTag(name) ? key : null;
   if (kind === "taste") return reg.tastes.has(name) && reg.developmentAxes.has(`taste:${WILDCARD}`) ? key : null;
@@ -13992,235 +14330,6 @@ function objectiveList(state, reg) {
     out.push({ id: `unit:demand:${d.id}`, text: `${nameOf18(d.unitId)} is waiting for an answer.`, source: "unit", dueDays: null });
   }
   return out;
-}
-
-// src/engine/dynamic/expectations.ts
-var ATTITUDES = ["craves", "enjoys", "indifferent", "dislikes"];
-var MEANINGS = ["reward", "duty", "humiliation", "intimacy", "play", "comfort"];
-var BODY_FEELINGS = ["proud", "ashamed", "indifferent"];
-var HYGIENE = ["meticulous", "normal", "lax"];
-var HAIR = ["short", "bob", "long", "tail"];
-var HOLDS_UNTIL = ["signal", "limit", "blackout"];
-var EXPECTATION_FIELDS = ["moments", "offset", "tells", "holdsUntil", "worship", "body", "scent", "build", "hair", "traits"];
-var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
-var clean2 = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
-function validateExpectations(raw, reg, ctx2) {
-  const issues = [];
-  const dropped = [];
-  if (raw === void 0) return { issues, dropped };
-  if (!isObj4(raw)) return { issues: ["expectations must be an object"], dropped };
-  const out = {};
-  const L = TUNING.dynamic.profile;
-  const drop2 = (field2, id, why) => {
-    issues.push(`expectations.${field2} ${why} "${id}"`);
-    dropped.push(`expectations:${field2}.${id}`);
-  };
-  const text2 = (field2, v, max) => {
-    if (typeof v !== "string") return void issues.push(`expectations.${field2} must be text`);
-    const t = clean2(v);
-    if (t === "") return void 0;
-    if (COMMANDER_PRONOUN.test(t)) return void issues.push(`expectations.${field2} has a pronoun for the commander and was dropped`);
-    if (t.length > max) issues.push(`expectations.${field2} was cut to ${max} characters`);
-    return t.slice(0, max).trim();
-  };
-  const num5 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : void 0;
-  const target = (id) => reg.worshipTargets.get(id);
-  const open3 = (id) => ctx2.state === void 0 || contentAllowed(ctx2.state, reg, target(id), ctx2.unitId);
-  for (const key of Object.keys(raw)) if (!EXPECTATION_FIELDS.includes(key)) issues.push(`expectations has no field "${key}"`);
-  if (raw.moments !== void 0) {
-    if (!isObj4(raw.moments)) issues.push("expectations.moments must be an object");
-    else {
-      const moments = {};
-      for (const [id, m] of Object.entries(raw.moments)) {
-        const source = reg.momentSources.get(id);
-        if (source === void 0) {
-          drop2("moments", id, "names unknown moment source");
-          continue;
-        }
-        const type = isObj4(m) ? m.type : void 0;
-        const strength = isObj4(m) ? m.strength : void 0;
-        const offered2 = (source.frame ?? []).map((o) => o.type);
-        if (typeof type !== "string" || !RESPONSE_TYPES.includes(type)) {
-          issues.push(`expectations.moments.${id}.type must be one of ${RESPONSE_TYPES.join(", ")}`);
-          continue;
-        }
-        if (!offered2.includes(type)) {
-          issues.push(`expectations.moments.${id}: that moment does not offer "${type}"`);
-          continue;
-        }
-        if (strength !== 1 && strength !== 2 && strength !== 3) {
-          issues.push(`expectations.moments.${id}.strength must be 1, 2 or 3`);
-          continue;
-        }
-        moments[id] = { type, strength };
-      }
-      if (Object.keys(moments).length > 0) out.moments = moments;
-    }
-  }
-  if (raw.offset !== void 0) {
-    const r = isObj4(raw.offset) ? num5(raw.offset.r, -L.offsetMax, L.offsetMax) : void 0;
-    const f = isObj4(raw.offset) ? num5(raw.offset.f, -L.offsetMax, L.offsetMax) : void 0;
-    if (r === void 0 || f === void 0) issues.push("expectations.offset needs numbers r and f");
-    else {
-      if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L.offsetMax || Math.abs(Number(raw.offset.f)) > L.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L.offsetMax}`);
-      out.offset = { r, f };
-    }
-  }
-  if (raw.tells !== void 0) {
-    if (!isObj4(raw.tells)) issues.push("expectations.tells must be an object");
-    else {
-      const tells = {};
-      for (const k of ["irritation", "pleasure"]) {
-        if (raw.tells[k] === void 0) continue;
-        const t = text2(`tells.${k}`, raw.tells[k], L.tellMax);
-        if (t !== void 0) tells[k] = t;
-      }
-      for (const k of Object.keys(raw.tells)) if (k !== "irritation" && k !== "pleasure") issues.push(`expectations.tells has no field "${k}"`);
-      if (Object.keys(tells).length > 0) out.tells = tells;
-    }
-  }
-  if (raw.holdsUntil !== void 0) {
-    if (typeof raw.holdsUntil === "string" && HOLDS_UNTIL.includes(raw.holdsUntil)) out.holdsUntil = raw.holdsUntil;
-    else issues.push(`expectations.holdsUntil must be one of ${HOLDS_UNTIL.join(", ")}`);
-  }
-  if (raw.worship !== void 0) {
-    if (!isObj4(raw.worship)) issues.push("expectations.worship must be an object");
-    else {
-      const worship = {};
-      for (const [id, w] of Object.entries(raw.worship)) {
-        if (target(id) === void 0) {
-          drop2("worship", id, "names unknown target");
-          continue;
-        }
-        if (!open3(id)) {
-          drop2("worship", id, "names a target that is closed here:");
-          continue;
-        }
-        if (!isObj4(w) || typeof w.attitude !== "string" || !ATTITUDES.includes(w.attitude)) {
-          issues.push(`expectations.worship.${id}.attitude must be one of ${ATTITUDES.join(", ")}`);
-          continue;
-        }
-        const entry = { attitude: w.attitude };
-        if (w.how !== void 0) {
-          const how = text2(`worship.${id}.how`, w.how, L.howMax);
-          if (how !== void 0) entry.how = how;
-        }
-        if (w.meaning !== void 0) {
-          if (typeof w.meaning === "string" && MEANINGS.includes(w.meaning)) entry.meaning = w.meaning;
-          else issues.push(`expectations.worship.${id}.meaning must be one of ${MEANINGS.join(", ")}`);
-        }
-        worship[id] = entry;
-      }
-      if (Object.keys(worship).length > 0) out.worship = worship;
-    }
-  }
-  if (raw.body !== void 0) {
-    if (!isObj4(raw.body)) issues.push("expectations.body must be an object");
-    else {
-      const body = {};
-      for (const [id, v] of Object.entries(raw.body)) {
-        if (target(id) === void 0) {
-          drop2("body", id, "names unknown target");
-          continue;
-        }
-        if (typeof v === "string" && BODY_FEELINGS.includes(v)) body[id] = v;
-        else issues.push(`expectations.body.${id} must be one of ${BODY_FEELINGS.join(", ")}`);
-      }
-      if (Object.keys(body).length > 0) out.body = body;
-    }
-  }
-  if (raw.scent !== void 0) {
-    if (!isObj4(raw.scent)) issues.push("expectations.scent must be an object");
-    else {
-      const scent = {};
-      if (raw.scent.base !== void 0) {
-        if (!isObj4(raw.scent.base)) issues.push("expectations.scent.base must be an object");
-        else {
-          const base = {};
-          for (const [id, v] of Object.entries(raw.scent.base)) {
-            if (target(id) === void 0) {
-              drop2("scent", id, "names unknown target");
-              continue;
-            }
-            if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) base[id] = v;
-            else issues.push(`expectations.scent.base.${id} must be 1 to 5`);
-          }
-          if (Object.keys(base).length > 0) scent.base = base;
-        }
-      }
-      if (raw.scent.hygiene !== void 0) {
-        if (typeof raw.scent.hygiene === "string" && HYGIENE.includes(raw.scent.hygiene)) scent.hygiene = raw.scent.hygiene;
-        else issues.push(`expectations.scent.hygiene must be one of ${HYGIENE.join(", ")}`);
-      }
-      if (Object.keys(scent).length > 0) out.scent = scent;
-    }
-  }
-  if (raw.build !== void 0) {
-    const b = isObj4(raw.build) ? raw.build : {};
-    const slim = num5(b.slim, 0, 1);
-    const athletic = num5(b.athletic, 0, 1);
-    const curvy = num5(b.curvy, 0, 1);
-    if (slim === void 0 || athletic === void 0 || curvy === void 0) issues.push("expectations.build needs the weights slim, athletic and curvy");
-    else out.build = { slim, athletic, curvy };
-  }
-  if (raw.hair !== void 0) {
-    if (typeof raw.hair === "string" && HAIR.includes(raw.hair)) out.hair = raw.hair;
-    else issues.push(`expectations.hair must be one of ${HAIR.join(", ")}`);
-  }
-  if (raw.traits !== void 0) {
-    if (!Array.isArray(raw.traits)) issues.push("expectations.traits must be a list");
-    else {
-      const traits = [];
-      for (const [i, t] of raw.traits.entries()) {
-        const v = text2(`traits[${i}]`, t, L.traitMax);
-        if (v !== void 0 && !traits.includes(v)) traits.push(v);
-      }
-      if (traits.length > L.traitsMax) issues.push(`expectations.traits was cut to ${L.traitsMax}`);
-      if (traits.length > 0) out.traits = traits.slice(0, L.traitsMax);
-    }
-  }
-  return { ...Object.keys(out).length > 0 ? { expectations: out } : {}, issues, dropped };
-}
-function lockedExpectation(unit3, field2) {
-  const locks = unit3.expectationLocks ?? [];
-  return locks.includes(field2) || locks.includes(field2.split(".")[0]);
-}
-function keepLockedExpectations(old, next, locks) {
-  if (locks.length === 0) return next;
-  const out = structuredClone(next ?? {});
-  const was = old ?? {};
-  for (const f of locks) {
-    const [head, id] = f.split(".");
-    if (id === void 0) {
-      if (was[head] !== void 0) out[head] = structuredClone(was[head]);
-      else delete out[head];
-      continue;
-    }
-    const rec = { ...out[head] };
-    const oldEntry = was[head]?.[id];
-    if (oldEntry !== void 0) rec[id] = structuredClone(oldEntry);
-    else delete rec[id];
-    if (Object.keys(rec).length > 0) out[head] = rec;
-    else delete out[head];
-  }
-  return Object.keys(out).length > 0 ? out : void 0;
-}
-function mergeExpectations(have, patch) {
-  const merged = { ...have };
-  for (const [k, v] of Object.entries(patch)) {
-    if (v === null) delete merged[k];
-    else if ((k === "worship" || k === "moments") && isObj4(v)) {
-      const rec = { ...merged[k] };
-      for (const [id, entry] of Object.entries(v)) {
-        if (entry === null) delete rec[id];
-        else rec[id] = entry;
-      }
-      if (Object.keys(rec).length > 0) merged[k] = rec;
-      else delete merged[k];
-    } else merged[k] = v;
-  }
-  return merged;
 }
 
 // src/engine/life/facts.ts
@@ -26478,9 +26587,8 @@ function stampedMoments(state, unitId) {
 function wentUp(m) {
   const kind = axisKind(m.axis);
   if (kind === "value") return Number(m.to) > Number(m.from);
-  if (kind === "bond") {
-    const field2 = bondField(m.axis);
-    const scale = field2 === null ? [] : TUNING.development.scales[field2].map(String);
+  if (kind === "bond" || kind === "practice" || kind === "expect") {
+    const scale = (scaleOfAxis(m.axis) ?? []).map(String);
     return scale.indexOf(m.to) > scale.indexOf(m.from);
   }
   return m.to === "yes";
@@ -30672,15 +30780,13 @@ function room(unit3, key, pending4 = {}) {
     const now = valuesOf(unit3)[axis];
     return { up: d < cap7 && now < 3, down: d > -cap7 && now > -3 };
   }
-  if (kind === "bond") {
-    const field2 = bondField(key);
-    if (field2 === null || unit3.bond === void 0) return { up: false, down: false };
-    const scale = D2.scales[field2];
-    const eff = developmentOf(unit3).bond?.[field2] ?? unit3.bond[field2];
-    const cur = scale.indexOf(eff);
-    const imp = scale.indexOf(unit3.bond[field2]);
+  if (kind === "bond" || kind === "practice" || kind === "expect") {
+    const d = discreteAxis(unit3, key);
+    if (d === null) return { up: false, down: false };
+    const cur = d.scale.indexOf(d.now);
+    const imp = d.scale.indexOf(d.imported);
     const cap7 = anchored ? D2.anchoredDiscreteCap : D2.discreteCap;
-    return { up: cur + 1 < scale.length && cur + 1 - imp <= cap7, down: cur - 1 >= 0 && imp - (cur - 1) <= cap7 };
+    return { up: cur + 1 < d.scale.length && cur + 1 - imp <= cap7, down: cur - 1 >= 0 && imp - (cur - 1) <= cap7 };
   }
   const name = key.slice((kind ?? "").length + 1);
   const list5 = kind === "like" ? likesOf(unit3) : kind === "dislike" ? dislikesOf(unit3) : tastesOf(unit3);
@@ -30777,6 +30883,45 @@ function changeList(dev, field2, name, gain) {
     if (Object.keys(bag).length === 0) delete dev[k];
   }
 }
+function writeDiscrete(dev, key, to, imported) {
+  const field2 = bondField(key);
+  if (field2 !== null) {
+    const bag = dev.bond ??= {};
+    if (to === imported) delete bag[field2];
+    else bag[field2] = to;
+    if (Object.keys(bag).length === 0) delete dev.bond;
+    return;
+  }
+  const d = dynamicAxis(key);
+  const same = to === imported;
+  if (d.kind === "practice") {
+    const practice = dev.practice ??= {};
+    if (d.field === "secondary") {
+      if (same) delete practice.secondary;
+      else practice.secondary = to;
+    } else if (d.field === "as" || d.field === "witness") {
+      const cats = practice.categories ??= {};
+      const entry = cats[d.category] ??= {};
+      if (same) delete entry[d.field];
+      else entry[d.field] = to;
+      if (Object.keys(entry).length === 0) delete cats[d.category];
+      if (Object.keys(cats).length === 0) delete practice.categories;
+    }
+    if (Object.keys(practice).length === 0) delete dev.practice;
+    return;
+  }
+  const expect = dev.expect ??= {};
+  if (d.field === "holds_until") {
+    if (same) delete expect.holdsUntil;
+    else expect.holdsUntil = to;
+  } else if (d.field === "worship") {
+    const worship = expect.worship ??= {};
+    if (same) delete worship[d.target];
+    else worship[d.target] = to;
+    if (Object.keys(worship).length === 0) delete expect.worship;
+  }
+  if (Object.keys(expect).length === 0) delete dev.expect;
+}
 function applyShift(unit3, dev, s) {
   const kind = axisKind(s.axis);
   const up = s.direction === "up";
@@ -30791,16 +30936,11 @@ function applyShift(unit3, dev, s) {
     const after = valuesOf(unit3)[axis];
     return after === before ? null : { from: String(before), to: String(after) };
   }
-  if (kind === "bond") {
-    const field2 = bondField(s.axis);
-    const scale = D2.scales[field2];
-    const eff = dev.bond?.[field2] ?? unit3.bond[field2];
-    const to = scale[scale.indexOf(eff) + (up ? 1 : -1)];
-    const bag = dev.bond ??= {};
-    if (to === unit3.bond[field2]) delete bag[field2];
-    else bag[field2] = to;
-    if (Object.keys(bag).length === 0) delete dev.bond;
-    return { from: String(eff), to: String(to) };
+  if (kind === "bond" || kind === "practice" || kind === "expect") {
+    const d = discreteAxis(unit3, s.axis);
+    const to = d.scale[d.scale.indexOf(d.now) + (up ? 1 : -1)];
+    writeDiscrete(dev, s.axis, to, d.imported);
+    return { from: String(d.now), to: String(to) };
   }
   const name = s.axis.slice((kind ?? "").length + 1);
   changeList(dev, listField[kind], name, up);
@@ -30816,6 +30956,8 @@ function applyReview(draft, reg, unitId, v, source) {
   const inverse = {
     drift: structuredClone(dev.drift),
     bond: structuredClone(dev.bond),
+    practice: structuredClone(dev.practice),
+    expect: structuredClone(dev.expect),
     gained: structuredClone(dev.gained),
     lost: structuredClone(dev.lost),
     acc: {},
@@ -30860,6 +31002,10 @@ function undoReview(draft, unitId) {
   dev.drift = structuredClone(inv.drift);
   if (inv.bond) dev.bond = structuredClone(inv.bond);
   else delete dev.bond;
+  if (inv.practice) dev.practice = structuredClone(inv.practice);
+  else delete dev.practice;
+  if (inv.expect) dev.expect = structuredClone(inv.expect);
+  else delete dev.expect;
   if (inv.gained) dev.gained = structuredClone(inv.gained);
   else delete dev.gained;
   if (inv.lost) dev.lost = structuredClone(inv.lost);
@@ -41438,7 +41584,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond, co
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str7(d.lore) })),
     tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str7(t.description) })),
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str7(c.label) })) } : {},
-    ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries) } } : {},
+    ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries, content) } } : {},
     ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str7(h2.description) })) } : {},
     ...sections.includes("opinions") ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: t.positions.map((p) => p.id) })) } : {},
     ...asked.includes("practice") ? { practice: { categories: enabledPractice } } : {},
@@ -41454,9 +41600,19 @@ function resyncSectionsOffered(registries, world, content) {
   const dynamic = practiceCategories(registries).some((c) => (content ?? []).includes(c));
   return RESYNC_SECTIONS.filter((s) => (s !== "stances" || stanceOptionIds(registries, world).length > 0) && (dynamic || !PRACTICE_SECTIONS.includes(s)));
 }
-function developmentAxisKeys(registries) {
-  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any"));
-  return [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
+function developmentAxisKeys(registries, content) {
+  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any") && axisKind(k) !== "practice" && axisKind(k) !== "expect");
+  const base = [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
+  const on = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
+  if (on.length === 0) return base;
+  const holder2 = { content: { enabled: [...content ?? []] } };
+  return [
+    ...base,
+    "practice:style.secondary",
+    "expect:holds_until",
+    ...on.flatMap((c) => [`practice:${c}.as`, `practice:${c}.witness`]),
+    ...[...registries.worshipTargets.values()].filter((t) => contentAllowed(holder2, registries, t)).map((t) => `expect:worship.${t.id}`)
+  ];
 }
 var isObj46 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
@@ -57296,13 +57452,20 @@ registerChecks("headStartMoments", (entry) => {
   const values = entry.requires?.values ?? {};
   return Object.keys(values).filter((axis) => !VALUE_AXES.includes(axis)).map((axis) => ({ path: `requires.values.${axis}`, message: `head start moment "${entry.id}": "${axis}" is not a value axis (${VALUE_AXES.join(", ")})` }));
 });
-var axisKeyKinds = ["value", "bond", "taste", "like", "dislike"];
+var axisKeyKinds = ["value", "bond", "taste", "like", "dislike", "practice", "expect"];
 function axisKeyProblem(key, regs, allowTag) {
   if (allowTag && (key === "like:{tag}" || key === "dislike:{tag}")) return regs.developmentAxes.has(`${key.split(":")[0]}:.any`) ? null : `no axis entry words "${key}"`;
   const i = key.indexOf(":");
   const kind = i > 0 ? key.slice(0, i) : "";
   if (!axisKeyKinds.includes(kind)) return `"${key}" is not an axis key (value:\u2026, bond:\u2026, taste:\u2026, like:\u2026, dislike:\u2026)`;
   if (kind === "taste" && !regs.tastes.has(key.slice(i + 1))) return `"${key}" names no taste`;
+  if (kind === "practice" || kind === "expect") {
+    const d = dynamicAxis(key);
+    if (d === null || d.field === "fixed") return `"${key}" is not a practice or expectation axis (practice:<category>.as, practice:<category>.witness, practice:style.secondary, expect:holds_until, expect:worship.<target>)`;
+    if ((d.field === "as" || d.field === "witness") && !regs.contentCategories.has(d.category)) return `"${key}" names no content category`;
+    if (d.field === "worship" && !regs.worshipTargets.has(d.target)) return `"${key}" names no worship target`;
+    return regs.developmentAxes.has(dynamicAxisEntryId(d)) ? null : `no axis entry words "${key}"`;
+  }
   if (!regs.developmentAxes.has(key) && !regs.developmentAxes.has(`${kind}:.any`)) return `no axis entry words "${key}"`;
   return null;
 }

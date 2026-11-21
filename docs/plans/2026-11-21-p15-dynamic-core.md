@@ -974,17 +974,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Consumes: Tasks 2–3.
 - Produces: drift folded into `practiceOf` / `expectationsOf`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a shift of practice:restraint.as moves one step and practiceOf reads it`;
   - `a locked category never shifts` (`axisForbidden` true);
   - `fairness never drifts`;
   - `a disabled category is forbidden`;
   - `undoReview restores the stored value`;
   - `with development off nothing changes` (`tests/development/unaffected.test.ts` still green).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/development/practiceAxes.test.ts` → FAIL.
-- [ ] **Step 3: Implement** at the nine places the code map lists.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): practice and expectation drift through development`
+- [x] **Step 2: Run** `npx vitest run tests/engine/development/practiceAxes.test.ts` → FAIL.
+- [x] **Step 3: Implement** at the nine places the code map lists.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): practice and expectation drift through development`
 
 ---
 

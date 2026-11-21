@@ -98,13 +98,14 @@ const gone = (u: Pick<Unit, 'status'>): boolean => u.status === 'dead' || u.stat
 /**
  * Her practice as the campaign sees it: `null` for a grunt, a unit that left, or a named unit with no section. A category the campaign
  * switched off, or that is among her own limits, reads `none` / `indifferent` whatever is stored; switch it back on and the stored value
- * reads again (nothing is rewritten). Every practice category is present in the answer.
+ * reads again (nothing is rewritten). Every practice category is present in the answer. What she has become (`development.practice`) is folded in.
  */
 export function practiceOf(state: Pick<CampaignState, 'squad' | 'content'>, reg: Registries, unitId: string): PracticeView | null {
   const unit = state.squad.find((u) => u.id === unitId);
   if (unit === undefined || unit.kind !== 'named' || gone(unit)) return null;
   const stored = unit.bond?.practice;
   if (stored === undefined) return null;
+  const drift = unit.development?.practice; // P14b: what she has become sits on top of the import, as in `bondOf`
   const on = state.content?.enabled ?? [];
   const limits = unit.bond?.ownLimits.categories ?? [];
   const ids = [...new Set([...practiceCategories(reg), ...Object.keys(stored.categories)])];
@@ -113,9 +114,10 @@ export function practiceOf(state: Pick<CampaignState, 'squad' | 'content'>, reg:
   for (const id of ids) {
     const open = on.includes(id) && !limits.includes(id);
     if (open) allowed.push(id);
-    categories[id] = open ? { ...(stored.categories[id] ?? NONE) } : { ...NONE };
+    categories[id] = open ? { ...(stored.categories[id] ?? NONE), ...drift?.categories?.[id] } : { ...NONE };
   }
-  return { ...stored, categories, style: { ...stored.style }, allowed };
+  const secondary = drift?.secondary ?? stored.style.secondary;
+  return { ...stored, categories, style: secondary === undefined ? { primary: stored.style.primary } : { primary: stored.style.primary, secondary }, allowed };
 }
 
 /**

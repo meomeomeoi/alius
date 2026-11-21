@@ -4,7 +4,7 @@ import { isLiving } from '../economy';
 import { SETUP_LIMITS } from '../setup';
 import type { CampaignState, DevFact, Development, DevMoment, ReviewInverse, Unit, ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
-import { axisForbidden, axisKind, bondField, isAnchored } from './axes';
+import { axisForbidden, axisKind, bondField, discreteAxis, dynamicAxis, isAnchored } from './axes';
 import { dislikesOf, likesOf, tastesOf, valuesOf } from './profile';
 import { developmentMode, developmentOf, ensureDevelopment, nextDevId } from './state';
 
@@ -35,15 +35,14 @@ function room(unit: Unit, key: string, pending: Partial<Record<'like' | 'dislike
     const now = valuesOf(unit)[axis]; // a value at the end of the scale (±3) cannot move further: the support would be spent on nothing
     return { up: d < cap && now < 3, down: d > -cap && now > -3 };
   }
-  if (kind === 'bond') {
-    const field = bondField(key);
-    if (field === null || unit.bond === undefined) return { up: false, down: false }; // P14b: raw profile
-    const scale = D.scales[field] as readonly (string | boolean)[];
-    const eff = developmentOf(unit).bond?.[field] ?? unit.bond[field]; // P14b: raw profile
-    const cur = scale.indexOf(eff);
-    const imp = scale.indexOf(unit.bond[field]); // P14b: raw profile
+  if (kind === 'bond' || kind === 'practice' || kind === 'expect') {
+    // a discrete axis (a bond field, a practice field, an expectation field): one place on its scale per step, at most the cap from the import
+    const d = discreteAxis(unit, key);
+    if (d === null) return { up: false, down: false };
+    const cur = d.scale.indexOf(d.now);
+    const imp = d.scale.indexOf(d.imported);
     const cap = anchored ? D.anchoredDiscreteCap : D.discreteCap;
-    return { up: cur + 1 < scale.length && cur + 1 - imp <= cap, down: cur - 1 >= 0 && imp - (cur - 1) <= cap };
+    return { up: cur + 1 < d.scale.length && cur + 1 - imp <= cap, down: cur - 1 >= 0 && imp - (cur - 1) <= cap };
   }
   const name = key.slice((kind ?? '').length + 1);
   const list = kind === 'like' ? likesOf(unit) : kind === 'dislike' ? dislikesOf(unit) : tastesOf(unit);
@@ -168,6 +167,47 @@ function changeList(dev: Development, field: 'likes' | 'dislikes' | 'tastes', na
   }
 }
 
+/** Writes where a discrete axis stands now into her development; the entry goes when it is back at the import, and the empty parents with it. */
+function writeDiscrete(dev: Development, key: string, to: string | boolean, imported: string | boolean): void {
+  const field = bondField(key);
+  if (field !== null) {
+    const bag = (dev.bond ??= {}) as Record<string, unknown>;
+    if (to === imported) delete bag[field];
+    else bag[field] = to;
+    if (Object.keys(bag).length === 0) delete dev.bond;
+    return;
+  }
+  const d = dynamicAxis(key)!;
+  const same = to === imported;
+  if (d.kind === 'practice') {
+    const practice = (dev.practice ??= {});
+    if (d.field === 'secondary') {
+      if (same) delete practice.secondary;
+      else practice.secondary = to as NonNullable<Development['practice']>['secondary'];
+    } else if (d.field === 'as' || d.field === 'witness') {
+      const cats = (practice.categories ??= {});
+      const entry = (cats[d.category] ??= {}) as Record<string, unknown>;
+      if (same) delete entry[d.field];
+      else entry[d.field] = to;
+      if (Object.keys(entry).length === 0) delete cats[d.category];
+      if (Object.keys(cats).length === 0) delete practice.categories;
+    }
+    if (Object.keys(practice).length === 0) delete dev.practice;
+    return;
+  }
+  const expect = (dev.expect ??= {});
+  if (d.field === 'holds_until') {
+    if (same) delete expect.holdsUntil;
+    else expect.holdsUntil = to as NonNullable<Development['expect']>['holdsUntil'];
+  } else if (d.field === 'worship') {
+    const worship = (expect.worship ??= {});
+    if (same) delete worship[d.target];
+    else worship[d.target] = to as NonNullable<NonNullable<Development['expect']>['worship']>[string];
+    if (Object.keys(worship).length === 0) delete expect.worship;
+  }
+  if (Object.keys(expect).length === 0) delete dev.expect;
+}
+
 /** Applies one validated shift; returns the change of her effective value for a moment (from/to), or null when nothing visible changed. */
 function applyShift(unit: Unit, dev: Development, s: ReviewShift): { from: string; to: string } | null {
   const kind = axisKind(s.axis);
@@ -183,16 +223,11 @@ function applyShift(unit: Unit, dev: Development, s: ReviewShift): { from: strin
     const after = valuesOf(unit)[axis];
     return after === before ? null : { from: String(before), to: String(after) };
   }
-  if (kind === 'bond') {
-    const field = bondField(s.axis)!;
-    const scale = D.scales[field] as readonly (string | boolean)[];
-    const eff = dev.bond?.[field] ?? unit.bond![field]; // P14b: raw profile
-    const to = scale[scale.indexOf(eff) + (up ? 1 : -1)];
-    const bag = (dev.bond ??= {}) as Record<string, unknown>;
-    if (to === unit.bond![field]) delete bag[field]; // P14b: raw profile (back at the import: no entry)
-    else bag[field] = to;
-    if (Object.keys(bag).length === 0) delete dev.bond;
-    return { from: String(eff), to: String(to) };
+  if (kind === 'bond' || kind === 'practice' || kind === 'expect') {
+    const d = discreteAxis(unit, s.axis)!;
+    const to = d.scale[d.scale.indexOf(d.now) + (up ? 1 : -1)];
+    writeDiscrete(dev, s.axis, to, d.imported);
+    return { from: String(d.now), to: String(to) };
   }
   const name = s.axis.slice((kind ?? '').length + 1);
   changeList(dev, listField[kind as keyof typeof listField], name, up);
@@ -212,7 +247,7 @@ export function applyReview(draft: CampaignState, reg: Registries, unitId: strin
   const ok = validateReview(draft, reg, unitId, v);
   const dev = ensureDevelopment(unit);
   const inverse: ReviewInverse = {
-    drift: structuredClone(dev.drift), bond: structuredClone(dev.bond), gained: structuredClone(dev.gained), lost: structuredClone(dev.lost),
+    drift: structuredClone(dev.drift), bond: structuredClone(dev.bond), practice: structuredClone(dev.practice), expect: structuredClone(dev.expect), gained: structuredClone(dev.gained), lost: structuredClone(dev.lost),
     acc: {}, factIds: [], momentIds: [], ...(dev.lastReview !== undefined ? { lastReview: dev.lastReview } : {}), pending: structuredClone(dev.pending),
   };
   const events: EngineEvent[] = [];
@@ -252,6 +287,8 @@ export function undoReview(draft: CampaignState, unitId: string): boolean {
   if (!dev || !inv) return false;
   dev.drift = structuredClone(inv.drift);
   if (inv.bond) dev.bond = structuredClone(inv.bond); else delete dev.bond;
+  if (inv.practice) dev.practice = structuredClone(inv.practice); else delete dev.practice; // P15
+  if (inv.expect) dev.expect = structuredClone(inv.expect); else delete dev.expect;
   if (inv.gained) dev.gained = structuredClone(inv.gained); else delete dev.gained;
   if (inv.lost) dev.lost = structuredClone(inv.lost); else delete dev.lost;
   for (const [axis, taken] of Object.entries(inv.acc)) {

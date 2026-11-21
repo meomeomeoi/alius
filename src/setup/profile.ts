@@ -5,7 +5,7 @@ import { contentAllowed, defectAllowedFor, validateBond } from '../engine/bonds'
 import { validateExpectations, type ExpectationProfile } from '../engine/dynamic/expectations';
 import { practiceCategories, validatePractice } from '../engine/dynamic/profile';
 import type { Practice } from '../engine/dynamic/types';
-import { anchorKey } from '../engine/development/axes';
+import { anchorKey, axisKind } from '../engine/development/axes';
 import { RESYNC_SECTIONS, type ResyncSection } from '../engine/actions/squad';
 import { TEMPERAMENT_DEFAULTS, TEMPERAMENT_VALUES } from '../engine/life/state';
 import type { OpinionTopicEntry } from '../engine/life/types';
@@ -98,7 +98,7 @@ export function buildImportInput(
     ...(sections.includes('bond')
       ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str(c.label) })) }
       : {}),
-    ...(sections.includes('development') ? { development: { axes: developmentAxisKeys(registries) } } : {}),
+    ...(sections.includes('development') ? { development: { axes: developmentAxisKeys(registries, content) } } : {}),
     ...(sections.includes('hobbies') ? { hobbies: [...registries.hobbies.values()].map((h) => ({ id: h.id, description: str(h.description) })) } : {}),
     ...(sections.includes('opinions')
       ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: (t.positions as Array<{ id: string }>).map((p) => p.id) })) }
@@ -125,9 +125,18 @@ export function resyncSectionsOffered(registries: Registries, world: Record<stri
 }
 
 /** P14b: the axis keys an anchor may name: the registry's value and bond axes, and `taste:<id>` for each taste (the wildcards are not keys). */
-export function developmentAxisKeys(registries: Registries): string[] {
-  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(':.any'));
-  return [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
+export function developmentAxisKeys(registries: Registries, content?: readonly string[]): string[] {
+  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(':.any') && axisKind(k) !== 'practice' && axisKind(k) !== 'expect');
+  const base = [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
+  // P15: the practice and the profile are named only while a practice category is switched on, and only for the categories and targets that are on
+  const on = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
+  if (on.length === 0) return base;
+  const holder = { content: { enabled: [...(content ?? [])] } };
+  return [
+    ...base, 'practice:style.secondary', 'expect:holds_until',
+    ...on.flatMap((c) => [`practice:${c}.as`, `practice:${c}.witness`]),
+    ...[...registries.worshipTargets.values()].filter((t) => contentAllowed(holder, registries, t)).map((t) => `expect:worship.${t.id}`),
+  ];
 }
 
 export interface ImportedProfile {
