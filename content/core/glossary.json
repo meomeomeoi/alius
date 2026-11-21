@@ -2601,5 +2601,97 @@
     "see": [
       "mouth_act"
     ]
+  },
+  {
+    "id": "practice_profile",
+    "term": "Practice profile",
+    "short": "What a soldier does herself as the one who leads, how she feels seeing it done and the style she leads in; read from her card.",
+    "long": "AUTHOR TO WRITE: What a soldier does herself as the one who leads, how she feels seeing it done and the style she leads in; read from her card.",
+    "see": [
+      "practice_as",
+      "practice_witness",
+      "practice_style"
+    ]
+  },
+  {
+    "id": "practice_as",
+    "term": "Does it herself",
+    "short": "For each practice that is switched on: whether she would do it herself as the one who leads (craves it, enjoys it, tolerates it or not at all).",
+    "long": "AUTHOR TO WRITE: For each practice that is switched on: whether she would do it herself as the one who leads (craves it, enjoys it, tolerates it or not at all).",
+    "see": [
+      "practice_witness"
+    ]
+  },
+  {
+    "id": "practice_witness",
+    "term": "Sees it done",
+    "short": "For each practice that is switched on: how she feels seeing it done by anyone (drawn, indifferent or disliking). Independent of whether she would do it herself.",
+    "long": "AUTHOR TO WRITE: For each practice that is switched on: how she feels seeing it done by anyone (drawn, indifferent or disliking). Independent of whether she would do it herself.",
+    "see": [
+      "practice_as"
+    ]
+  },
+  {
+    "id": "practice_style",
+    "term": "Style",
+    "short": "How she leads: a main style and, optionally, a second one that comes through in some moments. The style sets her tone and what she does next.",
+    "long": "AUTHOR TO WRITE: How she leads: a main style and, optionally, a second one that comes through in some moments. The style sets her tone and what she does next.",
+    "see": [
+      "practice_profile"
+    ]
+  },
+  {
+    "id": "practice_audience",
+    "term": "Before others",
+    "short": "Who she would let see a dynamic: nobody, a few chosen friends, anyone, or she does not mind either way.",
+    "long": "AUTHOR TO WRITE: Who she would let see a dynamic: nobody, a few chosen friends, anyone, or she does not mind either way.",
+    "see": [
+      "practice_profile"
+    ]
+  },
+  {
+    "id": "inclination",
+    "term": "Inclination",
+    "short": "How readily she would take the lead in a dynamic of authority: not at all, only with a strong cause, with curiosity, or eagerly.",
+    "long": "AUTHOR TO WRITE: How readily she would take the lead in a dynamic of authority: not at all, only with a strong cause, with curiosity, or eagerly.",
+    "see": [
+      "practice_profile"
+    ]
+  },
+  {
+    "id": "fairness",
+    "term": "Fairness",
+    "short": "How fair she is when she holds authority: fair, strict, capricious or unfair. It is independent of her style.",
+    "long": "AUTHOR TO WRITE: How fair she is when she holds authority: fair, strict, capricious or unfair. It is independent of her style.",
+    "see": [
+      "practice_profile"
+    ]
+  },
+  {
+    "id": "hint_style",
+    "term": "How she invites",
+    "short": "How she invites: she says it, she hints, or she expects to be understood without a word.",
+    "long": "AUTHOR TO WRITE: How she invites: she says it, she hints, or she expects to be understood without a word.",
+    "see": [
+      "practice_profile"
+    ]
+  },
+  {
+    "id": "drive",
+    "term": "Drive",
+    "short": "How fast her desire grows, as a trait of the character and not of her style: low, moderate or high.",
+    "long": "AUTHOR TO WRITE: How fast her desire grows, as a trait of the character and not of her style: low, moderate or high.",
+    "see": [
+      "practice_profile"
+    ]
+  },
+  {
+    "id": "expectation_profile",
+    "term": "Expectation profile",
+    "short": "What she expects of the commander and would like to see. Hidden in play: it becomes known only as it shows.",
+    "long": "AUTHOR TO WRITE: What she expects of the commander and would like to see. Hidden in play: it becomes known only as it shows.",
+    "see": [
+      "practice_profile"
+    ]
   }
 ]

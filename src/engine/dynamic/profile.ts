@@ -134,3 +134,17 @@ export function keepLockedPractice(old: Practice | undefined, next: Practice, lo
   }
   return out;
 }
+
+/**
+ * The raw result of a patch on her practice (not yet validated): `categories` merges per id and per field, `style` per field (`null` drops
+ * the secondary), every other field replaces. The one merge the action and the editors share; pass the result to `validatePractice`.
+ */
+export function mergePractice(have: Practice | undefined, patch: Record<string, unknown>): Record<string, unknown> {
+  const cats = isObj(patch.categories) ? patch.categories : {};
+  return {
+    ...have,
+    ...patch,
+    categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...(isObj(c) ? c : {}) }])) },
+    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style,
+  };
+}

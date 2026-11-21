@@ -1,0 +1,32 @@
+/* The dynamic (P15): the PRACTICE and EXPECTATIONS editors of the calibration and the dossier. Palette variables and currentColor only; no semantic colours (readable mode safe). */
+#alius-shell .alius-dynamic-profile {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-dyn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
+
+#alius-shell .alius-dyn-row .alius-input {
+  max-width: 100%;
+}
+
+#alius-shell .alius-dyn-row input[type='text'] {
+  flex: 1 1 12em;
+}
+
+#alius-shell .alius-dynamic-profile [aria-pressed='true'],
+#alius-shell .alius-calib-section .alius-dyn-row [aria-pressed='true'] {
+  text-decoration: underline;
+}
+
+#alius-shell .alius-dynamic-profile [aria-disabled='true'],
+#alius-shell .alius-calib-section .alius-dyn-row [aria-disabled='true'] {
+  opacity: 0.6;
+}

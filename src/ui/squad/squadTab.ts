@@ -4,6 +4,7 @@ import { renderDeviceBlock } from '../personal/deviceBlock';
 import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderDevelopmentBlock } from '../development/developmentBlock';
 import { renderHobbiesEditor, renderOpinionsEditor, renderTemperamentBlock } from '../life/profileBlocks';
+import { dynamicBlockData, renderExpectationsBlock, renderPracticeBlock } from '../dynamic/profileBlocks';
 import { temperamentOf, lifeMode } from '../../engine/life/state';
 import { toldMilestones } from '../../engine/life/known';
 import { buildKnowledge } from '../../analysis/knowledge';
@@ -89,6 +90,8 @@ export interface SquadTabCtx {
   development?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
   /** P14c: the TEMPERAMENT block and the HOBBIES and OPINIONS editors of each named unit's dossier (every edit goes through `dispatch`); absent = no block. */
   life?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
+  /** P15: the PRACTICE and EXPECTATIONS editors of each named unit's dossier (every edit goes through `dispatch`); absent = no block. */
+  dynamic?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
   memory?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; confirm: (text: string) => Promise<boolean>; onChanged?: () => void };
 }
 
@@ -393,6 +396,36 @@ function lifeProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
 }
 
 /**
+ * P15: her PRACTICE and EXPECTATIONS, under the life editors. Her profile is hidden information, so it is drawn only while the mechanics edit
+ * lock is off (with it on nothing shows), and only while a practice category is switched on. Every edit is one field at a time through
+ * `profile/set_practice` and `profile/set_expectation` (a locked field refuses the whole patch).
+ */
+function dynamicProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
+  if (!ctx.dynamic || unit.kind !== 'named' || ctx.settings().editLock) return null;
+  const data = dynamicBlockData(ctx.registries, state, unit.id);
+  if (data.categories.length === 0) return null;
+  const { dispatch, onChanged } = ctx.dynamic;
+  const who = { id: unit.id, displayName: unit.displayName };
+  const send = (action: { type: string; payload?: unknown }): void => {
+    dispatch(action);
+    onChanged?.();
+  };
+  const host = h('div', { class: 'alius-dynamic-profile' });
+  const part = (cls: string): HTMLElement => host.appendChild(h('div', { class: cls }));
+  renderPracticeBlock(part('alius-dyn-practice'), {
+    unit: who, practice: unit.bond?.practice, categories: data.categories, locks: unit.practiceLocks ?? [], editable: true,
+    onSet: (practice) => send({ type: 'profile/set_practice', payload: { unitId: unit.id, practice } }),
+    onLock: (field, on) => send({ type: 'profile/lock_practice', payload: { unitId: unit.id, field, on } }),
+  });
+  renderExpectationsBlock(part('alius-dyn-expectations'), {
+    unit: who, expectations: unit.expectations, targets: data.targets, sources: data.sources, locks: unit.expectationLocks ?? [], editable: true,
+    onSet: (patch) => send({ type: 'profile/set_expectation', payload: { unitId: unit.id, patch } }),
+    onLock: (field, on) => send({ type: 'profile/lock_expectation', payload: { unitId: unit.id, field, on } }),
+  });
+  return host;
+}
+
+/**
  * P14c: what the commander has been told of her life, under the editors: THOUGHTS (the opinions she has voiced, and what she used to think), what
  * she does (her hobbies as milestones told and a word) and what she has told of her days. Read through `Knowledge.life`; drawn only when her life
  * has anything to do with her (life on or once on, or a hobby or an opinion on her card).
@@ -464,6 +497,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       unit.kind === 'named' ? memoryBlock(unit, ctx, state) : null,
       unit.kind === 'named' ? developmentBlock(unit, ctx, state) : null, // P14b
       gone ? null : lifeProfileBlock(unit, ctx, state), // P14c
+      gone ? null : dynamicProfileBlock(unit, ctx, state), // P15: her practice and what she expects (hidden: only while the edit lock is off)
       gone ? null : lifeViewBlock(unit, ctx, state), // P14c: what she has told and said
       gone || !ctx.onWager ? null : renderChallenge(state, ctx.registries, unit.id, (choice) => ctx.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),

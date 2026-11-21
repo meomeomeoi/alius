@@ -176,7 +176,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
     const draft = s.units[i];
     const body = h('div', { class: 'alius-calibration' });
     renderCalibration(body, {
-      draft, registries: reg, desireBondDefects: wizardDesireBond(), world: s.world.options,
+      draft, registries: reg, desireBondDefects: wizardDesireBond(), world: s.world.options, content: s.content.enabled, // P15: the practice blocks follow CONTENT
       onRefreshWorld: () => wizard.refreshWorldSections(i),
       onUpdate: (patch) => wizard.update(i, patch),
       onRegenerate: (section) => wizard.regenerate(i, section),

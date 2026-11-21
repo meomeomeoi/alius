@@ -268,3 +268,24 @@ export function keepLockedExpectations(old: ExpectationProfile | undefined, next
   }
   return Object.keys(out).length > 0 ? (out as ExpectationProfile) : undefined;
 }
+
+/**
+ * The raw result of a patch on her profile (not yet validated): `worship` and `moments` merge per id, every other field is replaced whole,
+ * and `null` removes a field or an id. The one merge the action and the editors share; pass the result to `validateExpectations`.
+ */
+export function mergeExpectations(have: ExpectationProfile | undefined, patch: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...have };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null) delete merged[k];
+    else if ((k === 'worship' || k === 'moments') && isObj(v)) {
+      const rec: Record<string, unknown> = { ...(merged[k] as Record<string, unknown> | undefined) };
+      for (const [id, entry] of Object.entries(v)) {
+        if (entry === null) delete rec[id];
+        else rec[id] = entry;
+      }
+      if (Object.keys(rec).length > 0) merged[k] = rec;
+      else delete merged[k];
+    } else merged[k] = v;
+  }
+  return merged;
+}

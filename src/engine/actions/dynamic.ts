@@ -1,7 +1,7 @@
 import { MODEST_BOND } from '../bonds/profile';
 import { registerAction } from '../dispatch';
-import { EXPECTATION_FIELDS, lockedExpectation, validateExpectations, type ExpectationProfile } from '../dynamic/expectations';
-import { validatePractice } from '../dynamic/profile';
+import { EXPECTATION_FIELDS, lockedExpectation, mergeExpectations, validateExpectations, type ExpectationProfile } from '../dynamic/expectations';
+import { mergePractice, validatePractice } from '../dynamic/profile';
 import { contentAllowed } from '../bonds/content';
 import { PRACTICE_LOCK_FIELDS } from '../dynamic/types';
 import type { Unit } from '../state/types';
@@ -37,13 +37,7 @@ registerAction('profile/set_practice', (draft, payload, ctx) => {
   if (unknown.length > 0) throw new Error(`A practice has no field "${unknown[0]}".`);
   const locked = unit.practiceLocks ?? [];
   if (patchedFields(patch).some((f) => locked.includes(f))) throw new Error('That field is locked.');
-  const have = unit.bond?.practice;
-  const merged: Record<string, unknown> = {
-    ...have,
-    ...patch,
-    categories: { ...have?.categories, ...(isObj(patch.categories) ? Object.fromEntries(Object.entries(patch.categories).map(([id, c]) => [id, { ...have?.categories[id], ...(isObj(c) ? c : {}) }])) : {}) },
-    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style,
-  };
+  const merged = mergePractice(unit.bond?.practice, patch);
   const read = validatePractice(merged, ctx.registries);
   if (read.practice === undefined || read.issues.length > 0) throw new Error(read.issues.length > 0 ? read.issues.join('; ') : 'A practice needs a primary style.');
   if (unit.bond === undefined) unit.bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
@@ -91,19 +85,7 @@ registerAction('profile/set_expectation', (draft, payload, ctx) => {
   const unknown = Object.keys(patch).filter((k) => !(EXPECTATION_FIELDS as readonly string[]).includes(k));
   if (unknown.length > 0) throw new Error(`An expectation profile has no field "${unknown[0]}".`);
   if (expectationFields(patch).some((f) => lockedExpectation(unit, f))) throw new Error('That field is locked.');
-  const merged: Record<string, unknown> = { ...unit.expectations };
-  for (const [k, v] of Object.entries(patch)) {
-    if (v === null) delete merged[k];
-    else if ((k === 'worship' || k === 'moments') && isObj(v)) {
-      const rec: Record<string, unknown> = { ...(merged[k] as Record<string, unknown> | undefined) };
-      for (const [id, entry] of Object.entries(v)) {
-        if (entry === null) delete rec[id];
-        else rec[id] = entry;
-      }
-      if (Object.keys(rec).length > 0) merged[k] = rec;
-      else delete merged[k];
-    } else merged[k] = v;
-  }
+  const merged = mergeExpectations(unit.expectations, patch);
   const read = validateExpectations(merged, ctx.registries, { unitId: unit.id });
   if (read.issues.length > 0) throw new Error(read.issues.join('; '));
   if (isObj(patch.worship)) {

@@ -941,16 +941,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `renderPracticeBlock(host, ctx: PracticeBlockCtx)`, with `PracticeBlockCtx { unit: { id, displayName }; practice?: Practice; categories: Array<{ id, label }>; locks: string[]; editable: boolean; onSet(patch: Partial<Practice>); onLock(field: string, on: boolean) }`;
   - `renderExpectationsBlock(host, ctx: ExpectationsBlockCtx)` (same shape over `ExpectationProfile`; worship rows only for allowed targets; moment rows only for allowed sources).
 
-- [ ] **Step 1: Write the failing tests** (jsdom):
+- [x] **Step 1: Write the failing tests** (jsdom):
   - `one row per enabled category with as and witness chips`;
   - `a locked field's chips are aria-disabled`;
   - `not editable: every control is aria-disabled`;
   - `every chip and lock carries data-analyze and resolves` (`analyzeCoverage` helpers);
   - `the blocks are absent while no practice category is on` (calibration render).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/dynamic/profileBlocks.test.ts` → FAIL.
-- [ ] **Step 3: Implement** in the style of `renderTemperamentBlock`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): practice and expectation editors`
+- [x] **Step 2: Run** `npx vitest run tests/ui/dynamic/profileBlocks.test.ts` → FAIL.
+- [x] **Step 3: Implement** in the style of `renderTemperamentBlock`.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): practice and expectation editors`
 
 ---
 

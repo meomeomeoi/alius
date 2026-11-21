@@ -11,6 +11,9 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { arcLine } from '../../engine/arcs';
 import { renderHobbiesEditor, renderOpinionsEditor, renderTemperamentBlock } from '../life/profileBlocks';
+import { mergeExpectations, validateExpectations } from '../../engine/dynamic/expectations';
+import { mergePractice, validatePractice } from '../../engine/dynamic/profile';
+import { dynamicBlockData, renderExpectationsBlock, renderPracticeBlock } from '../dynamic/profileBlocks';
 import { TEMPERAMENT_DEFAULTS } from '../../engine/life/state';
 
 type Choice = UnitDraft['choice'];
@@ -29,6 +32,8 @@ export interface CalibrationCtx {
   onUpdate: (patch: CalibrationPatch) => void;
   onRegenerate: (section: ImportSection) => void;
   onManual: () => void;
+  /** P15: the content categories switched on; the PRACTICE and EXPECTATIONS blocks are drawn only while one of them is a practice category. */
+  content?: readonly string[];
   /** P9: the stance she would start in with the values above (the wizard computes it; absent when not known). */
   startPreview?: StartPreview | null;
 }
@@ -352,6 +357,34 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
           textInput('bond-note', bond.ownLimits.note ?? '', TUNING.bonds.limits.noteMax, (v) => write({ ownLimits: { categories: limited, note: v } }))),
         fromCard ? h('p', { class: 'alius-dim' }, `From the card: ${fromCard}`) : null),
     );
+  }
+
+  // --- practice and expectations (P15): what she does as the one who leads and what she expects; only while a practice category is on
+  const holder = { content: { enabled: [...(ctx.content ?? [])] } };
+  const dyn = dynamicBlockData(reg, holder);
+  if (dyn.categories.length > 0) {
+    const dynWho = { id: draft.avatar, displayName: draft.displayName };
+    if (shown.has('practice')) {
+      const body = h('div', { class: 'alius-dyn-practice' });
+      renderPracticeBlock(body, {
+        unit: dynWho, practice: ch.bond?.practice, categories: dyn.categories, locks: ch.practiceLocks ?? [], editable: true,
+        onSet: (patch) => {
+          const read = validatePractice(mergePractice(ch.bond?.practice, { ...patch }), reg);
+          if (read.practice !== undefined) onUpdate({ bond: { ...(ch.bond ?? { ...MODEST_BOND, ownLimits: { categories: [] } }), practice: read.practice } });
+        },
+        onLock: (field, on) => onUpdate({ practiceLocks: [...(ch.practiceLocks ?? []).filter((f) => f !== field), ...(on ? [field] : [])] }),
+      });
+      host.append(section('practice', 'PRACTICE', body));
+    }
+    if (shown.has('expectations')) {
+      const body = h('div', { class: 'alius-dyn-expectations' });
+      renderExpectationsBlock(body, {
+        unit: dynWho, expectations: ch.expectations, targets: dyn.targets, sources: dyn.sources, locks: ch.expectationLocks ?? [], editable: true,
+        onSet: (patch) => onUpdate({ expectations: validateExpectations(mergeExpectations(ch.expectations, patch), reg, { state: holder }).expectations }),
+        onLock: (field, on) => onUpdate({ expectationLocks: [...(ch.expectationLocks ?? []).filter((f) => f !== field), ...(on ? [field] : [])] }),
+      });
+      host.append(section('expectations', 'EXPECTATIONS', body));
+    }
   }
 
   // --- development (P14b): read-only; the anchors and the insight come from the card

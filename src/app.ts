@@ -1828,6 +1828,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         desireBondDefects: desireBond,
         world,
         sections: [...sections],
+        content: state?.content?.enabled ?? [], // P15
         onUpdate: (p) => wizard.update(0, p),
         onRegenerate: (s) => wizard.regenerate(0, s),
         onManual: () => wizard.setManual(0),
@@ -1950,6 +1951,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         registries,
         desireBondDefects: desireBond,
         world: s.world.options ?? defaultWorldOptions(registries),
+        content: s.content?.enabled ?? [], // P15
         onUpdate: (p) => wizard.update(0, p),
         onRegenerate: (section) => wizard.regenerate(0, section),
         onManual: () => wizard.setManual(0),
@@ -2273,6 +2275,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       // P3b: the MEMORY block of each unit (pin, forget, and with the edit lock off edit)
       development: { dispatch: (a) => act(a), onChanged: () => shell.refresh() }, // P14b: HOLD and fact editing
       life: { dispatch: (a) => act(a), onChanged: () => shell.refresh() }, // P14c: temperament, hobbies and opinions (the edit lock gates the controls)
+      dynamic: { dispatch: (a) => act(a), onChanged: () => shell.refresh() }, // P15: her practice and expectations (drawn only while the edit lock is off)
       memory: {
         dispatch: (a) => act(a),
         confirm: async (text) => (await shell.modal({ title: 'FORGET', body: text, actions: [{ label: '[ FORGET ]', value: 'yes' }, { label: '[ CANCEL ]', value: 'no' }] })) === 'yes',

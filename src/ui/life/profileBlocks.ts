@@ -16,7 +16,7 @@ import { h } from '../dom';
 export interface LifeBlockUnit { id: string; displayName: string }
 
 /** A button that does nothing while disabled (`aria-disabled`, kept focusable and analyzable). */
-function control(label: string, attrs: Record<string, string>, address: string, ctx: Record<string, unknown>, enabled: boolean, run: () => void, pressed?: boolean): HTMLElement {
+export function control(label: string, attrs: Record<string, string>, address: string, ctx: Record<string, unknown>, enabled: boolean, run: () => void, pressed?: boolean): HTMLElement {
   return h('button', {
     type: 'button', class: 'alius-btn alius-option', 'aria-disabled': enabled ? null : 'true',
     ...(pressed !== undefined ? { 'aria-pressed': String(pressed) } : {}), ...attrs, ...analyzeNative(address, ctx), onclick: () => { if (enabled) run(); },
@@ -34,8 +34,8 @@ function picker(label: string, attrs: Record<string, string>, enabled: boolean, 
   return el;
 }
 
-const option = (value: string, text: string, selected = false): HTMLElement => h('option', { value, selected }, text);
-const title = (s: string): string => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+export const option = (value: string, text: string, selected = false): HTMLElement => h('option', { value, selected }, text);
+export const title = (s: string): string => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
 // --- temperament
 

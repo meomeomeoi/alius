@@ -140,6 +140,9 @@ describe('no pronoun for the commander in content', () => {
     };
     const registries = ['practiceStyles', 'holdBands', 'dynamicFrames', 'dynamicMilestones', 'dynamicDomains', 'dynamicTracks', 'probeAxes', 'positionRegions', 'aftermaths', 'regardBands', 'dynamicSigns'] as const;
     for (const registry of registries) for (const e of reg[registry].values()) text(`${registry}:${e.id}`, { ...e, id: undefined });
+    for (const id of ['practice_profile', 'practice_as', 'practice_witness', 'practice_style', 'practice_audience', 'inclination', 'fairness', 'hint_style', 'drive', 'expectation_profile']) {
+      for (const k of ['term', 'short', 'long']) where.push([`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')]);
+    }
     expect(where.length).toBeGreaterThan(300);
     expect(where.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t)).map(([w]) => w)).toEqual([]);
   });
@@ -362,6 +365,8 @@ describe('no pronoun for the commander in the text modules the main model and th
     'src/ui/warden/overrideChip.ts', 'src/ui/warden/notices.ts', 'src/ui/warden/wardenPanel.ts', 'src/analysis/providers/warden.ts', 'src/llm/calls/wardenJudge.ts', 'src/engine/warden/describe.ts',
     // P14c
     'src/ui/life/profileBlocks.ts', 'src/ui/life/lifeViews.ts', 'src/ui/setup/lifeStep.ts', 'src/engine/life/known.ts', 'src/engine/life/meetings.ts', 'src/life/directives.ts', 'src/life/controller.ts',
+    // P15
+    'src/ui/dynamic/profileBlocks.ts',
   ];
   it.each(FILES)('%s', async (file) => {
     const { readFile } = await import('node:fs/promises');
