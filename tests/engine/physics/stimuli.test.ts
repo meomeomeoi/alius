@@ -43,6 +43,7 @@ const way = (s: CampaignState, w: Way | string, kind: string, depth?: number | s
   d.rng = seedRng(seed);
   return run(d, reg, { type: 'physics/stimulus', payload: { way: w, kind, ...(depth !== undefined ? { depth } : {}) } });
 };
+type StimRow = NonNullable<CampaignState['commander']['stimuli']>[string];
 const contactRecord = (s: CampaignState) => Object.values(s.scene!.blocking!).find((b) => b.contact)!.contact!;
 const row = (s: CampaignState, kind: string) => s.commander.stimuli![kind]!;
 
@@ -224,14 +225,14 @@ describe('the trajectory', () => {
   });
 
   it('moves down on avoiding, up on seeking, and a stage waits for three agreeing updates', () => {
-    const r = { tolerance: 20, exposure: 1, lastDay: 1, best: 20, seek: 0.1, stage: 'aversion' as const };
+    const r: StimRow = { tolerance: 20, exposure: 1, lastDay: 1, best: 20, seek: 0.1, stage: 'aversion' };
     expect(updateTrajectory(r, true)).toBeNull(); // 0.235: enduring, 1st
     expect(r.pending).toEqual({ stage: 'enduring', n: 1 });
     expect(updateTrajectory(r, true)).toBeNull(); // 0.30: 2nd
     expect(updateTrajectory(r, true)).toEqual({ from: 'aversion', to: 'enduring' }); // 0.355: 3rd
     expect(r.stage).toBe('enduring');
     expect(r.pending).toBeUndefined();
-    const flip = { tolerance: 20, exposure: 1, lastDay: 1, best: 20, seek: 0.2, stage: 'enduring' as const };
+    const flip: StimRow = { tolerance: 20, exposure: 1, lastDay: 1, best: 20, seek: 0.2, stage: 'enduring' };
     expect(updateTrajectory(flip, false)).toBeNull(); // 0.17: aversion, 1st
     expect(updateTrajectory(flip, true)).toBeNull(); // 0.31: back to enduring: the pending ends
     expect(flip.pending).toBeUndefined();

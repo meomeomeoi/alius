@@ -7310,6 +7310,9 @@ var RESERVED_EVENT_TYPES = [
   "reflex",
   "stimulus_stage_changed",
   "stimulus_way",
+  "mouth_act",
+  "mouth_act_done",
+  "mouth_act_restart",
   "condition_set",
   "condition_ended",
   // P10c
@@ -27081,7 +27084,7 @@ function whyNotStart(state, reg, o) {
   if (!phys) return `Unknown physics "${o.physicsId}".`;
   if (!scene.participants.includes(o.holderId)) return `${o.holderId} is not in the scene.`;
   if (!hasSource(scene, o.sourceKind, o.sourceId)) return `Nothing in the scene is "${o.sourceId}".`;
-  if (!physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
+  if (o.act === void 0 && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
   const gate = whyNotAllowed(state, reg, phys, o.holderId);
   if (gate !== null) return gate;
   if (o.second !== void 0) {
@@ -27099,7 +27102,7 @@ function startPhysics(draft, ctx2, o) {
   const scene = draft.scene;
   const phys = reg.contactPhysics.get(o.physicsId);
   const ref = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
-  const range2 = ref.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : void 0;
+  const range2 = ref?.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : void 0;
   const lead = leadStyle(physicsStyleOf(draft, o.holderId)).seal;
   const seal = range2 ? range2[lead === "loosest" ? 0 : lead === "tightest" ? range2.length - 1 : Math.floor(range2.length / 2)] : void 0;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
@@ -27112,20 +27115,21 @@ function startPhysics(draft, ctx2, o) {
     ...gaugeFor(draft, phys),
     ...range2 ? { sealRange: range2 } : {},
     ...seal ? { seal } : {},
-    ...ref.pressure !== void 0 ? { pressure: ref.pressure } : {},
+    ...ref?.pressure !== void 0 ? { pressure: ref.pressure } : {},
     segment: { n: 0, state: "held" },
     startedExchange: scene.exchanges,
     taps: 0,
     streak: 0,
     extend: 0,
-    ...o.duration !== void 0 ? { duration: o.duration } : {}
+    ...o.duration !== void 0 ? { duration: o.duration } : {},
+    ...o.act !== void 0 ? { act: o.act, ...o.act === "lick" ? { dryness: 0 } : {} } : {}
   };
   if (o.duration !== void 0 && isMarathon(o.duration)) {
     run.marathon = initMarathon(draft, o.duration);
     run.baseCapacity = run.capacity;
   }
   const list5 = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
-  const secondRef = o.second !== void 0 ? list5.find((p) => p.id === o.second) : list5.find((p) => p.id !== o.physicsId);
+  const secondRef = o.act !== void 0 ? void 0 : o.second !== void 0 ? list5.find((p) => p.id === o.second) : list5.find((p) => p.id !== o.physicsId);
   const secondPhys = secondRef ? reg.contactPhysics.get(secondRef.id) : void 0;
   if (secondRef && secondPhys && whyNotAllowed(draft, reg, secondPhys, o.holderId) === null) {
     const sr = secondRef.seal ? [...secondRef.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : void 0;
@@ -30453,6 +30457,76 @@ function applyWay(draft, ctx2, way, kind, depth) {
   return events;
 }
 
+// src/engine/physics/acts.ts
+var ACT_KINDS = ["kiss", "counted", "long", "lick", "pet", "mouth"];
+var RUNS = {
+  long: { interaction: "hold", gauge: "capacity" },
+  lick: { interaction: "order" },
+  pet: { interaction: "timing", gauge: "capacity" },
+  mouth: { interaction: "gesture" }
+};
+var holderOf3 = (state) => {
+  const scene = state.scene;
+  const contact = scene ? contactOf(scene) : void 0;
+  if (!scene || !contact) return void 0;
+  return scene.participants.includes(contact.with) ? contact.with : Object.entries(scene.blocking ?? {}).find(([id, b]) => b.contact === contact && id !== COMMANDER)?.[0] ?? scene.participants[0];
+};
+function actsFor(state, reg) {
+  const scene = state.scene;
+  const contact = scene && blockingLive(state, reg) ? contactOf(scene) : void 0;
+  if (!scene || !contact || reg.blockingContacts.get(contact.id)?.mouth !== true) return [];
+  if (!contentAllowed(state, reg, { contentTags: ["worship"] })) return [];
+  return ACT_KINDS.filter((k) => k !== "pet" || contentAllowed(state, reg, { contentTags: ["pet_play"] }));
+}
+function countedTarget(state) {
+  const scene = state.scene;
+  return 10 + 10 * (fnv1a2(`${scene.id}|${scene.exchanges}|counted`) % 10);
+}
+function physicsFor(state, reg, kind, holderId) {
+  const want = RUNS[kind];
+  for (const p of reg.contactPhysics.values()) {
+    if (p.interaction !== want.interaction || want.gauge !== void 0 && p.gauge.kind !== want.gauge) continue;
+    if (!sceneSettingsOf(state).physicsInteractions[p.interaction]) continue;
+    if (contentAllowed(state, reg, p) && contentAllowed(state, reg, p, holderId)) return String(p.id);
+  }
+  return null;
+}
+function startAct(draft, ctx2, kind) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  if (!scene || !blockingLive(draft, reg)) throw new Error("physics/act: the blocking is not live in this scene");
+  if (typeof kind !== "string" || !ACT_KINDS.includes(kind)) throw new Error(`physics/act: kind is one of ${ACT_KINDS.join(", ")}`);
+  const k = kind;
+  if (!actsFor(draft, reg).includes(k)) throw new Error("physics/act: this contact does not offer that");
+  if (scene.physics) throw new Error("physics/act: a hold is running");
+  if (scene.act) throw new Error("physics/act: the kisses are still being counted");
+  const contact = contactOf(scene);
+  const holder2 = holderOf3(draft);
+  const events = [];
+  for (const ex of exposedKinds(draft, reg).filter((e) => reg.stimulusKinds.get(e.kind)?.family === "taste")) events.push(...applyWay(draft, ctx2, "taste", ex.kind));
+  if (k === "kiss") return [{ type: "mouth_act", kind: k, unitId: holder2 }, ...events];
+  if (k === "counted") {
+    const n = countedTarget(draft);
+    scene.act = { kind: "counted", n, since: scene.exchanges, tries: 0 };
+    return [{ type: "mouth_act", kind: k, unitId: holder2, n }, ...events];
+  }
+  const physicsId = physicsFor(draft, reg, k, holder2);
+  if (physicsId === null) throw new Error("physics/act: that kind of interaction is switched off or not available here");
+  return [{ type: "mouth_act", kind: k, unitId: holder2 }, ...events, ...startPhysics(draft, ctx2, { physicsId, sourceKind: "contact", sourceId: contact.id, holderId: holder2, act: k })];
+}
+function finishCounted(draft, _ctx, typed) {
+  const act = draft.scene?.act;
+  if (!act) throw new Error("physics/act_finish: no count is waiting");
+  if (typeof typed !== "number" || !Number.isFinite(typed)) throw new Error("physics/act_finish needs { typed } as a number");
+  const holder2 = holderOf3(draft) ?? draft.scene.participants[0];
+  if (Math.round(typed) === act.n) {
+    delete draft.scene.act;
+    return [{ type: "mouth_act_done", kind: "counted", n: act.n, tries: act.tries, unitId: holder2 }];
+  }
+  act.tries += 1;
+  return [{ type: "mouth_act_restart", kind: "counted", n: act.n, tries: act.tries, unitId: holder2 }];
+}
+
 // src/engine/physics/combined.ts
 var OWNS = {
   timing: ["breathe", "gap_breath"],
@@ -30524,7 +30598,7 @@ function planSegment(state, reg, run, rng) {
   const beats = attention.map((a) => ({ attention: a }));
   const interactions = [String(phys.interaction), ...run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : []];
   if (interactions.includes("timing")) {
-    let pos = (rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3 + rng.int(0, 1);
+    let pos = run.act === "pet" ? 0 : (rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3 + rng.int(0, 1);
     let k = 0;
     while (pos < n) {
       const measuring = lead.key === "clinical" && ++k % rng.int(P2.clinicalEvery[0], P2.clinicalEvery[1]) === 0;
@@ -30535,7 +30609,7 @@ function planSegment(state, reg, run, rng) {
         opening: { widthMs: openingWidth(style, rng, measuring), ...isFalse ? { false: true } : {} },
         ...silent ? {} : { cue: isFalse ? "window_false" : "window_open" }
       };
-      pos += rng.int(P2.breath.windowEvery[0], P2.breath.windowEvery[1]);
+      pos += run.act === "pet" ? 1 : rng.int(P2.breath.windowEvery[0], P2.breath.windowEvery[1]);
     }
   }
   if (interactions.includes("hold")) {
@@ -30680,7 +30754,8 @@ function resolveSegment(run, plan, inputs, env) {
         break;
       }
       case "order": {
-        for (const g of at(b, "part")) r.gauge -= g.part !== void 0 && g.part === beat.part ? P2.tongue.right : P2.tongue.wrong;
+        for (const g of at(b, "part")) r.gauge -= g.part !== void 0 && g.part === beat.part && (run.dryness ?? 0) < 100 ? P2.tongue.right : P2.tongue.wrong;
+        if (run.dryness !== void 0) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P2.tongue.dryness);
         break;
       }
       case "passive":
@@ -30698,6 +30773,7 @@ function resolveSegment(run, plan, inputs, env) {
     r.restGranted = !["cruel", "vindictive"].includes(leadStyle(env.style).key);
     if (r.restGranted) r.gauge = Math.max(0, r.gauge - P2.jawRest);
   }
+  if (run.dryness !== void 0 && r.dryness === void 0) r.dryness = run.dryness;
   r.checked = env.interaction === "order" && r.gauge <= P2.tongue.checkAt;
   r.complete = env.interaction === "passive" && r.gauge >= 100;
   const after = share(env.gaugeKind, r.gauge, cap7);
@@ -30795,6 +30871,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   for (const x of sounds) events.push({ type: "physics_noise", runId, holderId: run.holderId, kind: x.kind, loudness: x.loudness });
   run.gauge = result.gauge;
   run.streak = result.streak;
+  if (result.dryness !== void 0) run.dryness = result.dryness;
   run.last = {
     caught: result.caught,
     missed: result.missed,
@@ -30946,6 +31023,16 @@ registerAction("physics/stimulus", (draft, payload, ctx2) => {
   return applyWay(draft, ctx2, payload.way, payload.kind, payload.depth);
 });
 registerDayEndStep("director_tick", (draft) => decayStimuli(draft));
+registerAction("physics/act", (draft, payload, ctx2) => {
+  if (!draft.scene) throw new Error("physics/act: no scene is open");
+  if (!isObj35(payload)) throw new Error("physics/act needs { kind }");
+  return startAct(draft, ctx2, payload.kind);
+});
+registerAction("physics/act_finish", (draft, payload, ctx2) => {
+  if (!draft.scene) throw new Error("physics/act_finish: no scene is open");
+  if (!isObj35(payload)) throw new Error("physics/act_finish needs { typed }");
+  return finishCounted(draft, ctx2, payload.typed);
+});
 
 // src/engine/actions/life.ts
 registerAction("life/set_frequency", (draft, payload, ctx2) => {
@@ -38480,6 +38567,10 @@ function clearMomentDirectives(builder) {
 // src/blocking/physicsDirectives.ts
 var STOP_TEXT = "The commander used the stop word. She stops what she is doing now; she may react in character, but she lets go.";
 function physicsDirective(event, state, _reg) {
+  if (event.type === "mouth_act" && event.kind === "kiss") {
+    const her2 = state.squad.find((u) => u.id === event.unitId)?.displayName ?? "She";
+    return { id: `${PHYSICS_PREFIX}act`, text: `${her2} has the commander kiss her, and she takes it as it comes.`, expiresAfter: "next_reply" };
+  }
   if (event.type !== "physics_outcome") return null;
   if (event.result === "stopped") return { id: `${BLOCKING_PREFIX}stop`, text: STOP_TEXT, expiresAfter: "next_reply" };
   const text2 = OUTCOME[String(event.result)];
@@ -38567,12 +38658,21 @@ function perceptionLines(state, reg) {
   });
   return lines.length === 0 ? null : { id: `${PHYSICS_PREFIX}perception`, text: `What reaches the commander: ${lines.join("; ")}.`, expiresAfter: "manual" };
 }
+function actLines(state, _reg) {
+  const act = state.scene?.act;
+  if (!act) return null;
+  const her = state.squad.find((u) => u.id === state.scene.participants[0])?.displayName ?? "She";
+  const again = act.tries > 0 ? " The count went wrong and starts again." : "";
+  return { id: `${PHYSICS_PREFIX}act`, text: `${her} has the commander count kisses for her: she asked for ${act.n}.${again}`, expiresAfter: "manual" };
+}
 function refreshPhysicsDirectives(builder, state, reg) {
   builder.clearMatching((d2) => d2.id.startsWith(PHYSICS_PREFIX) && d2.expiresAfter === "manual");
   const d = state ? physicsLines(state, reg) : null;
   if (d) builder.setDirective(d);
   const p = state ? perceptionLines(state, reg) : null;
   if (p) builder.setDirective(p);
+  const a = state ? actLines(state, reg) : null;
+  if (a) builder.setDirective(a);
 }
 function clearPhysicsDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(PHYSICS_PREFIX));
@@ -38792,6 +38892,12 @@ function createStaging(deps) {
     endSegment,
     stopWord() {
       return dispatch2({ type: "physics/stop_word", payload: {} });
+    },
+    act(kind) {
+      return active ? dispatch2({ type: "physics/act", payload: { kind } }) : [];
+    },
+    finishCounted(typed) {
+      return active ? dispatch2({ type: "physics/act_finish", payload: { typed } }) : [];
     },
     stimulus(way, kind, depth) {
       return active ? dispatch2({ type: "physics/stimulus", payload: { way, kind, ...depth !== void 0 ? { depth } : {} } }) : [];
@@ -48706,7 +48812,8 @@ function renderPhysicsPanel(host, ctx2) {
   const { state, registries: reg, staging } = ctx2;
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : void 0;
   const exposures = state && !run ? exposedKinds(state, reg) : [];
-  if (state && !run && exposures.length > 0) {
+  const acts = state && !run ? actsFor(state, reg) : [];
+  if (state && !run && (exposures.length > 0 || acts.length > 0)) {
     drawWays(host, ctx2, exposures);
     return;
   }
@@ -48871,6 +48978,7 @@ function drawWays(host, ctx2, exposures) {
     "div",
     { class: "alius-physics", role: "group", "aria-label": "What reaches the body" },
     ...wayGroups(ctx2, exposures),
+    ...actRow(host, ctx2),
     h(
       "div",
       { class: "alius-physics-controls" },
@@ -48879,6 +48987,51 @@ function drawWays(host, ctx2, exposures) {
       } }, "[ STOP WORD ]")
     )
   ));
+}
+var ACT_TEXT = {
+  kiss: "[ KISS ]",
+  counted: "[ COUNTED KISSES ]",
+  long: "[ LONG KISS ]",
+  lick: "[ LICK ]",
+  pet: "[ PET ]",
+  mouth: "[ TAKE IN THE MOUTH ]"
+};
+var tallies = /* @__PURE__ */ new WeakMap();
+function actRow(host, ctx2) {
+  const state = ctx2.state;
+  if (!state) return [];
+  const counting = state.scene?.act;
+  if (counting) {
+    const tally = tallies.get(host) ?? 0;
+    const field2 = h("input", { type: "number", name: "counted", class: "alius-input alius-num", "aria-label": "The count", min: "0", step: "1" });
+    return [h(
+      "div",
+      { class: "alius-physics-acts alius-physics-count", role: "group", "aria-label": "Counted kisses" },
+      h("button", { type: "button", class: "alius-btn alius-option alius-act", "data-act": "tally", ...analyzeNative("glossary:counted_kisses"), onclick: () => {
+        tallies.set(host, tally + 1);
+        renderPhysicsPanel(host, ctx2);
+      } }, `[ KISS ] ${tally}`),
+      field2,
+      h("button", { type: "button", class: "alius-btn alius-option alius-act", "data-act": "finish", ...analyzeNative("glossary:counted_kisses"), onclick: () => {
+        const n = Number(field2.value);
+        tallies.delete(host);
+        if (field2.value.trim() !== "" && Number.isFinite(n)) {
+          field2.value = "";
+          ctx2.staging.finishCounted(n);
+        }
+      } }, "[ FINISH ]")
+    )];
+  }
+  const acts = actsFor(state, ctx2.registries);
+  if (acts.length === 0) return [];
+  return [h(
+    "div",
+    { class: "alius-physics-acts", role: "group", "aria-label": "Acts of the mouth" },
+    ...acts.map((k) => h("button", { type: "button", class: "alius-btn alius-option alius-act", "data-act": k, ...analyzeNative("glossary:mouth_act", { kind: k }), onclick: () => {
+      tallies.delete(host);
+      ctx2.staging.act(k);
+    } }, ACT_TEXT[k] ?? k))
+  )];
 }
 
 // src/ui/scene/sceneScreen.ts
@@ -53398,6 +53551,8 @@ function createApp(st, deps) {
           stopWord: () => staging.stopWord(),
           skip: (st2) => staging.skip(st2),
           stimulus: (w, k, d) => staging.stimulus(w, k, d),
+          act: (k) => staging.act(k),
+          finishCounted: (n) => staging.finishCounted(n),
           cue: (k, b) => staging.cue(k, b),
           beat: () => staging.beat(),
           keystroke: () => staging.keystroke(),

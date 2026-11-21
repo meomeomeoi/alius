@@ -14,6 +14,10 @@ export const STOP_TEXT = 'The commander used the stop word. She stops what she i
 
 /** The directive an event sets, or `null`. */
 export function physicsDirective(event: EngineEvent, state: CampaignState, _reg: Registries): Directive | null {
+  if (event.type === 'mouth_act' && event.kind === 'kiss') {
+    const her = state.squad.find((u) => u.id === event.unitId)?.displayName ?? 'She';
+    return { id: `${PHYSICS_PREFIX}act`, text: `${her} has the commander kiss her, and she takes it as it comes.`, expiresAfter: 'next_reply' };
+  }
   if (event.type !== 'physics_outcome') return null;
   if (event.result === 'stopped') return { id: `${BLOCKING_PREFIX}stop`, text: STOP_TEXT, expiresAfter: 'next_reply' };
   const text = OUTCOME[String(event.result)];
@@ -106,6 +110,15 @@ export function perceptionLines(state: CampaignState, reg: Registries): Directiv
   return lines.length === 0 ? null : { id: `${PHYSICS_PREFIX}perception`, text: `What reaches the commander: ${lines.join('; ')}.`, expiresAfter: 'manual' };
 }
 
+/** Counted kisses that wait for the commander's count: how many she asked for and whether she has been made to start again. `null` otherwise. */
+export function actLines(state: CampaignState, _reg: Registries): Directive | null {
+  const act = state.scene?.act;
+  if (!act) return null;
+  const her = state.squad.find((u) => u.id === (state.scene!.participants[0]))?.displayName ?? 'She';
+  const again = act.tries > 0 ? ' The count went wrong and starts again.' : '';
+  return { id: `${PHYSICS_PREFIX}act`, text: `${her} has the commander count kisses for her: she asked for ${act.n}.${again}`, expiresAfter: 'manual' };
+}
+
 /** Sets or clears the derived `physics:` directive for the open scene (call with every context refresh). */
 export function refreshPhysicsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
   builder.clearMatching((d) => d.id.startsWith(PHYSICS_PREFIX) && d.expiresAfter === 'manual');
@@ -113,6 +126,8 @@ export function refreshPhysicsDirectives(builder: ContextBuilder, state: Campaig
   if (d) builder.setDirective(d);
   const p = state ? perceptionLines(state, reg) : null;
   if (p) builder.setDirective(p);
+  const a = state ? actLines(state, reg) : null;
+  if (a) builder.setDirective(a);
 }
 
 /** Every `physics:` directive goes (the scene ended, the chat switched, no campaign). */

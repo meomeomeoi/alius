@@ -50,6 +50,9 @@ export interface StagingController {
   endSegment(): EngineEvent[];
   /** The player's stop word: always ends the hold. */
   stopWord(): EngineEvent[];
+  /** An act of the mouth on a contact that has one, and the commander's count for counted kisses. */
+  act(kind: string): EngineEvent[];
+  finishCounted(typed: number): EngineEvent[];
   /** The commander's way with a stimulus (`physics/stimulus`). */
   stimulus(way: string, kind: string, depth?: number | string): EngineEvent[];
   /** A marathon between two phases: how the commander spends the stretch (`physics/skip`). */
@@ -216,6 +219,12 @@ export function createStaging(deps: StagingDeps): StagingController {
     endSegment,
     stopWord() {
       return dispatch({ type: 'physics/stop_word', payload: {} });
+    },
+    act(kind) {
+      return active ? dispatch({ type: 'physics/act', payload: { kind } }) : [];
+    },
+    finishCounted(typed) {
+      return active ? dispatch({ type: 'physics/act_finish', payload: { typed } }) : [];
     },
     stimulus(way, kind, depth) {
       return active ? dispatch({ type: 'physics/stimulus', payload: { way, kind, ...(depth !== undefined ? { depth } : {}) } }) : [];

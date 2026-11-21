@@ -12,6 +12,7 @@ import { h } from '../dom';
 import { motionReduced } from '../motion';
 import { clockText, STRATEGIES } from '../../engine/physics/marathon';
 import { exposedKinds } from '../../engine/physics/stimuli';
+import { actsFor } from '../../engine/physics/acts';
 
 /** What the panel needs of the staging controller (the controller passes it as it is). */
 export interface PhysicsPanelStaging {
@@ -20,6 +21,8 @@ export interface PhysicsPanelStaging {
   stopWord(): EngineEvent[];
   skip(strategy: string): EngineEvent[];
   stimulus(way: string, kind: string, depth?: number | string): EngineEvent[];
+  act(kind: string): EngineEvent[];
+  finishCounted(typed: number): EngineEvent[];
   cue(kind: CueKind, beat: number): string | null;
   beat(): number;
 }
@@ -72,7 +75,8 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
   const { state, registries: reg, staging } = ctx;
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : undefined;
   const exposures = state && !run ? exposedKinds(state, reg) : [];
-  if (state && !run && exposures.length > 0) {
+  const acts = state && !run ? actsFor(state, reg) : [];
+  if (state && !run && (exposures.length > 0 || acts.length > 0)) {
     drawWays(host, ctx, exposures);
     return;
   }
@@ -218,6 +222,39 @@ function wayGroups(ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKin
 function drawWays(host: HTMLElement, ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKinds>): void {
   host.replaceChildren(h('div', { class: 'alius-physics', role: 'group', 'aria-label': 'What reaches the body' },
     ...wayGroups(ctx, exposures),
+    ...actRow(host, ctx),
     h('div', { class: 'alius-physics-controls' },
       h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]'))));
+}
+
+const ACT_TEXT: Record<string, string> = {
+  kiss: '[ KISS ]', counted: '[ COUNTED KISSES ]', long: '[ LONG KISS ]', lick: '[ LICK ]', pet: '[ PET ]', mouth: '[ TAKE IN THE MOUTH ]',
+};
+/** The commander's own tally of counted kisses (shown to the player who keeps it; the number she asked for is hers). */
+const tallies = new WeakMap<HTMLElement, number>();
+
+/** The acts of the mouth a contact offers; while kisses are being counted: a counter, a field for the count and FINISH. */
+function actRow(host: HTMLElement, ctx: PhysicsPanelCtx): HTMLElement[] {
+  const state = ctx.state;
+  if (!state) return [];
+  const counting = state.scene?.act;
+  if (counting) {
+    const tally = tallies.get(host) ?? 0;
+    const field = h('input', { type: 'number', name: 'counted', class: 'alius-input alius-num', 'aria-label': 'The count', min: '0', step: '1' }) as HTMLInputElement;
+    return [h('div', { class: 'alius-physics-acts alius-physics-count', role: 'group', 'aria-label': 'Counted kisses' },
+      h('button', { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': 'tally', ...analyzeNative('glossary:counted_kisses'), onclick: () => { tallies.set(host, tally + 1); renderPhysicsPanel(host, ctx); } }, `[ KISS ] ${tally}`),
+      field,
+      h('button', { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': 'finish', ...analyzeNative('glossary:counted_kisses'), onclick: () => {
+        const n = Number(field.value);
+        tallies.delete(host);
+        if (field.value.trim() !== '' && Number.isFinite(n)) {
+          field.value = '';
+          ctx.staging.finishCounted(n);
+        }
+      } }, '[ FINISH ]'))];
+  }
+  const acts = actsFor(state, ctx.registries);
+  if (acts.length === 0) return [];
+  return [h('div', { class: 'alius-physics-acts', role: 'group', 'aria-label': 'Acts of the mouth' },
+    ...acts.map((k) => h('button', { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': k, ...analyzeNative('glossary:mouth_act', { kind: k }), onclick: () => { tallies.delete(host); ctx.staging.act(k); } }, ACT_TEXT[k] ?? k)))];
 }

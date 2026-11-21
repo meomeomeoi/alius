@@ -2582,5 +2582,24 @@
     "see": [
       "marathon"
     ]
+  },
+  {
+    "id": "mouth_act",
+    "term": "Acts of the mouth",
+    "short": "What a contact with a mouth offers: a kiss, counted kisses, a long kiss, licking, as a pet, or taking in the mouth. Each tastes what it touches.",
+    "long": "AUTHOR TO WRITE: A kiss is one act and she reacts to it. Counted kisses are a ritual with a number she sets. A long kiss is held still. Licking works the dirt away and dries the mouth. As a pet is a quick rhythm. Taking in the mouth works the jaw. Each act is a taste of what the contact carries, and tasting grows familiar with time.",
+    "see": [
+      "counted_kisses",
+      "physics_panel"
+    ]
+  },
+  {
+    "id": "counted_kisses",
+    "term": "Counted kisses",
+    "short": "She sets a number. You count the kisses yourself and type the number you reached; a wrong count starts again.",
+    "long": "AUTHOR TO WRITE: The count is yours to keep: the game only checks the number you give. The same number stays until it is right.",
+    "see": [
+      "mouth_act"
+    ]
   }
 ]

@@ -59,6 +59,8 @@ export interface StartOptions {
   duration?: { hours: number } | 'unknown';
   /** A second physics on the same beats (her escalation adds one); absent: the source's own second entry, when it has one and may run. */
   second?: string;
+  /** A mouth act that runs this physics on a contact that does not name it (the source's own list is not checked); no second physics. */
+  act?: string;
 }
 
 /** Whether this physics may run for this holder: its interaction is on and its category and her limits allow it. */
@@ -78,7 +80,7 @@ export function whyNotStart(state: CampaignState, reg: Registries, o: StartOptio
   if (!phys) return `Unknown physics "${o.physicsId}".`;
   if (!scene.participants.includes(o.holderId)) return `${o.holderId} is not in the scene.`;
   if (!hasSource(scene, o.sourceKind, o.sourceId)) return `Nothing in the scene is "${o.sourceId}".`;
-  if (!physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
+  if (o.act === undefined && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
   const gate = whyNotAllowed(state, reg, phys, o.holderId);
   if (gate !== null) return gate;
   if (o.second !== undefined) {
@@ -100,16 +102,17 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   if (why !== null) throw new Error(why);
   const scene = draft.scene!;
   const phys = reg.contactPhysics.get(o.physicsId)!;
-  const ref = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId)!;
-  const range = ref.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
+  const ref = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
+  const range = ref?.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
   const lead = leadStyle(physicsStyleOf(draft, o.holderId)).seal;
   const seal = range ? range[lead === 'loosest' ? 0 : lead === 'tightest' ? range.length - 1 : Math.floor(range.length / 2)] : undefined;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
   const run: PhysicsRun = {
     id: `p${scene.physicsCount}`, physicsId: o.physicsId, sourceKind: o.sourceKind, sourceId: o.sourceId, holderId: o.holderId,
-    ...gaugeFor(draft, phys), ...(range ? { sealRange: range } : {}), ...(seal ? { seal } : {}), ...(ref.pressure !== undefined ? { pressure: ref.pressure } : {}),
+    ...gaugeFor(draft, phys), ...(range ? { sealRange: range } : {}), ...(seal ? { seal } : {}), ...(ref?.pressure !== undefined ? { pressure: ref.pressure } : {}),
     segment: { n: 0, state: 'held' }, startedExchange: scene.exchanges, taps: 0, streak: 0, extend: 0,
     ...(o.duration !== undefined ? { duration: o.duration } : {}),
+    ...(o.act !== undefined ? { act: o.act, ...(o.act === 'lick' ? { dryness: 0 } : {}) } : {}),
   };
   if (o.duration !== undefined && isMarathon(o.duration)) {
     run.marathon = initMarathon(draft, o.duration);
@@ -117,7 +120,7 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   }
   // a second physics: the one asked for, or the source's own second entry when it may run (it is left out quietly when it may not)
   const list = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
-  const secondRef = o.second !== undefined ? list.find((p) => p.id === o.second) : list.find((p) => p.id !== o.physicsId);
+  const secondRef = o.act !== undefined ? undefined : o.second !== undefined ? list.find((p) => p.id === o.second) : list.find((p) => p.id !== o.physicsId);
   const secondPhys = secondRef ? reg.contactPhysics.get(secondRef.id) : undefined;
   if (secondRef && secondPhys && whyNotAllowed(draft, reg, secondPhys, o.holderId) === null) {
     const sr = secondRef.seal ? [...secondRef.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;

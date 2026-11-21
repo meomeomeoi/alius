@@ -80,7 +80,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   const beats: PlannedBeat[] = attention.map((a) => ({ attention: a }));
   const interactions = [String(phys.interaction), ...(run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : [])];
   if (interactions.includes('timing')) {
-    let pos = ((rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3) + rng.int(0, 1);
+    let pos = run.act === 'pet' ? 0 : ((rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3) + rng.int(0, 1);
     let k = 0;
     while (pos < n) {
       const measuring = lead.key === 'clinical' && ++k % rng.int(P.clinicalEvery[0], P.clinicalEvery[1]) === 0;
@@ -90,7 +90,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
         ...beats[pos]!, opening: { widthMs: openingWidth(style, rng, measuring), ...(isFalse ? { false: true as const } : {}) },
         ...(silent ? {} : { cue: isFalse ? ('window_false' as const) : ('window_open' as const) }),
       };
-      pos += rng.int(P.breath.windowEvery[0], P.breath.windowEvery[1]);
+      pos += run.act === 'pet' ? 1 : rng.int(P.breath.windowEvery[0], P.breath.windowEvery[1]); // a pet's quick rhythm: an opening every beat
     }
   }
   if (interactions.includes('hold')) {
@@ -227,7 +227,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         break;
       }
       case 'order': {
-        for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part ? P.tongue.right : P.tongue.wrong;
+        for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part && (run.dryness ?? 0) < 100 ? P.tongue.right : P.tongue.wrong;
+        if (run.dryness !== undefined) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P.tongue.dryness);
         break;
       }
       case 'passive':
@@ -245,6 +246,7 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     r.restGranted = !['cruel', 'vindictive'].includes(leadStyle(env.style).key);
     if (r.restGranted) r.gauge = Math.max(0, r.gauge - P.jawRest);
   }
+  if (run.dryness !== undefined && r.dryness === undefined) r.dryness = run.dryness;
   r.checked = env.interaction === 'order' && r.gauge <= P.tongue.checkAt;
   r.complete = env.interaction === 'passive' && r.gauge >= 100;
   const after = share(env.gaugeKind, r.gauge, cap);
@@ -344,6 +346,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   for (const x of sounds) events.push({ type: 'physics_noise', runId, holderId: run.holderId, kind: x.kind, loudness: x.loudness });
   run.gauge = result.gauge;
   run.streak = result.streak;
+  if (result.dryness !== undefined) run.dryness = result.dryness;
   run.last = {
     caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, slips: result.slips, gasps: result.gasps, reliefs: result.reliefs, noise: result.noise, cues: result.cues,
     ...(result.warning ? { warning: true } : {}),

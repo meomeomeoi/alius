@@ -78,6 +78,8 @@ export interface SegmentResult {
   beatsRun: number;
   cues: CueKind[];
   noise: number;
+  /** The dryness of a mouth after licking (absent unless the run tracks it). */
+  dryness?: number;
 }
 
 /** The state of the second physics of a hold (plan R13): its own gauge, seal and streak, on the same beats as the first. */
@@ -140,6 +142,10 @@ export interface PhysicsRun {
   /** A marathon: how long it lasts in the fiction (`unknown`: nobody says). Absent = an ordinary hold. */
   duration?: { hours: number } | 'unknown';
   marathon?: MarathonState;
+  /** The mouth act this run is (`lick`, `mouth`, `long`, `pet`); absent for a run that came with a contact or an item. */
+  act?: string;
+  /** A licking run's dryness, 0–100: from 100 a right order takes off only what a wrong one does. */
+  dryness?: number;
   /** The capacity a marathon started with (attrition takes from it phase by phase). */
   baseCapacity?: number;
 }

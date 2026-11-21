@@ -1,6 +1,7 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
 import { physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
 import { marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
@@ -86,3 +87,17 @@ registerAction('physics/stimulus', (draft, payload, ctx) => {
 
 // the body layer: tolerance slips back with days apart and a craved kind that is missed costs a little stress (once a day)
 registerDayEndStep('director_tick', (draft) => decayStimuli(draft));
+
+/** `physics/act { kind }`: an act of the mouth on a contact that has one (kiss, counted, long, lick, pet, mouth). Draws no rng. */
+registerAction('physics/act', (draft, payload, ctx) => {
+  if (!draft.scene) throw new Error('physics/act: no scene is open');
+  if (!isObj(payload)) throw new Error('physics/act needs { kind }');
+  return startAct(draft, ctx, payload.kind);
+});
+
+/** `physics/act_finish { typed }`: the commander's count of the kisses she asked for. Draws no rng. */
+registerAction('physics/act_finish', (draft, payload, ctx) => {
+  if (!draft.scene) throw new Error('physics/act_finish: no scene is open');
+  if (!isObj(payload)) throw new Error('physics/act_finish needs { typed }');
+  return finishCounted(draft, ctx, payload.typed);
+});

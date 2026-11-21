@@ -56,6 +56,8 @@ const fake = () => {
     stopWord: () => { calls.push(['stop', null]); return []; },
     skip: (st) => { calls.push(['skip', st]); return []; },
     stimulus: (way, kind, depth) => { calls.push(['stimulus', { way, kind, depth }]); return []; },
+    act: (kind) => { calls.push(['act', kind]); return []; },
+    finishCounted: (n) => { calls.push(['count', n]); return []; },
     cue: (kind) => `[${kind}]`,
     beat: () => 0,
   };
@@ -445,5 +447,53 @@ describe('the ways of breathing her in', () => {
     expect(lines).toContain('What reaches you:');
     expect(lines).not.toMatch(/\d|expect|rhythm/);
     expect(analyze('stimulusKinds:scent_feet', env(campaign(reg, 4))).join(' ')).toBe('');
+  });
+});
+
+describe('acts of the mouth in the panel', () => {
+  function mouth(): CampaignState {
+    registerFrameReader(() => 'play');
+    const s = campaign(reg, 4);
+    setRelation(s, ANN, { stateId: 'confidant' });
+    enable(s, 'worship', 'bodily_fluids', 'humiliation');
+    const st = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+    setBlocking(st, { registries: reg }, { person: COMMANDER, field: 'contact', value: 'foot_worship', with: ANN, target: 'feet' }, { at: 3, source: 'chip' });
+    return st;
+  }
+
+  it('a mouth contact offers its acts; a press sends the kind; none without a mouth', () => {
+    const v = draw(mouth());
+    expect(texts(v.qa('.alius-physics-acts button'))).toEqual(['[ KISS ]', '[ COUNTED KISSES ]', '[ LONG KISS ]', '[ LICK ]', '[ TAKE IN THE MOUTH ]']);
+    v.qa('.alius-physics-acts button')[3]!.click();
+    expect(v.calls).toEqual([['act', 'lick']]);
+    expect(draw(hold('footrest')).q('.alius-physics-acts')).toBeNull();
+  });
+
+  it('counted kisses: a tally button, a field for the count, FINISH sends it', () => {
+    const s = mouth();
+    s.scene!.act = { kind: 'counted', n: 40, since: 0, tries: 0 };
+    const v = draw(s);
+    expect(texts(v.qa('.alius-physics-count button'))).toEqual(['[ KISS ] 0', '[ FINISH ]']);
+    for (let i = 0; i < 3; i++) v.qa<HTMLButtonElement>('[data-act="tally"]')[0]!.click();
+    expect(v.q('[data-act="tally"]')!.textContent).toBe('[ KISS ] 3');
+    const field = v.q<HTMLInputElement>('input[name="counted"]')!;
+    field.value = '3';
+    v.q('[data-act="finish"]')!.click();
+    expect(v.calls).toEqual([['count', 3]]);
+    v.q('[data-act="finish"]')!.click(); // an empty field sends nothing
+    expect(v.calls).toHaveLength(1);
+    expect(v.host.textContent).not.toContain('40'); // the number she asked for is hers
+  });
+
+  it('every act is marked, resolves and can be reached', () => {
+    const s = mouth();
+    for (const act of [undefined, { kind: 'counted' as const, n: 40, since: 0, tries: 0 }]) {
+      if (act) s.scene!.act = act;
+      const v = draw(s);
+      expect(markedWithout(v.host)).toEqual([]);
+      expect(unresolved(v.host, env(s))).toEqual([]);
+      expect(unreachable(v.host)).toEqual([]);
+      document.body.innerHTML = '';
+    }
   });
 });

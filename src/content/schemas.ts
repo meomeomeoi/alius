@@ -503,7 +503,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P15a (the scene blocking, moments and contact physics)
   'blocking_changed', 'blocking_rolled_back', 'moment_fired', 'moment_answered', 'moment_lapsed', 'moment_escalated',
   'physics_started', 'physics_segment', 'physics_signal', 'physics_slip', 'physics_cheat', 'physics_caught', 'physics_noise', 'physics_outcome', 'blackout',
-  'endurance_gained', 'her_skill_gained', 'marathon_phase', 'marathon_done', 'reflex', 'stimulus_stage_changed', 'stimulus_way', 'condition_set', 'condition_ended',
+  'endurance_gained', 'her_skill_gained', 'marathon_phase', 'marathon_done', 'reflex', 'stimulus_stage_changed', 'stimulus_way', 'mouth_act', 'mouth_act_done', 'mouth_act_restart', 'condition_set', 'condition_ended',
   // P10c
   'quarters_set',
   // P13

@@ -1431,16 +1431,16 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
 **Interfaces:**
 - Produces: `actsFor(state, reg, contact): ActKind[]`; `startAct(draft, ctx, kind)`; `finishCounted(draft, ctx, typed: number)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `acts only on mouth contacts`.
   - `kiss is a discrete act with a directive line`.
   - `counted: the right number finishes, a wrong one restarts`; `n is stable by hash`.
   - `lick runs tongue_work with dryness`; `mouth runs jaw`; `pet runs timing every beat`; `long runs hold`.
   - `taste exposure per kind`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/physics/acts.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15a): kisses and the tongue as acts`
+- [x] **Step 2: Run** `npx vitest run tests/engine/physics/acts.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15a): kisses and the tongue as acts`
 
 ---
 
