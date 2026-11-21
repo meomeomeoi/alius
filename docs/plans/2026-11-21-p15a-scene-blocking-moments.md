@@ -800,7 +800,7 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `SceneController.stage(action: Action): EngineEvent[]`;
   - `SceneRecord.activityId`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `pastime sets the activities the gates allow`: `fix_gear` → her `repairing_gear`; the commander's `holding_for_her` is a dynamic service activity and stays unset at frame `equal`. A `workshop` talk → `repairing_gear`; a plain talk → nothing set.
   - `rollback after a chip change`: a reply at 5 is read, a posture chip goes through `stage`, and swiping 5 restores the state before the reading (the chip is gone too).
   - `rollback with no extraction` (intent mode `scene_end`): a chip at `at = 6`, swipe 5 → `blocking/rollback` restores it; swipe 7 → nothing.
@@ -808,10 +808,10 @@ stagingLog?: StagingSnapshot[]; // { at: chat index, blocking, moments } — the
   - `scene end clears and counts practice`: her `reading_book` blocking activity with an active `reading` hobby → a practice slot counted; no hobby → no change.
   - `life:pastime: drops only the words that were set` (her word gone, the commander's kept, for `fix_gear` at frame `equal`).
   - `swipe during a hold keeps the run` is written here as `it.todo` and completed in Task 21.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/blocking/snapshots.test.ts tests/scene/stagingSwipe.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R7.
-- [ ] **Step 4: Run** both files, then `npm test` → PASS (`tests/engine/life/*` unchanged).
-- [ ] **Step 5: Commit** `feat(P15a): the scene's starting blocking, snapshots per message and the swipe`
+- [x] **Step 2: Run** `npx vitest run tests/engine/blocking/snapshots.test.ts tests/scene/stagingSwipe.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R7.
+- [x] **Step 4: Run** both files, then `npm test` → PASS (`tests/engine/life/*` unchanged).
+- [x] **Step 5: Commit** `feat(P15a): the scene's starting blocking, snapshots per message and the swipe`
 
 ---
 

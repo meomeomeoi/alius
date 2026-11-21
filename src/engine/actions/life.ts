@@ -1,3 +1,4 @@
+import { startBlocking } from '../blocking/defaults';
 import { isLiving } from '../economy';
 import { registerActivityHook, runActivity } from '../activities';
 import { registerDayEndStep } from '../calendar';
@@ -278,5 +279,6 @@ registerAction('life/pastime_in_scene', (draft, payload, ctx) => {
   const why = pastimeProblem(draft, ctx.registries, unit.id, pastimeId, { locationId: scene.locationId, slot: scene.slot });
   if (why) throw new Error(why);
   scene.pastime = { id: pastimeId, unitId: unit.id };
+  startBlocking(draft, ctx.registries); // P15a: her activity and the commander's, as a quiet meeting that began with the scene would have
   return [{ type: 'pastime_set', unitId: unit.id, pastimeId }];
 });

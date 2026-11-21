@@ -2,7 +2,8 @@ export * from './state';
 export * from './types';
 export { blockingLive, entryAllowed, frameOf, registerBlockingGate, registerFrameReader, resetBlockingHooks, sceneAffordances, sceneRoom } from './gate';
 export {
-  blockingOf, checkChange, contactOf, effectsOf, mobilityOf, personEffects, setBlocking, stripTagged, transitionProblem,
+  blockingOf, checkChange, contactOf, effectsOf, mobilityOf, personEffects, setBlocking, setQuietly, stripTagged, transitionProblem,
   type BlockingChange, type BlockingField, type BlockingSource,
 } from './blocking';
-export { pushLog } from './snapshots';
+export { pushLog, rollbackAfter } from './snapshots';
+export { startBlocking } from './defaults';

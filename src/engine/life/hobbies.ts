@@ -151,8 +151,17 @@ export function practiceSlots(
   const places = placesOf(state, reg, unitId, day, cache);
   for (const [i, slot] of DAY_SLOTS.entries()) {
     const w = places[i];
+    const busy = life.busy.find((b) => b.unitId === unitId && b.slot === busySlot(day, slot));
+    if (busy !== undefined) {
+      // P15a: a slot spent in a scene counts when what she did there (her blocking activity) is one of an active hobby's activities
+      const did = busy.blockingActivityId;
+      const kept = did === undefined ? undefined : unit.hobbies
+        .filter((h) => h.state === 'active' && ((reg.hobbies.get(h.id)?.activityIds ?? []) as string[]).includes(did))
+        .sort((a, b) => b.interest - a.interest || order.indexOf(a.id) - order.indexOf(b.id))[0];
+      if (kept && !activeRestrictions({ ...state, day, slot }, unitId).some((r) => r.kind !== 'benched')) out.push({ slot, hobbyId: kept.id, roomId: w.roomId ?? '' });
+      continue;
+    }
     if (w.reason !== 'routine' || w.roomId === null) continue;
-    if (life.busy.some((b) => b.unitId === unitId && b.slot === busySlot(day, slot))) continue;
     if (activeRestrictions({ ...state, day, slot }, unitId).some((r) => r.kind !== 'benched')) continue;
     const here = reg.hubRooms.get(w.roomId)?.sceneLocationId;
     const choice = unit.hobbies

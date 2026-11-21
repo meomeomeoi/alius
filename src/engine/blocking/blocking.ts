@@ -353,6 +353,16 @@ export function setBlocking(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
 }
 
 /**
+ * Sets a field when every gate allows it, with no log entry and no event (the scene's starting blocking: the engine's own setup is not a
+ * change a swipe could take back). Returns whether it was set.
+ */
+export function setQuietly(draft: CampaignState, reg: Registries, change: BlockingChange): boolean {
+  if (checkChange(draft, reg, change) !== null) return false;
+  apply(draft, reg, change);
+  return true;
+}
+
+/**
  * A content category went off: what is worn, the contact and the activity tagged with it are gone from every person, quietly (no
  * event, no log entry). Physics that depended on them ends through the hooks registered by the physics layer.
  */

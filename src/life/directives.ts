@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { COMMANDER } from '../engine/blocking/state';
 import { keenestHobby, lifeMode, pendingNews, plainText, plateauBreaks } from '../engine/life';
 import type { HobbyEntry, OpinionTopicEntry, PastimeEntry } from '../engine/life/types';
 import type { CampaignState, Unit } from '../engine/state/types';
@@ -62,9 +63,16 @@ function pastimeDirective(state: CampaignState, reg: Registries, unit: Unit): Di
   const what = clean(plainText(pastime.description)).replace(/\.$/, '');
   const hers = label !== undefined ? clean(label) : clean(pastime.herActivity);
   const breaks = hobby !== undefined && plateauBreaks(state, unit.id, hobby.id) ? ' She gets it right for the first time today.' : '';
+  // P15a: an activity that was set as a blocking activity is in [BLOCKING]; it is not said twice
+  const blocking = state.scene?.blocking;
+  const doing = [
+    ...(blocking?.[unit.id]?.activity === undefined ? [`${unit.displayName}: ${hers}`] : []),
+    ...(blocking?.[COMMANDER]?.activity === undefined ? [`the commander: ${clean(pastime.commanderActivity)}`] : []),
+  ].join('; ');
+  const activities = doing === '' ? '' : ` ${doing[0]!.toUpperCase()}${doing.slice(1)}.`;
   return {
     id: `${PASTIME_PREFIX}${unit.id}`, expiresAfter: 'scene',
-    text: `${clean(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}. ${unit.displayName}: ${hers}; the commander: ${clean(pastime.commanderActivity)}.${breaks}`,
+    text: `${clean(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`,
   };
 }
 

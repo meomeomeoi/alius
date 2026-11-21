@@ -13711,8 +13711,14 @@ function practiceSlots(state, reg, unitId, day, cache) {
   const places = placesOf(state, reg, unitId, day, cache);
   for (const [i, slot2] of DAY_SLOTS.entries()) {
     const w = places[i];
+    const busy = life.busy.find((b) => b.unitId === unitId && b.slot === busySlot(day, slot2));
+    if (busy !== void 0) {
+      const did = busy.blockingActivityId;
+      const kept = did === void 0 ? void 0 : unit2.hobbies.filter((h2) => h2.state === "active" && (reg.hobbies.get(h2.id)?.activityIds ?? []).includes(did)).sort((a, b) => b.interest - a.interest || order.indexOf(a.id) - order.indexOf(b.id))[0];
+      if (kept && !activeRestrictions({ ...state, day, slot: slot2 }, unitId).some((r) => r.kind !== "benched")) out.push({ slot: slot2, hobbyId: kept.id, roomId: w.roomId ?? "" });
+      continue;
+    }
     if (w.reason !== "routine" || w.roomId === null) continue;
-    if (life.busy.some((b) => b.unitId === unitId && b.slot === busySlot(day, slot2))) continue;
     if (activeRestrictions({ ...state, day, slot: slot2 }, unitId).some((r) => r.kind !== "benched")) continue;
     const here = reg.hubRooms.get(w.roomId)?.sceneLocationId;
     const choice = unit2.hobbies.filter((h2) => h2.state === "active" && (reg.hobbies.get(h2.id)?.locations ?? []).includes(here)).sort((a, b) => b.interest - a.interest || order.indexOf(a.id) - order.indexOf(b.id))[0];
@@ -25549,8 +25555,465 @@ function momentDirective(state, reg, unitId) {
   return { id: `development:${unitId}`, text: `${unit2.displayName} has changed lately: ${words3.join("; ")}. Let it show in how she acts this scene; never announce it.`, expiresAfter: "scene" };
 }
 
+// src/engine/basePlan.ts
+var rectOf = (e) => e.rect;
+var doorsOf = (e) => e.doors ?? [];
+function planRoomsOn(reg, floor) {
+  return [...reg.planRooms.values()].filter((e) => e.floor === floor);
+}
+function isOpenSpace(e) {
+  return PLAN_OPEN_KINDS.includes(String(e.kind)) || e.kind === "stair" && doorsOf(e).length === 0;
+}
+function isClosed(reg, e) {
+  if (typeof e.hubRoomId === "string" && reg.hubRooms.has(e.hubRoomId)) return false;
+  return !isOpenSpace(e) && e.kind !== "stair";
+}
+var unitCabins = (reg) => [...reg.planRooms.values()].filter((e) => e.cabin === "unit");
+var commanderCabin = (reg) => [...reg.planRooms.values()].find((e) => e.cabin === "commander");
+function cabinMap(state, reg) {
+  const cabins = unitCabins(reg);
+  const out = /* @__PURE__ */ new Map();
+  if (cabins.length === 0) return out;
+  const taken = /* @__PURE__ */ new Set();
+  state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
+    if (!isLiving(u)) return;
+    const start = k % cabins.length;
+    let pick2 = cabins[start];
+    for (let i = 0; i < cabins.length; i++) {
+      const c = cabins[(start + i) % cabins.length];
+      if (!taken.has(String(c.id))) {
+        pick2 = c;
+        break;
+      }
+    }
+    taken.add(String(pick2.id));
+    out.set(u.id, pick2);
+  });
+  for (const u of state.squad) {
+    if (u.kind === "named" || !isLiving(u)) continue;
+    const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
+    const pick2 = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick2.id));
+    out.set(u.id, pick2);
+  }
+  return out;
+}
+function cabinOf(state, reg, unitId) {
+  return cabinMap(state, reg).get(unitId) ?? null;
+}
+function cabinOwner(state, reg, cabinId) {
+  for (const [unitId, c] of cabinMap(state, reg)) if (c.id === cabinId) return unitId;
+  return null;
+}
+function roomOfPerson(state, reg, here, personId) {
+  if (personId === "commander") return commanderCabin(reg) ?? null;
+  const w = here.find((x) => x.unitId === personId);
+  if (!w || w.roomId === null) return null;
+  const plan = [...reg.planRooms.values()].filter((e) => e.hubRoomId === w.roomId);
+  if (plan.some((e) => e.cabin === "unit")) {
+    const own = cabinOf(state, reg, personId);
+    if (own && own.hubRoomId === w.roomId) return own;
+  }
+  return plan.find((e) => e.cabin === void 0) ?? plan[0] ?? null;
+}
+function litRooms(state, reg, here) {
+  const lit = /* @__PURE__ */ new Set();
+  for (const w of here) {
+    const r = roomOfPerson(state, reg, here, w.unitId);
+    if (r) lit.add(String(r.id));
+  }
+  const cmdr = roomOfPerson(state, reg, here, "commander");
+  if (cmdr) lit.add(String(cmdr.id));
+  return lit;
+}
+var markProviders = [];
+function planMarks(state, reg) {
+  return markProviders.flatMap((p) => p(state, reg)).filter((m) => reg.planRooms.has(m.planRoomId));
+}
+
+// src/engine/blocking/state.ts
+var COMMANDER = "commander";
+var INTIMACIES = ["none", "close", "intimate", "explicit"];
+var FRAMES = ["equal", "play", "role", "rule"];
+var frameRank = (f) => FRAMES.indexOf(f);
+var NOTE_MAX2 = 120;
+
+// src/engine/blocking/gate.ts
+var frameReaders = [];
+var liveGates = [];
+function frameOf(state, unitId) {
+  for (const read of frameReaders) {
+    const f = read(state, unitId);
+    if (f !== null) return f;
+  }
+  return "equal";
+}
+function blockingLive(state, reg) {
+  const scene = state.scene;
+  if (!scene) return false;
+  const close = scene.participants.some((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return u !== void 0 && u.kind === "named" && isLiving(u) && bondTierOf(state, reg, id) !== null;
+  });
+  return close || liveGates.some((g) => g(state, reg));
+}
+function entryAllowed(state, reg, entry, unitIds) {
+  if (!contentAllowed(state, reg, entry)) return false;
+  for (const id of unitIds) if (!contentAllowed(state, reg, entry, id)) return false;
+  if (entry.scope === "dynamic") {
+    if (unitIds.length === 0) return frameRank("equal") >= frameRank("play");
+    return unitIds.every((id) => frameRank(frameOf(state, id)) >= frameRank("play"));
+  }
+  return true;
+}
+function sceneRoom(state, reg) {
+  const scene = state.scene;
+  if (!scene) return null;
+  const loc = reg.locations.get(scene.locationId);
+  if (loc?.perUnit === true) return cabinOf(state, reg, scene.participants[0] ?? "") ?? null;
+  const rooms = [...reg.planRooms.values()];
+  const direct = rooms.find((r) => r.sceneLocationId === scene.locationId);
+  if (direct) return direct;
+  const hub = [...reg.hubRooms.values()].find((r) => r.sceneLocationId === scene.locationId);
+  return hub ? rooms.find((r) => r.hubRoomId === hub.id) ?? null : null;
+}
+function sceneAffordances(state, reg) {
+  const room2 = sceneRoom(state, reg);
+  return new Set(Array.isArray(room2?.affordances) ? room2.affordances.map(String) : []);
+}
+
+// src/engine/blocking/snapshots.ts
+function rollbackAfter(draft, index2) {
+  const scene = draft.scene;
+  const log = scene?.stagingLog;
+  if (!scene || !log) return false;
+  const i = log.findIndex((e) => e.at > index2);
+  if (i < 0) return false;
+  const snap = log[i];
+  if (Object.keys(snap.blocking).length === 0) delete scene.blocking;
+  else scene.blocking = structuredClone(snap.blocking);
+  if (snap.moments !== void 0) scene.moments = structuredClone(snap.moments);
+  else delete scene.moments;
+  log.splice(i);
+  if (log.length === 0) delete scene.stagingLog;
+  return true;
+}
+function pushLog(draft, at) {
+  const scene = draft.scene;
+  if (!scene) return;
+  const log = scene.stagingLog ??= [];
+  log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...scene.moments !== void 0 ? { moments: structuredClone(scene.moments) } : {} });
+  if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
+}
+
+// src/engine/blocking/blocking.ts
+var NONE2 = Object.freeze({});
+function blockingOf(scene, personId) {
+  return scene?.blocking?.[personId] ?? NONE2;
+}
+var nameOf9 = (state, id) => id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
+var isPresent = (state, id) => id === COMMANDER || (state.scene?.participants.includes(id) ?? false);
+var unitsOf2 = (state) => state.scene?.participants ?? [];
+var otherOf = (state, person) => person === COMMANDER ? state.scene?.participants[0] : COMMANDER;
+function partsOf(b, reg, withStance) {
+  const out = [];
+  if (withStance) {
+    if (b.posture !== void 0) out.push({ entry: reg.blockingPostures.get(b.posture), held: false });
+    if (b.anchor !== void 0) out.push({ entry: reg.blockingAnchors.get(b.anchor.id), held: false });
+    if (b.activity !== void 0) out.push({ entry: reg.blockingActivities.get(b.activity), held: false });
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const w of Object.values(b.worn ?? {})) {
+    if (!w || seen.has(w.id)) continue;
+    seen.add(w.id);
+    out.push({ entry: reg.blockingItems.get(w.id), held: true });
+  }
+  if (b.contact) out.push({ entry: reg.blockingContacts.get(b.contact.id), held: true });
+  return out;
+}
+function restraintEffects(state, reg, personId) {
+  const scene = state.scene;
+  if (!scene) return [];
+  const own = blockingOf(scene, personId);
+  const effects2 = partsOf({ ...own, contact: void 0 }, reg, false).flatMap((p) => effectsOfEntry(p.entry));
+  const contact = personId === COMMANDER ? contactOf(scene) : void 0;
+  return contact ? effects2.concat(effectsOfEntry(reg.blockingContacts.get(contact.id))) : effects2;
+}
+function contactOf(scene) {
+  for (const b of Object.values(scene.blocking ?? {})) if (b.contact) return b.contact;
+  return void 0;
+}
+var MOBILITY = ["none", "limited", "crawl", "follows"];
+function mobilityOf(state, reg, personId) {
+  const levels = restraintEffects(state, reg, personId).filter((e) => e.type === "mobility").map((e) => e.level);
+  return MOBILITY.find((m) => levels.includes(m)) ?? null;
+}
+function transitionProblem(state, reg, change) {
+  if (change.field !== "posture" && change.field !== "anchor") return null;
+  const level = mobilityOf(state, reg, change.person);
+  if (level === null) return null;
+  const who = nameOf9(state, change.person);
+  if (level === "none") return `${who} cannot move: held in place.`;
+  if (change.field === "anchor") {
+    if (level === "limited") return `${who} cannot change place: movement is limited.`;
+    if (level === "follows") {
+      const anchor = reg.blockingAnchors.get(change.value ?? "");
+      const relTo = change.relTo ?? otherOf(state, change.person);
+      return anchor?.kind === "relative" && relTo !== void 0 && relTo !== COMMANDER && relTo !== change.person ? null : `${who} can only stay with her: on a lead.`;
+    }
+    return null;
+  }
+  if (level === "limited" && (change.value ?? "").startsWith("standing")) return `${who} cannot stand: movement is limited.`;
+  if (level === "crawl" && change.value !== "all_fours") return `${who} can only crawl.`;
+  return null;
+}
+function partiesOf(entry, change, state) {
+  const pair = [change.person, change.with];
+  if (change.with === void 0) return "A contact needs the person it is with.";
+  if (!pair.includes(COMMANDER) || pair[0] === pair[1]) return "A contact is between the commander and one soldier.";
+  const unit2 = change.person === COMMANDER ? change.with : change.person;
+  if (!isPresent(state, unit2) || unit2 === COMMANDER) return `${nameOf9(state, unit2)} is not in the scene.`;
+  switch (entry.dir) {
+    case "her":
+      return { actor: unit2, receiver: COMMANDER, unit: unit2 };
+    case "commander":
+      return { actor: COMMANDER, receiver: unit2, unit: unit2 };
+    case "either": {
+      if (change.direction === void 0) return "This contact works both ways: say who acts.";
+      return change.direction === "from" ? { actor: unit2, receiver: COMMANDER, unit: unit2 } : { actor: COMMANDER, receiver: unit2, unit: unit2 };
+    }
+    default:
+      return { actor: unit2, receiver: COMMANDER, unit: unit2 };
+  }
+}
+function checkChange(state, reg, change) {
+  const scene = state.scene;
+  if (!scene) return "No scene is open.";
+  if (!isPresent(state, change.person)) return `${nameOf9(state, change.person)} is not in the scene.`;
+  const units = unitsOf2(state);
+  const value = change.value;
+  const moved = transitionProblem(state, reg, change);
+  if (moved !== null) return moved;
+  switch (change.field) {
+    case "posture": {
+      if (value === void 0 || !reg.blockingPostures.has(value)) return `Unknown posture "${String(value)}".`;
+      return null;
+    }
+    case "anchor": {
+      const a = value === void 0 ? void 0 : reg.blockingAnchors.get(value);
+      if (!a) return `Unknown place "${String(value)}".`;
+      const need = a.requires?.affordances ?? [];
+      const have = sceneAffordances(state, reg);
+      const missing2 = need.find((x) => !have.has(x));
+      if (missing2 !== void 0) return `This place has no ${missing2}.`;
+      if (a.kind === "relative") {
+        const relTo = change.relTo ?? otherOf(state, change.person);
+        if (relTo === void 0 || relTo === change.person || !isPresent(state, relTo)) return "A place relative to someone needs somebody else in the scene.";
+      }
+      return null;
+    }
+    case "contact": {
+      const c = value === void 0 ? void 0 : reg.blockingContacts.get(value);
+      if (!c) return `Unknown contact "${String(value)}".`;
+      const parties = partiesOf(c, change, state);
+      if (typeof parties === "string") return parties;
+      if (!entryAllowed(state, reg, c, [parties.unit])) return `${String(c.label)} is not available here.`;
+      const need = c.requires?.affordances ?? [];
+      const have = sceneAffordances(state, reg);
+      const missing2 = need.find((x) => !have.has(x));
+      if (missing2 !== void 0) return `This place has no ${missing2}.`;
+      const targets = c.target ?? [];
+      if (change.target !== void 0 && !targets.includes(change.target)) return `${String(c.label)} has no target "${change.target}".`;
+      if (change.target !== void 0) {
+        const t = reg.worshipTargets.get(change.target);
+        if (!t || !entryAllowed(state, reg, t, [parties.unit])) return `That target is not available here.`;
+      }
+      return null;
+    }
+    case "worn": {
+      const item = value === void 0 ? void 0 : reg.blockingItems.get(value);
+      if (!item) return `Unknown item "${String(value)}".`;
+      if (!entryAllowed(state, reg, item, units)) return `${String(item.label)} is not available here.`;
+      const by = item.wornBy ?? "commander";
+      if (by === "commander" !== (change.person === COMMANDER)) return by === "commander" ? `${String(item.label)} is worn by the commander.` : `${String(item.label)} is worn by her.`;
+      const slots = slotsFor(item, change.slot, blockingOf(scene, change.person));
+      if (typeof slots === "string") return slots;
+      return null;
+    }
+    case "removed": {
+      if (value === void 0) return "Nothing named to remove.";
+      return removalTarget(state, change.person, value) === null ? `${nameOf9(state, change.person)} has no "${value}" to remove.` : null;
+    }
+    case "activity": {
+      const a = value === void 0 ? void 0 : reg.blockingActivities.get(value);
+      if (!a) return `Unknown activity "${String(value)}".`;
+      if (a.actor === "commander" !== (change.person === COMMANDER)) return `${String(a.label)} is not hers to do.`;
+      const who = change.person === COMMANDER ? units : [change.person];
+      if (!entryAllowed(state, reg, a, who)) return `${String(a.label)} is not available here.`;
+      return null;
+    }
+    case "intimacy": {
+      if (!INTIMACIES.includes(value ?? "")) return `Unknown intimacy "${String(value)}".`;
+      if (value === "explicit" && !entryAllowed(state, reg, { contentTags: ["explicit_scenes"] }, units)) return "That is not available here.";
+      return null;
+    }
+    case "note":
+      return value !== void 0 ? null : "A note needs text.";
+    default:
+      return "Unknown field.";
+  }
+}
+function slotsFor(item, chosen, b) {
+  const all = item.slots;
+  const free = (s) => b.worn?.[s] === void 0;
+  if (item.slotMode === "one") {
+    const slot2 = chosen !== void 0 ? all.find((s) => s === chosen) : all.find(free);
+    if (slot2 === void 0) return chosen !== void 0 ? `${String(item.label)} does not go on "${chosen}".` : `Nowhere free to wear ${String(item.label)}.`;
+    return free(slot2) ? [slot2] : `The ${slot2} is taken.`;
+  }
+  const taken = all.find((s) => !free(s));
+  return taken !== void 0 ? `The ${taken} is taken by ${String(b.worn[taken].id).replace(/_/g, " ")}.` : all;
+}
+function removalTarget(state, person, id) {
+  const scene = state.scene;
+  if (!scene) return null;
+  if (Object.values(scene.blocking?.[person]?.worn ?? {}).some((w) => w?.id === id)) return { kind: "item" };
+  for (const [receiver, b] of Object.entries(scene.blocking ?? {})) if (b.contact?.id === id && (receiver === person || b.contact.with === person)) return { kind: "contact", receiver };
+  return null;
+}
+function record(draft, personId) {
+  const scene = draft.scene;
+  scene.blocking ??= {};
+  return scene.blocking[personId] ??= {};
+}
+function tidy2(draft) {
+  const b = draft.scene?.blocking;
+  if (!b) return;
+  for (const [id, rec] of Object.entries(b)) if (Object.keys(rec).length === 0) delete b[id];
+  if (Object.keys(b).length === 0) delete draft.scene.blocking;
+}
+function clearContact(draft, receiverId) {
+  const rec = draft.scene?.blocking?.[receiverId];
+  const contact = rec?.contact;
+  if (!rec || !contact) return;
+  delete rec.contact;
+  for (const [id, prev] of Object.entries(contact.prev ?? {})) {
+    const b = draft.scene.blocking?.[id];
+    if (!b?.anchor || b.anchor.id !== "on_person") continue;
+    if (prev.anchor) b.anchor = { ...prev.anchor };
+    else if (id === COMMANDER) b.anchor = { id: "beside_her", relTo: receiverId === COMMANDER ? contact.with : receiverId };
+    else delete b.anchor;
+  }
+}
+function apply(draft, reg, change) {
+  const since = draft.scene.exchanges;
+  const value = change.value;
+  switch (change.field) {
+    case "posture":
+      record(draft, change.person).posture = value;
+      break;
+    case "anchor": {
+      const a = reg.blockingAnchors.get(value);
+      record(draft, change.person).anchor = a.kind === "relative" ? { id: value, relTo: change.relTo ?? otherOf(draft, change.person) } : { id: value };
+      break;
+    }
+    case "contact": {
+      const c = reg.blockingContacts.get(value);
+      const p = partiesOf(c, change, draft);
+      if (typeof p === "string") throw new Error(p);
+      clearContact(draft, p.receiver);
+      const implies = c.implies ?? {};
+      const prev = {};
+      for (const [side, id, other] of [["actor", p.actor, p.receiver], ["receiver", p.receiver, p.actor]]) {
+        const s = implies[side];
+        if (!s) continue;
+        const rec = record(draft, id);
+        prev[id] = { ...rec.posture !== void 0 ? { posture: rec.posture } : {}, ...rec.anchor ? { anchor: { ...rec.anchor } } : {} };
+        if (s.posture !== void 0) rec.posture = s.posture;
+        if (s.anchor !== void 0) rec.anchor = reg.blockingAnchors.get(s.anchor)?.kind === "relative" ? { id: s.anchor, relTo: other } : { id: s.anchor };
+      }
+      const target = change.target ?? c.target?.[0];
+      record(draft, p.receiver).contact = { id: value, with: p.actor, direction: p.actor === COMMANDER ? "to" : "from", ...target !== void 0 ? { target } : {}, since, ...Object.keys(prev).length > 0 ? { prev } : {} };
+      break;
+    }
+    case "worn": {
+      const item = reg.blockingItems.get(value);
+      const rec = record(draft, change.person);
+      const slots = slotsFor(item, change.slot, rec);
+      rec.worn ??= {};
+      for (const s of slots) rec.worn[s] = { id: value, since };
+      break;
+    }
+    case "removed": {
+      const t = removalTarget(draft, change.person, value);
+      if (t.kind === "item") {
+        const rec = record(draft, change.person);
+        for (const [slot2, w] of Object.entries(rec.worn ?? {})) if (w?.id === value) delete rec.worn[slot2];
+        if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
+      } else clearContact(draft, t.receiver);
+      break;
+    }
+    case "activity": {
+      const a = reg.blockingActivities.get(value);
+      const rec = record(draft, change.person);
+      rec.activity = value;
+      if (rec.posture === void 0 && typeof a.impliedPosture === "string") rec.posture = a.impliedPosture;
+      break;
+    }
+    case "intimacy":
+      record(draft, change.person).intimacy = value;
+      break;
+    case "note":
+      record(draft, change.person).note = value.trim().slice(0, NOTE_MAX2);
+      break;
+  }
+  tidy2(draft);
+}
+function setBlocking(draft, ctx2, change, opts) {
+  const problem = checkChange(draft, ctx2.registries, change);
+  if (problem !== null) throw new Error(problem);
+  pushLog(draft, opts.at);
+  apply(draft, ctx2.registries, change);
+  return [{ type: "blocking_changed", person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
+}
+function setQuietly(draft, reg, change) {
+  if (checkChange(draft, reg, change) !== null) return false;
+  apply(draft, reg, change);
+  return true;
+}
+function stripTagged(draft, reg, removed) {
+  const scene = draft.scene;
+  if (!scene?.blocking) return;
+  const hit = (e) => Array.isArray(e?.contentTags) && e.contentTags.some((t) => removed.includes(t));
+  for (const [id, rec] of Object.entries(scene.blocking)) {
+    for (const [slot2, w] of Object.entries(rec.worn ?? {})) if (w && hit(reg.blockingItems.get(w.id))) delete rec.worn[slot2];
+    if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
+    if (rec.contact && hit(reg.blockingContacts.get(rec.contact.id))) clearContact(draft, id);
+    if (rec.activity !== void 0 && hit(reg.blockingActivities.get(rec.activity))) delete rec.activity;
+  }
+  tidy2(draft);
+}
+
+// src/engine/blocking/defaults.ts
+function startBlocking(draft, reg) {
+  const scene = draft.scene;
+  if (!scene || !blockingLive(draft, reg)) return;
+  const set = (person, value, actor) => typeof value === "string" && reg.blockingActivities.get(value)?.actor === actor && setQuietly(draft, reg, { person, field: "activity", value });
+  const pastime = scene.pastime ? reg.pastimes.get(scene.pastime.id) : void 0;
+  if (pastime && scene.pastime) {
+    set(scene.pastime.unitId, pastime.herActivity, "her");
+    set(COMMANDER, pastime.commanderActivity, "commander");
+    return;
+  }
+  const first2 = scene.participants[0];
+  if (scene.activityId === void 0 || first2 === void 0) return;
+  for (const a of reg.blockingActivities.values()) {
+    if (a.actor === "her" && Array.isArray(a.fromActivities) && a.fromActivities.includes(scene.activityId) && set(first2, a.id, "her")) return;
+  }
+}
+
 // src/engine/life/dayStep.ts
-function noteBusy(draft, unitIds, activityId) {
+function noteBusy(draft, unitIds, activityId, blockingActivityId) {
   if (lifeMode(draft) === "off") return;
   const life = ensureLife(draft);
   const slot2 = busySlot(draft.day, draft.slot);
@@ -25558,7 +26021,8 @@ function noteBusy(draft, unitIds, activityId) {
   life.busy = life.busy.filter((b) => b.slot >= keepFrom);
   for (const unitId of new Set(unitIds)) {
     const have = life.busy.find((b) => b.unitId === unitId && b.slot === slot2 && (activityId === void 0 || b.activityId === activityId));
-    if (!have) life.busy.push({ unitId, slot: slot2, ...activityId !== void 0 ? { activityId } : {} });
+    if (!have) life.busy.push({ unitId, slot: slot2, ...activityId !== void 0 ? { activityId } : {}, ...blockingActivityId !== void 0 ? { blockingActivityId } : {} });
+    else if (blockingActivityId !== void 0) have.blockingActivityId = blockingActivityId;
   }
 }
 function recordDeaths(draft, old = false) {
@@ -25575,7 +26039,7 @@ function practicePass(draft, reg, day, places) {
   const ids = [...plans.keys()];
   for (const [i, aId] of ids.entries()) {
     for (const bId of ids.slice(i + 1)) {
-      const together = plans.get(aId).find((p) => !isPrivateRoom(reg, p.roomId) && plans.get(bId).some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      const together = plans.get(aId).find((p) => p.roomId !== "" && !isPrivateRoom(reg, p.roomId) && plans.get(bId).some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
       if (together) events.push(...sharePractice(draft, reg, aId, bId, together.hobbyId, day));
     }
   }
@@ -25684,6 +26148,10 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     }
     delete draft.life.pending;
   }
+  const hosted = origin === "activity" && draft.scene.pastime === void 0 ? [...reg.hubRooms.values()].find((r) => r.sceneLocationId === loc.id)?.activityIds : void 0;
+  const activityId = typeof payload.activityId === "string" && reg.activities.has(payload.activityId) ? payload.activityId : Array.isArray(hosted) ? String(hosted[0]) : void 0;
+  if (activityId !== void 0) draft.scene.activityId = activityId;
+  startBlocking(draft, reg);
   stampMoments(draft, participants, sceneId);
   noteBusy(draft, participants);
   const topics = startSceneLife(draft, reg, { id: sceneId, locationId: loc.id, participants }, (id) => origin === "activity" ? draft.life?.busy.find((b) => b.unitId === id && b.slot === busySlot(draft.day, draft.slot) && b.activityId !== void 0)?.activityId : void 0);
@@ -25787,6 +26255,10 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...finishMeeting(draft, ctx2, scene));
   events.push(...endSceneNews(draft, scene.participants));
   endSceneLife(draft, scene.participants);
+  for (const id of scene.participants) {
+    const doing = scene.blocking?.[id]?.activity;
+    if (doing !== void 0) noteBusy(draft, [id], void 0, doing);
+  }
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
@@ -28452,425 +28924,6 @@ registerAction("development/remove_fact", (draft, payload) => {
   return [];
 });
 
-// src/engine/blocking/state.ts
-var COMMANDER = "commander";
-var INTIMACIES = ["none", "close", "intimate", "explicit"];
-var FRAMES = ["equal", "play", "role", "rule"];
-var frameRank = (f) => FRAMES.indexOf(f);
-var NOTE_MAX2 = 120;
-
-// src/engine/basePlan.ts
-var rectOf = (e) => e.rect;
-var doorsOf = (e) => e.doors ?? [];
-function planRoomsOn(reg, floor) {
-  return [...reg.planRooms.values()].filter((e) => e.floor === floor);
-}
-function isOpenSpace(e) {
-  return PLAN_OPEN_KINDS.includes(String(e.kind)) || e.kind === "stair" && doorsOf(e).length === 0;
-}
-function isClosed(reg, e) {
-  if (typeof e.hubRoomId === "string" && reg.hubRooms.has(e.hubRoomId)) return false;
-  return !isOpenSpace(e) && e.kind !== "stair";
-}
-var unitCabins = (reg) => [...reg.planRooms.values()].filter((e) => e.cabin === "unit");
-var commanderCabin = (reg) => [...reg.planRooms.values()].find((e) => e.cabin === "commander");
-function cabinMap(state, reg) {
-  const cabins = unitCabins(reg);
-  const out = /* @__PURE__ */ new Map();
-  if (cabins.length === 0) return out;
-  const taken = /* @__PURE__ */ new Set();
-  state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
-    if (!isLiving(u)) return;
-    const start = k % cabins.length;
-    let pick2 = cabins[start];
-    for (let i = 0; i < cabins.length; i++) {
-      const c = cabins[(start + i) % cabins.length];
-      if (!taken.has(String(c.id))) {
-        pick2 = c;
-        break;
-      }
-    }
-    taken.add(String(pick2.id));
-    out.set(u.id, pick2);
-  });
-  for (const u of state.squad) {
-    if (u.kind === "named" || !isLiving(u)) continue;
-    const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
-    const pick2 = free ?? cabins[cabins.length - 1];
-    taken.add(String(pick2.id));
-    out.set(u.id, pick2);
-  }
-  return out;
-}
-function cabinOf(state, reg, unitId) {
-  return cabinMap(state, reg).get(unitId) ?? null;
-}
-function cabinOwner(state, reg, cabinId) {
-  for (const [unitId, c] of cabinMap(state, reg)) if (c.id === cabinId) return unitId;
-  return null;
-}
-function roomOfPerson(state, reg, here, personId) {
-  if (personId === "commander") return commanderCabin(reg) ?? null;
-  const w = here.find((x) => x.unitId === personId);
-  if (!w || w.roomId === null) return null;
-  const plan = [...reg.planRooms.values()].filter((e) => e.hubRoomId === w.roomId);
-  if (plan.some((e) => e.cabin === "unit")) {
-    const own = cabinOf(state, reg, personId);
-    if (own && own.hubRoomId === w.roomId) return own;
-  }
-  return plan.find((e) => e.cabin === void 0) ?? plan[0] ?? null;
-}
-function litRooms(state, reg, here) {
-  const lit = /* @__PURE__ */ new Set();
-  for (const w of here) {
-    const r = roomOfPerson(state, reg, here, w.unitId);
-    if (r) lit.add(String(r.id));
-  }
-  const cmdr = roomOfPerson(state, reg, here, "commander");
-  if (cmdr) lit.add(String(cmdr.id));
-  return lit;
-}
-var markProviders = [];
-function planMarks(state, reg) {
-  return markProviders.flatMap((p) => p(state, reg)).filter((m) => reg.planRooms.has(m.planRoomId));
-}
-
-// src/engine/blocking/gate.ts
-var frameReaders = [];
-var liveGates = [];
-function frameOf(state, unitId) {
-  for (const read of frameReaders) {
-    const f = read(state, unitId);
-    if (f !== null) return f;
-  }
-  return "equal";
-}
-function blockingLive(state, reg) {
-  const scene = state.scene;
-  if (!scene) return false;
-  const close = scene.participants.some((id) => {
-    const u = state.squad.find((x) => x.id === id);
-    return u !== void 0 && u.kind === "named" && isLiving(u) && bondTierOf(state, reg, id) !== null;
-  });
-  return close || liveGates.some((g) => g(state, reg));
-}
-function entryAllowed(state, reg, entry, unitIds) {
-  if (!contentAllowed(state, reg, entry)) return false;
-  for (const id of unitIds) if (!contentAllowed(state, reg, entry, id)) return false;
-  if (entry.scope === "dynamic") {
-    if (unitIds.length === 0) return frameRank("equal") >= frameRank("play");
-    return unitIds.every((id) => frameRank(frameOf(state, id)) >= frameRank("play"));
-  }
-  return true;
-}
-function sceneRoom(state, reg) {
-  const scene = state.scene;
-  if (!scene) return null;
-  const loc = reg.locations.get(scene.locationId);
-  if (loc?.perUnit === true) return cabinOf(state, reg, scene.participants[0] ?? "") ?? null;
-  const rooms = [...reg.planRooms.values()];
-  const direct = rooms.find((r) => r.sceneLocationId === scene.locationId);
-  if (direct) return direct;
-  const hub = [...reg.hubRooms.values()].find((r) => r.sceneLocationId === scene.locationId);
-  return hub ? rooms.find((r) => r.hubRoomId === hub.id) ?? null : null;
-}
-function sceneAffordances(state, reg) {
-  const room2 = sceneRoom(state, reg);
-  return new Set(Array.isArray(room2?.affordances) ? room2.affordances.map(String) : []);
-}
-
-// src/engine/blocking/snapshots.ts
-function pushLog(draft, at) {
-  const scene = draft.scene;
-  if (!scene) return;
-  const log = scene.stagingLog ??= [];
-  log.push({ at, blocking: structuredClone(scene.blocking ?? {}), ...scene.moments !== void 0 ? { moments: structuredClone(scene.moments) } : {} });
-  if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
-}
-
-// src/engine/blocking/blocking.ts
-var NONE2 = Object.freeze({});
-function blockingOf(scene, personId) {
-  return scene?.blocking?.[personId] ?? NONE2;
-}
-var nameOf9 = (state, id) => id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
-var isPresent = (state, id) => id === COMMANDER || (state.scene?.participants.includes(id) ?? false);
-var unitsOf2 = (state) => state.scene?.participants ?? [];
-var otherOf = (state, person) => person === COMMANDER ? state.scene?.participants[0] : COMMANDER;
-function partsOf(b, reg, withStance) {
-  const out = [];
-  if (withStance) {
-    if (b.posture !== void 0) out.push({ entry: reg.blockingPostures.get(b.posture), held: false });
-    if (b.anchor !== void 0) out.push({ entry: reg.blockingAnchors.get(b.anchor.id), held: false });
-    if (b.activity !== void 0) out.push({ entry: reg.blockingActivities.get(b.activity), held: false });
-  }
-  const seen = /* @__PURE__ */ new Set();
-  for (const w of Object.values(b.worn ?? {})) {
-    if (!w || seen.has(w.id)) continue;
-    seen.add(w.id);
-    out.push({ entry: reg.blockingItems.get(w.id), held: true });
-  }
-  if (b.contact) out.push({ entry: reg.blockingContacts.get(b.contact.id), held: true });
-  return out;
-}
-function restraintEffects(state, reg, personId) {
-  const scene = state.scene;
-  if (!scene) return [];
-  const own = blockingOf(scene, personId);
-  const effects2 = partsOf({ ...own, contact: void 0 }, reg, false).flatMap((p) => effectsOfEntry(p.entry));
-  const contact = personId === COMMANDER ? contactOf(scene) : void 0;
-  return contact ? effects2.concat(effectsOfEntry(reg.blockingContacts.get(contact.id))) : effects2;
-}
-function contactOf(scene) {
-  for (const b of Object.values(scene.blocking ?? {})) if (b.contact) return b.contact;
-  return void 0;
-}
-var MOBILITY = ["none", "limited", "crawl", "follows"];
-function mobilityOf(state, reg, personId) {
-  const levels = restraintEffects(state, reg, personId).filter((e) => e.type === "mobility").map((e) => e.level);
-  return MOBILITY.find((m) => levels.includes(m)) ?? null;
-}
-function transitionProblem(state, reg, change) {
-  if (change.field !== "posture" && change.field !== "anchor") return null;
-  const level = mobilityOf(state, reg, change.person);
-  if (level === null) return null;
-  const who = nameOf9(state, change.person);
-  if (level === "none") return `${who} cannot move: held in place.`;
-  if (change.field === "anchor") {
-    if (level === "limited") return `${who} cannot change place: movement is limited.`;
-    if (level === "follows") {
-      const anchor = reg.blockingAnchors.get(change.value ?? "");
-      const relTo = change.relTo ?? otherOf(state, change.person);
-      return anchor?.kind === "relative" && relTo !== void 0 && relTo !== COMMANDER && relTo !== change.person ? null : `${who} can only stay with her: on a lead.`;
-    }
-    return null;
-  }
-  if (level === "limited" && (change.value ?? "").startsWith("standing")) return `${who} cannot stand: movement is limited.`;
-  if (level === "crawl" && change.value !== "all_fours") return `${who} can only crawl.`;
-  return null;
-}
-function partiesOf(entry, change, state) {
-  const pair = [change.person, change.with];
-  if (change.with === void 0) return "A contact needs the person it is with.";
-  if (!pair.includes(COMMANDER) || pair[0] === pair[1]) return "A contact is between the commander and one soldier.";
-  const unit2 = change.person === COMMANDER ? change.with : change.person;
-  if (!isPresent(state, unit2) || unit2 === COMMANDER) return `${nameOf9(state, unit2)} is not in the scene.`;
-  switch (entry.dir) {
-    case "her":
-      return { actor: unit2, receiver: COMMANDER, unit: unit2 };
-    case "commander":
-      return { actor: COMMANDER, receiver: unit2, unit: unit2 };
-    case "either": {
-      if (change.direction === void 0) return "This contact works both ways: say who acts.";
-      return change.direction === "from" ? { actor: unit2, receiver: COMMANDER, unit: unit2 } : { actor: COMMANDER, receiver: unit2, unit: unit2 };
-    }
-    default:
-      return { actor: unit2, receiver: COMMANDER, unit: unit2 };
-  }
-}
-function checkChange(state, reg, change) {
-  const scene = state.scene;
-  if (!scene) return "No scene is open.";
-  if (!isPresent(state, change.person)) return `${nameOf9(state, change.person)} is not in the scene.`;
-  const units = unitsOf2(state);
-  const value = change.value;
-  const moved = transitionProblem(state, reg, change);
-  if (moved !== null) return moved;
-  switch (change.field) {
-    case "posture": {
-      if (value === void 0 || !reg.blockingPostures.has(value)) return `Unknown posture "${String(value)}".`;
-      return null;
-    }
-    case "anchor": {
-      const a = value === void 0 ? void 0 : reg.blockingAnchors.get(value);
-      if (!a) return `Unknown place "${String(value)}".`;
-      const need = a.requires?.affordances ?? [];
-      const have = sceneAffordances(state, reg);
-      const missing2 = need.find((x) => !have.has(x));
-      if (missing2 !== void 0) return `This place has no ${missing2}.`;
-      if (a.kind === "relative") {
-        const relTo = change.relTo ?? otherOf(state, change.person);
-        if (relTo === void 0 || relTo === change.person || !isPresent(state, relTo)) return "A place relative to someone needs somebody else in the scene.";
-      }
-      return null;
-    }
-    case "contact": {
-      const c = value === void 0 ? void 0 : reg.blockingContacts.get(value);
-      if (!c) return `Unknown contact "${String(value)}".`;
-      const parties = partiesOf(c, change, state);
-      if (typeof parties === "string") return parties;
-      if (!entryAllowed(state, reg, c, [parties.unit])) return `${String(c.label)} is not available here.`;
-      const need = c.requires?.affordances ?? [];
-      const have = sceneAffordances(state, reg);
-      const missing2 = need.find((x) => !have.has(x));
-      if (missing2 !== void 0) return `This place has no ${missing2}.`;
-      const targets = c.target ?? [];
-      if (change.target !== void 0 && !targets.includes(change.target)) return `${String(c.label)} has no target "${change.target}".`;
-      if (change.target !== void 0) {
-        const t = reg.worshipTargets.get(change.target);
-        if (!t || !entryAllowed(state, reg, t, [parties.unit])) return `That target is not available here.`;
-      }
-      return null;
-    }
-    case "worn": {
-      const item = value === void 0 ? void 0 : reg.blockingItems.get(value);
-      if (!item) return `Unknown item "${String(value)}".`;
-      if (!entryAllowed(state, reg, item, units)) return `${String(item.label)} is not available here.`;
-      const by = item.wornBy ?? "commander";
-      if (by === "commander" !== (change.person === COMMANDER)) return by === "commander" ? `${String(item.label)} is worn by the commander.` : `${String(item.label)} is worn by her.`;
-      const slots = slotsFor(item, change.slot, blockingOf(scene, change.person));
-      if (typeof slots === "string") return slots;
-      return null;
-    }
-    case "removed": {
-      if (value === void 0) return "Nothing named to remove.";
-      return removalTarget(state, change.person, value) === null ? `${nameOf9(state, change.person)} has no "${value}" to remove.` : null;
-    }
-    case "activity": {
-      const a = value === void 0 ? void 0 : reg.blockingActivities.get(value);
-      if (!a) return `Unknown activity "${String(value)}".`;
-      if (a.actor === "commander" !== (change.person === COMMANDER)) return `${String(a.label)} is not hers to do.`;
-      const who = change.person === COMMANDER ? units : [change.person];
-      if (!entryAllowed(state, reg, a, who)) return `${String(a.label)} is not available here.`;
-      return null;
-    }
-    case "intimacy": {
-      if (!INTIMACIES.includes(value ?? "")) return `Unknown intimacy "${String(value)}".`;
-      if (value === "explicit" && !entryAllowed(state, reg, { contentTags: ["explicit_scenes"] }, units)) return "That is not available here.";
-      return null;
-    }
-    case "note":
-      return value !== void 0 ? null : "A note needs text.";
-    default:
-      return "Unknown field.";
-  }
-}
-function slotsFor(item, chosen, b) {
-  const all = item.slots;
-  const free = (s) => b.worn?.[s] === void 0;
-  if (item.slotMode === "one") {
-    const slot2 = chosen !== void 0 ? all.find((s) => s === chosen) : all.find(free);
-    if (slot2 === void 0) return chosen !== void 0 ? `${String(item.label)} does not go on "${chosen}".` : `Nowhere free to wear ${String(item.label)}.`;
-    return free(slot2) ? [slot2] : `The ${slot2} is taken.`;
-  }
-  const taken = all.find((s) => !free(s));
-  return taken !== void 0 ? `The ${taken} is taken by ${String(b.worn[taken].id).replace(/_/g, " ")}.` : all;
-}
-function removalTarget(state, person, id) {
-  const scene = state.scene;
-  if (!scene) return null;
-  if (Object.values(scene.blocking?.[person]?.worn ?? {}).some((w) => w?.id === id)) return { kind: "item" };
-  for (const [receiver, b] of Object.entries(scene.blocking ?? {})) if (b.contact?.id === id && (receiver === person || b.contact.with === person)) return { kind: "contact", receiver };
-  return null;
-}
-function record(draft, personId) {
-  const scene = draft.scene;
-  scene.blocking ??= {};
-  return scene.blocking[personId] ??= {};
-}
-function tidy2(draft) {
-  const b = draft.scene?.blocking;
-  if (!b) return;
-  for (const [id, rec] of Object.entries(b)) if (Object.keys(rec).length === 0) delete b[id];
-  if (Object.keys(b).length === 0) delete draft.scene.blocking;
-}
-function clearContact(draft, receiverId) {
-  const rec = draft.scene?.blocking?.[receiverId];
-  const contact = rec?.contact;
-  if (!rec || !contact) return;
-  delete rec.contact;
-  for (const [id, prev] of Object.entries(contact.prev ?? {})) {
-    const b = draft.scene.blocking?.[id];
-    if (!b?.anchor || b.anchor.id !== "on_person") continue;
-    if (prev.anchor) b.anchor = { ...prev.anchor };
-    else if (id === COMMANDER) b.anchor = { id: "beside_her", relTo: receiverId === COMMANDER ? contact.with : receiverId };
-    else delete b.anchor;
-  }
-}
-function apply(draft, reg, change) {
-  const since = draft.scene.exchanges;
-  const value = change.value;
-  switch (change.field) {
-    case "posture":
-      record(draft, change.person).posture = value;
-      break;
-    case "anchor": {
-      const a = reg.blockingAnchors.get(value);
-      record(draft, change.person).anchor = a.kind === "relative" ? { id: value, relTo: change.relTo ?? otherOf(draft, change.person) } : { id: value };
-      break;
-    }
-    case "contact": {
-      const c = reg.blockingContacts.get(value);
-      const p = partiesOf(c, change, draft);
-      if (typeof p === "string") throw new Error(p);
-      clearContact(draft, p.receiver);
-      const implies = c.implies ?? {};
-      const prev = {};
-      for (const [side, id, other] of [["actor", p.actor, p.receiver], ["receiver", p.receiver, p.actor]]) {
-        const s = implies[side];
-        if (!s) continue;
-        const rec = record(draft, id);
-        prev[id] = { ...rec.posture !== void 0 ? { posture: rec.posture } : {}, ...rec.anchor ? { anchor: { ...rec.anchor } } : {} };
-        if (s.posture !== void 0) rec.posture = s.posture;
-        if (s.anchor !== void 0) rec.anchor = reg.blockingAnchors.get(s.anchor)?.kind === "relative" ? { id: s.anchor, relTo: other } : { id: s.anchor };
-      }
-      const target = change.target ?? c.target?.[0];
-      record(draft, p.receiver).contact = { id: value, with: p.actor, direction: p.actor === COMMANDER ? "to" : "from", ...target !== void 0 ? { target } : {}, since, ...Object.keys(prev).length > 0 ? { prev } : {} };
-      break;
-    }
-    case "worn": {
-      const item = reg.blockingItems.get(value);
-      const rec = record(draft, change.person);
-      const slots = slotsFor(item, change.slot, rec);
-      rec.worn ??= {};
-      for (const s of slots) rec.worn[s] = { id: value, since };
-      break;
-    }
-    case "removed": {
-      const t = removalTarget(draft, change.person, value);
-      if (t.kind === "item") {
-        const rec = record(draft, change.person);
-        for (const [slot2, w] of Object.entries(rec.worn ?? {})) if (w?.id === value) delete rec.worn[slot2];
-        if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
-      } else clearContact(draft, t.receiver);
-      break;
-    }
-    case "activity": {
-      const a = reg.blockingActivities.get(value);
-      const rec = record(draft, change.person);
-      rec.activity = value;
-      if (rec.posture === void 0 && typeof a.impliedPosture === "string") rec.posture = a.impliedPosture;
-      break;
-    }
-    case "intimacy":
-      record(draft, change.person).intimacy = value;
-      break;
-    case "note":
-      record(draft, change.person).note = value.trim().slice(0, NOTE_MAX2);
-      break;
-  }
-  tidy2(draft);
-}
-function setBlocking(draft, ctx2, change, opts) {
-  const problem = checkChange(draft, ctx2.registries, change);
-  if (problem !== null) throw new Error(problem);
-  pushLog(draft, opts.at);
-  apply(draft, ctx2.registries, change);
-  return [{ type: "blocking_changed", person: change.person, field: change.field, value: change.value ?? null, source: opts.source }];
-}
-function stripTagged(draft, reg, removed) {
-  const scene = draft.scene;
-  if (!scene?.blocking) return;
-  const hit = (e) => Array.isArray(e?.contentTags) && e.contentTags.some((t) => removed.includes(t));
-  for (const [id, rec] of Object.entries(scene.blocking)) {
-    for (const [slot2, w] of Object.entries(rec.worn ?? {})) if (w && hit(reg.blockingItems.get(w.id))) delete rec.worn[slot2];
-    if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
-    if (rec.contact && hit(reg.blockingContacts.get(rec.contact.id))) clearContact(draft, id);
-    if (rec.activity !== void 0 && hit(reg.blockingActivities.get(rec.activity))) delete rec.activity;
-  }
-  tidy2(draft);
-}
-
 // src/engine/actions/blocking.ts
 registerWithdrawal(stripTagged);
 var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -28897,6 +28950,10 @@ registerAction("blocking/set", (draft, payload, ctx2) => {
     ...str4(payload.target) !== void 0 ? { target: str4(payload.target) } : {}
   };
   return setBlocking(draft, ctx2, change, { at, source: "chip" });
+});
+registerAction("blocking/rollback", (draft, payload) => {
+  if (!isObj33(payload) || typeof payload.after !== "number" || !Number.isInteger(payload.after) || payload.after < 0) throw new Error("blocking/rollback needs { after } (a chat index)");
+  return rollbackAfter(draft, payload.after) ? [{ type: "blocking_rolled_back", after: payload.after }] : [];
 });
 
 // src/engine/actions/life.ts
@@ -29082,6 +29139,7 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
   const why = pastimeProblem(draft, ctx2.registries, unit2.id, pastimeId, { locationId: scene.locationId, slot: scene.slot });
   if (why) throw new Error(why);
   scene.pastime = { id: pastimeId, unitId: unit2.id };
+  startBlocking(draft, ctx2.registries);
   return [{ type: "pastime_set", unitId: unit2.id, pastimeId }];
 });
 
@@ -31853,10 +31911,16 @@ function pastimeDirective(state, reg, unit2) {
   const what = clean4(plainText(pastime.description)).replace(/\.$/, "");
   const hers = label2 !== void 0 ? clean4(label2) : clean4(pastime.herActivity);
   const breaks = hobby !== void 0 && plateauBreaks(state, unit2.id, hobby.id) ? " She gets it right for the first time today." : "";
+  const blocking = state.scene?.blocking;
+  const doing = [
+    ...blocking?.[unit2.id]?.activity === void 0 ? [`${unit2.displayName}: ${hers}`] : [],
+    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean4(pastime.commanderActivity)}`] : []
+  ].join("; ");
+  const activities = doing === "" ? "" : ` ${doing[0].toUpperCase()}${doing.slice(1)}.`;
   return {
     id: `${PASTIME_PREFIX}${unit2.id}`,
     expiresAfter: "scene",
-    text: `${clean4(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}. ${unit2.displayName}: ${hers}; the commander: ${clean4(pastime.commanderActivity)}.${breaks}`
+    text: `${clean4(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
   };
 }
 function lifeDirectives(state, reg, present2) {
@@ -37107,7 +37171,11 @@ function createSceneController(deps) {
       swipedWhileExtracting.add(index2);
       return;
     }
-    if (!la || index2 < la.from || index2 > la.lastReplyIndex) {
+    if (!la || index2 > la.lastReplyIndex) {
+      rollbackStaging(index2);
+      return;
+    }
+    if (index2 < la.from) {
       if (index2 < extracted) debug("That message has already been read; what was taken from it stays.");
       return;
     }
@@ -37122,6 +37190,17 @@ function createSceneController(deps) {
       deps.onUi({ type: "transcript" });
     });
   }
+  function rollbackStaging(index2) {
+    const s = state();
+    if (!s?.scene?.stagingLog?.some((e) => e.at > index2)) return;
+    const events = dispatch2({ type: "blocking/rollback", payload: { after: index2 } }, chatId());
+    if (events.some((e) => e.type === "blocking_rolled_back")) {
+      app.refreshContext();
+      deps.onUi({ type: "transcript" });
+      debug("The change staged after that reply was taken back.");
+    }
+  }
+  const physicsOpen = () => state()?.scene?.physics !== void 0;
   const lastIntentsKey = () => {
     const scene = state()?.scene;
     return lastApply && scene ? chunkKey(scene.id, lastApply.from, lastApply.to) : null;
@@ -37216,7 +37295,7 @@ function createSceneController(deps) {
       awaitingReextract = false;
       const events = dispatch2({
         type: "scene/start",
-        payload: { locationId: opts.locationId, participants: opts.participants, origin: opts.origin, consumesSlot: opts.consumesSlot, startIndex: extracted, nightEntryId: opts.nightEntryId }
+        payload: { locationId: opts.locationId, participants: opts.participants, origin: opts.origin, consumesSlot: opts.consumesSlot, startIndex: extracted, nightEntryId: opts.nightEntryId, ...opts.activityId !== void 0 ? { activityId: opts.activityId } : {} }
       }, expect);
       if (events.some((e) => e.type === "error")) return false;
       try {
@@ -37389,6 +37468,16 @@ function createSceneController(deps) {
       }
       handleEdited(index2);
     },
+    stage(action) {
+      const p = action.payload;
+      const needsAt = /^(blocking|moment)\//.test(action.type) && typeof p === "object" && p !== null && !Array.isArray(p) && p.at === void 0;
+      const sent = needsAt ? { ...action, payload: { ...p, at: st.chatLength() } } : action;
+      const before = state();
+      const events = dispatch2(sent, chatId());
+      const after = state();
+      if (lastApply && before && lastApply.after === before && after && after !== before) lastApply.after = after;
+      return events;
+    },
     onEdited(index2) {
       if (selfEdit === index2) return;
       handleEdited(index2);
@@ -37402,7 +37491,15 @@ function createSceneController(deps) {
         return;
       }
       const la = lastApply;
-      if (!la || index2 !== la.lastReplyIndex) return;
+      if (!la || index2 > la.lastReplyIndex) {
+        rollbackStaging(index2);
+        return;
+      }
+      if (index2 !== la.lastReplyIndex) return;
+      if (physicsOpen()) {
+        debug(DEBUG_NOT_ROLLED_BACK);
+        return;
+      }
       lastApply = null;
       const current = state();
       if (current !== la.after || !deps.restore(la.before, la.after)) {

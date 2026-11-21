@@ -303,7 +303,7 @@ export interface LifeState {
   kinds: Array<{ kind: string; unitId: string; day: number }>;
   /** `old`: she was already dead when life was turned on, so the day is not the day she died (no event reads it as recent). */
   deaths: Array<{ unitId: string; day: number; grunt: boolean; old?: true }>;
-  busy: Array<{ unitId: string; slot: number; activityId?: string }>;
+  busy: Array<{ unitId: string; slot: number; activityId?: string; /** P15a: her blocking activity when the scene ended (it counts for a hobby whose `activityIds` has it). */ blockingActivityId?: string }>;
   shortageDay?: number;
   /** Bookkeeping: the week (`floor(day / 7)`) a pair last shared a practice slot, keyed by the two ids sorted (a shared slot counts once a week). */
   shared?: Record<string, number>;

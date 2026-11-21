@@ -1,4 +1,4 @@
-import { blockingLive, setBlocking, type BlockingChange } from '../blocking';
+import { blockingLive, rollbackAfter, setBlocking, type BlockingChange } from '../blocking';
 import { registerWithdrawal } from '../bonds/content';
 import { stripTagged } from '../blocking/blocking';
 import { registerAction } from '../dispatch';
@@ -32,4 +32,13 @@ registerAction('blocking/set', (draft, payload, ctx) => {
     ...(str(payload.target) !== undefined ? { target: str(payload.target) } : {}),
   };
   return setBlocking(draft, ctx, change, { at, source: 'chip' });
+});
+
+/**
+ * `blocking/rollback { after }`: a swipe, an edit or a delete of the reply at chat index `after` takes back what was staged after it
+ * (the blocking and the moments go back to the state before the oldest change made later). Nothing to roll back: no events. Draws no rng.
+ */
+registerAction('blocking/rollback', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.after !== 'number' || !Number.isInteger(payload.after) || payload.after < 0) throw new Error('blocking/rollback needs { after } (a chat index)');
+  return rollbackAfter(draft, payload.after) ? [{ type: 'blocking_rolled_back', after: payload.after }] : [];
 });

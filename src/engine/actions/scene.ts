@@ -17,6 +17,7 @@ import { recordSceneRange } from '../memory/scenes';
 import { applyIntents } from '../relations/apply';
 import { showMoments, stampMoments, unstampMoments } from '../development/moments';
 import { countCompanions } from '../development/habits';
+import { startBlocking } from '../blocking/defaults';
 import { noteBusy } from '../life/dayStep';
 import { finishMeeting } from '../life/meetings';
 import { endSceneNews } from '../life/news';
@@ -109,6 +110,11 @@ registerAction('scene/start', (draft, payload, ctx) => {
     }
     delete draft.life!.pending;
   }
+  // P15a: the P2 activity that opened the scene (given, or the one the place hosts for a talk) and her starting blocking activity (only while live)
+  const hosted = origin === 'activity' && draft.scene.pastime === undefined ? [...reg.hubRooms.values()].find((r) => r.sceneLocationId === loc.id)?.activityIds : undefined;
+  const activityId = typeof payload.activityId === 'string' && reg.activities.has(payload.activityId) ? payload.activityId : Array.isArray(hosted) ? String(hosted[0]) : undefined;
+  if (activityId !== undefined) draft.scene.activityId = activityId;
+  startBlocking(draft, reg);
   stampMoments(draft, participants, sceneId); // P14b: a quiet change of hers shows in this scene
   noteBusy(draft, participants); // P14c: they are with the commander this slot (a no-op while life is off)
   const topics = startSceneLife(draft, reg, { id: sceneId, locationId: loc.id, participants }, (id) => (origin === 'activity' ? draft.life?.busy.find((b) => b.unitId === id && b.slot === busySlot(draft.day, draft.slot) && b.activityId !== undefined)?.activityId : undefined)); // P14c: what the place and her week bring up (nothing while life is off)
@@ -212,6 +218,11 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push(...finishMeeting(draft, ctx, scene)); // P14c: a quiet meeting applies now (an aborted scene applies nothing)
   events.push(...endSceneNews(draft, scene.participants)); // P14c: what she had to tell and did not is gone
   endSceneLife(draft, scene.participants); // P14c: what the scene triggered and picked is gone
+  // P15a: what her blocking activity was counts for her hobby (the scene's blocking, moments and log go with the scene)
+  for (const id of scene.participants) {
+    const doing = scene.blocking?.[id]?.activity;
+    if (doing !== undefined) noteBusy(draft, [id], undefined, doing);
+  }
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });

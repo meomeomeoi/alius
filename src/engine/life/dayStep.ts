@@ -10,9 +10,9 @@ import { ensureLife, lifeMode } from './state';
 
 /**
  * Records that these units are with the commander now (a companion, a roster activity, a scene): they cannot be anywhere else this slot, and
- * `requires.activity` reads the activity. A no-op while life is off. The list keeps today and yesterday; `slot` is `busySlot(day, slot)`.
+ * `requires.activity` reads the activity. A no-op while life is off. The list keeps today and yesterday; `slot` is `busySlot(day, slot)`. `blockingActivityId` (P15a) is her blocking activity when the scene ended.
  */
-export function noteBusy(draft: CampaignState, unitIds: readonly string[], activityId?: string): void {
+export function noteBusy(draft: CampaignState, unitIds: readonly string[], activityId?: string, blockingActivityId?: string): void {
   if (lifeMode(draft) === 'off') return;
   const life = ensureLife(draft);
   const slot = busySlot(draft.day, draft.slot);
@@ -20,7 +20,8 @@ export function noteBusy(draft: CampaignState, unitIds: readonly string[], activ
   life.busy = life.busy.filter((b) => b.slot >= keepFrom);
   for (const unitId of new Set(unitIds)) {
     const have = life.busy.find((b) => b.unitId === unitId && b.slot === slot && (activityId === undefined || b.activityId === activityId));
-    if (!have) life.busy.push({ unitId, slot, ...(activityId !== undefined ? { activityId } : {}) });
+    if (!have) life.busy.push({ unitId, slot, ...(activityId !== undefined ? { activityId } : {}), ...(blockingActivityId !== undefined ? { blockingActivityId } : {}) });
+    else if (blockingActivityId !== undefined) have.blockingActivityId = blockingActivityId; // P15a: what she did in the scene
   }
 }
 
@@ -48,7 +49,7 @@ function practicePass(draft: CampaignState, reg: Registries, day: number, places
   const ids = [...plans.keys()];
   for (const [i, aId] of ids.entries()) {
     for (const bId of ids.slice(i + 1)) {
-      const together = plans.get(aId)!.find((p) => !isPrivateRoom(reg, p.roomId) && plans.get(bId)!.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
+      const together = plans.get(aId)!.find((p) => p.roomId !== '' && !isPrivateRoom(reg, p.roomId) && plans.get(bId)!.some((q) => q.slot === p.slot && q.hobbyId === p.hobbyId && q.roomId === p.roomId));
       if (together) events.push(...sharePractice(draft, reg, aId, bId, together.hobbyId, day));
     }
   }

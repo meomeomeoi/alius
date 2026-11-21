@@ -1,7 +1,7 @@
 import type { Registries } from '../content/types';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
 import { lifeIntentInput } from '../engine/life/intents';
-import type { EngineEvent } from '../engine/dispatch';
+import type { Action, EngineEvent } from '../engine/dispatch';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { measureList } from '../engine/discipline';
 import { openPromises } from '../engine/memory';
@@ -69,6 +69,8 @@ export interface StartOptions {
   origin: SceneOrigin;
   consumesSlot?: boolean;
   nightEntryId?: string;
+  /** P15a: the P2 activity that opened the scene (absent: the engine derives it from a talk's place). */
+  activityId?: string;
 }
 
 export interface SceneController {
@@ -102,6 +104,11 @@ export interface SceneController {
   transcript(): ChatMessage[];
   /** A message was swiped or deleted in ST: undo the last extraction if it was for that reply, then re-extract. */
   onSwipe(index: number): void;
+  /**
+   * P15a: a chip, a moment answer: dispatches the action with the chat index it is made at (`at`, when the payload has none) and moves the
+   * rebase point of the last extraction, so that swiping that reply later takes the extraction AND what was staged after it.
+   */
+  stage(action: Action): EngineEvent[];
   /** After a reload or chat change with an open scene: members, directives and the transcript. */
   resume(): void;
   /** Resolves when background work (a swipe re-extraction) has finished. */
@@ -495,7 +502,11 @@ export function createSceneController(deps: SceneDeps): SceneController {
       swipedWhileExtracting.add(index);
       return;
     }
-    if (!la || index < la.from || index > la.lastReplyIndex) {
+    if (!la || index > la.lastReplyIndex) {
+      rollbackStaging(index); // P15a: no reading to take back: what was staged after the message goes
+      return;
+    }
+    if (index < la.from) {
       if (index < extracted) debug('That message has already been read; what was taken from it stays.');
       return;
     }
@@ -510,6 +521,21 @@ export function createSceneController(deps: SceneDeps): SceneController {
       deps.onUi({ type: 'transcript' });
     });
   }
+
+  /** P15a: takes back the chips and answers staged after chat index `index` (nothing is dispatched when there are none). Never touches physics. */
+  function rollbackStaging(index: number): void {
+    const s = state();
+    if (!s?.scene?.stagingLog?.some((e) => e.at > index)) return;
+    const events = dispatch({ type: 'blocking/rollback', payload: { after: index } }, chatId());
+    if (events.some((e) => e.type === 'blocking_rolled_back')) {
+      app.refreshContext();
+      deps.onUi({ type: 'transcript' });
+      debug('The change staged after that reply was taken back.');
+    }
+  }
+
+  /** P15a: a physics run is open (it is never rolled back, so a swipe cannot undo the reading that came with it). */
+  const physicsOpen = (): boolean => (state()?.scene as { physics?: unknown } | undefined)?.physics !== undefined;
 
   const lastIntentsKey = (): string | null => {
     const scene = state()?.scene;
@@ -613,7 +639,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       awaitingReextract = false;
       const events = dispatch({
         type: 'scene/start',
-        payload: { locationId: opts.locationId, participants: opts.participants, origin: opts.origin, consumesSlot: opts.consumesSlot, startIndex: extracted, nightEntryId: opts.nightEntryId },
+        payload: { locationId: opts.locationId, participants: opts.participants, origin: opts.origin, consumesSlot: opts.consumesSlot, startIndex: extracted, nightEntryId: opts.nightEntryId, ...(opts.activityId !== undefined ? { activityId: opts.activityId } : {}) },
       }, expect);
       if (events.some((e) => e.type === 'error')) return false;
       try {
@@ -801,6 +827,17 @@ export function createSceneController(deps: SceneDeps): SceneController {
       handleEdited(index);
     },
 
+    stage(action) {
+      const p = action.payload;
+      const needsAt = /^(blocking|moment)\//.test(action.type) && typeof p === 'object' && p !== null && !Array.isArray(p) && (p as { at?: unknown }).at === undefined;
+      const sent = needsAt ? { ...action, payload: { ...(p as object), at: st.chatLength() } } : action;
+      const before = state();
+      const events = dispatch(sent, chatId());
+      const after = state();
+      if (lastApply && before && lastApply.after === before && after && after !== before) lastApply.after = after;
+      return events;
+    },
+
     onEdited(index) {
       if (selfEdit === index) return; // our own edit: `edit` handles it
       handleEdited(index);
@@ -816,7 +853,15 @@ export function createSceneController(deps: SceneDeps): SceneController {
         return;
       }
       const la = lastApply;
-      if (!la || index !== la.lastReplyIndex) return;
+      if (!la || index > la.lastReplyIndex) {
+        rollbackStaging(index); // P15a
+        return;
+      }
+      if (index !== la.lastReplyIndex) return;
+      if (physicsOpen()) {
+        debug(DEBUG_NOT_ROLLED_BACK); // P15a: the run is never rolled back, and the reading came with it
+        return;
+      }
       lastApply = null;
       const current = state();
       if (current !== la.after || !deps.restore(la.before, la.after)) {
