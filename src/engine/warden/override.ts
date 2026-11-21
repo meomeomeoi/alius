@@ -15,6 +15,10 @@ import { addDefiance } from './escalation';
 import { punishRoll } from './punish';
 import { carryIfRan } from '../power/votes';
 import { overrideOpen, wardenOf, wardenOverrideOpen, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
+import { addFavour, addHold } from '../dynamic/hold';
+import { refusalCost } from '../dynamic/milestones';
+import { dynamicOf } from '../dynamic/state';
+import { overrideHer } from '../personal/obedience';
 
 export { overrideOpen, wardenOverrideOpen };
 
@@ -187,15 +191,41 @@ export function runOrder(draft: CampaignState, ctx: EngineCtx, order: WardenOrde
   }
 }
 
+/** Where an open override is stored and whose it is: the warden's slot (with her state) or a holder's (P15, `dynamic.override`). */
+interface Slot { kind: 'warden' | 'holder'; o: OpenOverride; unitId: string; w: WardenState | null }
+
+const holderSlot = (draft: CampaignState): Slot | null => (draft.dynamic?.override ? { kind: 'holder', o: draft.dynamic.override, unitId: draft.dynamic.override.unitId, w: null } : null);
+const wardenSlot = (draft: CampaignState): Slot | null => {
+  const w = wardenOf(draft);
+  return w?.override ? { kind: 'warden', o: w.override, unitId: w.unitId, w } : null;
+};
+
+/** The override that waits for an answer (live), with its owner, or null. */
+function openSlot(draft: CampaignState): Slot | null {
+  const o = overrideOpen(draft);
+  if (o === null) return null;
+  const holder = holderSlot(draft);
+  if (holder !== null && holder.o === o) return holder;
+  const warden = wardenSlot(draft);
+  return warden !== null && warden.o === o ? warden : null;
+}
+
+/** Empties a slot. */
+function clearSlot(draft: CampaignState, slot: Slot): void {
+  if (slot.kind === 'warden') delete slot.w!.override;
+  else delete draft.dynamic!.override;
+}
+
 /**
  * Her chance to be talked round in a fight (ARGUE in combat): `clamp(0.5 + 0.12 × (rank − herRank), 0.15, 0.85)` with `rank` the better of
  * the commander's Authority and Empathy and `herRank = clamp(round((satisfaction ≤ 50 ? 4 : 3) + affinity / 100), 1, 5)`.
  */
-export function argueChance(state: CampaignState, _reg: Registries): number {
+export function argueChance(state: CampaignState, _reg: Registries, holder?: { unitId: string; satisfaction: number }): number {
   const w = wardenOf(state);
-  if (!w) return 0;
+  const her = holder ?? (w ? { unitId: w.unitId, satisfaction: w.satisfaction } : null); // P15: a holder's `satisfaction` is how little hold she has left to spend (100 - hold)
+  if (!her) return 0;
   const rank = Math.max(socialRank(state, 'authority'), socialRank(state, 'empathy'));
-  const herRank = clamp(round((w.satisfaction <= 50 ? 4 : 3) + (state.relations[w.unitId]?.affinity ?? 0) / 100), 1, 5);
+  const herRank = clamp(round((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
   return clamp(0.5 + 0.12 * (rank - herRank), 0.15, 0.85);
 }
 
@@ -222,6 +252,15 @@ function relationEvent(draft: CampaignState, ctx: EngineCtx, type: 'warden_compl
  * combat ARGUE is the scene's business (the controller opens it) and returns nothing here. While compelled only COMPLY is accepted.
  */
 export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId: unknown, answer: unknown): EngineEvent[] {
+  const live = openSlot(draft);
+  if (live !== null && live.kind === 'holder') { // P15: a holder's override: her own rules (the warden's satisfaction, defiance and punishments are not involved)
+    if (live.o.id !== overrideId) throw new Error(STALE);
+    return answerHolderOverride(draft, ctx, live, answer);
+  }
+  if (live === null && holderSlot(draft) !== null && overrideId === draft.dynamic!.override!.id) {
+    delete draft.dynamic!.override; // stale: another day or slot
+    throw new Error(STALE);
+  }
   const w = wardenOf(draft);
   const ov = wardenOverrideOpen(draft);
   if (!w || !ov || ov.id !== overrideId) {
@@ -263,26 +302,63 @@ export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId:
   return events;
 }
 
+/**
+ * A holder's override answered (P15, plan R13). COMPLY: her alternative runs (or nothing, when she holds), her hold rises by `override_comply` and her
+ * favour by `complyFavour`. DEFY: the commander's order runs, then `overrode_her` lands on her (her hold falls through the feed, once; her Impunity
+ * record rises as for any day of obedience broken), her favour falls by `defyFavour`, and the defiance counts into the contest of authority. No
+ * punishment roll and nothing of the warden's. ARGUE is P13's: one roll in a fight, otherwise a scene with her alone. Draws only for that roll.
+ */
+function answerHolderOverride(draft: CampaignState, ctx: EngineCtx, slot: Slot, answer: unknown): EngineEvent[] {
+  if (answer !== 'comply' && answer !== 'argue' && answer !== 'defy') throw new Error('warden/answer: the answer is comply, argue or defy.');
+  const ov = slot.o;
+  const unitId = slot.unitId;
+  const T = TUNING.dynamic;
+  const base = ov.payload ?? {};
+  const done = (a: string): EngineEvent => ({ type: 'override_answered', overrideId: ov.id, answer: a, context: ov.context, source: 'holder', unitId });
+  if (answer === 'argue') {
+    if (ov.context !== 'combat') {
+      if (ov.argued) throw new Error('She has heard the commander out: only COMPLY and DEFY are left.');
+      return [];
+    }
+    clearSlot(draft, slot);
+    const won = ctx.rng.chance(argueChance(draft, ctx.registries, { unitId, satisfaction: 100 - (dynamicOf(draft, unitId)?.hold ?? 0) }));
+    const events: EngineEvent[] = [{ type: 'override_argue_roll', overrideId: ov.id, won }];
+    events.push(...(won ? runOrder(draft, ctx, ov.order, base) : ov.alternative ? runOrder(draft, ctx, ov.alternative, base, false) : []));
+    return [...events, done('argue')];
+  }
+  clearSlot(draft, slot);
+  if (answer === 'comply') {
+    const events = ov.alternative ? runOrder(draft, ctx, ov.alternative, base, false) : [];
+    events.push(...addHold(draft, ctx, unitId, T.gains.override_comply, 'override_comply'));
+    addFavour(draft, unitId, T.override.complyFavour);
+    return [...events, done('comply')];
+  }
+  const events = runOrder(draft, ctx, ov.order, base);
+  events.push(...overrideHer(draft, ctx, unitId, 'defied her override'));
+  addFavour(draft, unitId, T.override.defyFavour);
+  events.push(...refusalCost(draft, ctx, unitId, 'defy'));
+  return [...events, done('defy')];
+}
+
 // ---------------------------------------------------------------------------------------------
 // ARGUE in a scene (P13 §3)
 
 /** Can the commander talk to her about it now? Not in a fight or a run (no scene can open there), nor once she has heard them out, nor while compelled. */
 export function argueAvailable(state: CampaignState): boolean {
-  const o = wardenOverrideOpen(state);
-  const w = wardenOf(state);
-  if (!o || !w || w.compelled || o.argued || state.combat || state.expedition || o.context === 'combat') return false;
+  const slot = openSlot(state);
+  if (!slot || slot.w?.compelled || slot.o.argued || state.combat || state.expedition || slot.o.context === 'combat') return false;
   return state.scene === undefined;
 }
 
 /** The scene with her alone is open: the override remembers which scene is the argument. */
 export function argueStarted(draft: CampaignState, sceneId: unknown): EngineEvent[] {
-  const o = wardenOverrideOpen(draft);
-  const w = wardenOf(draft);
+  const slot = openSlot(draft);
   const scene = draft.scene;
-  if (!o || !w) throw new Error(STALE);
-  if (w.compelled) throw new Error('The commander is compelled: only COMPLY is open.');
+  if (!slot) throw new Error(STALE);
+  const o = slot.o;
+  if (slot.w?.compelled) throw new Error('The commander is compelled: only COMPLY is open.');
   if (o.argued || o.context === 'combat') throw new Error('There is nothing to argue about.');
-  if (!scene || scene.id !== sceneId || scene.participants.length !== 1 || scene.participants[0] !== w.unitId) throw new Error('The argument is a scene with the warden alone.');
+  if (!scene || scene.id !== sceneId || scene.participants.length !== 1 || scene.participants[0] !== slot.unitId) throw new Error(`The argument is a scene with ${slot.kind === 'warden' ? 'the warden' : 'her'} alone.`);
   o.arguing = scene.id;
   return [{ type: 'override_argue_started', overrideId: o.id, sceneId: scene.id }];
 }
@@ -295,16 +371,17 @@ const sentence = (text: string): string => (/[.!?]$/.test(text) ? text : `${text
  * units present. A stale id, a compromise already reached, a combat override, an empty text: dropped (nothing changes).
  */
 export function resolveCompromise(draft: CampaignState, _ctx: EngineCtx, overrideId: unknown, text: unknown): EngineEvent[] {
-  const o = wardenOverrideOpen(draft);
-  const w = wardenOf(draft);
-  if (!o || !w || o.id !== overrideId || o.context === 'combat' || o.compromise !== undefined || o.argued || w.compelled) return [];
+  const slot = openSlot(draft);
+  if (!slot) return [];
+  const o = slot.o;
+  if (o.id !== overrideId || o.context === 'combat' || o.compromise !== undefined || o.argued || slot.w?.compelled) return [];
   const agreed = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
   if (agreed === '') return [];
   o.compromise = agreed;
-  const name = draft.squad.find((u) => u.id === w.unitId)?.displayName ?? w.unitId;
+  const name = draft.squad.find((u) => u.id === slot.unitId)?.displayName ?? slot.unitId;
   addFact(draft, {
-    about: [w.unitId], text: `${name} and the commander agreed: ${sentence(agreed)}`, tags: ['warden', 'compromise'], importance: 3, day: draft.day,
-    ...(draft.scene ? { sceneId: draft.scene.id } : {}), knownBy: draft.scene ? [...draft.scene.participants] : [w.unitId],
+    about: [slot.unitId], text: `${name} and the commander agreed: ${sentence(agreed)}`, tags: ['warden', 'compromise'], importance: 3, day: draft.day,
+    ...(draft.scene ? { sceneId: draft.scene.id } : {}), knownBy: draft.scene ? [...draft.scene.participants] : [slot.unitId],
   });
   return [{ type: 'override_compromise', overrideId: o.id }];
 }
@@ -327,11 +404,11 @@ function attempt(draft: CampaignState, fn: () => EngineEvent[]): EngineEvent[] |
  * run is dropped (`override_compromise_failed`).
  */
 export function argueEnded(draft: CampaignState, ctx: EngineCtx, sceneId: string): EngineEvent[] {
-  const w = wardenOf(draft);
-  const o = w?.override;
-  if (!w || !o || o.arguing !== sceneId) return [];
-  if (!wardenOverrideOpen(draft)) {
-    delete w.override;
+  const slot = [wardenSlot(draft), holderSlot(draft)].find((x) => x !== null && x.o.arguing === sceneId) ?? null;
+  if (slot === null) return [];
+  const o = slot.o;
+  if (openSlot(draft) === null) {
+    clearSlot(draft, slot);
     return [];
   }
   if (o.compromise === undefined) {
@@ -339,12 +416,12 @@ export function argueEnded(draft: CampaignState, ctx: EngineCtx, sceneId: string
     o.argued = true;
     return [];
   }
-  delete w.override;
+  clearSlot(draft, slot);
   const events = attempt(draft, () => runOrder(draft, ctx, o.order, o.payload ?? {}));
   if (events === null) {
-    const back = wardenOf(draft);
-    if (back) delete back.override;
+    const back = slot.kind === 'warden' ? wardenSlot(draft) : holderSlot(draft); // the draft was restored: look again
+    if (back) clearSlot(draft, back);
     return [{ type: 'override_compromise_failed', overrideId: o.id }];
   }
-  return [...events, { type: 'override_answered', overrideId: o.id, answer: 'compromise' }];
+  return [...events, { type: 'override_answered', overrideId: o.id, answer: 'compromise', ...(slot.kind === 'holder' ? { source: 'holder', unitId: slot.unitId } : {}) }];
 }

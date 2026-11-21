@@ -238,6 +238,7 @@ const holderOf = (draft: CampaignState): { id: string; name: string } | null => 
 };
 
 registerMemoryResolver('override_answered', (draft, event) => {
+  if (event.source === 'holder') return null; // P15: a holder's override is not the warden's; what it costs her is her own (hold, favour, the overrode_her event)
   const her = holderOf(draft);
   if (!her) return null;
   return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', witnessed: yes(event.context === 'combat') } };

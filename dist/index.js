@@ -1020,6 +1020,8 @@ var TUNING = Object.freeze({
     bookAhead: 3,
     coLeaderStanding: 15,
     deviceFloor: 4,
+    /** A holder's override answered (R13): the favour COMPLY adds and DEFY takes (R1); hold moves through `gains` (`override_comply`) and the `overrode_her` feed. */
+    override: Object.freeze({ complyFavour: 2, defyFavour: -3 }),
     /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
     contestAt: 3,
     contestWindowDays: 14,
@@ -6593,13 +6595,19 @@ function overrideOpen(state) {
   const h2 = state.dynamic?.override;
   return h2 ? live(state, h2) : null;
 }
+function openOverrideOf(state) {
+  const o = overrideOpen(state);
+  if (o === null) return null;
+  const holder2 = state.dynamic?.override;
+  if (holder2 !== void 0 && o === holder2) return { ...holder2, source: "holder", unitId: holder2.unitId };
+  return { ...o, source: "warden", unitId: wardenUnitId(state) ?? "" };
+}
 function wardenArgueStart(state, action) {
   if (action.type !== "scene/start") return false;
-  const o = wardenOverrideOpen(state);
-  const warden = state.leashswap?.warden?.unitId;
-  if (!o || o.context !== "dilemma" || warden === void 0) return false;
+  const o = openOverrideOf(state);
+  if (!o || o.context !== "dilemma" || o.unitId === "") return false;
   const ids = action.payload?.participants;
-  return Array.isArray(ids) && ids.length === 1 && ids[0] === warden;
+  return Array.isArray(ids) && ids.length === 1 && ids[0] === o.unitId;
 }
 
 // src/engine/dilemma/types.ts
@@ -17690,7 +17698,7 @@ function refusalCost(draft, ctx2, unitId, what) {
   const dyn = dynamicOf(draft, unitId);
   if (dyn === void 0 || !dynamicOn(draft, reg)) return [];
   const kind = frameEntry(reg, dyn.frame)?.refusal ?? "minor";
-  const events = what === "milestone" ? [] : addHold(draft, ctx2, unitId, TUNING.dynamic.refusalCost[kind], "refusal");
+  const events = what === "milestone" || what === "defy" ? [] : addHold(draft, ctx2, unitId, TUNING.dynamic.refusalCost[kind], "refusal");
   if (kind === "minor") return events;
   const days = TUNING.dynamic.contestWindowDays;
   dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];
@@ -21254,9 +21262,8 @@ function actOnWarning(draft, ctx2, unitId, act) {
 // src/engine/relations/apply.ts
 var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function openOverrideIds(state, participants) {
-  const o = wardenOverrideOpen(state);
-  const w = wardenOf(state);
-  return o !== null && w !== null && participants.includes(w.unitId) && o.context !== "combat" ? [o.id] : [];
+  const o = openOverrideOf(state);
+  return o !== null && participants.includes(o.unitId) && o.context !== "combat" ? [o.id] : [];
 }
 function expectationIds(state, participants) {
   const w = wardenOf(state);
@@ -22269,11 +22276,29 @@ function runOrder(draft, ctx2, order, base = {}, sameAsOriginal = true) {
       return runHandler("combat/order", draft, { ...base, orderId: order.orderId, ...order.targetCid !== void 0 ? { targetCid: order.targetCid } : {}, wardenChecked: true }, ctx2);
   }
 }
-function argueChance(state, _reg) {
+var holderSlot = (draft) => draft.dynamic?.override ? { kind: "holder", o: draft.dynamic.override, unitId: draft.dynamic.override.unitId, w: null } : null;
+var wardenSlot = (draft) => {
+  const w = wardenOf(draft);
+  return w?.override ? { kind: "warden", o: w.override, unitId: w.unitId, w } : null;
+};
+function openSlot(draft) {
+  const o = overrideOpen(draft);
+  if (o === null) return null;
+  const holder2 = holderSlot(draft);
+  if (holder2 !== null && holder2.o === o) return holder2;
+  const warden = wardenSlot(draft);
+  return warden !== null && warden.o === o ? warden : null;
+}
+function clearSlot(draft, slot2) {
+  if (slot2.kind === "warden") delete slot2.w.override;
+  else delete draft.dynamic.override;
+}
+function argueChance(state, _reg, holder2) {
   const w = wardenOf(state);
-  if (!w) return 0;
+  const her = holder2 ?? (w ? { unitId: w.unitId, satisfaction: w.satisfaction } : null);
+  if (!her) return 0;
   const rank2 = Math.max(socialRank(state, "authority"), socialRank(state, "empathy"));
-  const herRank = clamp24(round3((w.satisfaction <= 50 ? 4 : 3) + (state.relations[w.unitId]?.affinity ?? 0) / 100), 1, 5);
+  const herRank = clamp24(round3((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
   return clamp24(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
 }
 var addTo = (w, key, n) => {
@@ -22291,6 +22316,15 @@ function relationEvent(draft, ctx2, type, severity, evidence) {
   ];
 }
 function answerOverride(draft, ctx2, overrideId, answer) {
+  const live3 = openSlot(draft);
+  if (live3 !== null && live3.kind === "holder") {
+    if (live3.o.id !== overrideId) throw new Error(STALE);
+    return answerHolderOverride(draft, ctx2, live3, answer);
+  }
+  if (live3 === null && holderSlot(draft) !== null && overrideId === draft.dynamic.override.id) {
+    delete draft.dynamic.override;
+    throw new Error(STALE);
+  }
   const w = wardenOf(draft);
   const ov = wardenOverrideOpen(draft);
   if (!w || !ov || ov.id !== overrideId) {
@@ -22328,40 +22362,71 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   if (!rose.some((e) => e.type === "commander_terminated")) events.push(...afterDefy(draft, ctx2, ov.weight));
   return events;
 }
+function answerHolderOverride(draft, ctx2, slot2, answer) {
+  if (answer !== "comply" && answer !== "argue" && answer !== "defy") throw new Error("warden/answer: the answer is comply, argue or defy.");
+  const ov = slot2.o;
+  const unitId = slot2.unitId;
+  const T5 = TUNING.dynamic;
+  const base = ov.payload ?? {};
+  const done = (a) => ({ type: "override_answered", overrideId: ov.id, answer: a, context: ov.context, source: "holder", unitId });
+  if (answer === "argue") {
+    if (ov.context !== "combat") {
+      if (ov.argued) throw new Error("She has heard the commander out: only COMPLY and DEFY are left.");
+      return [];
+    }
+    clearSlot(draft, slot2);
+    const won = ctx2.rng.chance(argueChance(draft, ctx2.registries, { unitId, satisfaction: 100 - (dynamicOf(draft, unitId)?.hold ?? 0) }));
+    const events2 = [{ type: "override_argue_roll", overrideId: ov.id, won }];
+    events2.push(...won ? runOrder(draft, ctx2, ov.order, base) : ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : []);
+    return [...events2, done("argue")];
+  }
+  clearSlot(draft, slot2);
+  if (answer === "comply") {
+    const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : [];
+    events2.push(...addHold(draft, ctx2, unitId, T5.gains.override_comply, "override_comply"));
+    addFavour(draft, unitId, T5.override.complyFavour);
+    return [...events2, done("comply")];
+  }
+  const events = runOrder(draft, ctx2, ov.order, base);
+  events.push(...overrideHer(draft, ctx2, unitId, "defied her override"));
+  addFavour(draft, unitId, T5.override.defyFavour);
+  events.push(...refusalCost(draft, ctx2, unitId, "defy"));
+  return [...events, done("defy")];
+}
 function argueAvailable(state) {
-  const o = wardenOverrideOpen(state);
-  const w = wardenOf(state);
-  if (!o || !w || w.compelled || o.argued || state.combat || state.expedition || o.context === "combat") return false;
+  const slot2 = openSlot(state);
+  if (!slot2 || slot2.w?.compelled || slot2.o.argued || state.combat || state.expedition || slot2.o.context === "combat") return false;
   return state.scene === void 0;
 }
 function argueStarted(draft, sceneId) {
-  const o = wardenOverrideOpen(draft);
-  const w = wardenOf(draft);
+  const slot2 = openSlot(draft);
   const scene = draft.scene;
-  if (!o || !w) throw new Error(STALE);
-  if (w.compelled) throw new Error("The commander is compelled: only COMPLY is open.");
+  if (!slot2) throw new Error(STALE);
+  const o = slot2.o;
+  if (slot2.w?.compelled) throw new Error("The commander is compelled: only COMPLY is open.");
   if (o.argued || o.context === "combat") throw new Error("There is nothing to argue about.");
-  if (!scene || scene.id !== sceneId || scene.participants.length !== 1 || scene.participants[0] !== w.unitId) throw new Error("The argument is a scene with the warden alone.");
+  if (!scene || scene.id !== sceneId || scene.participants.length !== 1 || scene.participants[0] !== slot2.unitId) throw new Error(`The argument is a scene with ${slot2.kind === "warden" ? "the warden" : "her"} alone.`);
   o.arguing = scene.id;
   return [{ type: "override_argue_started", overrideId: o.id, sceneId: scene.id }];
 }
 var sentence = (text2) => /[.!?]$/.test(text2) ? text2 : `${text2}.`;
 function resolveCompromise(draft, _ctx, overrideId, text2) {
-  const o = wardenOverrideOpen(draft);
-  const w = wardenOf(draft);
-  if (!o || !w || o.id !== overrideId || o.context === "combat" || o.compromise !== void 0 || o.argued || w.compelled) return [];
+  const slot2 = openSlot(draft);
+  if (!slot2) return [];
+  const o = slot2.o;
+  if (o.id !== overrideId || o.context === "combat" || o.compromise !== void 0 || o.argued || slot2.w?.compelled) return [];
   const agreed = typeof text2 === "string" ? text2.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim() : "";
   if (agreed === "") return [];
   o.compromise = agreed;
-  const name = draft.squad.find((u) => u.id === w.unitId)?.displayName ?? w.unitId;
+  const name = draft.squad.find((u) => u.id === slot2.unitId)?.displayName ?? slot2.unitId;
   addFact(draft, {
-    about: [w.unitId],
+    about: [slot2.unitId],
     text: `${name} and the commander agreed: ${sentence(agreed)}`,
     tags: ["warden", "compromise"],
     importance: 3,
     day: draft.day,
     ...draft.scene ? { sceneId: draft.scene.id } : {},
-    knownBy: draft.scene ? [...draft.scene.participants] : [w.unitId]
+    knownBy: draft.scene ? [...draft.scene.participants] : [slot2.unitId]
   });
   return [{ type: "override_compromise", overrideId: o.id }];
 }
@@ -22376,11 +22441,11 @@ function attempt(draft, fn) {
   }
 }
 function argueEnded(draft, ctx2, sceneId) {
-  const w = wardenOf(draft);
-  const o = w?.override;
-  if (!w || !o || o.arguing !== sceneId) return [];
-  if (!wardenOverrideOpen(draft)) {
-    delete w.override;
+  const slot2 = [wardenSlot(draft), holderSlot(draft)].find((x) => x !== null && x.o.arguing === sceneId) ?? null;
+  if (slot2 === null) return [];
+  const o = slot2.o;
+  if (openSlot(draft) === null) {
+    clearSlot(draft, slot2);
     return [];
   }
   if (o.compromise === void 0) {
@@ -22388,14 +22453,14 @@ function argueEnded(draft, ctx2, sceneId) {
     o.argued = true;
     return [];
   }
-  delete w.override;
+  clearSlot(draft, slot2);
   const events = attempt(draft, () => runOrder(draft, ctx2, o.order, o.payload ?? {}));
   if (events === null) {
-    const back = wardenOf(draft);
-    if (back) delete back.override;
+    const back = slot2.kind === "warden" ? wardenSlot(draft) : holderSlot(draft);
+    if (back) clearSlot(draft, back);
     return [{ type: "override_compromise_failed", overrideId: o.id }];
   }
-  return [...events, { type: "override_answered", overrideId: o.id, answer: "compromise" }];
+  return [...events, { type: "override_answered", overrideId: o.id, answer: "compromise", ...slot2.kind === "holder" ? { source: "holder", unitId: slot2.unitId } : {} }];
 }
 
 // src/engine/commander/checks.ts
@@ -27166,6 +27231,7 @@ var holderOf = (draft) => {
   return w ? { id: w.unitId, name: nameOf7(draft, w.unitId) } : null;
 };
 registerMemoryResolver("override_answered", (draft, event) => {
+  if (event.source === "holder") return null;
   const her = holderOf(draft);
   if (!her) return null;
   return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str2(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
@@ -35298,9 +35364,8 @@ function describeOrder(state, reg, order) {
   }
 }
 function overrideInput(state, reg, participants) {
-  const o = wardenOverrideOpen(state);
-  const w = wardenOf(state);
-  if (!o || !w || !participants.includes(w.unitId) || o.context === "combat") return {};
+  const o = openOverrideOf(state);
+  if (!o || !participants.includes(o.unitId) || o.context === "combat") return {};
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
 }
 function orderOfAction(action, reg) {
@@ -36036,12 +36101,12 @@ function createWarden(deps) {
   async function argue() {
     const s = state();
     const expect = chatId();
-    const w = s ? wardenOf(s) : null;
-    if (!s || !w || !argueAvailable(s)) return false;
+    const ov = s ? openOverrideOf(s) : null;
+    if (!s || !ov || ov.unitId === "" || !argueAvailable(s)) return false;
     const reg = deps.registries();
-    const room2 = whereabouts(s, reg).find((x) => x.unitId === w.unitId)?.roomId;
+    const room2 = whereabouts(s, reg).find((x) => x.unitId === ov.unitId)?.roomId;
     const locationId = sceneLocation(s, reg, { locationId: room2 ? String(reg.hubRooms.get(room2)?.sceneLocationId ?? "") : void 0 });
-    if (!await deps.startScene({ locationId, participants: [w.unitId], origin: "event", consumesSlot: false }) || chatId() !== expect) return false;
+    if (!await deps.startScene({ locationId, participants: [ov.unitId], origin: "event", consumesSlot: false }) || chatId() !== expect) return false;
     const sceneId = state()?.scene?.id;
     if (sceneId === void 0) return false;
     const events = deps.app.dispatch({ type: "warden/argue_started", payload: { sceneId } }, { expectChatId: expect });
@@ -36553,6 +36618,7 @@ var clean5 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s
 var sentence2 = (text2) => clean5(text2).replace(/[.\s]+$/, "");
 var DYNAMIC_PREFIX = "dynamic:";
 var PROBE_PREFIX = "dynamic:probe:";
+var COMMAND_PREFIX = "dynamic:command:";
 function styleLine(state, reg, unit3) {
   const pair = unit3.bond?.practice?.style;
   if (pair === void 0) return "";
@@ -36571,6 +36637,8 @@ function holderDirective(state, reg, unit3) {
   const name = unit3.displayName;
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
   const milestone = waiting2 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting2.milestoneId);
+  const override = state.dynamic?.override;
+  const arguing = override !== void 0 && override.unitId === unit3.id && state.scene !== void 0 && override.arguing === state.scene.id ? override : void 0;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const parts = [
     ...holds4 ? [`${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`] : [],
@@ -36578,6 +36646,7 @@ function holderDirective(state, reg, unit3) {
     styleLine(state, reg, unit3),
     ...milestone !== void 0 ? [`${holds4 ? "She" : name} is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
     ...holds4 && asking !== void 0 ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === void 0 ? "that the commander give way to her" : sentence2(String(reg.dynamicDomains.get(asking.domainId)?.promptHint ?? "a part of the commander's life"))}.`] : [],
+    ...arguing !== void 0 ? [`${name} has overridden the commander's order: ${sentence2(describeOrder(state, reg, arguing.order))}. She wants: ${sentence2(arguing.altLabel)}. She can be talked round only by a real compromise.`] : [],
     ...holds4 && refused ? ["She has not forgotten a recent refusal and will answer it in her own way."] : [],
     "Show it in how she acts and speaks; never name it as a mechanic."
   ];
@@ -36603,7 +36672,12 @@ function dynamicDirectives(state, reg, present2) {
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== void 0) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId), probe.probe.axis));
+  out.push(...commandDirectives(state, reg, present2));
   return out;
+}
+function commandDirectives(state, reg, present2) {
+  const others = (id) => state.squad.some((u) => u.id === id && isLiving(u));
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && hasCapability(state, reg, u.id, "countermand") && present2.some((id) => id !== u.id && others(id))).map((u) => ({ id: `${COMMAND_PREFIX}${u.id}`, expiresAfter: "scene", text: `${u.displayName} gives the orders now; the squad starts to address her as the one in command.` }));
 }
 function clearDynamicDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(DYNAMIC_PREFIX));
@@ -38470,22 +38544,51 @@ function expectationLabel(reg, x) {
   if (x.kind === "personal") return x.text ?? "Something personal";
   return String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.label ?? x.kind);
 }
+function renderHolderChip(host, state, reg, o, onAnswer) {
+  const name = state.squad.find((u) => u.id === o.unitId)?.displayName ?? "She";
+  const live3 = { unitId: o.unitId };
+  const cited = holderAgenda(state, reg, o.unitId).find((x) => x.id === o.expectationId);
+  const canArgue = o.context === "combat" ? true : argueAvailable(state);
+  const button2 = (answer, label2, open3) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-override-answer",
+    "data-action": `override-${answer}`,
+    "aria-disabled": open3 ? null : "true",
+    title: open3 ? null : "There is nothing left to argue here.",
+    ...analyzeNative("glossary:holder_override", live3),
+    onclick: () => {
+      if (open3) onAnswer(answer);
+    }
+  }, label2);
+  host.append(h(
+    "div",
+    { class: "alius-chips alius-warden-override alius-holder-override", "data-override": o.id },
+    h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:holder_override", live3) }, `${name.toUpperCase()} OVERRIDES \u2014 ${o.altLabel}`),
+    cited ? h("span", { class: "alius-dim alius-override-cause" }, `She expects: ${expectationLabel(reg, cited)}`) : null,
+    h("span", { class: "alius-row" }, button2("comply", "[ COMPLY ]", true), button2("argue", "[ ARGUE ]", canArgue), button2("defy", "[ DEFY ]", true))
+  ));
+}
 function renderOverrideChip(host, state, reg, onAnswer) {
+  const open3 = openOverrideOf(state);
+  if (open3 !== null && open3.source === "holder") {
+    renderHolderChip(host, state, reg, open3, onAnswer);
+    return;
+  }
   const o = wardenOverrideOpen(state);
   const w = wardenOf(state);
   if (!o || !w) return;
   const cited = w.expectations.find((x) => x.id === o.expectationId);
   const compelled = w.compelled === true;
   const canArgue = !compelled && (o.context === "combat" ? true : argueAvailable(state));
-  const button2 = (answer, label2, open3, why) => h("button", {
+  const button2 = (answer, label2, open4, why) => h("button", {
     type: "button",
     class: "alius-btn alius-option alius-override-answer",
     "data-action": `override-${answer}`,
-    "aria-disabled": open3 ? null : "true",
-    title: open3 ? null : why,
+    "aria-disabled": open4 ? null : "true",
+    title: open4 ? null : why,
     ...analyzeNative("glossary:warden_override"),
     onclick: () => {
-      if (open3) onAnswer(answer);
+      if (open4) onAnswer(answer);
     }
   }, label2);
   host.append(h(
@@ -58205,7 +58308,7 @@ function createApp(st, deps) {
       void warden.answer(answer);
     });
     shell.open();
-    void shell.modal({ title: "WARDEN OVERRIDE", body: host, actions: [] }).then(() => {
+    void shell.modal({ title: openOverrideOf(state)?.source === "holder" ? "OVERRIDE" : "WARDEN OVERRIDE", body: host, actions: [] }).then(() => {
       if (overrideModalSeq === mine) overrideModalOpen = false;
     });
   }
@@ -58225,7 +58328,7 @@ function createApp(st, deps) {
       if (root) cutIn(root, "dynamic", (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
     }
     if (events.some((e) => e.type === "warden_override")) setTimeout(showOverrideModal, 0);
-    if (events.some((e) => e.type === "error" && typeof e.message === "string" && e.message.startsWith("The warden has overridden an order"))) setTimeout(showOverrideModal, 0);
+    if (events.some((e) => e.type === "error" && typeof e.message === "string" && e.message.includes("has overridden an order"))) setTimeout(showOverrideModal, 0);
     for (const e of events) {
       switch (e.type) {
         case "supply_shortage":

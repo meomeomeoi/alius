@@ -86,7 +86,7 @@ import type { GenerationUi } from './ui/generation/surface';
 import { generationBadge } from './ui/shell/generationsSection';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
-import { overrideOpen } from './engine/warden';
+import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
@@ -2063,7 +2063,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       void warden.answer(answer);
     });
     shell.open();
-    void shell.modal({ title: 'WARDEN OVERRIDE', body: host, actions: [] }).then(() => { if (overrideModalSeq === mine) overrideModalOpen = false; });
+    void shell.modal({ title: openOverrideOf(state)?.source === 'holder' ? 'OVERRIDE' : 'WARDEN OVERRIDE', body: host, actions: [] }).then(() => { if (overrideModalSeq === mine) overrideModalOpen = false; });
   }
 
   function reportEvents(events: EngineEvent[]): void {
@@ -2084,7 +2084,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (root) cutIn(root, 'dynamic', (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
     }
     if (events.some((e) => e.type === 'warden_override')) setTimeout(showOverrideModal, 0);
-    if (events.some((e) => e.type === 'error' && typeof e.message === 'string' && e.message.startsWith('The warden has overridden an order'))) setTimeout(showOverrideModal, 0);
+    if (events.some((e) => e.type === 'error' && typeof e.message === 'string' && e.message.includes('has overridden an order'))) setTimeout(showOverrideModal, 0);
     for (const e of events) {
       switch (e.type) {
         case 'supply_shortage':

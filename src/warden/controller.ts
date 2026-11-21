@@ -1,6 +1,6 @@
 import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
-import { EXPECTATION_KINDS, argueAvailable, describeOrder, normalizeAgenda, orderOfAction, overrideOpen, wardenOf } from '../engine/warden';
+import { EXPECTATION_KINDS, argueAvailable, describeOrder, normalizeAgenda, openOverrideOf, orderOfAction, overrideOpen, wardenOf } from '../engine/warden';
 import { readJudgement, type WardenJudged, type WardenJudgeInput } from '../llm/calls/wardenJudge';
 import { worldDossier } from '../engine/memory/inputs';
 import { fallbackEpilogue, sanitizeEpilogue, type EpilogueInput } from '../llm/calls/epilogue';
@@ -184,12 +184,12 @@ export function createWarden(deps: WardenDeps): WardenController {
   async function argue(): Promise<boolean> {
     const s = state();
     const expect = chatId();
-    const w = s ? wardenOf(s) : null;
-    if (!s || !w || !argueAvailable(s)) return false;
+    const ov = s ? openOverrideOf(s) : null; // the warden's or a holder's (P15): the scene is with whoever overrode
+    if (!s || !ov || ov.unitId === '' || !argueAvailable(s)) return false;
     const reg = deps.registries();
-    const room = whereabouts(s, reg).find((x) => x.unitId === w.unitId)?.roomId;
+    const room = whereabouts(s, reg).find((x) => x.unitId === ov.unitId)?.roomId;
     const locationId = sceneLocation(s, reg, { locationId: room ? String(reg.hubRooms.get(room)?.sceneLocationId ?? '') : undefined });
-    if (!(await deps.startScene({ locationId, participants: [w.unitId], origin: 'event', consumesSlot: false })) || chatId() !== expect) return false;
+    if (!(await deps.startScene({ locationId, participants: [ov.unitId], origin: 'event', consumesSlot: false })) || chatId() !== expect) return false;
     const sceneId = state()?.scene?.id;
     if (sceneId === undefined) return false;
     const events = deps.app.dispatch({ type: 'warden/argue_started', payload: { sceneId } }, { expectChatId: expect });

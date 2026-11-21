@@ -1597,17 +1597,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Consumes: Task 25.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `holder comply`: hold +3, favour +2, `override_answered`.
   - `holder defy has no warden punishment` (no `commander_punished`, no satisfaction change, `overrode_her` landed).
   - `old save override answers`: a fixture of a P13 save with `leashswap.warden.override` open loads and answers COMPLY exactly as before (deep-equal to the pre-P15 result).
   - `argue with a holder opens a scene with her`.
   - jsdom: `the chip names her and the alternative`.
   - `the command directive reaches other present members only`.
-- [ ] **Step 2: Run** both files → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): holder overrides answered`
+- [x] **Step 2: Run** both files → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): holder overrides answered`
 
 ---
 

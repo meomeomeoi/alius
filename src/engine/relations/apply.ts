@@ -19,7 +19,7 @@ import { applyRuleEvent, RULE_EVENT_TYPES, rulesOf } from '../bonds/rules';
 import { expectationEvent } from '../warden/agenda';
 import { conspireInput, tryAlly } from '../warden/intrigue';
 import { resolveCompromise } from '../warden/override';
-import { wardenOf, wardenOverrideOpen } from '../warden/state';
+import { openOverrideOf, wardenOf } from '../warden/state';
 import { frequencyLeak, leakCandidates } from '../special/frequency/leaks';
 import { actOnWarning } from '../special/paranoia/accusations';
 import { warnedUnits } from '../special/paranoia/premonitions';
@@ -36,11 +36,10 @@ export interface ApplyParams {
   messageRef?: string;
 }
 
-/** P13: the ids of the warden's open override while she is in the scene (the one a compromise may settle). */
+/** P13 / P15: the id of the open override (the warden's or a holder's) while whoever made it is in the scene: the one a compromise may settle. */
 function openOverrideIds(state: CampaignState, participants: string[]): string[] {
-  const o = wardenOverrideOpen(state);
-  const w = wardenOf(state);
-  return o !== null && w !== null && participants.includes(w.unitId) && o.context !== 'combat' ? [o.id] : [];
+  const o = openOverrideOf(state);
+  return o !== null && participants.includes(o.unitId) && o.context !== 'combat' ? [o.id] : [];
 }
 
 /** P13: the ids of the warden's expectations while she is among the participants. */

@@ -11,7 +11,7 @@ import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
 import { fallbackAgenda } from '../warden/agenda';
 import { OPEN_FIRST_HOLDER, rollOverride, type OverrideSource } from '../warden/override';
-import { overrideOpen, wardenUnitId, type Expectation, type OpenOverride, type WardenOrder } from '../warden/state';
+import { openOverrideOf, overrideOpen, wardenUnitId, type Expectation, type WardenOrder } from '../warden/state';
 import { hasCapability } from './capabilities';
 import { dynamicOn } from './gate';
 import { dynamicOf } from './state';
@@ -79,11 +79,5 @@ export function rollOverrides(
   return null;
 }
 
-/** The override that waits, with who made it: the warden's (`source: 'warden'`) or a holder's. `null` when none waits. */
-export function openOverrideOf(state: CampaignState): (OpenOverride & { source: 'warden' | 'holder'; unitId: string }) | null {
-  const o = overrideOpen(state);
-  if (o === null) return null;
-  const holder = state.dynamic?.override;
-  if (holder !== undefined && o === holder) return { ...holder, source: 'holder', unitId: holder.unitId };
-  return { ...o, source: 'warden', unitId: wardenUnitId(state) ?? '' };
-}
+// `openOverrideOf` lives in the warden's leaf (`dispatch` and P13's readers ask it too); it is the dynamic's as well.
+export { openOverrideOf };

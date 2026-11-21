@@ -198,14 +198,14 @@ export function milestonesDue(draft: CampaignState, ctx: Ctx, unitId: string): E
  * What refusing her costs (R11, R1): by the frame's `refusal` column, hold falls by `TUNING.dynamic.refusalCost[kind]`; from `moderate` up the
  * refusal is noted (`refusal_noted`, her day list, which her directive reads), and at `rule` it also counts into the contest: the
  * `contestAt`-th within `contestWindowDays` opens her submit claim (one claim open at a time). A refused milestone pays the band drop of its
- * own answer instead of the frame cost, so `what: 'milestone'` is noted but moves no hold here. Nothing for a unit with no dynamic.
+ * own answer instead of the frame cost, so `what: 'milestone'` is noted but moves no hold here; the same for `what: 'defy'` (defying her override: its hold is the `overrode_her` feed's). Nothing for a unit with no dynamic.
  */
-export function refusalCost(draft: CampaignState, ctx: Ctx, unitId: string, what: 'claim' | 'milestone' | 'demand'): EngineEvent[] {
+export function refusalCost(draft: CampaignState, ctx: Ctx, unitId: string, what: 'claim' | 'milestone' | 'demand' | 'defy'): EngineEvent[] {
   const reg = ctx.registries;
   const dyn = dynamicOf(draft, unitId);
   if (dyn === undefined || !dynamicOn(draft, reg)) return [];
   const kind = frameEntry(reg, dyn.frame)?.refusal ?? 'minor';
-  const events: EngineEvent[] = what === 'milestone' ? [] : addHold(draft, ctx, unitId, TUNING.dynamic.refusalCost[kind], 'refusal');
+  const events: EngineEvent[] = what === 'milestone' || what === 'defy' ? [] : addHold(draft, ctx, unitId, TUNING.dynamic.refusalCost[kind], 'refusal');
   if (kind === 'minor') return events;
   const days = TUNING.dynamic.contestWindowDays;
   dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];

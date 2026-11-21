@@ -2903,5 +2903,15 @@
     "see": [
       "domain"
     ]
+  },
+  {
+    "id": "holder_override",
+    "term": "Her override",
+    "short": "She holds the command and has overruled an order. Comply and her way runs; argue it out in a scene with her; or defy her and the order runs at a price.",
+    "long": "AUTHOR TO WRITE: Comply raises the hold she has and her favor. Defying costs hold and favor, counts toward the contest of authority and shows the squad who gave way. Arguing opens a scene with her alone: only a real compromise settles it.",
+    "see": [
+      "claim",
+      "capability_countermand"
+    ]
   }
 ]

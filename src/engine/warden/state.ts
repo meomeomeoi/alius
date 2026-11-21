@@ -207,14 +207,25 @@ export function overrideOpen(state: OverrideView): OpenOverride | null {
 }
 
 /**
+ * The override that waits, with whose it is: the warden's (`source: 'warden'`, her unit) or a holder's (`source: 'holder'`, hers). `null` when
+ * none waits. A copy: write to the slots (`leashswap.warden.override`, `dynamic.override`), not to this.
+ */
+export function openOverrideOf(state: OverrideView): (OpenOverride & { source: 'warden' | 'holder'; unitId: string }) | null {
+  const o = overrideOpen(state);
+  if (o === null) return null;
+  const holder = state.dynamic?.override;
+  if (holder !== undefined && o === holder) return { ...holder, source: 'holder', unitId: holder.unitId };
+  return { ...o, source: 'warden', unitId: wardenUnitId(state) ?? '' };
+}
+
+/**
  * Is this action the start of the ARGUE scene with her alone, over a decision that waits (a dilemma override)? `dispatch` lets exactly
  * that scene through the "a decision is waiting" guard; no other scene, and no activity, is let through.
  */
-export function wardenArgueStart(state: Pick<CampaignState, 'leashswap' | 'day' | 'slot' | 'combat' | 'dilemmas'>, action: { type: string; payload?: unknown }): boolean {
+export function wardenArgueStart(state: OverrideView, action: { type: string; payload?: unknown }): boolean {
   if (action.type !== 'scene/start') return false;
-  const o = wardenOverrideOpen(state);
-  const warden = state.leashswap?.warden?.unitId;
-  if (!o || o.context !== 'dilemma' || warden === undefined) return false;
+  const o = openOverrideOf(state); // the warden's, or a holder's (P15): the scene is with whoever overrode
+  if (!o || o.context !== 'dilemma' || o.unitId === '') return false;
   const ids = (action.payload as { participants?: unknown } | null | undefined)?.participants;
-  return Array.isArray(ids) && ids.length === 1 && ids[0] === warden;
+  return Array.isArray(ids) && ids.length === 1 && ids[0] === o.unitId;
 }

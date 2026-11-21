@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { frameRank } from '../engine/blocking/state';
+import { hasCapability } from '../engine/dynamic/capabilities';
 import { herPracticeLive, dynamicOn } from '../engine/dynamic/gate';
 import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
@@ -9,6 +10,7 @@ import type { DynamicDomainEntry, DynamicMilestoneEntry, PracticeStyleEntry, Pro
 import { isLiving } from '../engine/economy';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
+import { describeOrder } from '../engine/warden';
 import type { ContextBuilder, Directive } from '../llm/context';
 
 const clean = (text: string): string => text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -25,6 +27,7 @@ const sentence = (text: string): string => clean(text).replace(/[.\s]+$/, '');
 /** The prefix of every directive of the dynamic (the holder, the probe, and later the offer, aftermath, Leash block, command, witness and disappointment lines). */
 export const DYNAMIC_PREFIX = 'dynamic:';
 export const PROBE_PREFIX = 'dynamic:probe:';
+export const COMMAND_PREFIX = 'dynamic:command:';
 
 /** Her style pair in words, the secondary's side named while it leads. */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
@@ -53,6 +56,8 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
     .filter((h): h is string => typeof h === 'string')
     .map(sentence);
   const milestone = waiting === undefined ? undefined : (reg.dynamicMilestones.get(waiting.milestoneId) as unknown as DynamicMilestoneEntry | undefined);
+  const override = state.dynamic?.override;
+  const arguing = override !== undefined && override.unitId === unit.id && state.scene !== undefined && override.arguing === state.scene.id ? override : undefined;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const parts = [
     ...(holds ? [`${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`] : []),
@@ -60,6 +65,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
     styleLine(state, reg, unit),
     ...(milestone !== undefined ? [`${holds ? 'She' : name} is waiting for the commander's answer to something she asked: ${sentence(milestone.promptHint)}.`] : []),
     ...(holds && asking !== undefined ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === undefined ? 'that the commander give way to her' : sentence(String((reg.dynamicDomains.get(asking.domainId) as unknown as DynamicDomainEntry | undefined)?.promptHint ?? 'a part of the commander\'s life'))}.`] : []),
+    ...(arguing !== undefined ? [`${name} has overridden the commander's order: ${sentence(describeOrder(state, reg, arguing.order))}. She wants: ${sentence(arguing.altLabel)}. She can be talked round only by a real compromise.`] : []),
     ...(holds && refused ? ['She has not forgotten a recent refusal and will answer it in her own way.'] : []),
     'Show it in how she acts and speaks; never name it as a mechanic.',
   ];
@@ -82,6 +88,7 @@ function probeDirective(reg: Registries, unit: Unit, axisId: string): Directive 
  *  - `dynamic:<unitId>`: she holds at `play` or beyond: the frame's line, what she has claimed, her manner (the secondary named while it leads),
  *    and an answer she is waiting for (an open milestone, a recent refusal); before the first frame, only an open milestone.
  *  - `dynamic:probe:<unitId>`: her probe is pending (at most one a scene); gone when it is answered or lapses.
+ *  - `dynamic:command:<unitId>`: she holds the command and someone else is in the room: who gives the orders now. Her own line, while the argument over her override is the scene, adds what she overrode.
  * Nothing while the dynamic is off.
  */
 export function dynamicDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
@@ -96,7 +103,16 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== undefined) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId)!, probe.probe.axis));
+  out.push(...commandDirectives(state, reg, present));
   return out;
+}
+
+/** What the other women in the room hear while a holder gives the orders (`dynamic:command:<holderId>`): only with someone else present to address her. */
+function commandDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const others = (id: string): boolean => state.squad.some((u) => u.id === id && isLiving(u));
+  return state.squad
+    .filter((u) => u.kind === 'named' && isLiving(u) && hasCapability(state, reg, u.id, 'countermand') && present.some((id) => id !== u.id && others(id)))
+    .map((u): Directive => ({ id: `${COMMAND_PREFIX}${u.id}`, expiresAfter: 'scene', text: `${u.displayName} gives the orders now; the squad starts to address her as the one in command.` }));
 }
 
 /** Drops every directive this layer owns (a chat switch, no campaign, a scene that closed). */

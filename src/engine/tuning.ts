@@ -753,6 +753,8 @@ export const TUNING = Object.freeze({
      * ahead `book_ahead` books; `coLeaderStanding` is what `co_leader` adds to her standing; `deviceFloor` is the device access `device_floor` guarantees. `AUTHOR TO TUNE`.
      */
     claimChance: 0.2, claimCooldownDays: 7, partialDays: 7, contestedLoss: 10, bookAhead: 3, coLeaderStanding: 15, deviceFloor: 4,
+    /** A holder's override answered (R13): the favour COMPLY adds and DEFY takes (R1); hold moves through `gains` (`override_comply`) and the `overrode_her` feed. */
+    override: Object.freeze({ complyFavour: 2, defyFavour: -3 }),
     /** The contest of authority at `rule` (R1): refusals and defiance within `windowDays` count; `contestAt` opens her submit card. */
     contestAt: 3,
     contestWindowDays: 14,
