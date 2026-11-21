@@ -850,7 +850,8 @@ registerChecks('contentCategories', (entry, regs) => {
 for (const registry of REGISTRY_NAMES) {
   registerChecks(registry, (entry, regs) => {
     if (entry.contentTags === undefined) return [];
-    if (!(CONTENT_GATED_REGISTRIES as readonly string[]).includes(registry)) {
+    // P15: a sign of the dynamic names the category it comes from (territory marking); the producer is the gate, so the registry is not gated
+    if (!(CONTENT_GATED_REGISTRIES as readonly string[]).includes(registry) && registry !== 'dynamicSigns') {
       return [{ path: 'contentTags', message: `contentTags is not allowed on ${registry} (only on ${CONTENT_GATED_REGISTRIES.join(', ')})` }];
     }
     return tagChecks('contentTags', entry.contentTags, regs);
@@ -1093,3 +1094,48 @@ registerChecks('pastimes', (entry, regs) =>
       return s.scope === 'any' ? [] : [{ path: `momentSources[${i}]`, message: `"${String(id)}" needs a dynamic frame; a quiet meeting only offers sources open to everyone` }];
     })
     : []);
+
+// ---------------------------------------------------------------------------------------------
+// P15: the dynamic registries. Bands tile 0-100 without a gap or an overlap; a region rank and a capability each belong to one row; a milestone, a domain and a track name what exists.
+
+const bandChecks = (entry: Entry, regs: Regs, registry: 'holdBands' | 'regardBands'): RegistryCheck[] => {
+  const min = Number(entry.min);
+  const max = Number(entry.max);
+  const others = [...regs[registry].values()].filter((o) => o.id !== entry.id);
+  const out: RegistryCheck[] = [];
+  if (min > 0 && !others.some((o) => Number(o.max) === min - 1)) out.push({ path: 'min', message: `gap below ${min}: no band ends at ${min - 1}` });
+  if (max < 100 && !others.some((o) => Number(o.min) === max + 1)) out.push({ path: 'max', message: `gap above ${max}: no band starts at ${max + 1}` });
+  const earlier = [...regs[registry].keys()].slice(0, [...regs[registry].keys()].indexOf(String(entry.id)));
+  if (earlier.some((id) => { const o = regs[registry].get(id)!; return Number(o.min) <= max && Number(o.max) >= min; })) out.push({ path: 'min', message: 'overlaps a band above it' });
+  return out;
+};
+registerChecks('holdBands', (entry, regs) => bandChecks(entry, regs, 'holdBands'));
+registerChecks('regardBands', (entry, regs) => bandChecks(entry, regs, 'regardBands'));
+
+/** Is there another row of `registry`, before this one in registry order, whose `field` is the same? (reported once, on the later row) */
+const duplicateOf = (regs: Regs, registry: RegistryName, entry: Entry, field: string): boolean => {
+  const ids = [...regs[registry].keys()];
+  return ids.slice(0, ids.indexOf(String(entry.id))).some((id) => regs[registry].get(id)![field] === entry[field]);
+};
+registerChecks('positionRegions', (entry, regs) => duplicateOf(regs, 'positionRegions', entry, 'rank') ? [{ path: 'rank', message: `a second region has the rank "${String(entry.rank)}"` }] : []);
+
+registerChecks('aftermaths', (entry, regs) => Object.keys((entry.weights as { regard?: Record<string, unknown> } | undefined)?.regard ?? {}).flatMap((id) => known(regs, 'regardBands', id, `weights.regard.${id}`, 'regard band')));
+
+registerChecks('dynamicDomains', (entry, regs) => {
+  const out = known(regs, 'holdBands', (entry.requires as { holdBand?: unknown } | undefined)?.holdBand, 'requires.holdBand', 'hold band');
+  const ids = [...regs.dynamicDomains.keys()];
+  const earlier = ids.slice(0, ids.indexOf(String(entry.id))).flatMap((id) => (regs.dynamicDomains.get(id)!.grants as string[]) ?? []);
+  (entry.grants as string[] | undefined)?.forEach((cap, i) => { if (earlier.includes(cap)) out.push({ path: `grants[${i}]`, message: `the capability "${cap}" is already granted by another domain` }); });
+  return out;
+});
+
+registerChecks('dynamicMilestones', (entry, regs) => {
+  const req = (entry.requires ?? {}) as { holdBand?: unknown; tracks?: Record<string, unknown>; categories?: unknown };
+  return [
+    ...known(regs, 'holdBands', req.holdBand, 'requires.holdBand', 'hold band'),
+    ...Object.keys(req.tracks ?? {}).flatMap((id) => known(regs, 'dynamicTracks', id, `requires.tracks.${id}`, 'practice track')),
+    ...knownEach(regs, 'contentCategories', req.categories, 'requires.categories', 'content category'),
+  ];
+});
+
+registerChecks('dynamicTracks', (entry, regs) => known(regs, 'contentCategories', entry.category, 'category', 'content category'));

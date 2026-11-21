@@ -1,0 +1,170 @@
+[
+  {
+    "id": "first_yes",
+    "from": "equal",
+    "to": "play",
+    "requires": {
+      "holdBand": "testing"
+    },
+    "offer": "scene",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: the first yes, ma'am.",
+    "promptHint": "she waits for the first answer that gives her the lead",
+    "description": "AUTHOR TO WRITE: the first yes, ma'am."
+  },
+  {
+    "id": "first_protocol",
+    "from": "play",
+    "to": "role",
+    "requires": {
+      "holdBand": "keeping"
+    },
+    "offer": "booking",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: the first protocol.",
+    "promptHint": "she asks for one rule to keep, and for an answer",
+    "description": "AUTHOR TO WRITE: the first protocol."
+  },
+  {
+    "id": "first_night_held",
+    "from": "role",
+    "to": "role",
+    "requires": {
+      "holdBand": "keeping",
+      "tracks": {
+        "restraint": 1
+      },
+      "categories": [
+        "restraint"
+      ]
+    },
+    "offer": "booking",
+    "effects": [],
+    "text": "AUTHOR TO WRITE: the first night held.",
+    "promptHint": "she marks the night as the first one held",
+    "contentTags": [
+      "restraint"
+    ],
+    "description": "AUTHOR TO WRITE: the first night held."
+  },
+  {
+    "id": "vow",
+    "from": "role",
+    "to": "role",
+    "requires": {
+      "holdBand": "owning"
+    },
+    "offer": "scene",
+    "sworn": true,
+    "effects": [
+      {
+        "type": "sworn"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: the vow.",
+    "promptHint": "she asks for the status to be said aloud and kept",
+    "description": "AUTHOR TO WRITE: the vow."
+  },
+  {
+    "id": "handover",
+    "from": "role",
+    "to": "rule",
+    "requires": {
+      "holdBand": "owning"
+    },
+    "offer": "scene",
+    "effects": [
+      {
+        "type": "frame"
+      },
+      {
+        "type": "claim",
+        "capability": "countermand"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: the handover of command.",
+    "promptHint": "she asks for the orders to be hers",
+    "description": "AUTHOR TO WRITE: the handover of command."
+  },
+  {
+    "id": "private_rule",
+    "from": "role",
+    "to": "rule",
+    "requires": {
+      "holdBand": "possessing",
+      "capabilities": [
+        "book_ahead",
+        "body_conditions",
+        "household_protocol"
+      ]
+    },
+    "offer": "demand",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: a private rule.",
+    "promptHint": "she asks for her word to stand without the command",
+    "description": "AUTHOR TO WRITE: a private rule."
+  },
+  {
+    "id": "cooling",
+    "from": "role",
+    "to": "play",
+    "requires": {
+      "coolingDays": 21
+    },
+    "offer": "automatic",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: a long cooling.",
+    "promptHint": "the weight has gone out of it",
+    "description": "AUTHOR TO WRITE: a long cooling."
+  },
+  {
+    "id": "command_lost",
+    "from": "rule",
+    "to": "role",
+    "requires": {
+      "noCapability": "countermand"
+    },
+    "offer": "automatic",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: the command is gone.",
+    "promptHint": "her word no longer carries the squad",
+    "description": "AUTHOR TO WRITE: the command is gone."
+  },
+  {
+    "id": "rekindle",
+    "from": "equal",
+    "to": "play",
+    "requires": {
+      "formerHolder": true
+    },
+    "offer": "automatic",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: a rekindling.",
+    "promptHint": "she takes up where it was left",
+    "description": "AUTHOR TO WRITE: a rekindling."
+  }
+]

@@ -1,0 +1,153 @@
+[
+  {
+    "id": "step_behind",
+    "kind": "step_behind",
+    "amount": 15,
+    "description": "AUTHOR TO WRITE: she walks a step behind, before everyone."
+  },
+  {
+    "id": "protocol_public",
+    "kind": "protocol_public",
+    "amount": 20,
+    "description": "AUTHOR TO WRITE: protocol address in public."
+  },
+  {
+    "id": "protocol_slip",
+    "kind": "protocol_slip",
+    "amount": 20,
+    "description": "AUTHOR TO WRITE: a habit that slips out."
+  },
+  {
+    "id": "kneeling_at_door",
+    "kind": "kneeling_at_door",
+    "amount": 25,
+    "description": "AUTHOR TO WRITE: seen kneeling at a door."
+  },
+  {
+    "id": "her_marks",
+    "kind": "her_marks",
+    "amount": 30,
+    "description": "AUTHOR TO WRITE: her marks, seen."
+  },
+  {
+    "id": "remote_toy",
+    "kind": "remote_toy",
+    "amount": 10,
+    "description": "AUTHOR TO WRITE: oddities from a remote device."
+  },
+  {
+    "id": "leaving_quarters",
+    "kind": "leaving_quarters",
+    "amount": 5,
+    "description": "AUTHOR TO WRITE: seen leaving her quarters in the morning."
+  },
+  {
+    "id": "held_night",
+    "kind": "held_night",
+    "amount": 5,
+    "description": "AUTHOR TO WRITE: a night held, known to everyone at base."
+  },
+  {
+    "id": "background_role",
+    "kind": "background_role",
+    "amount": 3,
+    "description": "AUTHOR TO WRITE: a day of shared routine, at role."
+  },
+  {
+    "id": "background_rule",
+    "kind": "background_rule",
+    "amount": 6,
+    "description": "AUTHOR TO WRITE: a day of shared routine, at rule."
+  },
+  {
+    "id": "gossip_knows",
+    "kind": "gossip_knows",
+    "amount": 5,
+    "description": "AUTHOR TO WRITE: gossip from a woman who knows."
+  },
+  {
+    "id": "gossip_suspects",
+    "kind": "gossip_suspects",
+    "amount": 2,
+    "description": "AUTHOR TO WRITE: gossip from a woman who suspects."
+  },
+  {
+    "id": "dynamic_item",
+    "kind": "dynamic_item",
+    "amount": 100,
+    "instant": true,
+    "description": "AUTHOR TO WRITE: an item of the dynamic worn by the commander."
+  },
+  {
+    "id": "dynamic_contact",
+    "kind": "dynamic_contact",
+    "amount": 100,
+    "instant": true,
+    "description": "AUTHOR TO WRITE: a contact of the dynamic seen."
+  },
+  {
+    "id": "holder_tells",
+    "kind": "holder_tells",
+    "amount": 100,
+    "instant": true,
+    "description": "AUTHOR TO WRITE: she tells her herself."
+  },
+  {
+    "id": "demonstration",
+    "kind": "demonstration",
+    "amount": 100,
+    "instant": true,
+    "description": "AUTHOR TO WRITE: a demonstration watched."
+  },
+  {
+    "id": "exposed_staging",
+    "kind": "exposed_staging",
+    "amount": 100,
+    "instant": true,
+    "description": "AUTHOR TO WRITE: an exposed staging."
+  },
+  {
+    "id": "compromat_shown",
+    "kind": "compromat_shown",
+    "amount": 100,
+    "instant": true,
+    "description": "AUTHOR TO WRITE: she is shown compromat."
+  },
+  {
+    "id": "scent_on_commander",
+    "kind": "scent_on_commander",
+    "amount": 0,
+    "closenessOnly": true,
+    "description": "AUTHOR TO WRITE: her scent on the commander."
+  },
+  {
+    "id": "scent_in_quarters",
+    "kind": "scent_in_quarters",
+    "amount": 0,
+    "closenessOnly": true,
+    "description": "AUTHOR TO WRITE: her scent in the commander's quarters."
+  },
+  {
+    "id": "seen_together",
+    "kind": "seen_together",
+    "amount": 0,
+    "closenessOnly": true,
+    "description": "AUTHOR TO WRITE: being seen together."
+  },
+  {
+    "id": "time_alone",
+    "kind": "time_alone",
+    "amount": 0,
+    "closenessOnly": true,
+    "description": "AUTHOR TO WRITE: time alone together."
+  },
+  {
+    "id": "territory_marking",
+    "kind": "territory_marking",
+    "amount": 30,
+    "contentTags": [
+      "bodily_fluids"
+    ],
+    "description": "AUTHOR TO WRITE: territory marking."
+  }
+]

@@ -50,6 +50,9 @@ export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> =
   momentSources: { ids: ['gate_source'], category: 'jealousy_games' },
   contactPhysics: { ids: ['gate_physics'], category: 'breath_play' },
   stimulusKinds: { ids: ['gate_stimulus'], category: 'bodily_fluids' },
+  // P15
+  dynamicMilestones: { ids: ['gate_milestone'], category: 'restraint' },
+  aftermaths: { ids: ['gate_aftermath'], category: 'humiliation' },
 };
 
 /** The ids of a registry the content gate lets through for `state` (the P15a registries until the blocking vocabulary reads them). */
@@ -145,6 +148,9 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
   momentSources: (state, reg) => vocabularyIds(state, reg, 'momentSources'),
   contactPhysics: (state, reg) => vocabularyIds(state, reg, 'contactPhysics'),
   stimulusKinds: (state, reg) => vocabularyIds(state, reg, 'stimulusKinds'),
+  // P15: until the milestone offer and the aftermath pick read them (Tasks 21 and 30), every entry the gate lets through
+  dynamicMilestones: (state, reg) => vocabularyIds(state, reg, 'dynamicMilestones'),
+  aftermaths: (state, reg) => vocabularyIds(state, reg, 'aftermaths'),
   clocks: (state, reg) => {
     const s = structuredClone(state);
     s.world.seeded = false;

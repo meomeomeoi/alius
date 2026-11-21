@@ -1,0 +1,297 @@
+[
+  {
+    "id": "grief",
+    "kind": "grief",
+    "label": "Grief",
+    "weights": {
+      "base": 1,
+      "styles": {
+        "affectionate": 3,
+        "regal": 0.5
+      },
+      "regard": {
+        "esteem": 1.5,
+        "respect": 1.5
+      },
+      "mild": true
+    },
+    "stages": [
+      {
+        "days": 4,
+        "effects": [
+          {
+            "type": "stress",
+            "amount": 10
+          },
+          {
+            "type": "want",
+            "amount": 15
+          },
+          {
+            "type": "night_knock"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: she is grieving and lets it show without asking for anything.",
+        "notice": "AUTHOR TO WRITE: she has not been herself."
+      },
+      {
+        "days": 6,
+        "effects": [
+          {
+            "type": "stress",
+            "amount": 5
+          },
+          {
+            "type": "want",
+            "amount": 5
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: the worst has passed; she is quiet and polite.",
+        "notice": "AUTHOR TO WRITE: she is getting through it."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she grieves what ended."
+  },
+  {
+    "id": "pursuit",
+    "kind": "pursuit",
+    "label": "Pursuit",
+    "weights": {
+      "base": 1,
+      "styles": {
+        "possessive": 3,
+        "obsessive": 3,
+        "regal": 1
+      }
+    },
+    "stages": [
+      {
+        "days": 7,
+        "effects": [
+          {
+            "type": "booking"
+          },
+          {
+            "type": "rule_interfere"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: she acts as if nothing ended: she books, she sets rules.",
+        "notice": "AUTHOR TO WRITE: she still behaves as if it held."
+      }
+    ],
+    "chainsTo": [
+      "blackmail"
+    ],
+    "description": "AUTHOR TO WRITE: she behaves as if nothing ended."
+  },
+  {
+    "id": "blackmail",
+    "kind": "blackmail",
+    "label": "Blackmail",
+    "weights": {
+      "base": 0.5,
+      "styles": {
+        "cold": 3,
+        "clinical": 3,
+        "vindictive": 3
+      },
+      "regard": {
+        "low": 1.5,
+        "none": 1.5
+      },
+      "needsCompromat": true
+    },
+    "stages": [
+      {
+        "days": 5,
+        "effects": [
+          {
+            "type": "threaten_tell",
+            "audience": "squad"
+          },
+          {
+            "type": "demand",
+            "kind": "interpersonal"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: she holds what she knows over the commander and names her terms.",
+        "notice": "AUTHOR TO WRITE: she wants something in return."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she uses what she knows."
+  },
+  {
+    "id": "revenge",
+    "kind": "revenge",
+    "label": "Revenge",
+    "weights": {
+      "base": 0.5,
+      "styles": {
+        "cruel": 3,
+        "regal": 2,
+        "vindictive": 2,
+        "obsessive": 1
+      }
+    },
+    "stages": [
+      {
+        "days": 10,
+        "effects": [
+          {
+            "type": "rumor"
+          },
+          {
+            "type": "squad_impunity",
+            "amount": 2
+          },
+          {
+            "type": "vote_sabotage"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: she works against the commander through the squad, never openly.",
+        "notice": "AUTHOR TO WRITE: the squad hears things."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she sets about making it cost."
+  },
+  {
+    "id": "command_kept",
+    "kind": "command_kept",
+    "label": "Command kept",
+    "weights": {
+      "base": 0,
+      "needsCommand": true,
+      "command": 5
+    },
+    "stages": [
+      {
+        "days": 30,
+        "effects": [
+          {
+            "type": "vote_sabotage"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: the squad still follows her; she keeps giving orders.",
+        "notice": "AUTHOR TO WRITE: the squad is divided about who commands."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she keeps the command the squad gave her."
+  },
+  {
+    "id": "cold_contempt",
+    "kind": "cold_contempt",
+    "label": "Cold contempt",
+    "weights": {
+      "base": 1,
+      "styles": {
+        "ritual": 3,
+        "cold": 3,
+        "drill": 2
+      },
+      "regard": {
+        "low": 1.5,
+        "none": 1.5
+      }
+    },
+    "stages": [
+      {
+        "days": 10,
+        "effects": [
+          {
+            "type": "trust",
+            "amount": -10
+          },
+          {
+            "type": "defiance"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: she has no use for the commander and shows it plainly.",
+        "notice": "AUTHOR TO WRITE: she has stopped pretending."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: trust is gone and defiance is open."
+  },
+  {
+    "id": "return_offer",
+    "kind": "return_offer",
+    "label": "Return offer",
+    "weights": {
+      "base": 2,
+      "styles": {
+        "playful": 1,
+        "affectionate": 2,
+        "drill": 2
+      },
+      "regard": {
+        "esteem": 1.5,
+        "respect": 1.5
+      },
+      "mild": true
+    },
+    "stages": [
+      {
+        "days": 7,
+        "effects": [
+          {
+            "type": "return_offer"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: she offers to take the commander back, on terms.",
+        "notice": "AUTHOR TO WRITE: she has made an offer."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she offers to take the commander back."
+  },
+  {
+    "id": "successor",
+    "kind": "successor",
+    "label": "Successor",
+    "weights": {
+      "base": 0
+    },
+    "stages": [
+      {
+        "days": 7,
+        "effects": [
+          {
+            "type": "successor"
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: another woman sees the commander unclaimed and takes an interest.",
+        "notice": "AUTHOR TO WRITE: someone has noticed."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: a squad reaction: another woman starts her own."
+  },
+  {
+    "id": "habits",
+    "kind": "habits",
+    "label": "Habits",
+    "weights": {
+      "base": 1,
+      "styles": {
+        "ritual": 1,
+        "playful": 1
+      },
+      "frames": {
+        "role": 1.5,
+        "rule": 1.5
+      },
+      "mild": true
+    },
+    "stages": [
+      {
+        "days": 10,
+        "effects": [
+          {
+            "type": "protocol_slips",
+            "days": 10
+          }
+        ],
+        "directive": "AUTHOR TO WRITE: the commander's protocol slips out in front of others.",
+        "notice": "AUTHOR TO WRITE: old habits show."
+      }
+    ],
+    "description": "AUTHOR TO WRITE: protocol slips out in front of others."
+  }
+]

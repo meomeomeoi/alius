@@ -1,0 +1,257 @@
+[
+  {
+    "id": "cold",
+    "label": "Cold",
+    "description": "AUTHOR TO WRITE: distance and control.",
+    "surfacesWhen": [
+      "displeased"
+    ],
+    "point": {
+      "r": 0.6,
+      "f": -0.3,
+      "motive": "order"
+    },
+    "regardForm": "indifference",
+    "regardSpeed": "fast",
+    "regardFloor": 0,
+    "regardFactor": 1.2,
+    "aftermathBias": [
+      "cold_contempt",
+      "blackmail"
+    ],
+    "despisesRegion": [
+      "cowed"
+    ]
+  },
+  {
+    "id": "playful",
+    "label": "Playful",
+    "description": "AUTHOR TO WRITE: teasing and games.",
+    "surfacesWhen": [
+      "low_stakes_good_mood"
+    ],
+    "point": {
+      "r": 0.3,
+      "f": 0.6,
+      "motive": "process"
+    },
+    "regardForm": "a toy",
+    "regardSpeed": "normal",
+    "regardFloor": 10,
+    "regardFactor": 0.9,
+    "aftermathBias": [
+      "return_offer",
+      "habits"
+    ]
+  },
+  {
+    "id": "cruel",
+    "label": "Cruel",
+    "description": "AUTHOR TO WRITE: she enjoys the hurt.",
+    "surfacesWhen": [
+      "peak",
+      "after_defiance"
+    ],
+    "point": {
+      "r": -0.4,
+      "f": 0.5,
+      "motive": "fear"
+    },
+    "regardForm": "contempt, enjoyed",
+    "regardSpeed": "fast",
+    "regardFloor": 0,
+    "regardFactor": 1.3,
+    "aftermathBias": [
+      "revenge"
+    ],
+    "likesRegion": [
+      "cowed"
+    ]
+  },
+  {
+    "id": "ritual",
+    "label": "Ritual",
+    "description": "AUTHOR TO WRITE: forms, protocol and ceremony.",
+    "surfacesWhen": [
+      "before_others",
+      "scene_edges"
+    ],
+    "point": {
+      "r": 0.6,
+      "f": -0.4,
+      "motive": "order"
+    },
+    "regardForm": "a thing in its proper place",
+    "regardSpeed": "normal",
+    "regardFloor": 0,
+    "regardFactor": 1.0,
+    "aftermathBias": [
+      "cold_contempt",
+      "habits"
+    ],
+    "despisesRegion": [
+      "cowed"
+    ]
+  },
+  {
+    "id": "possessive",
+    "label": "Possessive",
+    "description": "AUTHOR TO WRITE: ownership and exclusivity.",
+    "surfacesWhen": [
+      "third_person"
+    ],
+    "point": {
+      "r": 0.7,
+      "f": -0.2,
+      "motive": "her",
+      "notWith": "other_women"
+    },
+    "regardForm": "mine",
+    "regardSpeed": "very_slow",
+    "regardFloor": 35,
+    "regardFactor": 0.4,
+    "aftermathBias": [
+      "pursuit"
+    ]
+  },
+  {
+    "id": "affectionate",
+    "label": "Affectionate",
+    "description": "AUTHOR TO WRITE: a strange love: she humbles because she loves, and it is tenderness.",
+    "surfacesWhen": [
+      "after_peak_or_wound"
+    ],
+    "point": {
+      "r": 0.6,
+      "f": -0.4,
+      "motive": "her"
+    },
+    "regardForm": "tender condescension, a pet",
+    "regardSpeed": "slow",
+    "regardFloor": 30,
+    "regardFactor": 0.5,
+    "aftermathBias": [
+      "grief",
+      "return_offer"
+    ],
+    "despisesRegion": [
+      "cowed",
+      "hollow"
+    ]
+  },
+  {
+    "id": "clinical",
+    "label": "Clinical",
+    "description": "AUTHOR TO WRITE: she studies, tests reactions and keeps notes.",
+    "surfacesWhen": [
+      "new_practice"
+    ],
+    "point": null,
+    "regardForm": "a specimen",
+    "regardSpeed": "slow",
+    "regardFloor": 10,
+    "regardFactor": 0.8,
+    "aftermathBias": [
+      "blackmail"
+    ],
+    "despisesRegion": [
+      "double_game",
+      "hollow"
+    ]
+  },
+  {
+    "id": "obsessive",
+    "label": "Obsessive",
+    "description": "AUTHOR TO WRITE: she holds through obsession rather than rules, and acts against anyone in the way.",
+    "surfacesWhen": [
+      "threat"
+    ],
+    "point": {
+      "r": 0.7,
+      "f": -0.2,
+      "motive": "her",
+      "notWith": "other_women"
+    },
+    "regardForm": "mine",
+    "regardSpeed": "very_slow",
+    "regardFloor": 35,
+    "regardFactor": 0.3,
+    "aftermathBias": [
+      "pursuit",
+      "revenge"
+    ],
+    "despisesRegion": [
+      "hollow"
+    ]
+  },
+  {
+    "id": "drill",
+    "label": "Drill",
+    "description": "AUTHOR TO WRITE: the instructor: she holds so that improvement follows.",
+    "surfacesWhen": [
+      "stagnation",
+      "training_start"
+    ],
+    "point": {
+      "r": 0.6,
+      "f": -0.2,
+      "motive": "order"
+    },
+    "regardForm": "a recruit who must improve",
+    "regardSpeed": "normal",
+    "regardFloor": 0,
+    "regardFactor": 0.8,
+    "aftermathBias": [
+      "cold_contempt",
+      "return_offer"
+    ]
+  },
+  {
+    "id": "regal",
+    "label": "Regal",
+    "description": "AUTHOR TO WRITE: the vain: she wants to be admired.",
+    "surfacesWhen": [
+      "before_others",
+      "praised_or_ignored"
+    ],
+    "point": {
+      "r": 0.6,
+      "f": -0.1,
+      "motive": "her"
+    },
+    "regardForm": "a courtier at her feet",
+    "regardSpeed": "normal",
+    "regardFloor": 0,
+    "regardFactor": 1.0,
+    "aftermathBias": [
+      "revenge",
+      "pursuit"
+    ]
+  },
+  {
+    "id": "vindictive",
+    "label": "Vindictive",
+    "description": "AUTHOR TO WRITE: retribution: she holds because it is deserved.",
+    "surfacesWhen": [
+      "crime_mentioned",
+      "failed_run",
+      "arrival_anniversary"
+    ],
+    "point": {
+      "r": -0.5,
+      "f": 0.0,
+      "motive": "order"
+    },
+    "regardForm": "a convict serving a sentence",
+    "regardSpeed": "slow",
+    "regardFloor": 0,
+    "regardFactor": 0.7,
+    "aftermathBias": [
+      "blackmail",
+      "revenge"
+    ],
+    "likesRegion": [
+      "cowed"
+    ]
+  }
+]

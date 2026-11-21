@@ -1,0 +1,37 @@
+[
+  {
+    "id": "esteem",
+    "label": "Esteem",
+    "min": 80,
+    "max": 100,
+    "description": "AUTHOR TO WRITE: she thinks highly of the commander as a person."
+  },
+  {
+    "id": "respect",
+    "label": "Respect",
+    "min": 60,
+    "max": 79,
+    "description": "AUTHOR TO WRITE: she respects the commander."
+  },
+  {
+    "id": "neutral",
+    "label": "Neutral",
+    "min": 40,
+    "max": 59,
+    "description": "AUTHOR TO WRITE: she has no strong view."
+  },
+  {
+    "id": "low",
+    "label": "Low",
+    "min": 20,
+    "max": 39,
+    "description": "AUTHOR TO WRITE: she has lost respect; the form follows her style."
+  },
+  {
+    "id": "none",
+    "label": "None",
+    "min": 0,
+    "max": 19,
+    "description": "AUTHOR TO WRITE: she has none left."
+  }
+]

@@ -20,6 +20,8 @@
     "blockingActivities": "blockingActivities.json",
     "momentSources": "momentSources.json",
     "contactPhysics": "contactPhysics.json",
-    "stimulusKinds": "stimulusKinds.json"
+    "stimulusKinds": "stimulusKinds.json",
+    "dynamicMilestones": "dynamicMilestones.json",
+    "aftermaths": "aftermaths.json"
   }
 }

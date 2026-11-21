@@ -1,0 +1,18 @@
+[
+  {
+    "id": "gate_milestone",
+    "from": "role",
+    "to": "role",
+    "requires": {
+      "holdBand": "keeping"
+    },
+    "offer": "scene",
+    "effects": [],
+    "text": "AUTHOR TO WRITE: gate.",
+    "promptHint": "gate",
+    "contentTags": [
+      "restraint"
+    ],
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

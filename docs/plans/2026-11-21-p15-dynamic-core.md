@@ -814,16 +814,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - the types `PracticeAs`, `Witness`, `Audience`, `Inclination`, `MayHold`, `Fairness`, `HintStyle`, `Drive`, `Capability`, `Motive`, `RegionRank`, `AftermathKind`, `AftermathEffect` (discriminated by `type`), `MilestoneEffect`, `SurfaceCondition`, `SignKind`, `OfferTab`, `OfferAnswer`, `KnowledgeLevel`, `ExitRoute`;
   - the entry types `PracticeStyleEntry`, `HoldBandEntry`, `DynamicFrameEntry`, `DynamicMilestoneEntry`, `DynamicDomainEntry`, `DynamicTrackEntry`, `ProbeAxisEntry`, `PositionRegionEntry`, `AftermathEntry`, `RegardBandEntry`, `DynamicSignEntry`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the core pack loads the eleven registries`: 11 `practiceStyles` (no `neutral`), 5 `holdBands` covering 0–100 without gaps, 4 `dynamicFrames` with floors 0 / 20 / 40 / 60 and `equal.holdCeiling === 39`, 9 `dynamicMilestones`, 6 `dynamicDomains`, 10 `dynamicTracks`, 10 `probeAxes` (tiers 1 and 2), 11 `positionRegions` (each rank once), 9 `aftermaths` (each kind once), 5 `regardBands`, and the §15.13 `dynamicSigns` rows.
   - `domains grant only known capabilities and every capability is granted once`.
   - `refs`: a milestone's `requires.tracks` names tracks, `capabilities` are in `CAPABILITIES`, `styles` are style ids, `categories` are content categories; a track's `category` exists; `practiceStyles[].aftermathBias` are aftermath kinds; `aftermaths[].chainsTo` are kinds; a sign's `contentTags` exist.
   - `an unknown capability, a band gap or a duplicate region rank is a content error` (fixture packs).
   - `every new engine event is reserved` (R22 list ⊆ `RESERVED_EVENT_TYPES`).
-- [ ] **Step 2: Run** `npx vitest run tests/content/dynamicSchemas.test.ts` → FAIL.
-- [ ] **Step 3: Implement** the schemas and the core rows with R4's values. Every `label` / `description` / `text` / `promptHint` not given by the spec is `AUTHOR TO WRITE: …`, with no pronoun for the commander. Add the new registries to `tests/content/pronouns.test.ts`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the dynamic registries and enums`
+- [x] **Step 2: Run** `npx vitest run tests/content/dynamicSchemas.test.ts` → FAIL.
+- [x] **Step 3: Implement** the schemas and the core rows with R4's values. Every `label` / `description` / `text` / `promptHint` not given by the spec is `AUTHOR TO WRITE: …`, with no pronoun for the commander. Add the new registries to `tests/content/pronouns.test.ts`.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the dynamic registries and enums`
 
 ---
 

@@ -131,6 +131,19 @@ describe('no pronoun for the commander in content', () => {
     expect(where.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t)).map(([w]) => w)).toEqual([]);
   });
 
+  it('the dynamic content (P15): the eleven registries', () => {
+    const where: Array<[string, string]> = [];
+    const text = (path: string, v: unknown): void => {
+      if (typeof v === 'string') where.push([path, v]);
+      else if (Array.isArray(v)) v.forEach((x, i) => text(`${path}[${i}]`, x));
+      else if (typeof v === 'object' && v !== null) for (const [k, x] of Object.entries(v)) text(`${path}.${k}`, x);
+    };
+    const registries = ['practiceStyles', 'holdBands', 'dynamicFrames', 'dynamicMilestones', 'dynamicDomains', 'dynamicTracks', 'probeAxes', 'positionRegions', 'aftermaths', 'regardBands', 'dynamicSigns'] as const;
+    for (const registry of registries) for (const e of reg[registry].values()) text(`${registry}:${e.id}`, { ...e, id: undefined });
+    expect(where.length).toBeGreaterThan(300);
+    expect(where.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t)).map(([w]) => w)).toEqual([]);
+  });
+
   it('head start glossary entries (P11b)', () => {
     const texts = ['head_start', 'new_arrival', 'head_start_recap'].map((id): [string, string] => [`glossary:${id}`, String(reg.glossary.get(id)?.short ?? '')]);
     expect(texts.every(([, t]) => t.length > 0)).toBe(true);

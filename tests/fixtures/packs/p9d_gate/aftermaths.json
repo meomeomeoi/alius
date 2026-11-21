@@ -1,0 +1,22 @@
+[
+  {
+    "id": "gate_aftermath",
+    "kind": "habits",
+    "label": "Gate",
+    "weights": {
+      "base": 1
+    },
+    "stages": [
+      {
+        "days": 3,
+        "effects": [],
+        "directive": "AUTHOR TO WRITE: gate.",
+        "notice": "AUTHOR TO WRITE: gate."
+      }
+    ],
+    "contentTags": [
+      "humiliation"
+    ],
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

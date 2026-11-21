@@ -1,0 +1,97 @@
+[
+  {
+    "id": "private_time",
+    "label": "Private time",
+    "requires": {
+      "frame": "play",
+      "holdBand": "keeping"
+    },
+    "claim": "demand",
+    "grants": [
+      "booking_uncapped",
+      "book_ahead"
+    ],
+    "text": "AUTHOR TO WRITE: her bookings ignore the weekly cap.",
+    "promptHint": "she books the commander's evenings ahead",
+    "description": "AUTHOR TO WRITE: her bookings ignore the weekly cap."
+  },
+  {
+    "id": "body",
+    "label": "The body",
+    "requires": {
+      "frame": "role",
+      "holdBand": "keeping"
+    },
+    "claim": "demand",
+    "grants": [
+      "body_conditions"
+    ],
+    "text": "AUTHOR TO WRITE: she sets standing conditions on body and appearance.",
+    "promptHint": "she sets conditions on the commander's body",
+    "description": "AUTHOR TO WRITE: she sets standing conditions on body and appearance."
+  },
+  {
+    "id": "device",
+    "label": "The device",
+    "requires": {
+      "frame": "role",
+      "holdBand": "owning"
+    },
+    "claim": "demand",
+    "grants": [
+      "device_floor",
+      "leash_block"
+    ],
+    "text": "AUTHOR TO WRITE: she holds the device and the Leash requests.",
+    "promptHint": "she answers for the commander's device and Leash requests",
+    "description": "AUTHOR TO WRITE: she holds the device and the Leash requests."
+  },
+  {
+    "id": "household",
+    "label": "The household",
+    "requires": {
+      "frame": "role",
+      "holdBand": "keeping"
+    },
+    "claim": "demand",
+    "grants": [
+      "household_protocol",
+      "second_place"
+    ],
+    "text": "AUTHOR TO WRITE: service and protocol outside scenes; her quarters are the second place.",
+    "promptHint": "service and protocol hold in her quarters",
+    "description": "AUTHOR TO WRITE: service and protocol outside scenes; her quarters are the second place."
+  },
+  {
+    "id": "others",
+    "label": "Others",
+    "requires": {
+      "frame": "role",
+      "holdBand": "owning"
+    },
+    "claim": "demand",
+    "grants": [
+      "relation_rules",
+      "booking_consent"
+    ],
+    "text": "AUTHOR TO WRITE: she sets rules about the commander's other relations.",
+    "promptHint": "she sets rules on who else the commander sees",
+    "description": "AUTHOR TO WRITE: she sets rules about the commander's other relations."
+  },
+  {
+    "id": "command",
+    "label": "Command",
+    "requires": {
+      "frame": "role",
+      "holdBand": "owning"
+    },
+    "claim": "milestone",
+    "grants": [
+      "countermand",
+      "co_leader"
+    ],
+    "text": "AUTHOR TO WRITE: she can countermand orders and is addressed as the one in command.",
+    "promptHint": "she gives the orders now",
+    "description": "AUTHOR TO WRITE: she can countermand orders and is addressed as the one in command."
+  }
+]

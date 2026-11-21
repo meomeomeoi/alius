@@ -53,6 +53,9 @@ export const REGISTRY_NAMES = [
   // P15a
   'worshipTargets', 'blockingPostures', 'blockingAnchors', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources',
   'contactPhysics', 'physicsCues', 'stimulusKinds', 'escalationVerbs', 'commanderConditions',
+  // P15
+  'practiceStyles', 'holdBands', 'dynamicFrames', 'dynamicMilestones', 'dynamicDomains', 'dynamicTracks', 'probeAxes', 'positionRegions',
+  'aftermaths', 'regardBands', 'dynamicSigns',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

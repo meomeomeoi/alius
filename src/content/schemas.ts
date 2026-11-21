@@ -10,6 +10,11 @@ import {
   ANCHOR_KINDS, ATTENTIONS, CONTACT_DIRS, CUE_KINDS, ESCALATION_ORDER, GAUGE_KINDS, INTERACTIONS, LIVE_KINDS, PAIR_TAGS, RESPONSE_TYPES, SCOPES, SEALS, STAGES, STIMULUS_FAMILIES, WORN_SLOTS,
 } from '../engine/blocking/types';
 import { LIFE_CATEGORIES, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
+import {
+  AFTERMATH_DEMAND_KINDS, AFTERMATH_KINDS, CAPABILITIES, CLAIM_FORMS, DYNAMIC_EVENT_TYPES, MILESTONE_OFFERS, MOTIVES, OUTSIDE_REACH, PROFILE_STYLES, REFUSAL_COSTS,
+  REGARD_SPEEDS, REGION_RANKS, SIGN_KINDS, SURFACE_CONDITIONS,
+} from '../engine/dynamic/types';
+import { FRAMES } from '../engine/blocking/state';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
 import { stripLinks } from './links';
@@ -522,6 +527,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'hobby_started', 'hobby_progress', 'hobby_plateau', 'hobby_breakthrough', 'hobby_milestone', 'hobby_cooling', 'hobby_dropped',
   'hobby_rekindled', 'hobby_mastered', 'hobby_taught', 'opinion_formed', 'opinion_changed', 'opinion_hardened', 'first_moment_kept',
   'joke_counted', 'pastime_set', 'temperament_set', 'hobbies_set', 'opinion_set',
+  // P15 (the dynamic; the list is `DYNAMIC_EVENT_TYPES`)
+  ...DYNAMIC_EVENT_TYPES,
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -2346,6 +2353,9 @@ export const DESCRIBED_REGISTRIES = [
   // P15a (every row carries a description; `physicsCues` and `escalationVerbs` are not shown to the player: `PLAYER_VISIBLE` leaves them out)
   'worshipTargets', 'blockingPostures', 'blockingAnchors', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources',
   'contactPhysics', 'physicsCues', 'stimulusKinds', 'escalationVerbs', 'commanderConditions',
+  // P15 (`positionRegions` is her wording and is not shown to the player: `PLAYER_VISIBLE` leaves it out)
+  'practiceStyles', 'holdBands', 'dynamicFrames', 'dynamicMilestones', 'dynamicDomains', 'dynamicTracks', 'probeAxes', 'positionRegions',
+  'aftermaths', 'regardBands', 'dynamicSigns',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -2720,6 +2730,178 @@ Object.assign(registrySchemas, {
   blockingItems: BlockingItemSchema, blockingActivities: BlockingActivitySchema, momentSources: MomentSourceSchema,
   contactPhysics: ContactPhysicsSchema, physicsCues: PhysicsCueSchema, stimulusKinds: StimulusKindSchema,
   escalationVerbs: EscalationVerbSchema, commanderConditions: CommanderConditionSchema,
+});
+
+// ---------------------------------------------------------------------------------------------
+// P15: the dynamic (eleven registries). `AUTHOR TO WRITE`: every text is a draft; `AUTHOR TO TUNE`: every number is. The engine reads
+// them by field, by capability and by effect type, never by id (`engine/dynamic/types.ts` holds the closed enums). Names that point
+// into other registries are checked in `refs.ts`.
+
+const unit = (lo: number, hi: number) => z.number().min(lo).max(hi);
+const frameEnum = z.enum(FRAMES);
+const capabilityEnum = z.enum(CAPABILITIES);
+const profileStyle = z.enum(PROFILE_STYLES);
+const aftermathKind = z.enum(AFTERMATH_KINDS);
+const bandRange = (e: { min: number; max: number }, ctx: z.RefinementCtx) => {
+  if (e.min > e.max) ctx.addIssue({ code: 'custom', path: ['max'], message: 'a band runs from low to high' });
+};
+
+export const PracticeStyleSchema = BaseEntrySchema.extend({
+  id: profileStyle,
+  label: blockLabel,
+  description: str,
+  surfacesWhen: z.array(z.enum(SURFACE_CONDITIONS)).min(1),
+  point: z.object({ r: unit(-1, 1), f: unit(-1, 1), motive: z.enum(MOTIVES), notWith: z.literal('other_women').optional() }).strict().nullable(),
+  regardForm: str.max(80),
+  regardSpeed: z.enum(REGARD_SPEEDS),
+  regardFloor: int.min(0).max(100),
+  regardFactor: unit(0, 3),
+  aftermathBias: z.array(aftermathKind),
+  likesRegion: z.array(z.enum(REGION_RANKS)).optional(),
+  despisesRegion: z.array(z.enum(REGION_RANKS)).optional(),
+}).strict();
+
+const bandSchema = BaseEntrySchema.extend({ label: blockLabel, min: int.min(0).max(100), max: int.min(0).max(100), description: str }).strict().superRefine(bandRange);
+export const HoldBandSchema = bandSchema;
+export const RegardBandSchema = bandSchema;
+
+export const DynamicFrameSchema = BaseEntrySchema.extend({
+  id: frameEnum,
+  label: blockLabel,
+  rank: int.min(0).max(3),
+  holdFloor: int.min(0).max(100),
+  holdCeiling: int.min(0).max(100).optional(),
+  refusal: z.enum(REFUSAL_COSTS),
+  outside: z.enum(OUTSIDE_REACH),
+  promptHint: blockHint,
+  description: str,
+}).strict().superRefine((e, ctx) => {
+  if (e.rank !== FRAMES.indexOf(e.id)) ctx.addIssue({ code: 'custom', path: ['rank'], message: `the rank of "${e.id}" is ${FRAMES.indexOf(e.id)}` });
+  if (e.holdCeiling !== undefined && e.holdCeiling < e.holdFloor) ctx.addIssue({ code: 'custom', path: ['holdCeiling'], message: 'the ceiling is below the floor' });
+});
+
+const milestoneEffect = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('frame') }).strict(),
+  z.object({ type: z.literal('sworn') }).strict(),
+  z.object({ type: z.literal('claim'), capability: capabilityEnum }).strict(),
+  z.object({ type: z.literal('drop_romance') }).strict(),
+]);
+
+export const DynamicMilestoneSchema = BaseEntrySchema.extend({
+  from: frameEnum,
+  to: frameEnum,
+  requires: z.object({
+    holdBand: str.optional(),
+    tracks: z.record(str, int.min(1).max(5)).optional(),
+    capabilities: z.array(capabilityEnum).min(1).optional(),
+    categories: z.array(str).min(1).optional(),
+    styles: z.array(profileStyle).min(1).optional(),
+    romantic: z.boolean().optional(),
+    coolingDays: int.min(1).max(365).optional(),
+    formerHolder: z.literal(true).optional(),
+    noCapability: capabilityEnum.optional(),
+  }).strict(),
+  offer: z.enum(MILESTONE_OFFERS),
+  sworn: z.literal(true).optional(),
+  effects: z.array(milestoneEffect),
+  text: str.max(300),
+  promptHint: blockHint,
+  contentTags: tagList,
+  description: str,
+}).strict().superRefine((m, ctx) => {
+  const frame = m.effects.some((e) => e.type === 'frame');
+  if (frame && m.from === m.to) ctx.addIssue({ code: 'custom', path: ['effects'], message: 'a milestone inside one frame cannot change the frame' });
+  if (!frame && m.from !== m.to) ctx.addIssue({ code: 'custom', path: ['effects'], message: 'a milestone that changes the frame needs the frame effect' });
+  if ((m.sworn === true) !== m.effects.some((e) => e.type === 'sworn')) ctx.addIssue({ code: 'custom', path: ['sworn'], message: '`sworn` and the sworn effect go together' });
+});
+
+export const DynamicDomainSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  requires: z.object({ frame: frameEnum, holdBand: str }).strict(),
+  claim: z.enum(CLAIM_FORMS),
+  grants: z.array(capabilityEnum).min(1),
+  text: str.max(300),
+  promptHint: blockHint,
+  description: str,
+}).strict();
+
+export const DynamicTrackSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  category: str.optional(),
+  thresholds: z.tuple([int.min(1), int.min(1), int.min(1), int.min(1), int.min(1)]).refine((t) => t.every((n, i) => i === 0 || n > t[i - 1]), 'the thresholds must rise'),
+  description: str,
+}).strict();
+
+export const ProbeAxisSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  tier: z.union([z.literal(1), z.literal(2)]),
+  promptHint: blockHint,
+  description: str,
+}).strict();
+
+export const PositionRegionSchema = BaseEntrySchema.extend({ rank: z.enum(REGION_RANKS), label: blockLabel, description: str }).strict();
+
+const aftermathEffect = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('stress'), amount: int.min(-50).max(50) }).strict(),
+  z.object({ type: z.literal('want'), amount: int.min(-50).max(50) }).strict(),
+  z.object({ type: z.literal('night_knock') }).strict(),
+  z.object({ type: z.literal('demand'), kind: z.enum(AFTERMATH_DEMAND_KINDS) }).strict(),
+  z.object({ type: z.literal('booking') }).strict(),
+  z.object({ type: z.literal('rule_interfere') }).strict(),
+  z.object({ type: z.literal('threaten_tell'), audience: z.enum(['squad', 'outside']) }).strict(),
+  z.object({ type: z.literal('rumor') }).strict(),
+  z.object({ type: z.literal('squad_impunity'), amount: int.min(-50).max(50) }).strict(),
+  z.object({ type: z.literal('vote_sabotage') }).strict(),
+  z.object({ type: z.literal('defiance') }).strict(),
+  z.object({ type: z.literal('trust'), amount: int.min(-50).max(50) }).strict(),
+  z.object({ type: z.literal('return_offer') }).strict(),
+  z.object({ type: z.literal('successor') }).strict(),
+  z.object({ type: z.literal('protocol_slips'), days: int.min(1).max(30) }).strict(),
+]);
+
+const multiplier = z.number().min(0).max(5);
+export const AftermathWeightsSchema = z.object({
+  base: z.number().min(0).max(20),
+  styles: z.record(profileStyle, z.number().min(0).max(20)).optional(),
+  values: z.record(z.enum(VALUE_AXES), z.number().min(0).max(20)).optional(),
+  regard: z.record(str, multiplier).optional(),
+  frames: z.record(frameEnum, multiplier).optional(),
+  sworn: multiplier.optional(),
+  command: multiplier.optional(),
+  needsCompromat: z.literal(true).optional(),
+  needsCommand: z.literal(true).optional(),
+  mild: z.literal(true).optional(),
+}).strict();
+
+export const AftermathSchema = BaseEntrySchema.extend({
+  kind: aftermathKind,
+  label: blockLabel,
+  weights: AftermathWeightsSchema,
+  stages: z.array(z.object({ days: int.min(1).max(90), effects: z.array(aftermathEffect), directive: str.max(300), notice: str.max(160) }).strict()).min(1).max(4),
+  contentTags: tagList,
+  chainsTo: z.array(aftermathKind).min(1).optional(),
+  description: str,
+}).strict().superRefine((a, ctx) => {
+  if (a.chainsTo?.includes(a.kind)) ctx.addIssue({ code: 'custom', path: ['chainsTo'], message: 'an aftermath cannot chain to its own kind' });
+});
+
+export const DynamicSignSchema = BaseEntrySchema.extend({
+  kind: z.enum(SIGN_KINDS),
+  amount: int.min(0).max(100),
+  instant: z.literal(true).optional(),
+  closenessOnly: z.literal(true).optional(),
+  contentTags: tagList,
+  description: str,
+}).strict().superRefine((s, ctx) => {
+  if (s.instant === true && s.closenessOnly === true) ctx.addIssue({ code: 'custom', path: ['instant'], message: 'a sign is instant or closeness-only, not both' });
+  if (s.instant === true && s.amount !== 100) ctx.addIssue({ code: 'custom', path: ['amount'], message: 'an instant sign is worth 100' });
+  if (s.closenessOnly === true && s.amount !== 0) ctx.addIssue({ code: 'custom', path: ['amount'], message: 'a closeness-only sign adds no suspicion of a dynamic' });
+});
+
+Object.assign(registrySchemas, {
+  practiceStyles: PracticeStyleSchema, holdBands: HoldBandSchema, dynamicFrames: DynamicFrameSchema, dynamicMilestones: DynamicMilestoneSchema,
+  dynamicDomains: DynamicDomainSchema, dynamicTracks: DynamicTrackSchema, probeAxes: ProbeAxisSchema, positionRegions: PositionRegionSchema,
+  aftermaths: AftermathSchema, regardBands: RegardBandSchema, dynamicSigns: DynamicSignSchema,
 });
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

@@ -1,0 +1,131 @@
+[
+  {
+    "id": "service",
+    "label": "Service",
+    "category": "service",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: what the pair does in service."
+  },
+  {
+    "id": "humiliation",
+    "label": "Humiliation",
+    "category": "humiliation",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: private humiliation."
+  },
+  {
+    "id": "public_humiliation",
+    "label": "Public humiliation",
+    "category": "public_humiliation",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: humiliation before others."
+  },
+  {
+    "id": "degrading_language",
+    "label": "Degrading language",
+    "category": "degrading_language",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: demeaning words as play."
+  },
+  {
+    "id": "pain_rough",
+    "label": "Pain and rough play",
+    "category": "pain_rough",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: wanted pain."
+  },
+  {
+    "id": "restraint",
+    "label": "Restraint",
+    "category": "restraint",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: being held, tied or kept still."
+  },
+  {
+    "id": "physical_discipline_shown",
+    "label": "Physical discipline",
+    "category": "physical_discipline_shown",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: punishment shown on the page."
+  },
+  {
+    "id": "denial",
+    "label": "Denial",
+    "category": "denial",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: what is kept from the commander."
+  },
+  {
+    "id": "exposure_risk",
+    "label": "Exposure and risk",
+    "category": "exposure_risk",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: the risk of being seen."
+  },
+  {
+    "id": "discipline",
+    "label": "Discipline",
+    "thresholds": [
+      10,
+      30,
+      60,
+      100,
+      150
+    ],
+    "description": "AUTHOR TO WRITE: her punishments, in any category."
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "interest",
+    "label": "Interest",
+    "min": 0,
+    "max": 19,
+    "description": "AUTHOR TO WRITE: she is curious; nothing is said."
+  },
+  {
+    "id": "testing",
+    "label": "Testing",
+    "min": 20,
+    "max": 39,
+    "description": "AUTHOR TO WRITE: small, deniable tests."
+  },
+  {
+    "id": "keeping",
+    "label": "Keeping",
+    "min": 40,
+    "max": 59,
+    "description": "AUTHOR TO WRITE: she keeps the commander in hand."
+  },
+  {
+    "id": "owning",
+    "label": "Owning",
+    "min": 60,
+    "max": 79,
+    "description": "AUTHOR TO WRITE: she speaks for the pair."
+  },
+  {
+    "id": "possessing",
+    "label": "Possessing",
+    "min": 80,
+    "max": 100,
+    "description": "AUTHOR TO WRITE: hers, and she acts like it."
+  }
+]

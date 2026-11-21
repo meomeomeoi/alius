@@ -1,0 +1,72 @@
+[
+  {
+    "id": "space",
+    "label": "space",
+    "tier": 1,
+    "promptHint": "takes the commander's seat, thing or way",
+    "description": "AUTHOR TO WRITE: takes the commander's seat, thing or way"
+  },
+  {
+    "id": "small_order",
+    "label": "a small order",
+    "tier": 1,
+    "promptHint": "asks for something in the tone of an order",
+    "description": "AUTHOR TO WRITE: asks for something in the tone of an order"
+  },
+  {
+    "id": "correction",
+    "label": "correction",
+    "tier": 1,
+    "promptHint": "corrects words, posture or a decision",
+    "description": "AUTHOR TO WRITE: corrects words, posture or a decision"
+  },
+  {
+    "id": "decision",
+    "label": "a decision",
+    "tier": 1,
+    "promptHint": "decides a small thing for the commander: food, route, time",
+    "description": "AUTHOR TO WRITE: decides a small thing for the commander: food, route, time"
+  },
+  {
+    "id": "waiting",
+    "label": "waiting",
+    "tier": 1,
+    "promptHint": "makes the commander wait, and watches how it is taken",
+    "description": "AUTHOR TO WRITE: makes the commander wait, and watches how it is taken"
+  },
+  {
+    "id": "touch",
+    "label": "touch",
+    "tier": 2,
+    "promptHint": "leads a contact",
+    "description": "AUTHOR TO WRITE: leads a contact"
+  },
+  {
+    "id": "public_tone",
+    "label": "tone before others",
+    "tier": 2,
+    "promptHint": "speaks slightly down to the commander before others",
+    "description": "AUTHOR TO WRITE: speaks slightly down to the commander before others"
+  },
+  {
+    "id": "claim",
+    "label": "a claim",
+    "tier": 2,
+    "promptHint": "marks the commander as hers before others",
+    "description": "AUTHOR TO WRITE: marks the commander as hers before others"
+  },
+  {
+    "id": "permission",
+    "label": "permission",
+    "tier": 2,
+    "promptHint": "puts the commander in an ask-me position",
+    "description": "AUTHOR TO WRITE: puts the commander in an ask-me position"
+  },
+  {
+    "id": "reversal",
+    "label": "reversal",
+    "tier": 2,
+    "promptHint": "turns the commander's order into a game",
+    "description": "AUTHOR TO WRITE: turns the commander's order into a game"
+  }
+]

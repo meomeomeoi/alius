@@ -1,0 +1,68 @@
+[
+  {
+    "id": "hollow",
+    "rank": "hollow",
+    "label": "hollow",
+    "description": "AUTHOR TO WRITE: she gives way without engagement: a warning sign."
+  },
+  {
+    "id": "elusive",
+    "rank": "elusive",
+    "label": "elusive",
+    "description": "AUTHOR TO WRITE: everything stays ambiguous."
+  },
+  {
+    "id": "cowed",
+    "rank": "cowed",
+    "label": "cowed",
+    "description": "AUTHOR TO WRITE: she gives way out of fear."
+  },
+  {
+    "id": "double_game",
+    "rank": "double_game",
+    "label": "a double game",
+    "description": "AUTHOR TO WRITE: she leads from below."
+  },
+  {
+    "id": "calculating",
+    "rank": "calculating",
+    "label": "calculating",
+    "description": "AUTHOR TO WRITE: she gives way for what it gets."
+  },
+  {
+    "id": "bratty",
+    "rank": "bratty",
+    "label": "bratty",
+    "description": "AUTHOR TO WRITE: provocation, then play."
+  },
+  {
+    "id": "proud",
+    "rank": "proud",
+    "label": "proud",
+    "description": "AUTHOR TO WRITE: she gives way only under pressure."
+  },
+  {
+    "id": "hungry",
+    "rank": "hungry",
+    "label": "hungry",
+    "description": "AUTHOR TO WRITE: she asks for more."
+  },
+  {
+    "id": "reluctant",
+    "rank": "reluctant",
+    "label": "reluctant",
+    "description": "AUTHOR TO WRITE: she gives way with resistance."
+  },
+  {
+    "id": "dutiful",
+    "rank": "dutiful",
+    "label": "dutiful",
+    "description": "AUTHOR TO WRITE: she loves protocol."
+  },
+  {
+    "id": "devoted",
+    "rank": "devoted",
+    "label": "devoted",
+    "description": "AUTHOR TO WRITE: she gives way for her."
+  }
+]

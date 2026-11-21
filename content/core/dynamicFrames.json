@@ -1,0 +1,43 @@
+[
+  {
+    "id": "equal",
+    "label": "Equal",
+    "rank": 0,
+    "holdFloor": 0,
+    "holdCeiling": 39,
+    "refusal": "minor",
+    "outside": "none",
+    "promptHint": "nothing between them is settled; she acts as an equal",
+    "description": "AUTHOR TO WRITE: the default: only the ordinary mechanics apply."
+  },
+  {
+    "id": "play",
+    "label": "Play",
+    "rank": 1,
+    "holdFloor": 20,
+    "refusal": "minor",
+    "outside": "scenes",
+    "promptHint": "she leads and they play at it, in scenes",
+    "description": "AUTHOR TO WRITE: she leads and they play."
+  },
+  {
+    "id": "role",
+    "label": "Role",
+    "rank": 2,
+    "holdFloor": 40,
+    "refusal": "moderate",
+    "outside": "all_day",
+    "promptHint": "the commander fills a role with her: protocol and tasks hold all day",
+    "description": "AUTHOR TO WRITE: strict submission and service."
+  },
+  {
+    "id": "rule",
+    "label": "Rule",
+    "rank": 3,
+    "holdFloor": 60,
+    "refusal": "contest",
+    "outside": "domains",
+    "promptHint": "her word stands across what she has claimed",
+    "description": "AUTHOR TO WRITE: she rules."
+  }
+]

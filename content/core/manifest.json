@@ -95,6 +95,17 @@
     "physicsCues": "physicsCues.json",
     "stimulusKinds": "stimulusKinds.json",
     "escalationVerbs": "escalationVerbs.json",
-    "commanderConditions": "commanderConditions.json"
+    "commanderConditions": "commanderConditions.json",
+    "practiceStyles": "practiceStyles.json",
+    "holdBands": "holdBands.json",
+    "dynamicFrames": "dynamicFrames.json",
+    "dynamicMilestones": "dynamicMilestones.json",
+    "dynamicDomains": "dynamicDomains.json",
+    "dynamicTracks": "dynamicTracks.json",
+    "probeAxes": "probeAxes.json",
+    "positionRegions": "positionRegions.json",
+    "aftermaths": "aftermaths.json",
+    "regardBands": "regardBands.json",
+    "dynamicSigns": "dynamicSigns.json"
   }
 }
