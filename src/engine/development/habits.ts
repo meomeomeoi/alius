@@ -66,6 +66,12 @@ export function countActivity(draft: CampaignState, reg: Registries, unitId: str
   return checkHabits(draft, reg, unitId);
 }
 
+/** `joke:<fact>` +1 when a running joke of hers (P14c) comes back; the habit `running_joke` is counted by kind, never by id. */
+export function countJoke(draft: CampaignState, reg: Registries, unitId: string, factId: string): EngineEvent[] {
+  if (developmentMode(draft) === 'off' || !bump(draft, unitId, `joke:${factId}`)) return [];
+  return checkHabits(draft, reg, unitId);
+}
+
 /** `companion:<other>` +1 for each pair of named, living ones in the list (a scene's participants, an expedition's party), both ways. */
 export function countCompanions(draft: CampaignState, reg: Registries, ids: string[]): EngineEvent[] {
   if (developmentMode(draft) === 'off') return [];

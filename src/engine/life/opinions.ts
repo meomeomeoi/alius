@@ -8,6 +8,7 @@ import type { EventIntent } from '../relations/intents';
 import type { CampaignState, Opinion, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { plainText } from './facts';
+import { pickJoke } from './jokes';
 import { unitOf } from './places';
 import { ensureLife, lifeChance, lifeHash, lifeMode } from './state';
 import type { OpinionTopicEntry } from './types';
@@ -146,6 +147,7 @@ export function startSceneLife(
     const act = activityOf(id);
     const topics = [...topicsAt(reg, { locationId: scene.locationId, ...(act !== undefined ? { activityId: act } : {}) }), ...recentEventTopics(draft, reg, id, draft.day)];
     events.push(...triggerTopics(draft, reg, [id], [...new Set(topics)], scene.id));
+    if (scene.participants.length === 1) pickJoke(draft, id, scene.id, draft.day); // a private scene: she may bring a running joke back
   }
   return events;
 }

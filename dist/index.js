@@ -15407,6 +15407,115 @@ var measureList = (reg, state) => [
   "unspecified"
 ];
 
+// src/engine/development/habits.ts
+function allowedHabits(state, reg, unitId) {
+  return [...reg.habits.values()].filter((h2) => contentAllowed(state, reg, h2, unitId));
+}
+var D = TUNING.development;
+var bump = (draft, unitId, key) => {
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (!unit2 || !isLiving(unit2)) return false;
+  const dev = ensureDevelopment(unit2);
+  dev.counters[key] = (dev.counters[key] ?? 0) + 1;
+  return true;
+};
+function reached(counters, h2) {
+  if (h2.counter.kind === "activity" && h2.counter.id !== void 0) return (counters[`activity:${h2.counter.id}`] ?? 0) >= h2.threshold ? `activity:${h2.counter.id}` : null;
+  const prefix = `${h2.counter.kind}:`;
+  return Object.keys(counters).find((k) => k.startsWith(prefix) && (h2.counter.id === void 0 || k === `${prefix}${h2.counter.id}`) && counters[k] >= h2.threshold) ?? null;
+}
+function checkHabits(draft, reg, unitId) {
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (!unit2 || !isLiving(unit2) || developmentMode(draft) === "off") return [];
+  const events = [];
+  for (const h2 of allowedHabits(draft, reg, unit2.kind === "named" ? unitId : void 0)) {
+    const dev = ensureDevelopment(unit2);
+    if (dev.habits.includes(h2.id)) continue;
+    const key = reached(dev.counters, h2);
+    if (key === null) continue;
+    const other = h2.counter.kind === "companion" ? draft.squad.find((u) => u.id === key.slice("companion:".length))?.displayName ?? "someone" : "";
+    const text2 = h2.fallback.replace(/^\s*AUTHOR TO WRITE:\s*/i, "").replace(/\{name\}/g, unit2.displayName).replace(/\{other\}/g, other).replace(/\s+/g, " ").trim().slice(0, D.factTextMax).trim();
+    const fact = { id: nextDevId(dev, "df"), text: text2, kind: "habit", day: draft.day, source: "habit", habitId: h2.id };
+    dev.habits.push(h2.id);
+    dev.facts.push(fact);
+    while (dev.facts.length > D.factsMax) {
+      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== fact.id);
+      if (i < 0) break;
+      dev.facts.splice(i, 1);
+    }
+    events.push({ type: "habit_formed", unitId, habitId: h2.id, factId: fact.id });
+  }
+  return events;
+}
+function countActivity(draft, reg, unitId, activityId) {
+  if (developmentMode(draft) === "off" || !bump(draft, unitId, `activity:${activityId}`)) return [];
+  return checkHabits(draft, reg, unitId);
+}
+function countJoke(draft, reg, unitId, factId) {
+  if (developmentMode(draft) === "off" || !bump(draft, unitId, `joke:${factId}`)) return [];
+  return checkHabits(draft, reg, unitId);
+}
+function countCompanions(draft, reg, ids) {
+  if (developmentMode(draft) === "off") return [];
+  const named3 = [...new Set(ids)].filter((id) => draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+  const events = [];
+  for (const a of named3) {
+    for (const b of named3) if (a !== b) bump(draft, a, `companion:${b}`);
+    events.push(...checkHabits(draft, reg, a));
+  }
+  return events;
+}
+function countRun(draft, reg, ids, regionId) {
+  if (developmentMode(draft) === "off") return [];
+  const events = [];
+  for (const id of ids) if (bump(draft, id, `region:${regionId}`)) events.push(...checkHabits(draft, reg, id));
+  events.push(...countCompanions(draft, reg, ids));
+  return events;
+}
+function habitEffect(state, reg, unitId, activityId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  if (!unit2 || developmentMode(state) === "off") return [];
+  const have = developmentOf(unit2).habits;
+  return [...reg.habits.values()].filter((h2) => have.includes(h2.id) && h2.effect?.activityId === activityId).map((h2) => ({ type: h2.effect.type, amount: h2.effect.amount }));
+}
+
+// src/engine/life/jokes.ts
+var jokeable = (f, unitId, day) => f.about.includes(unitId) && f.knownBy.includes(unitId) && f.hiddenFromCommander !== true && !f.tags.includes(UNTOLD_TAG) && day - f.day >= TUNING.life.joke.minAgeDays;
+function jokeCandidates(state, unitId, day) {
+  const unit2 = unitOf2(state, unitId);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return [];
+  return state.memory.facts.map((f, at) => ({ f, at })).filter(({ f }) => jokeable(f, unitId, day)).sort((a, b) => b.f.day - a.f.day || b.at - a.at).slice(0, TUNING.life.joke.offerMax).map(({ f }) => ({ id: f.id, text: f.text }));
+}
+function returnJoke(draft, reg, unitId, factId, day) {
+  const unit2 = unitOf2(draft, unitId);
+  const life = draft.life;
+  if (!life || !unit2 || unit2.kind !== "named" || !isLiving(unit2) || !draft.memory.facts.some((f) => f.id === factId)) return [];
+  const mine = life.units[unitId] ??= { last: {} };
+  const jokes = mine.jokes ??= {};
+  const was = jokes[factId];
+  jokes[factId] = { count: was !== void 0 && day - was.last <= TUNING.life.joke.windowDays ? was.count + 1 : 1, last: day };
+  mine.jokeDay = day;
+  if (mine.scene !== void 0) delete mine.scene.joke;
+  return [{ type: "joke_counted", unitId }, ...countJoke(draft, reg, unitId, factId)];
+}
+function runningJokes(state, unitId, day) {
+  const jokes = state.life?.units[unitId]?.jokes ?? {};
+  return Object.entries(jokes).filter(([, j]) => j.count >= TUNING.life.joke.running && day - j.last <= TUNING.life.joke.windowDays).sort((a, b) => b[1].last - a[1].last || a[0].localeCompare(b[0])).map(([id]) => id);
+}
+function pickJoke(draft, unitId, sceneId, day) {
+  const life = draft.life;
+  const mine = life?.units[unitId];
+  if (!life || !mine?.scene || mine.scene.sceneId !== sceneId) return null;
+  const j = TUNING.life.joke;
+  const weight = j.humor[temperamentOf(draft, unitId).humor];
+  if (weight === 0 || mine.jokeDay !== void 0 && day - mine.jokeDay < j.gapDays) return null;
+  const [newest] = runningJokes(draft, unitId, day);
+  if (newest === void 0 || !draft.memory.facts.some((f) => f.id === newest)) return null;
+  if (!lifeChance(life, `${sceneId}|joke|${unitId}`, j.base * weight)) return null;
+  mine.scene.joke = newest;
+  return newest;
+}
+
 // src/engine/life/opinions.ts
 var topicOf = (reg, id) => reg.opinionTopics.get(id);
 function defaultPosition(state, reg, unitId, topicId) {
@@ -15501,6 +15610,7 @@ function startSceneLife(draft, reg, scene, activityOf) {
     const act = activityOf(id);
     const topics = [...topicsAt(reg, { locationId: scene.locationId, ...act !== void 0 ? { activityId: act } : {} }), ...recentEventTopics(draft, reg, id, draft.day)];
     events.push(...triggerTopics(draft, reg, [id], [...new Set(topics)], scene.id));
+    if (scene.participants.length === 1) pickJoke(draft, id, scene.id, draft.day);
   }
   return events;
 }
@@ -15611,7 +15721,10 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
       });
     }
   }
-  if (channel === "scene" && scene !== null && scene.mode === "private" && present2.length === 1) offer.firsts = true;
+  if (channel === "scene" && scene !== null && scene.mode === "private" && present2.length === 1) {
+    offer.firsts = true;
+    offer.jokes.push(...jokeCandidates(state, present2[0].id, state.day).map((j) => ({ ...j, unitId: present2[0].id })));
+  }
   const empty = offer.news.length + offer.hobbies.length + offer.topics.length + offer.jokes.length === 0 && !offer.firsts;
   return empty ? {} : { life: offer };
 }
@@ -15641,6 +15754,8 @@ function applyLifeIntent(draft, ctx2, unitId, ev) {
     }
     case "opinion_agreed":
       return ev.topicId === void 0 ? [] : agreeOpinion(draft, ctx2, unitId, ev.topicId, ev);
+    case "joke_returned":
+      return ev.factId === void 0 ? [] : returnJoke(draft, reg, unitId, ev.factId, draft.day);
     default:
       return [];
   }
@@ -20648,74 +20763,6 @@ function combatXp(state, reg, cs) {
     out[c.unitId] = Math.round(xp);
   }
   return out;
-}
-
-// src/engine/development/habits.ts
-function allowedHabits(state, reg, unitId) {
-  return [...reg.habits.values()].filter((h2) => contentAllowed(state, reg, h2, unitId));
-}
-var D = TUNING.development;
-var bump = (draft, unitId, key) => {
-  const unit2 = draft.squad.find((u) => u.id === unitId);
-  if (!unit2 || !isLiving(unit2)) return false;
-  const dev = ensureDevelopment(unit2);
-  dev.counters[key] = (dev.counters[key] ?? 0) + 1;
-  return true;
-};
-function reached(counters, h2) {
-  if (h2.counter.kind === "activity" && h2.counter.id !== void 0) return (counters[`activity:${h2.counter.id}`] ?? 0) >= h2.threshold ? `activity:${h2.counter.id}` : null;
-  const prefix = `${h2.counter.kind}:`;
-  return Object.keys(counters).find((k) => k.startsWith(prefix) && (h2.counter.id === void 0 || k === `${prefix}${h2.counter.id}`) && counters[k] >= h2.threshold) ?? null;
-}
-function checkHabits(draft, reg, unitId) {
-  const unit2 = draft.squad.find((u) => u.id === unitId);
-  if (!unit2 || !isLiving(unit2) || developmentMode(draft) === "off") return [];
-  const events = [];
-  for (const h2 of allowedHabits(draft, reg, unit2.kind === "named" ? unitId : void 0)) {
-    const dev = ensureDevelopment(unit2);
-    if (dev.habits.includes(h2.id)) continue;
-    const key = reached(dev.counters, h2);
-    if (key === null) continue;
-    const other = h2.counter.kind === "companion" ? draft.squad.find((u) => u.id === key.slice("companion:".length))?.displayName ?? "someone" : "";
-    const text2 = h2.fallback.replace(/^\s*AUTHOR TO WRITE:\s*/i, "").replace(/\{name\}/g, unit2.displayName).replace(/\{other\}/g, other).replace(/\s+/g, " ").trim().slice(0, D.factTextMax).trim();
-    const fact = { id: nextDevId(dev, "df"), text: text2, kind: "habit", day: draft.day, source: "habit", habitId: h2.id };
-    dev.habits.push(h2.id);
-    dev.facts.push(fact);
-    while (dev.facts.length > D.factsMax) {
-      const i = dev.facts.findIndex((f) => f.edited !== true && f.id !== fact.id);
-      if (i < 0) break;
-      dev.facts.splice(i, 1);
-    }
-    events.push({ type: "habit_formed", unitId, habitId: h2.id, factId: fact.id });
-  }
-  return events;
-}
-function countActivity(draft, reg, unitId, activityId) {
-  if (developmentMode(draft) === "off" || !bump(draft, unitId, `activity:${activityId}`)) return [];
-  return checkHabits(draft, reg, unitId);
-}
-function countCompanions(draft, reg, ids) {
-  if (developmentMode(draft) === "off") return [];
-  const named3 = [...new Set(ids)].filter((id) => draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
-  const events = [];
-  for (const a of named3) {
-    for (const b of named3) if (a !== b) bump(draft, a, `companion:${b}`);
-    events.push(...checkHabits(draft, reg, a));
-  }
-  return events;
-}
-function countRun(draft, reg, ids, regionId) {
-  if (developmentMode(draft) === "off") return [];
-  const events = [];
-  for (const id of ids) if (bump(draft, id, `region:${regionId}`)) events.push(...checkHabits(draft, reg, id));
-  events.push(...countCompanions(draft, reg, ids));
-  return events;
-}
-function habitEffect(state, reg, unitId, activityId) {
-  const unit2 = state.squad.find((u) => u.id === unitId);
-  if (!unit2 || developmentMode(state) === "off") return [];
-  const have = developmentOf(unit2).habits;
-  return [...reg.habits.values()].filter((h2) => have.includes(h2.id) && h2.effect?.activityId === activityId).map((h2) => ({ type: h2.effect.type, amount: h2.effect.amount }));
 }
 
 // src/engine/world/types.ts
@@ -30632,6 +30679,18 @@ var clean4 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s
 var LIFE_DERIVED = ["life:"];
 var NEWS_PREFIX = "life:news:";
 var OPINION_PREFIX = "life:opinion:";
+var JOKE_PREFIX = "life:joke:";
+function jokeDirective(state, unit2) {
+  const sc = state.life?.units[unit2.id]?.scene;
+  if (!sc || sc.sceneId !== state.scene?.id || sc.joke === void 0) return null;
+  const text2 = state.memory.facts.find((f) => f.id === sc.joke)?.text;
+  if (text2 === void 0) return null;
+  return {
+    id: `${JOKE_PREFIX}${unit2.id}`,
+    expiresAfter: "scene",
+    text: `If it fits, ${unit2.displayName} may bring back a running joke she shares with the commander: ${clean4(text2)} Lightly, once.`
+  };
+}
 function opinionDirective(state, reg, unit2) {
   const sc = state.life?.units[unit2.id]?.scene;
   if (!sc || sc.sceneId !== state.scene?.id || sc.topic === void 0) return null;
@@ -30666,6 +30725,8 @@ function lifeDirectives(state, reg, present2) {
     }
     const opinion = opinionDirective(state, reg, unit2);
     if (opinion) out.push(opinion);
+    const joke = jokeDirective(state, unit2);
+    if (joke) out.push(joke);
   }
   return out;
 }

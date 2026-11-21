@@ -18,6 +18,19 @@ export const LIFE_DERIVED = ['life:'] as const;
 
 export const NEWS_PREFIX = 'life:news:';
 export const OPINION_PREFIX = 'life:opinion:';
+export const JOKE_PREFIX = 'life:joke:';
+
+/** The directive of the running joke she may bring back in this scene (picked at its start), or null. A fact that is gone leaves no line. */
+function jokeDirective(state: CampaignState, unit: Unit): Directive | null {
+  const sc = state.life?.units[unit.id]?.scene;
+  if (!sc || sc.sceneId !== state.scene?.id || sc.joke === undefined) return null;
+  const text = state.memory.facts.find((f) => f.id === sc.joke)?.text;
+  if (text === undefined) return null;
+  return {
+    id: `${JOKE_PREFIX}${unit.id}`, expiresAfter: 'scene',
+    text: `If it fits, ${unit.displayName} may bring back a running joke she shares with the commander: ${clean(text)} Lightly, once.`,
+  };
+}
 
 /** The directive of the topic picked for her in the open scene, or null: her view in the topic's own words (the position's neutral description and her words when she has them). */
 function opinionDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
@@ -41,6 +54,7 @@ function opinionDirective(state: CampaignState, reg: Registries, unit: Unit): Di
  *    stale item reads as a passing mention ("recently").
  *  - `life:opinion:<unitId>`: the one topic picked for her in this scene (a trigger fired, she has a view and it is off cooldown), until she
  *    voices it (`opinion_voiced` clears the pick). Never an opinion nothing triggered.
+ *  - `life:joke:<unitId>`: the running joke she may bring back in this private scene (picked at its start), until a `joke_returned` uses it up.
  * Nothing while life is off.
  */
 export function lifeDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
@@ -63,6 +77,8 @@ export function lifeDirectives(state: CampaignState, reg: Registries, present: s
     }
     const opinion = opinionDirective(state, reg, unit);
     if (opinion) out.push(opinion);
+    const joke = jokeDirective(state, unit);
+    if (joke) out.push(joke);
   }
   return out;
 }

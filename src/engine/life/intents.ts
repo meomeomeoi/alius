@@ -6,6 +6,7 @@ import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { bumpInterest, pushHobby } from './hobbies';
 import { closeNews, pendingNews } from './news';
+import { returnJoke, jokeCandidates } from './jokes';
 import { agreeOpinion, challengeOpinion, voiceOpinion } from './opinions';
 import { unitOf } from './places';
 import { applyRelationDelta } from '../relationGain';
@@ -55,7 +56,10 @@ export function lifeIntentInput(
       });
     }
   }
-  if (channel === 'scene' && scene !== null && scene.mode === 'private' && present.length === 1) offer.firsts = true;
+  if (channel === 'scene' && scene !== null && scene.mode === 'private' && present.length === 1) {
+    offer.firsts = true;
+    offer.jokes.push(...jokeCandidates(state, present[0].id, state.day).map((j) => ({ ...j, unitId: present[0].id })));
+  }
   const empty = offer.news.length + offer.hobbies.length + offer.topics.length + offer.jokes.length === 0 && !offer.firsts;
   return empty ? {} : { life: offer };
 }
@@ -94,6 +98,8 @@ export function applyLifeIntent(draft: CampaignState, ctx: EngineCtx, unitId: st
     }
     case 'opinion_agreed':
       return ev.topicId === undefined ? [] : agreeOpinion(draft, ctx, unitId, ev.topicId, ev);
+    case 'joke_returned':
+      return ev.factId === undefined ? [] : returnJoke(draft, reg, unitId, ev.factId, draft.day);
     default:
       return [];
   }
