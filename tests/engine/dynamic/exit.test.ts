@@ -334,6 +334,29 @@ describe('the routes', () => {
     expect(dyn(other.state).aftermath?.kind).toBe('command_kept');
   });
 
+  it('a forced exit by an enforcement of severity 3 or more on a command holder returns command too (no command_kept); a lighter one does not', () => {
+    for (const measure of ['bench', 'brig']) {
+      const s = world('rule', 70, ['private_time', 'command']);
+      const punished = run(s, reg, { type: 'discipline/punish', payload: { unitId: ANN, measure, ...(measure === 'brig' ? { days: 2 } : {}) } });
+      expect(errors(punished.events), measure).toEqual([]);
+      // the enforcement itself ended nothing: she has no struggle yet (the exit creates it)
+      const r = exit(punished.state, { route: 'force', means: 'discipline' });
+      expect(errors(r.events), measure).toEqual([]);
+      expect(exitEvent(r.events), measure).toMatchObject({ route: 'force', commandKept: false, means: 'discipline' });
+      expect(dyn(r.state).domains, measure).toEqual([]);
+      expect(dyn(r.state).aftermath?.kind, measure).not.toBe('command_kept');
+      expect(r.events.filter((e) => e.type === 'domain_lost' && e.domainId === 'command').map((e) => e.reason), measure).toEqual(['force']);
+      expect(r.events.some((e) => e.type === 'aftermath_started' && e.kind === 'command_kept'), measure).toBe(false);
+    }
+    // a severity-2 punishment today: she keeps the command as a struggle
+    const light = run(world('rule', 70, ['private_time', 'command']), reg, { type: 'discipline/punish', payload: { unitId: ANN, measure: 'extra_duty' } }).state;
+    expect(exitEvent(exit(light, { route: 'force', means: 'discipline' }).events)).toMatchObject({ commandKept: true });
+    // a heavy punishment of yesterday is not the means of today: the exit refuses
+    const old = run(world('rule', 70, ['private_time', 'command']), reg, { type: 'discipline/punish', payload: { unitId: ANN, measure: 'bench' } }).state;
+    old.day += 1;
+    expect(errors(exit(old, { route: 'force', means: 'discipline' }).events)).not.toEqual([]);
+  });
+
   it('a Leash with no authorization left cannot be done first, so the forced exit stays closed', () => {
     const dry = world('role', 50, ['private_time']);
     dry.leash.authorizationsLeft = 0;

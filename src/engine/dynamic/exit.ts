@@ -4,13 +4,14 @@
  * `abrupt` now; `negotiated` opens a scene and waits for a compromise (`compromise_reached { exitId }`), which makes the exit clean (one step
  * lighter, and a mild aftermath); `transfer` is one conflict with another holder (the winner holds the domains, the loser alone leaves); `force` needs a means already done on her today (a punishment, the Leash
  * or, later, an oversight request: the card runs it through its own path, the vote, the warden's co-sign and the warnings) and costs two steps more. Every domain is dropped except the one that grants the command, which she keeps
- * as a struggle (`commandKept`); the dynamic starts again from `equal` with hold 0 and her tracks, and the romance falls a rung.
+ * as a struggle (`commandKept`), unless the means was the Leash or an enforcement of severity 3 or more, which wins the command back; the dynamic starts again from `equal` with hold 0 and her tracks, and the romance falls a rung.
  * Draws once, for the aftermath that follows (`startAftermathOnExit`), unless the command forces `command_kept`.
  */
 import type { Registries } from '../../content/types';
 import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { punishmentFor } from '../discipline/perception';
 import { leashLog } from '../leash/weekly';
 import { applyEventToUnit } from '../relations/effects';
 import { settleOrder } from '../personal/bookings';
@@ -50,6 +51,11 @@ export function meansDone(state: CampaignState, unitId: string, means: ExitMeans
   if (means === 'discipline') return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day);
   if (means === 'leash') return leashLog(state).some((e) => e.unitId === unitId && e.day === state.day && e.outcome === 'done');
   return true;
+}
+
+/** Whether the means done on her today was an enforcement of severity 3 or more (a bench, a brig): it wins the command back, as the Leash does (R15a). */
+function heavyEnforcement(state: CampaignState, reg: Registries, unitId: string): boolean {
+  return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day && Number(punishmentFor(reg, a.measure)?.severity ?? 0) >= 3);
 }
 
 const DO_FIRST: Record<ExitMeans, string> = {
@@ -152,15 +158,16 @@ export function exitDynamic(draft: CampaignState, ctx: Ctx, unitId: string, rout
     events.push(...addHold(draft, ctx, leaverId, -TUNING.dynamic.contestedLoss, 'contested')); // once, whatever she held
   }
 
-  // every domain is dropped but the command, which she keeps as a struggle: except when the Leash forced it, which wins the command back (R15a)
-  const byLeash = route === 'force' && opts.means === 'leash';
-  const commandKept = !byLeash && leaver.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
+  // every domain is dropped but the command, which she keeps as a struggle: except when the Leash or an enforcement of severity 3 or more forced
+  // it, which wins the command back (R15a)
+  const winsCommand = route === 'force' && (opts.means === 'leash' || (opts.means === 'discipline' && heavyEnforcement(draft, reg, unitId)));
+  const commandKept = !winsCommand && leaver.domains.some((d) => standing(d, draft.day) && keepsCommand(draft, reg, d.id));
   for (const d of [...leaver.domains]) {
     if (commandKept && keepsCommand(draft, reg, d.id)) {
       delete d.partialUntil;
       continue;
     }
-    events.push(loseDomain(draft, leaverId, d.id, byLeash && keepsCommand(draft, reg, d.id) ? 'force' : 'exit'));
+    events.push(loseDomain(draft, leaverId, d.id, winsCommand && keepsCommand(draft, reg, d.id) ? 'force' : 'exit'));
   }
   dropVoidOverride(draft, reg, leaverId);
 
