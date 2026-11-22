@@ -15,6 +15,7 @@ import type { CampaignState } from '../state/types';
 import { compromatOf, mentionCompromat } from './compromat';
 import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { slipSeen } from './knowledge';
+import { confirmOffer } from './offer';
 import { answerMilestone } from './milestones';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
 import { threatIn } from './reading';
@@ -60,7 +61,7 @@ export function dynamicIntentInput(
   const milestoneLabels: Record<string, string> = {};
   for (const m of milestoneRows) milestoneLabels[m.id] = String((reg.dynamicMilestones.get(m.milestoneId) as unknown as DynamicMilestoneEntry | undefined)?.promptHint ?? m.milestoneId);
   const claims = open.claims.filter((c) => present.includes(c.unitId)).map((c) => c.id);
-  const offers = open.offers.filter((o) => present.includes(o.unitId)).map((o) => o.id);
+  const offers = open.offers.filter((o) => present.includes(o.unitId) && o.confirmed !== true).map((o) => o.id);
   const exits = (open.exits ?? []).filter((e) => present.includes(e.unitId)).map((e) => e.id);
   const slips = participants.length >= 2
     ? present.filter((id) => {
@@ -83,7 +84,7 @@ export function dynamicIntentInput(
 /**
  * Routes one validated event of the dynamic to its effect on the unit it is about. The offer is rebuilt from the state (an answer to a probe that
  * is no longer pending, or a gesture the unit may no longer make, does nothing). The probe, milestone, compromat and slip types are handled here; the offer
- * type arrives with its own task and does nothing yet. `batch`: the events of the same applied batch so far (a threat to the commander in it makes a probe answer read as fear). Returns the engine events.
+ * answer only confirms what the engine decided (`confirmOffer`). `batch`: the events of the same applied batch so far (a threat to the commander in it makes a probe answer read as fear). Returns the engine events.
  */
 export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: EventIntent, batch: readonly EngineEvent[] = []): EngineEvent[] {
   const reg = ctx.registries;
@@ -102,6 +103,9 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'compromat_mentioned':
       // she holds some and is in the room (the offer was built from the same state); the commander learns the fact she named, or what she said
       return dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.compromat.includes(unitId) === true ? mentionCompromat(draft, ctx, unitId, ev.factId, ev.summary) : [];
+    case 'offer_answered':
+      // the engine decided her answer when the offer was made; the report only confirms it (a mismatch, a stale id or another woman's is dropped)
+      return confirmOffer(draft, unitId, ev.offerId, ev.answer, ev.correction);
     case 'protocol_slip':
       // the habit slips out with others in the room: each of them sees it (R14); in a DM, or alone, nobody does
       return slipSeen(draft, ctx, unitId);

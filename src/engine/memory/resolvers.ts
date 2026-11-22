@@ -6,6 +6,7 @@ import { scapegoatOptionId } from '../power/scapegoat';
 import { wardenOf } from '../warden/state';
 import { isLiving } from '../economy';
 import { momentTag } from '../headStart/tag';
+import { zoneTag } from '../dynamic/zones';
 import type { CampaignState, VoteKind } from '../state/types';
 
 /**
@@ -404,3 +405,18 @@ registerMemoryResolver('disappointed', (draft, event) => {
   const her = subjectOf(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ['her'], vars: ['name'] });
+
+// the dynamic (P15, offering yourself): what the commander offered her and how she answered; mocked is the present's to remember, a correction is the pair's
+registerMemoryResolver('offer_made', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', what: str(event.what) ?? 'something' } } : null;
+}, { ids: ['her'], vars: ['name', 'answer', 'what'] });
+
+// the dynamic (P15): a worship zone of hers the commander has been shown (by an offer, or by what the commander has learned of her); the fact carries the zone's own tag, which the body map reads
+const ATTITUDE_WORDS: Readonly<Record<string, string>> = { craves: 'she craves it', enjoys: 'she enjoys it', indifferent: 'it leaves her cold', dislikes: 'she dislikes it' };
+registerMemoryResolver('zone_revealed', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  const target = str(event.targetId);
+  if (!her || target === undefined) return null;
+  return { ids: { her: [her.id] }, vars: { name: her.name, what: str(event.what) ?? target, attitude: ATTITUDE_WORDS[str(event.attitude) ?? ''] ?? '' }, tags: [zoneTag(target)] };
+}, { ids: ['her'], vars: ['name', 'what', 'attitude'] });

@@ -38,6 +38,8 @@ export const WITNESS_PREFIX = 'dynamic:witness:';
 export const AFTERMATH_PREFIX = 'dynamic:aftermath:';
 export const LEASH_BLOCK_PREFIX = 'dynamic:leash_block:';
 export const DISAPPOINTED_PREFIX = 'dynamic:disappointed:';
+/** The line of an offer the commander made, for her next reply only (event-driven like P15a's `moment:`: `applyOfferDirectives`; a refresh leaves it alone). */
+export const OFFER_PREFIX = 'dynamic:offer:';
 
 /** Her style pair in words, the secondary's side named while it leads. */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
@@ -213,14 +215,57 @@ function commandDirectives(state: CampaignState, reg: Registries, present: strin
     .map((u): Directive => ({ id: `${COMMAND_PREFIX}${u.id}`, expiresAfter: 'scene', text: `${u.displayName} gives the orders now; the squad starts to address her as the one in command.` }));
 }
 
+/** What she does with each answer (`dynamic:offer:<unitId>`); she answers in character, and the line says nothing of what the commander feels. AUTHOR TO WRITE. */
+const OFFER_LINE: Readonly<Record<string, (name: string) => string>> = {
+  accepted: (n) => `${n} takes it up, in her own manner.`,
+  corrected: (n) => `${n} does not take it as offered: she says what she wants instead, in her own words.`,
+  mocked: (n) => `${n} mocks it, in her own manner.`,
+  refused: (n) => `${n} turns it down, in her own manner.`,
+  tonight: (n) => `${n} puts it off: tonight, she says, not now.`,
+};
+
+/**
+ * The directive an offer sets, or `null` for any other event: what the commander offered, how she takes it (the engine decided; the line carries only the word) and, with
+ * `[ASK IN RETURN]`, that something is asked in return. It lasts one reply (`next_reply`). With the holder cap reached she turns it down kindly. No number, no pronoun for the commander.
+ */
+export function offerDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  if (event.type !== 'offer_made' || !dynamicOn(state, reg)) return null;
+  const unit = state.squad.find((u) => u.id === event.unitId);
+  const answer = String(event.answer);
+  const say = OFFER_LINE[answer];
+  if (unit === undefined || say === undefined) return null;
+  const named = typeof event.corrected === 'string' ? reg.worshipTargets.get(event.corrected) : undefined;
+  const parts = [
+    `The commander offers ${sentence(String(event.what ?? 'something'))} to ${unit.displayName}${event.conditions === true ? ', and asks something in return' : ''}.`,
+    event.kind === true ? `${unit.displayName} turns it down kindly; she is not looking for that from the commander.` : say(unit.displayName),
+    ...(answer === 'corrected' && named !== undefined ? [`What she wants is the commander's attention to her ${sentence(String(named.label)).toLowerCase()}.`] : []),
+    'Show it in how she acts and speaks; never name it as a mechanic.',
+  ];
+  return { id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: parts.join(' ') };
+}
+
+/** Sets the directives the events of one dispatch call for. Returns whether any was set. */
+export function applyOfferDirectives(builder: ContextBuilder, events: ReadonlyArray<{ type: string; [k: string]: unknown }>, state: CampaignState | null, reg: Registries): boolean {
+  if (state === null) return false;
+  let any = false;
+  for (const e of events) {
+    const d = offerDirective(e, state, reg);
+    if (d !== null) {
+      builder.setDirective(d);
+      any = true;
+    }
+  }
+  return any;
+}
+
 /** Drops every directive this layer owns (a chat switch, no campaign, a scene that closed). */
 export function clearDynamicDirectives(builder: ContextBuilder): void {
   builder.clearMatching((d) => d.id.startsWith(DYNAMIC_PREFIX));
 }
 
-/** Sets the derived directives and drops the ones that no longer hold; without a state it only clears. Called on every refresh. */
+/** Sets the derived directives and drops the ones that no longer hold; without a state it only clears. Called on every refresh. The offer line is event-driven and lives out its reply. */
 export function refreshDynamicDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
-  clearDynamicDirectives(builder);
+  builder.clearMatching((d) => d.id.startsWith(DYNAMIC_PREFIX) && !d.id.startsWith(OFFER_PREFIX));
   if (state === null) return;
   for (const d of dynamicDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }

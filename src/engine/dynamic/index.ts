@@ -17,3 +17,6 @@ export type { ReadingSample } from './reading';
 export { defaultExpectation, leadingStyle, noteEvents, surfaceHolds } from './style';
 export { applyDynamicIntent, dynamicIntentInput, DYNAMIC_ROW_IS_CONDITIONAL } from './intents';
 export type { DynamicIntentInput } from './intents';
+export { answerOffer, confirmOffer, makeOffer, offerChoices, offerLabel, readComposition } from './offer';
+export type { AnswerResult, OfferChoice, OfferComposition } from './offer';
+export { zoneFacts, zoneRevealed, zoneTag } from './zones';

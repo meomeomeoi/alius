@@ -14,6 +14,7 @@ import { bypassLeash } from '../dynamic/bypass';
 import { noteLeashOnHer } from '../dynamic/compromat';
 import { requestTransfer } from '../dynamic/oversight';
 import { answerClaim } from '../dynamic/domains';
+import { makeOffer, readComposition } from '../dynamic/offer';
 import { registerEnforced, registerUndone } from '../discipline/record';
 import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
 import { frameRank } from '../blocking/state';
@@ -365,4 +366,27 @@ registerAction('dynamic/request_transfer', (draft, payload, ctx) => {
   const dyn = dynamicOf(draft, unit.id);
   if (dyn === undefined || frameRank(dyn.frame) < frameRank('play')) throw new Error(`${unit.displayName} holds nothing over the commander that oversight could move her from.`);
   return requestTransfer(draft, unit.id);
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Offering yourself (R20)
+
+/**
+ * `dynamic/offer { unitId, composition, askInReturn? }`: the commander offers herself to a woman (`composition`: one or two entries under their tabs, as the composer lists
+ * them; `askInReturn`: the composer's toggle). Her answer is the engine's (`makeOffer`), with the effects listed there; the action refuses what the composer would not list, a
+ * woman who cannot hold and a third entry, with nothing changed. In a scene it goes through `SceneController.stage`, in a DM straight through. Draws only the claim an accepted offer of time or a part can become.
+ */
+registerAction('dynamic/offer', (draft, payload, ctx) => {
+  const p = (payload ?? {}) as { unitId?: unknown; composition?: unknown; askInReturn?: unknown };
+  const unit = namedUnit(draft, p.unitId, 'dynamic/offer');
+  return makeOffer(draft, ctx, unit.id, readComposition(p.composition), { askInReturn: p.askInReturn === true });
+});
+
+// An offer made in a scene lapses with it (the day end drops the rest): the scene's end closes what the model has not confirmed.
+registerAfterAction((draft, _ctx, events) => {
+  const x = draft.dynamic;
+  if (x === undefined || x.open.offers.length === 0) return [];
+  for (const e of events) if (e.type === 'scene_ended' || e.type === 'scene_aborted') x.open.offers = x.open.offers.filter((o) => o.sceneId !== e.sceneId);
+  return [];
 });

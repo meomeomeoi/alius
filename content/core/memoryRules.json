@@ -1111,5 +1111,50 @@
       "dynamic",
       "disappointed"
     ]
+  },
+  {
+    "id": "offer_mocked",
+    "event": "offer_made",
+    "when": {
+      "answer": "mocked"
+    },
+    "text": "AUTHOR TO WRITE: {name} mocked what the commander offered: {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "offer_mocked"
+    ]
+  },
+  {
+    "id": "offer_corrected",
+    "event": "offer_made",
+    "when": {
+      "answer": "corrected"
+    },
+    "text": "AUTHOR TO WRITE: {name} turned down what the commander offered ({what}) and said what she wanted instead.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "offer_corrected"
+    ]
+  },
+  {
+    "id": "zone_revealed",
+    "event": "zone_revealed",
+    "text": "AUTHOR TO WRITE: {name} showed the commander what she thinks of attention to her {what}: {attitude}.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "zone"
+    ]
   }
 ]

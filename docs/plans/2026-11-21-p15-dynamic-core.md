@@ -2032,6 +2032,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `src/engine/tuning.ts` (`TUNING.offer`);
   - memory rules `offer_mocked`, `offer_corrected`.
 - Test: `tests/engine/dynamic/offer.test.ts`
+- **Memory check:** `offer_mocked` (the present), `offer_corrected` (the pair) and `zone_revealed` (the pair; the fact carries `zoneTag`, the plan's `expect:worship.<id>` in the form the fact store keeps) are `memoryRules` with resolvers (`offer_made`, `zone_revealed`). An accepted offer before others writes its own fact for the witnesses (a site fact, no rule) and a mocked one the compromat fact. The text reaches a prompt through the fact retrieval and `dynamic:offer:<unitId>`; no journal line, no chronicle line.
 
 **Interfaces:**
 - Produces:
@@ -2040,7 +2041,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `answerOffer(state, reg, unitId, composition): { answer: OfferAnswer; hold: number; favour: number; reveal?: string; corrected?: string }`;
   - `makeOffer(draft, ctx, unitId, composition, opts: { askInReturn?: boolean }): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `craves lands`: hold +6, favour +3; `enjoys` +3 / +1; `dislikes` → `mocked` for a `cruel` holder and `refused` for an `affectionate` one, −3 / −2.
   - `unknown reveals the zone` (`zone_revealed`, a fact tagged `expect:worship.<id>`).
   - `timing`: content × 1.5; frustrated × 0.5.
@@ -2050,10 +2051,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `gated entries never appear in the choices` (a disabled category, her limit, a dynamic-scope entry at `equal`).
   - `the intent confirms; a mismatched answer is dropped; correction text becomes a fact`.
   - `Regard falls for her and the witnesses by the entry's humiliation`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/offer.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R20.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): offering yourself`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/offer.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R20.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): offering yourself`
 
 ---
 

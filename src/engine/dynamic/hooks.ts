@@ -62,9 +62,15 @@ function styleReader(state: CampaignState, unitId: string, reg?: Registries): Ph
   return { primary: style.primary, ...(style.secondary !== undefined ? { secondary: style.secondary } : {}), phaseLead };
 }
 
-/** What she holds the commander until (her expectation profile); `blackout` without `breath_play` is turned into `limit` by P15a itself. */
+/**
+ * What she holds the commander until (her expectation profile); `blackout` without `breath_play` is turned into `limit` by P15a itself. An endurance the commander offered in
+ * this scene and she took ("hold as long as you like", Task 40) raises it to her maximum for the scene.
+ */
 function holdsReader(state: CampaignState, unitId: string) {
-  return liveDynamic(state, unitId) === undefined ? null : holdsUntilOfUnit(state.squad.find((u) => u.id === unitId)!) ?? null;
+  if (liveDynamic(state, unitId) === undefined) return null;
+  const scene = state.scene;
+  if (scene !== undefined && state.dynamic?.open.offers.some((o) => o.unitId === unitId && o.sceneId === scene.id && o.answer === 'accepted' && o.composition.some((c) => c.tab === 'endurance')) === true) return 'blackout';
+  return holdsUntilOfUnit(state.squad.find((u) => u.id === unitId)!) ?? null;
 }
 
 /** A scene is live while a present unit is at `play` or beyond (and the dynamic is on). */

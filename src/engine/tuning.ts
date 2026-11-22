@@ -919,4 +919,34 @@ export const TUNING = Object.freeze({
     drive: Object.freeze({ low: 0.7, moderate: 1, high: 1.4 }),
     noise: 0.2, moody: 2, lift: 1.3, drag: 0.7, dragStress: 70,
   }),
+  /**
+   * P15: offering yourself (R20, spec §15.7, §15.12). `maxEntries`: one or two entries make an offer. The hold her answer moves is the `dynamic.gains` row of its cause
+   * (`offer_craves`, `offer_enjoys`, `offer_refused`); `favour` is what the same answer does to her favour. `timing`: a content mood multiplies a gain, a frustrated one
+   * halves it (a loss is never softened). `position`: an unasked offer moves her reading's readiness by `r` and her motive toward `motive[tab]`; one that asks something in
+   * return (`[ASK IN RETURN]`) moves it toward `conditional`. `claim`: an accepted offer of time or a part, while her frame is at least `claimFrame`, becomes her claim of the
+   * domain that grants the capability for that tab, with `chance` (one draw). `humiliation` (0 to 5) is what Regard falls by for each entry of a tab: a posture whose effect
+   * is a camera in `lowCameras` counts `posture`, any other `postureFlat`; a contact tagged `humiliation` counts `contactTagged`, else `contact`. `mockers`: styles that mock what
+   * they dislike, `mockingHumor`: the styles that mock only with a mocking humor; `tonight`: styles that answer indifference with "tonight". `times`: the ids of the time tab.
+   * `AUTHOR TO TUNE`.
+   */
+  offer: Object.freeze({
+    maxEntries: 2,
+    favour: Object.freeze({ craves: 3, enjoys: 1, dislikes: -2 }),
+    timing: Object.freeze({ content: 1.5, frustrated: 0.5 }),
+    position: Object.freeze({ r: 0.1, motive: Object.freeze({ part: 'her', posture: 'process', contact: 'process', service: 'process', time: 'her', role: 'process', endurance: 'process' } as const), conditional: 'gain' }),
+    claim: Object.freeze({ chance: 0.4, claimFrame: 'role', capability: Object.freeze({ time: 'book_ahead', part: 'body_conditions' } as const) }),
+    humiliation: Object.freeze({ part: 2, posture: 3, postureFlat: 0, contact: 2, contactTagged: 3, service: 1, time: 0, role: 2, endurance: 3, lowCameras: Object.freeze(['from_below', 'pov_floor']) as readonly string[] }),
+    mockers: Object.freeze(['cruel', 'cold']) as readonly string[],
+    mockingHumor: Object.freeze(['playful']) as readonly string[],
+    tonight: Object.freeze(['cold', 'ritual']) as readonly string[],
+    times: Object.freeze(['evening', 'night']) as readonly string[],
+    /** The attitude a time offer meets, by her `drive`; the service category an offer of service is read in. */
+    timeBy: Object.freeze({ low: 'indifferent', moderate: 'enjoys', high: 'craves' } as const),
+    serviceCategory: 'service',
+  }),
+  /**
+   * P15: mastery per target (R20, spec §15.10): `act` xp for each act on a target, `how` more when her `how` for it is set and the act ended clean; `levels` are the xp
+   * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `AUTHOR TO TUNE`.
+   */
+  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]) as readonly number[], revealLevel: 2, clean: Object.freeze(['released', 'checked']) as readonly string[] }),
 });

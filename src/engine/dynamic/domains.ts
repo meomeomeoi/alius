@@ -26,7 +26,7 @@ type Ctx = Pick<EngineCtx, 'registries' | 'rng'>;
 export { capabilitiesOf, hasCapability, holderWith };
 
 /** The unit (other than `except`) that holds a domain today, in squad order. Reads the id: this is the domain being claimed, not a capability. */
-function holderOfDomain(state: CampaignState, domainId: string, except: string): string | null {
+export function holderOfDomain(state: CampaignState, domainId: string, except: string): string | null {
   return state.squad.find((u) => u.id !== except && u.kind === 'named' && isLiving(u)
     && dynamicOf(state, u.id)?.domains.some((d) => d.id === domainId && standing(d, state.day)) === true)?.id ?? null;
 }

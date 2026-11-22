@@ -127,6 +127,8 @@ export interface OpenOffer {
   /** The offer asked something in return (`[ASK IN RETURN]`). */
   conditions?: true;
   sceneId?: string;
+  /** The model has confirmed her answer (`offer_answered`): it is no longer offered to the intent reader; the offer stays open for the scene (an endurance offer is read from it). */
+  confirmed?: true;
 }
 /** A negotiated exit that waits for a compromise in a scene with her (R15): `dx<n>`. ABRUPT on its card ends it now. */
 export interface OpenExit { id: string; unitId: string; day: number }

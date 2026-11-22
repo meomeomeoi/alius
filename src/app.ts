@@ -68,7 +68,7 @@ import { createDevelopment } from './development/controller';
 import { createDynamic } from './dynamic/controller';
 import { bypassRoutes } from './engine/dynamic/bypass';
 import { leashBlockOf } from './engine/dynamic/leashBlock';
-import { clearDynamicDirectives, refreshDynamicDirectives } from './dynamic/directives';
+import { applyOfferDirectives, clearDynamicDirectives, refreshDynamicDirectives } from './dynamic/directives';
 import { createLife } from './life/controller';
 import { clearLifeDirectives, refreshLifeDirectives } from './life/directives';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
@@ -867,7 +867,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
       staging.onEvents(events); // P15a: a hold that starts asks for her cues and gets its first segment; a blackout ends the scene
-      if (applyMomentDirectives(context, events, state, registries) || applyPhysicsDirectives(context, events, state, registries)) applyContext(); // P15a: the tension of a moment, or what the commander chose, for her next reply
+      const offered = applyOfferDirectives(context, events, state, registries); // P15: what the commander offered and how she takes it, for her next reply (every event is read: no short circuit)
+      if (applyMomentDirectives(context, events, state, registries) || applyPhysicsDirectives(context, events, state, registries) || offered) applyContext(); // P15a: the tension of a moment, or what the commander chose, for her next reply
       discipline.onEvents(events);
       bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
       personal.onEvents(events); // P9c: a clash of bookings, a claim, a peeled decor
