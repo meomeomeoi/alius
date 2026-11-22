@@ -200,17 +200,19 @@ function withUndo(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment, answe
   const dyn = dynamicOf(draft, holderId)!;
   const pr = ensurePractices(draft);
   const undo: PracticeUndo = {
-    punishmentId: p.id, status: p.status, hold: dyn.hold, favour: dyn.favour, tracks: structuredClone(dyn.tracks), refusals: [...dyn.refusals], contest: [...dyn.contest], restrictions: pr.restrictions.length,
+    punishmentId: p.id, status: p.status, hold: dyn.hold, favour: dyn.favour, tracks: structuredClone(dyn.tracks), refusals: [...dyn.refusals], contest: [...dyn.contest], restrictionsAdded: [], domains: structuredClone(dyn.domains), lastPracticeDay: dyn.lastPracticeDay,
     ...(pr.cold[holderId] !== undefined ? { cold: pr.cold[holderId] } : {}),
     stamp: {
       day: draft.day, slot: draft.slot, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}), frame: dyn.frame, milestones: (draft.dynamic?.open.milestones ?? []).filter((m) => m.unitId === holderId).map((m) => m.id),
       claims: (draft.dynamic?.open.claims ?? []).filter((c) => c.unitId === holderId).map((c) => c.id), injuredUntil: draft.commander.injuredUntilDay ?? 0, expedition: draft.expedition?.id ?? null, lastExpedition: draft.lastExpedition?.id ?? null,
     },
   };
+  const restrictionsBefore = [...pr.restrictions];
   const tasksBefore = pr.tasks.map((t) => t.id);
   const requestsBefore = pr.requests.map((r) => r.id);
   const markBefore = draft.personal?.mark;
   const { events, inverse } = captureInverse(draft, holderId, answer);
+  undo.restrictionsAdded = pr.restrictions.filter((r) => !restrictionsBefore.includes(r)).map((r) => ({ ...r }));
   const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
   const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
   if (tasks.length > 0) undo.taskIds = tasks;
@@ -250,7 +252,7 @@ export function canUndoPractice(state: CampaignState, punishmentId: string): str
 
 /**
  * Takes an answer back (`practice/undo`): her relation numbers, record and history through P9's `revertInverse`, then what the practices put (`restorePractice`): hold, favour, tracks, her
- * refusals, the restrictions, cold shoulder, mark, stress, tasks and requests the answer made, and the punishment is as it was. Throws with `canUndoPractice`'s reason. Draws nothing.
+ * refusals, domains and the day she last practised, the restrictions the answer added, cold shoulder, mark, stress, tasks and requests the answer made, and the punishment is as it was. Throws with `canUndoPractice`'s reason. Draws nothing.
  */
 export function undoPractice(draft: CampaignState, ctx: EngineCtx, punishmentId: string): EngineEvent[] {
   const why = canUndoPractice(draft, punishmentId);
@@ -273,8 +275,13 @@ export function restorePractice(draft: CampaignState, _ctx: EngineCtx, unitId: s
     dyn.tracks = structuredClone(undo.tracks);
     dyn.refusals = [...undo.refusals];
     dyn.contest = [...undo.contest];
+    dyn.domains = structuredClone(undo.domains); // a hold loss may have cost a domain (`reconcileDomains`)
+    dyn.lastPracticeDay = undo.lastPracticeDay;
   }
-  pr.restrictions = pr.restrictions.slice(0, undo.restrictions);
+  for (const row of undo.restrictionsAdded) {
+    const at = pr.restrictions.findIndex((r) => r.holderId === row.holderId && r.what === row.what && r.arg === row.arg && r.untilDay === row.untilDay);
+    if (at >= 0) pr.restrictions.splice(at, 1); // only the rows this answer wrote: another holder's, written since, stays
+  }
   if (undo.cold === undefined) delete pr.cold[unitId];
   else pr.cold[unitId] = undo.cold;
   if (undo.markSet === true && draft.personal?.mark?.unitId === unitId) delete draft.personal.mark;

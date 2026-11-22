@@ -7,15 +7,16 @@ import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
-import { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
+import { fallbackLine, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 import { punishmentEntryFor, severityOfEntry } from './offences';
-import { stakeRank, type OpenPunishment, type PracticeKind, type PracticeRequest, type Task, type ValidOutput } from './state';
+import { stakeRank, type OpenPunishment, type PracticeCard, type PracticeKind, type PracticeRequest, type ValidOutput } from './state';
+import { allCards, requestOf } from './request';
 import { TUNING } from '../tuning';
 import { acceptFormOf, writeTask, type Writer } from './tasks';
 import { validatePracticeOutput } from './validate';
 
 export { acceptFormOf, type Writer };
-export { requestPractice } from './request';
+export { allCards, cardOf, practiceKindOf, requestOf, requestPractice } from './request';
 
 /**
  * Her punishment, from a card: the engine owns the entry and the weight (picked when the offence was noted; picked again now when the entry can no longer be carried out; nothing that stands: no punishment), the model's
@@ -69,28 +70,6 @@ export function fallbackOutput(state: CampaignState, reg: Registries, request: P
 }
 
 /**
- * The request a key names: the one still waiting, or, when a card written for it is still `offered`, a request rebuilt from that card (its kind, chain and flags, its
- * seed and fresh ones) so that a reroll can ask again. `replaced` is that card. Undefined when the key is gone (the card was answered, the holder left).
- */
-export function requestOf(state: CampaignState, reg: Registries, requestId: string): { request: PracticeRequest; replaced?: Task } | undefined {
-  const p = state.practices;
-  const waiting = p?.requests.find((r) => r.id === requestId);
-  if (waiting !== undefined) return { request: waiting };
-  const old = p?.tasks.find((t) => t.requestId === requestId && t.status === 'offered');
-  if (old === undefined) return undefined;
-  const kind = old.kind as PracticeKind;
-  const seedIds = [...new Set([...(old.seedId !== undefined ? [old.seedId] : []), ...pickSeeds(state, reg, old.holderId, kind)])];
-  return {
-    replaced: old,
-    request: {
-      id: requestId, holderId: old.holderId, kind, day: old.day, seedIds,
-      ...(old.chainId !== undefined ? { chainOf: old.chainId } : {}), ...(old.targetUnitId !== undefined ? { targetUnitId: old.targetUnitId } : {}),
-      ...(old.sealed === true ? { sealed: true as const } : {}), ...(old.noDuration === true ? { noDuration: true as const } : {}),
-    },
-  };
-}
-
-/**
  * Writes the practice of a request from its card, or from the fallback (`'fallback'`: the first allowed seed's template line and gist, `plain: true`), and closes the
  * request. A card is read again by `validatePracticeOutput` (the state may have moved since the controller parsed it). A request that is gone is refused, unless a
  * card written for it is still `offered`: then the new card replaces it in place (a reroll before the commander answered; the fallback never does). A card of another
@@ -110,16 +89,24 @@ export function issuePractice(draft: CampaignState, ctx: EngineCtx, requestId: s
   if (!plain && card === null) throw new Error('That card does not fit.');
   p.requests = p.requests.filter((r) => r.id !== requestId);
   if (card === null) return [];
-  const before = p.tasks.length;
   const events = write(draft, ctx, request, card, plain);
-  const written = p.tasks.length > before ? p.tasks.at(-1) : undefined; // a punishment goes to its own list and stamps itself
-  if (written !== undefined) {
-    written.requestId = requestId;
-    if (replaced !== undefined) {
-      p.tasks = p.tasks.filter((t) => t !== replaced);
-      written.id = replaced.id;
-      for (const e of events) if (e.type === 'task_issued') { e.taskId = replaced.id; e.rerolled = true; }
-    }
+  if (replaced === undefined) return events;
+  // a reroll: the new card (it carries the request's id: every writer stamps it) takes the place and the id of the one it replaces
+  const written = allCards(draft).find((c) => c.requestId === requestId && c !== replaced);
+  if (written === undefined) return events; // nothing stands now: the card that was there stays as it was
+  const lists: Array<Array<PracticeCard>> = [p.tasks, p.punishments, p.demonstrations];
+  const from = lists.find((l) => l.includes(replaced))!;
+  const to = lists.find((l) => l.includes(written))!;
+  const at = from.indexOf(replaced);
+  to.splice(to.indexOf(written), 1);
+  from.splice(at, 1, written);
+  written.id = replaced.id;
+  for (const e of events) {
+    const key = REISSUED[e.type];
+    if (key !== undefined) { e[key] = replaced.id; e.rerolled = true; }
   }
   return events;
 }
+
+/** The event a writer says its card with, and the field that names the card: a reroll keeps the id of the card it replaced. */
+const REISSUED: Readonly<Record<string, string>> = { task_issued: 'taskId', punishment_issued: 'punishmentId', demonstration_staged: 'demonstrationId' };

@@ -9,6 +9,7 @@ import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
 import { renderCmdrCard } from '../../../src/ui/commander/cmdrCard';
 import { h } from '../../../src/ui/dom';
+import type { GenerationUi } from '../../../src/ui/generation/surface';
 import { drawTaskCards, renderTaskCard } from '../../../src/ui/practice/taskCard';
 import { registerSignature, resetSignature, renderSignature } from '../../../src/ui/practice/signature';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
@@ -262,5 +263,66 @@ describe('analysis', () => {
       }
       expect(host.querySelectorAll('[data-analyze]').length).toBeGreaterThan(2);
     }
+  });
+});
+
+/** A stand-in for the surface's generation ui (every call a spy; the reroll state is whatever the test says). */
+function fakeGeneration(reroll: { enabled: boolean; reason?: string } = { enabled: true }) {
+  const generations = { retry: vi.fn(async () => ({ kind: 'applied', value: 1 }) as never), reroll: vi.fn(async () => ({ kind: 'applied', value: 1 }) as never), rerollState: vi.fn(() => reroll), drop: vi.fn(), useFallback: vi.fn(async () => {}) };
+  const ui: GenerationUi = { generations, modal: vi.fn(async () => null), settings: () => ({ ...DEFAULT_SETTINGS }), toast: vi.fn(), redraw: vi.fn() };
+  return { ui, generations };
+}
+
+describe('REROLL of her words and the chips of a call that failed (I8, R24)', () => {
+  const rerollOf = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('button[data-action="generation-reroll"]');
+  const withRequest = (over: Partial<Task> = {}) => state({ requestId: 'pq5', ...over });
+
+  it('with no generation ui the card draws no reroll', () => {
+    expect(rerollOf(draw(withRequest()).host)).toBeNull();
+  });
+
+  it('with one, an offered card has [ REROLL ] for its site and request, which asks the envelope again', () => {
+    const s = withRequest();
+    const { ui, generations } = fakeGeneration();
+    const host = h('div');
+    document.body.append(host);
+    drawTaskCards(host, s, reg, () => true, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn(), generation: ui });
+    const b = rerollOf(host)!;
+    expect(b).not.toBeNull();
+    expect(generations.rerollState).toHaveBeenCalledWith('practice.task', 'pq5');
+    b.click();
+    expect(generations.reroll).toHaveBeenCalledWith('practice.task', 'pq5');
+    expect(markedWithout(host)).toEqual([]);
+  });
+
+  it('a card that is locked says why, and a card with no request has none', () => {
+    const s = withRequest();
+    const { ui } = fakeGeneration({ enabled: false, reason: 'It was answered.' });
+    const host = h('div');
+    document.body.append(host);
+    drawTaskCards(host, s, reg, () => true, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn(), generation: ui });
+    expect(rerollOf(host)!.getAttribute('aria-disabled')).toBe('true');
+    expect(rerollOf(host)!.title).toBe('It was answered.');
+    const bare = h('div');
+    drawTaskCards(bare, state(), reg, () => true, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn(), generation: ui });
+    expect(rerollOf(bare)).toBeNull();
+  });
+
+  it('a practice whose words failed shows its chip where its holder is picked, and only there', () => {
+    const s = state();
+    s.practices!.tasks = [];
+    s.practices!.requests = [{ id: 'pq6', holderId: ANN, kind: 'task', day: 20, seedIds: [] }];
+    s.generations = { seq: 1, records: [{ id: 'g1', siteId: 'practice.task', key: 'pq6', reason: 'refused', detail: '', attempts: 1, day: 20, slot: 'morning', at: 1, budgetMult: 1, status: 'open' }] };
+    const { ui } = fakeGeneration();
+    const mine = h('div');
+    document.body.append(mine);
+    drawTaskCards(mine, s, reg, (c) => c.unitId === ANN, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn(), generation: ui });
+    expect(mine.querySelectorAll('.alius-genfail')).toHaveLength(1);
+    const other = h('div');
+    drawTaskCards(other, s, reg, (c) => c.unitId === BEA, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn(), generation: ui });
+    expect(other.querySelectorAll('.alius-genfail')).toHaveLength(0);
+    const none = h('div');
+    drawTaskCards(none, s, reg, () => true, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn() });
+    expect(none.querySelectorAll('.alius-genfail')).toHaveLength(0);
   });
 });

@@ -206,9 +206,9 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     const returnCards = h('div', { class: 'alius-return-cards' });
     drawReturnCards(returnCards, state, ctx.registries, (c) => c.unitId === current, (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again, under the thread
     const taskCards = h('div', { class: 'alius-task-cards' });
-    drawTaskCards(taskCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerTask?.(id, answer), sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus() }); // P16: her task, under the thread (words are typed in the thread's own input)
+    drawTaskCards(taskCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerTask?.(id, answer), sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx.generation }); // P16: her task, under the thread (words are typed in the thread's own input)
     const punishmentCards = h('div', { class: 'alius-punishment-cards' });
-    drawPunishmentCards(punishmentCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id) }); // P16: her discipline, under the thread
+    drawPunishmentCards(punishmentCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), generation: ctx.generation }); // P16: her discipline, under the thread
     // P15: `[ OFFER MYSELF ]` under the thread, and her answer once she has written back (the composer keeps its choice on the tab's own element across the tab's redraws)
     const offerChips = h('div', { class: 'alius-offer-surface' });
     if (ctx.onOffer) drawOfferChips(offerChips, { state, reg: ctx.registries, pick: (id) => id === current, onOffer: ctx.onOffer, answered: () => messages.at(-1)?.from !== 'commander', memory: host });

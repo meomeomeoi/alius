@@ -1,7 +1,7 @@
 import { plainDraft } from '../content/draft';
 import { isLiving } from '../engine/economy';
 import { practiceLive } from '../engine/practice/gate';
-import { requestOf } from '../engine/practice/issue';
+import { cardOf, practiceKindOf, requestOf } from '../engine/practice/issue';
 import { PRACTICE_EVENT_TYPES, PRACTICE_KINDS, type PracticeRequest, type ValidOutput } from '../engine/practice/state';
 import { buildPracticeInput, CARD_MAX, validatePracticeOutput, type PracticeGenerateInput } from '../engine/practice/validate';
 import type { CampaignState, Unit } from '../engine/state/types';
@@ -111,7 +111,10 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       committed(key) {
         const s = state();
         if (s === null) return 'That practice is gone.';
-        return requestOf(s, deps.registries(), key) !== undefined ? null : 'It was answered.';
+        if (s.practices?.requests.some((r) => r.id === key) === true) return null; // still waiting for its words
+        const card = cardOf(s, key); // a reroll is allowed while the card is `offered`, whatever the list it is in
+        if (card === undefined) return 'That practice is gone.';
+        return card.status === 'offered' ? null : 'It was answered.';
       },
     });
   }
@@ -119,7 +122,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
   /** The kind of a request, or of the card written for it, for the site's name. */
   const kindOf = (requestId: string): string | undefined => {
     const s = state();
-    return s?.practices?.requests.find((r) => r.id === requestId)?.kind ?? s?.practices?.tasks.find((t) => t.requestId === requestId)?.kind;
+    return s === null ? undefined : practiceKindOf(s, requestId);
   };
 
   /** Requests already asked for in this chat (a failure leaves the fallback in place; the day step is what falls back the rest). */
@@ -187,7 +190,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       for (const e of events) {
         if (OWN.includes(e.type)) refresh = true;
         if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') deliver(e.taskId);
-        if (e.type === 'punishment_issued' && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
+        if (e.type === 'punishment_issued' && e.rerolled !== true && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
       }
       if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh = true;
       if (refresh) deps.refreshContext();
@@ -223,7 +226,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
         deps.toast('error', String(bad.message ?? bad.code));
         return false;
       }
-      if (answer === 'talk' && deps.startScene !== undefined && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [task.holderId], origin: 'event' });
+      if (answer === 'talk' && deps.startScene !== undefined && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [task.holderId], origin: 'event', consumesSlot: false });
       deps.refreshContext();
       return true;
     },
@@ -242,7 +245,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       const p = s?.practices?.punishments.find((x) => x.id === punishmentId);
       if (s === null || p === undefined) return false;
       if (!ok(deps.app.dispatch({ type: 'practice/answer_punishment', payload: { punishmentId, answer } }, { expectChatId: chatId() }))) return false;
-      if (answer === 'negotiate' && deps.startScene !== undefined && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [p.holderId], origin: 'event' });
+      if (answer === 'negotiate' && deps.startScene !== undefined && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [p.holderId], origin: 'event', consumesSlot: false });
       deps.refreshContext();
       return true;
     },

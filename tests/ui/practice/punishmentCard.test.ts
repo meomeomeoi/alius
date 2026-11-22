@@ -12,6 +12,7 @@ import { blankPractices, type OpenPunishment } from '../../../src/engine/practic
 import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
 import { h } from '../../../src/ui/dom';
+import type { GenerationUi } from '../../../src/ui/generation/surface';
 import { drawPunishmentCards, renderPunishmentCard, renderTakeInsteadCard } from '../../../src/ui/practice/punishmentCard';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
 import { loadCore, run } from '../../helpers/world';
@@ -166,5 +167,36 @@ describe('analysis', () => {
     expect(markedWithout(root)).toEqual([]);
     expect(unresolved(root, env(done))).toEqual([]);
     expect(unreachable(root)).toEqual([]);
+  });
+});
+
+/** A stand-in for the surface's generation ui (every call a spy; the reroll state is whatever the test says). */
+function fakeGeneration(reroll: { enabled: boolean; reason?: string } = { enabled: true }) {
+  const generations = { retry: vi.fn(async () => ({ kind: 'applied', value: 1 }) as never), reroll: vi.fn(async () => ({ kind: 'applied', value: 1 }) as never), rerollState: vi.fn(() => reroll), drop: vi.fn(), useFallback: vi.fn(async () => {}) };
+  const ui: GenerationUi = { generations, modal: vi.fn(async () => null), settings: () => ({ ...DEFAULT_SETTINGS }), toast: vi.fn(), redraw: vi.fn() };
+  return { ui, generations };
+}
+
+describe('REROLL of her words (I8, R24)', () => {
+  const rerollOf = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('button[data-action="generation-reroll"]');
+
+  it('with no generation ui, or for an order about a soldier, none; with one, an offered punishment asks the envelope again', () => {
+    expect(rerollOf(all(state({ requestId: 'pq5' })).host)).toBeNull();
+    const { ui, generations } = fakeGeneration();
+    const host = h('div');
+    document.body.append(host);
+    drawPunishmentCards(host, state({ requestId: 'pq5' }), reg, () => true, { ...handlers(), generation: ui });
+    const b = rerollOf(host)!;
+    expect(b).not.toBeNull();
+    expect(generations.rerollState).toHaveBeenCalledWith('practice.punishment', 'pq5');
+    b.click();
+    expect(generations.reroll).toHaveBeenCalledWith('practice.punishment', 'pq5');
+    expect(markedWithout(host)).toEqual([]);
+    const order = h('div');
+    drawPunishmentCards(order, state({ forUnitId: BEA }), reg, () => true, { ...handlers(), generation: ui });
+    expect(rerollOf(order)).toBeNull();
+    const talked = h('div');
+    drawPunishmentCards(talked, state({ requestId: 'pq5', status: 'negotiating' }), reg, () => true, { ...handlers(), generation: ui });
+    expect(rerollOf(talked)).toBeNull(); // being talked over: her words are the talk's
   });
 });

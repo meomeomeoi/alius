@@ -125,7 +125,7 @@ export function addHold(
 
 /**
  * Puts a holder's hold back to a value it had (P16's UNDO of an answer to her discipline): the one writer of hold besides `addHold`, used only for that. It moves no band-dependent
- * state (a domain she lost stays lost). Emits `hold_changed { cause: 'undo' }` when the value moved. Nothing for a unit with no dynamic.
+ * state (P16's `restorePractice` puts the domains back itself). Emits `hold_changed { cause: 'undo' }` when the value moved. Nothing for a unit with no dynamic.
  */
 export function restoreHold(draft: CampaignState, unitId: string, value: number): EngineEvent[] {
   const dyn = dynamicOf(draft, unitId);

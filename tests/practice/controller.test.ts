@@ -303,13 +303,26 @@ describe('her discipline (P16)', () => {
     expect(await ctl.answerPunishment('pp9', 'accept')).toBe(false);
   });
 
+  it('a punishment card can be rerolled while it is offered: enabled, replaced in place, no second DM; not once answered (I8)', async () => {
+    const s = withPunishment({ requestId: 'pq5' });
+    const { h, ctl } = rig(s, { autoRetry: 0 });
+    expect(ctl.rerollState('pq5')).toEqual({ enabled: true });
+    h.st.mainReplies = [JSON.stringify({ kind: 'punishment', text: 'Not a word to anyone until tomorrow.', summary: 'silent until tomorrow' })];
+    await ctl.reroll('pq5');
+    expect(h.state().practices!.punishments).toHaveLength(1);
+    expect(h.state().practices!.punishments[0]).toMatchObject({ id: 'pp1', requestId: 'pq5', text: 'Not a word to anyone until tomorrow.', summary: 'silent until tomorrow', status: 'offered', entryId: 'no_messages' });
+    expect(dms(h)).toHaveLength(0);
+    h.setState((x) => { x.practices!.punishments[0].status = 'accepted'; });
+    expect(ctl.rerollState('pq5')).toEqual({ enabled: false, reason: 'It was answered.' });
+  });
+
   it('NEGOTIATE opens a one-to-one scene with her unless she is in the open scene', async () => {
     const startScene = vi.fn(async () => true);
     const s = withPunishment();
     const h = worldHarness(reg, s, { autoRetry: 0 });
     const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene });
     expect(await ctl.answerPunishment('pp1', 'negotiate')).toBe(true);
-    expect(startScene).toHaveBeenCalledWith({ locationId: 'quarters_unit', participants: [ANN], origin: 'event' });
+    expect(startScene).toHaveBeenCalledWith({ locationId: 'quarters_unit', participants: [ANN], origin: 'event', consumesSlot: false });
     expect(h.state().practices!.punishments[0].status).toBe('negotiating');
   });
 });
@@ -344,5 +357,41 @@ describe('her order about a soldier and the squad vote (I3)', () => {
     const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn() });
     expect(ctl.takeInstead('pp1', 'do_it')).toBe(false);
     expect(h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+  });
+});
+
+describe('TALK and NEGOTIATE cost no slot (I7)', () => {
+  const offered = (): CampaignState => {
+    const s = withService(world(reg, 'role'));
+    s.settings.unitDms = true;
+    requestPractice(s, { registries: reg, rng: new Rng(s.rng) }, ANN, 'task');
+    const issued = run(s, reg, { type: 'practice/issue', payload: { requestId: s.practices!.requests[0].id } });
+    return issued.state;
+  };
+  /** The app's `beginScene` is the scene controller over `scene/start`; this one is the engine's own. */
+  const opener = (h: ReturnType<typeof worldHarness>) => async (o: { locationId: string; participants: string[]; origin: 'event'; consumesSlot?: boolean }) =>
+    !h.deps.app.dispatch({ type: 'scene/start', payload: { ...o, startIndex: 0 } }).some((e) => e.type === 'error');
+
+  it('TALK on a task opens a scene that does not consume the slot, and ending it leaves the slot where it was', async () => {
+    const s = offered();
+    const h = worldHarness(reg, s, { autoRetry: 0 });
+    const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene: opener(h) });
+    const slot = h.state().slot;
+    expect(await ctl.answerTask(h.state().practices!.tasks[0].id, 'talk')).toBe(true);
+    expect(h.state().scene).toMatchObject({ participants: [ANN], consumesSlot: false });
+    expect(errors(h.deps.app.dispatch({ type: 'scene/end', payload: {} }))).toEqual([]);
+    expect(h.state().slot).toBe(slot);
+  });
+
+  it('NEGOTIATE on her discipline likewise', async () => {
+    const s = withService(world(reg, 'role'));
+    s.practices = { ...blankPractices(), seq: 3, punishments: [{ id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: 't', summary: 's', status: 'offered', day: 20 }] };
+    const h = worldHarness(reg, s, { autoRetry: 0 });
+    const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene: opener(h) });
+    const slot = h.state().slot;
+    expect(await ctl.answerPunishment('pp1', 'negotiate')).toBe(true);
+    expect(h.state().scene).toMatchObject({ participants: [ANN], consumesSlot: false });
+    h.deps.app.dispatch({ type: 'scene/end', payload: {} });
+    expect(h.state().slot).toBe(slot);
   });
 });

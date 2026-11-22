@@ -24,6 +24,7 @@ const base = (entryId: string, severity: OpenPunishment['severity'], frame: 'rol
   s.practices = { ...blankPractices(), seq: 5, punishments: [pun(entryId, severity)] };
   dynamicOf(s, ANN)!.hold = frame === 'rule' ? 90 : 45; // inside the band, with no milestone due (the answer's own hold gain must not offer one: that would refuse the undo)
   dynamicOf(s, ANN)!.favour = 3;
+  dynamicOf(s, ANN)!.lastPracticeDay = 5; // the answer's hold gain moves it (a gain is practice): UNDO puts it back
   return s;
 };
 const answer = (s: CampaignState, a: string) => run(s, reg, { type: 'practice/answer_punishment', payload: { punishmentId: 'pp1', answer: a } });
@@ -35,7 +36,7 @@ const picture = (s: CampaignState) => {
   const r = s.relations[ANN];
   const d = dynamicOf(s, ANN)!;
   return {
-    trust: r.trust, affinity: r.affinity, attraction: r.attraction, hold: d.hold, favour: d.favour, tracks: d.tracks, refusals: d.refusals, contest: d.contest, record: recordOf(s, ANN),
+    trust: r.trust, affinity: r.affinity, attraction: r.attraction, hold: d.hold, favour: d.favour, domains: d.domains, lastPracticeDay: d.lastPracticeDay, tracks: d.tracks, refusals: d.refusals, contest: d.contest, record: recordOf(s, ANN),
     status: px(s).status, restrictions: s.practices!.restrictions, cold: s.practices!.cold, tasks: s.practices!.tasks.map((t) => t.id), requests: s.practices!.requests.map((q) => q.id),
     mark: s.personal?.mark, stress: s.commander.stress ?? 0, history: r.history.length,
   };
@@ -97,6 +98,53 @@ describe('undoing a refuse', () => {
     const answered = structuredClone(issued.state);
     answered.practices!.punishments[1].status = 'accepted';
     expect(canUndoPractice(answered, 'pp1')).toMatch(/already been answered/);
+  });
+});
+
+describe('what is band-dependent goes back too (I6)', () => {
+  it('a refusal that cost her a domain: the domain is restored by the undo', () => {
+    const s = base('kept_in_quarters', 3, 'role', ['restraint']);
+    dynamicOf(s, ANN)!.frame = 'play'; // her floor is low enough for a refusal to cross the band
+    dynamicOf(s, ANN)!.hold = 40.5; // just inside the band private_time needs
+    dynamicOf(s, ANN)!.domains = [{ id: 'private_time', since: 3 }] as never;
+    const before = picture(s);
+    const done = answer(s, 'refuse');
+    expect(errors(done.events)).toEqual([]);
+    expect(ofType(done.events, 'domain_lost')).toHaveLength(1);
+    expect(dynamicOf(done.state, ANN)!.domains).toEqual([]);
+    expect(canUndoPractice(done.state, 'pp1')).toBeNull();
+    const r = undo(done.state);
+    expect(errors(r.events)).toEqual([]);
+    expect(dynamicOf(r.state, ANN)!.domains).toEqual([{ id: 'private_time', since: 3 }]);
+    expect(picture(r.state)).toEqual(before);
+  });
+
+  it('the day she last practised is put back (an accept\'s hold gain moved it)', () => {
+    const s = base('no_messages', 2);
+    const done = answer(s, 'accept').state;
+    expect(dynamicOf(done, ANN)!.lastPracticeDay).toBe(done.day);
+    expect(dynamicOf(undo(done).state, ANN)!.lastPracticeDay).toBe(5);
+  });
+
+  it('the undo record has room for a hold or a slap the answer started (filled by the tasks that start them)', () => {
+    const done = answer(base('no_messages', 2), 'accept').state;
+    const undoRow = px(done).inverse!.practice!;
+    expect(undoRow.startedHold).toBeUndefined();
+    expect(undoRow.slapId).toBeUndefined();
+    const widened: typeof undoRow = { ...undoRow, startedHold: true, slapId: 'ps1' };
+    expect(widened.startedHold).toBe(true);
+  });
+});
+
+describe('only the rows the answer wrote are taken out (M2)', () => {
+  it('a restriction another holder set since stays when the answer is undone', () => {
+    const done = answer(base('no_messages', 2), 'accept').state;
+    expect(done.practices!.restrictions).toHaveLength(1);
+    done.practices!.restrictions.unshift({ holderId: 'unit_bea', what: 'no_free_activities', untilDay: done.day + 1 });
+    done.practices!.restrictions.push({ holderId: 'unit_cat', what: 'no_dms_others', untilDay: done.day + 1 });
+    const r = undo(done);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.practices!.restrictions.map((x) => x.holderId)).toEqual(['unit_bea', 'unit_cat']);
   });
 });
 

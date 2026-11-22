@@ -8,8 +8,10 @@ import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import type { GenerationUi } from '../generation/surface';
 import { VOICE_OF } from '../voice/sources';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
+import { drawPracticeReroll } from './generation';
 
 export type PunishmentAnswer = 'accept' | 'negotiate' | 'refuse';
 export type TakeInsteadAnswer = 'do_it' | 'take_it' | 'refuse';
@@ -19,6 +21,8 @@ export interface PunishmentCardCtx {
   reg: Registries;
   punishment: OpenPunishment;
   onAnswer: (answer: PunishmentAnswer) => void;
+  /** P14: draws `[ REROLL ]` of her words while the punishment is offered. Absent = the card draws none. */
+  generation?: GenerationUi;
 }
 
 export interface TakeInsteadCardCtx {
@@ -51,7 +55,8 @@ export function renderPunishmentCard(host: HTMLElement, ctx: PunishmentCardCtx):
     h('p', { class: 'alius-punishment-text' }, plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text)),
     ...(p.sealed === true ? [] : [h('p', { class: 'alius-punishment-weight', ...analyzeAttrs('glossary:holder_punishment', live) }, `${label}. Weight: ${WEIGHT_WORDS[severityWord(p.severity)]}.`)]),
     ...(p.status === 'negotiating' ? [h('p', { class: 'alius-punishment-hint' }, 'It is being talked over.')] : []),
-    h('div', { class: 'alius-punishment-answers' }, button('accept', '[ ACCEPT ]', 'glossary:punishment_card'), button('negotiate', '[ NEGOTIATE ]', 'glossary:punishment_card'), button('refuse', '[ REFUSE ]', 'glossary:punishment_card')),
+    h('div', { class: 'alius-punishment-answers' }, button('accept', '[ ACCEPT ]', 'glossary:punishment_card'), button('negotiate', '[ NEGOTIATE ]', 'glossary:punishment_card'), button('refuse', '[ REFUSE ]', 'glossary:punishment_card'),
+      p.status === 'offered' ? drawPracticeReroll(h('span', { class: 'alius-punishment-reroll' }), ctx.generation, 'punishment', p.requestId) : null),
   ];
   const card = renderVoiceCard({ voice: VOICE_OF.practice, from: unit.displayName, body: h('div', { class: 'alius-punishment-body' }, ...parts), accent: unitAccent(unit.id) });
   card.classList.add('alius-punishment');
@@ -94,6 +99,8 @@ export interface PunishmentCardHandlers {
   answer: (punishmentId: string, answer: PunishmentAnswer) => void;
   takeInstead: (punishmentId: string, answer: TakeInsteadAnswer) => void;
   undo: (punishmentId: string) => void;
+  /** P14: the surface's generation ui: the card draws REROLL. */
+  generation?: GenerationUi;
 }
 
 /**
@@ -108,7 +115,7 @@ export function drawPunishmentCards(host: HTMLElement, state: CampaignState, reg
     if (!pick({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
     const open = p.status === 'offered' || p.status === 'negotiating';
     if (open && p.forUnitId !== undefined) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers.takeInstead(p.id, a) });
-    else if (open) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers.answer(p.id, a) });
+    else if (open) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers.answer(p.id, a), generation: handlers.generation });
     else if ((p.status === 'accepted' || p.status === 'refused') && p.forUnitId === undefined && canUndoPractice(state, p.id) === null) {
       host.append(h('div', { class: 'alius-chip-group', 'data-punishment-answered': p.id },
         h('span', { class: 'alius-chip', 'data-chip-unit': p.holderId, ...analyzeAttrs('glossary:holder_punishment', { unitId: p.holderId }) }, `${p.status === 'accepted' ? 'ACCEPTED' : 'REFUSED'} — ${labelOf(reg, p)} (${nameOf(state, p.holderId)})`),

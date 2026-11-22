@@ -11,6 +11,8 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
 import { VOICE_OF } from '../voice/sources';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
+import type { GenerationUi } from '../generation/surface';
+import { drawPracticeChips, drawPracticeReroll } from './generation';
 import { renderSignature } from './signature';
 
 export type TaskAnswer = 'accept' | 'refuse' | 'talk';
@@ -23,6 +25,8 @@ export interface TaskCardCtx {
   onSign: () => void;
   /** ACCEPT on a task that is accepted in words: focuses the scene input or the thread's (nothing is dispatched). */
   focusInput: () => void;
+  /** P14: draws `[ REROLL ]` of her words while the task is offered. Absent = the card draws none. */
+  generation?: GenerationUi;
 }
 
 /** What a sealed card says of its weight (the stakes as a band, never a number). */
@@ -92,7 +96,7 @@ export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
   else answers.push(button('accept', '[ ACCEPT ]', () => ctx.onAnswer('accept'), ladder));
   answers.push(button('refuse', '[ REFUSE ]', () => ctx.onAnswer('refuse'), 'glossary:practice_task'));
   if (!sealed) answers.push(button('talk', '[ TALK ]', () => ctx.onAnswer('talk'), 'glossary:practice_task'));
-  parts.push(h('div', { class: 'alius-task-answers' }, ...answers));
+  parts.push(h('div', { class: 'alius-task-answers' }, ...answers, drawPracticeReroll(h('span', { class: 'alius-task-reroll' }), ctx.generation, task.kind, task.requestId)));
 
   const card = renderVoiceCard({ voice: VOICE_OF.practice, from: unit.displayName, body: h('div', { class: 'alius-task-body' }, ...parts), accent: unitAccent(unit.id) });
   card.classList.add('alius-task');
@@ -109,6 +113,8 @@ export interface TaskCardHandlers {
   answer: (taskId: string, answer: TaskAnswer) => void;
   sign: (taskId: string) => void;
   focusInput: () => void;
+  /** P14: the surface's generation ui: the cards draw REROLL, and the practices whose words failed draw their chips (here, once). */
+  generation?: GenerationUi;
 }
 
 /** Draws the offered tasks of the units `pick` chooses (a scene's participants, one thread), replacing what `host` held. Nothing for a holder who is not live. */
@@ -117,8 +123,9 @@ export function drawTaskCards(host: HTMLElement, state: CampaignState, reg: Regi
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
     if (task.kind !== 'task' || task.status !== 'offered' || !pick({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
-    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers.answer(task.id, a), onSign: () => handlers.sign(task.id), focusInput: handlers.focusInput });
+    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers.answer(task.id, a), onSign: () => handlers.sign(task.id), focusInput: handlers.focusInput, generation: handlers.generation });
   }
+  drawPracticeChips(host, handlers.generation, state, reg, pick);
 }
 
 /** How many of the record's lines the CMDR card shows. */

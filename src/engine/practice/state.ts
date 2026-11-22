@@ -6,7 +6,7 @@
  * Nothing here draws from the campaign's rng: every chance is `practiceRoll` (a `dynamicRoll` with a `practice:` key) and every pick is an
  * index into a registry-ordered list by `Math.floor(practiceRoll × n)`.
  */
-import type { TrackState } from '../dynamic/state';
+import type { DynamicDomain, TrackState } from '../dynamic/state';
 import type { Frame } from '../dynamic/types';
 import { dynamicRoll } from '../dynamic/witness';
 import type { CampaignState, Inverse, Slot } from '../state/types';
@@ -216,9 +216,15 @@ export interface PracticeUndo {
   tracks: Record<string, TrackState>;
   refusals: number[];
   contest: number[];
-  /** How many restrictions of hers there were, and her cold shoulder before (absent = none). */
-  restrictions: number;
+  /** The restrictions the answer added (UNDO takes out these rows, not whatever else was written since: another holder's), and her cold shoulder before (absent = none). */
+  restrictionsAdded: PracticeState['restrictions'];
   cold?: number;
+  /** Her domains and the day she last practised before the answer: a hold loss may cost a domain, a gain moves the day; UNDO puts both back. */
+  domains: DynamicDomain[];
+  lastPracticeDay: number;
+  /** What the answer started that UNDO must end (filled by the tasks that start them: the hold of Task 25 and the slap of Task 33; `restorePractice` ends them). */
+  startedHold?: true;
+  slapId?: string;
   /** What the answer wrote: the stress it gave the commander, the mark it set, the tasks (a confession) and the requests (a protocol, the escalation) it made. */
   commanderStress?: number;
   markSet?: true;
@@ -244,7 +250,12 @@ export interface OpenDemonstration {
   sceneId?: string;
   status: 'offered' | 'open' | 'done' | 'refused' | 'void';
   observed?: string[];
+  /** The request this card was written for (the key of its generation: a reroll while it is offered replaces the card). */
+  requestId?: string;
 }
+
+/** A card a request was written as, in whichever list its kind keeps. */
+export type PracticeCard = Task | OpenPunishment | OpenDemonstration;
 
 export interface HeldState {
   by: string;
