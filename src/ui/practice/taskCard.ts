@@ -137,7 +137,7 @@ export function drawTaskCards(host: HTMLElement, state: CampaignState, reg: Regi
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== 'task' || task.status !== 'offered' || !pick({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    if ((task.kind !== 'task' && task.kind !== 'hold') || task.status !== 'offered' || !pick({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
     renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers.answer(task.id, a), onSign: () => handlers.sign(task.id), focusInput: handlers.focusInput, generation: handlers.generation });
   }
   drawPracticeChips(host, handlers.generation, state, reg, pick);

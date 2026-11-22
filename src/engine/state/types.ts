@@ -1034,7 +1034,7 @@ export interface Intercept {
   status: 'open' | 'kept';
 }
 
-export type BookingSource = 'roll' | 'wager' | 'smother' | 'milestone' | 'aftermath';
+export type BookingSource = 'roll' | 'wager' | 'smother' | 'milestone' | 'aftermath' | 'practice';
 
 /** A slot of the commander that a unit booked (P9c §2). */
 export interface Booking {
@@ -1048,6 +1048,8 @@ export interface Booking {
   /** The day she made it (the weekly cap counts these). */
   made?: number;
   conflict?: true;
+  /** P16: the hold or the task a `practice` booking belongs to (a held slot of the commander). */
+  practiceId?: string;
 }
 
 export interface Token {

@@ -82,7 +82,7 @@ export function practiceIntentInput(state: CampaignState, reg: Registries, parti
   // open tasks the commander's word settles, and ones kept by that word lately (the talk may show one was not done: a false report found)
   const tasks = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === 'task' && ((t.status === 'open' && (t.check === 'model' || t.check === 'dm_report')) || keptByWordRecently(state, t)))
     .map((t) => (t.status === 'kept' ? { ...row(t), summary: `${row(t).summary} (reported done)` } : row(t)));
-  const offered = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === 'task' && t.status === 'offered' && t.sealed !== true);
+  const offered = (p?.tasks ?? []).filter((t) => mine(t.holderId) && (t.kind === 'task' || t.kind === 'hold') && t.status === 'offered' && t.sealed !== true);
   const accepts = offered.filter((t) => t.acceptForm === 'words' || t.acceptForm === 'signed').map(row);
   const talks = offered.map(row);
   const punishments = (p?.punishments ?? []).filter((x) => mine(x.holderId) && (x.status === 'offered' || x.status === 'negotiating') && x.sealed !== true).map(row);

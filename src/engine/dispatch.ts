@@ -2,6 +2,7 @@ import type { Registries } from '../content/types';
 import { recordLedger } from './ledger';
 import { rememberEvents } from './memory/remember';
 import { bookingGuard } from './personal/bookings';
+import { heldGuard } from './practice/held';
 import { votingOn } from './power/options';
 import { carryIfRan, voteFor } from './power/votes';
 import { Rng } from './rng';
@@ -104,6 +105,9 @@ export function dispatch(
   // P9c: a slot she booked and can keep is hers: go to her or cancel the booking
   const booked = bookingGuard(state, registries, action);
   if (booked) return { state, events: [{ type: 'error', ...booked }] };
+  // P16: the commander is held in her quarters (a hold the practices keep): nothing that leaves is allowed, a duty is weighed against it (`held_alarm`)
+  const held = heldGuard(state, registries, action);
+  if (held) return { state, events: [{ type: 'error', ...held }] };
   // P9b: a decision the squad votes on does not run without a passed or overruled vote for exactly this decision
   let voteId: string | undefined;
   const gate = gates.get(action.type);

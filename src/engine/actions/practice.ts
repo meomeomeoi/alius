@@ -7,6 +7,7 @@ import { registerAction, registerAfterAction, registerVoteGate } from '../dispat
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { answerDemonstration, demonstrationsFromEvents } from '../practice/demonstration';
+import { holdSweep } from '../practice/hold';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
@@ -47,6 +48,8 @@ registerMomentTrigger('her_demand', herDemandLive);
 registerAfterAction(notePosture);
 registerAfterAction(callPosture);
 registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
+// The hold of the commander (R11): it ends at its last slot, and at once when she leaves service, is hurt, goes on a run, stops being live or the category goes off.
+registerAfterAction(holdSweep);
 // A punishment she was given in a DM is told to the model in the first scene with her, once.
 registerAfterAction(voiceWaitingPunishments);
 

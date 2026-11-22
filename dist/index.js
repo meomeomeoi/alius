@@ -2266,8 +2266,8 @@ function traitBlockReason(reg, traits, id, opts) {
 function commanderLine(state) {
   const p = commanderProfile(state);
   const w = (kind, v) => descriptor(kind, v).toLowerCase();
-  const names = (state.commander.reputation?.active ?? []).map((a) => `"${a.name}"`);
-  const known3 = names.length > 0 ? ` Known in the squad as ${names.join(" and ")}.` : "";
+  const names2 = (state.commander.reputation?.active ?? []).map((a) => `"${a.name}"`);
+  const known3 = names2.length > 0 ? ` Known in the squad as ${names2.join(" and ")}.` : "";
   return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.${known3}`;
 }
 
@@ -10523,13 +10523,15 @@ var PracticeSeedSchema = BaseEntrySchema.extend({
   audience: external_exports.enum(SEED_AUDIENCE).optional(),
   romantic: external_exports.literal(true).optional(),
   needs: capabilityEnum.optional(),
+  /** A hold seed only: the hold it starts is a sensory one (the device dims, P16 R11). */
+  sensory: external_exports.literal(true).optional(),
   /** The days a task from this seed gives (1 to 7); none: `TUNING.practice.defaultDeadlineDays`. Every task has a deadline. */
   days: int.min(1).max(7).optional(),
   weight: external_exports.number().min(0.1).max(20),
   description: str
 }).strict();
 var punishmentEffect = external_exports.discriminatedUnion("type", [
-  external_exports.object({ type: external_exports.literal("slot_held"), slots: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal("day")]) }).strict(),
+  external_exports.object({ type: external_exports.literal("slot_held"), slots: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal("day")]), sensory: external_exports.literal(true).optional() }).strict(),
   external_exports.object({ type: external_exports.literal("privilege_revoked"), what: external_exports.enum(["no_dms_others", "no_free_activities", "room"]), days: int.min(1).max(14), arg: str.optional() }).strict(),
   external_exports.object({ type: external_exports.literal("protocol_extra"), days: int.min(1).max(14) }).strict(),
   external_exports.object({ type: external_exports.literal("cold_shoulder"), days: int.min(1).max(14) }).strict(),
@@ -11283,6 +11285,54 @@ function deedsOf(state) {
   return out;
 }
 
+// src/engine/practice/held.ts
+var RANK = { morning: 0, afternoon: 1, evening: 2, night: 3 };
+var posOf = (day, slot2) => day * 4 + RANK[slot2];
+function heldBookingAt(state, held3, day, slot2) {
+  const b = (state.personal?.bookings ?? []).find((x) => held3.bookingIds.includes(x.id) && x.day === day && x.slot === slot2 && x.status !== "cancelled" && x.status !== "lapsed");
+  return b === void 0 ? null : { kindId: b.kindId };
+}
+function heldNow(state) {
+  const held3 = state.practices?.held;
+  if (held3 === void 0) return null;
+  const now = posOf(state.day, state.slot);
+  if (now < posOf(held3.since.day, held3.since.slot) || now > posOf(held3.until.day, held3.until.slot)) return null;
+  return heldBookingAt(state, held3, state.day, state.slot) === null ? null : held3;
+}
+function heldLocation(state, reg) {
+  const held3 = heldNow(state);
+  const b = held3 === null ? null : heldBookingAt(state, held3, state.day, state.slot);
+  const id = b === null ? void 0 : reg.bookingKinds.get(b.kindId)?.locationId;
+  return typeof id === "string" ? id : null;
+}
+var names = (payload, holderId) => {
+  const ids = payload?.participants;
+  return Array.isArray(ids) && ids.includes(holderId);
+};
+var keepAlarm = (state) => {
+  const a = state.practices?.alarm;
+  return a !== void 0 && a.answer === "keep" && (a.kind === "launch" || a.kind === "deadline");
+};
+function heldGuard(state, reg, action) {
+  const held3 = heldNow(state);
+  if (held3 === null) return null;
+  const type = action.type;
+  if (type === "expedition/start") {
+    if (keepAlarm(state) && action.payload?.withoutCommand === true) return null;
+    return { code: "held_alarm", message: "The commander is held: the duty has to be weighed against the hold." };
+  }
+  if (type === "night/open") return { code: "held_alarm", message: "The commander is held: the knock has to be weighed against the hold." };
+  const refused = type.startsWith("activity/") || type === "life/time_together" || type === "intrigue/act";
+  if (refused) return { code: "held", message: "The commander is held in her quarters: ask to be let go, or let the slot pass." };
+  if (type === "scene/start") {
+    const p = action.payload;
+    if (p?.origin === "night") return null;
+    if (names(action.payload, held3.by) && p?.locationId === heldLocation(state, reg)) return null;
+    return { code: "held", message: "The commander is held in her quarters: only a scene with her there can be had." };
+  }
+  return null;
+}
+
 // src/engine/hub.ts
 function fnv1a3(s) {
   let h2 = 2166136261;
@@ -11313,11 +11363,17 @@ function hobbyWeight(state, reg, room2, unit3) {
   const hosted = unit3.hobbies.some((h2) => h2.state === "active" && (reg.hobbies.get(h2.id)?.locations ?? []).includes(here));
   return hosted ? TUNING.life.hobbyRoomWeight : 0;
 }
+function heldPlace(state, reg, rooms, unit3) {
+  if (heldNow(state)?.by !== unit3.id) return null;
+  const at = heldLocation(state, reg);
+  const room2 = at === null ? void 0 : rooms.find((r) => r.sceneLocationId === at);
+  return room2 ? { unitId: unit3.id, roomId: room2.id, reason: "holding" } : null;
+}
 function place(state, reg, rooms, unit3) {
   const here = (room2, reason) => room2 ? { unitId: unit3.id, roomId: room2.id, reason } : null;
   if (state.expedition?.party.includes(unit3.id)) return { unitId: unit3.id, roomId: null, reason: "expedition" };
   const held3 = activeRestrictions(state, unit3.id);
-  const found = (isInjured(unit3) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held3.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held3.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  const found = (isInjured(unit3) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held3.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held3.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? heldPlace(state, reg, rooms, unit3) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
   if (found) return found;
   const booked = state.personal?.bookings?.find((b) => b.unitId === unit3.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
   const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
@@ -18353,7 +18409,7 @@ function noteConsentRefusal(draft, reg, unitId, problem) {
   addFact(draft, { about: [keeper, unitId], text: problem, tags: ["dynamic", "booking_consent"], importance: 2, day: draft.day, knownBy: [keeper, unitId] });
 }
 function dueBooking(state, reg) {
-  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
+  const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot && kindOf2(reg, b.kindId)?.held !== true);
   return due.find((b) => bookingPlayable(state, reg, b)) ?? due[0] ?? null;
 }
 function bookingPlayable(state, reg, booking) {
@@ -18485,6 +18541,7 @@ function cancelBooking(draft, ctx2, bookingId) {
   const b = bookingsOf(draft).find((x) => x.id === bookingId);
   if (!b || b.status !== "booked") throw new Error("That booking cannot be canceled.");
   const reg = ctx2.registries;
+  if (kindOf2(reg, b.kindId)?.held === true) throw new Error("That is a hold: ask to be let go, or defy it.");
   b.status = "cancelled";
   delete b.conflict;
   syncConflicts(draft, b.day, b.slot);
@@ -18522,7 +18579,7 @@ function playBooking(draft, ctx2, id) {
 }
 var lapseBookings = (draft) => lapseBookingsThrough(draft, { day: draft.day, slot: "night" });
 function metAtScene(draft, reg, participants) {
-  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
+  const due = bookingsOf(draft).find((b) => b.status === "booked" && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId) && kindOf2(reg, b.kindId)?.held !== true);
   if (!due) return [];
   const events = markPlayed(draft, reg, due);
   syncConflicts(draft, due.day, due.slot);
@@ -19809,7 +19866,7 @@ function reactToDynamic(draft, ctx2, observerId, holderId) {
 }
 
 // src/engine/dynamic/knowledge.ts
-var RANK = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
+var RANK2 = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
 var round44 = (n) => Math.round(n * 1e4) / 1e4;
 var signRow = (reg, kind) => [...reg.dynamicSigns.values()].find((r) => r.kind === kind);
 var observerUnit = (state, id) => {
@@ -19844,7 +19901,7 @@ var FACT_TEXT2 = {
   knows_dynamic: (o, h2) => `AUTHOR TO WRITE: ${o} knows that ${h2} holds authority over the commander.`
 };
 function raise(draft, ctx2, observerId, holderId, rec, level) {
-  if (rec.level !== void 0 && RANK[rec.level] >= RANK[level]) return [];
+  if (rec.level !== void 0 && RANK2[rec.level] >= RANK2[level]) return [];
   rec.level = level;
   rec.levelDay = draft.day;
   addFact(draft, {
@@ -20078,6 +20135,9 @@ function cabinOwner(state, reg, cabinId) {
 }
 function roomOfPerson(state, reg, here, personId) {
   if (personId === "commander") {
+    const keeper = heldNow(state)?.by;
+    const own = keeper !== void 0 ? cabinOf(state, reg, keeper) : null;
+    if (own !== null) return own;
     const holder2 = secondPlaceHolder(state, reg);
     return (holder2 !== null ? cabinOf(state, reg, holder2) : null) ?? commanderCabin(reg) ?? null;
   }
@@ -21175,7 +21235,7 @@ function noteEvents(draft, ctx2, events) {
 }
 
 // src/engine/dynamic/offer.ts
-var RANK2 = { dislikes: 0, indifferent: 1, enjoys: 2, craves: 3 };
+var RANK3 = { dislikes: 0, indifferent: 1, enjoys: 2, craves: 3 };
 var TIME_LABEL = { evening: "An evening", night: "A night" };
 var ENDURANCE_ID = "endurance";
 var ENDURANCE_LABEL = "Hold for as long as she likes";
@@ -21262,7 +21322,7 @@ function readComposition(raw) {
   return out;
 }
 var ATTITUDE_OF_AS = { craves: "craves", enjoys: "enjoys", tolerates: "indifferent", none: "indifferent" };
-var bestOf = (list5) => list5.reduce((best, a) => RANK2[a] > RANK2[best] ? a : best, "indifferent");
+var bestOf = (list5) => list5.reduce((best, a) => RANK3[a] > RANK3[best] ? a : best, "indifferent");
 function categoryAttitude(view, tags) {
   if (view === null) return "indifferent";
   return bestOf(tags.filter((t) => view.categories[t] !== void 0).map((t) => ATTITUDE_OF_AS[view.categories[t].as]));
@@ -23013,6 +23073,123 @@ function demonstrationGate(state, reg, holderId, card2) {
   return watchers2.cards.length + watchers2.narrated.length === 0 ? "Nobody would see it." : null;
 }
 
+// src/engine/practice/hold.ts
+var SLOTS2 = ["morning", "afternoon", "evening"];
+var bookingsOf2 = (state) => state.personal?.bookings ?? [];
+function firstSlot(draft) {
+  const spent = draft.scene !== void 0 || draft.calendar.pendingScene !== void 0;
+  if (draft.slot === "night") return { day: draft.day + 1, slot: "morning" };
+  return spent ? nextSlotAfter(draft.day, draft.slot) : { day: draft.day, slot: draft.slot };
+}
+function slotsOf(start, span) {
+  const left = SLOTS2.slice(SLOTS2.indexOf(start.slot));
+  return left.slice(0, span === "day" ? left.length : span).map((slot2) => ({ day: start.day, slot: slot2 }));
+}
+function holdSlot(draft, ctx2, holderId, kindId, at, practiceId, events, lapsed) {
+  const rivals = holdersAtPlay(draft).filter((id) => id !== holderId);
+  for (const b of bookingsOf2(draft)) {
+    if (b.status !== "booked" || b.day !== at.day || b.slot !== at.slot || rivals.includes(b.unitId)) continue;
+    b.status = "lapsed";
+    delete b.conflict;
+    lapsed.push(b.id);
+    events.push({ type: "booking_lapsed", bookingId: b.id, unitId: b.unitId, lost: true, by: "hold" });
+  }
+  events.push(...book(draft, ctx2, { unitId: holderId, kindId, day: at.day, slot: at.slot, source: "practice" }));
+  const made = bookingsOf2(draft).at(-1);
+  made.practiceId = practiceId;
+  return made;
+}
+function voidImpossible(draft, holderId, taken) {
+  const events = [];
+  for (const t of draft.practices?.tasks ?? []) {
+    if (t.kind !== "task" || t.status !== "open" || t.holderId === holderId || t.check !== "slot_with_her" || t.deadline?.slot === void 0) continue;
+    if (!taken.some((s) => s.day === t.deadline.day && s.slot === t.deadline.slot)) continue;
+    t.status = "void";
+    delete t.sceneId;
+    delete t.sceneWith;
+    events.push({ type: "task_void", taskId: t.id, holderId: t.holderId, what: "task", reason: "hold" });
+  }
+  return events;
+}
+function startHold(draft, ctx2, holderId, span, opts = {}) {
+  const reg = ctx2.registries;
+  if (!practiceLive(draft, reg, holderId) || draft.practices?.held !== void 0) return [];
+  const kind = [...reg.bookingKinds.values()].find((k) => k.held === true);
+  if (kind === void 0 || !contentAllowed(draft, reg, kind, holderId)) return [];
+  const p = ensurePractices(draft);
+  const slots = slotsOf(firstSlot(draft), span);
+  const practiceId = opts.taskId ?? opts.punishmentId ?? `hold:${holderId}`;
+  const events = [];
+  const lapsed = [];
+  const bookingIds = slots.map((at) => holdSlot(draft, ctx2, holderId, String(kind.id), at, practiceId, events, lapsed).id);
+  const first2 = slots[0];
+  const last = slots[slots.length - 1];
+  const held3 = {
+    by: holderId,
+    since: { ...first2 },
+    until: { ...last },
+    sensory: opts.sensory === true,
+    extended: 0,
+    bookingIds,
+    ...opts.hidden === true ? { hidden: true } : {},
+    ...opts.taskId !== void 0 ? { taskId: opts.taskId } : {},
+    ...opts.punitive === true ? { punitive: true } : {},
+    ...lapsed.length > 0 ? { lapsedIds: lapsed } : {}
+  };
+  p.held = held3;
+  events.push(...voidImpossible(draft, holderId, slots));
+  events.push({
+    type: "hold_started",
+    holderId,
+    unitId: holderId,
+    sensory: held3.sensory,
+    ...opts.punitive === true ? { punitive: true } : {},
+    ...opts.punishmentId !== void 0 ? { punishmentId: opts.punishmentId } : {},
+    ...opts.hidden === true ? { hidden: true } : { slots: slots.length, since: { ...first2 }, until: { ...last } }
+  });
+  return events;
+}
+var keptSlots = (draft, held3) => bookingsOf2(draft).filter((b) => held3.bookingIds.includes(b.id) && b.status !== "cancelled").length;
+function settleHoldTask(draft, held3, reason) {
+  const task = held3.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === held3.taskId);
+  if (task === void 0 || task.status !== "open") return;
+  task.status = reason === "ran_out" ? "kept" : reason === "defied" ? "broken" : "void";
+  task.settledDay = draft.day;
+}
+function endHold2(draft, ctx2, reason) {
+  const p = draft.practices;
+  const held3 = p?.held;
+  if (p === void 0 || held3 === void 0) return [];
+  const slots = keptSlots(draft, held3);
+  cancelBookingsQuietly(draft, held3.bookingIds);
+  if (reason === "undone") {
+    for (const b of bookingsOf2(draft)) if (held3.lapsedIds?.includes(b.id) === true && b.status === "lapsed" && posOf(b.day, b.slot) >= posOf(draft.day, draft.slot)) b.status = "booked";
+  }
+  delete p.held;
+  if (p.alarm !== void 0 && p.alarm.holderId === held3.by && reason !== "alarm" && reason !== "defied") delete p.alarm;
+  settleHoldTask(draft, held3, reason);
+  const events = [{ type: "hold_released", holderId: held3.by, unitId: held3.by, reason, slots }];
+  if (reason === "ran_out" && held3.defied !== true && slots > 0) {
+    events.push(...addTrackXp(draft, ctx2.registries, held3.by, "restraint", TUNING.practice.xp.hold * slots));
+    events.push(...addHold(draft, ctx2, held3.by, TUNING.practice.hold.gain, "hold"));
+  }
+  return events;
+}
+function holdSweep(draft, ctx2, _events) {
+  const held3 = draft.practices?.held;
+  if (held3 === void 0) return [];
+  const reg = ctx2.registries;
+  const unit3 = draft.squad.find((u) => u.id === held3.by);
+  if (unit3 === void 0 || !isLiving(unit3)) return endHold2(draft, ctx2, "gone");
+  if (!practiceLive(draft, reg, held3.by)) return endHold2(draft, ctx2, "not_live");
+  if (!(draft.content?.enabled ?? []).includes("restraint")) return endHold2(draft, ctx2, "content");
+  if (unit3.status === "injured" || (unit3.injuryDays ?? 0) > 0) return endHold2(draft, ctx2, "injured");
+  if (held3.run === true) return draft.expedition === void 0 ? endHold2(draft, ctx2, "ran_out") : [];
+  if (draft.expedition?.party.includes(held3.by) === true) return endHold2(draft, ctx2, "run");
+  if (posOf(draft.day, draft.slot) > posOf(held3.until.day, held3.until.slot)) return endHold2(draft, ctx2, "ran_out");
+  return [];
+}
+
 // src/engine/practice/validate.ts
 var CARD_MAX = 600;
 var LEVEL_WORDS = ["none yet", "a beginner", "practised", "experienced", "deep", "complete"];
@@ -23092,7 +23269,7 @@ function plainText2(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL, "").slice(0, max).trim();
 }
-var SLOTS2 = ["morning", "afternoon", "evening", "night"];
+var SLOTS3 = ["morning", "afternoon", "evening", "night"];
 var ROSTER_CHECKS = ["on_roster", "not_on_roster"];
 function validatePracticeOutput(state, reg, request, raw) {
   if (!isObj6(raw) || raw.kind !== request.kind) return null;
@@ -23145,7 +23322,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     const D3 = TUNING.practice.deadlineDays;
     const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
     if (days !== raw.deadline.days) issues.push("deadline was clamped");
-    deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
+    deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS3.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
   } else if (request.kind === "task") {
     deadline = { days: seed?.days ?? TUNING.practice.defaultDeadlineDays };
     issues.push("deadline was missing and is the seed's or the default");
@@ -23252,6 +23429,43 @@ var writeTask = (draft, _ctx, request, out, plain8) => {
   p.tasks.push(task);
   return [{ type: "task_issued", taskId: id, holderId: request.holderId, kind: "task", requestId: request.id, ...plain8 ? { plain: true } : {}, ...request.sealed === true ? { sealed: true } : {} }];
 };
+var HOLD_SLOTS = { trivial: 1, minor: 1, major: 2, severe: 3 };
+var holdBusy = (state) => state.practices?.held !== void 0 || (state.practices?.tasks ?? []).some((t) => t.kind === "hold" && (t.status === "offered" || t.status === "open"));
+var writeHold = (draft, ctx2, request, out, plain8) => {
+  if (holdBusy(draft)) {
+    const seed2 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed2?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
+  }
+  const p = ensurePractices(draft);
+  const id = nextPracticeId(draft, "pt");
+  const seed = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+  const task = {
+    id,
+    holderId: request.holderId,
+    kind: "hold",
+    ...out.seedId !== void 0 ? { seedId: out.seedId } : {},
+    tags: [...out.tags],
+    track: out.track,
+    tier: out.tier,
+    stakes: out.stakes,
+    check: out.check,
+    proof: out.proof,
+    deadline: { day: draft.day + 1 },
+    ...request.noDuration === true ? { noDuration: true } : {},
+    text: out.text,
+    summary: out.summary,
+    ...plain8 ? { plain: true } : {},
+    status: "offered",
+    ...request.sealed === true ? { sealed: true } : {},
+    ...seed?.sensory === true ? { sensory: true } : {},
+    slots: HOLD_SLOTS[out.stakes],
+    acceptForm: acceptFormOf(out.stakes, request.sealed),
+    day: draft.day,
+    requestId: request.id
+  };
+  p.tasks.push(task);
+  return [{ type: "task_issued", taskId: id, holderId: request.holderId, kind: "hold", requestId: request.id, ...plain8 ? { plain: true } : {}, ...request.sealed === true ? { sealed: true } : {} }];
+};
 function taskCost(state, reg, task) {
   const takesSlot = task.kind === "hold" || task.check === "slot_with_her" || task.check === "booking_kept";
   const slots = task.slots ?? (takesSlot ? 1 : 0);
@@ -23276,7 +23490,7 @@ function recordLine(task) {
 }
 function taskOf(draft, ctx2, taskId) {
   const task = draft.practices?.tasks.find((t) => t.id === taskId);
-  if (task === void 0 || task.kind !== "task") throw new Error("That task is gone.");
+  if (task === void 0 || task.kind !== "task" && task.kind !== "hold") throw new Error("That task is gone.");
   if (!practiceLive(draft, ctx2.registries, task.holderId)) throw new Error("She is not holding now.");
   if (task.status !== "offered") throw new Error("That task has been answered.");
   return task;
@@ -23286,8 +23500,17 @@ function attachBooking(draft, task) {
   const next = (draft.personal?.bookings ?? []).filter((b) => b.unitId === task.holderId && b.status === "booked" && slotIndex(b.day, b.slot) >= slotIndex(draft.day, draft.slot)).sort((a, b) => slotIndex(a.day, a.slot) - slotIndex(b.day, b.slot))[0];
   if (next !== void 0) task.bookingId = next.id;
 }
-function openTask(draft, task, via) {
+function openTask(draft, ctx2, task, via) {
   const events = [];
+  if (task.kind === "hold") {
+    const span = (task.slots ?? 1) >= 3 ? "day" : (task.slots ?? 1) >= 2 ? 2 : 1;
+    const started2 = startHold(draft, ctx2, task.holderId, span, { taskId: task.id, sensory: task.sensory === true, hidden: task.noDuration === true });
+    if (started2.length === 0) {
+      task.status = "void";
+      return [{ type: "task_void", taskId: task.id, holderId: task.holderId, what: "task", reason: "no_hold" }];
+    }
+    events.push(...started2);
+  }
   task.status = "open";
   task.answeredDay = draft.day;
   delete task.said;
@@ -23310,7 +23533,7 @@ function answerTask(draft, ctx2, taskId, answer) {
   if (answer === "talk") return [{ type: "task_answered", taskId, holderId: task.holderId, answer: "talk" }];
   if (answer === "accept") {
     if (task.acceptForm === "words" || task.acceptForm === "signed") throw new Error("Say it in your own words.");
-    return openTask(draft, task, "button");
+    return openTask(draft, ctx2, task, "button");
   }
   if (answer !== "refuse") throw new Error("Unknown answer.");
   task.status = "refused";
@@ -23332,7 +23555,7 @@ function refusePractice(draft, ctx2, holderId, what) {
   return events;
 }
 function acceptByWords(draft, ctx2, holderId, ev) {
-  const task = ev.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && t.kind === "task" && t.status === "offered");
+  const task = ev.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && (t.kind === "task" || t.kind === "hold") && t.status === "offered");
   if (task === void 0 || task.acceptForm !== "words" && task.acceptForm !== "signed" || !practiceLive(draft, ctx2.registries, holderId)) return [];
   const events = hitHer(draft, ctx2.registries, holderId, "practice_accepted", "minor", "said yes to her task");
   if (task.acceptForm === "signed") {
@@ -23340,17 +23563,17 @@ function acceptByWords(draft, ctx2, holderId, ev) {
     events.push({ type: "task_answered", taskId: task.id, holderId, answer: "accept", via: "words", pending: "sign" });
     return events;
   }
-  events.push(...openTask(draft, task, "words"));
+  events.push(...openTask(draft, ctx2, task, "words"));
   return events;
 }
 function signTask(draft, ctx2, taskId) {
   const task = taskOf(draft, ctx2, taskId);
   if (task.acceptForm !== "signed") throw new Error("That task is not signed.");
   if (task.said !== true) throw new Error("Say it in your own words first.");
-  return openTask(draft, task, "signed");
+  return openTask(draft, ctx2, task, "signed");
 }
 function compromiseTask(draft, ctx2, holderId, ev) {
-  const task = ev.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && t.kind === "task" && t.status === "offered");
+  const task = ev.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && (t.kind === "task" || t.kind === "hold") && t.status === "offered");
   if (task === void 0 || !practiceLive(draft, ctx2.registries, holderId)) return [];
   const text2 = plainText2(ev.text, TUNING.practice.textMax);
   if (text2 !== "" && !hasCommanderPronoun(text2)) {
@@ -23367,7 +23590,7 @@ function compromiseTask(draft, ctx2, holderId, ev) {
 
 // src/engine/practice/demonstration.ts
 var nameOf8 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-var joinNames = (names) => names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+var joinNames = (names2) => names2.length <= 1 ? names2.join("") : `${names2.slice(0, -1).join(", ")} and ${names2[names2.length - 1]}`;
 var writeDemonstration = (draft, ctx2, request, out, plain8) => {
   const reg = ctx2.registries;
   if (demonstrationGate(draft, reg, request.holderId, { tags: out.tags, tier: out.tier }) !== null) return [];
@@ -24036,7 +24259,8 @@ function deadlineSweep(draft, ctx2) {
   const reg = ctx2.registries;
   const out = [];
   for (const task of [...p.tasks]) {
-    if (task.kind !== "task" || task.routine === true || !practiceLive(draft, reg, task.holderId)) continue;
+    if (task.kind !== "task" && task.kind !== "hold" || task.routine === true || !practiceLive(draft, reg, task.holderId)) continue;
+    if (task.kind === "hold" && task.status !== "offered") continue;
     if (task.status === "offered") {
       if (task.deadline !== void 0 && task.deadline.day < draft.day) {
         task.status = "void";
@@ -24130,11 +24354,6 @@ function voiceThreat(draft, ctx2, unitId) {
   return [{ type: "threat_voiced", unitId, holderId: unitId }, ...hitHer(draft, ctx2.registries, unitId, "threat_voiced", "minor", "threatened the commander")];
 }
 
-// src/engine/practice/hold.ts
-function startHold(_draft, _ctx, _holderId, _span, _opts = {}) {
-  return [];
-}
-
 // src/engine/practice/issue.ts
 function writePunishment(draft, ctx2, request, out, plain8) {
   const reg = ctx2.registries;
@@ -24176,7 +24395,7 @@ function writePunishment(draft, ctx2, request, out, plain8) {
     ...plain8 ? { plain: true } : {}
   }];
 }
-var WRITERS = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol, denial: writeDenialRule };
+var WRITERS = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol, denial: writeDenialRule, hold: writeHold };
 function fallbackOutput(state, reg, request) {
   if (request.kind === "punishment") {
     const entryId = punishmentEntryFor(state, reg, request);
@@ -24420,7 +24639,9 @@ function withUndo(draft, ctx2, p, answer) {
   const tasksBefore = pr.tasks.map((t) => t.id);
   const requestsBefore = pr.requests.map((r) => r.id);
   const markBefore = draft.personal?.mark;
+  const heldBefore = pr.held;
   const { events, inverse } = captureInverse(draft, holderId, answer);
+  if (heldBefore === void 0 && pr.held !== void 0 && pr.held.by === holderId) undo.startedHold = true;
   undo.restrictionsAdded = pr.restrictions.filter((r) => !restrictionsBefore.includes(r)).map((r) => ({ ...r }));
   const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
   const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
@@ -24460,12 +24681,13 @@ function undoPractice(draft, ctx2, punishmentId) {
   const events = revertInverse(draft, ctx2, p.holderId, null, p.inverse);
   return [{ type: "practice_undone", punishmentId, unitId: p.holderId }, ...events];
 }
-function restorePractice(draft, _ctx, unitId, undo) {
+function restorePractice(draft, ctx2, unitId, undo) {
   const pr = draft.practices;
   const p = pr?.punishments.find((x) => x.id === undo.punishmentId);
   const dyn = dynamicOf(draft, unitId);
   if (pr === void 0 || p === void 0) return [];
   const events = [];
+  if (undo.startedHold === true && pr.held?.by === unitId) events.push(...endHold2(draft, ctx2, "undone"));
   if (dyn !== void 0) {
     events.push(...restoreHold(draft, unitId, undo.hold));
     addFavour(draft, unitId, undo.favour - dyn.favour);
@@ -24667,7 +24889,7 @@ function practiceIntentInput(state, reg, participants, channel) {
   const row4 = (t) => ({ id: t.id, unitId: t.holderId, summary: oneLine(t.summary) });
   const mine = (holderId) => present2.includes(holderId);
   const tasks = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === "task" && (t.status === "open" && (t.check === "model" || t.check === "dm_report") || keptByWordRecently(state, t))).map((t) => t.status === "kept" ? { ...row4(t), summary: `${row4(t).summary} (reported done)` } : row4(t));
-  const offered2 = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === "task" && t.status === "offered" && t.sealed !== true);
+  const offered2 = (p?.tasks ?? []).filter((t) => mine(t.holderId) && (t.kind === "task" || t.kind === "hold") && t.status === "offered" && t.sealed !== true);
   const accepts = offered2.filter((t) => t.acceptForm === "words" || t.acceptForm === "signed").map(row4);
   const talks = offered2.map(row4);
   const punishments = (p?.punishments ?? []).filter((x) => mine(x.holderId) && (x.status === "offered" || x.status === "negotiating") && x.sealed !== true).map(row4);
@@ -32560,9 +32782,9 @@ var nameOf12 = (draft, id) => draft.squad.find((u) => u.id === id)?.displayName 
 var yes = (b) => b ? "yes" : "";
 var str4 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var strs = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
-function joinNames2(names) {
-  if (names.length <= 1) return names.join("");
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+function joinNames2(names2) {
+  if (names2.length <= 1) return names2.join("");
+  return `${names2.slice(0, -1).join(", ")} and ${names2[names2.length - 1]}`;
 }
 var regionNameOf = (reg, regionId) => {
   if (regionId === void 0) return void 0;
@@ -32937,10 +33159,10 @@ function rememberEvents(draft, events, reg) {
       if (aboutIds.length === 0) continue;
       const parts = Array.isArray(rule.audience) ? rule.audience : [rule.audience];
       const knownBy = audienceOf(draft, parts, res, aboutIds);
-      const names = res.vars.names ?? (rule.about === "world" ? "" : joinNames2(aboutIds.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id)));
+      const names2 = res.vars.names ?? (rule.about === "world" ? "" : joinNames2(aboutIds.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id)));
       addFact(draft, {
         about: aboutIds,
-        text: fill3(plainDraft(rule.text), { ...res.vars, names }),
+        text: fill3(plainDraft(rule.text), { ...res.vars, names: names2 }),
         tags: [...rule.tags, ...res.tags ?? []],
         importance: rule.importance,
         day: draft.day,
@@ -33000,6 +33222,8 @@ function dispatch(state, action, registries) {
   }
   const booked = bookingGuard(state, registries, action);
   if (booked) return { state, events: [{ type: "error", ...booked }] };
+  const held3 = heldGuard(state, registries, action);
+  if (held3) return { state, events: [{ type: "error", ...held3 }] };
   let voteId;
   const gate2 = gates.get(action.type);
   if (gate2 && votingOn(state, registries)) {
@@ -34759,7 +34983,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   showMoments(draft, scene.id);
   events.push(...countCompanions(draft, reg, scene.participants));
   const summary = isObj15(payload) && isObj15(payload.summary) ? payload.summary : void 0;
-  const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(", ");
+  const names2 = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(", ");
   const line2 = typeof summary?.chronicle === "string" ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : "";
   const living2 = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
   const everyone2 = living2.length > 0 && living2.every((id) => scene.participants.includes(id));
@@ -34769,7 +34993,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
     sceneId: scene.id,
     slot: scene.slot,
     audience: everyone2 ? "*" : [...scene.participants],
-    text: line2 !== "" ? line2 : `${String(reg.locations.get(scene.locationId)?.name ?? scene.locationId)}: ${names} talked.`
+    text: line2 !== "" ? line2 : `${String(reg.locations.get(scene.locationId)?.name ?? scene.locationId)}: ${names2} talked.`
   });
   const endIndex = isObj15(payload) ? payload.endIndex : void 0;
   if (typeof endIndex === "number" && Number.isInteger(endIndex) && endIndex >= scene.startIndex) {
@@ -35367,7 +35591,7 @@ registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNig
 
 // src/engine/warden/leash.ts
 var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var SLOTS3 = ["morning", "afternoon", "evening"];
+var SLOTS4 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
   if (!w) return 1;
@@ -35385,7 +35609,7 @@ function rollCosign(draft, ctx2, targetId, kind) {
 function logCosignDenied(draft, ctx2, unitId, kind, context, cc = "warden") {
   return bookUse(draft, ctx2, unitId, kind, context, "denied", cc);
 }
-var restOfDay = (slot2) => SLOTS3.includes(slot2) ? SLOTS3.length - SLOTS3.indexOf(slot2) : 0;
+var restOfDay = (slot2) => SLOTS4.includes(slot2) ? SLOTS4.length - SLOTS4.indexOf(slot2) : 0;
 function leashCommander(draft, ctx2, kind) {
   const w = wardenOf(draft);
   if (!w) throw new Error("Nobody holds the Leash.");
@@ -35612,14 +35836,14 @@ function recordTally(draft, cs) {
 }
 
 // src/engine/combat/outcome.ts
-var RANK3 = ["minor", "moderate", "major", "extreme"];
+var RANK4 = ["minor", "moderate", "major", "extreme"];
 var severityOfShare = (share2) => share2 < 0.15 ? "minor" : share2 < 0.4 ? "moderate" : "major";
 function mergeHints(into, more) {
   const key = (h2) => `${h2.type}|${h2.actor}|${h2.targets.join(",")}`;
   for (const h2 of more) {
     const have = into.find((x) => key(x) === key(h2));
     if (!have) into.push({ ...h2, targets: [...h2.targets] });
-    else if (RANK3.indexOf(h2.severity) > RANK3.indexOf(have.severity)) have.severity = h2.severity;
+    else if (RANK4.indexOf(h2.severity) > RANK4.indexOf(have.severity)) have.severity = h2.severity;
   }
 }
 function relationHints(cs, unitIdOf7) {
@@ -35905,12 +36129,12 @@ registerAction("combat/set_enemy_name", (draft, payload) => {
   const p = isObj18(payload) ? payload : {};
   if (typeof p.key !== "string" || !/^[a-z0-9_:.-]+(\|[a-z0-9_:.,-]*)?$/.test(p.key)) throw new Error("combat/set_enemy_name needs a valid key");
   if (!isEnemyName(p.name)) throw new Error("combat/set_enemy_name: the name must be 1 to 3 words of letters, at most 32 characters");
-  const names = draft.enemyNames ?? {};
-  delete names[p.key];
-  names[p.key] = p.name;
-  const keys = Object.keys(names);
-  for (const old of keys.slice(0, Math.max(0, keys.length - ENEMY_NAMES_MAX))) delete names[old];
-  draft.enemyNames = names;
+  const names2 = draft.enemyNames ?? {};
+  delete names2[p.key];
+  names2[p.key] = p.name;
+  const keys = Object.keys(names2);
+  for (const old of keys.slice(0, Math.max(0, keys.length - ENEMY_NAMES_MAX))) delete names2[old];
+  draft.enemyNames = names2;
   return [{ type: "enemy_named", key: p.key, name: p.name }];
 });
 registerAction("campaign/set_difficulty", (draft, payload) => {
@@ -36315,11 +36539,11 @@ function decorDayStep(draft, ctx2) {
     const access = deviceAccess(draft, reg, u.id);
     if (!has3) {
       if (access < 1) continue;
-      const names = ruleOfLevel(reg, 1)?.contactNames ?? ["{name}"];
+      const names2 = ruleOfLevel(reg, 1)?.contactNames ?? ["{name}"];
       (personalOf(draft).decor ??= {})[u.id] = {
         since: draft.day,
         parts: [...DECOR_PARTS],
-        contactName: names[fnv1a3(u.id) % names.length].replaceAll("{name}", u.displayName)
+        contactName: names2[fnv1a3(u.id) % names2.length].replaceAll("{name}", u.displayName)
       };
       events.push({ type: "decor_placed", unitId: u.id });
     } else if (access >= 1) {
@@ -36375,14 +36599,14 @@ registerAction("device/resolve_intercept", (draft, payload, ctx2) => {
   if (!isObj26(payload) || typeof payload.id !== "string" || typeof payload.keep !== "boolean") throw new Error("device/resolve_intercept needs { id, keep }");
   return resolveIntercept(draft, ctx2, payload.id, payload.keep);
 });
-var SLOTS4 = ["morning", "afternoon", "evening"];
+var SLOTS5 = ["morning", "afternoon", "evening"];
 registerAction("booking/cancel", (draft, payload, ctx2) => {
   if (!isObj26(payload) || typeof payload.bookingId !== "string") throw new Error("booking/cancel needs { bookingId }");
   return cancelBooking(draft, ctx2, payload.bookingId);
 });
 registerAction("booking/resolve", (draft, payload, ctx2) => {
   if (isObj26(payload) && typeof payload.bookingId === "string") return resolveConflict(draft, ctx2, { bookingId: payload.bookingId });
-  if (isObj26(payload) && payload.settle === true && typeof payload.day === "number" && SLOTS4.includes(payload.slot)) {
+  if (isObj26(payload) && payload.settle === true && typeof payload.day === "number" && SLOTS5.includes(payload.slot)) {
     return resolveConflict(draft, ctx2, { day: payload.day, slot: payload.slot, settle: true });
   }
   throw new Error("booking/resolve needs { bookingId } or { day, slot, settle: true }");
@@ -39145,6 +39369,7 @@ function kindsToday(state, reg, holderId) {
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === void 0 || kind === "punishment") return false;
     if (kind === "task" && !taskRoom(state, reg, holderId)) return false;
+    if (kind === "hold" && holdBusy(state)) return false;
     if (kind === "denial" && (permissionRuleOf(state, reg, holderId) !== void 0 || !denialPossible(state, reg, holderId))) return false;
     if (kind === "protocol" && !protocolPossible(state, reg, holderId) && !taskRoom(state, reg, holderId)) return false;
     if (kind === "demonstration" && (demonstrationGate(state, reg, holderId) !== null || (state.practices?.demonstrations ?? []).some((d) => d.holderId === holderId && (d.status === "offered" || d.status === "open")))) return false;
@@ -39363,6 +39588,7 @@ registerMomentTrigger("her_demand", herDemandLive);
 registerAfterAction(notePosture);
 registerAfterAction(callPosture);
 registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
+registerAfterAction(holdSweep);
 registerAfterAction(voiceWaitingPunishments);
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
@@ -39833,14 +40059,14 @@ registerFlavorKind("ballot", {
     ].join("\n");
   }
 });
-function sanitizeBallotFlavor(raw, names) {
+function sanitizeBallotFlavor(raw, names2) {
   const out = {};
   const lines = typeof raw === "object" && raw !== null && !Array.isArray(raw) ? raw.lines : void 0;
   if (!Array.isArray(lines)) return out;
   for (const entry of lines) {
     if (typeof entry !== "object" || entry === null) continue;
     const { name, line: line2 } = entry;
-    if (typeof name !== "string" || typeof line2 !== "string" || !names.includes(name) || name in out) continue;
+    if (typeof name !== "string" || typeof line2 !== "string" || !names2.includes(name) || name in out) continue;
     const text2 = line2.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, BALLOT_LINE_MAX).trim();
     if (text2 !== "") out[name] = text2;
   }
@@ -42466,6 +42692,7 @@ var DEMONSTRATION_PREFIX = "practice:demonstration:";
 var PERMISSION_PREFIX = "practice:permission:";
 var VERDICT_PREFIX = "practice:verdict:";
 var ISSUED_PREFIX = "practice:issued:";
+var HELD_ID = "practice:held";
 var WITNESS_PHRASE = { drawn: "is drawn to it", indifferent: "is unmoved by it", dislikes: "is put off by it" };
 var NEVER_NAME = "Show it in how she acts and speaks; never name it as a mechanic.";
 var phrase = (text2) => plainDraft(text2).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
@@ -42523,6 +42750,12 @@ function practiceDirectives(state, reg, present2) {
       return holder2 === void 0 || what === "" ? [] : [`${holder2.displayName} asked the commander for this, which involves ${target.displayName}: ${what}. Her own stance toward what ${holder2.displayName} leads in: ${witnessOf(state, reg, id, t.holderId)}.`];
     });
     if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: "scene", text: plainDraft(`${lines.join(" ")} She reacts as she would. ${NEVER_NAME}`) });
+  }
+  const held3 = heldNow(state);
+  const keeper = held3 === null ? void 0 : holdersIn(state, reg, present2).find((u) => u.id === held3.by);
+  if (held3 !== null && keeper !== void 0) {
+    const dark = held3.sensory ? " The room is dark and quiet: only what is heard and felt reaches the commander." : "";
+    out.push({ id: HELD_ID, expiresAfter: "scene", text: plainDraft(`${keeper.displayName} is keeping the commander in her quarters for this stretch of time, and the commander cannot leave them.${dark} ${NEVER_NAME}`) });
   }
   return out;
 }
@@ -43237,15 +43470,15 @@ function personalDirectives(state, reg, present2) {
     }
   }
   for (const x of state.personal?.secrets ?? []) {
-    const names = x.knownBy.filter((id) => present2.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named").map((u) => u.displayName);
-    if (names.length === 0) continue;
-    const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    const names2 = x.knownBy.filter((id) => present2.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named").map((u) => u.displayName);
+    if (names2.length === 0) continue;
+    const who = names2.length === 1 ? names2[0] : `${names2.slice(0, -1).join(", ")} and ${names2[names2.length - 1]}`;
     const text2 = clean9(x.text);
     if (x.status === "kept" || x.status === "pretend") {
       out.push({
         id: `personal:secret:${x.id}`,
         expiresAfter: "scene",
-        text: names.length === 1 ? `${who} knows the following and keeps it from the commander: ${text2} She does NOT reveal it to the commander, whatever is asked.` : `${who} know the following and keep it from the commander: ${text2} They do NOT reveal it to the commander, whatever is asked.`
+        text: names2.length === 1 ? `${who} knows the following and keeps it from the commander: ${text2} She does NOT reveal it to the commander, whatever is asked.` : `${who} know the following and keep it from the commander: ${text2} They do NOT reveal it to the commander, whatever is asked.`
       });
     } else if (x.status === "used" && (x.usedUntil ?? 0) > state.day) {
       out.push({ id: `personal:secret:${x.id}`, expiresAfter: "scene", text: `The commander knows the following and can hold it over ${who}: ${text2}` });
@@ -43282,8 +43515,8 @@ function specialDirectives(state, reg, present2) {
     const knowers = present2.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && state.relations[u.id]?.flags.includes("knows_debts"));
     if (knowers.length > 0) {
       const handler2 = String(reg.debtHandlers.get(debts.handlerId)?.name ?? "a handler");
-      const names = knowers.map((u) => u.displayName).join(" and ");
-      out.push({ id: "special:handler", expiresAfter: "scene", text: `${names} ${knowers.length === 1 ? "knows" : "know"} the commander sells intel to a rival corporation through ${handler2}.` });
+      const names2 = knowers.map((u) => u.displayName).join(" and ");
+      out.push({ id: "special:handler", expiresAfter: "scene", text: `${names2} ${knowers.length === 1 ? "knows" : "know"} the commander sells intel to a rival corporation through ${handler2}.` });
     }
   }
   const paranoia = state.special?.paranoia;
@@ -49921,7 +50154,7 @@ function createSceneController(deps) {
   }
   function summaryInput(s, sceneId) {
     const reg = deps.registries();
-    const names = (ids) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
+    const names2 = (ids) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
     const excluded = disabledCategories(s, reg);
     const scene = s.scene;
     if (scene && scene.id === sceneId) {
@@ -49934,7 +50167,7 @@ function createSceneController(deps) {
       }));
       return {
         location: String(reg.locations.get(scene.locationId)?.name ?? scene.locationId),
-        participants: names(scene.participants),
+        participants: names2(scene.participants),
         transcript: digest ? [{ speaker: "Digest of the scene so far", text: digest.text }, ...tail] : tail,
         ...excluded.length > 0 ? { excluded } : {},
         factTextMax: factTextMax(s)
@@ -49947,7 +50180,7 @@ function createSceneController(deps) {
     if (st.chatLength() <= mark.to) return { expired: "The chat is shorter than that scene." };
     return {
       location: String(reg.locations.get(mark.locationId)?.name ?? mark.locationId),
-      participants: names(mark.participants),
+      participants: names2(mark.participants),
       transcript: st.getChatMessages(mark.from).filter((m) => m.index <= mark.to).map((m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text })),
       ...excluded.length > 0 ? { excluded } : {},
       factTextMax: factTextMax(s)
@@ -54455,9 +54688,9 @@ function renderTaskCard(host, ctx2) {
       parts.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
     }
     if (task.acceptForm === "words" || task.acceptForm === "signed") {
-      const names = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
+      const names2 = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
       const proof = PROOF_WORDS[task.proof];
-      parts.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names.length > 0 ? names.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
+      parts.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names2.length > 0 ? names2.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
     }
     if (task.acceptForm === "signed") parts.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
     if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
@@ -54482,7 +54715,7 @@ function drawTaskCards(host, state, reg, pick3, handlers2) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== "task" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
     renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation });
   }
   drawPracticeChips(host, handlers2.generation, state, reg, pick3);
@@ -54767,7 +55000,7 @@ function relationLine(unit3, state, ctx2) {
   return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
 var joinWith = (items, sep) => items.flatMap((item, i) => i === 0 ? [item] : [sep, item]);
-var SLOTS5 = ["weapon", "upper", "lower"];
+var SLOTS6 = ["weapon", "upper", "lower"];
 function effectiveStats(unit3, ctx2, state) {
   try {
     return unitStats(state, ctx2.registries, unit3);
@@ -54777,7 +55010,7 @@ function effectiveStats(unit3, ctx2, state) {
 }
 function equipmentBlock(unit3, ctx2, state) {
   const reg = ctx2.registries;
-  const rows = SLOTS5.map((slot2) => {
+  const rows = SLOTS6.map((slot2) => {
     const uid = unit3.equipment[slot2];
     const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
     const tpl = inst ? reg.items.get(inst.itemId) : void 0;
@@ -58486,7 +58719,7 @@ function drawDemandChips(host, state, reg, pick3, on) {
 
 // src/ui/practice/demonstrationCard.ts
 var nameOf19 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-var joinNames3 = (names) => names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+var joinNames3 = (names2) => names2.length <= 1 ? names2.join("") : `${names2.slice(0, -1).join(", ")} and ${names2[names2.length - 1]}`;
 function renderDemonstrationCard(host, ctx2) {
   const { state, reg, demonstration: d } = ctx2;
   const unit3 = state.squad.find((u) => u.id === d.holderId);
@@ -58502,9 +58735,9 @@ function renderDemonstrationCard(host, ctx2) {
   }, text2);
   const place2 = String(reg.locations.get(d.stage)?.name ?? d.stage);
   const slot2 = d.slot ?? "evening";
-  const names = d.audienceIds.map((id) => nameOf19(state, id));
+  const names2 = d.audienceIds.map((id) => nameOf19(state, id));
   const others = (d.narrated ?? []).length > 0;
-  const before = names.length === 0 ? "others" : others ? `${joinNames3(names)} and others` : joinNames3(names);
+  const before = names2.length === 0 ? "others" : others ? `${joinNames3(names2)} and others` : joinNames3(names2);
   const parts = [
     h("p", { class: "alius-demonstration-text" }, plainDraft(d.text)),
     h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before}.`),
@@ -65011,12 +65244,12 @@ function createApp(st, deps) {
       return u !== void 0 && u.kind === "named" && isLiving(u) && restrictionReason(s, registries, id, "scene") === null;
     }).slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
-    const names = ids.map((id) => s.squad.find((u) => u.id === id).displayName).join(", ");
-    toast("info", `Your decision "${String(resolved.title)}" moved ${names}.`);
+    const names2 = ids.map((id) => s.squad.find((u) => u.id === id).displayName).join(", ");
+    toast("info", `Your decision "${String(resolved.title)}" moved ${names2}.`);
     const chatId = st.getActiveChat()?.chatId;
     void shell.modal({
       title: "Talk it over?",
-      body: `${names} reacted to what you decided. Talk with them now? This does not use a slot.`,
+      body: `${names2} reacted to what you decided. Talk with them now? This does not use a slot.`,
       actions: [{ label: "[ TALK ]", value: "talk" }, { label: "Later", value: "later" }]
     }).then((answer) => {
       if (answer === "talk" && st.getActiveChat()?.chatId === chatId) {

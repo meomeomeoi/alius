@@ -8,15 +8,13 @@ import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { rememberEvents } from '../../../src/engine/memory/remember';
 import { applyPracticeIntent } from '../../../src/engine/practice/intents';
 import { blankPractices, practiceRoll, type OpenPunishment } from '../../../src/engine/practice/state';
-import { startHold } from '../../../src/engine/practice/hold';
 import { startSlap } from '../../../src/engine/practice/slap';
 import { practiceDirectives } from '../../../src/practice/directives';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { errors, loadCore, ofType, run } from '../../helpers/world';
 import { ANN, BEA, CAT, unitOf, withService, world } from './world';
 
-// the hold (Task 25) and the slap (Task 33) are stubs: what is asked of them is what is tested
-vi.mock('../../../src/engine/practice/hold', () => ({ startHold: vi.fn(() => []) }));
+// the slap (Task 33) is a stub: what is asked of it is what is tested
 vi.mock('../../../src/engine/practice/slap', () => ({ startSlap: vi.fn(() => []) }));
 
 let reg: Registries;
@@ -67,11 +65,11 @@ describe('accepting', () => {
 });
 
 describe('the effects', () => {
-  it('slot_held asks for a hold of its span (a stub until the hold is built)', () => {
-    vi.mocked(startHold).mockClear();
-    answer(withPun('role', 'kept_in_quarters', 3, {}, ['restraint']), 'accept');
-    expect(startHold).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(startHold).mock.calls[0].slice(2)).toEqual([ANN, 2, { punitive: true, punishmentId: 'pp1' }]);
+  it('slot_held starts a punitive hold of its span (two slots from the one now)', () => {
+    const r = answer(withPun('role', 'kept_in_quarters', 3, {}, ['restraint']), 'accept');
+    expect(ofType(r.events, 'hold_started')).toMatchObject([{ holderId: ANN, punitive: true, punishmentId: 'pp1', slots: 2 }]);
+    expect(r.state.practices!.held).toMatchObject({ by: ANN, punitive: true });
+    expect(r.state.practices!.held!.bookingIds).toHaveLength(2);
   });
 
   it('privilege_revoked writes a restriction until day + days; protocol_extra asks for a protocol; cold_shoulder writes cold', () => {

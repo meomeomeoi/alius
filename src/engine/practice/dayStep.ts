@@ -20,7 +20,7 @@ import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
 import { kindnessSweep, protocolPossible, routineSweep } from './service';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
-import { frameOf, taskRoom } from './tasks';
+import { frameOf, holdBusy, taskRoom } from './tasks';
 
 /** The highest appetite she has among the practice categories that stand (`craves` 1.4, `enjoys` 1, `tolerates` 0.6); 1 when none is read. */
 function appetiteOf(state: CampaignState, reg: Registries, holderId: string): number {
@@ -50,6 +50,8 @@ export function kindsToday(state: CampaignState, reg: Registries, holderId: stri
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === undefined || kind === 'punishment') return false; // her discipline comes from an offence, never from the day's roll
     if (kind === 'task' && !taskRoom(state, reg, holderId)) return false;
+    // one hold at a time, and none while a held slot cannot be made (R11)
+    if (kind === 'hold' && holdBusy(state)) return false;
     // a denial is a permission rule: only while she has none and one could be proposed (R13)
     if (kind === 'denial' && (permissionRuleOf(state, reg, holderId) !== undefined || !denialPossible(state, reg, holderId))) return false;
     // a protocol becomes a task when no rule can be proposed (R10): with no room for either, there is nothing to ask for

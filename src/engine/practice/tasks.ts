@@ -19,6 +19,7 @@ import { evaluateAutomatic } from '../relations/graph';
 import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
+import { startHold } from './hold';
 import { noteOffence } from './offences';
 import { stakeRank, STAKES, type AcceptForm, type PracticeRequest, type Stake, type Task, type ValidOutput } from './state';
 import { plainText } from './validate';
@@ -76,6 +77,35 @@ export const writeTask: Writer = (draft, _ctx, request, out, plain) => {
   return [{ type: 'task_issued', taskId: id, holderId: request.holderId, kind: 'task', requestId: request.id, ...(plain ? { plain: true } : {}), ...(request.sealed === true ? { sealed: true } : {}) }];
 };
 
+/** How many slots a hold of these stakes keeps the commander (R11): a trivial or minor one a slot, a major one two, a severe one what is left of the day (3 stands for it). */
+const HOLD_SLOTS: Readonly<Record<Stake, 1 | 2 | 3>> = { trivial: 1, minor: 1, major: 2, severe: 3 };
+
+/** Is a hold already running or waiting for an answer (any holder's)? A second one is never offered (R11: one hold at a time). */
+export const holdBusy = (state: Pick<CampaignState, 'practices'>): boolean =>
+  state.practices?.held !== undefined || (state.practices?.tasks ?? []).some((t) => t.kind === 'hold' && (t.status === 'offered' || t.status === 'open'));
+
+/**
+ * A hold of hers, from a card (R11): a task of kind `hold` that keeps the commander in her quarters for the slots its stakes name (a minor one a slot, a major one two, a severe one the day),
+ * `sensory` when its seed is. It starts when the commander says yes (as any task: the form is the ladder's). One at a time: a hold asked for while another stands is written as a plain task instead.
+ */
+export const writeHold: Writer = (draft, ctx, request, out, plain) => {
+  if (holdBusy(draft)) {
+    const seed = out.seedId === undefined ? undefined : (ctx.registries.practiceSeeds.get(out.seedId) as { days?: number } | undefined);
+    return writeTask(draft, ctx, request, { ...out, kind: 'task', deadline: out.deadline ?? { days: seed?.days ?? TUNING.practice.defaultDeadlineDays } }, plain);
+  }
+  const p = ensurePractices(draft);
+  const id = nextPracticeId(draft, 'pt');
+  const seed = out.seedId === undefined ? undefined : (ctx.registries.practiceSeeds.get(out.seedId) as { sensory?: boolean } | undefined);
+  const task: Task = {
+    id, holderId: request.holderId, kind: 'hold', ...(out.seedId !== undefined ? { seedId: out.seedId } : {}), tags: [...out.tags], track: out.track, tier: out.tier,
+    stakes: out.stakes, check: out.check, proof: out.proof, deadline: { day: draft.day + 1 }, ...(request.noDuration === true ? { noDuration: true as const } : {}),
+    text: out.text, summary: out.summary, ...(plain ? { plain: true as const } : {}), status: 'offered', ...(request.sealed === true ? { sealed: true as const } : {}),
+    ...(seed?.sensory === true ? { sensory: true as const } : {}), slots: HOLD_SLOTS[out.stakes], acceptForm: acceptFormOf(out.stakes, request.sealed), day: draft.day, requestId: request.id,
+  };
+  p.tasks.push(task);
+  return [{ type: 'task_issued', taskId: id, holderId: request.holderId, kind: 'hold', requestId: request.id, ...(plain ? { plain: true } : {}), ...(request.sealed === true ? { sealed: true } : {}) }];
+};
+
 /** Which of the commander's slots it takes and which bookings of someone else's lapse for it, in bands (R6): a hold's span (from the slot now), or the slot a check names. */
 export function taskCost(state: CampaignState, reg: Registries, task: Task): { slots: number; lapses: string[]; resources: Record<string, 'little' | 'some' | 'much'> } {
   const takesSlot = task.kind === 'hold' || task.check === 'slot_with_her' || task.check === 'booking_kept';
@@ -105,7 +135,7 @@ export function recordLine(task: Pick<Task, 'summary' | 'sealed' | 'answeredDay'
 
 function taskOf(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, taskId: string): Task {
   const task = draft.practices?.tasks.find((t) => t.id === taskId);
-  if (task === undefined || task.kind !== 'task') throw new Error('That task is gone.');
+  if (task === undefined || (task.kind !== 'task' && task.kind !== 'hold')) throw new Error('That task is gone.');
   if (!practiceLive(draft, ctx.registries, task.holderId)) throw new Error('She is not holding now.');
   if (task.status !== 'offered') throw new Error('That task has been answered.');
   return task;
@@ -121,8 +151,18 @@ function attachBooking(draft: CampaignState, task: Task): void {
 }
 
 /** The task becomes open: the commander said yes. A signed or sealed one leaves its line on the record (`practice_signed`); a sealed one is opened (its words come out). */
-function openTask(draft: CampaignState, task: Task, via: 'button' | 'words' | 'signed'): EngineEvent[] {
+function openTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, task: Task, via: 'button' | 'words' | 'signed'): EngineEvent[] {
   const events: EngineEvent[] = [];
+  if (task.kind === 'hold') {
+    // a hold starts now (the commander said yes): one that cannot start (another stands, the category went) is void and costs nothing
+    const span = (task.slots ?? 1) >= 3 ? 'day' : (task.slots ?? 1) >= 2 ? 2 : 1;
+    const started = startHold(draft, ctx, task.holderId, span, { taskId: task.id, sensory: task.sensory === true, hidden: task.noDuration === true });
+    if (started.length === 0) {
+      task.status = 'void';
+      return [{ type: 'task_void', taskId: task.id, holderId: task.holderId, what: 'task', reason: 'no_hold' }];
+    }
+    events.push(...started);
+  }
   task.status = 'open';
   task.answeredDay = draft.day;
   delete task.said;
@@ -154,7 +194,7 @@ export function answerTask(draft: CampaignState, ctx: EngineCtx, taskId: string,
   if (answer === 'talk') return [{ type: 'task_answered', taskId, holderId: task.holderId, answer: 'talk' }];
   if (answer === 'accept') {
     if (task.acceptForm === 'words' || task.acceptForm === 'signed') throw new Error('Say it in your own words.');
-    return openTask(draft, task, 'button');
+    return openTask(draft, ctx, task, 'button');
   }
   if (answer !== 'refuse') throw new Error('Unknown answer.');
   task.status = 'refused';
@@ -187,7 +227,7 @@ export function refusePractice(draft: CampaignState, ctx: EngineCtx, holderId: s
  * line is what the journal reads.
  */
 export function acceptByWords(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId: string, ev: Pick<EventIntent, 'taskId'>): EngineEvent[] {
-  const task = ev.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && t.kind === 'task' && t.status === 'offered');
+  const task = ev.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && (t.kind === 'task' || t.kind === 'hold') && t.status === 'offered');
   if (task === undefined || (task.acceptForm !== 'words' && task.acceptForm !== 'signed') || !practiceLive(draft, ctx.registries, holderId)) return [];
   const events = hitHer(draft, ctx.registries, holderId, 'practice_accepted', 'minor', 'said yes to her task');
   if (task.acceptForm === 'signed') {
@@ -195,7 +235,7 @@ export function acceptByWords(draft: CampaignState, ctx: Pick<EngineCtx, 'regist
     events.push({ type: 'task_answered', taskId: task.id, holderId, answer: 'accept', via: 'words', pending: 'sign' });
     return events;
   }
-  events.push(...openTask(draft, task, 'words'));
+  events.push(...openTask(draft, ctx, task, 'words'));
   return events;
 }
 
@@ -204,7 +244,7 @@ export function signTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'
   const task = taskOf(draft, ctx, taskId);
   if (task.acceptForm !== 'signed') throw new Error('That task is not signed.');
   if (task.said !== true) throw new Error('Say it in your own words first.');
-  return openTask(draft, task, 'signed');
+  return openTask(draft, ctx, task, 'signed');
 }
 
 /**
@@ -212,7 +252,7 @@ export function signTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'
  * text with a pronoun for the commander is not taken: the old words stay), the card is no longer sealed and the form follows the new stakes.
  */
 export function compromiseTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId: string, ev: Pick<EventIntent, 'taskId' | 'text'>): EngineEvent[] {
-  const task = ev.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && t.kind === 'task' && t.status === 'offered');
+  const task = ev.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === holderId && (t.kind === 'task' || t.kind === 'hold') && t.status === 'offered');
   if (task === undefined || !practiceLive(draft, ctx.registries, holderId)) return [];
   const text = plainText(ev.text, TUNING.practice.textMax);
   if (text !== '' && !hasCommanderPronoun(text)) {

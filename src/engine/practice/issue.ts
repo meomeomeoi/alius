@@ -15,7 +15,7 @@ import { writeDenialRule } from './denial';
 import { writeProtocol } from './service';
 import { allCards, requestOf } from './request';
 import { TUNING } from '../tuning';
-import { acceptFormOf, writeTask, type Writer } from './tasks';
+import { acceptFormOf, writeHold, writeTask, type Writer } from './tasks';
 import { validatePracticeOutput } from './validate';
 
 export { acceptFormOf, type Writer };
@@ -47,10 +47,9 @@ function writePunishment(draft: CampaignState, ctx: EngineCtx, request: Practice
 }
 
 /**
- * The writer of each kind that can be issued. The day step offers only these kinds, so a campaign between tasks never asks for a kind nobody can write. Later tasks add
- * protocol (21), denial (23) and hold (25).
+ * The writer of each kind that can be issued. The day step offers only these kinds, so a campaign between tasks never asks for a kind nobody can write. Protocol (21), denial (23) and hold (25) were added by their tasks.
  */
-export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol, denial: writeDenialRule };
+export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol, denial: writeDenialRule, hold: writeHold };
 
 /** The card the fallback writes for a request: its first seed that is still allowed, with the template line and the gist, within the frame's stakes. `null` when none stands. */
 export function fallbackOutput(state: CampaignState, reg: Registries, request: PracticeRequest): ValidOutput | null {

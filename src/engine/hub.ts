@@ -5,6 +5,7 @@ import type { CampaignState, Slot, Unit } from './state/types';
 import { TUNING } from './tuning';
 import { likesOf } from './development/profile';
 import { lifeMode } from './life/state';
+import { heldLocation, heldNow } from './practice/held';
 
 /** FNV-1a, 32 bit. The hub's only source of "randomness": a stable function of its input, never a draw from the campaign RNG. */
 export function fnv1a(s: string): number {
@@ -25,7 +26,7 @@ export interface Whereabout {
   unitId: string;
   /** `null` while she is out on an expedition, or when no room qualifies. */
   roomId: string | null;
-  reason: 'injured' | 'confined' | 'duty' | 'night' | 'routine' | 'expedition' | 'nowhere';
+  reason: 'injured' | 'confined' | 'duty' | 'holding' | 'night' | 'routine' | 'expedition' | 'nowhere';
 }
 
 /** A room the pack lists, in registry order, so the pick never depends on how a `Map` was filled. */
@@ -58,6 +59,14 @@ function hobbyWeight(state: CampaignState, reg: Registries, room: Entry, unit: U
   return hosted ? TUNING.life.hobbyRoomWeight : 0;
 }
 
+/** P16: the holder of a hold that keeps the commander now is in the room of the hold's location (derived from the held booking; nothing is stored). */
+function heldPlace(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit): Whereabout | null {
+  if (heldNow(state)?.by !== unit.id) return null;
+  const at = heldLocation(state, reg);
+  const room = at === null ? undefined : rooms.find((r) => r.sceneLocationId === at);
+  return room ? { unitId: unit.id, roomId: room.id, reason: 'holding' } : null;
+}
+
 function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit): Whereabout {
   const here = (room: Entry | undefined, reason: Whereabout['reason']): Whereabout | null =>
     room ? { unitId: unit.id, roomId: room.id, reason } : null;
@@ -69,6 +78,7 @@ function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit
     (isInjured(unit) ? here(hostOf(rooms, 'injured'), 'injured') : null)
     ?? (held.some((r) => r.kind === 'confined') ? here(hostOf(rooms, 'confined'), 'confined') : null)
     ?? (held.some((r) => r.kind === 'duty') ? here(hostOf(rooms, 'duty'), 'duty') : null)
+    ?? heldPlace(state, reg, rooms, unit) // P16: she is keeping the commander in her quarters
     ?? (state.slot === 'night' ? here(hostOf(rooms, 'night'), 'night') : null);
   if (found) return found;
 

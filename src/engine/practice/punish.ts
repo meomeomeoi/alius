@@ -28,7 +28,7 @@ import type { CampaignState, Severity } from '../state/types';
 import { addCommanderStress } from '../special/commanderStress';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
-import { startHold } from './hold';
+import { endHold, startHold } from './hold';
 import { WRITERS } from './issue';
 import { atBase, pickHolderPunishment, severityOfEntry } from './offences';
 import { practiceSample } from './sample';
@@ -215,7 +215,9 @@ function withUndo(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment, answe
   const tasksBefore = pr.tasks.map((t) => t.id);
   const requestsBefore = pr.requests.map((r) => r.id);
   const markBefore = draft.personal?.mark;
+  const heldBefore = pr.held;
   const { events, inverse } = captureInverse(draft, holderId, answer);
+  if (heldBefore === undefined && pr.held !== undefined && pr.held.by === holderId) undo.startedHold = true; // the answer started a hold: UNDO ends it
   undo.restrictionsAdded = pr.restrictions.filter((r) => !restrictionsBefore.includes(r)).map((r) => ({ ...r }));
   const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
   const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
@@ -267,12 +269,13 @@ export function undoPractice(draft: CampaignState, ctx: EngineCtx, punishmentId:
 }
 
 /** The hook `revertInverse` calls with an answer's `Inverse.practice` (registered by `actions/practice.ts`): everything the answer wrote on the practices and on her goes back. */
-export function restorePractice(draft: CampaignState, _ctx: EngineCtx, unitId: string, undo: PracticeUndo): EngineEvent[] {
+export function restorePractice(draft: CampaignState, ctx: EngineCtx, unitId: string, undo: PracticeUndo): EngineEvent[] {
   const pr = draft.practices;
   const p = pr?.punishments.find((x) => x.id === undo.punishmentId);
   const dyn = dynamicOf(draft, unitId);
   if (pr === undefined || p === undefined) return [];
   const events: EngineEvent[] = [];
+  if (undo.startedHold === true && pr.held?.by === unitId) events.push(...endHold(draft, ctx, 'undone')); // its bookings are cancelled with no cost
   if (dyn !== undefined) {
     events.push(...restoreHold(draft, unitId, undo.hold));
     addFavour(draft, unitId, undo.favour - dyn.favour);

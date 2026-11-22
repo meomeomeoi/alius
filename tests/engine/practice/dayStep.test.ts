@@ -83,7 +83,7 @@ describe('a new practice comes by the hashed roll', () => {
   it('at play one open task is the cap too', () => {
     const s = withService(world(reg, 'play'), 'craves');
     s.practices = { seq: 5, requests: [], tasks: [task({ id: 'pt1' })], punishments: [], demonstrations: [], restrictions: [], cold: {}, postures: {}, offences: {}, records: [], handovers: [] };
-    for (let d = 1; d <= 60; d++) { s.day = d; expect(step(s).state.practices!.requests).toEqual([]); }
+    for (let d = 1; d <= 60; d++) { s.day = d; expect(step(s).state.practices!.requests.filter((r) => r.kind === 'task')).toEqual([]); } // a hold (Task 25) is another kind
   });
 
   it('a holder whose frame fell is frozen: no request', () => {

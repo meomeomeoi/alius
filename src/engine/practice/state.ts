@@ -165,6 +165,8 @@ export interface Task {
   requestId?: string;
   /** The slots of the commander the task takes (a hold's span; the cost the card shows). */
   slots?: number;
+  /** A hold card only: the commander is kept in her quarters with the lights out (the hold it starts is sensory). */
+  sensory?: true;
   /** A `signed` task whose words were said: only the signature is left (R6). */
   said?: true;
   /** The scene with her that is open and would keep a `slot_with_her` task when it ends, and who else was in it (an `indifferent` holder's task kept before them may be seen, R9). */
@@ -285,6 +287,15 @@ export interface HeldState {
   bookingIds: string[];
   alarm?: string;
   run?: true;
+  /** The hold task the commander accepted that started it (settled when the hold ends), and whether the hold is her punishment (a threat source, R18). */
+  taskId?: string;
+  punitive?: true;
+  /** She forgot the commander once already (it happens at most once a hold, R11). */
+  forgot?: true;
+  /** The commander defied it: the end gives no xp and no hold. */
+  defied?: true;
+  /** The bookings of others it made lapse (UNDO of the answer that started it puts them back). */
+  lapsedIds?: string[];
 }
 
 export interface OpenAlarm { id: string; holderId: string; kind: AlarmKind; day: number; slot: Slot; answer?: AlarmAnswer; argued?: true; payload?: unknown }

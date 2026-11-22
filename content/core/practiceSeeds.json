@@ -566,6 +566,7 @@
     "tier": 2,
     "gist": "an hour with the lights out",
     "stakes": "minor",
+    "sensory": true,
     "weight": 3,
     "description": "AUTHOR TO WRITE: an example of a hold for the model: an hour with the lights out."
   },

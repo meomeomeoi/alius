@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { PLAN_OPEN_KINDS, type PlanFloor } from '../content/schemas';
 import { secondPlaceHolder } from './dynamic/capabilities';
 import { isLiving } from './economy';
+import { heldNow } from './practice/held';
 import type { Whereabout } from './hub';
 import type { CampaignState } from './state/types';
 
@@ -91,6 +92,9 @@ export function cabinOwner(state: Pick<CampaignState, 'squad'>, reg: Registries,
  */
 export function roomOfPerson(state: CampaignState, reg: Registries, here: Whereabout[], personId: string): Entry | null {
   if (personId === 'commander') {
+    const keeper = heldNow(state)?.by; // P16: a hold keeps the commander in her quarters (derived from the hold; nothing is stored)
+    const own = keeper !== undefined ? cabinOf(state, reg, keeper) : null;
+    if (own !== null) return own;
     const holder = secondPlaceHolder(state, reg);
     return (holder !== null ? cabinOf(state, reg, holder) : null) ?? commanderCabin(reg) ?? null;
   }

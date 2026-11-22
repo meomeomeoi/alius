@@ -202,7 +202,8 @@ export function deadlineSweep(draft: CampaignState, ctx: Pick<EngineCtx, 'regist
   const reg = ctx.registries;
   const out: EngineEvent[] = [];
   for (const task of [...p.tasks]) {
-    if (task.kind !== 'task' || task.routine === true || !practiceLive(draft, reg, task.holderId)) continue;
+    if ((task.kind !== 'task' && task.kind !== 'hold') || task.routine === true || !practiceLive(draft, reg, task.holderId)) continue;
+    if (task.kind === 'hold' && task.status !== 'offered') continue; // an open hold is settled by the hold (its end), never by a deadline
     if (task.status === 'offered') {
       if (task.deadline !== undefined && task.deadline.day < draft.day) {
         task.status = 'void';

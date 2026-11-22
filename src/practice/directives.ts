@@ -4,6 +4,7 @@ import { isLiving } from '../engine/economy';
 import { witnessOf } from '../engine/dynamic/witness';
 import { temperamentOf } from '../engine/life/state';
 import { practiceLive } from '../engine/practice/gate';
+import { heldNow } from '../engine/practice/held';
 import { protocolRules } from '../engine/practice/service';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
@@ -33,6 +34,9 @@ export const PERMISSION_PREFIX = 'practice:permission:';
 export const VERDICT_PREFIX = 'practice:verdict:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
+
+/** The hold that keeps the commander in her quarters, while she is in the room (scene). */
+export const HELD_ID = 'practice:held';
 
 /** How an onlooker takes to what the holder leads in, as prose (never the word of a mechanic). */
 const WITNESS_PHRASE: Readonly<Record<string, string>> = { drawn: 'is drawn to it', indifferent: 'is unmoved by it', dislikes: 'is put off by it' };
@@ -107,6 +111,13 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
       return holder === undefined || what === '' ? [] : [`${holder.displayName} asked the commander for this, which involves ${target.displayName}: ${what}. Her own stance toward what ${holder.displayName} leads in: ${witnessOf(state, reg, id, t.holderId)}.`];
     });
     if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} She reacts as she would. ${NEVER_NAME}`) });
+  }
+  // the hold (R11): she is keeping the commander in her quarters; a sensory one is told only as what reaches the commander (never the mechanic, never a feeling)
+  const held = heldNow(state);
+  const keeper = held === null ? undefined : holdersIn(state, reg, present).find((u) => u.id === held.by);
+  if (held !== null && keeper !== undefined) {
+    const dark = held.sensory ? ' The room is dark and quiet: only what is heard and felt reaches the commander.' : '';
+    out.push({ id: HELD_ID, expiresAfter: 'scene', text: plainDraft(`${keeper.displayName} is keeping the commander in her quarters for this stretch of time, and the commander cannot leave them.${dark} ${NEVER_NAME}`) });
   }
   return out;
 }

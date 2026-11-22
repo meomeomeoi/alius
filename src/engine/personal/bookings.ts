@@ -80,7 +80,7 @@ export function noteConsentRefusal(draft: CampaignState, reg: Registries, unitId
 
 /** The first booking due this slot (today, this slot, `booked`); one she can still keep comes first. `null` when none. */
 export function dueBooking(state: CampaignState, reg: Registries): Booking | null {
-  const due = bookingsOf(state).filter((b) => b.status === 'booked' && b.day === state.day && b.slot === state.slot);
+  const due = bookingsOf(state).filter((b) => b.status === 'booked' && b.day === state.day && b.slot === state.slot && kindOf(reg, b.kindId)?.held !== true); // P16: a held slot is not one she is met for
   return due.find((b) => bookingPlayable(state, reg, b)) ?? due[0] ?? null;
 }
 
@@ -247,6 +247,7 @@ export function cancelBooking(draft: CampaignState, ctx: EngineCtx, bookingId: s
   const b = bookingsOf(draft).find((x) => x.id === bookingId);
   if (!b || b.status !== 'booked') throw new Error('That booking cannot be canceled.');
   const reg = ctx.registries;
+  if (kindOf(reg, b.kindId)?.held === true) throw new Error('That is a hold: ask to be let go, or defy it.'); // P16
   b.status = 'cancelled';
   delete b.conflict;
   syncConflicts(draft, b.day, b.slot);
@@ -295,7 +296,7 @@ export const lapseBookings = (draft: CampaignState): EngineEvent[] => lapseBooki
 
 /** A scene opened with her counts as playing a booking that is due (she was met): called by `scene/start`. */
 export function metAtScene(draft: CampaignState, reg: Registries, participants: string[]): EngineEvent[] {
-  const due = bookingsOf(draft).find((b) => b.status === 'booked' && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId));
+  const due = bookingsOf(draft).find((b) => b.status === 'booked' && b.day === draft.day && b.slot === draft.slot && participants.includes(b.unitId) && kindOf(reg, b.kindId)?.held !== true);
   if (!due) return [];
   const events = markPlayed(draft, reg, due);
   syncConflicts(draft, due.day, due.slot);

@@ -2963,6 +2963,8 @@ export const PracticeSeedSchema = BaseEntrySchema.extend({
   audience: z.enum(SEED_AUDIENCE).optional(),
   romantic: z.literal(true).optional(),
   needs: capabilityEnum.optional(),
+  /** A hold seed only: the hold it starts is a sensory one (the device dims, P16 R11). */
+  sensory: z.literal(true).optional(),
   /** The days a task from this seed gives (1 to 7); none: `TUNING.practice.defaultDeadlineDays`. Every task has a deadline. */
   days: int.min(1).max(7).optional(),
   weight: z.number().min(0.1).max(20),
@@ -2971,7 +2973,7 @@ export const PracticeSeedSchema = BaseEntrySchema.extend({
 export type PracticeSeedEntry = z.infer<typeof PracticeSeedSchema>;
 
 const punishmentEffect = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('slot_held'), slots: z.union([z.literal(1), z.literal(2), z.literal('day')]) }).strict(),
+  z.object({ type: z.literal('slot_held'), slots: z.union([z.literal(1), z.literal(2), z.literal('day')]), sensory: z.literal(true).optional() }).strict(),
   z.object({ type: z.literal('privilege_revoked'), what: z.enum(['no_dms_others', 'no_free_activities', 'room']), days: int.min(1).max(14), arg: str.optional() }).strict(),
   z.object({ type: z.literal('protocol_extra'), days: int.min(1).max(14) }).strict(),
   z.object({ type: z.literal('cold_shoulder'), days: int.min(1).max(14) }).strict(),
