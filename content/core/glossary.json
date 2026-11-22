@@ -2985,5 +2985,15 @@
     "see": [
       "offer"
     ]
+  },
+  {
+    "id": "body_map",
+    "term": "Somatic response map",
+    "short": "What the commander has been shown of how she responds, by zone. A gray ? is not known yet; a color, a word and a note come once she has shown it.",
+    "long": "AUTHOR TO WRITE: The map fills from her corrections and reactions, and from the commander's mastery of each zone: practice shows it. Dots are mastery, rings are the scent she has now, and a diamond marks a zone that needs explicit content to be on. Readable mode shows the list alone.",
+    "see": [
+      "worship_target",
+      "offer"
+    ]
   }
 ]

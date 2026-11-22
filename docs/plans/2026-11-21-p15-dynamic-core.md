@@ -2115,22 +2115,23 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Create: `src/ui/dynamic/bodyMap.ts` (ported from `docs/drafts/bodymap/gen.js` and `builds.js` as pure functions: `outlinePath(build: Build, side: 'front' | 'back'): string`, `hairPath(hair, side)`, `renderBodyMap(host, ctx: BodyMapCtx)`)
 - Modify: `css/19-dynamic.css` (zone colours by attitude, hatching by scent band, readable-mode list only), `content/core/glossary.json` (`body_map`).
 - Test: `tests/ui/dynamic/bodyMap.test.ts`
+- **Memory check:** nothing new is remembered: the map only reads the facts `zone_revealed` (Task 40, 41) already writes, through `Knowledge`. No journal, chronicle or prompt text.
 
 **Interfaces:**
 - Consumes: `revealedExpectations`, `masteryLevel` (Task 41), P15a `scentBand`, `worshipTargets[].zone`, `motionReduced` / `visualFlags` (readable mode).
 - Produces: `BodyMapCtx { unitId; zones: Array<{ targetId; side; x; y; r; known: boolean; attitude?; meaning?; mastery: number; scent?: number; sources: string[] }>; build; hair; readable: boolean }`; `bodyMapZones(state, reg, knowledge, unitId): BodyMapCtx['zones']`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `unrevealed zone is a question mark` with no attitude class.
   - `explicit zones only with explicit_scenes`.
   - `builds blend`: `{ slim: 1 }` and `{ curvy: 1 }` give different outline paths, and `{ slim: 0.5, curvy: 0.5 }` lies between them (a sampled x at y = 272).
   - `readable mode draws only the list`.
   - `every zone carries data-analyze worshipTargets:<id>` and resolves.
   - `no url( and no network` (the `tests/assets.test.ts` rule holds for the built `style.css`).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/dynamic/bodyMap.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R20.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the body map`
+- [x] **Step 2: Run** `npx vitest run tests/ui/dynamic/bodyMap.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R20.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the body map`
 
 ---
 

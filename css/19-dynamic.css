@@ -126,3 +126,122 @@
 #alius-shell .alius-offer-answer {
   letter-spacing: 0.05em;
 }
+
+/* The body map (P15, her somatic response map): two figures and the list under them. Palette variables and currentColor only; the colour of a zone is never the only sign (the list says it in words), and nothing animates. */
+#alius-shell .alius-bodymap {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-bm-svg {
+  display: block;
+  width: 100%;
+  max-width: 34em;
+  height: auto;
+}
+
+#alius-shell .alius-bm-outline path {
+  fill: color-mix(in srgb, var(--alius-fg) 8%, var(--alius-bg));
+  stroke: var(--alius-dim);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+
+#alius-shell .alius-bm-hair {
+  fill: color-mix(in srgb, var(--alius-fg) 22%, var(--alius-bg));
+  stroke: var(--alius-dim);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+#alius-shell .alius-bm-ln {
+  fill: none;
+  stroke: var(--alius-dim);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+#alius-shell .alius-bm-zone {
+  color: var(--alius-dim);
+  cursor: help;
+}
+
+#alius-shell .alius-bm-zone.is-craves,
+#alius-shell .alius-bm-row.is-craves .alius-bm-state {
+  color: var(--alius-warn);
+}
+
+#alius-shell .alius-bm-zone.is-enjoys,
+#alius-shell .alius-bm-row.is-enjoys .alius-bm-state {
+  color: var(--alius-trust);
+}
+
+#alius-shell .alius-bm-zone.is-dislikes,
+#alius-shell .alius-bm-row.is-dislikes .alius-bm-state {
+  color: var(--alius-danger);
+}
+
+#alius-shell .alius-bm-zone .alius-bm-ring {
+  fill: color-mix(in srgb, currentColor 22%, transparent);
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
+
+#alius-shell .alius-bm-zone.is-unknown .alius-bm-ring {
+  fill: none;
+  stroke-dasharray: 3 3;
+}
+
+#alius-shell .alius-bm-zone:hover .alius-bm-ring,
+#alius-shell .alius-bm-zone:focus .alius-bm-ring {
+  stroke-width: 2.6;
+}
+
+#alius-shell .alius-bm-zone:focus-visible {
+  outline: 2px solid var(--alius-accent);
+}
+
+/* scent: dashed rings inside the zone, one for each band from noticeable up */
+#alius-shell .alius-bm-scent {
+  fill: none;
+  stroke: var(--alius-warn);
+  stroke-opacity: 0.7;
+  stroke-width: 1.2;
+  stroke-dasharray: 2 2;
+}
+
+#alius-shell .alius-bm-zone text {
+  fill: currentColor;
+  font-family: var(--alius-font);
+  font-size: 11px;
+}
+
+#alius-shell .alius-bm-zone .alius-bm-dots {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+#alius-shell .alius-bm-list {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+}
+
+#alius-shell .alius-bm-row {
+  margin: 3px 0;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
+
+#alius-shell .alius-bm-state {
+  letter-spacing: 0.08em;
+}
+
+#alius-shell .alius-bm-note {
+  margin: 0 0 0 1em;
+  opacity: 0.85;
+}
+
+#alius-shell .alius-bm-caption {
+  margin: 4px 0;
+}
