@@ -168,6 +168,7 @@ import { renderLogTab } from './ui/log/logTab';
 import { renderDoor, resetDoor } from './ui/night/door';
 import { pickLocation } from './ui/scene/locationPicker';
 import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
+import { resetSceneStage } from './ui/scene/stage';
 import { checkActivity, focusConfirm, type ActivityRequest } from './engine/activities';
 import { analyzeAttrs } from './ui/analyze/mark';
 import type { ResyncPatch, ResyncSection } from './engine/actions/squad';
@@ -769,6 +770,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     development.onSceneClosed(); // and a quiet change's cue (P14b)
     life.onSceneClosed(); // and what she had to tell (P14c); the chat switch also forgets which items were asked for
     dynamic.onSceneClosed(); // and what a holder or a probe of hers asks of the scene (P15)
+    resetSceneStage(); // and what the scene stage remembers by scene id: the view looked around to, cards set aside, the open history (P10e)
     practice.onChatChanged(); // and the tasks she expects, her verdict and what was asked for and delivered (P16: ids repeat across campaigns)
     if (state?.scene) {
       scene.resume();
@@ -953,6 +955,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
         controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound,
+        onClose: () => shell.close(), // P10e: the shell's own close is hidden on the scene screen; the top line carries it
         assetUrl: deps.assetUrl, // P10c: backdrops live in the extension folder
         generation: genUi,
         onOrder: (unitId) => loyalty.order(unitId),

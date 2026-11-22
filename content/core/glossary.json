@@ -3465,5 +3465,20 @@
       "practice",
       "holder_punishment"
     ]
+  },
+  {
+    "id": "scene_history",
+    "term": "Scene history",
+    "short": "Every message of this scene, in a panel from the left. Open it with the wheel up, the up arrow in an empty input line or the history button; Esc closes it.",
+    "long": "AUTHOR TO WRITE: The last reply lies at the bottom of the screen; the history keeps every message of the scene. Each message can be edited; the last reply can be swiped or regenerated from there. The input line moves into the panel while it is open.",
+    "see": [
+      "look_around"
+    ]
+  },
+  {
+    "id": "look_around",
+    "term": "Look around",
+    "short": "Hold the right mouse button on the picture and drag to see more of the room. A double right-click centers the view.",
+    "long": "AUTHOR TO WRITE: Rooms are drawn wider than the screen. The view stays where it was left until the scene ends. The menu of the right button is off on the picture only."
   }
 ]

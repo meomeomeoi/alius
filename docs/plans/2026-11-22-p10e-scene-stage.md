@@ -250,7 +250,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 - Produces: `resetSceneStage(): void` in `src/ui/scene/stage/index.ts`, which later tasks extend. The app calls it beside `practice.onChatChanged()` in `src/app.ts`.
 - Produces (the gauge surface of spec §5, no reader yet): `interface InputGauge { narrow(f: number): void; tremble(level: 0 | 1 | 2 | 3): void; pulse(at: number | null): void; window(from: number, to: number): void; clear(): void }`; `inputGauge(host: HTMLElement): InputGauge` on the input host (CSS variables `--alius-gauge-narrow` 0…1, `--alius-gauge-pulse` 0…1, `--alius-gauge-from` / `--alius-gauge-to`, attribute `data-tremble`); `SceneScreen.gauge(): InputGauge | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the top line`:
     - the place, `DAY 020 · EVENING`, `PRIVATE`;
     - each unit's HUD tag (glyph, name, pulses, the REFUSED mark and COMPEL as today; `data-unit` kept);
@@ -263,10 +263,10 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `hints`: both show at first; `markHintUsed('look')` hides only `look`; `resetSceneStage()` shows both again.
   - Coverage: the history button resolves `glossary:scene_history`; the hints resolve `glossary:look_around`.
   - `the gauge surface`: `narrow(0.4)` sets `--alius-gauge-narrow: 0.4` on the input host; `tremble(2)` sets `data-tremble="2"`; `pulse(0.3)` / `pulse(null)` set and remove `--alius-gauge-pulse`; `window(0.5, 0.6)` sets both bounds; `clear()` removes all of them; values are clamped to 0…1; under reduced motion the CSS draws no animation for `data-tremble` (a still offset).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/stage/topLine.test.ts tests/ui/sceneOrder.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** `onClose` is `ShellApi.close` passed by the app through a new optional `SceneScreenCtx.onClose`. Without it there is no × button.
-- [ ] **Step 4: Run** the tests, `npx vitest run tests/ui/scene.test.ts tests/ui/analyzeCoverage.test.ts tests/content/glossaryCore.test.ts`, tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the top line and the input`
+- [x] **Step 2: Run** `npx vitest run tests/ui/stage/topLine.test.ts tests/ui/sceneOrder.test.ts` → FAIL.
+- [x] **Step 3: Implement.** `onClose` is `ShellApi.close` passed by the app through a new optional `SceneScreenCtx.onClose`. Without it there is no × button.
+- [x] **Step 4: Run** the tests, `npx vitest run tests/ui/scene.test.ts tests/ui/analyzeCoverage.test.ts tests/content/glossaryCore.test.ts`, tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the top line and the input`
 
 ### Task 6: Looking around
 

@@ -36,7 +36,9 @@ import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
+import { inputGauge, type InputGauge } from './stage/gauge';
 import { buildLayers, type StageLayers } from './stage/layers';
+import { markHintUsed, renderTopLine } from './stage/topLine';
 import { fillProse, proseLength } from './stage/prose';
 
 export interface SceneScreenCtx {
@@ -49,6 +51,8 @@ export interface SceneScreenCtx {
   sound?: { play(id: 'typing' | 'alert'): void };
   /** Called after [END TRANSMISSION] finished (the app returns to the PDA). */
   onEnded: () => void;
+  /** P10e: the × of the top line (the shell's own close is hidden on the scene screen). Absent = no button. */
+  onClose?: () => void;
   /** Resolves an asset path of a location background against the extension folder. */
   assetUrl?: (path: string) => string;
   /** P10c: whether an image URL loads (default: an `Image`); a failure falls to the next candidate. Injected by tests. */
@@ -102,6 +106,8 @@ export interface SceneScreen {
   handle(e: SceneUiEvent): void;
   refresh(): void;
   dispose(): void;
+  /** P10e §5: the input line as a gauge surface for mini-games (null while no scene is drawn). */
+  gauge(): InputGauge | null;
 }
 
 /**
@@ -714,23 +720,23 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     layers.ascii.append(bg, caption);
     layers.moment.append(slapHost);
     // P10e: the hosts the later tasks redraw (top line, reply, chip row, dock, dial) hold today's elements until each is replaced
-    hosts.topLine.append(
-      h('div', { class: 'alius-scene-header' },
-        h('span', {}, locationName(s, units)),
-        h('span', { class: 'alius-dim' }, ` // DAY ${String(s.day).padStart(3, '0')} // ${s.slot.toUpperCase()} // ${s.scene!.mode === 'group' ? 'GROUP' : 'PRIVATE'}`),
-        h('span', { class: 'alius-scene-tools' },
-          act('swipe-left', '‹', () => ignore(st.swipeLast('left')), 'Previous reply'),
-          act('regenerate', '↻', () => ignore(st.regenerateLast()), 'Regenerate the last reply'),
-          genTools,
-          act('swipe-right', '›', () => ignore(st.swipeLast('right')), 'Next reply'),
-          act('end', '[ END TRANSMISSION ]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
-      ),
-      hud,
-    );
+    renderTopLine(hosts.topLine, {
+      place: locationName(s, units), when: `DAY ${String(s.day).padStart(3, '0')} · ${s.slot.toUpperCase()}`, mode: s.scene!.mode === 'group' ? 'GROUP' : 'PRIVATE',
+      units: [hud],
+      tools: [
+        act('swipe-left', '‹', () => ignore(st.swipeLast('left')), 'Previous reply'),
+        act('regenerate', '↻', () => ignore(st.regenerateLast()), 'Regenerate the last reply'),
+        genTools,
+        act('swipe-right', '›', () => ignore(st.swipeLast('right')), 'Next reply'),
+      ],
+      onHistory: () => { markHintUsed('history'); log.focus(); }, // (the curtain, Task 8, replaces this)
+      onEnd: () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }),
+      ...(ctx.onClose ? { onClose: ctx.onClose } : {}),
+    });
     hosts.status.append(banner, deviceHost, busyHost);
     hosts.reply.append(log);
     hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
-    hosts.input.append(h('div', { class: 'alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who));
+    hosts.input.append(h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who)));
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
     hosts.dial.append(blockingHost);
     drawBackground(s);
@@ -792,6 +798,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   const screen: SceneScreen = {
     refresh,
+    gauge: () => (layers && root.dataset.stage === 'frame' ? inputGauge(layers.hosts.input) : null),
     handle(e) {
       if (disposed) return;
       switch (e.type) {

@@ -69,7 +69,7 @@ describe('scene screen', () => {
       const { q } = setup();
       const art = q('pre.alius-ascii')!;
       expect(art.textContent).toContain('[SERVING]');
-      expect(q('.alius-scene-header')!.textContent).toContain('Mess hall');
+      expect(q('.alius-topline')!.textContent).toContain('Mess hall');
     } finally {
       loc.background = file;
     }

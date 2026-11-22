@@ -3237,6 +3237,219 @@
   z-index: 6;
 }
 
+/* the top line: small and low-contrast, over the top gradient */
+#alius-shell .alius-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-topline-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+#alius-shell .alius-topline-place {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-topline .alius-scene-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#alius-shell .alius-topline .alius-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-left: 8px;
+}
+
+#alius-shell .alius-topline .alius-hud-unit {
+  padding: 0 8px 0 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--alius-bg) 55%, transparent);
+}
+
+#alius-shell .alius-topline .alius-glyph {
+  border-radius: 999px;
+}
+
+#alius-shell .alius-topline-btn,
+#alius-shell .alius-topline .alius-btn {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 55%, transparent);
+  color: var(--alius-dim);
+  padding: 1px 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+#alius-shell .alius-topline [data-action="swipe-left"],
+#alius-shell .alius-topline [data-action="swipe-right"],
+#alius-shell .alius-topline [data-action="regenerate"],
+#alius-shell .alius-topline [data-action="close"] {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 14px;
+}
+
+#alius-shell .alius-topline-btn:hover,
+#alius-shell .alius-topline .alius-btn:hover {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+/* the hints for looking around and for the history: very dim, bottom-left, gone after their first use */
+#alius-shell .alius-stage-hints {
+  position: fixed;
+  left: 18px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--alius-dim);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+#alius-shell .alius-stage-hints [hidden] {
+  display: none;
+}
+
+/* the input: one rounded line under the reply; ORDER, PROPOSE and the unit pickers sit inside it at the right.
+   It is also the gauge surface of the mini-games: narrow, tremble, a pulse along its top edge and a window. */
+#alius-shell .alius-stage-input {
+  position: relative;
+}
+
+#alius-shell .alius-input-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto;
+  padding: 6px 8px 6px 16px;
+  width: calc(100% * (1 - var(--alius-gauge-narrow, 0) * 0.6));
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 70%, transparent);
+  backdrop-filter: blur(10px);
+  transition: width 0.2s;
+}
+
+#alius-shell.alius-readable .alius-input-line {
+  background: color-mix(in srgb, var(--alius-bg) 94%, transparent);
+  backdrop-filter: none;
+}
+
+#alius-shell.alius-reduced-motion .alius-input-line {
+  transition: none;
+}
+
+#alius-shell .alius-input-line .alius-prompt {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+#alius-shell .alius-input-line .alius-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--alius-font-sans);
+  font-size: 15px;
+  color: var(--alius-fg);
+}
+
+#alius-shell .alius-input-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+#alius-shell .alius-input-tools .alius-btn,
+#alius-shell .alius-input-tools select {
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--alius-fg) 10%, transparent);
+  color: var(--alius-dim);
+  padding: 1px 10px;
+  font-size: 11px;
+}
+
+#alius-shell .alius-input-tools .alius-btn:hover,
+#alius-shell .alius-input-tools .alius-btn.alius-skill-selected {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+/* the gauge: a pulse that runs along the top edge, a highlighted window, a tremor */
+#alius-shell .alius-stage-input[style*="--alius-gauge-pulse"] .alius-input-line::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: calc(var(--alius-gauge-pulse) * 100%);
+  width: 28px;
+  height: 2px;
+  margin-left: -14px;
+  border-radius: 2px;
+  background: var(--alius-accent);
+}
+
+#alius-shell .alius-stage-input[style*="--alius-gauge-from"] .alius-input-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--alius-gauge-from) * 100%);
+  width: calc((var(--alius-gauge-to) - var(--alius-gauge-from)) * 100%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--alius-accent) 22%, transparent);
+  pointer-events: none;
+}
+
+#alius-shell .alius-stage-input[data-tremble] .alius-input-line {
+  --alius-amp: 1px;
+  animation: alius-gauge-tremble 0.12s linear infinite;
+}
+
+#alius-shell .alius-stage-input[data-tremble="2"] .alius-input-line { --alius-amp: 2px; }
+#alius-shell .alius-stage-input[data-tremble="3"] .alius-input-line { --alius-amp: 3px; }
+
+@keyframes alius-gauge-tremble {
+  0% { transform: translate(var(--alius-amp), 0); }
+  25% { transform: translate(0, var(--alius-amp)); }
+  50% { transform: translate(calc(var(--alius-amp) * -1), 0); }
+  75% { transform: translate(0, calc(var(--alius-amp) * -1)); }
+}
+
+#alius-shell.alius-reduced-motion .alius-stage-input[data-tremble] .alius-input-line {
+  animation: none;
+  transform: translateX(var(--alius-amp));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-stage-input[data-tremble] .alius-input-line {
+    animation: none;
+    transform: translateX(var(--alius-amp));
+  }
+}
+
 /* World parameters and disposition controls (P8). Palette variables only. */
 #alius-shell .alius-world-option {
   margin: 0 0 14px;

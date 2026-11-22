@@ -12025,10 +12025,10 @@ var unitObeys = (state, unitId) => {
   return o !== void 0 && o.day === state.day && o.unitId === unitId && o.who === "unit";
 };
 function heldTerm(state, unitId) {
-  const used = (state.personal?.secrets ?? []).filter((x) => x.status === "used" && (x.usedUntil ?? 0) > state.day && x.knownBy.includes(unitId)).length;
-  if (used === 0) return 0;
+  const used2 = (state.personal?.secrets ?? []).filter((x) => x.status === "used" && (x.usedUntil ?? 0) > state.day && x.knownBy.includes(unitId)).length;
+  if (used2 === 0) return 0;
   const T5 = TUNING.personal.secret;
-  return -Math.min(T5.heldMax, used * T5.heldPerSecret);
+  return -Math.min(T5.heldMax, used2 * T5.heldPerSecret);
 }
 
 // src/engine/personal/courtship.ts
@@ -27138,9 +27138,9 @@ function decideArc(draft, ctx2, p) {
   let forced = false;
   if (info.refuses) {
     if (p.compel !== true) throw new Error(`${unit3.displayName} refuses this path: only the Leash can force it.`);
-    const used = compel(draft, ctx2, { unitId: p.unitId, context: "arc" });
-    events.push(...used.events);
-    if (!used.forced) return events;
+    const used2 = compel(draft, ctx2, { unitId: p.unitId, context: "arc" });
+    events.push(...used2.events);
+    if (!used2.forced) return events;
     forced = true;
   }
   for (const k of ["credits", "supplies", "plyx"]) draft.resources[k] -= info.cost[k] ?? 0;
@@ -30910,8 +30910,8 @@ function fallbackOutput2(state, reg, rng) {
     if (options2.length > 0) take(rng.pick(options2));
   }
   if (rumorRoom(state, reg) > 0) {
-    const used = new Set(state.rumors.map((r) => r.text));
-    const open3 = knownRegions(state, reg).map((r) => ({ id: String(r.id), lines: r.rumors.filter((l) => !used.has(l)) })).filter((r) => r.lines.length > 0);
+    const used2 = new Set(state.rumors.map((r) => r.text));
+    const open3 = knownRegions(state, reg).map((r) => ({ id: String(r.id), lines: r.rumors.filter((l) => !used2.has(l)) })).filter((r) => r.lines.length > 0);
     if (open3.length > 0) {
       const region = rng.pick(open3);
       out.rumors.push({ text: rng.pick(region.lines), leadsTo: "none", tags: [region.id] });
@@ -30937,8 +30937,8 @@ function candidates2(reg, region, layer, danger) {
   }
   return out;
 }
-function draw(rng, list5, used, onlyKind) {
-  const open3 = list5.filter((c) => (c.maxPerMap === void 0 || (used.get(c.id) ?? 0) < c.maxPerMap) && (onlyKind === void 0 || c.kind === onlyKind));
+function draw(rng, list5, used2, onlyKind) {
+  const open3 = list5.filter((c) => (c.maxPerMap === void 0 || (used2.get(c.id) ?? 0) < c.maxPerMap) && (onlyKind === void 0 || c.kind === onlyKind));
   if (open3.length === 0) return null;
   const total2 = open3.reduce((s, c) => s + c.weight, 0);
   let r = rng.float() * total2;
@@ -30952,8 +30952,8 @@ function generateNodeMap(reg, rng, input) {
   const layerCount = rng.int(minLayers, maxLayers);
   const nodes = {};
   const layers = [];
-  const used = /* @__PURE__ */ new Map();
-  const bump2 = (type, by) => used.set(type, (used.get(type) ?? 0) + by);
+  const used2 = /* @__PURE__ */ new Map();
+  const bump2 = (type, by) => used2.set(type, (used2.get(type) ?? 0) + by);
   const none = () => {
     throw new Error(`No playable node type for region "${input.regionId}"`);
   };
@@ -30962,7 +30962,7 @@ function generateNodeMap(reg, rng, input) {
     const size = rng.int(2, 3);
     const ids = [];
     for (let i = 0; i < size; i++) {
-      const type = draw(rng, list5, used) ?? none();
+      const type = draw(rng, list5, used2) ?? none();
       bump2(type, 1);
       const id = `n${l}_${i}`;
       nodes[id] = { id, layer: l, type, edges: [], visited: false };
@@ -30970,7 +30970,7 @@ function generateNodeMap(reg, rng, input) {
     }
     if (!ids.some((id) => reg.nodeTypes.get(nodes[id].type).kind === "combat")) {
       bump2(nodes[ids[0]].type, -1);
-      const type = draw(rng, list5, used, "combat");
+      const type = draw(rng, list5, used2, "combat");
       if (type === null) bump2(nodes[ids[0]].type, 1);
       else {
         nodes[ids[0]].type = type;
@@ -33472,11 +33472,11 @@ function buildCampaign(r, reg, opts) {
   applyStartTraitEffects(state, reg);
   syncTraitSettings(state, reg);
   const knowsCrime = crimeKnownByDefault(crime, start);
-  const used = /* @__PURE__ */ new Set();
+  const used2 = /* @__PURE__ */ new Set();
   const days = headStartDays(r);
   const impressions = /* @__PURE__ */ new Map();
   for (const u of r.units) {
-    const unit3 = makeNamedUnit(u, reg, used);
+    const unit3 = makeNamedUnit(u, reg, used2);
     const id = unit3.id;
     state.squad.push(unit3);
     state.relations[id] = initialRelation({
@@ -48460,14 +48460,14 @@ function renderNote(o) {
   );
   setHand(note, o.hand);
   if (o.read !== true && o.onRead) {
-    let used = false;
+    let used2 = false;
     note.append(h("button", {
       type: "button",
       class: "alius-btn",
       "data-action": "read-note",
       onclick: () => {
-        if (used) return;
-        used = true;
+        if (used2) return;
+        used2 = true;
         o.onRead();
       }
     }, "[ GOT IT ]"));
@@ -49898,15 +49898,15 @@ var SceneSummarySchema = external_exports.object({
 }).strip().refine((v) => (v.chronicle ?? "") !== "" || (v.digest ?? "") !== "", { message: "a chronicle line or a digest is required" });
 function trimTranscript(lines, maxTokens) {
   const kept = [];
-  let used = 0;
+  let used2 = 0;
   for (let i = lines.length - 1; i >= 0; i--) {
     const cost = estTokens(`${lines[i].speaker}: ${lines[i].text}`);
-    if (used + cost > maxTokens) {
+    if (used2 + cost > maxTokens) {
       if (kept.length === 0) kept.unshift({ speaker: lines[i].speaker, text: lines[i].text.slice(-Math.floor(maxTokens * 3.6)) });
       break;
     }
     kept.unshift(lines[i]);
-    used += cost;
+    used2 += cost;
   }
   return kept;
 }
@@ -61701,14 +61701,14 @@ function renderDoor(host, ctx2) {
     fill6.style.width = `${Math.max(0, Math.min(100, clock.remaining / ctx2.seconds * 100))}%`;
   };
   if (timer) paint();
-  let used = false;
+  let used2 = false;
   const buttons = [];
   const lock = () => {
-    used = true;
+    used2 = true;
     for (const b of buttons) b.disabled = true;
   };
   const press = (fn) => () => {
-    if (used) return;
+    if (used2) return;
     lock();
     stop2();
     clocks.delete(entry.id);
@@ -61723,7 +61723,7 @@ function renderDoor(host, ctx2) {
   let input = null;
   const form = h("div", { class: "alius-door-form" });
   const openForm = () => {
-    if (input || used || pending3.has(entry.id)) return;
+    if (input || used2 || pending3.has(entry.id)) return;
     input = h("input", { type: "text", class: "alius-input alius-door-input", name: "door", maxlength: String(DOOR_SAY_MAX2), autocomplete: "off", "aria-label": `Say something through the door to ${ctx2.unitName}` });
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send-door", onclick: send }, "[ SAY ]");
     input.addEventListener("keydown", (e) => {
@@ -61735,7 +61735,7 @@ function renderDoor(host, ctx2) {
   };
   function send() {
     const text3 = input?.value.trim() ?? "";
-    if (!input || text3 === "" || used || pending3.has(entry.id)) return;
+    if (!input || text3 === "" || used2 || pending3.has(entry.id)) return;
     pending3.add(entry.id);
     drafts2.delete(entry.id);
     input.disabled = true;
@@ -61785,7 +61785,7 @@ function renderDoor(host, ctx2) {
   }
   running.set(host, stop2);
   handle = setInterval(() => {
-    if (!host.isConnected || used) return stop2();
+    if (!host.isConnected || used2) return stop2();
     if (held2(entry, input)) return;
     clock.remaining = Math.max(0, clock.remaining - TICK_MS / 1e3);
     paint();
@@ -62466,6 +62466,35 @@ function actRow(host, ctx2) {
   )];
 }
 
+// src/ui/scene/stage/gauge.ts
+var clamp012 = (n) => Math.min(1, Math.max(0, n));
+var VARS = ["--alius-gauge-narrow", "--alius-gauge-pulse", "--alius-gauge-from", "--alius-gauge-to"];
+function inputGauge(host) {
+  const set2 = (name, n) => {
+    if (Number.isFinite(n)) host.style.setProperty(name, String(clamp012(n)));
+    else host.style.removeProperty(name);
+  };
+  return {
+    narrow: (f) => set2("--alius-gauge-narrow", f),
+    tremble(level) {
+      if (level >= 1) host.dataset.tremble = String(Math.min(3, Math.round(level)));
+      else delete host.dataset.tremble;
+    },
+    pulse(at) {
+      if (at === null) host.style.removeProperty("--alius-gauge-pulse");
+      else set2("--alius-gauge-pulse", at);
+    },
+    window(from, to) {
+      set2("--alius-gauge-from", from);
+      set2("--alius-gauge-to", to);
+    },
+    clear() {
+      for (const v of VARS) host.style.removeProperty(v);
+      delete host.dataset.tremble;
+    }
+  };
+}
+
 // src/ui/scene/stage/layers.ts
 var LAYER_NAMES = ["backdrop", "ascii", "frame", "pose", "sprites", "effects", "ui", "moment", "curtain"];
 var UI_HOSTS = [["topLine", "topline"], ["status", "status"], ["reply", "reply"], ["chipRow", "chips"], ["input", "input"], ["dock", "dock"], ["dial", "dial"]];
@@ -62478,6 +62507,54 @@ function buildLayers(root) {
   root.replaceChildren(...LAYER_NAMES.map((n) => layers[n]));
   root.dataset.stage = "frame";
   return { root, ...layers, hosts };
+}
+
+// src/ui/scene/stage/topLine.ts
+var used = /* @__PURE__ */ new Set();
+var HINTS = [
+  { kind: "look", text: "Hold the right mouse button to look around", analyze: "glossary:look_around" },
+  { kind: "history", text: "Wheel up or \u2191 for the history", analyze: "glossary:scene_history" }
+];
+function markHintUsed(kind) {
+  used.add(kind);
+  if (typeof document === "undefined") return;
+  for (const el of document.querySelectorAll(`.alius-stage-hints [data-hint="${kind}"]`)) el.hidden = true;
+}
+function resetHints() {
+  used.clear();
+  if (typeof document === "undefined") return;
+  for (const el of document.querySelectorAll(".alius-stage-hints [data-hint]")) el.hidden = false;
+}
+function renderTopLine(host, ctx2) {
+  const small = (action, text3, onclick, label2) => h("button", { type: "button", class: "alius-btn alius-topline-btn", "data-action": action, "aria-label": label2, onclick }, text3);
+  const history = h("button", {
+    type: "button",
+    class: "alius-btn alius-topline-btn",
+    "data-action": "history",
+    "aria-label": "Open the history",
+    title: "Open the history of this scene",
+    onclick: ctx2.onHistory,
+    ...analyzeNative("glossary:scene_history")
+  }, "HISTORY");
+  const right = h("div", { class: "alius-scene-tools" }, ...ctx2.tools, history, small("end", "END TRANSMISSION", ctx2.onEnd, "End the conversation"));
+  if (ctx2.onClose) right.append(small("close", "\xD7", ctx2.onClose, "Close Alius"));
+  const hints = h("div", { class: "alius-stage-hints" }, ...HINTS.map((x) => {
+    const el = h("span", { "data-hint": x.kind, ...analyzeAttrs(x.analyze) }, x.text);
+    el.hidden = used.has(x.kind);
+    return el;
+  }));
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-topline" },
+    h(
+      "div",
+      { class: "alius-topline-left" },
+      h("span", { class: "alius-topline-place" }, ctx2.place),
+      h("span", { class: "alius-topline-when alius-dim" }, ` \xB7 ${ctx2.when} \xB7 ${ctx2.mode}`),
+      ...ctx2.units
+    ),
+    right
+  ), hints);
 }
 
 // src/ui/scene/stage/prose.ts
@@ -63187,30 +63264,31 @@ function renderSceneScreen(host, ctx2) {
     const { hosts } = layers;
     layers.ascii.append(bg, caption);
     layers.moment.append(slapHost);
-    hosts.topLine.append(
-      h(
-        "div",
-        { class: "alius-scene-header" },
-        h("span", {}, locationName(s, units)),
-        h("span", { class: "alius-dim" }, ` // DAY ${String(s.day).padStart(3, "0")} // ${s.slot.toUpperCase()} // ${s.scene.mode === "group" ? "GROUP" : "PRIVATE"}`),
-        h(
-          "span",
-          { class: "alius-scene-tools" },
-          act("swipe-left", "\u2039", () => ignore(st.swipeLast("left")), "Previous reply"),
-          act("regenerate", "\u21BB", () => ignore(st.regenerateLast()), "Regenerate the last reply"),
-          genTools,
-          act("swipe-right", "\u203A", () => ignore(st.swipeLast("right")), "Next reply"),
-          act("end", "[ END TRANSMISSION ]", () => void controller.end().then(() => {
-            if (!disposed) ctx2.onEnded();
-          }), "End the conversation")
-        )
-      ),
-      hud
-    );
+    renderTopLine(hosts.topLine, {
+      place: locationName(s, units),
+      when: `DAY ${String(s.day).padStart(3, "0")} \xB7 ${s.slot.toUpperCase()}`,
+      mode: s.scene.mode === "group" ? "GROUP" : "PRIVATE",
+      units: [hud],
+      tools: [
+        act("swipe-left", "\u2039", () => ignore(st.swipeLast("left")), "Previous reply"),
+        act("regenerate", "\u21BB", () => ignore(st.regenerateLast()), "Regenerate the last reply"),
+        genTools,
+        act("swipe-right", "\u203A", () => ignore(st.swipeLast("right")), "Next reply")
+      ],
+      onHistory: () => {
+        markHintUsed("history");
+        log.focus();
+      },
+      // (the curtain, Task 8, replaces this)
+      onEnd: () => void controller.end().then(() => {
+        if (!disposed) ctx2.onEnded();
+      }),
+      ...ctx2.onClose ? { onClose: ctx2.onClose } : {}
+    });
     hosts.status.append(banner, deviceHost, busyHost);
     hosts.reply.append(log);
     hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
-    hosts.input.append(h("div", { class: "alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose2, who));
+    hosts.input.append(h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who)));
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
     hosts.dial.append(blockingHost);
     drawBackground(s);
@@ -63271,6 +63349,7 @@ function renderSceneScreen(host, ctx2) {
   }
   const screen = {
     refresh: refresh2,
+    gauge: () => layers && root.dataset.stage === "frame" ? inputGauge(layers.hosts.input) : null,
     handle(e) {
       if (disposed) return;
       switch (e.type) {
@@ -63309,6 +63388,11 @@ function renderSceneScreen(host, ctx2) {
   };
   refresh2();
   return screen;
+}
+
+// src/ui/scene/stage/index.ts
+function resetSceneStage() {
+  resetHints();
 }
 
 // src/analysis/providers/commander.ts
@@ -67196,6 +67280,7 @@ function createApp(st, deps) {
     development.onSceneClosed();
     life.onSceneClosed();
     dynamic.onSceneClosed();
+    resetSceneStage();
     practice.onChatChanged();
     if (state?.scene) {
       scene.resume();
@@ -67378,6 +67463,8 @@ function createApp(st, deps) {
         settings: () => getSettings(st),
         onEnded: leaveScene,
         sound,
+        onClose: () => shell.close(),
+        // P10e: the shell's own close is hidden on the scene screen; the top line carries it
         assetUrl: deps.assetUrl,
         // P10c: backdrops live in the extension folder
         generation: genUi,
