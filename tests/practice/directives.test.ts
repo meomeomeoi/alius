@@ -6,7 +6,13 @@ import '../../src/engine/actions/practice';
 import type { OpenPunishment, Task } from '../../src/engine/practice/state';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { Directive } from '../../src/llm/context';
-import { applyIssuedDirectives, clearPracticeDirectives, ISSUED_PREFIX, PRACTICE_PREFIX, practiceDirectives, PUNISHMENT_PREFIX, refreshPracticeDirectives, TASKS_PREFIX } from '../../src/practice/directives';
+import { applyIssuedDirectives, clearPracticeDirectives, issuedDirective, ISSUED_PREFIX, PRACTICE_PREFIX, practiceDirectives, PUNISHMENT_PREFIX, refreshPracticeDirectives, TASKS_PREFIX } from '../../src/practice/directives';
+import { hasCommanderPronoun } from '../../src/engine/dynamic/pronoun';
+import { dynamicOf } from '../../src/engine/dynamic/state';
+import { ensurePractices } from '../../src/engine/practice/gate';
+import { startHold } from '../../src/engine/practice/hold';
+import { TUNING } from '../../src/engine/tuning';
+import { ctxOf } from '../helpers/world';
 import { errors, loadCore, run } from '../helpers/world';
 import { ANN, BEA, withBea, withService, world } from '../engine/practice/world';
 
@@ -187,6 +193,181 @@ describe('her discipline is told once, in one scene (M6)', () => {
     const away = inScene(base([accepted()]), [BEA]);
     expect(away.practices!.punishments[0].voicedScene).toBeUndefined();
     expect(told(inScene(end(away), [ANN]))).toBe(true);
+  });
+});
+
+/**
+ * Task 38 (R23): one fixture per directive kind. Every line passes the same checks: its id and prefix, its lifetime, no digit, no pronoun for the commander, no feeling of the
+ * commander, no draft marker, the summary and never the words, a sealed thing only as sealed, a hidden end never told.
+ */
+describe('every directive of R23 (Task 38)', () => {
+  const COMMANDER_FEELING = /\b(feel|feels|feeling|love|loves|enjoy|enjoys|ashamed|afraid|crave|craves|aroused|thrilled|humiliated)\b/i;
+  const WORDS = 'Words that only she hears: private-words-marker';
+  /** What every line must be, whatever its kind. */
+  function hygiene(d: Directive, prefix: string, lifetime: 'scene' | 'next_reply'): void {
+    expect(d.id.startsWith(prefix), `${d.id} starts with ${prefix}`).toBe(true);
+    expect(d.id.startsWith(PRACTICE_PREFIX)).toBe(true);
+    expect(d.expiresAfter, d.id).toBe(lifetime);
+    expect(d.text, d.id).not.toMatch(/\d/);
+    expect(hasCommanderPronoun(d.text), d.id).toBe(false);
+    expect(d.text, d.id).not.toMatch(COMMANDER_FEELING);
+    expect(d.text, d.id).not.toMatch(/AUTHOR TO WRITE/);
+    expect(d.text, d.id).not.toContain('private-words-marker');
+    expect(d.text, d.id).toMatch(/never name it as a mechanic|never name/i);
+  }
+  const base = (): CampaignState => withService(world(reg, 'role'));
+  const withPractices = (s: CampaignState, over: Partial<NonNullable<CampaignState['practices']>>): CampaignState => { s.practices = { ...ensurePractices(s), ...over }; return s; };
+  const one = (list: Directive[], prefix: string): Directive => {
+    const found = list.filter((d) => d.id.startsWith(prefix));
+    expect(found.length, prefix).toBe(1);
+    return found[0];
+  };
+  const event = (e: Record<string, unknown>) => e as { type: string; [k: string]: unknown };
+
+  it('practice:tasks: her open tasks by summary, a sealed one as "a sealed task", a hidden deadline never told, the words never', () => {
+    const s = withPractices(base(), { tasks: [
+      task({ text: WORDS, summary: 'fetch the roster', deadline: { day: 24, slot: 'evening' } as never, noDuration: true }),
+      task({ id: 'pt2', sealed: true, text: WORDS, summary: 'a sealed thing: private-words-marker' }),
+    ] });
+    const d = one(practiceDirectives(s, reg, [ANN]), 'practice:tasks:');
+    hygiene(d, `${TASKS_PREFIX}${ANN}`, 'scene');
+    expect(d.text).toContain('fetch the roster');
+    expect(d.text).toContain('a sealed task');
+    expect(d.text).not.toMatch(/evening|day twenty|until/i);
+  });
+
+  it('practice:tasks: a draft summary and a summary with digits reach the model plain', () => {
+    const s = withPractices(base(), { tasks: [task({ summary: 'AUTHOR TO WRITE: forms of address, 3 times' })] });
+    hygiene(one(practiceDirectives(s, reg, [ANN]), 'practice:tasks:'), `${TASKS_PREFIX}${ANN}`, 'scene');
+  });
+
+  it('practice:protocol: her standing forms, by their text, for the scene', () => {
+    const s = base();
+    s.relations[ANN].stateId = 'lover';
+    dynamicOf(s, ANN)!.domains = [{ id: 'others', since: s.day }, { id: 'household', since: s.day }];
+    const id = 'pq900';
+    ensurePractices(s).requests.push({ id, holderId: ANN, kind: 'protocol', day: s.day, seedIds: ['protocol_stand'] });
+    const r = run(s, reg, { type: 'practice/issue', payload: { requestId: id, output: { kind: 'protocol', seedId: 'protocol_stand', tags: ['service'], track: 'service', tier: 1, stakes: 'trivial', check: 'model', proof: 'none', text: 'Stand when I come in.', summary: 'stand when she comes in' } } });
+    expect(errors(r.events)).toEqual([]);
+    for (const rule of r.state.bonds!.rules) rule.status = 'active';
+    const d = one(practiceDirectives(r.state, reg, [ANN]), 'practice:protocol:');
+    hygiene(d, `practice:protocol:${ANN}`, 'scene');
+    expect(d.text).toContain('Stand when I come in');
+  });
+
+  it('practice:held: in her room only, never the end of it; a sensory hold only as what reaches the commander', () => {
+    for (const sensory of [false, true]) {
+      const s = base();
+      s.slot = 'morning';
+      dynamicOf(s, ANN)!.hold = 70;
+      startHold(s, ctxOf(s, reg), ANN, 2, { sensory });
+      const d = one(practiceDirectives(s, reg, [ANN]), 'practice:held');
+      hygiene(d, 'practice:held', 'scene');
+      expect(d.text).not.toMatch(/until|afternoon|evening|morning|slot/i);
+      expect(practiceDirectives(s, reg, [BEA]).some((x) => x.id === 'practice:held')).toBe(false);
+    }
+  });
+
+  it('practice:punishment: an accepted one by summary, a ceremony by its next step; the words never', () => {
+    const p: OpenPunishment = { id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: WORDS, summary: 'a day without messages', status: 'accepted', answeredDay: 20, day: 20 };
+    const plain = one(practiceDirectives(withPractices(base(), { punishments: [p] }), reg, [ANN]), 'practice:punishment:');
+    hygiene(plain, `${PUNISHMENT_PREFIX}${ANN}`, 'scene');
+    expect(plain.text).toContain('a day without messages');
+    const steps = [...reg.ceremonySteps.values()].filter((e) => (e as { styles?: string[] }).styles?.includes('ritual')).map((e) => (e as { id: string }).id);
+    const ceremony: OpenPunishment = { ...p, id: 'pp2', severity: 3, ceremony: { steps, done: [] } };
+    const c = one(practiceDirectives(withPractices(base(), { punishments: [ceremony] }), reg, [ANN]), 'practice:punishment:');
+    hygiene(c, `${PUNISHMENT_PREFIX}${ANN}`, 'scene');
+    expect(c.text).toMatch(/one step at a time/);
+  });
+
+  it('practice:demonstration: the form by summary and how the watchers take it, for the scene she stages it in', () => {
+    const s = inScene(withPractices(base(), { demonstrations: [{ id: 'pd1', holderId: ANN, tags: [], summary: 'serving tea before the mess', text: WORDS, audienceIds: [BEA], stage: 'mess_hall', day: 20, status: 'open', stakes: 'minor' } as never] }), [ANN]);
+    s.practices!.demonstrations[0].sceneId = s.scene!.id;
+    const d = one(practiceDirectives(s, reg, [ANN]), 'practice:demonstration:');
+    hygiene(d, `practice:demonstration:${ANN}`, 'scene');
+    expect(d.text).toContain('serving tea before the mess');
+    expect(d.text).toMatch(/Watching/);
+  });
+
+  it('practice:target: a third party is told what was asked and her own stance, for the scene', () => {
+    const s = withPractices(base(), { tasks: [task({ targetUnitId: BEA, summary: 'a word with Bea', text: WORDS })] });
+    const d = one(practiceDirectives(s, reg, [BEA]), 'practice:target:');
+    hygiene(d, `practice:target:${BEA}`, 'scene');
+    expect(d.text).toContain('a word with Bea');
+  });
+
+  it('practice:double: a double standard is acted, never named as unfair', () => {
+    const s = inScene(withPractices(base(), {}), [ANN]);
+    s.practices!.unfair = { [ANN]: { kind: 'double_standard', day: s.day, sceneId: s.scene!.id } };
+    const d = one(practiceDirectives(s, reg, [ANN]), 'practice:double:');
+    hygiene(d, `practice:double:${ANN}`, 'scene');
+    expect(d.text).not.toMatch(/unfair|double standard|hypocri/i);
+  });
+
+  it('the event-driven lines last the next reply: issued (task, punishment, demonstration, handover, kind of hold, cancelled reward), permission, ask, alarm, slap, verdict', () => {
+    const s = inScene(withPractices(base(), {
+      tasks: [task({ id: 'pt1', status: 'offered', text: WORDS }), task({ id: 'pt9', status: 'offered', text: WORDS, handover: 'device', summary: 'the device' } as never)],
+      punishments: [{ id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: WORDS, summary: 'a day without messages', status: 'offered', day: 20 }],
+      demonstrations: [{ id: 'pd1', holderId: ANN, tags: [], summary: 'serving tea', text: WORDS, audienceIds: [], stage: 'mess_hall', day: 20, status: 'offered', stakes: 'minor' } as never],
+    }), [ANN]);
+    const cases: Array<[Record<string, unknown>, string]> = [
+      [{ type: 'task_issued', taskId: 'pt1', holderId: ANN, kind: 'task' }, ISSUED_PREFIX],
+      [{ type: 'task_issued', taskId: 'pt9', holderId: ANN, kind: 'task', handover: true }, ISSUED_PREFIX],
+      [{ type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN }, ISSUED_PREFIX],
+      [{ type: 'task_issued', taskId: 'pd1', holderId: ANN, kind: 'demonstration' }, ISSUED_PREFIX],
+      [{ type: 'hold_asked', holderId: ANN, answer: 'release' }, ISSUED_PREFIX],
+      [{ type: 'hold_asked', holderId: ANN, answer: 'extend' }, ISSUED_PREFIX],
+      [{ type: 'task_kept', holderId: ANN, taskId: 'pt1', cancelled: true }, ISSUED_PREFIX],
+      ...Object.keys(TUNING.practice.permission.words).map((answer): [Record<string, unknown>, string] => [{ type: 'permission_answered', holderId: ANN, answer }, 'practice:permission:']),
+      [{ type: 'ask_answered', unitId: ANN, what: 'task', answer: 'accepted' }, 'practice:ask:'],
+      [{ type: 'ask_answered', unitId: ANN, what: 'punishment', answer: 'refused', kind: true }, 'practice:ask:'],
+      [{ type: 'ask_answered', unitId: ANN, what: 'task', answer: 'mocked' }, 'practice:ask:'],
+      [{ type: 'hold_alarm', holderId: ANN, answer: 'release' }, 'practice:alarm:'],
+      [{ type: 'hold_alarm', holderId: ANN, answer: 'keep' }, 'practice:alarm:'],
+      [{ type: 'hold_alarm', holderId: ANN, answer: 'release_late' }, 'practice:alarm:'],
+      ...Object.keys(TUNING.practice.slap.words).map((result): [Record<string, unknown>, string] => [{ type: 'slap_dealt', holderId: ANN, result }, 'practice:slap:']),
+      [{ type: 'service_rated', holderId: ANN, kind: 'pleased' }, 'practice:verdict:'],
+      [{ type: 'service_rated', holderId: ANN, kind: 'adequate' }, 'practice:verdict:'],
+      [{ type: 'service_rated', holderId: ANN, kind: 'displeased' }, 'practice:verdict:'],
+    ];
+    for (const [e, prefix] of cases) {
+      const d = issuedDirective(event(e), s, reg);
+      expect(d, JSON.stringify(e)).not.toBeNull();
+      hygiene(d!, `${prefix}${ANN}`, 'next_reply');
+      if (e.taskId === 'pt1' && e.kind === 'task' && e.type === 'task_issued') expect(d!.text).toContain('fetch the roster at');
+    }
+  });
+
+  it('a sealed task and a sealed punishment are only an envelope; a task of no duration shows no end', () => {
+    const s = inScene(withPractices(base(), {
+      tasks: [task({ status: 'offered', sealed: true, summary: 'private-words-marker', text: WORDS })],
+      punishments: [{ id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: WORDS, summary: 'private-words-marker', status: 'offered', day: 20, sealed: true }],
+    }), [ANN]);
+    for (const e of [{ type: 'task_issued', taskId: 'pt1', holderId: ANN, kind: 'task' }, { type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN }]) {
+      const d = issuedDirective(e, s, reg)!;
+      hygiene(d, ISSUED_PREFIX, 'next_reply');
+      expect(d.text).toContain('sealed envelope');
+    }
+  });
+
+  it('what is not live gives nothing: a holder who dropped below play, one who is gone, a scene she is not in', () => {
+    const s = inScene(withPractices(base(), { tasks: [task({ status: 'offered' })] }), [ANN]);
+    for (const e of [{ type: 'service_rated', holderId: ANN, kind: 'pleased' }, { type: 'slap_dealt', holderId: ANN, result: 'none' }, { type: 'permission_answered', holderId: ANN, answer: 'grant' }]) {
+      const away = structuredClone(s);
+      away.relations[ANN].dynamic!.frame = 'equal';
+      expect(issuedDirective(e, away, reg), e.type).toBeNull();
+    }
+    expect(issuedDirective({ type: 'hold_alarm', holderId: ANN, answer: 'keep' }, base(), reg)).toBeNull(); // she is not in an open scene
+  });
+
+  it('the order of a refresh is stable: tasks, protocol, the punishment, the demonstration, targets, the double standard, the hold', () => {
+    const s = inScene(withPractices(base(), {
+      tasks: [task({ id: 'pt1' }), task({ id: 'pt2', targetUnitId: BEA, holderId: ANN })],
+      punishments: [{ id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: 'x', summary: 'a day without messages', status: 'accepted', answeredDay: 20, day: 20 }],
+    }), [ANN, BEA]);
+    s.practices!.unfair = { [ANN]: { kind: 'double_standard', day: s.day, sceneId: s.scene!.id } };
+    const ids = practiceDirectives(s, reg, [ANN, BEA]).map((d) => d.id);
+    expect(ids).toEqual([`${TASKS_PREFIX}${ANN}`, `${PUNISHMENT_PREFIX}${ANN}`, `practice:target:${BEA}`, `practice:double:${ANN}`]);
   });
 });
 

@@ -26,6 +26,8 @@ export interface PracticeController {
   onSceneOpened(): void;
   /** The scene closed, or the chat changed: every directive of the practices goes. */
   onSceneClosed(): void;
+  /** A chat was loaded (a switch, a reload, a new campaign): every directive goes with her verdict, and what was asked for and delivered is forgotten (ids repeat across campaigns). */
+  onChatChanged(): void;
   /** After a (re)load or a deployment: the requests that were waiting for words are worded now. */
   onLoaded(): void;
   /** REROLL of the words of a practice while the commander has not answered it (the key is the request id), and why it is not allowed. */
@@ -291,6 +293,12 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     },
     onSceneClosed() {
       clearPracticeDirectives(deps.context, { keepVerdict: true });
+      deps.refreshContext();
+    },
+    onChatChanged() {
+      tried.clear();
+      delivered.clear();
+      clearPracticeDirectives(deps.context);
       deps.refreshContext();
     },
     onLoaded() {

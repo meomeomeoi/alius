@@ -769,7 +769,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     development.onSceneClosed(); // and a quiet change's cue (P14b)
     life.onSceneClosed(); // and what she had to tell (P14c); the chat switch also forgets which items were asked for
     dynamic.onSceneClosed(); // and what a holder or a probe of hers asks of the scene (P15)
-    practice.onSceneClosed(); // and the tasks she expects (P16)
+    practice.onChatChanged(); // and the tasks she expects, her verdict and what was asked for and delivered (P16: ids repeat across campaigns)
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();

@@ -44211,6 +44211,12 @@ function createPractice(deps) {
       clearPracticeDirectives(deps.context, { keepVerdict: true });
       deps.refreshContext();
     },
+    onChatChanged() {
+      tried.clear();
+      delivered.clear();
+      clearPracticeDirectives(deps.context);
+      deps.refreshContext();
+    },
     onLoaded() {
       void run().catch(() => {
       });
@@ -66886,7 +66892,7 @@ function createApp(st, deps) {
     development.onSceneClosed();
     life.onSceneClosed();
     dynamic.onSceneClosed();
-    practice.onSceneClosed();
+    practice.onChatChanged();
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();

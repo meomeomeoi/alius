@@ -6,7 +6,7 @@ import '../../src/engine/actions/practice';
 import '../../src/engine/actions/power';
 import { withOptions } from '../helpers/power';
 import { requestPractice } from '../../src/engine/practice/issue';
-import { blankPractices, type OpenPunishment } from '../../src/engine/practice/state';
+import { blankPractices, PRACTICE_EVENT_TYPES, type OpenPunishment } from '../../src/engine/practice/state';
 import { dynamicOf } from '../../src/engine/dynamic/state';
 import { Rng } from '../../src/engine/rng';
 import type { CampaignState } from '../../src/engine/state/types';
@@ -548,5 +548,63 @@ describe('ASK HER at the controller', () => {
     const nobody = rig(none);
     nobody.ctl.ensureAsked('dilemma', 'dl_1');
     expect(nobody.h.state().practices?.asked).toBeUndefined();
+  });
+});
+
+describe('the directives follow the practices (Task 38)', () => {
+  it('every event of the practices refreshes the prompt; an event of no practice does not', () => {
+    const { s } = waiting();
+    const { ctl, refreshContext } = rig(s);
+    for (const type of PRACTICE_EVENT_TYPES) {
+      refreshContext.mockClear();
+      ctl.onEvents([{ type }]);
+      expect(refreshContext, type).toHaveBeenCalled();
+    }
+    refreshContext.mockClear();
+    ctl.onEvents([{ type: 'xp_gained' }]);
+    expect(refreshContext).not.toHaveBeenCalled();
+  });
+
+  it('a chat switch drops every practice: directive, her verdict too, and forgets what was asked and delivered', async () => {
+    const { s, requestId } = waiting();
+    const { h, ctl, directives } = rig(s);
+    directives.set('practice:verdict:unit_ann', { id: 'practice:verdict:unit_ann', text: 'x', expiresAfter: 'next_reply' });
+    directives.set(`practice:tasks:${ANN}`, { id: `practice:tasks:${ANN}`, text: 'x', expiresAfter: 'scene' });
+    directives.set('dynamic:other', { id: 'dynamic:other', text: 'not ours', expiresAfter: 'scene' });
+    ctl.onSceneClosed(); // the end of a scene keeps her verdict (it is for her next reply) ...
+    expect([...directives.keys()].sort()).toEqual(['dynamic:other', 'practice:verdict:unit_ann']);
+    ctl.onChatChanged(); // ... a chat switch keeps nothing
+    expect([...directives.keys()]).toEqual(['dynamic:other']);
+    // what was asked for in the old chat is forgotten: the same request id in another campaign is worded
+    const original = h.st.generateMain.bind(h.st);
+    h.st.mainReplies = [fixture('valid'), fixture('valid')];
+    h.st.generateMain = async (req) => { h.switchChat('other'); return original(req); };
+    ctl.onEvents([requested(requestId)]);
+    await ctl.idle();
+    expect(issueActions(h)).toEqual([]); // the request stays in the campaign it came from
+    h.st.generateMain = original;
+    h.switchChat('c');
+    ctl.onLoaded();
+    await ctl.idle();
+    expect(h.st.calls).toHaveLength(1); // asked once already in this chat: the load does not ask again
+    ctl.onChatChanged();
+    ctl.onLoaded();
+    await ctl.idle();
+    expect(h.st.calls).toHaveLength(2);
+    expect(tasks(h)).toHaveLength(1);
+  });
+
+  it('a task delivered once is delivered again when the chat is loaded fresh with an offer of the same id', async () => {
+    const { s } = waiting();
+    s.practices!.tasks.push({ id: 'pt7', holderId: ANN, kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'trivial', check: 'model', proof: 'none', text: 'Fetch it.', summary: 'fetch it', status: 'offered', acceptForm: 'button_cost', day: s.day } as never);
+    s.practices!.requests = [];
+    const { h, ctl } = rig(s);
+    s.settings.unitDms = true;
+    ctl.onEvents([{ type: 'task_issued', taskId: 'pt7', holderId: ANN, kind: 'task' }]);
+    ctl.onEvents([{ type: 'task_issued', taskId: 'pt7', holderId: ANN, kind: 'task' }]);
+    expect(dms(h)).toHaveLength(1);
+    ctl.onChatChanged();
+    ctl.onEvents([{ type: 'task_issued', taskId: 'pt7', holderId: ANN, kind: 'task' }]);
+    expect(dms(h)).toHaveLength(2);
   });
 });
