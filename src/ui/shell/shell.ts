@@ -76,6 +76,10 @@ export interface ShellDeps {
   debugTools?: Array<{ label: string; run: () => void }>;
   /** Called after the SYS tab changed a setting (the app mirrors intimacy settings into the campaign). */
   onSettingsChanged?: () => void;
+  /** P10e: busy hands or a covered face (P15a): Tab does not raise the device over the scene. */
+  deviceLocked?: () => boolean;
+  /** P10e: Tab was refused because of `deviceLocked`: the scene says so (a flash). */
+  onDeviceRefused?: () => void;
   /** P3b: what the last context block spent (the fill indicator of SYS › MEMORY); absent = zeros. */
   lastBuild?: () => BuildStats;
   /** P7a: content for the analysis tool; without it the shell runs without hover explanations. */
@@ -132,6 +136,9 @@ export function createShell(deps: ShellDeps): ShellApi {
   let hubHost: HTMLElement | null = null;
   let device: HTMLElement | null = null;
   let hubRender: (host: HTMLElement, device: HTMLElement) => void = defaultHub;
+  /** P10e: the device raised over the scene (the scene screen is never rebuilt for it). */
+  let sceneDeviceUp = false;
+  let sceneDeviceHost: HTMLElement | null = null;
 
   const isOpen = () => root !== null;
 
@@ -281,7 +288,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     host.append(h('button', { type: 'button', class: 'alius-btn alius-open-pda', 'data-open-pda': true, onclick: () => api.setDevice(true) }, 'OPEN PDA [TAB]'));
   }
 
-  const isDeviceUp = (): boolean => isOpen() && router.current() === 'pda';
+  const onScene = (): boolean => router.current() === 'scene';
+  const isDeviceUp = (): boolean => isOpen() && (router.current() === 'pda' || (onScene() && sceneDeviceUp));
   const onHubLayer = (): boolean => router.current() === 'hub' || router.current() === 'pda';
 
   function updateTitle(): void {
@@ -330,13 +338,16 @@ export function createShell(deps: ShellDeps): ShellApi {
   function focusDevice(up: boolean): void {
     const target = up
       ? root?.querySelector<HTMLElement>('.alius-tab[aria-selected="true"]')
-      : root?.querySelector<HTMLElement>('[data-open-pda]');
+      : onScene() ? root?.querySelector<HTMLElement>('input[name="cmd"]') : root?.querySelector<HTMLElement>('[data-open-pda]');
     // never scroll: the device is still below the clipped view while it slides up, and a scrolling focus drags the view (and the hub) with it
     target?.focus({ preventScroll: true });
   }
 
-  /** The hub with the device inside it: used by both the `hub` and the `pda` route (they differ only in `up`). */
-  function buildLayer(host: HTMLElement, up: boolean): void {
+  /**
+   * The device: tab bar, panel, status, casing and stickers, dressed and placed up or down. It sets `device`, `tabBar`, `panel` and
+   * `statusHost` and returns the element; the caller puts it in its host and draws the status and the tab.
+   */
+  function buildDevice(up: boolean): HTMLElement {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID, isLocked: (id) => lockedTabs.has(id) });
     for (const [id, n] of badges) tabBar.setBadge(id, n);
     for (const id of lockedTabs) tabBar.setLocked(id, true);
@@ -347,17 +358,53 @@ export function createShell(deps: ShellDeps): ShellApi {
     marks.style.pointerEvents = 'none'; // a sticker is never clickable (peeling goes through a confirm)
     const screen = h('div', { class: 'alius-device-screen' }, statusHost, tabBar.element, panel);
     device = h('div', { class: 'alius-device', 'data-skin': 'ccp_standard', 'data-up': String(up) }, chrome, marks, screen);
+    return device;
+  }
+
+  /** The hub with the device inside it: used by both the `hub` and the `pda` route (they differ only in `up`). */
+  function buildLayer(host: HTMLElement, up: boolean): void {
+    const dev = buildDevice(up);
     hubHost = h('div', { class: 'alius-hub-host' });
-    host.append(hubHost, device);
+    host.append(hubHost, dev);
     applySkin();
     drawMarks();
     applyDevice(up);
     updateNarrow();
     renderHub();
     renderStatus();
-    tabBar.setSelected(tab);
+    tabBar!.setSelected(tab);
     // a tab is drawn only while the device is up: its renderer may mark messages read or clear a badge nobody saw
     if (up) renderTab();
+  }
+
+  /** P10e §5a: the second host of the device, over the scene screen (which stays rendered underneath). It starts down. */
+  function mountSceneDevice(): void {
+    const dev = buildDevice(sceneDeviceUp);
+    sceneDeviceHost = h('div', { class: 'alius-scene-device', 'data-up': String(sceneDeviceUp) }, dev);
+    view.append(sceneDeviceHost);
+    applySkin();
+    drawMarks();
+    applyDevice(sceneDeviceUp);
+    updateNarrow();
+    renderStatus();
+    tabBar!.setSelected(tab);
+    if (sceneDeviceUp) renderTab();
+  }
+
+  /** Raises or lowers the device over the scene without touching the scene. */
+  function setSceneDevice(up: boolean): void {
+    if (!device || up === sceneDeviceUp) return;
+    sceneDeviceUp = up;
+    sceneDeviceHost?.setAttribute('data-up', String(up));
+    applyDevice(up);
+    if (up) {
+      renderStatus();
+      renderTab();
+    }
+    focusDevice(up);
+    deps.onDevice?.(up);
+    deps.sound?.play(up ? 'open' : 'close');
+    maybeBoot();
   }
 
   router.register('hub', (host) => buildLayer(host, false));
@@ -371,7 +418,10 @@ export function createShell(deps: ShellDeps): ShellApi {
     statusHost = null;
     hubHost = null;
     device = null;
+    sceneDeviceHost = null;
+    if (!onScene()) sceneDeviceUp = false; // a scene always opens with the device down
     router.render(view);
+    if (onScene()) mountSceneDevice();
     renderedScreen = router.current();
     root.dataset.screen = renderedScreen; // P10e: the scene screen is the whole viewport (css/10-shell.css hides the ASCII frame)
     updateTitle();
@@ -466,6 +516,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     heldHost = null;
     hubHost = null;
     device = null;
+    sceneDeviceHost = null;
+    sceneDeviceUp = false;
     titleEl = null;
     renderedScreen = null;
   }
@@ -516,6 +568,10 @@ export function createShell(deps: ShellDeps): ShellApi {
     isDeviceUp,
     setDevice(up) {
       if (!isOpen() || up === isDeviceUp()) return;
+      if (onScene()) {
+        setSceneDevice(up);
+        return;
+      }
       if (up) api.showScreen('pda');
       else if (router.current() === 'pda') api.showScreen('hub');
     },
@@ -572,7 +628,13 @@ export function createShell(deps: ShellDeps): ShellApi {
         if (isDeviceUp()) renderTab();
       } else {
         const inPlace = screenRefresh.get(router.current());
-        if (inPlace && renderedScreen === router.current() && inPlace(view)) return;
+        if (inPlace && renderedScreen === router.current() && inPlace(view)) {
+          if (onScene() && sceneDeviceUp && panel) {
+            renderStatus();
+            renderTab();
+          }
+          return;
+        }
         renderView();
       }
     },
@@ -604,6 +666,10 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (where === 'pda' && !typing) {
         e.preventDefault();
         api.setDevice(false);
+      } else if (where === 'scene' && !typing && sceneDeviceUp && root?.querySelector('.alius-scene[data-curtain="open"]') === null) {
+        // the scene's own Esc closes its history first; the shell's runs before it, so it looks instead of relying on defaultPrevented
+        e.preventDefault();
+        api.setDevice(false);
       }
       return;
     }
@@ -613,12 +679,17 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (where === 'hub' || where === 'pda') {
         e.preventDefault();
         api.setDevice(where === 'hub');
+      } else if (where === 'scene') {
+        e.preventDefault();
+        if (sceneDeviceUp) api.setDevice(false);
+        else if (deps.deviceLocked?.() === true) deps.onDeviceRefused?.(); // busy hands: the device is out of reach (a flash in the scene)
+        else api.setDevice(true);
       }
       return;
     }
     if (/^[0-8]$/.test(e.key) && plain && !typing) {
       const id = e.key === '0' ? 'home' : KEY_TABS[Number(e.key) - 1];
-      if (where === 'pda') selectTab(id);
+      if (where === 'pda' || (where === 'scene' && sceneDeviceUp)) selectTab(id);
       else if (where === 'hub') api.showTab(id);
     }
   }

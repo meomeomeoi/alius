@@ -66861,6 +66861,8 @@ function createShell(deps) {
   let hubHost = null;
   let device = null;
   let hubRender = defaultHub;
+  let sceneDeviceUp = false;
+  let sceneDeviceHost = null;
   const isOpen2 = () => root !== null;
   function toast(kind, text3, opts) {
     if (toasts) {
@@ -66986,7 +66988,8 @@ function createShell(deps) {
   function defaultHub(host) {
     host.append(h("button", { type: "button", class: "alius-btn alius-open-pda", "data-open-pda": true, onclick: () => api.setDevice(true) }, "OPEN PDA [TAB]"));
   }
-  const isDeviceUp = () => isOpen2() && router.current() === "pda";
+  const onScene = () => router.current() === "scene";
+  const isDeviceUp = () => isOpen2() && (router.current() === "pda" || onScene() && sceneDeviceUp);
   const onHubLayer = () => router.current() === "hub" || router.current() === "pda";
   function updateTitle() {
     if (titleEl) titleEl.textContent = router.current() === "hub" ? "\u2554\u2550[ ALIUS // OUTPOST ]" : "\u2554\u2550[ ALIUS // PDA ]";
@@ -67021,10 +67024,10 @@ function createShell(deps) {
     });
   }
   function focusDevice(up) {
-    const target = up ? root?.querySelector('.alius-tab[aria-selected="true"]') : root?.querySelector("[data-open-pda]");
+    const target = up ? root?.querySelector('.alius-tab[aria-selected="true"]') : onScene() ? root?.querySelector('input[name="cmd"]') : root?.querySelector("[data-open-pda]");
     target?.focus({ preventScroll: true });
   }
-  function buildLayer(host, up) {
+  function buildDevice(up) {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID, isLocked: (id) => lockedTabs2.has(id) });
     for (const [id, n] of badges) tabBar.setBadge(id, n);
     for (const id of lockedTabs2) tabBar.setLocked(id, true);
@@ -67035,8 +67038,12 @@ function createShell(deps) {
     marks.style.pointerEvents = "none";
     const screen = h("div", { class: "alius-device-screen" }, statusHost, tabBar.element, panel);
     device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up) }, chrome, marks, screen);
+    return device;
+  }
+  function buildLayer(host, up) {
+    const dev = buildDevice(up);
     hubHost = h("div", { class: "alius-hub-host" });
-    host.append(hubHost, device);
+    host.append(hubHost, dev);
     applySkin();
     drawMarks();
     applyDevice(up);
@@ -67045,6 +67052,32 @@ function createShell(deps) {
     renderStatus();
     tabBar.setSelected(tab);
     if (up) renderTab();
+  }
+  function mountSceneDevice() {
+    const dev = buildDevice(sceneDeviceUp);
+    sceneDeviceHost = h("div", { class: "alius-scene-device", "data-up": String(sceneDeviceUp) }, dev);
+    view.append(sceneDeviceHost);
+    applySkin();
+    drawMarks();
+    applyDevice(sceneDeviceUp);
+    updateNarrow();
+    renderStatus();
+    tabBar.setSelected(tab);
+    if (sceneDeviceUp) renderTab();
+  }
+  function setSceneDevice(up) {
+    if (!device || up === sceneDeviceUp) return;
+    sceneDeviceUp = up;
+    sceneDeviceHost?.setAttribute("data-up", String(up));
+    applyDevice(up);
+    if (up) {
+      renderStatus();
+      renderTab();
+    }
+    focusDevice(up);
+    deps.onDevice?.(up);
+    deps.sound?.play(up ? "open" : "close");
+    maybeBoot();
   }
   router.register("hub", (host) => buildLayer(host, false));
   router.register("pda", (host) => buildLayer(host, true));
@@ -67056,7 +67089,10 @@ function createShell(deps) {
     statusHost = null;
     hubHost = null;
     device = null;
+    sceneDeviceHost = null;
+    if (!onScene()) sceneDeviceUp = false;
     router.render(view);
+    if (onScene()) mountSceneDevice();
     renderedScreen = router.current();
     root.dataset.screen = renderedScreen;
     updateTitle();
@@ -67146,6 +67182,8 @@ function createShell(deps) {
     heldHost = null;
     hubHost = null;
     device = null;
+    sceneDeviceHost = null;
+    sceneDeviceUp = false;
     titleEl = null;
     renderedScreen = null;
   }
@@ -67194,6 +67232,10 @@ function createShell(deps) {
     isDeviceUp,
     setDevice(up) {
       if (!isOpen2() || up === isDeviceUp()) return;
+      if (onScene()) {
+        setSceneDevice(up);
+        return;
+      }
       if (up) api.showScreen("pda");
       else if (router.current() === "pda") api.showScreen("hub");
     },
@@ -67249,7 +67291,13 @@ function createShell(deps) {
         if (isDeviceUp()) renderTab();
       } else {
         const inPlace = screenRefresh.get(router.current());
-        if (inPlace && renderedScreen === router.current() && inPlace(view)) return;
+        if (inPlace && renderedScreen === router.current() && inPlace(view)) {
+          if (onScene() && sceneDeviceUp && panel) {
+            renderStatus();
+            renderTab();
+          }
+          return;
+        }
         renderView();
       }
     },
@@ -67280,6 +67328,9 @@ function createShell(deps) {
       if (where === "pda" && !typing2) {
         e.preventDefault();
         api.setDevice(false);
+      } else if (where === "scene" && !typing2 && sceneDeviceUp && root?.querySelector('.alius-scene[data-curtain="open"]') === null) {
+        e.preventDefault();
+        api.setDevice(false);
       }
       return;
     }
@@ -67288,12 +67339,17 @@ function createShell(deps) {
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
+      } else if (where === "scene") {
+        e.preventDefault();
+        if (sceneDeviceUp) api.setDevice(false);
+        else if (deps.deviceLocked?.() === true) deps.onDeviceRefused?.();
+        else api.setDevice(true);
       }
       return;
     }
     if (/^[0-8]$/.test(e.key) && plain8 && !typing2) {
       const id = e.key === "0" ? "home" : KEY_TABS[Number(e.key) - 1];
-      if (where === "pda") selectTab(id);
+      if (where === "pda" || where === "scene" && sceneDeviceUp) selectTab(id);
       else if (where === "hub") api.showTab(id);
     }
   }
@@ -69361,6 +69417,10 @@ function createApp(st, deps) {
     analyze: { registries: () => registries },
     sensory: () => state !== null && sensoryNow(state, registries),
     // P16: a sensory hold or a blindfold dims the device
+    deviceLocked: () => state !== null && deviceLocked(state, registries),
+    // P10e: busy hands: Tab does not raise the device over the scene
+    onDeviceRefused: () => sceneScreen?.flashDeviceOut(),
+    // and the scene says so
     held: (host) => {
       if (state === null) host.replaceChildren();
       else drawHeldStrip(host, state, registries, { sensory: sensoryNow(state, registries), askRelease: () => {

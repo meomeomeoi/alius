@@ -120,6 +120,7 @@ import { applyPhysicsDirectives, clearPhysicsDirectives, refreshPhysicsDirective
 import { createStaging } from './blocking/controller';
 import { wakeCard } from './ui/scene/wakeCard';
 import { bellsFor, deviceTabLocks, muffled, sceneSettingsPatch } from './blocking/sync';
+import { deviceLocked } from './engine/blocking';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import type { FailReason } from './llm/orchestrator';
 import { createEnvelope, type Envelope } from './llm/envelope';
@@ -2390,6 +2391,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
     sensory: () => (state !== null && sensoryNow(state, registries)), // P16: a sensory hold or a blindfold dims the device
+    deviceLocked: () => state !== null && deviceLocked(state, registries), // P10e: busy hands: Tab does not raise the device over the scene
+    onDeviceRefused: () => sceneScreen?.flashDeviceOut(), // and the scene says so
     held: (host) => { // P16: the HELD strip while the commander is kept in her quarters
       if (state === null) host.replaceChildren();
       else drawHeldStrip(host, state, registries, { sensory: sensoryNow(state, registries), askRelease: () => { practice.askRelease(); }, sendSquad: (id) => { practice.sendSquad(id); }, answerHer: () => openAlarmCard(null) });

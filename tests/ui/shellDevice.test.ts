@@ -302,12 +302,13 @@ describe('hub and device', () => {
     expect(seen.every((d) => d === before)).toBe(true);
   });
 
-  it('the scene screen hides the hub; showScreen("hub") comes back with the device down', () => {
+  it('a full-window screen hides the hub; showScreen("hub") comes back with the device down', () => {
+    // P10e: the scene screen now carries a second host of the device (tests/ui/shell/sceneDevice.test.ts), so combat stands for "full window"
     const { shell } = setup();
-    shell.registerScreen('scene', (host) => { host.textContent = 'SCENE'; });
+    shell.registerScreen('combat', (host) => { host.textContent = 'SCENE'; });
     shell.open();
     shell.showScreen('pda');
-    shell.showScreen('scene');
+    shell.showScreen('combat');
     expect(q('.alius-hub-host')).toBeNull();
     expect(q('.alius-device')).toBeNull();
     expect(shell.isDeviceUp()).toBe(false);
@@ -317,11 +318,11 @@ describe('hub and device', () => {
     expect(device().dataset.up).toBe('false');
   });
 
-  it('Tab on a full-window screen does nothing', () => {
+  it('Tab on a full-window screen does nothing (the scene raises the device itself, P10e)', () => {
     const { shell } = setup();
-    shell.registerScreen('scene', (host) => { host.textContent = 'SCENE'; });
+    shell.registerScreen('combat', (host) => { host.textContent = 'SCENE'; });
     shell.open();
-    shell.showScreen('scene');
+    shell.showScreen('combat');
     expect(press(document.getElementById('alius-shell')!, 'Tab')).toBe(false);
   });
 

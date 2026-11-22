@@ -432,7 +432,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 **Interfaces:**
 - Produces: `SceneScreen.flashDeviceOut(): void`; `ShellDeps.deviceLocked?: () => boolean`; `ShellDeps.onDeviceRefused?: () => void`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `Tab raises the device over the scene`: on the scene screen, Tab from the body raises it:
     - `.alius-scene-device .alius-device[data-up="true"]` exists;
     - the scene screen is **not** re-rendered (the `renderSceneView` spy is called once);
@@ -442,9 +442,9 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `busy hands`: with `deviceLocked() === true`, Tab does not raise it and `onDeviceRefused` is called once.
   - `the hub is unchanged`: the existing shell tests pass (`tests/ui/shell*.test.ts`).
   - `a reply arriving while it is up` redraws the scene underneath (a `transcript` event refreshes the scene screen while the device is up).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/shell/sceneDevice.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** **Step 4: Run** the test, every `tests/ui/shell*` test, `tests/ui/blockingDevice.test.ts`, tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): Tab raises the device over the scene`
+- [x] **Step 2: Run** `npx vitest run tests/ui/shell/sceneDevice.test.ts` → FAIL.
+- [x] **Step 3: Implement.** **Step 4: Run** the test, every `tests/ui/shell*` test, `tests/ui/blockingDevice.test.ts`, tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): Tab raises the device over the scene`
 
 ### Task 12: The posture dial and its fan
 

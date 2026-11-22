@@ -912,3 +912,32 @@
 #alius-shell .alius-dock-waiting[hidden] {
   display: none;
 }
+
+/* the device over the scene (Tab): it slides up over the dimmed scene, which stays rendered and keeps receiving the reply */
+#alius-shell .alius-scene-device {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* as the hub's device: above the scene, below toasts and modals */
+  pointer-events: none;
+}
+
+#alius-shell .alius-scene-device::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--alius-bg) 55%, transparent);
+  opacity: 0;
+  transition: opacity 0.26s ease-out;
+}
+
+#alius-shell .alius-scene-device[data-up="true"]::before {
+  opacity: 1;
+}
+
+#alius-shell .alius-scene-device .alius-device {
+  pointer-events: auto;
+}
+
+#alius-shell.alius-reduced-motion .alius-scene-device::before {
+  transition: none;
+}
