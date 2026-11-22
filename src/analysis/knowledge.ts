@@ -3,6 +3,7 @@ import { wentUp } from '../engine/development/moments';
 import { dynamicView, type DynamicView } from '../engine/dynamic/view';
 import { axisWords } from '../engine/development/words';
 import { lifeView, type LifeView } from '../engine/life/known';
+import { practiceView, type PracticeView } from '../engine/practice/view';
 import type { CampaignState, DevFact, Fact } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
 
@@ -40,9 +41,15 @@ export interface Knowledge {
    * the stage of an aftermath are never in it.
    */
   dynamic(unitId: string, reg: Registries): DynamicView;
+  /**
+   * P16: what the commander may read of her practices: her tasks and discipline by summary (a sealed one only as sealed until it is opened, a ceremony by its steps and never its number), the hold with
+   * no end while it is hidden, her favour as a word (never the number, none in immersive mode), the forms she set, her routine, her answer to a request for permission once given, her names for postures,
+   * what stands in her hands and the record. A sealed text, an unfair flag, a count, a false report, an alarm score and a routine's broken flag are never in it.
+   */
+  practice(unitId: string, reg: Registries): PracticeView;
 }
 
-export type { LifeView, DynamicView };
+export type { LifeView, DynamicView, PracticeView };
 
 export interface DevelopmentView {
   axes: Array<{ axis: string; words: string; up: boolean; reason: string; shownDay: number; held: boolean }>;
@@ -94,6 +101,9 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
     dynamic: (unitId, reg) => (state === null
       ? { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, zones: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] }
       : dynamicView(state, reg, unitId, { raw: showRaw, hidden: settings.dynamicHidden === true, factVisible })),
+    practice: (unitId, reg) => (state === null
+      ? { tasks: [], punishments: [], demonstrations: [], held: null, protocol: [], routine: null, permission: null, postures: [], handovers: [], records: [] }
+      : practiceView(state, reg, unitId, { hidden: settings.dynamicHidden === true })),
     development(unitId, reg) {
       const unit = state?.squad.find((u) => u.id === unitId);
       const dev = unit?.development;

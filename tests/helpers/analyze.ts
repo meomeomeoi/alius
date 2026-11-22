@@ -36,6 +36,9 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   dynamicDomains: 'dynamicDomains:device', // P15
   dynamicTracks: 'dynamicTracks:restraint', // P15
   worshipTargets: 'worshipTargets:feet', // P15
+  holderPunishments: 'holderPunishments:no_messages', // P16
+  ceremonySteps: 'ceremonySteps:fetch_implement', // P16
+  implements: 'implements:belt', // P16
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

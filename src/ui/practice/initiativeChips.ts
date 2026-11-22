@@ -2,6 +2,7 @@ import { plainDraft } from '../../content/draft';
 import type { Registries } from '../../content/types';
 import { dynamicOn } from '../../engine/dynamic/gate';
 import { permissionRuleOf } from '../../engine/practice/denial';
+import { permissionLine } from '../../engine/practice/view';
 import { practiceLive } from '../../engine/practice/gate';
 import { askable, askRefusal, type AskWhat } from '../../engine/practice/initiative';
 import { HANDOVER_KINDS, type HandoverKind } from '../../engine/practice/state';
@@ -43,16 +44,6 @@ const TAKE_WORDS: Readonly<Record<HandoverKind, string>> = { device: 'THE DEVICE
 
 const LABEL: Readonly<Record<AskWhat, string>> = { task: 'ASK FOR A TASK', punishment: 'ASK FOR PUNISHMENT' };
 const GLOSSARY: Readonly<Record<AskWhat, string>> = { task: 'glossary:ask_for_task', punishment: 'glossary:ask_for_punishment' };
-
-/**
- * Her answer to a request for permission as a line, or `null` while none stands (P16, plan R13, R24): the answer of today, and a "not yet" until the day she named. Nothing is shown before
- * the question was asked: the answer never exists before it is given.
- */
-function permissionLine(state: CampaignState, unitId: string): PermissionAnswer | null {
-  const asked = state.practices?.permission?.holderId === unitId ? state.practices.permission.asked : undefined;
-  if (asked === undefined) return null;
-  return asked.day === state.day || (asked.answer === 'wait' && (asked.untilDay ?? 0) > state.day) ? asked.answer : null;
-}
 
 /**
  * The commander's own chips beside the offer chips (P16, plan R15, R10, R13, R24): `[ ASK FOR A TASK ]` and `[ ASK FOR PUNISHMENT ]` for each woman `pick` chooses whom the commander may

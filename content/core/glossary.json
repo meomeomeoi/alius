@@ -3421,5 +3421,49 @@
       "practice",
       "holder_override"
     ]
+  },
+  {
+    "id": "protocol",
+    "term": "Protocol",
+    "short": "Standing forms of address and conduct a holder sets for the commander: how to greet her, when to stand, what to say. A slip is an offense she may punish.",
+    "long": "AUTHOR TO WRITE: A protocol is a rule of hers that the commander accepts. The number she may set grows with how far she holds. She may relax one for a day when she is pleased.",
+    "see": [
+      "practice",
+      "routine",
+      "holder_punishment"
+    ]
+  },
+  {
+    "id": "routine",
+    "term": "Routine",
+    "short": "A daily arrangement a holder with household protocol keeps for the commander. It counts as kept each day unless the commander tells her it was not done.",
+    "long": "AUTHOR TO WRITE: A routine costs no slot and has no deadline. Each day kept adds to service. Telling her first is cheaper than being found out.",
+    "see": [
+      "protocol",
+      "confess",
+      "practice"
+    ]
+  },
+  {
+    "id": "favour",
+    "term": "Her favor",
+    "short": "How well the commander stands with her at the moment, as a word: warm, even or cool. It moves with her verdicts and what she asks; the number is never shown.",
+    "long": "AUTHOR TO WRITE: Favor fades by a little each day. When it is warm she does kindnesses; when it is cool she is slower to forgive. Asking her for a task or a punishment while it is cool is mocked.",
+    "see": [
+      "practice",
+      "protocol",
+      "ask_for_task"
+    ]
+  },
+  {
+    "id": "denial",
+    "term": "Denial",
+    "short": "A rule of hers that the commander asks permission before something. Doing it without asking is a slip against the rule; asking has four answers.",
+    "long": "AUTHOR TO WRITE: The rule may stand because the commander wears an item that names it. Taking the item off suspends the rule.",
+    "see": [
+      "ask_permission",
+      "practice",
+      "holder_punishment"
+    ]
   }
 ]

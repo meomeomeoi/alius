@@ -16,6 +16,7 @@ import { registerImmersionProviders } from './immersion';
 import { registerBondsProviders } from './bonds';
 import { registerBlockingProviders } from './blocking';
 import { registerDynamicProviders } from './dynamic';
+import { registerPracticeProviders } from './practice';
 import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
 import { registerSpecialProviders } from './special';
@@ -361,6 +362,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'handover',
   // P16 (ask her)
   'ask_her',
+  // P16 (Task 39: the remaining ids)
+  'protocol', 'routine', 'favour', 'denial',
 ];
 
 let registered = false;
@@ -391,4 +394,5 @@ export function registerCoreProviders(): void {
   registerDevelopmentProviders(); // P14b
   registerLifeProviders(); // P14c
   registerDynamicProviders(); // P15
+  registerPracticeProviders(); // P16
 }

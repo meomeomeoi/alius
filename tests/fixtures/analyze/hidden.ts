@@ -6,6 +6,7 @@ import type { LifeEventEntry } from '../../../src/engine/life/types';
 import { addCompromat } from '../../../src/engine/dynamic/compromat';
 import { blankDynamic, blankReading, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import { DYNAMIC_KNOWLEDGE_TAG } from '../../../src/engine/dynamic/types';
+import { blankPractices } from '../../../src/engine/practice/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign } from '../../helpers/world';
 
@@ -176,14 +177,45 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   state.memory.facts.push({
     id: 'fact_dyn_knows', about: [witness, unit.id], text: 'SENTINEL_KNOWLEDGE_P15', tags: [DYNAMIC_KNOWLEDGE_TAG, 'knows_dynamic'], importance: 3, day: 7, knownBy: [witness], hiddenFromCommander: true,
   });
+
+  // P16: what her practices keep from the commander. A sealed task and punishment (text and summary until they are opened), a punishment without guilt (the flag, and the pending unfairness she has in
+  // hand), a report that was false, a routine that was not kept today, a hold with no end (it stays hidden: only the stored end exists), the hidden count (26) and the number of a ceremony (34), the time
+  // she allows for a slap (733) and how many feints, the pick she was asked for, the day the commander last asked, an answer to a request for permission from days ago and her favour (13.37: a word
+  // shows, never this). The alarm's score is computed and never stored, so it has no place here (`tests/ui/practice/hidden.test.ts` asserts the cards show no answer's reason).
+  state.slot = 'morning';
+  state.personal!.bookings = [{ id: 'bk_held', unitId: unit.id, kindId: 'held_in_quarters', day: 8, slot: 'morning', status: 'booked', source: 'practice', made: 8 }] as never;
+  state.relations[unit.id].dynamic!.favour = 13.37;
+  const taskOf = (over: Record<string, unknown>) => ({ id: 'pt0', holderId: unit.id, kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text: 'x', summary: 'x', status: 'open', acceptForm: 'button_cost', day: 8, ...over });
+  state.practices = {
+    ...blankPractices(), seq: 20,
+    tasks: [
+      taskOf({ id: 'pt1', status: 'offered', sealed: true, acceptForm: 'sealed', summary: 'SENTINEL_SEALED_SUMMARY', text: 'SENTINEL_SEALED_TEXT' }),
+      taskOf({ id: 'pt2', summary: 'bring the roster', report: { day: 8, falseReport: true }, deadline: { day: 11, slot: 'evening' }, noDuration: true }),
+      taskOf({ id: 'pt3', summary: 'her morning routine', routine: true, brokenDay: 8 }),
+    ] as never,
+    punishments: [
+      { id: 'pp1', holderId: unit.id, entryId: 'corner_time', severity: 2, offence: { kind: 'task_broken', stakes: 'minor', day: 8 }, text: 'SENTINEL_SEALED_TEXT', summary: 'SENTINEL_SEALED_SUMMARY', status: 'offered', sealed: true, day: 8 },
+      {
+        id: 'pp2', holderId: unit.id, entryId: 'no_messages', severity: 3, offence: { kind: 'unfair', stakes: 'major', day: 8, unfair: true }, text: 'x', summary: 'a day without messages', status: 'accepted', day: 8, answeredDay: 8,
+        hiddenCount: true, count: 26, ceremony: { steps: ['fetch_implement', 'name_the_number'], done: ['fetch_implement'], number: 34 },
+      },
+    ],
+    held: { by: unit.id, since: { day: 8, slot: 'morning' }, until: { day: 8, slot: 'afternoon' }, sensory: false, extended: 0, bookingIds: ['bk_held'], hidden: true },
+    slap: { id: 'ps1', holderId: unit.id, windowMs: 733, feints: 1 },
+    asked: { context: 'dilemma', ref: 'dil_1', index: 1, holderId: unit.id, preselected: true },
+    askedOn: { [unit.id]: 8 },
+    unfair: { [unit.id]: { kind: 'cancelled_reward', day: 8 } },
+    permission: { holderId: unit.id, ruleId: 'rule_p16', asked: { day: 3, answer: 'deny' } },
+  };
+  state.memory.facts.push({ id: 'fact_false_report', about: [unit.id], text: 'SENTINEL_FALSE_REPORT', tags: ['false_report', 'practice'], importance: 3, day: 8, knownBy: [unit.id], hiddenFromCommander: true });
   registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true }); // P3b's own rule (registered once, with the core providers, which a test's reset removes)
 
   return {
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44],
-      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733],
+      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon'],
     },
   };
 }

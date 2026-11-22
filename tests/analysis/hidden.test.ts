@@ -79,6 +79,41 @@ describe('hidden state never reaches a reading', () => {
     }
   });
 
+  it('her practices are read (so the checks are not vacuous) and what they keep is never, raw values on or off, immersive or not', () => {
+    const fixture = hiddenFixture(reg);
+    const { unitId, sentinels } = fixture;
+    const state = structuredClone(fixture.state);
+    delete state.relations[unitId].dynamic!.aftermath; // a holder in her aftermath is frozen and reads nothing: the practices are read once it is over
+    const decimals = [13.37];
+    const texts = ['SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon'];
+    for (const [raw, hidden] of [[false, false], [true, false], [false, true], [true, true]] as const) {
+      const env = { ...envOf(state, raw), settings: { ...DEFAULT_SETTINGS, showRawValues: raw, dynamicHidden: hidden } };
+      const label = `raw ${raw}, immersive ${hidden}`;
+      const text = allReadings(env, unitId);
+      expect(text, label).toContain('bring the roster'); // `glossary:practice_task`: the summary of an open task
+      expect(text, label).toContain('a sealed task'); // and a sealed one only as sealed
+      expect(text, label).toContain('a day without messages'); // `glossary:holder_punishment`
+      expect(text, label).toContain('She has not said how long'); // the hold with no end, and the task with none
+      expect(leaks(text, { numbers: [], texts }), label).toEqual([]);
+      expect(leaks(text, { numbers: [26, 34, 733], texts: [] }), label).toEqual([]);
+      if (!raw) expect(leaks(text, { numbers: sentinels.numbers, texts: [] }), label).toEqual([]);
+      expect(leaks(text, { numbers: [], texts: sentinels.texts }), label).toEqual([]);
+      expect(text, label).not.toContain(String(decimals[0]));
+      const favour = analyze('glossary:favour', env, { unitId }).join(' ');
+      if (hidden) expect(favour, label).toBe('[[dynamic_felt]]');
+      else expect(favour, label).toMatch(/warm/);
+      expect(analyze('glossary:ask_permission', env, { unitId }), label).toEqual([]); // an answer from days ago is not shown
+      expect(analyze('holderPunishments:corner_time', env, { unitId }), label).toEqual([]); // the sealed one does not say its kind
+    }
+    // a real and a false unfair punishment, and a real and a false report, render identically
+    const fair = structuredClone(state);
+    fair.practices!.punishments[1].offence = { kind: 'task_broken', stakes: 'major', day: 8 };
+    delete fair.practices!.unfair;
+    fair.practices!.tasks[1].report = { day: 8 };
+    delete fair.practices!.tasks[2].brokenDay;
+    expect(allReadings(envOf(fair), unitId)).toBe(allReadings(envOf(state), unitId));
+  });
+
   it('what no fact has shown is not read: an unrevealed zone has no attitude, and nothing of the aftermath or the mastery shows', () => {
     const { state, unitId } = hiddenFixture(reg);
     const zone = analyze('worshipTargets:feet', envOf(state, true), { unitId }).join(' ');
