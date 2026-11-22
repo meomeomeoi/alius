@@ -200,6 +200,8 @@ export interface OpenPunishment {
   escalated?: true;
   forUnitId?: string;
   ceremony?: CeremonyState;
+  /** Its slap was started: it has slapped, and nothing opens its slap again (`practice/slap_start` refuses). */
+  slapped?: true;
   day: number;
   sceneId?: string;
   inverse?: Inverse;

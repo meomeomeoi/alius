@@ -18,7 +18,7 @@ import type { EventIntent } from '../relations/intents';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { endHold, extendHold } from './hold';
-import { heldLocation, heldNow, posOf } from './held';
+import { heldLocation, heldNow, holderQuarters, posOf } from './held';
 import { ensurePractices, nextPracticeId } from './gate';
 import { atBase, noteOffence } from './offences';
 import { ALARM_KINDS, practiceRoll, type AlarmAnswer, type AlarmKind, type HeldState, type OpenAlarm } from './state';
@@ -167,8 +167,8 @@ export function answerAlarm(draft: CampaignState, ctx: EngineCtx, alarmId: strin
   if (answer === 'argue') {
     if (alarm.argued === true) throw new Error('The commander has argued already.');
     alarm.argued = true;
-    const at = heldLocation(draft, ctx.registries) ?? 'quarters_unit';
-    return [alarmEvent(alarm, 'keep', { phase: 'argue', scene: { locationId: at, participants: [alarm.holderId], origin: 'event', consumesSlot: false } })];
+    const at = heldLocation(draft, ctx.registries) ?? holderQuarters(ctx.registries); // read by field: the held kind's place, else the one every soldier has
+    return [alarmEvent(alarm, 'keep', { phase: 'argue', ...(at !== null ? { scene: { locationId: at, participants: [alarm.holderId], origin: 'event', consumesSlot: false } } : {}) })];
   }
   if (answer !== 'defy') throw new Error('Unknown answer.');
   const held = draft.practices!.held!;

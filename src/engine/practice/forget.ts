@@ -56,10 +56,19 @@ function holdKindsOf(draft: CampaignState, reg: Registries, held: HeldState): un
   return kinds.filter((k) => k !== undefined && k.held === true);
 }
 
-/** The hold ends with no delta: its bookings are cancelled and the alarm that asked about it goes. */
+/** The blindfold the hold put on the commander comes off (the blocking's own `removeSource` for an item, copied so this file stays a leaf): no log entry stays. */
+function takeOffEyes(draft: CampaignState, itemId: string): void {
+  for (const rec of Object.values(draft.scene?.blocking ?? {})) {
+    for (const [slot, w] of Object.entries(rec.worn ?? {})) if (w?.id === itemId) delete (rec.worn as Record<string, unknown>)[slot];
+    if (rec.worn !== undefined && Object.keys(rec.worn).length === 0) delete rec.worn;
+  }
+}
+
+/** The hold ends with no delta: its bookings are cancelled, what darkened the commander's sight comes off and the alarm that asked about it goes. */
 function endHold(draft: CampaignState, p: PracticeState, reason: 'gone' | 'content'): EngineEvent {
   const held = p.held!;
   cancelHeld(draft, held);
+  if (held.eyes !== undefined) takeOffEyes(draft, held.eyes);
   if (p.alarm !== undefined && (held.alarm === p.alarm.id || p.alarm.holderId === held.by)) delete p.alarm;
   delete p.held;
   return { type: 'hold_released', holderId: held.by, reason };

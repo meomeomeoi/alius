@@ -101,6 +101,15 @@ describe('forgetPractices', () => {
     expect(forgetPractices(s, ANN)).toEqual([]); // idempotent
   });
 
+  it('the blindfold of a sensory hold comes off with the hold when she leaves service (review M10)', () => {
+    const s = full();
+    s.practices!.held!.eyes = 'blindfold_x';
+    s.scene = { id: 's1', day: 20, slot: 'evening', locationId: 'quarters_unit', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0, blocking: { commander: { worn: { eyes: { id: 'blindfold_x', since: 0 } } } } } as never;
+    forgetPractices(s, ANN);
+    expect(s.practices!.held).toBeUndefined();
+    expect((s.scene as unknown as { blocking?: { commander?: { worn?: { eyes?: unknown } } } }).blocking?.commander?.worn?.eyes).toBeUndefined();
+  });
+
   it('leaves everyone else alone and does nothing for a campaign that never had practices', () => {
     const s = full();
     const before = structuredClone(s.practices!.tasks.filter((t) => t.holderId === BEA && t.targetUnitId === undefined));

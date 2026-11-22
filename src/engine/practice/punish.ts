@@ -33,7 +33,7 @@ import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { endHold, startHold } from './hold';
 import { WRITERS } from './issue';
-import { atBase, pickHolderPunishment, severityOfEntry } from './offences';
+import { atBase, pickHolderPunishment, sceneIsHers, severityOfEntry } from './offences';
 import { practiceSample } from './sample';
 import { requestPractice } from './request';
 import { startSlap } from './slap';
@@ -186,7 +186,7 @@ function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): Engine
  * What accepting her punishment does (R8), once the commander has said yes and the ceremony, if there is one, is done: the repair lands (its row, and P15's feed adds hold), `discipline` xp by the weight,
  * a yield into her reading (a punishment she knew to be unfair is read by `unfairAccepted`), the effects of the entry, and the sign for each who watched it done in public.
  */
-function carryOut(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment): EngineEvent[] {
+function carryOut(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment, lapsed = false): EngineEvent[] {
   const reg = ctx.registries;
   const holderId = p.holderId;
   const events: EngineEvent[] = [];
@@ -194,7 +194,11 @@ function carryOut(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: O
   events.push(...addTrackXp(draft, reg, holderId, 'discipline', TUNING.practice.xp.discipline * p.severity));
   if (p.offence.unfair === true) events.push(...unfairAccepted(draft, reg, holderId));
   else events.push(...practiceSample(draft, reg, holderId, 'yielded', { afterThreat: true }));
-  for (const fx of effectsOf(entryOf(reg, p))) events.push(...runPunishmentEffect(draft, ctx, p, fx));
+  for (const fx of effectsOf(entryOf(reg, p))) {
+    // she carries it out herself from the day step, with no scene: nothing there to brace in (a slap would land unseen), and a held slot waits for a moment that is hers (as `possibleNow` asks)
+    if (lapsed && (fx.type === 'slap' || (fx.type === 'slot_held' && (draft.expedition !== undefined || draft.combat !== undefined || !sceneIsHers(draft, holderId))))) continue;
+    events.push(...runPunishmentEffect(draft, ctx, p, fx));
+  }
   for (const id of p.audienceIds ?? []) events.push(...addSign(draft, ctx, id, holderId, 'demonstration'));
   return events;
 }
@@ -236,7 +240,7 @@ export const nextCeremonyStep = (p: Pick<OpenPunishment, 'ceremony'>): string | 
 function finishCeremony(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment, lapsed: boolean): EngineEvent[] {
   if (p.ceremony === undefined || p.ceremony.carried === true) return [];
   p.ceremony.carried = true; // the effects run once: nothing reopens a finished ceremony (a flinch at its slap, the day's close)
-  return [{ type: 'ceremony_done', punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, ...(lapsed ? { lapsed: true } : {}) }, ...carryOut(draft, ctx, p)];
+  return [{ type: 'ceremony_done', punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, ...(lapsed ? { lapsed: true } : {}) }, ...carryOut(draft, ctx, p, lapsed)];
 }
 
 /**
@@ -413,7 +417,7 @@ export function restorePractice(draft: CampaignState, ctx: EngineCtx, unitId: st
   if (pr === undefined || p === undefined) return [];
   const events: EngineEvent[] = [];
   if (undo.startedHold === true && pr.held?.by === unitId) events.push(...endHold(draft, ctx, 'undone')); // its bookings are cancelled with no cost
-  if (undo.slapId !== undefined && pr.slap?.id === undo.slapId) delete pr.slap; // the slap the answer opened is closed with no outcome
+  if (undo.slapId !== undefined && pr.slap?.id === undo.slapId) { delete pr.slap; delete p.slapped; } // the slap the answer opened is closed with no outcome
   if (dyn !== undefined) {
     events.push(...restoreHold(draft, unitId, undo.hold));
     addFavour(draft, unitId, undo.favour - dyn.favour);

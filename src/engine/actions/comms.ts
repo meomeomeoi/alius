@@ -75,6 +75,7 @@ registerAction('dm/send', (draft, payload, ctx) => {
   if (revoked) throw new Error(revoked);
   // P16: the device is in a holder's hands (a handover): this message waits for her edit, with no roll, before it goes (a kept edit and a message sent as it is, after REVERT, are the answers to that)
   if (payload.interceptId === undefined && payload.skipIntercept !== true && forcedEditorOf(draft, ctx.registries, 'dm', unit.id) !== null) {
+    if (draft.personal?.intercepts?.open !== undefined) throw new Error('Her edit of the last message is waiting for an answer: answer it first.'); // another edit waits: this one is held, never sent as it is
     const held = rollIntercept(draft, ctx, { channel: 'dm', toUnitId: unit.id, text }, { forced: true });
     if (held.some((e) => e.type === 'device_intercept' && e.hit === true)) return held;
   }

@@ -12,7 +12,7 @@ import { ensurePractices } from '../../../src/engine/practice/gate';
 import { noteOffence } from '../../../src/engine/practice/offences';
 import { applyPracticeIntent } from '../../../src/engine/practice/intents';
 import { addHold } from '../../../src/engine/dynamic/hold';
-import { kindnessSweep, momentGapFavour, verdictOf } from '../../../src/engine/practice/service';
+import { defaultActivity, kindnessSweep, momentGapFavour, verdictOf } from '../../../src/engine/practice/service';
 import type { Task } from '../../../src/engine/practice/state';
 import { Rng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -192,6 +192,7 @@ describe('her kindnesses', () => {
     const s = withService(world(R2, 'role'));
     s.day = day;
     s.relations[ANN].stateId = 'lover';
+    s.relations[ANN].affinity = 80; // the token gate asks for warmth
     dyn(s).favour = TUNING.practice.kindnessAt;
     s.relations[ANN].want = 40;
     s.personal = { bookings: [{ id: 'b1', unitId: ANN, kindId: [...R2.bookingKinds.keys()][0], day: day + 1, slot: 'evening', status: 'booked', source: 'her' }] } as never;
@@ -212,6 +213,36 @@ describe('her kindnesses', () => {
     expect(seen.get('want_relief')!.relations[ANN].want).toBe(40 - 15);
     expect(seen.get('gift')!.personal!.tokens!.given).toContain(ANN);
     expect(seen.get('softer')!.practices!.softer?.[ANN]).toBe(true);
+  });
+
+  it('the gift goes through the token gate and her tier (review M9): none from a friend, none from an avoidant one, no romantic kind at a close tier', () => {
+    const gifts = (make: (day: number) => CampaignState): CampaignState[] => {
+      const out: CampaignState[] = [];
+      for (let day = 20; day < 400; day++) {
+        const s = make(day);
+        if (ofType(kindnessSweep(s, ctxOf(s)), 'favour_kindness').some((e) => e.kind === 'gift')) out.push(s);
+      }
+      return out;
+    };
+    expect(gifts((day) => { const s = kind(day); s.relations[ANN].stateId = 'friend'; return s; })).toEqual([]);
+    expect(gifts((day) => { const s = kind(day); unitOf(s, ANN).bond!.attachment = 'avoidant'; return s; })).toEqual([]);
+    const close = gifts((day) => { const s = kind(day); s.relations[ANN].stateId = 'confidant'; return s; });
+    expect(close.length).toBeGreaterThan(0);
+    for (const s of close) {
+      const kinds = s.personal!.tokens!.owned.map((t) => R2.tokenKinds.get(t.kindId)!);
+      expect(kinds.every((k) => k.minTier === undefined || k.minTier === 'close')).toBe(true);
+    }
+  });
+
+  it('slot_back never gives back a slot of her own hold: held bookings are not "upcoming" (review M9)', () => {
+    const heldKind = [...R2.bookingKinds.values()].find((k) => k.held === true)!;
+    for (let day = 20; day < 400; day++) {
+      const s = kind(day);
+      s.personal!.bookings = [{ id: 'bh', unitId: ANN, kindId: String(heldKind.id), day: day + 1, slot: 'evening', status: 'booked', source: 'practice' }] as never;
+      const events = kindnessSweep(s, ctxOf(s));
+      expect(ofType(events, 'favour_kindness').some((e) => e.kind === 'slot_back'), `day ${day}`).toBe(false);
+      expect((s.personal!.bookings as Array<{ status: string }>)[0].status).toBe('booked');
+    }
   });
 
   it('below favour 8 she does none', () => {
@@ -285,5 +316,14 @@ describe('anticipation is read from the blocking', () => {
     s = doing(s, COMMANDER, 'serve_loud').state;
     s = doing(s, COMMANDER, 'serve_quiet').state;
     expect(dynamicOf(s, ANN)!.favour).toBe(1);
+  });
+});
+
+describe('her default activity is read by field (review M15)', () => {
+  it('the first of hers that is fully on the commander and that no source sets', () => {
+    expect(defaultActivity(R2)).toBe('attending');
+    const altered = { ...R2, blockingActivities: new Map([...R2.blockingActivities].filter(([id]) => id !== 'attending')) } as Registries;
+    expect(defaultActivity(altered)).not.toBe('attending'); // another pack's default is found by its fields, or none
+    expect(defaultActivity(altered) === undefined || altered.blockingActivities.get(defaultActivity(altered)!)!.sources === undefined).toBe(true);
   });
 });

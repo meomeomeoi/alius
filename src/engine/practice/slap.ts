@@ -42,6 +42,12 @@ export function slapFeints(state: CampaignState, holderId: string, slapId: strin
 const witnessesOf = (state: CampaignState, holderId: string): string[] =>
   (state.scene?.participants ?? []).filter((id) => id !== holderId && state.squad.some((u) => u.id === id && u.kind === 'named' && isLiving(u)));
 
+/** The punishment a slap came from has slapped (once). */
+function markSlapped(draft: CampaignState, punishmentId: string | undefined): void {
+  const p = punishmentId === undefined ? undefined : draft.practices?.punishments.find((x) => x.id === punishmentId);
+  if (p !== undefined) p.slapped = true;
+}
+
 /**
  * Starts a slap on the commander by this holder. Nothing unless she is live and `physical_discipline_shown` is on, and no slap is open. With a scene with her open it writes `practices.slap` and says
  * `slap_started` (the UI telegraphs and runs the time allowed); before others it needs `public_humiliation`, else it waits for a private moment (not built: skipped). With no scene with her it lands unseen
@@ -53,10 +59,13 @@ export function startSlap(draft: CampaignState, ctx: Pick<EngineCtx, 'registries
   if (!practiceLive(draft, reg, holderId) || !on.includes('physical_discipline_shown') || draft.practices?.slap !== undefined) return [];
   const scene = draft.scene;
   if (scene === undefined || !scene.participants.includes(holderId)) {
-    return opts.unannounced === true ? [] : deal(draft, ctx, holderId, 'none', { id: '', holderId, windowMs: 0, feints: 0, ...(opts.punishmentId !== undefined ? { punishmentId: opts.punishmentId } : {}) });
+    if (opts.unannounced === true) return [];
+    markSlapped(draft, opts.punishmentId);
+    return deal(draft, ctx, holderId, 'none', { id: '', holderId, windowMs: 0, feints: 0, ...(opts.punishmentId !== undefined ? { punishmentId: opts.punishmentId } : {}) });
   }
   const seen = witnessesOf(draft, holderId).length > 0;
   if (seen && !on.includes('public_humiliation')) return [];
+  markSlapped(draft, opts.punishmentId);
   const id = nextPracticeId(draft, 'ps');
   const windowMs = slapWindowMs(draft, reg, holderId, id);
   const feints = slapFeints(draft, holderId, id);

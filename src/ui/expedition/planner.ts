@@ -6,6 +6,7 @@ import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { checkExpedition, type StartExpedition } from '../../engine/world/expedition';
 import type { ExpeditionController, PlanTarget } from '../../world/expeditionController';
+import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 
 /** What the commander has picked so far; kept by the screen so a refresh does not lose it. */
@@ -83,7 +84,7 @@ export function renderPlanner(host: HTMLElement, ctx: PlannerCtx): void {
   const without = ctx.target.withoutCommand === true;
   const keeper = without ? state.practices?.alarm?.holderId : undefined; // the holder who keeps the commander cannot go with the squad
   root.append(
-    ...(without ? [h('p', { class: 'alius-banner', 'data-without-command': '' }, 'The commander is held back: the squad goes without command (no orders, no command points).')] : []),
+    ...(without ? [h('p', { class: 'alius-banner', 'data-without-command': '', ...analyzeAttrs('glossary:without_command', keeper !== undefined ? { unitId: keeper } : {}) }, 'The commander is held back: the squad goes without command (no orders, no command points).')] : []),
     h('h2', {}, `[ PLAN ] ${info.title}`),
     h('p', {}, `${String(region?.name ?? info.regionId)} · DANGER ${info.danger} · OBJECTIVE: ${info.objective}`),
     h('p', {}, `DURATION ${info.slots} SLOTS (${end})`),
@@ -110,7 +111,7 @@ export function renderPlanner(host: HTMLElement, ctx: PlannerCtx): void {
     const row = h('div', { class: 'alius-planner-unit', 'data-unit-row': u.id },
       h('label', { class: 'alius-check' }, box, ` ${u.displayName}`),
     );
-    if (reason) row.append(h('span', { class: 'alius-dim alius-reason' }, ` ${reason}`));
+    if (reason) row.append(h('span', { class: 'alius-dim alius-reason', ...(u.id === keeper ? analyzeAttrs('glossary:held', { unitId: u.id }) : {}) }, ` ${reason}`));
     else {
       row.append(h('span', { class: 'alius-dim' }, ` SKILLS ${activeLoadout(reg, u).length}/${loadoutSize(reg, u)} · ${gearText(state, u)} `));
       if (picked) {

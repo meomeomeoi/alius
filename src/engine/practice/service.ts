@@ -17,7 +17,8 @@ import { practiceOf } from '../dynamic/profile';
 import { regardRise } from '../dynamic/regard';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
-import { giveToken } from '../personal/tokens';
+import { pressureGate } from '../personal/gates';
+import { giveToken, kindsFor } from '../personal/tokens';
 import { applyEventToUnit } from '../relations/effects';
 import type { EventIntent } from '../relations/intents';
 import { evaluateAutomatic } from '../relations/graph';
@@ -142,6 +143,12 @@ export function routineSweep(draft: CampaignState, ctx: Pick<EngineCtx, 'registr
 
 // --- her verdict, favour, kindnesses and anticipation (Task 22, R10) ----------------------------------------------------------------------------------------------------------------------------
 
+/** P15a's default activity of a soldier with none set, by field: the first of hers that is fully on the commander (`attention`) and that no source sets (`sources`). */
+export function defaultActivity(reg: Registries): string | undefined {
+  const row = [...reg.blockingActivities.values()].find((e) => e.actor === 'her' && e.attention === 'on_commander' && e.sources === undefined);
+  return row === undefined ? undefined : String(row.id);
+}
+
 type ActivityRow = { scope?: string; actor?: string; judged?: true; fits?: string[]; presence?: string; pairTags?: string[] };
 
 /** How she wants the commander's service to be felt (`unnoticed` or `felt`), from her style: the expectation profile has no field for it, so the table of `TUNING.practice.verdict.wish` stands in. Reads only. */
@@ -159,7 +166,7 @@ export function pairOf(state: CampaignState, reg: Registries, holderId: string):
   const blocking = state.scene?.blocking;
   const mine = blocking?.[COMMANDER]?.activity === undefined ? undefined : (reg.blockingActivities.get(blocking[COMMANDER].activity!) as ActivityRow | undefined);
   if (mine === undefined || mine.scope !== 'dynamic' || mine.actor !== 'commander' || mine.judged !== true) return null;
-  const hers = reg.blockingActivities.get(blocking?.[holderId]?.activity ?? 'attending') as ActivityRow | undefined;
+  const hers = (blocking?.[holderId]?.activity === undefined ? reg.blockingActivities.get(defaultActivity(reg) ?? '') : reg.blockingActivities.get(blocking[holderId].activity!)) as ActivityRow | undefined;
   const tags = hers?.pairTags ?? [];
   const fits = mine.fits ?? [];
   return { fit: fits.includes('any') || tags.some((t) => fits.includes(t)), felt: mine.presence === undefined || mine.presence === wishedPresence(state, reg, holderId) };
@@ -279,12 +286,19 @@ export function momentGapFavour(draft: CampaignState, ctx: Pick<EngineCtx, 'regi
   return [];
 }
 
+/** Her own bookings still ahead that she could give back: not a slot of her hold (a held booking is the hold's, and a hole in it would be one). Soonest first. */
+function givableBookings(draft: CampaignState, reg: Registries, holderId: string) {
+  return (draft.personal?.bookings ?? [])
+    .filter((b) => b.unitId === holderId && b.status === 'booked' && slotIndex(b.day, b.slot) >= slotIndex(draft.day, draft.slot) && reg.bookingKinds.get(b.kindId)?.held !== true)
+    .sort((a, b) => slotIndex(a.day, a.slot) - slotIndex(b.day, b.slot));
+}
+
 /** What she can do for the commander now, by kind (a kind with nothing to act on is not offered). */
 function kindnessesFor(draft: CampaignState, reg: Registries, holderId: string): KindnessKind[] {
   const p = draft.practices;
-  const upcoming = (draft.personal?.bookings ?? []).some((b) => b.unitId === holderId && b.status === 'booked' && slotIndex(b.day, b.slot) >= slotIndex(draft.day, draft.slot));
+  const upcoming = givableBookings(draft, reg, holderId).length > 0;
   const standing = protocolRules(draft, reg, holderId).some((r) => r.status === 'active' && r.source !== 'item');
-  const gift = reg.tokenKinds.size > 0 && draft.personal?.tokens?.given.includes(holderId) !== true;
+  const gift = pressureGate(draft, reg, holderId, 'token') === null && kindsFor(draft, reg, holderId).length > 0 && draft.personal?.tokens?.given.includes(holderId) !== true; // the token gate and her tier, as her own offer
   const has: Record<KindnessKind, boolean> = { slot_back: upcoming, protocol_relaxed: standing, want_relief: true, gift, softer: p?.softer?.[holderId] !== true };
   return KINDNESS_KINDS.filter((k) => has[k]);
 }
@@ -296,9 +310,7 @@ function doKindness(draft: CampaignState, ctx: EngineCtx, holderId: string, kind
   const base: EngineEvent = { type: 'favour_kindness', unitId: holderId, holderId, kind };
   switch (kind) {
     case 'slot_back': {
-      const next = (draft.personal?.bookings ?? [])
-        .filter((b) => b.unitId === holderId && b.status === 'booked' && slotIndex(b.day, b.slot) >= slotIndex(draft.day, draft.slot))
-        .sort((a, b) => slotIndex(a.day, a.slot) - slotIndex(b.day, b.slot))[0];
+      const next = givableBookings(draft, reg, holderId)[0];
       cancelBookingsQuietly(draft, [next.id]);
       const voided: EngineEvent[] = [];
       for (const t of p.tasks) if (t.bookingId === next.id && t.status === 'open') { t.status = 'void'; voided.push({ type: 'task_void', taskId: t.id, holderId, what: 'task', reason: 'gave_back' }); }
@@ -312,7 +324,7 @@ function doKindness(draft: CampaignState, ctx: EngineCtx, holderId: string, kind
     }
     case 'want_relief': return [base, ...relieveWant(draft, holderId, TUNING.practice.kindness.wantRelief, 'kindness')];
     case 'gift': {
-      const kinds = [...reg.tokenKinds.values()];
+      const kinds = kindsFor(draft, reg, holderId); // the kinds her tier allows
       const kindId = String(kinds[Math.min(kinds.length - 1, Math.floor(practiceRoll(draft, holderId, 'kindness:gift') * kinds.length))].id); // named, so the token's own pick draws nothing
       return [base, ...giveToken(draft, ctx, holderId, kindId).events];
     }

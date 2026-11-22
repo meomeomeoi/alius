@@ -170,6 +170,30 @@ describe('the call', () => {
     expect(callPosture(cold, ctxOf(cold), applied)).toEqual([]);
   });
 
+  it('only calls a posture that is allowed now: one whose category went off since it was named is not called (review M14)', () => {
+    const base = two(scened('role'));
+    const gated = { ...reg, blockingPostures: new Map(reg.blockingPostures) } as Registries;
+    gated.blockingPostures.set('kneeling_upright', { ...reg.blockingPostures.get('kneeling_upright')!, contentTags: ['gated_category'] });
+    const applied = [{ type: 'intents_applied', channel: 'scene' }];
+    let called = 0;
+    for (let n = 0; n < 300; n++) {
+      const s = at(base, n);
+      const events = callPosture(s, { registries: gated }, applied);
+      if (practiceRoll(s, ANN, `call:${s.scene!.id}:${n}`) < TUNING.practice.posture.callChance) called += events.length;
+    }
+    expect(called, 'one posture is left: there is nothing to choose between').toBe(0);
+    // with the category on both are callable and the gated one can be picked
+    const on = at(base, 0);
+    on.content = { enabled: [...(on.content?.enabled ?? []), 'gated_category'] };
+    const picked = new Set<string>();
+    for (let n = 0; n < 300; n++) {
+      const s = at(on, n);
+      callPosture(s, { registries: gated }, applied);
+      if (s.practices?.call !== undefined) picked.add(s.practices.call.postureId);
+    }
+    expect(picked.size).toBeGreaterThan(0);
+  });
+
   it('draws nothing from the campaign rng, and her window is by style', () => {
     const s = two(scened('role'));
     const rng = JSON.stringify(s.rng);

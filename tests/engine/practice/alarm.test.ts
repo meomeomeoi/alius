@@ -7,7 +7,7 @@ import '../../../src/engine/actions/practice';
 import { alarmAnswer, deadlineAlarms } from '../../../src/engine/practice/alarm';
 import { recordOf } from '../../../src/engine/discipline/record';
 import { dynamicOf } from '../../../src/engine/dynamic/state';
-import { heldGuard, heldNow } from '../../../src/engine/practice/held';
+import { heldGuard, heldNow, holderQuarters } from '../../../src/engine/practice/held';
 import { extendHold, startHold } from '../../../src/engine/practice/hold';
 import { applyPracticeIntent, practiceIntentInput } from '../../../src/engine/practice/intents';
 import { blankPractices, practiceRoll } from '../../../src/engine/practice/state';
@@ -262,5 +262,19 @@ describe('the directive', () => {
     expect(issuedDirective(ofType(r.events, 'hold_alarm')[0], r.state, reg)).toBeNull(); // not in a scene with her
     expect(issuedDirective({ type: 'hold_alarm', holderId: ANN, answer: 'keep', phase: 'argue' }, scened, reg)).toBeNull();
     expect(issuedDirective({ type: 'hold_alarm', holderId: ANN, answer: 'keep', run: true }, scened, reg)).toBeNull();
+  });
+});
+
+describe('her quarters are read by field, never by id (review M15)', () => {
+  it('the held kind\'s place, else the location every soldier has; the argument opens the scene there', () => {
+    expect(holderQuarters(reg)).toBe('quarters_unit');
+    const moved = { ...reg, bookingKinds: new Map(reg.bookingKinds), locations: new Map(reg.locations) } as Registries;
+    const kind = [...reg.bookingKinds.values()].find((k) => k.held === true)!;
+    moved.bookingKinds.set(String(kind.id), { ...kind, locationId: 'mess_hall' });
+    expect(holderQuarters(moved)).toBe('mess_hall');
+    const bare = { ...reg, bookingKinds: new Map([...reg.bookingKinds].filter(([, k]) => k.held !== true)) } as Registries;
+    expect(holderQuarters(bare)).toBe('quarters_unit'); // the one location every soldier has
+    const none = { ...bare, locations: new Map([...reg.locations].filter(([, l]) => l.perUnit !== true)) } as Registries;
+    expect(holderQuarters(none)).toBeNull();
   });
 });

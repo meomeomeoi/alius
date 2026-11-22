@@ -155,6 +155,16 @@ describe('the device', () => {
     expect(s.dms[CAT] ?? []).toHaveLength(0);
   });
 
+  it('while her edit of one message waits for an answer, another is held, not sent as it is (review M17)', () => {
+    const first = send(withDevice(), BEA);
+    expect(first.state.personal!.intercepts!.open).toBeDefined();
+    const second = send(first.state, CAT);
+    expect(errors(second.events)[0]?.message).toMatch(/waiting|answer/i);
+    expect(second.state.dms[CAT] ?? []).toHaveLength(0);
+    const reverted = run(first.state, reg, { type: 'device/resolve_intercept', payload: { id: first.state.personal!.intercepts!.open!.id, keep: false } });
+    expect(ofType(send(reverted.state, CAT).events, 'device_intercept')).toMatchObject([{ hit: true }]); // her edit again, no longer waiting
+  });
+
   it('a send the commander chose to send as it is (after REVERT) goes through', () => {
     const first = send(withDevice(), BEA);
     const reverted = run(first.state, reg, { type: 'device/resolve_intercept', payload: { id: first.state.personal!.intercepts!.open!.id, keep: false } });

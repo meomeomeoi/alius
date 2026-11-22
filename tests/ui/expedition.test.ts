@@ -10,6 +10,7 @@ import { renderNodeMap } from '../../src/ui/expedition/nodeMapView';
 import { mapRows, visibleTypes } from '../../src/engine/world/nodeMap';
 import type { ExpeditionController, PlanTarget } from '../../src/world/expeditionController';
 import { depart, withMission } from '../helpers/expedition';
+import { markedWithout, unresolved } from '../helpers/analyzeCoverage';
 import { campaign, loadCore, run } from '../helpers/world';
 
 let reg: Registries;
@@ -83,6 +84,21 @@ describe('planner', () => {
     expect(text).toContain('OBJECTIVE');
     expect(text).toContain('DURATION 2 SLOTS (returns in the Evening)');
     expect(planner((s) => { s.slot = 'afternoon'; }).host.textContent).toContain('DURATION 2 SLOTS (returns after the day ends)');
+  });
+
+  it('a run without the commander: the banner and the holder\'s reason are addressed and resolve (review M16)', () => {
+    const { state, mission } = withMission(reg, base);
+    const holderId = state.squad[0].id;
+    state.practices = { seq: 1, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, offences: {}, records: [], handovers: [], alarm: { id: 'pa0', holderId, kind: 'launch', day: state.day, slot: state.slot, answer: 'keep' } } as never;
+    const m = mount(state, { target: { missionId: mission.id, withoutCommand: true } });
+    const banner = m.host.querySelector('[data-without-command]')!;
+    expect(banner.getAttribute('data-analyze')).toBe('glossary:without_command');
+    const reason = m.host.querySelector(`[data-unit-row="${holderId}"] .alius-reason`)!;
+    expect(reason.textContent).toContain('Keeps the commander');
+    expect(reason.getAttribute('data-analyze')).toBe('glossary:held');
+    const env = { state, registries: reg, settings: { ...DEFAULT_SETTINGS } } as never;
+    expect(markedWithout(m.host)).toEqual([]);
+    expect(unresolved(m.host, env)).toEqual([]);
   });
 
   it('an injured unit is disabled with the reason', () => {

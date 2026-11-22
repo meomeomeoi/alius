@@ -97,7 +97,7 @@ export function callPosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const reg = ctx.registries;
   for (const holderId of scene.participants) {
     if (!practiceLive(draft, reg, holderId) || frameRank(dynamicOf(draft, holderId)?.frame ?? 'equal') < frameRank('role')) continue;
-    const mine = draft.practices?.postures[holderId] ?? [];
+    const mine = (draft.practices?.postures[holderId] ?? []).filter((p) => { const entry = reg.blockingPostures.get(p.postureId); return entry !== undefined && entryAllowed(draft, reg, entry, [holderId]); }); // one whose category went off since it was named is not called
     if (mine.length < 2) continue;
     const key = `${scene.id}:${scene.exchanges}`;
     if (practiceRoll(draft, holderId, `call:${key}`) >= TUNING.practice.posture.callChance) continue;

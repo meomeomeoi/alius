@@ -26,7 +26,7 @@ export function tokenLine(state: Pick<CampaignState, 'personal'>): string | null
 }
 
 /** The kinds her tier allows (a `romantic` kind needs the romantic tier), in registry order. */
-function kindsFor(state: CampaignState, reg: Registries, unitId: string): Array<Record<string, unknown>> {
+export function kindsFor(state: CampaignState, reg: Registries, unitId: string): Array<Record<string, unknown>> {
   const tier = bondTierOf(state, reg, unitId);
   return [...reg.tokenKinds.values()].filter((k) => k.minTier === undefined || k.minTier === tier);
 }

@@ -38,6 +38,16 @@ export function heldLocation(state: Readable, reg: Registries): string | null {
   return typeof id === 'string' ? id : null;
 }
 
+/**
+ * Her quarters, read by field: the location of the booking kind that holds the commander (`held`), else the location a pack gives every soldier of her own (`perUnit`); `null` when a pack has neither.
+ * For the scene a talk over a task, a punishment or the hold opens, and the fallback of `heldLocation`'s reader (never an id).
+ */
+export function holderQuarters(reg: Registries): string | null {
+  const kind = [...reg.bookingKinds.values()].find((k) => k.held === true);
+  const at = typeof kind?.locationId === 'string' ? kind.locationId : [...reg.locations.values()].find((l) => l.perUnit === true)?.id;
+  return typeof at === 'string' ? at : null;
+}
+
 /** Whether a payload names the holder among a scene's participants. */
 const names = (payload: unknown, holderId: string): boolean => {
   const ids = (payload as { participants?: unknown } | null | undefined)?.participants;

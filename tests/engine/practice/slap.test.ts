@@ -357,6 +357,20 @@ describe('from her discipline', () => {
     expect(r.state.practices!.slap).toMatchObject({ holderId: ANN, punishmentId: 'pp1' });
   });
 
+  it('the engine-internal practice/slap_start opens the slap of a punishment that never slapped, and never a second (review M12)', () => {
+    const base = punished();
+    base.practices!.punishments[0].status = 'accepted'; // accepted, its effect not yet run
+    const first = run(base, reg, { type: 'practice/slap_start', payload: { holderId: ANN, punishmentId: 'pp1' } });
+    expect(errors(first.events)).toEqual([]);
+    const done = answer(first.state, 'braced').state;
+    expect(done.practices!.punishments[0].slapped).toBe(true);
+    expect(errors(run(done, reg, { type: 'practice/slap_start', payload: { holderId: ANN, punishmentId: 'pp1' } }).events)[0]?.message).toMatch(/already/i);
+    // the slap its accept ran counts the same
+    const accepted = run(punished(), reg, { type: 'practice/answer_punishment', payload: { punishmentId: 'pp1', answer: 'accept' } });
+    const answered = answer(accepted.state, 'braced').state;
+    expect(errors(run(answered, reg, { type: 'practice/slap_start', payload: { holderId: ANN, punishmentId: 'pp1' } }).events)).toHaveLength(1);
+  });
+
   it('UNDO before the commander braced ends the slap; after it was answered UNDO is refused', () => {
     const r = run(punished(), reg, { type: 'practice/answer_punishment', payload: { punishmentId: 'pp1', answer: 'accept' } });
     expect(r.state.practices!.punishments[0].inverse!.practice!.slapId).toBe(r.state.practices!.slap!.id);

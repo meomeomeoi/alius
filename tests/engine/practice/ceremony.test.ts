@@ -265,6 +265,38 @@ describe('what the model is told', () => {
   });
 });
 
+describe('a ceremony she carries out herself at the day end has no scene to run scene-bound effects in (review M11)', () => {
+  const lapse = (s: CampaignState): { d: CampaignState; events: ReturnType<typeof practiceDayStep> } => {
+    const d = structuredClone(s);
+    d.day = s.day + 1;
+    d.practices!.punishments[0].answeredDay = s.day;
+    d.scene = undefined;
+    return { d, events: practiceDayStep(d, ctxOf(d, reg)) };
+  };
+
+  it('the slap does not land unseen: nothing is started and nothing is dealt', () => {
+    const s0 = waiting('ritual', 4, { entryId: 'the_slap', summary: 'the slap' });
+    s0.content = { enabled: [...(s0.content?.enabled ?? []), 'physical_discipline_shown'] };
+    const { d, events } = lapse(accept(s0).state);
+    expect(ofType(events, 'ceremony_done')).toMatchObject([{ lapsed: true }]);
+    expect(ofType(events, 'slap_started')).toEqual([]);
+    expect(ofType(events, 'slap_dealt')).toEqual([]);
+    expect(d.practices!.slap).toBeUndefined();
+  });
+
+  it('the held slot waits for a scene that is hers: with another soldier in the open scene it is not started', () => {
+    const s = accept(waiting('ritual')).state;
+    const d = structuredClone(s);
+    d.day = s.day + 1;
+    d.practices!.punishments[0].answeredDay = s.day;
+    d.scene!.participants = [ANN, 'unit_bea'];
+    const events = practiceDayStep(d, ctxOf(d, reg));
+    expect(ofType(events, 'ceremony_done')).toMatchObject([{ lapsed: true }]);
+    expect(d.practices!.held).toBeUndefined();
+    expect(ofType(events, 'hold_started')).toEqual([]);
+  });
+});
+
 describe('a finished ceremony never reopens (review I5)', () => {
   /** A ritual holder, the slap as a ceremony punishment, physical discipline on and a scene with her; every step done up to the last one by the real actions. */
   function slapCeremony(): CampaignState {

@@ -210,6 +210,7 @@ registerAction('practice/slap_start', (draft, payload, ctx) => {
   const p = draft.practices?.punishments.find((x) => x.id === payload.punishmentId && x.holderId === payload.holderId && x.status === 'accepted');
   const slaps = (ctx.registries.holderPunishments.get(p?.entryId ?? '')?.effects as Array<{ type: string }> | undefined)?.some((e) => e.type === 'slap') === true;
   if (p === undefined || !slaps) throw new Error('A slap starts only from her discipline.');
+  if (p.slapped === true) throw new Error('That punishment has slapped already.');
   if (draft.practices?.slap !== undefined) throw new Error('A slap is open already.');
   return startSlap(draft, ctx, p.holderId, { punishmentId: p.id });
 });

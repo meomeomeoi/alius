@@ -2,6 +2,7 @@ import { plainDraft } from '../../content/draft';
 import type { Registries } from '../../content/types';
 import { dynamicOn } from '../../engine/dynamic/gate';
 import { practiceLive } from '../../engine/practice/gate';
+import { entryAllowed } from '../../engine/blocking';
 import { postureWindowMs } from '../../engine/practice/postures';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -59,7 +60,7 @@ export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Re
     started.clear();
     return;
   }
-  const set = state.practices!.postures[unit.id] ?? [];
+  const set = (state.practices!.postures[unit.id] ?? []).filter((p) => { const entry = reg.blockingPostures.get(p.postureId); return entry !== undefined && entryAllowed(state, reg, entry, [unit.id]); }); // a posture whose category went off is no choice
   const wanted = set.find((p) => p.postureId === call.postureId);
   if (wanted === undefined) return;
   const windowMs = postureWindowMs(state, reg, unit.id);

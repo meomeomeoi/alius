@@ -50,7 +50,7 @@ export function severityOf(state: CampaignState, reg: Registries, holderId: stri
 }
 
 /** Is she holding the commander alone in a scene, or is there no scene at all (a scene with another cannot be interrupted by a hold)? */
-const sceneIsHers = (state: CampaignState, holderId: string): boolean =>
+export const sceneIsHers = (state: CampaignState, holderId: string): boolean =>
   state.scene === undefined || (state.scene.participants.length === 1 && state.scene.participants[0] === holderId);
 
 /** Units a confession may name: living named soldiers who are at base (not on a run). */

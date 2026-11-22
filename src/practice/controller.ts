@@ -1,6 +1,7 @@
 import { plainDraft } from '../content/draft';
 import { isLiving } from '../engine/economy';
 import { practiceLive } from '../engine/practice/gate';
+import { holderQuarters } from '../engine/practice/held';
 import { cardOf, practiceKindOf, requestOf } from '../engine/practice/issue';
 import { PRACTICE_EVENT_TYPES, PRACTICE_KINDS, type PracticeRequest, type ValidOutput } from '../engine/practice/state';
 import { sanitizePostureName, type PostureNameFlavorInput } from '../llm/calls/flavor';
@@ -322,7 +323,8 @@ export function createPractice(deps: PracticeDeps): PracticeController {
         deps.toast('error', String(bad.message ?? bad.code));
         return false;
       }
-      if (answer === 'talk' && deps.startScene !== undefined && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [task.holderId], origin: 'event', consumesSlot: false });
+      const at = holderQuarters(deps.registries());
+      if (answer === 'talk' && deps.startScene !== undefined && at !== null && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: at, participants: [task.holderId], origin: 'event', consumesSlot: false });
       deps.refreshContext();
       return true;
     },
@@ -341,7 +343,8 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       const p = s?.practices?.punishments.find((x) => x.id === punishmentId);
       if (s === null || p === undefined) return false;
       if (!ok(deps.app.dispatch({ type: 'practice/answer_punishment', payload: { punishmentId, answer } }, { expectChatId: chatId() }))) return false;
-      if (answer === 'negotiate' && deps.startScene !== undefined && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [p.holderId], origin: 'event', consumesSlot: false });
+      const at = holderQuarters(deps.registries());
+      if (answer === 'negotiate' && deps.startScene !== undefined && at !== null && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: at, participants: [p.holderId], origin: 'event', consumesSlot: false });
       deps.refreshContext();
       return true;
     },
