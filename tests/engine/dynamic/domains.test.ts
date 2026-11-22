@@ -64,6 +64,19 @@ describe('claims', () => {
     expect(rng.state).toEqual(idle.rng); // a real rng is untouched too
   });
 
+  it('a holder whose practice is no longer live (her card says nothing of one, or the player switched it off) neither draws nor claims (M1)', () => {
+    for (const off of [(s: CampaignState) => { unitOf(s, ANN).bond!.ownLimits.categories = ['restraint']; }, (s: CampaignState) => { unitOf(s, ANN).bond!.practice = undefined; }]) {
+      const s = world('play', 45); // a claim is due while her practice is live
+      expect(dynamicOf(s, ANN)).toBeDefined();
+      off(s);
+      const { rng, ctx } = never();
+      expect(claimsDue(s, ctx)).toEqual([]);
+      expect(rng.calls).toBe(0);
+    }
+    const live = world('play', 45);
+    expect(claimsDue(live, yes().ctx)).toHaveLength(1);
+  });
+
   it('a milestone-form domain (the command) is never claimed by the day step', () => {
     const s = world('role', 70);
     const { ctx } = yes();

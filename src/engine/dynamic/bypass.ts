@@ -86,6 +86,7 @@ export function bypassLeash(draft: CampaignState, ctx: EngineCtx, p: { route: By
   const terminal = terminalActivity(reg);
   if (p.route === 'comms') {
     if (draft.scene !== undefined) throw new Error('The terminal is in the comms room: leave the scene first.');
+    if (draft.dilemmas?.open?.status === 'presented') throw new Error('A decision is waiting: answer it first.'); // the terminal spends a slot, and `activity/` is refused while one waits (M3)
     const closed = terminal === null ? 'There is no comms terminal.' : checkActivity(draft, reg, { activityId: terminal.activityId, focus: terminal.focus });
     if (closed) throw new Error(closed);
   } else {

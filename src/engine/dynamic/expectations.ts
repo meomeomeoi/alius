@@ -9,6 +9,7 @@ import { contentAllowed, type ContentHolder } from '../bonds/content';
 import type { HoldsUntil } from '../physics/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { hasCommanderPronoun } from './pronoun';
 
 export const ATTITUDES = ['craves', 'enjoys', 'indifferent', 'dislikes'] as const;
 export type Attitude = (typeof ATTITUDES)[number];
@@ -39,8 +40,6 @@ export interface ExpectationProfile {
 export const EXPECTATION_FIELDS = ['moments', 'offset', 'tells', 'holdsUntil', 'worship', 'body', 'scent', 'build', 'hair', 'traits'] as const;
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-/** A pronoun for the commander (lore §0): a text that has one is dropped, never rewritten. */
-const COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
 
 /** Strips control characters (a line break or a tab reads as a space) and collapses spaces. */
 const clean = (v: string): string => v.replace(/[\t\n\r]/g, ' ').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
@@ -68,7 +67,7 @@ export function validateExpectations(
     if (typeof v !== 'string') return void issues.push(`expectations.${field} must be text`);
     const t = clean(v);
     if (t === '') return undefined;
-    if (COMMANDER_PRONOUN.test(t)) return void issues.push(`expectations.${field} has a pronoun for the commander and was dropped`);
+    if (hasCommanderPronoun(t)) return void issues.push(`expectations.${field} has a pronoun for the commander and was dropped`);
     if (t.length > max) issues.push(`expectations.${field} was cut to ${max} characters`);
     return t.slice(0, max).trim();
   };

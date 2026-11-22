@@ -157,7 +157,18 @@ export function tonightItems(state: CampaignState, reg: Registries): TonightItem
   const line: TonightItem | null = failed > 0
     ? { kind: 'generation', text: `${failed} generation${failed === 1 ? '' : 's'} failed.`, tone: 'warn', analyze: 'glossary:generation_record' }
     : null;
-  return line ? [...out.slice(0, TONIGHT_MAX - 1), line] : out.slice(0, TONIGHT_MAX);
+  return line ? [...cutTonight(out, TONIGHT_MAX - 1), line] : cutTonight(out, TONIGHT_MAX);
+}
+
+/**
+ * Keeps `max` lines. Without a dynamic line it is the first `max`, as it always was. With some, the lines of the dynamic are never cut before an older one, and oversight's threat to move a
+ * holder (it has a deadline) is the last of all to go; the lines that stay keep their order.
+ */
+function cutTonight(items: TonightItem[], max: number): TonightItem[] {
+  if (items.length <= max) return items;
+  const score = (i: TonightItem): number => (i.kind !== 'dynamic' ? 1 : i.analyze === 'glossary:oversight_inquiry' ? 3 : 2);
+  const keep = new Set(items.map((item, at) => ({ item, at })).sort((a, b) => score(b.item) - score(a.item) || a.at - b.at).slice(0, max).map((x) => x.at));
+  return items.filter((_, at) => keep.has(at));
 }
 
 /** Why `END {SLOT}` cannot be pressed right now, or `null`. Read-only campaigns are the caller's business. */

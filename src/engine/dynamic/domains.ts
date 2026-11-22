@@ -13,7 +13,7 @@ import { settleOrder } from '../personal/bookings';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { bandMin, capabilitiesOf, domainEntry, domainRows, dropVoidOverride, hasCapability, holderWith, standing } from './capabilities';
-import { dynamicOn } from './gate';
+import { dynamicOn, herPracticeLive } from './gate';
 import { addHold } from './hold';
 import { refusalCost } from './milestones';
 import { keptByStruggle } from './struggle';
@@ -85,6 +85,7 @@ export function claimsDue(draft: CampaignState, ctx: Ctx): EngineEvent[] {
   for (const unit of draft.squad) {
     const dyn = unit.kind === 'named' && isLiving(unit) ? dynamicOf(draft, unit.id) : undefined;
     if (dyn === undefined || dyn.aftermath !== undefined || x.open.claims.some((c) => c.unitId === unit.id)) continue;
+    if (!herPracticeLive(draft, unit.id)) continue; // her practice is off (the player switched it, her own limits, her card): every P15a reader treats her as off, so she asks and draws for nothing (M1)
     const entry = dueDomain(draft, reg, dyn);
     if (entry === undefined || !ctx.rng.chance(TUNING.dynamic.claimChance * TUNING.dynamic.frequency[x.setup.frequency])) continue;
     const rival = holderOfDomain(draft, entry.id, unit.id);

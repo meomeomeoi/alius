@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
+import { newDynamicCampaign } from '../../src/engine/dynamic/state';
 import type { Mission } from '../../src/engine/world/types';
 import type { CampaignState, NightEntry } from '../../src/engine/state/types';
 import { currentObjective, endSlotBlock, latestOversight, markerTone, TONE_GLYPH, tonightItems } from '../../src/ui/hub/model';
@@ -243,6 +244,43 @@ describe('tonightItems', () => {
       expect(reg.glossary.has(i.analyze.slice('glossary:'.length)), i.analyze).toBe(true);
       expect(i.text).not.toMatch(/\b(he|him|his|himself)\b/i);
     }
+  });
+});
+
+describe('tonightItems: the cut keeps the dynamic (P15, M8)', () => {
+  const crowded = (withDynamic: boolean): CampaignState => {
+    const s = campaign(reg, 4);
+    s.day = 6;
+    s.missions = { offered: [], active: [mission({ deadlineDay: 6 })], completed: [] };
+    s.calendar.nightEventsQueue = [night(s.squad[0].id, 'we_need_to_talk')];
+    for (const u of [s.squad[1], s.squad[2]]) s.dms[u.id] = [{ id: `d${u.id}`, from: u.id, text: 't', day: 1, slot: 'morning', read: false }];
+    s.world.incomingUnits = 1;
+    s.calendar.shortageStreak = 1;
+    s.commander.injuredUntilDay = 9; // eight lines of the older kind
+    if (withDynamic) {
+      s.content = { enabled: ['restraint'] };
+      s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+      s.dynamic.open.claims.push({ id: 'dc1', unitId: s.squad[0].id, domainId: 'device', day: s.day });
+      s.dynamic.oversight = { blocked: [], threat: { unitId: s.squad[1].id, untilDay: s.day + 5 } };
+    }
+    return s;
+  };
+  it('without the dynamic the first six stay, as before', () => {
+    const items = tonightItems(crowded(false), reg);
+    expect(items).toHaveLength(6);
+    expect(items.map((i) => i.kind)).toEqual(['knock', 'dm', 'dm', 'intake', 'deadline', 'warning']);
+  });
+  it('with it the older tail is cut first: her ask and oversight\'s threat stay, in their order', () => {
+    const items = tonightItems(crowded(true), reg);
+    expect(items).toHaveLength(6);
+    expect(items.some((i) => i.kind === 'dynamic' && i.analyze === 'glossary:oversight_inquiry')).toBe(true);
+    expect(items.some((i) => i.kind === 'dynamic' && i.analyze === 'glossary:claim')).toBe(true);
+    expect(items.map((i) => i.kind)).toEqual(['knock', 'dm', 'dm', 'intake', 'dynamic', 'dynamic']);
+  });
+  it('the threat is the last to go: with the dynamic lines alone over the limit it stays', () => {
+    const s = crowded(true);
+    for (const u of s.squad) s.dynamic!.open.claims.push({ id: `x${u.id}`, unitId: u.id, domainId: 'device', day: s.day });
+    expect(tonightItems(s, reg).some((i) => i.analyze === 'glossary:oversight_inquiry')).toBe(true);
   });
 });
 

@@ -71,6 +71,15 @@ describe('the comms terminal', () => {
     expect(errors(bypass(free, { route: 'comms' }).events)[0]).toMatchObject({ message: expect.stringMatching(/file it as usual/i) });
   });
 
+  it('the comms route is refused while a decision waits (it spends a slot), the ally route is not (M3)', () => {
+    const s = world();
+    s.dilemmas = { ...(s.dilemmas ?? {}), open: { id: 'dl1', status: 'presented', options: [] } } as unknown as CampaignState['dilemmas'];
+    const a = bypass(s, { route: 'comms' });
+    expect(errors(a.events)[0]).toMatchObject({ message: expect.stringMatching(/decision is waiting/i) });
+    expect(a.state.slot).toBe(s.slot);
+    expect(errors(bypass(s, { route: 'ally', allyId: CAT }).events)).toEqual([]);
+  });
+
   it('discovery is 0.3 (over 400 tries, 0.25 to 0.35)', () => {
     expect(bypassChance(world(), reg, 'comms')).toBe(0.3);
     let found = 0;

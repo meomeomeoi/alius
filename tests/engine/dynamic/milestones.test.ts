@@ -50,6 +50,19 @@ describe('milestonesDue', () => {
     expect(dyn(s).frame).toBe('equal'); // a number never moves a frame
   });
 
+  it('opens nothing for a unit whose practice is not live (M1)', () => {
+    for (const [frame, hold] of [['equal', 25], ['play', 45]] as const) {
+      const s = world(frame, hold);
+      unitOf(s, ANN).bond!.practice = undefined;
+      expect(due(s)).toEqual([]);
+      expect(open(s)).toEqual([]);
+    }
+    const s = world('equal', 25);
+    unitOf(s, ANN).bond!.ownLimits.categories = ['restraint'];
+    expect(due(s)).toEqual([]);
+    expect(open(s)).toEqual([]);
+  });
+
   it('stays closed below its band, and opens nothing twice for one unit', () => {
     const low = world('equal', 10);
     expect(due(low)).toEqual([]);

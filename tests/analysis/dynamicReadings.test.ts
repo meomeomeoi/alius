@@ -154,6 +154,11 @@ describe('the providers', () => {
     expect(text).toMatch(/craves/i);
     expect(text).toMatch(/one of five/);
     expect(text).not.toContain('23');
+    expect(text).toContain('Shown: Ann likes her feet looked after.'); // the fact that showed it (M16)
+    expect(buildKnowledge(s, { ...DEFAULT_SETTINGS }).dynamic(ANN, reg).zones.feet).toEqual({ mastery: 1, facts: ['AUTHOR TO WRITE: Ann likes her feet looked after.'] });
+    s.memory.facts.at(-1)!.hiddenFromCommander = true;
+    expect(analyze('worshipTargets:feet', envOf(s), { unitId: ANN }).join(' ')).not.toContain('Shown:');
+    delete s.memory.facts.at(-1)!.hiddenFromCommander;
     expect(analyze('worshipTargets:hands', envOf(s), { unitId: ANN }).join(' ')).not.toMatch(/dislikes/i); // hers: not shown
   });
 

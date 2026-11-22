@@ -15,7 +15,7 @@ import { book, bookingKindsFor, bookingProblem } from '../personal/bookings';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { capabilitiesOf, grantCapability, reconcileDomains } from './domains';
-import { canHold, dynamicOn } from './gate';
+import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
 import { addCompromat } from './compromat';
 import { practiceOf } from './profile';
@@ -199,6 +199,7 @@ export function milestonesDue(draft: CampaignState, ctx: Ctx, unitId: string): E
   const x = draft.dynamic;
   x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
   if (x.open.milestones.some((o) => o.unitId === unitId)) return events;
+  if (!herPracticeLive(draft, unitId)) return events; // no new card while her practice is not live (M1); a cooling above is bookkeeping and still applies
   const next = milestoneRows(reg).find((m) => m.offer !== 'automatic' && eligible(draft, reg, unitId, dyn, m));
   if (next !== undefined) events.push(...openMilestone(draft, ctx, unitId, next));
   return events;

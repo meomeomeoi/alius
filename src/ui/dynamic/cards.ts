@@ -2,7 +2,7 @@ import type { Registries } from '../../content/types';
 import { frameRank } from '../../engine/blocking/state';
 import { isLiving } from '../../engine/economy';
 import { dynamicOn } from '../../engine/dynamic/gate';
-import { exitCostWord, EXIT_MEANS, meansDone, type ExitMeans } from '../../engine/dynamic/exit';
+import { exitCostWord, EXIT_MEANS, leashProblem, meansDone, type ExitMeans } from '../../engine/dynamic/exit';
 import { dynamicOf } from '../../engine/dynamic/state';
 import type { OpenClaim, OpenMilestone, OpenReturn } from '../../engine/dynamic/state';
 import type { DynamicDomainEntry, DynamicMilestoneEntry, ExitRoute } from '../../engine/dynamic/types';
@@ -233,16 +233,19 @@ export function renderExitCard(host: HTMLElement, ctx: ExitCardCtx): void {
   const means = (m: ExitMeans): HTMLElement => {
     const done = meansDone(state, unitId, m);
     const doIt = ctx.means?.[m === 'discipline' ? 'punish' : m === 'leash' ? 'leash' : 'request'];
+    const why = m === 'leash' ? leashProblem(state, reg, unitId) : null; // M7: the Leash needs a refusal in her scene and is held for the holder of the block
     return h('div', { class: 'alius-exit-means', 'data-exit-means': m },
       h('span', { class: 'alius-exit-means-label' }, `${MEANS_LABEL[m]}: ${done ? 'done today' : 'not yet'} `),
       done ? null : (m === 'discipline'
         ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure, days) => ctx.means?.punish?.(measure, days) })
         : h('button', {
           type: 'button', class: 'alius-btn alius-option', 'data-do-means': m, ...analyzeNative('glossary:dynamic_exit', live),
+          ...(why !== null ? { 'aria-disabled': 'true', title: why } : {}),
           onclick: () => {
-            if (doIt !== undefined) (doIt as () => void)();
+            if (why === null && doIt !== undefined) (doIt as () => void)();
           },
         }, m === 'leash' ? '[ FILE THE LEASH ]' : '[ FILE THE REQUEST ]')),
+      !done && why !== null ? h('span', { class: 'alius-dim', 'data-means-why': m }, ` ${why}`) : null,
       ' ', go('force', { means: m }, ROUTE_LABEL.force, done ? undefined : 'Do it first.'));
   };
   const forced = row('force', cost(exitCostWord(state, reg, unitId, 'force')), ...EXIT_MEANS.map(means));

@@ -34,6 +34,7 @@ import { dynamicOf, type OpenOffer } from './state';
 import { leadingStyle } from './style';
 import { MOTIVES, OFFER_TABS, type DynamicDomainEntry, type OfferAnswer, type OfferTab, type PracticeAs } from './types';
 import { zoneRevealed } from './zones';
+import { hasCommanderPronoun } from './pronoun';
 
 type Ctx = Pick<EngineCtx, 'registries' | 'rng'>;
 
@@ -104,7 +105,7 @@ export function offerChoices(state: CampaignState, reg: Registries, unitId: stri
     if (!entryAllowed(state, reg, e, units)) continue;
     out.part.push({ id: e.id, label: String(e.label), known: zoneRevealed(state, unitId, e.id) ? worshipOf(state, reg, unitId, e.id) : 'unknown' });
   }
-  for (const e of reg.blockingPostures.values()) if (moves(e.id)) out.posture.push({ id: e.id, label: String(e.label) });
+  for (const e of reg.blockingPostures.values()) if (moves(e.id) && entryAllowed(state, reg, e, units)) out.posture.push({ id: e.id, label: String(e.label) });
   for (const e of reg.blockingContacts.values()) {
     if (frozen || !fits(e) || !entryAllowed(state, reg, e, units)) continue;
     (tagsOf(e).includes('objectification') ? out.role : out.contact).push({ id: e.id, label: String(e.label) });
@@ -332,6 +333,8 @@ export function makeOffer(draft: CampaignState, ctx: Ctx, unitId: string, compos
   const unit = draft.squad.find((u) => u.id === unitId);
   if (unit === undefined || unit.kind !== 'named' || !isLiving(unit)) throw new Error('An offer needs a named soldier in service.');
   if (!offerable(draft, reg, unitId)) throw new Error(`${unit.displayName} cannot be offered to now.`);
+  // a scene or a DM with her: the commander is in the room with someone else, so there is nobody here to offer to (the dispatcher already keeps a DM out of a run or a fight) (M5)
+  if (draft.scene !== undefined && !draft.scene.participants.includes(unitId)) throw new Error(`${unit.displayName} is not here: the commander is in a scene without her.`);
   const choices = offerChoices(draft, reg, unitId);
   for (const c of composition) {
     for (const id of c.ids) if (!choices[c.tab].some((e) => e.id === id)) throw new Error(`${offerLabel(reg, c.tab, id)} is not on offer.`);
@@ -394,8 +397,6 @@ export function makeOffer(draft: CampaignState, ctx: Ctx, unitId: string, compos
   return events;
 }
 
-/** A pronoun for the commander (lore §0): a text that has one is dropped, never rewritten. */
-const COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
 
 /**
  * The model confirms her answer (`offer_answered`). Only her own open offer that is not confirmed yet counts, and only when the answer is the one the engine gave: a mismatch is
@@ -407,7 +408,7 @@ export function confirmOffer(draft: CampaignState, unitId: string, offerId: stri
   if (open === undefined || answer === undefined || open.answer !== answer) return [];
   open.confirmed = true;
   const text = (correction ?? '').replace(/\s+/g, ' ').trim().slice(0, TUNING.dynamic.intents.correctionMax).trim();
-  if (answer === 'corrected' && text !== '' && !COMMANDER_PRONOUN.test(text)) {
+  if (answer === 'corrected' && text !== '' && !hasCommanderPronoun(text)) {
     addFact(draft, { about: [unitId], text: `AUTHOR TO WRITE: ${nameOf(draft, unitId)} corrected the commander: "${text}".`, tags: ['dynamic', 'offer_correction'], importance: 2, day: draft.day, knownBy: [unitId] });
   }
   return [];

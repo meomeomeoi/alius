@@ -23,6 +23,7 @@ import { startAftermathOnExit } from './aftermath';
 import { domainEntry, dropVoidOverride, standing } from './capabilities';
 import { loseDomain, transferDomains } from './domains';
 import { addHold } from './hold';
+import { leashBlockOf } from './leashBlock';
 import { dynamicOn } from './gate';
 import { dynamicOf } from './state';
 import { EXIT_ROUTES, type ExitRoute } from './types';
@@ -56,6 +57,16 @@ export function meansDone(state: CampaignState, unitId: string, means: ExitMeans
 /** Whether the means done on her today was an enforcement of severity 3 or more (a bench, a brig): it wins the command back, as the Leash does (R15a). */
 function heavyEnforcement(state: CampaignState, reg: Registries, unitId: string): boolean {
   return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day && Number(punishmentFor(reg, a.measure)?.severity ?? 0) >= 3);
+}
+
+/**
+ * Why the Leash cannot be filed on her now, or `null` when it can be tried (M7). A compel needs a refusal of hers in the open scene, and a holder of the block holds a request filed on
+ * herself, so for her it would only be held (the only Leash that ends it then is oversight's own). Read from state; the card shows the reason and soft-disables the button.
+ */
+export function leashProblem(state: CampaignState, reg: Registries, unitId: string): string | null {
+  if (leashBlockOf(state, reg) === unitId) return "She holds the commander's Leash requests: a request filed on her would be held.";
+  if (state.scene?.participants.includes(unitId) !== true || state.scene.refusals?.some((r) => r.unitId === unitId) !== true) return 'She has not refused an order in this scene: there is nothing to compel.';
+  return null;
 }
 
 const DO_FIRST: Record<ExitMeans, string> = {

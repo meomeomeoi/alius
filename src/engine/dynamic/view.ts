@@ -12,9 +12,10 @@ import { holderOfDomain, meets } from './domains';
 import type { ExpectationProfile } from './expectations';
 import { dynamicOn } from './gate';
 import { holdBandOf } from './hold';
-import { moodSigns, revealedExpectations } from './mastery';
+import { masteryLevel, moodSigns, revealedExpectations } from './mastery';
 import { dynamicOf } from './state';
 import { trackOpen } from './tracks';
+import { zoneFacts } from './zones';
 import { DYNAMIC_KNOWLEDGE_TAG, KNOWLEDGE_LEVELS, type KnowledgeLevel } from './types';
 
 /** A holder and the ids of the domains she holds today. */
@@ -59,6 +60,8 @@ export interface DynamicView {
   reading?: string;
   /** Her profile, as far as a fact the commander has has shown it. */
   expectations: Partial<ExpectationProfile>;
+  /** The body map's zones that have something to read: the level of the commander's mastery of the part with her (never the xp) and the facts the commander has that showed what she thinks of it. */
+  zones: Record<string, { mastery: number; facts: string[] }>;
   /** What can be seen of her mood now, in words. */
   signs: string[];
   /** Who holds something over the commander, and what (every holder, not only her). */
@@ -78,7 +81,7 @@ export interface DynamicViewOpts {
   factVisible?: (f: Fact) => boolean;
 }
 
-const EMPTY: DynamicView = { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] };
+const EMPTY: DynamicView = { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, zones: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] };
 const LEVEL_RANK: Readonly<Record<KnowledgeLevel, number>> = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
 
 /**
@@ -92,6 +95,12 @@ export function dynamicView(state: CampaignState, reg: Registries, unitId: strin
     ...structuredClone(EMPTY), heldBy: heldBy(state, reg), expectations: revealedExpectations(state, reg, unitId), signs: moodSigns(state, reg, unitId),
     compromat: compromatOf(state, unitId).filter(visible),
   };
+  const seen = state.memory.facts.filter(visible);
+  for (const t of reg.worshipTargets.values()) {
+    const facts = zoneFacts(seen, unitId, t.id).map((f) => f.text);
+    const mastery = masteryLevel(state, unitId, t.id);
+    if (facts.length > 0 || mastery > 0) view.zones[t.id] = { mastery, facts };
+  }
   const levels = new Map<string, KnowledgeLevel>();
   for (const f of state.memory.facts) {
     if (!f.tags.includes(DYNAMIC_KNOWLEDGE_TAG) || f.about[1] !== unitId || !visible(f)) continue;

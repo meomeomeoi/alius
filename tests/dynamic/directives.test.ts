@@ -270,6 +270,9 @@ describe('the controller', () => {
     expect(refreshContext).toHaveBeenCalledTimes(1);
     ctl.onEvents([{ type: 'hold_band_changed', unitId: ANN, from: 'interest', to: 'testing' }]);
     expect(refreshContext).toHaveBeenCalledTimes(2);
+    ctl.onEvents([{ type: 'compromat_revealed', unitId: ANN, factId: 'fr1' }]); // what she keeps and says changes the lines of the dynamic (M9)
+    ctl.onEvents([{ type: 'compromat_told', unitId: ANN, factId: 'fr1' }]);
+    expect(refreshContext).toHaveBeenCalledTimes(4);
   });
 
   it('nothing is set while off', () => {

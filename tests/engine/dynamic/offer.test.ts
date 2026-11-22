@@ -39,6 +39,26 @@ function world(style: ProfileStyle = 'cold', opts: { frame?: Frame; hold?: numbe
 const offer = (tab: OfferComposition[number]['tab'], ...ids: string[]): OfferComposition => [{ tab, ids }];
 const send = (s: CampaignState, composition: OfferComposition, extra: Record<string, unknown> = {}) => run(s, reg, { type: 'dynamic/offer', payload: { unitId: ANN, composition, ...extra } });
 
+describe('what may be offered (M4, M5)', () => {
+  it('a posture goes through the content gate like every other entry', () => {
+    const s = world('cold');
+    expect(offerChoices(s, reg, ANN).posture.map((c) => c.id)).toContain('sitting');
+    const gated = structuredClone(reg);
+    (gated.blockingPostures.get('sitting') as unknown as { contentTags: string[] }).contentTags = ['exposure_risk']; // a category that is off
+    expect(offerChoices(s, gated, ANN).posture.map((c) => c.id)).not.toContain('sitting');
+    expect(() => makeOffer(s, { registries: gated, rng: new Rng(s.rng) }, ANN, offer('posture', 'sitting'))).toThrow(/not on offer/);
+  });
+
+  it('is refused while the commander is in a scene without her', () => {
+    const s0 = world('cold');
+    const started = run(s0, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [BEA], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(started.events)).toEqual([]);
+    const r = send(started.state, offer('posture', 'sitting'));
+    expect(errors(r.events)[0]).toMatchObject({ message: expect.stringMatching(/not here/i) });
+    expect(r.state.dynamic!.open.offers).toEqual([]);
+  });
+});
+
 describe('Regard cost rise (I7)', () => {
   const costs = (events: Array<{ type: string; [k: string]: unknown }>) => events.filter((e) => e.type === 'regard_changed' && e.cause === 'cost');
   it('an accepted offer made while her reading has r at 0 or less raises her Regard by what it cost', () => {

@@ -1056,7 +1056,7 @@ var TUNING = Object.freeze({
     /**
      * Where a secondary style comes through (R10, spec §15.4; the conditions themselves are `practiceStyles[].surfacesWhen`). `peakLeads`: the
      * secondaries that take the peak of a hold whatever their conditions say. `edgeStart` / `edgeEnd`: the exchange counts of a scene's first
-     * and last stretch. `favourMood`: the favour from which she is pleased or displeased, until satisfaction (Task 38) exists. `ignoredDays`:
+     * and last stretch. `ignoredDays`:
      * days without contact. `stagnationDays`: days without a gain of the commander's endurance. `failedRunDays`: how long after a failed
      * expedition. `anniversaryDays`: the campaign day it comes back on. `trainingEffects`: the effect types that make an activity a drill.
      * `AUTHOR TO TUNE`.
@@ -1065,7 +1065,6 @@ var TUNING = Object.freeze({
       peakLeads: Object.freeze(["cruel", "drill", "vindictive"]),
       edgeStart: 1,
       edgeEnd: 24,
-      favourMood: 1,
       ignoredDays: 3,
       stagnationDays: 7,
       failedRunDays: 2,
@@ -6963,7 +6962,10 @@ var DYNAMIC_EVENT_TYPES = [
   "regard_changed",
   "regard_band_changed",
   "disappointed",
-  "regard_question_asked"
+  "regard_question_asked",
+  "compromat_revealed",
+  "compromat_told"
+  // what she keeps and says (review M9): the controller refreshes the lines on them
 ];
 
 // src/content/types.ts
@@ -12625,6 +12627,12 @@ function flaggedCategories(state, reg, raw) {
   return out.slice(0, TUNING.bonds.limits.maxViolations);
 }
 
+// src/engine/dynamic/pronoun.ts
+var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
+function hasCommanderPronoun(text2) {
+  return COMMANDER_PRONOUN.test(text2);
+}
+
 // src/engine/dynamic/expectations.ts
 var ATTITUDES = ["craves", "enjoys", "indifferent", "dislikes"];
 var MEANINGS = ["reward", "duty", "humiliation", "intimacy", "play", "comfort"];
@@ -12634,7 +12642,6 @@ var HAIR = ["short", "bob", "long", "tail"];
 var HOLDS_UNTIL = ["signal", "limit", "blackout"];
 var EXPECTATION_FIELDS = ["moments", "offset", "tells", "holdsUntil", "worship", "body", "scent", "build", "hair", "traits"];
 var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
 var clean2 = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
 function validateExpectations(raw, reg, ctx2) {
   const issues = [];
@@ -12651,7 +12658,7 @@ function validateExpectations(raw, reg, ctx2) {
     if (typeof v !== "string") return void issues.push(`expectations.${field2} must be text`);
     const t = clean2(v);
     if (t === "") return void 0;
-    if (COMMANDER_PRONOUN.test(t)) return void issues.push(`expectations.${field2} has a pronoun for the commander and was dropped`);
+    if (hasCommanderPronoun(t)) return void issues.push(`expectations.${field2} has a pronoun for the commander and was dropped`);
     if (t.length > max) issues.push(`expectations.${field2} was cut to ${max} characters`);
     return t.slice(0, max).trim();
   };
@@ -18102,7 +18109,6 @@ function metAtScene(draft, reg, participants) {
 // src/engine/dynamic/compromat.ts
 var COMPROMAT_TAG = "compromat";
 var holderTag = (holderId) => `holder:${holderId}`;
-var COMMANDER_PRONOUN3 = /\b(he|him|his|himself|he's)\b/i;
 var MENTIONED = "mentioned";
 function compromatOf(state, holderId) {
   return state.memory.facts.filter((f) => f.tags.includes(COMPROMAT_TAG) && f.tags.includes(holderTag(holderId)));
@@ -18149,7 +18155,7 @@ function mentionCompromat(draft, _ctx, holderId, factId, summary) {
     if (score > 0 && (best === void 0 || score > best.score)) best = { fact: f, score };
   }
   if (best !== void 0) return reveal(best.fact, holderId);
-  if (COMMANDER_PRONOUN3.test(text2)) return [];
+  if (hasCommanderPronoun(text2)) return [];
   const fact = tagHolder(addFact(draft, { about: ["commander"], text: text2.slice(0, factTextMax(draft)), tags: [COMPROMAT_TAG, MENTIONED], importance: 3, day: draft.day, knownBy: [holderId] }), holderId);
   return [{ type: "compromat_revealed", unitId: holderId, factId: fact.id }];
 }
@@ -18316,6 +18322,7 @@ function milestonesDue(draft, ctx2, unitId) {
   const x = draft.dynamic;
   x.open.milestones = x.open.milestones.filter((o) => o.unitId !== unitId || (milestoneEntry(reg, o.milestoneId)?.from ?? dyn.frame) === dyn.frame);
   if (x.open.milestones.some((o) => o.unitId === unitId)) return events;
+  if (!herPracticeLive(draft, unitId)) return events;
   const next = milestoneRows(reg).find((m) => m.offer !== "automatic" && eligible2(draft, reg, unitId, dyn, m));
   if (next !== void 0) events.push(...openMilestone(draft, ctx2, unitId, next));
   return events;
@@ -18680,6 +18687,7 @@ function claimsDue(draft, ctx2) {
   for (const unit3 of draft.squad) {
     const dyn = unit3.kind === "named" && isLiving(unit3) ? dynamicOf(draft, unit3.id) : void 0;
     if (dyn === void 0 || dyn.aftermath !== void 0 || x.open.claims.some((c) => c.unitId === unit3.id)) continue;
+    if (!herPracticeLive(draft, unit3.id)) continue;
     const entry = dueDomain(draft, reg, dyn);
     if (entry === void 0 || !ctx2.rng.chance(TUNING.dynamic.claimChance * TUNING.dynamic.frequency[x.setup.frequency])) continue;
     const rival = holderOfDomain(draft, entry.id, unit3.id);
@@ -19118,6 +19126,47 @@ function answerReturn(draft, ctx2, answer) {
   return events;
 }
 
+// src/engine/dynamic/leashBlock.ts
+var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function leashBlockOf(state, reg) {
+  if (!dynamicOn(state, reg)) return null;
+  for (const u of state.squad) {
+    const dyn = u.kind === "named" && isLiving(u) ? dynamicOf(state, u.id) : void 0;
+    if (dyn === void 0) continue;
+    const holds6 = dyn.domains.some((d) => {
+      const entry = domainEntry(reg, d.id);
+      return entry !== void 0 && standing(d, state.day) && entry.grants.includes("leash_block") && dyn.hold >= bandMin(reg, entry);
+    });
+    if (holds6) return u.id;
+  }
+  return null;
+}
+function blockCosignChance(state, _reg, holderId) {
+  const B2 = TUNING.dynamic.block;
+  const favour = dynamicOf(state, holderId)?.favour ?? 0;
+  return clamp17(B2.base + B2.perFavour * favour / TUNING.dynamic.favour.max, B2.min, B2.max);
+}
+function noteBlocked(draft, holderId) {
+  const x = draft.dynamic;
+  if (x === void 0) return;
+  (x.oversight ??= { blocked: [] }).blocked.push(draft.day);
+  const dyn = dynamicOf(draft, holderId);
+  if (dyn !== void 0) dyn.leashBlock = { since: dyn.leashBlock?.since ?? draft.day, held: (dyn.leashBlock?.held ?? 0) + 1 };
+}
+function rollBlock(draft, ctx2, targetId, kind) {
+  const holderId = leashBlockOf(draft, ctx2.registries);
+  if (holderId === null) return { ok: true, events: [] };
+  const pass = draft.dynamic?.oversight?.pass;
+  if (pass !== void 0) {
+    delete draft.dynamic.oversight.pass;
+    if (pass.unitId === targetId && pass.kind === kind) return { ok: true, events: [] };
+  }
+  const ok = targetId !== holderId && ctx2.rng.chance(blockCosignChance(draft, ctx2.registries, holderId));
+  if (ok) return { ok: true, events: [] };
+  noteBlocked(draft, holderId);
+  return { ok: false, holderId, events: [{ type: "leash_blocked", unitId: targetId, holderId, kind }] };
+}
+
 // src/engine/dynamic/exit.ts
 var EXIT_MEANS = ["discipline", "leash", "transfer_request"];
 function meansDone(state, unitId, means) {
@@ -19127,6 +19176,11 @@ function meansDone(state, unitId, means) {
 }
 function heavyEnforcement(state, reg, unitId) {
   return (state.discipline?.applications ?? []).some((a) => a.unitId === unitId && a.day === state.day && Number(punishmentFor(reg, a.measure)?.severity ?? 0) >= 3);
+}
+function leashProblem(state, reg, unitId) {
+  if (leashBlockOf(state, reg) === unitId) return "She holds the commander's Leash requests: a request filed on her would be held.";
+  if (state.scene?.participants.includes(unitId) !== true || state.scene.refusals?.some((r) => r.unitId === unitId) !== true) return "She has not refused an order in this scene: there is nothing to compel.";
+  return null;
 }
 var DO_FIRST = {
   discipline: "Do it first: impose a punishment on her today, then force the exit.",
@@ -20579,9 +20633,9 @@ function surfaceHolds(state, reg, unitId, cond) {
     case "third_person":
       return scene !== void 0 && inScene(state, unitId) && (scene.participants.length >= 2 || scene.moments?.open?.visitorId !== void 0);
     case "displeased":
-      return rel !== void 0 && rel.favour <= -S2.favourMood;
+      return satisfactionOf(state, reg, unitId) === "frustrated";
     case "low_stakes_good_mood":
-      return rel !== void 0 && rel.favour >= S2.favourMood && scene?.physics === void 0 && scene?.tone !== "intimate";
+      return satisfactionOf(state, reg, unitId) === "content" && scene?.physics === void 0 && scene?.tone !== "intimate";
     case "threat":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.some((id) => id !== unitId && (dynamicOf(state, id) !== void 0 && frameRank(dynamicOf(state, id).frame) >= frameRank("play")));
     case "after_defiance":
@@ -20698,7 +20752,7 @@ function offerChoices(state, reg, unitId) {
     if (!entryAllowed(state, reg, e, units)) continue;
     out.part.push({ id: e.id, label: String(e.label), known: zoneRevealed(state, unitId, e.id) ? worshipOf(state, reg, unitId, e.id) : "unknown" });
   }
-  for (const e of reg.blockingPostures.values()) if (moves(e.id)) out.posture.push({ id: e.id, label: String(e.label) });
+  for (const e of reg.blockingPostures.values()) if (moves(e.id) && entryAllowed(state, reg, e, units)) out.posture.push({ id: e.id, label: String(e.label) });
   for (const e of reg.blockingContacts.values()) {
     if (frozen || !fits(e) || !entryAllowed(state, reg, e, units)) continue;
     (tagsOf2(e).includes("objectification") ? out.role : out.contact).push({ id: e.id, label: String(e.label) });
@@ -20870,6 +20924,7 @@ function makeOffer(draft, ctx2, unitId, composition, opts = {}) {
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) throw new Error("An offer needs a named soldier in service.");
   if (!offerable2(draft, reg, unitId)) throw new Error(`${unit3.displayName} cannot be offered to now.`);
+  if (draft.scene !== void 0 && !draft.scene.participants.includes(unitId)) throw new Error(`${unit3.displayName} is not here: the commander is in a scene without her.`);
   const choices = offerChoices(draft, reg, unitId);
   for (const c of composition) {
     for (const id2 of c.ids) if (!choices[c.tab].some((e) => e.id === id2)) throw new Error(`${offerLabel(reg, c.tab, id2)} is not on offer.`);
@@ -20937,13 +20992,12 @@ function makeOffer(draft, ctx2, unitId, composition, opts = {}) {
   }
   return events;
 }
-var COMMANDER_PRONOUN4 = /\b(he|him|his|himself|he's)\b/i;
 function confirmOffer(draft, unitId, offerId, answer, correction) {
   const open3 = offerId === void 0 ? void 0 : draft.dynamic?.open.offers.find((o) => o.id === offerId && o.unitId === unitId && o.confirmed !== true);
   if (open3 === void 0 || answer === void 0 || open3.answer !== answer) return [];
   open3.confirmed = true;
   const text2 = (correction ?? "").replace(/\s+/g, " ").trim().slice(0, TUNING.dynamic.intents.correctionMax).trim();
-  if (answer === "corrected" && text2 !== "" && !COMMANDER_PRONOUN4.test(text2)) {
+  if (answer === "corrected" && text2 !== "" && !hasCommanderPronoun(text2)) {
     addFact(draft, { about: [unitId], text: `AUTHOR TO WRITE: ${nameOf7(draft, unitId)} corrected the commander: "${text2}".`, tags: ["dynamic", "offer_correction"], importance: 2, day: draft.day, knownBy: [unitId] });
   }
   return [];
@@ -22399,7 +22453,7 @@ function rollDiscovery(draft, reg, rng, presentIds) {
 }
 
 // src/engine/warden/intrigue.ts
-var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
 var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ?? false;
 function allies(state) {
@@ -22409,7 +22463,7 @@ function allies(state) {
 function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp17(ls.intrigue.suspicion + noise2 * coverMult(draft, ctx2.registries), 0, 100);
+  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise2 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
@@ -22418,7 +22472,7 @@ function allyChance(state, _reg, unitId) {
   const A = TUNING.warden.intrigue.ally;
   const unit3 = unitOf4(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp17(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit3 ? valuesOf(unit3).autonomy : 0) - A.corporate * (unit3 ? valuesOf(unit3).corporate : 0), A.min, A.max);
+  return clamp18(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit3 ? valuesOf(unit3).autonomy : 0) - A.corporate * (unit3 ? valuesOf(unit3).corporate : 0), A.min, A.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
@@ -22451,7 +22505,7 @@ function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   if (!ls || !w) return [];
   const D3 = TUNING.warden.intrigue.discovered;
   const events = [{ type: "intrigue_discovered", cause }];
-  w.satisfaction = clamp17(w.satisfaction + D3.satisfaction, 0, 100);
+  w.satisfaction = clamp18(w.satisfaction + D3.satisfaction, 0, 100);
   const rose = addDefiance(draft, ctx2, D3.defiance);
   events.push(...rose);
   events.push({ type: "warden_betrayed", unitId: w.unitId, severity: "extreme" });
@@ -22815,7 +22869,7 @@ function forgetDynamic(draft, unitId) {
 }
 
 // src/engine/leash/use.ts
-var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
 function leashCost(state, reg, unitId, kind) {
   const unit3 = unitOf5(state, unitId);
@@ -22883,7 +22937,7 @@ function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
 function addStress2(draft, unitId, amount) {
   const u = unitOf5(draft, unitId);
   if (!u || amount === 0) return [];
-  const next = clamp18(u.stress + amount, 0, 100);
+  const next = clamp19(u.stress + amount, 0, 100);
   const delta = next - u.stress;
   u.stress = next;
   return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
@@ -22905,7 +22959,7 @@ function payCost(draft, reg, unitId, cost, opts = {}) {
 }
 var witnessScale = (u) => {
   const w = TUNING.leash.witness;
-  return clamp18(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
+  return clamp19(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
 };
 var COERCED = { type: "coerced", actor: "commander", evidence: "witnessed the Leash", confidence: 1 };
 function compel(draft, ctx2, p) {
@@ -22999,7 +23053,7 @@ function terminateChance(state, reg) {
   const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
   const t = TUNING.leash.terminate;
   const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
-  return clamp18(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+  return clamp19(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
 }
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
@@ -23126,11 +23180,11 @@ function challenge(draft, ctx2, stat3) {
 
 // src/engine/arcs.ts
 var ARC_PATHS = ["manage", "embrace", "cure"];
-var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function arcAlignment(unit3, path) {
   const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + valuesOf(unit3)[axis] * direction, 0);
-  return clamp19(sum / 3, -1, 1);
+  return clamp20(sum / 3, -1, 1);
 }
 function wantedPath(unit3, paths) {
   const order = [...paths].sort((a, b) => ARC_PATHS.indexOf(a) - ARC_PATHS.indexOf(b));
@@ -23302,7 +23356,7 @@ function arcDayStep(draft, ctx2) {
 }
 
 // src/engine/loyalty/desertion.ts
-var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function desertionChance(state, reg, unitId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
@@ -23312,7 +23366,7 @@ function desertionChance(state, reg, unitId) {
   p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
   p += t.perStressAbove * Math.max(0, unit3.stress - t.stressRef);
   for (const d of unit3.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp20(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
+  return clamp21(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
 }
 function mayDesert(state, unitId) {
   if (state.disloyalty?.open) return false;
@@ -23361,7 +23415,7 @@ function talkDown(draft, ctx2, stat3) {
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit3.stress >= t.highStress ? 1 : 0);
   const bonus = stat3 === "authority" ? intimidationBonus(draft) : 0;
-  const chance = clamp20(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
+  const chance = clamp21(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -23808,7 +23862,7 @@ function actOnWarning(draft, ctx2, unitId, act) {
 }
 
 // src/engine/relations/apply.ts
-var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp22 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function openOverrideIds(state, participants) {
   const o = openOverrideOf(state);
   return o !== null && participants.includes(o.unitId) && o.context !== "combat" ? [o.id] : [];
@@ -23882,7 +23936,7 @@ function applyIntents(draft, ctx2, p) {
   for (const h2 of intents.stressHints) {
     const unit3 = draft.squad.find((u) => u.id === h2.unitId);
     if (!unit3) continue;
-    const next = clamp21(unit3.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
+    const next = clamp22(unit3.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
     if (next !== unit3.stress) events.push({ type: "stress_changed", unitId: unit3.id, delta: next - unit3.stress });
     unit3.stress = next;
     touched.add(unit3.id);
@@ -24044,12 +24098,12 @@ function falseValue(kind, value, rng) {
 }
 
 // src/engine/special/frequency/intercepts.ts
-var clamp22 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var stressOf = (state, unitId) => state.squad.find((u) => u.id === unitId)?.stress ?? 0;
 function catchChance(state, unitId, o) {
   const T5 = TUNING.special.frequency;
   const p = T5.catchBase + (o.private ? T5.privateBonus : 0) - (stressOf(state, unitId) >= T5.catchStressAt ? T5.catchStressPenalty : 0);
-  return clamp22(p, 0, 1) * (o.dm ? T5.dmMult : 1);
+  return clamp23(p, 0, 1) * (o.dm ? T5.dmMult : 1);
 }
 function distortChance(state, unitId) {
   const T5 = TUNING.special.frequency;
@@ -24190,7 +24244,7 @@ function activityCost(state, reg, a) {
   for (const k of ["credits", "supplies", "plyx"]) if (out[k] === 0) delete out[k];
   return out;
 }
-var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var asReq = (v) => {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
   const r = v;
@@ -24330,7 +24384,7 @@ function runActivity(draft, ctx2, request) {
         break;
       case "unit_stress":
         for (const u of unitsOf3(fx2.target)) {
-          const next = clamp23(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
+          const next = clamp24(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
           events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }
@@ -24565,7 +24619,7 @@ function herAlternative(state, reg, order, expectationId, source) {
 
 // src/engine/power/ballot.ts
 var kindEntry = (reg, kind) => reg.voteKinds.get(kind);
-var clamp24 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var addLean = (into, from, mult = 1) => {
   if (!from || mult === 0) return;
   for (const axis of VALUE_AXES) {
@@ -24591,7 +24645,7 @@ function leanFor(state, reg, kind, subject) {
   }
   const out = {};
   for (const axis of VALUE_AXES) {
-    const n = clamp24(sum[axis] ?? 0, -2, 2);
+    const n = clamp25(sum[axis] ?? 0, -2, 2);
     if (n !== 0) out[axis] = n;
   }
   return out;
@@ -24617,7 +24671,7 @@ function ballotFor(state, reg, unit3, kind, subject) {
   const values = effectiveValues(state, reg, unit3);
   const parts = {
     values: VALUE_AXES.reduce((sum, axis) => sum + values[axis] * (lean[axis] ?? 0), 0),
-    trust: clamp24(((state.relations[unit3.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
+    trust: clamp25(((state.relations[unit3.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
     stance: Number((() => {
       const s = commandStance(state, reg, unit3.id);
       return s === null ? 0 : stanceEntry(reg, s)?.voteBias;
@@ -24786,7 +24840,7 @@ function overruleVote(draft, ctx2, voteId, means, punish) {
 }
 
 // src/engine/warden/override.ts
-var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var round3 = Math.round;
 var STALE = "There is no override to answer.";
 var OPEN_FIRST = "The warden has overridden an order: answer it first.";
@@ -24799,7 +24853,7 @@ function wardenSource(state) {
 }
 function overrideChance(weight, source) {
   const T5 = TUNING.warden.override;
-  return clamp25(weight * source.authority * source.leniency * T5.scale, 0, T5.cap);
+  return clamp26(weight * source.authority * source.leniency * T5.scale, 0, T5.cap);
 }
 var contextOf = (order) => order.kind === "combat_order" ? "combat" : order.kind === "dilemma" ? "dilemma" : "base";
 function hersToGive(order, unitId) {
@@ -24941,11 +24995,11 @@ function argueChance(state, _reg, holder2) {
   const her = holder2 ?? (w ? { unitId: w.unitId, satisfaction: w.satisfaction } : null);
   if (!her) return 0;
   const rank2 = Math.max(socialRank(state, "authority"), socialRank(state, "empathy"));
-  const herRank = clamp25(round3((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
-  return clamp25(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
+  const herRank = clamp26(round3((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
+  return clamp26(0.5 + 0.12 * (rank2 - herRank), 0.15, 0.85);
 }
 var addTo = (w, key, n) => {
-  w[key] = clamp25(w[key] + n, 0, 100);
+  w[key] = clamp26(w[key] + n, 0, 100);
 };
 function afterDefy(draft, ctx2, weight) {
   return punishRoll(draft, ctx2, weight);
@@ -25241,7 +25295,7 @@ function readRoutePick(v) {
 
 // src/engine/special/debts/consequences.ts
 var T2 = () => TUNING.special.debts;
-var clamp26 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function scheduleConsequences(draft, ctx2, visit, answers) {
   const d = draft.special?.debts;
   if (!d) return;
@@ -25287,7 +25341,7 @@ function runConsequences(draft, ctx2) {
   const events = [];
   for (const x of due) {
     if (x.falsified) {
-      if (ctx2.rng.chance(T2().foundOut)) d.handlerSuspicion = clamp26(d.handlerSuspicion + T2().foundOutGain, 0, 100);
+      if (ctx2.rng.chance(T2().foundOut)) d.handlerSuspicion = clamp27(d.handlerSuspicion + T2().foundOutGain, 0, 100);
       continue;
     }
     if (x.kind === "plan") {
@@ -25302,7 +25356,7 @@ function runConsequences(draft, ctx2) {
         { type: "faction", factionId: "own", amount: -Math.round(T2().ownLoss * x.strength) }
       ], { kind: "event", id: "debts" }));
     }
-    d.oversightSuspicion = clamp26(d.oversightSuspicion + oversightGain(draft, ctx2.registries, x.strength), 0, 100);
+    d.oversightSuspicion = clamp27(d.oversightSuspicion + oversightGain(draft, ctx2.registries, x.strength), 0, 100);
     events.push({ type: "debts_consequence", kind: x.kind });
   }
   d.exposures = d.exposures.filter((e) => e.untilDay >= draft.day);
@@ -26208,7 +26262,7 @@ function wagerDayStep(draft, ctx2) {
 }
 
 // src/engine/power/herCall.ts
-var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf9 = (state, id) => state.squad.find((u) => u.id === id);
 function herCallSpecOf(template) {
   return template?.herCall ?? null;
@@ -26252,7 +26306,7 @@ function herCallOdds(state, reg, unitId, spec) {
   };
   const categories = new Set(unit3.defects.map((d) => String(reg.defects.get(d.id)?.category)));
   const tilt = (spec.defectTilt ?? []).reduce((sum, t) => sum + (categories.has(t.category) ? t.shift : 0), 0);
-  return clamp27(T5.base + T5.perPoint * (score("good") - score("bad")) + tilt, T5.min, T5.max);
+  return clamp28(T5.base + T5.perPoint * (score("good") - score("bad")) + tilt, T5.min, T5.max);
 }
 function rollHerCall(state, reg, rng, spec, partyIds) {
   const candidates3 = herCallCandidates(state, reg, spec, partyIds);
@@ -26745,7 +26799,7 @@ function buildDigest(state, reg) {
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp28 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp29 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function plain(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
@@ -26826,7 +26880,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
         offer.danger = o.danger;
       }
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
-        offer.deadlineDays = clamp28(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+        offer.deadlineDays = clamp29(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
       const title3 = plain(o.title, TUNING.director.titleMax);
       if (title3 !== "") offer.title = title3;
@@ -27031,7 +27085,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const pending4 = draft.world.director?.pending;
   if (!pending4 || pending4.id !== requestId) throw new Error("Stale director answer.");
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp28(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp29(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending4), {
     cooldownDays,
     only: pending4.reason === "scout" ? "rumors" : void 0
@@ -27502,7 +27556,7 @@ function treat(draft, ctx2, unitId, kind) {
   addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
   return [{ type: "expedition_treated", unitId, kind }];
 }
-var clamp29 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp30 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function enterCombat(draft, ctx2, nodeId, def, mission) {
   const exp = draft.expedition;
   const reg = ctx2.registries;
@@ -27513,7 +27567,7 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   try {
     encounter = generateEncounter(draft, reg, ctx2.rng, {
       table: region.enemyTable,
-      danger: clamp29(mission.danger + combat2.dangerDelta + ambush, 1, 5),
+      danger: clamp30(mission.danger + combat2.dangerDelta + ambush, 1, 5),
       squadPower: squadPower(draft, reg, ableParty(draft)),
       exposesCommander: combat2.exposesCommander,
       lootTableId: combat2.lootTableId
@@ -27956,7 +28010,7 @@ function toWorldEffect(raw, ctx2) {
 
 // src/engine/dilemma/validate.ts
 var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp30 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index2, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index2, reason });
@@ -28048,7 +28102,7 @@ function parseDilemmaOutput(raw, ctx2) {
 function alignment(fx2, unit3) {
   if (fx2.valueAxes && fx2.valueAxes.length > 0) {
     const sum = fx2.valueAxes.reduce((n, a) => n + (valuesOf(unit3)[a.axis] ?? 0) * a.direction, 0);
-    return clamp30(sum / 3, -1, 1);
+    return clamp31(sum / 3, -1, 1);
   }
   return ["sided_against", "decision_violated", "endangered", "coerced", "dismissed", "insulted", "lied_detected", "broke_promise", "mocked_defect", "crime_revealed", "rejected_advance"].includes(fx2.event) ? -1 : 1;
 }
@@ -28142,7 +28196,7 @@ function checkDefining(state, beatId) {
 }
 
 // src/engine/dilemma/flow.ts
-var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var STALE2 = "Stale dilemma answer.";
 var capital2 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function presentUnits(state) {
@@ -28362,7 +28416,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
-    const chance = clamp31(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
+    const chance = clamp32(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
@@ -28472,7 +28526,7 @@ function herVote(state, _reg, vote) {
 
 // src/engine/discipline/demands.ts
 var DRIVEN = ["open_defiance", "defiant_loyal"];
-var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var costsOf = (t) => t.grantCost ?? [];
 var namedLiving6 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
 function demandChance(state, reg, unitId) {
@@ -28484,7 +28538,7 @@ function demandChance(state, reg, unitId) {
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit3).refusalMult);
   const squad = assertiveness(state, reg).demandMult;
-  return clamp32(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
+  return clamp33(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
 }
 var openedThisWeek = (state, unitId) => (state.discipline?.demandLog ?? []).filter((e) => e.unitId === unitId && state.day - e.day < TUNING.demands.weekDays).length;
 var hasOpen = (state, unitId) => (state.discipline?.demands ?? []).some((d) => d.unitId === unitId);
@@ -28613,7 +28667,7 @@ function pay(draft, ctx2, unit3, cost) {
     case "squad_stress": {
       const out = [];
       for (const u of draft.squad.filter((x) => x.id !== unit3.id && isLiving(x))) {
-        const next = clamp32(u.stress + cost.amount, 0, 100);
+        const next = clamp33(u.stress + cost.amount, 0, 100);
         if (next !== u.stress) out.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
         u.stress = next;
       }
@@ -28725,7 +28779,7 @@ function demandDayStep(draft, ctx2) {
 
 // src/engine/special/debts/discovery.ts
 var T3 = () => TUNING.special.debts;
-var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 var named3 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
 function templateOf2(ctx2, context) {
@@ -28842,14 +28896,14 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
       const own = draft.commander.corporationId;
       if (own !== null) draft.world.factions[own] = Math.min(draft.world.factions[own] ?? 0, T3().hostileAt);
       const rival = d.corporationId;
-      draft.world.factions[rival] = clamp33((draft.world.factions[rival] ?? 0) + 20, -100, 100);
+      draft.world.factions[rival] = clamp34((draft.world.factions[rival] ?? 0) + 20, -100, 100);
       d.ended = "fled";
     }
     events.push({ type: "defector_arc", outcome: optionId });
     return events;
   }
   if (context !== "debts_unit" || subjectId === void 0) return [];
-  if (optionId === "report") d.oversightSuspicion = clamp33(d.oversightSuspicion + 40, 0, 100);
+  if (optionId === "report") d.oversightSuspicion = clamp34(d.oversightSuspicion + 40, 0, 100);
   else if (optionId === "protect_commander") {
     const kind = [...reg.secretKinds.values()].find((k) => k.source === "debts");
     const name = draft.squad.find((u) => u.id === subjectId)?.displayName ?? "";
@@ -28859,7 +28913,7 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
 }
 
 // src/engine/special/debts/intel.ts
-var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function intelOf(state, reg) {
   const d = state.special?.debts;
   const seen2 = new Set(d?.answered ?? []);
@@ -28911,7 +28965,7 @@ function leak(draft, ctx2, d) {
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
   addFact(draft, { about: ["commander"], text: "The commander sold intel to a rival corporation, and the rival has made it public.", tags: ["debts"], importance: 5, day: draft.day, knownBy: ["*"] });
-  d.oversightSuspicion = clamp34(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
+  d.oversightSuspicion = clamp35(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
   d.ended = "leaked";
   events.push({ type: "handler_leak" });
   return events;
@@ -28936,7 +28990,7 @@ function settle3(draft, ctx2, d, answers, spendNight) {
       events.push({ type: "resource_changed", resource: k, amount: pay2[k] });
     }
   }
-  d.handlerPressure = clamp34(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
+  d.handlerPressure = clamp35(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
   scheduleConsequences(draft, ctx2, visit, answers);
   d.answered.push(...visit.items.map((i) => i.id));
   delete d.visit;
@@ -29504,7 +29558,7 @@ var slug2 = (name) => {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s === "" ? "unit" : s;
 };
-var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf4(crime.perk), ...effectsOf4(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -29521,7 +29575,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp35(o.trust, 0, 100);
+  const trust = clamp36(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -30912,11 +30966,11 @@ function lapseMoments(draft) {
 }
 var QUOTES = /[\u0022\u201c\u201d]/g;
 var EDGE_QUOTES = /^['\u2018\u2019`]+|['\u2018\u2019`]+$/g;
-var COMMANDER_PRONOUN5 = /\b(he|him|his|himself)\b/i;
+var COMMANDER_PRONOUN3 = /\b(he|him|his|himself)\b/i;
 function cleanLabels(raw) {
   if (!Array.isArray(raw) || raw.length !== 3 || !raw.every((l) => typeof l === "string")) return null;
   const cleaned = raw.map((l) => l.replace(/<[^>]*>/g, " ").replace(/[\u0000-\u001f\u007f<>`]/g, " ").replace(QUOTES, "").replace(/\s+/g, " ").trim().replace(EDGE_QUOTES, "").trim().slice(0, TUNING.moments.labelMax).trim());
-  return cleaned.every((l) => l !== "" && !COMMANDER_PRONOUN5.test(l)) ? cleaned : null;
+  return cleaned.every((l) => l !== "" && !COMMANDER_PRONOUN3.test(l)) ? cleaned : null;
 }
 function setLabels(draft, raw) {
   const open3 = momentsOf(draft.scene).open;
@@ -32580,7 +32634,7 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
 // src/engine/warden/leash.ts
-var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var SLOTS2 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
@@ -32588,7 +32642,7 @@ function cosignChance(state, _reg, _targetId) {
   const C = TUNING.warden.cosign;
   const unit3 = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp36(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit3 ? valuesOf(unit3).corporate : 0) - C.mercy * (unit3 ? valuesOf(unit3).mercy : 0) + C.perAffinity * affinity, C.min, C.max);
+  return clamp37(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit3 ? valuesOf(unit3).corporate : 0) - C.mercy * (unit3 ? valuesOf(unit3).mercy : 0) + C.perAffinity * affinity, C.min, C.max);
 }
 function rollCosign(draft, ctx2, targetId, kind) {
   const w = wardenOf(draft);
@@ -32620,47 +32674,6 @@ function refreshWardenLeash(draft, _reg) {
   w.leashLeft = TUNING.warden.leash.weekly;
   w.leashRefreshDay = draft.leash.refreshDay;
   return [{ type: "warden_leash_refreshed", left: w.leashLeft }];
-}
-
-// src/engine/dynamic/leashBlock.ts
-var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function leashBlockOf(state, reg) {
-  if (!dynamicOn(state, reg)) return null;
-  for (const u of state.squad) {
-    const dyn = u.kind === "named" && isLiving(u) ? dynamicOf(state, u.id) : void 0;
-    if (dyn === void 0) continue;
-    const holds6 = dyn.domains.some((d) => {
-      const entry = domainEntry(reg, d.id);
-      return entry !== void 0 && standing(d, state.day) && entry.grants.includes("leash_block") && dyn.hold >= bandMin(reg, entry);
-    });
-    if (holds6) return u.id;
-  }
-  return null;
-}
-function blockCosignChance(state, _reg, holderId) {
-  const B2 = TUNING.dynamic.block;
-  const favour = dynamicOf(state, holderId)?.favour ?? 0;
-  return clamp37(B2.base + B2.perFavour * favour / TUNING.dynamic.favour.max, B2.min, B2.max);
-}
-function noteBlocked(draft, holderId) {
-  const x = draft.dynamic;
-  if (x === void 0) return;
-  (x.oversight ??= { blocked: [] }).blocked.push(draft.day);
-  const dyn = dynamicOf(draft, holderId);
-  if (dyn !== void 0) dyn.leashBlock = { since: dyn.leashBlock?.since ?? draft.day, held: (dyn.leashBlock?.held ?? 0) + 1 };
-}
-function rollBlock(draft, ctx2, targetId, kind) {
-  const holderId = leashBlockOf(draft, ctx2.registries);
-  if (holderId === null) return { ok: true, events: [] };
-  const pass = draft.dynamic?.oversight?.pass;
-  if (pass !== void 0) {
-    delete draft.dynamic.oversight.pass;
-    if (pass.unitId === targetId && pass.kind === kind) return { ok: true, events: [] };
-  }
-  const ok = targetId !== holderId && ctx2.rng.chance(blockCosignChance(draft, ctx2.registries, holderId));
-  if (ok) return { ok: true, events: [] };
-  noteBlocked(draft, holderId);
-  return { ok: false, holderId, events: [{ type: "leash_blocked", unitId: targetId, holderId, kind }] };
 }
 
 // src/engine/warden/removal.ts
@@ -36106,6 +36119,7 @@ function bypassLeash(draft, ctx2, p) {
   const terminal = terminalActivity(reg);
   if (p.route === "comms") {
     if (draft.scene !== void 0) throw new Error("The terminal is in the comms room: leave the scene first.");
+    if (draft.dilemmas?.open?.status === "presented") throw new Error("A decision is waiting: answer it first.");
     const closed = terminal === null ? "There is no comms terminal." : checkActivity(draft, reg, { activityId: terminal.activityId, focus: terminal.focus });
     if (closed) throw new Error(closed);
   } else {
@@ -36839,7 +36853,7 @@ function sanitizeHabitWording(raw) {
   return text2;
 }
 var FRAGMENT_MAX3 = 160;
-var COMMANDER_PRONOUN6 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN4 = /\b(he|him|his|himself|he's)\b/i;
 registerFlavorKind("frequency_fragment", {
   system: () => [
     "You word one fragment of a soldier's overheard inner voice for a dark, near-future squad-command RPG: a mind-reading device in the commander's head catches it.",
@@ -36860,7 +36874,7 @@ registerFlavorKind("frequency_fragment", {
 function sanitizeFragment(raw) {
   if (typeof raw !== "string") return null;
   const t = raw.trim();
-  if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN6.test(t) || /[<>]/.test(t)) return null;
+  if (t === "" || t.length > FRAGMENT_MAX3 || /[\u0000-\u001f\u007f]/.test(t) || /\d/.test(t) || COMMANDER_PRONOUN4.test(t) || /[<>]/.test(t)) return null;
   return t;
 }
 var LIFE_SHARE_MAX = 300;
@@ -36908,7 +36922,7 @@ function lifeLine(raw, max) {
   const t = raw.text;
   if (typeof t !== "string") return null;
   const text2 = t.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'\u201c\u201d\u2018\u2019]+|["'\u201c\u201d\u2018\u2019]+$/g, "").trim().replace(/^(?:message|text|dm|note|reply|answer)\s*:\s*/i, "").slice(0, max).trim();
-  return text2 === "" || COMMANDER_PRONOUN6.test(text2) ? null : text2;
+  return text2 === "" || COMMANDER_PRONOUN4.test(text2) ? null : text2;
 }
 var sanitizeLifeShare = (raw) => lifeLine(raw, LIFE_SHARE_MAX);
 var sanitizeLifeTrace = (raw) => lifeLine(raw, LIFE_TRACE_MAX);
@@ -38856,8 +38870,8 @@ function plain3(text2, max) {
   if (typeof text2 !== "string") return "";
   return text2.replace(/```[a-z]*/gi, " ").replace(/[*_`~#>]+/g, "").replace(/\s+/g, " ").trim().replace(LABEL3, "").replace(/^["“”]+|["“”]+$/g, "").trim().slice(0, max).trim();
 }
-var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
-var noPronoun = (t) => COMMANDER_PRONOUN7.test(t) ? "" : t;
+var COMMANDER_PRONOUN5 = /\b(he|him|his|himself|he's)\b/i;
+var noPronoun = (t) => COMMANDER_PRONOUN5.test(t) ? "" : t;
 var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeReview(raw, input) {
   if (!isObj40(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
@@ -38874,7 +38888,7 @@ function sanitizeReview(raw, input) {
   for (const f of Array.isArray(raw.facts) ? raw.facts : []) {
     if (!isObj40(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
     const text2 = plain3(f.text, TUNING.development.factTextMax);
-    if (text2 === "" || COMMANDER_PRONOUN7.test(text2)) continue;
+    if (text2 === "" || COMMANDER_PRONOUN5.test(text2)) continue;
     facts.push({ text: text2, kind: f.kind });
     if (facts.length === TUNING.development.maxFacts) break;
   }
@@ -39387,7 +39401,7 @@ function createDynamic(deps) {
 var CARD_MAX3 = 600;
 var OpinionFormRawSchema = external_exports.object({ position: external_exports.unknown().optional(), text: external_exports.unknown().optional() }).passthrough();
 var LABEL4 = /^(?:her words|opinion|position|text|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
-var COMMANDER_PRONOUN8 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN6 = /\b(he|him|his|himself|he's)\b/i;
 var isObj41 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeOpinion(raw, input) {
   if (!isObj41(raw) || typeof raw.position !== "string" || typeof raw.text !== "string") return null;
@@ -39395,7 +39409,7 @@ function sanitizeOpinion(raw, input) {
   const position = input.topic.positions.find((p) => p.id === asked)?.id;
   if (position === void 0) return null;
   const text2 = raw.text.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL4, "").slice(0, TUNING.life.opinion.textMax).trim();
-  if (text2 === "" || COMMANDER_PRONOUN8.test(text2)) return null;
+  if (text2 === "" || COMMANDER_PRONOUN6.test(text2)) return null;
   return { position, text: text2 };
 }
 var one = (s) => s.replace(/[\r\n]+/g, " ");
@@ -40895,7 +40909,7 @@ function heldBy(state, reg) {
 var TRACK_WORDS = ["", "a little", "some", "a good deal", "deeply", "completely"];
 var LEADING_TRACKS = 3;
 var FELT = "felt";
-var EMPTY3 = { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] };
+var EMPTY3 = { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, zones: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] };
 var LEVEL_RANK = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
 function dynamicView(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return structuredClone(EMPTY3);
@@ -40907,6 +40921,12 @@ function dynamicView(state, reg, unitId, opts) {
     signs: moodSigns(state, reg, unitId),
     compromat: compromatOf(state, unitId).filter(visible)
   };
+  const seen2 = state.memory.facts.filter(visible);
+  for (const t of reg.worshipTargets.values()) {
+    const facts = zoneFacts(seen2, unitId, t.id).map((f) => f.text);
+    const mastery = masteryLevel(state, unitId, t.id);
+    if (facts.length > 0 || mastery > 0) view.zones[t.id] = { mastery, facts };
+  }
   const levels = /* @__PURE__ */ new Map();
   for (const f of state.memory.facts) {
     if (!f.tags.includes(DYNAMIC_KNOWLEDGE_TAG) || f.about[1] !== unitId || !visible(f)) continue;
@@ -40958,7 +40978,7 @@ function buildKnowledge(state, settings) {
     flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds5(() => r.flag(id, state))),
     facts: () => (state?.memory?.facts ?? []).filter(factVisible),
     life: (unitId, reg) => state === null ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null, temperWords: { talkativeness: "terse", volatility: "steady", humor: "dry" }, mode: "off" } : lifeView(state, reg, unitId, factVisible),
-    dynamic: (unitId, reg) => state === null ? { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] } : dynamicView(state, reg, unitId, { raw: showRaw, hidden: settings.dynamicHidden === true, factVisible }),
+    dynamic: (unitId, reg) => state === null ? { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, zones: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] } : dynamicView(state, reg, unitId, { raw: showRaw, hidden: settings.dynamicHidden === true, factVisible }),
     development(unitId, reg) {
       const unit3 = state?.squad.find((u) => u.id === unitId);
       const dev = unit3?.development;
@@ -41869,6 +41889,7 @@ function renderExitCard(host, ctx2) {
   const means = (m) => {
     const done = meansDone(state, unitId, m);
     const doIt = ctx2.means?.[m === "discipline" ? "punish" : m === "leash" ? "leash" : "request"];
+    const why = m === "leash" ? leashProblem(state, reg, unitId) : null;
     return h(
       "div",
       { class: "alius-exit-means", "data-exit-means": m },
@@ -41878,10 +41899,12 @@ function renderExitCard(host, ctx2) {
         class: "alius-btn alius-option",
         "data-do-means": m,
         ...analyzeNative("glossary:dynamic_exit", live3),
+        ...why !== null ? { "aria-disabled": "true", title: why } : {},
         onclick: () => {
-          if (doIt !== void 0) doIt();
+          if (why === null && doIt !== void 0) doIt();
         }
       }, m === "leash" ? "[ FILE THE LEASH ]" : "[ FILE THE REQUEST ]"),
+      !done && why !== null ? h("span", { class: "alius-dim", "data-means-why": m }, ` ${why}`) : null,
       " ",
       go("force", { means: m }, ROUTE_LABEL.force, done ? void 0 : "Do it first.")
     );
@@ -45038,7 +45061,7 @@ function clearPhysicsDirectives(builder) {
 var CUE_LINE_MAX = 120;
 var CUE_LINES_MIN = 3;
 var CUE_LINES_MAX = 5;
-var COMMANDER_PRONOUN9 = /\b(he|him|his|himself|he's)\b/i;
+var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
 var isObj44 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PhysicsCuesRawSchema = external_exports.object({ cues: external_exports.unknown().optional() }).passthrough();
 var clean9 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
@@ -45053,7 +45076,7 @@ function sanitizeCues(raw) {
     for (const l of list5) {
       if (typeof l !== "string") continue;
       const c = clean9(l);
-      if (c === "" || COMMANDER_PRONOUN9.test(c) || lines.includes(c)) continue;
+      if (c === "" || COMMANDER_PRONOUN7.test(c) || lines.includes(c)) continue;
       if (lines.length < CUE_LINES_MAX) lines.push(c);
     }
     if (lines.length >= CUE_LINES_MIN) out[kind] = lines;
@@ -52191,7 +52214,13 @@ function tonightItems(state, reg) {
   }
   const failed = fullOpenRecords(state).length;
   const line2 = failed > 0 ? { kind: "generation", text: `${failed} generation${failed === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
-  return line2 ? [...out.slice(0, TONIGHT_MAX - 1), line2] : out.slice(0, TONIGHT_MAX);
+  return line2 ? [...cutTonight(out, TONIGHT_MAX - 1), line2] : cutTonight(out, TONIGHT_MAX);
+}
+function cutTonight(items, max) {
+  if (items.length <= max) return items;
+  const score = (i) => i.kind !== "dynamic" ? 1 : i.analyze === "glossary:oversight_inquiry" ? 3 : 2;
+  const keep = new Set(items.map((item, at) => ({ item, at })).sort((a, b) => score(b.item) - score(a.item) || a.at - b.at).slice(0, max).map((x) => x.at));
+  return items.filter((_, at) => keep.has(at));
 }
 function endSlotBlock(state) {
   if (state.scene) return "A conversation is open.";
@@ -57317,9 +57346,11 @@ var compromatReading = (_s, env, v, unitId) => v.compromat.map((f) => `${nameOf1
 var zoneReading = (s, env, v, unitId) => {
   if (!dynamicOn(env.state, env.registries)) return [];
   const shown = v.expectations.worship?.[s.id];
-  const level = masteryLevel(env.state, unitId, s.id);
+  const zone = v.zones[s.id];
+  const level = zone?.mastery ?? 0;
   return [
     shown === void 0 ? "Not known yet." : `${nameOf18(env, unitId)}: ${shown.attitude}${shown.meaning !== void 0 ? `, ${shown.meaning}` : ""}.`,
+    ...(zone?.facts ?? []).map((f) => `Shown: ${plain7(f)}`),
     ...level > 0 ? [`Mastery: ${MASTERY_WORDS[level]} of five.`] : []
   ];
 };
@@ -61097,7 +61128,7 @@ function createApp(st, deps) {
   }
   const nextLeashNo = (s) => (s.leash.seq ?? Math.max(0, ...leashLog(s).map((e) => e.no))) + 1;
   const KIND_WORD = { compel: "COMPEL", suppress: "SUPPRESS", terminate: "TERMINATE" };
-  function leashProblem(s, kind, unitId) {
+  function leashProblem2(s, kind, unitId) {
     if (kind === "compel") {
       if (!s.scene?.participants.includes(unitId) || !(s.scene.refusals ?? []).some((r) => r.unitId === unitId)) {
         return "There is no refused order to compel: give an order in a scene first.";
@@ -61127,7 +61158,7 @@ function createApp(st, deps) {
       toast("warn", "No such unit.");
       return false;
     }
-    const why = leashProblem(s, kind, unitId);
+    const why = leashProblem2(s, kind, unitId);
     if (why) {
       toast("warn", why);
       return false;

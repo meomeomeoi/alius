@@ -9,7 +9,7 @@ import { DYNAMIC_KNOWLEDGE_TAG } from '../../../src/engine/dynamic/types';
 import { addFact } from '../../../src/engine/memory/facts';
 import { createDynamic } from '../../../src/dynamic/controller';
 import { exitCostWord } from '../../../src/engine/dynamic/exit';
-import { blankDynamic, blankReading, newDynamicCampaign } from '../../../src/engine/dynamic/state';
+import { blankDynamic, blankReading, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Frame } from '../../../src/engine/dynamic/types';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
@@ -57,14 +57,14 @@ function world(frame: Frame = 'role', hold = 62, over: { sworn?: boolean } = {})
 }
 const env = (s: CampaignState, raw = false): AnalyzeEnv => ({ state: s, registries: reg, settings: { ...DEFAULT_SETTINGS, showRawValues: raw } }) as unknown as AnalyzeEnv;
 
-function squad(s: CampaignState, opts: { raw?: boolean; hidden?: boolean; readable?: boolean; actions?: Record<string, unknown> } = {}) {
+function squad(s: CampaignState, opts: { raw?: boolean; hidden?: boolean; readable?: boolean; actions?: Record<string, unknown>; onLeash?: (...a: unknown[]) => void } = {}) {
   const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
   const host = h('div');
   document.body.append(host);
   renderSquadTab(host, {
     st, getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg,
     settings: () => ({ ...DEFAULT_SETTINGS, showRawValues: opts.raw === true, dynamicHidden: opts.hidden === true, readableMode: opts.readable === true }),
-    onNewCampaign: vi.fn(), onPunish: vi.fn(), onLeash: vi.fn(),
+    onNewCampaign: vi.fn(), onPunish: vi.fn(), onLeash: opts.onLeash ?? vi.fn(),
     dynamic: { dispatch: vi.fn(() => []), onChanged: vi.fn(), ...(opts.actions !== undefined ? { actions: opts.actions } : {}) },
   } as never);
   const unit = [...host.querySelectorAll<HTMLElement>('article.alius-unit')].find((a) => a.textContent?.includes('Ann')) ?? host;
@@ -319,6 +319,41 @@ describe('the exit card', () => {
     sec.querySelector<HTMLButtonElement>('[data-do-means="transfer_request"]')!.click();
     expect(requestTransfer).toHaveBeenCalledWith(ANN);
     expect(sec.querySelector('[data-do-means="leash"]')).not.toBeNull();
+  });
+
+  describe('the Leash row says why it cannot be filed (M7)', () => {
+    const btn = (sec: HTMLElement) => sec.querySelector<HTMLButtonElement>('[data-do-means="leash"]')!;
+    const refusing = (s: CampaignState): CampaignState => {
+      s.scene = { id: 'sc1', participants: [ANN], refusals: [{ unitId: ANN, day: s.day }] } as never;
+      return s;
+    };
+    it('with no scene or no refusal it is soft-disabled with the reason, and a click does nothing', () => {
+      const onLeash = vi.fn();
+      const s = withBea();
+      dynamicOf(s, ANN)!.domains = []; // she holds nothing of the block: only the missing refusal is in the way
+      const { section } = squad(s, { onLeash });
+      section!.querySelector<HTMLElement>('[data-action="dyn-exit"]')!.click();
+      expect(btn(section!).getAttribute('aria-disabled')).toBe('true');
+      expect(btn(section!).title).toMatch(/not refused/i);
+      btn(section!).click();
+      expect(onLeash).not.toHaveBeenCalled();
+    });
+    it('with her block it is soft-disabled whatever the scene says (it would be held)', () => {
+      const s = refusing(withBea()); // Ann holds the device, which grants the block
+      const sec = open(s);
+      expect(btn(sec).getAttribute('aria-disabled')).toBe('true');
+      expect(btn(sec).title).toMatch(/Leash requests/);
+    });
+    it('with a refusal open and no block it is a plain button that files the Leash', () => {
+      const onLeash = vi.fn();
+      const s = refusing(withBea());
+      dynamicOf(s, ANN)!.domains = [];
+      const { section } = squad(s, { onLeash });
+      section!.querySelector<HTMLElement>('[data-action="dyn-exit"]')!.click();
+      expect(btn(section!).getAttribute('aria-disabled')).toBeNull();
+      btn(section!).click();
+      expect(onLeash).toHaveBeenCalledWith(ANN, 'compel');
+    });
   });
 
   it('closing the card leaves the section', () => {

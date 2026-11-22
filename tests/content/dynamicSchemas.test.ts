@@ -131,7 +131,7 @@ describe('the eleven registries (P15)', () => {
 
   it('every engine event of the package is reserved', () => {
     for (const t of DYNAMIC_EVENT_TYPES) expect(RESERVED_EVENT_TYPES, t).toContain(t);
-    expect(DYNAMIC_EVENT_TYPES).toHaveLength(29);
+    expect(DYNAMIC_EVENT_TYPES).toHaveLength(31);
   });
 });
 

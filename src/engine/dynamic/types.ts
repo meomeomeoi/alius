@@ -292,6 +292,7 @@ export const DYNAMIC_EVENT_TYPES = [
   'leash_blocked', 'leash_bypassed', 'oversight_inquiry', 'dynamic_known',
   'probe_issued', 'probe_backoff', 'position_shifted', 'offer_made', 'zone_revealed', 'mastery_gained',
   'regard_changed', 'regard_band_changed', 'disappointed', 'regard_question_asked',
+  'compromat_revealed', 'compromat_told', // what she keeps and says (review M9): the controller refreshes the lines on them
 ] as const;
 
 /**

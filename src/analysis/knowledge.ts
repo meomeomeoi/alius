@@ -92,7 +92,7 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
       ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null, temperWords: { talkativeness: 'terse', volatility: 'steady', humor: 'dry' }, mode: 'off' }
       : lifeView(state, reg, unitId, factVisible)),
     dynamic: (unitId, reg) => (state === null
-      ? { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] }
+      ? { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, zones: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] }
       : dynamicView(state, reg, unitId, { raw: showRaw, hidden: settings.dynamicHidden === true, factVisible })),
     development(unitId, reg) {
       const unit = state?.squad.find((u) => u.id === unitId);

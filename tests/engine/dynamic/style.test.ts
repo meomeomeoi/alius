@@ -149,13 +149,22 @@ describe('the conditions, one pure check each', () => {
     expect(holds(visitor, 'before_others')).toBe(false);
   });
 
-  it('displeased and low_stakes_good_mood: favour\'s sign until satisfaction exists; a run is not low stakes', () => {
+  it('displeased and low_stakes_good_mood read her satisfaction (frustrated, content), not the favour\'s sign; a run is not low stakes (M11)', () => {
+    // chunk (h) encoded the favour stand-in here (-3 and 4); satisfaction needs -5 / 5, or a refusal of hers within two days
     const s = world();
     expect(holds(s, 'displeased')).toBe(false);
     expect(holds(s, 'low_stakes_good_mood')).toBe(false);
     dynamicOf(s, ANN)!.favour = -3;
+    expect(holds(s, 'displeased')).toBe(false); // not frustrated yet
+    dynamicOf(s, ANN)!.favour = -5;
     expect(holds(s, 'displeased')).toBe(true);
+    dynamicOf(s, ANN)!.favour = 0;
+    dynamicOf(s, ANN)!.refusals = [s.day]; // a refusal of hers within two days frustrates her whatever the favour says
+    expect(holds(s, 'displeased')).toBe(true);
+    dynamicOf(s, ANN)!.refusals = [];
     dynamicOf(s, ANN)!.favour = 4;
+    expect(holds(s, 'low_stakes_good_mood')).toBe(false); // not content yet
+    dynamicOf(s, ANN)!.favour = 5;
     expect(holds(s, 'low_stakes_good_mood')).toBe(true);
     expect(holds(withRun(s, 0.9), 'low_stakes_good_mood')).toBe(false);
   });

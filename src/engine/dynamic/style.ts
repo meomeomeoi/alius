@@ -7,6 +7,7 @@
 import type { Registries } from '../../content/types';
 import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { satisfactionOf } from './exchange';
 import { dynamicOn } from './gate';
 import { styleOf } from './profile';
 import type { Expectation } from '../moments/answer';
@@ -39,7 +40,7 @@ const trains = (reg: Registries, activityId: string | undefined): boolean =>
 /**
  * One surfacing condition (§15.4, plan task 16), true or false. The sources, where the spec leaves them open, are the state's own records
  * (`AUTHOR TO TUNE`): the peak is the physics gauge at its warning level; the scene's edges its first and last exchanges; before others a second
- * soul in the room; satisfaction is not built yet, so favour's sign stands in for it; `after_peak_or_wound` is a hold that has ended in this scene or
+ * soul in the room; `displeased` and `low_stakes_good_mood` read her satisfaction (`satisfactionOf`: frustrated, content); `after_peak_or_wound` is a hold that has ended in this scene or
  * an injured commander; a new practice is the newest entry of `recent` that is no probe axis, offer kind or repeat; an endurance gain and the crime
  * revealed come from `noted`; ignored is three days without contact.
  */
@@ -57,9 +58,9 @@ export function surfaceHolds(state: CampaignState, reg: Registries, unitId: stri
     case 'third_person':
       return scene !== undefined && inScene(state, unitId) && (scene.participants.length >= 2 || scene.moments?.open?.visitorId !== undefined);
     case 'displeased':
-      return rel !== undefined && rel.favour <= -S.favourMood;
+      return satisfactionOf(state, reg, unitId) === 'frustrated';
     case 'low_stakes_good_mood':
-      return rel !== undefined && rel.favour >= S.favourMood && scene?.physics === undefined && scene?.tone !== 'intimate';
+      return satisfactionOf(state, reg, unitId) === 'content' && scene?.physics === undefined && scene?.tone !== 'intimate';
     case 'threat':
       return scene !== undefined && inScene(state, unitId) && scene.participants.some((id) => id !== unitId && (dynamicOf(state, id) !== undefined && frameRank(dynamicOf(state, id)!.frame) >= frameRank('play')));
     case 'after_defiance':

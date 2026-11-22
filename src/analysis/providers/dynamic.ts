@@ -7,7 +7,6 @@
  * fact rule of `Knowledge` reads the same flag. No pronoun for the commander (lore §0).
  */
 import { dynamicOn } from '../../engine/dynamic/gate';
-import { masteryLevel } from '../../engine/dynamic/mastery';
 import type { DynamicView } from '../../engine/dynamic/view';
 import type { KnowledgeLevel } from '../../engine/dynamic/types';
 import type { Knowledge } from '../knowledge';
@@ -92,9 +91,11 @@ const compromatReading: Reader = (_s, env, v, unitId) => v.compromat.map((f) => 
 const zoneReading: Reader = (s, env, v, unitId) => {
   if (!dynamicOn(env.state!, env.registries)) return [];
   const shown = v.expectations.worship?.[s.id];
-  const level = masteryLevel(env.state!, unitId, s.id);
+  const zone = v.zones[s.id]; // the level and the facts that showed it, from the view (the commander's own facts, never the xp)
+  const level = zone?.mastery ?? 0;
   return [
     shown === undefined ? 'Not known yet.' : `${nameOf(env, unitId)}: ${shown.attitude}${shown.meaning !== undefined ? `, ${shown.meaning}` : ''}.`,
+    ...(zone?.facts ?? []).map((f) => `Shown: ${plain(f)}`),
     ...(level > 0 ? [`Mastery: ${MASTERY_WORDS[level]} of five.`] : []),
   ];
 };

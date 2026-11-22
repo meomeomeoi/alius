@@ -13,11 +13,10 @@ import { isLiving } from '../economy';
 import { factTextMax } from '../memory/config';
 import { addFact } from '../memory/facts';
 import type { CampaignState, Fact } from '../state/types';
+import { hasCommanderPronoun } from './pronoun';
 
 export const COMPROMAT_TAG = 'compromat';
 export const holderTag = (holderId: string): string => `holder:${holderId}`;
-/** A pronoun for the commander (lore §0): a text that has one is dropped, never rewritten. */
-const COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
 const MENTIONED = 'mentioned';
 
 /** What the holder keeps of the commander's, oldest first. Includes what she has already mentioned (it is still hers). */
@@ -80,7 +79,7 @@ export function mentionCompromat(draft: CampaignState, _ctx: unknown, holderId: 
     if (score > 0 && (best === undefined || score > best.score)) best = { fact: f, score };
   }
   if (best !== undefined) return reveal(best.fact, holderId);
-  if (COMMANDER_PRONOUN.test(text)) return [];
+  if (hasCommanderPronoun(text)) return [];
   const fact = tagHolder(addFact(draft, { about: ['commander'], text: text.slice(0, factTextMax(draft)), tags: [COMPROMAT_TAG, MENTIONED], importance: 3, day: draft.day, knownBy: [holderId] }), holderId);
   return [{ type: 'compromat_revealed', unitId: holderId, factId: fact.id }];
 }
