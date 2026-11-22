@@ -900,4 +900,18 @@ export const TUNING = Object.freeze({
     lapse: Object.freeze({ tag: 'respect', days: 14 }),
     tone: Object.freeze({ respectful: 60, pitying: 30 }),
   }),
+  /**
+   * P15: what a holder's satisfaction does (R19, spec §15.5, §16.7). `content` is favour from `favourAt` with Want no higher than restless; `frustrated` is favour
+   * from `-favourAt`, a Want of aching or more, or a refusal within `refusalDays`. `combatPct`: her combatant's `outgoing` (and the reverse sign on `incoming`) while content, the opposite while frustrated.
+   * `protection`: what the strongest holder's standing (x `perStanding`, at most `max`) takes off the other units' positive Impunity. `stress`: every `every` days a content holder
+   * steadies (`-step`) and a frustrated one unsettles (`+step`) the units whose Trust is `trust` or more. `drive`: the multiplier of her Want growth by her `drive`; `noise`: its hashed
+   * spread (x`moody` for a moody woman); `lift`: a day of jealousy or a content mood; `drag`: stress from `dragStress`, an injury or a lost run. `AUTHOR TO TUNE`.
+   */
+  exchange: Object.freeze({
+    favourAt: 5, refusalDays: 2, combatPct: 5,
+    protection: Object.freeze({ perStanding: 0.003, max: 0.3 }),
+    stress: Object.freeze({ every: 2, step: 1, trust: 50 }),
+    drive: Object.freeze({ low: 0.7, moderate: 1, high: 1.4 }),
+    noise: 0.2, moody: 2, lift: 1.3, drag: 0.7, dragStress: 70,
+  }),
 });

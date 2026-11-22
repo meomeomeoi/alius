@@ -74,6 +74,15 @@ function startingCp(state: CampaignState, reg: Registries): number {
   return Math.min(TUNING.combat.cpMax, cp);
 }
 
+/**
+ * P15 (R19): the effects the dynamic adds to a squad combatant, source `dynamic`. `registerCombatPassive` takes the reader (`exchange.ts` registers it from
+ * `installDynamicHooks`); with none registered, or while it answers `[]`, a combatant is built exactly as before. `resetCombatPassives` clears them (tests).
+ */
+export type CombatPassiveReader = (state: CampaignState, reg: Registries, unitId: string) => EffectSpec[];
+let combatPassives: CombatPassiveReader[] = [];
+export function registerCombatPassive(fn: CombatPassiveReader): void { if (!combatPassives.includes(fn)) combatPassives.push(fn); }
+export function resetCombatPassives(): void { combatPassives = []; }
+
 function squadCombatant(
   state: CampaignState, reg: Registries, unit: Unit, index: number, row: 'front' | 'back', synergies: Array<{ unitId: string; synergyId: string }>,
 ): Combatant {
@@ -100,6 +109,7 @@ function squadCombatant(
   }
   for (const { inst } of wornItems(state, reg, unit)) add(itemStats(reg, inst)?.effects, `item:${inst.uid}`);
   for (const s of synergies) if (s.unitId === unit.id) add(reg.synergies.get(s.synergyId)?.effects as EffectSpec[] | undefined, `synergy:${s.synergyId}`);
+  for (const read of combatPassives) add(read(state, reg, unit.id), 'dynamic');
 
   return {
     cid: `s${index + 1}`,

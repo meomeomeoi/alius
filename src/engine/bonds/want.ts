@@ -35,6 +35,14 @@ export const effectiveWant = (state: CampaignState, reg: Registries, unitId: str
 /** The band the effects read. */
 export const wantBandOf = (state: CampaignState, reg: Registries, unitId: string): WantBand => wantBand(effectiveWant(state, reg, unitId));
 
+/**
+ * P15 (R19): the factor her `drive`, her mood and her day put on the growth of her Want. `exchange.ts` registers the reader (it reads the dynamic, which reads Want); with none
+ * registered, or while the dynamic is off, the factor is 1 and Want grows as before.
+ */
+type GrowthReader = (state: CampaignState, reg: Registries, unitId: string) => number;
+let growthReader: GrowthReader | null = null;
+export function registerWantGrowth(reader: GrowthReader): void { growthReader = reader; }
+
 /** What one day adds: the base of her desire × the factor of her attachment, rounded half up. */
 export function wantRise(unit: Pick<Unit, 'kind' | 'bond'>): number {
   const bond = bondOf(unit);
@@ -85,7 +93,7 @@ export function wantStep(draft: CampaignState, reg: Registries): EngineEvent[] {
     const rel = draft.relations[unit.id];
     if (unit.kind !== 'named' || !rel || !isLiving(unit)) continue;
     const from = rel.want ?? 0;
-    if (wantEligible(draft, reg, unit.id)) setWant(rel, from + wantRise(unit));
+    if (wantEligible(draft, reg, unit.id)) setWant(rel, from + wantRise(unit) * (growthReader?.(draft, reg, unit.id) ?? 1));
     else if (from > 0) setWant(rel, from - B.decayPerDay);
     else continue;
     if (wantEligible(draft, reg, unit.id) && wantBand(rel.want ?? 0) !== 'calm' && wantBand(rel.want ?? 0) !== 'restless') {

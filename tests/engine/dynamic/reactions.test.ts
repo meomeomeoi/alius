@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import { dynamicDirectives } from '../../../src/dynamic/directives';
@@ -7,13 +7,16 @@ import { knowInstantly, addSign } from '../../../src/engine/dynamic/knowledge';
 import { reactToDynamic } from '../../../src/engine/dynamic/reactions';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../../src/engine/dynamic/state';
 import type { Frame, ProfileStyle, Witness } from '../../../src/engine/dynamic/types';
-import { dynamicTerm, standingMalus } from '../../../src/engine/dynamic/witness';
+import { dynamicTerm, registerProtection, standingMalus } from '../../../src/engine/dynamic/witness';
 import { standingOf } from '../../../src/engine/power/standing';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign, ctxOf, loadCore } from '../../helpers/world';
 
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); });
+// This file is about the reaction half of the Impunity term (R14). The other half, the protection a holder's standing gives (R19, Task 38), is the exchange's and is
+// tested in `exchange.test.ts`; here it is switched off so a holder in the world does not move the numbers that follow.
+beforeEach(() => registerProtection(() => 0));
 const [ANN, BEA, CAT, DEE] = ['unit_ann', 'unit_bea', 'unit_cat', 'unit_dee'];
 const unitOf = (s: CampaignState, id: string) => s.squad.find((u) => u.id === id)!;
 

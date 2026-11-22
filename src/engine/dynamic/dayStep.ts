@@ -13,6 +13,7 @@ import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
 import { aftermathDayStep } from './aftermath';
+import { exchangeDayStep } from './exchange';
 import { claimsDue } from './domains';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
@@ -106,8 +107,11 @@ const oversight: SubStep = (draft, ctx) => oversightDayStep(draft, ctx);
 /** 11. Regard (Task 36): a holder whose style counts the days she has served gets a rise for each week without a slip. Draws nothing. */
 const regard: SubStep = (draft, ctx, holders) => regardDayStep(draft, ctx.registries, holders);
 
+/** 12. Exchange (Task 38): a content holder steadies the units who trust the commander, a frustrated one unsettles them (every 2 days). Draws nothing. */
+const exchange: SubStep = (draft, ctx) => exchangeDayStep(draft, ctx.registries);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight, regard];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight, regard, exchange];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

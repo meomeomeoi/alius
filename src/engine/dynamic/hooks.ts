@@ -29,7 +29,10 @@ import { dynamicOn, herPracticeLive } from './gate';
 import { styleOf } from './profile';
 import { regardBandOf, regardBandRank, regardOf, registerRegardWatcher } from './regard';
 import { checkDisappointment, ripeQuestions } from './shame';
-import { registerDislikeScale } from './witness';
+import { registerDislikeScale, registerProtection } from './witness';
+import { combatEffects, protectionFor, wantGrowthMult } from './exchange';
+import { registerCombatPassive } from '../combat/build';
+import { registerWantGrowth } from '../bonds/want';
 import { defaultExpectation, leadingStyle } from './style';
 import { dynamicOf, type DynamicRelation } from './state';
 import { TUNING } from '../tuning';
@@ -109,5 +112,8 @@ export function installDynamicHooks(): void {
   // a witness who dislikes what a holder has over the commander weighs more while her own Regard is low or none (R14, R18): the lowest two bands of the registry
   registerRipeSource(ripeQuestions); // `her_question` is ripe for a woman who is losing respect, or who dislikes what a holder has (Task 37)
   registerRegardWatcher(disappointed);
+  registerProtection(protectionFor); // a holder's standing shields the commander before the other units' Impunity (Task 38)
+  registerCombatPassive(combatEffects); // her combat form follows her satisfaction
+  registerWantGrowth(wantGrowthMult); // her drive, her mood and her day on the growth of her Want
   registerDislikeScale((state, reg, unitId) => (regardBandRank(reg, regardOf(state, reg, unitId)) >= Math.max(0, reg.regardBands.size - 2) ? TUNING.regard.dislikes : 1));
 }

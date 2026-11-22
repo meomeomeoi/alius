@@ -7,7 +7,7 @@ import { heldTerm } from '../personal/state';
 import { leaderOf } from '../power/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
-import { dynamicTerm } from '../dynamic/witness';
+import { dynamicTerm, protectionShare } from '../dynamic/witness';
 import { dispositionFor } from '../worldOptions';
 import { recordOf } from './record';
 
@@ -22,7 +22,7 @@ export interface ImpunityTerms {
   leverage: number;
   /** P9c: the commander used a secret of the squad's against her (−8 for each she knows, at least −16, for 14 days). */
   held: number;
-  /** P15: she knows what a holder has over the commander and dislikes it (+5 each); absent while 0, so a campaign without a dynamic has the same terms as before. */
+  /** P15: she knows what a holder has over the commander and dislikes it (+5 each), less the protection a holder's standing gives a unit who is no holder (up to 30 % of her positive terms); absent while 0, so a campaign without a dynamic has the same terms as before. */
   dynamic?: number;
 }
 
@@ -140,9 +140,12 @@ export function impunityOf(state: CampaignState, reg: Registries, unitId: string
     leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret),
     held: heldTerm(state, unitId),
   };
-  const dynamic = dynamicTerm(state, reg, unitId);
+  // P15 (R19): her dislike of a dynamic she knows of, less the share of the positive terms a holder's standing shields her from (never a holder herself)
+  const others = [terms.base, terms.record, terms.leash, terms.presence, terms.dependency, terms.contagion, terms.leverage, terms.held];
+  const shield = protectionShare(state, reg, unitId);
+  const dynamic = dynamicTerm(state, reg, unitId) - (shield > 0 ? int(shield * others.reduce((sum, n) => sum + Math.max(0, n), 0)) : 0);
   if (dynamic !== 0) terms.dynamic = dynamic;
-  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage + terms.held + dynamic;
+  const sum = others.reduce((a, b) => a + b, 0) + dynamic;
   return { value: clamp(Math.round(sum), 0, 100), terms };
 }
 

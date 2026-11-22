@@ -1978,16 +1978,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `satisfactionOf(state, reg, unitId): 'content' | 'neutral' | 'frustrated'`; `protectionOf(state, reg): number` (0–0.3); `registerCombatPassive`; `wantGrowthMult(state, reg, unitId): number`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `content: outgoing +5 and incoming −5 in her combatant`; `frustrated: the reverse`; `neutral or no dynamic: no effect and the combat suites unchanged`.
   - `protection lowers other units' positive Impunity by standing × 0.3 %, capped at 30 %`.
   - `squad stress −1 every 2 days for units with Trust ≥ 50 toward a content holder`.
   - `drive`: a `high` holder's Want grows ×1.4 (± the hashed noise, the same on the same day), `low` ×0.7; stress 75 ×0.7; with the dynamic off the P9d Want suites are unchanged.
   - `no rng draw` in any of them.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/exchange.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R19.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the dynamic in combat and the squad`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/exchange.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R19.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the dynamic in combat and the squad`
 
 ---
 

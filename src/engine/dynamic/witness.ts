@@ -83,6 +83,15 @@ let dislikeScale: ScaleReader | null = null;
 export function registerDislikeScale(reader: ScaleReader): void { dislikeScale = reader; }
 const scaleOf = (state: CampaignState, reg: Registries, unitId: string): number => dislikeScale?.(state, reg, unitId) ?? 1;
 
+/**
+ * What a holder's standing takes off the other units' positive Impunity (R19, a share 0 to 0.3): `exchange.ts` registers the reader (it needs `standingOf`, which
+ * needs `impunityOf`, which calls this), so this file stays a leaf. With none registered nobody is protected.
+ */
+type ProtectionReader = (state: CampaignState, reg: Registries, unitId: string) => number;
+let protection: ProtectionReader | null = null;
+export function registerProtection(reader: ProtectionReader): void { protection = reader; }
+export const protectionShare = (state: CampaignState, reg: Registries, unitId: string): number => protection?.(state, reg, unitId) ?? 0;
+
 /** The observers who `knows_dynamic` of this holder and whose `witness` is `dislikes`, in squad order. */
 export function dislikers(state: CampaignState, reg: Registries, holderId: string): string[] {
   const rows = state.dynamic?.knowledge;
@@ -93,7 +102,7 @@ export function dislikers(state: CampaignState, reg: Registries, holderId: strin
 /**
  * The `dynamic` term of her Impunity (P9 §8, R14): `dislikesImpunity` for each holder she knows of and dislikes seeing. 0 without the block, with no
  * holders allowed, with the practice categories off, and for a woman who knows of none (so `impunityOf` is unchanged without a dynamic). Only the reaction half of R19's term: the
- * protection a holder's standing gives the others is the exchange's (Task 38).
+ * protection a holder's standing gives the others is `protectionShare`, subtracted in `impunityOf` (it needs the other terms).
  */
 export function dynamicTerm(state: CampaignState, reg: Registries, unitId: string): number {
   const x = state.dynamic;
