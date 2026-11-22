@@ -139,6 +139,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     development_review: 700,
     opinion_form: 150,
     physics_cues: 250,
+    practice_generate: 700,
     ping: 100,
   },
   contextTokenCap: 1600,

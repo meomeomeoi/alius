@@ -9,10 +9,11 @@ import { bondTierOf } from '../bonds/profile';
 import { contentAllowed } from '../bonds/content';
 import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
+import { dynamicOf } from '../dynamic/state';
 import { trackLevel, trackOpen } from '../dynamic/tracks';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { practiceRoll, type PracticeKind } from './state';
+import { practiceRoll, type PracticeKind, type Stake } from './state';
 
 const seedOf = (reg: Registries, id: string): PracticeSeedEntry | undefined => reg.practiceSeeds.get(id) as unknown as PracticeSeedEntry | undefined;
 
@@ -69,4 +70,10 @@ export function fallbackLine(kind: PracticeKind, gist: string): string {
 /** The summary of a practice that has no model words: the seed's gist. */
 export function plainSummary(seed: Pick<PracticeSeedEntry, 'gist'>): string {
   return seed.gist;
+}
+
+/** The stakes a frame may give at most (`TUNING.practice.stakesCeiling`). */
+export function stakesCeilingOf(state: CampaignState, holderId: string): Stake {
+  const frame = dynamicOf(state, holderId)?.frame;
+  return frame === 'rule' || frame === 'role' || frame === 'play' ? TUNING.practice.stakesCeiling[frame] : 'minor';
 }

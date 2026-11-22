@@ -5,11 +5,10 @@
  */
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
-import { dynamicOf } from '../dynamic/state';
 import type { CampaignState } from '../state/types';
-import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
-import { fallbackLine, pickSeeds, plainSummary, seedPool } from './seeds';
+import { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
+import { validatePracticeOutput } from './validate';
 import { stakeRank, type AcceptForm, type PracticeKind, type PracticeRequest, type Stake, type Task, type ValidOutput } from './state';
 
 /** What a writer is given: the request that is closing, the card (validated, or built from a seed), and whether it is the plain fallback. */
@@ -48,12 +47,6 @@ const writeTask: Writer = (draft, _ctx, request, out, plain) => {
  */
 export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask };
 
-/** The stakes a frame may give at most (`TUNING.practice.stakesCeiling`). */
-export function stakesCeilingOf(state: CampaignState, holderId: string): Stake {
-  const frame = dynamicOf(state, holderId)?.frame;
-  return frame === 'rule' || frame === 'role' || frame === 'play' ? TUNING.practice.stakesCeiling[frame] : 'minor';
-}
-
 /** The card the fallback writes for a request: its first seed that is still allowed, with the template line and the gist, within the frame's stakes. `null` when none stands. */
 export function fallbackOutput(state: CampaignState, reg: Registries, request: PracticeRequest): ValidOutput | null {
   const pool = seedPool(state, reg, request.holderId, request.kind);
@@ -83,20 +76,56 @@ export function requestPractice(draft: CampaignState, ctx: EngineCtx, holderId: 
 }
 
 /**
+ * The request a key names: the one still waiting, or, when a card written for it is still `offered`, a request rebuilt from that card (its kind, chain and flags, its
+ * seed and fresh ones) so that a reroll can ask again. `replaced` is that card. Undefined when the key is gone (the card was answered, the holder left).
+ */
+export function requestOf(state: CampaignState, reg: Registries, requestId: string): { request: PracticeRequest; replaced?: Task } | undefined {
+  const p = state.practices;
+  const waiting = p?.requests.find((r) => r.id === requestId);
+  if (waiting !== undefined) return { request: waiting };
+  const old = p?.tasks.find((t) => t.requestId === requestId && t.status === 'offered');
+  if (old === undefined) return undefined;
+  const kind = old.kind as PracticeKind;
+  const seedIds = [...new Set([...(old.seedId !== undefined ? [old.seedId] : []), ...pickSeeds(state, reg, old.holderId, kind)])];
+  return {
+    replaced: old,
+    request: {
+      id: requestId, holderId: old.holderId, kind, day: old.day, seedIds,
+      ...(old.chainId !== undefined ? { chainOf: old.chainId } : {}), ...(old.targetUnitId !== undefined ? { targetUnitId: old.targetUnitId } : {}),
+      ...(old.sealed === true ? { sealed: true as const } : {}), ...(old.noDuration === true ? { noDuration: true as const } : {}),
+    },
+  };
+}
+
+/**
  * Writes the practice of a request from its card, or from the fallback (`'fallback'`: the first allowed seed's template line and gist, `plain: true`), and closes the
- * request. A request that is gone is refused; a card of another kind is refused; a request whose fallback has no seed left is dropped with no practice. Draws nothing.
+ * request. A card is read again by `validatePracticeOutput` (the state may have moved since the controller parsed it). A request that is gone is refused, unless a
+ * card written for it is still `offered`: then the new card replaces it in place (a reroll before the commander answered; the fallback never does). A card of another
+ * kind or one that does not fit is refused; a request whose fallback has no seed left is dropped with no practice. Draws nothing.
  */
 export function issuePractice(draft: CampaignState, ctx: EngineCtx, requestId: string, output: ValidOutput | 'fallback'): EngineEvent[] {
   const p = draft.practices;
-  const request = p?.requests.find((r) => r.id === requestId);
-  if (p === undefined || request === undefined) throw new Error('That request is gone.');
+  const found = requestOf(draft, ctx.registries, requestId);
+  if (p === undefined || found === undefined || (found.replaced !== undefined && output === 'fallback')) throw new Error('That request is gone.');
+  const { request, replaced } = found;
   if (!practiceLive(draft, ctx.registries, request.holderId)) throw new Error('She is not holding now.');
   const write = WRITERS[request.kind];
   if (write === undefined) throw new Error(`A ${request.kind} cannot be issued yet.`);
   const plain = output === 'fallback';
-  const card = plain ? fallbackOutput(draft, ctx.registries, request) : output;
+  if (!plain && output.kind !== request.kind) throw new Error('That card is for another kind of practice.');
+  const card = plain ? fallbackOutput(draft, ctx.registries, request) : (validatePracticeOutput(draft, ctx.registries, request, output)?.output ?? null);
+  if (!plain && card === null) throw new Error('That card does not fit.');
   p.requests = p.requests.filter((r) => r.id !== requestId);
   if (card === null) return [];
-  if (card.kind !== request.kind) throw new Error('That card is for another kind of practice.');
-  return write(draft, ctx, request, card, plain);
+  const events = write(draft, ctx, request, card, plain);
+  const written = p.tasks.at(-1);
+  if (written !== undefined) {
+    written.requestId = requestId;
+    if (replaced !== undefined) {
+      p.tasks = p.tasks.filter((t) => t !== replaced);
+      written.id = replaced.id;
+      for (const e of events) if (e.type === 'task_issued') { e.taskId = replaced.id; e.rerolled = true; }
+    }
+  }
+  return events;
 }

@@ -21,3 +21,4 @@ import './headStartRecap'; // P11b
 import './developmentReview'; // P14b
 import './opinionForm'; // P14c
 import './physicsCues'; // P15a
+import './practiceGenerate'; // P16

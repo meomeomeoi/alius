@@ -67,6 +67,7 @@ import { createWarden } from './warden/controller';
 import { createHeadStart } from './headStart/controller';
 import { createDevelopment } from './development/controller';
 import { createDynamic } from './dynamic/controller';
+import { createPractice } from './practice/controller';
 import { bypassRoutes } from './engine/dynamic/bypass';
 import { leashBlockOf } from './engine/dynamic/leashBlock';
 import { applyOfferDirectives, clearDynamicDirectives, refreshDynamicDirectives } from './dynamic/directives';
@@ -637,6 +638,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
+  createPractice({ ...worldDeps, context, refreshContext: applyContext }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`)
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({

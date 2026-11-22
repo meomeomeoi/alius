@@ -1,0 +1,1 @@
+{ "kind": "task", "seedId": "task_report_at_dusk", "tags": ["service"], "track": "service", "tier": 1, "stakes": "trivial", "check": "dm_report", "proof": "dm_report", "text": "Report to me at dusk.", "summary": "report to her at dusk"

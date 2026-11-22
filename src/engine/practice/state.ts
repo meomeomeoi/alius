@@ -149,6 +149,8 @@ export interface Task {
   bookingId?: string;
   ruleId?: string;
   handover?: HandoverKind;
+  /** The request this card was written for (the key of its generation: a reroll while it is offered replaces the card). */
+  requestId?: string;
 }
 
 /** A ceremony's progress (R21): the step rows for her style by `order`, the ones done, and the number the commander named. */

@@ -1,0 +1,13 @@
+{
+  "kind": "task",
+  "seedId": "task_report_at_dusk",
+  "tags": ["service"],
+  "track": "service",
+  "tier": 1,
+  "stakes": "trivial",
+  "check": "dm_report",
+  "deadline": { "days": 2, "slot": "evening" },
+  "proof": "dm_report",
+  "text": "Report to me at dusk. Tell me what the squad said about the roster, and do not leave anything out.",
+  "summary": "report to her at dusk"
+}

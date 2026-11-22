@@ -176,6 +176,44 @@ describe('an old request falls back at the day end', () => {
   });
 });
 
+describe('a reroll before the commander answered', () => {
+  const card = (summary: string) => ({ kind: 'task' as const, seedId: 'task_report_at_dusk', tags: ['service'], track: 'service', tier: 1 as const, stakes: 'trivial' as const, check: 'dm_report' as const, proof: 'dm_report' as const, text: 'Come at dusk.', summary });
+
+  it('a new card replaces the offered one in place, keeps its id and says it was rerolled', () => {
+    const s = withService(world(reg, 'role'));
+    const d = structuredClone(s);
+    requestPractice(d, ctxOf(d), ANN, 'task');
+    const id = d.practices!.requests[0].id;
+    issuePractice(d, ctxOf(d), id, card('first'));
+    const first = d.practices!.tasks[0];
+    expect(first.requestId).toBe(id);
+    const events = issuePractice(d, ctxOf(d), id, card('second'));
+    expect(d.practices!.tasks).toHaveLength(1);
+    expect(d.practices!.tasks[0]).toMatchObject({ id: first.id, summary: 'second', status: 'offered', requestId: id });
+    expect(events).toEqual([expect.objectContaining({ type: 'task_issued', taskId: first.id, rerolled: true })]);
+    expect(d.rng).toEqual(s.rng);
+  });
+
+  it('once the card is answered the request is gone', () => {
+    const s = withService(world(reg, 'role'));
+    const d = structuredClone(s);
+    requestPractice(d, ctxOf(d), ANN, 'task');
+    const id = d.practices!.requests[0].id;
+    issuePractice(d, ctxOf(d), id, card('first'));
+    d.practices!.tasks[0].status = 'open';
+    expect(() => issuePractice(d, ctxOf(d), id, card('second'))).toThrow(/gone/);
+  });
+
+  it('the fallback never replaces a card', () => {
+    const s = withService(world(reg, 'role'));
+    const d = structuredClone(s);
+    requestPractice(d, ctxOf(d), ANN, 'task');
+    const id = d.practices!.requests[0].id;
+    issuePractice(d, ctxOf(d), id, card('first'));
+    expect(() => issuePractice(d, ctxOf(d), id, 'fallback')).toThrow(/gone/);
+  });
+});
+
 describe('nothing live, nothing happens', () => {
   it('returns [] and leaves state.practices absent', () => {
     const s = world(reg, 'equal');

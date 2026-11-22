@@ -90,5 +90,7 @@ declare('development.review', 'development_review', 'world', 'before_commit', 'q
 declare('opinion.form', 'opinion_form', 'scene', 'none', 'quiet', 'Her opinion');
 // P15a: her cue lines are display text, asked for once when a hold starts (the registry stands in); nothing is worth a reroll
 declare('physics.cues', 'physics_cues', 'scene', 'none', 'quiet', 'Her cues');
+// P16: what a holder asks of the commander, one site per kind (key = the request id): a card can be reworded until the commander has answered it
+for (const kind of ['task', 'punishment', 'demonstration', 'protocol', 'denial', 'hold']) declare(`practice.${kind}`, 'practice_generate', 'comms', 'before_commit', 'full', 'Her practice');
 declare('setup.commander_import', 'commander_import', 'setup', 'before_commit', 'none', 'Commander import');
 declare('sys.ping', 'ping', 'sys', 'none', 'none', 'Connection test');
