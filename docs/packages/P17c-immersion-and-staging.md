@@ -129,6 +129,16 @@ Added after the 2026-11-20 design session. Where it conflicts with the sections 
 - **A failure** is `refused`, `truncated`, `timeout`, `network`, `invalid_output`, `empty` or `no_profile`; the envelope writes a record (`CampaignState.generations`, at most 20, no prompt, no model text, `detail` never the model's words) unless the site's record mode is `none` or the reason is `no_profile`. Add the chip with `drawGenerationChips(host, ctx.generation, state, surface, filter)` and REROLL with `drawSiteReroll`; a screen draws neither without `generation` in its context. Labels are generic: never put a hidden value in one.
 - **The engine decides:** a retried or rerolled value goes through the same sanitizer and the same action as the first one; none of the new actions draws from the rng, so a new site must not either (a seeded test that moves stops and reports).
 
+## Interfaces already provided by P15 (implemented — use, do not rebuild)
+
+P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows is what exists for this package and what is reserved for it. Every P15 reader answers null, zero or an empty list while the dynamic is off (`dynamicOn`, `herPracticeLive`), and nothing it adds draws from the rng unless someone is eligible: a hook you register must keep a campaign with no dynamic byte-identical (`tests/dynamic/unaffected.test.ts`). Keep new directive ids away from `dynamic:`; read domains by capability, styles, milestones and aftermaths by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **The frame picks props:** `frameOf(state, unitId)` and `dynamicFrames` (`rank`, `outside`, `promptHint`); a room variant by frame is data you add. Ruling E reads as revised in P15 §16.1: no meter of the commander's feelings; the DYNAMIC section, the frame chip and the analysis panels already honour `dynamicHidden` (immersive mode hides the numbers, the section shrinks to one `[ END IT ]` row, the chip goes; cards, notices and events stay).
+- **Her protocol with others:** `capabilitiesOf` reads `relation_rules` and `booking_consent` (the `others` domain); `protocol_slip` is an intent (offered while a unit's dynamic is at `role` or beyond, or an aftermath `habits` stage, with another unit present) that already adds a sign and a small Regard fall for the witnesses.
+- **Hesitation:** her reading is `updateReading(rel, sample, weight, style)` and Regard is `regardFall` / `regardRise`; both are hidden values (sentinels): show nothing numeric.
+- **Directives:** `dynamic:<unitId>`, `:probe:`, `:offer:`, `:aftermath:`, `:leash_block:`, `:command:`, `:witness:`, `:disappointed:`, `:regard:` exist; a P17c layer derived from the state keeps its own prefix.
+- **Immersive mode and the cards:** cards in her voice (`VOICE_OF.dynamic = 'personal'`, `unitAccent`), toasts and cut-ins on `frame_changed`, `aftermath_started`, `sworn`; every animation asks `motionReduced` / `visualFlags`.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

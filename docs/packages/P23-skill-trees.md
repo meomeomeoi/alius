@@ -62,3 +62,11 @@ SQUAD › TREE: the active tree as tiers with choice cards; the web as a compact
 ## Open decisions (author)
 
 - Every tree, web and specialisation; preference import wording; every number.
+
+## Interfaces already provided by P15 (implemented — use, do not rebuild)
+
+P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows is what exists for this package and what is reserved for it. Every P15 reader answers null, zero or an empty list while the dynamic is off (`dynamicOn`, `herPracticeLive`), and nothing it adds draws from the rng unless someone is eligible: a hook you register must keep a campaign with no dynamic byte-identical (`tests/dynamic/unaffected.test.ts`). Keep new directive ids away from `dynamic:`; read domains by capability, styles, milestones and aftermaths by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **A holder chooses her own:** read the capability, not the id: `hasCapability(state, reg, unitId, 'countermand')` (and `co_leader`); `frameOf` (at least `role`) and `holdBandOf` for the "high hold" test, never the number. The `command` domain needs frame `role` and the owning band and is claimed only by a milestone (`handover`), never by the day step.
+- **The override machinery** is P13's generalised: `holderSource(state, reg, unitId)` (authority = hold / 100, leniency from Affinity, agenda `holderAgenda`), `rollOverrides` at the hook sites, `answerOverride` routing by the open slot, `OverrideSource.kind: 'holder'`; one override is open at a time (the warden first). A respec veto is a new order kind at those sites.
+- **Off is byte-identical:** a choice that reads the dynamic answers "the commander's own" while `dynamicOn` is false.

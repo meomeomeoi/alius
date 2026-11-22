@@ -1807,6 +1807,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/leashBlock.test.ts` → FAIL.
 - [x] **Step 3: Implement** as in R16.
 - [x] **Step 4: Run** the file, then `npm test` → PASS.
+- **Memory check (as built, review M10):** `leash_blocked` is bookkeeping: the `denied` Leash-log entry with `cc: <holderId>` is the record, and the world hears of it only through oversight's inquiry. No `memoryRules` entry, no journal line, no chronicle line, no prompt provider.
 - [x] **Step 5: Commit** `feat(P15): the Leash block`
 
 ---
@@ -1860,6 +1861,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/oversight.test.ts` → FAIL.
 - [x] **Step 3: Implement** as in R16 and R19.
 - [x] **Step 4: Run** the file, then `npm test` → PASS.
+- **Memory check (as built, review M10):** `oversight_inquiry` is bookkeeping; the two notices (stages 3 and 5) write a world fact each at their site and name no one. Oversight's forced Leash is a `done` entry with `cc: 'oversight'`: the `leash_compel` rule is skipped for it (`by: 'oversight'`) because her exit is remembered by `dynamic_exit`. No journal or chronicle line.
 - [x] **Step 5: Commit** `feat(P15): oversight's inquiry and the holder's cover`
 
 ---
@@ -1891,6 +1893,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/compromat.test.ts` → FAIL.
 - [x] **Step 3: Implement** as in spec §11.
 - [x] **Step 4: Run** the file, then `npm test` → PASS.
+- **Memory check (as built, review M10):** compromat is a fact written at its site (`compromat`, `holder:<id>`, `hiddenFromCommander`, `knownBy [holder]`), so no rule; `compromat_revealed` and `compromat_told` are bookkeeping events that only refresh the lines and show a notice.
 - [x] **Step 5: Commit** `feat(P15): compromat`
 
 ---
@@ -2105,6 +2108,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - [x] **Step 2: Run** → FAIL.
 - [x] **Step 3: Implement.**
 - [x] **Step 4: Run** the file, then `npm test` → PASS.
+- **Memory check (as built, review M10):** the composer writes nothing itself (it dispatches `dynamic/offer`); what an offer leaves behind is Task 40's rules (`offer_mocked`, `offer_corrected`, `zone_revealed`). No journal, chronicle or prompt text of its own.
 - [x] **Step 5: Commit** `feat(P15): the offer composer`
 
 ---
@@ -2281,6 +2285,6 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `docs/CONTENT.md` (the 11 registries, `stepDown`, the `probe` head-start rows, `reputations[].tone`).
 - Test: none (docs). `npm test` must still pass.
 
-- [ ] **Step 1: Write the docs** as listed.
-- [ ] **Step 2: Run** `npm test` → PASS; `npx vitest run tests/content/pronouns.test.ts` → PASS.
-- [ ] **Step 3: Commit** `docs(P15): implemented as, overview, hand-off notes`
+- [x] **Step 1: Write the docs** as listed. The memory verdicts the review asked for (M10) are in the spec's **Memory check as built** and in the notes of Tasks 32, 34, 35 and 42.
+- [x] **Step 2: Run** `npm test` → PASS; `npx vitest run tests/content/pronouns.test.ts` → PASS.
+- [x] **Step 3: Commit** `docs(P15): implemented as, overview, hand-off notes`

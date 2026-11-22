@@ -67,6 +67,16 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 - **Counters and habits:** `countActivity`, `countCompanions`, `countRun`, `checkHabits`, `habitEffect`; `habits` rows are read by `counter.kind`. P17e's emergent rituals can use the same `Development.counters` keys (`activity:<id>`, `companion:<id>`, `region:<id>`; add a key kind and a registry `counter.kind`).
 - **Quiet moments:** a discrete change is a `DevMoment` stamped at `scene/start` and shown at `scene/end`; the scene carries the directive `development:<unitId>`; keep new directive ids away from it.
 
+## Interfaces already provided by P15 (implemented — use, do not rebuild)
+
+P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows is what exists for this package and what is reserved for it. Every P15 reader answers null, zero or an empty list while the dynamic is off (`dynamicOn`, `herPracticeLive`), and nothing it adds draws from the rng unless someone is eligible: a hook you register must keep a campaign with no dynamic byte-identical (`tests/dynamic/unaffected.test.ts`). Keep new directive ids away from `dynamic:`; read domains by capability, styles, milestones and aftermaths by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **`her_question`:** the engine marks it ripe for a woman who holds nothing and whose Regard is falling but above `none`, or who `knows_dynamic` with `witness: dislikes` (`registerRipeSource`, `questionRipe`; cooldown 14 days per woman and one a week overall); the Regard move is on the answer (`answerQuestion`: `clinical` +2 for the honest key 0, `affectionate` +2 for the gentle key 1, others ±0). Your "what do you feel?" question and its free-text answer as a fact in the commander's words are yours; ruling E as revised in P15 §16.1 holds (no meter of the commander's feelings).
+- **Declared motive:** `dynamic/declare { unitId, motive }` sets `Relation.dynamic.declared` (weight 0.5, fading 0.05 a day, blended into the motive average): a milestone conversation or your question may call it.
+- **Her reading:** `HerReading`, `regionOf`, `position_shifted`; shown only as her region word (`Knowledge.dynamic`). The position chips `[PROVOKE]`, `[TEST HER]`, `[ANTICIPATE]` and the moment sources `her_test`, `her_demand`, `permission`, `summons`, `rule_collision`, `ritual_due` are **unbuilt** (`registerMomentTrigger`; only `compromat_hint` is wired): secret tests are yours.
+- **Emergent rituals and habits:** P15 added the P14b axis kinds `practice` and `expect` (five `developmentAxes` rows), `Development.lapsed` and `habits[].tags` (`respect` lapse on disappointment; no core habit carries the tag yet). The chosen address and the nickname: `reputations[].tone` (`respectful`, `pitying`, `mocking`) and `reputationDayStep`.
+- **Her weakness and the drawn signature:** Regard is hidden everywhere; the profile's `tells` and `traits` appear only once shown.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

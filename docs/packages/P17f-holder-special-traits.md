@@ -97,3 +97,13 @@ She writes and draws on the commander's skin, and over months the canvas becomes
 - **The canvas and Pygmalion:** her hobbies leave traces (`hobbies[].milestones[].trace`: `note` is a note in her quarters in her hand, `prop` a line in the dossier until P17c's layers draw it, `opinion` opens a topic); her opinions are `Unit.opinions` (read through `Knowledge.life` for what was told; a moved opinion keeps `history`). `temperamentOf` is her temperament.
 - **Facts about her days:** `writeLifeFact` / `revealFact` (hidden, tag `untold`), and the `life:` directive prefix is reserved.
 - Keep new directive ids away from `life:`; no rng draw (`lifeChance` / `lifeHash` hash a key with the salt); read life content by field, never by id. Details: P14c **Implemented as**.
+
+## Interfaces already provided by P15 (implemented — use, do not rebuild)
+
+P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows is what exists for this package and what is reserved for it. Every P15 reader answers null, zero or an empty list while the dynamic is off (`dynamicOn`, `herPracticeLive`), and nothing it adds draws from the rng unless someone is eligible: a hook you register must keep a campaign with no dynamic byte-identical (`tests/dynamic/unaffected.test.ts`). Keep new directive ids away from `dynamic:`; read domains by capability, styles, milestones and aftermaths by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **An eligible holder:** `canHold(state, reg, unitId)` and `holderCap`; `profile_import` is one call with sections, so a trait proposal is another section of the same call (site `setup.profile_import`, P14).
+- **Hiding marks and the squad:** `her_marks` and `territory_marking` are reserved `dynamicSigns` rows with no producer (`addSign` after `contentAllowed`; `territory_marking` is tagged `bodily_fluids`); a `mark_seen` memory rule is yours.
+- **Endings:** `exitDynamic(draft, ctx, unitId, route)` with its cost and an aftermath (`pickAftermath`, one draw); `formerHolder` and `rekindle` for a return; a realisation turn is P14b's appraisal.
+- **Whereabouts and the base:** `second_place` puts the commander in a holder's cabin on a booked evening (`roomOfPerson`); the commander marker is drawn by `planView`.
+- **Pattern for a trait with its own subsystem:** the `special/` modules read a trait by effect type; keep directive ids `special:`-prefixed and away from `dynamic:`.

@@ -185,10 +185,21 @@ The vocabulary (points, states, tags, modifiers and the 48 presets) is `docs/con
 - Descriptor words for the levels; the drill list; the foot-signal meanings; praise rules; the crime echoes of `vindictive` for `purge`, `mutiny`, `strain_trade`.
 - Every number above.
 
-## Interfaces to be provided by P15a, P15 and P16
+## Interfaces already provided by P15 (implemented — use, do not rebuild)
+
+P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows is what exists for this package and what is reserved for it. Every P15 reader answers null, zero or an empty list while the dynamic is off (`dynamicOn`, `herPracticeLive`), and nothing it adds draws from the rng unless someone is eligible: a hook you register must keep a campaign with no dynamic byte-identical (`tests/dynamic/unaffected.test.ts`). Keep new directive ids away from `dynamic:`; read domains by capability, styles, milestones and aftermaths by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **Regard:** `Relation.regard` exists for every named unit while the dynamic is on; `regardFall(draft, reg, unitId, humiliation 0–5, { witness, cause })` (style row: `regardFactor`, `regardSpeed`, `regardFloor`; a witness ×0.7) and `regardRise(draft, reg, unitId, kind, amount?)`. Wired: `cost` (an act while her reading's r ≤ 0), `record` (`marathon_done`), `dignity` (a hold that ended `released` or `checked` with no slip or cheat), `value`. **Reserved for this package:** `pleased_high`, `regal`'s praise doubling (the `TUNING.regard` row exists), help with her goal +4, and `drill` already doubles the `record` and `pleased_high` rises (`TUNING.regard.drill` and `.mastery`, the style read by key). Regard never changes hold or frames and is hidden everywhere (sentinel): the nickname tone and aftermath weights are the only outputs.
+- **Mastery:** `Relation.mastery[targetId]` (+5 an act, +3 more when her `how` is set and the act ended clean, levels 20 / 60 / 120 / 200 / 320, `mastery_gained`; level 2 reveals the zone through a `zone_revealed` fact). `addMastery`, `masteryLevel`. Keys are free strings: use your own (`posture:<id>`, `rhythm:<id>`, her foot language, her routine) beside the worship-target ids; the body map reads only `worshipTargets` ids. The `matched` result of a segment does not exist in P15a, so the `how` bonus reads a clean end.
+- **Styles and her profile:** `practiceStyles` has 11 rows with `regardForm`, `regardSpeed`, `regardFloor`, `regardFactor`, `surfacesWhen` and a `point` for her reading (`clinical` none); `drill`, `regal` and `vindictive` exist as rows with **no programme**: yours. `bond.practice.fairness`, `hintStyle` and `drive` import, validate, edit, lock and are read through `practiceOf`; `drive` already scales Want growth through `registerWantGrowth` (`wantGrowthMult`); `fairness` and `hintStyle` have no reader beyond the profile (yours).
+- **Her reading and satisfaction:** `HerReading` (`r`, `f`, `p`, the five motive weights, `region` incl. `cowed`) per holder, shown only as her region word; `satisfactionOf` gives the combat passive (`combatEffects`: ±5 %) that your care quality (±3 %) may extend through `registerCombatPassive`.
+- **Offering and the body map:** the offer composer's vocabularies (`part`, `posture`, `contact`, `service`, `time`, `role`, `endurance`, filtered by `entryAllowed`), `answerOffer`, `src/ui/dynamic/bodyMap.ts` (pure ports of the draft's geometry: `outlinePath`, `armPaths`, `hairPath`, three builds, four hairs): the commander's schematic can reuse them; the body map shows only what a fact revealed.
+- **Squad suspicion:** `addSign` rows `seen_together`, `time_alone`, `scent_*` are reserved with no producer.
+- **Moods and combat:** `moodSigns(state, reg, unitId)` returns her tells (revealed fields only), her mood word after a shared scene today and the length of her last DM replies; no meter.
+
+## Interfaces to be provided by P15a and P16
 
 - P15a: interaction types, segments and the cue pool, the marathon, noise, her gaze, the stimulus layer, her skills (`herSkill`), `contactPhysics`, `blockingPostures` with the point model.
-- P15: Regard (`regard`), the motive weights, `practiceStyles` rows, `bond.practice.fairness` / `hintStyle`, `Relation.mastery`.
 - P16: her discipline, the consent ladder, physical discipline and the slap, the named postures, `practice_generate`.
 
 ## Interfaces already provided by P14c (implemented — use, do not rebuild)

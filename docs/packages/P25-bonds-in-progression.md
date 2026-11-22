@@ -40,3 +40,11 @@ Tie growth to who she is and to the relationship with the commander, and give th
 ## Open decisions (author)
 
 - Rank texts, cross-training lists, the command tree and every number.
+
+## Interfaces already provided by P15 (implemented — use, do not rebuild)
+
+P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows is what exists for this package and what is reserved for it. Every P15 reader answers null, zero or an empty list while the dynamic is off (`dynamicOn`, `herPracticeLive`), and nothing it adds draws from the rng unless someone is eligible: a hook you register must keep a campaign with no dynamic byte-identical (`tests/dynamic/unaffected.test.ts`). Keep new directive ids away from `dynamic:`; read domains by capability, styles, milestones and aftermaths by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **The command domain's influence on others' builds:** the P13 override chips (`COMPLY` / `ARGUE` / `DEFY`) already work for a holder with `countermand` (`holderSource`, `rollOverrides`, `answerOverride`; COMPLY hold +3 and favour +2, DEFY hold −6 through `overrode_her`, favour −3, the contest at `rule`, no punishment roll). A veto of a respec, a set row or a demanded specialisation is a new order kind at the hook sites; `conflictOf(state, reg, order, judged?, source?)` takes her expectations (`holderAgenda`: her values, plus `keep_me_close` and `no_romance_with_others` for a `possessive` / `obsessive` primary).
+- **Read by capability:** `capabilitiesOf`, `hasCapability`, `holderWith(state, reg, 'countermand')`; a kept command after an exit (`command_kept`, her override keeps rolling until the commander wins votes against her, an enforcement of severity at least 3 lands, or the Leash is used on her).
+- **Regard and mastery** exist (`Relation.regard`, `Relation.mastery`) for signature growth readings; both are hidden values (sentinels).
