@@ -30,6 +30,9 @@ import { bodyMapFor, renderBodyMap } from '../../src/ui/dynamic/bodyMap';
 import { drawFrameChips } from '../../src/ui/dynamic/frameChip';
 import { drawOfferChips } from '../../src/ui/dynamic/offerComposer';
 import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
+import { renderTaskCard } from '../../src/ui/practice/taskCard';
+import { blankPractices } from '../../src/engine/practice/state';
+import { ANN as PRACTICE_ANN, BEA as PRACTICE_BEA, withService, world as practiceWorld } from '../engine/practice/world';
 import { buildKnowledge } from '../../src/analysis/knowledge';
 import { renderWorldParams } from '../../src/ui/setup/worldParams';
 import { zoneTag } from '../../src/engine/dynamic/zones';
@@ -726,6 +729,57 @@ describe('coverage: her milestone (P15)', () => {
       expect(addresses.has('dynamicMilestones:first_yes')).toBe(true);
       const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
       for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze="glossary:milestone"], [data-analyze="dynamicMilestones:first_yes"]')]) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
+describe('coverage: her task card and the record (P16)', () => {
+  it('every form of the card and the record lines mark every element, and every one opens a panel with no network or model call', () => {
+    const state = withService(practiceWorld(reg, 'role'));
+    const base = { id: 'pt1', holderId: PRACTICE_ANN, kind: 'task' as const, tags: ['service'], track: 'service', tier: 1 as const, stakes: 'minor' as const, check: 'model' as const, proof: 'none' as const, text: 'Bring the roster.', summary: 'bring the roster', status: 'offered' as const, acceptForm: 'button_cost' as const, day: state.day };
+    const forms = [
+      { ...base, id: 'pt1', stakes: 'trivial' as const, acceptForm: 'button' as const },
+      { ...base, id: 'pt2', check: 'slot_with_her' as const, deadline: { day: state.day, slot: 'evening' as const } },
+      { ...base, id: 'pt3', stakes: 'major' as const, acceptForm: 'words' as const, proof: 'witness' as const, audienceIds: [PRACTICE_BEA] },
+      { ...base, id: 'pt4', stakes: 'severe' as const, acceptForm: 'signed' as const },
+      { ...base, id: 'pt5', stakes: 'severe' as const, acceptForm: 'signed' as const, said: true as const, handover: 'key' as const },
+      { ...base, id: 'pt6', stakes: 'major' as const, acceptForm: 'sealed' as const, sealed: true as const },
+    ];
+    state.practices = { ...blankPractices(), seq: 7, tasks: forms, records: [{ day: 12, holderId: PRACTICE_ANN, line: 'Bring the roster. Day 12.' }] };
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    try {
+      for (const task of forms) {
+        const card = h('div');
+        root.append(card);
+        renderTaskCard(card, { state, reg, task, onAnswer: vi.fn(), onSign: vi.fn(), focusInput: vi.fn() });
+      }
+      const cmdr = h('div');
+      root.append(cmdr);
+      renderCmdrCard(cmdr, { state, registries: reg, raw: false });
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(state))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      const addresses = new Set(unitIdsIn(root));
+      for (const id of ['task_card', 'practice_task', 'consent_ladder', 'accept_words', 'accept_signed', 'practice_record', 'sealed']) expect(addresses.has(`glossary:${id}`), id).toBe(true);
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
+      for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze^="glossary:"]')]) {
         analyzer.openFor(el, { x: 10, y: 10 });
         const text = document.querySelector('.alius-analyze')?.textContent ?? '';
         expect(text, el.getAttribute('data-analyze')!).not.toBe('');

@@ -641,7 +641,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
-  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -951,6 +951,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
         onAnswerClaim: (id, answer) => answerClaim(id, answer), // P15: her claim
         onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
+        onAnswerTask: (id, answer) => void practice.answerTask(id, answer), // P16: her task
+        onSignTask: (id) => void practice.sign(id),
         onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
@@ -2489,6 +2491,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
       onAnswerClaim: (id, answer) => answerClaim(id, answer), // P15: her claim
       onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
+      onAnswerTask: (id, answer) => void practice.answerTask(id, answer), // P16: her task
+      onSignTask: (id) => void practice.sign(id),
       onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onAnswerRule: answerRule,

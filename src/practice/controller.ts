@@ -26,6 +26,13 @@ export interface PracticeController {
   /** REROLL of the words of a practice while the commander has not answered it (the key is the request id), and why it is not allowed. */
   reroll(requestId: string): Promise<void>;
   rerollState(requestId: string): { enabled: boolean; reason?: string };
+  /**
+   * ACCEPT, REFUSE or TALK on an offered task (`practice/answer_task`). TALK also opens a one-to-one scene with her (her quarters) unless she is in the open scene already. Toasts the
+   * reason and answers false when the engine refuses ("Say it in your own words." for an accept that must be said).
+   */
+  answerTask(taskId: string, answer: 'accept' | 'refuse' | 'talk'): Promise<boolean>;
+  /** The signature of a `signed` task whose words were said (`practice/sign`). Toasts the reason and answers false when the engine refuses. */
+  sign(taskId: string): boolean;
   /** Waits for the call in flight (tests). */
   idle(): Promise<void>;
 }
@@ -173,6 +180,30 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     rerollState(requestId) {
       const kind = kindOf(requestId);
       return kind === undefined ? { enabled: false, reason: 'That practice is gone.' } : deps.generations.rerollState(siteOf(kind), requestId);
+    },
+    async answerTask(taskId, answer) {
+      const s = state();
+      const task = s?.practices?.tasks.find((t) => t.id === taskId);
+      if (s === null || task === undefined) return false;
+      const events = deps.app.dispatch({ type: 'practice/answer_task', payload: { taskId, answer } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      if (answer === 'talk' && deps.startScene !== undefined && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [task.holderId], origin: 'event' });
+      deps.refreshContext();
+      return true;
+    },
+    sign(taskId) {
+      const events = deps.app.dispatch({ type: 'practice/sign', payload: { taskId } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
     },
     async idle() { while (flight) await flight.catch(() => {}); },
   };

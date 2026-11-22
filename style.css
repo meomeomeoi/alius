@@ -4208,6 +4208,52 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   letter-spacing: 0.05em;
 }
 
+/* Her task card (P16): her words, what it costs, who will know, what it closes, then the answers side by side. */
+#alius-shell .alius-task-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-task-cost {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+#alius-shell .alius-task-know,
+#alius-shell .alius-task-closes,
+#alius-shell .alius-task-hint,
+#alius-shell .alius-task-envelope {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-task-envelope {
+  border: 1px dashed currentColor;
+  padding: 4px 6px;
+}
+
+#alius-shell .alius-task-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* The signature is held: the button fills over the hold time (the reduced-motion rule stops the movement). */
+#alius-shell .alius-sign {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: 0 2px;
+  background-position: left bottom;
+}
+
+#alius-shell .alius-sign.alius-signing {
+  background-size: 100% 2px;
+  transition: background-size var(--alius-sign-ms, 1200ms) linear;
+}
+
+#alius-shell .alius-practice-records p {
+  margin: 2px 0;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

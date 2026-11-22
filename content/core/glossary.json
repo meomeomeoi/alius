@@ -3130,5 +3130,80 @@
       "hold",
       "setting_practice_wording"
     ]
+  },
+  {
+    "id": "practice_task",
+    "term": "Task",
+    "short": "Something a holder asks the commander to do, with a way to check it and often a time. Her words are hers; what it weighs and how it is judged is not.",
+    "long": "AUTHOR TO WRITE: A task is offered as a card. The commander accepts it, refuses it or talks it over. A kept task makes her hold firmer; a broken one costs her trust and may be answered.",
+    "see": [
+      "practice",
+      "task_card",
+      "consent_ladder"
+    ]
+  },
+  {
+    "id": "task_card",
+    "term": "Her task",
+    "short": "A task she has put to the commander, as a card: her words, what saying yes would cost, and the answers: accept, refuse, talk.",
+    "long": "AUTHOR TO WRITE: The card shows what the task costs before the commander answers. A task the commander does not answer may run out.",
+    "see": [
+      "practice_task",
+      "consent_ladder",
+      "sealed"
+    ]
+  },
+  {
+    "id": "consent_ladder",
+    "term": "How the commander says yes",
+    "short": "The more a task weighs, the more saying yes asks: a button, a button that shows its cost first, words, then words and a signature.",
+    "long": "AUTHOR TO WRITE: Refusing is always one press. Saying yes to something heavy is never an accident.",
+    "see": [
+      "accept_words",
+      "accept_signed",
+      "practice_task"
+    ]
+  },
+  {
+    "id": "accept_words",
+    "term": "Accept in words",
+    "short": "A task this heavy is accepted by saying so, in the scene or in her thread. The button only takes the commander to the place to type.",
+    "long": "AUTHOR TO WRITE: The game reads what the commander says. Nothing is accepted by a button here, and a question is not a yes.",
+    "see": [
+      "consent_ladder",
+      "accept_signed"
+    ]
+  },
+  {
+    "id": "accept_signed",
+    "term": "Accept and sign",
+    "short": "The heaviest tasks need the commander's words and then a signature, held down. The signature is kept on the record.",
+    "long": "AUTHOR TO WRITE: The line under the task says what the signature closes or hands over. Let go early and nothing is signed.",
+    "see": [
+      "consent_ladder",
+      "practice_record",
+      "accept_words"
+    ]
+  },
+  {
+    "id": "practice_record",
+    "term": "The record",
+    "short": "What the commander has signed, newest first, with the day. A sealed task is signed blank.",
+    "long": "AUTHOR TO WRITE: The record is kept by whoever asked. It is part of what she remembers.",
+    "see": [
+      "accept_signed",
+      "sealed"
+    ]
+  },
+  {
+    "id": "sealed",
+    "term": "Sealed task",
+    "short": "She hands over an envelope. What is in it is read when the commander accepts. Refusing an envelope counts as refusing something heavy.",
+    "long": "AUTHOR TO WRITE: Some women show the weight of what is inside, some only the envelope. A sealed task is signed blank.",
+    "see": [
+      "task_card",
+      "practice_record",
+      "consent_ladder"
+    ]
   }
 ]

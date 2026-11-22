@@ -1020,6 +1020,8 @@ export const TUNING = Object.freeze({
     } as const),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 } as const),
     /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`. */
+    /** The press-and-hold signature of a `signed` accept (R.1): how long it is held, in milliseconds. AUTHOR TO TUNE. */
+    sign: Object.freeze({ holdMs: 1200 }),
     falseReport: Object.freeze({ days: 14, witness: 0.2, insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 } as const) }),
   }),
 });

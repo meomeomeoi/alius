@@ -1348,6 +1348,8 @@ var TUNING = Object.freeze({
     }),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 }),
     /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`. */
+    /** The press-and-hold signature of a `signed` accept (R.1): how long it is held, in milliseconds. AUTHOR TO TUNE. */
+    sign: Object.freeze({ holdMs: 1200 }),
     falseReport: Object.freeze({ days: 14, witness: 0.2, insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 }) })
   })
 });
@@ -22913,6 +22915,22 @@ var writeTask = (draft, _ctx, request, out, plain8) => {
   p.tasks.push(task);
   return [{ type: "task_issued", taskId: id, holderId: request.holderId, kind: "task", requestId: request.id, ...plain8 ? { plain: true } : {}, ...request.sealed === true ? { sealed: true } : {} }];
 };
+function taskCost(state, reg, task) {
+  const takesSlot = task.kind === "hold" || task.check === "slot_with_her" || task.check === "booking_kept";
+  const slots = task.slots ?? (takesSlot ? 1 : 0);
+  const start = task.kind === "hold" ? { day: state.day, slot: state.slot } : task.deadline?.slot !== void 0 ? { day: task.deadline.day, slot: task.deadline.slot } : void 0;
+  const lapses = [];
+  if (slots > 0 && start !== void 0) {
+    const first2 = slotIndex(start.day, start.slot);
+    const span = new Set(Array.from({ length: slots }, (_, i) => first2 + i));
+    for (const b of state.personal?.bookings ?? []) {
+      if (b.status !== "booked" || b.unitId === task.holderId || !span.has(slotIndex(b.day, b.slot)) || !SLOT_ORDER.includes(b.slot)) continue;
+      const label2 = String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId);
+      if (!lapses.includes(label2)) lapses.push(label2);
+    }
+  }
+  return { slots, lapses, resources: {} };
+}
 var cap2 = (s) => s === "" ? s : s[0].toUpperCase() + s.slice(1);
 function recordLine(task) {
   const day = task.answeredDay ?? task.day;
@@ -40971,6 +40989,30 @@ function createPractice(deps) {
       const kind = kindOf4(requestId);
       return kind === void 0 ? { enabled: false, reason: "That practice is gone." } : deps.generations.rerollState(siteOf(kind), requestId);
     },
+    async answerTask(taskId, answer) {
+      const s = state();
+      const task = s?.practices?.tasks.find((t) => t.id === taskId);
+      if (s === null || task === void 0) return false;
+      const events = deps.app.dispatch({ type: "practice/answer_task", payload: { taskId, answer } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      if (answer === "talk" && deps.startScene !== void 0 && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: "quarters_unit", participants: [task.holderId], origin: "event" });
+      deps.refreshContext();
+      return true;
+    },
+    sign(taskId) {
+      const events = deps.app.dispatch({ type: "practice/sign", payload: { taskId } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
     async idle() {
       while (flight) await flight.catch(() => {
       });
@@ -52465,6 +52507,136 @@ function registerBlockingProviders() {
   registerAnalyzeProvider("stimulusKinds", stimulusReading);
 }
 
+// src/ui/practice/signature.ts
+var custom2 = null;
+function holdButton(o) {
+  const button2 = h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip alius-sign",
+    "data-task-sign": "",
+    "aria-label": "Sign: hold to sign",
+    style: `--alius-sign-ms: ${TUNING.practice.sign.holdMs}ms`,
+    ...analyzeNative(o.analyze, o.ctx)
+  }, "[ SIGN ]");
+  let timer;
+  const stop = () => {
+    if (timer !== void 0) clearTimeout(timer);
+    timer = void 0;
+    button2.classList.remove("alius-signing");
+  };
+  const start = () => {
+    if (timer !== void 0) return;
+    button2.classList.add("alius-signing");
+    timer = setTimeout(() => {
+      timer = void 0;
+      button2.classList.remove("alius-signing");
+      o.onSign();
+    }, TUNING.practice.sign.holdMs);
+  };
+  button2.addEventListener("pointerdown", start);
+  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop);
+  button2.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
+      e.preventDefault();
+      start();
+    }
+  });
+  button2.addEventListener("keyup", (e) => {
+    if (e.key === "Enter" || e.key === " ") stop();
+  });
+  return button2;
+}
+function renderSignature(o) {
+  return custom2 !== null ? custom2(o) : holdButton(o);
+}
+
+// src/ui/practice/taskCard.ts
+var WEIGHT_WORDS = { trivial: "slight", minor: "light", major: "heavy", severe: "grave" };
+var PROOF_WORDS = { none: "", dm_report: "a report to her", in_person: "in person", witness: "before a witness" };
+var HANDOVER_WORDS = { device: "the device", key: "the key to the quarters", calendar: "the calendar" };
+var SPARE_STYLES = ["cruel", "vindictive"];
+var slotsWord = (n) => `${n} slot${n === 1 ? "" : "s"}`;
+function closesOf(task) {
+  if (task.handover !== void 0) return `Hands over: ${HANDOVER_WORDS[task.handover] ?? task.handover}.`;
+  return `Closes: ${plainDraft(task.summary).replace(/[.\s]+$/, "")}.`;
+}
+function renderTaskCard(host, ctx2) {
+  const { state, reg, task } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === task.holderId);
+  if (unit3 === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const sealed = task.sealed === true;
+  const style = practiceOf(state, reg, unit3.id)?.style.primary;
+  const ladder = task.acceptForm === "words" ? "glossary:accept_words" : task.acceptForm === "signed" ? "glossary:accept_signed" : sealed ? "glossary:sealed" : "glossary:consent_ladder";
+  const button2 = (kind, text2, onclick, address) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-task-answer": kind,
+    "data-task": task.id,
+    ...analyzeNative(address, live3),
+    onclick
+  }, text2);
+  const parts = [];
+  if (sealed) {
+    const label2 = String(reg.dynamicTracks.get(task.track)?.label ?? "");
+    const weight = SPARE_STYLES.includes(String(style)) ? "" : ` Weight: ${WEIGHT_WORDS[task.stakes]}.`;
+    const hint = style === "affectionate" && label2 !== "" ? ` About: ${label2}.` : "";
+    parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
+  } else {
+    parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
+    if (task.acceptForm === "button_cost") {
+      const cost = taskCost(state, reg, task);
+      const lines = [
+        ...cost.slots > 0 ? [`Takes ${slotsWord(cost.slots)} of the commander's time.`] : [],
+        ...cost.lapses.map((l) => `Would lapse: ${l}.`),
+        ...Object.entries(cost.resources).map(([resource, band2]) => `Uses ${band2} ${resource}.`)
+      ];
+      parts.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
+    }
+    if (task.acceptForm === "words" || task.acceptForm === "signed") {
+      const names = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
+      const proof = PROOF_WORDS[task.proof];
+      parts.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names.length > 0 ? names.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
+    }
+    if (task.acceptForm === "signed") parts.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
+    if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
+  }
+  const answers = [];
+  if (task.acceptForm === "signed" && task.said === true) answers.push(renderSignature({ onSign: ctx2.onSign, analyze: "glossary:accept_signed", ctx: live3 }));
+  else if (task.acceptForm === "words" || task.acceptForm === "signed") answers.push(button2("accept", "[ ACCEPT ]", () => ctx2.focusInput(), ladder));
+  else answers.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
+  answers.push(button2("refuse", "[ REFUSE ]", () => ctx2.onAnswer("refuse"), "glossary:practice_task"));
+  if (!sealed) answers.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
+  parts.push(h("div", { class: "alius-task-answers" }, ...answers));
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-task-body" }, ...parts), accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-task");
+  card2.setAttribute("data-task", task.id);
+  card2.setAttribute("data-task-form", task.acceptForm);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawTaskCards(host, state, reg, pick3, handlers2) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const task of state.practices?.tasks ?? []) {
+    if (task.kind !== "task" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput });
+  }
+}
+var RECORD_LINES = 5;
+function renderRecordLines(state, reg) {
+  const records = state.practices?.records ?? [];
+  if (records.length === 0 || !dynamicOn(state, reg)) return null;
+  const lines = records.slice(-RECORD_LINES).reverse();
+  return h(
+    "div",
+    { class: "alius-practice-records", "data-practice-records": "" },
+    ...lines.map((r) => h("p", { "data-practice-record": r.holderId, ...analyzeAttrs("glossary:practice_record", { unitId: r.holderId }) }, `${state.squad.find((u) => u.id === r.holderId)?.displayName ?? r.holderId}: ${plainDraft(r.line)}`))
+  );
+}
+
 // src/ui/personal/tokens.ts
 function renderTokens(state, reg, handlers2) {
   const owned = state.personal?.tokens?.owned ?? [];
@@ -52634,6 +52806,8 @@ function renderCmdrCard(host, ctx2) {
       h("span", { class: "alius-chip", ...analyzeAttrs("glossary:dynamic", { unitId: line2.unitId }) }, `Held by ${state.squad.find((u) => u.id === line2.unitId)?.displayName ?? line2.unitId}`),
       ...line2.domains.flatMap((id) => [" ", h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${id}`, { unitId: line2.unitId }) }, String(reg.dynamicDomains.get(id)?.label ?? id).toUpperCase())])
     )),
+    renderRecordLines(state, reg),
+    // P16: what the commander has signed, under the Held by line
     renderTokens(state, reg, { onWear: (id) => ctx2.onWear?.(id), onTakeOff: (id) => ctx2.onTakeOff?.(id) })
   );
   renderInterceptLog(file, state, reg);
@@ -56871,6 +57045,8 @@ function renderCommsTab(host, ctx2) {
     drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     const returnCards = h("div", { class: "alius-return-cards" });
     drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current, (answer) => ctx2.onAnswerReturn?.(answer));
+    const taskCards = h("div", { class: "alius-task-cards" });
+    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus() });
     const offerChips = h("div", { class: "alius-offer-surface" });
     if (ctx2.onOffer) drawOfferChips(offerChips, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
@@ -56881,7 +57057,7 @@ function renderCommsTab(host, ctx2) {
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
     const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, offerChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, taskCards, offerChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit3.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
@@ -58034,6 +58210,7 @@ function renderSceneScreen(host, ctx2) {
   let claimCards;
   let offerHost;
   let returnCards;
+  let taskCards;
   let freqChips;
   let genChips;
   let genTools;
@@ -58208,6 +58385,10 @@ function renderSceneScreen(host, ctx2) {
     drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
     drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx2.onAnswerReturn?.(answer));
+    drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => {
+      ctx2.onAnswerTask?.(id, answer);
+      if (answer === "talk") input.focus();
+    }, sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus() });
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
@@ -58431,6 +58612,7 @@ function renderSceneScreen(host, ctx2) {
     milestoneCards = h("div", { class: "alius-milestone-cards" });
     claimCards = h("div", { class: "alius-claim-cards" });
     returnCards = h("div", { class: "alius-return-cards" });
+    taskCards = h("div", { class: "alius-task-cards" });
     freqChips = h("div", { class: "alius-chips alius-freq-chips" });
     genChips = h("div", { class: "alius-generation-chips" });
     genTools = h("span", { class: "alius-scene-reroll" });
@@ -58546,6 +58728,7 @@ function renderSceneScreen(host, ctx2) {
       milestoneCards,
       claimCards,
       returnCards,
+      taskCards,
       freqChips,
       disciplineMenus,
       letsHost,
@@ -59509,7 +59692,7 @@ function defianceProvider(_s, env, k) {
   if (w.warnings.length > 0) lines.push(`${w.warnings.length === 1 ? "One warning" : "Two warnings"} given.`);
   return { lines };
 }
-var WEIGHT_WORDS = (w) => w < 0.2 ? "low" : w < 0.35 ? "medium" : "high";
+var WEIGHT_WORDS2 = (w) => w < 0.2 ? "low" : w < 0.35 ? "medium" : "high";
 function expectationProvider(subject, env, k) {
   const w = env.state ? wardenOf(env.state) : null;
   const entry = env.registries.wardenExpectations.get(subject.id);
@@ -59517,7 +59700,7 @@ function expectationProvider(subject, env, k) {
   const x = w.expectations.find((e) => e.kind === entry.kind && e.known);
   if (!x) return null;
   const raw = k.raw(x.weight);
-  return { lines: [`She weighs this ${WEIGHT_WORDS(x.weight)}${raw !== null ? ` (${raw})` : ""}.`] };
+  return { lines: [`She weighs this ${WEIGHT_WORDS2(x.weight)}${raw !== null ? ` (${raw})` : ""}.`] };
 }
 function intrigueProvider(_s, env) {
   const s = env.state;
@@ -62274,7 +62457,7 @@ function createApp(st, deps) {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) });
-  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext });
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -62599,6 +62782,9 @@ function createApp(st, deps) {
         // P15: her claim
         onAnswerReturn: (answer) => void dynamic.answerReturn(answer),
         // P15: her offer to begin again
+        onAnswerTask: (id, answer) => void practice.answerTask(id, answer),
+        // P16: her task
+        onSignTask: (id) => void practice.sign(id),
         onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask),
         // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule2,
@@ -64112,6 +64298,9 @@ function createApp(st, deps) {
       // P15: her claim
       onAnswerReturn: (answer) => void dynamic.answerReturn(answer),
       // P15: her offer to begin again
+      onAnswerTask: (id, answer) => void practice.answerTask(id, answer),
+      // P16: her task
+      onSignTask: (id) => void practice.sign(id),
       onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask),
       // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => {

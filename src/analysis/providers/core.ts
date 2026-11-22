@@ -341,6 +341,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'dynamic', 'hold', 'her_reading', 'dynamic_exit', 'leash_block', 'oversight_inquiry', 'compromat', 'regard', 'probe', 'mastery', 'dynamic_felt',
   // P16 (what she asks of the commander; the later tasks add the cards' own)
   'practice',
+  // P16 (the task card and the consent ladder)
+  'practice_task', 'task_card', 'consent_ladder', 'accept_words', 'accept_signed', 'practice_record', 'sealed',
 ];
 
 let registered = false;

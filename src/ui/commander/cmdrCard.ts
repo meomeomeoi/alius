@@ -9,6 +9,7 @@ import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
 import { commanderStressBand } from '../../engine/special/commanderStress';
+import { renderRecordLines } from '../practice/taskCard';
 import { renderTokens } from '../personal/tokens';
 import { renderInterceptLog } from '../special/interceptLog';
 import { renderDebtsBlock } from '../special/debtsBlock';
@@ -98,6 +99,7 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
       ...heldBy(state, reg).map((line) => h('p', { 'data-held-by': line.unitId },
         h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:dynamic', { unitId: line.unitId }) }, `Held by ${state.squad.find((u) => u.id === line.unitId)?.displayName ?? line.unitId}`),
         ...line.domains.flatMap((id): Child[] => [' ', h('span', { class: 'alius-chip', ...analyzeAttrs(`dynamicDomains:${id}`, { unitId: line.unitId }) }, String(reg.dynamicDomains.get(id)?.label ?? id).toUpperCase())]))),
+      renderRecordLines(state, reg), // P16: what the commander has signed, under the Held by line
       renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
   renderInterceptLog(file, state, reg); // P12: nothing without the frequency
   renderPremonitions(file, state, reg); // P12: nothing without the paranoia
