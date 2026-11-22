@@ -6,6 +6,7 @@
  * Everything goes in as text; the model's words never become markup.
  */
 import type { ChatMessage } from '../../../st/adapter';
+import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 import { fillProse } from './prose';
 
@@ -61,7 +62,7 @@ export function measureReply(host: HTMLElement, onMore?: () => void): void {
     body.scrollTop = body.scrollHeight;
     if (!block.querySelector('[data-more]')) {
       const handler = onMore ?? (moreHandlers.get(block) ?? (() => {}));
-      block.prepend(h('button', { type: 'button', class: 'alius-reply-more', 'data-more': '', 'aria-label': 'Open the history: more above', onclick: handler }, '▲ more above'));
+      block.prepend(h('button', { type: 'button', class: 'alius-reply-more', 'data-more': '', 'aria-label': 'Open the history: more above', ...analyzeNative('glossary:reply_more'), onclick: handler }, '▲ more above'));
     }
   } else {
     delete block.dataset.overflow;

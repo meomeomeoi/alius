@@ -57,6 +57,15 @@ describe('proseRuns (the reply as written)', () => {
     ]);
   });
 
+  it('**bold** (models write it often) is emphasis like *this*, in prose and inside a quoted speech (review M5)', () => {
+    expect(proseRuns('a **bold** b')).toEqual([{ kind: 'prose', text: 'a ' }, { kind: 'em', text: 'bold' }, { kind: 'prose', text: ' b' }]);
+    expect(proseRuns('"Say **it** now"')).toEqual([
+      { kind: 'speech', text: '"Say ' }, { kind: 'em', text: 'it', speech: true }, { kind: 'speech', text: ' now"' },
+    ]);
+    expect(joined('**bold')).toBe('**bold'); // no partner: plain
+    expect(proseLength('**ab**')).toBe(2);
+  });
+
   it('empty marks and an empty text are plain', () => {
     expect(proseRuns('')).toEqual([]);
     expect(joined('a ** b')).toBe('a ** b');

@@ -1,7 +1,7 @@
 /**
  * P10e: a reply as it was written. Nothing is split into "action" and "speech" lines and nothing is removed:
  *  - text in double quotes (straight or curly) is speech;
- *  - `*asterisks*` are emphasis (the asterisks are not shown);
+ *  - `*asterisks*` (and `**double**`) are emphasis (the asterisks are not shown);
  *  - everything else is prose.
  * A mark with no partner is plain text from the mark to the end of its line (never an error, never an eaten character).
  * Pure: no DOM here but in `fillProse`, which only ever sets text (the model's words never become markup).
@@ -27,6 +27,14 @@ function closeOnLine(text: string, from: number, mark: string): number {
   return -1;
 }
 
+/** The index of the `**` that closes a `**bold**` opened at `from` on the same line (with something between), or -1: models write bold often, it reads as emphasis. */
+function boldEnd(text: string, from: number): number {
+  if (text[from + 1] !== '*') return -1;
+  const end = text.indexOf('**', from + 3);
+  if (end < 0 || text.slice(from + 2, end).includes('\n')) return -1;
+  return end;
+}
+
 /** A speech region cut at its balanced `*…*` pairs (the first run keeps the opening quote, the last the closing one). */
 function speechRuns(region: string): ProseRun[] {
   const out: ProseRun[] = [];
@@ -34,6 +42,14 @@ function speechRuns(region: string): ProseRun[] {
   let j = 0;
   while (j < region.length) {
     if (region[j] === '*') {
+      const bold = boldEnd(region, j);
+      if (bold > 0) {
+        if (cur) out.push({ kind: 'speech', text: cur });
+        cur = '';
+        out.push({ kind: 'em', text: region.slice(j + 2, bold), speech: true });
+        j = bold + 2;
+        continue;
+      }
       const e = region.indexOf('*', j + 1);
       if (e > j + 1) {
         if (cur) out.push({ kind: 'speech', text: cur });
@@ -69,6 +85,13 @@ export function proseRuns(text: string): ProseRun[] {
   while (i < text.length) {
     const c = text[i];
     if (c === '*') {
+      const bold = boldEnd(text, i);
+      if (bold > 0) {
+        flush();
+        out.push({ kind: 'em', text: text.slice(i + 2, bold) });
+        i = bold + 2;
+        continue;
+      }
       const end = closeOnLine(text, i, '*');
       if (end < 0) i = plainRest(i);
       else if (end === i + 1) { buf += '**'; i += 2; } // an empty pair is nothing to emphasise

@@ -49,6 +49,8 @@ function setup(messages: ChatMessage[], settings: Partial<AliusSettings> = {}) {
     isOpen: () => q('.alius-curtain')?.dataset.open === 'true',
     input: () => q<HTMLInputElement>('input[name="cmd"]')!,
     finishSend: () => pendingSend?.(true),
+    /** The same scene under another id (a scene swapped under a live screen). */
+    retarget: () => { state = { ...state, scene: { ...state.scene!, id: 'sc_other' } } as CampaignState; screen.refresh(); },
   };
 }
 const wheel = (el: Element, deltaY: number) => el.dispatchEvent(new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true }));
@@ -106,8 +108,47 @@ describe('the curtain: opening and closing (P10e)', () => {
     expect(t.isOpen()).toBe(true);
     scroll.scrollTop = 1500;
     wheel(scroll, 120);
+    expect(t.isOpen()).toBe(true); // one notch is not a decision (review: trackpad momentum must not close it)
+    wheel(scroll, 120);
+    expect(t.isOpen()).toBe(false); // 240 or more, once the end is reached
+    vi.restoreAllMocks();
+  });
+
+  it('the wheel down closes it only on an accumulated 240 at the end: momentum, a wheel up and a pause all start over', () => {
+    const t = setup([msg(0)]);
+    t.q('[data-action="history"]')!.click();
+    const scroll = t.q('.alius-curtain-scroll')!;
+    vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockReturnValue(2000);
+    vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(500);
+    scroll.scrollTop = 1500;
+    for (let i = 0; i < 20; i++) wheel(scroll, 8); // the tail of a trackpad swipe: 160 in all
+    expect(t.isOpen()).toBe(true);
+    wheel(scroll, -30); // the other way: the count starts over
+    wheel(scroll, 200);
+    expect(t.isOpen()).toBe(true);
+    vi.advanceTimersByTime(900); // a pause: the count starts over
+    wheel(scroll, 100);
+    expect(t.isOpen()).toBe(true);
+    scroll.scrollTop = 100; // mid-scroll: nothing counts, and the count is gone
+    wheel(scroll, 300);
+    expect(t.isOpen()).toBe(true);
+    scroll.scrollTop = 1500;
+    wheel(scroll, 100);
+    wheel(scroll, 100);
+    expect(t.isOpen()).toBe(true);
+    wheel(scroll, 100);
     expect(t.isOpen()).toBe(false);
     vi.restoreAllMocks();
+  });
+
+  it('a scene swapped under a live screen starts with the history down and no leftover flag on the root (review M1)', () => {
+    const t = setup([msg(0)]);
+    t.q('[data-action="history"]')!.click();
+    expect(t.q('.alius-scene')!.dataset.curtain).toBe('open');
+    t.retarget();
+    expect(t.q('.alius-scene')!.dataset.curtain).toBeUndefined();
+    expect(t.isOpen()).toBe(false);
+    expect(t.q('.alius-stage-input input[name="cmd"]')).not.toBeNull(); // the line is back in its own host
   });
 
   it('opening marks the history hint as used', () => {

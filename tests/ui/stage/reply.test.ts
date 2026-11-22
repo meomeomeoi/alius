@@ -130,9 +130,9 @@ describe('sentenceRunIndex', () => {
 
 describe('the reply on the scene screen', () => {
   beforeEach(() => vi.useFakeTimers());
-  function setup(messages: ChatMessage[], settings: Partial<AliusSettings> = {}, participants = [ANN]) {
+  function setup(messages: ChatMessage[], settings: Partial<AliusSettings> = {}, participants = [ANN], origin: 'event' | 'prologue' = 'event') {
     let state: CampaignState = campaign(reg, 4);
-    const r = run(state, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants, origin: 'event', startIndex: 0 } });
+    const r = run(state, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants, origin, startIndex: 0 } });
     expect(errors(r.events)).toEqual([]);
     state = r.state;
     const controller = {
@@ -191,6 +191,20 @@ describe('the reply on the scene screen', () => {
     expect(t.q('.alius-stage-status button[data-action="stop"]')).not.toBeNull();
     t.screen.handle({ type: 'pacing' });
     expect(t.q('.alius-stage-status .alius-pacing')!.textContent).toContain('TIME IS PASSING');
+  });
+
+  it('the reply block is a polite live region, so a screen reader hears each reply (review M4)', () => {
+    const t = setup([user(0, 'Hi'), msg(1, { text: 'Hello.' })]);
+    const host = t.q('.alius-stage-reply')!;
+    expect(host.getAttribute('role')).toBe('log');
+    expect(host.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('the empty-scene hint names where the swipe tools are now (review M7)', () => {
+    const t = setup([], {}, [ANN], 'prologue');
+    expect(t.q('.alius-scene-hint')!.textContent).toContain('squad is about to speak first');
+    expect(t.q('.alius-scene-hint')!.textContent).not.toMatch(/above/);
+    expect(t.q('.alius-scene-hint')!.textContent).toMatch(/top right/);
   });
 
   it('an empty scene keeps its hint, in the reply block', () => {

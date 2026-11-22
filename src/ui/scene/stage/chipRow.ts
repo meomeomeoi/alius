@@ -4,6 +4,7 @@
  * row scrolls sideways when it does not fit and ends with "+N" (a click wraps it open). The stop word of a running physics
  * is pinned at its right end (the `stop` slot) so it is never collapsed away.
  */
+import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 
 /** The row's slots, in order (the table of spec §12a.5 names them). */
@@ -32,7 +33,7 @@ export function createChipRow(host: HTMLElement, names: readonly string[]): Chip
     let more = element.querySelector<HTMLElement>('[data-more-chips]');
     if (!more) {
       more = h('button', {
-        type: 'button', class: 'alius-chip-more', 'data-more-chips': '', 'aria-label': 'Show every chip',
+        type: 'button', class: 'alius-chip-more', 'data-more-chips': '', 'aria-label': 'Show every chip', ...analyzeNative('glossary:chip_overflow'),
         onclick: () => {
           if (element.dataset.expanded === 'true') delete element.dataset.expanded;
           else element.dataset.expanded = 'true';

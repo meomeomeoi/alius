@@ -56,8 +56,16 @@ export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts
       /* a synthetic pointer has nothing to capture */
     }
   };
+  const stop = (): void => {
+    drag = null;
+    root.classList.remove('alius-looking');
+  };
   const move = (e: Event): void => {
     if (!drag) return;
+    if (((e as PointerEvent).buttons & 2) === 0) { // the button was let go where no pointerup reached the frame (outside the window, an Alt-Tab)
+      stop();
+      return;
+    }
     const width = frame.getBoundingClientRect().width;
     if (width <= 0) return;
     const dx = drag.x - (e as PointerEvent).clientX;
@@ -70,21 +78,23 @@ export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts
   const up = (e: Event): void => {
     if (!drag || (e as PointerEvent).button !== 2) return;
     if (!drag.moved) lastClick = Date.now(); // a press without a drag: the first half of a double click
-    drag = null;
-    root.classList.remove('alius-looking');
+    stop();
   };
+  // a cancelled pointer or a lost capture ends the drag whatever the button says (it is -1 there)
   const menu = (e: Event): void => e.preventDefault();
 
   frame.addEventListener('pointerdown', down);
   frame.addEventListener('pointermove', move);
   frame.addEventListener('pointerup', up);
-  frame.addEventListener('pointercancel', up);
+  frame.addEventListener('pointercancel', stop);
+  frame.addEventListener('lostpointercapture', stop);
   frame.addEventListener('contextmenu', menu);
   return () => {
     frame.removeEventListener('pointerdown', down);
     frame.removeEventListener('pointermove', move);
     frame.removeEventListener('pointerup', up);
-    frame.removeEventListener('pointercancel', up);
+    frame.removeEventListener('pointercancel', stop);
+    frame.removeEventListener('lostpointercapture', stop);
     frame.removeEventListener('contextmenu', menu);
     root.classList.remove('alius-looking');
   };

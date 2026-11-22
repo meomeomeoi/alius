@@ -6,6 +6,7 @@
  * are not changed: each writes into its slot, and `layout()` decorates what they drew after every redraw.
  * Set-aside is remembered by `sceneId|slot|the card's first data id` (module memory; `resetSceneStage()` forgets it).
  */
+import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 
 export const DOCK_SLOTS = ['moment', 'posture-call', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return'] as const;
@@ -39,7 +40,7 @@ function idOf(card: HTMLElement, index: number): string {
 export function createDock(host: HTMLElement, names: readonly string[]): Dock {
   const slots = new Map<string, HTMLElement>();
   for (const n of names) slots.set(n, h('div', { class: 'alius-dock-slot', 'data-slot': n }));
-  const waiting = h('button', { type: 'button', class: 'alius-dock-waiting', 'aria-label': 'Bring back the cards set aside' });
+  const waiting = h('button', { type: 'button', class: 'alius-dock-waiting', 'aria-label': 'Bring back the cards set aside', ...analyzeNative('glossary:dock_cards') });
   waiting.hidden = true;
   const element = h('div', { class: 'alius-dock' }, ...slots.values(), waiting);
   host.append(element);
@@ -106,7 +107,7 @@ export function createDock(host: HTMLElement, names: readonly string[]): Dock {
         const mark = el.querySelector<HTMLElement>(':scope > [data-set-aside]');
         if (isOpen && !mark) {
           el.append(h('button', {
-            type: 'button', class: 'alius-dock-aside', 'data-set-aside': '', 'aria-label': 'Set this card aside', title: 'Set aside',
+            type: 'button', class: 'alius-dock-aside', 'data-set-aside': '', 'aria-label': 'Set this card aside', title: 'Set aside', ...analyzeNative('glossary:dock_cards'),
             onclick: (ev: Event) => {
               ev.stopPropagation();
               const k = el.getAttribute('data-dock-key');

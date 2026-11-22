@@ -41,6 +41,9 @@ export interface Curtain {
   destroy(): void;
 }
 
+/** The accumulated wheel-down delta at the end of the list that closes the curtain, and the pause (ms) that resets it. */
+const CLOSE_DELTA = 240;
+const WHEEL_PAUSE_MS = 500;
 const atEnd = (el: HTMLElement): boolean => el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
 
 export function createCurtain(host: HTMLElement, opts: { onOpen(): void; onClose(): void }): Curtain {
@@ -115,9 +118,24 @@ export function createCurtain(host: HTMLElement, opts: { onOpen(): void; onClose
     else scroller.scrollTop = previous;
   }
 
-  // the wheel down at the end of the list lets the curtain go
+  // the wheel down at the end of the list lets the curtain go, but only on a deliberate wheel: an accumulated CLOSE_DELTA in the same direction
+  // once the end is reached (the tail of a trackpad swipe must not close it). Another direction, leaving the end or a pause starts the count over.
+  let pulled = 0;
+  let lastWheel = -Infinity;
   scroller.addEventListener('wheel', (ev) => {
-    if (opened && (ev as WheelEvent).deltaY > 0 && atEnd(scroller)) curtain.close();
+    const dy = (ev as WheelEvent).deltaY;
+    const now = Date.now();
+    if (now - lastWheel > WHEEL_PAUSE_MS) pulled = 0;
+    lastWheel = now;
+    if (!opened || dy <= 0 || !atEnd(scroller)) {
+      pulled = 0;
+      return;
+    }
+    pulled += dy;
+    if (pulled >= CLOSE_DELTA) {
+      pulled = 0;
+      curtain.close();
+    }
   });
 
   const curtain: Curtain = {

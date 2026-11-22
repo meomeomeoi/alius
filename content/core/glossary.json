@@ -3495,5 +3495,23 @@
       "blocking",
       "blocking_strip"
     ]
+  },
+  {
+    "id": "dock_cards",
+    "term": "Her cards",
+    "short": "Her cards: a moment, a task, a punishment, a hold. One is open; click a heading to open another. The cross sets one aside; the counter brings them back.",
+    "long": "AUTHOR TO WRITE: The cards stand at the left of the picture, never over her face. A card that is set aside is only hidden, not answered. A running hold always stays open."
+  },
+  {
+    "id": "chip_overflow",
+    "term": "More chips",
+    "short": "The chip row is wider than the screen. The number counts the chips past its edge; click it to show them all.",
+    "long": "AUTHOR TO WRITE: The row scrolls sideways, too. Click the minus to fold it again."
+  },
+  {
+    "id": "reply_more",
+    "term": "More above",
+    "short": "The reply is longer than the lines shown. Click to open the history and read all of it.",
+    "long": "AUTHOR TO WRITE: The wheel up over the picture or the reply opens the history too; Esc closes it."
   }
 ]

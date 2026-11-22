@@ -212,7 +212,7 @@ describe('scene backdrop (P10c)', () => {
     await flush();
     const frame = t.host.querySelector<HTMLElement>('.alius-layer-frame')!;
     Object.defineProperty(frame, 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
-    const ptr = (type: string, x: number) => frame.dispatchEvent(new MouseEvent(type, { clientX: x, button: 2, bubbles: true }));
+    const ptr = (type: string, x: number) => frame.dispatchEvent(new MouseEvent(type, { clientX: x, button: 2, buttons: type === 'pointermove' ? 2 : 0, bubbles: true }));
     ptr('pointerdown', 500);
     ptr('pointermove', 400);
     ptr('pointerup', 400);
@@ -231,7 +231,7 @@ describe('scene backdrop (P10c)', () => {
     await flush();
     const frame = t.host.querySelector<HTMLElement>('.alius-layer-frame')!;
     Object.defineProperty(frame, 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
-    const ptr = (type: string, x: number) => frame.dispatchEvent(new MouseEvent(type, { clientX: x, button: 2, bubbles: true }));
+    const ptr = (type: string, x: number) => frame.dispatchEvent(new MouseEvent(type, { clientX: x, button: 2, buttons: type === 'pointermove' ? 2 : 0, bubbles: true }));
     ptr('pointerdown', 500);
     ptr('pointermove', 300);
     ptr('pointerup', 300);

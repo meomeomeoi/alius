@@ -514,7 +514,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (messages.length === 0) {
       const prologue = s.scene?.origin === 'prologue';
       replyHost.replaceChildren(h('p', { class: 'alius-dim alius-scene-hint' }, prologue
-        ? 'The squad is about to speak first. Answer them below (Enter sends); ‹ ↻ › above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like.'
+        ? 'The squad is about to speak first. Answer them below (Enter sends); ‹ ↻ › at the top right swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like.'
         : 'Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene.'));
     }
   }
@@ -666,6 +666,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     sceneKey = s.scene!.id;
     layers = buildLayers(root);
     curtain?.destroy();
+    delete root.dataset.curtain; // a new scene starts with the history down (the old curtain's close hook is gone)
     wordsChecked = null;
     curtain = createCurtain(layers.curtain, {
       onOpen: () => {
@@ -691,6 +692,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     spriteHost.classList.add('alius-sprites');
     hud = h('div', { class: 'alius-hud' });
     replyHost = layers.hosts.reply;
+    replyHost.setAttribute('role', 'log'); // a screen reader hears each reply
+    replyHost.setAttribute('aria-live', 'polite');
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
     offerInner = h('div', { class: 'alius-offer-chips-host' });

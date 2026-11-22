@@ -63087,6 +63087,7 @@ function createChipRow(host, names2) {
         class: "alius-chip-more",
         "data-more-chips": "",
         "aria-label": "Show every chip",
+        ...analyzeNative("glossary:chip_overflow"),
         onclick: () => {
           if (element.dataset.expanded === "true") delete element.dataset.expanded;
           else element.dataset.expanded = "true";
@@ -63146,7 +63147,7 @@ function idOf2(card2, index2) {
 function createDock(host, names2) {
   const slots = /* @__PURE__ */ new Map();
   for (const n of names2) slots.set(n, h("div", { class: "alius-dock-slot", "data-slot": n }));
-  const waiting3 = h("button", { type: "button", class: "alius-dock-waiting", "aria-label": "Bring back the cards set aside" });
+  const waiting3 = h("button", { type: "button", class: "alius-dock-waiting", "aria-label": "Bring back the cards set aside", ...analyzeNative("glossary:dock_cards") });
   waiting3.hidden = true;
   const element = h("div", { class: "alius-dock" }, ...slots.values(), waiting3);
   host.append(element);
@@ -63212,6 +63213,7 @@ function createDock(host, names2) {
             "data-set-aside": "",
             "aria-label": "Set this card aside",
             title: "Set aside",
+            ...analyzeNative("glossary:dock_cards"),
             onclick: (ev) => {
               ev.stopPropagation();
               const k = el.getAttribute("data-dock-key");
@@ -63268,8 +63270,16 @@ function attachLook(frame, root, opts) {
     } catch {
     }
   };
+  const stop2 = () => {
+    drag = null;
+    root.classList.remove("alius-looking");
+  };
   const move = (e) => {
     if (!drag) return;
+    if ((e.buttons & 2) === 0) {
+      stop2();
+      return;
+    }
     const width = frame.getBoundingClientRect().width;
     if (width <= 0) return;
     const dx = drag.x - e.clientX;
@@ -63282,20 +63292,21 @@ function attachLook(frame, root, opts) {
   const up = (e) => {
     if (!drag || e.button !== 2) return;
     if (!drag.moved) lastClick = Date.now();
-    drag = null;
-    root.classList.remove("alius-looking");
+    stop2();
   };
   const menu = (e) => e.preventDefault();
   frame.addEventListener("pointerdown", down2);
   frame.addEventListener("pointermove", move);
   frame.addEventListener("pointerup", up);
-  frame.addEventListener("pointercancel", up);
+  frame.addEventListener("pointercancel", stop2);
+  frame.addEventListener("lostpointercapture", stop2);
   frame.addEventListener("contextmenu", menu);
   return () => {
     frame.removeEventListener("pointerdown", down2);
     frame.removeEventListener("pointermove", move);
     frame.removeEventListener("pointerup", up);
-    frame.removeEventListener("pointercancel", up);
+    frame.removeEventListener("pointercancel", stop2);
+    frame.removeEventListener("lostpointercapture", stop2);
     frame.removeEventListener("contextmenu", menu);
     root.classList.remove("alius-looking");
   };
@@ -63371,12 +63382,26 @@ function closeOnLine(text3, from, mark) {
   }
   return -1;
 }
+function boldEnd(text3, from) {
+  if (text3[from + 1] !== "*") return -1;
+  const end = text3.indexOf("**", from + 3);
+  if (end < 0 || text3.slice(from + 2, end).includes("\n")) return -1;
+  return end;
+}
 function speechRuns(region) {
   const out = [];
   let cur = "";
   let j = 0;
   while (j < region.length) {
     if (region[j] === "*") {
+      const bold = boldEnd(region, j);
+      if (bold > 0) {
+        if (cur) out.push({ kind: "speech", text: cur });
+        cur = "";
+        out.push({ kind: "em", text: region.slice(j + 2, bold), speech: true });
+        j = bold + 2;
+        continue;
+      }
       const e = region.indexOf("*", j + 1);
       if (e > j + 1) {
         if (cur) out.push({ kind: "speech", text: cur });
@@ -63410,6 +63435,13 @@ function proseRuns(text3) {
   while (i < text3.length) {
     const c = text3[i];
     if (c === "*") {
+      const bold = boldEnd(text3, i);
+      if (bold > 0) {
+        flush();
+        out.push({ kind: "em", text: text3.slice(i + 2, bold) });
+        i = bold + 2;
+        continue;
+      }
       const end = closeOnLine(text3, i, "*");
       if (end < 0) i = plainRest(i);
       else if (end === i + 1) {
@@ -63479,6 +63511,8 @@ function sentenceRunIndex(text3, visible) {
 }
 
 // src/ui/scene/stage/curtain.ts
+var CLOSE_DELTA = 240;
+var WHEEL_PAUSE_MS = 500;
 var atEnd = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
 function createCurtain(host, opts) {
   const scroller = h("div", { class: "alius-curtain-scroll", role: "log", "aria-live": "polite", tabindex: "0" });
@@ -63568,8 +63602,22 @@ function createCurtain(host, opts) {
     } else if (stick) scroller.scrollTop = scroller.scrollHeight;
     else scroller.scrollTop = previous;
   }
+  let pulled = 0;
+  let lastWheel = -Infinity;
   scroller.addEventListener("wheel", (ev) => {
-    if (opened && ev.deltaY > 0 && atEnd(scroller)) curtain.close();
+    const dy = ev.deltaY;
+    const now = Date.now();
+    if (now - lastWheel > WHEEL_PAUSE_MS) pulled = 0;
+    lastWheel = now;
+    if (!opened || dy <= 0 || !atEnd(scroller)) {
+      pulled = 0;
+      return;
+    }
+    pulled += dy;
+    if (pulled >= CLOSE_DELTA) {
+      pulled = 0;
+      curtain.close();
+    }
   });
   const curtain = {
     element,
@@ -63637,7 +63685,7 @@ function measureReply(host, onMore) {
     if (!block2.querySelector("[data-more]")) {
       const handler2 = onMore ?? (moreHandlers.get(block2) ?? (() => {
       }));
-      block2.prepend(h("button", { type: "button", class: "alius-reply-more", "data-more": "", "aria-label": "Open the history: more above", onclick: handler2 }, "\u25B2 more above"));
+      block2.prepend(h("button", { type: "button", class: "alius-reply-more", "data-more": "", "aria-label": "Open the history: more above", ...analyzeNative("glossary:reply_more"), onclick: handler2 }, "\u25B2 more above"));
     }
   } else {
     delete block2.dataset.overflow;
@@ -64043,7 +64091,7 @@ function renderSceneScreen(host, ctx2) {
     });
     if (messages.length === 0) {
       const prologue = s.scene?.origin === "prologue";
-      replyHost.replaceChildren(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene."));
+      replyHost.replaceChildren(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A at the top right swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene."));
     }
   }
   function drawLog(s) {
@@ -64198,6 +64246,7 @@ function renderSceneScreen(host, ctx2) {
     sceneKey = s.scene.id;
     layers = buildLayers(root);
     curtain?.destroy();
+    delete root.dataset.curtain;
     wordsChecked = null;
     curtain = createCurtain(layers.curtain, {
       onOpen: () => {
@@ -64223,6 +64272,8 @@ function renderSceneScreen(host, ctx2) {
     spriteHost.classList.add("alius-sprites");
     hud = h("div", { class: "alius-hud" });
     replyHost = layers.hosts.reply;
+    replyHost.setAttribute("role", "log");
+    replyHost.setAttribute("aria-live", "polite");
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
     offerInner = h("div", { class: "alius-offer-chips-host" });

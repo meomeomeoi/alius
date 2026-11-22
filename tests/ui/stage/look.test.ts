@@ -20,7 +20,8 @@ function setup(opts: { sceneId?: string; reduced?: boolean; onUse?: () => void }
   Object.defineProperty(frame, 'getBoundingClientRect', { value: rect(1920) });
   const state = { reduced: opts.reduced ?? false };
   const detach = attachLook(frame, root, { sceneId: () => opts.sceneId ?? 'sc1', reduced: () => state.reduced, ...(opts.onUse ? { onUse: opts.onUse } : {}) });
-  const ptr = (type: string, x: number, button = 2, el: HTMLElement = frame) => el.dispatchEvent(new MouseEvent(type, { clientX: x, button, bubbles: true, cancelable: true }));
+  // (a move during a drag carries the held button, as a real pointer does)
+  const ptr = (type: string, x: number, button = 2, el: HTMLElement = frame, buttons = button === 2 && type === 'pointermove' ? 2 : 0) => el.dispatchEvent(new MouseEvent(type, { clientX: x, button, buttons, bubbles: true, cancelable: true }));
   const pan = () => root.style.getPropertyValue('--alius-pan');
   return { root, frame, dock, detach, ptr, pan, state };
 }
@@ -50,6 +51,26 @@ describe('looking around (P10e)', () => {
     t.ptr('pointermove', 804); // 96 px more
     t.ptr('pointerup', 804);
     expect(Number(t.pan())).toBeCloseTo(0.65, 6);
+  });
+
+  it('a cancelled pointer, a lost capture or a move with no button held ends the drag (review M2)', () => {
+    for (const end of [(t: ReturnType<typeof setup>) => t.ptr('pointercancel', 700, -1), (t: ReturnType<typeof setup>) => t.ptr('lostpointercapture', 700, -1)]) {
+      const t = setup();
+      t.ptr('pointerdown', 1000);
+      t.ptr('pointermove', 808);
+      end(t);
+      expect(t.root.classList.contains('alius-looking')).toBe(false);
+      const kept = t.pan();
+      t.ptr('pointermove', 100, 0); // a bare hover afterwards
+      expect(t.pan()).toBe(kept);
+    }
+    const t = setup(); // the button was released outside the window: no pointerup arrives, the next move has no button
+    t.ptr('pointerdown', 1000);
+    t.ptr('pointermove', 808);
+    const kept = t.pan();
+    t.ptr('pointermove', 100, 0);
+    expect(t.pan()).toBe(kept);
+    expect(t.root.classList.contains('alius-looking')).toBe(false);
   });
 
   it('the context menu is suppressed on the frame only', () => {
