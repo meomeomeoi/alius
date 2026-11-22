@@ -130,6 +130,7 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (event.type === 'punishment_issued') return punishmentIssuedDirective(event, state, reg);
   if (event.type === 'service_rated') return verdictDirective(event, state, reg);
   if (event.type === 'permission_answered') return permissionDirective(event, state, reg);
+  if (event.type === 'hold_asked') return holdAskedDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -137,6 +138,19 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+
+/** What she answered to being asked to let the commander go, as prose; a silent refusal (`cold`) has no line. */
+const ASKED_PHRASE: Readonly<Record<string, string>> = {
+  release: 'has agreed to let the commander go, and says so', extend: 'has answered by keeping the commander a while longer', refuse: 'has refused to let the commander go yet',
+};
+
+/** Her answer to the plea to be let go, for her next reply only: she says it in her own way. Nothing for a silent refusal, or when she is not in the open scene. */
+function holdAskedDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const unit = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.answer === 'string' ? ASKED_PHRASE[event.answer] : undefined;
+  if (event.silent === true || unit === undefined || how === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
+  return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} ${how}. ${NEVER_NAME}`) };
 }
 
 /** The verdict words: how she took the service, as prose (never the word of a mechanic). */

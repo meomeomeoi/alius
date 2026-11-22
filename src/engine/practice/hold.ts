@@ -4,9 +4,17 @@
  * slots has lapsed (another holder's booking is left in a conflict for P9c to settle). It ends at its last slot, or when she leaves, is hurt, goes on a run, stops being live, the
  * category goes off, or by her answer. A full hold with no defiance gives `restraint` xp and hold. Nothing here draws: the one chance is `practiceRoll`.
  */
+import { personEffects, removeSource, setQuietly } from '../blocking/blocking';
+import { blockingLive } from '../blocking/gate';
+import { COMMANDER } from '../blocking/state';
+import { effectsOfEntry } from '../blocking/types';
 import { contentAllowed } from '../bonds/content';
+import { impunityOf } from '../discipline/impunity';
+import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addHold } from '../dynamic/hold';
+import { practiceOf } from '../dynamic/profile';
+import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
 import { holdersAtPlay } from '../dynamic/gate';
 import { isLiving } from '../economy';
@@ -15,8 +23,8 @@ import type { Booking, CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { cancelBookingsQuietly } from './forget';
 import { ensurePractices, practiceLive } from './gate';
-import { posOf } from './held';
-import type { HeldState, Task } from './state';
+import { heldNow, posOf } from './held';
+import { practiceRoll, type HeldState, type Task } from './state';
 
 export { heldGuard, heldNow } from './held';
 
@@ -126,6 +134,7 @@ export function endHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>
   if (p === undefined || held === undefined) return [];
   const slots = keptSlots(draft, held);
   cancelBookingsQuietly(draft, held.bookingIds);
+  if (held.eyes !== undefined) removeSource(draft, 'item', held.eyes); // what darkened the commander's sight goes with the hold (no log entry stays)
   if (reason === 'undone') for (const b of bookingsOf(draft)) if (held.lapsedIds?.includes(b.id) === true && b.status === 'lapsed' && posOf(b.day, b.slot) >= posOf(draft.day, draft.slot)) b.status = 'booked'; // what the hold pushed out comes back
   delete p.held;
   if (p.alarm !== undefined && p.alarm.holderId === held.by && reason !== 'alarm' && reason !== 'defied') delete p.alarm;
@@ -153,6 +162,122 @@ export function holdSweep(draft: CampaignState, ctx: EngineCtx, _events?: readon
   if (unit.status === 'injured' || (unit.injuryDays ?? 0) > 0) return endHold(draft, ctx, 'injured');
   if (held.run === true) return draft.expedition === undefined ? endHold(draft, ctx, 'ran_out') : [];
   if (draft.expedition?.party.includes(held.by) === true) return endHold(draft, ctx, 'run');
-  if (posOf(draft.day, draft.slot) > posOf(held.until.day, held.until.slot)) return endHold(draft, ctx, 'ran_out');
+  if (posOf(draft.day, draft.slot) > posOf(held.until.day, held.until.slot)) return forgot(draft, ctx, held) ?? endHold(draft, ctx, 'ran_out');
+  return [];
+}
+
+// ---------------------------------------------------------------------------------------------
+// the hold goes on: asked, forgotten
+
+/** The slot after a hold's last, in the same day (never past the Night), or `null`. */
+function slotAfter(at: { day: number; slot: Slot }): { day: number; slot: Slot } | null {
+  const order: readonly Slot[] = ['morning', 'afternoon', 'evening', 'night'];
+  const next = order[order.indexOf(at.slot) + 1];
+  return next === undefined ? null : { day: at.day, slot: next };
+}
+
+/**
+ * Keeps the commander one slot longer (R11): a held booking for the slot after the last (what is booked there lapses as for any held slot), `until` moves, `hold_extended` says why
+ * (`asked`, `forgot`, `alarm`). Never past the Night. Nothing for no hold or a hold already at its limit.
+ */
+export function extendHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, reason: 'asked' | 'forgot' | 'alarm'): EngineEvent[] {
+  const held = draft.practices?.held;
+  const next = held === undefined ? null : slotAfter(held.until);
+  const first = held === undefined ? undefined : bookingsOf(draft).find((b) => held.bookingIds.includes(b.id));
+  if (held === undefined || next === null || first === undefined) return [];
+  const events: EngineEvent[] = [];
+  const lapsed: string[] = [];
+  const made = holdSlot(draft, ctx, held.by, first.kindId, next, first.practiceId ?? `hold:${held.by}`, events, lapsed);
+  held.bookingIds.push(made.id);
+  if (lapsed.length > 0) held.lapsedIds = [...(held.lapsedIds ?? []), ...lapsed];
+  held.until = next;
+  held.extended += 1;
+  events.push({ type: 'hold_extended', holderId: held.by, unitId: held.by, reason, ...(held.hidden === true ? {} : { slots: 1, until: { ...next } }) });
+  return events;
+}
+
+/** Her chance of letting a hold run on when its last slot ends (R11): by her style (`cruel` 0.3, `drill` never, else the base), plus the Impunity bonus from `impunityAt`. A style at 0 never forgets. */
+export function forgotChance(state: CampaignState, reg: Registries, holderId: string): number {
+  const T = TUNING.practice.hold;
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  const own = style === undefined ? undefined : T.forgot[style];
+  if (own === 0) return 0;
+  const bonus = (impunityOf(state, reg, holderId)?.value ?? 0) >= T.impunityAt ? T.forgot.impunityBonus : 0;
+  return Math.min(1, (own ?? T.forgot.base) + bonus);
+}
+
+/** She forgot (the hashed roll of the day, `practiceRoll(holderId, 'forgot:' + day)`): the hold runs on one slot, once a hold, never past the Night and never into a slot that is already over. `null` when she did not. */
+function forgot(draft: CampaignState, ctx: EngineCtx, held: HeldState): EngineEvent[] | null {
+  if (held.forgot === true || practiceRoll(draft, held.by, `forgot:${draft.day}`) >= forgotChance(draft, ctx.registries, held.by)) return null;
+  const next = slotAfter(held.until);
+  if (next === null || posOf(draft.day, draft.slot) > posOf(next.day, next.slot)) return null;
+  const events = extendHold(draft, ctx, 'forgot');
+  if (events.length === 0) return null;
+  held.forgot = true;
+  return events;
+}
+
+export type ReleaseAnswer = 'release' | 'extend' | 'refuse';
+
+/**
+ * Her answer to being asked to let the commander go (R11), by style and frame, deterministic: `affectionate` and `playful` let go at favour 0 or more; `ritual` and `drill` only at the named end
+ * (the last held slot); `cruel`, `possessive` and `vindictive` keep the commander one slot longer at Impunity `impunityAt` or more, else refuse; `cold` refuses in silence (no line); every
+ * other style refuses. A hold that cannot run on (it is at the Night) is only refused.
+ */
+export function releaseAnswer(state: CampaignState, reg: Registries, holderId: string): { answer: ReleaseAnswer; silent?: true } {
+  const held = state.practices?.held;
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  const refuse = { answer: 'refuse' as const };
+  if (held === undefined) return refuse;
+  switch (style) {
+    case 'affectionate': case 'playful':
+      return (dynamicOf(state, holderId)?.favour ?? 0) >= 0 ? { answer: 'release' } : refuse;
+    case 'ritual': case 'drill':
+      return posOf(state.day, state.slot) >= posOf(held.until.day, held.until.slot) ? { answer: 'release' } : refuse;
+    case 'cruel': case 'possessive': case 'vindictive':
+      return (impunityOf(state, reg, holderId)?.value ?? 0) >= TUNING.practice.hold.impunityAt && slotAfter(held.until) !== null ? { answer: 'extend' } : refuse;
+    case 'cold':
+      return { answer: 'refuse', silent: true };
+    default:
+      return refuse;
+  }
+}
+
+/** `[ ASK TO BE LET GO ]` (`practice/ask_release`): her answer by `releaseAnswer`; a release ends the hold (`asked`), an extension adds a slot (`asked`). Throws while the commander is not held. Draws nothing. */
+export function askRelease(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const held = heldNow(draft);
+  if (held === null) throw new Error('The commander is not held.');
+  const a = releaseAnswer(draft, ctx.registries, held.by);
+  const events: EngineEvent[] = [{ type: 'hold_asked', holderId: held.by, unitId: held.by, answer: a.answer, ...(a.silent === true ? { silent: true } : {}) }];
+  if (a.answer === 'release') events.push(...endHold(draft, ctx, 'asked'));
+  else if (a.answer === 'extend') events.push(...extendHold(draft, ctx, 'asked'));
+  return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// sensory (the device dims)
+
+/** Is the commander's sight taken now: a sensory hold, or a blindfold worn (a `filter sensory_dark` effect in the blocking). Derived; reads no media query. */
+export function sensoryNow(state: CampaignState, reg: Registries): boolean {
+  if (heldNow(state)?.sensory === true) return true;
+  return personEffects(state, reg, COMMANDER).some((e) => e.type === 'filter' && e.kind === 'sensory_dark');
+}
+
+/**
+ * The hold scene is P15a blocking (R11): at `scene_started` with her during a sensory hold the commander wears the first item of the pack that darkens her sight and that the gates allow
+ * (read by its `filter sensory_dark` effect), quietly (the engine's own setup, no staging log). It comes off with the hold. Nothing while the blocking is not live or one is already worn.
+ */
+export function blindfoldFromEvents(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, events: readonly EngineEvent[]): EngineEvent[] {
+  const held = draft.practices?.held;
+  if (held === undefined || held.sensory !== true || heldNow(draft) === null) return [];
+  const reg = ctx.registries;
+  for (const e of events) {
+    if (e.type !== 'scene_started' || !Array.isArray(e.participants) || !(e.participants as string[]).includes(held.by) || !blockingLive(draft, reg)) continue;
+    if (personEffects(draft, reg, COMMANDER).some((x) => x.type === 'filter' && x.kind === 'sensory_dark')) continue;
+    for (const item of reg.blockingItems.values()) {
+      if (!effectsOfEntry(item).some((x) => x.type === 'filter' && x.kind === 'sensory_dark')) continue;
+      if (setQuietly(draft, reg, { person: COMMANDER, field: 'worn', value: String(item.id) })) { held.eyes = String(item.id); break; }
+    }
+  }
   return [];
 }

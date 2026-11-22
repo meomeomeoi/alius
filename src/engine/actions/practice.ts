@@ -7,7 +7,7 @@ import { registerAction, registerAfterAction, registerVoteGate } from '../dispat
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { answerDemonstration, demonstrationsFromEvents } from '../practice/demonstration';
-import { holdSweep } from '../practice/hold';
+import { askRelease, blindfoldFromEvents, holdSweep } from '../practice/hold';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
@@ -50,6 +50,8 @@ registerAfterAction(callPosture);
 registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
 // The hold of the commander (R11): it ends at its last slot, and at once when she leaves service, is hurt, goes on a run, stops being live or the category goes off.
 registerAfterAction(holdSweep);
+// A scene with her in a sensory hold darkens the commander's sight through the blocking (R11); it comes off with the hold.
+registerAfterAction(blindfoldFromEvents);
 // A punishment she was given in a DM is told to the model in the first scene with her, once.
 registerAfterAction(voiceWaitingPunishments);
 
@@ -153,3 +155,6 @@ registerAction('practice/name_posture', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.holderId !== 'string' || typeof payload.postureId !== 'string' || (payload.name !== undefined && typeof payload.name !== 'string')) throw new Error('practice/name_posture needs { holderId, postureId, name? }.');
   return namePosture(draft, ctx, payload.holderId, payload.postureId, payload.name);
 });
+
+/** `practice/ask_release {}`: `[ ASK TO BE LET GO ]` while the commander is held (R11). Her answer is the engine's (style and frame); it releases, keeps the commander one slot longer or refuses (in silence for `cold`). Throws while not held. */
+registerAction('practice/ask_release', (draft, _payload, ctx) => askRelease(draft, ctx));

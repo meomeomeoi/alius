@@ -1057,7 +1057,7 @@ export const TUNING = Object.freeze({
       /** What she says, as prose for the directive, by answer (drafts). */
       words: Object.freeze({ grant: 'gives permission', deny: 'refuses permission', wait: 'says not yet, and to ask again tomorrow', earn: 'says it has to be earned first' } as const),
     }),
-    hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
+    hold: Object.freeze({ gain: 2, /** `forgot`: the chance a day the last slot ends that she lets it run on (by her primary style, else `base`; a style at 0 never forgets and gets no Impunity bonus). */ forgot: Object.freeze({ base: 0.05, cruel: 0.3, drill: 0, impunityBonus: 0.2 } as Readonly<Record<string, number>>), impunityAt: 60, sensoryVolume: 0.3 }),
     alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
     ask: Object.freeze({ hold: 2, mockRecord: 3 }),
     posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),

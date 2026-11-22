@@ -48,7 +48,7 @@ describe('motionReduced', () => {
 
 describe('visualFlags', () => {
   it('everything is on by default settings that ask for it', () => {
-    expect(visualFlags({ ...S, scanlines: true, flicker: true }, () => false)).toEqual({ scanlines: true, flicker: true, glitch: true, dither: true, motion: true });
+    expect(visualFlags({ ...S, scanlines: true, flicker: true }, () => false)).toEqual({ scanlines: true, flicker: true, glitch: true, dither: true, motion: true, sensory: false });
   });
 
   it('dithering also needs the ditheredPortraits setting', () => {
@@ -58,7 +58,7 @@ describe('visualFlags', () => {
 
   it('readable mode turns scanlines, flicker, glitch and dithering off and leaves motion alone', () => {
     const f = visualFlags({ ...S, scanlines: true, flicker: true, readableMode: true }, () => false);
-    expect(f).toEqual({ scanlines: false, flicker: false, glitch: false, dither: false, motion: true });
+    expect(f).toEqual({ scanlines: false, flicker: false, glitch: false, dither: false, motion: true, sensory: false });
   });
 
   it('reduced motion switches motion and the glitch off but not the scanlines', () => {

@@ -1,6 +1,7 @@
 import type { SOUND_IDS } from '../../content/schemas';
 import type { Registries } from '../../content/types';
 import type { AliusSettings } from '../../settings';
+import { TUNING } from '../../engine/tuning';
 
 export type SoundId = (typeof SOUND_IDS)[number];
 
@@ -41,6 +42,8 @@ export interface Sound {
   setNight(on: boolean): void;
   /** P15a: while the commander is hooded every sound and the hum play at `MUFFLE_GAIN` of their gain. */
   setMuffle(on: boolean): void;
+  /** P16: while the commander's sight is taken (a sensory hold) every sound and the hum play at `TUNING.practice.hold.sensoryVolume` of their gain. */
+  setSensory(on: boolean): void;
   dispose(): void;
 }
 
@@ -80,9 +83,10 @@ export function createSound(deps: SoundDeps): Sound {
 
   let night = false;
   let muffle = false;
+  let sensory = false;
   const level = (): number => {
     const s = deps.settings();
-    return s.soundMuted ? 0 : (s.soundVolume / 100) * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1);
+    return s.soundMuted ? 0 : (s.soundVolume / 100) * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1) * (sensory ? TUNING.practice.hold.sensoryVolume : 1);
   };
 
   const GESTURES = ['pointerdown', 'keydown', 'touchstart'] as const;
@@ -216,6 +220,11 @@ export function createSound(deps: SoundDeps): Sound {
     setMuffle(on) {
       if (muffle === on) return;
       muffle = on;
+      if (hum) api.startHum(); // a running hum follows at once
+    },
+    setSensory(on) {
+      if (sensory === on) return;
+      sensory = on;
       if (hum) api.startHum(); // a running hum follows at once
     },
     dispose() {

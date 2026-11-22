@@ -1379,7 +1379,13 @@ var TUNING = Object.freeze({
       /** What she says, as prose for the directive, by answer (drafts). */
       words: Object.freeze({ grant: "gives permission", deny: "refuses permission", wait: "says not yet, and to ask again tomorrow", earn: "says it has to be earned first" })
     }),
-    hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
+    hold: Object.freeze({
+      gain: 2,
+      /** `forgot`: the chance a day the last slot ends that she lets it run on (by her primary style, else `base`; a style at 0 never forgets and gets no Impunity bonus). */
+      forgot: Object.freeze({ base: 0.05, cruel: 0.3, drill: 0, impunityBonus: 0.2 }),
+      impunityAt: 60,
+      sensoryVolume: 0.3
+    }),
     alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
     ask: Object.freeze({ hold: 2, mockRecord: 3 }),
     posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4e3, drill: 3e3, other: 5e3 }) }),
@@ -7454,6 +7460,7 @@ var PRACTICE_EVENT_TYPES = [
   "hold_started",
   "hold_extended",
   "hold_released",
+  "hold_asked",
   "hold_alarm",
   "ask_answered",
   "favour_kindness",
@@ -23162,6 +23169,7 @@ function endHold2(draft, ctx2, reason) {
   if (p === void 0 || held3 === void 0) return [];
   const slots = keptSlots(draft, held3);
   cancelBookingsQuietly(draft, held3.bookingIds);
+  if (held3.eyes !== void 0) removeSource(draft, "item", held3.eyes);
   if (reason === "undone") {
     for (const b of bookingsOf2(draft)) if (held3.lapsedIds?.includes(b.id) === true && b.status === "lapsed" && posOf(b.day, b.slot) >= posOf(draft.day, draft.slot)) b.status = "booked";
   }
@@ -23186,7 +23194,96 @@ function holdSweep(draft, ctx2, _events) {
   if (unit3.status === "injured" || (unit3.injuryDays ?? 0) > 0) return endHold2(draft, ctx2, "injured");
   if (held3.run === true) return draft.expedition === void 0 ? endHold2(draft, ctx2, "ran_out") : [];
   if (draft.expedition?.party.includes(held3.by) === true) return endHold2(draft, ctx2, "run");
-  if (posOf(draft.day, draft.slot) > posOf(held3.until.day, held3.until.slot)) return endHold2(draft, ctx2, "ran_out");
+  if (posOf(draft.day, draft.slot) > posOf(held3.until.day, held3.until.slot)) return forgot(draft, ctx2, held3) ?? endHold2(draft, ctx2, "ran_out");
+  return [];
+}
+function slotAfter(at) {
+  const order = ["morning", "afternoon", "evening", "night"];
+  const next = order[order.indexOf(at.slot) + 1];
+  return next === void 0 ? null : { day: at.day, slot: next };
+}
+function extendHold(draft, ctx2, reason) {
+  const held3 = draft.practices?.held;
+  const next = held3 === void 0 ? null : slotAfter(held3.until);
+  const first2 = held3 === void 0 ? void 0 : bookingsOf2(draft).find((b) => held3.bookingIds.includes(b.id));
+  if (held3 === void 0 || next === null || first2 === void 0) return [];
+  const events = [];
+  const lapsed = [];
+  const made = holdSlot(draft, ctx2, held3.by, first2.kindId, next, first2.practiceId ?? `hold:${held3.by}`, events, lapsed);
+  held3.bookingIds.push(made.id);
+  if (lapsed.length > 0) held3.lapsedIds = [...held3.lapsedIds ?? [], ...lapsed];
+  held3.until = next;
+  held3.extended += 1;
+  events.push({ type: "hold_extended", holderId: held3.by, unitId: held3.by, reason, ...held3.hidden === true ? {} : { slots: 1, until: { ...next } } });
+  return events;
+}
+function forgotChance(state, reg, holderId) {
+  const T5 = TUNING.practice.hold;
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  const own = style === void 0 ? void 0 : T5.forgot[style];
+  if (own === 0) return 0;
+  const bonus = (impunityOf(state, reg, holderId)?.value ?? 0) >= T5.impunityAt ? T5.forgot.impunityBonus : 0;
+  return Math.min(1, (own ?? T5.forgot.base) + bonus);
+}
+function forgot(draft, ctx2, held3) {
+  if (held3.forgot === true || practiceRoll(draft, held3.by, `forgot:${draft.day}`) >= forgotChance(draft, ctx2.registries, held3.by)) return null;
+  const next = slotAfter(held3.until);
+  if (next === null || posOf(draft.day, draft.slot) > posOf(next.day, next.slot)) return null;
+  const events = extendHold(draft, ctx2, "forgot");
+  if (events.length === 0) return null;
+  held3.forgot = true;
+  return events;
+}
+function releaseAnswer(state, reg, holderId) {
+  const held3 = state.practices?.held;
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  const refuse2 = { answer: "refuse" };
+  if (held3 === void 0) return refuse2;
+  switch (style) {
+    case "affectionate":
+    case "playful":
+      return (dynamicOf(state, holderId)?.favour ?? 0) >= 0 ? { answer: "release" } : refuse2;
+    case "ritual":
+    case "drill":
+      return posOf(state.day, state.slot) >= posOf(held3.until.day, held3.until.slot) ? { answer: "release" } : refuse2;
+    case "cruel":
+    case "possessive":
+    case "vindictive":
+      return (impunityOf(state, reg, holderId)?.value ?? 0) >= TUNING.practice.hold.impunityAt && slotAfter(held3.until) !== null ? { answer: "extend" } : refuse2;
+    case "cold":
+      return { answer: "refuse", silent: true };
+    default:
+      return refuse2;
+  }
+}
+function askRelease(draft, ctx2) {
+  const held3 = heldNow(draft);
+  if (held3 === null) throw new Error("The commander is not held.");
+  const a = releaseAnswer(draft, ctx2.registries, held3.by);
+  const events = [{ type: "hold_asked", holderId: held3.by, unitId: held3.by, answer: a.answer, ...a.silent === true ? { silent: true } : {} }];
+  if (a.answer === "release") events.push(...endHold2(draft, ctx2, "asked"));
+  else if (a.answer === "extend") events.push(...extendHold(draft, ctx2, "asked"));
+  return events;
+}
+function sensoryNow(state, reg) {
+  if (heldNow(state)?.sensory === true) return true;
+  return personEffects(state, reg, COMMANDER).some((e) => e.type === "filter" && e.kind === "sensory_dark");
+}
+function blindfoldFromEvents(draft, ctx2, events) {
+  const held3 = draft.practices?.held;
+  if (held3 === void 0 || held3.sensory !== true || heldNow(draft) === null) return [];
+  const reg = ctx2.registries;
+  for (const e of events) {
+    if (e.type !== "scene_started" || !Array.isArray(e.participants) || !e.participants.includes(held3.by) || !blockingLive(draft, reg)) continue;
+    if (personEffects(draft, reg, COMMANDER).some((x) => x.type === "filter" && x.kind === "sensory_dark")) continue;
+    for (const item of reg.blockingItems.values()) {
+      if (!effectsOfEntry(item).some((x) => x.type === "filter" && x.kind === "sensory_dark")) continue;
+      if (setQuietly(draft, reg, { person: COMMANDER, field: "worn", value: String(item.id) })) {
+        held3.eyes = String(item.id);
+        break;
+      }
+    }
+  }
   return [];
 }
 
@@ -39589,6 +39686,7 @@ registerAfterAction(notePosture);
 registerAfterAction(callPosture);
 registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
 registerAfterAction(holdSweep);
+registerAfterAction(blindfoldFromEvents);
 registerAfterAction(voiceWaitingPunishments);
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
@@ -39649,6 +39747,7 @@ registerAction("practice/name_posture", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.holderId !== "string" || typeof payload.postureId !== "string" || payload.name !== void 0 && typeof payload.name !== "string") throw new Error("practice/name_posture needs { holderId, postureId, name? }.");
   return namePosture(draft, ctx2, payload.holderId, payload.postureId, payload.name);
 });
+registerAction("practice/ask_release", (draft, _payload, ctx2) => askRelease(draft, ctx2));
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -42763,6 +42862,7 @@ function issuedDirective(event, state, reg) {
   if (event.type === "punishment_issued") return punishmentIssuedDirective(event, state, reg);
   if (event.type === "service_rated") return verdictDirective(event, state, reg);
   if (event.type === "permission_answered") return permissionDirective(event, state, reg);
+  if (event.type === "hold_asked") return holdAskedDirective(event, state, reg);
   if (event.type !== "task_issued" || typeof event.taskId !== "string") return null;
   if (event.kind === "demonstration") return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -42770,6 +42870,17 @@ function issuedDirective(event, state, reg) {
   if (task === void 0 || unit3 === void 0 || state.scene?.participants.includes(unit3.id) !== true || !practiceLive(state, reg, unit3.id)) return null;
   const what = task.sealed === true ? `${unit3.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit3.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+var ASKED_PHRASE = {
+  release: "has agreed to let the commander go, and says so",
+  extend: "has answered by keeping the commander a while longer",
+  refuse: "has refused to let the commander go yet"
+};
+function holdAskedDirective(event, state, reg) {
+  const unit3 = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.answer === "string" ? ASKED_PHRASE[event.answer] : void 0;
+  if (event.silent === true || unit3 === void 0 || how === void 0 || state.scene?.participants.includes(unit3.id) !== true || !practiceLive(state, reg, unit3.id)) return null;
+  return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit3.displayName} ${how}. ${NEVER_NAME}`) };
 }
 var VERDICT_PHRASE = { pleased: "is pleased with it", adequate: "finds it adequate", displeased: "is displeased with it" };
 function verdictDirective(event, state, reg) {
@@ -45899,10 +46010,10 @@ var systemReduced = () => typeof window !== "undefined" && typeof window.matchMe
 function motionReduced(s, media = systemReduced) {
   return s.reducedMotion || media();
 }
-function visualFlags(s, media) {
+function visualFlags(s, media, opts = {}) {
   const motion = !motionReduced(s, media);
   const plain8 = s.readableMode;
-  return { scanlines: !plain8 && s.scanlines, flicker: !plain8 && s.flicker, glitch: !plain8 && motion, dither: !plain8 && s.ditheredPortraits, motion };
+  return { scanlines: !plain8 && s.scanlines, flicker: !plain8 && s.flicker, glitch: !plain8 && motion, dither: !plain8 && s.ditheredPortraits, motion, sensory: opts.sensory === true };
 }
 
 // src/ui/leash/requestForm.ts
@@ -55914,9 +56025,10 @@ function createSound(deps) {
   const files = /* @__PURE__ */ new Map();
   let night = false;
   let muffle = false;
+  let sensory = false;
   const level = () => {
     const s = deps.settings();
-    return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1);
+    return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1) * (sensory ? TUNING.practice.hold.sensoryVolume : 1);
   };
   const GESTURES = ["pointerdown", "keydown", "touchstart"];
   const userActive = () => gestured || typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true;
@@ -56040,6 +56152,11 @@ function createSound(deps) {
     setMuffle(on) {
       if (muffle === on) return;
       muffle = on;
+      if (hum) api.startHum();
+    },
+    setSensory(on) {
+      if (sensory === on) return;
+      sensory = on;
       if (hum) api.startHum();
     },
     dispose() {
@@ -64044,12 +64161,15 @@ function createShell(deps) {
     if (!root) return;
     applySkin();
     const s = getSettings(st);
-    const flags = visualFlags(s);
+    const flags = visualFlags(s, void 0, { sensory: deps.sensory?.() === true });
     root.dataset.palette = s.palette;
     root.classList.toggle("alius-scanlines", flags.scanlines);
     root.classList.toggle("alius-flicker", flags.flicker);
     root.classList.toggle("alius-readable", s.readableMode);
     root.classList.toggle("alius-reduced-motion", motionReduced(s));
+    root.classList.toggle("alius-sensory", flags.sensory);
+    renderStatus();
+    deps.sound?.setSensory?.(flags.sensory);
     drawMarks();
     const night = deps.getState()?.slot === "night";
     if (night) root.dataset.night = "true";
@@ -64068,7 +64188,9 @@ function createShell(deps) {
     }
   }
   function renderStatus() {
-    if (statusHost) renderStatusHeader(statusHost, deps.getState());
+    if (!statusHost) return;
+    if (deps.sensory?.() === true) statusHost.replaceChildren();
+    else renderStatusHeader(statusHost, deps.getState());
   }
   function renderTab() {
     const target = panel;
@@ -66381,6 +66503,8 @@ function createApp(st, deps) {
     // SYS import and the state editor: a replaced campaign is picked up like a load (0.1 audit)
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
+    sensory: () => state !== null && sensoryNow(state, registries),
+    // P16: a sensory hold or a blindfold dims the device
     lastBuild: () => context.lastBuild(),
     // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),

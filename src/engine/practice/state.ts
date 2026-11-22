@@ -95,7 +95,7 @@ export type PracticeIdPrefix = (typeof PRACTICE_ID_PREFIXES)[number];
 export const PRACTICE_EVENT_TYPES = [
   'practice_requested', 'task_issued', 'task_answered', 'task_kept', 'task_broken', 'task_void', 'practice_opened', 'practice_signed',
   'punishment_issued', 'punishment_answered', 'punishment_taken_for', 'demonstration_staged', 'demonstration_seen', 'protocol_set', 'routine_kept',
-  'permission_answered', 'hold_started', 'hold_extended', 'hold_released', 'hold_alarm', 'ask_answered', 'favour_kindness', 'practice_anticipated',
+  'permission_answered', 'hold_started', 'hold_extended', 'hold_released', 'hold_asked', 'hold_alarm', 'ask_answered', 'favour_kindness', 'practice_anticipated',
   'posture_named', 'posture_called', 'posture_slip', 'slap_started', 'slap_dealt', 'ceremony_done', 'handover_given', 'handover_ended',
   'threat_voiced', 'practice_undone',
 ] as const;
@@ -296,6 +296,8 @@ export interface HeldState {
   defied?: true;
   /** The bookings of others it made lapse (UNDO of the answer that started it puts them back). */
   lapsedIds?: string[];
+  /** The item of the blocking that darkens the commander's sight during a sensory hold (it comes off with the hold). */
+  eyes?: string;
 }
 
 export interface OpenAlarm { id: string; holderId: string; kind: AlarmKind; day: number; slot: Slot; answer?: AlarmAnswer; argued?: true; payload?: unknown }

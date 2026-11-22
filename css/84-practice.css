@@ -115,3 +115,24 @@
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
 }
+
+/* A sensory hold (P16): the commander cannot see. No portraits, no header, no backdrop or stage, nothing but plain lines; the whole device is dim. */
+#alius-shell.alius-sensory .alius-device-screen {
+  filter: brightness(0.6);
+}
+
+#alius-shell.alius-sensory .alius-portrait,
+#alius-shell.alius-sensory .alius-portrait-dithered {
+  display: none;
+}
+
+#alius-shell.alius-sensory .alius-status {
+  display: none;
+}
+
+#alius-shell.alius-sensory .alius-scene-bg,
+#alius-shell.alius-sensory .alius-scene-backdrop,
+#alius-shell.alius-sensory .alius-stage,
+#alius-shell.alius-sensory .alius-stage-caption {
+  display: none;
+}

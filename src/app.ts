@@ -95,6 +95,7 @@ import { dynamicNotices } from './ui/dynamic/notices';
 import { resetDynamicSection } from './ui/dynamic/section';
 import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
+import { sensoryNow } from './engine/practice/hold';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
 import { fileLeashRequest, type LeashFormOpts } from './ui/leash/requestForm';
@@ -2278,6 +2279,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     replaceState: adoptState, // SYS import and the state editor: a replaced campaign is picked up like a load (0.1 audit)
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
+    sensory: () => (state !== null && sensoryNow(state, registries)), // P16: a sensory hold or a blindfold dims the device
     lastBuild: () => context.lastBuild(), // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
     marks: (layer) => {

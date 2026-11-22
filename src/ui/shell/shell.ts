@@ -85,9 +85,11 @@ export interface ShellDeps {
   /** P10b: draws the stickers into the marks layer of the casing; called on every refresh (the casing itself is dressed once). */
   marks?: (layer: HTMLElement) => void;
   /** P10: the UI sounds the shell asks for (device, tabs, toasts, hum); absent = silent. */
-  sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void; /** P10b: night halves the gain. */ setNight?(on: boolean): void };
+  sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void; /** P10b: night halves the gain. */ setNight?(on: boolean): void; /** P16: a sensory hold turns every sound down. */ setSensory?(on: boolean): void };
   /** Called when the device goes up or down. */
   onDevice?(up: boolean): void;
+  /** P16: is the commander's sight taken now (the engine's `sensoryNow`)? The device dims: no portraits, no header, a low sound (absent: never). */
+  sensory?: () => boolean;
   /** P14: what SYS › GENERATIONS needs (the envelope, the settings, the redraw); absent = no list. */
   generation?: GenerationUi;
 }
@@ -163,12 +165,15 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (!root) return;
     applySkin();
     const s = getSettings(st);
-    const flags = visualFlags(s);
+    const flags = visualFlags(s, undefined, { sensory: deps.sensory?.() === true });
     root.dataset.palette = s.palette;
     root.classList.toggle('alius-scanlines', flags.scanlines);
     root.classList.toggle('alius-flicker', flags.flicker);
     root.classList.toggle('alius-readable', s.readableMode);
     root.classList.toggle('alius-reduced-motion', motionReduced(s));
+    root.classList.toggle('alius-sensory', flags.sensory); // P16: a sensory hold or a blindfold takes the sight: no portraits, no header, plain lines
+    renderStatus(); // the header goes (or comes back) with it
+    deps.sound?.setSensory?.(flags.sensory);
     drawMarks(); // P10b: stickers follow the state on every refresh
     // P10b: the night slot dresses the shell (kept in readable mode: the label and the sound; the CSS drops the dimming there)
     const night = deps.getState()?.slot === 'night';
@@ -190,7 +195,9 @@ export function createShell(deps: ShellDeps): ShellApi {
   }
 
   function renderStatus(): void {
-    if (statusHost) renderStatusHeader(statusHost, deps.getState());
+    if (!statusHost) return;
+    if (deps.sensory?.() === true) statusHost.replaceChildren(); // P16: the header is not rendered while the commander cannot see
+    else renderStatusHeader(statusHost, deps.getState());
   }
 
   function renderTab(): void {

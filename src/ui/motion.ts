@@ -15,14 +15,16 @@ export interface VisualFlags {
   dither: boolean;
   /** Slides, fades, the boot and typing may animate. */
   motion: boolean;
+  /** P16: the commander's sight is taken (a sensory hold or a blindfold): the shell shows no portraits and no header and plays at a low volume. */
+  sensory: boolean;
 }
 
 /**
  * What the shell may show. Readable mode turns scanlines, flicker, the tab glitch and dithering off (and leaves motion to
- * the reduced-motion rule); reduced motion also stops the glitch, which is an animation.
+ * the reduced-motion rule); reduced motion also stops the glitch, which is an animation. `opts.sensory` (P16, from the engine's `sensoryNow`) is passed through: it is never read from the media query.
  */
-export function visualFlags(s: AliusSettings, media?: () => boolean): VisualFlags {
+export function visualFlags(s: AliusSettings, media?: () => boolean, opts: { sensory?: boolean } = {}): VisualFlags {
   const motion = !motionReduced(s, media);
   const plain = s.readableMode;
-  return { scanlines: !plain && s.scanlines, flicker: !plain && s.flicker, glitch: !plain && motion, dither: !plain && s.ditheredPortraits, motion };
+  return { scanlines: !plain && s.scanlines, flicker: !plain && s.flicker, glitch: !plain && motion, dither: !plain && s.ditheredPortraits, motion, sensory: opts.sensory === true };
 }
