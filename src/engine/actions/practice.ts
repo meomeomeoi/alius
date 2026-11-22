@@ -11,6 +11,7 @@ import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
 import { askPermission, herDemandLive, itemRulesFromEvents, permissionLive } from '../practice/denial';
+import { callPosture, callsFromEvents, namePosture, notePosture, takePosture } from '../practice/postures';
 import { confess, momentGapFavour, serviceFromEvents } from '../practice/service';
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
@@ -42,6 +43,10 @@ registerAfterAction(itemRulesFromEvents);
 // Two moment sources are live because of what a holder has asked (R13): her demand waits for an answer; a permission rule stands while the commander is in contact with her.
 registerMomentTrigger('permission', permissionLive);
 registerMomentTrigger('her_demand', herDemandLive);
+// Named postures (R14): a posture set on the commander in her scene is named by her, and now and then she calls one by its name; the call goes with the scene.
+registerAfterAction(notePosture);
+registerAfterAction(callPosture);
+registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
 // A punishment she was given in a DM is told to the model in the first scene with her, once.
 registerAfterAction(voiceWaitingPunishments);
 
@@ -128,4 +133,20 @@ registerAction('practice/confess', (draft, payload, ctx) => {
 registerAction('practice/ask_permission', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.holderId !== 'string') throw new Error('practice/ask_permission needs { holderId }.');
   return askPermission(draft, ctx, payload.holderId);
+});
+
+/**
+ * `practice/take_posture { callId, postureId?, late, at? }`: the commander answers her call (R14). The right posture in time is set on the commander and earns service xp; a wrong or late one (or none) is a slip. `late` is the
+ * UI's word that the time ran out (there is no timer with the order interaction off); `at` is the chat index the scene controller stages it at (the staging log's, as a chip's).
+ */
+registerAction('practice/take_posture', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.callId !== 'string' || typeof payload.late !== 'boolean' || (payload.postureId !== undefined && typeof payload.postureId !== 'string')) throw new Error('practice/take_posture needs { callId, postureId?, late }.');
+  const at = typeof payload.at === 'number' && Number.isInteger(payload.at) && payload.at >= 0 ? payload.at : draft.scene?.exchanges ?? 0;
+  return takePosture(draft, ctx, payload.callId, payload.postureId, payload.late, at);
+});
+
+/** `practice/name_posture { holderId, postureId, name? }`: her name for one of her postures (the model's, when the engine accepts it; else the posture's label). */
+registerAction('practice/name_posture', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.holderId !== 'string' || typeof payload.postureId !== 'string' || (payload.name !== undefined && typeof payload.name !== 'string')) throw new Error('practice/name_posture needs { holderId, postureId, name? }.');
+  return namePosture(draft, ctx, payload.holderId, payload.postureId, payload.name);
 });

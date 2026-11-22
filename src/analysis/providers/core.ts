@@ -345,8 +345,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'practice_task', 'task_card', 'consent_ladder', 'accept_words', 'accept_signed', 'practice_record', 'sealed',
   // P16 (her discipline: the punishment card and TAKE IT INSTEAD)
   'holder_punishment', 'punishment_card', 'take_it_instead',
-  // P16 (her demonstration: the card)
-  'demonstration',
+  // P16 (her demonstration: the card; her named postures and the call)
+  'demonstration', 'named_posture', 'posture_call',
 ];
 
 let registered = false;

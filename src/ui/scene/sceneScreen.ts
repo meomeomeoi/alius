@@ -14,6 +14,7 @@ import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
 import { drawDemonstrationCards, type DemonstrationAnswer } from '../practice/demonstrationCard';
+import { cancelPostureCalls, drawPostureCall } from '../practice/postureCall';
 import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } from '../practice/punishmentCard';
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawFrameChips } from '../dynamic/frameChip';
@@ -230,6 +231,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let taskCards: HTMLElement;
   let punishmentCards: HTMLElement;
   let demonstrationCards: HTMLElement;
+  let postureCall: HTMLElement;
   let freqChips: HTMLElement;
   let genChips: HTMLElement;
   let genTools: HTMLElement;
@@ -423,6 +425,11 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') input.focus(); }, sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx.generation }); // P16: her task
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') input.focus(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), generation: ctx.generation }); // P16: her discipline
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration
+    // P16: her call of a named posture: the choices, and (with the order interaction on) the window; the answer is staged like a chip so a swipe takes the posture back
+    drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
+      timed: ctx.settings().physicsInteractions?.order !== false, reduced: motionReduced(ctx.settings()),
+      take: (callId, postureId, late) => { (ctx.onStage ?? ((a) => void controller.stage(a)))({ type: 'practice/take_posture', payload: { callId, ...(postureId !== undefined ? { postureId } : {}), late } }); if (!disposed) refresh(); },
+    });
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
     // an open menu stays open across a redraw
@@ -648,6 +655,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     taskCards = h('div', { class: 'alius-task-cards' });
     punishmentCards = h('div', { class: 'alius-punishment-cards' });
     demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
+    postureCall = h('div', { class: 'alius-posture-call-host' });
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
@@ -755,6 +763,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       taskCards,
       punishmentCards,
       demonstrationCards,
+      postureCall,
       freqChips,
       disciplineMenus,
       letsHost,
@@ -844,6 +853,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     },
     dispose() {
       disposed = true;
+      cancelPostureCalls(); // no late slip for a call whose scene is gone (P16)
       backdropToken++;
       resizer?.disconnect();
       stopTyping();

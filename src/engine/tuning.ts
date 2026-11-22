@@ -1060,7 +1060,7 @@ export const TUNING = Object.freeze({
     hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
     alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
     ask: Object.freeze({ hold: 2, mockRecord: 3 }),
-    posture: Object.freeze({ callChance: 0.15, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),
+    posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),
     slap: Object.freeze({
       windowMs: Object.freeze({
         affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300,

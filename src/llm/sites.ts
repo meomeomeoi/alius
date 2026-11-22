@@ -93,5 +93,7 @@ declare('opinion.form', 'opinion_form', 'scene', 'none', 'quiet', 'Her opinion')
 declare('physics.cues', 'physics_cues', 'scene', 'none', 'quiet', 'Her cues');
 // P16: what a holder asks of the commander, one site per kind (key = the request id): a card can be reworded until the commander has answered it
 for (const kind of PRACTICE_KINDS) declare(`practice.${kind}`, 'practice_generate', 'comms', 'before_commit', 'full', 'Her practice');
+// P16: her name for a posture she has the commander take, asked for once when it is first set (the label stands in); nothing is worth a reroll
+declare('flavor.posture_name', 'flavor', 'scene', 'none', 'quiet', 'Posture name');
 declare('setup.commander_import', 'commander_import', 'setup', 'before_commit', 'none', 'Commander import');
 declare('sys.ping', 'ping', 'sys', 'none', 'none', 'Connection test');

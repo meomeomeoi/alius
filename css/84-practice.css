@@ -80,3 +80,38 @@
   gap: 6px;
   margin-top: 6px;
 }
+
+/* Her call of a named posture (P16): her name for it, the set as choices, and a bar that runs the window while the order interaction is on. */
+#alius-shell .alius-posture-call-host {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-posture-name {
+  margin: 4px 0;
+  font-weight: bold;
+}
+
+#alius-shell .alius-posture-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+#alius-shell .alius-posture-timer {
+  height: 4px;
+  margin: 6px 0;
+  background: currentColor;
+  opacity: 0.6;
+  transform-origin: left center;
+  animation: alius-posture-timer linear forwards;
+}
+
+#alius-shell .alius-posture-timer-still {
+  animation: none;
+}
+
+@keyframes alius-posture-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}

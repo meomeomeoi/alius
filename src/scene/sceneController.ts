@@ -840,7 +840,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
 
     stage(action) {
       const p = action.payload;
-      const needsAt = /^(blocking|moment)\//.test(action.type) && typeof p === 'object' && p !== null && !Array.isArray(p) && (p as { at?: unknown }).at === undefined;
+      const needsAt = /^(blocking\/|moment\/|practice\/take_posture$)/.test(action.type) && typeof p === 'object' && p !== null && !Array.isArray(p) && (p as { at?: unknown }).at === undefined;
       const sent = needsAt ? { ...action, payload: { ...(p as object), at: st.chatLength() } } : action;
       const before = state();
       const events = dispatch(sent, chatId());

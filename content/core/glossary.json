@@ -3247,5 +3247,24 @@
       "task_card",
       "holder_punishment"
     ]
+  },
+  {
+    "id": "named_posture",
+    "term": "Named posture",
+    "short": "A posture she has named in her own words, for the ones the commander takes in her scenes. The set grows with her service.",
+    "long": "AUTHOR TO WRITE: A woman who keeps a ritual or runs the household names a posture the first time it is set in a scene with her. How many she keeps follows how far her service has gone. She may later call one by its name.",
+    "see": [
+      "practice"
+    ]
+  },
+  {
+    "id": "posture_call",
+    "term": "Posture call",
+    "short": "She calls a posture by her name for it. The right one in time counts as service; a wrong or late one is a slip. No timer if the order interaction is off.",
+    "long": "AUTHOR TO WRITE: The call comes now and then in a scene with her, once she holds more than a little. Her style sets how long the commander has.",
+    "see": [
+      "named_posture",
+      "practice"
+    ]
   }
 ]

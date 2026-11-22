@@ -35,6 +35,7 @@ import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
 import { renderTaskCard } from '../../src/ui/practice/taskCard';
 import { drawPunishmentCards } from '../../src/ui/practice/punishmentCard';
 import { drawDemonstrationCards } from '../../src/ui/practice/demonstrationCard';
+import { drawPostureCall, resetPostureCalls } from '../../src/ui/practice/postureCall';
 import { blankPractices } from '../../src/engine/practice/state';
 import { ANN as PRACTICE_ANN, BEA as PRACTICE_BEA, withService, world as practiceWorld } from '../engine/practice/world';
 import { buildKnowledge } from '../../src/analysis/knowledge';
@@ -880,6 +881,50 @@ describe('coverage: her demonstration card (P16)', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(st.calls).toEqual([]);
     } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
+describe('coverage: her call of a named posture (P16)', () => {
+  it('marks the card, her name for the posture, the timer and every choice, and every one opens a panel with no network or model call', async () => {
+    const state = withService(practiceWorld(reg, 'role'));
+    state.practices = {
+      ...blankPractices(), seq: 3,
+      postures: { [PRACTICE_ANN]: [{ postureId: 'kneeling_upright', name: 'Down', day: state.day }, { postureId: 'standing_attention', name: 'Up', day: state.day }] },
+      call: { id: 'pc1', holderId: PRACTICE_ANN, postureId: 'kneeling_upright', sceneId: 'sc1', at: 3 },
+    };
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    try {
+      const host = h('div');
+      root.append(host);
+      resetPostureCalls();
+      drawPostureCall(host, state, reg, () => true, { take: vi.fn(), timed: true, reduced: false, schedule: () => 1, cancel: () => {} });
+      expect(root.querySelector('.alius-posture-call')).not.toBeNull();
+      expect(root.querySelectorAll('[data-posture-choice]')).toHaveLength(2);
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(state))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      expect(new Set(unitIdsIn(root)).has('glossary:posture_call')).toBe(true);
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
+      for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze^="glossary:"]')]) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      resetPostureCalls();
       globalThis.fetch = realFetch;
     }
   });

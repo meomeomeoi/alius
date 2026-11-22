@@ -416,3 +416,52 @@ describe('her kindness is a DM line', () => {
     expect(dms(h)).toHaveLength(0);
   });
 });
+
+describe('her name for a posture', () => {
+  /** Ann keeps one posture, just named by its label. */
+  function posed(): CampaignState {
+    const s = withService(world(reg, 'role'));
+    s.practices = { ...blankPractices(), postures: { [ANN]: [{ postureId: 'kneeling_upright', name: 'Kneeling upright', day: s.day }] } };
+    return s;
+  }
+  const nameNow = (h: ReturnType<typeof worldHarness>) => h.state().practices!.postures[ANN][0].name;
+  const named = { type: 'posture_named', unitId: ANN, holderId: ANN, postureId: 'kneeling_upright' };
+
+  it('the site is declared and bound', async () => {
+    const { h } = rig(posed());
+    expect(generationSite('flavor.posture_name')).toBeDefined();
+    const out = await h.deps.generations.generate('flavor.posture_name', 'probe|probe', { noRecord: true });
+    expect(out.kind).not.toBe('unbound');
+  });
+
+  it('a posture named with no name is asked for, and her words stand', async () => {
+    const { h, ctl } = rig(posed());
+    h.st.mainReplies = ['{"name": "Down"}'];
+    ctl.onEvents([named]);
+    await vi.waitFor(() => expect(nameNow(h)).toBe('Down'));
+    expect(h.st.calls).toHaveLength(1);
+    expect((h.st.calls[0] as { prompt: string }).prompt).toContain('Soldier: Ann');
+  });
+
+  it("a name with a pronoun for the commander or an answer that is not a name leaves the posture's label", async () => {
+    for (const reply of ['{"name": "Kneel as he does"}', 'not json', '{"name": ""}']) {
+      const { h, ctl } = rig(posed());
+      h.st.mainReplies = [reply];
+      ctl.onEvents([named]);
+      await vi.waitFor(() => expect(h.st.calls).toHaveLength(1));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(nameNow(h), reply).toBe('Kneeling upright');
+    }
+  });
+
+  it('with plain wording nothing is asked; a name that was given is not asked for again', async () => {
+    const { h, ctl } = rig(posed(), { practiceWording: 'plain' });
+    ctl.onEvents([named]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(h.st.calls).toHaveLength(0);
+    const again = rig(posed());
+    again.ctl.onEvents([{ ...named, name: 'Down' }]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(again.h.st.calls).toHaveLength(0);
+  });
+});

@@ -3,6 +3,7 @@ import { isLiving } from '../engine/economy';
 import { practiceLive } from '../engine/practice/gate';
 import { cardOf, practiceKindOf, requestOf } from '../engine/practice/issue';
 import { PRACTICE_EVENT_TYPES, PRACTICE_KINDS, type PracticeRequest, type ValidOutput } from '../engine/practice/state';
+import { sanitizePostureName, type PostureNameFlavorInput } from '../llm/calls/flavor';
 import { buildPracticeInput, CARD_MAX, validatePracticeOutput, type PracticeGenerateInput } from '../engine/practice/validate';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -10,6 +11,9 @@ import type { PracticeDeps } from './deps';
 import { applyIssuedDirectives, clearPracticeDirectives, refreshPracticeDirectives } from './directives';
 
 export type { PracticeDeps } from './deps';
+
+/** The site of her name for a posture (`flavor.posture_name`, declared in `src/llm/sites.ts`; the key is `<holder>|<posture>`). */
+const POSTURE_SITE = 'flavor.posture_name';
 
 /** The site of a kind of practice (`practice.<kind>`, declared in `src/llm/sites.ts`; the key is the request id). */
 export const siteOf = (kind: string): string => `practice.${kind}`;
@@ -124,6 +128,36 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     });
   }
 
+  // the `flavor.posture_name` site: the posture's label already stands, so a failure leaves it; the engine reads the name again (`cleanPostureName`) like any other
+  const postureKey = (holderId: string, postureId: string): string => `${holderId}|${postureId}`;
+  deps.generations.bind<PostureNameFlavorInput, string>(POSTURE_SITE, {
+    build(key) {
+      const [holderId, postureId] = key.split('|');
+      const s = state();
+      const unit = s?.squad.find((u) => u.id === holderId);
+      const entry = deps.registries().blockingPostures.get(postureId);
+      if (s === null || unit === undefined || entry === undefined || s.practices?.postures[holderId]?.some((p) => p.postureId === postureId) !== true) return { expired: 'That posture is gone.' };
+      return { kind: 'posture_name', name: unit.displayName, posture: String(entry.label), hint: String(entry.promptHint ?? '') };
+    },
+    parse: (raw) => sanitizePostureName(raw),
+    apply(key, name) {
+      const [holderId, postureId] = key.split('|');
+      const err = deps.app.dispatch({ type: 'practice/name_posture', payload: { holderId, postureId, name } }, { expectChatId: chatId() }).find((e) => e.type === 'error');
+      if (err === undefined) return 'ok';
+      return STALE_CODES.includes(String(err.code)) || /not one of hers|not holding/.test(String(err.message)) ? { stale: true as const } : { rejected: String(err.message ?? 'The name was refused.') };
+    },
+    fallback(key) {
+      const [holderId, postureId] = key.split('|');
+      return !deps.app.dispatch({ type: 'practice/name_posture', payload: { holderId, postureId } }, { expectChatId: chatId() }).some((e) => e.type === 'error');
+    },
+  });
+
+  /** A posture was just named with no name: she is asked for hers (nothing with plain wording: the label stands). */
+  function askPostureName(holderId: string, postureId: string): void {
+    if (deps.settings().practiceWording === 'plain') return;
+    void deps.generations.generate(POSTURE_SITE, postureKey(holderId, postureId)).catch(() => {});
+  }
+
   /** The kind of a request, or of the card written for it, for the site's name. */
   const kindOf = (requestId: string): string | undefined => {
     const s = state();
@@ -215,6 +249,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
         if (OWN.includes(e.type)) refresh = true;
         if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') { if (e.kind === 'demonstration') deliverDemonstration(e.taskId); else deliver(e.taskId); }
         if (e.type === 'punishment_issued' && e.rerolled !== true && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
+        if (e.type === 'posture_named' && e.name === undefined && typeof e.holderId === 'string' && typeof e.postureId === 'string') askPostureName(e.holderId, e.postureId);
         if (e.type === 'favour_kindness' && typeof e.holderId === 'string' && typeof e.kind === 'string') deliverKindness(e.holderId, e.kind);
       }
       if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh = true;
