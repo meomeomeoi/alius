@@ -1247,9 +1247,9 @@ var TUNING = Object.freeze({
    * and the no-duration share, which are the spec's drafts (R.12) copied as given. `keep`: closed tasks, punishments and demonstrations kept (newest). `frequency`: the daily chance of a new
    * practice is `base[frame] × the dynamic's frequency × her Want band × her appetite`. `kindWeights` / `taskCap` / `protocolMax` / `stakesCeiling` (by frame) / `deadlineDays` bound what is
    * issued; `seeds` the candidates handed to the model; `textMax` / `summaryMax` the cuts. `fallback`: the plain line of each kind (`{gist}`); `sealedLine` the envelope, `sealedRecord` the record
-   * line of a sealed accept (`{day}`). `xp`: track xp per kept task (x tier), accepted punishment (x severity), demonstration and hold (x slots). `severity`: stakes rank + 1, plus her style (primary;
-   * the secondary adds `secondaryShare` of it, rounded toward zero), her frame and a repeat (`count` offences within `days`), clamped to `min`..`max`. `repair`: the share of an offence's cost an accepted
-   * punishment gives back. `slap.windowMs`: the time she gives in milliseconds by her primary style (`obsessive` takes the number plus a hashed `obsessiveSpread`); feints from `feintFrom`, `feintPerLevel` a level.
+   * line of a sealed accept (`{day}`). `xp`: track xp per kept task (x tier), accepted punishment (x severity), demonstration and hold (x slots). `severity`: stakes rank + 1, plus her style (the primary
+   * by `style`, the secondary by `secondaryStyle` with the same sign), her frame and a repeat (`count` offences within `days`), summed as a float, rounded once (half up) and clamped to `min`..`max`.
+   * (What an accepted punishment gives back, and what taking it instead gives a soldier, are the `eventDeltas` rows `punishment_accepted` and `spared_for`.) `slap.windowMs`: the time she gives in milliseconds by her primary style (`obsessive` takes the number plus a hashed `obsessiveSpread`); feints from `feintFrom`, `feintPerLevel` a level.
    */
   practice: Object.freeze({
     keep: 30,
@@ -1263,6 +1263,8 @@ var TUNING = Object.freeze({
     protocolMax: Object.freeze({ play: 1, role: 2, rule: 3 }),
     stakesCeiling: Object.freeze({ play: "minor", role: "major", rule: "severe" }),
     deadlineDays: Object.freeze({ min: 1, max: 7 }),
+    /** The days a task gets when neither the model's card nor the seed names any (AUTHOR TO TUNE): every task has a deadline, so none can stay open for ever. */
+    defaultDeadlineDays: 2,
     seeds: Object.freeze({ min: 3, max: 6 }),
     textMax: 400,
     summaryMax: 80,
@@ -1280,13 +1282,13 @@ var TUNING = Object.freeze({
     xp: Object.freeze({ kept: 2, discipline: 2, demonstration: 6, hold: 3 }),
     severity: Object.freeze({
       style: Object.freeze({ cruel: 1, affectionate: -1 }),
-      secondaryShare: 0.5,
+      /** A secondary style adds this much, with the sign of its own term (`style`); the terms are summed as a float and rounded once at the end (half up). */
+      secondaryStyle: 0.5,
       frame: Object.freeze({ play: -1, role: 0, rule: 1 }),
       repeat: Object.freeze({ count: 2, days: 14, add: 1 }),
       min: 1,
       max: 5
     }),
-    repair: 0.5,
     /** Her discipline (R8, `AUTHOR TO TUNE`): the stakes a punishment's weight (1 to 5) stands for (a confession task), the days a confession gives, its words, and how long an offence day is kept for the repeat count. */
     punish: Object.freeze({
       stakesOf: Object.freeze(["trivial", "minor", "major", "severe", "severe"]),
@@ -1298,7 +1300,8 @@ var TUNING = Object.freeze({
     }),
     refuseRecord: 5,
     coldWant: 5,
-    takeInstead: Object.freeze({ trust: 5, record: 2 }),
+    /** TAKE IT INSTEAD (R8): the Record each named unit at base gains. The soldier's Trust is the `spared_for` row. */
+    takeInstead: Object.freeze({ record: 2 }),
     demonstration: Object.freeze({ hold: 3, seenByChance: 0.2, wantRelief: Object.freeze({ craves: 20, enjoys: 10, tolerates: 5 }) }),
     verdict: Object.freeze({ favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 }) }),
     momentGap: Object.freeze({ matched: 2, partial: 0, opposite: -3 }),
@@ -1356,10 +1359,10 @@ var TUNING = Object.freeze({
       vindictive: 0.3
     }),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 }),
-    /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`. */
     /** The press-and-hold signature of a `signed` accept (R.1): how long it is held, in milliseconds. AUTHOR TO TUNE. */
     sign: Object.freeze({ holdMs: 1200 }),
-    falseReport: Object.freeze({ days: 14, witness: 0.2, insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 }) })
+    /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`; `compromat` is what she keeps of it (`{what}`: the task's summary). */
+    falseReport: Object.freeze({ days: 14, witness: 0.2, compromat: "AUTHOR TO WRITE: The commander reported a task as done that was not: {what}.", insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 }) })
   })
 });
 
@@ -7348,7 +7351,7 @@ var SEED_AUDIENCE = ["none", "select_few", "any"];
 var VERDICTS = ["pleased", "adequate", "displeased"];
 var CEREMONY_CHECKS = ["chip", "words", "number", "posture"];
 var EFFECT_NEEDS = Object.freeze({
-  slot_held: [],
+  slot_held: ["restraint"],
   privilege_revoked: [],
   protocol_extra: [],
   cold_shoulder: [],
@@ -9558,7 +9561,9 @@ var RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   weight: external_exports.number().min(0.1).max(20),
   contentTags,
   /** P16: a rule that asks for permission (read by field, never by id): the commander asks before something it covers. */
-  asks: external_exports.literal("permission").optional()
+  asks: external_exports.literal("permission").optional(),
+  /** P16: a rule only a holder's practices propose (a protocol, a denial): P9d's own daily roll and P15's aftermath never offer it. */
+  practice: external_exports.literal(true).optional()
 }).strict();
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
 var ReasonLine = external_exports.object({ for: str.max(120), against: str.max(120) }).strict();
@@ -10446,12 +10451,14 @@ var PracticeSeedSchema = BaseEntrySchema.extend({
   audience: external_exports.enum(SEED_AUDIENCE).optional(),
   romantic: external_exports.literal(true).optional(),
   needs: capabilityEnum.optional(),
+  /** The days a task from this seed gives (1 to 7); none: `TUNING.practice.defaultDeadlineDays`. Every task has a deadline. */
+  days: int.min(1).max(7).optional(),
   weight: external_exports.number().min(0.1).max(20),
   description: str
 }).strict();
 var punishmentEffect = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("slot_held"), slots: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal("day")]) }).strict(),
-  external_exports.object({ type: external_exports.literal("privilege_revoked"), what: external_exports.enum(["no_dms_others", "no_free_activities", "room"]), days: int.min(1).max(14) }).strict(),
+  external_exports.object({ type: external_exports.literal("privilege_revoked"), what: external_exports.enum(["no_dms_others", "no_free_activities", "room"]), days: int.min(1).max(14), arg: str.optional() }).strict(),
   external_exports.object({ type: external_exports.literal("protocol_extra"), days: int.min(1).max(14) }).strict(),
   external_exports.object({ type: external_exports.literal("cold_shoulder"), days: int.min(1).max(14) }).strict(),
   external_exports.object({ type: external_exports.literal("confession") }).strict(),
@@ -10477,6 +10484,9 @@ var HolderPunishmentSchema = BaseEntrySchema.extend({
 }).strict().superRefine((p, ctx2) => {
   const tags = p.contentTags ?? [];
   p.effects.forEach((fx2, i) => {
+    if (fx2.type === "privilege_revoked" && fx2.what === "room" !== (fx2.arg !== void 0)) {
+      ctx2.addIssue({ code: "custom", path: ["effects", i, "arg"], message: fx2.what === "room" ? "a revoked room names its location in `arg`" : "`arg` (a location) is only for a revoked room" });
+    }
     const needs = EFFECT_NEEDS[fx2.type];
     if (needs.length > 0 && !needs.some((t) => tags.includes(t))) ctx2.addIssue({ code: "custom", path: ["effects", i], message: `the effect "${fx2.type}" needs the content tag ${needs.map((t) => `"${t}"`).join(" or ")} on the row` });
   });
@@ -12626,6 +12636,7 @@ function rollInitiative(draft, reg, rng) {
 // src/engine/bonds/rules.ts
 var R = TUNING.bonds.rules;
 var RELATION_RULE_TAGS = ["jealousy_games", "service", "denial"];
+var AIMED_TAGS = ["jealousy_games"];
 var rulesOf = (state) => state.bonds?.rules ?? [];
 var activeRules = (state, unitId) => rulesOf(state).filter((r) => r.unitId === unitId && r.status === "active");
 var RULE_EVENT_TYPES = ["rule_kept", "rule_broken", "compromise_reached"];
@@ -12643,12 +12654,12 @@ function offerable(state, reg, unitId, tpl) {
   if (held3 !== void 0 && frameRank(held3.frame) >= frameRank("play") && dynamicOn(state, reg) && tagsOf(tpl).some((t) => RELATION_RULE_TAGS.includes(t)) && !hasCapability(state, reg, unitId, "relation_rules")) return false;
   return contentAllowed(state, reg, tpl, unitId);
 }
-function proposalPool(draft, reg, unit3) {
+function proposalPool(draft, reg, unit3, opts = {}) {
   const bond = unit3.kind === "named" && isLiving(unit3) ? bondOf(unit3) : null;
   if (!bond || leadRank(bond.leadStyle) < leadRank("assertive") || bondTierOf(draft, reg, unit3.id) === null) return [];
   const mine = rulesOf(draft).filter((r) => r.unitId === unit3.id);
   if (mine.some((r) => r.status === "proposed" || r.status === "negotiating") || mine.filter((r) => r.status === "active").length >= R.maxActive) return [];
-  return [...reg.relationshipRuleTemplates.values()].map((t) => t).filter((t) => offerable(draft, reg, unit3.id, t));
+  return [...reg.relationshipRuleTemplates.values()].map((t) => t).filter((t) => (opts.practice === true ? t.practice === true : t.practice !== true) && offerable(draft, reg, unit3.id, t));
 }
 function propose(draft, unit3, tpl) {
   const rule = { id: nextId(draft, "r"), unitId: unit3.id, templateId: tpl.id, text: clean(tpl.text.replaceAll("{name}", unit3.displayName), R.textMax), status: "proposed", day: draft.day, brokenCount: 0 };
@@ -12669,11 +12680,11 @@ function rollRules(draft, ctx2) {
   }
   return events;
 }
-function proposeRuleHashed(draft, reg, unitId, roll) {
+function proposeRuleHashed(draft, reg, unitId, roll, opts = {}) {
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (!unit3 || !intimacyOf(draft).romance) return [];
-  const pool = proposalPool(draft, reg, unit3);
-  const aimed = pool.filter((t) => tagsOf(t).some((tag2) => RELATION_RULE_TAGS.includes(tag2)));
+  const pool = proposalPool(draft, reg, unit3, opts);
+  const aimed = pool.filter((t) => tagsOf(t).some((tag2) => AIMED_TAGS.includes(tag2)));
   const from = aimed.length > 0 ? aimed : pool;
   if (from.length === 0) return [];
   let r = roll * from.reduce((n, t) => n + Number(t.weight), 0);
@@ -14250,14 +14261,14 @@ var readers = [];
 function registerRestrictionReader(fn) {
   if (!readers.includes(fn)) readers.push(fn);
 }
-function restrictionReason(state, unitId, use, activityId) {
+function restrictionReason(state, reg, unitId, use, activityId) {
   for (const r of state.discipline?.restrictions ?? []) {
     if (r.unitId !== unitId) continue;
     const why = reasonOf(state, r, use, activityId);
     if (why) return why;
   }
   for (const read of readers) {
-    const why = read(state, unitId, use);
+    const why = read(state, reg, unitId, use);
     if (why !== null) return why;
   }
   return null;
@@ -16214,7 +16225,7 @@ var readers2 = [];
 function registerCommanderRestriction(fn) {
   if (!readers2.includes(fn)) readers2.push(fn);
 }
-function commanderRestriction(state, use, activityId, toUnitId, locationId) {
+function commanderRestriction(state, reg, use, activityId, toUnitId, locationId) {
   const w = wardenOf(state);
   if (w) {
     for (const r of w.restrictions) {
@@ -16224,7 +16235,7 @@ function commanderRestriction(state, use, activityId, toUnitId, locationId) {
     }
   }
   for (const read of readers2) {
-    const why = read(state, use, activityId, toUnitId, locationId);
+    const why = read(state, reg, use, activityId, toUnitId, locationId);
     if (why !== null) return why;
   }
   return null;
@@ -18250,7 +18261,7 @@ function consentProblem(state, reg, booking) {
 }
 function bookingProblem(draft, reg, unitId) {
   if (pressureGate(draft, reg, unitId, "booking") !== null) return "no device access";
-  if (restrictionReason(draft, unitId, "scene") !== null || unitObeys(draft, unitId)) return "she cannot be met";
+  if (restrictionReason(draft, reg, unitId, "scene") !== null || unitObeys(draft, unitId)) return "she cannot be met";
   if ((draft.personal?.noBookUntil?.[unitId] ?? 0) > draft.day) return "no booking until later";
   if (bookingsOf(draft).some((b) => b.unitId === unitId && b.status === "booked")) return "a booking is open";
   const consent = consentProblem(draft, reg, { unitId });
@@ -18265,22 +18276,22 @@ function noteConsentRefusal(draft, reg, unitId, problem) {
   if (keeper === null) return;
   addFact(draft, { about: [keeper, unitId], text: problem, tags: ["dynamic", "booking_consent"], importance: 2, day: draft.day, knownBy: [keeper, unitId] });
 }
-function dueBooking(state) {
+function dueBooking(state, reg) {
   const due = bookingsOf(state).filter((b) => b.status === "booked" && b.day === state.day && b.slot === state.slot);
-  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
+  return due.find((b) => bookingPlayable(state, reg, b)) ?? due[0] ?? null;
 }
-function bookingPlayable(state, booking) {
+function bookingPlayable(state, reg, booking) {
   const unit3 = state.squad.find((u) => u.id === booking.unitId);
   if (!unit3 || unit3.kind !== "named" || !isLiving(unit3)) return false;
   if (unit3.status === "injured" || (unit3.injuryDays ?? 0) > 0) return false;
   if (state.expedition?.party.includes(unit3.id)) return false;
-  return restrictionReason(state, unit3.id, "scene") === null;
+  return restrictionReason(state, reg, unit3.id, "scene") === null;
 }
-function bookingGuard(state, action) {
+function bookingGuard(state, reg, action) {
   const blocked = action.type.startsWith("activity/") || action.type === "life/time_together" || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
   if (!blocked || state.personal?.bookings === void 0) return null;
-  const due = dueBooking(state);
-  if (!due || !bookingPlayable(state, due)) return null;
+  const due = dueBooking(state, reg);
+  if (!due || !bookingPlayable(state, reg, due)) return null;
   if (action.type === "scene/start") {
     const ids = action.payload?.participants;
     if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
@@ -18326,7 +18337,7 @@ function rollBookings(draft, ctx2) {
   for (const u of draft.squad) {
     if (u.kind !== "named") continue;
     if (pressureGate(draft, reg, u.id, "booking") !== null) continue;
-    if (restrictionReason(draft, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
+    if (restrictionReason(draft, reg, u.id, "scene") !== null || unitObeys(draft, u.id)) continue;
     if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
     const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
     if (mine.some((b) => b.status === "booked")) continue;
@@ -18417,7 +18428,7 @@ function markPlayed(draft, reg, booking) {
 }
 function playBooking(draft, ctx2, id) {
   const reg = ctx2.registries;
-  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? void 0;
+  let target = id !== void 0 ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft, reg) ?? void 0;
   if (!target || target.status !== "booked" || target.day !== draft.day || target.slot !== draft.slot) throw new Error("That booking is not due now.");
   const events = [];
   if (target.conflict) {
@@ -18426,7 +18437,7 @@ function playBooking(draft, ctx2, id) {
     events.push(...resolveConflict(draft, ctx2, { day: draft.day, slot: draft.slot, settle: true }));
     target = winner;
   }
-  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
+  if (!bookingPlayable(draft, reg, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
   const kind = kindOf2(reg, target.kindId);
   events.push(...markPlayed(draft, reg, target));
   const scene = { locationId: String(kind?.locationId ?? "quarters_unit"), participants: [target.unitId], origin: "event" };
@@ -18800,6 +18811,7 @@ function regionOf(reading2, declared) {
   return "devoted";
 }
 function motiveOf(sample) {
+  if (sample.motive !== void 0) return sample.motive;
   if (sample.afterThreat === true && sample.response === "yielded") return "fear";
   if (sample.tone === "transactional") return "gain";
   if (sample.tone === "sincere" && sample.response === "yielded") return "order";
@@ -22231,7 +22243,7 @@ function pastimeProblem(state, reg, unitId, pastimeId, at) {
     if (pastimeLocation(state, reg, pastime, unitId) === null) return `Nowhere is open for ${pastime.label} now.`;
     const activity = pastimeActivity(reg);
     if (!activity) return "This pack has no time together.";
-    const held3 = restrictionReason(state, unitId, "companion", String(activity.id));
+    const held3 = restrictionReason(state, reg, unitId, "companion", String(activity.id));
     if (held3) return held3;
     const blocked = checkActivity(state, reg, { activityId: String(activity.id), companionId: unitId });
     if (blocked) return blocked;
@@ -22517,6 +22529,9 @@ function ensurePractices(draft) {
 function nextPracticeId(draft, prefix) {
   return `${prefix}${ensurePractices(draft).seq++}`;
 }
+function eligibleUnits(state, holderId) {
+  return state.squad.filter((u) => u.kind === "named" && u.id !== holderId && isLiving(u)).map((u) => u.id);
+}
 
 // src/engine/practice/seeds.ts
 var seedRows = (reg) => [...reg.practiceSeeds.values()];
@@ -22560,6 +22575,52 @@ function stakesCeilingOf(state, holderId) {
 }
 
 // src/engine/practice/request.ts
+var allCards = (state) => {
+  const p = state.practices;
+  return p === void 0 ? [] : [...p.tasks, ...p.punishments, ...p.demonstrations];
+};
+function cardOf(state, requestId) {
+  const p = state.practices;
+  if (p === void 0) return void 0;
+  const task = p.tasks.find((t) => t.requestId === requestId);
+  if (task !== void 0) return { kind: task.kind, list: "tasks", card: task, status: task.status };
+  const punishment = p.punishments.find((x) => x.requestId === requestId);
+  if (punishment !== void 0) return { kind: "punishment", list: "punishments", card: punishment, status: punishment.status };
+  const demonstration = p.demonstrations.find((x) => x.requestId === requestId);
+  return demonstration === void 0 ? void 0 : { kind: "demonstration", list: "demonstrations", card: demonstration, status: demonstration.status };
+}
+function practiceKindOf(state, requestId) {
+  return state.practices?.requests.find((r) => r.id === requestId)?.kind ?? cardOf(state, requestId)?.kind;
+}
+function requestOf(state, reg, requestId) {
+  const waiting2 = state.practices?.requests.find((r) => r.id === requestId);
+  if (waiting2 !== void 0) return { request: waiting2 };
+  const found = cardOf(state, requestId);
+  if (found === void 0 || found.status !== "offered") return void 0;
+  const card2 = found.card;
+  const base = { id: requestId, holderId: card2.holderId, kind: found.kind, day: card2.day };
+  if (found.list === "punishments") {
+    const p = card2;
+    return {
+      replaced: card2,
+      request: { ...base, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...p.escalated === true ? { escalated: true } : {}, ...p.sealed === true ? { sealed: true } : {} }
+    };
+  }
+  const seedId = found.list === "tasks" ? card2.seedId : void 0;
+  const seedIds = [.../* @__PURE__ */ new Set([...seedId !== void 0 ? [seedId] : [], ...pickSeeds(state, reg, card2.holderId, found.kind)])];
+  const t = found.list === "tasks" ? card2 : void 0;
+  return {
+    replaced: card2,
+    request: {
+      ...base,
+      seedIds,
+      ...t?.chainId !== void 0 ? { chainOf: t.chainId } : {},
+      ...t?.targetUnitId !== void 0 ? { targetUnitId: t.targetUnitId } : {},
+      ...t?.sealed === true ? { sealed: true } : {},
+      ...t?.noDuration === true ? { noDuration: true } : {}
+    }
+  };
+}
 function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   if (!practiceLive(draft, ctx2.registries, holderId)) return [];
   const reg = ctx2.registries;
@@ -22571,180 +22632,6 @@ function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   return [{ type: "practice_requested", requestId: id, holderId, kind }];
 }
 
-// src/engine/practice/validate.ts
-var CARD_MAX = 600;
-var LEVEL_WORDS = ["none yet", "a beginner", "practised", "experienced", "deep", "complete"];
-var TIER_WORDS = ["none", "one", "two", "three", "four", "five"];
-var CAPABILITY_WORDS = Object.freeze({
-  booking_uncapped: "books the commander freely",
-  book_ahead: "books the commander ahead",
-  body_conditions: "sets conditions on the commander's body",
-  device_floor: "holds the commander's device",
-  leash_block: "answers for the commander's Leash requests",
-  household_protocol: "keeps a household protocol",
-  second_place: "holds second place",
-  relation_rules: "sets rules between the commander and others",
-  booking_consent: "must be asked for the commander's evenings",
-  countermand: "countermands the commander's orders",
-  co_leader: "leads beside the commander"
-});
-var clean3 = (s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-function eligibleUnits(state, holderId) {
-  return state.squad.filter((u) => u.kind === "named" && u.id !== holderId && isLiving(u)).map((u) => u.id);
-}
-function activeRules2(state, holderId) {
-  return (state.bonds?.rules ?? []).filter((r) => r.unitId === holderId && r.status === "active").map((r) => ({ id: r.id, text: clean3(r.text) }));
-}
-function buildPracticeInput(state, reg, request, card2 = "") {
-  const holderId = request.holderId;
-  const unit3 = state.squad.find((u) => u.id === holderId);
-  const view = practiceOf(state, reg, holderId);
-  const dyn = dynamicOf(state, holderId);
-  const frame = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
-  const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
-  const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
-  const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const limits = unit3.bond?.ownLimits.categories ?? [];
-  return {
-    requestId: request.id,
-    kind: request.kind,
-    holder: { id: holderId, name: unit3.displayName },
-    card: clean3(card2).slice(0, CARD_MAX),
-    frame,
-    style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
-    claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
-    tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
-    categories: Object.entries(view?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
-    hasLimits: limits.length > 0,
-    recent: (dyn?.recent ?? []).map(clean3),
-    context: {
-      day: state.day,
-      slot: state.slot,
-      openTasks: (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && (t.status === "offered" || t.status === "open")).map((t) => t.sealed === true && t.status === "offered" ? "a sealed task" : clean3(t.summary)),
-      want: wantBandOf(state, reg, holderId),
-      impunity: impunityBand(impunityOf(state, reg, holderId)?.value ?? 0),
-      present: (state.scene?.participants ?? []).filter((id) => id !== holderId).map((id) => ({ id, name: unitName3(id) }))
-    },
-    units: eligibleUnits(state, holderId).map((id) => ({ id, name: unitName3(id) })),
-    frequency: state.dynamic?.setup.frequency ?? "normal",
-    rules: activeRules2(state, holderId),
-    seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? "model" })),
-    ...request.kind === "punishment" && request.entryId !== void 0 && reg.holderPunishments.has(request.entryId) ? { punishment: { label: String(reg.holderPunishments.get(request.entryId).label), weight: severityWord(request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? "refusal"] } } : {},
-    limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } }
-  };
-}
-function tierCapOf(state, reg, holderId) {
-  const levels = [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => trackLevel(state, holderId, t.id) + 1);
-  return Math.min(5, Math.max(1, ...levels));
-}
-var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var LABEL = /^(?:her words|text|summary|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
-function plainText2(v, max) {
-  if (typeof v !== "string") return "";
-  return v.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL, "").slice(0, max).trim();
-}
-var SLOTS2 = ["morning", "afternoon", "evening", "night"];
-var ROSTER_CHECKS = ["on_roster", "not_on_roster"];
-function validatePracticeOutput(state, reg, request, raw) {
-  if (!isObj6(raw) || raw.kind !== request.kind) return null;
-  const holderId = request.holderId;
-  const issues = [];
-  if (request.kind === "punishment") return validatePunishmentCard(reg, request, raw);
-  const pool = seedPool(state, reg, holderId, request.kind);
-  const seed = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
-  if (raw.seedId !== void 0 && seed === void 0) issues.push("seedId is not an offered seed and was dropped");
-  const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
-  const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
-  if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
-  if (kept.length === 0) return null;
-  const asked = typeof raw.track === "string" ? raw.track : void 0;
-  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed !== void 0 && trackOpen(state, reg, holderId, seed.track) ? seed.track : void 0;
-  if (track === void 0) return null;
-  if (track !== asked) issues.push("track was not open and was replaced");
-  const cap8 = trackLevel(state, holderId, track) + 1;
-  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed?.tier ?? 1;
-  const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
-  const tier = Math.min(Math.min(5, cap8), Math.max(1, floor, tierRaw));
-  if (tier !== raw.tier) issues.push("tier was clamped");
-  const ceiling = stakesCeilingOf(state, holderId);
-  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed?.stakes ?? "minor";
-  const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
-  if (stakes !== raw.stakes) issues.push("stakes were clamped");
-  const units = eligibleUnits(state, holderId);
-  const targetAsked = typeof raw.targetId === "string" ? raw.targetId : raw.targetUnitId;
-  const targetRaw = typeof targetAsked === "string" && units.includes(targetAsked) ? targetAsked : void 0;
-  let check = CHECK_KINDS.includes(raw.check) ? raw.check : "model";
-  let checkArg = typeof raw.checkArg === "string" ? raw.checkArg : void 0;
-  if (check === "no_scene_with" && (checkArg === void 0 || !units.includes(checkArg))) {
-    check = "model";
-    checkArg = void 0;
-  } else if (check === "rule_kept_until" && (checkArg === void 0 || !activeRules2(state, holderId).some((r) => r.id === checkArg))) {
-    check = "model";
-    checkArg = void 0;
-  } else if (ROSTER_CHECKS.includes(check)) checkArg = checkArg !== void 0 && units.includes(checkArg) ? checkArg : void 0;
-  else if (check !== "no_scene_with" && check !== "rule_kept_until") checkArg = void 0;
-  const argAsked = typeof raw.checkArg === "string" && units.includes(raw.checkArg) ? raw.checkArg : void 0;
-  const fieldUnit = argAsked ?? targetRaw;
-  if (raw.field === true && !ROSTER_CHECKS.includes(check) && check === raw.check && fieldUnit !== void 0) {
-    check = "on_roster";
-    checkArg = fieldUnit;
-    issues.push("a field task takes a roster check");
-  } else if (check !== raw.check) issues.push("check was changed to model");
-  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed?.proof ?? "none";
-  let deadline;
-  if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
-    const D3 = TUNING.practice.deadlineDays;
-    const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
-    if (days !== raw.deadline.days) issues.push("deadline was clamped");
-    deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
-  }
-  const eligible4 = units;
-  const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id) => typeof id === "string").filter((id, i, all) => all.indexOf(id) === i);
-  const audienceIds = asked2.filter((id) => eligible4.includes(id));
-  if (audienceIds.length < asked2.length) issues.push("audience was filtered");
-  if (request.kind === "demonstration" && audienceIds.length === 0) return null;
-  const text2 = plainText2(raw.text, TUNING.practice.textMax);
-  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
-  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
-  if (summary === "") {
-    if (seed === void 0) return null;
-    summary = seed.gist;
-    issues.push("summary was empty and is the seed's gist");
-  }
-  return {
-    output: {
-      kind: request.kind,
-      ...seed !== void 0 ? { seedId: seed.id } : {},
-      tags: kept,
-      track,
-      tier,
-      stakes,
-      check,
-      ...checkArg !== void 0 ? { checkArg } : {},
-      ...deadline !== void 0 ? { deadline } : {},
-      proof,
-      ...audienceIds.length > 0 ? { audienceIds } : {},
-      ...targetRaw !== void 0 ? { targetUnitId: targetRaw } : {},
-      text: text2,
-      summary
-    },
-    issues
-  };
-}
-function validatePunishmentCard(reg, request, raw) {
-  const text2 = plainText2(raw.text, TUNING.practice.textMax);
-  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
-  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
-  const issues = [];
-  if (summary === "") {
-    const entry = request.entryId === void 0 ? void 0 : reg.holderPunishments.get(request.entryId);
-    if (entry === void 0) return null;
-    summary = String(entry.label);
-    issues.push("summary was empty and is the entry's label");
-  }
-  return { output: { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: text2, summary }, issues };
-}
-
 // src/engine/practice/offences.ts
 var entriesOf = (reg) => [...reg.holderPunishments.values()];
 var effectsOf4 = (entry) => Array.isArray(entry.effects) ? entry.effects : [];
@@ -22753,7 +22640,7 @@ function styleTerm(state, reg, holderId) {
   const style = practiceOf(state, reg, holderId)?.style;
   if (style === void 0) return 0;
   const primary = T5.style[style.primary] ?? 0;
-  const secondary = style.secondary === void 0 ? 0 : Math.trunc(T5.secondaryShare * (T5.style[style.secondary] ?? 0));
+  const secondary = style.secondary === void 0 ? 0 : Math.sign(T5.style[style.secondary] ?? 0) * T5.secondaryStyle;
   return primary + secondary;
 }
 function severityOf(state, reg, holderId, offence) {
@@ -22762,7 +22649,7 @@ function severityOf(state, reg, holderId, offence) {
   const frameTerm = frame === "rule" || frame === "role" || frame === "play" ? T5.frame[frame] : 0;
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
-  const total2 = stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat;
+  const total2 = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat + 0.5);
   return Math.min(T5.max, Math.max(T5.min, total2));
 }
 var sceneIsHers = (state, holderId) => state.scene === void 0 || state.scene.participants.length === 1 && state.scene.participants[0] === holderId;
@@ -22787,6 +22674,22 @@ function pickHolderPunishment(state, reg, holderId, severity) {
     if (eligible4.length > 0) return String(eligible4[given % eligible4.length].id);
   }
   return null;
+}
+function punishmentEntryFor(state, reg, request) {
+  const entry = request.entryId === void 0 ? void 0 : reg.holderPunishments.get(request.entryId);
+  if (entry !== void 0 && possibleNow(state, reg, request.holderId, entry)) return request.entryId;
+  return pickHolderPunishment(state, reg, request.holderId, request.severity ?? 1);
+}
+function repickPunishmentRequests(draft, reg) {
+  const p = draft.practices;
+  if (p === void 0) return;
+  p.requests = p.requests.flatMap((r) => {
+    if (r.kind !== "punishment") return [r];
+    const entryId = punishmentEntryFor(draft, reg, r);
+    if (entryId === null) return [];
+    if (entryId === r.entryId) return [r];
+    return [{ ...r, entryId, severity: severityOfEntry(reg, entryId) ?? r.severity }];
+  });
 }
 function severityOfEntry(reg, entryId) {
   const sev = reg.holderPunishments.get(entryId)?.severity;
@@ -22858,12 +22761,12 @@ function practiceSample(draft, reg, unitId, response, opts = {}) {
   const dyn = dynamicOf(draft, unitId);
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (dyn === void 0 || unit3 === void 0) return [];
-  const region = updateReading(dyn, { response, ...opts.afterThreat === true ? { afterThreat: true } : {} }, TUNING.position.alpha.practice, physicsStyleOf(draft, unitId, reg), unit3.insight ?? "mid").region;
+  const region = updateReading(dyn, { response, ...opts.afterThreat === true ? { afterThreat: true } : {}, ...opts.motive !== void 0 ? { motive: opts.motive } : {} }, TUNING.position.alpha.practice, physicsStyleOf(draft, unitId, reg), unit3.insight ?? "mid").region;
   return region === void 0 ? [] : [{ type: "position_shifted", unitId, from: region.from, to: region.to }];
 }
 
 // src/engine/practice/checks.ts
-var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
+var ROSTER_CHECKS = ["on_roster", "not_on_roster"];
 var SEVERITY = ["minor", "minor", "moderate", "major", "extreme"];
 var RECENT_MAX = TUNING.probes.recentMax;
 var isOpenTask = (t) => t.kind === "task" && t.status === "open" && t.routine !== true;
@@ -22979,7 +22882,7 @@ function taskChecksFromEvents(draft, ctx2, events) {
         const party = last !== void 0 && last.id === e.reportId ? last.party : void 0;
         if (party === void 0) break;
         for (const t of live3()) {
-          if (t.field !== true || !ROSTER_CHECKS2.includes(t.check)) continue;
+          if (t.field !== true || !ROSTER_CHECKS.includes(t.check)) continue;
           const unit3 = subjectOf(t);
           if (unit3 === void 0) settle6(t, "void");
           else settle6(t, party.includes(unit3) === (t.check === "on_roster") ? "kept" : "broken");
@@ -23013,7 +22916,7 @@ function deadlineSweep(draft, ctx2) {
       continue;
     }
     if (task.status !== "open") continue;
-    if (task.check === "token_worn" && verdictNow(draft, task) === "broken") {
+    if (task.check === "token_worn" && draft.day > (task.answeredDay ?? task.day) && verdictNow(draft, task) === "broken") {
       out.push(...settleTask(draft, ctx2, task.id, "broken", "engine"));
       continue;
     }
@@ -23048,7 +22951,7 @@ function findFalseReport(draft, ctx2, taskId, via) {
     return [];
   }
   task.report = { ...task.report ?? { day: draft.day }, falseReport: true };
-  addCompromat(draft, task.holderId, `AUTHOR TO WRITE: The commander reported a task as done that was not: ${task.summary}.`, witnessesOf2(draft, task));
+  addCompromat(draft, task.holderId, TUNING.practice.falseReport.compromat.replaceAll("{what}", task.summary), witnessesOf2(draft, task));
   return events;
 }
 function reportTask(draft, ctx2, taskId) {
@@ -23101,9 +23004,184 @@ function startHold(_draft, _ctx, _holderId, _span, _opts = {}) {
   return [];
 }
 
-// src/engine/practice/slap.ts
-function startSlap(_draft, _ctx, _holderId, _opts = {}) {
-  return [];
+// src/engine/practice/validate.ts
+var CARD_MAX = 600;
+var LEVEL_WORDS = ["none yet", "a beginner", "practised", "experienced", "deep", "complete"];
+var TIER_WORDS = ["none", "one", "two", "three", "four", "five"];
+var CAPABILITY_WORDS = Object.freeze({
+  booking_uncapped: "books the commander freely",
+  book_ahead: "books the commander ahead",
+  body_conditions: "sets conditions on the commander's body",
+  device_floor: "holds the commander's device",
+  leash_block: "answers for the commander's Leash requests",
+  household_protocol: "keeps a household protocol",
+  second_place: "holds second place",
+  relation_rules: "sets rules between the commander and others",
+  booking_consent: "must be asked for the commander's evenings",
+  countermand: "countermands the commander's orders",
+  co_leader: "leads beside the commander"
+});
+var clean3 = (s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+function activeRules2(state, holderId) {
+  return (state.bonds?.rules ?? []).filter((r) => r.unitId === holderId && r.status === "active").map((r) => ({ id: r.id, text: clean3(r.text) }));
+}
+function buildPracticeInput(state, reg, request, card2 = "") {
+  const holderId = request.holderId;
+  const unit3 = state.squad.find((u) => u.id === holderId);
+  const view = practiceOf(state, reg, holderId);
+  const dyn = dynamicOf(state, holderId);
+  const frame = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
+  const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
+  const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
+  const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const limits = unit3.bond?.ownLimits.categories ?? [];
+  return {
+    requestId: request.id,
+    kind: request.kind,
+    holder: { id: holderId, name: unit3.displayName },
+    card: clean3(card2).slice(0, CARD_MAX),
+    frame,
+    style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
+    claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
+    tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
+    categories: Object.entries(view?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
+    hasLimits: limits.length > 0,
+    recent: (dyn?.recent ?? []).map(clean3),
+    context: {
+      day: state.day,
+      slot: state.slot,
+      openTasks: (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && (t.status === "offered" || t.status === "open")).map((t) => t.sealed === true && t.status === "offered" ? "a sealed task" : clean3(t.summary)),
+      want: wantBandOf(state, reg, holderId),
+      impunity: impunityBand(impunityOf(state, reg, holderId)?.value ?? 0),
+      present: (state.scene?.participants ?? []).filter((id) => id !== holderId).map((id) => ({ id, name: unitName3(id) }))
+    },
+    units: eligibleUnits(state, holderId).map((id) => ({ id, name: unitName3(id) })),
+    frequency: state.dynamic?.setup.frequency ?? "normal",
+    rules: activeRules2(state, holderId),
+    seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? "model" })),
+    ...request.kind === "punishment" ? punishmentBlock(state, reg, request) : {},
+    limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } }
+  };
+}
+function punishmentBlock(state, reg, request) {
+  const entryId = punishmentEntryFor(state, reg, request);
+  const entry = entryId === null ? void 0 : reg.holderPunishments.get(entryId);
+  return entry === void 0 ? {} : { punishment: { label: String(entry.label), weight: severityWord(severityOfEntry(reg, entryId) ?? request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? "refusal"] } };
+}
+function tierCapOf(state, reg, holderId) {
+  const levels = [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => trackLevel(state, holderId, t.id) + 1);
+  return Math.min(5, Math.max(1, ...levels));
+}
+var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var LABEL = /^(?:her words|text|summary|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
+function plainText2(v, max) {
+  if (typeof v !== "string") return "";
+  return v.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL, "").slice(0, max).trim();
+}
+var SLOTS2 = ["morning", "afternoon", "evening", "night"];
+var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
+function validatePracticeOutput(state, reg, request, raw) {
+  if (!isObj6(raw) || raw.kind !== request.kind) return null;
+  const holderId = request.holderId;
+  const issues = [];
+  if (request.kind === "punishment") return validatePunishmentCard(state, reg, request, raw);
+  const pool = seedPool(state, reg, holderId, request.kind);
+  const seed = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
+  if (raw.seedId !== void 0 && seed === void 0) issues.push("seedId is not an offered seed and was dropped");
+  const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
+  const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
+  if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
+  if (kept.length === 0) return null;
+  const asked = typeof raw.track === "string" ? raw.track : void 0;
+  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed !== void 0 && trackOpen(state, reg, holderId, seed.track) ? seed.track : void 0;
+  if (track === void 0) return null;
+  if (track !== asked) issues.push("track was not open and was replaced");
+  const cap8 = trackLevel(state, holderId, track) + 1;
+  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed?.tier ?? 1;
+  const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
+  const tier = Math.min(Math.min(5, cap8), Math.max(1, floor, tierRaw));
+  if (tier !== raw.tier) issues.push("tier was clamped");
+  const ceiling = stakesCeilingOf(state, holderId);
+  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed?.stakes ?? "minor";
+  const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
+  if (stakes !== raw.stakes) issues.push("stakes were clamped");
+  const units = eligibleUnits(state, holderId);
+  const targetAsked = typeof raw.targetId === "string" ? raw.targetId : raw.targetUnitId;
+  const targetRaw = typeof targetAsked === "string" && units.includes(targetAsked) ? targetAsked : void 0;
+  let check = CHECK_KINDS.includes(raw.check) ? raw.check : "model";
+  let checkArg = typeof raw.checkArg === "string" ? raw.checkArg : void 0;
+  if (check === "no_scene_with" && (checkArg === void 0 || !units.includes(checkArg))) {
+    check = "model";
+    checkArg = void 0;
+  } else if (check === "rule_kept_until" && (checkArg === void 0 || !activeRules2(state, holderId).some((r) => r.id === checkArg))) {
+    check = "model";
+    checkArg = void 0;
+  } else if (ROSTER_CHECKS2.includes(check)) checkArg = checkArg !== void 0 && units.includes(checkArg) ? checkArg : void 0;
+  else if (check !== "no_scene_with" && check !== "rule_kept_until") checkArg = void 0;
+  const argAsked = typeof raw.checkArg === "string" && units.includes(raw.checkArg) ? raw.checkArg : void 0;
+  const fieldUnit = argAsked ?? targetRaw;
+  if (raw.field === true && !ROSTER_CHECKS2.includes(check) && check === raw.check && fieldUnit !== void 0) {
+    check = "on_roster";
+    checkArg = fieldUnit;
+    issues.push("a field task takes a roster check");
+  } else if (check !== raw.check) issues.push("check was changed to model");
+  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed?.proof ?? "none";
+  let deadline;
+  if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
+    const D3 = TUNING.practice.deadlineDays;
+    const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
+    if (days !== raw.deadline.days) issues.push("deadline was clamped");
+    deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
+  } else {
+    deadline = { days: seed?.days ?? TUNING.practice.defaultDeadlineDays };
+    issues.push("deadline was missing and is the seed's or the default");
+  }
+  const eligible4 = units;
+  const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id) => typeof id === "string").filter((id, i, all) => all.indexOf(id) === i);
+  const audienceIds = asked2.filter((id) => eligible4.includes(id));
+  if (audienceIds.length < asked2.length) issues.push("audience was filtered");
+  if (request.kind === "demonstration" && audienceIds.length === 0) return null;
+  const text2 = plainText2(raw.text, TUNING.practice.textMax);
+  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
+  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
+  if (summary === "") {
+    if (seed === void 0) return null;
+    summary = seed.gist;
+    issues.push("summary was empty and is the seed's gist");
+  }
+  return {
+    output: {
+      kind: request.kind,
+      ...seed !== void 0 ? { seedId: seed.id } : {},
+      tags: kept,
+      track,
+      tier,
+      stakes,
+      check,
+      ...checkArg !== void 0 ? { checkArg } : {},
+      ...deadline !== void 0 ? { deadline } : {},
+      proof,
+      ...audienceIds.length > 0 ? { audienceIds } : {},
+      ...targetRaw !== void 0 ? { targetUnitId: targetRaw } : {},
+      text: text2,
+      summary
+    },
+    issues
+  };
+}
+function validatePunishmentCard(state, reg, request, raw) {
+  const text2 = plainText2(raw.text, TUNING.practice.textMax);
+  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
+  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
+  const issues = [];
+  if (summary === "") {
+    const entryId = punishmentEntryFor(state, reg, request);
+    const entry = entryId === null ? void 0 : reg.holderPunishments.get(entryId);
+    if (entry === void 0) return null;
+    summary = String(entry.label);
+    issues.push("summary was empty and is the entry's label");
+  }
+  return { output: { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: text2, summary }, issues };
 }
 
 // src/engine/practice/tasks.ts
@@ -23142,7 +23220,8 @@ var writeTask = (draft, _ctx, request, out, plain8) => {
     ...ROSTER_CHECKS3.includes(out.check) ? { field: true } : {},
     ...request.sealed === true ? { sealed: true } : {},
     acceptForm: acceptFormOf(out.stakes, request.sealed),
-    day: draft.day
+    day: draft.day,
+    requestId: request.id
   };
   p.tasks.push(task);
   return [{ type: "task_issued", taskId: id, holderId: request.holderId, kind: "task", requestId: request.id, ...plain8 ? { plain: true } : {}, ...request.sealed === true ? { sealed: true } : {} }];
@@ -23218,7 +23297,7 @@ function answerTask(draft, ctx2, taskId, answer) {
   events.push(...refuseLikeDemand(draft, ctx2, task.holderId, { evidence, ...severity !== void 0 ? { severity } : {} }));
   events.push(...evaluateAutomatic(draft, reg, task.holderId));
   const frame = dynamicOf(draft, task.holderId)?.frame;
-  if (frame !== void 0 && frameRank(frame) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, task.holderId, { kind: "refusal", ref: task.id, stakes: task.stakes, day: draft.day }));
+  if (frame !== void 0 && frameRank(frame) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, task.holderId, { kind: "refusal", ref: task.id, stakes: task.sealed === true ? "major" : task.stakes, day: draft.day }));
   return events;
 }
 function acceptByWords(draft, ctx2, holderId, ev) {
@@ -23255,6 +23334,115 @@ function compromiseTask(draft, ctx2, holderId, ev) {
   return [{ type: "task_answered", taskId: task.id, holderId, answer: "compromise", via: "words" }];
 }
 
+// src/engine/practice/issue.ts
+function writePunishment(draft, ctx2, request, out, plain8) {
+  const reg = ctx2.registries;
+  const p = ensurePractices(draft);
+  const entryId = punishmentEntryFor(draft, reg, request);
+  if (entryId === null) return [];
+  const entry = reg.holderPunishments.get(entryId);
+  const severity = severityOfEntry(reg, entryId) ?? 1;
+  const offence = request.offence ?? { kind: "refusal", stakes: "minor", day: draft.day };
+  const id = nextPracticeId(draft, "pp");
+  const punishment = {
+    id,
+    holderId: request.holderId,
+    entryId,
+    severity,
+    offence,
+    text: out.text,
+    summary: out.summary,
+    ...plain8 ? { plain: true } : {},
+    status: "offered",
+    ...entry.public === true ? { public: true } : {},
+    ...request.sealed === true ? { sealed: true } : {},
+    ...request.escalated === true ? { escalated: true } : {},
+    ...request.forUnitId !== void 0 ? { forUnitId: request.forUnitId } : {},
+    day: draft.day,
+    ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {},
+    requestId: request.id
+  };
+  p.punishments.push(punishment);
+  return [{
+    type: "punishment_issued",
+    punishmentId: id,
+    holderId: request.holderId,
+    unitId: request.holderId,
+    severity,
+    offence: offence.kind,
+    ...offence.unfair === true ? { unfair: true } : {},
+    ...request.escalated === true ? { escalated: true } : {},
+    ...plain8 ? { plain: true } : {}
+  }];
+}
+var WRITERS = { task: writeTask, punishment: writePunishment };
+function fallbackOutput(state, reg, request) {
+  if (request.kind === "punishment") {
+    const entryId = punishmentEntryFor(state, reg, request);
+    const entry = entryId === null ? void 0 : reg.holderPunishments.get(entryId);
+    if (entry === void 0) return null;
+    const label2 = String(entry.label);
+    return { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: fallbackLine("punishment", label2), summary: label2 };
+  }
+  const pool = seedPool(state, reg, request.holderId, request.kind);
+  const seed = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
+  if (seed === void 0) return null;
+  const ceiling = stakesCeilingOf(state, request.holderId);
+  return {
+    kind: request.kind,
+    seedId: seed.id,
+    tags: [...seed.contentTags],
+    track: seed.track,
+    tier: seed.tier,
+    stakes: stakeRank(seed.stakes) > stakeRank(ceiling) ? ceiling : seed.stakes,
+    check: seed.check ?? "model",
+    proof: seed.proof ?? "none",
+    deadline: { days: seed.days ?? TUNING.practice.defaultDeadlineDays },
+    text: fallbackLine(request.kind, seed.gist),
+    summary: plainSummary(seed)
+  };
+}
+function issuePractice(draft, ctx2, requestId, output) {
+  const p = draft.practices;
+  const found = requestOf(draft, ctx2.registries, requestId);
+  if (p === void 0 || found === void 0 || found.replaced !== void 0 && output === "fallback") throw new Error("That request is gone.");
+  const { request, replaced } = found;
+  if (!practiceLive(draft, ctx2.registries, request.holderId)) throw new Error("She is not holding now.");
+  const write3 = WRITERS[request.kind];
+  if (write3 === void 0) throw new Error(`A ${request.kind} cannot be issued yet.`);
+  const plain8 = output === "fallback";
+  if (!plain8 && output.kind !== request.kind) throw new Error("That card is for another kind of practice.");
+  const card2 = plain8 ? fallbackOutput(draft, ctx2.registries, request) : validatePracticeOutput(draft, ctx2.registries, request, output)?.output ?? null;
+  if (!plain8 && card2 === null) throw new Error("That card does not fit.");
+  p.requests = p.requests.filter((r) => r.id !== requestId);
+  if (card2 === null) return [];
+  const events = write3(draft, ctx2, request, card2, plain8);
+  if (replaced === void 0) return events;
+  const written = allCards(draft).find((c) => c.requestId === requestId && c !== replaced);
+  if (written === void 0) return events;
+  const lists = [p.tasks, p.punishments, p.demonstrations];
+  const from = lists.find((l) => l.includes(replaced));
+  const to = lists.find((l) => l.includes(written));
+  const at = from.indexOf(replaced);
+  to.splice(to.indexOf(written), 1);
+  from.splice(at, 1, written);
+  written.id = replaced.id;
+  for (const e of events) {
+    const key = REISSUED[e.type];
+    if (key !== void 0) {
+      e[key] = replaced.id;
+      e.rerolled = true;
+    }
+  }
+  return events;
+}
+var REISSUED = { task_issued: "taskId", punishment_issued: "punishmentId", demonstration_staged: "demonstrationId" };
+
+// src/engine/practice/slap.ts
+function startSlap(_draft, _ctx, _holderId, _opts = {}) {
+  return [];
+}
+
 // src/engine/practice/punish.ts
 var SEVERITY2 = ["minor", "minor", "moderate", "major", "extreme"];
 var num3 = (v, fallback = 0) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
@@ -23271,8 +23459,7 @@ function publicAudience(draft, reg, p) {
   if (p.public !== true || !(draft.content?.enabled ?? []).includes("public_humiliation")) return [];
   if (practiceOf(draft, reg, p.holderId)?.audience === "private_only") return [];
   const units = eligibleUnits(draft, p.holderId);
-  const inScene2 = (draft.scene?.participants ?? []).filter((id) => units.includes(id));
-  return [.../* @__PURE__ */ new Set([...inScene2, ...atBase(draft, p.holderId)])].slice(0, TUNING.practice.punish.publicAudienceMax);
+  return (draft.scene?.participants ?? []).filter((id) => units.includes(id)).slice(0, TUNING.practice.punish.publicAudienceMax);
 }
 var trainedLevel = (draft) => Math.max(0, ...Object.values(draft.commander.endurance ?? {}).map((e) => e?.level ?? 0));
 function runPunishmentEffect(draft, ctx2, p, fx2) {
@@ -23284,12 +23471,13 @@ function runPunishmentEffect(draft, ctx2, p, fx2) {
       return startHold(draft, ctx2, holderId, fx2.slots, { punitive: true, punishmentId: p.id });
     case "privilege_revoked": {
       const what = fx2.what;
-      const arg = what === "room" ? draft.scene?.locationId ?? "quarters_commander" : void 0;
+      const arg = what === "room" && typeof fx2.arg === "string" ? fx2.arg : void 0;
+      if (what === "room" && arg === void 0) return [];
       pr.restrictions.push({ holderId, what, ...arg !== void 0 ? { arg } : {}, untilDay: draft.day + num3(fx2.days, 1) });
       return [{ type: "privilege_revoked", what, untilDay: draft.day + num3(fx2.days, 1), unitId: holderId }];
     }
     case "protocol_extra":
-      return requestPractice(draft, ctx2, holderId, "protocol", { days: num3(fx2.days, 1) });
+      return WRITERS.protocol === void 0 ? [] : requestPractice(draft, ctx2, holderId, "protocol", { days: num3(fx2.days, 1) });
     case "cold_shoulder": {
       const until = draft.day + num3(fx2.days, 1);
       pr.cold[holderId] = Math.max(pr.cold[holderId] ?? 0, until);
@@ -23354,6 +23542,7 @@ function accept(draft, ctx2, p) {
   p.answeredDay = draft.day;
   const audience = publicAudience(draft, reg, p);
   if (audience.length > 0) p.audienceIds = audience;
+  if (draft.scene?.participants.includes(holderId) === true) p.voicedScene = draft.scene.id;
   const events = [{
     type: "punishment_answered",
     punishmentId: p.id,
@@ -23409,7 +23598,9 @@ function withUndo(draft, ctx2, p, answer) {
     tracks: structuredClone(dyn.tracks),
     refusals: [...dyn.refusals],
     contest: [...dyn.contest],
-    restrictions: pr.restrictions.length,
+    restrictionsAdded: [],
+    domains: structuredClone(dyn.domains),
+    lastPracticeDay: dyn.lastPracticeDay,
     ...pr.cold[holderId] !== void 0 ? { cold: pr.cold[holderId] } : {},
     stamp: {
       day: draft.day,
@@ -23423,10 +23614,12 @@ function withUndo(draft, ctx2, p, answer) {
       lastExpedition: draft.lastExpedition?.id ?? null
     }
   };
+  const restrictionsBefore = [...pr.restrictions];
   const tasksBefore = pr.tasks.map((t) => t.id);
   const requestsBefore = pr.requests.map((r) => r.id);
   const markBefore = draft.personal?.mark;
   const { events, inverse } = captureInverse(draft, holderId, answer);
+  undo.restrictionsAdded = pr.restrictions.filter((r) => !restrictionsBefore.includes(r)).map((r) => ({ ...r }));
   const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
   const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
   if (tasks.length > 0) undo.taskIds = tasks;
@@ -23477,8 +23670,13 @@ function restorePractice(draft, _ctx, unitId, undo) {
     dyn.tracks = structuredClone(undo.tracks);
     dyn.refusals = [...undo.refusals];
     dyn.contest = [...undo.contest];
+    dyn.domains = structuredClone(undo.domains);
+    dyn.lastPracticeDay = undo.lastPracticeDay;
   }
-  pr.restrictions = pr.restrictions.slice(0, undo.restrictions);
+  for (const row4 of undo.restrictionsAdded) {
+    const at = pr.restrictions.findIndex((r) => r.holderId === row4.holderId && r.what === row4.what && r.arg === row4.arg && r.untilDay === row4.untilDay);
+    if (at >= 0) pr.restrictions.splice(at, 1);
+  }
   if (undo.cold === void 0) delete pr.cold[unitId];
   else pr.cold[unitId] = undo.cold;
   if (undo.markSet === true && draft.personal?.mark?.unitId === unitId) delete draft.personal.mark;
@@ -23493,6 +23691,7 @@ function restorePractice(draft, _ctx, unitId, undo) {
   p.status = undo.status;
   delete p.answeredDay;
   delete p.audienceIds;
+  delete p.voicedScene;
   delete p.inverse;
   return events;
 }
@@ -23521,8 +23720,23 @@ function compromisePunishment(draft, ctx2, holderId, ev) {
   p.status = "offered";
   return [{ type: "punishment_answered", punishmentId: p.id, unitId: holderId, holderId, answer: "compromise", severity: p.severity }];
 }
+function voiceWaitingPunishments(draft, _ctx, events) {
+  const p = draft.practices;
+  if (p === void 0 || p.punishments.length === 0) return [];
+  for (const e of events) {
+    if (e.type !== "scene_started" || !Array.isArray(e.participants)) continue;
+    for (const x of p.punishments) {
+      if (x.status === "accepted" && x.voicedScene === void 0 && x.answeredDay === draft.day && e.participants.includes(x.holderId)) x.voicedScene = String(e.sceneId);
+    }
+  }
+  return [];
+}
 function closePunishments(draft) {
-  for (const p of draft.practices?.punishments ?? []) if (p.status === "accepted" && (p.answeredDay ?? p.day) < draft.day) p.status = "done";
+  for (const p of draft.practices?.punishments ?? []) {
+    if ((p.answeredDay ?? p.day) >= draft.day) continue;
+    if (p.status === "accepted") p.status = "done";
+    delete p.inverse;
+  }
 }
 function coldShoulderWants(draft) {
   const events = [];
@@ -24312,20 +24526,20 @@ function intrigueBusy(state) {
   if (state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0) return "Not while a scene, a fight or a run is open.";
   return null;
 }
-function slotActionBusy(state) {
+function slotActionBusy(state, reg) {
   const busy = intrigueBusy(state);
   if (busy) return busy;
   if (state.slot === "night") return "Not at night.";
   if (state.calendar.pendingScene) return "A conversation is still open; end it first.";
   if (state.dilemmas?.open?.status === "presented") return "A decision is waiting: answer it first.";
-  return bookingGuard(state, { type: "intrigue/act" })?.message ?? null;
+  return bookingGuard(state, reg, { type: "intrigue/act" })?.message ?? null;
 }
 function spendSlot(draft, ctx2, day, slot2) {
   return draft.day === day && draft.slot === slot2 ? consumeSlots(draft, 1, ctx2) : [];
 }
 var isAlly = (state, id) => id !== void 0 && allies(state).includes(id);
-function digProblem(state, _reg, allyId) {
-  const busy = slotActionBusy(state);
+function digProblem(state, reg, allyId) {
+  const busy = slotActionBusy(state, reg);
   if (busy) return busy;
   if (allyId !== void 0 && !isAlly(state, allyId)) return "That unit does not stand with the commander.";
   if (allyId === void 0 && socialRank(state, "cunning") < TUNING.warden.kompromat.digCunning) return `Digging needs an ally or Cunning ${TUNING.warden.kompromat.digCunning}.`;
@@ -24377,7 +24591,7 @@ function isTech(state, reg, unitId) {
   return reg.roles.get(u.roleId)?.tech === true || u.defects.some((d) => reg.defects.get(d.id)?.tech === true);
 }
 function hackProblem(state, reg, allyId) {
-  const busy = slotActionBusy(state);
+  const busy = slotActionBusy(state, reg);
   if (busy) return busy;
   const H = TUNING.warden.hack;
   const missing2 = [];
@@ -24680,6 +24894,10 @@ function cancelHeld(draft, held3) {
     else delete b.conflict;
   }
 }
+function holdKindsOf(draft, reg, held3) {
+  const kinds2 = (draft.personal?.bookings ?? []).filter((b) => held3.bookingIds.includes(b.id)).map((b) => reg.bookingKinds.get(b.kindId));
+  return kinds2.filter((k) => k !== void 0 && k.held === true);
+}
 function endHold(draft, p, reason) {
   const held3 = p.held;
   cancelHeld(draft, held3);
@@ -24753,7 +24971,7 @@ function withdrawPractices(draft, reg, changed) {
     x.status = "void";
     events.push(voided(x.id, x.holderId, "demonstration", "content"));
   }
-  if (p.held !== void 0 && [...reg.bookingKinds.values()].some((k) => k.held === true && hit(tagsOf4(k)))) events.push(endHold(draft, p, "content"));
+  if (p.held !== void 0 && holdKindsOf(draft, reg, p.held).some((k) => hit(tagsOf4(k)))) events.push(endHold(draft, p, "content"));
   const enabled = draft.content?.enabled ?? [];
   const needs = EFFECT_NEEDS.slap;
   if (p.slap !== void 0 && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;
@@ -26196,7 +26414,7 @@ function checkActivity(state, reg, request) {
     if (mode === "none") return `${name} cannot be done with a companion.`;
     const c = state.squad.find((u) => u.id === req.companionId);
     if (!c || !isLiving(c)) return `Companion "${req.companionId}" is not available.`;
-    return restrictionReason(state, c.id, "companion", req.activityId) ?? commanderRestriction(state, "companion", req.activityId);
+    return restrictionReason(state, reg, c.id, "companion", req.activityId) ?? commanderRestriction(state, reg, "companion", req.activityId);
   }
   if (mode === "required") return `${name} needs a companion.`;
   const focus = focusOf(a, req);
@@ -27894,7 +28112,7 @@ function playSparring(draft, ctx2, w, pick3) {
   const reg = ctx2.registries;
   if (draft.slot === "night") throw new Error("Nobody spars at night.");
   if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === "presented") throw new Error("Not now: something else holds this slot.");
-  const due = bookingGuard(draft, { type: "calendar/consume_slot" });
+  const due = bookingGuard(draft, reg, { type: "calendar/consume_slot" });
   if (due) throw new Error(due.message);
   checkPick(draft, reg, w.gameId, w.unitId, pick3);
   const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick3);
@@ -28913,7 +29131,7 @@ var pairs = (state, reg, source, accept2) => {
   }
   return out;
 };
-function fallbackOutput(state, reg, rng) {
+function fallbackOutput2(state, reg, rng) {
   const out = emptyOutput();
   const beat = currentBeat(state, reg);
   if (beat && checkProposal(state, reg, beat.id, beatCooldownDays(state)) === null) {
@@ -29157,7 +29375,7 @@ function checkExpedition(state, reg, p) {
     if (!isLiving(u) || u.status !== "active") return `${u.displayName} is not available (${u.status}).`;
     if (u.breakdown) return `${u.displayName} is in a breakdown.`;
     if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
-    const held3 = restrictionReason(state, id, "expedition");
+    const held3 = restrictionReason(state, reg, id, "expedition");
     if (held3) return held3;
   }
   const formation = formationProblem(ids, p.formation);
@@ -30363,7 +30581,7 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   const reg = ctx2.registries;
   const unit3 = draft.squad.find((u) => u.id === unitId);
   if (!unit3 || unit3.kind !== "named" || !isLiving(unit3) || unitObeys(draft, unitId) || hasOpen(draft, unitId) || opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek) return null;
-  if (restrictionReason(draft, unitId, "scene") !== null) return null;
+  if (restrictionReason(draft, reg, unitId, "scene") !== null) return null;
   let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? "desire" : void 0);
   if (opts.only !== void 0) pool = pool.filter((t) => t.kind === opts.only);
   const last = [...draft.discipline?.demandLog ?? []].reverse().find((e) => e.unitId === unitId)?.templateId;
@@ -30641,7 +30859,7 @@ function rollUnitDiscovery(draft, ctx2) {
   if (!d) return [];
   const reg = ctx2.registries;
   for (const u of draft.squad) {
-    if (u.kind !== "named" || !isLiving(u) || draft.relations[u.id]?.flags.includes("knows_debts") || restrictionReason(draft, u.id, "scene") !== null) continue;
+    if (u.kind !== "named" || !isLiving(u) || draft.relations[u.id]?.flags.includes("knows_debts") || restrictionReason(draft, reg, u.id, "scene") !== null) continue;
     const aware = u.defects.some((x) => reg.defects.get(x.id)?.nightAware === true);
     if (!aware && u.stress < T3().watcherStress) continue;
     if (!ctx2.rng.chance(T3().watcherChance * (1 + 0.5 * (aware ? 1 : 0)))) continue;
@@ -32084,7 +32302,7 @@ function dispatch(state, action, registries) {
   if (state.dilemmas?.open?.status === "presented" && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p)) && !wardenArgueStart(state, action)) {
     return { state, events: [{ type: "error", code: "dilemma_open", message: "A decision is waiting: answer it first." }] };
   }
-  const booked = bookingGuard(state, action);
+  const booked = bookingGuard(state, registries, action);
   if (booked) return { state, events: [{ type: "error", ...booked }] };
   let voteId;
   const gate2 = gates.get(action.type);
@@ -33725,10 +33943,10 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === "grunt") throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
-    const held3 = origin === "night" ? null : restrictionReason(draft, id, "scene");
+    const held3 = origin === "night" ? null : restrictionReason(draft, ctx2.registries, id, "scene");
     if (held3) throw new Error(held3);
   }
-  const barred = origin === "night" ? null : commanderRestriction(draft, "scene", void 0, void 0, loc.id);
+  const barred = origin === "night" ? null : commanderRestriction(draft, ctx2.registries, "scene", void 0, void 0, loc.id);
   if (barred) throw new Error(barred);
   const participants = ids;
   const pending4 = draft.calendar.pendingScene;
@@ -34355,11 +34573,11 @@ function textOf(v) {
   if (t === "" || t.length > TEXT_MAX) throw new Error(`A DM is 1 to ${TEXT_MAX} characters.`);
   return t;
 }
-registerAction("dm/send", (draft, payload) => {
+registerAction("dm/send", (draft, payload, ctx2) => {
   if (!isObj17(payload)) throw new Error("dm/send needs { unitId, text }");
   const unit3 = namedUnit(draft, payload.unitId);
   const text2 = textOf(payload.text);
-  const revoked = commanderRestriction(draft, "dm", void 0, unit3.id);
+  const revoked = commanderRestriction(draft, ctx2.registries, "dm", void 0, unit3.id);
   if (revoked) throw new Error(revoked);
   const editedBy = payload.interceptId === void 0 ? void 0 : takeKeptEdit(draft, String(payload.interceptId), unit3.id);
   pushMessage(draft, unit3.id, { from: "commander", text: text2, day: draft.day, slot: draft.slot, read: true, ...editedBy !== void 0 ? { editedBy } : {} });
@@ -35062,7 +35280,7 @@ registerAction("director/apply", (draft, payload, ctx2) => {
 });
 registerAction("director/fallback", (draft, payload, ctx2) => {
   const id = isObj20(payload) && typeof payload.requestId === "string" ? payload.requestId : void 0;
-  return answerRequest(draft, ctx2, id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), { fallback: true });
+  return answerRequest(draft, ctx2, id, () => fallbackOutput2(draft, ctx2.registries, ctx2.rng), { fallback: true });
 });
 registerAction("campaign/set_beat_cooldown", (draft, payload) => {
   const days = isObj20(payload) ? payload.days : void 0;
@@ -35078,7 +35296,7 @@ registerDayEndStep("director_tick", (draft, ctx2) => {
   const events = [];
   const pending4 = draft.world.director?.pending;
   if (pending4) {
-    events.push(...answerRequest(draft, ctx2, pending4.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
+    events.push(...answerRequest(draft, ctx2, pending4.id, () => fallbackOutput2(draft, ctx2.registries, ctx2.rng), {
       cooldownDays: beatCooldownDays(draft),
       fallback: true
     }));
@@ -35549,6 +35767,18 @@ registerAction("notes/read", (draft, payload) => {
   return [{ type: "note_read", id: note.id, unitId: note.unitId }];
 });
 
+// src/engine/power/punishGate.ts
+function benchSeverity(reg) {
+  const heavy = [...reg.punishments.values()].filter((p) => p.sideEffects?.some((e) => e.type === "bench"));
+  return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
+}
+function punishVoteDecision(reg, unitId, measure) {
+  const pun = punishmentFor(reg, measure);
+  const limit = benchSeverity(reg);
+  if (!pun || limit === null || Number(pun.severity) > limit) return null;
+  return { kind: "punish", subject: unitId };
+}
+
 // src/engine/power/dayStep.ts
 function powerDayStep(draft, ctx2) {
   const power = powerOf(draft);
@@ -35597,16 +35827,9 @@ registerVoteGate("expedition/start", (state, payload, reg) => {
   return { kind: "mission", subject: mission.id };
 });
 registerVoteGate("base/upgrade", (_state, payload) => isObj28(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
-function benchSeverity(reg) {
-  const heavy = [...reg.punishments.values()].filter((p) => p.sideEffects?.some((e) => e.type === "bench"));
-  return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
-}
 registerVoteGate("discipline/punish", (_state, payload, reg) => {
   if (!isObj28(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
-  const pun = punishmentFor(reg, payload.measure);
-  const limit = benchSeverity(reg);
-  if (!pun || limit === null || Number(pun.severity) > limit) return null;
-  return { kind: "punish", subject: payload.unitId };
+  return punishVoteDecision(reg, payload.unitId, payload.measure);
 });
 registerVoteGate("rations/set", (state, payload, reg) => {
   if (!isObj28(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
@@ -38208,127 +38431,6 @@ registerAfterAction((draft, _ctx, events) => {
   return [];
 });
 
-// src/engine/practice/issue.ts
-function writePunishment(draft, ctx2, request, out, plain8) {
-  const reg = ctx2.registries;
-  const p = ensurePractices(draft);
-  const asked = request.severity ?? 1;
-  const entryId = request.entryId !== void 0 && reg.holderPunishments.has(request.entryId) ? request.entryId : pickHolderPunishment(draft, reg, request.holderId, asked);
-  if (entryId === null) return [];
-  const entry = reg.holderPunishments.get(entryId);
-  const severity = severityOfEntry(reg, entryId) ?? 1;
-  const offence = request.offence ?? { kind: "refusal", stakes: "minor", day: draft.day };
-  const id = nextPracticeId(draft, "pp");
-  const punishment = {
-    id,
-    holderId: request.holderId,
-    entryId,
-    severity,
-    offence,
-    text: out.text,
-    summary: out.summary,
-    ...plain8 ? { plain: true } : {},
-    status: "offered",
-    ...entry.public === true ? { public: true } : {},
-    ...request.sealed === true ? { sealed: true } : {},
-    ...request.escalated === true ? { escalated: true } : {},
-    ...request.forUnitId !== void 0 ? { forUnitId: request.forUnitId } : {},
-    day: draft.day,
-    ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {},
-    requestId: request.id
-  };
-  p.punishments.push(punishment);
-  return [{
-    type: "punishment_issued",
-    punishmentId: id,
-    holderId: request.holderId,
-    unitId: request.holderId,
-    severity,
-    offence: offence.kind,
-    ...offence.unfair === true ? { unfair: true } : {},
-    ...request.escalated === true ? { escalated: true } : {},
-    ...plain8 ? { plain: true } : {}
-  }];
-}
-var WRITERS = { task: writeTask, punishment: writePunishment };
-function fallbackOutput2(state, reg, request) {
-  if (request.kind === "punishment") {
-    const entry = request.entryId === void 0 ? void 0 : reg.holderPunishments.get(request.entryId);
-    if (entry === void 0) return null;
-    const label2 = String(entry.label);
-    return { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: fallbackLine("punishment", label2), summary: label2 };
-  }
-  const pool = seedPool(state, reg, request.holderId, request.kind);
-  const seed = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
-  if (seed === void 0) return null;
-  const ceiling = stakesCeilingOf(state, request.holderId);
-  return {
-    kind: request.kind,
-    seedId: seed.id,
-    tags: [...seed.contentTags],
-    track: seed.track,
-    tier: seed.tier,
-    stakes: stakeRank(seed.stakes) > stakeRank(ceiling) ? ceiling : seed.stakes,
-    check: seed.check ?? "model",
-    proof: seed.proof ?? "none",
-    text: fallbackLine(request.kind, seed.gist),
-    summary: plainSummary(seed)
-  };
-}
-function requestOf(state, reg, requestId) {
-  const p = state.practices;
-  const waiting2 = p?.requests.find((r) => r.id === requestId);
-  if (waiting2 !== void 0) return { request: waiting2 };
-  const old = p?.tasks.find((t) => t.requestId === requestId && t.status === "offered");
-  if (old === void 0) return void 0;
-  const kind = old.kind;
-  const seedIds = [.../* @__PURE__ */ new Set([...old.seedId !== void 0 ? [old.seedId] : [], ...pickSeeds(state, reg, old.holderId, kind)])];
-  return {
-    replaced: old,
-    request: {
-      id: requestId,
-      holderId: old.holderId,
-      kind,
-      day: old.day,
-      seedIds,
-      ...old.chainId !== void 0 ? { chainOf: old.chainId } : {},
-      ...old.targetUnitId !== void 0 ? { targetUnitId: old.targetUnitId } : {},
-      ...old.sealed === true ? { sealed: true } : {},
-      ...old.noDuration === true ? { noDuration: true } : {}
-    }
-  };
-}
-function issuePractice(draft, ctx2, requestId, output) {
-  const p = draft.practices;
-  const found = requestOf(draft, ctx2.registries, requestId);
-  if (p === void 0 || found === void 0 || found.replaced !== void 0 && output === "fallback") throw new Error("That request is gone.");
-  const { request, replaced } = found;
-  if (!practiceLive(draft, ctx2.registries, request.holderId)) throw new Error("She is not holding now.");
-  const write3 = WRITERS[request.kind];
-  if (write3 === void 0) throw new Error(`A ${request.kind} cannot be issued yet.`);
-  const plain8 = output === "fallback";
-  if (!plain8 && output.kind !== request.kind) throw new Error("That card is for another kind of practice.");
-  const card2 = plain8 ? fallbackOutput2(draft, ctx2.registries, request) : validatePracticeOutput(draft, ctx2.registries, request, output)?.output ?? null;
-  if (!plain8 && card2 === null) throw new Error("That card does not fit.");
-  p.requests = p.requests.filter((r) => r.id !== requestId);
-  if (card2 === null) return [];
-  const before = p.tasks.length;
-  const events = write3(draft, ctx2, request, card2, plain8);
-  const written = p.tasks.length > before ? p.tasks.at(-1) : void 0;
-  if (written !== void 0) {
-    written.requestId = requestId;
-    if (replaced !== void 0) {
-      p.tasks = p.tasks.filter((t) => t !== replaced);
-      written.id = replaced.id;
-      for (const e of events) if (e.type === "task_issued") {
-        e.taskId = replaced.id;
-        e.rerolled = true;
-      }
-    }
-  }
-  return events;
-}
-
 // src/engine/practice/dayStep.ts
 var frameOf2 = (state, holderId) => {
   const f = dynamicOf(state, holderId)?.frame;
@@ -38441,31 +38543,36 @@ function practiceDayStep(draft, ctx2) {
 
 // src/engine/practice/restrict.ts
 var nameOf13 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function commanderRestrictionOf(state, use, activityId, toUnitId, locationId) {
+function commanderRestrictionOf(state, reg, use, activityId, toUnitId, locationId) {
   const p = state.practices;
   if (p === void 0) return null;
   for (const r of p.restrictions) {
-    if (state.day > r.untilDay) continue;
+    if (state.day > r.untilDay || !practiceLive(state, reg, r.holderId)) continue;
     const name = nameOf13(state, r.holderId);
     if (r.what === "no_dms_others" && use === "dm" && toUnitId !== void 0 && toUnitId !== r.holderId) return `${name} has barred the commander's messages to anyone else until day ${r.untilDay}.`;
     if (r.what === "no_free_activities" && use === "companion" && !(activityId !== void 0 && NOT_LEAVE.includes(activityId))) return `${name} has barred the commander's free time until day ${r.untilDay}.`;
     if (r.what === "room" && use === "scene" && r.arg !== void 0 && r.arg === locationId) return `${name} has barred the commander from that room until day ${r.untilDay}.`;
   }
-  if (use === "dm" && toUnitId !== void 0 && (p.cold[toUnitId] ?? -1) >= state.day) return "She is not answering.";
+  if (use === "dm" && toUnitId !== void 0 && (p.cold[toUnitId] ?? -1) >= state.day && practiceLive(state, reg, toUnitId)) return "She is not answering.";
   return null;
 }
-function unitRestrictionOf(state, unitId, use) {
+function unitRestrictionOf(state, reg, unitId, use) {
   const until = state.practices?.cold[unitId];
-  if (use !== "scene" || until === void 0 || until < state.day) return null;
+  if (use !== "scene" || until === void 0 || until < state.day || !practiceLive(state, reg, unitId)) return null;
   return `${nameOf13(state, unitId)} is not seeing the commander until day ${until}.`;
 }
 
 // src/engine/actions/practice.ts
-registerWithdrawal(withdrawPractices);
+registerWithdrawal((draft, reg, changed) => {
+  const events = withdrawPractices(draft, reg, changed);
+  repickPunishmentRequests(draft, reg);
+  return events;
+});
 registerDayEndStep("dm_rumors", practiceDayStep);
 registerAfterAction(taskChecksFromEvents);
 registerAfterAction(offencesFromEvents);
 registerAfterAction(noteThreat);
+registerAfterAction(voiceWaitingPunishments);
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
 registerPracticeUndone(restorePractice);
@@ -38494,6 +38601,11 @@ registerAction("practice/answer_punishment", (draft, payload, ctx2) => {
 registerAction("practice/take_instead", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.punishmentId !== "string" || payload.answer !== "do_it" && payload.answer !== "take_it" && payload.answer !== "refuse") throw new Error("practice/take_instead needs { punishmentId, answer }.");
   return takeInstead(draft, ctx2, payload.punishmentId, payload.answer);
+});
+registerVoteGate("practice/take_instead", (state, payload, reg) => {
+  if (!isObj40(payload) || payload.answer !== "do_it" || typeof payload.punishmentId !== "string") return null;
+  const order = state.practices?.punishments.find((x) => x.id === payload.punishmentId && x.forUnitId !== void 0);
+  return order === void 0 ? null : punishVoteDecision(reg, order.forUnitId, order.entryId);
 });
 registerAction("practice/undo", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.punishmentId !== "string") throw new Error("practice/undo needs { punishmentId }.");
@@ -39700,8 +39812,8 @@ function createPersonal(deps) {
     const s = state();
     if (!s || opening || !deps.startScene) return false;
     if (s.slot === "night" || s.scene || s.combat || s.expedition || s.calendar.pendingScene || s.calendar.nightEvent) return false;
-    const due = dueBooking(s);
-    if (!due || !bookingPlayable(s, due)) return false;
+    const due = dueBooking(s, reg());
+    if (!due || !bookingPlayable(s, reg(), due)) return false;
     opening = true;
     try {
       const events = deps.app.dispatch({ type: "booking/play", payload: {} }, { expectChatId: chatId() });
@@ -40341,7 +40453,7 @@ function createOnboarding(deps) {
     void deps.initiateDm(guideId);
   }
   function candidates3(s) {
-    return livingNamed(s).filter((u) => restrictionReason(s, u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
+    return livingNamed(s).filter((u) => restrictionReason(s, reg(), u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
   }
   async function open3(step, participants) {
     const s = state();
@@ -40369,7 +40481,7 @@ function createOnboarding(deps) {
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== "scene" || step.perUnit !== true || s.scene) return false;
       if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
-      const held3 = restrictionReason(s, unitId, "scene");
+      const held3 = restrictionReason(s, reg(), unitId, "scene");
       if (held3) {
         deps.toast("warn", held3);
         return false;
@@ -40403,7 +40515,7 @@ function createOnboarding(deps) {
       const step = s ? currentStep(s, reg()) : null;
       const report = s?.lastExpedition;
       if (!s || !step || step.completion !== "debriefed" || !report || report.missionId !== s.onboarding?.tutorialMissionId) return false;
-      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
+      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
       if (who.length === 0) {
         deps.toast("warn", "Nobody from the patrol is free to debrief.");
         return false;
@@ -41539,7 +41651,7 @@ function practiceDirectives(state, reg, present2) {
     out.push({ id: `${TASKS_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} expects the commander to see to: ${open3.join("; ")}. She may ask after them. ${NEVER_NAME}`) });
   }
   for (const unit3 of holdersIn(state, reg, present2)) {
-    const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit3.id && x.forUnitId === void 0 && x.status === "accepted" && x.answeredDay === state.day);
+    const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit3.id && x.forUnitId === void 0 && x.status === "accepted" && x.answeredDay === state.day && (x.voicedScene === void 0 || x.voicedScene === state.scene?.id));
     if (done.length === 0) continue;
     const shown = (state.content?.enabled ?? []).includes("physical_discipline_shown");
     const lines = done.map((x) => {
@@ -41651,13 +41763,16 @@ function createPractice(deps) {
       committed(key) {
         const s = state();
         if (s === null) return "That practice is gone.";
-        return requestOf(s, deps.registries(), key) !== void 0 ? null : "It was answered.";
+        if (s.practices?.requests.some((r) => r.id === key) === true) return null;
+        const card2 = cardOf(s, key);
+        if (card2 === void 0) return "That practice is gone.";
+        return card2.status === "offered" ? null : "It was answered.";
       }
     });
   }
   const kindOf4 = (requestId) => {
     const s = state();
-    return s?.practices?.requests.find((r) => r.id === requestId)?.kind ?? s?.practices?.tasks.find((t) => t.requestId === requestId)?.kind;
+    return s === null ? void 0 : practiceKindOf(s, requestId);
   };
   const tried = /* @__PURE__ */ new Set();
   const triedKey = (id) => `${chatId() ?? ""}|${id}`;
@@ -41716,7 +41831,7 @@ function createPractice(deps) {
       for (const e of events) {
         if (OWN2.includes(e.type)) refresh2 = true;
         if (e.type === "task_issued" && e.rerolled !== true && typeof e.taskId === "string") deliver2(e.taskId);
-        if (e.type === "punishment_issued" && typeof e.punishmentId === "string") deliverPunishment(e.punishmentId);
+        if (e.type === "punishment_issued" && e.rerolled !== true && typeof e.punishmentId === "string") deliverPunishment(e.punishmentId);
       }
       if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh2 = true;
       if (refresh2) deps.refreshContext();
@@ -41754,7 +41869,7 @@ function createPractice(deps) {
         deps.toast("error", String(bad.message ?? bad.code));
         return false;
       }
-      if (answer === "talk" && deps.startScene !== void 0 && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: "quarters_unit", participants: [task.holderId], origin: "event" });
+      if (answer === "talk" && deps.startScene !== void 0 && s.scene?.participants.includes(task.holderId) !== true) await deps.startScene({ locationId: "quarters_unit", participants: [task.holderId], origin: "event", consumesSlot: false });
       deps.refreshContext();
       return true;
     },
@@ -41773,12 +41888,20 @@ function createPractice(deps) {
       const p = s?.practices?.punishments.find((x) => x.id === punishmentId);
       if (s === null || p === void 0) return false;
       if (!ok(deps.app.dispatch({ type: "practice/answer_punishment", payload: { punishmentId, answer } }, { expectChatId: chatId() }))) return false;
-      if (answer === "negotiate" && deps.startScene !== void 0 && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: "quarters_unit", participants: [p.holderId], origin: "event" });
+      if (answer === "negotiate" && deps.startScene !== void 0 && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: "quarters_unit", participants: [p.holderId], origin: "event", consumesSlot: false });
       deps.refreshContext();
       return true;
     },
     takeInstead(punishmentId, answer) {
-      const done = ok(deps.app.dispatch({ type: "practice/take_instead", payload: { punishmentId, answer } }, { expectChatId: chatId() }));
+      const action = { type: "practice/take_instead", payload: { punishmentId, answer } };
+      const events = deps.app.dispatch(action, { expectChatId: chatId() });
+      if (events.some((e) => e.type === "error" && e.code === "vote_needed") && deps.requestVote !== void 0) {
+        void deps.requestVote(action).then((r) => {
+          if (r === "ran") deps.refreshContext();
+        });
+        return false;
+      }
+      const done = ok(events);
       if (done) deps.refreshContext();
       return done;
     },
@@ -42986,7 +43109,7 @@ function renderOnboardingCard(host, ctx2) {
     const spoken = new Set(state.onboarding?.spoken ?? []);
     body.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
       const done = spoken.has(u.id);
-      const held3 = restrictionReason(state, u.id, "scene");
+      const held3 = restrictionReason(state, reg, u.id, "scene");
       return h(
         "li",
         { class: "alius-onboarding-unit", "data-unit": u.id },
@@ -43117,7 +43240,7 @@ declare("setup.head_start_recap", "head_start_recap", "world", "before_commit", 
 declare("development.review", "development_review", "world", "before_commit", "quiet", "Character development");
 declare("opinion.form", "opinion_form", "scene", "none", "quiet", "Her opinion");
 declare("physics.cues", "physics_cues", "scene", "none", "quiet", "Her cues");
-for (const kind of ["task", "punishment", "demonstration", "protocol", "denial", "hold"]) declare(`practice.${kind}`, "practice_generate", "comms", "before_commit", "full", "Her practice");
+for (const kind of PRACTICE_KINDS) declare(`practice.${kind}`, "practice_generate", "comms", "before_commit", "full", "Her practice");
 declare("setup.commander_import", "commander_import", "setup", "before_commit", "none", "Commander import");
 declare("sys.ping", "ping", "sys", "none", "none", "Connection test");
 
@@ -53282,6 +53405,22 @@ function registerBlockingProviders() {
   registerAnalyzeProvider("stimulusKinds", stimulusReading);
 }
 
+// src/ui/practice/generation.ts
+var practiceSite = (kind) => `practice.${kind}`;
+function drawPracticeReroll(host, generation, kind, requestId) {
+  if (generation === void 0 || requestId === void 0) return null;
+  return drawSiteReroll(host, generation, practiceSite(kind), requestId);
+}
+function drawPracticeChips(host, generation, state, reg, pick3) {
+  if (generation === void 0 || !dynamicOn(state, reg)) return 0;
+  const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
+  return drawGenerationChips(host, generation, state, "comms", (r) => {
+    if (!r.siteId.startsWith("practice.")) return false;
+    const holder2 = holderOf5(r.key);
+    return holder2 !== void 0 && pick3({ unitId: holder2 });
+  });
+}
+
 // src/ui/practice/signature.ts
 var custom2 = null;
 function holdButton(o) {
@@ -53331,6 +53470,16 @@ var PROOF_WORDS = { none: "", dm_report: "a report to her", in_person: "in perso
 var HANDOVER_WORDS = { device: "the device", key: "the key to the quarters", calendar: "the calendar" };
 var SPARE_STYLES = ["cruel", "vindictive"];
 var slotsWord = (n) => `${n} slot${n === 1 ? "" : "s"}`;
+var NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven"];
+var SLOT_WORDS = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
+function dueWords(task, today) {
+  if (task.deadline === void 0) return null;
+  const days = Math.max(0, task.deadline.day - today);
+  const slot2 = task.deadline.slot === void 0 ? void 0 : SLOT_WORDS[task.deadline.slot];
+  if (days <= 1) return `${days === 0 ? "today" : "tomorrow"}${slot2 !== void 0 && days === 1 ? ` ${slot2}` : ""}${slot2 !== void 0 && days === 0 ? `, ${slot2}` : ""}`;
+  const count2 = days <= 7 ? NUMBER_WORDS[days] : "several";
+  return `in ${count2} days${slot2 !== void 0 ? `, in the ${slot2}` : ""}`;
+}
 function closesOf(task) {
   if (task.handover !== void 0) return `Hands over: ${HANDOVER_WORDS[task.handover] ?? task.handover}.`;
   return `Closes: ${plainDraft(task.summary).replace(/[.\s]+$/, "")}.`;
@@ -53359,6 +53508,8 @@ function renderTaskCard(host, ctx2) {
     parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
     parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
+    const due = task.noDuration === true ? null : dueWords(task, state.day);
+    if (due !== null) parts.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
     if (task.acceptForm === "button_cost") {
       const cost = taskCost(state, reg, task);
       const lines = [
@@ -53382,7 +53533,7 @@ function renderTaskCard(host, ctx2) {
   else answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
   answers2.push(button2("refuse", "[ REFUSE ]", () => ctx2.onAnswer("refuse"), "glossary:practice_task"));
   if (!sealed) answers2.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
-  parts.push(h("div", { class: "alius-task-answers" }, ...answers2));
+  parts.push(h("div", { class: "alius-task-answers" }, ...answers2, drawPracticeReroll(h("span", { class: "alius-task-reroll" }), ctx2.generation, task.kind, task.requestId)));
   const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-task-body" }, ...parts), accent: unitAccent(unit3.id) });
   card2.classList.add("alius-task");
   card2.setAttribute("data-task", task.id);
@@ -53397,8 +53548,9 @@ function drawTaskCards(host, state, reg, pick3, handlers2) {
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
     if (task.kind !== "task" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
-    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput });
+    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation });
   }
+  drawPracticeChips(host, handlers2.generation, state, reg, pick3);
 }
 var RECORD_LINES = 5;
 function renderRecordLines(state, reg) {
@@ -54868,13 +55020,13 @@ function cutTonight(items, max) {
   const keep = new Set(items.map((item, at) => ({ item, at })).sort((a, b) => score(b.item) - score(a.item) || a.at - b.at).slice(0, max).map((x) => x.at));
   return items.filter((_, at) => keep.has(at));
 }
-function endSlotBlock(state) {
+function endSlotBlock(state, reg) {
   if (state.scene) return "A conversation is open.";
   if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
   if (state.expedition) return "The squad is out.";
   if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
   if (state.calendar.nightEvent) return "Someone is at the door.";
-  return bookingGuard(state, { type: "calendar/consume_slot" })?.message ?? null;
+  return bookingGuard(state, reg, { type: "calendar/consume_slot" })?.message ?? null;
 }
 function latestOversight(state) {
   const recent2 = leashLog(state).filter((e) => e.day >= state.day - 1);
@@ -54923,9 +55075,9 @@ function talkActivity(reg) {
   return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === "required" && a.pastime !== true);
 }
 function talkBlock(state, reg, unit3, room2) {
-  const open3 = endSlotBlock(state);
+  const open3 = endSlotBlock(state, reg);
   if (open3) return open3;
-  const restricted = restrictionReason(state, unit3.id, "scene");
+  const restricted = restrictionReason(state, reg, unit3.id, "scene");
   if (restricted) return restricted;
   const slots = reg.locations.get(room2.sceneLocationId)?.slots;
   if (slots && !slots.includes(state.slot)) return `Closed this ${state.slot}.`;
@@ -54954,7 +55106,7 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
       }
     }, "[ TALK ]") : null;
     const quiet = pastimeActivity(reg);
-    const hasQuiet = !opts.readOnly && unit3.kind === "named" && quiet !== void 0 && ctx2.ops.onTimeTogether !== void 0 && lifeMode(state) !== "off" && endSlotBlock(state) === null;
+    const hasQuiet = !opts.readOnly && unit3.kind === "named" && quiet !== void 0 && ctx2.ops.onTimeTogether !== void 0 && lifeMode(state) !== "off" && endSlotBlock(state, ctx2.registries) === null;
     const quietMenu = hasQuiet ? quietHour(state, ctx2, unit3, quiet) : null;
     const row4 = h(
       "li",
@@ -55783,7 +55935,7 @@ function sideColumn(ctx2, state, readOnly) {
   const objective = currentObjective(state, ctx2.registries);
   const items = tonightItems(state, ctx2.registries);
   const oversight2 = latestOversight(state);
-  const block2 = readOnly ? "This campaign is read-only." : endSlotBlock(state);
+  const block2 = readOnly ? "This campaign is read-only." : endSlotBlock(state, ctx2.registries);
   const slotName = state.slot.toUpperCase();
   const end = readOnly ? null : h("button", {
     type: "button",
@@ -57419,7 +57571,14 @@ function renderPunishmentCard(host, ctx2) {
     h("p", { class: "alius-punishment-text" }, plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text)),
     ...p.sealed === true ? [] : [h("p", { class: "alius-punishment-weight", ...analyzeAttrs("glossary:holder_punishment", live3) }, `${label2}. Weight: ${WEIGHT_WORDS2[severityWord(p.severity)]}.`)],
     ...p.status === "negotiating" ? [h("p", { class: "alius-punishment-hint" }, "It is being talked over.")] : [],
-    h("div", { class: "alius-punishment-answers" }, button2("accept", "[ ACCEPT ]", "glossary:punishment_card"), button2("negotiate", "[ NEGOTIATE ]", "glossary:punishment_card"), button2("refuse", "[ REFUSE ]", "glossary:punishment_card"))
+    h(
+      "div",
+      { class: "alius-punishment-answers" },
+      button2("accept", "[ ACCEPT ]", "glossary:punishment_card"),
+      button2("negotiate", "[ NEGOTIATE ]", "glossary:punishment_card"),
+      button2("refuse", "[ REFUSE ]", "glossary:punishment_card"),
+      p.status === "offered" ? drawPracticeReroll(h("span", { class: "alius-punishment-reroll" }), ctx2.generation, "punishment", p.requestId) : null
+    )
   ];
   const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-punishment-body" }, ...parts), accent: unitAccent(unit3.id) });
   card2.classList.add("alius-punishment");
@@ -57463,7 +57622,7 @@ function drawPunishmentCards(host, state, reg, pick3, handlers2) {
     if (!pick3({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
     const open3 = p.status === "offered" || p.status === "negotiating";
     if (open3 && p.forUnitId !== void 0) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.takeInstead(p.id, a) });
-    else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a) });
+    else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a), generation: handlers2.generation });
     else if ((p.status === "accepted" || p.status === "refused") && p.forUnitId === void 0 && canUndoPractice(state, p.id) === null) {
       host.append(h(
         "div",
@@ -57899,9 +58058,9 @@ function renderCommsTab(host, ctx2) {
     const returnCards = h("div", { class: "alius-return-cards" });
     drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current, (answer) => ctx2.onAnswerReturn?.(answer));
     const taskCards = h("div", { class: "alius-task-cards" });
-    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus() });
+    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
     const punishmentCards = h("div", { class: "alius-punishment-cards" });
-    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id) });
+    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), generation: ctx2.generation });
     const offerChips = h("div", { class: "alius-offer-surface" });
     if (ctx2.onOffer) drawOfferChips(offerChips, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
@@ -59244,11 +59403,11 @@ function renderSceneScreen(host, ctx2) {
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => {
       ctx2.onAnswerTask?.(id, answer);
       if (answer === "talk") input.focus();
-    }, sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus() });
+    }, sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => {
       ctx2.onAnswerPunishment?.(id, answer);
       if (answer === "negotiate") input.focus();
-    }, takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id) });
+    }, takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), generation: ctx2.generation });
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
@@ -63319,7 +63478,7 @@ function createApp(st, deps) {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) });
-  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -63522,7 +63681,7 @@ function createApp(st, deps) {
     const chatId = st.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
-    const named4 = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, u.id, "scene") === null);
+    const named4 = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, registries, u.id, "scene") === null);
     const ids = [...new Set(named4(s.roster.activeIds).map((u) => u.id))].slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const answer = await shell.modal({
@@ -63768,7 +63927,7 @@ function createApp(st, deps) {
     if (!resolved || !s || s.scene || s.combat || s.expedition) return;
     const ids = resolved.affected.filter((id) => {
       const u = s.squad.find((x) => x.id === id);
-      return u !== void 0 && u.kind === "named" && isLiving(u) && restrictionReason(s, id, "scene") === null;
+      return u !== void 0 && u.kind === "named" && isLiving(u) && restrictionReason(s, registries, id, "scene") === null;
     }).slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const names = ids.map((id) => s.squad.find((u) => u.id === id).displayName).join(", ");
@@ -65283,7 +65442,7 @@ function createApp(st, deps) {
       const s = state;
       const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === "required" && a.pastime !== true);
       if (!s || load.kind !== "ok" || !talk || !s.squad.some((u) => u.id === unitId)) return false;
-      const why = endSlotBlock(s) ?? restrictionReason(s, unitId, "scene");
+      const why = endSlotBlock(s, registries) ?? restrictionReason(s, registries, unitId, "scene");
       if (why) {
         toast("warn", why);
         return false;
@@ -65301,7 +65460,7 @@ function createApp(st, deps) {
         const chatId = st.getActiveChat()?.chatId;
         const s = state;
         if (!s || load.kind !== "ok") return false;
-        const why = endSlotBlock(s) ?? pastimeProblem(s, registries, unitId, pastimeId);
+        const why = endSlotBlock(s, registries) ?? pastimeProblem(s, registries, unitId, pastimeId);
         if (why) {
           toast("warn", why);
           return false;
@@ -65322,7 +65481,7 @@ function createApp(st, deps) {
       const chatId = st.getActiveChat()?.chatId;
       const s = state;
       if (!s || load.kind !== "ok") return;
-      const why = endSlotBlock(s);
+      const why = endSlotBlock(s, registries);
       if (why) {
         toast("warn", why);
         return;
@@ -66430,6 +66589,7 @@ registerChecks("dynamicMilestones", (entry, regs) => {
   ];
 });
 registerChecks("dynamicTracks", (entry, regs) => known2(regs, "contentCategories", entry.category, "category", "content category"));
+registerRefs("holderPunishments", (entry) => (entry.effects ?? []).flatMap((fx2, i) => fx2.type === "privilege_revoked" && typeof fx2.arg === "string" ? [{ registry: "locations", id: fx2.arg, path: `effects[${i}].arg` }] : []));
 registerChecks("practiceSeeds", (entry, regs) => known2(regs, "dynamicTracks", entry.track, "track", "practice track"));
 registerChecks("ceremonySteps", (entry, regs) => known2(regs, "blockingPostures", entry.posture, "posture", "posture"));
 

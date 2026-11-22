@@ -5,8 +5,8 @@
     "severity": 2,
     "effects": [
       {
-        "type": "slot_held",
-        "slots": 1
+        "type": "cold_shoulder",
+        "days": 1
       }
     ],
     "contentTags": [
