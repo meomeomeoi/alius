@@ -1,6 +1,7 @@
 import type { Entry, Registries } from '../../content/types';
 import { firstImpressionWeight, presenceOf } from '../commander/presence';
 import { isLiving } from '../economy';
+import { isOversightEntry } from '../leash/forced';
 import { leashLog } from '../leash/weekly';
 import { privilegeScale } from '../power/leader';
 import { heldTerm } from '../personal/state';
@@ -49,12 +50,14 @@ function baseOf(state: CampaignState, reg: Registries, unit: Unit): number {
 /** L: an empty Leash looks like a bluff, and so does one nobody has used (a credit that builds over the first week); a use in the last days is fresh in every unit's mind. */
 function leashTerm(state: CampaignState): number {
   const T = TUNING.impunity.leash;
-  const log = leashLog(state);
+  const all = leashLog(state);
+  const log = all.filter((e) => !isOversightEntry(e)); // oversight's own forced Leash on a holder is not the commander's use (nor does its number count as one)
+  const usedOnce = (state.leash.seq ?? 0) - (all.length - log.length) > 0;
   let l = 0;
   if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
   // the bluff credit: it grows over the first `bluffDays` days and, after the first use, fades over as many; a plain sum with
   // every other term, so a punishment, a scare or the stored record never cancels it and it never cancels them
-  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : undefined;
+  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : usedOnce ? Number.NEGATIVE_INFINITY : undefined;
   const grown = Math.min(T.bluffDays, Math.max(0, state.day - 1)) / T.bluffDays;
   const faded = firstUse === undefined ? 0 : Math.min(T.bluffDays, Math.max(0, state.day - firstUse)) / T.bluffDays;
   l += Math.round(T.neverUsed * Math.max(0, grown - faded));

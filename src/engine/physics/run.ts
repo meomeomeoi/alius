@@ -11,7 +11,7 @@ import type { EngineEvent } from '../dispatch';
 import { sceneSettingsOf } from '../moments/settings';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from './style';
+import { effectiveHoldsUntil, leadStyle, physicsStyleOf, runTargetOf } from './style';
 import { extraSlotsFor, initMarathon, isMarathon } from './marathon';
 import { setCondition } from './conditions';
 import { commanderSkill } from './skill';
@@ -107,9 +107,12 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   const lead = leadStyle(physicsStyleOf(draft, o.holderId, reg)).seal;
   const seal = range ? range[lead === 'loosest' ? 0 : lead === 'tightest' ? range.length - 1 : Math.floor(range.length / 2)] : undefined;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
+  // P15: the target the run is on is recorded only through a registered reader (the dynamic answers while it is on): without one the run is exactly as P15a made it
+  const contactTarget = o.sourceKind === 'contact' ? contactTargetOf(scene, reg, o.sourceId) : undefined;
+  const target = contactTarget !== undefined ? runTargetOf(draft, reg, contactTarget) : undefined;
   const run: PhysicsRun = {
     id: `p${scene.physicsCount}`, physicsId: o.physicsId, sourceKind: o.sourceKind, sourceId: o.sourceId, holderId: o.holderId,
-    ...(o.sourceKind === 'contact' && contactTargetOf(scene, reg, o.sourceId) !== undefined ? { targetId: contactTargetOf(scene, reg, o.sourceId)! } : {}),
+    ...(target !== undefined ? { targetId: target } : {}),
     ...gaugeFor(draft, phys), ...(range ? { sealRange: range } : {}), ...(seal ? { seal } : {}), ...(ref?.pressure !== undefined ? { pressure: ref.pressure } : {}),
     segment: { n: 0, state: 'held' }, startedExchange: scene.exchanges, taps: 0, streak: 0, extend: 0,
     ...(o.duration !== undefined ? { duration: o.duration } : {}),

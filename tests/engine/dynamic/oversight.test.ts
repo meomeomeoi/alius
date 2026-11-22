@@ -5,6 +5,9 @@ import '../../../src/engine/actions/warden';
 import '../../../src/engine/actions/leash';
 import '../../../src/engine/actions/scene';
 import { forgetDynamic, holdsDynamic } from '../../../src/engine/dynamic/forget';
+import { leashBlockOf } from '../../../src/engine/dynamic/leashBlock';
+import { impunityOf } from '../../../src/engine/discipline/impunity';
+import { memoryResolverFor } from '../../../src/engine/memory/resolvers';
 import { exitDynamic, meansDone } from '../../../src/engine/dynamic/exit';
 import { oversightNotice } from '../../../src/ui/dynamic/notices';
 import { coverMult, oversightActOf, oversightDayStep, OVERSIGHT_CLOCK } from '../../../src/engine/dynamic/oversight';
@@ -180,16 +183,34 @@ describe('on fill oversight acts on her', () => {
     expect(t.dynamic!.oversight!.threat).toBeDefined();
   });
 
-  it('a forced Leash: a done entry copying oversight, which is the means of a forced exit today', () => {
+  it('a forced Leash on her is the force exit: the entry copies oversight, her dynamic ends at once and the command comes back (I6)', () => {
     const s = full(acts.get('forced_leash')!);
     const authorizations = s.leash.authorizationsLeft;
     const r = step(s);
     expect(ofType(r.events, 'oversight_inquiry').map((e) => e.stage)).toContain('forced_leash');
     expect(leashLog(r.state).at(-1)).toMatchObject({ unitId: ANN, kind: 'compel', outcome: 'done', cc: 'oversight' });
     expect(r.state.leash.authorizationsLeft).toBe(authorizations); // oversight's, not the commander's
-    expect(meansDone(r.state, ANN, 'leash')).toBe(true);
-    const out = exitDynamic(r.state, ctxOf(r.state, reg), ANN, 'force', { means: 'leash' });
-    expect(out.find((e) => e.type === 'dynamic_exit')).toMatchObject({ force: true, means: 'leash' });
+    expect(meansDone(r.state, ANN, 'leash')).toBe(true); // still read as the means of a forced exit that day
+    expect(ofType(r.events, 'dynamic_exit')).toEqual([expect.objectContaining({ unitId: ANN, route: 'force', means: 'leash', force: true, commandKept: false })]);
+    expect(dynamicOf(r.state, ANN)).toMatchObject({ frame: 'equal', hold: 0, domains: [] }); // no domain, no block
+    expect(leashBlockOf(r.state, reg)).toBeNull();
+    expect(ofType(r.events, 'leash_used')[0]).toMatchObject({ by: 'oversight' });
+  });
+
+  it('is not the commander\'s Leash: Impunity, the bluff credit, the relation graph and memory do not count it (M2)', () => {
+    const s = world();
+    const before = impunityOf(s, reg, BEA)!.value;
+    const log = (cc?: string) => ({ no: 1, unitId: BEA, kind: 'compel', day: s.day, context: 'pda', outcome: 'done', ...(cc !== undefined ? { cc } : {}) });
+    const mine = structuredClone(s);
+    mine.leash.log.push(log() as never);
+    const theirs = structuredClone(s);
+    theirs.leash.log.push(log('oversight') as never);
+    expect(impunityOf(mine, reg, BEA)!.value).not.toBe(before); // the commander's own use is a recent use
+    expect(impunityOf(theirs, reg, BEA)!.value).toBe(before); // oversight's is nothing of the commander's
+    const resolve = memoryResolverFor('leash_used')!;
+    const ev = { type: 'leash_used', kind: 'compel', unitId: BEA, no: 1, outcome: 'done' };
+    expect(resolve(s, ev, reg)).not.toBeNull();
+    expect(resolve(s, { ...ev, by: 'oversight' }, reg)).toBeNull(); // her exit is what is remembered (dynamic_exit)
   });
 
   it('with nobody holding the block any more the inquiry only starts over', () => {

@@ -6,6 +6,7 @@ import { traitEffects, traitIds } from '../commander/traits';
 import { isLiving } from '../economy';
 import type { CampaignState, HistoryEntry, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { isOversightEntry } from '../leash/forced';
 import { intimacyOf } from './gain';
 import { nextLoyaltyBand } from './bands';
 import { bandShift, dispositionById, dispositionFor } from '../worldOptions';
@@ -59,7 +60,7 @@ export function meets(state: CampaignState, reg: Registries, unitId: string, con
     if (n < min) return false;
   }
   if (cond.leashUsesMin !== undefined) {
-    const uses = state.leash.log.filter((l) => typeof l === 'object' && l !== null && (l as { unitId?: unknown }).unitId === unitId).length;
+    const uses = state.leash.log.filter((l) => typeof l === 'object' && l !== null && (l as { unitId?: unknown }).unitId === unitId && !isOversightEntry(l)).length;
     if (uses < cond.leashUsesMin) return false;
   }
   if (cond.anyOf && !cond.anyOf.some((c) => meets(state, reg, unitId, c))) return false;

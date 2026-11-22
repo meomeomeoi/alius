@@ -1086,7 +1086,7 @@ var TUNING = Object.freeze({
     /**
      * Oversight's inquiry (R16): `blockedMax` blocked or cancelled requests within `spanDays` advance the `oversight_inquiry` clock by one (a holder's
      * cover shortens the span); `notices` are the segments that give a notice; on fill oversight acts on her: a reprimand takes `reprimandStress` stress and
-     * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight. `AUTHOR TO TUNE`.
+     * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight and the `force` exit of her dynamic (R16). `AUTHOR TO TUNE`.
      */
     oversight: Object.freeze({ blockedMax: 3, spanDays: 14, notices: Object.freeze([3, 5]), reprimandStress: 15, reprimandHold: 10, threatDays: 7 }),
     /**
@@ -11181,6 +11181,12 @@ function imageMultiplier(state, reg, unitId, event) {
   return 1 + (TUNING.commander.offImageMult * t - 1) * firstImpressionWeight(state, unitId);
 }
 
+// src/engine/leash/forced.ts
+var OVERSIGHT_CC = "oversight";
+function isOversightEntry(entry) {
+  return typeof entry === "object" && entry !== null && entry.cc === OVERSIGHT_CC;
+}
+
 // src/engine/world/state.ts
 function factionStanding(state, id) {
   return state.world.factions[id] ?? 0;
@@ -11519,10 +11525,12 @@ function baseOf(state, reg, unit3) {
 }
 function leashTerm(state) {
   const T5 = TUNING.impunity.leash;
-  const log = leashLog(state);
+  const all = leashLog(state);
+  const log = all.filter((e) => !isOversightEntry(e));
+  const usedOnce = (state.leash.seq ?? 0) - (all.length - log.length) > 0;
   let l = 0;
   if (state.leash.authorizationsLeft <= 0) l += T5.noneLeft;
-  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : void 0;
+  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : usedOnce ? Number.NEGATIVE_INFINITY : void 0;
   const grown = Math.min(T5.bluffDays, Math.max(0, state.day - 1)) / T5.bluffDays;
   const faded = firstUse === void 0 ? 0 : Math.min(T5.bluffDays, Math.max(0, state.day - firstUse)) / T5.bluffDays;
   l += Math.round(T5.neverUsed * Math.max(0, grown - faded));
@@ -11845,7 +11853,7 @@ function meets(state, reg, unitId, cond) {
     if (n < min) return false;
   }
   if (cond.leashUsesMin !== void 0) {
-    const uses = state.leash.log.filter((l) => typeof l === "object" && l !== null && l.unitId === unitId).length;
+    const uses = state.leash.log.filter((l) => typeof l === "object" && l !== null && l.unitId === unitId && !isOversightEntry(l)).length;
     if (uses < cond.leashUsesMin) return false;
   }
   if (cond.anyOf && !cond.anyOf.some((c) => meets(state, reg, unitId, c))) return false;
@@ -18335,6 +18343,17 @@ function registerPhysicsStyle(fn) {
 }
 function registerHoldsUntil(fn) {
   holdsReaders.push(fn);
+}
+var targetReaders = [];
+function registerRunTarget(fn) {
+  targetReaders.push(fn);
+}
+function runTargetOf(state, reg, targetId) {
+  for (const fn of targetReaders) {
+    const answer = fn(state, reg, targetId);
+    if (answer !== void 0) return answer;
+  }
+  return void 0;
 }
 function physicsStyleOf(state, unitId, reg) {
   for (const read of styleReaders) {
@@ -29870,6 +29889,7 @@ registerMemoryResolver("demand_resolved", (draft, event) => {
 registerMemoryResolver("leash_used", (draft, event) => {
   const subject = subjectOf2(draft, event.unitId);
   if (!subject || event.outcome !== "done") return null;
+  if (event.by === "oversight") return null;
   return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str2(event.kind) ?? "" } };
 }, { ids: ["subject"], vars: ["name", "kind"] });
 registerMemoryResolver("decor_removed_by_commander", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
@@ -31446,13 +31466,15 @@ function startPhysics(draft, ctx2, o) {
   const lead = leadStyle(physicsStyleOf(draft, o.holderId, reg)).seal;
   const seal = range2 ? range2[lead === "loosest" ? 0 : lead === "tightest" ? range2.length - 1 : Math.floor(range2.length / 2)] : void 0;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
+  const contactTarget = o.sourceKind === "contact" ? contactTargetOf(scene, reg, o.sourceId) : void 0;
+  const target = contactTarget !== void 0 ? runTargetOf(draft, reg, contactTarget) : void 0;
   const run = {
     id: `p${scene.physicsCount}`,
     physicsId: o.physicsId,
     sourceKind: o.sourceKind,
     sourceId: o.sourceId,
     holderId: o.holderId,
-    ...o.sourceKind === "contact" && contactTargetOf(scene, reg, o.sourceId) !== void 0 ? { targetId: contactTargetOf(scene, reg, o.sourceId) } : {},
+    ...target !== void 0 ? { targetId: target } : {},
     ...gaugeFor(draft, phys),
     ...range2 ? { sealRange: range2 } : {},
     ...seal ? { seal } : {},
@@ -35735,11 +35757,12 @@ function oversightActs(draft, ctx2, holderId) {
     (draft.dynamic.oversight ??= { blocked: [] }).threat = { unitId: holderId, untilDay: draft.day + O.threatDays };
   } else {
     const no = nextNo(draft);
-    draft.leash.log.push({ no, unitId: holderId, kind: "compel", day: draft.day, context: "pda", outcome: "done", cc: "oversight" });
+    draft.leash.log.push({ no, unitId: holderId, kind: "compel", day: draft.day, context: "pda", outcome: "done", cc: OVERSIGHT_CC });
     if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
     const rel = draft.relations[holderId];
     if (rel !== void 0 && !rel.flags.includes("leashed")) rel.flags.push("leashed");
     events.push({ type: "leash_used", kind: "compel", unitId: holderId, no, outcome: "done", by: "oversight" }, ...addStress3(draft, holderId, TUNING.leash.compel.stress));
+    if (frameRank(dyn.frame) >= frameRank("play")) events.push(...exitDynamic(draft, ctx2, holderId, "force", { means: "leash" }));
   }
   return events;
 }
@@ -36008,6 +36031,7 @@ function installDynamicHooks() {
   registerBlockingGate(gate);
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
+  registerRunTarget((state, reg, targetId) => dynamicOn(state, reg) ? targetId : void 0);
   registerExpectation(expectation);
   registerMomentTrigger("compromat_hint", compromatHint);
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length);

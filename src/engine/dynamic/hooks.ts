@@ -19,7 +19,7 @@ import { registerRipeSource } from '../blocking/vocabulary';
 import { registerExpectation } from '../moments/answer';
 import { registerMomentTrigger } from '../moments/live';
 import type { OpenMoment } from '../moments/state';
-import { registerHoldsUntil, registerPhysicsStyle } from '../physics/style';
+import { registerHoldsUntil, registerPhysicsStyle, registerRunTarget } from '../physics/style';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
 import { registerCompromatCount, registerRegardBand } from './aftermath';
@@ -111,6 +111,7 @@ export function installDynamicHooks(): void {
   registerBlockingGate(gate);
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
+  registerRunTarget((state, reg, targetId) => (dynamicOn(state, reg) ? targetId : undefined)); // mastery counts the act on a target only while the dynamic is on (I4)
   registerExpectation(expectation as Parameters<typeof registerExpectation>[0]);
   registerMomentTrigger('compromat_hint', compromatHint); // P15 (compromat): the one source of the dynamic that is live from the start
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length); // blackmail needs some

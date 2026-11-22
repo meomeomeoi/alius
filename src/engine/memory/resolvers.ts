@@ -169,6 +169,7 @@ registerMemoryResolver('demand_resolved', (draft, event) => {
 registerMemoryResolver('leash_used', (draft, event) => {
   const subject = subjectOf(draft, event.unitId);
   if (!subject || event.outcome !== 'done') return null; // a denied or failed request forced nobody
+  if (event.by === 'oversight') return null; // oversight's own forced Leash on a holder: what is remembered is her exit (`dynamic_exit`), not a Leash the commander used
   return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str(event.kind) ?? '' } };
 }, { ids: ['subject'], vars: ['name', 'kind'] });
 

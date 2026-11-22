@@ -1,9 +1,11 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/blocking';
 import '../../../src/engine/actions/dynamic';
 import '../../../src/engine/actions/physics';
-import { COMMANDER } from '../../../src/engine/blocking';
+import { COMMANDER, registerFrameReader, resetBlockingHooks } from '../../../src/engine/blocking';
+import { installDynamicHooks } from '../../../src/engine/dynamic/hooks';
+import { resetPhysicsHooks } from '../../../src/engine/physics/style';
 import { answerOffer, offerChoices } from '../../../src/engine/dynamic/offer';
 import { addMastery, masteryFromEvents, masteryLevel, moodSigns, revealedExpectations } from '../../../src/engine/dynamic/mastery';
 import { blankDynamic, newDynamicCampaign } from '../../../src/engine/dynamic/state';
@@ -104,6 +106,49 @@ describe('xp and levels', () => {
     expect(errors(stopped.events)).toEqual([]);
     expect(ofType(stopped.events, 'physics_outcome')[0]).toMatchObject({ result: 'released', targetId: 'armpits' });
     expect(stopped.state.relations[ANN].mastery).toEqual({ armpits: 5 }); // she said nothing of how for the armpits
+  });
+});
+
+describe('off is as P15a left it (I4)', () => {
+  // a P15a-style run: some other reader answers the frame (the dynamic's own answers null while it is off)
+  beforeEach(() => {
+    resetBlockingHooks();
+    resetPhysicsHooks();
+    installDynamicHooks();
+    registerFrameReader(() => 'play');
+  });
+  afterEach(() => {
+    resetBlockingHooks();
+    resetPhysicsHooks();
+    installDynamicHooks();
+  });
+  const contactRun = (s0: CampaignState) => {
+    s0.relations[ANN].stateId = 'confidant';
+    const started = run(s0, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    const set = run(started.state, reg, { type: 'blocking/set', payload: { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER, target: 'armpits', at: 3 } });
+    expect(errors(set.events)).toEqual([]);
+    const stopped = run(set.state, reg, { type: 'blocking/set', payload: { person: COMMANDER, field: 'removed', value: 'smothered_armpit', at: 4 } });
+    return { run: set.state.scene!.physics, outcome: ofType(stopped.events, 'physics_outcome')[0] };
+  };
+  it('a targeted contact run with the dynamic off has no targetId, in the run or in its outcome', () => {
+    const s0 = world();
+    s0.dynamic = undefined;
+    const r = contactRun(s0);
+    expect(r.run).toBeDefined();
+    expect('targetId' in r.run!).toBe(false);
+    expect('targetId' in r.outcome).toBe(false);
+  });
+  it('and with holders at 0', () => {
+    const s0 = world();
+    s0.dynamic!.setup.holders = 0;
+    const r = contactRun(s0);
+    expect('targetId' in r.run!).toBe(false);
+    expect('targetId' in r.outcome).toBe(false);
+  });
+  it('and with the dynamic on the run and its outcome carry the target', () => {
+    const r = contactRun(world());
+    expect(r.run!.targetId).toBe('armpits');
+    expect(r.outcome).toMatchObject({ targetId: 'armpits' });
   });
 });
 

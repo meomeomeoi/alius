@@ -8,9 +8,11 @@
  * the chance, the span and the pick are hidden. Nothing here runs while the dynamic is off.
  */
 import type { Registries } from '../../content/types';
+import { frameRank } from '../blocking/state';
 import { addFact } from '../memory/facts';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { OVERSIGHT_CC } from '../leash/forced';
 import { nextNo, removeFromService } from '../leash/use';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
@@ -18,6 +20,7 @@ import { advanceClock, addClock } from '../world/clocks';
 import { clockById } from '../world/state';
 import type { Clock } from '../world/types';
 import { coverMult } from './cover';
+import { exitDynamic } from './exit';
 import { dynamicOn } from './gate';
 import { addHold } from './hold';
 import { leashBlockOf } from './leashBlock';
@@ -86,7 +89,8 @@ function addStress(draft: CampaignState, unitId: string, amount: number): Engine
 
 /**
  * Oversight acts on her (the inquiry filled): a hashed pick of a reprimand, a transfer threat or a forced Leash (see the file's head). The
- * forced Leash is oversight's own: it spends none of the commander's authorizations and costs the commander nothing. Draws nothing.
+ * forced Leash is oversight's own: it spends none of the commander's authorizations and costs the commander nothing, and it is the `force` exit (R16): her dynamic ends at once (`exitDynamic`, which
+ * draws once for the aftermath). The pick itself is a hash; a reprimand and a threat draw nothing.
  */
 export function oversightActs(draft: CampaignState, ctx: Ctx, holderId: string): EngineEvent[] {
   const dyn = dynamicOf(draft, holderId);
@@ -101,11 +105,13 @@ export function oversightActs(draft: CampaignState, ctx: Ctx, holderId: string):
     (draft.dynamic!.oversight ??= { blocked: [] }).threat = { unitId: holderId, untilDay: draft.day + O.threatDays };
   } else {
     const no = nextNo(draft);
-    draft.leash.log.push({ no, unitId: holderId, kind: 'compel', day: draft.day, context: 'pda', outcome: 'done', cc: 'oversight' });
+    draft.leash.log.push({ no, unitId: holderId, kind: 'compel', day: draft.day, context: 'pda', outcome: 'done', cc: OVERSIGHT_CC });
     if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
     const rel = draft.relations[holderId];
     if (rel !== undefined && !rel.flags.includes('leashed')) rel.flags.push('leashed');
     events.push({ type: 'leash_used', kind: 'compel', unitId: holderId, no, outcome: 'done', by: 'oversight' }, ...addStress(draft, holderId, TUNING.leash.compel.stress));
+    // R16: a forced Leash on her IS the `force` exit (R15): her dynamic ends now, the command comes back, and the cost and the aftermath are the forced route's (the entry above is its means)
+    if (frameRank(dyn.frame) >= frameRank('play')) events.push(...exitDynamic(draft, ctx, holderId, 'force', { means: 'leash' }));
   }
   return events;
 }

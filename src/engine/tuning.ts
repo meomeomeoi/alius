@@ -811,7 +811,7 @@ export const TUNING = Object.freeze({
     /**
      * Oversight's inquiry (R16): `blockedMax` blocked or cancelled requests within `spanDays` advance the `oversight_inquiry` clock by one (a holder's
      * cover shortens the span); `notices` are the segments that give a notice; on fill oversight acts on her: a reprimand takes `reprimandStress` stress and
-     * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight. `AUTHOR TO TUNE`.
+     * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight and the `force` exit of her dynamic (R16). `AUTHOR TO TUNE`.
      */
     oversight: Object.freeze({ blockedMax: 3, spanDays: 14, notices: Object.freeze([3, 5]) as readonly number[], reprimandStress: 15, reprimandHold: 10, threatDays: 7 }),
     /**

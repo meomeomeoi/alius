@@ -22,10 +22,29 @@ export function registerPhysicsStyle(fn: StyleReader): void {
 export function registerHoldsUntil(fn: HoldsReader): void {
   holdsReaders.push(fn);
 }
+type TargetReader = (state: CampaignState, reg: Registries, targetId: string) => string | undefined;
+const targetReaders: TargetReader[] = [];
+
+/**
+ * P15 plugs in here: whether a contact run records the target it is on (`PhysicsRun.targetId`, `physics_outcome.targetId`), which mastery counts. With nothing registered, or while the dynamic is off,
+ * no reader answers and nothing is written: a campaign without the dynamic is as it was before P15. The first reader that answers wins.
+ */
+export function registerRunTarget(fn: TargetReader): void {
+  targetReaders.push(fn);
+}
+/** The target a run records, or `undefined` (no reader answered). */
+export function runTargetOf(state: CampaignState, reg: Registries, targetId: string): string | undefined {
+  for (const fn of targetReaders) {
+    const answer = fn(state, reg, targetId);
+    if (answer !== undefined) return answer;
+  }
+  return undefined;
+}
 /** Tests: forget every registered reader. */
 export function resetPhysicsHooks(): void {
   styleReaders.length = 0;
   holdsReaders.length = 0;
+  targetReaders.length = 0;
 }
 
 export function physicsStyleOf(state: CampaignState, unitId: string, reg?: Registries): PhysicsStyle {
