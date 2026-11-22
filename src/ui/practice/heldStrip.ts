@@ -10,6 +10,8 @@ export interface HeldStripHandlers {
   sensory: boolean;
   askRelease: () => void;
   sendSquad: (alarmId: string) => void;
+  /** Opens the card of a kept alarm that was not accepted yet (the player put it away, or the engine raised it). */
+  answerHer: () => void;
 }
 
 const SLOT_WORDS: Readonly<Record<string, string>> = { morning: 'morning', afternoon: 'afternoon', evening: 'evening', night: 'night' };
@@ -21,7 +23,7 @@ function endsWords(state: CampaignState, until: { day: number; slot: string }): 
 }
 
 /**
- * The strip of the shell while the commander is held (P16, plan R11, R24): who keeps the commander, when it ends (as words; a hold with no duration does not say), `[ ASK TO BE LET GO ]`,
+ * The strip of the shell while the commander is held (P16, plan R11, R24): who keeps the commander, when it ends (as words; a hold with no duration does not say), `[ ANSWER HER ]` while a kept alarm waits for an answer (it opens the card again), `[ ASK TO BE LET GO ]`,
  * and `[ SEND THE SQUAD ]` while a kept alarm of a launch or a deadline is open and was accepted. In sensory mode only plain lines remain: no strip, one line of text and still the way to ask.
  * Empties the host when the commander is not held now.
  */
@@ -33,11 +35,13 @@ export function drawHeldStrip(host: HTMLElement, state: CampaignState, reg: Regi
   const ctx = { unitId: holder.id };
   const ask = h('button', { type: 'button', class: 'alius-btn', 'data-ask-release': '', ...analyzeNative('glossary:ask_release', ctx), onclick: () => handlers.askRelease() }, '[ ASK TO BE LET GO ]');
   const alarm = state.practices?.alarm;
+  const open = alarm !== undefined && alarm.answer === 'keep' && alarm.accepted !== true;
+  const answer = open ? h('button', { type: 'button', class: 'alius-btn', 'data-held-answer': '', ...analyzeNative('glossary:alarm', ctx), onclick: () => handlers.answerHer() }, '[ ANSWER HER ]') : null;
   const send = alarm !== undefined && alarm.answer === 'keep' && alarm.accepted === true && alarm.kind !== 'night'
     ? h('button', { type: 'button', class: 'alius-btn', 'data-held-send': '', ...analyzeNative('glossary:without_command', ctx), onclick: () => handlers.sendSquad(alarm.id) }, '[ SEND THE SQUAD ]')
     : null;
   if (handlers.sensory) {
-    host.append(h('p', { 'data-held-line': '', ...analyzeAttrs('glossary:sensory_mode', ctx) }, `Held in ${holder.displayName}'s quarters.`), ask, ...(send !== null ? [send] : []));
+    host.append(h('p', { 'data-held-line': '', ...analyzeAttrs('glossary:sensory_mode', ctx) }, `Held in ${holder.displayName}'s quarters.`), ...(answer !== null ? [answer] : []), ask, ...(send !== null ? [send] : []));
     return;
   }
   const end = heldEndShown(held); // a hold with no duration shows no end (R16)
@@ -45,6 +49,6 @@ export function drawHeldStrip(host: HTMLElement, state: CampaignState, reg: Regi
   host.append(h('div', { class: 'alius-held-strip', 'data-held-strip': '', role: 'status' },
     h('span', { class: 'alius-chip', 'data-held-chip': '', ...analyzeAttrs('glossary:held', ctx) }, 'HELD'),
     h('span', { class: 'alius-held-text' }, ` in ${holder.displayName}'s quarters${until}. `),
-    ask, send));
+    answer, ask, send));
   void reg;
 }

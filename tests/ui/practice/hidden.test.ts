@@ -48,7 +48,7 @@ function everything(state: CampaignState, unitId: string, over: { sensory?: bool
   drawTaskCards(part(), state, reg, pick, { answer: noop, sign: noop, focusInput: noop });
   drawPunishmentCards(part(), state, reg, pick, { answer: noop, takeInstead: noop, undo: noop, ceremony: noop });
   drawDemonstrationCards(part(), state, reg, pick, { answer: noop });
-  drawHeldStrip(part(), state, reg, { sensory: over.sensory === true, askRelease: noop, sendSquad: noop });
+  drawHeldStrip(part(), state, reg, { sensory: over.sensory === true, askRelease: noop, sendSquad: noop, answerHer: noop });
   drawInitiativeChips(part(), { state, reg, pick: (id) => id === unitId, onAsk: noop, onConfess: noop, onAskPermission: noop, onHandOver: noop, onTakeBack: noop });
   const records = renderRecordLines(state, reg);
   if (records !== null) host.append(records);

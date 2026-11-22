@@ -278,7 +278,7 @@ describe('a finished ceremony never reopens (review I5)', () => {
       if (check === 'chip') s = step(s, next).state;
       else if (check === 'words') s = said(s, next).state;
       else if (check === 'number') s = said(s, next, 8).state;
-      else s = posture(s, (reg.ceremonySteps.get(next) as { posture: string }).posture).state;
+      else s = posture(s, (reg.ceremonySteps.get(next) as unknown as { posture: string }).posture).state;
     }
     return s;
   }

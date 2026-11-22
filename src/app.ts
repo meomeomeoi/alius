@@ -888,6 +888,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_deserted') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} HAS DESERTED`);
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
+      alarmFollowUp(events); // P16: a mission that fell due while the commander is held
       staging.onEvents(events); // P15a: a hold that starts asks for her cues and gets its first segment; a blackout ends the scene
       const offered = applyOfferDirectives(context, events, state, registries); // P15: what the commander offered and how she takes it, for her next reply (every event is read: no short circuit)
       if (applyMomentDirectives(context, events, state, registries) || applyPhysicsDirectives(context, events, state, registries) || offered) applyContext(); // P15a: the tension of a moment, or what the commander chose, for her next reply
@@ -1067,7 +1068,29 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     });
     if (!card) return;
     shell.open();
-    void shell.modal({ title: 'ALARM', body: h('div', {}, card), actions: [] });
+    alarmModalOpen = true;
+    void shell.modal({ title: 'ALARM', body: h('div', {}, card), actions: [] }).then(() => { alarmModalOpen = false; });
+  }
+
+  /** True while the ALARM modal is up (an automatic opening waits for it and for the other modals; the strip's ANSWER HER and a refused launch open it on purpose). */
+  let alarmModalOpen = false;
+
+  /** A kept alarm that nobody accepted yet: the card comes back (after an engine-raised deadline, a reload) unless another modal of this campaign is up (a new modal cancels the open one). */
+  function openAlarmIfFree(): void {
+    const alarm = state?.practices?.alarm;
+    if (alarm === undefined || alarm.answer !== 'keep' || alarm.accepted === true || state?.practices?.held === undefined) return;
+    if (reviewOpen || dilemmaModalOpen || overrideModalOpen || alarmModalOpen) return;
+    openAlarmCard(null);
+  }
+
+  /** An alarm the engine raised itself (a mission due while the commander is held): a keep shows the card, a release is told. (A launch or a knock is raised by `raiseHeldAlarm`, which shows its own.) */
+  function alarmFollowUp(events: EngineEvent[]): void {
+    for (const e of events) {
+      if (e.type !== 'hold_alarm' || e.kind !== 'deadline' || e.phase !== undefined || e.run !== undefined) continue;
+      if (e.answer === 'keep') { openAlarmIfFree(); continue; }
+      const name = state?.squad.find((u) => u.id === e.holderId)?.displayName ?? 'She';
+      toast('info', e.answer === 'release_late' ? `${name} let the commander go late: a mission was due.` : `${name} let the commander go: a mission was due.`);
+    }
   }
 
   /** True while the alarm of a refused action is being raised (the raise itself is never refused for a hold, so this only guards a loop). */
@@ -1681,12 +1704,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     openConfrontationModal();
     showOverrideModal(); // P13: an override that was waiting when the campaign was saved
+    openAlarmIfFree(); // P16: a kept alarm that nobody answered
     reopenSecretIfFree(); // P9c: a secret that was found and never answered asks again, after the modal of the previous chat closed
   }
 
   /** P9c: the card of a found, unanswered secret, unless another modal of this campaign is up (a new modal cancels the open one). */
   function reopenSecretIfFree(): void {
-    if (reviewOpen || dilemmaModalOpen || overrideModalOpen) return;
+    if (reviewOpen || dilemmaModalOpen || overrideModalOpen || alarmModalOpen) return;
     if (state?.disloyalty?.open?.at === 'mission_start') return; // the confrontation modal is up
     personal.reopenSecrets();
   }
@@ -2365,7 +2389,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     sensory: () => (state !== null && sensoryNow(state, registries)), // P16: a sensory hold or a blindfold dims the device
     held: (host) => { // P16: the HELD strip while the commander is kept in her quarters
       if (state === null) host.replaceChildren();
-      else drawHeldStrip(host, state, registries, { sensory: sensoryNow(state, registries), askRelease: () => { practice.askRelease(); }, sendSquad: (id) => { practice.sendSquad(id); } });
+      else drawHeldStrip(host, state, registries, { sensory: sensoryNow(state, registries), askRelease: () => { practice.askRelease(); }, sendSquad: (id) => { practice.sendSquad(id); }, answerHer: () => openAlarmCard(null) });
     },
     lastBuild: () => context.lastBuild(), // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),

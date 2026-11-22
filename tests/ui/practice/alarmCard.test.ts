@@ -126,7 +126,7 @@ describe('the held strip', () => {
     const s = held(2);
     const host = mount();
     const ask = vi.fn();
-    drawHeldStrip(host, s, reg, { sensory: false, askRelease: ask, sendSquad: vi.fn() });
+    drawHeldStrip(host, s, reg, { sensory: false, askRelease: ask, sendSquad: vi.fn(), answerHer: vi.fn() });
     const strip = host.querySelector('[data-held-strip]')!;
     expect(strip.textContent).toContain(unitOf(s, ANN).displayName);
     expect(strip.textContent).toContain('afternoon');
@@ -140,15 +140,15 @@ describe('the held strip', () => {
     const hidden = held(2);
     hidden.practices!.held!.hidden = true;
     const host = mount();
-    drawHeldStrip(host, hidden, reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn() });
+    drawHeldStrip(host, hidden, reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: vi.fn() });
     expect(host.querySelector('[data-held-strip]')!.textContent).not.toMatch(/afternoon|morning|evening|until/i);
     const none = mount();
-    drawHeldStrip(none, world(reg, 'role'), reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn() });
+    drawHeldStrip(none, world(reg, 'role'), reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: vi.fn() });
     expect(none.children).toHaveLength(0);
     const later = held(1);
     later.slot = 'afternoon';
     const waiting = mount();
-    drawHeldStrip(waiting, later, reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn() });
+    drawHeldStrip(waiting, later, reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: vi.fn() });
     expect(waiting.children).toHaveLength(0);
   });
 
@@ -156,7 +156,7 @@ describe('the held strip', () => {
     const s = held(2);
     const host = mount();
     const ask = vi.fn();
-    drawHeldStrip(host, s, reg, { sensory: true, askRelease: ask, sendSquad: vi.fn() });
+    drawHeldStrip(host, s, reg, { sensory: true, askRelease: ask, sendSquad: vi.fn(), answerHer: vi.fn() });
     expect(host.querySelector('[data-held-strip]')).toBeNull();
     expect(host.querySelector('p[data-held-line]')).not.toBeNull();
     click(host.querySelector('[data-ask-release]'));
@@ -167,20 +167,35 @@ describe('the held strip', () => {
     const s = withAlarm({ accepted: true });
     const host = mount();
     const send = vi.fn();
-    drawHeldStrip(host, s, reg, { sensory: false, askRelease: vi.fn(), sendSquad: send });
+    drawHeldStrip(host, s, reg, { sensory: false, askRelease: vi.fn(), sendSquad: send, answerHer: vi.fn() });
     click(host.querySelector('[data-held-send]'));
     expect(send).toHaveBeenCalledWith('pa0');
     const night = mount();
-    drawHeldStrip(night, withAlarm({ accepted: true, kind: 'night' }), reg, { sensory: false, askRelease: vi.fn(), sendSquad: send });
+    drawHeldStrip(night, withAlarm({ accepted: true, kind: 'night' }), reg, { sensory: false, askRelease: vi.fn(), sendSquad: send, answerHer: vi.fn() });
     expect(night.querySelector('[data-held-send]')).toBeNull();
+  });
+
+  it('a kept alarm nobody accepted yet puts [ ANSWER HER ] on the strip, in sensory mode too; accepted, it is gone (review I1)', () => {
+    const open = withAlarm();
+    for (const sensory of [false, true]) {
+      const host = mount();
+      const answer = vi.fn();
+      drawHeldStrip(host, open, reg, { sensory, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: answer });
+      click(host.querySelector('[data-held-answer]'));
+      expect(answer).toHaveBeenCalledTimes(1);
+      expect(host.querySelector('[data-held-answer]')!.getAttribute('data-analyze')).toBe('glossary:alarm');
+    }
+    const accepted = mount();
+    drawHeldStrip(accepted, withAlarm({ accepted: true }), reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: vi.fn() });
+    expect(accepted.querySelector('[data-held-answer]')).toBeNull();
   });
 
   it('every part is marked for the analysis tool and opens a panel', () => {
     const s = withAlarm({ accepted: true });
     const host = mount();
-    drawHeldStrip(host, s, reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn() });
+    drawHeldStrip(host, s, reg, { sensory: false, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: vi.fn() });
     const plain = mount();
-    drawHeldStrip(plain, s, reg, { sensory: true, askRelease: vi.fn(), sendSquad: vi.fn() });
+    drawHeldStrip(plain, s, reg, { sensory: true, askRelease: vi.fn(), sendSquad: vi.fn(), answerHer: vi.fn() });
     for (const root of [host, plain]) {
       expect(markedWithout(root)).toEqual([]);
       expect(unresolved(root, env(s))).toEqual([]);

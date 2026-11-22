@@ -69,7 +69,7 @@ async function boot(style: 'possessive' | 'affectionate', mercy: number) {
     const ids = app.current().state!.roster.activeIds.filter((id) => id !== rhea.id).slice(0, 2);
     return { type: 'expedition/start', payload: { missionId: mission.id, unitIds: ids, formation: { front: ids.slice(0, 1), back: ids.slice(1) }, supplies: 1 } };
   };
-  return { app, toasts, modals, screens, shellDeps: () => shellDeps!, launch, rhea: rhea.id };
+  return { app, st, toasts, modals, screens, shellDeps: () => shellDeps!, launch, rhea: rhea.id };
 }
 
 describe('a launch while the commander is held (P16)', () => {
@@ -131,5 +131,65 @@ describe('a launch while the commander is held (P16)', () => {
     t.shellDeps().held!(host);
     (host.querySelector('[data-ask-release]') as HTMLElement).click();
     expect(t.app.current().state!.practices!.held).toBeUndefined(); // affectionate at favour 0 lets go
+  });
+});
+
+describe('a duty that comes while the commander is held shows its card (review I1)', () => {
+  const dueToday = (t: Awaited<ReturnType<typeof boot>>): void => {
+    const s = structuredClone(t.app.current().state!);
+    s.missions.offered.forEach((m) => { m.deadlineDay = s.day; });
+    t.app.replaceState(s);
+  };
+  const tick = () => new Promise<void>((r) => setTimeout(r, 0));
+
+  it('END SLOT with a mission due opens the ALARM card when she keeps the commander', async () => {
+    const t = await boot('possessive', 0);
+    dueToday(t);
+    t.modals.length = 0;
+    const events = t.app.dispatch({ type: 'calendar/consume_slot', payload: { slots: 1 } });
+    await tick();
+    expect(events.filter((e) => e.type === 'hold_alarm')).toMatchObject([{ kind: 'deadline', answer: 'keep' }]);
+    expect(t.app.current().state!.practices!.alarm).toMatchObject({ kind: 'deadline', answer: 'keep' });
+    expect(t.modals.map((m) => m.title)).toEqual(['ALARM']);
+    expect((t.modals[0].body as HTMLElement).querySelector('[data-alarm-answer="accept"]')).not.toBeNull();
+  });
+
+  it('a release she makes at once is told, not silent', async () => {
+    const t = await boot('affectionate', 3);
+    dueToday(t);
+    t.toasts.length = 0;
+    t.modals.length = 0;
+    t.app.dispatch({ type: 'calendar/consume_slot', payload: { slots: 1 } });
+    await tick();
+    expect(t.app.current().state!.practices!.held).toBeUndefined();
+    expect(t.toasts.length + t.modals.length).toBeGreaterThan(0);
+  });
+
+  it('the strip offers ANSWER HER while a kept alarm is open and reopens the card', async () => {
+    const t = await boot('possessive', 0);
+    dueToday(t);
+    t.app.dispatch({ type: 'calendar/consume_slot', payload: { slots: 1 } });
+    await tick();
+    t.modals.length = 0;
+    const host = document.createElement('div');
+    t.shellDeps().held!(host);
+    const chip = host.querySelector('[data-held-answer]') as HTMLElement;
+    expect(chip).not.toBeNull();
+    chip.click();
+    expect(t.modals.map((m) => m.title)).toEqual(['ALARM']);
+  });
+
+  it('a reload with a kept alarm open reopens the card', async () => {
+    const t = await boot('possessive', 0);
+    dueToday(t);
+    t.app.dispatch({ type: 'calendar/consume_slot', payload: { slots: 1 } });
+    await tick();
+    t.modals.length = 0;
+    t.app.replaceState(t.app.current().state!); // flushes the save
+    await tick();
+    t.st.emit('chat_changed'); // the chat is opened again: the load runs the same follow-up as any reload
+    await tick();
+    expect(t.app.current().state!.practices!.alarm).toMatchObject({ kind: 'deadline', answer: 'keep' });
+    expect(t.modals.map((m) => m.title)).toContain('ALARM');
   });
 });

@@ -47450,9 +47450,11 @@ function drawHeldStrip(host, state, reg, handlers2) {
   const ctx2 = { unitId: holder2.id };
   const ask2 = h("button", { type: "button", class: "alius-btn", "data-ask-release": "", ...analyzeNative("glossary:ask_release", ctx2), onclick: () => handlers2.askRelease() }, "[ ASK TO BE LET GO ]");
   const alarm = state.practices?.alarm;
+  const open3 = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted !== true;
+  const answer = open3 ? h("button", { type: "button", class: "alius-btn", "data-held-answer": "", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.answerHer() }, "[ ANSWER HER ]") : null;
   const send = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted === true && alarm.kind !== "night" ? h("button", { type: "button", class: "alius-btn", "data-held-send": "", ...analyzeNative("glossary:without_command", ctx2), onclick: () => handlers2.sendSquad(alarm.id) }, "[ SEND THE SQUAD ]") : null;
   if (handlers2.sensory) {
-    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ask2, ...send !== null ? [send] : []);
+    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ...answer !== null ? [answer] : [], ask2, ...send !== null ? [send] : []);
     return;
   }
   const end = heldEndShown(held3);
@@ -47462,6 +47464,7 @@ function drawHeldStrip(host, state, reg, handlers2) {
     { class: "alius-held-strip", "data-held-strip": "", role: "status" },
     h("span", { class: "alius-chip", "data-held-chip": "", ...analyzeAttrs("glossary:held", ctx2) }, "HELD"),
     h("span", { class: "alius-held-text" }, ` in ${holder2.displayName}'s quarters${until}. `),
+    answer,
     ask2,
     send
   ));
@@ -67182,6 +67185,7 @@ function createApp(st, deps) {
         if (e.type === "unit_deserted") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} HAS DESERTED`);
         if (e.type === "unit_terminated") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} DEACTIVATED`);
       }
+      alarmFollowUp(events);
       staging.onEvents(events);
       const offered2 = applyOfferDirectives(context, events, state, registries);
       if (applyMomentDirectives(context, events, state, registries) || applyPhysicsDirectives(context, events, state, registries) || offered2) applyContext();
@@ -67408,7 +67412,28 @@ function createApp(st, deps) {
     });
     if (!card2) return;
     shell.open();
-    void shell.modal({ title: "ALARM", body: h("div", {}, card2), actions: [] });
+    alarmModalOpen = true;
+    void shell.modal({ title: "ALARM", body: h("div", {}, card2), actions: [] }).then(() => {
+      alarmModalOpen = false;
+    });
+  }
+  let alarmModalOpen = false;
+  function openAlarmIfFree() {
+    const alarm = state?.practices?.alarm;
+    if (alarm === void 0 || alarm.answer !== "keep" || alarm.accepted === true || state?.practices?.held === void 0) return;
+    if (reviewOpen || dilemmaModalOpen || overrideModalOpen || alarmModalOpen) return;
+    openAlarmCard(null);
+  }
+  function alarmFollowUp(events) {
+    for (const e of events) {
+      if (e.type !== "hold_alarm" || e.kind !== "deadline" || e.phase !== void 0 || e.run !== void 0) continue;
+      if (e.answer === "keep") {
+        openAlarmIfFree();
+        continue;
+      }
+      const name = state?.squad.find((u) => u.id === e.holderId)?.displayName ?? "She";
+      toast("info", e.answer === "release_late" ? `${name} let the commander go late: a mission was due.` : `${name} let the commander go: a mission was due.`);
+    }
   }
   let raisingAlarm = false;
   function raiseHeldAlarm(action, events) {
@@ -67952,10 +67977,11 @@ function createApp(st, deps) {
     }
     openConfrontationModal();
     showOverrideModal();
+    openAlarmIfFree();
     reopenSecretIfFree();
   }
   function reopenSecretIfFree() {
-    if (reviewOpen || dilemmaModalOpen || overrideModalOpen) return;
+    if (reviewOpen || dilemmaModalOpen || overrideModalOpen || alarmModalOpen) return;
     if (state?.disloyalty?.open?.at === "mission_start") return;
     personal.reopenSecrets();
   }
@@ -68617,7 +68643,7 @@ function createApp(st, deps) {
         practice.askRelease();
       }, sendSquad: (id) => {
         practice.sendSquad(id);
-      } });
+      }, answerHer: () => openAlarmCard(null) });
     },
     lastBuild: () => context.lastBuild(),
     // P3b: the fill indicator of SYS › MEMORY
