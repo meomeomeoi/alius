@@ -1730,6 +1730,46 @@
   margin: 4px 0;
 }
 
+/* Her dossier's DYNAMIC section (P15): one line for each reading, the cards she waits on, the way out. Words and bands; no colour carries a meaning alone. */
+#alius-shell .alius-dynamic-section {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-dynamic-section .alius-dyn-line {
+  margin: 3px 0;
+}
+
+#alius-shell .alius-dyn-exit {
+  margin-top: 6px;
+}
+
+/* The exit card (P15): a row for each route with its cost as a word, and the means of a forced exit. */
+#alius-shell .alius-exit-body .alius-exit-route {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-exit-means {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1 1 100%;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
+
+#alius-shell .alius-exit [aria-disabled='true'] {
+  opacity: 0.6;
+}
+
+#alius-shell .alius-exit-close {
+  margin-top: 6px;
+}
+
 /*
  * P11: the prologue's paper forms (cold open, intake, medical exam, signed dossier) and, later, the hub card, the coach
  * strip and locked tabs. The paper voice supplies colours; this file only lays the forms out. Typing reveals are CSS so the

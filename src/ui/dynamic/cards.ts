@@ -1,11 +1,16 @@
 import type { Registries } from '../../content/types';
+import { frameRank } from '../../engine/blocking/state';
+import { isLiving } from '../../engine/economy';
 import { dynamicOn } from '../../engine/dynamic/gate';
+import { exitCostWord, EXIT_MEANS, meansDone, type ExitMeans } from '../../engine/dynamic/exit';
+import { dynamicOf } from '../../engine/dynamic/state';
 import type { OpenClaim, OpenMilestone, OpenReturn } from '../../engine/dynamic/state';
-import type { DynamicDomainEntry, DynamicMilestoneEntry } from '../../engine/dynamic/types';
+import type { DynamicDomainEntry, DynamicMilestoneEntry, ExitRoute } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { VOICE_OF } from '../voice/sources';
+import { renderDisciplineMenu } from '../discipline/menu';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
 
 export interface MilestoneCardCtx {
@@ -160,4 +165,97 @@ export function drawReturnCards(
   const offer = state.dynamic?.open.returnOffer;
   if (!dynamicOn(state, reg) || offer === undefined || !pick({ unitId: offer.unitId })) return;
   renderReturnCard(host, { state, reg, offer, onAnswer });
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Leaving: the exit confirm card (R15)
+
+export interface ExitCardCtx {
+  state: CampaignState;
+  reg: Registries;
+  unitId: string;
+  /** A route chosen: `transfer` names the holder who takes the commander on, `force` its means. Absent = the button does nothing. */
+  onExit?: (route: ExitRoute, opts?: { toUnitId?: string; means?: ExitMeans }) => void;
+  /** The means of a forced exit, each through its own path (the squad's vote, the warden's co-sign, the warnings): never run by the card. */
+  means?: {
+    /** The DISCIPLINE menu's click: a punishment (a vote may come first). */
+    punish?: (measure: string, days?: number) => void;
+    leash?: () => void;
+    request?: () => void;
+  };
+  onClose?: () => void;
+}
+
+/** The other holders a transfer may go to: named, living, at `play` or beyond. */
+export function transferTargets(state: CampaignState, unitId: string): CampaignState['squad'] {
+  return state.squad.filter((u) => u.id !== unitId && u.kind === 'named' && isLiving(u) && frameRank(dynamicOf(state, u.id)?.frame ?? 'equal') >= frameRank('play'));
+}
+
+const MEANS_LABEL: Readonly<Record<ExitMeans, string>> = { discipline: 'A PUNISHMENT', leash: 'THE LEASH', transfer_request: 'AN OVERSIGHT REQUEST' };
+const ROUTE_LABEL: Readonly<Record<ExitRoute, string>> = { abrupt: '[ LEAVE NOW ]', negotiated: '[ TALK IT THROUGH ]', transfer: '[ HAND OVER ]', force: '[ FORCE IT ]' };
+
+/**
+ * The exit confirm card (P15, plan R15), in her voice: what leaving costs, as a word for each route (`exitCostWord`, never a number). `abrupt` is the cost as it
+ * stands; `negotiated` opens a scene and shows what a compromise would make of it; `transfer` goes to another holder (one button for each); `force` needs a means
+ * done on her today (`meansDone`): each means is a row with its own way of doing it (her DISCIPLINE menu, the Leash, the oversight request) and a soft-disabled
+ * FORCE until it is done. A negotiation that is open says so. Every part is addressed by the glossary's `dynamic_exit`. Replaces what `host` held.
+ */
+export function renderExitCard(host: HTMLElement, ctx: ExitCardCtx): void {
+  const { state, reg, unitId } = ctx;
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (unit === undefined) return;
+  const live = { unitId };
+  const cost = (word: string): HTMLElement => h('span', { class: 'alius-chip', 'data-cost': '', ...analyzeAttrs('glossary:dynamic_exit', live) }, word);
+  const go = (route: ExitRoute, opts: { toUnitId?: string; means?: ExitMeans } | undefined, text: string, soft?: string): HTMLElement => h('button', {
+    type: 'button', class: 'alius-btn alius-option', ...(opts?.means !== undefined ? { 'data-means': opts.means } : {}), ...analyzeNative('glossary:dynamic_exit', live),
+    ...(soft !== undefined ? { 'aria-disabled': 'true', title: soft } : {}),
+    onclick: () => {
+      if (soft === undefined) ctx.onExit?.(route, opts);
+    },
+  }, text);
+  const row = (route: ExitRoute, ...parts: Array<Node | string | null>): HTMLElement => h('div', { class: 'alius-exit-route', 'data-exit-route': route }, ...parts);
+
+  const rows: HTMLElement[] = [
+    row('abrupt', go('abrupt', undefined, ROUTE_LABEL.abrupt), ' ', cost(exitCostWord(state, reg, unitId, 'abrupt'))),
+    row('negotiated', go('negotiated', undefined, ROUTE_LABEL.negotiated), ' ', cost(exitCostWord(state, reg, unitId, 'negotiated', true)),
+      state.dynamic?.open.exits?.some((e) => e.unitId === unitId) === true ? h('span', { class: 'alius-dim', 'data-negotiating': '' }, ' A talk is open: no compromise yet.') : null),
+  ];
+  for (const to of transferTargets(state, unitId)) {
+    const r = row('transfer', go('transfer', { toUnitId: to.id }, `${ROUTE_LABEL.transfer} > ${to.displayName.toUpperCase()}`), ' ', cost(exitCostWord(state, reg, unitId, 'transfer')));
+    r.setAttribute('data-to', to.id);
+    rows.push(r);
+  }
+
+  // the forced route: every means is done through its own path first
+  const means = (m: ExitMeans): HTMLElement => {
+    const done = meansDone(state, unitId, m);
+    const doIt = ctx.means?.[m === 'discipline' ? 'punish' : m === 'leash' ? 'leash' : 'request'];
+    return h('div', { class: 'alius-exit-means', 'data-exit-means': m },
+      h('span', { class: 'alius-exit-means-label' }, `${MEANS_LABEL[m]}: ${done ? 'done today' : 'not yet'} `),
+      done ? null : (m === 'discipline'
+        ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure, days) => ctx.means?.punish?.(measure, days) })
+        : h('button', {
+          type: 'button', class: 'alius-btn alius-option', 'data-do-means': m, ...analyzeNative('glossary:dynamic_exit', live),
+          onclick: () => {
+            if (doIt !== undefined) (doIt as () => void)();
+          },
+        }, m === 'leash' ? '[ FILE THE LEASH ]' : '[ FILE THE REQUEST ]')),
+      ' ', go('force', { means: m }, ROUTE_LABEL.force, done ? undefined : 'Do it first.'));
+  };
+  const forced = row('force', cost(exitCostWord(state, reg, unitId, 'force')), ...EXIT_MEANS.map(means));
+  rows.push(forced);
+
+  const body = h('div', { class: 'alius-exit-body' },
+    h('p', { class: 'alius-exit-text' }, 'AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.'.replaceAll('{name}', unit.displayName)),
+    ...rows,
+    h('div', { class: 'alius-exit-close' }, h('button', {
+      type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'dyn-exit-close', ...analyzeNative('glossary:dynamic_exit', live), onclick: () => ctx.onClose?.(),
+    }, '[ CLOSE ]')));
+  const card = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit.displayName, body, accent: unitAccent(unit.id) });
+  card.classList.add('alius-exit');
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', `Ending it with ${unit.displayName}`);
+  for (const [k, v] of Object.entries(analyzeAttrs('glossary:dynamic_exit', live))) card.setAttribute(k, v);
+  host.replaceChildren(card);
 }

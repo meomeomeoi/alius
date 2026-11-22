@@ -19120,6 +19120,13 @@ function exitSeverity(state, _reg, unitId, route, clean10 = false) {
   if (clean10) steps -= T5.cleanSteps;
   return SEVERITIES[clampSteps(steps)];
 }
+function exitCostWord(state, reg, unitId, route, clean10 = false) {
+  const dyn = dynamicOf(state, unitId);
+  if (dyn?.sworn !== void 0) return "a break";
+  const severity = exitSeverity(state, reg, unitId, route, clean10);
+  if (severity === "minor") return route !== "force" && dyn?.frame === "play" && dyn.hold < TUNING.dynamic.exit.freeHold ? "nearly free" : "light";
+  return severity === "moderate" ? "costly" : "heavy";
+}
 var pendingExit = (state, unitId) => state.dynamic?.open.exits?.find((e) => e.unitId === unitId);
 function exitDynamic(draft, ctx2, unitId, route, opts = {}) {
   const reg = ctx2.registries;
@@ -39221,6 +39228,30 @@ function createDynamic(deps) {
       });
       return true;
     },
+    requestTransfer(unitId) {
+      const events = deps.app.dispatch({ type: "dynamic/request_transfer", payload: { unitId } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
+    async exit(unitId, route, opts) {
+      const payload = { unitId, route, ...opts?.toUnitId !== void 0 ? { toUnitId: opts.toUnitId } : {}, ...opts?.means !== void 0 ? { means: opts.means } : {} };
+      const events = deps.app.dispatch({ type: "dynamic/exit", payload }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      if (route === "negotiated" && !events.some((e) => e.type === "dynamic_exit") && deps.startScene !== void 0) {
+        await deps.startScene({ locationId: "quarters_unit", participants: [unitId], origin: "event" });
+      }
+      deps.refreshContext();
+      return true;
+    },
     async talk(claimId) {
       const claim2 = state()?.dynamic?.open.claims.find((c) => c.id === claimId);
       if (claim2 === void 0 || deps.startScene === void 0) return false;
@@ -49356,6 +49387,344 @@ function renderDevelopmentBlock(host, ctx2) {
   host.append(...view.axes.map(axisRow), ...[...view.facts].reverse().map(factRow), ...loneRows);
 }
 
+// src/ui/discipline/menu.ts
+var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
+function renderDisciplineMenu(ctx2) {
+  const { state, registries: reg, unitId } = ctx2;
+  const entries2 = [...reg.punishments.values()].filter((e) => contentAllowed(state, reg, e)).map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
+  const rows = entries2.map((e) => {
+    const id = String(e.id);
+    const confine = confineOf(e);
+    let days = null;
+    if (confine) {
+      days = h(
+        "select",
+        { class: "alius-select", "data-brig-days": id, "aria-label": `Days of ${String(e.label)}` },
+        ...Array.from({ length: confine.maxDays - confine.minDays + 1 }, (_, n) => h("option", { value: String(confine.minDays + n) }, String(confine.minDays + n)))
+      );
+    }
+    const why = checkPunish(state, reg, unitId, id, days ? Number(days.value) : void 0);
+    const button2 = h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-punish": id,
+      ...analyzeNative(`punishments:${id}`, { unitId }),
+      ...why !== null ? { "aria-disabled": "true", title: why } : {},
+      onclick: () => {
+        if (button2.getAttribute("aria-disabled") === "true") return;
+        ctx2.onPunish(id, days ? Number(days.value) : void 0);
+      }
+    }, String(e.label).toUpperCase());
+    return h("div", { class: "alius-punish-row" }, button2, days);
+  });
+  return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
+}
+
+// src/ui/dynamic/cards.ts
+function renderMilestoneCard(host, ctx2) {
+  const { state, reg, milestone } = ctx2;
+  const entry = reg.dynamicMilestones.get(milestone.milestoneId);
+  const unit3 = state.squad.find((u) => u.id === milestone.unitId);
+  if (entry === void 0 || unit3 === void 0) return;
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-milestone-answer": kind,
+    "data-milestone": milestone.id,
+    ...analyzeNative("glossary:milestone", { unitId: unit3.id }),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const body = h(
+    "div",
+    { class: "alius-milestone-body" },
+    h("p", { class: "alius-milestone-text" }, entry.text.replaceAll("{name}", unit3.displayName)),
+    h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-milestone");
+  card2.setAttribute("data-milestone", milestone.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit3.id }))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawMilestoneCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const milestone of state.dynamic?.open.milestones ?? []) {
+    if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
+  }
+}
+var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
+function renderClaimCard(host, ctx2) {
+  const { state, reg, claim: claim2 } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === claim2.unitId);
+  const entry = claim2.domainId === void 0 ? void 0 : reg.dynamicDomains.get(claim2.domainId);
+  if (unit3 === void 0 || claim2.domainId !== void 0 && entry === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-claim-answer": kind,
+    "data-claim": claim2.id,
+    ...analyzeNative("glossary:claim", live3),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
+  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live3) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
+  const body = h(
+    "div",
+    { class: "alius-claim-body" },
+    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live3) }, String(entry.label).toUpperCase()))],
+    h("p", { class: "alius-claim-text" }, words3),
+    ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
+    h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-claim");
+  card2.setAttribute("data-claim", claim2.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawClaimCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const claim2 of state.dynamic?.open.claims ?? []) {
+    if (pick3({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) });
+  }
+}
+var RETURN_WORDS = {
+  lower_band: "AUTHOR TO WRITE: {name} offers to begin again, from a smaller step than before.",
+  after_punishment: "AUTHOR TO WRITE: {name} offers to begin again, once the commander has paid for what ended it."
+};
+function renderReturnCard(host, ctx2) {
+  const { state, offer } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === offer.unitId);
+  if (unit3 === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-return-answer": kind,
+    "data-return": offer.id,
+    ...analyzeNative("glossary:aftermath", live3),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const body = h(
+    "div",
+    { class: "alius-return-body" },
+    h("p", { class: "alius-return-text" }, RETURN_WORDS[offer.terms].replaceAll("{name}", unit3.displayName)),
+    h("div", { class: "alius-return-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-return");
+  card2.setAttribute("data-return", offer.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} offers to begin again`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawReturnCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  const offer = state.dynamic?.open.returnOffer;
+  if (!dynamicOn(state, reg) || offer === void 0 || !pick3({ unitId: offer.unitId })) return;
+  renderReturnCard(host, { state, reg, offer, onAnswer });
+}
+function transferTargets(state, unitId) {
+  return state.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play"));
+}
+var MEANS_LABEL = { discipline: "A PUNISHMENT", leash: "THE LEASH", transfer_request: "AN OVERSIGHT REQUEST" };
+var ROUTE_LABEL = { abrupt: "[ LEAVE NOW ]", negotiated: "[ TALK IT THROUGH ]", transfer: "[ HAND OVER ]", force: "[ FORCE IT ]" };
+function renderExitCard(host, ctx2) {
+  const { state, reg, unitId } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0) return;
+  const live3 = { unitId };
+  const cost = (word2) => h("span", { class: "alius-chip", "data-cost": "", ...analyzeAttrs("glossary:dynamic_exit", live3) }, word2);
+  const go = (route, opts, text2, soft) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    ...opts?.means !== void 0 ? { "data-means": opts.means } : {},
+    ...analyzeNative("glossary:dynamic_exit", live3),
+    ...soft !== void 0 ? { "aria-disabled": "true", title: soft } : {},
+    onclick: () => {
+      if (soft === void 0) ctx2.onExit?.(route, opts);
+    }
+  }, text2);
+  const row3 = (route, ...parts) => h("div", { class: "alius-exit-route", "data-exit-route": route }, ...parts);
+  const rows = [
+    row3("abrupt", go("abrupt", void 0, ROUTE_LABEL.abrupt), " ", cost(exitCostWord(state, reg, unitId, "abrupt"))),
+    row3(
+      "negotiated",
+      go("negotiated", void 0, ROUTE_LABEL.negotiated),
+      " ",
+      cost(exitCostWord(state, reg, unitId, "negotiated", true)),
+      state.dynamic?.open.exits?.some((e) => e.unitId === unitId) === true ? h("span", { class: "alius-dim", "data-negotiating": "" }, " A talk is open: no compromise yet.") : null
+    )
+  ];
+  for (const to of transferTargets(state, unitId)) {
+    const r = row3("transfer", go("transfer", { toUnitId: to.id }, `${ROUTE_LABEL.transfer} > ${to.displayName.toUpperCase()}`), " ", cost(exitCostWord(state, reg, unitId, "transfer")));
+    r.setAttribute("data-to", to.id);
+    rows.push(r);
+  }
+  const means = (m) => {
+    const done = meansDone(state, unitId, m);
+    const doIt = ctx2.means?.[m === "discipline" ? "punish" : m === "leash" ? "leash" : "request"];
+    return h(
+      "div",
+      { class: "alius-exit-means", "data-exit-means": m },
+      h("span", { class: "alius-exit-means-label" }, `${MEANS_LABEL[m]}: ${done ? "done today" : "not yet"} `),
+      done ? null : m === "discipline" ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure, days) => ctx2.means?.punish?.(measure, days) }) : h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-do-means": m,
+        ...analyzeNative("glossary:dynamic_exit", live3),
+        onclick: () => {
+          if (doIt !== void 0) doIt();
+        }
+      }, m === "leash" ? "[ FILE THE LEASH ]" : "[ FILE THE REQUEST ]"),
+      " ",
+      go("force", { means: m }, ROUTE_LABEL.force, done ? void 0 : "Do it first.")
+    );
+  };
+  const forced = row3("force", cost(exitCostWord(state, reg, unitId, "force")), ...EXIT_MEANS.map(means));
+  rows.push(forced);
+  const body = h(
+    "div",
+    { class: "alius-exit-body" },
+    h("p", { class: "alius-exit-text" }, "AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.".replaceAll("{name}", unit3.displayName)),
+    ...rows,
+    h("div", { class: "alius-exit-close" }, h("button", {
+      type: "button",
+      class: "alius-btn alius-tagchip",
+      "data-action": "dyn-exit-close",
+      ...analyzeNative("glossary:dynamic_exit", live3),
+      onclick: () => ctx2.onClose?.()
+    }, "[ CLOSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-exit");
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `Ending it with ${unit3.displayName}`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:dynamic_exit", live3))) card2.setAttribute(k, v);
+  host.replaceChildren(card2);
+}
+
+// src/ui/dynamic/section.ts
+var TRACK_WORDS = ["", "a little", "some", "a good deal", "deeply", "completely"];
+var LEADING_TRACKS = 3;
+function dynamicSectionView(state, reg, unitId) {
+  const dyn = dynamicOf(state, unitId);
+  if (!dynamicOn(state, reg) || dyn === void 0) return null;
+  const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id);
+  const tracks = Object.entries(dyn.tracks).filter(([id, t]) => t.level >= 1 && trackOpen(state, reg, unitId, id)).sort((a, b) => b[1].level - a[1].level).slice(0, LEADING_TRACKS).map(([id, t]) => ({ id, label: label2("dynamicTracks", id), word: TRACK_WORDS[t.level] }));
+  const open3 = new Set(state.dynamic.open.claims.filter((c) => c.unitId === unitId).map((c) => c.domainId));
+  const held3 = new Set(dyn.domains.map((d) => d.id));
+  return {
+    frame: label2("dynamicFrames", dyn.frame),
+    band: label2("holdBands", holdBandOf(reg, dyn.hold)),
+    hold: dyn.hold,
+    domains: dyn.domains.map((d) => ({ id: d.id, label: String(reg.dynamicDomains.get(d.id)?.label ?? d.id), partial: !standing(d, state.day) || d.partialUntil !== void 0 })),
+    mayClaim: domainRows(reg).filter((e) => !held3.has(e.id) && !open3.has(e.id) && meets2(reg, dyn, e) && holderOfDomain(state, e.id, unitId) === null).map((e) => ({ id: e.id, label: e.label })),
+    tracks,
+    sworn: dyn.sworn !== void 0,
+    ...dyn.readOf.updates > 0 ? { reading: String(reg.positionRegions.get(dyn.readOf.region)?.label ?? dyn.readOf.region) } : {}
+  };
+}
+var exitOpen = /* @__PURE__ */ new Set();
+var exitKey = (state, unitId) => `${state.dynamic?.salt ?? 0}|${unitId}`;
+function renderDynamicSection(host, ctx2) {
+  const { state, reg, unitId } = ctx2;
+  host.replaceChildren();
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const view = unit3?.kind === "named" && !ctx2.hidden ? dynamicSectionView(state, reg, unitId) : null;
+  if (unit3 === void 0 || view === null) return false;
+  const live3 = { unitId };
+  const key = exitKey(state, unitId);
+  const chip2 = (text2, address, attrs = {}) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text2);
+  const row3 = (label2, ...parts) => h("p", { class: "alius-dyn-line" }, `${label2} `, ...parts);
+  const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
+  const lines = [
+    row3("FRAME", chip2(view.frame.toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
+    row3("HOLD", chip2(`${view.band.toUpperCase()}${ctx2.raw ? ` (${Math.round(view.hold)})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
+  ];
+  if (view.domains.length > 0) {
+    lines.push(row3("DOMAINS", ...between(view.domains.map((d) => chip2(`${d.label.toUpperCase()}${d.partial ? " (PARTLY)" : ""}`, `dynamicDomains:${d.id}`, { "data-dyn-domain": d.id })))));
+  }
+  if (view.mayClaim.length > 0) {
+    lines.push(row3("SHE MAY CLAIM", ...between(view.mayClaim.map((d) => chip2(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { "data-dyn-may-claim": d.id })))));
+  }
+  if (view.tracks.length > 0) {
+    lines.push(row3("PRACTICE", ...between(view.tracks.map((t) => chip2(`${t.label.toUpperCase()}: ${t.word.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
+  }
+  if (view.reading !== void 0) {
+    lines.push(row3("HER READING", chip2(view.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
+  }
+  const cards = h("div", { class: "alius-dyn-cards" });
+  const pick3 = (c) => c.unitId === unitId;
+  const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
+  cards.append(...slots);
+  drawMilestoneCards(slots[0], state, reg, pick3, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
+  drawClaimCards(slots[1], state, reg, pick3, (id, a) => ctx2.actions?.answerClaim?.(id, a));
+  drawReturnCards(slots[2], state, reg, pick3, (a) => ctx2.actions?.answerReturn?.(a));
+  const exitHost = h("div", { class: "alius-dyn-exit" });
+  const redraw = () => {
+    if (ctx2.onChanged !== void 0) ctx2.onChanged();
+    else renderDynamicSection(host, ctx2);
+  };
+  const drawExit = () => {
+    exitHost.replaceChildren();
+    if (!exitOpen.has(key)) {
+      exitHost.append(h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-action": "dyn-exit",
+        ...analyzeNative("glossary:dynamic_exit", live3),
+        onclick: () => {
+          exitOpen.add(key);
+          drawExit();
+        }
+      }, "[ END IT ]"));
+      return;
+    }
+    renderExitCard(exitHost, {
+      state,
+      reg,
+      unitId,
+      onExit: (route, opts) => {
+        exitOpen.delete(key);
+        ctx2.actions?.exit?.(unitId, route, opts);
+        redraw();
+      },
+      means: {
+        punish: (measure, days) => {
+          ctx2.onPunish?.(unitId, measure, days);
+          redraw();
+        },
+        leash: () => {
+          ctx2.onLeash?.(unitId);
+          redraw();
+        },
+        request: () => {
+          ctx2.actions?.requestTransfer?.(unitId);
+          redraw();
+        }
+      },
+      onClose: () => {
+        exitOpen.delete(key);
+        drawExit();
+      }
+    });
+  };
+  drawExit();
+  host.append(h("h4", {}, "DYNAMIC"), ...lines, cards, exitHost);
+  host.classList.add("alius-dynamic-section");
+  host.setAttribute("data-dynamic-section", unitId);
+  return true;
+}
+
 // src/ui/life/lifeViews.ts
 var title2 = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 function renderThoughts(host, ctx2) {
@@ -49715,39 +50084,6 @@ function unitPortrait(st, unit3, o) {
     () => settle6()
   );
   return img;
-}
-
-// src/ui/discipline/menu.ts
-var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
-function renderDisciplineMenu(ctx2) {
-  const { state, registries: reg, unitId } = ctx2;
-  const entries2 = [...reg.punishments.values()].filter((e) => contentAllowed(state, reg, e)).map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
-  const rows = entries2.map((e) => {
-    const id = String(e.id);
-    const confine = confineOf(e);
-    let days = null;
-    if (confine) {
-      days = h(
-        "select",
-        { class: "alius-select", "data-brig-days": id, "aria-label": `Days of ${String(e.label)}` },
-        ...Array.from({ length: confine.maxDays - confine.minDays + 1 }, (_, n) => h("option", { value: String(confine.minDays + n) }, String(confine.minDays + n)))
-      );
-    }
-    const why = checkPunish(state, reg, unitId, id, days ? Number(days.value) : void 0);
-    const button2 = h("button", {
-      type: "button",
-      class: "alius-btn alius-option",
-      "data-punish": id,
-      ...analyzeNative(`punishments:${id}`, { unitId }),
-      ...why !== null ? { "aria-disabled": "true", title: why } : {},
-      onclick: () => {
-        if (button2.getAttribute("aria-disabled") === "true") return;
-        ctx2.onPunish(id, days ? Number(days.value) : void 0);
-      }
-    }, String(e.label).toUpperCase());
-    return h("div", { class: "alius-punish-row" }, button2, days);
-  });
-  return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
 }
 
 // src/analysis/providers.ts
@@ -50402,6 +50738,22 @@ function lifeProfileBlock(unit3, ctx2, state) {
   });
   return host;
 }
+function dynamicSection(unit3, ctx2, state) {
+  if (unit3.kind !== "named") return null;
+  const host = h("div", { class: "alius-dyn-section-host" });
+  const drawn = renderDynamicSection(host, {
+    state,
+    reg: ctx2.registries,
+    unitId: unit3.id,
+    raw: ctx2.settings().showRawValues,
+    hidden: ctx2.settings().dynamicHidden === true,
+    ...ctx2.dynamic?.actions !== void 0 ? { actions: ctx2.dynamic.actions } : {},
+    ...ctx2.onPunish !== void 0 ? { onPunish: (id, measure, days) => ctx2.onPunish(id, measure, days) } : {},
+    ...ctx2.onLeash !== void 0 ? { onLeash: (id) => ctx2.onLeash(id, "compel") } : {},
+    ...ctx2.dynamic?.onChanged !== void 0 ? { onChanged: ctx2.dynamic.onChanged } : {}
+  });
+  return drawn ? host : null;
+}
 function dynamicProfileBlock(unit3, ctx2, state) {
   if (!ctx2.dynamic || unit3.kind !== "named" || ctx2.settings().editLock) return null;
   const data = dynamicBlockData(ctx2.registries, state, unit3.id);
@@ -50493,6 +50845,8 @@ function unitBlock(unit3, ctx2, state) {
       !gone3 && state.relations[unit3.id] ? h("p", { class: "alius-loyalty" }, chip2(`LOYALTY: ${state.relations[unit3.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
       gone3 ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit3.id, ...analyzeAttrs("glossary:disposition", live3) }, `Disposition: ${String(dispositionFor(state, reg, unit3).name)}`)),
       gone3 ? null : bondBlock(unit3, state, ctx2),
+      gone3 ? null : dynamicSection(unit3, ctx2, state),
+      // P15: her hold, frame, domains and the way out
       gone3 ? null : disciplineLine(unit3, state, ctx2),
       gone3 ? null : hierarchyBlock(unit3, state, ctx2),
       gone3 ? null : renderDeviceBlock(state, ctx2.registries, unit3.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
@@ -53886,119 +54240,6 @@ function drawDemandChips(host, state, reg, pick3, on) {
       on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.demand", d.id) : null
     ));
   }
-}
-
-// src/ui/dynamic/cards.ts
-function renderMilestoneCard(host, ctx2) {
-  const { state, reg, milestone } = ctx2;
-  const entry = reg.dynamicMilestones.get(milestone.milestoneId);
-  const unit3 = state.squad.find((u) => u.id === milestone.unitId);
-  if (entry === void 0 || unit3 === void 0) return;
-  const button2 = (kind, text2) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-milestone-answer": kind,
-    "data-milestone": milestone.id,
-    ...analyzeNative("glossary:milestone", { unitId: unit3.id }),
-    onclick: () => ctx2.onAnswer(kind)
-  }, text2);
-  const body = h(
-    "div",
-    { class: "alius-milestone-body" },
-    h("p", { class: "alius-milestone-text" }, entry.text.replaceAll("{name}", unit3.displayName)),
-    h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-milestone");
-  card2.setAttribute("data-milestone", milestone.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
-  for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit3.id }))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawMilestoneCards(host, state, reg, pick3, onAnswer) {
-  host.replaceChildren();
-  if (!dynamicOn(state, reg)) return;
-  for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
-  }
-}
-var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
-function renderClaimCard(host, ctx2) {
-  const { state, reg, claim: claim2 } = ctx2;
-  const unit3 = state.squad.find((u) => u.id === claim2.unitId);
-  const entry = claim2.domainId === void 0 ? void 0 : reg.dynamicDomains.get(claim2.domainId);
-  if (unit3 === void 0 || claim2.domainId !== void 0 && entry === void 0) return;
-  const live3 = { unitId: unit3.id };
-  const button2 = (kind, text2) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-claim-answer": kind,
-    "data-claim": claim2.id,
-    ...analyzeNative("glossary:claim", live3),
-    onclick: () => ctx2.onAnswer(kind)
-  }, text2);
-  const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
-  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live3) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
-  const body = h(
-    "div",
-    { class: "alius-claim-body" },
-    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live3) }, String(entry.label).toUpperCase()))],
-    h("p", { class: "alius-claim-text" }, words3),
-    ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
-    h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-claim");
-  card2.setAttribute("data-claim", claim2.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
-  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawClaimCards(host, state, reg, pick3, onAnswer) {
-  host.replaceChildren();
-  if (!dynamicOn(state, reg)) return;
-  for (const claim2 of state.dynamic?.open.claims ?? []) {
-    if (pick3({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) });
-  }
-}
-var RETURN_WORDS = {
-  lower_band: "AUTHOR TO WRITE: {name} offers to begin again, from a smaller step than before.",
-  after_punishment: "AUTHOR TO WRITE: {name} offers to begin again, once the commander has paid for what ended it."
-};
-function renderReturnCard(host, ctx2) {
-  const { state, offer } = ctx2;
-  const unit3 = state.squad.find((u) => u.id === offer.unitId);
-  if (unit3 === void 0) return;
-  const live3 = { unitId: unit3.id };
-  const button2 = (kind, text2) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-return-answer": kind,
-    "data-return": offer.id,
-    ...analyzeNative("glossary:aftermath", live3),
-    onclick: () => ctx2.onAnswer(kind)
-  }, text2);
-  const body = h(
-    "div",
-    { class: "alius-return-body" },
-    h("p", { class: "alius-return-text" }, RETURN_WORDS[offer.terms].replaceAll("{name}", unit3.displayName)),
-    h("div", { class: "alius-return-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-return");
-  card2.setAttribute("data-return", offer.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} offers to begin again`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawReturnCards(host, state, reg, pick3, onAnswer) {
-  host.replaceChildren();
-  const offer = state.dynamic?.open.returnOffer;
-  if (!dynamicOn(state, reg) || offer === void 0 || !pick3({ unitId: offer.unitId })) return;
-  renderReturnCard(host, { state, reg, offer, onAnswer });
 }
 
 // src/ui/dynamic/offerComposer.ts
@@ -61407,8 +61648,23 @@ function createApp(st, deps) {
       // P14b: HOLD and fact editing
       life: { dispatch: (a) => act(a), onChanged: () => shell.refresh() },
       // P14c: temperament, hobbies and opinions (the edit lock gates the controls)
-      dynamic: { dispatch: (a) => act(a), onChanged: () => shell.refresh() },
-      // P15: her practice and expectations (drawn only while the edit lock is off)
+      // P15: her practice and expectations (drawn only while the edit lock is off), and the DYNAMIC section's cards and the way out
+      dynamic: {
+        dispatch: (a) => act(a),
+        onChanged: () => shell.refresh(),
+        actions: {
+          answerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer),
+          answerClaim: answerClaim2,
+          answerReturn: (answer) => void dynamic.answerReturn(answer),
+          exit: (unitId, route, opts) => void dynamic.exit(unitId, route, opts).then((ok) => {
+            if (ok) {
+              if (route === "negotiated") shell.open();
+              else shell.refresh();
+            }
+          }),
+          requestTransfer: (unitId) => void dynamic.requestTransfer(unitId)
+        }
+      },
       memory: {
         dispatch: (a) => act(a),
         confirm: async (text2) => await shell.modal({ title: "FORGET", body: text2, actions: [{ label: "[ FORGET ]", value: "yes" }, { label: "[ CANCEL ]", value: "no" }] }) === "yes",

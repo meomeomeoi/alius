@@ -336,6 +336,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'domain', 'claim', 'aftermath', 'holder_override', 'capability_booking_uncapped', 'capability_book_ahead', 'capability_body_conditions', 'capability_device_floor', 'capability_leash_block', 'capability_household_protocol', 'capability_second_place', 'capability_relation_rules', 'capability_booking_consent', 'capability_countermand', 'capability_co_leader', 'leash_bypass_comms', 'leash_bypass_reset', 'leash_bypass_ally',
   // P15 (the offer composer: the chip, the tabs, the entries and her answer; the body map)
   'offer', 'offer_answer', 'body_map',
+  // P15 (her dossier's DYNAMIC section and the exit card; later tasks add their own)
+  'dynamic', 'hold', 'her_reading', 'dynamic_exit',
 ];
 
 let registered = false;

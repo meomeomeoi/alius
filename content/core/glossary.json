@@ -2995,5 +2995,49 @@
       "worship_target",
       "offer"
     ]
+  },
+  {
+    "id": "dynamic",
+    "term": "The dynamic",
+    "short": "A soldier who, over time, comes to hold authority over the commander: how far it has gone, what she holds, and how it ends.",
+    "long": "AUTHOR TO WRITE: It begins with small things she tries and the commander allows. It grows through hold, frames and the domains she claims, and it can end: abruptly, by talking it through, by handing it to another, or by force. Every number behind it belongs to the engine; the screens show words and bands.",
+    "see": [
+      "hold",
+      "frame",
+      "domain",
+      "dynamic_exit",
+      "her_reading"
+    ]
+  },
+  {
+    "id": "hold",
+    "term": "Hold",
+    "short": "How much weight her word carries with the commander. Shown as a band: interest, testing, keeping, owning, possessing.",
+    "long": "AUTHOR TO WRITE: Hold grows from what the commander lets her do and what the commander gives her, and it falls when it is left unfed. It cannot pass the testing band without a step she asks and the commander accepts. The number is shown only with show raw values, and never in immersive mode.",
+    "see": [
+      "frame",
+      "milestone",
+      "setting_dynamic_hidden"
+    ]
+  },
+  {
+    "id": "her_reading",
+    "term": "Her reading",
+    "short": "What she takes the commander to be, in her own word. It is hers, and it can be wrong.",
+    "long": "AUTHOR TO WRITE: She forms it from how the commander answers what she tries. It tells what she believes, never what the commander feels. The word is shown only once she has read something.",
+    "see": [
+      "dynamic"
+    ]
+  },
+  {
+    "id": "dynamic_exit",
+    "term": "Ending it",
+    "short": "Leaving what she holds. Always possible; what it costs is shown as a word for each route.",
+    "long": "AUTHOR TO WRITE: Abruptly costs what it costs. Talking it through opens a scene and, if a compromise is reached, makes it lighter. A transfer hands the commander to another holder. Forcing it needs a punishment, the Leash or an oversight request done first, and costs more. A vow is a break whatever the route.",
+    "see": [
+      "dynamic",
+      "aftermath",
+      "vow"
+    ]
   }
 ]

@@ -1,5 +1,6 @@
+import type { ExitMeans } from '../engine/dynamic/exit';
 import { offerLabel, type OfferComposition } from '../engine/dynamic/offer';
-import { DYNAMIC_EVENT_TYPES } from '../engine/dynamic/types';
+import { DYNAMIC_EVENT_TYPES, type ExitRoute } from '../engine/dynamic/types';
 import type { CampaignState } from '../engine/state/types';
 import type { DynamicDeps } from './deps';
 import { clearDynamicDirectives, refreshDynamicDirectives } from './directives';
@@ -26,6 +27,14 @@ export interface DynamicController {
    * commander's act, in the scene or in her thread, so that she answers it. Toasts the reason and answers false when the engine refuses; nothing is said then.
    */
   offer(unitId: string, composition: OfferComposition, askInReturn: boolean): Promise<boolean>;
+  /**
+   * The exit card's route (`dynamic/exit`): `abrupt` and `transfer` (`toUnitId`) are made at once; `negotiated` opens the exit and a one-to-one scene with her (the exit stays pending until a
+   * compromise in it, or ABRUPT); `force` needs its `means` already done on her today through its own path (the squad's vote, the warden's co-sign, the warnings, the oversight request), and
+   * the engine says "Do it first" otherwise. Toasts the reason and answers false when the engine refuses.
+   */
+  exit(unitId: string, route: ExitRoute, opts?: { toUnitId?: string; means?: ExitMeans }): Promise<boolean>;
+  /** The oversight request to move her out (`dynamic/request_transfer`), the means of a forced exit that spends no authorization. Toasts the reason and answers false when refused. */
+  requestTransfer(unitId: string): boolean;
 }
 
 const OWN: readonly string[] = DYNAMIC_EVENT_TYPES;
@@ -97,6 +106,31 @@ export function createDynamic(deps: DynamicDeps): DynamicController {
       const line = `*offers ${what}${askInReturn ? ', asking something in return' : ''}.*`; // the commander's act, in the commander's voice
       if (inScene) void deps.sayInScene?.(line)?.catch?.(() => {});
       else void deps.sayInDm?.(unitId, line)?.catch?.(() => {});
+      return true;
+    },
+    requestTransfer(unitId) {
+      const events = deps.app.dispatch({ type: 'dynamic/request_transfer', payload: { unitId } }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
+    async exit(unitId, route, opts) {
+      const payload = { unitId, route, ...(opts?.toUnitId !== undefined ? { toUnitId: opts.toUnitId } : {}), ...(opts?.means !== undefined ? { means: opts.means } : {}) };
+      const events = deps.app.dispatch({ type: 'dynamic/exit', payload }, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      // a negotiated exit made no event: it waits in the scene for a compromise
+      if (route === 'negotiated' && !events.some((e) => e.type === 'dynamic_exit') && deps.startScene !== undefined) {
+        await deps.startScene({ locationId: 'quarters_unit', participants: [unitId], origin: 'event' });
+      }
+      deps.refreshContext();
       return true;
     },
     async talk(claimId) {

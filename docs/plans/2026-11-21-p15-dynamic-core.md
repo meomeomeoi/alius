@@ -2151,16 +2151,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Consumes: `Knowledge.dynamic` (Task 46; until then the section reads a thin view built in this task's `dynamicSectionView` and Task 46 moves it behind `Knowledge`).
 - Produces: `renderDynamicSection(host, ctx: DynamicSectionCtx)`.
 
-- [ ] **Step 1: Write the failing tests** (jsdom):
+- [x] **Step 1: Write the failing tests** (jsdom):
   - `shows frame, band, domains, tracks as bands, the vow, her reading in her words, open cards and the exit button`;
   - `raw hold only with show raw values`;
   - `immersive hides the section and the bands but the hub chip and the cards still show`;
   - `the exit card shows the cost as a word per route`;
   - `every row carries data-analyze and resolves`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/dynamic/section.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R25.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the DYNAMIC dossier section`
+- [x] **Step 2: Run** `npx vitest run tests/ui/dynamic/section.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R25.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the DYNAMIC dossier section`
 
 ---
 

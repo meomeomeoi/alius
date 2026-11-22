@@ -5,6 +5,7 @@ import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderDevelopmentBlock } from '../development/developmentBlock';
 import { renderHobbiesEditor, renderOpinionsEditor, renderTemperamentBlock } from '../life/profileBlocks';
 import { dynamicBlockData, renderExpectationsBlock, renderPracticeBlock } from '../dynamic/profileBlocks';
+import { renderDynamicSection, type DynamicSectionActions } from '../dynamic/section';
 import { temperamentOf, lifeMode } from '../../engine/life/state';
 import { toldMilestones } from '../../engine/life/known';
 import { buildKnowledge } from '../../analysis/knowledge';
@@ -91,7 +92,7 @@ export interface SquadTabCtx {
   /** P14c: the TEMPERAMENT block and the HOBBIES and OPINIONS editors of each named unit's dossier (every edit goes through `dispatch`); absent = no block. */
   life?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
   /** P15: the PRACTICE and EXPECTATIONS editors of each named unit's dossier (every edit goes through `dispatch`); absent = no block. */
-  dynamic?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void };
+  dynamic?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; onChanged?: () => void; /** The DYNAMIC section's cards and the exit: the controller's calls. */ actions?: DynamicSectionActions };
   memory?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; confirm: (text: string) => Promise<boolean>; onChanged?: () => void };
 }
 
@@ -400,6 +401,24 @@ function lifeProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
  * lock is off (with it on nothing shows), and only while a practice category is switched on. Every edit is one field at a time through
  * `profile/set_practice` and `profile/set_expectation` (a locked field refuses the whole patch).
  */
+/**
+ * P15: her DYNAMIC section (frame, band, domains, tracks, the vow, her reading, the cards she waits on, the way out). Nothing for a grunt, while the dynamic
+ * is off, for a woman who holds nothing, or in immersive mode (the cards in a scene and the hub's line still show). Read from the state; every action is the
+ * controller's, through `ctx.dynamic.actions`.
+ */
+function dynamicSection(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
+  if (unit.kind !== 'named') return null;
+  const host = h('div', { class: 'alius-dyn-section-host' });
+  const drawn = renderDynamicSection(host, {
+    state, reg: ctx.registries, unitId: unit.id, raw: ctx.settings().showRawValues, hidden: ctx.settings().dynamicHidden === true,
+    ...(ctx.dynamic?.actions !== undefined ? { actions: ctx.dynamic.actions } : {}),
+    ...(ctx.onPunish !== undefined ? { onPunish: (id: string, measure: string, days?: number) => ctx.onPunish!(id, measure, days) } : {}),
+    ...(ctx.onLeash !== undefined ? { onLeash: (id: string) => ctx.onLeash!(id, 'compel') } : {}),
+    ...(ctx.dynamic?.onChanged !== undefined ? { onChanged: ctx.dynamic.onChanged } : {}),
+  });
+  return drawn ? host : null;
+}
+
 function dynamicProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
   if (!ctx.dynamic || unit.kind !== 'named' || ctx.settings().editLock) return null;
   const data = dynamicBlockData(ctx.registries, state, unit.id);
@@ -491,6 +510,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
       gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
       gone ? null : bondBlock(unit, state, ctx),
+      gone ? null : dynamicSection(unit, ctx, state), // P15: her hold, frame, domains and the way out
       gone ? null : disciplineLine(unit, state, ctx),
       gone ? null : hierarchyBlock(unit, state, ctx),
       gone ? null : renderDeviceBlock(state, ctx.registries, unit.id, { onPeel: (id, part) => ctx.onPeel?.(id, part), onCancel: (id) => ctx.onCancelBooking?.(id) }),
