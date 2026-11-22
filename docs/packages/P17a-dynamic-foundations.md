@@ -89,6 +89,15 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 - **P9b standing nudge:** `standingMalus` and `co_leader` (`standingOf` +15, `Hierarchy.coLeaderId`).
 - **Allied or rival holders in reactions:** `reactToDynamic` already lets a `ritual` / `cold` holder respect another's and a `possessive` / `cruel` one compete for a domain the holder holds with `claim: demand` that her own frame and band meet (never the command).
 
+## Interfaces already provided by P16 (implemented — use, do not rebuild)
+
+P16 is implemented (see its **Implemented as**: rulings R1–R24, the memory check and the open items). Everything it adds is off, absent and byte-identical while nobody holds at `play` or beyond (`practiceLive`), and none of it draws from the rng (`practiceRoll`). Keep new directive ids away from `practice:`; read seeds, punishments, ceremony steps, booking kinds and rule templates by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **Contracts and postures:** a holder keeps named postures only with `ritual` (primary or secondary) or `household_protocol` (`practices.postures`); a contract clause that gives one to another holder adds to the same list (`practice/name_posture`).
+- **Moment sources not registered:** `summons`, `rule_collision`, `ritual_due` are yours (`registerMomentTrigger`); P16 registers `her_demand` (live while she has an offered task or punishment in the scene), `permission` and `her_test` (live while a double standard runs). A source that only one holder answers is read through `heldNow` / `practicesOf`.
+- **Bookings and privileges:** P16 books with `source: 'practice'` (`Booking.practiceId`): the held kind per slot and, for a calendar handover, every free slot of tomorrow with her. `registerCommanderRestriction` / `registerRestrictionReader` are how a privilege revoked reaches the dispatcher (`no_dms_others`, `no_free_activities`, `room`, the cold shoulder); read them rather than adding a guard. A rule of hers is a P9d rule with `source: 'item'` while an item names it (`practices.permission`).
+- **Inspections and nights:** `practice:` directive ids are taken (`tasks`, `protocol`, `held`, `issued`, `punishment`, `demonstration`, `permission`, `ask`, `target`, `double`, `alarm`, `slap`, `verdict`); keep yours away from them. Attitudes between the women: the demonstration reactions use each watcher's `witness` word (`witnessOf`) and fire once per pair.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

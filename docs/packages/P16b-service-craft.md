@@ -221,6 +221,16 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 
 - Every model call through `app.generations`; a new site is a `SiteDecl` with handlers bound by the owning controller.
 
+## Interfaces already provided by P16 (implemented — use, do not rebuild)
+
+P16 is implemented (see its **Implemented as**: rulings R1–R24, the memory check and the open items). Everything it adds is off, absent and byte-identical while nobody holds at `play` or beyond (`practiceLive`), and none of it draws from the rng (`practiceRoll`). Keep new directive ids away from `practice:`; read seeds, punishments, ceremony steps, booking kinds and rule templates by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **Strokes are yours.** The `implements` registry (palm, slipper or boot sole, belt, ruler, riding crop, cane, glove: `force`, `mark { kind, slots }`, `sound`, `contentTags`) is data with no reader; a physical punishment is a `holderPunishments` effect `physical`, **narrated** (shown or only reported by `physical_discipline_shown`; its `injury_chance` and its threat count, `slap_dealt` / `punishment_answered` are threat sources). Build the interactive strokes (implement × target × posture, the flinch impulse on posture points, the count aloud, rules of conduct during strokes, marks by implement, `her_marks`) on top: read an implement by `force` / `mark`, and the narrated effect is where to hook (`runPunishmentEffect` in `punish.ts`, the ceremony's `the_execution` step).
+- **Named postures:** `practices.postures[holderId]` keeps her names for P15a's 13 `blockingPostures` (flavor kind `posture_name`, site `flavor.posture_name`), the call (`practices.call`, `practice/take_posture`) and the `posture_slip` offence; points that drift and the 48 presets are yours (`serviceLevel + 1` is the cap of names today).
+- **Service:** `practiceView` / `Knowledge.practice` read protocol, routine, verdicts (`practices.verdictScene`, `service_rated`), favour as a word and `practices.service` (what she has seen of the service in the scene: the judged pair and the bonus anticipation gives); the engine verdict is read from the blocking (`scope: dynamic`, `actor: commander` activities and their `pairTags`). Anticipation is built (`practice_anticipated`); `[ANTICIPATE]` as a chip and unasked care are not.
+- **The ceremony** (`ceremonySteps`, `ceremonyOf`, `OpenPunishment.ceremony`) and the slap (`practices.slap`, `herSkill.swing` feeds its feints) are the model for a stroke count; a number she finds too low is doubled by cruel and vindictive and stays hidden when the count is hidden by style.
+- **Not built, left to you:** the programmes of `drill`, `regal` and `vindictive`, a second physics by track level, `her_marks` with a duration by implement, Regard's help-with-her-goal and `regal`'s doubled praise.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

@@ -222,6 +222,15 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 - **Outside perception:** nothing in P15 touches P9b outside perception: only a `public_humiliation` event does, and **no P15 code produces one** (yours).
 - **The `role_reversal` track** in the ladder reads `dynamicTracks`; `trackLevel` and `trackCap` are built.
 
+## Interfaces already provided by P16 (implemented — use, do not rebuild)
+
+P16 is implemented (see its **Implemented as**: rulings R1–R24, the memory check and the open items). Everything it adds is off, absent and byte-identical while nobody holds at `play` or beyond (`practiceLive`), and none of it draws from the rng (`practiceRoll`). Keep new directive ids away from `practice:`; read seeds, punishments, ceremony steps, booking kinds and rule templates by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **Speech options under a strict speech rule:** no site is declared (a declared site must be bound); declare `speech.options` (or the name you choose) in `src/llm/sites.ts` with its call type when you build it, bound by your controller through `app.generations`. The task and rule machinery you would attach it to exists: a rule is a P9d rule with a `service` or `denial` tag, `denial_broken` and `protocol_slip` are the slips, and an offence is entered once per holder, ref and day (`noteOffence`).
+- **Handover of rations and sleep:** `HANDOVER_KINDS` is `device`, `key`, `calendar` (`practice/hand_over { holderId, kind, days }`, a signed `severe` card, `practices.handovers`, `TUNING.practice.handover`); add a kind there and one case in `handOver` / `handoverSweep`, and its card, composer button (`renderHandoverComposer`) and `TAKE BACK` come with it. The forced edit of a handed device (`registerForcedEditor`) does not check the content or her limits: do so if your kind writes text.
+- **Narrated `physical` effect and `implements`:** a `holderPunishments` effect `physical` is narrated only (R1); `implements` is data. Categories `deprivation`, `pet_play`, `objectification` and the like gate your own seeds through the same `contentTags` field (`practiceSeeds`, `holderPunishments`, `ceremonySteps` and `implements` are content-gated registries).
+- **Hold and denial:** a denial is a permission rule (`asks: 'permission'`, `practices.permission`, `[ ASK PERMISSION ]`, four answers); a cage or a collar worn by the commander that names a `rule` effect reaches it through P15a's `rule` channel (`chastity_device` → `ask_permission`). `held_in_quarters` is the only held kind; sensory mode is a hold flag (`sensory`) or a commander blocking whose `filter` is `sensory_dark`.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

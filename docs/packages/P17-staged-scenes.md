@@ -159,6 +159,15 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 - **A failure** is `refused`, `truncated`, `timeout`, `network`, `invalid_output`, `empty` or `no_profile`; the envelope writes a record (`CampaignState.generations`, at most 20, no prompt, no model text, `detail` never the model's words) unless the site's record mode is `none` or the reason is `no_profile`. Add the chip with `drawGenerationChips(host, ctx.generation, state, surface, filter)` and REROLL with `drawSiteReroll`; a screen draws neither without `generation` in its context. Labels are generic: never put a hidden value in one.
 - **The engine decides:** a retried or rerolled value goes through the same sanitizer and the same action as the first one; none of the new actions draws from the rng, so a new site must not either (a seeded test that moves stops and reports).
 
+## Interfaces already provided by P16 (implemented — use, do not rebuild)
+
+P16 is implemented (see its **Implemented as**: rulings R1–R24, the memory check and the open items). Everything it adds is off, absent and byte-identical while nobody holds at `play` or beyond (`practiceLive`), and none of it draws from the rng (`practiceRoll`). Keep new directive ids away from `practice:`; read seeds, punishments, ceremony steps, booking kinds and rule templates by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **`staging` is not a practice kind.** `PRACTICE_KINDS` reserves nothing for it and the P15 gain row for `staging_held` (+5) has no producer: add the kind with a writer in `WRITERS` (`issue.ts`), a seed set and `kindsToday` picks it up; the controller's delivery branch per card kind (`deliver`, `deliverDemonstration`, `deliverPunishment`) is where a new card kind is delivered.
+- **A hold that runs on:** a held slot that ends can be extended by "forgot" (`hold_extended { reason: 'forgot' }`, never past the evening unless the slot is already evening); a visitor during a hold is not built. `heldNow`, `heldGuard`, `heldLocation`, `sensoryNow` and the `held_in_quarters` booking kind (`held: true`) are the readers; `roomOfPerson(…, 'commander')` already returns her cabin while held and `hub.ts` places the holder there (reason `holding`).
+- **Audiences:** `pickAudience(state, reg, holderId, slot)` and `demonstrationGate` are the one reading of who may be shown to whom; `demonstration_seen { observerId }` and the `demonstration` sign are what the observers get. `exposed_staging` is still yours.
+- **The alarm** (`practices.alarm`, `hold_alarm`, `practice/raise_alarm`) and the run without the commander (`ExpeditionState.withoutCommand`, `squadChoice`) are the way a staging that keeps the commander away from a duty should decide: do not invent a second one.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

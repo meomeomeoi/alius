@@ -139,6 +139,15 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 - **Directives:** `dynamic:<unitId>`, `:probe:`, `:offer:`, `:aftermath:`, `:leash_block:`, `:command:`, `:witness:`, `:disappointed:`, `:regard:` exist; a P17c layer derived from the state keeps its own prefix.
 - **Immersive mode and the cards:** cards in her voice (`VOICE_OF.dynamic = 'personal'`, `unitAccent`), toasts and cut-ins on `frame_changed`, `aftermath_started`, `sworn`; every animation asks `motionReduced` / `visualFlags`.
 
+## Interfaces already provided by P16 (implemented — use, do not rebuild)
+
+P16 is implemented (see its **Implemented as**: rulings R1–R24, the memory check and the open items). Everything it adds is off, absent and byte-identical while nobody holds at `play` or beyond (`practiceLive`), and none of it draws from the rng (`practiceRoll`). Keep new directive ids away from `practice:`; read seeds, punishments, ceremony steps, booking kinds and rule templates by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **The gestures directive is yours.** "She speaks for the commander" (R.7) is built as one line only: `practice:demonstration:<holderId>` says, when her `talkativeness` is not `silent`, "others address her, and she answers for the commander". The commander's input turning to gestures, and dictation, are yours; a new directive id must not start with `practice:` (or with any prefix `docs/packages/P16-practices.md` lists).
+- **Self-punishment** (write it a hundred times, hold it for N minutes) is not in the effect vocabulary (`PUNISHMENT_EFFECT_TYPES`); add an effect type with its `EFFECT_NEEDS` and a case in `runPunishmentEffect`. The ceremony (`ceremonySteps`: chip, words, number, posture; `practices` `ceremony { steps, done, number? }`) is the model for steps done without her.
+- **Held strip and sensory mode:** `heldNow` / `sensoryNow` and `drawHeldStrip` (hidden in sensory mode: one plain line) are the surface; `visualFlags(…, { sensory })` and the `alius-sensory` class on the shell root dim the device. A staging that darkens the room should set the same flag through `sensoryNow`, not its own.
+- **Cards and notes:** every card draws in the scene and in her thread inside the existing offer surface (no new host); the slap overlay is an absolutely positioned layer inside `.alius-scene`. The note in her hand (R5, ritual or regal holders) is not built; `renderNote` (P10b) is where it would go.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

@@ -81,6 +81,15 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 
 - **The position chips `[PROVOKE]` and `[TEST HER]`** (P15 §15.2) are this package's unless the P16b plan takes them (P16b owns `[ANTICIPATE]`; see its note "Left to this package by P15" for the shared rules: shown by her reading's axis thresholds, never region names; a staged act plus a `next_reply` directive; a reading sample; `data-analyze`; the meaning by her style). They belong next to the secret tests: a provocation followed by `returned` is play, followed by leaving is real resistance.
 
+## Interfaces already provided by P16 (implemented — use, do not rebuild)
+
+P16 is implemented (see its **Implemented as**: rulings R1–R24, the memory check and the open items). Everything it adds is off, absent and byte-identical while nobody holds at `play` or beyond (`practiceLive`), and none of it draws from the rng (`practiceRoll`). Keep new directive ids away from `practice:`; read seeds, punishments, ceremony steps, booking kinds and rule templates by field, never by id; no text gives the commander a pronoun or a feeling.
+
+- **The drawn signature:** a `severe` accept is two steps (the words, then `[ SIGN ]`). `registerSignature(fn: SignatureRenderer)` in `src/ui/practice/signature.ts` replaces the press-and-hold button with your drawn one (`SignatureOpts { onSign, analyze, ctx }`); `resetSignature()` restores it; the engine only sees `practice/sign { taskId }`.
+- **Secret tests:** `her_test` is a moment source P16 registers (live while a double standard runs, `practices.unfair[holderId]` of kind `double_standard`); an unfairness record never reaches a panel, a toast or a label, and the commander is never told it is unfair (sentinels). A test of yours that reads `fairness` should use `unfairChance` and `possibleUnfair` (`unfair.ts`), not a second roll.
+- **Rituals and the chosen address:** protocol rules (`protocolRules`) and the routine (`routine: true` tasks) are what exists; named postures are `practices.postures`. `[PROVOKE]`, `[TEST HER]`, `[ANTICIPATE]` are not built (anticipation in her presence is: `practice_anticipated`).
+- **Hold gain rows:** `task_kept`, `punishment_accepted` and `task_broken` now have producers; `service_rated` is encoded as `kind: 'pleased' | 'adequate' | 'displeased'` (only `pleased` feeds hold); `staging_held` has none. Favour moves from verdicts, moment gaps (`TUNING.practice.momentGap`) and kindnesses; the cancelled reward is a `registerFeedSuppressor` hook in `dynamic/feed.ts`.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.
