@@ -170,7 +170,7 @@ Her discipline gains an interactive form for physical punishments (gate: `physic
   - **braced and still** (pressed inside the window, the posture holds) — the ideal: a full mark, favour +, Regard + (dignity, P15 §16.3);
   - **flinched** (too early, moved, turned away, pressed on a feint) — a smaller mark or none, and her displeasure.
 - **Feints** come with her `swing` skill (P15a §16.10).
-- **Style:** `cold` repeats it in silence; `cruel` feints and slaps again after a flinch; `ritual` demands stillness and a flinch resets the count; `affectionate` slaps softer after a flinch; `playful` laughs and feints; `clinical` notes the reaction; `drill` names the fault; `regal` expects thanks; `vindictive` adds it to the sentence.
+- **Style:** `cold` repeats it in silence; `cruel` feints and slaps again after a flinch; `ritual` demands stillness and a flinch resets the count (as built: not inside a ceremony; a flinch at a ceremony's slap is scored on the slap only and the ceremony never reopens — **Implemented as**, fix wave); `affectionate` slaps softer after a flinch; `playful` laughs and feints; `clinical` notes the reaction; `drill` names the fault; `regal` expects thanks; `vindictive` adds it to the sentence (as built: not for a ceremony's slap, see above).
 - Often unannounced, as an answer to a wrong word under a speech rule (P17b §3). A slap before subordinates needs `public_humiliation`, lowers Regard (P15 §16.3) and feeds the nickname (P15 §16.5).
 
 ### R.4 Ceremony, self-punishment, the count
@@ -409,6 +409,12 @@ Nothing remembered, with the reason: `practice_requested`, `task_issued`, `task_
 - **The kept-alarm card and the held strip's `[ ANSWER HER ]`** are checked with the app's mock shell (a modal is recorded, not drawn); the real modal stacking with the dilemma modal is not checked in a browser.
 - **`voidImpossible`'s voided `slot_with_her` tasks of another holder** are not restored by UNDO of a hold.
 - **Not run in a browser:** the manual test `docs/MANUAL_TEST_P16.md`.
+- **Re-review of the fix wave (minors, parked):**
+  - `takeOffEyes` (`src/engine/practice/forget.ts`) removes the blindfold without `scrubLog` / `tidy`: a blocking-log entry can remain.
+  - An alarm raised while the review, dilemma or override modal is up opens its card only on reload or through `[ ANSWER HER ]`, not when that modal closes.
+  - An offered hold with no duration keeps its "Would lapse" lines; with bookings ahead their count roughly reveals the hidden slots (author decision pending).
+  - When a second ALARM modal replaces the first, the first one's cleanup clears `alarmModalOpen` while the second is up (harmless).
+  - A lapsed ceremony at the day end skips its slap and a blocked held slot, but a hold can still start from the day step with no scene.
 
 ### Interfaces provided to later packages
 
