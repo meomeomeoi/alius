@@ -138,7 +138,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `project(v: Vec3): [x: number, y: number, depth: number]` (yaw 38°, elevation 14°, orthographic)
   - `LIMB: { upperArm: 0.3; forearm: 0.28; thigh: 0.45; shin: 0.44 }` (body units, the spike's proportions)
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `every base and every fixture preset poses`: for the 13 bases and the 47 presets, every coordinate of `pose()` is finite.
   - `limbs keep their length`: for every pose, |shoulder→elbow| = `LIMB.upperArm` ± 2 %, elbow→hand = `forearm`, hip→knee = `thigh`, knee→ankle = `shin`. This is the two-bone solver; the spike let arms stretch.
   - `the head pivots at the top of the neck`:
@@ -151,13 +151,13 @@ The approved mockups and the mannequin spike live outside the repo (the author h
     - knees `apart` widens the knee x distance by ≥ 0.2.
   - `gaze`: `closed` → `gazeDir === null`; `down` points below `faceDir`.
   - `poseOf('nope') === null`; `poseOf('standing')` equals `{ base: 'standing', points: BASE_POINTS.standing }`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/dial/mannequin.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/ui/dial/mannequin.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - Bases place the pelvis, the spine direction, the facing and the legs' end points, as the spike does.
   - Point states rotate the upper body (torso), move the pelvis (hips), spread the knees, raise the heels (feet), pitch the head about the neck top and set each arm's hand target.
   - A two-bone solver (law of cosines, bend direction outward and back for arms, forward for legs) places every elbow and knee from the fixed root, the target and `LIMB`. A target out of reach is clamped to full extension along the same direction.
-- [ ] **Step 4: Run** the test, `npx tsc --noEmit` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the posture mannequin`
+- [x] **Step 4: Run** the test, `npx tsc --noEmit` → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the posture mannequin`
 
 ### Task 3: Drawing the mannequin and the contact sheet
 
