@@ -5,7 +5,8 @@
  */
 import type { Registries } from '../../content/types';
 import type { CampaignState, Slot } from '../state/types';
-import type { HeldState } from './state';
+import { TUNING } from '../tuning';
+import { practiceRoll, type HeldState } from './state';
 
 const RANK: Record<Slot, number> = { morning: 0, afternoon: 1, evening: 2, night: 3 };
 /** A running index of a moment (four slots a day, the Night included). */
@@ -70,4 +71,20 @@ export function heldGuard(state: Readable, reg: Registries, action: { type: stri
     return { code: 'held', message: 'The commander is held in her quarters: only a scene with her there can be had.' };
   }
   return null;
+}
+
+/** Is she a holder as the leaves can read it: a frame of `play` or beyond and no aftermath running (the gate itself reads more; the hub and the device cannot reach it). */
+export function holderStands(state: Pick<CampaignState, 'relations'>, unitId: string): boolean {
+  const dyn = state.relations[unitId]?.dynamic;
+  return dyn !== undefined && dyn.aftermath === undefined && (dyn.frame === 'play' || dyn.frame === 'role' || dyn.frame === 'rule');
+}
+
+/**
+ * The key to the commander's quarters (R17): she has one that stands on this day and the hashed roll of the slot hits (`practiceRoll(her, 'key:' + day + slot) < keyChance`), so the hub puts her in the commander's cabin.
+ * A leaf: the hub asks it for any day and slot. No draw.
+ */
+export function keyPlaceAt(state: Pick<CampaignState, 'practices' | 'relations' | 'dynamic' | 'day'>, unitId: string, day: number, slot: Slot): boolean {
+  const key = state.practices?.handovers.some((h) => h.kind === 'key' && h.holderId === unitId && h.untilDay >= day);
+  if (key !== true || !holderStands(state, unitId)) return false;
+  return practiceRoll({ dynamic: state.dynamic, day }, unitId, `key:${day}${slot}`) < TUNING.practice.handover.keyChance;
 }

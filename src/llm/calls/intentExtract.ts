@@ -165,10 +165,10 @@ function dynamicBlock(d: NonNullable<IntentExtractInput['dynamic']>): string[] {
 }
 
 /** P16: which parts of the practices are offered (each only while its list is not empty; an empty offer is the old prompt). */
-function practiceFlags(p: IntentExtractInput['practice']): { tasks: boolean; accepts: boolean; compromise: boolean; ceremonies: boolean; denial: boolean; service: boolean; threats: boolean; types: Set<string> } {
+function practiceFlags(p: IntentExtractInput['practice']): { tasks: boolean; accepts: boolean; handovers: boolean; compromise: boolean; ceremonies: boolean; denial: boolean; service: boolean; threats: boolean; types: Set<string> } {
   const types = new Set(p?.types ?? []);
   return {
-    tasks: (p?.tasks ?? []).length > 0 && types.has('task_kept'), accepts: (p?.accepts ?? []).length > 0 && types.has('practice_accepted'),
+    tasks: (p?.tasks ?? []).length > 0 && types.has('task_kept'), accepts: (p?.accepts ?? []).length > 0 && types.has('practice_accepted'), handovers: (p?.handovers ?? []).length > 0 && types.has('practice_accepted'),
     compromise: ((p?.talks ?? []).length > 0 || (p?.punishments ?? []).length > 0 || (p?.alarms ?? []).length > 0) && types.has('compromise_reached'),
     ceremonies: (p?.ceremonies ?? []).length > 0 && types.has('ceremony_step'), denial: (p?.denial ?? []).length > 0 && types.has('denial_broken'),
     service: (p?.service ?? []).length > 0 && types.has('service_rated'), threats: (p?.threats ?? []).length > 0 && types.has('threat_voiced'), types,
@@ -182,6 +182,7 @@ function practiceBlock(p: NonNullable<IntentExtractInput['practice']>): string[]
   const row = (r: { id: string; unitId: string; summary: string }): string => `- ${r.id} — ${r.unitId}${r.summary !== '' ? `: ${oneLine(r.summary)}` : ''}`;
   if (f.tasks) out.push('TASKS (id — unit: what she asked of the commander, accepted and open):', ...p.tasks.map(row));
   if (f.accepts) out.push('ACCEPTS (id — unit: what she asked, waiting for the commander to say yes in words):', ...p.accepts.map(row));
+  if (f.handovers) out.push('HANDOVERS (id — unit: what the commander puts in her hands, waiting for the commander to say yes in words):', ...p.handovers.map(row));
   if (f.compromise) out.push('TALKS (id — unit: a task, a punishment or an alarm of hers that the two may settle):', ...p.talks.map(row), ...p.punishments.map(row), ...p.alarms.map(row));
   if (f.ceremonies) out.push('CEREMONY (punishment id — unit: the step she waits for, said in words or as a number):', ...p.ceremonies.map((c) => `- ${c.id} — ${c.unitId}: ${c.step} (${oneLine(c.label)}; ${c.check})`));
   if (f.denial) out.push(`DENIAL (units who keep a rule of asking for permission): ${p.denial.join(', ')}`);
@@ -279,6 +280,7 @@ function system(raw: unknown): string {
     ...(dyn.compromat ? ['               "summary": "<one short line>", "factId": "<its id, when one is named>"   // only for compromat_mentioned'] : []),
     ...(prac.tasks || prac.accepts || prac.compromise ? ['               "taskId": "<id from TASKS, ACCEPTS or TALKS>"   // only for task_kept / task_broken / practice_accepted / compromise_reached about a task'] : []),
     ...(prac.ceremonies || prac.compromise ? ['               "punishmentId": "<id from CEREMONY or TALKS>", "step": "<its step id>", "number": <whole number>, "alarmId": "<id from TALKS>"   // punishmentId and step for ceremony_step (number only when the step is a number), punishmentId or alarmId for compromise_reached'] : []),
+    ...(prac.handovers ? ['               "handoverId": "<id from HANDOVERS>"   // only for practice_accepted about a handover'] : []),
     ...(prac.service ? [`               "verdict": ${VERDICTS.map((v) => `"${v}"`).join(' | ')}   // only for service_rated`] : []),
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
@@ -333,6 +335,7 @@ function system(raw: unknown): string {
     ...(dyn.slips ? ['"protocol_slip": the commander lapses, with others present, from the form of address or the manner a unit listed under PROTOCOL expects of the commander; that unit is the target. Report it only when the exchange plainly shows the lapse.'] : []),
     ...(prac.tasks ? ['"task_kept" / "task_broken": the commander does, or fails to do, what a task listed under TASKS asked, in this exchange (or reports on it); the unit is the target; set "taskId". Report it only when the exchange shows it, not when the task is merely mentioned.'] : []),
     ...(prac.accepts ? ['"practice_accepted": the commander says yes, in the commander\'s own words, to a task listed under ACCEPTS; the unit is the target; set "taskId". A silence or a refusal is not reported.'] : []),
+    ...(prac.handovers ? ['"practice_accepted" about a handover: the commander says yes, in the commander\'s own words, to what a unit listed under HANDOVERS is to be given; the unit is the target; set "handoverId". A silence or a refusal is not reported.'] : []),
     ...(prac.compromise ? ['"compromise_reached" about a task, a punishment or an alarm: the commander and the unit agree a smaller or a different version of one listed under TALKS; set "taskId", "punishmentId" or "alarmId" and put the agreed wording in "text" (at most 160 characters). Report it only when the exchange shows both accepting it.'] : []),
     ...(prac.ceremonies ? ['"ceremony_step": the commander says the step of a ceremony listed under CEREMONY that is waiting (its words, or the number it asks for); the unit is the target; set "punishmentId" and "step", and "number" when the step is a number. Report only the step that is waiting.'] : []),
     ...(prac.denial ? ['"denial_broken": the commander does what a unit listed under DENIAL forbade without her permission, or asks her too late; that unit is the target. Report it only when the exchange plainly shows it.'] : []),

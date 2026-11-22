@@ -67,6 +67,10 @@ export interface PracticeController {
   ceremonyStep(punishmentId: string, step: string, number?: number): boolean;
   /** The commander's answer to the slap that is open (`practice/slap_answer`): none, braced or flinched. An answer for a slap that is gone is dropped without a word. */
   slapAnswer(slapId: string, result: 'none' | 'braced' | 'flinched'): boolean;
+  /** `[ GIVE HER … ]` sent from the composer (`practice/hand_over`): the card the commander says yes to appears. Toasts the reason and answers false when the engine refuses. */
+  handOver(holderId: string, kind: string, days: number): boolean;
+  /** `[ TAKE BACK … ]` (`practice/take_back`): a refusal at severe. Toasts the reason and answers false when the engine refuses. */
+  takeBack(handoverId: string): boolean;
   /** `[ ASK FOR A TASK ]` / `[ ASK FOR PUNISHMENT ]` (`practice/ask`). Toasts the reason and answers false when the engine refuses. */
   ask(unitId: string, what: 'task' | 'punishment'): boolean;
   /** `[ I DIDN'T ]` on her routine (`practice/confess`). Toasts the reason and answers false when the engine refuses. */
@@ -266,7 +270,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       let refresh = false;
       for (const e of events) {
         if (OWN.includes(e.type)) refresh = true;
-        if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') { if (e.kind === 'demonstration') deliverDemonstration(e.taskId); else deliver(e.taskId); }
+        if (e.type === 'task_issued' && e.rerolled !== true && e.handover !== true && typeof e.taskId === 'string') { if (e.kind === 'demonstration') deliverDemonstration(e.taskId); else deliver(e.taskId); }
         if (e.type === 'punishment_issued' && e.rerolled !== true && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
         if (e.type === 'posture_named' && e.name === undefined && typeof e.holderId === 'string' && typeof e.postureId === 'string') askPostureName(e.holderId, e.postureId);
         if (e.type === 'favour_kindness' && typeof e.holderId === 'string' && typeof e.kind === 'string') deliverKindness(e.holderId, e.kind);
@@ -398,6 +402,16 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       if (bad !== undefined) { deps.toast('error', String(bad.message ?? bad.code)); return false; }
       deps.refreshContext();
       return true;
+    },
+    handOver(holderId, kind, days) {
+      const done = ok(deps.app.dispatch({ type: 'practice/hand_over', payload: { holderId, kind, days } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    takeBack(handoverId) {
+      const done = ok(deps.app.dispatch({ type: 'practice/take_back', payload: { handoverId } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     ask(unitId, what) {
       const done = ok(deps.app.dispatch({ type: 'practice/ask', payload: { unitId, what } }, { expectChatId: chatId() }));

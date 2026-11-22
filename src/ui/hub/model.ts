@@ -125,8 +125,11 @@ export function tonightItems(state: CampaignState, reg: Registries): TonightItem
     .filter((b) => b.status === 'booked' && (b.day === state.day || b.day === state.day + 1) && nameOf(b.unitId))
     .sort((a, b) => a.day - b.day || SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
   if (booked) {
+    const day = booked.day === state.day ? 'today' : 'tomorrow';
+    // P16: a slot her calendar handover filled is told as her hand, not as a booking she asked for
+    const handed = booked.practiceId !== undefined && (state.practices?.handovers ?? []).some((h) => h.id === booked.practiceId && h.kind === 'calendar');
     out.push({
-      kind: 'booking', text: `${nameOf(booked.unitId)} has booked ${booked.day === state.day ? 'today' : 'tomorrow'}'s ${booked.slot}.`, unitId: booked.unitId,
+      kind: 'booking', text: handed ? `${nameOf(booked.unitId)}'s hand has filled ${day}.` : `${nameOf(booked.unitId)} has booked ${day}'s ${booked.slot}.`, unitId: booked.unitId,
       tone: booked.day === state.day ? 'warn' : 'neutral', analyze: 'glossary:booking',
     });
   }

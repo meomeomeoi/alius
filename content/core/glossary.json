@@ -3400,5 +3400,16 @@
       "holder_punishment",
       "punishment_card"
     ]
+  },
+  {
+    "id": "handover",
+    "term": "Handing things over",
+    "short": "Put the device (a day), the key (up to seven days) or the calendar (up to three) in a holder's hands. It is signed; taking it back early counts as a refusal.",
+    "long": "AUTHOR TO WRITE: With the device, every message to anyone else goes through her hand first. With the key she may be in the commander's quarters at any hour. With the calendar she fills the free slots of the days ahead, and those slots are lived as she set them. How she takes it depends on what it cost the commander and on how she is.",
+    "see": [
+      "practice",
+      "accept_signed",
+      "practice_record"
+    ]
   }
 ]

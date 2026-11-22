@@ -5,7 +5,8 @@ import type { CampaignState, Slot, Unit } from './state/types';
 import { TUNING } from './tuning';
 import { likesOf } from './development/profile';
 import { lifeMode } from './life/state';
-import { heldLocation, heldNow } from './practice/held';
+import { heldLocation, heldNow, keyPlaceAt } from './practice/held';
+import { commanderCabin } from './basePlan';
 
 /** FNV-1a, 32 bit. The hub's only source of "randomness": a stable function of its input, never a draw from the campaign RNG. */
 export function fnv1a(s: string): number {
@@ -67,6 +68,14 @@ function heldPlace(state: CampaignState, reg: Registries, rooms: Entry[], unit: 
   return room ? { unitId: unit.id, roomId: room.id, reason: 'holding' } : null;
 }
 
+/** P16: a holder with the key to the commander's quarters is in the commander's cabin on the slots the hashed roll hits (derived; nothing is stored, no draw). */
+function keyPlace(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit): Whereabout | null {
+  if (!keyPlaceAt(state, unit.id, state.day, state.slot)) return null;
+  const cabin = commanderCabin(reg);
+  const room = cabin === undefined ? undefined : rooms.find((r) => r.id === cabin.hubRoomId);
+  return room ? { unitId: unit.id, roomId: room.id, reason: 'routine' } : null;
+}
+
 function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit): Whereabout {
   const here = (room: Entry | undefined, reason: Whereabout['reason']): Whereabout | null =>
     room ? { unitId: unit.id, roomId: room.id, reason } : null;
@@ -79,6 +88,7 @@ function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit
     ?? (held.some((r) => r.kind === 'confined') ? here(hostOf(rooms, 'confined'), 'confined') : null)
     ?? (held.some((r) => r.kind === 'duty') ? here(hostOf(rooms, 'duty'), 'duty') : null)
     ?? heldPlace(state, reg, rooms, unit) // P16: she is keeping the commander in her quarters
+    ?? keyPlace(state, reg, rooms, unit) // P16: she has the key and comes in
     ?? (state.slot === 'night' ? here(hostOf(rooms, 'night'), 'night') : null);
   if (found) return found;
 

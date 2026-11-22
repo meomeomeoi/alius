@@ -12,7 +12,7 @@ import { writeDoorNote } from '../notes';
 import { countSent, dmMode, pushMessage, rollInitiative } from '../dms';
 import { isLiving } from '../economy';
 import { commanderRestriction } from '../warden/punish';
-import { takeKeptEdit } from '../personal/intercept';
+import { forcedEditorOf, rollIntercept, takeKeptEdit } from '../personal/intercept';
 import { rollNight } from '../night';
 import { applyRelationDelta } from '../relationGain';
 import { TUNING } from '../tuning';
@@ -73,6 +73,11 @@ registerAction('dm/send', (draft, payload, ctx) => {
   const text = textOf(payload.text);
   const revoked = commanderRestriction(draft, ctx.registries, 'dm', undefined, unit.id); // P13: the warden revoked the commander's messages; P16: a holder barred them, or her cold shoulder
   if (revoked) throw new Error(revoked);
+  // P16: the device is in a holder's hands (a handover): this message waits for her edit, with no roll, before it goes (a kept edit and a message sent as it is, after REVERT, are the answers to that)
+  if (payload.interceptId === undefined && payload.skipIntercept !== true && forcedEditorOf(draft, ctx.registries, 'dm', unit.id) !== null) {
+    const held = rollIntercept(draft, ctx, { channel: 'dm', toUnitId: unit.id, text }, { forced: true });
+    if (held.some((e) => e.type === 'device_intercept' && e.hit === true)) return held;
+  }
   // P9c: a DM the commander kept after a level-4 edit says who edited it (the edit is used once)
   const editedBy = payload.interceptId === undefined ? undefined : takeKeptEdit(draft, String(payload.interceptId), unit.id);
   pushMessage(draft, unit.id, { from: 'commander', text, day: draft.day, slot: draft.slot, read: true, ...(editedBy !== undefined ? { editedBy } : {}) });

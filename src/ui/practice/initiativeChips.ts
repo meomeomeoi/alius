@@ -4,7 +4,9 @@ import { dynamicOn } from '../../engine/dynamic/gate';
 import { permissionRuleOf } from '../../engine/practice/denial';
 import { practiceLive } from '../../engine/practice/gate';
 import { askable, askRefusal, type AskWhat } from '../../engine/practice/initiative';
+import { HANDOVER_KINDS, type HandoverKind } from '../../engine/practice/state';
 import type { PermissionAnswer } from '../../engine/practice/state';
+import { renderHandoverComposer } from './handoverComposer';
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -20,6 +22,10 @@ export interface InitiativeHandlers {
   onConfess: (taskId: string) => void;
   /** `[ ASK PERMISSION ]` while a rule of hers asks for it (`practice/ask_permission`). */
   onAskPermission: (holderId: string) => void;
+  /** The composer of `[ GIVE HER … ]` was sent: the card the commander says yes to (`practice/hand_over`). Absent = no chip. */
+  onHandOver?: (holderId: string, kind: HandoverKind, days: number) => void;
+  /** `[ TAKE BACK … ]` on what stands (`practice/take_back`). Absent = no chip. */
+  onTakeBack?: (handoverId: string) => void;
 }
 
 export interface InitiativeSurfaceCtx extends InitiativeHandlers {
@@ -27,7 +33,13 @@ export interface InitiativeSurfaceCtx extends InitiativeHandlers {
   reg: Registries;
   /** Which women this surface is about (a scene's participants, the open thread). */
   pick: (unitId: string) => boolean;
+  /** The element the composer's choice is kept on when `host` is rebuilt on every draw (the thread). Default: `host`. */
+  memory?: HTMLElement;
 }
+
+/** The woman whose composer is open, per surface. */
+const openFor = new WeakMap<HTMLElement, string>();
+const TAKE_WORDS: Readonly<Record<HandoverKind, string>> = { device: 'THE DEVICE', key: 'THE KEY', calendar: 'THE CALENDAR' };
 
 const LABEL: Readonly<Record<AskWhat, string>> = { task: 'ASK FOR A TASK', punishment: 'ASK FOR PUNISHMENT' };
 const GLOSSARY: Readonly<Record<AskWhat, string>> = { task: 'glossary:ask_for_task', punishment: 'glossary:ask_for_punishment' };
@@ -50,6 +62,7 @@ function permissionLine(state: CampaignState, unitId: string): PermissionAnswer 
 export function drawInitiativeChips(host: HTMLElement, ctx: InitiativeSurfaceCtx): void {
   host.replaceChildren();
   const { state, reg } = ctx;
+  const key = ctx.memory ?? host; // what outlives a redraw: the composer's open woman and its choice
   if (!dynamicOn(state, reg)) return;
   const women = state.squad.filter((u) => u.kind === 'named' && ctx.pick(u.id));
   const several = women.filter((u) => askable(state, reg, u.id) || practiceLive(state, reg, u.id)).length > 1;
@@ -74,6 +87,16 @@ export function drawInitiativeChips(host: HTMLElement, ctx: InitiativeSurfaceCtx
         type: 'button', class: 'alius-btn alius-chip', 'data-action': 'confess', 'data-unit': unit.id, 'data-task': task.id, ...analyzeNative('glossary:confess', live), onclick: () => ctx.onConfess(task.id),
       }, "[ I DIDN'T ]"));
     }
+    if (ctx.onHandOver !== undefined) {
+      chips.push(h('button', {
+        type: 'button', class: 'alius-btn alius-chip', 'data-action': 'give', 'data-unit': unit.id, 'aria-expanded': String(openFor.get(key) === unit.id), ...analyzeNative('glossary:handover', live),
+        onclick: () => { if (openFor.get(key) === unit.id) openFor.delete(key); else openFor.set(key, unit.id); drawInitiativeChips(host, ctx); },
+      }, `[ GIVE HER …${suffix(unit.displayName)} ]`));
+    }
+    for (const h2 of state.practices?.handovers ?? []) {
+      if (h2.holderId !== unit.id || ctx.onTakeBack === undefined || !(HANDOVER_KINDS as readonly string[]).includes(h2.kind)) continue;
+      chips.push(h('button', { type: 'button', class: 'alius-btn alius-chip', 'data-action': 'take-back', 'data-handover': h2.id, 'data-unit': unit.id, ...analyzeNative('glossary:handover', live), onclick: () => ctx.onTakeBack!(h2.id) }, `[ TAKE BACK ${TAKE_WORDS[h2.kind]} ]`));
+    }
     if (permissionRuleOf(state, reg, unit.id) !== undefined) {
       chips.push(h('button', {
         type: 'button', class: 'alius-btn alius-chip', 'data-action': 'ask-permission', 'data-unit': unit.id, ...analyzeNative('glossary:ask_permission', live), onclick: () => ctx.onAskPermission(unit.id),
@@ -88,4 +111,14 @@ export function drawInitiativeChips(host: HTMLElement, ctx: InitiativeSurfaceCtx
   }
   if (chips.length === 0) return;
   host.append(h('div', { class: 'alius-chips alius-initiative-chips' }, ...chips), ...lines);
+  const open = openFor.get(key);
+  if (open !== undefined && ctx.onHandOver !== undefined && practiceLive(state, reg, open) && ctx.pick(open)) {
+    const composerHost = h('div', { class: 'alius-handover-host' }) as HTMLElement;
+    host.append(composerHost);
+    renderHandoverComposer(composerHost, {
+      state, reg, unitId: open, memory: key,
+      onSend: (kind, days) => { openFor.delete(key); drawInitiativeChips(host, ctx); ctx.onHandOver!(open, kind, days); },
+      onClose: () => { openFor.delete(key); drawInitiativeChips(host, ctx); },
+    });
+  } else if (open !== undefined) openFor.delete(key);
 }

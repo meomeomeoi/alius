@@ -287,7 +287,7 @@ export function createComms(deps: CommsDeps): Comms {
           return;
         }
       }
-      const events = app.dispatch({ type: 'dm/send', payload: { unitId, text, ...(opts?.interceptId !== undefined ? { interceptId: opts.interceptId } : {}) } }, { expectChatId: expect });
+      const events = app.dispatch({ type: 'dm/send', payload: { unitId, text, ...(opts?.interceptId !== undefined ? { interceptId: opts.interceptId } : {}), ...(opts?.skipIntercept === true ? { skipIntercept: true } : {}) } }, { expectChatId: expect });
       if (failed(events)) return;
       const mode = events.find((e) => e.type === 'dm_sent')?.mode;
       deps.onUi({ type: 'transcript' });

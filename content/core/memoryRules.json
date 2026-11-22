@@ -1382,5 +1382,19 @@
       "practice",
       "slap_public"
     ]
+  },
+  {
+    "id": "handover_given",
+    "event": "handover_given",
+    "text": "AUTHOR TO WRITE: The commander put {what} in {name}'s hands.",
+    "importance": 4,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "handover_given"
+    ]
   }
 ]

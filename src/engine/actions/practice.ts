@@ -10,6 +10,8 @@ import { practiceDayStep } from '../practice/dayStep';
 import { answerDemonstration, demonstrationsFromEvents } from '../practice/demonstration';
 import { alarmsFromEvents, answerAlarm, raiseAlarm } from '../practice/alarm';
 import { askRelease, blindfoldFromEvents, holdSweep } from '../practice/hold';
+import { deviceHolderOf, keySeen, offerHandover, takeBack } from '../practice/handover';
+import { registerForcedEditor } from '../personal/intercept';
 import { ask } from '../practice/initiative';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
@@ -54,6 +56,9 @@ registerMomentTrigger('her_test', herTestLive);
 registerAfterAction(doubleStandardFromEvents);
 // A ceremony's posture steps are done by the commander's own posture (R21): a posture set that is the step's ends it
 registerAfterAction(ceremonyPostures);
+// What the commander hands over (R17): a hand on the device edits every message to another, and a holder with the key is seen coming out of the commander's quarters
+registerForcedEditor((state, _reg, channel, toUnitId) => (channel === 'dm' ? deviceHolderOf(state, toUnitId) : null));
+registerAfterAction(keySeen);
 // A slap belongs to the scene it was raised in (R21): the scene ending or being aborted with it still open drops it (nothing lands; the scene was the cost)
 registerAfterAction((draft, _ctx, events) => slapSceneEnded(draft, events));
 registerFeedSuppressor((state, unitId, event) => event.type === 'task_kept' && pendingUnfair(state, unitId, 'cancelled_reward') !== undefined);
@@ -221,4 +226,19 @@ registerAction('practice/slap_answer', (draft, payload, ctx) => {
 registerAction('practice/ceremony_step', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.punishmentId !== 'string' || typeof payload.step !== 'string' || (payload.number !== undefined && typeof payload.number !== 'number')) throw new Error('practice/ceremony_step needs { punishmentId, step, number? }.');
   return ceremonyStep(draft, ctx, payload.punishmentId, payload.step, 'action', payload.number as number | undefined);
+});
+
+/**
+ * `practice/hand_over { holderId, kind, days }`: the commander offers her the device (a day), the key (one to seven days) or the calendar (one to three) of the commander's own accord (R17). It writes the card the commander says yes to
+ * in words and signs: nothing is given until it is signed. Throws with the reason for a kind or days that cannot be, a holder who is not holding or one she has of that kind already.
+ */
+registerAction('practice/hand_over', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.holderId !== 'string') throw new Error('practice/hand_over needs { holderId, kind, days }.');
+  return offerHandover(draft, ctx, payload.holderId, payload.kind, payload.days ?? (payload.kind === 'device' ? 1 : undefined)); // a device is always one day
+});
+
+/** `practice/take_back { handoverId }`: the commander takes what was handed over back before the term is out: a refusal at stakes severe (R17). Closes what exists, so it needs no live holder. */
+registerAction('practice/take_back', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.handoverId !== 'string') throw new Error('practice/take_back needs { handoverId }.');
+  return takeBack(draft, ctx, payload.handoverId);
 });

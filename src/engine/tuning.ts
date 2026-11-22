@@ -1114,6 +1114,17 @@ export const TUNING = Object.freeze({
     noDurationShare: Object.freeze({
       affectionate: 0.1, cold: 0.1, ritual: 0, clinical: 0.1, possessive: 0.3, playful: 0.1, cruel: 0.3, obsessive: 0.1, drill: 0, regal: 0.1, vindictive: 0.3,
     } as const),
+    /**
+     * Handing things over (R17, `AUTHOR TO TUNE`): the days each kind may be given for (`device` is always one day), the chance a slot she holds the key she is in the commander's cabin, and the words of the card and the record
+     * line (`{what}` for what is given and `{days}` for how long, as words). A handover is a severe accept from the commander's side.
+     */
+    handover: Object.freeze({
+      days: Object.freeze({ device: Object.freeze({ min: 1, max: 1 }), key: Object.freeze({ min: 1, max: 7 }), calendar: Object.freeze({ min: 1, max: 3 }) }),
+      keyChance: 0.25, cardDays: 1,
+      what: Object.freeze({ device: 'the device', key: 'the key to the quarters', calendar: 'the calendar' } as const),
+      text: 'AUTHOR TO WRITE: The commander gives {name} {what}, {for}.',
+      summary: 'gave her {what}, {for}',
+    }),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 } as const),
     /**
      * Unfairness in hand (R16, `AUTHOR TO TUNE`): the days a cancelled reward, a double standard or a moved goal that no scene, task or hold has used waits before it goes stale, and the

@@ -6,7 +6,7 @@ export { claim, claimChance, cleanCondition, courtshipChips, courtshipMult, HUMI
 export { personalDayStep } from './dayStep';
 export { decorDayStep, decorOf, DECOR_PARTS, pinnedNotes, removeDecor, wallpaperUnit } from './decor';
 export { hitHer } from './events';
-export { interceptDayStep, interceptEditor, INTERCEPT_CHANNELS, resolveIntercept, rollIntercept, takeKeptEdit } from './intercept';
+export { forcedEditorOf, interceptDayStep, interceptEditor, INTERCEPT_CHANNELS, registerForcedEditor, resolveIntercept, rollIntercept, takeKeptEdit } from './intercept';
 export { JEALOUSY_TAG, jealousyAllowed, pressureGate, pressureMultOf, type PressureMechanic } from './gates';
 export { forgetPersonal, holdsPersonal, lapseBookingsThrough, nextPersonalId, personalOf } from './state';
 export { answerOffer, giveToken, removeToken, rollTokenOffer, tokenDayStep, tokenLine, wearProblem, wearToken, wornTokens } from './tokens';

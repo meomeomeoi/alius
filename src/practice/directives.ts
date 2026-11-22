@@ -167,6 +167,7 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
   const unit = task === undefined ? undefined : state.squad.find((u) => u.id === task.holderId);
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
+  if (task.handover !== undefined) return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`The commander is putting ${TUNING.practice.handover.what[task.handover]} in ${unit.displayName}'s hands, and she waits for it to be said and signed. ${NEVER_NAME}`) };
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
 }

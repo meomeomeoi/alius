@@ -224,7 +224,7 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     const initiativeInner = h('div', { class: 'alius-initiative-host' }); // P16: inside the offer surface, so the thread gains no host of its own
     const offerChips = h('div', { class: 'alius-offer-surface' }, offerInner, initiativeInner);
     if (ctx.onOffer) drawOfferChips(offerInner, { state, reg: ctx.registries, pick: (id) => id === current, onOffer: ctx.onOffer, answered: () => messages.at(-1)?.from !== 'commander', memory: host });
-    if (ctx.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx.registries, pick: (id) => id === current, ...ctx.initiative });
+    if (ctx.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx.registries, pick: (id) => id === current, memory: host, ...ctx.initiative });
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
     const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse'), generation: ctx.generation };

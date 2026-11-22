@@ -87,8 +87,10 @@ export function practiceIntentInput(state: CampaignState, reg: Registries, parti
   const tasks = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === 'task' && ((t.status === 'open' && (t.check === 'model' || t.check === 'dm_report')) || keptByWordRecently(state, t)))
     .map((t) => (t.status === 'kept' ? { ...row(t), summary: `${row(t).summary} (reported done)` } : row(t)));
   const offered = (p?.tasks ?? []).filter((t) => mine(t.holderId) && (t.kind === 'task' || t.kind === 'hold') && t.status === 'offered' && t.sealed !== true);
-  const accepts = offered.filter((t) => t.acceptForm === 'words' || t.acceptForm === 'signed').map(row);
-  const talks = offered.map(row);
+  // a handover the commander offered is said yes to in words like any severe accept, but it is not a task to talk over: it is named as a handover (R17)
+  const handovers = offered.filter((t) => t.handover !== undefined && (t.acceptForm === 'words' || t.acceptForm === 'signed')).map(row);
+  const accepts = offered.filter((t) => t.handover === undefined && (t.acceptForm === 'words' || t.acceptForm === 'signed')).map(row);
+  const talks = offered.filter((t) => t.handover === undefined).map(row);
   const punishments = (p?.punishments ?? []).filter((x) => mine(x.holderId) && (x.status === 'offered' || x.status === 'negotiating') && x.sealed !== true).map(row);
   // a keep that the commander argued over (the one exchange was had) may be settled by a compromise: the hold ends late
   const alarms = p?.alarm !== undefined && mine(p.alarm.holderId) && p.alarm.answer === 'keep' && p.alarm.argued === true && p.held !== undefined ? [{ id: p.alarm.id, unitId: p.alarm.holderId, summary: ALARM_WORDS[p.alarm.kind] }] : [];
@@ -104,12 +106,12 @@ export function practiceIntentInput(state: CampaignState, reg: Registries, parti
   const service = channel === 'scene' && serviceNow(state, reg) ? present.filter((id) => (view(id)?.as ?? 'none') !== 'none') : [];
   const threats = [...present];
   const types = [
-    ...(tasks.length > 0 ? ['task_kept', 'task_broken'] : []), ...(accepts.length > 0 ? ['practice_accepted'] : []),
+    ...(tasks.length > 0 ? ['task_kept', 'task_broken'] : []), ...(accepts.length > 0 || handovers.length > 0 ? ['practice_accepted'] : []),
     ...(talks.length > 0 || punishments.length > 0 || alarms.length > 0 ? ['compromise_reached'] : []), ...(ceremonies.length > 0 ? ['ceremony_step'] : []),
     ...(denial.length > 0 ? ['denial_broken'] : []), ...(service.length > 0 ? ['service_rated'] : []), ...(threats.length > 0 ? ['threat_voiced'] : []),
   ];
   if (types.length === 0) return {};
-  return { practice: { types, tasks, accepts, talks, punishments, alarms, ceremonies, handovers: [], denial, service, threats } };
+  return { practice: { types, tasks, accepts, talks, punishments, alarms, ceremonies, handovers, denial, service, threats } };
 }
 
 /** What a built handler does with one validated report about one unit; it returns the engine events (it may also write the relation rows through the landing hooks). */
@@ -123,7 +125,7 @@ export type PracticeHandler = (draft: CampaignState, ctx: Pick<EngineCtx, 'regis
 export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
   task_kept: (draft, ctx, unitId, ev) => fromIntent(draft, ctx, unitId, ev),
   task_broken: (draft, ctx, unitId, ev) => fromIntent(draft, ctx, unitId, ev),
-  practice_accepted: (draft, ctx, unitId, ev) => (ev.handoverId !== undefined ? [] : acceptByWords(draft, ctx, unitId, ev)), // a handover's words are built with the handover
+  practice_accepted: (draft, ctx, unitId, ev) => acceptByWords(draft, ctx, unitId, ev.handoverId !== undefined ? { taskId: ev.handoverId } : ev), // a handover is a card of the same shape: its words open the signature
   // her habit slipped out (P15's intent, applied by the dynamic): it is also an offence of hers (R8), a minor one before others, a trivial one alone
   protocol_slip: (draft, ctx, unitId) => noteOffence(draft, ctx, unitId, { kind: 'protocol_slip', ref: 'slip', stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? 'minor' : 'trivial', day: draft.day }),
   service_rated: (draft, ctx, unitId, ev) => noteSaid(draft, ctx, unitId, ev), // her verdict is held to the scene's end, where the engine's own wins (R10)

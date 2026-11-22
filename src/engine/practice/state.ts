@@ -161,6 +161,8 @@ export interface Task {
   bookingId?: string;
   ruleId?: string;
   handover?: HandoverKind;
+  /** A handover card only: for how many days (a device is one). */
+  handoverDays?: number;
   /** The request this card was written for (the key of its generation: a reroll while it is offered replaces the card). */
   requestId?: string;
   /** The slots of the commander the task takes (a hold's span; the cost the card shows). */
@@ -335,7 +337,8 @@ export interface PracticeState {
   /** The offences already entered today (`holderId|kind|ref`): an offence is noted once per ref and day. Reset when the day changes. */
   noted?: { day: number; keys: string[] };
   records: Array<{ day: number; holderId: string; line: string }>;
-  handovers: Array<{ id: string; kind: HandoverKind; holderId: string; untilDay: number }>;
+  /** What the commander has put in a holder's hands (R17): the kind, whose, and the last day it stands (a calendar's last day is the last day she fills; a device or a key's is the last day she has it). */
+  handovers: Array<{ id: string; kind: HandoverKind; holderId: string; untilDay: number; days?: number; taskId?: string }>;
   asked?: { context: 'dilemma' | 'expedition' | 'vote'; ref: string; index: number | 'for' | 'against' | null; holderId: string; preselected?: true };
   /** holderId → the unfairness she has in hand (R16): the kind, the day it was decided, whether it is used up, and for a double standard the scene that carries it. */
   unfair?: Record<string, { kind: UnfairKind; day: number; used?: true; sceneId?: string }>;

@@ -111,8 +111,9 @@ export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
   if (task.acceptForm === 'signed' && task.said === true) answers.push(renderSignature({ onSign: ctx.onSign, analyze: 'glossary:accept_signed', ctx: live }));
   else if (task.acceptForm === 'words' || task.acceptForm === 'signed') answers.push(button('accept', '[ ACCEPT ]', () => ctx.focusInput(), ladder));
   else answers.push(button('accept', '[ ACCEPT ]', () => ctx.onAnswer('accept'), ladder));
-  answers.push(button('refuse', '[ REFUSE ]', () => ctx.onAnswer('refuse'), 'glossary:practice_task'));
-  if (!sealed) answers.push(button('talk', '[ TALK ]', () => ctx.onAnswer('talk'), 'glossary:practice_task'));
+  // what the commander offered of the commander's own accord (R17) is taken back with CANCEL, and there is nothing to talk over
+  answers.push(button('refuse', task.handover !== undefined ? '[ CANCEL ]' : '[ REFUSE ]', () => ctx.onAnswer('refuse'), task.handover !== undefined ? 'glossary:handover' : 'glossary:practice_task'));
+  if (!sealed && task.handover === undefined) answers.push(button('talk', '[ TALK ]', () => ctx.onAnswer('talk'), 'glossary:practice_task'));
   parts.push(h('div', { class: 'alius-task-answers' }, ...answers, drawPracticeReroll(h('span', { class: 'alius-task-reroll' }), ctx.generation, task.kind, task.requestId)));
 
   const card = renderVoiceCard({ voice: VOICE_OF.practice, from: unit.displayName, body: h('div', { class: 'alius-task-body' }, ...parts), accent: unitAccent(unit.id) });

@@ -15,11 +15,31 @@ const ORIGINAL_MAX = 1000;
 export const INTERCEPT_CHANNELS: readonly InterceptChannel[] = ['dm', 'leash', 'recruit'];
 
 /**
+ * P16 plugs in here (an engine-internal hook): `fn` names the one who edits what the commander sends whatever the roll says (a holder with the device in her hands, R17), or `null`. The first answer wins.
+ * A forced edit has no roll and ignores the once-a-day guard; it still never opens while another waits.
+ */
+export type ForcedEditor = (state: CampaignState, reg: Registries, channel: InterceptChannel, toUnitId?: string) => string | null;
+const forcedEditors: ForcedEditor[] = [];
+export function registerForcedEditor(fn: ForcedEditor): void {
+  forcedEditors.push(fn);
+}
+/** The one a hook forces to edit this, or `null`. Reads only. */
+export function forcedEditorOf(state: CampaignState, reg: Registries, channel: InterceptChannel, toUnitId?: string): string | null {
+  for (const fn of forcedEditors) {
+    const id = fn(state, reg, channel, toUnitId);
+    if (id !== null) return id;
+  }
+  return null;
+}
+
+/**
  * Who edits what the commander is about to send (P9c §1, level 4): among the units that pass the `intercept` gate and have not
  * edited today, the one with the highest Impunity (ties: squad order); for a DM never the recipient. Pure; `null` = nobody.
  */
-export function interceptEditor(state: CampaignState, reg: Registries, channel: InterceptChannel, toUnitId?: string): string | null {
-  const editedToday = new Set((state.personal?.intercepts?.log ?? []).filter((e) => e.day === state.day).map((e) => e.unitId));
+export function interceptEditor(state: CampaignState, reg: Registries, channel: InterceptChannel, toUnitId?: string, opts: { forced?: true } = {}): string | null {
+  const forced = forcedEditorOf(state, reg, channel, toUnitId);
+  if (forced !== null) return forced; // P16: a hand on the device
+  const editedToday = new Set(opts.forced === true ? [] : (state.personal?.intercepts?.log ?? []).filter((e) => e.day === state.day).map((e) => e.unitId));
   let best: { id: string; impunity: number } | null = null;
   for (const u of state.squad) {
     if (u.kind !== 'named' || editedToday.has(u.id) || (channel === 'dm' && u.id === toUnitId)) continue;
@@ -35,14 +55,16 @@ export function interceptEditor(state: CampaignState, reg: Registries, channel: 
  * or an intercept already waiting: no draw. Else one draw at `chance × demandMult × pressureMult` (capped); a hit stores the
  * waiting edit and logs the day, so she edits at most once a day. The engine never stores the edited text.
  */
-export function rollIntercept(draft: CampaignState, ctx: EngineCtx, p: { channel: InterceptChannel; toUnitId?: string; text?: string }): EngineEvent[] {
+export function rollIntercept(draft: CampaignState, ctx: EngineCtx, p: { channel: InterceptChannel; toUnitId?: string; text?: string }, opts: { forced?: true } = {}): EngineEvent[] {
   const reg = ctx.registries;
   if (draft.personal?.intercepts?.open !== undefined) return [{ type: 'device_intercept', hit: false }];
-  const unitId = interceptEditor(draft, reg, p.channel, p.toUnitId);
+  // P16: a forced edit (the device is in a holder's hands, or the caller says so) has no roll and no once-a-day guard: nothing is drawn
+  const forced = opts.forced === true || forcedEditorOf(draft, reg, p.channel, p.toUnitId) !== null;
+  const unitId = interceptEditor(draft, reg, p.channel, p.toUnitId, forced ? { forced: true } : {});
   if (unitId === null) return [{ type: 'device_intercept', hit: false }];
   const T = TUNING.personal.intercept;
   const chance = Math.min(T.cap, T.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, unitId));
-  if (!ctx.rng.chance(chance)) return [{ type: 'device_intercept', hit: false }];
+  if (!forced && !ctx.rng.chance(chance)) return [{ type: 'device_intercept', hit: false }];
   const personal = personalOf(draft);
   const id = nextPersonalId(draft, 'icp');
   const intercepts = (personal.intercepts ??= { log: [] });

@@ -497,3 +497,10 @@ registerMemoryResolver('slap_dealt', (draft, event) => {
   const present = strs(event.present);
   return { ids: { her: [her.id], present: present.length > 0 ? present : [her.id] }, vars: { name: her.name, public: yes(event.public === true), result: str(event.result) ?? '' } };
 }, { ids: ['her', 'present'], vars: ['name', 'public', 'result'] });
+
+// the practices (P16, R17): the commander put the device, the key or the calendar in a holder's hands; the pair's to remember (what was given and for how long, as words)
+const HANDED_WORDS: Readonly<Record<string, string>> = { device: 'the device', key: 'the key to the quarters', calendar: 'the calendar' };
+registerMemoryResolver('handover_given', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: HANDED_WORDS[str(event.kind) ?? ''] ?? 'something' } } : null;
+}, { ids: ['her'], vars: ['name', 'what'] });

@@ -20,6 +20,7 @@ import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { startHold } from './hold';
+import { handOver } from './handover';
 import { noteOffence } from './offences';
 import { stakeRank, STAKES, type AcceptForm, type PracticeRequest, type Stake, type Task, type ValidOutput } from './state';
 import { plainText } from './validate';
@@ -44,7 +45,7 @@ export const frameOf = (state: CampaignState, holderId: string): Frame3 => {
 
 /** Her open tasks (offered or open): the cap and the one-at-a-time rule count these. A routine is a standing arrangement, not one of them. */
 export const openTasks = (state: CampaignState, holderId: string): number =>
-  (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === 'task' && t.routine !== true && (t.status === 'offered' || t.status === 'open')).length;
+  (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === 'task' && t.routine !== true && t.handover === undefined && (t.status === 'offered' || t.status === 'open')).length;
 
 /** Is there room for another task of hers: under the cap of her frame, and at `role` or beyond one open at a time unless she holds the household protocol. */
 export function taskRoom(state: CampaignState, reg: Registries, holderId: string): boolean {
@@ -173,6 +174,12 @@ function openTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, task
     ensurePractices(draft).records.push({ day: draft.day, holderId: task.holderId, line: recordLine(task) });
     events.push({ type: 'practice_signed', taskId: task.id, unitId: task.holderId, holderId: task.holderId, summary: task.summary, ...(task.sealed === true ? { sealed: true } : {}) });
   }
+  // what the commander gives (R17) is given the moment it is signed: the card is spent, nothing is left for her to judge
+  if (task.handover !== undefined) {
+    task.status = 'kept';
+    task.settledDay = draft.day;
+    events.push(...handOver(draft, ctx, task));
+  }
   return events;
 }
 
@@ -197,6 +204,12 @@ export function answerTask(draft: CampaignState, ctx: EngineCtx, taskId: string,
     return openTask(draft, ctx, task, 'button');
   }
   if (answer !== 'refuse') throw new Error('Unknown answer.');
+  if (task.handover !== undefined) {
+    // the commander's own offer, taken back before it was signed: no one was refused, nothing is owed
+    task.status = 'void';
+    task.answeredDay = draft.day;
+    return [{ type: 'task_void', taskId, holderId: task.holderId, what: 'task', reason: 'withdrawn' }];
+  }
   task.status = 'refused';
   task.answeredDay = draft.day;
   const events: EngineEvent[] = [{ type: 'task_answered', taskId, holderId: task.holderId, answer: 'refuse' }];

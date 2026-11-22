@@ -357,6 +357,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'slap',
   // P16 (the ceremony)
   'ceremony',
+  // P16 (handing things over)
+  'handover',
 ];
 
 let registered = false;
