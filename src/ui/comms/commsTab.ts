@@ -12,6 +12,8 @@ import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
+import { drawOfferChips } from '../dynamic/offerComposer';
+import type { OfferComposition } from '../../engine/dynamic/offer';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
 import { armTyping, clearTyping, renderHerMessage, renderReceipt, renderTyping, stampText, typingPlayed } from './living';
@@ -38,6 +40,8 @@ export interface CommsTabCtx {
   onAnswerClaim?: (claimId: string, answer: ClaimAnswer) => void;
   /** P15: [ACCEPT] / [REFUSE] on her return offer (the only one open). */
   onAnswerReturn?: (answer: ReturnAnswer) => void;
+  /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: straight to the engine in a thread). Absent = no chip. */
+  onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule she proposed. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P10: a small portrait for each contact row (absent = none). */
@@ -192,6 +196,9 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     drawClaimCards(claimCards, state, ctx.registries, (c) => c.unitId === current, (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim, under the thread
     const returnCards = h('div', { class: 'alius-return-cards' });
     drawReturnCards(returnCards, state, ctx.registries, (c) => c.unitId === current, (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again, under the thread
+    // P15: `[ OFFER MYSELF ]` under the thread, and her answer once she has written back (the composer keeps its choice on the tab's own element across the tab's redraws)
+    const offerChips = h('div', { class: 'alius-offer-surface' });
+    if (ctx.onOffer) drawOfferChips(offerChips, { state, reg: ctx.registries, pick: (id) => id === current, onOffer: ctx.onOffer, answered: () => messages.at(-1)?.from !== 'commander', memory: host });
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
     const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse'), generation: ctx.generation };
@@ -203,7 +210,7 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       ? editChip(waiting, editor?.displayName ?? waiting.editorId, () => ctx.onAnswerEdit?.(true), () => ctx.onAnswerEdit?.(false))
       : null;
     const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', ...(waiting ? { 'aria-disabled': 'true' } : {}), onclick: send }, '[ SEND ]');
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, offerChips, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }

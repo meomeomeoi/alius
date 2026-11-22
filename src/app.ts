@@ -634,7 +634,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext }); // P11b: the recap of the first weeks and the first scene's opening
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
-  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
+  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -938,6 +938,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
         onAnswerClaim: (id, answer) => answerClaim(id, answer), // P15: her claim
         onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
+        onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
         physics: { // P15a: the hold panel's inputs go to the staging controller, never through `stage` (a hold is not rolled back by a swipe)
@@ -2478,6 +2479,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer), // P15: her step
       onAnswerClaim: (id, answer) => answerClaim(id, answer), // P15: her claim
       onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
+      onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onAnswerRule: answerRule,
       onRead: (unitId) => {

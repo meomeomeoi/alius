@@ -2966,5 +2966,24 @@
       "leash_bypass_comms",
       "leash_bypass_reset"
     ]
+  },
+  {
+    "id": "offer",
+    "term": "Offer yourself",
+    "short": "Offer her one or two things: a part, a posture, a contact, a service, time, a role, endurance. What she craves lands; what she dislikes is a blunder.",
+    "long": "AUTHOR TO WRITE: An offer cannot be taken back, and she may make a claim of what was offered. Asking for something in return changes how she reads the offer, not how she answers it. Offered before others, it is seen.",
+    "see": [
+      "claim",
+      "offer_answer"
+    ]
+  },
+  {
+    "id": "offer_answer",
+    "term": "Her answer",
+    "short": "How she took the offer: accepted, corrected (she says what she wants instead, and the zone is shown), mocked, refused, or tonight.",
+    "long": "AUTHOR TO WRITE: The game decides her answer from her profile and her manner; the scene only gives it words. A correction shows the commander something of her that was not known before.",
+    "see": [
+      "offer"
+    ]
   }
 ]

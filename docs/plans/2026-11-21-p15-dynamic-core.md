@@ -2095,17 +2095,17 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `renderOfferComposer(host, ctx: { state; reg; unitId; choices; onSend(c: OfferComposition, askInReturn: boolean); onClose() })`.
 
-- [ ] **Step 1: Write the failing tests** (jsdom):
+- [x] **Step 1: Write the failing tests** (jsdom):
   - `seven tabs, only allowed entries`;
   - `worship targets show the known attitude or "?"`;
   - `one or two entries make an offer; a third is refused`;
   - `send dispatches dynamic/offer once`;
   - `every tab, entry and button carries data-analyze and resolves`;
   - `the chip is absent while the dynamic is off`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the offer composer`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the offer composer`
 
 ---
 

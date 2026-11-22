@@ -39200,6 +39200,27 @@ function createDynamic(deps) {
       deps.refreshContext();
       return true;
     },
+    async offer(unitId, composition, askInReturn) {
+      const s = state();
+      if (!s) return false;
+      const reg = deps.registries();
+      const inScene2 = s.scene?.participants.includes(unitId) === true;
+      const action = { type: "dynamic/offer", payload: { unitId, composition, ...askInReturn ? { askInReturn: true } : {} } };
+      const events = inScene2 && deps.stage !== void 0 ? deps.stage(action) : deps.app.dispatch(action, { expectChatId: deps.st.getActiveChat()?.chatId });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      const what = composition.flatMap((c) => c.ids.map((id) => offerLabel(reg, c.tab, id).toLowerCase())).join(" and ");
+      const line2 = `*offers ${what}${askInReturn ? ", asking something in return" : ""}.*`;
+      if (inScene2) void deps.sayInScene?.(line2)?.catch?.(() => {
+      });
+      else void deps.sayInDm?.(unitId, line2)?.catch?.(() => {
+      });
+      return true;
+    },
     async talk(claimId) {
       const claim2 = state()?.dynamic?.open.claims.find((c) => c.id === claimId);
       if (claim2 === void 0 || deps.startScene === void 0) return false;
@@ -53980,6 +54001,179 @@ function drawReturnCards(host, state, reg, pick3, onAnswer) {
   renderReturnCard(host, { state, reg, offer, onAnswer });
 }
 
+// src/ui/dynamic/offerComposer.ts
+var TAB_LABEL = {
+  part: "PART",
+  posture: "POSTURE",
+  contact: "CONTACT",
+  service: "SERVICE",
+  time: "TIME",
+  role: "ROLE",
+  endurance: "ENDURANCE"
+};
+var ATTITUDE_WORD = { craves: "CRAVES", enjoys: "ENJOYS", indifferent: "INDIFFERENT", dislikes: "DISLIKES" };
+var ANSWER_WORD = { accepted: "ACCEPTED", corrected: "CORRECTED", mocked: "MOCKED", refused: "REFUSED", tonight: "TONIGHT" };
+var memories = /* @__PURE__ */ new WeakMap();
+function addressOf(tab, id) {
+  switch (tab) {
+    case "part":
+      return `worshipTargets:${id}`;
+    case "posture":
+      return `blockingPostures:${id}`;
+    case "contact":
+    case "role":
+      return `blockingContacts:${id}`;
+    case "service":
+      return `blockingActivities:${id}`;
+    default:
+      return "glossary:offer";
+  }
+}
+function renderOfferComposer(host, ctx2) {
+  const { state, reg, unitId, choices } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0) {
+    host.replaceChildren();
+    return;
+  }
+  const live3 = { unitId };
+  const key = ctx2.memory ?? host;
+  const mem = memories.get(key) ?? { tab: OFFER_TABS[0], picks: [], ask: false, note: "" };
+  memories.set(key, mem);
+  mem.picks = mem.picks.filter((p) => choices[p.tab].some((c) => c.id === p.id));
+  const redraw = () => renderOfferComposer(host, ctx2);
+  const chosen = (tab, id) => mem.picks.some((p) => p.tab === tab && p.id === id);
+  const labelOf2 = (p) => choices[p.tab].find((c) => c.id === p.id)?.label ?? p.id;
+  const tabs = h(
+    "div",
+    { class: "alius-offer-tabs", role: "tablist", "aria-label": "What to offer" },
+    ...OFFER_TABS.map((t) => h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      role: "tab",
+      "aria-selected": String(mem.tab === t),
+      "data-offer-tab": t,
+      ...analyzeNative("glossary:offer", live3),
+      onclick: () => {
+        mem.tab = t;
+        mem.note = "";
+        redraw();
+      }
+    }, TAB_LABEL[t]))
+  );
+  const list5 = choices[mem.tab];
+  const entries2 = list5.length === 0 ? h("p", { class: "alius-dim alius-offer-empty" }, "Nothing here is on offer.") : h("div", { class: "alius-offer-entries", role: "tabpanel" }, ...list5.map((c) => {
+    const known3 = c.known === void 0 ? null : h("span", { class: "alius-offer-known" }, c.known === "unknown" ? "?" : ATTITUDE_WORD[c.known]);
+    return h("button", {
+      type: "button",
+      class: `alius-btn alius-option${c.known === void 0 ? "" : ` is-${c.known}`}`,
+      "data-offer-entry": c.id,
+      "data-tab": mem.tab,
+      "aria-pressed": String(chosen(mem.tab, c.id)),
+      ...analyzeNative(addressOf(mem.tab, c.id), live3),
+      onclick: () => {
+        if (chosen(mem.tab, c.id)) {
+          mem.picks = mem.picks.filter((p) => !(p.tab === mem.tab && p.id === c.id));
+          mem.note = "";
+        } else if (mem.picks.length >= TUNING.offer.maxEntries) mem.note = "An offer is one or two entries: put one back first.";
+        else {
+          mem.picks.push({ tab: mem.tab, id: c.id });
+          mem.note = "";
+        }
+        redraw();
+      }
+    }, c.label, " ", known3);
+  }));
+  const summary = h("p", { class: "alius-offer-chosen" }, mem.picks.length === 0 ? "Nothing chosen yet." : `Offer: ${mem.picks.map(labelOf2).join(" and ")}.`);
+  const note = h("p", { class: "alius-offer-note alius-dim", role: "status" }, mem.note);
+  const button2 = (action, text2, onclick, extra = {}) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-action": action,
+    ...analyzeNative("glossary:offer", live3),
+    ...extra,
+    onclick
+  }, text2);
+  const answers = h(
+    "div",
+    { class: "alius-offer-answers" },
+    button2("ask-return", "[ ASK IN RETURN ]", () => {
+      mem.ask = !mem.ask;
+      redraw();
+    }, { "aria-pressed": String(mem.ask) }),
+    button2("send", "[ SEND ]", () => {
+      if (mem.picks.length === 0) return;
+      const composition = [];
+      for (const p of mem.picks) {
+        const row3 = composition.find((c) => c.tab === p.tab);
+        if (row3 !== void 0) row3.ids.push(p.id);
+        else composition.push({ tab: p.tab, ids: [p.id] });
+      }
+      const ask = mem.ask;
+      memories.delete(key);
+      ctx2.onSend(composition, ask);
+    }, mem.picks.length === 0 ? { "aria-disabled": "true" } : {}),
+    button2("cancel", "[ CANCEL ]", () => {
+      memories.delete(key);
+      ctx2.onClose();
+    })
+  );
+  const body = h("div", { class: "alius-offer-body" }, tabs, entries2, summary, note, answers);
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-offer");
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `Offer yourself to ${unit3.displayName}`);
+  host.replaceChildren(card2);
+}
+var openFor2 = /* @__PURE__ */ new WeakMap();
+function drawOfferChips(host, ctx2) {
+  const { state, reg } = ctx2;
+  const key = ctx2.memory ?? host;
+  const women = state.squad.filter((u) => u.kind === "named" && isLiving(u) && ctx2.pick(u.id) && Object.values(offerChoices(state, reg, u.id)).some((list5) => list5.length > 0));
+  if (!women.some((u) => u.id === openFor2.get(key))) openFor2.delete(key);
+  const open3 = openFor2.get(key);
+  const redraw = () => drawOfferChips(host, ctx2);
+  const chips = h("div", { class: "alius-chips alius-offer-chips" }, ...women.map((u) => h("button", {
+    type: "button",
+    class: "alius-btn alius-chip",
+    "data-action": "offer",
+    "data-unit": u.id,
+    "aria-expanded": String(open3 === u.id),
+    ...analyzeNative("glossary:offer", { unitId: u.id }),
+    onclick: () => {
+      if (openFor2.get(key) === u.id) {
+        openFor2.delete(key);
+        memories.delete(key);
+      } else openFor2.set(key, u.id);
+      redraw();
+    }
+  }, women.length === 1 ? "[ OFFER MYSELF ]" : `[ OFFER MYSELF > ${u.displayName.toUpperCase()} ]`)));
+  for (const offer of state.dynamic?.open.offers ?? []) {
+    if (!ctx2.pick(offer.unitId) || offer.answer === void 0 || ctx2.answered?.(offer.unitId) === false) continue;
+    chips.append(h("span", { class: "alius-chip alius-offer-answer", "data-offer": offer.id, "data-unit": offer.unitId, ...analyzeAttrs("glossary:offer_answer", { unitId: offer.unitId }) }, ANSWER_WORD[offer.answer]));
+  }
+  host.replaceChildren(chips);
+  if (open3 === void 0) return;
+  const composerHost = h("div", { class: "alius-offer-host" });
+  host.append(composerHost);
+  renderOfferComposer(composerHost, {
+    state,
+    reg,
+    unitId: open3,
+    choices: offerChoices(state, reg, open3),
+    memory: key,
+    onSend: (composition, ask) => {
+      openFor2.delete(key);
+      ctx2.onOffer(open3, composition, ask);
+      redraw();
+    },
+    onClose: () => {
+      openFor2.delete(key);
+      redraw();
+    }
+  });
+}
+
 // src/ui/comms/living.ts
 var TYPING_MS = 2500;
 var SVG_NS6 = "http://www.w3.org/2000/svg";
@@ -54230,6 +54424,8 @@ function renderCommsTab(host, ctx2) {
     drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     const returnCards = h("div", { class: "alius-return-cards" });
     drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current, (answer) => ctx2.onAnswerReturn?.(answer));
+    const offerChips = h("div", { class: "alius-offer-surface" });
+    if (ctx2.onOffer) drawOfferChips(offerChips, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
     for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers, { motion: ctx2.motion?.() ?? true }));
@@ -54238,7 +54434,7 @@ function renderCommsTab(host, ctx2) {
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
     const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, offerChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit3.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
@@ -55378,6 +55574,7 @@ function renderSceneScreen(host, ctx2) {
   let demandChips;
   let milestoneCards;
   let claimCards;
+  let offerHost;
   let returnCards;
   let freqChips;
   let genChips;
@@ -55533,6 +55730,8 @@ function renderSceneScreen(host, ctx2) {
       ask: () => controller.ask?.(),
       limit: (text2) => controller.limit?.(text2)
     }, pending4);
+    if (ctx2.onOffer) drawOfferChips(offerHost, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx2.onOffer, answered: () => controller.replyPending?.() !== true });
+    else offerHost.replaceChildren();
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx2.onAnswerRule?.(id, "accept"),
       negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
@@ -55766,6 +55965,7 @@ function renderSceneScreen(host, ctx2) {
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
+    offerHost = h("div", { class: "alius-offer-surface" });
     ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
@@ -55880,6 +56080,7 @@ function renderSceneScreen(host, ctx2) {
       physicsHost,
       chips,
       leadChips,
+      offerHost,
       ruleChips,
       disciplineChips,
       demandChips,
@@ -57767,7 +57968,7 @@ function attachAnalyzer(root, deps) {
     stack.pop();
     present2();
   }
-  function openFor2(target, at, opts) {
+  function openFor3(target, at, opts) {
     if (!enabled()) return;
     hoverTimer = clear(hoverTimer);
     closeTimer = clear(closeTimer);
@@ -57808,7 +58009,7 @@ function attachAnalyzer(root, deps) {
     const at = { x: e.clientX, y: e.clientY };
     hoverTimer = setTimeout(() => {
       hoverTimer = null;
-      if (hoverEl === el && el.isConnected && enabled()) openFor2(el, at);
+      if (hoverEl === el && el.isConnected && enabled()) openFor3(el, at);
     }, deps.getEnv().settings.analyzeHoverDelay);
   };
   const onOut = (ev) => {
@@ -57859,7 +58060,7 @@ function attachAnalyzer(root, deps) {
       swallowing = true;
       window.addEventListener("click", swallow, true);
       swallowTimer = setTimeout(stopSwallowing, SWALLOW_MAX_MS);
-      openFor2(el, touchStart, { pinned: true });
+      openFor3(el, touchStart, { pinned: true });
     }, LONG_PRESS_MS);
   };
   const onMove = (ev) => {
@@ -57901,7 +58102,7 @@ function attachAnalyzer(root, deps) {
     if (!el) return;
     e.preventDefault();
     const rect = el.getBoundingClientRect();
-    openFor2(el, { x: rect.left, y: rect.bottom }, { pinned: true });
+    openFor3(el, { x: rect.left, y: rect.bottom }, { pinned: true });
     restoreFocus = el;
     panelEl?.focus();
   };
@@ -57914,7 +58115,7 @@ function attachAnalyzer(root, deps) {
   window.addEventListener("pointercancel", onUp);
   window.addEventListener("keydown", onKey, true);
   return {
-    openFor: openFor2,
+    openFor: openFor3,
     close,
     isOpen: () => panelEl !== null,
     isPinned: () => panelEl !== null && pinned,
@@ -59537,7 +59738,7 @@ function createApp(st, deps) {
   const headStart = createHeadStart({ ...worldDeps, context, refreshContext: applyContext });
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
-  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -59856,6 +60057,8 @@ function createApp(st, deps) {
         // P15: her claim
         onAnswerReturn: (answer) => void dynamic.answerReturn(answer),
         // P15: her offer to begin again
+        onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask),
+        // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule2,
         onStage: (action) => {
           scene.stage(action);
@@ -61364,6 +61567,8 @@ function createApp(st, deps) {
       // P15: her claim
       onAnswerReturn: (answer) => void dynamic.answerReturn(answer),
       // P15: her offer to begin again
+      onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask),
+      // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => {
         if (ok) shell.open();
       }),

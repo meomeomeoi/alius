@@ -1565,6 +1565,52 @@
   padding: 0 6px;
 }
 
+/* The offer composer (P15, offering yourself): seven tabs, the entries of the open tab, one or two chosen. Palette variables and currentColor only; the attitude is a word, never only a colour. */
+#alius-shell .alius-offer-surface {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-offer {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-offer-tabs,
+#alius-shell .alius-offer-entries,
+#alius-shell .alius-offer-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+#alius-shell .alius-offer-tabs [aria-selected='true'],
+#alius-shell .alius-offer [aria-pressed='true'] {
+  text-decoration: underline;
+}
+
+#alius-shell .alius-offer-entries .is-unknown {
+  opacity: 0.85;
+}
+
+#alius-shell .alius-offer-known {
+  margin-left: 4px;
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+#alius-shell .alius-offer [aria-disabled='true'] {
+  opacity: 0.6;
+}
+
+#alius-shell .alius-offer-chosen,
+#alius-shell .alius-offer-note {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-offer-answer {
+  letter-spacing: 0.05em;
+}
+
 /*
  * P11: the prologue's paper forms (cold open, intake, medical exam, signed dossier) and, later, the hub card, the coach
  * strip and locked tabs. The paper voice supplies colours; this file only lays the forms out. Typing reveals are CSS so the

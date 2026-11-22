@@ -13,6 +13,8 @@ import { cssUrl } from '../fx';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
+import { drawOfferChips } from '../dynamic/offerComposer';
+import type { OfferComposition } from '../../engine/dynamic/offer';
 import { renderDisciplineMenu } from '../discipline/menu';
 import { renderFreqChip } from '../special/freqChip';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
@@ -55,6 +57,8 @@ export interface SceneScreenCtx {
   onAnswerClaim?: (claimId: string, answer: ClaimAnswer) => void;
   /** P15: [ACCEPT] / [REFUSE] on the return offer of a unit in the scene (the only one open). */
   onAnswerReturn?: (answer: ReturnAnswer) => void;
+  /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: staged through the scene controller). Absent = no chip. */
+  onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P14: the failure chips of the scene's readings and REROLL of the last exchange. Absent = none drawn. */
@@ -208,6 +212,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let demandChips: HTMLElement;
   let milestoneCards: HTMLElement;
   let claimCards: HTMLElement;
+  let offerHost: HTMLElement;
   let returnCards: HTMLElement;
   let freqChips: HTMLElement;
   let genChips: HTMLElement;
@@ -376,6 +381,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : undefined, {
       follow: () => controller.follow?.(), ask: () => controller.ask?.(), limit: (text) => controller.limit?.(text),
     }, pending);
+    // P15: `[ OFFER MYSELF ]` beside the lead chips, and her answer once the reply is in (nothing without a handler, nothing while the dynamic is off)
+    if (ctx.onOffer) drawOfferChips(offerHost, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx.onOffer, answered: () => controller.replyPending?.() !== true });
+    else offerHost.replaceChildren();
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
       generation: ctx.generation,
@@ -610,6 +618,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
+    offerHost = h('div', { class: 'alius-offer-surface' });
     ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
@@ -713,6 +722,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       physicsHost,
       chips,
       leadChips,
+      offerHost,
       ruleChips,
       disciplineChips,
       demandChips,
