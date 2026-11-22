@@ -1,10 +1,13 @@
+import { plainDraft } from '../content/draft';
 import { isLiving } from '../engine/economy';
 import { practiceLive } from '../engine/practice/gate';
 import { requestOf } from '../engine/practice/issue';
-import { PRACTICE_KINDS, type PracticeRequest, type ValidOutput } from '../engine/practice/state';
+import { PRACTICE_EVENT_TYPES, PRACTICE_KINDS, type PracticeRequest, type ValidOutput } from '../engine/practice/state';
 import { buildPracticeInput, CARD_MAX, validatePracticeOutput, type PracticeGenerateInput } from '../engine/practice/validate';
 import type { CampaignState, Unit } from '../engine/state/types';
+import { TUNING } from '../engine/tuning';
 import type { PracticeDeps } from './deps';
+import { applyIssuedDirectives, clearPracticeDirectives, refreshPracticeDirectives } from './directives';
 
 export type { PracticeDeps } from './deps';
 
@@ -12,9 +15,24 @@ export type { PracticeDeps } from './deps';
 export const siteOf = (kind: string): string => `practice.${kind}`;
 
 export interface PracticeController {
+  /** The events of a settled dispatch: a new request is worded, a new task is delivered (a DM, or a directive while she is in the scene), and the directives follow the practices. */
+  onEvents(events: Array<{ type: string; [k: string]: unknown }>): void;
+  /** A scene opened: the directives of the holders in the room are set. */
+  onSceneOpened(): void;
+  /** The scene closed, or the chat changed: every directive of the practices goes. */
+  onSceneClosed(): void;
+  /** After a (re)load or a deployment: the requests that were waiting for words are worded now. */
+  onLoaded(): void;
+  /** REROLL of the words of a practice while the commander has not answered it (the key is the request id), and why it is not allowed. */
+  reroll(requestId: string): Promise<void>;
+  rerollState(requestId: string): { enabled: boolean; reason?: string };
   /** Waits for the call in flight (tests). */
   idle(): Promise<void>;
 }
+
+const OWN: readonly string[] = PRACTICE_EVENT_TYPES;
+/** What ends a run or a fight: the requests that waited are worded now. */
+const RESUME: readonly string[] = ['expedition_ended', 'combat_ended', 'expedition_abandoned', 'day_started'];
 
 /** Error codes that mean the moment passed: the answer is dropped silently, the request stays and the day step falls back. */
 const STALE_CODES: readonly string[] = ['chat_changed', 'combat_open', 'expedition_open', 'campaign_ended'];
@@ -79,7 +97,83 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     });
   }
 
+  /** The kind of a request, or of the card written for it, for the site's name. */
+  const kindOf = (requestId: string): string | undefined => {
+    const s = state();
+    return s?.practices?.requests.find((r) => r.id === requestId)?.kind ?? s?.practices?.tasks.find((t) => t.requestId === requestId)?.kind;
+  };
+
+  /** Requests already asked for in this chat (a failure leaves the fallback in place; the day step is what falls back the rest). */
+  const tried = new Set<string>();
+  const triedKey = (id: string): string => `${chatId() ?? ''}|${id}`;
+  let busy = false;
+
+  /** Words the next waiting request (one call at a time), then the next. */
+  async function run(): Promise<void> {
+    const s = state();
+    if (s === null || busy || s.combat || s.expedition || s.ended) return; // the engine refuses these while they are open
+    const reg = deps.registries();
+    const next = (s.practices?.requests ?? []).find((r) => !tried.has(triedKey(r.id)) && practiceLive(s, reg, r.holderId));
+    if (next === undefined) return;
+    tried.add(triedKey(next.id));
+    busy = true;
+    let stale = false;
+    flight = (async () => {
+      try {
+        await Promise.resolve(); // never dispatch inside the dispatch that asked for this
+        if (deps.settings().practiceWording === 'plain') issue(next.id); // no model call: the seed's own line
+        else stale = (await deps.generations.generate(siteOf(next.kind), next.id)).kind === 'stale';
+      } finally {
+        busy = false;
+      }
+    })().finally(() => { flight = null; });
+    await flight;
+    if (!stale) return run(); // a chat switch ends the loop: the load of the other chat starts its own
+  }
+
+  /** Delivers a new task: a DM from her (or the sealed line), unless she is in the open scene (the card shows there, and the directive tells the model). */
+  const delivered = new Set<string>();
+  function deliver(taskId: string): void {
+    const s = state();
+    const task = s?.practices?.tasks.find((t) => t.id === taskId);
+    if (s === null || task === undefined || task.status !== 'offered') return;
+    const key = `${chatId() ?? ''}|${taskId}`;
+    if (delivered.has(key) || s.scene?.participants.includes(task.holderId) === true || s.settings.unitDms !== true) return;
+    delivered.add(key);
+    deps.app.dispatch({ type: 'dm/receive', payload: { unitId: task.holderId, text: plainDraft(task.sealed === true ? TUNING.practice.sealedLine : task.text), initiated: true } }, { expectChatId: chatId() });
+  }
+
   return {
+    onEvents(events) {
+      let refresh = false;
+      for (const e of events) {
+        if (OWN.includes(e.type)) refresh = true;
+        if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') deliver(e.taskId);
+      }
+      if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh = true;
+      if (refresh) deps.refreshContext();
+      if (events.some((e) => e.type === 'practice_requested' || RESUME.includes(e.type))) void run().catch(() => {});
+    },
+    onSceneOpened() {
+      const s = state();
+      if (s) refreshPracticeDirectives(deps.context, s, deps.registries());
+      deps.refreshContext();
+    },
+    onSceneClosed() {
+      clearPracticeDirectives(deps.context);
+      deps.refreshContext();
+    },
+    onLoaded() {
+      void run().catch(() => {});
+    },
+    async reroll(requestId) {
+      const kind = kindOf(requestId);
+      if (kind !== undefined) await deps.generations.reroll(siteOf(kind), requestId);
+    },
+    rerollState(requestId) {
+      const kind = kindOf(requestId);
+      return kind === undefined ? { enabled: false, reason: 'That practice is gone.' } : deps.generations.rerollState(siteOf(kind), requestId);
+    },
     async idle() { while (flight) await flight.catch(() => {}); },
   };
 }

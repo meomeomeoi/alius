@@ -81,6 +81,8 @@ export interface AliusSettings {
   deviceSkin: string;
   /** P15: hold, frame and the dynamic's other numbers read as feelings, never as values (UI only; the engine is unchanged). */
   dynamicHidden: boolean;
+  /** P16: who words what a holder asks of the commander: the mechanic model (`model`), or the plain line of the seed with no model call (`plain`). */
+  practiceWording: 'model' | 'plain';
   /** P10: no scanlines, flicker, dithering or glitch; text one step larger. */
   readableMode: boolean;
   /** P10: nothing slides, fades, boots or types out (also on when the system asks for reduced motion). */
@@ -182,6 +184,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   firstImpressionTau: 7,
   deviceSkin: '',
   dynamicHidden: false,
+  practiceWording: 'model',
   readableMode: false,
   reducedMotion: false,
   ditheredPortraits: true,
@@ -244,6 +247,7 @@ const fieldSchemas = {
   firstImpressionTau: z.number().int().min(1).max(30),
   deviceSkin: z.string(),
   dynamicHidden: z.boolean(),
+  practiceWording: z.enum(['model', 'plain']),
   readableMode: z.boolean(),
   reducedMotion: z.boolean(),
   ditheredPortraits: z.boolean(),

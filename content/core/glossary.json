@@ -2529,6 +2529,15 @@
     "long": "AUTHOR TO WRITE: Only what is displayed changes. The engine counts exactly as before."
   },
   {
+    "id": "setting_practice_wording",
+    "term": "Words of her practices",
+    "short": "Who words what a holder asks of the commander: the mechanic model, from a few examples, or a plain line with no model call.",
+    "long": "AUTHOR TO WRITE: With the model, every task, punishment or hold is worded in her own voice; the engine still decides what it weighs and what it costs. With plain lines nothing is sent to a model and the wording is the example's own. Either way only the words differ.",
+    "see": [
+      "practice"
+    ]
+  },
+  {
     "id": "setting_dynamic_holders",
     "term": "Holders",
     "short": "How many soldiers may hold authority over the commander at once: none, one, two, three or any number.",
@@ -3109,6 +3118,17 @@
     "see": [
       "setting_dynamic_hidden",
       "hold"
+    ]
+  },
+  {
+    "id": "practice",
+    "term": "Practice",
+    "short": "What a holder asks of the commander: a task, a punishment, a rule, a denial or a hold. Her words are hers; what it weighs is the engine's.",
+    "long": "AUTHOR TO WRITE: A holder asks for a practice only while she holds at play or beyond. Each one has stakes: the more it weighs, the more your answer must say. What she may ask depends on what is switched on and on what she would never do.",
+    "see": [
+      "dynamic",
+      "hold",
+      "setting_practice_wording"
     ]
   }
 ]

@@ -199,6 +199,7 @@ const SETTING_LABELS: Record<string, Record<string, string>> = {
   spriteMode: { native: 'Native Expressions', emotion_pick: 'Mechanic emotion pick' },
   intentMode: { exchange: 'after every exchange', every_n: 'every N exchanges', scene_end: 'at scene end only' },
   romanticInitiative: { low: 'low', med: 'medium', high: 'high' },
+  practiceWording: { model: 'worded by the model', plain: 'plain lines, no model call' },
 };
 
 /** Settings whose lock line is left out: they apply at once and a "takes effect" line would only be noise. */
@@ -338,6 +339,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'offer', 'offer_answer', 'body_map',
   // P15 (her dossier's DYNAMIC section and the exit card; later tasks add their own)
   'dynamic', 'hold', 'her_reading', 'dynamic_exit', 'leash_block', 'oversight_inquiry', 'compromat', 'regard', 'probe', 'mastery', 'dynamic_felt',
+  // P16 (what she asks of the commander; the later tasks add the cards' own)
+  'practice',
 ];
 
 let registered = false;

@@ -38718,8 +38718,8 @@ function journalLines(state, reg, unitId, o) {
   const kept = history.filter((h2) => h2.kind === "event" && !internal.includes(h2.type) && (h2.severity !== void 0 && SEVERE.includes(h2.severity) || h2.day >= state.day - RECENT_DAYS));
   if (o.n <= 0) return [];
   return kept.slice(-o.n).map((h2) => {
-    const phrase = reg.eventDeltas.get(h2.type)?.journal;
-    const base = `${typeof phrase === "string" && phrase !== "" ? phrase : humanize2(h2.type)} (day ${h2.day})`;
+    const phrase2 = reg.eventDeltas.get(h2.type)?.journal;
+    const base = `${typeof phrase2 === "string" && phrase2 !== "" ? phrase2 : humanize2(h2.type)} (day ${h2.day})`;
     return o.evidence && h2.detail ? `${base}: '${h2.detail.slice(0, DETAIL_MAX)}'` : base;
   });
 }
@@ -40225,8 +40225,61 @@ function createDynamic(deps) {
   };
 }
 
+// src/practice/directives.ts
+var PRACTICE_PREFIX = "practice:";
+var TASKS_PREFIX = "practice:tasks:";
+var ISSUED_PREFIX = "practice:issued:";
+var NEVER_NAME = "Show it in how she acts and speaks; never name it as a mechanic.";
+var phrase = (text2) => plainDraft(text2).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
+var taskLine = (t) => t.sealed === true ? "a sealed task" : phrase(t.summary);
+function holdersIn(state, reg, present2) {
+  return present2.flatMap((id) => {
+    const unit3 = state.squad.find((u) => u.id === id);
+    return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && practiceLive(state, reg, id) ? [unit3] : [];
+  });
+}
+function practiceDirectives(state, reg, present2) {
+  const out = [];
+  for (const unit3 of holdersIn(state, reg, present2)) {
+    const open3 = (state.practices?.tasks ?? []).filter((t) => t.holderId === unit3.id && t.kind === "task" && t.status === "open").map(taskLine).filter((s) => s !== "");
+    if (open3.length === 0) continue;
+    out.push({ id: `${TASKS_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} expects the commander to see to: ${open3.join("; ")}. She may ask after them. ${NEVER_NAME}`) });
+  }
+  return out;
+}
+function issuedDirective(event, state, reg) {
+  if (event.type !== "task_issued" || typeof event.taskId !== "string") return null;
+  const task = state.practices?.tasks.find((t) => t.id === event.taskId);
+  const unit3 = task === void 0 ? void 0 : state.squad.find((u) => u.id === task.holderId);
+  if (task === void 0 || unit3 === void 0 || state.scene?.participants.includes(unit3.id) !== true || !practiceLive(state, reg, unit3.id)) return null;
+  const what = task.sealed === true ? `${unit3.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit3.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
+  return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+function applyIssuedDirectives(builder, events, state, reg) {
+  if (state === null) return false;
+  let any = false;
+  for (const e of events) {
+    const d = issuedDirective(e, state, reg);
+    if (d !== null) {
+      builder.setDirective(d);
+      any = true;
+    }
+  }
+  return any;
+}
+function clearPracticeDirectives(builder) {
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX));
+}
+function refreshPracticeDirectives(builder, state, reg) {
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX));
+  if (state === null) return;
+  for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
+}
+
 // src/practice/controller.ts
 var siteOf = (kind) => `practice.${kind}`;
+var OWN2 = PRACTICE_EVENT_TYPES;
+var RESUME = ["expedition_ended", "combat_ended", "expedition_abandoned", "day_started"];
 var STALE_CODES = ["chat_changed", "combat_open", "expedition_open", "campaign_ended"];
 function createPractice(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
@@ -40275,7 +40328,79 @@ function createPractice(deps) {
       }
     });
   }
+  const kindOf4 = (requestId) => {
+    const s = state();
+    return s?.practices?.requests.find((r) => r.id === requestId)?.kind ?? s?.practices?.tasks.find((t) => t.requestId === requestId)?.kind;
+  };
+  const tried = /* @__PURE__ */ new Set();
+  const triedKey = (id) => `${chatId() ?? ""}|${id}`;
+  let busy = false;
+  async function run() {
+    const s = state();
+    if (s === null || busy || s.combat || s.expedition || s.ended) return;
+    const reg = deps.registries();
+    const next = (s.practices?.requests ?? []).find((r) => !tried.has(triedKey(r.id)) && practiceLive(s, reg, r.holderId));
+    if (next === void 0) return;
+    tried.add(triedKey(next.id));
+    busy = true;
+    let stale = false;
+    flight = (async () => {
+      try {
+        await Promise.resolve();
+        if (deps.settings().practiceWording === "plain") issue(next.id);
+        else stale = (await deps.generations.generate(siteOf(next.kind), next.id)).kind === "stale";
+      } finally {
+        busy = false;
+      }
+    })().finally(() => {
+      flight = null;
+    });
+    await flight;
+    if (!stale) return run();
+  }
+  const delivered = /* @__PURE__ */ new Set();
+  function deliver2(taskId) {
+    const s = state();
+    const task = s?.practices?.tasks.find((t) => t.id === taskId);
+    if (s === null || task === void 0 || task.status !== "offered") return;
+    const key = `${chatId() ?? ""}|${taskId}`;
+    if (delivered.has(key) || s.scene?.participants.includes(task.holderId) === true || s.settings.unitDms !== true) return;
+    delivered.add(key);
+    deps.app.dispatch({ type: "dm/receive", payload: { unitId: task.holderId, text: plainDraft(task.sealed === true ? TUNING.practice.sealedLine : task.text), initiated: true } }, { expectChatId: chatId() });
+  }
   return {
+    onEvents(events) {
+      let refresh2 = false;
+      for (const e of events) {
+        if (OWN2.includes(e.type)) refresh2 = true;
+        if (e.type === "task_issued" && e.rerolled !== true && typeof e.taskId === "string") deliver2(e.taskId);
+      }
+      if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh2 = true;
+      if (refresh2) deps.refreshContext();
+      if (events.some((e) => e.type === "practice_requested" || RESUME.includes(e.type))) void run().catch(() => {
+      });
+    },
+    onSceneOpened() {
+      const s = state();
+      if (s) refreshPracticeDirectives(deps.context, s, deps.registries());
+      deps.refreshContext();
+    },
+    onSceneClosed() {
+      clearPracticeDirectives(deps.context);
+      deps.refreshContext();
+    },
+    onLoaded() {
+      void run().catch(() => {
+      });
+    },
+    async reroll(requestId) {
+      const kind = kindOf4(requestId);
+      if (kind !== void 0) await deps.generations.reroll(siteOf(kind), requestId);
+    },
+    rerollState(requestId) {
+      const kind = kindOf4(requestId);
+      return kind === void 0 ? { enabled: false, reason: "That practice is gone." } : deps.generations.rerollState(siteOf(kind), requestId);
+    },
     async idle() {
       while (flight) await flight.catch(() => {
       });
@@ -40892,7 +41017,9 @@ var VOICE_OF = {
   // P11b: the first weeks are a file of the squad's recollections, like the intake forms
   head_start: "paper",
   // P15: what she asks of the commander (a milestone card) and her notice of a frame that moved are hers, not the system's
-  dynamic: "personal"
+  dynamic: "personal",
+  // P16: what she asks of the commander (a task, a punishment, a hold) is hers, not the system's
+  practice: "personal"
 };
 
 // src/ui/power/votePanel.ts
@@ -41961,6 +42088,7 @@ var DEFAULT_SETTINGS = {
   firstImpressionTau: 7,
   deviceSkin: "",
   dynamicHidden: false,
+  practiceWording: "model",
   readableMode: false,
   reducedMotion: false,
   ditheredPortraits: true,
@@ -42022,6 +42150,7 @@ var fieldSchemas = {
   firstImpressionTau: external_exports.number().int().min(1).max(30),
   deviceSkin: external_exports.string(),
   dynamicHidden: external_exports.boolean(),
+  practiceWording: external_exports.enum(["model", "plain"]),
   readableMode: external_exports.boolean(),
   reducedMotion: external_exports.boolean(),
   ditheredPortraits: external_exports.boolean(),
@@ -59371,7 +59500,8 @@ var SETTING_LABELS = {
   mechanicThink: { min: "minimal", low: "low", auto: "provider default" },
   spriteMode: { native: "Native Expressions", emotion_pick: "Mechanic emotion pick" },
   intentMode: { exchange: "after every exchange", every_n: "every N exchanges", scene_end: "at scene end only" },
-  romanticInitiative: { low: "low", med: "medium", high: "high" }
+  romanticInitiative: { low: "low", med: "medium", high: "high" },
+  practiceWording: { model: "worded by the model", plain: "plain lines, no model call" }
 };
 var SILENT_SETTINGS = /* @__PURE__ */ new Set(["analyzeEnabled", "analyzeAnimation", "analyzeHoverDelay"]);
 var SETTING_LOCKS = {
@@ -60522,6 +60652,8 @@ function renderSysTab(host, ctx2) {
     field("First impression fades (days, 1\u201330)", numberInput("firstImpressionTau", settings.firstImpressionTau, (n) => apply2({ firstImpressionTau: n }).firstImpressionTau, { min: "1", max: "30" }), "firstImpressionTau"),
     h("h3", {}, "Dynamic"),
     dynamicHost,
+    field("Words of her practices (the model, or plain lines with no model call)", select("practiceWording", [["model", "the model words them"], ["plain", "plain lines"]], settings.practiceWording), "practiceWording"),
+    // P16
     h("h3", {}, "Decisions"),
     field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled), "dilemmasEnabled"),
     h("h3", {}, "Analysis"),
@@ -61219,11 +61351,13 @@ function createApp(st, deps) {
       refreshBlockingDirectives(context, state, registries);
       refreshPhysicsDirectives(context, state, registries);
       refreshDynamicDirectives(context, state, registries);
+      refreshPracticeDirectives(context, state, registries);
     } else {
       clearBlockingDirectives(context);
       clearMomentDirectives(context);
       clearPhysicsDirectives(context);
       clearDynamicDirectives(context);
+      clearPracticeDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -61527,7 +61661,7 @@ function createApp(st, deps) {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) });
-  createPractice({ ...worldDeps, context, refreshContext: applyContext });
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -61658,6 +61792,7 @@ function createApp(st, deps) {
     development.onSceneClosed();
     life.onSceneClosed();
     dynamic.onSceneClosed();
+    practice.onSceneClosed();
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
@@ -61667,6 +61802,7 @@ function createApp(st, deps) {
       development.onSceneOpened();
       life.onSceneOpened();
       dynamic.onSceneOpened();
+      practice.onSceneOpened();
       showScene();
     } else if (state && state.slot === "night" && state.calendar.nightEvent && confrontationNight(state)) {
       showScene();
@@ -61677,6 +61813,7 @@ function createApp(st, deps) {
     onboarding.onLoaded();
     warden.onLoaded();
     headStart.onLoaded();
+    practice.onLoaded();
     void personal.onLoaded().then((ok) => {
       if (ok) shell.open();
     }).catch((e) => console.warn("[Alius] booking failed", e));
@@ -61704,6 +61841,7 @@ function createApp(st, deps) {
     development.onSceneOpened();
     life.onSceneOpened();
     dynamic.onSceneOpened();
+    practice.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -61778,6 +61916,7 @@ function createApp(st, deps) {
       development.onEvents(events);
       life.onEvents(events);
       dynamic.onEvents(events);
+      practice.onEvents(events);
       onboarding.onEvents(events);
       if (has3("campaign_ended")) {
         shell.showScreen("hub");
@@ -61794,6 +61933,7 @@ function createApp(st, deps) {
         development.onSceneClosed();
         life.onSceneClosed();
         dynamic.onSceneClosed();
+        practice.onSceneClosed();
       }
       if (has3("commander_injured")) api.dispatch({ type: "relations/commander_injured", payload: {} }, { expectChatId: chatId });
       if (has3("night_started") && state?.slot === "night" && !state.scene) {
