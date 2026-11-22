@@ -433,3 +433,9 @@ registerMemoryResolver('practice_signed', (draft, event) => {
   const her = subjectOf(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str(event.summary) ?? 'something' } } : null;
 }, { ids: ['her'], vars: ['name', 'what'] });
+
+// the practices (P16, R6): a task was broken; only a false report that was found out is remembered (`falseReport`), an honest break is bookkeeping (the journal carries it)
+registerMemoryResolver('task_broken', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str(event.summary) ?? 'something', falseReport: yes(event.falseReport === true) } } : null;
+}, { ids: ['her'], vars: ['name', 'what', 'falseReport'] });

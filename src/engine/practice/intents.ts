@@ -14,6 +14,7 @@ import type { EventIntent } from '../relations/intents';
 import { PRACTICE_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { fromIntent, keptByWordRecently } from './checks';
 import { practiceLive, practicesOn } from './gate';
 import { acceptByWords, compromiseTask } from './tasks';
 
@@ -75,7 +76,9 @@ export function practiceIntentInput(state: CampaignState, reg: Registries, parti
   const p = state.practices;
   const row = (t: { id: string; holderId: string; summary: string }): PracticeRow => ({ id: t.id, unitId: t.holderId, summary: oneLine(t.summary) });
   const mine = (holderId: string): boolean => present.includes(holderId);
-  const tasks = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === 'task' && t.status === 'open' && (t.check === 'model' || t.check === 'dm_report')).map(row);
+  // open tasks the commander's word settles, and ones kept by that word lately (the talk may show one was not done: a false report found)
+  const tasks = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === 'task' && ((t.status === 'open' && (t.check === 'model' || t.check === 'dm_report')) || keptByWordRecently(state, t)))
+    .map((t) => (t.status === 'kept' ? { ...row(t), summary: `${row(t).summary} (reported done)` } : row(t)));
   const offered = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === 'task' && t.status === 'offered' && t.sealed !== true);
   const accepts = offered.filter((t) => t.acceptForm === 'words' || t.acceptForm === 'signed').map(row);
   const talks = offered.map(row);
@@ -110,6 +113,8 @@ export type PracticeHandler = (draft: CampaignState, ctx: Pick<EngineCtx, 'regis
  * dropped: the report passes validation and does nothing.
  */
 export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
+  task_kept: (draft, ctx, unitId, ev) => fromIntent(draft, ctx, unitId, ev),
+  task_broken: (draft, ctx, unitId, ev) => fromIntent(draft, ctx, unitId, ev),
   practice_accepted: (draft, ctx, unitId, ev) => (ev.handoverId !== undefined ? [] : acceptByWords(draft, ctx, unitId, ev)), // a handover's words are built with the handover
   compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : []), // a punishment's and an alarm's own compromise are built with them
 };

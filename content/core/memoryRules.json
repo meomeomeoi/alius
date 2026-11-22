@@ -1183,5 +1183,22 @@
       "practice",
       "practice_signed"
     ]
+  },
+  {
+    "id": "false_report_found",
+    "event": "task_broken",
+    "when": {
+      "falseReport": true
+    },
+    "text": "AUTHOR TO WRITE: {name} found out the commander had reported a task as done that was not: {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "false_report"
+    ]
   }
 ]

@@ -1019,5 +1019,7 @@ export const TUNING = Object.freeze({
       affectionate: 0.1, cold: 0.1, ritual: 0, clinical: 0.1, possessive: 0.3, playful: 0.1, cruel: 0.3, obsessive: 0.1, drill: 0, regal: 0.1, vindictive: 0.3,
     } as const),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 } as const),
+    /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`. */
+    falseReport: Object.freeze({ days: 14, witness: 0.2, insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 } as const) }),
   }),
 });

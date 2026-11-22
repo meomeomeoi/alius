@@ -1,7 +1,7 @@
 import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
 import { registerAction, registerAfterAction } from '../dispatch';
-import { taskChecksFromEvents } from '../practice/checks';
+import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
@@ -40,4 +40,10 @@ registerAction('practice/answer_task', (draft, payload, ctx) => {
 registerAction('practice/sign', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.taskId !== 'string') throw new Error('practice/sign needs { taskId }.');
   return signTask(draft, ctx, payload.taskId);
+});
+
+/** `practice/report { taskId }`: the commander says a task is done (a DM-report task, or one the engine checks whose proof is a report). */
+registerAction('practice/report', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.taskId !== 'string') throw new Error('practice/report needs { taskId }.');
+  return reportTask(draft, ctx, payload.taskId);
 });

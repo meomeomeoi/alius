@@ -14,7 +14,7 @@ import { assertiveness } from '../power/options';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
-import { deadlineSweep } from './checks';
+import { deadlineSweep, falseReportSweep } from './checks';
 import { practiceHolders, practiceLive } from './gate';
 import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
@@ -120,7 +120,8 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   events.push(...deadlineSweep(draft, ctx)); // 1
   // 2 routine: no-op until its task
   events.push(...requestsFallBack(draft, ctx)); // 3
-  // 4 false reports, 5 favour kindnesses, 6 unfairness, 7 handovers: no-ops until their tasks
+  events.push(...falseReportSweep(draft, ctx)); // 4
+  // 5 favour kindnesses, 6 unfairness, 7 handovers: no-ops until their tasks
   events.push(...newPractices(draft, ctx)); // 8
   events.push(...expiry(draft)); // 9
   return events;

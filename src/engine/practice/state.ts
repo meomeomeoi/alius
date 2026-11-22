@@ -157,6 +157,8 @@ export interface Task {
   said?: true;
   /** The scene with her that is open and would keep a `slot_with_her` task when it ends. */
   sceneId?: string;
+  /** The day a verdict (kept or broken) was settled. */
+  settledDay?: number;
 }
 
 /** A ceremony's progress (R21): the step rows for her style by `order`, the ones done, and the number the commander named. */

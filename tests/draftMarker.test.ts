@@ -275,6 +275,7 @@ describe('facts', () => {
     offer_corrected: { type: 'offer_made', unitId: ANN, answer: 'corrected', what: 'a gift' },
     zone_revealed: { type: 'zone_revealed', unitId: ANN, targetId: 'feet', what: 'her feet', attitude: 'craves' },
     practice_signed: { type: 'practice_signed', taskId: 'pt1', unitId: ANN, summary: 'carry the roster' },
+    false_report_found: { type: 'task_broken', taskId: 'pt1', unitId: ANN, falseReport: true, summary: 'keep Bea off the run' },
   });
 
   const draftRules = () => [...reg.memoryRules.values()].filter((r) => MARKER.test(String(r.text)));

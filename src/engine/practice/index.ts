@@ -3,7 +3,7 @@ export { newPracticeChance, kindsToday, practiceDayStep } from './dayStep';
 export { fallbackOutput, issuePractice, requestOf, requestPractice, WRITERS } from './issue';
 export { acceptByWords, acceptFormOf, answerTask, compromiseTask, recordLine, signTask, taskCost, writeTask } from './tasks';
 export { noteOffence } from './offences';
-export { deadlineSweep, settleTask, taskChecksFromEvents, verdictNow } from './checks';
+export { deadlineSweep, falseReportChance, falseReportSweep, findFalseReport, fromIntent, reportTask, settleTask, taskChecksFromEvents, verdictNow } from './checks';
 export { practiceSample } from './sample';
 export { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 export { applyPracticeIntent, PRACTICE_HANDLERS, PRACTICE_ROW_IS_CONDITIONAL, practiceIntentInput } from './intents';

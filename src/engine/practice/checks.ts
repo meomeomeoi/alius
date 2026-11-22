@@ -5,6 +5,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { addCompromat } from '../dynamic/compromat';
 import { addFavour } from '../dynamic/hold';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
@@ -15,7 +16,9 @@ import { TUNING } from '../tuning';
 import { practiceLive } from './gate';
 import { noteOffence } from './offences';
 import { practiceSample } from './sample';
-import { stakeRank, STAKES, type Stake, type Task } from './state';
+import { practiceRoll, stakeRank, STAKES, type Stake, type Task } from './state';
+import type { EventIntent } from '../relations/intents';
+import { isLiving } from '../economy';
 
 /** How a task is settled: by what the engine saw, by what the model read in a talk, by the commander's report, or by the commander's own confession (the routine). */
 export type SettleVia = 'engine' | 'model' | 'report' | 'confess';
@@ -52,6 +55,7 @@ export function settleTask(
     return [{ type: 'task_void', taskId, holderId, what: 'task', reason: via }];
   }
   task.status = outcome;
+  task.settledDay = draft.day;
   const dyn = dynamicOf(draft, holderId);
   if (dyn !== undefined) {
     dyn.recent.push(formOf(reg, task));
@@ -66,7 +70,7 @@ export function settleTask(
     return events;
   }
   const stakes = opts.falseReport === true ? stepUp(task.stakes) : task.stakes;
-  const events: EngineEvent[] = [{ type: 'task_broken', taskId, unitId: holderId, holderId, via, stakes, ...(opts.falseReport === true ? { falseReport: true } : {}) }];
+  const events: EngineEvent[] = [{ type: 'task_broken', taskId, unitId: holderId, holderId, via, stakes, summary: task.summary, ...(opts.falseReport === true ? { falseReport: true } : {}) }];
   events.push(...hitHer(draft, reg, holderId, 'task_broken', SEVERITY[stakeRank(stakes) + (opts.falseReport === true && stakes === task.stakes ? 1 : 0)], 'broke her task'));
   events.push(...practiceSample(draft, reg, holderId, 'resisted'));
   events.push(...noteOffence(draft, ctx, holderId, { kind: opts.falseReport === true ? 'false_report' : 'task_broken', ref: task.id, stakes, day: draft.day }));
@@ -200,6 +204,87 @@ export function deadlineSweep(draft: CampaignState, ctx: Pick<EngineCtx, 'regist
     if (task.check === 'token_worn' && verdictNow(draft, task) === 'broken') { out.push(...settleTask(draft, ctx, task.id, 'broken', 'engine')); continue; }
     if (task.deadline === undefined || task.deadline.day > draft.day) continue;
     out.push(...settleTask(draft, ctx, task.id, atDeadline(draft, task), 'engine'));
+  }
+  return out;
+}
+
+/** Is this a kind of task the commander's own word can settle (a model check or a DM report), as opposed to one the engine sees? */
+const bySay = (t: Task): boolean => t.check === 'model' || t.check === 'dm_report';
+
+/** The people who would see a false report for what it is: whoever the task names (its subject and its audience) who is alive, named, at base and not her. */
+function witnessesOf(state: CampaignState, task: Task): string[] {
+  const named = [subjectOf(task), ...(task.audienceIds ?? [])].filter((id): id is string => id !== undefined && id !== task.holderId);
+  const away = state.expedition?.party ?? [];
+  return [...new Set(named)].filter((id) => state.squad.some((u) => u.id === id && u.kind === 'named' && isLiving(u)) && !away.includes(id));
+}
+
+/** Her chance a day of finding a false report out: a witness at base (`witness`) plus what her own insight sees (`insight`), at most 1. Hidden: nothing shows it. */
+export function falseReportChance(state: CampaignState, _reg: Registries, task: Task): number {
+  const T = TUNING.practice.falseReport;
+  const insight = state.squad.find((u) => u.id === task.holderId)?.insight ?? 'mid';
+  return Math.min(1, (witnessesOf(state, task).length > 0 ? T.witness : 0) + T.insight[insight]);
+}
+
+/** Is the report recent enough to be found (made within `falseReport.days`)? */
+const recentEnough = (state: CampaignState, task: Task): boolean => {
+  const since = task.report?.day ?? task.settledDay ?? task.day;
+  return state.day >= since && state.day - since <= TUNING.practice.falseReport.days;
+};
+
+/** Is a kept task of hers one the model may still say was not done (it was kept by the commander's word and it is recent)? */
+export const keptByWordRecently = (state: CampaignState, task: Task): boolean => task.kind === 'task' && task.status === 'kept' && task.routine !== true && bySay(task) && task.settledDay !== undefined && state.day >= task.settledDay && state.day - task.settledDay <= TUNING.practice.falseReport.days;
+
+/**
+ * A false report is found: the kept task is broken after all, with the stakes one step up (the offence is `false_report`, the event says so), and she keeps something of it
+ * (compromat, with whoever it concerned as witness). Her gains from the kept task stay (she was fooled). Nothing for a task that is not kept or a holder who is not live.
+ */
+export function findFalseReport(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, taskId: string, via: SettleVia): EngineEvent[] {
+  const task = draft.practices?.tasks.find((t) => t.id === taskId);
+  if (task === undefined || task.kind !== 'task' || task.status !== 'kept' || !practiceLive(draft, ctx.registries, task.holderId)) return [];
+  task.status = 'open';
+  const events = settleTask(draft, ctx, taskId, 'broken', via, { falseReport: true });
+  if (events.length === 0) { task.status = 'kept'; return []; }
+  task.report = { ...(task.report ?? { day: draft.day }), falseReport: true };
+  addCompromat(draft, task.holderId, `AUTHOR TO WRITE: The commander reported a task as done that was not: ${task.summary}.`, witnessesOf(draft, task));
+  return events;
+}
+
+/**
+ * The commander reports a task done (`practice/report`, for a task whose proof is a DM report or whose check is one). A DM-report or model task is only marked reported (the
+ * model judges the talk; a report nobody faults is kept at its deadline). A task the engine can check is kept on the commander's word: if its own check says otherwise the report is
+ * false, which is stored on the task (hidden; nothing shows it) and may be found out later. Throws for a task that is gone, not open, not a reported kind, or hers while she is not holding.
+ */
+export function reportTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, taskId: string): EngineEvent[] {
+  const task = draft.practices?.tasks.find((t) => t.id === taskId);
+  if (task === undefined || task.kind !== 'task') throw new Error('That task is gone.');
+  if (!practiceLive(draft, ctx.registries, task.holderId)) throw new Error('She is not holding now.');
+  if (task.status !== 'open') throw new Error('That task is not open.');
+  if (task.proof !== 'dm_report' && task.check !== 'dm_report') throw new Error('That task is not reported.');
+  task.report ??= { day: draft.day };
+  const events: EngineEvent[] = [{ type: 'task_answered', taskId, holderId: task.holderId, answer: 'report' }];
+  if (bySay(task)) return events;
+  if (verdictNow(draft, task) === 'broken') task.report.falseReport = true;
+  return [...events, ...settleTask(draft, ctx, taskId, 'kept', 'report')];
+}
+
+/**
+ * What the model reported about a task (`task_kept`, `task_broken`, offered only for the commander's-word kinds): an open task is kept or broken by it (via `model`); a task kept
+ * lately that the talk now shows was not done is a false report found (stakes up). Anything else does nothing.
+ */
+export function fromIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: Pick<EventIntent, 'type' | 'taskId'>): EngineEvent[] {
+  const task = ev.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === unitId && t.kind === 'task');
+  if (task === undefined) return [];
+  if (task.status === 'open') return settleTask(draft, ctx, task.id, ev.type === 'task_kept' ? 'kept' : 'broken', 'model');
+  if (ev.type === 'task_broken' && keptByWordRecently(draft, task)) return findFalseReport(draft, ctx, task.id, 'model');
+  return [];
+}
+
+/** The day step's false-report part (R7.4): each task she was told was done that was not, within its days, is found out by the day's chance (a hashed roll, `practiceRoll(her, 'false:' + id)`). Only live holders'. */
+export function falseReportSweep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>): EngineEvent[] {
+  const out: EngineEvent[] = [];
+  for (const task of [...(draft.practices?.tasks ?? [])]) {
+    if (task.kind !== 'task' || task.status !== 'kept' || task.report?.falseReport !== true || !recentEnough(draft, task) || !practiceLive(draft, ctx.registries, task.holderId)) continue;
+    if (practiceRoll(draft, task.holderId, `false:${task.id}`) < falseReportChance(draft, ctx.registries, task)) out.push(...findFalseReport(draft, ctx, task.id, 'report'));
   }
   return out;
 }
