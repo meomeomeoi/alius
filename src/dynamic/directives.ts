@@ -8,6 +8,7 @@ import { leashBlockOf } from '../engine/dynamic/leashBlock';
 import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { dynamicOf } from '../engine/dynamic/state';
+import { offerLabel } from '../engine/dynamic/offer';
 import { reactionOf, type Reaction } from '../engine/dynamic/witness';
 import { regardTone, regardToneFor } from '../engine/dynamic/regard';
 import { disappointedSince } from '../engine/dynamic/shame';
@@ -255,17 +256,39 @@ const OFFER_LINE: Readonly<Record<string, (name: string) => string>> = {
 export function offerDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
   if (event.type !== 'offer_made' || !dynamicOn(state, reg)) return null;
   const unit = state.squad.find((u) => u.id === event.unitId);
-  const answer = String(event.answer);
-  const say = OFFER_LINE[answer];
-  if (unit === undefined || say === undefined) return null;
-  const named = typeof event.corrected === 'string' ? reg.worshipTargets.get(event.corrected) : undefined;
-  const parts = [
-    `The commander offers ${sentence(String(event.what ?? 'something'))} to ${unit.displayName}${event.conditions === true ? ', and asks something in return' : ''}.`,
-    event.kind === true ? `${unit.displayName} turns it down kindly; she is not looking for that from the commander.` : say(unit.displayName),
-    ...(answer === 'corrected' && named !== undefined ? [`What she wants is the commander's attention to her ${sentence(String(named.label)).toLowerCase()}.`] : []),
-    'Show it in how she acts and speaks; never name it as a mechanic.',
+  if (unit === undefined) return null;
+  const parts = offerSentences(reg, unit, {
+    answer: String(event.answer), what: String(event.what ?? 'something'), conditions: event.conditions === true, kind: event.kind === true,
+    ...(typeof event.corrected === 'string' ? { corrected: event.corrected } : {}),
+  });
+  return parts === null ? null : { id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: [...parts, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') };
+}
+
+/** What an offer says about itself, in the words of its answer: the same for the scene directive and the DM reply line. */
+function offerSentences(reg: Registries, unit: Unit, o: { answer: string; what: string; conditions: boolean; kind: boolean; corrected?: string }): string[] | null {
+  const say = OFFER_LINE[o.answer];
+  if (say === undefined) return null;
+  const named = o.corrected === undefined ? undefined : reg.worshipTargets.get(o.corrected);
+  return [
+    `The commander offers ${sentence(o.what)} to ${unit.displayName}${o.conditions ? ', and asks something in return' : ''}.`,
+    o.kind ? `${unit.displayName} turns it down kindly; she is not looking for that from the commander.` : say(unit.displayName),
+    ...(o.answer === 'corrected' && named !== undefined ? [`What she wants is the commander's attention to her ${sentence(String(named.label)).toLowerCase()}.`] : []),
   ];
-  return { id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: parts.join(' ') };
+}
+
+/**
+ * The line of an offer made in a DM thread, for the model's reply to it (`dm_reply`, review I3): the open offer of hers that was made with no scene with her open, while she has not
+ * written in the thread since. Built from the stored offer: what was offered and the engine's answer word, no number, no feeling and no pronoun for the commander. `null` when there is none.
+ */
+export function offerReplyLine(state: CampaignState, reg: Registries, unitId: string): string | null {
+  if (!dynamicOn(state, reg)) return null;
+  const unit = state.squad.find((u) => u.id === unitId);
+  const open = [...(state.dynamic?.open.offers ?? [])].reverse().find((o) => o.unitId === unitId && o.sceneId === undefined && o.dmAt !== undefined && o.confirmed !== true && o.answer !== undefined);
+  if (unit === undefined || open === undefined || open.answer === undefined) return null;
+  if ((state.dms[unitId] ?? []).slice(open.dmAt).some((m) => m.from !== 'commander')) return null; // she has answered since: it is not carried again
+  const what = open.composition.flatMap((c) => c.ids.map((id) => offerLabel(reg, c.tab, id).toLowerCase())).join(' and ');
+  const parts = offerSentences(reg, unit, { answer: open.answer, what, conditions: open.conditions === true, kind: open.kind === true, ...(open.corrected !== undefined ? { corrected: open.corrected } : {}) });
+  return parts === null ? null : parts.join(' ');
 }
 
 /** Sets the directives the events of one dispatch call for. Returns whether any was set. */

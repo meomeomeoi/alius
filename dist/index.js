@@ -20885,7 +20885,9 @@ function makeOffer(draft, ctx2, unitId, composition, opts = {}) {
     composition: composition.map((c) => ({ tab: c.tab, ids: [...c.ids] })),
     answer: answer.answer,
     ...opts.askInReturn === true ? { conditions: true } : {},
-    ...scene !== void 0 && scene.participants.includes(unitId) ? { sceneId: scene.id } : {}
+    ...scene !== void 0 && scene.participants.includes(unitId) ? { sceneId: scene.id } : { dmAt: (draft.dms[unitId] ?? []).length },
+    ...answer.kind === true ? { kind: true } : {},
+    ...answer.corrected !== void 0 ? { corrected: answer.corrected } : {}
   };
   x.open.offers.push(open3);
   const what = composition.flatMap((c) => c.ids.map((i) => offerLabel(reg, c.tab, i).toLowerCase())).join(" and ");
@@ -39228,17 +39230,35 @@ var OFFER_LINE = {
 function offerDirective(event, state, reg) {
   if (event.type !== "offer_made" || !dynamicOn(state, reg)) return null;
   const unit3 = state.squad.find((u) => u.id === event.unitId);
-  const answer = String(event.answer);
-  const say = OFFER_LINE[answer];
-  if (unit3 === void 0 || say === void 0) return null;
-  const named4 = typeof event.corrected === "string" ? reg.worshipTargets.get(event.corrected) : void 0;
-  const parts = [
-    `The commander offers ${sentence2(String(event.what ?? "something"))} to ${unit3.displayName}${event.conditions === true ? ", and asks something in return" : ""}.`,
-    event.kind === true ? `${unit3.displayName} turns it down kindly; she is not looking for that from the commander.` : say(unit3.displayName),
-    ...answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : [],
-    "Show it in how she acts and speaks; never name it as a mechanic."
+  if (unit3 === void 0) return null;
+  const parts = offerSentences(reg, unit3, {
+    answer: String(event.answer),
+    what: String(event.what ?? "something"),
+    conditions: event.conditions === true,
+    kind: event.kind === true,
+    ...typeof event.corrected === "string" ? { corrected: event.corrected } : {}
+  });
+  return parts === null ? null : { id: `${OFFER_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") };
+}
+function offerSentences(reg, unit3, o) {
+  const say = OFFER_LINE[o.answer];
+  if (say === void 0) return null;
+  const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
+  return [
+    `The commander offers ${sentence2(o.what)} to ${unit3.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
+    o.kind ? `${unit3.displayName} turns it down kindly; she is not looking for that from the commander.` : say(unit3.displayName),
+    ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
-  return { id: `${OFFER_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: parts.join(" ") };
+}
+function offerReplyLine(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return null;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  const open3 = [...state.dynamic?.open.offers ?? []].reverse().find((o) => o.unitId === unitId && o.sceneId === void 0 && o.dmAt !== void 0 && o.confirmed !== true && o.answer !== void 0);
+  if (unit3 === void 0 || open3 === void 0 || open3.answer === void 0) return null;
+  if ((state.dms[unitId] ?? []).slice(open3.dmAt).some((m) => m.from !== "commander")) return null;
+  const what = open3.composition.flatMap((c) => c.ids.map((id) => offerLabel(reg, c.tab, id).toLowerCase())).join(" and ");
+  const parts = offerSentences(reg, unit3, { answer: open3.answer, what, conditions: open3.conditions === true, kind: open3.kind === true, ...open3.corrected !== void 0 ? { corrected: open3.corrected } : {} });
+  return parts === null ? null : parts.join(" ");
 }
 function applyOfferDirectives(builder, events, state, reg) {
   if (state === null) return false;
@@ -43460,6 +43480,7 @@ registerCallType({
     if (facts.length > 0) out.push("She knows:", ...facts.map((f) => `- ${f}`));
     if (i.dossier) out.push(`What the squad remembers of her: ${i.dossier}`);
     if (i.journal && i.journal.length > 0) out.push("Lately with the commander:", ...i.journal.map((l) => `- ${l}`));
+    if (i.offer) out.push(i.offer);
     const history = i.history.slice(-HISTORY_USED);
     if (history.length > 0) out.push("", "Recent messages:", ...history.map((m) => `${m.from === "commander" ? i.commanderName : i.unitName}: ${m.text}`));
     out.push("", i.mode === "initiate" ? "Write her first message." : "Write her message.");
@@ -43960,7 +43981,9 @@ function createComms(deps) {
       if (at !== thread.length - 1) return { expired: "Her thread moved on." };
       const mode = dmMode(s, unitId);
       if (mode === "ignore") return { expired: "She left it on read." };
-      return replyInput(s, deps, unit3, replyModeFor(s, deps.registries(), unitId, mode === "snap" ? "snap" : "reply"));
+      const input = replyInput(s, deps, unit3, replyModeFor(s, deps.registries(), unitId, mode === "snap" ? "snap" : "reply"));
+      const offer = input.mode === "snap" ? null : offerReplyLine(s, deps.registries(), unitId);
+      return offer === null ? input : { ...input, offer };
     },
     parse: (raw) => sanitizeDm(String(raw)),
     apply(key, reply, input) {

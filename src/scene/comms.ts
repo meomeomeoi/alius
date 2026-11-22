@@ -11,6 +11,7 @@ import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/r
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { replyModeFor } from '../engine/dmBehaviours';
+import { offerReplyLine } from '../dynamic/directives';
 import { sanitizeDm, type DmReplyInput } from '../llm/calls/dmReply';
 import { leakInput } from '../engine/special/frequency/leaks';
 import { readIntentOutput, type IntentExtractInput, type IntentOutput } from '../llm/calls/intentExtract';
@@ -185,7 +186,10 @@ export function createComms(deps: CommsDeps): Comms {
       const mode = dmMode(s, unitId);
       if (mode === 'ignore') return { expired: 'She left it on read.' };
       // P10b: a curt answer is decided before the call (a hash of the message she is about to send)
-      return replyInput(s, deps, unit, replyModeFor(s, deps.registries(), unitId, mode === 'snap' ? 'snap' : 'reply'));
+      const input = replyInput(s, deps, unit, replyModeFor(s, deps.registries(), unitId, mode === 'snap' ? 'snap' : 'reply'));
+      // P15: an offer made in this thread was decided by the engine: her reply is told the answer (state only; nothing when no offer is open)
+      const offer = input.mode === 'snap' ? null : offerReplyLine(s, deps.registries(), unitId);
+      return offer === null ? input : { ...input, offer };
     },
     parse: (raw) => sanitizeDm(String(raw)),
     apply(key, reply, input) {

@@ -127,6 +127,12 @@ export interface OpenOffer {
   /** The offer asked something in return (`[ASK IN RETURN]`). */
   conditions?: true;
   sceneId?: string;
+  /** Made with no scene with her open: the length of her DM thread when it was made. The offer is carried to the model for her next reply in that thread, until she has written one. */
+  dmAt?: number;
+  /** The holder cap was reached: she turns it down kindly (the line says so). */
+  kind?: true;
+  /** The part she named instead (a correction), for the line of the reply. */
+  corrected?: string;
   /** The model has confirmed her answer (`offer_answered`): it is no longer offered to the intent reader; the offer stays open for the scene (an endurance offer is read from it). */
   confirmed?: true;
 }

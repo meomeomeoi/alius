@@ -342,7 +342,8 @@ export function makeOffer(draft: CampaignState, ctx: Ctx, unitId: string, compos
   const id = `do${x.seq++}`;
   const open: OpenOffer = {
     id, unitId, day: draft.day, composition: composition.map((c) => ({ tab: c.tab, ids: [...c.ids] })), answer: answer.answer,
-    ...(opts.askInReturn === true ? { conditions: true as const } : {}), ...(scene !== undefined && scene.participants.includes(unitId) ? { sceneId: scene.id } : {}),
+    ...(opts.askInReturn === true ? { conditions: true as const } : {}), ...(scene !== undefined && scene.participants.includes(unitId) ? { sceneId: scene.id } : { dmAt: (draft.dms[unitId] ?? []).length }),
+    ...(answer.kind === true ? { kind: true as const } : {}), ...(answer.corrected !== undefined ? { corrected: answer.corrected } : {}),
   };
   x.open.offers.push(open);
   const what = composition.flatMap((c) => c.ids.map((i) => offerLabel(reg, c.tab, i).toLowerCase())).join(' and ');

@@ -14,6 +14,8 @@ export interface DmReplyInput {
   /** P3b: her relation journal, evidence included (a DM is private). */
   journal?: string[];
   slotText: string;
+  /** P15: the commander's last message is an offer and the engine has already decided how she takes it: the line says what is offered and how she takes it (built from state, no number, no pronoun for the commander); absent = no offer open, and the prompt is as it was. */
+  offer?: string;
   /** Last messages, oldest first; at most 6 are used. */
   history: Array<{ from: 'commander' | 'unit'; text: string }>;
   /** P10b: `curt` (one or two words, cold) and `door` (she answers through the closed door of the commander's quarters at night). */
@@ -75,6 +77,7 @@ registerCallType<string>({
     if (facts.length > 0) out.push('She knows:', ...facts.map((f) => `- ${f}`));
     if (i.dossier) out.push(`What the squad remembers of her: ${i.dossier}`);
     if (i.journal && i.journal.length > 0) out.push('Lately with the commander:', ...i.journal.map((l) => `- ${l}`));
+    if (i.offer) out.push(i.offer);
     const history = i.history.slice(-HISTORY_USED);
     if (history.length > 0) out.push('', 'Recent messages:', ...history.map((m) => `${m.from === 'commander' ? i.commanderName : i.unitName}: ${m.text}`));
     out.push('', i.mode === 'initiate' ? 'Write her first message.' : 'Write her message.');
