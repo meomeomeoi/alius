@@ -161,6 +161,7 @@ import { motionReduced } from './ui/motion';
 import { renderClaimCard } from './ui/personal/claimCard';
 import { renderSecretCard } from './ui/personal/secretCard';
 import { herPickView } from './ui/personal/obey';
+import { askHerView } from './ui/practice/askHer';
 import { renderWagerCard } from './ui/personal/wagerCard';
 import type { EditView } from './ui/personal/chips';
 import { renderLogTab } from './ui/log/logTab';
@@ -612,12 +613,18 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       };
       const s = state;
       if (!s) { resolve({ choice: 'cancel' }); return; }
-      renderVotePanel(host, vote, lines, {
-        state: s, registries,
-        onCarry: () => answer({ choice: 'carry' }),
-        onDrop: () => answer({ choice: 'accept' }),
-        onOverrule: (means, punish) => answer({ choice: 'overrule', means, ...(punish !== undefined ? { punish } : {}) }),
-      });
+      // P16: ASK HER on the vote (her side marked; a vote she pre-selects asks her at the choice); the panel is drawn again with the state as it stands after she answered
+      const draw = (): void => {
+        const now = state ?? s;
+        renderVotePanel(host, vote, lines, {
+          state: now, registries,
+          onCarry: () => { practice.ensureAsked('vote', vote.id); answer({ choice: 'carry' }); },
+          onDrop: () => { practice.ensureAsked('vote', vote.id); answer({ choice: 'accept' }); },
+          onOverrule: (means, punish) => { practice.ensureAsked('vote', vote.id); answer({ choice: 'overrule', means, ...(punish !== undefined ? { punish } : {}) }); },
+          ...(askHerView(now, registries, 'vote', vote.id) ? { askHer: { view: askHerView(now, registries, 'vote', vote.id)!, onAsk: () => { if (practice.askHer('vote', vote.id)) draw(); } } } : {}),
+        });
+      };
+      draw();
       shell.open();
       void shell.modal({ title: 'SQUAD VOTE', body: host, actions: [] }).then(() => {
         if (!answered) { answered = true; resolve({ choice: 'cancel' }); }
@@ -862,6 +869,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         void dilemmas.onRequested().catch(warn('dilemma'));
       }
       if (has('dilemma_presented') && state?.dilemmas?.open?.context !== 'expedition_event') openDilemmaModal();
+      if (has('her_asked') && state?.dilemmas?.open !== undefined && state.dilemmas.open.context !== 'expedition_event') drawDilemma(); // P16: her pick is marked on the decision that is open
       if (has('dilemma_resolved')) {
         loyalty.onEvents(events);
         suggestTalk(events);
@@ -1037,6 +1045,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
       scapegoat: scapegoatView(s, registries),
       herPick: herPickView(s, registries), // P9c: a day the commander obeys her
+      ...(askHerView(s, registries, 'dilemma', open.id) ? { askHer: { view: askHerView(s, registries, 'dilemma', open.id)!, onAsk: () => { practice.askHer('dilemma', open.id); } } } : {}), // P16: ASK HER
       generation: { ui: genUi, state: s, id: open.id },
     });
   }
@@ -1446,6 +1455,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
       onDilemmaChoose: (index, route) => void dilemmas.choose(index, route),
+      onAskHer: (context, ref) => { practice.askHer(context, ref); }, // P16: ASK HER on an event or a decision of the run
       coach: coachCtx,
       generation: genUi,
     });

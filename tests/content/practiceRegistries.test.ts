@@ -100,7 +100,7 @@ describe('the four practice registries (P16)', () => {
   it('every engine event of the package is reserved', () => {
     for (const t of PRACTICE_EVENT_TYPES) expect(RESERVED_EVENT_TYPES, t).toContain(t);
     expect(new Set(PRACTICE_EVENT_TYPES).size).toBe(PRACTICE_EVENT_TYPES.length);
-    expect(PRACTICE_EVENT_TYPES).toHaveLength(35); // hold_asked: the answer to `[ ASK TO BE LET GO ]`; ceremony_step: one step of her ceremony
+    expect(PRACTICE_EVENT_TYPES).toHaveLength(36); // hold_asked: the answer to `[ ASK TO BE LET GO ]`; ceremony_step: one step of her ceremony; her_asked: the pick she gave
   });
 
   it('TUNING.practice holds the spec drafts (R.12) as given and every key of the task', () => {

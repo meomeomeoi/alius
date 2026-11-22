@@ -7560,6 +7560,7 @@ var PRACTICE_EVENT_TYPES = [
   "slap_dealt",
   "ceremony_step",
   "ceremony_done",
+  "her_asked",
   "handover_given",
   "handover_ended",
   "threat_voiced",
@@ -26203,8 +26204,8 @@ function answerProposal(draft, reg, a) {
   const condition = conditioned ? cleanCondition(a.condition) : "";
   list5.splice(idx, 1);
   const base = { proposalId: rec.id, unitId: rec.unitId, kind: rec.kind, answer: a.answer };
-  const defied = rec.from === "unit" && commanderObeys(draft, rec.unitId);
-  const overridden = () => defied ? overrideHer(draft, { registries: reg }, rec.unitId, "turned down her proposal on the day of obedience") : [];
+  const defied3 = rec.from === "unit" && commanderObeys(draft, rec.unitId);
+  const overridden = () => defied3 ? overrideHer(draft, { registries: reg }, rec.unitId, "turned down her proposal on the day of obedience") : [];
   if (a.answer === "not_now" || a.answer === "deflect") return [{ type: "proposal_answered", ...base }, ...overridden()];
   if (a.answer === "decline") {
     const romantic = ROMANTIC_PROPOSALS.includes(rec.kind);
@@ -27912,8 +27913,8 @@ function candidateTruths(state, reg, unitId) {
   const facts = state.memory.facts.filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*") && !f.tags.includes("frequency") && !f.tags.includes("life")).sort((a, b) => b.day - a.day);
   for (const f of facts) out.push({ kind: "fact", value: f.id, refId: f.id });
   if (rel) out.push({ kind: "attraction", value: attractionBand(rel.attraction) });
-  const defied = (state.discipline?.defiance ?? []).some((x) => x.unitId === unitId);
-  if (defied || rawRefusalChance(state, reg, unitId) >= TUNING.special.frequency.refusalMin) out.push({ kind: "refusal", value: REFUSES });
+  const defied3 = (state.discipline?.defiance ?? []).some((x) => x.unitId === unitId);
+  if (defied3 || rawRefusalChance(state, reg, unitId) >= TUNING.special.frequency.refusalMin) out.push({ kind: "refusal", value: REFUSES });
   for (const x of state.personal?.secrets ?? []) {
     if (x.status === "kept" && x.knownBy.includes(unitId)) out.push({ kind: "secret", value: x.id, refId: x.id });
   }
@@ -32156,7 +32157,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   const ob = obedienceOf(draft);
   const pick3 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
-  const defied = ob !== null && pick3 !== null && pick3 !== index2;
+  const defied3 = ob !== null && pick3 !== null && pick3 !== index2;
   let effects2 = chosen.effects;
   let checkPassed;
   let routePassed;
@@ -32216,7 +32217,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     ...routeKind !== void 0 ? { routeKind } : {}
   };
   events.push(resolved);
-  if (defied) events.push(...overrideHer(draft, ctx2, ob.unitId, "chose against her on the day of obedience"));
+  if (defied3) events.push(...overrideHer(draft, ctx2, ob.unitId, "chose against her on the day of obedience"));
   if (negotiationHolds(resolved)) events.push(...noteFeat(draft, ctx2.registries, "negotiation"));
   return events;
 }
@@ -34040,7 +34041,7 @@ function rememberEvents(draft, events, reg) {
 // src/engine/dispatch.ts
 var handlers = /* @__PURE__ */ new Map();
 var ONBOARDING_HINT = "onboarding/hint_seen";
-var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand", "squad/set_quarters"];
+var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "practice/ask_her", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand", "squad/set_quarters"];
 var ENDED_OK_PREFIXES = ["debug/", "campaign/epilogue", "generation/"];
 var ALWAYS_OPEN = ["warden/no_snapshot", "campaign/epilogue", "warden/answer", "generation/failed", "generation/close", "generation/expire"];
 var BLOCKED_BY_DILEMMA = ["activity/", "life/time_together", "calendar/consume_slot", "scene/start", "expedition/start", "intrigue/act"];
@@ -40243,6 +40244,101 @@ registerAfterAction((draft, _ctx, events) => {
   return [];
 });
 
+// src/engine/practice/askHer.ts
+function herChooser(state, reg) {
+  const holders2 = practiceHolders(state, reg);
+  let best = null;
+  for (const id of holders2) {
+    const hold = dynamicOf(state, id)?.hold ?? 0;
+    if (best === null || hold > best.hold) best = { id, hold };
+  }
+  return best?.id ?? null;
+}
+var preselects = (state, reg, holderId) => dynamicOf(state, holderId)?.frame === "rule" && hasCapability(state, reg, holderId, "countermand");
+function herOptionPick(state, reg, holderId) {
+  const exp = state.expedition;
+  const pending4 = exp?.pending;
+  if (exp === void 0 || pending4?.kind !== "event" || !exp.party.includes(holderId)) return null;
+  const fixed = reg.dilemmaTemplates.get(pending4.templateId)?.fixed;
+  const shown2 = eventOptions(state, reg);
+  let best = null;
+  (fixed?.options ?? []).forEach((option2, index2) => {
+    if (shown2[index2]?.disabled !== null) return;
+    let touched = false;
+    let score = 0;
+    for (const fx2 of option2.effects) {
+      if (fx2.type !== "unit_event") continue;
+      touched = true;
+      const d = computeDeltas(state, reg, holderId, {
+        type: fx2.event,
+        actor: "commander",
+        targets: [holderId],
+        severity: fx2.severity,
+        evidence: "her pick",
+        confidence: 1,
+        ...fx2.valueAxes ? { valueAxes: fx2.valueAxes.map((a) => ({ axis: a.axis, direction: a.direction })) } : {}
+      });
+      score += d.trust + d.affinity;
+    }
+    if (touched && (best === null || score > best.score)) best = { index: index2, score };
+  });
+  return best === null ? null : best.index;
+}
+function herBallot(_state, _reg, holderId, vote) {
+  const ballot = vote.ballots.find((b) => b.unitId === holderId);
+  return ballot !== void 0 && ballot.vote === "against" ? "against" : "for";
+}
+function choiceOpen(state, context, ref) {
+  if (context === "dilemma") return state.dilemmas?.open?.id === ref && state.dilemmas.open.status === "presented";
+  if (context === "vote") {
+    const open3 = state.power?.votes.open;
+    return open3?.id === ref && (open3.status === "passed" || open3.status === "failed");
+  }
+  const pending4 = state.expedition?.pending;
+  return state.expedition?.phase === "event" && pending4?.kind === "event" && pending4.nodeId === ref && pending4.herCall === void 0 && pending4.squadCall === void 0 && state.dilemmas?.open?.context !== "expedition_event";
+}
+function herPickFor(state, reg, holderId, context, ref) {
+  if (context === "dilemma") return herPick(state, reg, holderId);
+  if (context === "expedition") return herOptionPick(state, reg, holderId);
+  const open3 = state.power?.votes.open;
+  return open3 === void 0 || open3.id !== ref ? null : herBallot(state, reg, holderId, open3);
+}
+function askHer(draft, ctx2, context, ref) {
+  const reg = ctx2.registries;
+  if (context !== "dilemma" && context !== "expedition" && context !== "vote") throw new Error("Ask her about a decision, a vote or an event.");
+  if (typeof ref !== "string" || !choiceOpen(draft, context, ref)) throw new Error("There is nothing open to ask her about.");
+  const holderId = herChooser(draft, reg);
+  if (holderId === null) throw new Error("Nobody holds the commander now.");
+  const index2 = herPickFor(draft, reg, holderId, context, ref);
+  ensurePractices(draft).asked = { context, ref, index: index2, holderId, ...preselects(draft, reg, holderId) ? { preselected: true } : {} };
+  return [{ type: "her_asked", unitId: holderId, holderId, context, ref, index: index2 }];
+}
+function askedChoices(draft, ctx2, events) {
+  const asked = draft.practices?.asked;
+  if (asked === void 0) return [];
+  let decision;
+  for (const e of events) {
+    if (asked.context === "dilemma" && e.type === "dilemma_resolved" && e.id === asked.ref && typeof e.option === "number") decision = e.option;
+    else if (asked.context === "expedition" && e.type === "expedition_choice" && e.nodeId === asked.ref && e.squadCall !== true && typeof e.option === "number") decision = e.option;
+    else if (asked.context === "vote" && e.voteId === asked.ref) {
+      if (e.type === "vote_overruled" || e.type === "vote_carried" && e.overruled !== true) decision = "for";
+      else if (e.type === "vote_dropped") decision = e.reason === "commander" ? "against" : "gone";
+    }
+  }
+  if (decision === void 0) return [];
+  delete draft.practices.asked;
+  if (decision === "gone" || asked.index === null || decision === asked.index) return [];
+  const ob = obedienceOf(draft);
+  const events2 = [];
+  if (!(ob?.who === "commander" && ob.unitId === asked.holderId)) events2.push(...overrideHer(draft, ctx2, asked.holderId, "chose against her pick"));
+  if (asked.preselected === true) events2.push(...noteOffence(draft, ctx2, asked.holderId, { kind: "countermand_overruled", ref: asked.ref, stakes: "minor", day: draft.day }));
+  return events2;
+}
+function expireAsked(draft) {
+  const asked = draft.practices?.asked;
+  if (asked !== void 0 && !choiceOpen(draft, asked.context, asked.ref)) delete draft.practices.asked;
+}
+
 // src/engine/practice/dayStep.ts
 function appetiteOf(state, reg, holderId) {
   const view = practiceOf(state, reg, holderId);
@@ -40320,6 +40416,7 @@ function newPractices(draft, ctx2) {
 function expiry(draft, ctx2) {
   const p = draft.practices;
   if (p === void 0) return [];
+  expireAsked(draft);
   const events = [...coldShoulderWants(draft), ...expireDemonstrations(draft, ctx2)];
   events.push(...closePunishments(draft, ctx2));
   if (p.call !== void 0 && p.call.sceneId !== draft.scene?.id) delete p.call;
@@ -40672,6 +40769,11 @@ registerAction("practice/take_back", (draft, payload, ctx2) => {
   if (!isObj41(payload) || typeof payload.handoverId !== "string") throw new Error("practice/take_back needs { handoverId }.");
   return takeBack(draft, ctx2, payload.handoverId);
 });
+registerAction("practice/ask_her", (draft, payload, ctx2) => {
+  if (!isObj41(payload)) throw new Error("practice/ask_her needs { context, ref }.");
+  return askHer(draft, ctx2, payload.context, payload.ref);
+});
+registerAfterAction(askedChoices);
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -41234,6 +41336,25 @@ function lifeLine(raw, max) {
 var sanitizeLifeShare = (raw) => lifeLine(raw, LIFE_SHARE_MAX);
 var sanitizeLifeTrace = (raw) => lifeLine(raw, LIFE_TRACE_MAX);
 
+// src/practice/askHer.ts
+function ensureAsked(dispatch2, state, reg, context, ref, chatId) {
+  if (state === null || !choiceOpen(state, context, ref)) return;
+  const rec = state.practices?.asked;
+  if (rec !== void 0 && rec.context === context && rec.ref === ref) return;
+  const holderId = herChooser(state, reg);
+  if (holderId === null || !preselects(state, reg, holderId)) return;
+  dispatch2({ type: "practice/ask_her", payload: { context, ref } }, { expectChatId: chatId });
+}
+function choosesAgainstHer(state, reg, context, ref, choice) {
+  if (state === null) return false;
+  const rec = state.practices?.asked;
+  if (rec !== void 0 && rec.context === context && rec.ref === ref) return rec.index !== null && rec.index !== choice;
+  const holderId = herChooser(state, reg);
+  if (holderId === null || !preselects(state, reg, holderId) || !choiceOpen(state, context, ref)) return false;
+  const pick3 = herPickFor(state, reg, holderId, context, ref);
+  return pick3 !== null && pick3 !== choice;
+}
+
 // src/loyalty/dilemmaController.ts
 function createDilemmas(deps) {
   const running2 = /* @__PURE__ */ new Set();
@@ -41320,7 +41441,10 @@ function createDilemmas(deps) {
   function choose(index2, route) {
     const open3 = deps.app.current().state?.dilemmas?.open;
     if (!open3 || open3.status !== "presented") return [];
-    const action = { type: "dilemma/choose", payload: { id: open3.id, index: index2, ...route ? { route } : {} } };
+    const reg = deps.registries();
+    ensureAsked(deps.app.dispatch, deps.app.current().state, reg, "dilemma", open3.id);
+    const against = choosesAgainstHer(deps.app.current().state, reg, "dilemma", open3.id, index2);
+    const action = { type: "dilemma/choose", payload: { id: open3.id, index: index2, ...route ? { route } : {}, ...against ? { againstHer: true } : {} } };
     if (deps.judge?.needsJudge(action)) {
       void deps.judge.judgeThen(action);
       return [];
@@ -44207,6 +44331,14 @@ function createPractice(deps) {
       deps.refreshContext();
       return true;
     },
+    ensureAsked(context, ref) {
+      ensureAsked(deps.app.dispatch, state(), deps.registries(), context, ref, chatId());
+    },
+    askHer(context, ref) {
+      const done = ok(deps.app.dispatch({ type: "practice/ask_her", payload: { context, ref } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
     handOver(holderId, kind, days) {
       const done = ok(deps.app.dispatch({ type: "practice/hand_over", payload: { holderId, kind, days } }, { expectChatId: chatId() }));
       if (done) deps.refreshContext();
@@ -44813,6 +44945,47 @@ function renderBubble(text2, mine, accent) {
   return bubble;
 }
 
+// src/ui/practice/askHer.ts
+function askHerView(state, reg, context, ref) {
+  if (!dynamicOn(state, reg) || !choiceOpen(state, context, ref)) return null;
+  const holderId = herChooser(state, reg);
+  if (holderId === null) return null;
+  const name = state.squad.find((u) => u.id === holderId)?.displayName ?? holderId;
+  const rec = state.practices?.asked;
+  if (rec !== void 0 && rec.context === context && rec.ref === ref) return { holderId, name, context, ref, asked: true, index: rec.index, preselected: rec.preselected === true };
+  if (preselects(state, reg, holderId)) return { holderId, name, context, ref, asked: false, index: herPickFor(state, reg, holderId, context, ref), preselected: true };
+  return { holderId, name, context, ref, asked: false, preselected: false };
+}
+var pickIndex = (view) => view !== null && view !== void 0 && (view.asked || view.preselected) && typeof view.index === "number" ? view.index : null;
+function askHerNote(view) {
+  if (!view.asked && !view.preselected) return null;
+  if (view.index === null) return "She leaves it to the commander.";
+  if (view.index === "for") return "She would carry it out.";
+  if (view.index === "against") return "She would drop it.";
+  return view.index === void 0 ? null : "Her pick is marked.";
+}
+function drawAskHer(host, view, onAsk) {
+  host.replaceChildren();
+  if (view === null || view === void 0) return;
+  const live3 = { unitId: view.holderId };
+  if (!view.asked && !view.preselected && onAsk !== void 0) {
+    host.append(h("button", { type: "button", class: "alius-btn alius-chip", "data-action": "ask-her", "data-unit": view.holderId, ...analyzeNative("glossary:ask_her", live3), onclick: () => onAsk() }, "[ ASK HER ]"));
+    return;
+  }
+  const note = askHerNote(view);
+  if (note !== null) host.append(h("p", { class: "alius-askher-note alius-dim", "data-askher-note": "", ...analyzeAttrs("glossary:ask_her", live3) }, note));
+}
+function renderPreselected(view, label2, handlers2) {
+  const live3 = { unitId: view.holderId };
+  return h(
+    "div",
+    { class: "alius-askher-preselected", "data-askher-preselected": view.holderId },
+    h("p", { class: "alius-askher-choice" }, `${view.name} has chosen: ${label2}`),
+    h("button", { type: "button", class: "alius-btn alius-option", "data-action": "confirm-her", ...analyzeNative("glossary:ask_her", live3), onclick: () => handlers2.onConfirm() }, "[ CONFIRM ]"),
+    h("button", { type: "button", class: "alius-btn alius-option", "data-action": "defy-her", ...analyzeNative("glossary:ask_her", live3), onclick: () => handlers2.onDefy() }, "[ DEFY ]")
+  );
+}
+
 // src/ui/voice/sources.ts
 var VOICE_OF = {
   toast: "terminal",
@@ -44854,6 +45027,11 @@ var VOICE_OF = {
 };
 
 // src/ui/power/votePanel.ts
+var defied = /* @__PURE__ */ new WeakMap();
+function herAction(status, side) {
+  if (status === "passed") return side === "for" ? "carry" : "drop";
+  return side === "for" ? "overrule-order" : "accept";
+}
 var SIDE_WORD = { for: "FOR", against: "AGAINST", abstain: "ABSTAIN" };
 var num4 = (n) => String(Math.round(n * 100) / 100);
 function measures(state, reg) {
@@ -44932,7 +45110,28 @@ function renderVotePanel(host, vote, lines, ctx2) {
     markPick(actions.find((a) => a.getAttribute("data-vote-act") === "accept"));
     actions.splice(actions.findIndex((a) => a.getAttribute("data-vote-act") === "overrule-leash") + 1, 0, defiesHint(against));
   }
-  body.append(...actions);
+  const asked = ctx2.askHer?.view;
+  const side = asked !== void 0 && (asked.asked || asked.preselected) && (asked.index === "for" || asked.index === "against") ? asked.index : null;
+  const hers = side === null || against !== null ? null : herAction(vote.status, side);
+  const askHost = h("div", { class: "alius-askher" });
+  drawAskHer(askHost, against === null ? asked : null, ctx2.askHer?.onAsk);
+  if (hers === "drop" && !actions.some((a) => a.getAttribute("data-vote-act") === "drop")) actions.push(act("drop", "[ DROP ]", ctx2.onDrop));
+  const pre = hers !== null && asked.preselected && defied.get(host) !== vote.id;
+  if (hers !== null && !pre) {
+    markPick(actions.find((a) => a.getAttribute("data-vote-act") === hers));
+    if (asked !== void 0) actions.push(defiesHint(asked.name));
+  }
+  const handlers2 = { carry: ctx2.onCarry, drop: ctx2.onDrop, accept: ctx2.onDrop, "overrule-order": () => ctx2.onOverrule("order", void 0) };
+  const pickLabel = { carry: "carry it out", drop: "drop it", accept: "accept it", "overrule-order": "overrule it" };
+  if (pre) {
+    body.append(askHost, renderPreselected(asked, pickLabel[hers], { onConfirm: handlers2[hers], onDefy: () => {
+      defied.set(host, vote.id);
+      renderVotePanel(host, vote, lines, ctx2);
+    } }));
+  } else {
+    if (askHost.childElementCount > 0) body.append(askHost);
+    body.append(...actions);
+  }
   host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: "SQUAD VOTE", meta: `Day ${String(vote.day).padStart(3, "0")}`, body, level: 3 }));
 }
 
@@ -47069,6 +47268,7 @@ function renderRoutePicker(ctx2) {
 
 // src/ui/dilemma/dilemmaPanel.ts
 var SCALE_LABEL = { minor: "MINOR", major: "MAJOR", defining: "DEFINING" };
+var defied2 = /* @__PURE__ */ new WeakMap();
 function renderDilemma(host, ctx2) {
   host.replaceChildren();
   if (ctx2.waiting) {
@@ -47078,7 +47278,13 @@ function renderDilemma(host, ctx2) {
   let chosen = false;
   const buttons = [];
   const list5 = h("div", { class: "alius-dilemma-options" });
+  const asked = ctx2.askHer?.view;
+  const hers = ctx2.herPick ?? (pickIndex(asked) !== null ? { index: pickIndex(asked), name: asked.name } : null);
+  const preselected = asked !== void 0 && asked.preselected && pickIndex(asked) !== null && defied2.get(host) !== asked.ref && ctx2.herPick === void 0;
+  const askHost = h("div", { class: "alius-askher" });
+  drawAskHer(askHost, ctx2.herPick === void 0 ? asked : null, ctx2.askHer?.onAsk);
   for (const o of ctx2.options) {
+    if (preselected) continue;
     const picker2 = o.routes && o.disabled === null ? renderRoutePicker({
       routes: o.routes,
       unitName: ctx2.unitName,
@@ -47117,9 +47323,9 @@ function renderDilemma(host, ctx2) {
     }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${picker2 ? " \u2014 CHOOSE HOW" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
     buttons.push(button2);
     list5.append(button2);
-    if (ctx2.herPick) {
-      if (ctx2.herPick.index === o.index) markPick(button2);
-      else list5.append(defiesHint(ctx2.herPick.name));
+    if (hers) {
+      if (hers.index === o.index) markPick(button2);
+      else list5.append(defiesHint(hers.name));
     }
     const effects2 = ctx2.scapegoat?.options[o.index];
     if (effects2 && effects2.lines.length > 0) {
@@ -47130,6 +47336,21 @@ function renderDilemma(host, ctx2) {
       ));
     }
     if (picker2) list5.append(picker2);
+  }
+  if (preselected) {
+    const mine = ctx2.options.find((o) => o.index === pickIndex(asked));
+    list5.append(renderPreselected(asked, mine.label, {
+      onConfirm: () => {
+        if (!chosen && mine.disabled === null) {
+          chosen = true;
+          ctx2.onChoose(mine.index);
+        }
+      },
+      onDefy: () => {
+        defied2.set(host, asked.ref);
+        renderDilemma(host, ctx2);
+      }
+    }));
   }
   const gen = h("div", { class: "alius-generation-chips" });
   if (ctx2.generation && !ctx2.scapegoat) {
@@ -47144,6 +47365,7 @@ function renderDilemma(host, ctx2) {
     h("p", { class: "alius-dim" }, `${SCALE_LABEL[ctx2.scale]} DECISION`),
     h("p", { class: "alius-dilemma-setup" }, ctx2.setup),
     gen.childElementCount > 0 ? gen : null,
+    askHost.childElementCount > 0 ? askHost : null,
     ctx2.scapegoat ? h(
       "p",
       { class: "alius-scapegoat-who" },
@@ -58990,6 +59212,7 @@ function renderExpeditionScreen(host, ctx2) {
   const debriefPick = [];
   let confirming = false;
   let cover = "";
+  let defiedNode = "";
   const unitName3 = (id) => ctx2.getState()?.squad.find((u) => u.id === id)?.displayName ?? id;
   function runView(root, state) {
     const exp = state.expedition;
@@ -59136,6 +59359,7 @@ function renderExpeditionScreen(host, ctx2) {
         onChoose: ctx2.onDilemmaChoose,
         unitName: unitName3,
         herPick: herPickView(state, reg),
+        ...ctx2.onAskHer && askHerView(state, reg, "dilemma", generated.id) ? { askHer: { view: askHerView(state, reg, "dilemma", generated.id), onAsk: () => ctx2.onAskHer("dilemma", generated.id) } } : {},
         ...ctx2.generation ? { generation: { ui: ctx2.generation, state, id: generated.id } } : {}
       });
       root.append(panel);
@@ -59146,6 +59370,25 @@ function renderExpeditionScreen(host, ctx2) {
       panel.append(h("button", { type: "button", class: "alius-btn", onclick: () => controller.choose(0) }, "[ CONTINUE ]"));
     }
     let picked = false;
+    const asked = ctx2.onAskHer ? askHerView(state, reg, "expedition", pending4.nodeId) : null;
+    const hers = pickIndex(asked);
+    const preselected = asked !== null && asked.preselected && hers !== null && defiedNode !== pending4.nodeId;
+    const askHost = h("div", { class: "alius-askher" });
+    drawAskHer(askHost, asked, ctx2.onAskHer ? () => ctx2.onAskHer("expedition", pending4.nodeId) : void 0);
+    if (askHost.childElementCount > 0) panel.append(askHost);
+    if (preselected) {
+      const mine = options2.find((o) => o.index === hers);
+      if (mine) {
+        panel.append(renderPreselected(asked, mine.label, { onConfirm: () => {
+          if (mine.disabled === null) controller.choose(mine.index);
+        }, onDefy: () => {
+          defiedNode = pending4.nodeId;
+          render();
+        } }));
+        root.append(panel);
+        return;
+      }
+    }
     for (const o of options2) {
       const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick3) => {
         picked = true;
@@ -59159,16 +59402,18 @@ function renderExpeditionScreen(host, ctx2) {
         {},
         h("button", {
           type: "button",
-          class: "alius-btn",
+          class: `alius-btn${hers === o.index ? " is-preselected" : ""}`,
           "data-option": String(o.index),
           disabled: o.disabled !== null,
+          ...hers === o.index ? { "data-preselected": "true" } : {},
           onclick: () => {
             if (o.disabled !== null) return;
             if (picker2) picker2.hidden = !picker2.hidden;
             else controller.choose(o.index);
           }
         }, `[ ${o.label} ]${picker2 ? " \u2014 CHOOSE HOW" : ""}${o.disabled ? ` \u2014 ${o.disabled}` : ""}`),
-        picker2
+        picker2,
+        hers !== null && hers !== o.index && asked !== null ? defiesHint(asked.name) : null
       ));
     }
     root.append(panel);
@@ -59454,7 +59699,11 @@ function createExpedition(deps) {
       act("expedition/move", { nodeId });
     },
     choose(index2, route) {
-      act("expedition/choose", { option: index2, ...route ? { route } : {} });
+      const pending4 = state()?.expedition?.pending;
+      const ref = pending4?.kind === "event" ? pending4.nodeId : "";
+      ensureAsked(deps.app.dispatch, state(), deps.registries(), "expedition", ref);
+      const against = choosesAgainstHer(state(), deps.registries(), "expedition", ref, index2);
+      act("expedition/choose", { option: index2, ...route ? { route } : {}, ...against ? { againstHer: true } : {} });
     },
     treat(unitId, kind) {
       act("expedition/treat", { unitId, kind });
@@ -66441,13 +66690,29 @@ function createApp(st, deps) {
         resolve({ choice: "cancel" });
         return;
       }
-      renderVotePanel(host, vote, lines, {
-        state: s,
-        registries,
-        onCarry: () => answer({ choice: "carry" }),
-        onDrop: () => answer({ choice: "accept" }),
-        onOverrule: (means, punish) => answer({ choice: "overrule", means, ...punish !== void 0 ? { punish } : {} })
-      });
+      const draw2 = () => {
+        const now = state ?? s;
+        renderVotePanel(host, vote, lines, {
+          state: now,
+          registries,
+          onCarry: () => {
+            practice.ensureAsked("vote", vote.id);
+            answer({ choice: "carry" });
+          },
+          onDrop: () => {
+            practice.ensureAsked("vote", vote.id);
+            answer({ choice: "accept" });
+          },
+          onOverrule: (means, punish) => {
+            practice.ensureAsked("vote", vote.id);
+            answer({ choice: "overrule", means, ...punish !== void 0 ? { punish } : {} });
+          },
+          ...askHerView(now, registries, "vote", vote.id) ? { askHer: { view: askHerView(now, registries, "vote", vote.id), onAsk: () => {
+            if (practice.askHer("vote", vote.id)) draw2();
+          } } } : {}
+        });
+      };
+      draw2();
       shell.open();
       void shell.modal({ title: "SQUAD VOTE", body: host, actions: [] }).then(() => {
         if (!answered) {
@@ -66715,6 +66980,7 @@ function createApp(st, deps) {
         void dilemmas.onRequested().catch(warn("dilemma"));
       }
       if (has3("dilemma_presented") && state?.dilemmas?.open?.context !== "expedition_event") openDilemmaModal();
+      if (has3("her_asked") && state?.dilemmas?.open !== void 0 && state.dilemmas.open.context !== "expedition_event") drawDilemma();
       if (has3("dilemma_resolved")) {
         loyalty.onEvents(events);
         suggestTalk(events);
@@ -66927,6 +67193,10 @@ function createApp(st, deps) {
       scapegoat: scapegoatView(s, registries),
       herPick: herPickView(s, registries),
       // P9c: a day the commander obeys her
+      ...askHerView(s, registries, "dilemma", open3.id) ? { askHer: { view: askHerView(s, registries, "dilemma", open3.id), onAsk: () => {
+        practice.askHer("dilemma", open3.id);
+      } } } : {},
+      // P16: ASK HER
       generation: { ui: genUi, state: s, id: open3.id }
     });
   }
@@ -67310,6 +67580,10 @@ function createApp(st, deps) {
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
       onDilemmaChoose: (index2, route) => void dilemmas.choose(index2, route),
+      onAskHer: (context2, ref) => {
+        practice.askHer(context2, ref);
+      },
+      // P16: ASK HER on an event or a decision of the run
       coach: coachCtx,
       generation: genUi
     });

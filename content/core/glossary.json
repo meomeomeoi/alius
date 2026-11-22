@@ -3411,5 +3411,15 @@
       "accept_signed",
       "practice_record"
     ]
+  },
+  {
+    "id": "ask_her",
+    "term": "Ask her",
+    "short": "Ask the one who holds the commander what she would pick on a decision, a vote or an event. Her pick is marked; another choice costs her trust.",
+    "long": "AUTHOR TO WRITE: Her pick follows what each option does to her. A card nothing touches is left to the commander. When she holds the command she pre-selects: the commander confirms her pick or defies her, and defying is held against the commander.",
+    "see": [
+      "practice",
+      "holder_override"
+    ]
   }
 ]

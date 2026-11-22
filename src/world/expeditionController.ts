@@ -1,6 +1,7 @@
 import { canAutoResolve } from '../engine/combat';
 import type { StartPayload } from '../engine/combat/types';
 import type { RoutePick } from '../engine/commander/checks';
+import { choosesAgainstHer, ensureAsked } from '../practice/askHer';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { reportLines, type Formation, type TreatKind } from '../engine/world/expedition';
@@ -117,7 +118,14 @@ export function createExpedition(deps: WorldDeps & {
     },
 
     move(nodeId) { act('expedition/move', { nodeId }); },
-    choose(index, route) { act('expedition/choose', { option: index, ...(route ? { route } : {}) }); },
+    choose(index, route) {
+      // P16: a card she pre-selects is asked at the choice; choosing against her pick says so (the engine charges it from the state)
+      const pending = state()?.expedition?.pending;
+      const ref = pending?.kind === 'event' ? pending.nodeId : '';
+      ensureAsked(deps.app.dispatch, state(), deps.registries(), 'expedition', ref);
+      const against = choosesAgainstHer(state(), deps.registries(), 'expedition', ref, index);
+      act('expedition/choose', { option: index, ...(route ? { route } : {}), ...(against ? { againstHer: true } : {}) });
+    },
     treat(unitId, kind) { act('expedition/treat', { unitId, kind }); },
     setFormation(formation) { act('expedition/set_formation', { formation }); },
 

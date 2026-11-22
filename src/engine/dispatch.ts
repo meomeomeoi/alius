@@ -28,7 +28,7 @@ const ONBOARDING_HINT = 'onboarding/hint_seen';
 /** Action families that may run while `state.expedition` is open. */
 /** `relations/commander_injured` is the night-visit roll after a Commander Crisis, which can only happen inside a run. */
 /** P10b: reading a note and choosing a hand (P10c: and her room style) (`notes/read`, `squad/set_hand`) change nothing but the note and the hand, and HOME is the default tab while the squad is out. */
-const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT, 'content/', 'notes/read', 'squad/set_hand', 'squad/set_quarters'];
+const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'practice/ask_her', 'relations/commander_injured', ONBOARDING_HINT, 'content/', 'notes/read', 'squad/set_hand', 'squad/set_quarters'];
 
 /** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
 /** P13: a closed campaign (`ended`) runs only these: `debug/*` and the epilogue. P14: a failed generation can be recorded, closed or expired on a closed campaign (the epilogue's own call). */

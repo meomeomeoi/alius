@@ -22,6 +22,8 @@ import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
 import { renderReport } from './report';
 import type { GenerationUi } from '../generation/surface';
+import { drawAskHer, askHerView, pickIndex, renderPreselected } from '../practice/askHer';
+import { defiesHint } from '../personal/obey';
 
 export interface ExpeditionScreenCtx {
   getState: () => CampaignState | null;
@@ -33,6 +35,8 @@ export interface ExpeditionScreenCtx {
   recapPending?: () => boolean;
   /** P6: the player's pick of a generated dilemma for the pending event node. */
   onDilemmaChoose?: (index: number, route?: RoutePick) => void;
+  /** P16: `[ ASK HER ]` on the event or the decision that is open (`practice/ask_her`). Absent = no chip. */
+  onAskHer?: (context: 'expedition' | 'dilemma', ref: string) => void;
   /** P11: the tutorial's coach strip at the top of the run view. */
   coach?: CoachCtx;
   /** P14: failure chips and REROLL on the decision and the after-action recap. */
@@ -55,6 +59,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
   const debriefPick: string[] = [];
   let confirming = false;
   let cover = '';
+  let defiedNode = ''; // P16: the event node whose pre-selected pick the commander defied
 
   const unitName = (id: string): string => ctx.getState()?.squad.find((u) => u.id === id)?.displayName ?? id;
 
@@ -191,6 +196,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       renderDilemma(slot, {
         title: generated.title ?? fixed?.title ?? 'EVENT', setup: generated.setup ?? fixed?.setup ?? '', scale: generated.scale,
         waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose, unitName, herPick: herPickView(state, reg),
+        ...(ctx.onAskHer && askHerView(state, reg, 'dilemma', generated.id) ? { askHer: { view: askHerView(state, reg, 'dilemma', generated.id)!, onAsk: () => ctx.onAskHer!('dilemma', generated.id) } } : {}),
         ...(ctx.generation ? { generation: { ui: ctx.generation, state, id: generated.id } } : {}),
       });
       root.append(panel);
@@ -202,6 +208,21 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       panel.append(h('button', { type: 'button', class: 'alius-btn', onclick: () => controller.choose(0) }, '[ CONTINUE ]'));
     }
     let picked = false;
+    // P16: her pick on the event (the commander asked her, or she pre-selects); an event that is none of hers to pick (nothing touches her) says so
+    const asked = ctx.onAskHer ? askHerView(state, reg, 'expedition', pending.nodeId) : null;
+    const hers = pickIndex(asked);
+    const preselected = asked !== null && asked.preselected && hers !== null && defiedNode !== pending.nodeId;
+    const askHost = h('div', { class: 'alius-askher' });
+    drawAskHer(askHost, asked, ctx.onAskHer ? () => ctx.onAskHer!('expedition', pending.nodeId) : undefined);
+    if (askHost.childElementCount > 0) panel.append(askHost);
+    if (preselected) {
+      const mine = options.find((o) => o.index === hers);
+      if (mine) {
+        panel.append(renderPreselected(asked!, mine.label, { onConfirm: () => { if (mine.disabled === null) controller.choose(mine.index); }, onDefy: () => { defiedNode = pending.nodeId; render(); } }));
+        root.append(panel);
+        return;
+      }
+    }
     for (const o of options) {
       // P7: a routed option asks how first; the rest choose at once
       const picker = o.routes && o.disabled === null
@@ -210,7 +231,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       if (picker) picker.hidden = true;
       panel.append(h('div', {},
         h('button', {
-          type: 'button', class: 'alius-btn', 'data-option': String(o.index), disabled: o.disabled !== null,
+          type: 'button', class: `alius-btn${hers === o.index ? ' is-preselected' : ''}`, 'data-option': String(o.index), disabled: o.disabled !== null, ...(hers === o.index ? { 'data-preselected': 'true' } : {}),
           onclick: () => {
             if (o.disabled !== null) return;
             if (picker) picker.hidden = !picker.hidden;
@@ -218,6 +239,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
           },
         }, `[ ${o.label} ]${picker ? ' — CHOOSE HOW' : ''}${o.disabled ? ` — ${o.disabled}` : ''}`),
         picker,
+        hers !== null && hers !== o.index && asked !== null ? defiesHint(asked.name) : null,
       ));
     }
     root.append(panel);

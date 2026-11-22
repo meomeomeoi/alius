@@ -1,5 +1,6 @@
 import type { RoutePick } from '../engine/commander/checks';
 import type { Action, EngineEvent } from '../engine/dispatch';
+import { choosesAgainstHer, ensureAsked } from '../practice/askHer';
 import { buildDilemmaDigest } from '../engine/dilemma/flow';
 import type { DilemmaGenerateInput } from '../llm/calls/dilemmaGenerate';
 import type { WorldDeps } from '../world/deps';
@@ -120,7 +121,11 @@ export function createDilemmas(deps: WorldDeps & {
   function choose(index: number, route?: RoutePick): EngineEvent[] {
     const open = deps.app.current().state?.dilemmas?.open;
     if (!open || open.status !== 'presented') return [];
-    const action = { type: 'dilemma/choose', payload: { id: open.id, index, ...(route ? { route } : {}) } };
+    // P16: a card she pre-selects is asked at the choice; choosing against her pick says so (the engine charges it from the state)
+    const reg = deps.registries();
+    ensureAsked(deps.app.dispatch, deps.app.current().state, reg, 'dilemma', open.id);
+    const against = choosesAgainstHer(deps.app.current().state, reg, 'dilemma', open.id, index);
+    const action = { type: 'dilemma/choose', payload: { id: open.id, index, ...(route ? { route } : {}), ...(against ? { againstHer: true } : {}) } };
     if (deps.judge?.needsJudge(action)) {
       void deps.judge.judgeThen(action); // P13: the warden's judge reads the choice first (a short model call)
       return [];

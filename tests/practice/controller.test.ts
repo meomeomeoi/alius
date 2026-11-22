@@ -510,3 +510,43 @@ describe('the commander\'s own chips and the slap', () => {
     expect(h.toasts).toHaveLength(toasts);
   });
 });
+
+describe('ASK HER at the controller', () => {
+  const dilemma = (frame: 'role' | 'rule', command = false): CampaignState => {
+    const s = withService(world(reg, frame));
+    s.settings.unitDms = true;
+    dynamicOf(s, ANN)!.hold = frame === 'rule' ? 75 : 60;
+    if (command) dynamicOf(s, ANN)!.domains = [{ id: 'command', since: s.day }];
+    s.dilemmas = { seq: 1, open: { id: 'dl_1', templateId: 't', scale: 'minor', context: 'base', day: s.day, status: 'presented', attempts: 0, units: [ANN, BEA], beatId: 'b', title: 'T', options: [
+      { label: 'Praise', effects: [{ type: 'unit_event', event: 'praised', severity: 'moderate', targets: 'named' }], magnitudes: [] },
+      { label: 'Insult', effects: [{ type: 'unit_event', event: 'insulted', severity: 'moderate', targets: 'named' }], magnitudes: [] },
+    ] as never } };
+    return s;
+  };
+
+  it('askHer dispatches practice/ask_her, refreshes the prompt and toasts what the engine refuses', () => {
+    const { h, ctl, refreshContext } = rig(dilemma('role'));
+    expect(ctl.askHer('dilemma', 'dl_1')).toBe(true);
+    expect(h.state().practices!.asked).toMatchObject({ context: 'dilemma', ref: 'dl_1', index: 0, holderId: ANN });
+    expect(refreshContext).toHaveBeenCalled();
+    expect(ctl.askHer('dilemma', 'dl_9')).toBe(false);
+    expect(h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+  });
+
+  it('ensureAsked writes her pick only for a card she pre-selects (rule with the command), once, and never for a card nobody holds', () => {
+    const plain = rig(dilemma('role'));
+    plain.ctl.ensureAsked('dilemma', 'dl_1');
+    expect(plain.h.state().practices?.asked).toBeUndefined();
+    const pre = rig(dilemma('rule', true));
+    pre.ctl.ensureAsked('dilemma', 'dl_1');
+    expect(pre.h.state().practices!.asked).toMatchObject({ index: 0, preselected: true });
+    const n = pre.h.log.filter((a) => a.type === 'practice/ask_her').length;
+    pre.ctl.ensureAsked('dilemma', 'dl_1');
+    expect(pre.h.log.filter((a) => a.type === 'practice/ask_her')).toHaveLength(n);
+    const none = dilemma('rule', true);
+    none.relations[ANN].dynamic!.frame = 'equal';
+    const nobody = rig(none);
+    nobody.ctl.ensureAsked('dilemma', 'dl_1');
+    expect(nobody.h.state().practices?.asked).toBeUndefined();
+  });
+});

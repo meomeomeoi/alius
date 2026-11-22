@@ -9,6 +9,7 @@ import type { CampaignState, Unit } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import type { PracticeDeps } from './deps';
 import { applyIssuedDirectives, clearPracticeDirectives, refreshPracticeDirectives } from './directives';
+import { ensureAsked as ensureAskedClient } from './askHer';
 
 export type { PracticeDeps } from './deps';
 
@@ -67,6 +68,10 @@ export interface PracticeController {
   ceremonyStep(punishmentId: string, step: string, number?: number): boolean;
   /** The commander's answer to the slap that is open (`practice/slap_answer`): none, braced or flinched. An answer for a slap that is gone is dropped without a word. */
   slapAnswer(slapId: string, result: 'none' | 'braced' | 'flinched'): boolean;
+  /** `[ ASK HER ]` on a dilemma, a vote or an expedition event that is open (`practice/ask_her`): her pick comes back and is marked on the card. Toasts the reason and answers false when the engine refuses. */
+  askHer(context: 'dilemma' | 'expedition' | 'vote', ref: string): boolean;
+  /** A card she pre-selects is asked the moment the commander chooses on it (silent): her pick is written so that choosing against it can be charged. */
+  ensureAsked(context: 'dilemma' | 'expedition' | 'vote', ref: string): void;
   /** `[ GIVE HER … ]` sent from the composer (`practice/hand_over`): the card the commander says yes to appears. Toasts the reason and answers false when the engine refuses. */
   handOver(holderId: string, kind: string, days: number): boolean;
   /** `[ TAKE BACK … ]` (`practice/take_back`): a refusal at severe. Toasts the reason and answers false when the engine refuses. */
@@ -402,6 +407,14 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       if (bad !== undefined) { deps.toast('error', String(bad.message ?? bad.code)); return false; }
       deps.refreshContext();
       return true;
+    },
+    ensureAsked(context, ref) {
+      ensureAskedClient(deps.app.dispatch, state(), deps.registries(), context, ref, chatId());
+    },
+    askHer(context, ref) {
+      const done = ok(deps.app.dispatch({ type: 'practice/ask_her', payload: { context, ref } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     handOver(holderId, kind, days) {
       const done = ok(deps.app.dispatch({ type: 'practice/hand_over', payload: { holderId, kind, days } }, { expectChatId: chatId() }));

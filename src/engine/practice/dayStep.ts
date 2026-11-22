@@ -21,6 +21,7 @@ import { pickSeeds } from './seeds';
 import { kindnessSweep, protocolPossible, routineSweep } from './service';
 import { unfairSweep } from './unfair';
 import { handoverSweep } from './handover';
+import { expireAsked } from './askHer';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
 import { frameOf, holdBusy, taskRoom } from './tasks';
 
@@ -122,6 +123,7 @@ function newPractices(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
 function expiry(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const p = draft.practices;
   if (p === undefined) return [];
+  expireAsked(draft); // a pick whose card is gone (R22)
   const events = [...coldShoulderWants(draft), ...expireDemonstrations(draft, ctx)]; // her Want rises each day of her cold shoulder (it is read before the shoulder's last day expires)
   events.push(...closePunishments(draft, ctx));
   if (p.call !== undefined && p.call.sceneId !== draft.scene?.id) delete p.call; // a call of a scene that never ended

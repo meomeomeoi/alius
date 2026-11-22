@@ -12,6 +12,7 @@ import { alarmsFromEvents, answerAlarm, raiseAlarm } from '../practice/alarm';
 import { askRelease, blindfoldFromEvents, holdSweep } from '../practice/hold';
 import { deviceHolderOf, keySeen, offerHandover, takeBack } from '../practice/handover';
 import { registerForcedEditor } from '../personal/intercept';
+import { askedChoices, askHer } from '../practice/askHer';
 import { ask } from '../practice/initiative';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
@@ -242,3 +243,15 @@ registerAction('practice/take_back', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.handoverId !== 'string') throw new Error('practice/take_back needs { handoverId }.');
   return takeBack(draft, ctx, payload.handoverId);
 });
+
+/**
+ * `practice/ask_her { context, ref }`: the commander asks the one who holds the commander what she would pick on a dilemma, a vote or an expedition event that is open (R22). Her pick is kept until the choice is
+ * made; choosing another costs `overrode_her`. Throws with no live holder or nothing open to ask about.
+ */
+registerAction('practice/ask_her', (draft, payload, ctx) => {
+  if (!isObj(payload)) throw new Error('practice/ask_her needs { context, ref }.');
+  return askHer(draft, ctx, payload.context, payload.ref);
+});
+
+// What is asked is decided (R22): her own pick is free, another costs `overrode_her` (and, when she pre-selected, an offence of hers)
+registerAfterAction(askedChoices);

@@ -9,6 +9,7 @@ import { herVote } from '../../engine/personal/obedience';
 import { obedienceOf } from '../../engine/personal/state';
 import { defiesHint, markPick } from '../personal/obey';
 import { renderVoiceCard } from '../voice/voiceCard';
+import { drawAskHer, renderPreselected, type AskHerView } from '../practice/askHer';
 import { VOICE_OF } from '../voice/sources';
 
 export interface VotePanelHandlers {
@@ -22,6 +23,17 @@ export interface VotePanelHandlers {
 export interface VotePanelCtx extends VotePanelHandlers {
   state: CampaignState;
   registries: Registries;
+  /** P16: ASK HER on this vote: the chip, her side marked, or, when she pre-selects, only her pick with CONFIRM and DEFY. Absent = the panel is as it was. */
+  askHer?: { view: AskHerView; onAsk: () => void };
+}
+
+/** The vote the commander defied her pick on, per host (a new vote starts pre-selected again). */
+const defied = new WeakMap<HTMLElement, string>();
+
+/** The action that is her pick on a vote that was taken: what she voted decides it (for: carry it out, or overrule it; against: drop it). */
+function herAction(status: Vote['status'], side: 'for' | 'against'): string {
+  if (status === 'passed') return side === 'for' ? 'carry' : 'drop';
+  return side === 'for' ? 'overrule-order' : 'accept';
 }
 
 const SIDE_WORD: Record<Ballot['vote'], string> = { for: 'FOR', against: 'AGAINST', abstain: 'ABSTAIN' };
@@ -102,6 +114,25 @@ export function renderVotePanel(host: HTMLElement, vote: Vote, lines: Record<str
     markPick(actions.find((a) => a.getAttribute('data-vote-act') === 'accept')!);
     actions.splice(actions.findIndex((a) => a.getAttribute('data-vote-act') === 'overrule-leash') + 1, 0, defiesHint(against));
   }
-  body.append(...actions);
+  // P16: her side, when the commander asked her or she pre-selects (a day of obedience has its own marks above)
+  const asked = ctx.askHer?.view;
+  const side = asked !== undefined && (asked.asked || asked.preselected) && (asked.index === 'for' || asked.index === 'against') ? asked.index : null;
+  const hers = side === null || against !== null ? null : herAction(vote.status, side);
+  const askHost = h('div', { class: 'alius-askher' });
+  drawAskHer(askHost, against === null ? asked : null, ctx.askHer?.onAsk);
+  if (hers === 'drop' && !actions.some((a) => a.getAttribute('data-vote-act') === 'drop')) actions.push(act('drop', '[ DROP ]', ctx.onDrop)); // a vote that passed is dropped only when she says so
+  const pre = hers !== null && asked!.preselected && defied.get(host) !== vote.id;
+  if (hers !== null && !pre) {
+    markPick(actions.find((a) => a.getAttribute('data-vote-act') === hers)!);
+    if (asked !== undefined) actions.push(defiesHint(asked.name));
+  }
+  const handlers: Record<string, () => void> = { carry: ctx.onCarry, drop: ctx.onDrop, accept: ctx.onDrop, 'overrule-order': () => ctx.onOverrule('order', undefined) };
+  const pickLabel = { carry: 'carry it out', drop: 'drop it', accept: 'accept it', 'overrule-order': 'overrule it' } as const;
+  if (pre) {
+    body.append(askHost, renderPreselected(asked!, pickLabel[hers as keyof typeof pickLabel], { onConfirm: handlers[hers!], onDefy: () => { defied.set(host, vote.id); renderVotePanel(host, vote, lines, ctx); } }));
+  } else {
+    if (askHost.childElementCount > 0) body.append(askHost);
+    body.append(...actions);
+  }
   host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: 'SQUAD VOTE', meta: `Day ${String(vote.day).padStart(3, '0')}`, body, level: 3 }));
 }
