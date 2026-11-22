@@ -462,7 +462,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 - Consumes: `blockingChoices`, `poseOf`, `mannequinSvg`, `blockingOf(scene, COMMANDER)`, `state.practices?.postures` (her names, read through `Knowledge.practice` if it exposes them, else the state field P16 already shows in her dossier).
 - Produces: `renderPostureDial(host: HTMLElement, ctx: { state: CampaignState | null; registries: Registries; onStage(action: Action): void; reduced: boolean }): void`. The fan is `details.alius-dial-fan` inside the host; its posture options carry `data-move` and `data-analyze="blockingPostures:<id>"`, as the strip's do.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `drawn only while live`: no blocking → the host is empty; live → one `svg` and the label.
   - `the commander's posture`:
     - `blocking/set` posture `kneeling_upright` → the label `KNEELING UPRIGHT` (the registry label, upper case);
@@ -475,10 +475,10 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `the strip is the same model`: `tests/ui/blockingStrip.test.ts` passes unchanged.
   - Coverage: the dial resolves `glossary:posture_dial`; every fan option resolves its registry reading (`analyzeCoverage` "the scene (P15a)" block, with selectors updated).
   - `no text in the figure`: the dial's `svg` has no `<text>`; the label is HTML.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/dial/dial.test.ts tests/ui/blockingStrip.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The dial host is in the `ui` layer at the bottom right: about 200 px at 1080 high, `min(18.5vh, 200px)`.
-- [ ] **Step 4: Run** the tests, `tests/ui/analyzeCoverage.test.ts`, `tests/ui/blockingDevice.test.ts`, tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the posture dial`
+- [x] **Step 2: Run** `npx vitest run tests/ui/dial/dial.test.ts tests/ui/blockingStrip.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The dial host is in the `ui` layer at the bottom right: about 200 px at 1080 high, `min(18.5vh, 200px)`.
+- [x] **Step 4: Run** the tests, `tests/ui/analyzeCoverage.test.ts`, `tests/ui/blockingDevice.test.ts`, tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the posture dial`
 
 ---
 

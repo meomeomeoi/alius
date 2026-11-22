@@ -234,9 +234,9 @@ describe('in the scene screen', () => {
       renderSceneScreen(host, { controller, getState: () => state, registries: reg, st, settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded: vi.fn(), ...over });
       return { host, stage };
     };
-    expect(draws(scene({ stateId: 'comrade' })).host.querySelector('.alius-blocking')).toBeNull();
+    expect(draws(scene({ stateId: 'comrade' })).host.querySelector('.alius-dial')).toBeNull(); // P10e: the scene draws the dial, the strip's model
     const live = draws(scene());
-    expect(live.host.querySelector('.alius-blocking')).not.toBeNull();
+    expect(live.host.querySelector('.alius-dial')).not.toBeNull();
     live.host.querySelector<HTMLElement>('[data-move="sit"]')!.click();
     expect(live.stage).toHaveBeenCalledWith({ type: 'blocking/set', payload: { person: COMMANDER, field: 'posture', value: 'sitting' } });
     const onStage = vi.fn();

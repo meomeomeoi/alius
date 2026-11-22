@@ -3235,7 +3235,6 @@
   position: absolute;
   right: 24px;
   bottom: 24px;
-  max-width: 30vw;
 }
 
 #alius-shell .alius-stage-reply .alius-transcript {
@@ -3991,6 +3990,163 @@
 
 #alius-shell.alius-reduced-motion .alius-scene-device::before {
   transition: none;
+}
+
+/* the posture dial: a dark glass circle with a thin ticked ring, the commander's body in it, the posture's name under it */
+#alius-shell .alius-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#alius-shell .alius-dial-fan {
+  position: relative;
+}
+
+#alius-shell .alius-dial-open {
+  display: block;
+  list-style: none;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+#alius-shell .alius-dial-open::-webkit-details-marker {
+  display: none;
+}
+
+#alius-shell .alius-dial-face {
+  position: relative;
+  display: block;
+  width: min(18.5vh, 200px);
+  height: min(18.5vh, 200px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--alius-trust) 12%, var(--alius-bg)), color-mix(in srgb, var(--alius-bg) 94%, #000) 78%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alius-trust) 30%, transparent), 0 6px 24px color-mix(in srgb, #000 55%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* the thin ticked ring */
+#alius-shell .alius-dial-face::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -0.7deg, color-mix(in srgb, var(--alius-trust) 55%, transparent) 0 1.4deg, transparent 1.4deg 7.5deg);
+  -webkit-mask: radial-gradient(circle, transparent 93%, #000 94%);
+  mask: radial-gradient(circle, transparent 93%, #000 94%);
+  pointer-events: none;
+}
+
+#alius-shell .alius-dial-face svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#alius-shell .alius-dial-open:hover .alius-dial-face,
+#alius-shell .alius-dial-fan[open] .alius-dial-face {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alius-trust) 70%, transparent), 0 6px 24px color-mix(in srgb, #000 55%, transparent);
+}
+
+#alius-shell.alius-readable .alius-dial-face {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: color-mix(in srgb, var(--alius-bg) 94%, #000);
+}
+
+#alius-shell .alius-dial-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--alius-trust) 60%, #ffffff);
+  text-shadow: 0 1px 6px color-mix(in srgb, var(--alius-bg) 90%, transparent);
+}
+
+#alius-shell .alius-dial-sub {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+/* the fan: what the blocking offers now, over the dial, growing up and to the left */
+#alius-shell .alius-dial-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: max-content;
+  max-width: min(46vw, 560px);
+  max-height: 64vh;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--alius-bg) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 50%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  z-index: 3;
+}
+
+#alius-shell.alius-readable .alius-dial-menu {
+  background: var(--alius-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+#alius-shell .alius-dial-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+#alius-shell .alius-dial-moves > strong,
+#alius-shell .alius-dial-list > strong {
+  flex: 1 0 100%;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+#alius-shell .alius-dial-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 84px;
+  padding: 6px 4px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--alius-bg) 60%, transparent);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+#alius-shell .alius-dial-option svg {
+  width: 56px;
+  height: 56px;
+}
+
+#alius-shell .alius-dial-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+#alius-shell .alius-dial-menu [aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#alius-shell .alius-dial-menu .alius-btn:not(.alius-dial-option) {
+  border-radius: 999px;
+  padding: 1px 12px;
+  font-size: 12px;
 }
 
 /* World parameters and disposition controls (P8). Palette variables only. */

@@ -32,7 +32,7 @@ import { lifeMode } from '../../engine/life/state';
 import { renderLetsMenu } from '../life/lifeViews';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import type { Action } from '../../engine/dispatch';
-import { renderBlockingStrip } from './blockingStrip';
+import { renderPostureDial } from './dial/dial';
 import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
 import { inputGauge, type InputGauge } from './stage/gauge';
@@ -585,10 +585,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (state.enabled || state.reason !== 'Nothing was read yet.') drawSiteReroll(genTools, ui, 'scene.intents', 'last', () => controller.rerollLast(), state);
   }
 
-  /** P15a: the strip; a chip dispatches through `stage` and the screen redraws. */
+  /** P10e §7: the posture dial (and its fan, the BLOCKING strip's model); a choice dispatches through `stage` and the screen redraws. */
   function drawBlocking(s: CampaignState): void {
-    renderBlockingStrip(blockingHost, {
-      state: s, registries,
+    renderPostureDial(blockingHost, {
+      state: s, registries, settings: ctx.settings(), reduced: motionReduced(ctx.settings()),
       onStage: (action) => { (ctx.onStage ?? ((a) => void controller.stage(a)))(action); if (!disposed) refresh(); },
     });
   }
@@ -702,7 +702,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
     letsHost = h('div', { class: 'alius-lets-host' });
     banner = h('div', { class: 'alius-pacing-host' });
-    blockingHost = h('div', { class: 'alius-blocking-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
@@ -816,7 +815,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     milestoneCards = cards('milestone', 'alius-milestone-cards');
     claimCards = cards('claim', 'alius-claim-cards');
     returnCards = cards('return', 'alius-return-cards');
-    hosts.dial.append(blockingHost);
+    blockingHost = hosts.dial; // the posture dial's corner
     // the wheel up over the frame or the reply lets the history down
     const wheelUp = (ev: Event): void => { if ((ev as WheelEvent).deltaY < 0) curtain.open(); };
     layers.frame.addEventListener('wheel', wheelUp);
