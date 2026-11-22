@@ -85,15 +85,14 @@ type Slap = NonNullable<PracticeState['slap']>;
 /** The punishment a slap belongs to, when one is named. */
 const punishmentOf = (state: CampaignState, slap: Slap): OpenPunishment | undefined => (slap.punishmentId === undefined ? undefined : state.practices?.punishments.find((p) => p.id === slap.punishmentId));
 
-/** A flinch costs the sentence: `vindictive` adds one to its count, `ritual` makes the ceremony start its number again (the step is not done any more). */
-function flinchedSentence(draft: CampaignState, reg: Registries, slap: Slap, style: string | undefined): void {
+/**
+ * A flinch costs the sentence while the sentence can still change: `vindictive` adds one to its count. Nothing once the ceremony is carried out (the slap is the last thing it does, so a flinch at it is
+ * scored on the slap only: it never reopens the number or the steps).
+ */
+function flinchedSentence(draft: CampaignState, slap: Slap, style: string | undefined): void {
   const p = punishmentOf(draft, slap);
-  if (p === undefined) return;
+  if (p === undefined || p.ceremony?.carried === true) return;
   if (style === 'vindictive') p.count = (p.count ?? p.ceremony?.number ?? 0) + 1;
-  if (style === 'ritual' && p.ceremony?.number !== undefined) {
-    delete p.ceremony.number;
-    p.ceremony.done = p.ceremony.done.filter((id) => (reg.ceremonySteps.get(id) as { check?: string } | undefined)?.check !== 'number');
-  }
 }
 
 /** What the slap is: it landed. Favour by the result, her style's answer to a flinch, her `swing`, the threat event and, before others, what those who saw it lose and what is remembered. */
@@ -107,7 +106,7 @@ function deal(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId
   if (result === 'braced') events.push(...regardRise(draft, reg, holderId, 'dignity'));
   if (result === 'flinched') {
     if (style === 'affectionate') addFavour(draft, holderId, T.favour.softer); // she is gentler: the flinch is forgiven
-    flinchedSentence(draft, reg, slap, style);
+    flinchedSentence(draft, slap, style);
     if (style === 'cruel' && slap.again !== true) events.push(...startSlap(draft, ctx, holderId, { again: true, ...(slap.punishmentId !== undefined ? { punishmentId: slap.punishmentId } : {}) }));
   }
   events.push(...practise(draft, holderId, ['swing'], style ?? ''));

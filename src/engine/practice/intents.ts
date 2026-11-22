@@ -95,7 +95,7 @@ export function practiceIntentInput(state: CampaignState, reg: Registries, parti
   // a keep that the commander argued over (the one exchange was had) may be settled by a compromise: the hold ends late
   const alarms = p?.alarm !== undefined && mine(p.alarm.holderId) && p.alarm.answer === 'keep' && p.alarm.argued === true && p.held !== undefined ? [{ id: p.alarm.id, unitId: p.alarm.holderId, summary: ALARM_WORDS[p.alarm.kind] }] : [];
   const ceremonies = (p?.punishments ?? []).flatMap((x) => {
-    if (!mine(x.holderId) || x.status !== 'accepted' || x.ceremony === undefined) return [];
+    if (!mine(x.holderId) || x.status !== 'accepted' || x.ceremony === undefined || x.ceremony.carried === true) return [];
     const step = x.ceremony.steps.find((id) => !x.ceremony!.done.includes(id));
     const entry = step === undefined ? undefined : (reg.ceremonySteps.get(step) as { check?: string; label?: unknown } | undefined);
     const check: 'words' | 'number' | undefined = entry?.check === 'words' ? 'words' : entry?.check === 'number' ? 'number' : undefined;

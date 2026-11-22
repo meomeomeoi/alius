@@ -264,3 +264,64 @@ describe('what the model is told', () => {
     expect(line.text).toMatch(/carries out the punishment/);
   });
 });
+
+describe('a finished ceremony never reopens (review I5)', () => {
+  /** A ritual holder, the slap as a ceremony punishment, physical discipline on and a scene with her; every step done up to the last one by the real actions. */
+  function slapCeremony(): CampaignState {
+    const s0 = waiting('ritual', 4, { entryId: 'the_slap', summary: 'the slap' });
+    s0.content = { enabled: [...(s0.content?.enabled ?? []), 'physical_discipline_shown'] };
+    let s = accept(s0).state;
+    for (let guard = 0; guard < 12; guard++) {
+      const next = px(s).ceremony!.steps.find((id) => !px(s).ceremony!.done.includes(id));
+      if (next === undefined) break;
+      const check = (reg.ceremonySteps.get(next) as { check?: string; posture?: string }).check;
+      if (check === 'chip') s = step(s, next).state;
+      else if (check === 'words') s = said(s, next).state;
+      else if (check === 'number') s = said(s, next, 8).state;
+      else s = posture(s, (reg.ceremonySteps.get(next) as { posture: string }).posture).state;
+    }
+    return s;
+  }
+  const slapOf = (s: CampaignState) => s.practices!.slap!;
+
+  it('a flinch at the final slap is scored on the slap only: the ceremony stays done and the number is not asked again', () => {
+    const s = slapCeremony();
+    expect(px(s).ceremony!.done).toHaveLength(8);
+    expect(slapOf(s)).toBeDefined();
+    const r = run(s, reg, { type: 'practice/slap_answer', payload: { slapId: slapOf(s).id, result: 'flinched' } });
+    expect(errors(r.events)).toEqual([]);
+    expect(px(r.state).ceremony!.done).toHaveLength(8);
+    expect(px(r.state).ceremony!.number).toBe(8);
+    const again = step(r.state, 'name_the_number', { number: 8 });
+    expect(errors(again.events)[0]?.message).toMatch(/gone|next step/i);
+    expect(ofType(again.events, 'ceremony_done')).toEqual([]);
+    expect(ofType(again.events, 'slap_started')).toEqual([]);
+    expect(dynamicOf(again.state, ANN)!.hold).toBe(dynamicOf(r.state, ANN)!.hold);
+    // no intent, no card, no offer for a step that is behind it
+    expect(said(r.state, 'name_the_number', 8).events).toEqual([]);
+  });
+
+  it('the day end does not carry a done ceremony out a second time', () => {
+    const s = slapCeremony();
+    const r = run(s, reg, { type: 'practice/slap_answer', payload: { slapId: slapOf(s).id, result: 'flinched' } }).state;
+    const d = structuredClone(r);
+    d.day = r.day + 1;
+    d.practices!.punishments[0].answeredDay = r.day;
+    d.practices!.slap = undefined;
+    const events = practiceDayStep(d, ctxOf(d, reg));
+    expect(ofType(events, 'ceremony_done')).toEqual([]);
+    expect(ofType(events, 'relation_changed')).toEqual([]);
+    expect(px(d).status).toBe('done');
+  });
+
+  it('a ceremony left open at the day end is carried out once, then marked: the next close does nothing', () => {
+    const s = accept(waiting('ritual')).state;
+    const d = structuredClone(s);
+    d.day = s.day + 1;
+    d.practices!.punishments[0].answeredDay = s.day;
+    expect(ofType(practiceDayStep(d, ctxOf(d, reg)), 'ceremony_done')).toHaveLength(1);
+    expect(px(d).ceremony!.carried).toBe(true);
+    d.practices!.punishments[0].status = 'accepted';
+    expect(ofType(practiceDayStep(d, ctxOf(d, reg)), 'ceremony_done')).toEqual([]);
+  });
+});

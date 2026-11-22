@@ -180,8 +180,8 @@ export interface Task {
   brokenDay?: number;
 }
 
-/** A ceremony's progress (R21): the step rows for her style by `order`, the ones done, and the number the commander named. */
-export interface CeremonyState { steps: string[]; done: string[]; number?: number }
+/** A ceremony's progress (R21): the step rows for her style by `order`, the ones done, the number the commander named, and `carried` once the punishment was carried out (a finished ceremony never reopens). */
+export interface CeremonyState { steps: string[]; done: string[]; number?: number; carried?: true }
 
 export interface OpenPunishment {
   id: string;

@@ -203,17 +203,15 @@ describe('the outcomes', () => {
     expect(answer(start(base, { punishmentId: 'pp1' }).d, 'braced').state.practices!.punishments[0].count).toBe(2);
   });
 
-  it('ritual: a flinch resets the number the ceremony was given', () => {
+  it('ritual: a flinch at the final slap leaves the finished ceremony alone (review I5)', () => {
     const base = slapWorld('ritual');
     const p: OpenPunishment = {
       id: 'pp1', holderId: ANN, entryId: 'the_slap', severity: 4, offence: { kind: 'task_broken', stakes: 'minor', day: base.day }, text: 'x', summary: 'the slap', status: 'accepted', day: base.day,
-      ceremony: { steps: ['ask_formally', 'name_the_number'], done: ['ask_formally', 'name_the_number'], number: 8 },
+      ceremony: { steps: ['ask_formally', 'name_the_number'], done: ['ask_formally', 'name_the_number'], number: 8, carried: true },
     };
     base.practices = { ...blankPractices(), seq: 3, punishments: [p] };
-    const kept = answer(start(base, { punishmentId: 'pp1' }).d, 'braced').state.practices!.punishments[0].ceremony!;
-    expect(kept.number).toBe(8);
-    const reset = answer(start(base, { punishmentId: 'pp1' }).d, 'flinched').state.practices!.punishments[0].ceremony!;
-    expect(reset.number).toBeUndefined();
+    const kept = answer(start(base, { punishmentId: 'pp1' }).d, 'flinched').state.practices!.punishments[0].ceremony!;
+    expect(kept).toMatchObject({ number: 8, done: ['ask_formally', 'name_the_number'], carried: true });
   });
 
   it('refuses an answer for a slap that is not open, a wrong id or a result that is no result; draws nothing', () => {

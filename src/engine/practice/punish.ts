@@ -227,13 +227,15 @@ const stepEntry = (reg: Registries, id: string): { check?: string; posture?: str
 /** Her punishment whose ceremony is running (accepted, not all steps done). */
 const runningCeremony = (state: CampaignState, id: string): OpenPunishment | undefined => {
   const p = state.practices?.punishments.find((x) => x.id === id);
-  return p !== undefined && p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.done.length < p.ceremony.steps.length ? p : undefined;
+  return p !== undefined && p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.carried !== true && p.ceremony.done.length < p.ceremony.steps.length ? p : undefined;
 };
 /** The step that is next: the first of the steps that is not done. */
-export const nextCeremonyStep = (p: Pick<OpenPunishment, 'ceremony'>): string | undefined => p.ceremony?.steps.find((id) => !p.ceremony!.done.includes(id));
+export const nextCeremonyStep = (p: Pick<OpenPunishment, 'ceremony'>): string | undefined => (p.ceremony?.carried === true ? undefined : p.ceremony?.steps.find((id) => !p.ceremony!.done.includes(id)));
 
 /** All steps done (or none left to do) runs what ACCEPT would have done, and says `ceremony_done` (`lapsed` when the day ended before the commander did the rest and she carried it out herself). */
 function finishCeremony(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment, lapsed: boolean): EngineEvent[] {
+  if (p.ceremony === undefined || p.ceremony.carried === true) return [];
+  p.ceremony.carried = true; // the effects run once: nothing reopens a finished ceremony (a flinch at its slap, the day's close)
   return [{ type: 'ceremony_done', punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, ...(lapsed ? { lapsed: true } : {}) }, ...carryOut(draft, ctx, p)];
 }
 
@@ -501,7 +503,7 @@ export function closePunishments(draft: CampaignState, ctx: EngineCtx): EngineEv
   for (const p of draft.practices?.punishments ?? []) {
     if ((p.answeredDay ?? p.day) >= draft.day) continue;
     // a ceremony the commander left open is finished by her: she carries the punishment out herself (no dodging it by not taking the steps)
-    if (p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx.registries, p.holderId)) events.push(...finishCeremony(draft, ctx, p, true));
+    if (p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.carried !== true && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx.registries, p.holderId)) events.push(...finishCeremony(draft, ctx, p, true));
     if (p.status === 'accepted') p.status = 'done';
     delete p.inverse;
   }

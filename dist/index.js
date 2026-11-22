@@ -23079,14 +23079,10 @@ function slapAfterSlip(draft, ctx2, holderId, offence) {
   return startSlap(draft, ctx2, holderId, { unannounced: true });
 }
 var punishmentOf = (state, slap) => slap.punishmentId === void 0 ? void 0 : state.practices?.punishments.find((p) => p.id === slap.punishmentId);
-function flinchedSentence(draft, reg, slap, style) {
+function flinchedSentence(draft, slap, style) {
   const p = punishmentOf(draft, slap);
-  if (p === void 0) return;
+  if (p === void 0 || p.ceremony?.carried === true) return;
   if (style === "vindictive") p.count = (p.count ?? p.ceremony?.number ?? 0) + 1;
-  if (style === "ritual" && p.ceremony?.number !== void 0) {
-    delete p.ceremony.number;
-    p.ceremony.done = p.ceremony.done.filter((id) => reg.ceremonySteps.get(id)?.check !== "number");
-  }
 }
 function deal(draft, ctx2, holderId, result, slap) {
   const reg = ctx2.registries;
@@ -23098,7 +23094,7 @@ function deal(draft, ctx2, holderId, result, slap) {
   if (result === "braced") events.push(...regardRise(draft, reg, holderId, "dignity"));
   if (result === "flinched") {
     if (style === "affectionate") addFavour(draft, holderId, T5.favour.softer);
-    flinchedSentence(draft, reg, slap, style);
+    flinchedSentence(draft, slap, style);
     if (style === "cruel" && slap.again !== true) events.push(...startSlap(draft, ctx2, holderId, { again: true, ...slap.punishmentId !== void 0 ? { punishmentId: slap.punishmentId } : {} }));
   }
   events.push(...practise2(draft, holderId, ["swing"], style ?? ""));
@@ -25315,10 +25311,12 @@ function ceremonyCount(style, severity, named4) {
 var stepEntry = (reg, id) => reg.ceremonySteps.get(id);
 var runningCeremony = (state, id) => {
   const p = state.practices?.punishments.find((x) => x.id === id);
-  return p !== void 0 && p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.done.length < p.ceremony.steps.length ? p : void 0;
+  return p !== void 0 && p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.carried !== true && p.ceremony.done.length < p.ceremony.steps.length ? p : void 0;
 };
-var nextCeremonyStep = (p) => p.ceremony?.steps.find((id) => !p.ceremony.done.includes(id));
+var nextCeremonyStep = (p) => p.ceremony?.carried === true ? void 0 : p.ceremony?.steps.find((id) => !p.ceremony.done.includes(id));
 function finishCeremony(draft, ctx2, p, lapsed) {
+  if (p.ceremony === void 0 || p.ceremony.carried === true) return [];
+  p.ceremony.carried = true;
   return [{ type: "ceremony_done", punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, ...lapsed ? { lapsed: true } : {} }, ...carryOut(draft, ctx2, p)];
 }
 function ceremonyStep(draft, ctx2, punishmentId, step, via, number) {
@@ -25550,7 +25548,7 @@ function closePunishments(draft, ctx2) {
   const events = [];
   for (const p of draft.practices?.punishments ?? []) {
     if ((p.answeredDay ?? p.day) >= draft.day) continue;
-    if (p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx2.registries, p.holderId)) events.push(...finishCeremony(draft, ctx2, p, true));
+    if (p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.carried !== true && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx2.registries, p.holderId)) events.push(...finishCeremony(draft, ctx2, p, true));
     if (p.status === "accepted") p.status = "done";
     delete p.inverse;
   }
@@ -25691,7 +25689,7 @@ function practiceIntentInput(state, reg, participants, channel) {
   const punishments = (p?.punishments ?? []).filter((x) => mine(x.holderId) && (x.status === "offered" || x.status === "negotiating") && x.sealed !== true).map(row4);
   const alarms = p?.alarm !== void 0 && mine(p.alarm.holderId) && p.alarm.answer === "keep" && p.alarm.argued === true && p.held !== void 0 ? [{ id: p.alarm.id, unitId: p.alarm.holderId, summary: ALARM_WORDS[p.alarm.kind] }] : [];
   const ceremonies = (p?.punishments ?? []).flatMap((x) => {
-    if (!mine(x.holderId) || x.status !== "accepted" || x.ceremony === void 0) return [];
+    if (!mine(x.holderId) || x.status !== "accepted" || x.ceremony === void 0 || x.ceremony.carried === true) return [];
     const step = x.ceremony.steps.find((id) => !x.ceremony.done.includes(id));
     const entry = step === void 0 ? void 0 : reg.ceremonySteps.get(step);
     const check = entry?.check === "words" ? "words" : entry?.check === "number" ? "number" : void 0;
