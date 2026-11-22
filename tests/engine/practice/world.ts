@@ -38,3 +38,18 @@ export function withBea(s: CampaignState, frame: Frame = 'play'): CampaignState 
   s.relations[BEA].dynamic = { ...blankDynamic(s.day), frame, hold: 30 };
   return s;
 }
+
+/** The holder also practises `service` (the category of the task, protocol and demonstration seeds) at `as`, and it is switched on. */
+export function withService(s: CampaignState, as: 'tolerates' | 'enjoys' | 'craves' = 'enjoys'): CampaignState {
+  s.content = { enabled: [...(s.content?.enabled ?? []), 'service'] };
+  unitOf(s, ANN).bond!.practice!.categories.service = { as, witness: 'indifferent' };
+  return s;
+}
+
+/** Her Want runs and reads at `value` (a lover, medium desire). */
+export function withWant(s: CampaignState, value: number): CampaignState {
+  s.relations[ANN].stateId = 'lover';
+  unitOf(s, ANN).bond!.desire = 'medium';
+  s.relations[ANN].want = value;
+  return s;
+}

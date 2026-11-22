@@ -1,4 +1,7 @@
 export { ensurePractices, freezeOf, nextPracticeId, practiceHolders, practiceLive, practicesOf, practicesOn } from './gate';
+export { newPracticeChance, kindsToday, practiceDayStep } from './dayStep';
+export { acceptFormOf, fallbackOutput, issuePractice, requestPractice, stakesCeilingOf, WRITERS } from './issue';
+export { fallbackLine, pickSeeds, plainSummary, seedPool } from './seeds';
 export { forgetPractices, holdsPractices, withdrawPractices } from './forget';
 export {
   ACCEPT_FORMS, ALARM_ANSWERS, ALARM_KINDS, blankPractices, CHECK_KINDS, HANDOVER_KINDS, KINDNESS_KINDS, OFFENCE_KINDS, PERMISSION_ANSWERS, PRACTICE_EVENT_TYPES, PRACTICE_ID_PREFIXES,
@@ -6,5 +9,5 @@ export {
 } from './state';
 export type {
   AcceptForm, AlarmAnswer, AlarmKind, CeremonyState, CheckKind, HandoverKind, HeldState, KindnessKind, Offence, OffenceKind, OpenAlarm, OpenDemonstration, OpenPunishment,
-  PermissionAnswer, PracticeKind, PracticeRequest, PracticeState, Proof, PunishmentEffectType, PunishmentStatus, SlapResult, Stake, Task, TaskStatus, UnfairKind, Verdict,
+  PermissionAnswer, PracticeKind, PracticeRequest, PracticeState, Proof, PunishmentEffectType, PunishmentStatus, SlapResult, Stake, Task, TaskStatus, UnfairKind, ValidOutput, Verdict,
 } from './state';

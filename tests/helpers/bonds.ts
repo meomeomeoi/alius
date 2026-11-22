@@ -8,6 +8,10 @@ import { eligibleTemplates as dilemmaTemplates } from '../../src/engine/dilemma/
 import { DILEMMA_CONTEXTS } from '../../src/engine/dilemma/types';
 import { measureList, openDemand } from '../../src/engine/discipline';
 import { Rng, seedRng } from '../../src/engine/rng';
+import { practiceCategories } from '../../src/engine/dynamic/profile';
+import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
+import { pickSeeds } from '../../src/engine/practice/seeds';
+import { PRACTICE_KINDS } from '../../src/engine/practice/state';
 import type { Bond, CampaignState } from '../../src/engine/state/types';
 import { buildDigest } from '../../src/engine/world';
 import { checkOffer } from '../../src/engine/world/missions';
@@ -157,8 +161,28 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
   // P15: until the milestone offer and the aftermath pick read them (Tasks 21 and 30), every entry the gate lets through
   dynamicMilestones: (state, reg) => vocabularyIds(state, reg, 'dynamicMilestones'),
   aftermaths: (state, reg) => vocabularyIds(state, reg, 'aftermaths'),
-  // P16: until the seed pick and the punishment pick read them (a later task of the package), every entry the gate lets through; the bookings are the ones a named unit could be offered
-  practiceSeeds: (state, reg) => vocabularyIds(state, reg, 'practiceSeeds'),
+  // P16: the seeds come through the real pick (`pickSeeds`, run over 50 days); until the punishment pick reads them (a later task of the package) the others are every entry the gate lets through; the bookings are the ones a named unit could be offered
+  practiceSeeds: (state, reg) => {
+    // a holder at play who practises every category the dynamic is about, with each track level high enough for any tier (the gate under test is the content one)
+    const s = structuredClone(state);
+    const holder = s.squad.find((u) => u.kind === 'named')!;
+    const cats = practiceCategories(reg);
+    s.content = { enabled: [...new Set([...(s.content?.enabled ?? []), 'service'])] };
+    withBond(s, holder.id, { leadStyle: 'dominant' });
+    holder.bond!.practice = {
+      categories: Object.fromEntries(cats.map((c) => [c, { as: 'enjoys' as const, witness: 'indifferent' as const }])), style: { primary: 'cold' as const }, audience: 'indifferent',
+      inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate',
+    };
+    s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+    s.relations[holder.id].dynamic = { ...blankDynamic(s.day), frame: 'play', hold: 30, tracks: Object.fromEntries([...reg.dynamicTracks.keys()].map((t) => [t, { xp: 150, level: 5 as const }])) };
+    s.relations[holder.id].stateId = 'lover';
+    const seen = new Set<string>();
+    for (let day = 1; day <= 50; day++) {
+      s.day = day;
+      for (const kind of PRACTICE_KINDS) for (const id of pickSeeds(s, reg, holder.id, kind)) seen.add(id);
+    }
+    return [...seen];
+  },
   holderPunishments: (state, reg) => vocabularyIds(state, reg, 'holderPunishments'),
   implements: (state, reg) => vocabularyIds(state, reg, 'implements'),
   bookingKinds: (state, reg) => state.squad.filter((u) => u.kind === 'named').flatMap((u) => bookingKindsFor(state, reg, u.id).map((k) => String(k.id))),

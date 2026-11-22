@@ -1,9 +1,27 @@
 import { registerWithdrawal } from '../bonds/content';
+import { registerDayEndStep } from '../calendar';
+import { registerAction } from '../dispatch';
+import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
+import { issuePractice } from '../practice/issue';
+import type { ValidOutput } from '../practice/state';
 
-// Importing this module registers what the practices (P16) hang on the lower layers; the actions themselves come with the tasks that
-// need them (`practice/*`, none yet). It is imported by `src/app.ts` after `actions/dynamic`, so the day step it will register
-// later runs after the dynamic's own.
+// Importing this module registers what the practices (P16) hang on the lower layers and the actions of the package, as each task adds them. It is
+// imported by `src/app.ts` after `actions/dynamic`, so the day step it registers runs after the dynamic's own.
 
 // A content category switched off withdraws every open practice tagged with it, ends a hold that needs it and suspends a denial rule: no deltas.
 registerWithdrawal(withdrawPractices);
+// What a day does to the practices (R7): fallback of old requests, new requests, expiry; nothing while nobody holds.
+registerDayEndStep('dm_rumors', practiceDayStep);
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * `practice/issue { requestId, output? }`: writes the practice of a request. `output` is the validated card the controller got from the model; none means the
+ * fallback line. Refused for a request that is gone, a card of another kind, or a holder who is not holding.
+ */
+registerAction('practice/issue', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.requestId !== 'string') throw new Error('practice/issue needs { requestId }.');
+  const output = payload.output === undefined ? 'fallback' : (payload.output as ValidOutput);
+  return issuePractice(draft, ctx, payload.requestId, output);
+});

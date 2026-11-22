@@ -233,6 +233,26 @@ export interface PracticeState {
   verdictScene?: Record<string, string>;
 }
 
+/**
+ * What `validatePracticeOutput` makes of the model's card (R5): every field legal, clamped to what the engine allows. `issuePractice` writes a
+ * practice from it (or from the fallback, which builds the same shape from a seed). The engine never reads `text`; the controller and the cards do.
+ */
+export interface ValidOutput {
+  kind: PracticeKind;
+  seedId?: string;
+  tags: string[];
+  track: string;
+  tier: 1 | 2 | 3 | 4 | 5;
+  stakes: Stake;
+  check: CheckKind;
+  checkArg?: string;
+  deadline?: { days: number; slot?: Slot };
+  proof: Proof;
+  audienceIds?: string[];
+  text: string;
+  summary: string;
+}
+
 /** What a campaign that never had a holder at `play` has: nothing (`practices` is absent). The first write creates this. */
 export function blankPractices(): PracticeState {
   return { seq: 0, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, postures: {}, offences: {}, records: [], handovers: [] };
