@@ -205,7 +205,8 @@ export function deadlineSweep(draft: CampaignState, ctx: Pick<EngineCtx, 'regist
       continue;
     }
     if (task.status !== 'open') continue;
-    if (task.check === 'token_worn' && verdictNow(draft, task) === 'broken') { out.push(...settleTask(draft, ctx, task.id, 'broken', 'engine')); continue; }
+    // the token breaks it before its deadline only from the day after it was accepted (the evening it was accepted the token may not be on yet)
+    if (task.check === 'token_worn' && draft.day > (task.answeredDay ?? task.day) && verdictNow(draft, task) === 'broken') { out.push(...settleTask(draft, ctx, task.id, 'broken', 'engine')); continue; }
     if (task.deadline === undefined || task.deadline.day > draft.day) continue;
     out.push(...settleTask(draft, ctx, task.id, atDeadline(draft, task), 'engine'));
   }

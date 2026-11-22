@@ -10,6 +10,7 @@ import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 import { pickHolderPunishment, severityOfEntry } from './offences';
 import { stakeRank, type OpenPunishment, type PracticeKind, type PracticeRequest, type Task, type ValidOutput } from './state';
+import { TUNING } from '../tuning';
 import { acceptFormOf, writeTask, type Writer } from './tasks';
 import { validatePracticeOutput } from './validate';
 
@@ -63,7 +64,7 @@ export function fallbackOutput(state: CampaignState, reg: Registries, request: P
   const ceiling = stakesCeilingOf(state, request.holderId);
   return {
     kind: request.kind, seedId: seed.id, tags: [...seed.contentTags], track: seed.track, tier: seed.tier as ValidOutput['tier'], stakes: stakeRank(seed.stakes) > stakeRank(ceiling) ? ceiling : seed.stakes,
-    check: seed.check ?? 'model', proof: seed.proof ?? 'none', text: fallbackLine(request.kind, seed.gist), summary: plainSummary(seed),
+    check: seed.check ?? 'model', proof: seed.proof ?? 'none', deadline: { days: seed.days ?? TUNING.practice.defaultDeadlineDays }, text: fallbackLine(request.kind, seed.gist), summary: plainSummary(seed),
   };
 }
 

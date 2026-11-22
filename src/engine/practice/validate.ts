@@ -200,6 +200,10 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
     const days = Math.min(D.max, Math.max(D.min, Math.round(raw.deadline.days)));
     if (days !== raw.deadline.days) issues.push('deadline was clamped');
     deadline = { days, ...(typeof raw.deadline.slot === 'string' && SLOTS.includes(raw.deadline.slot) ? { slot: raw.deadline.slot as Slot } : {}) };
+  } else {
+    // every task has a deadline: the seed's days, else the default (the model's card may leave it out)
+    deadline = { days: seed?.days ?? TUNING.practice.defaultDeadlineDays };
+    issues.push('deadline was missing and is the seed\'s or the default');
   }
 
   const eligible = units;

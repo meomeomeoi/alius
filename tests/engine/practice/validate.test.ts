@@ -6,6 +6,7 @@ import { requestPractice } from '../../../src/engine/practice/issue';
 import type { PracticeRequest } from '../../../src/engine/practice/state';
 import { buildPracticeInput, validatePracticeOutput } from '../../../src/engine/practice/validate';
 import { Rng } from '../../../src/engine/rng';
+import { TUNING } from '../../../src/engine/tuning';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { getCallType } from '../../../src/llm/callTypes';
 import '../../../src/llm/calls/all';
@@ -114,7 +115,7 @@ describe('validatePracticeOutput: the table', () => {
     const req = requestFor(s);
     expect(validatePracticeOutput(s, reg, req, valid({ deadline: { days: 30 } }))!.output.deadline).toEqual({ days: 7 });
     expect(validatePracticeOutput(s, reg, req, valid({ deadline: { days: 0, slot: 'dawn' } }))!.output.deadline).toEqual({ days: 1 });
-    expect(validatePracticeOutput(s, reg, req, valid({ deadline: 'soon' }))!.output.deadline).toBeUndefined();
+    expect(validatePracticeOutput(s, reg, req, valid({ deadline: 'soon' }))!.output.deadline).toEqual({ days: TUNING.practice.defaultDeadlineDays }); // none stated: the default
   });
 
   it('audienceIds with an absent id are filtered; a demonstration left with none is null', () => {

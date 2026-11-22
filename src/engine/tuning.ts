@@ -973,6 +973,8 @@ export const TUNING = Object.freeze({
     protocolMax: Object.freeze({ play: 1, role: 2, rule: 3 } as const),
     stakesCeiling: Object.freeze({ play: 'minor', role: 'major', rule: 'severe' } as const),
     deadlineDays: Object.freeze({ min: 1, max: 7 }),
+    /** The days a task gets when neither the model's card nor the seed names any (AUTHOR TO TUNE): every task has a deadline, so none can stay open for ever. */
+    defaultDeadlineDays: 2,
     seeds: Object.freeze({ min: 3, max: 6 }),
     textMax: 400,
     summaryMax: 80,

@@ -2961,6 +2961,8 @@ export const PracticeSeedSchema = BaseEntrySchema.extend({
   audience: z.enum(SEED_AUDIENCE).optional(),
   romantic: z.literal(true).optional(),
   needs: capabilityEnum.optional(),
+  /** The days a task from this seed gives (1 to 7); none: `TUNING.practice.defaultDeadlineDays`. Every task has a deadline. */
+  days: int.min(1).max(7).optional(),
   weight: z.number().min(0.1).max(20),
   description: str,
 }).strict();
