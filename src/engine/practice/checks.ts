@@ -20,6 +20,7 @@ import { seenByChance } from './demonstration';
 import { practiceSample } from './sample';
 import { earnedPermission } from './denial';
 import { routineBroken } from './service';
+import { pendingUnfair, takeUnfair } from './unfair';
 import { practiceRoll, stakeRank, STAKES, type Stake, type Task } from './state';
 import type { EventIntent } from '../relations/intents';
 import { isLiving } from '../economy';
@@ -71,8 +72,11 @@ export function settleTask(
     while (dyn.recent.length > RECENT_MAX) dyn.recent.shift();
   }
   if (outcome === 'kept') {
-    const events: EngineEvent[] = [{ type: 'task_kept', taskId, unitId: holderId, holderId, via, stakes: task.stakes }];
+    // a cancelled reward (R16): "good, not good enough": this kept task gives no hold (the feed reads the record while the event lands), and it is told once
+    const cancelled = pendingUnfair(draft, holderId, 'cancelled_reward') !== undefined;
+    const events: EngineEvent[] = [{ type: 'task_kept', taskId, unitId: holderId, holderId, via, stakes: task.stakes, ...(cancelled ? { cancelled: true } : {}) }];
     events.push(...hitHer(draft, reg, holderId, 'task_kept', SEVERITY[stakeRank(task.stakes)], 'kept her task'));
+    if (cancelled) takeUnfair(draft, holderId, 'cancelled_reward');
     events.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
     earnedPermission(draft, task); // a task she gave to earn her permission grants it for today

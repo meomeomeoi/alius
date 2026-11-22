@@ -1347,5 +1347,23 @@
       "practice",
       "ask_mocked"
     ]
+  },
+  {
+    "id": "punishment_unfair",
+    "event": "punishment_issued",
+    "when": {
+      "unfair": true
+    },
+    "text": "AUTHOR TO WRITE: {name} punished the commander for nothing, and knows it.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "hiddenFromCommander": true,
+    "tags": [
+      "dynamic",
+      "practice",
+      "punishment_unfair"
+    ]
   }
 ]

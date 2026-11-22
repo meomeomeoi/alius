@@ -299,6 +299,7 @@ describe('facts', () => {
     demonstration_staged: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: false, summary: 'service at the mess table' },
     held_alarm_kept: { type: 'hold_alarm', alarmId: 'pa1', kind: 'launch', unitId: ANN, answer: 'keep', run: true, party: [BEA] },
     held_alarm_late: { type: 'hold_alarm', alarmId: 'pa1', kind: 'launch', unitId: ANN, answer: 'release_late', party: [BEA] },
+    punishment_unfair: { type: 'punishment_issued', unitId: ANN, punishmentId: 'pp1', unfair: true },
     ask_mocked: { type: 'ask_answered', unitId: ANN, what: 'task', answer: 'mocked', present: [ANN, BEA] },
     demonstration_humbling: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: true, summary: 'fetching for her before the mess' },
   });

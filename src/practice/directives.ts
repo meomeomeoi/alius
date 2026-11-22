@@ -6,6 +6,7 @@ import { temperamentOf } from '../engine/life/state';
 import { practiceLive } from '../engine/practice/gate';
 import { heldNow } from '../engine/practice/held';
 import { askWords } from '../engine/practice/initiative';
+import { pendingUnfair } from '../engine/practice/unfair';
 import { protocolRules } from '../engine/practice/service';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
@@ -35,6 +36,8 @@ export const PERMISSION_PREFIX = 'practice:permission:';
 export const VERDICT_PREFIX = 'practice:verdict:';
 /** Her answer to a duty that came while the commander was held, for her next reply only (event-driven). */
 export const ALARM_PREFIX = 'practice:alarm:';
+/** She breaks what she demands, while she is in the room and her next scene is the one (scene). Derived from `practices.unfair`; the commander is never told it is unfair. */
+export const DOUBLE_PREFIX = 'practice:double:';
 /** Her answer to being asked for a task or a punishment, for her next reply only (event-driven). */
 export const ASK_PREFIX = 'practice:ask:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
@@ -117,6 +120,12 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     });
     if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} She reacts as she would. ${NEVER_NAME}`) });
   }
+  // a double standard (R16): she breaks what she demands, in this scene; never named as unfair
+  for (const unit of holdersIn(state, reg, present)) {
+    const rec = pendingUnfair(state, unit.id, 'double_standard');
+    if (rec === undefined || (rec.sceneId !== undefined && rec.sceneId !== state.scene?.id) || state.scene === undefined) continue;
+    out.push({ id: `${DOUBLE_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} does, in this scene, what she demands the commander not do: she is late, short with the commander or in the commander's seat, and does not see anything wrong in it. If the commander points it out she answers as she would. ${NEVER_NAME}`) });
+  }
   // the hold (R11): she is keeping the commander in her quarters; a sensory one is told only as what reaches the commander (never the mechanic, never a feeling)
   const held = heldNow(state);
   const keeper = held === null ? undefined : holdersIn(state, reg, present).find((u) => u.id === held.by);
@@ -138,6 +147,7 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (event.type === 'hold_asked') return holdAskedDirective(event, state, reg);
   if (event.type === 'hold_alarm') return alarmDirective(event, state, reg);
   if (event.type === 'ask_answered') return askDirective(event, state, reg);
+  if (event.type === 'task_kept' && event.cancelled === true) return cancelledRewardDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -145,6 +155,13 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+
+/** A task kept and given nothing for it (a cancelled reward, R16), for her next reply only: it was good, and it was not good enough. Nothing is said of why. */
+function cancelledRewardDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const unit = state.squad.find((u) => u.id === event.holderId);
+  if (unit === undefined || !practiceLive(state, reg, unit.id)) return null;
+  return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} takes the kept task coldly: it was good, and it was not good enough. She gives nothing for it, and says so in her own way. ${NEVER_NAME}`) };
 }
 
 /** What the commander asked her for, as prose. */

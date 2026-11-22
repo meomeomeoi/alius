@@ -1474,6 +1474,19 @@ var TUNING = Object.freeze({
       vindictive: 0.3
     }),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 }),
+    /**
+     * Unfairness in hand (R16, `AUTHOR TO TUNE`): the days a cancelled reward, a double standard or a moved goal that no scene, task or hold has used waits before it goes stale, and the
+     * pretexts the model is told for a punishment without guilt (never that nothing was done: the words must not give the unfairness away).
+     */
+    unfair: Object.freeze({
+      days: 7,
+      pretexts: Object.freeze([
+        "something she says was left undone",
+        "a rule she says the commander broke",
+        "a word she says was out of turn",
+        "a slip she says she saw"
+      ])
+    }),
     /** The press-and-hold signature of a `signed` accept (R.1): how long it is held, in milliseconds. AUTHOR TO TUNE. */
     sign: Object.freeze({ holdMs: 1200 }),
     /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`; `compromat` is what she keeps of it (`{what}`: the task's summary). */
@@ -7466,6 +7479,7 @@ var SEED_AUDIENCE = ["none", "select_few", "any"];
 var ALARM_KINDS = ["launch", "deadline", "night"];
 var VERDICTS = ["pleased", "adequate", "displeased"];
 var KINDNESS_KINDS = ["slot_back", "protocol_relaxed", "want_relief", "gift", "softer"];
+var UNFAIR_KINDS = ["no_guilt", "double_standard", "cancelled_reward", "moved_goal"];
 var CEREMONY_CHECKS = ["chip", "words", "number", "posture"];
 var EFFECT_NEEDS = Object.freeze({
   slot_held: ["restraint"],
@@ -23136,6 +23150,87 @@ function demonstrationGate(state, reg, holderId, card2) {
   return watchers2.cards.length + watchers2.narrated.length === 0 ? "Nobody would see it." : null;
 }
 
+// src/engine/practice/unfair.ts
+function unfairChance(state, reg, holderId) {
+  const T5 = TUNING.practice.unfairness;
+  const fairness = practiceOf(state, reg, holderId)?.fairness;
+  const base = fairness === void 0 ? 0 : T5[fairness] ?? 0;
+  return Math.min(1, base * (temperamentOf(state, holderId).volatility === "moody" ? T5.moody : 1));
+}
+function pendingUnfair(state, holderId, kind) {
+  const rec = state.practices?.unfair?.[holderId];
+  return rec !== void 0 && rec.used !== true && (kind === void 0 || rec.kind === kind) ? rec : void 0;
+}
+function takeUnfair(draft, holderId, kind) {
+  const rec = pendingUnfair(draft, holderId, kind);
+  if (rec === void 0) return false;
+  rec.used = true;
+  delete rec.sceneId;
+  return true;
+}
+var MINOR = { stakes: "minor" };
+function possibleUnfair(state, reg, holderId) {
+  const on = state.content?.enabled ?? [];
+  return UNFAIR_KINDS.filter((kind) => {
+    if (kind === "no_guilt") return !punishmentOpen(state, holderId) && pickHolderPunishment(state, reg, holderId, severityOf(state, reg, holderId, MINOR)) !== null;
+    if (kind === "moved_goal") return on.includes("restraint");
+    return true;
+  });
+}
+function applyUnfair(draft, ctx2, holderId, kind) {
+  const reg = ctx2.registries;
+  const p = ensurePractices(draft);
+  const unfair = p.unfair ??= {};
+  if (kind !== "no_guilt") {
+    unfair[holderId] = { kind, day: draft.day };
+    return [];
+  }
+  const severity = severityOf(draft, reg, holderId, MINOR);
+  const entryId = pickHolderPunishment(draft, reg, holderId, severity);
+  if (entryId === null) return [];
+  unfair[holderId] = { kind, day: draft.day, used: true };
+  return requestPractice(draft, ctx2, holderId, "punishment", { offence: { kind: "unfair", stakes: "minor", day: draft.day, unfair: true }, severity: severityOfEntry(reg, entryId) ?? severity, entryId, unfair: "no_guilt" });
+}
+function unfairSweep(draft, ctx2) {
+  const reg = ctx2.registries;
+  const unfair = draft.practices?.unfair;
+  if (unfair !== void 0) {
+    for (const [id, rec] of Object.entries(unfair)) if (rec.used === true && rec.day < draft.day || draft.day - rec.day > TUNING.practice.unfair.days) delete unfair[id];
+    if (Object.keys(unfair).length === 0) delete draft.practices.unfair;
+  }
+  const events = [];
+  for (const holderId of practiceHolders(draft, reg)) {
+    if (pendingUnfair(draft, holderId) !== void 0 || draft.practices?.unfair?.[holderId]?.day === draft.day) continue;
+    if (practiceRoll(draft, holderId, "unfair") >= unfairChance(draft, reg, holderId)) continue;
+    const kinds2 = possibleUnfair(draft, reg, holderId);
+    if (kinds2.length === 0) continue;
+    events.push(...applyUnfair(draft, ctx2, holderId, kinds2[Math.min(kinds2.length - 1, Math.floor(practiceRoll(draft, holderId, "unfair:kind") * kinds2.length))]));
+  }
+  return events;
+}
+function herTestLive(state, reg, unitId) {
+  return practiceLive(state, reg, unitId) && pendingUnfair(state, unitId, "double_standard") !== void 0 && state.scene?.participants.includes(unitId) === true;
+}
+function doubleStandardFromEvents(draft, _ctx, events) {
+  const unfair = draft.practices?.unfair;
+  if (unfair === void 0) return [];
+  for (const e of events) {
+    if (e.type === "scene_started" && Array.isArray(e.participants)) {
+      for (const id of e.participants) {
+        const rec = pendingUnfair(draft, id, "double_standard");
+        if (rec !== void 0 && rec.sceneId === void 0) rec.sceneId = String(e.sceneId);
+      }
+    } else if (e.type === "scene_ended" || e.type === "scene_aborted") {
+      for (const [id, rec] of Object.entries(unfair)) {
+        if (rec.kind !== "double_standard" || rec.sceneId === void 0 || rec.sceneId !== e.sceneId) continue;
+        if (e.type === "scene_ended") takeUnfair(draft, id, "double_standard");
+        else delete rec.sceneId;
+      }
+    }
+  }
+  return [];
+}
+
 // src/engine/practice/hold.ts
 var SLOTS2 = ["morning", "afternoon", "evening"];
 var bookingsOf2 = (state) => state.personal?.bookings ?? [];
@@ -23250,7 +23345,7 @@ function holdSweep(draft, ctx2, _events) {
   if (unit3.status === "injured" || (unit3.injuryDays ?? 0) > 0) return endHold2(draft, ctx2, "injured");
   if (held3.run === true) return draft.expedition === void 0 ? endHold2(draft, ctx2, "ran_out") : [];
   if (draft.expedition?.party.includes(held3.by) === true) return endHold2(draft, ctx2, "run");
-  if (posOf(draft.day, draft.slot) > posOf(held3.until.day, held3.until.slot)) return forgot(draft, ctx2, held3) ?? endHold2(draft, ctx2, "ran_out");
+  if (posOf(draft.day, draft.slot) > posOf(held3.until.day, held3.until.slot)) return movedGoal(draft, ctx2, held3) ?? forgot(draft, ctx2, held3) ?? endHold2(draft, ctx2, "ran_out");
   return [];
 }
 function slotAfter(at) {
@@ -23289,6 +23384,13 @@ function forgot(draft, ctx2, held3) {
   if (events.length === 0) return null;
   held3.forgot = true;
   return events;
+}
+function movedGoal(draft, ctx2, held3) {
+  if (!takeUnfair(draft, held3.by, "moved_goal")) return null;
+  const next = slotAfter(held3.until);
+  if (next === null || posOf(draft.day, draft.slot) > posOf(next.day, next.slot)) return null;
+  const events = extendHold(draft, ctx2, "moved_goal");
+  return events.length === 0 ? null : events;
 }
 function releaseAnswer(state, reg, holderId) {
   const held3 = state.practices?.held;
@@ -23407,10 +23509,15 @@ function watchersOf(state, reg, holderId) {
   const a = pickAudience(state, reg, holderId, TUNING.practice.demonstration.slot);
   return [...a.cards, ...a.narrated];
 }
+function offenceWords(state, request) {
+  if (request.offence?.unfair !== true) return OFFENCE_WORDS[request.offence?.kind ?? "refusal"];
+  const list5 = TUNING.practice.unfair.pretexts;
+  return list5[Math.min(list5.length - 1, Math.floor(practiceRoll(state, request.holderId, `pretext:${request.id}`) * list5.length))];
+}
 function punishmentBlock(state, reg, request) {
   const entryId = punishmentEntryFor(state, reg, request);
   const entry = entryId === null ? void 0 : reg.holderPunishments.get(entryId);
-  return entry === void 0 ? {} : { punishment: { label: String(entry.label), weight: severityWord(severityOfEntry(reg, entryId) ?? request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? "refusal"] } };
+  return entry === void 0 ? {} : { punishment: { label: String(entry.label), weight: severityWord(severityOfEntry(reg, entryId) ?? request.severity ?? 1), offence: offenceWords(state, request) } };
 }
 function tierCapOf(state, reg, holderId) {
   const levels = [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => trackLevel(state, holderId, t.id) + 1);
@@ -24293,8 +24400,10 @@ function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
     while (dyn.recent.length > RECENT_MAX) dyn.recent.shift();
   }
   if (outcome === "kept") {
-    const events2 = [{ type: "task_kept", taskId, unitId: holderId, holderId, via, stakes: task.stakes }];
+    const cancelled = pendingUnfair(draft, holderId, "cancelled_reward") !== void 0;
+    const events2 = [{ type: "task_kept", taskId, unitId: holderId, holderId, via, stakes: task.stakes, ...cancelled ? { cancelled: true } : {} }];
     events2.push(...hitHer(draft, reg, holderId, "task_kept", SEVERITY[stakeRank(task.stakes)], "kept her task"));
+    if (cancelled) takeUnfair(draft, holderId, "cancelled_reward");
     events2.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
     earnedPermission(draft, task);
@@ -24860,6 +24969,13 @@ function runPunishmentEffect(draft, ctx2, p, fx2) {
   }
 }
 var styleOf2 = (draft, reg, holderId) => practiceOf(draft, reg, holderId)?.style.primary;
+function unfairAccepted(draft, reg, holderId) {
+  const events = practiceSample(draft, reg, holderId, "yielded", { motive: threatNear(draft, [], holderId) ? "fear" : "her" });
+  const style = styleOf2(draft, reg, holderId);
+  if (style === "ritual" || style === "cold") events.push(...regardFall(draft, reg, holderId, 1, { witness: false, cause: "unfair" }));
+  else if (style === "cruel" || style === "vindictive") events.push(...regardRise(draft, reg, holderId, "cost"));
+  return events;
+}
 function accept(draft, ctx2, p) {
   const reg = ctx2.registries;
   const holderId = p.holderId;
@@ -24884,7 +25000,8 @@ function accept(draft, ctx2, p) {
   }
   events.push(...hitHer(draft, reg, holderId, "punishment_accepted", SEVERITY2[p.severity - 1], "took her punishment"));
   events.push(...addTrackXp(draft, reg, holderId, "discipline", TUNING.practice.xp.discipline * p.severity));
-  events.push(...practiceSample(draft, reg, holderId, "yielded", { afterThreat: true }));
+  if (p.offence.unfair === true) events.push(...unfairAccepted(draft, reg, holderId));
+  else events.push(...practiceSample(draft, reg, holderId, "yielded", { afterThreat: true }));
   for (const fx2 of effectsOf5(entryOf3(reg, p))) events.push(...runPunishmentEffect(draft, ctx2, p, fx2));
   for (const id of audience) events.push(...addSign(draft, ctx2, id, holderId, "demonstration"));
   return events;
@@ -39277,6 +39394,10 @@ var FEED_CAUSE = Object.freeze({
   staging_held: "staging_held",
   task_broken: "task_broken"
 });
+var suppressors = [];
+function registerFeedSuppressor(fn) {
+  suppressors.push(fn);
+}
 function causeOf(reg, event) {
   const cause = FEED_CAUSE[event.type];
   if (cause === void 0) return null;
@@ -39289,7 +39410,7 @@ function holdFeed(draft, reg, unitId, event, _severity) {
   if (event.type === "rule_broken" && event.ruleId !== void 0 && rulesOf(draft).some((r) => r.id === event.ruleId && r.lastBrokenDay === draft.day)) return [];
   if (event.type === "refused_demand") return event.lapsed === true || event.templateId !== void 0 && reg.demandTemplates.get(event.templateId)?.kind === "desire" ? [] : refusalCost(draft, { registries: reg }, unitId, "demand");
   const cause = causeOf(reg, event);
-  if (cause === null) return [];
+  if (cause === null || suppressors.some((fn) => fn(draft, unitId, event))) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause], cause);
 }
 
@@ -39827,6 +39948,7 @@ function practiceDayStep(draft, ctx2) {
   events.push(...requestsFallBack(draft, ctx2));
   events.push(...falseReportSweep(draft, ctx2));
   events.push(...kindnessSweep(draft, ctx2));
+  events.push(...unfairSweep(draft, ctx2));
   events.push(...chainRequests(draft, ctx2));
   events.push(...newPractices(draft, ctx2));
   events.push(...expiry(draft, ctx2));
@@ -40040,6 +40162,9 @@ registerAfterAction(momentGapFavour);
 registerAfterAction(itemRulesFromEvents);
 registerMomentTrigger("permission", permissionLive);
 registerMomentTrigger("her_demand", herDemandLive);
+registerMomentTrigger("her_test", herTestLive);
+registerAfterAction(doubleStandardFromEvents);
+registerFeedSuppressor((state, unitId, event) => event.type === "task_kept" && pendingUnfair(state, unitId, "cancelled_reward") !== void 0);
 registerAfterAction(notePosture);
 registerAfterAction(callPosture);
 registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
@@ -43162,6 +43287,7 @@ var DEMONSTRATION_PREFIX = "practice:demonstration:";
 var PERMISSION_PREFIX = "practice:permission:";
 var VERDICT_PREFIX = "practice:verdict:";
 var ALARM_PREFIX = "practice:alarm:";
+var DOUBLE_PREFIX = "practice:double:";
 var ASK_PREFIX = "practice:ask:";
 var ISSUED_PREFIX = "practice:issued:";
 var HELD_ID = "practice:held";
@@ -43223,6 +43349,11 @@ function practiceDirectives(state, reg, present2) {
     });
     if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: "scene", text: plainDraft(`${lines.join(" ")} She reacts as she would. ${NEVER_NAME}`) });
   }
+  for (const unit3 of holdersIn(state, reg, present2)) {
+    const rec = pendingUnfair(state, unit3.id, "double_standard");
+    if (rec === void 0 || rec.sceneId !== void 0 && rec.sceneId !== state.scene?.id || state.scene === void 0) continue;
+    out.push({ id: `${DOUBLE_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} does, in this scene, what she demands the commander not do: she is late, short with the commander or in the commander's seat, and does not see anything wrong in it. If the commander points it out she answers as she would. ${NEVER_NAME}`) });
+  }
   const held3 = heldNow(state);
   const keeper = held3 === null ? void 0 : holdersIn(state, reg, present2).find((u) => u.id === held3.by);
   if (held3 !== null && keeper !== void 0) {
@@ -43238,6 +43369,7 @@ function issuedDirective(event, state, reg) {
   if (event.type === "hold_asked") return holdAskedDirective(event, state, reg);
   if (event.type === "hold_alarm") return alarmDirective(event, state, reg);
   if (event.type === "ask_answered") return askDirective(event, state, reg);
+  if (event.type === "task_kept" && event.cancelled === true) return cancelledRewardDirective(event, state, reg);
   if (event.type !== "task_issued" || typeof event.taskId !== "string") return null;
   if (event.kind === "demonstration") return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -43245,6 +43377,11 @@ function issuedDirective(event, state, reg) {
   if (task === void 0 || unit3 === void 0 || state.scene?.participants.includes(unit3.id) !== true || !practiceLive(state, reg, unit3.id)) return null;
   const what = task.sealed === true ? `${unit3.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit3.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+function cancelledRewardDirective(event, state, reg) {
+  const unit3 = state.squad.find((u) => u.id === event.holderId);
+  if (unit3 === void 0 || !practiceLive(state, reg, unit3.id)) return null;
+  return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit3.displayName} takes the kept task coldly: it was good, and it was not good enough. She gives nothing for it, and says so in her own way. ${NEVER_NAME}`) };
 }
 var ASKED_FOR = { task: "a task", punishment: "a punishment" };
 function askDirective(event, state, reg) {

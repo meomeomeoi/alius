@@ -16,6 +16,8 @@ import { practiceOf } from '../dynamic/profile';
 import { addSign } from '../dynamic/knowledge';
 import { refusalCost } from '../dynamic/milestones';
 import { addFavour, restoreHold } from '../dynamic/hold';
+import { threatNear } from '../dynamic/reading';
+import { regardFall, regardRise } from '../dynamic/regard';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
@@ -138,6 +140,18 @@ export function runPunishmentEffect(draft: CampaignState, ctx: EngineCtx, p: Ope
 
 const styleOf = (draft: CampaignState, reg: Registries, holderId: string): string | undefined => practiceOf(draft, reg, holderId)?.style.primary;
 
+/**
+ * What she reads in a commander who accepts a punishment she knew to be unfair (R16): a yield, whose motive is fear when she threatened in the same exchange (the one she just issued it in) and `her`
+ * otherwise; and her Regard by style: `ritual` and `cold` lose a little respect for a commander who takes what was not earned, `cruel` and `vindictive` respect what it cost. Other styles read nothing more.
+ */
+function unfairAccepted(draft: CampaignState, reg: Registries, holderId: string): EngineEvent[] {
+  const events = practiceSample(draft, reg, holderId, 'yielded', { motive: threatNear(draft, [], holderId) ? 'fear' : 'her' });
+  const style = styleOf(draft, reg, holderId);
+  if (style === 'ritual' || style === 'cold') events.push(...regardFall(draft, reg, holderId, 1, { witness: false, cause: 'unfair' }));
+  else if (style === 'cruel' || style === 'vindictive') events.push(...regardRise(draft, reg, holderId, 'cost'));
+  return events;
+}
+
 /** ACCEPT (R8): the repair lands (its row, and P15's feed adds hold), `discipline` xp by the weight, a yield into her reading (after a threat: fear), then the effects, in public when the entry and the gate allow. */
 function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): EngineEvent[] {
   const reg = ctx.registries;
@@ -158,7 +172,8 @@ function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): Engine
   }
   events.push(...hitHer(draft, reg, holderId, 'punishment_accepted', SEVERITY[p.severity - 1], 'took her punishment'));
   events.push(...addTrackXp(draft, reg, holderId, 'discipline', TUNING.practice.xp.discipline * p.severity));
-  events.push(...practiceSample(draft, reg, holderId, 'yielded', { afterThreat: true }));
+  if (p.offence.unfair === true) events.push(...unfairAccepted(draft, reg, holderId));
+  else events.push(...practiceSample(draft, reg, holderId, 'yielded', { afterThreat: true }));
   for (const fx of effectsOf(entryOf(reg, p))) events.push(...runPunishmentEffect(draft, ctx, p, fx));
   for (const id of audience) events.push(...addSign(draft, ctx, id, holderId, 'demonstration'));
   return events;

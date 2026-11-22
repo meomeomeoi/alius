@@ -1,5 +1,6 @@
 import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
+import { registerFeedSuppressor } from '../dynamic/feed';
 import { registerMomentTrigger } from '../moments/live';
 import { registerPracticeUndone } from '../discipline/record';
 import { registerRestrictionReader } from '../discipline/restrictions';
@@ -21,6 +22,7 @@ import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWait
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
+import { doubleStandardFromEvents, herTestLive, pendingUnfair } from '../practice/unfair';
 import { registerCommanderRestriction } from '../warden/punish';
 
 // Importing this module registers what the practices (P16) hang on the lower layers and the actions of the package, as each task adds them. It is
@@ -46,6 +48,10 @@ registerAfterAction(itemRulesFromEvents);
 // Two moment sources are live because of what a holder has asked (R13): her demand waits for an answer; a permission rule stands while the commander is in contact with her.
 registerMomentTrigger('permission', permissionLive);
 registerMomentTrigger('her_demand', herDemandLive);
+// Unfairness (R16): a double standard is carried by her next scene and makes her test live while it runs; a cancelled reward takes the hold of her next kept task away (the feed asks before it adds)
+registerMomentTrigger('her_test', herTestLive);
+registerAfterAction(doubleStandardFromEvents);
+registerFeedSuppressor((state, unitId, event) => event.type === 'task_kept' && pendingUnfair(state, unitId, 'cancelled_reward') !== undefined);
 // Named postures (R14): a posture set on the commander in her scene is named by her, and now and then she calls one by its name; the call goes with the scene.
 registerAfterAction(notePosture);
 registerAfterAction(callPosture);

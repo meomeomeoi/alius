@@ -19,6 +19,7 @@ import { closePunishments, coldShoulderWants, orderCandidate, orderPunishment } 
 import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
 import { kindnessSweep, protocolPossible, routineSweep } from './service';
+import { unfairSweep } from './unfair';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
 import { frameOf, holdBusy, taskRoom } from './tasks';
 
@@ -146,7 +147,8 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   events.push(...requestsFallBack(draft, ctx)); // 3
   events.push(...falseReportSweep(draft, ctx)); // 4
   events.push(...kindnessSweep(draft, ctx)); // 5
-  // 6 unfairness, 7 handovers: no-ops until their tasks
+  events.push(...unfairSweep(draft, ctx)); // 6
+  // 7 handovers: a no-op until its task
   events.push(...chainRequests(draft, ctx)); // 8a
   events.push(...newPractices(draft, ctx)); // 8
   events.push(...expiry(draft, ctx)); // 9

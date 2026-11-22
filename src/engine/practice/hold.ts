@@ -25,6 +25,7 @@ import { cancelBookingsQuietly } from './forget';
 import { ensurePractices, practiceLive } from './gate';
 import { heldNow, posOf } from './held';
 import { practiceRoll, type HeldState, type Task } from './state';
+import { takeUnfair } from './unfair';
 
 export { heldGuard, heldNow } from './held';
 
@@ -162,7 +163,7 @@ export function holdSweep(draft: CampaignState, ctx: EngineCtx, _events?: readon
   if (unit.status === 'injured' || (unit.injuryDays ?? 0) > 0) return endHold(draft, ctx, 'injured');
   if (held.run === true) return draft.expedition === undefined ? endHold(draft, ctx, 'ran_out') : [];
   if (draft.expedition?.party.includes(held.by) === true) return endHold(draft, ctx, 'run');
-  if (posOf(draft.day, draft.slot) > posOf(held.until.day, held.until.slot)) return forgot(draft, ctx, held) ?? endHold(draft, ctx, 'ran_out');
+  if (posOf(draft.day, draft.slot) > posOf(held.until.day, held.until.slot)) return movedGoal(draft, ctx, held) ?? forgot(draft, ctx, held) ?? endHold(draft, ctx, 'ran_out');
   return [];
 }
 
@@ -178,9 +179,9 @@ function slotAfter(at: { day: number; slot: Slot }): { day: number; slot: Slot }
 
 /**
  * Keeps the commander one slot longer (R11): a held booking for the slot after the last (what is booked there lapses as for any held slot), `until` moves, `hold_extended` says why
- * (`asked`, `forgot`, `alarm`). Never past the Night. Nothing for no hold or a hold already at its limit.
+ * (`asked`, `forgot`, `alarm`, `moved_goal`). Never past the Night. Nothing for no hold or a hold already at its limit.
  */
-export function extendHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, reason: 'asked' | 'forgot' | 'alarm'): EngineEvent[] {
+export function extendHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, reason: 'asked' | 'forgot' | 'alarm' | 'moved_goal'): EngineEvent[] {
   const held = draft.practices?.held;
   const next = held === undefined ? null : slotAfter(held.until);
   const first = held === undefined ? undefined : bookingsOf(draft).find((b) => held.bookingIds.includes(b.id));
@@ -215,6 +216,18 @@ function forgot(draft: CampaignState, ctx: EngineCtx, held: HeldState): EngineEv
   if (events.length === 0) return null;
   held.forgot = true;
   return events;
+}
+
+/**
+ * The moved goal (R16): "one more minute" at the end of a hold. A holder who has one in hand (`practices.unfair`) runs her next hold one slot past its end, once; it is used up whether or not the slot could be
+ * added (never past the Night, never into a slot already over). `null` when she had none or nothing was added.
+ */
+function movedGoal(draft: CampaignState, ctx: EngineCtx, held: HeldState): EngineEvent[] | null {
+  if (!takeUnfair(draft, held.by, 'moved_goal')) return null;
+  const next = slotAfter(held.until);
+  if (next === null || posOf(draft.day, draft.slot) > posOf(next.day, next.slot)) return null;
+  const events = extendHold(draft, ctx, 'moved_goal');
+  return events.length === 0 ? null : events;
 }
 
 export type ReleaseAnswer = 'release' | 'extend' | 'refuse';

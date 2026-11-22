@@ -32,6 +32,16 @@ export const FEED_CAUSE: Readonly<Record<string, keyof typeof TUNING.dynamic.gai
   task_broken: 'task_broken',
 });
 
+/**
+ * A reader that says a relation event gives no hold (P16: a cancelled reward, "good, not good enough"). The lower layer takes the hook and knows nothing of why: when any registered reader answers
+ * true for the event that landed on her, the hold feed does nothing for it. Readers must read the state only and draw nothing.
+ */
+export type FeedSuppressor = (state: CampaignState, unitId: string, event: EventIntent) => boolean;
+const suppressors: FeedSuppressor[] = [];
+export function registerFeedSuppressor(fn: FeedSuppressor): void {
+  suppressors.push(fn);
+}
+
 /** The cause an event feeds on this holder, or `null` (not a feeding type, a demand that is not a desire, a verdict that is not `pleased`). */
 function causeOf(reg: Registries, event: EventIntent): string | null {
   const cause = FEED_CAUSE[event.type];
@@ -54,6 +64,6 @@ export function holdFeed(draft: CampaignState, reg: Registries, unitId: string, 
   // a demand that ran out is nobody's choice either (`lapsed`: the day step's refusal)
   if (event.type === 'refused_demand') return event.lapsed === true || (event.templateId !== undefined && reg.demandTemplates.get(event.templateId)?.kind === 'desire') ? [] : refusalCost(draft, { registries: reg }, unitId, 'demand');
   const cause = causeOf(reg, event);
-  if (cause === null) return [];
+  if (cause === null || suppressors.some((fn) => fn(draft, unitId, event))) return [];
   return addHold(draft, { registries: reg }, unitId, TUNING.dynamic.gains[cause as keyof typeof TUNING.dynamic.gains], cause);
 }

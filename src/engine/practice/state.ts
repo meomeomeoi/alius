@@ -331,7 +331,8 @@ export interface PracticeState {
   records: Array<{ day: number; holderId: string; line: string }>;
   handovers: Array<{ id: string; kind: HandoverKind; holderId: string; untilDay: number }>;
   asked?: { context: 'dilemma' | 'expedition' | 'vote'; ref: string; index: number | 'for' | 'against' | null; holderId: string; preselected?: true };
-  unfair?: Record<string, { kind: UnfairKind; day: number; used?: true }>;
+  /** holderId → the unfairness she has in hand (R16): the kind, the day it was decided, whether it is used up, and for a double standard the scene that carries it. */
+  unfair?: Record<string, { kind: UnfairKind; day: number; used?: true; sceneId?: string }>;
   lastThreat?: { unitId: string; sceneId?: string; exchange: number; day: number };
   /** holderId → the scene id that already got a verdict. */
   verdictScene?: Record<string, string>;

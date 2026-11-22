@@ -1099,6 +1099,16 @@ export const TUNING = Object.freeze({
       affectionate: 0.1, cold: 0.1, ritual: 0, clinical: 0.1, possessive: 0.3, playful: 0.1, cruel: 0.3, obsessive: 0.1, drill: 0, regal: 0.1, vindictive: 0.3,
     } as const),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 } as const),
+    /**
+     * Unfairness in hand (R16, `AUTHOR TO TUNE`): the days a cancelled reward, a double standard or a moved goal that no scene, task or hold has used waits before it goes stale, and the
+     * pretexts the model is told for a punishment without guilt (never that nothing was done: the words must not give the unfairness away).
+     */
+    unfair: Object.freeze({
+      days: 7,
+      pretexts: Object.freeze([
+        'something she says was left undone', 'a rule she says the commander broke', 'a word she says was out of turn', 'a slip she says she saw',
+      ] as readonly string[]),
+    }),
     /** The press-and-hold signature of a `signed` accept (R.1): how long it is held, in milliseconds. AUTHOR TO TUNE. */
     sign: Object.freeze({ holdMs: 1200 }),
     /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`; `compromat` is what she keeps of it (`{what}`: the task's summary). */

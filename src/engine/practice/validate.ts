@@ -20,7 +20,7 @@ import { demonstrationGate, pickAudience } from './audience';
 import { eligibleUnits } from './gate';
 import { punishmentEntryFor, severityOfEntry } from './offences';
 import { seedPool, seedRows, stakesCeilingOf } from './seeds';
-import { CHECK_KINDS, OFFENCE_WORDS, PROOFS, severityWord, STAKES, stakeRank, type CheckKind, type PracticeKind, type PracticeRequest, type Proof, type Stake, type ValidOutput } from './state';
+import { CHECK_KINDS, OFFENCE_WORDS, practiceRoll, PROOFS, severityWord, STAKES, stakeRank, type CheckKind, type PracticeKind, type PracticeRequest, type Proof, type Stake, type ValidOutput } from './state';
 
 /** What the model is told (R5). Every number is a word; the only digits are the day and the deadline range. Rebuilt from the state every time, never stored. */
 export interface PracticeGenerateInput {
@@ -128,11 +128,21 @@ function watchersOf(state: CampaignState, reg: Registries, holderId: string): st
   return [...a.cards, ...a.narrated];
 }
 
+/**
+ * What the model is told the punishment answers. A punishment without guilt gets a pretext (one of `TUNING.practice.unfair.pretexts`, picked by a hashed roll of the request's own id), never
+ * `OFFENCE_WORDS.unfair`: the model's words would otherwise reveal that it is unfair, and the commander must not be able to tell (R16).
+ */
+function offenceWords(state: CampaignState, request: PracticeRequest): string {
+  if (request.offence?.unfair !== true) return OFFENCE_WORDS[request.offence?.kind ?? 'refusal'];
+  const list = TUNING.practice.unfair.pretexts;
+  return list[Math.min(list.length - 1, Math.floor(practiceRoll(state, request.holderId, `pretext:${request.id}`) * list.length))];
+}
+
 /** The punishment part of the input: the entry that will be written (the engine's pick, picked again when it can no longer be carried out) and what it answers, as words. */
 function punishmentBlock(state: CampaignState, reg: Registries, request: PracticeRequest): { punishment?: PracticeGenerateInput['punishment'] } {
   const entryId = punishmentEntryFor(state, reg, request);
   const entry = entryId === null ? undefined : reg.holderPunishments.get(entryId);
-  return entry === undefined ? {} : { punishment: { label: String(entry.label), weight: severityWord(severityOfEntry(reg, entryId!) ?? request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? 'refusal'] } };
+  return entry === undefined ? {} : { punishment: { label: String(entry.label), weight: severityWord(severityOfEntry(reg, entryId!) ?? request.severity ?? 1), offence: offenceWords(state, request) } };
 }
 
 /** The highest tier any open track of hers allows (her level plus one, at most five); the validator clamps each card to its own track's cap. */
