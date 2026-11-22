@@ -4272,6 +4272,25 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   margin-top: 6px;
 }
 
+/* Her demonstration (P16): the card in her voice, who watches and where, the answers side by side. */
+#alius-shell .alius-demonstration-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-demonstration-text,
+#alius-shell .alius-demonstration-watch,
+#alius-shell .alius-demonstration-place,
+#alius-shell .alius-demonstration-hint {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-demonstration-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

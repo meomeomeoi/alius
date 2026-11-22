@@ -43,6 +43,11 @@ export interface PracticeController {
    * answers false at once and goes through the squad vote (`requestVote`); the order closes when the vote carries it.
    */
   takeInstead(punishmentId: string, answer: 'do_it' | 'take_it' | 'refuse'): boolean;
+  /**
+   * GO or REFUSE on her demonstration card (`practice/answer_demonstration`). GO opens the group scene the engine describes (her and the units on the card, at the stage, costing the slot); a scene
+   * that would not open is toasted and the card stays to be pressed again. Toasts the reason and answers false when the engine refuses.
+   */
+  answerDemonstration(demonstrationId: string, answer: 'go' | 'refuse'): Promise<boolean>;
   /** UNDO of an answer to her discipline (`practice/undo`). Toasts the reason and answers false when the engine refuses. */
   undoPunishment(punishmentId: string): boolean;
   /** Waits for the call in flight (tests). */
@@ -166,6 +171,17 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     deps.app.dispatch({ type: 'dm/receive', payload: { unitId: task.holderId, text: plainDraft(task.sealed === true ? TUNING.practice.sealedLine : task.text), initiated: true } }, { expectChatId: chatId() });
   }
 
+  /** Delivers a demonstration she wants to stage: a DM from her with her words, unless she is in the open scene, her DMs are off or she is giving the cold shoulder (the card shows all the same). */
+  function deliverDemonstration(id: string): void {
+    const s = state();
+    const d = s?.practices?.demonstrations.find((x) => x.id === id);
+    if (s === null || d === undefined || d.status !== 'offered') return;
+    const key = `${chatId() ?? ''}|${id}`;
+    if (delivered.has(key) || s.scene?.participants.includes(d.holderId) === true || s.settings.unitDms !== true || (s.practices?.cold[d.holderId] ?? -1) >= s.day) return;
+    delivered.add(key);
+    deps.app.dispatch({ type: 'dm/receive', payload: { unitId: d.holderId, text: plainDraft(d.text), initiated: true } }, { expectChatId: chatId() });
+  }
+
   /** Delivers her discipline (or her order about a soldier): a DM from her, unless she is in the open scene, her DMs are off or she is giving the cold shoulder. */
   function deliverPunishment(punishmentId: string): void {
     const s = state();
@@ -189,7 +205,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       let refresh = false;
       for (const e of events) {
         if (OWN.includes(e.type)) refresh = true;
-        if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') deliver(e.taskId);
+        if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') { if (e.kind === 'demonstration') deliverDemonstration(e.taskId); else deliver(e.taskId); }
         if (e.type === 'punishment_issued' && e.rerolled !== true && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
       }
       if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh = true;
@@ -246,6 +262,20 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       if (s === null || p === undefined) return false;
       if (!ok(deps.app.dispatch({ type: 'practice/answer_punishment', payload: { punishmentId, answer } }, { expectChatId: chatId() }))) return false;
       if (answer === 'negotiate' && deps.startScene !== undefined && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [p.holderId], origin: 'event', consumesSlot: false });
+      deps.refreshContext();
+      return true;
+    },
+    async answerDemonstration(demonstrationId, answer) {
+      const d = state()?.practices?.demonstrations.find((x) => x.id === demonstrationId);
+      if (d === undefined) return false;
+      const events = deps.app.dispatch({ type: 'practice/answer_demonstration', payload: { demonstrationId, answer } }, { expectChatId: chatId() });
+      if (!ok(events)) return false;
+      const scene = answer === 'go' ? (events.find((e) => e.type === 'task_answered' && e.answer === 'go')?.scene as { locationId: string; participants: string[]; origin: 'event'; consumesSlot?: boolean } | undefined) : undefined;
+      if (scene !== undefined && deps.startScene !== undefined && !(await deps.startScene(scene))) {
+        deps.toast('error', 'The scene did not open.');
+        deps.refreshContext();
+        return false;
+      }
       deps.refreshContext();
       return true;
     },

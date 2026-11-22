@@ -13,6 +13,7 @@ import { cssUrl } from '../fx';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
+import { drawDemonstrationCards, type DemonstrationAnswer } from '../practice/demonstrationCard';
 import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } from '../practice/punishmentCard';
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawFrameChips } from '../dynamic/frameChip';
@@ -67,6 +68,8 @@ export interface SceneScreenCtx {
   onAnswerPunishment?: (punishmentId: string, answer: PunishmentAnswer) => void;
   onTakeInstead?: (punishmentId: string, answer: TakeInsteadAnswer) => void;
   onUndoPunishment?: (punishmentId: string) => void;
+  /** P16: GO / REFUSE on a demonstration of a unit in the scene (the demonstration's id): GO opens the group scene the engine describes. */
+  onAnswerDemonstration?: (demonstrationId: string, answer: DemonstrationAnswer) => void;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: staged through the scene controller). Absent = no chip. */
   onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
@@ -226,6 +229,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let returnCards: HTMLElement;
   let taskCards: HTMLElement;
   let punishmentCards: HTMLElement;
+  let demonstrationCards: HTMLElement;
   let freqChips: HTMLElement;
   let genChips: HTMLElement;
   let genTools: HTMLElement;
@@ -418,6 +422,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') input.focus(); }, sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx.generation }); // P16: her task
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') input.focus(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), generation: ctx.generation }); // P16: her discipline
+    drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
     // an open menu stays open across a redraw
@@ -642,6 +647,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     returnCards = h('div', { class: 'alius-return-cards' });
     taskCards = h('div', { class: 'alius-task-cards' });
     punishmentCards = h('div', { class: 'alius-punishment-cards' });
+    demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
@@ -748,6 +754,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       returnCards,
       taskCards,
       punishmentCards,
+      demonstrationCards,
       freqChips,
       disciplineMenus,
       letsHost,

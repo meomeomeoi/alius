@@ -3236,5 +3236,16 @@
       "holder_punishment",
       "punishment_card"
     ]
+  },
+  {
+    "id": "demonstration",
+    "term": "Demonstration",
+    "short": "She wants to show her hold before others. Go opens the scene with those named and takes the slot; refuse is a refusal. Those who watch know of it afterwards.",
+    "long": "AUTHOR TO WRITE: Only some women stage one, and who is asked follows her own manner and the squad: the few she trusts, or whoever is at the table. Each onlooker reacts by her own stance toward what the holder leads in. Only a humbling one is seen outside the squad.",
+    "see": [
+      "practice",
+      "task_card",
+      "holder_punishment"
+    ]
   }
 ]

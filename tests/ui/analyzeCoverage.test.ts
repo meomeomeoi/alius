@@ -34,6 +34,7 @@ import { drawOfferChips } from '../../src/ui/dynamic/offerComposer';
 import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
 import { renderTaskCard } from '../../src/ui/practice/taskCard';
 import { drawPunishmentCards } from '../../src/ui/practice/punishmentCard';
+import { drawDemonstrationCards } from '../../src/ui/practice/demonstrationCard';
 import { blankPractices } from '../../src/engine/practice/state';
 import { ANN as PRACTICE_ANN, BEA as PRACTICE_BEA, withService, world as practiceWorld } from '../engine/practice/world';
 import { buildKnowledge } from '../../src/analysis/knowledge';
@@ -828,6 +829,46 @@ describe('coverage: her discipline cards (P16)', () => {
       const addresses = new Set(unitIdsIn(root));
       for (const id of ['holder_punishment', 'punishment_card', 'take_it_instead']) expect(addresses.has(`glossary:${id}`), id).toBe(true);
       const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state: answered, settings: getSettings(st) }) });
+      for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze^="glossary:"]')]) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
+describe('coverage: her demonstration card (P16)', () => {
+  it('marks every element of the card (its words, the audience, the place, GO and REFUSE), and every one opens a panel with no network or model call', async () => {
+    const state = withService(practiceWorld(reg, 'play'));
+    state.practices = {
+      ...blankPractices(), seq: 3,
+      demonstrations: [{ id: 'pd1', holderId: PRACTICE_ANN, tags: ['service'], summary: 'service at the mess table', text: 'You will serve me at the mess table tonight.', audienceIds: [PRACTICE_BEA], narrated: ['unit_cat'], stage: 'mess_hall', slot: 'evening', day: state.day, status: 'offered', requestId: 'pq1' }],
+    };
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    try {
+      const host = h('div');
+      root.append(host);
+      drawDemonstrationCards(host, state, reg, () => true, { answer: vi.fn() });
+      expect(root.querySelector('.alius-demonstration')).not.toBeNull();
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(state))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      expect(new Set(unitIdsIn(root)).has('glossary:demonstration')).toBe(true);
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
       for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze^="glossary:"]')]) {
         analyzer.openFor(el, { x: 10, y: 10 });
         const text = document.querySelector('.alius-analyze')?.textContent ?? '';
