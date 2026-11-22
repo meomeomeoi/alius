@@ -3,7 +3,7 @@ import type { CampaignState, Inverse } from '../state/types';
 import { syncPublicity } from '../bonds/publicitySync';
 import { removeAppraisals } from '../development/appraisal';
 import { countDeed } from './deeds';
-import { addRecord, disciplineOf, runUndone } from './record';
+import { addRecord, disciplineOf, runPracticeUndone, runUndone } from './record';
 import { removeRestrictions } from './restrictions';
 
 const RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] } as const;
@@ -35,9 +35,9 @@ function windowProblem(state: CampaignState, r: { day: number; channel: string; 
 /**
  * Puts back exactly what an application or a threat changed, and only that: its own axis, stress, record and resource
  * deltas (clamped; later changes stay), the history lines it wrote, the restrictions it started, the state and the loyalty
- * band it moved her to (only while she is still in them) and the defiance and threat it removed.
+ * band it moved her to (only while she is still in them) and the defiance and threat it removed. Exported for P16's UNDO of an answer to her discipline (`applicationId` null).
  */
-function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, applicationId: string | null, inv: Inverse): EngineEvent[] {
+export function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, applicationId: string | null, inv: Inverse): EngineEvent[] {
   const events: EngineEvent[] = [];
   const rel = draft.relations[unitId];
   const unit = draft.squad.find((u) => u.id === unitId);
@@ -74,6 +74,7 @@ function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, app
   if (inv.defiance && !d.defiance.some((x) => x.unitId === unitId)) d.defiance.push(structuredClone(inv.defiance));
   if (inv.threat && !d.threats.some((x) => x.unitId === unitId)) d.threats.push(structuredClone(inv.threat));
   if (inv.dynamic) events.push(...runUndone(draft, ctx, unitId, inv.dynamic)); // P15: the struggle for the command the enforcement ended
+  if (inv.practice) events.push(...runPracticeUndone(draft, ctx, unitId, inv.practice)); // P16: what an answer to her discipline put on the practices
   return events;
 }
 

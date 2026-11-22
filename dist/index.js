@@ -14137,6 +14137,13 @@ var undoneHooks = [];
 function registerUndone(hook) {
   if (!undoneHooks.includes(hook)) undoneHooks.push(hook);
 }
+var practiceUndoneHooks = [];
+function registerPracticeUndone(hook) {
+  if (!practiceUndoneHooks.includes(hook)) practiceUndoneHooks.push(hook);
+}
+function runPracticeUndone(draft, ctx2, unitId, undo) {
+  return practiceUndoneHooks.flatMap((hook) => hook(draft, ctx2, unitId, undo));
+}
 function runUndone(draft, ctx2, unitId, undo) {
   return undoneHooks.flatMap((hook) => hook(draft, ctx2, unitId, undo));
 }
@@ -18184,6 +18191,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
   if (inv.defiance && !d.defiance.some((x) => x.unitId === unitId)) d.defiance.push(structuredClone(inv.defiance));
   if (inv.threat && !d.threats.some((x) => x.unitId === unitId)) d.threats.push(structuredClone(inv.threat));
   if (inv.dynamic) events.push(...runUndone(draft, ctx2, unitId, inv.dynamic));
+  if (inv.practice) events.push(...runPracticeUndone(draft, ctx2, unitId, inv.practice));
   return events;
 }
 function tidy(draft, created) {
@@ -18955,6 +18963,13 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   events.push(...reconcileDomains(draft, reg, unitId));
   events.push(...milestonesDue(draft, ctx2, unitId));
   return events;
+}
+function restoreHold(draft, unitId, value) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0 || dyn.hold === value) return [];
+  const from = dyn.hold;
+  dyn.hold = value;
+  return [{ type: "hold_changed", unitId, from, to: value, cause: "undo" }];
 }
 function addFavour(draft, unitId, n) {
   const dyn = dynamicOf(draft, unitId);
@@ -23346,9 +23361,108 @@ function answerPunishment(draft, ctx2, punishmentId, answer) {
     p.status = "negotiating";
     return [{ type: "punishment_answered", punishmentId, unitId: p.holderId, holderId: p.holderId, answer: "negotiate", severity: p.severity }];
   }
-  if (answer === "accept") return accept(draft, ctx2, p);
-  if (answer === "refuse") return refuse(draft, ctx2, p);
+  if (answer === "accept") return withUndo(draft, ctx2, p, () => accept(draft, ctx2, p));
+  if (answer === "refuse") return withUndo(draft, ctx2, p, () => refuse(draft, ctx2, p));
   throw new Error("Unknown answer.");
+}
+function withUndo(draft, ctx2, p, answer) {
+  const holderId = p.holderId;
+  const dyn = dynamicOf(draft, holderId);
+  const pr = ensurePractices(draft);
+  const undo = {
+    punishmentId: p.id,
+    status: p.status,
+    hold: dyn.hold,
+    favour: dyn.favour,
+    tracks: structuredClone(dyn.tracks),
+    refusals: [...dyn.refusals],
+    contest: [...dyn.contest],
+    restrictions: pr.restrictions.length,
+    ...pr.cold[holderId] !== void 0 ? { cold: pr.cold[holderId] } : {},
+    stamp: {
+      day: draft.day,
+      slot: draft.slot,
+      ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {},
+      frame: dyn.frame,
+      milestones: (draft.dynamic?.open.milestones ?? []).filter((m) => m.unitId === holderId).map((m) => m.id),
+      claims: (draft.dynamic?.open.claims ?? []).filter((c) => c.unitId === holderId).map((c) => c.id),
+      injuredUntil: draft.commander.injuredUntilDay ?? 0,
+      expedition: draft.expedition?.id ?? null,
+      lastExpedition: draft.lastExpedition?.id ?? null
+    }
+  };
+  const tasksBefore = pr.tasks.map((t) => t.id);
+  const requestsBefore = pr.requests.map((r) => r.id);
+  const markBefore = draft.personal?.mark;
+  const { events, inverse } = captureInverse(draft, holderId, answer);
+  const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
+  const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
+  if (tasks.length > 0) undo.taskIds = tasks;
+  if (requests.length > 0) undo.requestIds = requests.map((r) => r.id);
+  const escalation = requests.find((r) => r.kind === "punishment");
+  if (escalation !== void 0) undo.escalationRequestId = escalation.id;
+  if (markBefore === void 0 && draft.personal?.mark?.unitId === holderId) undo.markSet = true;
+  const stress = events.filter((e) => e.type === "commander_stress_changed" && e.source === "holder_punishment").reduce((sum, e) => sum + num3(e.delta), 0);
+  if (stress !== 0) undo.commanderStress = stress;
+  inverse.practice = undo;
+  p.inverse = inverse;
+  return events;
+}
+function canUndoPractice(state, punishmentId) {
+  const p = state.practices?.punishments.find((x) => x.id === punishmentId);
+  const undo = p?.inverse?.practice;
+  if (p === void 0 || undo === void 0 || p.forUnitId !== void 0 || p.status !== "accepted" && p.status !== "refused") return "There is nothing to undo.";
+  const at = undo.stamp;
+  if (at.day !== state.day) return "It can only be undone on the day it was answered.";
+  if (at.sceneId !== void 0 && state.scene?.id !== at.sceneId) return "Its scene has ended.";
+  if (dynamicOf(state, p.holderId)?.frame !== at.frame) return "Her frame has changed since.";
+  if ((state.dynamic?.open.milestones ?? []).some((m) => m.unitId === p.holderId && !at.milestones.includes(m.id))) return "A milestone was offered since.";
+  if ((state.dynamic?.open.claims ?? []).some((c) => c.unitId === p.holderId && !at.claims.includes(c.id))) return "A claim was opened since.";
+  if ((state.commander.injuredUntilDay ?? 0) !== at.injuredUntil) return "The commander was hurt since.";
+  if ((state.expedition?.id ?? null) !== at.expedition || (state.lastExpedition?.id ?? null) !== at.lastExpedition) return "A run has started since.";
+  if (state.slot !== at.slot) return "A slot has passed since.";
+  if ((p.audienceIds ?? []).length > 0) return "Others saw it.";
+  const next = undo.escalationRequestId === void 0 ? void 0 : state.practices.punishments.find((x) => x.requestId === undo.escalationRequestId);
+  if (next !== void 0 && next.status !== "offered") return "The escalation has already been answered.";
+  return null;
+}
+function undoPractice(draft, ctx2, punishmentId) {
+  const why = canUndoPractice(draft, punishmentId);
+  if (why !== null) throw new Error(why);
+  const p = draft.practices.punishments.find((x) => x.id === punishmentId);
+  const events = revertInverse(draft, ctx2, p.holderId, null, p.inverse);
+  return [{ type: "practice_undone", punishmentId, unitId: p.holderId }, ...events];
+}
+function restorePractice(draft, _ctx, unitId, undo) {
+  const pr = draft.practices;
+  const p = pr?.punishments.find((x) => x.id === undo.punishmentId);
+  const dyn = dynamicOf(draft, unitId);
+  if (pr === void 0 || p === void 0) return [];
+  const events = [];
+  if (dyn !== void 0) {
+    events.push(...restoreHold(draft, unitId, undo.hold));
+    addFavour(draft, unitId, undo.favour - dyn.favour);
+    dyn.tracks = structuredClone(undo.tracks);
+    dyn.refusals = [...undo.refusals];
+    dyn.contest = [...undo.contest];
+  }
+  pr.restrictions = pr.restrictions.slice(0, undo.restrictions);
+  if (undo.cold === void 0) delete pr.cold[unitId];
+  else pr.cold[unitId] = undo.cold;
+  if (undo.markSet === true && draft.personal?.mark?.unitId === unitId) delete draft.personal.mark;
+  if (undo.commanderStress !== void 0) events.push(...addCommanderStress(draft, -undo.commanderStress, "undo"));
+  pr.tasks = pr.tasks.filter((t) => !(undo.taskIds ?? []).includes(t.id));
+  pr.requests = pr.requests.filter((r) => !(undo.requestIds ?? []).includes(r.id));
+  const worded = undo.escalationRequestId === void 0 ? void 0 : pr.punishments.find((x) => x.requestId === undo.escalationRequestId && x.status === "offered");
+  if (worded !== void 0) {
+    pr.punishments = pr.punishments.filter((x) => x !== worded);
+    events.push({ type: "task_void", taskId: worded.id, holderId: unitId, what: "punishment", reason: "undone" });
+  }
+  p.status = undo.status;
+  delete p.answeredDay;
+  delete p.audienceIds;
+  delete p.inverse;
+  return events;
 }
 function compromisePunishment(draft, ctx2, holderId, ev) {
   const reg = ctx2.registries;
@@ -38319,6 +38433,7 @@ registerAfterAction(taskChecksFromEvents);
 registerAfterAction(offencesFromEvents);
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
+registerPracticeUndone(restorePractice);
 var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("practice/issue", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.requestId !== "string") throw new Error("practice/issue needs { requestId }.");
@@ -38344,6 +38459,10 @@ registerAction("practice/answer_punishment", (draft, payload, ctx2) => {
 registerAction("practice/take_instead", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.punishmentId !== "string" || payload.answer !== "do_it" && payload.answer !== "take_it" && payload.answer !== "refuse") throw new Error("practice/take_instead needs { punishmentId, answer }.");
   return takeInstead(draft, ctx2, payload.punishmentId, payload.answer);
+});
+registerAction("practice/undo", (draft, payload, ctx2) => {
+  if (!isObj40(payload) || typeof payload.punishmentId !== "string") throw new Error("practice/undo needs { punishmentId }.");
+  return undoPractice(draft, ctx2, payload.punishmentId);
 });
 
 // src/llm/callTypes.ts

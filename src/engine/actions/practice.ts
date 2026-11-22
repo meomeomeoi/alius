@@ -1,5 +1,6 @@
 import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
+import { registerPracticeUndone } from '../discipline/record';
 import { registerRestrictionReader } from '../discipline/restrictions';
 import { registerAction, registerAfterAction } from '../dispatch';
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
@@ -7,7 +8,7 @@ import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents } from '../practice/offences';
-import { answerPunishment, takeInstead } from '../practice/punish';
+import { answerPunishment, restorePractice, takeInstead, undoPractice } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
@@ -28,6 +29,8 @@ registerAfterAction(offencesFromEvents);
 // What her discipline stands in the way of: the commander's messages, free time and rooms, and a scene with her in her cold shoulder. The warden's own restrictions come first.
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
+// UNDO of an answer to her discipline: P9's `revertInverse` puts the numbers back, this puts what the practices took back (R8).
+registerPracticeUndone(restorePractice);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -69,4 +72,10 @@ registerAction('practice/answer_punishment', (draft, payload, ctx) => {
 registerAction('practice/take_instead', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.punishmentId !== 'string' || (payload.answer !== 'do_it' && payload.answer !== 'take_it' && payload.answer !== 'refuse')) throw new Error('practice/take_instead needs { punishmentId, answer }.');
   return takeInstead(draft, ctx, payload.punishmentId, payload.answer);
+});
+
+/** `practice/undo { punishmentId }`: UNDO of an accept or a refuse of her discipline, as P9's (R8). Closes what exists, so it needs no live holder. */
+registerAction('practice/undo', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.punishmentId !== 'string') throw new Error('practice/undo needs { punishmentId }.');
+  return undoPractice(draft, ctx, payload.punishmentId);
 });

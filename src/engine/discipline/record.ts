@@ -4,6 +4,7 @@ import { isLiving } from '../economy';
 import { nextId } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
+import type { PracticeUndo } from '../practice/state';
 import type { EventIntent } from '../relations/intents';
 import { SEVERITIES } from '../relations/vocab';
 import type { CampaignState, DisciplineState, Inverse, PendingDefiance, PendingThreat, Severity } from '../state/types';
@@ -247,6 +248,16 @@ export type UndoneHook = (draft: CampaignState, ctx: EngineCtx, unitId: string, 
 const undoneHooks: UndoneHook[] = [];
 export function registerUndone(hook: UndoneHook): void {
   if (!undoneHooks.includes(hook)) undoneHooks.push(hook);
+}
+/** What puts back what an answer to a holder's discipline put on the practices (P16, UNDO of an accept or a refuse): runs with the `Inverse.practice` the answer stored. Type-only import: this layer knows nothing of the practices. */
+export type PracticeUndoneHook = (draft: CampaignState, ctx: EngineCtx, unitId: string, undo: PracticeUndo) => EngineEvent[];
+const practiceUndoneHooks: PracticeUndoneHook[] = [];
+export function registerPracticeUndone(hook: PracticeUndoneHook): void {
+  if (!practiceUndoneHooks.includes(hook)) practiceUndoneHooks.push(hook);
+}
+/** UNDO of an answer to her discipline: the hooks give back what the practices took. */
+export function runPracticeUndone(draft: CampaignState, ctx: EngineCtx, unitId: string, undo: PracticeUndo): EngineEvent[] {
+  return practiceUndoneHooks.flatMap((hook) => hook(draft, ctx, unitId, undo));
 }
 /** UNDO of an application whose enforcement a hook acted on: the hooks give back what they took. */
 export function runUndone(draft: CampaignState, ctx: EngineCtx, unitId: string, undo: NonNullable<Inverse['dynamic']>): EngineEvent[] {

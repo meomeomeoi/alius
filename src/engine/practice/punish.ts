@@ -6,14 +6,16 @@
  */
 import type { Entry, Registries } from '../../content/types';
 import { countDeed } from '../discipline/deeds';
+import { revertInverse } from '../discipline/undo';
 import { applyPunishment, checkPunish } from '../discipline/punish';
-import { addRecord } from '../discipline/record';
+import { addRecord, captureInverse } from '../discipline/record';
 import { injureCommander } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
 import { addSign } from '../dynamic/knowledge';
 import { refusalCost } from '../dynamic/milestones';
+import { addFavour, restoreHold } from '../dynamic/hold';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
@@ -32,7 +34,7 @@ import { practiceSample } from './sample';
 import { requestPractice } from './request';
 import { startSlap } from './slap';
 import { fallbackLine } from './seeds';
-import { practiceRoll, type OpenPunishment, type PunishmentEffectType, type Task } from './state';
+import { practiceRoll, type OpenPunishment, type PracticeUndo, type PunishmentEffectType, type Task } from './state';
 import { acceptFormOf } from './tasks';
 import { eligibleUnits, plainText } from './validate';
 
@@ -181,9 +183,114 @@ export function answerPunishment(draft: CampaignState, ctx: EngineCtx, punishmen
     p.status = 'negotiating';
     return [{ type: 'punishment_answered', punishmentId, unitId: p.holderId, holderId: p.holderId, answer: 'negotiate', severity: p.severity }];
   }
-  if (answer === 'accept') return accept(draft, ctx, p);
-  if (answer === 'refuse') return refuse(draft, ctx, p);
+  if (answer === 'accept') return withUndo(draft, ctx, p, () => accept(draft, ctx, p));
+  if (answer === 'refuse') return withUndo(draft, ctx, p, () => refuse(draft, ctx, p));
   throw new Error('Unknown answer.');
+}
+
+// ---------------------------------------------------------------------------------------------
+// UNDO of an answer (R8): an `Inverse`, never a snapshot
+
+/**
+ * Runs an answer inside `captureInverse` (her relation numbers, record, history, deeds) and adds what the practices put (`Inverse.practice`: her hold, favour, tracks, refusals and contest
+ * before, what the answer wrote and where things stood). The inverse is kept on the punishment; `undoPractice` puts exactly that back.
+ */
+function withUndo(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment, answer: () => EngineEvent[]): EngineEvent[] {
+  const holderId = p.holderId;
+  const dyn = dynamicOf(draft, holderId)!;
+  const pr = ensurePractices(draft);
+  const undo: PracticeUndo = {
+    punishmentId: p.id, status: p.status, hold: dyn.hold, favour: dyn.favour, tracks: structuredClone(dyn.tracks), refusals: [...dyn.refusals], contest: [...dyn.contest], restrictions: pr.restrictions.length,
+    ...(pr.cold[holderId] !== undefined ? { cold: pr.cold[holderId] } : {}),
+    stamp: {
+      day: draft.day, slot: draft.slot, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}), frame: dyn.frame, milestones: (draft.dynamic?.open.milestones ?? []).filter((m) => m.unitId === holderId).map((m) => m.id),
+      claims: (draft.dynamic?.open.claims ?? []).filter((c) => c.unitId === holderId).map((c) => c.id), injuredUntil: draft.commander.injuredUntilDay ?? 0, expedition: draft.expedition?.id ?? null, lastExpedition: draft.lastExpedition?.id ?? null,
+    },
+  };
+  const tasksBefore = pr.tasks.map((t) => t.id);
+  const requestsBefore = pr.requests.map((r) => r.id);
+  const markBefore = draft.personal?.mark;
+  const { events, inverse } = captureInverse(draft, holderId, answer);
+  const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
+  const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
+  if (tasks.length > 0) undo.taskIds = tasks;
+  if (requests.length > 0) undo.requestIds = requests.map((r) => r.id);
+  const escalation = requests.find((r) => r.kind === 'punishment');
+  if (escalation !== undefined) undo.escalationRequestId = escalation.id;
+  if (markBefore === undefined && draft.personal?.mark?.unitId === holderId) undo.markSet = true;
+  const stress = events.filter((e) => e.type === 'commander_stress_changed' && e.source === 'holder_punishment').reduce((sum, e) => sum + num(e.delta), 0);
+  if (stress !== 0) undo.commanderStress = stress;
+  inverse.practice = undo;
+  p.inverse = inverse;
+  return events;
+}
+
+/**
+ * Why an answer to her discipline cannot be undone now, or `null`. Only an accept or a refuse of a punishment of hers, on the day it was answered and (in a scene) while that scene is
+ * open, with nothing since that cannot be put back: her frame, a milestone or a claim offered, an injury, a run, a slot spent, others who saw it, an escalation already answered.
+ */
+export function canUndoPractice(state: CampaignState, punishmentId: string): string | null {
+  const p = state.practices?.punishments.find((x) => x.id === punishmentId);
+  const undo = p?.inverse?.practice;
+  if (p === undefined || undo === undefined || p.forUnitId !== undefined || (p.status !== 'accepted' && p.status !== 'refused')) return 'There is nothing to undo.';
+  const at = undo.stamp;
+  if (at.day !== state.day) return 'It can only be undone on the day it was answered.';
+  if (at.sceneId !== undefined && state.scene?.id !== at.sceneId) return 'Its scene has ended.';
+  if (dynamicOf(state, p.holderId)?.frame !== at.frame) return 'Her frame has changed since.';
+  if ((state.dynamic?.open.milestones ?? []).some((m) => m.unitId === p.holderId && !at.milestones.includes(m.id))) return 'A milestone was offered since.';
+  if ((state.dynamic?.open.claims ?? []).some((c) => c.unitId === p.holderId && !at.claims.includes(c.id))) return 'A claim was opened since.';
+  if ((state.commander.injuredUntilDay ?? 0) !== at.injuredUntil) return 'The commander was hurt since.';
+  if ((state.expedition?.id ?? null) !== at.expedition || (state.lastExpedition?.id ?? null) !== at.lastExpedition) return 'A run has started since.';
+  if (state.slot !== at.slot) return 'A slot has passed since.';
+  if ((p.audienceIds ?? []).length > 0) return 'Others saw it.';
+  const next = undo.escalationRequestId === undefined ? undefined : state.practices!.punishments.find((x) => x.requestId === undo.escalationRequestId);
+  if (next !== undefined && next.status !== 'offered') return 'The escalation has already been answered.';
+  return null;
+}
+
+/**
+ * Takes an answer back (`practice/undo`): her relation numbers, record and history through P9's `revertInverse`, then what the practices put (`restorePractice`): hold, favour, tracks, her
+ * refusals, the restrictions, cold shoulder, mark, stress, tasks and requests the answer made, and the punishment is as it was. Throws with `canUndoPractice`'s reason. Draws nothing.
+ */
+export function undoPractice(draft: CampaignState, ctx: EngineCtx, punishmentId: string): EngineEvent[] {
+  const why = canUndoPractice(draft, punishmentId);
+  if (why !== null) throw new Error(why);
+  const p = draft.practices!.punishments.find((x) => x.id === punishmentId)!;
+  const events = revertInverse(draft, ctx, p.holderId, null, p.inverse!);
+  return [{ type: 'practice_undone', punishmentId, unitId: p.holderId }, ...events];
+}
+
+/** The hook `revertInverse` calls with an answer's `Inverse.practice` (registered by `actions/practice.ts`): everything the answer wrote on the practices and on her goes back. */
+export function restorePractice(draft: CampaignState, _ctx: EngineCtx, unitId: string, undo: PracticeUndo): EngineEvent[] {
+  const pr = draft.practices;
+  const p = pr?.punishments.find((x) => x.id === undo.punishmentId);
+  const dyn = dynamicOf(draft, unitId);
+  if (pr === undefined || p === undefined) return [];
+  const events: EngineEvent[] = [];
+  if (dyn !== undefined) {
+    events.push(...restoreHold(draft, unitId, undo.hold));
+    addFavour(draft, unitId, undo.favour - dyn.favour);
+    dyn.tracks = structuredClone(undo.tracks);
+    dyn.refusals = [...undo.refusals];
+    dyn.contest = [...undo.contest];
+  }
+  pr.restrictions = pr.restrictions.slice(0, undo.restrictions);
+  if (undo.cold === undefined) delete pr.cold[unitId];
+  else pr.cold[unitId] = undo.cold;
+  if (undo.markSet === true && draft.personal?.mark?.unitId === unitId) delete draft.personal.mark;
+  if (undo.commanderStress !== undefined) events.push(...addCommanderStress(draft, -undo.commanderStress, 'undo'));
+  pr.tasks = pr.tasks.filter((t) => !(undo.taskIds ?? []).includes(t.id));
+  pr.requests = pr.requests.filter((r) => !(undo.requestIds ?? []).includes(r.id));
+  const worded = undo.escalationRequestId === undefined ? undefined : pr.punishments.find((x) => x.requestId === undo.escalationRequestId && x.status === 'offered');
+  if (worded !== undefined) {
+    pr.punishments = pr.punishments.filter((x) => x !== worded);
+    events.push({ type: 'task_void', taskId: worded.id, holderId: unitId, what: 'punishment', reason: 'undone' });
+  }
+  p.status = undo.status;
+  delete p.answeredDay;
+  delete p.audienceIds;
+  delete p.inverse;
+  return events;
 }
 
 /**

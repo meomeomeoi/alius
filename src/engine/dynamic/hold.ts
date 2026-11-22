@@ -123,6 +123,18 @@ export function addHold(
   return events;
 }
 
+/**
+ * Puts a holder's hold back to a value it had (P16's UNDO of an answer to her discipline): the one writer of hold besides `addHold`, used only for that. It moves no band-dependent
+ * state (a domain she lost stays lost). Emits `hold_changed { cause: 'undo' }` when the value moved. Nothing for a unit with no dynamic.
+ */
+export function restoreHold(draft: CampaignState, unitId: string, value: number): EngineEvent[] {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === undefined || dyn.hold === value) return [];
+  const from = dyn.hold;
+  dyn.hold = value;
+  return [{ type: 'hold_changed', unitId, from, to: value, cause: 'undo' }];
+}
+
 /** Her favour moves by `n`, clamped to ±`TUNING.dynamic.favour.max`. A unit with no dynamic has none: nothing happens. */
 export function addFavour(draft: CampaignState, unitId: string, n: number): void {
   const dyn = dynamicOf(draft, unitId);

@@ -4,7 +4,7 @@ import type { Practice, PracticeCategory, ProfileStyle } from '../dynamic/types'
 import type { DynamicCampaign, DynamicRelation, DynamicUndo } from '../dynamic/state';
 import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
-import type { PracticeState } from '../practice/state';
+import type { PracticeState, PracticeUndo } from '../practice/state';
 import type { PhysicsRun } from '../physics/state';
 import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
@@ -861,6 +861,8 @@ export interface Inverse {
   appraisals?: Array<{ unitId: string; id: string }>;
   /** P15: what the enforcement took from her struggle for the command (UNDO puts it back, while she has no other aftermath). */
   dynamic?: DynamicUndo;
+  /** P16: what an answer to her discipline put on the practices (UNDO of an accept or a refuse: her hold, favour, tracks, what the answer wrote). */
+  practice?: PracticeUndo;
   /** Copies of what the application removed. */
   defiance?: PendingDefiance;
   threat?: PendingThreat;

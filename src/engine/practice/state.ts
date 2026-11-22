@@ -209,22 +209,24 @@ export interface OpenPunishment {
  */
 export interface PracticeUndo {
   punishmentId: string;
+  /** The status it had before the answer (`offered` or `negotiating`). */
   status: PunishmentStatus;
   hold: number;
   favour: number;
   tracks: Record<string, TrackState>;
+  refusals: number[];
+  contest: number[];
+  /** How many restrictions of hers there were, and her cold shoulder before (absent = none). */
   restrictions: number;
   cold?: number;
-  heldBy?: string;
-  escalationRequestId?: string;
-  /** The hold it started (a `slot_held` effect) and the mark it set, so UNDO ends them. */
-  startedHold?: true;
+  /** What the answer wrote: the stress it gave the commander, the mark it set, the tasks (a confession) and the requests (a protocol, the escalation) it made. */
+  commanderStress?: number;
   markSet?: true;
-  /** The task a confession wrote and the protocol request it made. */
   taskIds?: string[];
   requestIds?: string[];
-  /** The id of a punishment's answered day (UNDO is for the day it was given). */
-  day: number;
+  escalationRequestId?: string;
+  /** Where things stood when it was answered: UNDO is refused once any of them moved (a frame, a milestone or a claim offered, an injury, a run, a slot spent, the scene closed). */
+  stamp: { day: number; slot: Slot; sceneId?: string; frame: Frame; milestones: string[]; claims: string[]; injuredUntil: number; expedition: string | null; lastExpedition: string | null };
 }
 
 /** A demonstration she has staged and not yet seen through (R9). `observed` lists who saw it at the scene's end. */
