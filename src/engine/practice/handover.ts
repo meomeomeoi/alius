@@ -5,6 +5,7 @@
  * a commander who always yields does. Taking it back before the term is a refusal at severe. Nothing here draws: the key's roll is hashed (`keyPlaceAt`).
  */
 import type { Registries } from '../../content/types';
+import { contentAllowed } from '../bonds/content';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { regardFall, regardRise } from '../dynamic/regard';
 import { dynamicOf } from '../dynamic/state';
@@ -37,6 +38,10 @@ function wordsOf(state: CampaignState, holderId: string, kind: HandoverKind, day
 const standing = (state: CampaignState, holderId: string, kind: HandoverKind): Handover | undefined => state.practices?.handovers.find((h) => h.holderId === holderId && h.kind === kind);
 const waiting = (state: CampaignState, holderId: string, kind: HandoverKind): Task | undefined => state.practices?.tasks.find((t) => t.holderId === holderId && t.handover === kind && t.status === 'offered');
 
+/** Does the content this kind of handover needs allow it for her: every tag on and none among her own limits (the gate of the intercept for the device). */
+export const handoverAllowed = (state: CampaignState, reg: Registries, holderId: string, kind: HandoverKind): boolean =>
+  contentAllowed(state, reg, { contentTags: TUNING.practice.handover.contentTags[kind] }, holderId);
+
 /**
  * Why the commander cannot hand this to her now, or `null`: no such kind, a number of days it cannot be given for (a device is one day, a key one to seven, a calendar one to three), a holder who is not holding, or one of that kind
  * that she has already or that waits for the words. Reads only.
@@ -46,6 +51,7 @@ export function handoverProblem(state: CampaignState, reg: Registries, holderId:
   const range = TUNING.practice.handover.days[kind as HandoverKind];
   if (typeof days !== 'number' || !Number.isInteger(days) || days < range.min || days > range.max) return `That is not a number of days it can be given for.`;
   if (!practiceLive(state, reg, holderId)) return 'She is not holding now.';
+  if (!handoverAllowed(state, reg, holderId, kind as HandoverKind)) return 'Jealousy games are off.'; // the device is the intercept of P9c: its category, and her own limits
   if (standing(state, holderId, kind as HandoverKind) !== undefined || waiting(state, holderId, kind as HandoverKind) !== undefined) return 'She has that already.';
   return null;
 }
@@ -147,9 +153,12 @@ export function handoverSweep(draft: CampaignState, ctx: Pick<EngineCtx, 'regist
   return events;
 }
 
-/** The holder whose hand is on the commander's device today (a device handover that stands), other than the one the message is for; `null` when nobody has it. The first in the order they were given. Reads only. */
-export function deviceHolderOf(state: Pick<CampaignState, 'practices' | 'relations' | 'day'>, toUnitId?: string): string | null {
-  const h = state.practices?.handovers.find((x) => x.kind === 'device' && x.untilDay >= state.day && x.holderId !== toUnitId && holderStands(state, x.holderId));
+/**
+ * The holder whose hand is on the commander's device today (a device handover that stands), other than the one the message is for; `null` when nobody has it. The first in the order they were given. She must be live
+ * (the dynamic not opted out, something she practises on, a frame of `play` or beyond) and the device must still pass the gate of the intercept (`jealousy_games` on and not among her limits). Reads only.
+ */
+export function deviceHolderOf(state: CampaignState, reg: Registries, toUnitId?: string): string | null {
+  const h = state.practices?.handovers.find((x) => x.kind === 'device' && x.untilDay >= state.day && x.holderId !== toUnitId && practiceLive(state, reg, x.holderId) && handoverAllowed(state, reg, x.holderId, 'device'));
   return h?.holderId ?? null;
 }
 

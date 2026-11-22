@@ -58,7 +58,7 @@ registerAfterAction(doubleStandardFromEvents);
 // A ceremony's posture steps are done by the commander's own posture (R21): a posture set that is the step's ends it
 registerAfterAction(ceremonyPostures);
 // What the commander hands over (R17): a hand on the device edits every message to another, and a holder with the key is seen coming out of the commander's quarters
-registerForcedEditor((state, _reg, channel, toUnitId) => (channel === 'dm' ? deviceHolderOf(state, toUnitId) : null));
+registerForcedEditor((state, reg, channel, toUnitId) => (channel === 'dm' ? deviceHolderOf(state, reg, toUnitId) : null));
 registerAfterAction(keySeen);
 // A slap belongs to the scene it was raised in (R21): the scene ending or being aborted with it still open drops it (nothing lands; the scene was the cost)
 registerAfterAction((draft, _ctx, events) => slapSceneEnded(draft, events));

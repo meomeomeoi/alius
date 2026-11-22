@@ -94,7 +94,7 @@ describe('forgetPractices', () => {
     expect(s.personal!.bookings!.find((b) => b.id === 'bk2')!.status).toBe('booked'); // someone else's booking stays
     expect(ofType(events, 'task_void').map((e) => [e.taskId, e.what, e.reason])).toEqual([['pt1', 'task', 'gone'], ['pp1', 'punishment', 'gone'], ['pd1', 'demonstration', 'gone'], ['pt3', 'task', 'gone'], ['pp2', 'punishment', 'gone']]);
     expect(ofType(events, 'hold_released')).toEqual([{ type: 'hold_released', holderId: ANN, reason: 'gone' }]);
-    expect(ofType(events, 'handover_ended')).toEqual([{ type: 'handover_ended', handoverId: 'ph1', holderId: ANN, reason: 'gone' }]);
+    expect(ofType(events, 'handover_ended')).toEqual([{ type: 'handover_ended', handoverId: 'ph1', holderId: ANN, kind: expect.any(String), reason: 'gone' }]);
     expect(s.relations).toEqual(relations); // no delta of any axis
     expect(s.rng).toEqual(rng);
     expect(holdsPractices(s, ANN)).toBe(false);
@@ -217,6 +217,18 @@ describe('withdrawPractices', () => {
     const snapshot = structuredClone(bare);
     expect(withdrawPractices(bare, reg, ['restraint', 'denial', 'public_humiliation'])).toEqual([]);
     expect(bare).toEqual(snapshot);
+  });
+});
+
+describe('a handover whose content went (review I2)', () => {
+  it('the device ends with jealousy games, with no delta; the key and the calendar stay', () => {
+    const s = world(reg, 'play');
+    const p = ensurePractices(s);
+    p.handovers.push({ id: 'ph1', kind: 'device', holderId: ANN, untilDay: s.day, days: 1 } as never, { id: 'ph2', kind: 'key', holderId: ANN, untilDay: s.day + 2, days: 3 } as never);
+    expect(withdrawPractices(s, reg, ['restraint'])).toEqual([]);
+    const events = withdrawPractices(s, reg, ['jealousy_games']);
+    expect(ofType(events, 'handover_ended')).toEqual([{ type: 'handover_ended', handoverId: 'ph1', holderId: ANN, kind: 'device', reason: 'content' }]);
+    expect(s.practices!.handovers.map((h) => h.id)).toEqual(['ph2']);
   });
 });
 

@@ -4,6 +4,7 @@
  * draws nothing, and answers null while no hold exists (a campaign with no practices has none).
  */
 import type { Registries } from '../../content/types';
+import { herPracticeLive } from '../dynamic/gate';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { practiceRoll, type HeldState } from './state';
@@ -73,8 +74,12 @@ export function heldGuard(state: Readable, reg: Registries, action: { type: stri
   return null;
 }
 
-/** Is she a holder as the leaves can read it: a frame of `play` or beyond and no aftermath running (the gate itself reads more; the hub and the device cannot reach it). */
-export function holderStands(state: Pick<CampaignState, 'relations'>, unitId: string): boolean {
+/**
+ * Is she a holder as the leaves can read it (state only, no registry): the dynamic is not opted out (`holders` is not 0), she practises something that is switched on and not among her limits (`herPracticeLive`), a frame of
+ * `play` or beyond and no aftermath running. The hub and the key ask this, so the setup's opt-out and the categories turn them off like everything else of P16 (the gate itself reads more: the registry's categories and a living named unit).
+ */
+export function holderStands(state: Pick<CampaignState, 'relations' | 'squad' | 'content' | 'dynamic'>, unitId: string): boolean {
+  if (state.dynamic === undefined || state.dynamic.setup.holders === 0 || !herPracticeLive(state, unitId)) return false;
   const dyn = state.relations[unitId]?.dynamic;
   return dyn !== undefined && dyn.aftermath === undefined && (dyn.frame === 'play' || dyn.frame === 'role' || dyn.frame === 'rule');
 }
@@ -83,7 +88,7 @@ export function holderStands(state: Pick<CampaignState, 'relations'>, unitId: st
  * The key to the commander's quarters (R17): she has one that stands on this day and the hashed roll of the slot hits (`practiceRoll(her, 'key:' + day + slot) < keyChance`), so the hub puts her in the commander's cabin.
  * A leaf: the hub asks it for any day and slot. No draw.
  */
-export function keyPlaceAt(state: Pick<CampaignState, 'practices' | 'relations' | 'dynamic' | 'day'>, unitId: string, day: number, slot: Slot): boolean {
+export function keyPlaceAt(state: Pick<CampaignState, 'practices' | 'relations' | 'dynamic' | 'day' | 'squad' | 'content'>, unitId: string, day: number, slot: Slot): boolean {
   const key = state.practices?.handovers.some((h) => h.kind === 'key' && h.holderId === unitId && h.untilDay >= day);
   if (key !== true || !holderStands(state, unitId)) return false;
   return practiceRoll({ dynamic: state.dynamic, day }, unitId, `key:${day}${slot}`) < TUNING.practice.handover.keyChance;

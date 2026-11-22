@@ -1502,6 +1502,8 @@ var TUNING = Object.freeze({
       days: Object.freeze({ device: Object.freeze({ min: 1, max: 1 }), key: Object.freeze({ min: 1, max: 7 }), calendar: Object.freeze({ min: 1, max: 3 }) }),
       keyChance: 0.25,
       cardDays: 1,
+      /** The content a kind of handover needs (the device is the intercept of P9c: `jealousy_games`, on and not among her limits). */
+      contentTags: Object.freeze({ device: Object.freeze(["jealousy_games"]), key: Object.freeze([]), calendar: Object.freeze([]) }),
       what: Object.freeze({ device: "the device", key: "the key to the quarters", calendar: "the calendar" }),
       text: "AUTHOR TO WRITE: The commander gives {name} {what}, {for}.",
       summary: "gave her {what}, {for}"
@@ -11382,63 +11384,6 @@ function deedsOf(state) {
   return out;
 }
 
-// src/engine/practice/held.ts
-var RANK = { morning: 0, afternoon: 1, evening: 2, night: 3 };
-var posOf = (day, slot2) => day * 4 + RANK[slot2];
-function heldBookingAt(state, held3, day, slot2) {
-  const b = (state.personal?.bookings ?? []).find((x) => held3.bookingIds.includes(x.id) && x.day === day && x.slot === slot2 && x.status !== "cancelled" && x.status !== "lapsed");
-  return b === void 0 ? null : { kindId: b.kindId };
-}
-function heldNow(state) {
-  const held3 = state.practices?.held;
-  if (held3 === void 0) return null;
-  const now = posOf(state.day, state.slot);
-  if (now < posOf(held3.since.day, held3.since.slot) || now > posOf(held3.until.day, held3.until.slot)) return null;
-  return heldBookingAt(state, held3, state.day, state.slot) === null ? null : held3;
-}
-function heldLocation(state, reg) {
-  const held3 = heldNow(state);
-  const b = held3 === null ? null : heldBookingAt(state, held3, state.day, state.slot);
-  const id = b === null ? void 0 : reg.bookingKinds.get(b.kindId)?.locationId;
-  return typeof id === "string" ? id : null;
-}
-var names = (payload, holderId) => {
-  const ids = payload?.participants;
-  return Array.isArray(ids) && ids.includes(holderId);
-};
-var keepAlarm = (state) => {
-  const a = state.practices?.alarm;
-  return a !== void 0 && a.answer === "keep" && (a.kind === "launch" || a.kind === "deadline");
-};
-function heldGuard(state, reg, action) {
-  const held3 = heldNow(state);
-  if (held3 === null) return null;
-  const type = action.type;
-  if (type === "expedition/start") {
-    if (keepAlarm(state) && action.payload?.withoutCommand === true) return null;
-    return { code: "held_alarm", message: "The commander is held: the duty has to be weighed against the hold." };
-  }
-  if (type === "night/open") return { code: "held_alarm", message: "The commander is held: the knock has to be weighed against the hold." };
-  const refused = type.startsWith("activity/") || type === "life/time_together" || type === "intrigue/act";
-  if (refused) return { code: "held", message: "The commander is held in her quarters: ask to be let go, or let the slot pass." };
-  if (type === "scene/start") {
-    const p = action.payload;
-    if (p?.origin === "night") return null;
-    if (names(action.payload, held3.by) && p?.locationId === heldLocation(state, reg)) return null;
-    return { code: "held", message: "The commander is held in her quarters: only a scene with her there can be had." };
-  }
-  return null;
-}
-function holderStands(state, unitId) {
-  const dyn = state.relations[unitId]?.dynamic;
-  return dyn !== void 0 && dyn.aftermath === void 0 && (dyn.frame === "play" || dyn.frame === "role" || dyn.frame === "rule");
-}
-function keyPlaceAt(state, unitId, day, slot2) {
-  const key = state.practices?.handovers.some((h2) => h2.kind === "key" && h2.holderId === unitId && h2.untilDay >= day);
-  if (key !== true || !holderStands(state, unitId)) return false;
-  return practiceRoll({ dynamic: state.dynamic, day }, unitId, `key:${day}${slot2}`) < TUNING.practice.handover.keyChance;
-}
-
 // src/engine/relations/bands.ts
 var trustBand = (n) => n < 10 ? "none" : n < 25 ? "low" : n < 45 ? "guarded" : n < 70 ? "solid" : "high";
 var affinityBand = (n) => n <= -60 ? "hostile" : n <= -30 ? "cold" : n < 0 ? "cool" : n < 30 ? "neutral" : n < 60 ? "warm" : "devoted";
@@ -11465,6 +11410,32 @@ var initialLoyaltyBand = (trust, shift = NO_SHIFT) => {
   const L = TUNING.relations.loyalty;
   return trust < L.breakingEnter + shift.enter ? "breaking" : trust < L.waveringEnter + shift.enter ? "wavering" : "steady";
 };
+
+// src/engine/dynamic/capabilities.ts
+var domainEntry = (reg, id) => reg.dynamicDomains.get(id);
+var domainRows = (reg) => [...reg.dynamicDomains.values()];
+var standing = (d, day) => d.partialUntil === void 0 || d.partialUntil > day;
+var bandMin = (reg, entry) => Number(reg.holdBands.get(entry.requires.holdBand)?.min ?? Infinity);
+function capabilitiesOf(state, reg, unitId) {
+  const dyn = dynamicOf(state, unitId);
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || !dynamicOn(state, reg)) return [];
+  const held3 = /* @__PURE__ */ new Set();
+  for (const d of dyn.domains) if (standing(d, state.day)) for (const c of domainEntry(reg, d.id)?.grants ?? []) held3.add(c);
+  return [...held3];
+}
+var hasCapability = (state, reg, unitId, cap8) => capabilitiesOf(state, reg, unitId).includes(cap8);
+function holderWith(state, reg, cap8) {
+  return state.squad.find((u) => u.kind === "named" && hasCapability(state, reg, u.id, cap8))?.id ?? null;
+}
+function secondPlaceHolder(state, reg) {
+  if (state.slot !== "evening") return null;
+  const b = (state.personal?.bookings ?? []).find((x) => x.day === state.day && x.slot === "evening" && (x.status === "booked" || x.status === "played") && hasCapability(state, reg, x.unitId, "second_place"));
+  return b?.unitId ?? null;
+}
+function dropVoidOverride(draft, reg, unitId) {
+  if (draft.dynamic?.override?.unitId === unitId && !hasCapability(draft, reg, unitId, "countermand")) delete draft.dynamic.override;
+}
 
 // src/engine/relations/gain.ts
 var RANGE2 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
@@ -13096,30 +13067,62 @@ function ensureDynamic(draft, reg, unitId) {
   return [{ type: "dynamic_started", unitId }];
 }
 
-// src/engine/dynamic/capabilities.ts
-var domainEntry = (reg, id) => reg.dynamicDomains.get(id);
-var domainRows = (reg) => [...reg.dynamicDomains.values()];
-var standing = (d, day) => d.partialUntil === void 0 || d.partialUntil > day;
-var bandMin = (reg, entry) => Number(reg.holdBands.get(entry.requires.holdBand)?.min ?? Infinity);
-function capabilitiesOf(state, reg, unitId) {
-  const dyn = dynamicOf(state, unitId);
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  if (dyn === void 0 || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || !dynamicOn(state, reg)) return [];
-  const held3 = /* @__PURE__ */ new Set();
-  for (const d of dyn.domains) if (standing(d, state.day)) for (const c of domainEntry(reg, d.id)?.grants ?? []) held3.add(c);
-  return [...held3];
+// src/engine/practice/held.ts
+var RANK = { morning: 0, afternoon: 1, evening: 2, night: 3 };
+var posOf = (day, slot2) => day * 4 + RANK[slot2];
+function heldBookingAt(state, held3, day, slot2) {
+  const b = (state.personal?.bookings ?? []).find((x) => held3.bookingIds.includes(x.id) && x.day === day && x.slot === slot2 && x.status !== "cancelled" && x.status !== "lapsed");
+  return b === void 0 ? null : { kindId: b.kindId };
 }
-var hasCapability = (state, reg, unitId, cap8) => capabilitiesOf(state, reg, unitId).includes(cap8);
-function holderWith(state, reg, cap8) {
-  return state.squad.find((u) => u.kind === "named" && hasCapability(state, reg, u.id, cap8))?.id ?? null;
+function heldNow(state) {
+  const held3 = state.practices?.held;
+  if (held3 === void 0) return null;
+  const now = posOf(state.day, state.slot);
+  if (now < posOf(held3.since.day, held3.since.slot) || now > posOf(held3.until.day, held3.until.slot)) return null;
+  return heldBookingAt(state, held3, state.day, state.slot) === null ? null : held3;
 }
-function secondPlaceHolder(state, reg) {
-  if (state.slot !== "evening") return null;
-  const b = (state.personal?.bookings ?? []).find((x) => x.day === state.day && x.slot === "evening" && (x.status === "booked" || x.status === "played") && hasCapability(state, reg, x.unitId, "second_place"));
-  return b?.unitId ?? null;
+function heldLocation(state, reg) {
+  const held3 = heldNow(state);
+  const b = held3 === null ? null : heldBookingAt(state, held3, state.day, state.slot);
+  const id = b === null ? void 0 : reg.bookingKinds.get(b.kindId)?.locationId;
+  return typeof id === "string" ? id : null;
 }
-function dropVoidOverride(draft, reg, unitId) {
-  if (draft.dynamic?.override?.unitId === unitId && !hasCapability(draft, reg, unitId, "countermand")) delete draft.dynamic.override;
+var names = (payload, holderId) => {
+  const ids = payload?.participants;
+  return Array.isArray(ids) && ids.includes(holderId);
+};
+var keepAlarm = (state) => {
+  const a = state.practices?.alarm;
+  return a !== void 0 && a.answer === "keep" && (a.kind === "launch" || a.kind === "deadline");
+};
+function heldGuard(state, reg, action) {
+  const held3 = heldNow(state);
+  if (held3 === null) return null;
+  const type = action.type;
+  if (type === "expedition/start") {
+    if (keepAlarm(state) && action.payload?.withoutCommand === true) return null;
+    return { code: "held_alarm", message: "The commander is held: the duty has to be weighed against the hold." };
+  }
+  if (type === "night/open") return { code: "held_alarm", message: "The commander is held: the knock has to be weighed against the hold." };
+  const refused = type.startsWith("activity/") || type === "life/time_together" || type === "intrigue/act";
+  if (refused) return { code: "held", message: "The commander is held in her quarters: ask to be let go, or let the slot pass." };
+  if (type === "scene/start") {
+    const p = action.payload;
+    if (p?.origin === "night") return null;
+    if (names(action.payload, held3.by) && p?.locationId === heldLocation(state, reg)) return null;
+    return { code: "held", message: "The commander is held in her quarters: only a scene with her there can be had." };
+  }
+  return null;
+}
+function holderStands(state, unitId) {
+  if (state.dynamic === void 0 || state.dynamic.setup.holders === 0 || !herPracticeLive(state, unitId)) return false;
+  const dyn = state.relations[unitId]?.dynamic;
+  return dyn !== void 0 && dyn.aftermath === void 0 && (dyn.frame === "play" || dyn.frame === "role" || dyn.frame === "rule");
+}
+function keyPlaceAt(state, unitId, day, slot2) {
+  const key = state.practices?.handovers.some((h2) => h2.kind === "key" && h2.holderId === unitId && h2.untilDay >= day);
+  if (key !== true || !holderStands(state, unitId)) return false;
+  return practiceRoll({ dynamic: state.dynamic, day }, unitId, `key:${day}${slot2}`) < TUNING.practice.handover.keyChance;
 }
 
 // src/engine/basePlan.ts
@@ -22820,7 +22823,7 @@ function endHold(draft, p, reason) {
   return { type: "hold_released", holderId: held3.by, reason };
 }
 function endHandover(h2, reason) {
-  return { type: "handover_ended", handoverId: h2.id, holderId: h2.holderId, reason };
+  return { type: "handover_ended", handoverId: h2.id, holderId: h2.holderId, kind: h2.kind, reason };
 }
 function forgetPractices(draft, unitId) {
   const p = draft.practices;
@@ -22904,6 +22907,8 @@ function withdrawPractices(draft, reg, changed) {
     events.push(voided(x.id, x.holderId, "demonstration", "content"));
   }
   if (p.held !== void 0 && holdKindsOf(draft, reg, p.held).some((k) => hit(tagsOf3(k)))) events.push(endHold(draft, p, "content"));
+  for (const h2 of p.handovers.filter((x) => hit([...TUNING.practice.handover.contentTags[x.kind]]))) events.push(endHandover(h2, "content"));
+  p.handovers = p.handovers.filter((x) => !hit([...TUNING.practice.handover.contentTags[x.kind]]));
   const enabled = draft.content?.enabled ?? [];
   const needs = EFFECT_NEEDS.slap;
   if (p.slap !== void 0 && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;
@@ -23609,11 +23614,13 @@ function wordsOf2(state, holderId, kind, days) {
 }
 var standing2 = (state, holderId, kind) => state.practices?.handovers.find((h2) => h2.holderId === holderId && h2.kind === kind);
 var waiting2 = (state, holderId, kind) => state.practices?.tasks.find((t) => t.holderId === holderId && t.handover === kind && t.status === "offered");
+var handoverAllowed = (state, reg, holderId, kind) => contentAllowed(state, reg, { contentTags: TUNING.practice.handover.contentTags[kind] }, holderId);
 function handoverProblem(state, reg, holderId, kind, days) {
   if (typeof kind !== "string" || !HANDOVER_KINDS.includes(kind)) return "The commander can hand her the device, the key or the calendar.";
   const range2 = TUNING.practice.handover.days[kind];
   if (typeof days !== "number" || !Number.isInteger(days) || days < range2.min || days > range2.max) return `That is not a number of days it can be given for.`;
   if (!practiceLive(state, reg, holderId)) return "She is not holding now.";
+  if (!handoverAllowed(state, reg, holderId, kind)) return "Jealousy games are off.";
   if (standing2(state, holderId, kind) !== void 0 || waiting2(state, holderId, kind) !== void 0) return "She has that already.";
   return null;
 }
@@ -23706,8 +23713,8 @@ function handoverSweep(draft, ctx2) {
   }
   return events;
 }
-function deviceHolderOf(state, toUnitId) {
-  const h2 = state.practices?.handovers.find((x) => x.kind === "device" && x.untilDay >= state.day && x.holderId !== toUnitId && holderStands(state, x.holderId));
+function deviceHolderOf(state, reg, toUnitId) {
+  const h2 = state.practices?.handovers.find((x) => x.kind === "device" && x.untilDay >= state.day && x.holderId !== toUnitId && practiceLive(state, reg, x.holderId) && handoverAllowed(state, reg, x.holderId, "device"));
   return h2?.holderId ?? null;
 }
 function keySeen(draft, ctx2, events) {
@@ -40660,7 +40667,7 @@ registerMomentTrigger("her_demand", herDemandLive);
 registerMomentTrigger("her_test", herTestLive);
 registerAfterAction(doubleStandardFromEvents);
 registerAfterAction(ceremonyPostures);
-registerForcedEditor((state, _reg, channel, toUnitId) => channel === "dm" ? deviceHolderOf(state, toUnitId) : null);
+registerForcedEditor((state, reg, channel, toUnitId) => channel === "dm" ? deviceHolderOf(state, reg, toUnitId) : null);
 registerAfterAction(keySeen);
 registerAfterAction((draft, _ctx, events) => slapSceneEnded(draft, events));
 registerFeedSuppressor((state, unitId, event) => event.type === "task_kept" && pendingUnfair(state, unitId, "cancelled_reward") !== void 0);

@@ -1121,6 +1121,8 @@ export const TUNING = Object.freeze({
     handover: Object.freeze({
       days: Object.freeze({ device: Object.freeze({ min: 1, max: 1 }), key: Object.freeze({ min: 1, max: 7 }), calendar: Object.freeze({ min: 1, max: 3 }) }),
       keyChance: 0.25, cardDays: 1,
+      /** The content a kind of handover needs (the device is the intercept of P9c: `jealousy_games`, on and not among her limits). */
+      contentTags: Object.freeze({ device: Object.freeze(['jealousy_games']), key: Object.freeze([] as string[]), calendar: Object.freeze([] as string[]) }),
       what: Object.freeze({ device: 'the device', key: 'the key to the quarters', calendar: 'the calendar' } as const),
       text: 'AUTHOR TO WRITE: The commander gives {name} {what}, {for}.',
       summary: 'gave her {what}, {for}',

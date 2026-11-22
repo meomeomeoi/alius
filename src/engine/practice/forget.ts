@@ -6,6 +6,7 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import type { Booking, CampaignState } from '../state/types';
+import { TUNING } from '../tuning';
 import { EFFECT_NEEDS, type HeldState, type PracticeState } from './state';
 
 /** Whether anything of hers is left for `forgetPractices` to drop (the sweep runs only for those). */
@@ -64,8 +65,8 @@ function endHold(draft: CampaignState, p: PracticeState, reason: 'gone' | 'conte
   return { type: 'hold_released', holderId: held.by, reason };
 }
 
-function endHandover(h: PracticeState['handovers'][number], reason: 'gone'): EngineEvent {
-  return { type: 'handover_ended', handoverId: h.id, holderId: h.holderId, reason };
+function endHandover(h: PracticeState['handovers'][number], reason: 'gone' | 'content'): EngineEvent {
+  return { type: 'handover_ended', handoverId: h.id, holderId: h.holderId, kind: h.kind, reason };
 }
 
 /**
@@ -132,6 +133,9 @@ export function withdrawPractices(draft: CampaignState, reg: Registries, changed
   for (const x of p.punishments) if (isOpen(x.status) && hit(tagsOf(reg.holderPunishments.get(x.entryId)))) { x.status = 'void'; events.push(voided(x.id, x.holderId, 'punishment', 'content')); }
   for (const x of p.demonstrations) if ((x.status === 'offered' || x.status === 'open') && hit(x.tags)) { x.status = 'void'; events.push(voided(x.id, x.holderId, 'demonstration', 'content')); }
   if (p.held !== undefined && holdKindsOf(draft, reg, p.held).some((k) => hit(tagsOf(k)))) events.push(endHold(draft, p, 'content'));
+  // a handover whose content went (the device is the intercept: `jealousy_games`) ends with no delta
+  for (const h of p.handovers.filter((x) => hit([...TUNING.practice.handover.contentTags[x.kind]]))) events.push(endHandover(h, 'content'));
+  p.handovers = p.handovers.filter((x) => !hit([...TUNING.practice.handover.contentTags[x.kind]]));
   const enabled = draft.content?.enabled ?? [];
   const needs = EFFECT_NEEDS.slap;
   if (p.slap !== undefined && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;

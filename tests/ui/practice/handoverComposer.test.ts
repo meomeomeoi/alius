@@ -28,6 +28,7 @@ afterEach(() => { document.body.innerHTML = ''; });
 
 function holder(): CampaignState {
   const s = withService(world(reg, 'role'));
+  s.content = { enabled: [...(s.content?.enabled ?? []), 'jealousy_games'] }; // the device is the intercept of P9c
   dynamicOf(s, ANN)!.hold = 60;
   return s;
 }
@@ -175,6 +176,19 @@ describe('the card', () => {
     expect(host.textContent).toContain('Say it in your own words.');
     expect(host.querySelector('.alius-task-closes')!.textContent).toMatch(/key/i);
     expect(draw(true).host.querySelector('[data-task-sign]')).not.toBeNull();
+  });
+});
+
+describe('the device and the category it needs (review I2)', () => {
+  it('with jealousy games off the device chip is closed with the reason; the key and the calendar stay open', () => {
+    const off = holder();
+    off.content = { enabled: off.content!.enabled.filter((c) => c !== 'jealousy_games') };
+    const { host } = composer(off);
+    const device = host.querySelector('[data-handover-kind="device"]')!;
+    expect(device.getAttribute('aria-disabled')).toBe('true');
+    expect(device.getAttribute('title')).toMatch(/jealousy/i);
+    expect(host.querySelector('[data-handover-kind="key"]')!.getAttribute('aria-disabled')).toBeNull();
+    expect(host.querySelector('[data-handover-kind="calendar"]')!.getAttribute('aria-disabled')).toBeNull();
   });
 });
 

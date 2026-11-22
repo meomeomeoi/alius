@@ -26,6 +26,7 @@ type Style = 'ritual' | 'cold' | 'regal' | 'cruel';
 /** Ann holds at `role` in `style`; the commander has said nothing yet. */
 function holder(style: Style = 'cold'): CampaignState {
   const s = withService(world(reg, 'role'));
+  s.content = { enabled: [...(s.content?.enabled ?? []), 'jealousy_games'] }; // the device handover is the intercept of P9c: its category must be on
   s.slot = 'morning';
   unitOf(s, ANN).bond!.practice!.style = { primary: style };
   dynamicOf(s, ANN)!.hold = 60;
@@ -319,5 +320,91 @@ describe('what is remembered', () => {
     const fact = g.state.memory.facts.find((f) => f.tags.includes('handover_given'))!;
     expect(fact.text).not.toMatch(/AUTHOR TO WRITE/);
     expect(fact.knownBy).toContain(ANN);
+  });
+});
+
+describe('the device passes the gate of the intercept (review I2)', () => {
+  const send = (s: CampaignState, unitId: string) => run(s, reg, { type: 'dm/send', payload: { unitId, text: 'Hello.' } });
+  const without = (): CampaignState => {
+    const s = holder();
+    s.content = { enabled: s.content!.enabled.filter((c) => c !== 'jealousy_games') };
+    return s;
+  };
+
+  it('with jealousy games off, or among her limits, the device is not offered: the problem says why and the action refuses', () => {
+    expect(handoverProblem(holder(), reg, ANN, 'device', 1)).toBeNull();
+    expect(handoverProblem(without(), reg, ANN, 'device', 1)).toMatch(/jealousy/i);
+    expect(errors(offer(without(), 'device').events)[0]?.message).toMatch(/jealousy/i);
+    expect(handoverProblem(without(), reg, ANN, 'key', 2)).toBeNull(); // only the device is an edit of the commander's words
+    expect(handoverProblem(without(), reg, ANN, 'calendar', 2)).toBeNull();
+    const limited = holder();
+    unitOf(limited, ANN).bond!.ownLimits = { categories: ['jealousy_games'] };
+    expect(handoverProblem(limited, reg, ANN, 'device', 1)).toMatch(/jealousy/i);
+  });
+
+  it('a device handover that stands holds no DM once jealousy games go off: the reader answers nobody and the next day sweeps nothing odd', () => {
+    const s = given('device').state;
+    expect(send(s, BEA).events.some((e) => e.type === 'device_intercept' && e.hit === true)).toBe(true);
+    const off = structuredClone(s);
+    off.content = { enabled: off.content!.enabled.filter((c) => c !== 'jealousy_games') };
+    const r = send(off, BEA);
+    expect(ofType(r.events, 'device_intercept')).toEqual([]);
+    expect(r.state.dms[BEA]).toHaveLength(1);
+  });
+
+  it('switching jealousy games off ends the device handover (handover_ended, content) and leaves the key and the calendar', () => {
+    let s = given('device').state;
+    const key = offer(s, 'key', 2);
+    const id = key.state.practices!.tasks.find((t) => t.handover === 'key' && t.status === 'offered')!.id;
+    const k = run(said(key.state, id).state, reg, { type: 'practice/sign', payload: { taskId: id } });
+    expect(errors(key.events)).toEqual([]);
+    expect(errors(k.events)).toEqual([]);
+    s = k.state;
+    expect(handovers(s).map((h) => h.kind).sort()).toEqual(['device', 'key']);
+    const off = run(s, reg, { type: 'content/set_categories', payload: { enabled: s.content!.enabled.filter((c) => c !== 'jealousy_games') } });
+    expect(errors(off.events)).toEqual([]);
+    expect(ofType(off.events, 'handover_ended')).toMatchObject([{ holderId: ANN, kind: 'device', reason: 'content' }]);
+    expect(handovers(off.state).map((h) => h.kind)).toEqual(['key']);
+  });
+});
+
+describe('the handover readers stop with the gate (review I3)', () => {
+  const send = (s: CampaignState, unitId: string) => run(s, reg, { type: 'dm/send', payload: { unitId, text: 'Hello.' } });
+  const cabinRoom = (): string => String(commanderCabin(reg)!.hubRoomId);
+  const optOut = (s: CampaignState): CampaignState => {
+    const d = structuredClone(s);
+    d.dynamic!.setup.holders = 0;
+    return d;
+  };
+  const stopped = (s: CampaignState): CampaignState => {
+    const d = structuredClone(s);
+    unitOf(d, ANN).bond!.ownLimits = { categories: ['restraint', 'public_humiliation', 'denial', 'service'] };
+    return d;
+  };
+
+  it('with the dynamic opted out a device handover edits nothing', () => {
+    const s = given('device').state;
+    expect(send(s, BEA).events.some((e) => e.type === 'device_intercept' && e.hit === true)).toBe(true);
+    const r = send(optOut(s), BEA);
+    expect(ofType(r.events, 'device_intercept')).toEqual([]);
+    expect(r.state.dms[BEA]).toHaveLength(1);
+  });
+
+  it('with nothing she practises on any more a device handover edits nothing either', () => {
+    const r = send(stopped(given('device').state), BEA);
+    expect(ofType(r.events, 'device_intercept')).toEqual([]);
+  });
+
+  it('with the dynamic opted out, or nothing practised, the key adds nobody to the commander\'s cabin on any slot', () => {
+    const s = given('key', 7).state;
+    const hits = (x: CampaignState): number => {
+      let n = 0;
+      for (let day = 20; day < 28; day++) for (const slot of ['morning', 'afternoon', 'evening'] as const) if (whereaboutAt({ ...x, day }, reg, ANN, day, slot)?.roomId === cabinRoom()) n++;
+      return n;
+    };
+    const base = hits(holder()); // she is in that cabin at times anyway: the key adds to it
+    expect(hits(s)).toBeGreaterThan(base);
+    expect(hits(optOut(s))).toBe(base);
+    expect(hits(stopped(s))).toBe(base);
   });
 });
