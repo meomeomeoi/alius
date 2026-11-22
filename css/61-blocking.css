@@ -193,3 +193,20 @@
   stroke-width: 1.6;
   stroke-linecap: round;
 }
+
+/* P10e: planes (a wall, a desk, a seat, her soles, a tray) and contact shadows of the mannequin */
+#alius-shell .alius-mq-hint.alius-mq-plane {
+  fill: color-mix(in srgb, var(--alius-dim) 7%, transparent);
+  stroke: color-mix(in srgb, var(--alius-dim) 32%, transparent);
+  stroke-width: 1;
+}
+
+#alius-shell .alius-mq-item.alius-mq-plane {
+  fill: color-mix(in srgb, var(--alius-warn) 28%, transparent);
+  stroke: color-mix(in srgb, var(--alius-warn) 75%, #ffffff);
+  stroke-width: 1.4;
+}
+
+#alius-shell .alius-mq-shadow {
+  fill: color-mix(in srgb, #000000 30%, transparent);
+}

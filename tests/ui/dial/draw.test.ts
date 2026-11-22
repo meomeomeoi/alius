@@ -110,14 +110,38 @@ describe('mannequinSvg', () => {
     for (const d of DRIFTS) for (const [x, y] of figureFit(d.actual, d.target).points) expect(Math.hypot(x - 100, y - 102), d.id).toBeLessThanOrEqual(84.0001);
   });
 
-  it('items and hints are one line each', () => {
-    const tray = mannequinSvg({ base: 'kneeling_upright', points: { arms: 'holding' }, item: 'tray' });
-    expect(tray.querySelectorAll('.alius-mq-item')).toHaveLength(1);
-    expect(mannequinSvg({ base: 'kneeling_upright', points: { arms: 'lamp' }, item: 'lamp' }).querySelectorAll('.alius-mq-item')).toHaveLength(1);
-    for (const hint of ['wall', 'desk', 'feet'] as const) {
-      expect(mannequinSvg({ ...kneel, hint }).querySelectorAll('.alius-mq-hint'), hint).toHaveLength(1);
-    }
+  it('items and hints: a tray and a desk are surfaces, a wall a plane behind the back or before the face, her feet two soles, a seat under a sitting body, a rope and a bar in the teeth', () => {
+    const items = (p: DialPose, k: string) => [...mannequinSvg(p).querySelectorAll(`[data-item="${k}"]`)];
+    const hints = (p: DialPose, k: string) => [...mannequinSvg(p).querySelectorAll(`[data-hint="${k}"]`)];
+    expect(items({ base: 'kneeling_upright', points: { arms: 'holding' }, item: 'tray' }, 'tray').map((e) => e.tagName)).toEqual(['polygon']);
+    expect(items({ base: 'kneeling_upright', points: { arms: 'lamp' }, item: 'lamp' }, 'lamp')).toHaveLength(2); // its stem and its shade
+    expect(items({ base: 'lying_side', points: { arms: 'bound' }, hogtie: true, item: 'rope' }, 'rope')).toHaveLength(1);
+    expect(items({ ...kneel, item: 'mouth' }, 'mouth')).toHaveLength(1);
+    for (const hint of ['wall', 'wall_front', 'desk'] as const) expect(hints({ ...kneel, hint }, hint).map((e) => e.tagName), hint).toEqual(['polygon']);
+    expect(hints({ ...kneel, hint: 'feet' }, 'feet')).toHaveLength(2);
+    expect(hints({ base: 'sitting', points: {} }, 'seat').length).toBeGreaterThan(0); // nothing sits on air
     expect(mannequinSvg(kneel).querySelector('.alius-mq-item, .alius-mq-hint')).toBeNull();
+  });
+
+  it('the gaze never goes through the floor', () => {
+    for (const { name, pose: p } of ALL) {
+      const ray = mannequinSvg(p).querySelector('.alius-mq-gaze');
+      if (!ray) continue;
+      const s = pose(p);
+      const g = s.gazeDir!;
+      const atFloor = g[1] < 0 ? s.head[1] / -g[1] : Infinity;
+      expect(atFloor, name).toBeGreaterThan(0.14);
+    }
+  });
+
+  it('a lying body rests on the floor: its lowest surface touches it, with no gap and no sinking', () => {
+    const R = { shoulder: 0.05, elbow: 0.045, hand: 0.035, hip: 0.065, knee: 0.05, ankle: 0.045, toe: 0.035 } as const;
+    for (const base of ['lying_back', 'lying_front', 'lying_side']) {
+      const s = pose({ base, points: {} });
+      const lowest = Math.min(s.pelvis[1] - 0.11, s.chest[1] - 0.12, s.head[1] - 0.1, ...(Object.keys(R) as Array<keyof typeof R>).flatMap((k) => [s[k].L[1] - R[k], s[k].R[1] - R[k]]));
+      expect(lowest, base).toBeLessThan(0.03);
+      expect(lowest, base).toBeGreaterThan(-0.03);
+    }
   });
 
   it('draws every base and preset (and each drift) without throwing', () => {

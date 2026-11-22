@@ -95,8 +95,10 @@ type FootMode = 'fwd' | 'back' | 'down' | 'down_back';
 
 interface Legs {
   pelvis: Vec3;
-  /** The ankle target of the left leg (the right mirrors it in x). */
+  /** The ankle target of the left leg (the right mirrors it in x unless `ankleR` is given). */
   ankle: Vec3;
+  /** The right ankle's own target (in body coordinates, not mirrored), for asymmetric legs. */
+  ankleR?: Vec3;
   kneeHint: Vec3;
   foot: FootMode;
 }
@@ -129,10 +131,10 @@ function legsOf(base: string, pts: PointStates, hogtie: boolean): Legs {
     case 'kneeling_sitting':
     case 'bowing': {
       const hips = pts.hips ?? (base === 'kneeling_upright' ? 'raised' : 'on_heels');
-      const lat = apart ? 0.25 : 0.1;
+      const lat = apart ? 0.17 : 0.1; // the feet stay close behind; the knees open forward and out (never a split)
       const ay = toes ? 0.19 : 0.06;
       const foot: FootMode = toes ? 'down_back' : 'back';
-      const hint: Vec3 = apart ? [1, 0, 0.5] : [0.1, 0, 1];
+      const hint: Vec3 = apart ? [0.35, 0, 1] : [0.1, 0, 1];
       if (hips === 'raised') return { pelvis: [0, 0.5 + (ay - 0.06), 0.02], ankle: [lat, ay, -0.4], kneeHint: hint, foot };
       if (hips === 'to_floor') return { pelvis: [0, 0.1, -0.24], ankle: [lat + 0.14, 0.05, -0.34], kneeHint: hint, foot };
       return { pelvis: [0, 0.22 + (ay - 0.06) * 0.8, -0.3], ankle: [lat, ay, -0.32], kneeHint: hint, foot };
@@ -147,9 +149,14 @@ function legsOf(base: string, pts: PointStates, hogtie: boolean): Legs {
       return { pelvis: [0, 0.24, -0.3], ankle: [apart ? 0.3 : 0.09, 0.06, -0.32], kneeHint: [0.1, 0, 1], foot: 'back' };
     default: {
       // lying_back, lying_front, lying_side: straight legs, laid down later (a frog's legs with the knees apart on the back)
-      if (hogtie) return { pelvis: [0, 0.95, 0], ankle: [0.05, 0.8, -0.5], kneeHint: [0, 0, 1], foot: 'fwd' };
-      if (apart && base === 'lying_back') return { pelvis: [0, 0.95, 0], ankle: [0.4, 0.5, 0], kneeHint: [0, 0, 1], foot: 'fwd' };
-      return { pelvis: [0, 0.95, 0], ankle: [0.09, 0.07, 0], kneeHint: [0.1, 0, 1], foot: 'fwd' };
+      // hogtied: the knees bent, the shins up behind toward the bound wrists
+      if (hogtie) return { pelvis: [0, 0.95, 0], ankle: [0.08, 0.78, -0.38], kneeHint: [0, -0.3, 1], foot: 'back' };
+      // belly up with the knees apart: the knees drawn up and open (pet_belly_up), the shins folded
+      if (apart && base === 'lying_back') return { pelvis: [0, 0.95, 0], ankle: [0.16, 0.62, 0.12], kneeHint: [0.5, 0, 1], foot: 'down' };
+      // on the side: the knees a little bent, the top leg a step further forward than the bottom one
+      if (base === 'lying_side') return { pelvis: [0, 0.95, 0], ankle: [0.1, 0.16, 0.3], ankleR: [-0.08, 0.12, 0.12], kneeHint: [0.1, 0, 1], foot: 'down' };
+      // face down the toes point back along the floor; on the back they point up
+      return { pelvis: [0, 0.95, 0], ankle: [0.09, 0.07, 0], kneeHint: [0.1, 0, 1], foot: base === 'lying_front' ? 'down' : 'fwd' };
     }
   }
 }
@@ -163,6 +170,8 @@ function leanOf(base: string, torso: Torso, hogtie: boolean): number {
 }
 
 interface ArmCtx {
+  base: string;
+  head: Vec3;
   s: 1 | -1;
   shoulder: Vec3;
   chest: Vec3;
@@ -183,9 +192,12 @@ function armGoal(state: Arms, c: ArmCtx): { target: Vec3; hint: Vec3 } {
   const { s, shoulder: sh, chest, pelvis, S, T } = c;
   const lat = (k: number): Vec3 => [s * k, 0, 0];
   switch (state) {
-    case 'at_sides': return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] }; // nearly straight, the elbow a little back
+    case 'at_sides':
+      // on the side the top arm rests along the body on the hip, the bottom one lies forward on the floor
+      if (c.base === 'lying_side') return s === 1 ? { target: add(lerp(c.hip, c.knee, 0.35), [0.06, 0, 0.06]), hint: [0.05, 0, -1] } : { target: add(sh, [0, -0.08, 0.5]), hint: [-0.3, -1, 0] };
+      return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] }; // nearly straight, the elbow a little back
     case 'behind_back': return { target: add(sub(add(pelvis, mul(S, 0.12)), mul(T, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
-    case 'bound': return { target: add(sub(add(pelvis, mul(S, 0.06)), mul(T, 0.11)), lat(0.012)), hint: [s, -0.4, -0.2] };
+    case 'bound': return { target: add(sub(add(pelvis, mul(S, 0.1)), mul(T, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case 'behind_head': {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -195,18 +207,21 @@ function armGoal(state: Arms, c: ArmCtx): { target: Vec3; hint: Vec3 } {
     case 'forward_palms_up':
       return c.lying
         ? { target: add(add(sh, mul(S, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] }
-        : { target: add(add(chest, mul(T, 0.45)), [s * 0.12, -0.14, 0]), hint: [s, -0.5, 0] };
+        : { target: add(add(add(chest, mul(T, 0.5)), mul(S, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] }; // offered: the forearms reach forward and down, palms up
     case 'out_sideways': return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case 'raised': return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case 'holding': return { target: add(add(add(pelvis, mul(S, 0.38)), mul(T, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
-    case 'lamp': return { target: add(sh, [s * 0.06, 0.5, 0.18]), hint: [s, 0, -0.2] };
-    case 'on_floor': return { target: [s * 0.2, 0.03, chest[2] + 0.3], hint: [s, 0.3, 0] };
+    case 'lamp': return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] }; // both hands together above the head
+    case 'on_floor':
+      if (c.base === 'all_fours') return { target: [sh[0], 0.03, sh[2] + 0.04], hint: [s * 0.3, 0, -1] }; // straight down under the shoulders
+      if (c.base === 'bowing') return { target: [s * 0.2, 0.03, c.head[2] + 0.04], hint: [s, 1, 0] }; // forearms on the floor beside the head
+      return { target: [s * 0.08, 0.03, c.knee[2] + 0.12], hint: [s, 0.2, 0] }; // between the knees, in front
     case 'on_ankles': return { target: add(c.ankle, [0, 0.04, -0.02]), hint: [s, 0, 0.2] };
     case 'under_knees': return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case 'crossed': return { target: add(sub(add(chest, mul(T, 0.1)), mul(S, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case 'clasped_front': return { target: add(add(add(pelvis, mul(S, 0.16)), mul(T, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
-    case 'paws': return { target: add(sub(add(chest, mul(T, 0.24)), mul(S, 0.1)), lat(0.1)), hint: [s, -1, 0] };
-    case 'tucked': return { target: add(lerp(c.knee, c.ankle, 0.55), [s * 0.14, 0.05, 0]), hint: [s, 0.4, 0] }; // along the legs, back toward the feet
+    case 'paws': return { target: add(sub(add(chest, mul(T, 0.2)), mul(S, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] }; // the hands in front of the chest, close together
+    case 'tucked': return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] }; // straight back along the body, the hands beside the feet
     case 'desk_flat': return { target: [s * 0.2, 0.76, sh[2] + 0.3], hint: [s, 0.3, 0] };
   }
 }
@@ -255,7 +270,7 @@ export function pose(p: DialPose): Skeleton {
   const ankle = { L: [0, 0, 0] as Vec3, R: [0, 0, 0] as Vec3 };
   const toe = { L: [0, 0, 0] as Vec3, R: [0, 0, 0] as Vec3 };
   for (const [side, s] of SIDES) {
-    const target: Vec3 = [s * legs.ankle[0], legs.ankle[1], legs.ankle[2]];
+    const target: Vec3 = side === 'R' && legs.ankleR ? legs.ankleR : [s * legs.ankle[0], legs.ankle[1], legs.ankle[2]];
     const hint: Vec3 = [s * legs.kneeHint[0], legs.kneeHint[1], legs.kneeHint[2]];
     // the pelvis is the middle of the hip joints: the target is already in body coordinates
     const sol = solveTwoBone(hip[side], target, LIMB.thigh, LIMB.shin, hint);
@@ -271,11 +286,10 @@ export function pose(p: DialPose): Skeleton {
   const hand = { L: [0, 0, 0] as Vec3, R: [0, 0, 0] as Vec3 };
   for (const [side, s] of SIDES) {
     const goal = armGoal(pts.arms ?? 'at_sides', {
-      s, shoulder: shoulder[side], chest, pelvis, S, T, hip: hip[side], knee: knee[side],
+      base, head, s, shoulder: shoulder[side], chest, pelvis, S, T, hip: hip[side], knee: knee[side],
       ankle: hogtie ? lerp(ankle.L, ankle.R, 0.5) : ankle[side], neckTop, headDir, faceDir, lying,
     });
-    const target = hogtie ? lerp(ankle.L, ankle.R, 0.5) : goal.target;
-    const sol = solveTwoBone(shoulder[side], target, LIMB.upperArm, LIMB.forearm, hogtie ? [s, 0, 0.3] : goal.hint);
+    const sol = solveTwoBone(shoulder[side], goal.target, LIMB.upperArm, LIMB.forearm, goal.hint);
     elbow[side] = sol.mid;
     hand[side] = sol.end;
   }
@@ -294,10 +308,12 @@ function lay(sk: Skeleton, axis: 'x' | 'z', deg: number): Skeleton {
     headDir: r(sk.headDir), faceDir: r(sk.faceDir), shoulder: pair(sk.shoulder), elbow: pair(sk.elbow), hand: pair(sk.hand),
     hip: pair(sk.hip), knee: pair(sk.knee), ankle: pair(sk.ankle), toe: pair(sk.toe), gazeDir: sk.gazeDir ? r(sk.gazeDir) : null,
   };
-  const points: Vec3[] = [turned.pelvis, turned.chest, turned.neckTop];
-  for (const k of ['shoulder', 'elbow', 'hand', 'hip', 'knee', 'ankle', 'toe'] as const) points.push(turned[k].L, turned[k].R);
-  const lowest = Math.min(...points.map((v) => v[1]), turned.head[1] - 0.09);
-  const lift = 0.04 - lowest;
+  // the body rests on its surface, not on its joints' centres: each joint counts with about the half-thickness drawn around it
+  const surface: Array<[Vec3, number]> = [[turned.pelvis, 0.11], [turned.chest, 0.12], [turned.neckTop, 0.04], [turned.head, 0.1]];
+  const RADIUS = { shoulder: 0.05, elbow: 0.045, hand: 0.035, hip: 0.065, knee: 0.05, ankle: 0.045, toe: 0.035 } as const;
+  for (const k of Object.keys(RADIUS) as Array<keyof typeof RADIUS>) surface.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
+  const lowest = Math.min(...surface.map(([v, rad]) => v[1] - rad));
+  const lift = 0.005 - lowest;
   const up = (v: Vec3): Vec3 => [v[0], v[1] + lift, v[2]];
   const upPair = (o: { L: Vec3; R: Vec3 }): { L: Vec3; R: Vec3 } => ({ L: up(o.L), R: up(o.R) });
   return {

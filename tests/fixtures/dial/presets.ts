@@ -22,7 +22,7 @@ export const PRESETS: DialPreset[] = [
   p('attention', 'standing_attention', { torso: 'upright', arms: 'at_sides', head: 'up', gaze: 'straight' }),
   p('parade_rest', 'standing', { arms: 'behind_back', gaze: 'down' }),
   p('at_her_side', 'standing', { arms: 'clasped_front', gaze: 'down' }),
-  p('facing_wall', 'standing', { arms: 'behind_back' }, { hint: 'wall' }),
+  p('facing_wall', 'standing', { arms: 'behind_back' }, { hint: 'wall_front' }),
   p('wall_sit', 'crouching', { hips: 'raised', arms: 'at_sides' }, { hint: 'wall' }),
   p('arms_out', 'standing', { arms: 'out_sideways' }),
   // kneeling
@@ -44,7 +44,7 @@ export const PRESETS: DialPreset[] = [
   p('prostrate', 'lying_front', { arms: 'forward_palms_up' }),
   p('lying_back_open', 'lying_back', { arms: 'out_sideways', gaze: 'at_her' }),
   // pet
-  p('pet_sit', 'kneeling_sitting', { arms: 'on_floor' }),
+  p('pet_sit', 'kneeling_sitting', { torso: 'forward', arms: 'on_floor', gaze: 'at_her' }),
   p('beg', 'kneeling_upright', { arms: 'paws' }),
   p('curled_at_feet', 'curled', {}, { hint: 'feet' }),
   // rest and display
@@ -52,9 +52,9 @@ export const PRESETS: DialPreset[] = [
   p('presented', 'standing', { arms: 'behind_head', knees: 'apart', gaze: 'down' }),
   // hard: kneeling variations
   p('kneel_on_hands', 'kneeling_sitting', { arms: 'under_knees' }),
-  p('kneel_forehead_wall', 'kneeling_upright', { arms: 'behind_back' }, { hint: 'wall' }),
+  p('kneel_forehead_wall', 'kneeling_upright', { torso: 'forward', head: 'bowed', arms: 'behind_back' }, { hint: 'wall_front' }),
   p('kneel_arched', 'kneeling_upright', { torso: 'arched', arms: 'on_ankles', head: 'back' }),
-  p('kneel_mouth_hold', 'kneeling_upright', { arms: 'at_sides' }),
+  p('kneel_mouth_hold', 'kneeling_upright', { arms: 'at_sides' }, { item: 'mouth' }),
   p('light_bearer', 'kneeling_upright', { arms: 'lamp' }, { item: 'lamp' }),
   p('tiptoe_hands_head', 'standing', { feet: 'on_toes', arms: 'behind_head', gaze: 'down' }),
   // hard: below the floor
@@ -67,7 +67,7 @@ export const PRESETS: DialPreset[] = [
   p('ottoman_curl', 'curled', { arms: 'tucked' }),
   // hard: pet and restraint
   p('pet_belly_up', 'lying_back', { arms: 'paws', knees: 'apart' }),
-  p('hogtied', 'lying_side', { torso: 'arched', arms: 'bound' }, { hogtie: true }),
+  p('hogtied', 'lying_side', { torso: 'arched', arms: 'bound' }, { hogtie: true, item: 'rope' }),
   p('cage_curl', 'curled', {}),
 ];
 

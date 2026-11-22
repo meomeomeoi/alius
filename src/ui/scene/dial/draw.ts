@@ -106,16 +106,38 @@ export function mannequinSvg(p: DialPose, opts: DialFigureOpts = {}): SVGSVGElem
   }
   const all = jointPoints(sk);
 
-  // the floor, then what the posture leans on or reaches for
+  // the floor under the whole body (a lying body never hangs over its edge), then what the posture leans on or reaches for
   const fx = sk.pelvis[0];
-  const fz = sk.pelvis[2];
-  const floor = ([[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]] as const).map(([dx, dz]) => map([fx + dx, 0, fz + dz]));
-  root.append(svg('polygon', { class: 'alius-mq-floor', points: floor.map((q) => `${r1(q[0])},${r1(q[1])}`).join(' ') }));
+  const minX = Math.min(...all.map((v) => v[0]), fx - 0.32) - 0.12;
+  const maxX = Math.max(...all.map((v) => v[0]), fx + 0.32) + 0.12;
   const minZ = Math.min(...all.map((v) => v[2]));
   const maxZ = Math.max(...all.map((v) => v[2]));
-  if (p.hint === 'wall') root.append(svg('path', { class: 'alius-mq-hint', 'data-hint': 'wall', d: line(map([fx, 0, minZ - 0.14]), map([fx, 1.75, minZ - 0.14])) }));
-  if (p.hint === 'desk') root.append(svg('path', { class: 'alius-mq-hint', 'data-hint': 'desk', d: line(map([fx - 0.45, 0.76, maxZ + 0.08]), map([fx + 0.45, 0.76, maxZ + 0.08])) }));
-  if (p.hint === 'feet') root.append(svg('path', { class: 'alius-mq-hint', 'data-hint': 'feet', d: line(map([fx - 0.14, 0.02, maxZ + 0.25]), map([fx + 0.14, 0.02, maxZ + 0.25])) }));
+  const quad = (pts: Vec3[], cls: string, data: Record<string, string> = {}): SVGElement =>
+    svg('polygon', { class: cls, ...data, points: pts.map((v) => map(v)).map((q) => `${r1(q[0])},${r1(q[1])}`).join(' ') });
+  root.append(quad([[minX, 0, minZ - 0.16], [maxX, 0, minZ - 0.16], [maxX, 0, maxZ + 0.16], [minX, 0, maxZ + 0.16]], 'alius-mq-floor'));
+  // a wall behind the back, or before the face: a plane, not a stick
+  const wallTop = Math.min(1.85, Math.max(...all.map((v) => v[1])) + 0.3);
+  if (p.hint === 'wall') root.append(quad([[minX, 0, minZ - 0.08], [maxX, 0, minZ - 0.08], [maxX, wallTop, minZ - 0.08], [minX, wallTop, minZ - 0.08]], 'alius-mq-hint alius-mq-plane', { 'data-hint': 'wall' }));
+  // a seat under a sitting body (a stool: its top and two legs)
+  if (p.base === 'sitting') {
+    const [px, py, pz] = sk.pelvis;
+    const top = py - 0.06;
+    root.append(quad([[px - 0.24, top, pz - 0.2], [px + 0.24, top, pz - 0.2], [px + 0.24, top, pz + 0.22], [px - 0.24, top, pz + 0.22]], 'alius-mq-hint alius-mq-plane', { 'data-hint': 'seat' }));
+    for (const dx of [-0.2, 0.2]) root.append(svg('path', { class: 'alius-mq-hint', 'data-hint': 'seat', d: line(map([px + dx, top, pz + 0.18]), map([px + dx, 0, pz + 0.18])) }));
+  }
+  // her feet in front of the commander: two small soles on the floor
+  if (p.hint === 'feet') {
+    for (const dx of [-0.09, 0.09]) root.append(quad([[fx + dx - 0.045, 0.01, maxZ + 0.18], [fx + dx + 0.045, 0.01, maxZ + 0.18], [fx + dx + 0.045, 0.01, maxZ + 0.44], [fx + dx - 0.045, 0.01, maxZ + 0.44]], 'alius-mq-hint alius-mq-plane', { 'data-hint': 'feet' }));
+  }
+  // contact shadows where the body meets the floor
+  const near: Array<[Vec3, number]> = [];
+  for (const k of ['hand', 'knee', 'ankle', 'toe', 'elbow', 'hip', 'shoulder'] as const) near.push([sk[k].L, 0.07], [sk[k].R, 0.07]);
+  near.push([sk.pelvis, 0.12], [sk.chest, 0.13], [sk.head, 0.09]);
+  for (const [v, rad] of near) {
+    if (v[1] > 0.11) continue; // only what touches the floor
+    const c = map([v[0], 0, v[2]]);
+    root.append(svg('ellipse', { class: 'alius-mq-shadow', cx: r1(c[0]), cy: r1(c[1]), rx: r1(rad * scale * 1.15), ry: r1(rad * scale * 0.45) }));
+  }
 
   // the ghost: the target posture, dashed strokes only
   if (opts.target) {
@@ -129,13 +151,33 @@ export function mannequinSvg(p: DialPose, opts: DialFigureOpts = {}): SVGSVGElem
     root.append(ghost);
   }
 
+  if (p.hint === 'desk') {
+    // the desk top at the hands' height, from just in front of the hips to past the hands (a body bent over it lies on it)
+    const hz = Math.max(sk.hand.L[2], sk.hand.R[2]);
+    const hy = Math.min(sk.hand.L[1], sk.hand.R[1]) - 0.02;
+    const near0 = Math.min(sk.pelvis[2] + 0.12, hz - 0.3);
+    root.append(quad([[fx - 0.5, hy, near0], [fx + 0.5, hy, near0], [fx + 0.5, hy, hz + 0.14], [fx - 0.5, hy, hz + 0.14]], 'alius-mq-hint alius-mq-plane', { 'data-hint': 'desk' }));
+  }
+
   // the body: far to near (ascending depth); each capsule is an outline under a fill
   const body = svg('g', { class: 'alius-mq-body' });
   const farSide = project(sk.shoulder.L)[2] < project(sk.shoulder.R)[2] ? 'L' : 'R';
+  const back = (v: Vec3): boolean => {
+    // behind the torso: on the far side of the plane through the spine that faces where the body faces
+    const spine: Vec3 = [sk.chest[0] - sk.pelvis[0], sk.chest[1] - sk.pelvis[1], sk.chest[2] - sk.pelvis[2]];
+    const sideways: Vec3 = [1, 0, 0];
+    const front: Vec3 = [sideways[1] * spine[2] - sideways[2] * spine[1], sideways[2] * spine[0] - sideways[0] * spine[2], sideways[0] * spine[1] - sideways[1] * spine[0]];
+    const rel: Vec3 = [v[0] - sk.pelvis[0], v[1] - sk.pelvis[1], v[2] - sk.pelvis[2]];
+    return rel[0] * front[0] + rel[1] * front[1] + rel[2] * front[2] < -0.06;
+  };
+  const trunk = segmentsOf(sk).filter((s) => s.seg === 'torso' || s.seg === 'pelvis').map((s) => (map(s.a)[2] + map(s.b)[2]) / 2);
+  const torsoDepth = Math.min(...trunk);
   const placed = segmentsOf(sk).map((s) => {
     const a = map(s.a);
     const b = map(s.b);
-    return { s, a, b, depth: (a[2] + b[2]) / 2 };
+    let depth = (a[2] + b[2]) / 2;
+    if ((s.seg === 'forearm' || s.seg === 'upperArm') && back(s.b)) depth = Math.min(depth, torsoDepth - 0.02); // a hand behind the back is hidden by the body
+    return { s, a, b, depth };
   }).sort((u, v) => u.depth - v.depth);
   const drawHead = (): void => {
     const c = map(sk.head);
@@ -160,31 +202,47 @@ export function mannequinSvg(p: DialPose, opts: DialFigureOpts = {}): SVGSVGElem
     if (s.seg === 'neck') drawHead(); // the head is always drawn over its own neck
   }
   root.append(body);
+  // a wall before the face is in front of the body: drawn over it, translucent
+  if (p.hint === 'wall_front') root.append(quad([[minX, 0, maxZ + 0.04], [maxX, 0, maxZ + 0.04], [maxX, wallTop, maxZ + 0.04], [minX, wallTop, maxZ + 0.04]], 'alius-mq-hint alius-mq-plane', { 'data-hint': 'wall_front' }));
 
   // held things: one line each
   if (p.item === 'tray') {
-    const l = map(sk.hand.L);
-    const r = map(sk.hand.R);
-    const k = 0.07 * scale;
-    const dx = l[0] - r[0];
-    const dy = l[1] - r[1];
-    const n = Math.hypot(dx, dy) || 1;
-    root.append(svg('path', { class: 'alius-mq-item', 'data-item': 'tray', d: line([l[0] + (dx / n) * k, l[1] + (dy / n) * k, 0], [r[0] - (dx / n) * k, r[1] - (dy / n) * k, 0]) }));
+    // a flat tray held level on both hands
+    const m = mid(sk.hand.L, sk.hand.R);
+    const y = m[1] + 0.02;
+    root.append(quad([[m[0] - 0.24, y, m[2] - 0.14], [m[0] + 0.24, y, m[2] - 0.14], [m[0] + 0.24, y, m[2] + 0.16], [m[0] - 0.24, y, m[2] + 0.16]], 'alius-mq-item alius-mq-plane', { 'data-item': 'tray' }));
   }
   if (p.item === 'lamp') {
+    // a lamp held up in both hands: its stem and its shade
     const m = mid(sk.hand.L, sk.hand.R);
-    root.append(svg('path', { class: 'alius-mq-item', 'data-item': 'lamp', d: line(map([m[0], m[1] + 0.02, m[2]]), map([m[0], m[1] + 0.26, m[2]])) }));
+    root.append(svg('path', { class: 'alius-mq-item', 'data-item': 'lamp', d: line(map([m[0], m[1] + 0.02, m[2]]), map([m[0], m[1] + 0.16, m[2]])) }));
+    root.append(quad([[m[0] - 0.08, m[1] + 0.16, m[2]], [m[0] + 0.08, m[1] + 0.16, m[2]], [m[0] + 0.05, m[1] + 0.26, m[2]], [m[0] - 0.05, m[1] + 0.26, m[2]]], 'alius-mq-item alius-mq-plane', { 'data-item': 'lamp' }));
+  }
+  if (p.item === 'rope') {
+    // the wrists tied to the ankles
+    root.append(svg('path', { class: 'alius-mq-item', 'data-item': 'rope', d: line(map(mid(sk.hand.L, sk.hand.R)), map(mid(sk.ankle.L, sk.ankle.R))) }));
+  }
+  if (p.item === 'mouth') {
+    // something held in the teeth: a short bar across the face
+    const f = sk.faceDir;
+    const c: Vec3 = [sk.head[0] + f[0] * 0.09 - sk.headDir[0] * 0.05, sk.head[1] + f[1] * 0.09 - sk.headDir[1] * 0.05, sk.head[2] + f[2] * 0.09 - sk.headDir[2] * 0.05];
+    root.append(svg('path', { class: 'alius-mq-item', 'data-item': 'mouth', d: line(map([c[0] - 0.07, c[1], c[2]]), map([c[0] + 0.07, c[1], c[2]])) }));
   }
 
   // the gaze: a faint dashed ray from the head
   if (sk.gazeDir) {
     const g = sk.gazeDir;
-    const from = map([sk.head[0] + g[0] * 0.1, sk.head[1] + g[1] * 0.1, sk.head[2] + g[2] * 0.1]);
-    const to = map([sk.head[0] + g[0] * 0.46, sk.head[1] + g[1] * 0.46, sk.head[2] + g[2] * 0.46]);
-    root.append(svg('line', {
-      class: `alius-mq-gaze${opts.hot?.includes('gaze') ? ' alius-mq-hot' : ''}`, 'stroke-dasharray': '2 3',
-      x1: r1(from[0]), y1: r1(from[1]), x2: r1(to[0]), y2: r1(to[1]),
-    }));
+    // the ray stops at the floor (a bowed head looks at the floor, not through it)
+    const atFloor = g[1] < -1e-6 ? (sk.head[1] - 0.005) / -g[1] : Infinity;
+    const end = Math.min(0.46, atFloor);
+    if (end > 0.14) { // the face on the floor: no ray
+      const from = map([sk.head[0] + g[0] * 0.1, sk.head[1] + g[1] * 0.1, sk.head[2] + g[2] * 0.1]);
+      const to = map([sk.head[0] + g[0] * end, sk.head[1] + g[1] * end, sk.head[2] + g[2] * end]);
+      root.append(svg('line', {
+        class: `alius-mq-gaze${opts.hot?.includes('gaze') ? ' alius-mq-hot' : ''}`, 'stroke-dasharray': '2 3',
+        x1: r1(from[0]), y1: r1(from[1]), x2: r1(to[0]), y2: r1(to[1]),
+      }));
+    }
   }
 
   // a drifting joint glows

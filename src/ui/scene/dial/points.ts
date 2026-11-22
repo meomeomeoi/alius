@@ -27,8 +27,8 @@ export interface PointStates {
 export interface DialPose {
   base: string;
   points: PointStates;
-  item?: 'tray' | 'lamp';
-  hint?: 'wall' | 'desk' | 'feet';
+  item?: 'tray' | 'lamp' | 'rope' | 'mouth';
+  hint?: 'wall' | 'wall_front' | 'desk' | 'feet';
   hogtie?: true;
 }
 
