@@ -37,8 +37,9 @@ const mid = (a: Vec3, b: Vec3, t = 0.5): Vec3 => [a[0] + (b[0] - a[0]) * t, a[1]
 
 function segmentsOf(s: Skeleton): Seg[] {
   const out: Seg[] = [
-    { seg: 'torso', a: mid(s.pelvis, s.chest, 0.1), b: mid(s.pelvis, s.chest, 0.96) },
-    { seg: 'pelvis', a: s.hip.L, b: s.hip.R },
+    // two volumes along the spine, as on the spike: the pelvis low, the chest high, overlapping at the waist
+    { seg: 'pelvis', a: mid(s.pelvis, s.chest, 0.03), b: mid(s.pelvis, s.chest, 0.5) },
+    { seg: 'torso', a: mid(s.pelvis, s.chest, 0.42), b: mid(s.pelvis, s.chest, 0.97) },
     { seg: 'neck', a: s.neck, b: s.neckTop },
   ];
   for (const side of ['L', 'R'] as const) {
@@ -146,7 +147,7 @@ export function mannequinSvg(p: DialPose, opts: DialFigureOpts = {}): SVGSVGElem
     }));
     // a dot where the face looks (only when it faces the viewer)
     const face = map([sk.head[0] + sk.faceDir[0] * 0.075, sk.head[1] + sk.faceDir[1] * 0.075, sk.head[2] + sk.faceDir[2] * 0.075]);
-    if (face[2] > c[2]) body.append(svg('ellipse', { class: 'alius-mq-face', cx: r1(face[0]), cy: r1(face[1]), rx: 1.5, ry: 1.5 }));
+    if (face[2] > c[2]) body.append(svg('ellipse', { class: 'alius-mq-face', cx: r1(face[0]), cy: r1(face[1]), rx: r1(0.026 * scale), ry: r1(0.026 * scale) }));
   };
   for (const { s, a, b, depth } of placed) {
     const common = { 'data-seg': s.seg, ...(s.side ? { 'data-side': s.side } : {}), d: line(a, b) };

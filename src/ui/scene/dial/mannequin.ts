@@ -10,7 +10,7 @@ import { BASE_POINTS, type Arms, type DialPose, type PointStates, type Torso } f
 export type Vec3 = [number, number, number];
 
 /** The spike's proportions, in body units (the whole standing figure is about 1.8). */
-export const LIMB = { upperArm: 0.3, forearm: 0.28, thigh: 0.45, shin: 0.44 } as const;
+export const LIMB = { upperArm: 0.32, forearm: 0.3, thigh: 0.45, shin: 0.44 } as const;
 /** The head is an egg: its long half-axis, its half-width, and the "radius" the pose rules measure by. */
 export const HEAD = { half: 0.115, width: 0.085 } as const;
 export const HEAD_R = 0.1;
@@ -73,12 +73,12 @@ function solveTwoBone(root: Vec3, target: Vec3, l1: number, l2: number, hint: Ve
 }
 
 // ---------------------------------------------------------------- the projection
-const YAW = 38 * DEG;
+const YAW = -38 * DEG; // the approved spike's view: the figure faces the viewer's left
 const ELEV = 14 * DEG;
 
 /**
  * The fixed three-quarter view, orthographic: x to the right, y up, depth toward the viewer (larger = nearer, so a drawing
- * goes in ascending depth). A figure that faces +z turns its face to the right of the picture; its left side (+x) is the far one.
+ * goes in ascending depth). A figure that faces +z turns its face to the left of the picture; its left side (+x) is the near one (the approved spike's view).
  */
 export function project(v: Vec3): [x: number, y: number, depth: number] {
   const x1 = v[0] * Math.cos(YAW) + v[2] * Math.sin(YAW);
@@ -106,7 +106,6 @@ const LYING: Record<string, ['x' | 'z', number]> = {
   lying_back: ['x', -90],
   lying_front: ['x', 90],
   lying_side: ['z', 90],
-  curled: ['z', 90],
 };
 
 function legsOf(base: string, pts: PointStates, hogtie: boolean): Legs {
@@ -130,7 +129,7 @@ function legsOf(base: string, pts: PointStates, hogtie: boolean): Legs {
     case 'kneeling_sitting':
     case 'bowing': {
       const hips = pts.hips ?? (base === 'kneeling_upright' ? 'raised' : 'on_heels');
-      const lat = apart ? 0.4 : 0.1;
+      const lat = apart ? 0.25 : 0.1;
       const ay = toes ? 0.19 : 0.06;
       const foot: FootMode = toes ? 'down_back' : 'back';
       const hint: Vec3 = apart ? [1, 0, 0.5] : [0.1, 0, 1];
@@ -144,8 +143,8 @@ function legsOf(base: string, pts: PointStates, hogtie: boolean): Legs {
       return pts.hips === 'raised'
         ? { pelvis: [0, 0.46, -0.02], ankle: [0.1, 0.05, 0.42], kneeHint: [0.1, 0, 1], foot: 'fwd' } // thighs level against a wall
         : { pelvis: [0, 0.3, -0.2], ankle: [0.14, 0.05, 0.04], kneeHint: [0.1, 0.3, 1], foot: 'fwd' };
-    case 'curled':
-      return { pelvis: [0, 0.95, 0], ankle: [0.08, 0.8, -0.22], kneeHint: [0, 0, 1], foot: 'fwd' };
+    case 'curled': // folded over the knees, as on the spike: kneeling on the heels, the body down over the thighs
+      return { pelvis: [0, 0.24, -0.3], ankle: [apart ? 0.3 : 0.09, 0.06, -0.32], kneeHint: [0.1, 0, 1], foot: 'back' };
     default: {
       // lying_back, lying_front, lying_side: straight legs, laid down later (a frog's legs with the knees apart on the back)
       if (hogtie) return { pelvis: [0, 0.95, 0], ankle: [0.05, 0.8, -0.5], kneeHint: [0, 0, 1], foot: 'fwd' };
@@ -159,7 +158,7 @@ function legsOf(base: string, pts: PointStates, hogtie: boolean): Legs {
 function leanOf(base: string, torso: Torso, hogtie: boolean): number {
   if (hogtie) return -35;
   if (torso === 'bent') return base === 'standing' || base === 'standing_attention' ? 80 : 100;
-  if (torso === 'forward') return base === 'crouching' ? 35 : base === 'curled' ? 55 : base === 'sitting' ? 26 : 22;
+  if (torso === 'forward') return base === 'crouching' ? 35 : base === 'curled' ? 96 : base === 'sitting' ? 26 : 22;
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 
@@ -184,7 +183,7 @@ function armGoal(state: Arms, c: ArmCtx): { target: Vec3; hint: Vec3 } {
   const { s, shoulder: sh, chest, pelvis, S, T } = c;
   const lat = (k: number): Vec3 => [s * k, 0, 0];
   switch (state) {
-    case 'at_sides': return { target: add(sh, [s * 0.03, -0.575, 0]), hint: [s, -0.1, -0.6] };
+    case 'at_sides': return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] }; // nearly straight, the elbow a little back
     case 'behind_back': return { target: add(sub(add(pelvis, mul(S, 0.12)), mul(T, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case 'bound': return { target: add(sub(add(pelvis, mul(S, 0.06)), mul(T, 0.11)), lat(0.012)), hint: [s, -0.4, -0.2] };
     case 'behind_head': {
@@ -207,7 +206,7 @@ function armGoal(state: Arms, c: ArmCtx): { target: Vec3; hint: Vec3 } {
     case 'crossed': return { target: add(sub(add(chest, mul(T, 0.1)), mul(S, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case 'clasped_front': return { target: add(add(add(pelvis, mul(S, 0.16)), mul(T, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case 'paws': return { target: add(sub(add(chest, mul(T, 0.24)), mul(S, 0.1)), lat(0.1)), hint: [s, -1, 0] };
-    case 'tucked': return { target: add(sub(add(chest, mul(T, 0.16)), mul(S, 0.14)), lat(0.07)), hint: [s, -0.5, 0.3] };
+    case 'tucked': return { target: add(lerp(c.knee, c.ankle, 0.55), [s * 0.14, 0.05, 0]), hint: [s, 0.4, 0] }; // along the legs, back toward the feet
     case 'desk_flat': return { target: [s * 0.2, 0.76, sh[2] + 0.3], hint: [s, 0.3, 0] };
   }
 }

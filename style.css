@@ -2970,29 +2970,29 @@
 }
 
 #alius-shell .alius-mq-out {
-  stroke: color-mix(in srgb, var(--alius-trust) 55%, #ffffff);
+  stroke: color-mix(in srgb, var(--alius-trust) 30%, #ffffff);
 }
 
 #alius-shell .alius-mq-fill {
-  stroke: color-mix(in srgb, var(--alius-trust) 14%, #05070b);
+  stroke: color-mix(in srgb, var(--alius-trust) 42%, #0d1020);
 }
 
 #alius-shell .alius-mq-out.alius-mq-far {
-  stroke: color-mix(in srgb, var(--alius-trust) 42%, #05070b);
+  stroke: color-mix(in srgb, var(--alius-trust) 62%, #1a2034);
 }
 
 #alius-shell .alius-mq-fill.alius-mq-far {
-  stroke: color-mix(in srgb, var(--alius-trust) 8%, #05070b);
+  stroke: color-mix(in srgb, var(--alius-trust) 26%, #0b0d18);
 }
 
 #alius-shell .alius-mq-head {
-  fill: color-mix(in srgb, var(--alius-trust) 14%, #05070b);
-  stroke: color-mix(in srgb, var(--alius-trust) 55%, #ffffff);
+  fill: color-mix(in srgb, var(--alius-trust) 42%, #0d1020);
+  stroke: color-mix(in srgb, var(--alius-trust) 30%, #ffffff);
   stroke-width: 1.6;
 }
 
 #alius-shell .alius-mq-face {
-  fill: color-mix(in srgb, var(--alius-trust) 55%, #ffffff);
+  fill: color-mix(in srgb, var(--alius-trust) 70%, #ffffff);
 }
 
 #alius-shell .alius-mq-ghost-seg {

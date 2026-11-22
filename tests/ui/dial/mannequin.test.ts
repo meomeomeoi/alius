@@ -99,8 +99,9 @@ describe('the posture mannequin', () => {
     expect(Math.hypot(x[0], x[1])).toBeGreaterThan(0.7); // the sideways axis is seen at an angle, not foreshortened to nothing
     expect(Math.abs(z[0])).toBeGreaterThan(0.5); // so is the forward one: that is what makes it three-quarter
     expect(up[1]).toBeGreaterThan(0.95);
-    expect(z[2]).toBeGreaterThan(0); // depth is toward the viewer: what the figure faces is near, its left side is far
-    expect(x[2]).toBeLessThan(0);
+    expect(z[2]).toBeGreaterThan(0); // depth is toward the viewer: what the figure faces is near
+    expect(x[2]).toBeGreaterThan(0); // the approved spike's view: the figure faces the viewer's left, its own left side is the near one
+    expect(z[0]).toBeLessThan(0);
   });
 
   it('poseOf: null for an unknown base, the base row for a known one', () => {
