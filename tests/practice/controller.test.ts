@@ -465,3 +465,48 @@ describe('her name for a posture', () => {
     expect(again.h.st.calls).toHaveLength(0);
   });
 });
+
+describe('the commander\'s own chips and the slap', () => {
+  const holderWorld = (): CampaignState => {
+    const s = withService(world(reg, 'role'));
+    s.settings.unitDms = true;
+    s.practices = { ...blankPractices(), seq: 5 };
+    return s;
+  };
+
+  it('ask dispatches practice/ask, refreshes the prompt and toasts what the engine refuses', () => {
+    const s = holderWorld();
+    s.squad.find((u) => u.id === ANN)!.bond!.practice!.style = { primary: 'ritual' };
+    const { h, ctl, refreshContext } = rig(s);
+    expect(ctl.ask(ANN, 'task')).toBe(true);
+    expect(h.log.some((a) => a.type === 'practice/ask')).toBe(true);
+    expect(refreshContext).toHaveBeenCalled();
+    expect(h.state().practices!.askedOn![ANN]).toBe(h.state().day);
+    expect(ctl.ask(ANN, 'task')).toBe(false); // once a day
+    expect(h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+    expect(h.toasts.at(-1)!.text).toMatch(/already/i);
+  });
+
+  it('confess and askPermission dispatch their actions and toast a refusal', () => {
+    const { h, ctl } = rig(holderWorld());
+    expect(ctl.confess('pt404')).toBe(false);
+    expect(ctl.askPermission(ANN)).toBe(false); // no rule of hers asks for it
+    expect(h.log.map((a) => a.type)).toEqual(expect.arrayContaining(['practice/confess', 'practice/ask_permission']));
+    expect(h.toasts).toHaveLength(2);
+  });
+
+  it('slapAnswer sends the result; an answer for a slap that is gone is dropped without a toast', () => {
+    const s = holderWorld();
+    s.content = { enabled: [...(s.content?.enabled ?? []), 'physical_discipline_shown'] };
+    const started = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_unit', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(started.events)).toEqual([]);
+    started.state.practices!.slap = { id: 'ps1', holderId: ANN, sceneId: started.state.scene!.id, windowMs: 500, feints: 0 };
+    const { h, ctl, refreshContext } = rig(started.state);
+    expect(ctl.slapAnswer('ps1', 'braced')).toBe(true);
+    expect(h.state().practices!.slap).toBeUndefined();
+    expect(refreshContext).toHaveBeenCalled();
+    const toasts = h.toasts.length;
+    expect(ctl.slapAnswer('ps1', 'none')).toBe(false);
+    expect(h.toasts).toHaveLength(toasts);
+  });
+});

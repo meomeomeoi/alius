@@ -3380,5 +3380,15 @@
       "sealed",
       "held"
     ]
+  },
+  {
+    "id": "slap",
+    "term": "The slap",
+    "short": "She raises her hand. Press Space (or Brace) just before it lands. Too early, on a feint, or twice is a flinch; no press is none; one press in time is a brace.",
+    "long": "AUTHOR TO WRITE: The time allowed is hers: it follows her manner and is shorter for the cruel ones. How good she is at it decides how often she feints. A brace pleases her and is respected; a flinch displeases her and some styles answer it. With the timing interaction off, or reduced motion, there is nothing to time: it lands.",
+    "see": [
+      "holder_punishment",
+      "practice"
+    ]
   }
 ]

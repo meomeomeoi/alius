@@ -384,6 +384,20 @@ describe('from her discipline', () => {
   });
 });
 
+describe('the scene it was raised in', () => {
+  it('ending the scene, or aborting it, with the slap still open drops it; nothing lands', () => {
+    const s = start(slapWorld('cold')).d;
+    const favour = dynamicOf(s, ANN)!.favour;
+    const ended = run(s, reg, { type: 'scene/end', payload: {} });
+    expect(errors(ended.events)).toEqual([]);
+    expect(ended.state.practices!.slap).toBeUndefined();
+    expect(ofType(ended.events, 'slap_dealt')).toEqual([]);
+    expect(dynamicOf(ended.state, ANN)!.favour).toBe(favour);
+    const aborted = run(s, reg, { type: 'scene/abort', payload: {} });
+    expect(aborted.state.practices!.slap).toBeUndefined();
+  });
+});
+
 describe('what the model is told', () => {
   it('the outcome is one line for her next reply: no number, no pronoun for the commander', () => {
     const s = start(slapWorld('cold')).d;

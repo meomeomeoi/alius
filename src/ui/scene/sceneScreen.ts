@@ -15,6 +15,9 @@ import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
 import { drawDemonstrationCards, type DemonstrationAnswer } from '../practice/demonstrationCard';
 import { cancelPostureCalls, drawPostureCall } from '../practice/postureCall';
+import { clearSlapOverlay, renderSlapOverlay } from '../practice/slapOverlay';
+import type { SlapResult } from '../../engine/practice/state';
+import { practiceLive } from '../../engine/practice/gate';
 import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } from '../practice/punishmentCard';
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawFrameChips } from '../dynamic/frameChip';
@@ -41,7 +44,7 @@ export interface SceneScreenCtx {
   st: StAdapter;
   settings: () => AliusSettings;
   /** P10: the typing tick while a reply is typed out (rate-limited by the player). */
-  sound?: { play(id: 'typing'): void };
+  sound?: { play(id: 'typing' | 'alert'): void };
   /** Called after [END TRANSMISSION] finished (the app returns to the PDA). */
   onEnded: () => void;
   /** Resolves an asset path of a location background against the extension folder. */
@@ -72,6 +75,8 @@ export interface SceneScreenCtx {
   onUndoPunishment?: (punishmentId: string) => void;
   /** P16: GO / REFUSE on a demonstration of a unit in the scene (the demonstration's id): GO opens the group scene the engine describes. */
   onAnswerDemonstration?: (demonstrationId: string, answer: DemonstrationAnswer) => void;
+  /** P16: the answer to the slap that is open (`practice/slap_answer`): the id and none, braced or flinched. Absent = the overlay is not drawn. */
+  onSlap?: (slapId: string, result: SlapResult) => void;
   /** P16: the commander's own chips beside the offer chips: ASK FOR A TASK / FOR PUNISHMENT, I DIDN'T, ASK PERMISSION. Absent = none drawn. */
   initiative?: InitiativeHandlers;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: staged through the scene controller). Absent = no chip. */
@@ -237,6 +242,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let punishmentCards: HTMLElement;
   let demonstrationCards: HTMLElement;
   let postureCall: HTMLElement;
+  let slapHost: HTMLElement;
   let freqChips: HTMLElement;
   let genChips: HTMLElement;
   let genTools: HTMLElement;
@@ -437,6 +443,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       timed: ctx.settings().physicsInteractions?.order !== false, reduced: motionReduced(ctx.settings()),
       take: (callId, postureId, late) => { (ctx.onStage ?? ((a) => void controller.stage(a)))({ type: 'practice/take_posture', payload: { callId, ...(postureId !== undefined ? { postureId } : {}), late } }); if (!disposed) refresh(); },
     });
+    drawSlap(s); // P16: her hand is raised: the time allowed and the one key
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
     // an open menu stays open across a redraw
@@ -446,6 +453,16 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       if (open.has(u.id)) menu.open = true;
       return h('div', { class: 'alius-discipline-unit' }, h('span', { class: 'alius-dim' }, u.displayName), menu);
     }));
+  }
+
+  /** P16: the slap that is open in this scene: the overlay, once; nothing when there is none, it is another scene's or she is not holding. The answer is sent after the draw (a redraw must not start inside its own). */
+  function drawSlap(s: CampaignState): void {
+    const slap = s.practices?.slap;
+    if (!ctx.onSlap || slap === undefined || slap.sceneId !== s.scene?.id || !practiceLive(s, registries, slap.holderId)) {
+      clearSlapOverlay(slapHost);
+      return;
+    }
+    renderSlapOverlay(slapHost, { state: s, reg: registries, slap, settings: ctx.settings(), sound: ctx.sound, onResult: (result) => { queueMicrotask(() => { if (!disposed) ctx.onSlap?.(slap.id, result); }); } });
   }
 
   /** P14c: `[ LET'S … ]` (the pastimes that fit this place and slot) in a private scene with one named woman; once one is set, a chip says so. */
@@ -665,6 +682,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     punishmentCards = h('div', { class: 'alius-punishment-cards' });
     demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
     postureCall = h('div', { class: 'alius-posture-call-host' });
+    slapHost = h('div', { class: 'alius-slap-host' }); // an overlay: it takes no room of the scene's own
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
@@ -773,6 +791,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       punishmentCards,
       demonstrationCards,
       postureCall,
+      slapHost,
       freqChips,
       disciplineMenus,
       letsHost,
@@ -863,6 +882,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     dispose() {
       disposed = true;
       cancelPostureCalls(); // no late slip for a call whose scene is gone (P16)
+      clearSlapOverlay(slapHost); // and no late answer to a slap whose scene is gone
       backdropToken++;
       resizer?.disconnect();
       stopTyping();

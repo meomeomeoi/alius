@@ -1445,6 +1445,9 @@ var TUNING = Object.freeze({
       unannounced: 0.3,
       feintFrom: 2,
       feintPerLevel: 0.1,
+      /** The time her raised hand is up before any feint or the strike (`leadMs`) and the length of each feint (`feintMs`), in milliseconds (`AUTHOR TO TUNE`): the time to brace in is the last `windowMs` before the strike lands. */
+      leadMs: 900,
+      feintMs: 450,
       /** The styles that slap with no warning after a slip (R21); the favour each outcome moves, the Regard a slap before others costs those who saw it (`regardFall`'s humiliation) and what she says (drafts, no number). */
       unannouncedStyles: Object.freeze(["cold", "cruel", "drill", "vindictive"]),
       favour: Object.freeze({ none: 1, braced: 2, flinched: -1, softer: 1 }),
@@ -16000,10 +16003,10 @@ function practise(draft, reg, unitId, hobbyId, day, slot2, opts = {}) {
   } else {
     const prev = n === 0 ? 0 : milestoneAt(life.salt, unitId, hobbyId, n - 1);
     const next = milestoneAt(life.salt, unitId, hobbyId, n);
-    const stop = prev + t.plateauAt * (next - prev);
+    const stop2 = prev + t.plateauAt * (next - prev);
     const skill = h2.skill + practiceGain(unit3, h2);
-    if (skill >= stop) {
-      h2.skill = Math.max(stop, h2.skill);
+    if (skill >= stop2) {
+      h2.skill = Math.max(stop2, h2.skill);
       h2.plateau = { at: h2.skill, since: day };
       events.push({ type: "hobby_plateau", unitId, hobbyId });
     } else {
@@ -23073,6 +23076,12 @@ function answerSlap(draft, ctx2, slapId, result) {
   if (!practiceLive(draft, ctx2.registries, slap.holderId)) throw new Error("She is not holding now.");
   delete draft.practices.slap;
   return deal(draft, ctx2, slap.holderId, result, slap);
+}
+function slapSceneEnded(draft, events) {
+  const slap = draft.practices?.slap;
+  if (slap === void 0) return [];
+  if (events.some((e) => (e.type === "scene_ended" || e.type === "scene_aborted") && e.sceneId === slap.sceneId)) delete draft.practices.slap;
+  return [];
 }
 
 // src/engine/practice/offences.ts
@@ -40270,6 +40279,7 @@ registerMomentTrigger("permission", permissionLive);
 registerMomentTrigger("her_demand", herDemandLive);
 registerMomentTrigger("her_test", herTestLive);
 registerAfterAction(doubleStandardFromEvents);
+registerAfterAction((draft, _ctx, events) => slapSceneEnded(draft, events));
 registerFeedSuppressor((state, unitId, event) => event.type === "task_kept" && pendingUnfair(state, unitId, "cancelled_reward") !== void 0);
 registerAfterAction(notePosture);
 registerAfterAction(callPosture);
@@ -42001,9 +42011,9 @@ var isRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[
 function sanitize(cur) {
   const memory = cur.memory;
   if (!("hidden" in memory)) return cur;
-  const runs = Array.isArray(memory.hidden) ? memory.hidden.filter(isRun) : [];
+  const runs2 = Array.isArray(memory.hidden) ? memory.hidden.filter(isRun) : [];
   const { hidden: _drop, ...rest } = memory;
-  return { ...cur, memory: runs.length > 0 ? { ...rest, hidden: runs } : rest };
+  return { ...cur, memory: runs2.length > 0 ? { ...rest, hidden: runs2 } : rest };
 }
 var invalid = (detail) => ({ ok: false, reason: "invalid", detail });
 var PROTO_WORDS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
@@ -42520,9 +42530,9 @@ function createWarden(deps) {
     const length = deps.st.chatLength();
     deps.toast("info", `REWIND \u2014 day ${snap.day} begins again.`);
     if (length - 1 < snap.chatLength) return;
-    const runs = await deps.st.hideMessages(snap.chatLength, length - 1);
-    if (chatId() !== expect || runs.length === 0) return;
-    deps.app.dispatch({ type: "memory/hidden", payload: { add: runs } }, { expectChatId: expect });
+    const runs2 = await deps.st.hideMessages(snap.chatLength, length - 1);
+    if (chatId() !== expect || runs2.length === 0) return;
+    deps.app.dispatch({ type: "memory/hidden", payload: { add: runs2 } }, { expectChatId: expect });
   }
   const epilogueInput = (s) => {
     if (!s.ended) return null;
@@ -43869,6 +43879,17 @@ function createPractice(deps) {
         return false;
       }
       deps.openPlanner(target);
+      return true;
+    },
+    slapAnswer(slapId, result) {
+      const events = deps.app.dispatch({ type: "practice/slap_answer", payload: { slapId, result } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === "error");
+      if (bad !== void 0 && /no slap|is gone|chat_changed/.test(`${String(bad.message)} ${String(bad.code)}`)) return false;
+      if (bad !== void 0) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
       return true;
     },
     ask(unitId, what) {
@@ -49222,8 +49243,8 @@ function createMemoryController(deps) {
     }
     for (const scene of hideCandidates(s, n)) {
       if (chatId() !== expect) return;
-      const runs = await st.hideMessages(scene.from, scene.to);
-      if (runs.length > 0) app.dispatch({ type: "memory/hidden", payload: { add: runs } }, { expectChatId: expect });
+      const runs2 = await st.hideMessages(scene.from, scene.to);
+      if (runs2.length > 0) app.dispatch({ type: "memory/hidden", payload: { add: runs2 } }, { expectChatId: expect });
     }
   }
   deps.generations.bind("scene.digest", {
@@ -55517,7 +55538,7 @@ function holdButton(o) {
     ...analyzeNative(o.analyze, o.ctx)
   }, "[ SIGN ]");
   let timer;
-  const stop = () => {
+  const stop2 = () => {
     if (timer !== void 0) clearTimeout(timer);
     timer = void 0;
     button2.classList.remove("alius-signing");
@@ -55532,7 +55553,7 @@ function holdButton(o) {
     }, TUNING.practice.sign.holdMs);
   };
   button2.addEventListener("pointerdown", start);
-  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop);
+  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop2);
   button2.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
       e.preventDefault();
@@ -55540,7 +55561,7 @@ function holdButton(o) {
     }
   });
   button2.addEventListener("keyup", (e) => {
-    if (e.key === "Enter" || e.key === " ") stop();
+    if (e.key === "Enter" || e.key === " ") stop2();
   });
   return button2;
 }
@@ -57572,14 +57593,14 @@ function paintSite(pen) {
   }
   pen.path("M 120 560 l 60 -10 l 8 26 l -60 10 Z M 140 556 l 4 24 M 162 552 l 4 24", "p-fl p-thin p-dash");
   const { x: fx2, y: fy, w: fw, h: fh } = FENCE;
-  const runs = [
+  const runs2 = [
     [fx2, fy, fx2 + fw, fy],
     [fx2 + fw, fy, fx2 + fw, fy + fh],
     [fx2, fy, fx2, fy + fh],
     [fx2, fy + fh, GATE[0], fy + fh],
     [GATE[1], fy + fh, fx2 + fw, fy + fh]
   ];
-  for (const [x1, y1, x2, y2] of runs) {
+  for (const [x1, y1, x2, y2] of runs2) {
     pen.line(x1, y1, x2, y2, "p-fence");
     const n = Math.floor(Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 20);
     for (let i = 0; i <= n; i++) pen.rect(x1 + (x2 - x1) * i / Math.max(n, 1) - 1.5, y1 + (y2 - y1) * i / Math.max(n, 1) - 1.5, 3, 3, "p-post");
@@ -60267,10 +60288,10 @@ function renderCommsTab(host, ctx2) {
       const key = messages.at(-1).id;
       const motion = ctx2.motion?.() ?? true;
       const done = typingPlayed(host, key);
-      const typing = renderTyping(motion && !done);
-      if (motion && done) typing.textContent = "stopped typing";
-      else if (motion) armTyping(host, typing, key);
-      thread.append(typing);
+      const typing2 = renderTyping(motion && !done);
+      if (motion && done) typing2.textContent = "stopped typing";
+      else if (motion) armTyping(host, typing2, key);
+      thread.append(typing2);
     }
     const chips = h("div", { class: "alius-chips" });
     drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer, ctx2.registries);
@@ -60790,7 +60811,7 @@ function renderDoor(host, ctx2) {
   const press = (fn) => () => {
     if (used) return;
     lock();
-    stop();
+    stop2();
     clocks.delete(entry.id);
     fn();
   };
@@ -60858,14 +60879,14 @@ function renderDoor(host, ctx2) {
   let said10 = clock.remaining <= 10;
   let said5 = clock.remaining <= 5;
   let handle = null;
-  function stop() {
+  function stop2() {
     if (handle !== null) clearInterval(handle);
     handle = null;
     running.delete(host);
   }
-  running.set(host, stop);
+  running.set(host, stop2);
   handle = setInterval(() => {
-    if (!host.isConnected || used) return stop();
+    if (!host.isConnected || used) return stop2();
     if (held2(entry, input)) return;
     clock.remaining = Math.max(0, clock.remaining - TICK_MS / 1e3);
     paint();
@@ -60880,7 +60901,7 @@ function renderDoor(host, ctx2) {
     if (clock.remaining <= 0) {
       live3.textContent = "0 seconds left: the door stays shut and she leaves";
       lock();
-      stop();
+      stop2();
       clocks.delete(entry.id);
       ctx2.onSilent();
     }
@@ -60936,13 +60957,13 @@ function drawPostureCall(host, state, reg, pick3, handlers2) {
   const schedule = handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
   const cancel = handlers2.cancel ?? ((handle) => clearTimeout(handle));
   const call = state.practices?.call;
-  const stop = (id) => {
+  const stop2 = (id) => {
     if (expiries.has(id)) cancel(expiries.get(id));
     expiries.delete(id);
   };
   const unit3 = call === void 0 ? void 0 : state.squad.find((u) => u.id === call.holderId);
   if (call === void 0 || unit3 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit3.id) || !pick3({ unitId: unit3.id })) {
-    for (const id of [...expiries.keys()]) stop(id);
+    for (const id of [...expiries.keys()]) stop2(id);
     started.clear();
     return;
   }
@@ -60953,14 +60974,14 @@ function drawPostureCall(host, state, reg, pick3, handlers2) {
   if (handlers2.timed && !started.has(call.id)) {
     started.set(call.id, now());
     expiries.set(call.id, schedule(() => {
-      stop(call.id);
+      stop2(call.id);
       handlers2.take(call.id, void 0, true);
     }, windowMs));
   }
   const live3 = { unitId: unit3.id };
   const answer = (postureId) => {
     const late2 = handlers2.timed && started.has(call.id) && now() - started.get(call.id) > windowMs;
-    stop(call.id);
+    stop2(call.id);
     handlers2.take(call.id, postureId, late2);
   };
   const choices = set2.map((p) => h("button", {
@@ -60991,6 +61012,114 @@ function drawPostureCall(host, state, reg, pick3, handlers2) {
   card2.setAttribute("aria-label", `${unit3.displayName} calls a posture`);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
   host.append(card2);
+}
+
+// src/ui/practice/slapOverlay.ts
+var PHASE_TEXT = { raise: "Her hand is raised.", feint: "Her hand twitches.", strike: "Her hand comes down.", done: "" };
+var RESULT_TEXT = { none: "It lands.", braced: "Braced.", flinched: "Flinched." };
+var runs = /* @__PURE__ */ new WeakMap();
+var typing = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+function stop(host, run, cancel) {
+  for (const handle of run.handles) cancel(handle);
+  run.handles = [];
+  if (run.keys !== void 0) {
+    document.removeEventListener("keydown", run.keys.down);
+    document.removeEventListener("keyup", run.keys.up);
+    run.keys = void 0;
+  }
+}
+function renderSlapOverlay(host, ctx2) {
+  const { slap } = ctx2;
+  const now = ctx2.now ?? (() => Date.now());
+  const schedule = ctx2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
+  const cancel = ctx2.cancel ?? ((handle) => clearTimeout(handle));
+  const unit3 = ctx2.state.squad.find((u) => u.id === slap.holderId);
+  const existing = runs.get(host);
+  if (existing !== void 0 && existing.slapId === slap.id) {
+    if (existing.card !== void 0 && !host.contains(existing.card)) host.append(existing.card);
+    return;
+  }
+  if (existing !== void 0) {
+    stop(host, existing, cancel);
+    host.replaceChildren();
+  }
+  if (unit3 === void 0 || !dynamicOn(ctx2.state, ctx2.reg)) return;
+  const run = { slapId: slap.id, start: now(), windowStart: TUNING.practice.slap.leadMs + slap.feints * TUNING.practice.slap.feintMs, windowEnd: 0, presses: 0, decided: false, down: false, handles: [], cancel };
+  run.windowEnd = run.windowStart + slap.windowMs;
+  runs.set(host, run);
+  if (ctx2.settings.physicsInteractions?.timing === false || motionReduced(ctx2.settings)) {
+    run.decided = true;
+    ctx2.onResult("none");
+    return;
+  }
+  const live3 = { unitId: unit3.id };
+  const text2 = h("p", { class: "alius-slap-text", role: "status" }, PHASE_TEXT.raise);
+  const brace = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "brace", ...analyzeNative("glossary:slap", live3), onclick: () => press() }, "[ BRACE ]");
+  const bar2 = h("div", { class: "alius-slap-bar", "aria-hidden": "true", style: `--alius-slap-ms: ${run.windowEnd}ms` });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-slap-body" }, text2, bar2, brace), accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-slap");
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} raises her hand`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:slap", live3))) card2.setAttribute(k, v);
+  const setPhase = (phase, line2) => {
+    card2.setAttribute("data-phase", phase);
+    text2.textContent = line2;
+  };
+  setPhase("raise", PHASE_TEXT.raise);
+  run.card = card2;
+  host.append(card2);
+  const resolve = (result) => {
+    if (run.decided) return;
+    run.decided = true;
+    stop(host, run, cancel);
+    setPhase("done", RESULT_TEXT[result]);
+    brace.setAttribute("aria-disabled", "true");
+    ctx2.onResult(result);
+  };
+  function press() {
+    if (run.decided) return;
+    const t = now() - run.start;
+    if (t < run.windowStart) resolve("flinched");
+    else if (t <= run.windowEnd) {
+      run.presses += 1;
+      if (run.presses >= 2) resolve("flinched");
+    }
+  }
+  cutIn(host, "slap", "HER HAND");
+  ctx2.sound?.play("alert");
+  const active = document.activeElement;
+  if (active !== null && typing(active)) active.blur();
+  const T5 = TUNING.practice.slap;
+  for (let i = 0; i < slap.feints; i++) {
+    run.handles.push(schedule(() => setPhase("feint", PHASE_TEXT.feint), T5.leadMs + i * T5.feintMs));
+    if (i < slap.feints - 1) run.handles.push(schedule(() => setPhase("raise", PHASE_TEXT.raise), T5.leadMs + (i + 1) * T5.feintMs));
+  }
+  run.handles.push(schedule(() => setPhase("strike", PHASE_TEXT.strike), run.windowStart));
+  run.handles.push(schedule(() => resolve(run.presses === 1 ? "braced" : "none"), run.windowEnd));
+  const down2 = (e) => {
+    if (!host.isConnected) {
+      stop(host, run, cancel);
+      return;
+    }
+    const ev = e;
+    if (ev.key !== " " || typing(ev.target)) return;
+    ev.preventDefault();
+    if (ev.repeat || run.down) return;
+    run.down = true;
+    press();
+  };
+  const up = (e) => {
+    if (e.key === " ") run.down = false;
+  };
+  run.keys = { down: down2, up };
+  document.addEventListener("keydown", down2);
+  document.addEventListener("keyup", up);
+}
+function clearSlapOverlay(host) {
+  const run = runs.get(host);
+  if (run !== void 0) stop(host, run, run.cancel);
+  runs.delete(host);
+  host.replaceChildren();
 }
 
 // src/ui/dynamic/frameChip.ts
@@ -61296,7 +61425,7 @@ function renderPhysicsPanel(host, ctx2) {
 }
 function wireKeys(host) {
   if (keyHandlers.has(host)) return;
-  const typing = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const typing2 = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
   const down2 = (e) => {
     if (!host.isConnected) {
       unwireKeys(host);
@@ -61305,7 +61434,7 @@ function wireKeys(host) {
     const ev = e;
     const t = ev.target;
     const realtime = host.dataset.realtime === "1";
-    if (ev.key !== " " || typing(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
+    if (ev.key !== " " || typing2(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
     const main2 = host.querySelector(".alius-physics-input[data-input]");
     if (!main2) return;
     ev.preventDefault();
@@ -61558,6 +61687,7 @@ function renderSceneScreen(host, ctx2) {
   let punishmentCards;
   let demonstrationCards;
   let postureCall;
+  let slapHost;
   let freqChips;
   let genChips;
   let genTools;
@@ -61751,6 +61881,7 @@ function renderSceneScreen(host, ctx2) {
         if (!disposed) refresh2();
       }
     });
+    drawSlap(s);
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
@@ -61759,6 +61890,18 @@ function renderSceneScreen(host, ctx2) {
       if (open3.has(u.id)) menu.open = true;
       return h("div", { class: "alius-discipline-unit" }, h("span", { class: "alius-dim" }, u.displayName), menu);
     }));
+  }
+  function drawSlap(s) {
+    const slap = s.practices?.slap;
+    if (!ctx2.onSlap || slap === void 0 || slap.sceneId !== s.scene?.id || !practiceLive(s, registries, slap.holderId)) {
+      clearSlapOverlay(slapHost);
+      return;
+    }
+    renderSlapOverlay(slapHost, { state: s, reg: registries, slap, settings: ctx2.settings(), sound: ctx2.sound, onResult: (result) => {
+      queueMicrotask(() => {
+        if (!disposed) ctx2.onSlap?.(slap.id, result);
+      });
+    } });
   }
   function drawLets(s) {
     const open3 = letsHost.querySelector("details[open]") !== null;
@@ -61980,6 +62123,7 @@ function renderSceneScreen(host, ctx2) {
     punishmentCards = h("div", { class: "alius-punishment-cards" });
     demonstrationCards = h("div", { class: "alius-demonstration-cards" });
     postureCall = h("div", { class: "alius-posture-call-host" });
+    slapHost = h("div", { class: "alius-slap-host" });
     freqChips = h("div", { class: "alius-chips alius-freq-chips" });
     genChips = h("div", { class: "alius-generation-chips" });
     genTools = h("span", { class: "alius-scene-reroll" });
@@ -62099,6 +62243,7 @@ function renderSceneScreen(host, ctx2) {
       punishmentCards,
       demonstrationCards,
       postureCall,
+      slapHost,
       freqChips,
       disciplineMenus,
       letsHost,
@@ -62190,6 +62335,7 @@ function renderSceneScreen(host, ctx2) {
     dispose() {
       disposed = true;
       cancelPostureCalls();
+      clearSlapOverlay(slapHost);
       backdropToken++;
       resizer?.disconnect();
       stopTyping();
@@ -64165,7 +64311,7 @@ function attachAnalyzer(root, deps) {
   const onKey = (ev) => {
     const e = ev;
     if (!enabled()) return;
-    const typing = isTyping(e.target);
+    const typing2 = isTyping(e.target);
     if (e.key === "Escape") {
       if (!panelEl) return;
       e.preventDefault();
@@ -64174,12 +64320,12 @@ function attachAnalyzer(root, deps) {
       return;
     }
     if (e.key === "Backspace") {
-      if (!panelEl || typing) return;
+      if (!panelEl || typing2) return;
       e.preventDefault();
       pop();
       return;
     }
-    const isHelp = e.key === "F1" || e.key === "?" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey;
+    const isHelp = e.key === "F1" || e.key === "?" && !typing2 && !e.ctrlKey && !e.metaKey && !e.altKey;
     if (!isHelp) return;
     const active = document.activeElement;
     const el = active && root.contains(active) ? active.closest(ANALYZE) : null;
@@ -65469,24 +65615,24 @@ function createShell(deps) {
     }
     if (modals?.isOpen()) return;
     const plain8 = !e.ctrlKey && !e.metaKey && !e.altKey;
-    const typing = isEditable2(e.target);
+    const typing2 = isEditable2(e.target);
     const where = router.current();
     if (e.key === "Escape") {
-      if (where === "pda" && !typing) {
+      if (where === "pda" && !typing2) {
         e.preventDefault();
         api.setDevice(false);
       }
       return;
     }
     if (e.key === "Tab") {
-      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
+      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing2) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
       }
       return;
     }
-    if (/^[0-8]$/.test(e.key) && plain8 && !typing) {
+    if (/^[0-8]$/.test(e.key) && plain8 && !typing2) {
       const id = e.key === "0" ? "home" : KEY_TABS[Number(e.key) - 1];
       if (where === "pda") selectTab(id);
       else if (where === "hub") api.showTab(id);
@@ -66177,6 +66323,8 @@ function createApp(st, deps) {
         // P16: her demonstration: GO opens the scene the engine describes
         initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) },
         // P16: the commander's own chips
+        onSlap: (slapId, result) => void practice.slapAnswer(slapId, result),
+        // P16: the slap's time allowed and its one key
         onOffer: (unitId, composition, ask2) => void dynamic.offer(unitId, composition, ask2),
         // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule2,
@@ -69258,17 +69406,17 @@ function lastCharacterAvatar(chat) {
   return void 0;
 }
 function hideRuns(length, from, to, isSystem) {
-  const runs = [];
+  const runs2 = [];
   let start = null;
   const end = Math.min(to, length - 1);
   for (let i = Math.max(0, from); i <= end; i++) {
     if (isSystem(i)) {
-      if (start !== null) runs.push([start, i - 1]);
+      if (start !== null) runs2.push([start, i - 1]);
       start = null;
     } else if (start === null) start = i;
   }
-  if (start !== null) runs.push([start, end]);
-  return runs;
+  if (start !== null) runs2.push([start, end]);
+  return runs2;
 }
 var isIndexRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
 var hideCommand = (unhide, run) => {
@@ -69570,9 +69718,9 @@ var RealStAdapter = class {
   }
   async hideMessages(from, to) {
     const c = ctx();
-    const runs = hideRuns(c.chat.length, from, to, (i) => isSystemMessage(c.chat, i));
-    for (const run of runs) await this.slash(hideCommand(false, run));
-    return runs;
+    const runs2 = hideRuns(c.chat.length, from, to, (i) => isSystemMessage(c.chat, i));
+    for (const run of runs2) await this.slash(hideCommand(false, run));
+    return runs2;
   }
   async unhideMessages(ranges) {
     for (const run of unhideRuns(ranges, ctx().chat.length)) await this.slash(hideCommand(true, run));

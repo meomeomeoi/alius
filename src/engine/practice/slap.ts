@@ -130,3 +130,11 @@ export function answerSlap(draft: CampaignState, ctx: Pick<EngineCtx, 'registrie
   delete draft.practices!.slap;
   return deal(draft, ctx, slap.holderId, result as SlapResult, slap);
 }
+
+/** After a scene ends or is aborted with a slap of that scene still open (registered by `actions/practice.ts`): the slap goes with it, with no outcome. Returns no events. */
+export function slapSceneEnded(draft: CampaignState, events: readonly EngineEvent[]): EngineEvent[] {
+  const slap = draft.practices?.slap;
+  if (slap === undefined) return [];
+  if (events.some((e) => (e.type === 'scene_ended' || e.type === 'scene_aborted') && e.sceneId === slap.sceneId)) delete draft.practices!.slap;
+  return [];
+}

@@ -63,6 +63,8 @@ export interface PracticeController {
   answerAlarm(alarmId: string, answer: 'accept' | 'argue' | 'defy'): Promise<boolean>;
   /** `[ SEND THE SQUAD ]` on a kept alarm of a launch or a deadline: opens the expedition setup for that mission without the commander. Answers false when nothing can be opened. */
   sendSquad(alarmId: string): boolean;
+  /** The commander's answer to the slap that is open (`practice/slap_answer`): none, braced or flinched. An answer for a slap that is gone is dropped without a word. */
+  slapAnswer(slapId: string, result: 'none' | 'braced' | 'flinched'): boolean;
   /** `[ ASK FOR A TASK ]` / `[ ASK FOR PUNISHMENT ]` (`practice/ask`). Toasts the reason and answers false when the engine refuses. */
   ask(unitId: string, what: 'task' | 'punishment'): boolean;
   /** `[ I DIDN'T ]` on her routine (`practice/confess`). Toasts the reason and answers false when the engine refuses. */
@@ -380,6 +382,14 @@ export function createPractice(deps: PracticeDeps): PracticeController {
         return false;
       }
       deps.openPlanner(target);
+      return true;
+    },
+    slapAnswer(slapId, result) {
+      const events = deps.app.dispatch({ type: 'practice/slap_answer', payload: { slapId, result } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad !== undefined && /no slap|is gone|chat_changed/.test(`${String(bad.message)} ${String(bad.code)}`)) return false; // the moment passed: nobody is told
+      if (bad !== undefined) { deps.toast('error', String(bad.message ?? bad.code)); return false; }
+      deps.refreshContext();
       return true;
     },
     ask(unitId, what) {

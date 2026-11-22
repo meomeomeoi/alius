@@ -353,6 +353,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'ask_for_task', 'ask_for_punishment', 'confess', 'ask_permission',
   // P16 (no duration: until she decides)
   'no_duration',
+  // P16 (the slap: the time allowed and the one key)
+  'slap',
 ];
 
 let registered = false;
