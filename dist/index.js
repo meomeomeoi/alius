@@ -42480,10 +42480,10 @@ var v1Shape = external_exports.object({
 });
 var isRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
 function sanitize(cur) {
-  const memory = cur.memory;
-  if (!("hidden" in memory)) return cur;
-  const runs2 = Array.isArray(memory.hidden) ? memory.hidden.filter(isRun) : [];
-  const { hidden: _drop, ...rest } = memory;
+  const memory2 = cur.memory;
+  if (!("hidden" in memory2)) return cur;
+  const runs2 = Array.isArray(memory2.hidden) ? memory2.hidden.filter(isRun) : [];
+  const { hidden: _drop, ...rest } = memory2;
   return { ...cur, memory: runs2.length > 0 ? { ...rest, hidden: runs2 } : rest };
 }
 var invalid = (detail) => ({ ok: false, reason: "invalid", detail });
@@ -48831,13 +48831,13 @@ var ContextBuilder = class {
     const byPriority2 = (a, b) => b.priority - a.priority;
     const pooled = memoryTokens <= 0;
     const others = this.providers.filter((p) => pooled || p.group !== "memory").sort(byPriority2);
-    const memory = pooled ? [] : this.providers.filter((p) => p.group === "memory").sort(byPriority2);
+    const memory2 = pooled ? [] : this.providers.filter((p) => p.group === "memory").sort(byPriority2);
     const rendered = new Map(others.map((p) => [p, p.render(state)]));
     const core = others.filter((p) => p.core === true).map((p) => rendered.get(p)).filter((t) => !!t);
     const reserve = estTokens([BLOCK_TITLE, ...core].join("\n"));
-    const share2 = memory.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
+    const share2 = memory2.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
     const memLines = [];
-    for (const p of memory) {
+    for (const p of memory2) {
       const left = share2 - estTokens(memLines.join("\n"));
       if (left <= 0) break;
       const text3 = p.render(state, left);
@@ -61415,8 +61415,8 @@ function renderHomeTab(host, ctx2) {
   const settings = ctx2.settings();
   const readable = settings.readableMode;
   const owner = wallpaperUnit(state);
-  const memory = owner === null ? fadedWallpaperUnit(state) : null;
-  const wallpaperId = owner ?? memory;
+  const memory2 = owner === null ? fadedWallpaperUnit(state) : null;
+  const wallpaperId = owner ?? memory2;
   const wallpaperUnitObj = wallpaperId === null ? void 0 : state.squad.find((u) => u.id === wallpaperId);
   let wallpaper = null;
   let caption = null;
@@ -61425,7 +61425,7 @@ function renderHomeTab(host, ctx2) {
     else {
       const portrait = unitPortrait(ctx2.st, wallpaperUnitObj, portraitOptions(settings, 256));
       if (portrait) {
-        wallpaper = h("div", { class: "alius-wallpaper", "data-unit": wallpaperUnitObj.id, "aria-hidden": "true", ...memory !== null ? { "data-faded": "true" } : {} }, portrait);
+        wallpaper = h("div", { class: "alius-wallpaper", "data-unit": wallpaperUnitObj.id, "aria-hidden": "true", ...memory2 !== null ? { "data-faded": "true" } : {} }, portrait);
       }
     }
   }
@@ -62509,6 +62509,78 @@ function buildLayers(root) {
   return { root, ...layers, hosts };
 }
 
+// src/ui/scene/stage/look.ts
+var memory = /* @__PURE__ */ new Map();
+var DOUBLE_MS = 300;
+var clamp013 = (n) => Math.min(1, Math.max(0, n));
+function resetLook() {
+  memory.clear();
+}
+function attachLook(frame, root, opts) {
+  const id = opts.sceneId();
+  let pan = memory.get(id) ?? 0.5;
+  let drag = null;
+  let lastClick = -Infinity;
+  const apply2 = () => {
+    root.style.setProperty("--alius-pan", String(Math.round(pan * 1e4) / 1e4));
+    memory.set(id, pan);
+  };
+  const still = () => {
+    root.classList.toggle("alius-look-still", opts.reduced());
+  };
+  root.style.setProperty("--alius-pan", String(pan));
+  still();
+  const down2 = (e) => {
+    const ev = e;
+    if (ev.button !== 2) return;
+    still();
+    if (Date.now() - lastClick <= DOUBLE_MS) {
+      lastClick = -Infinity;
+      drag = null;
+      pan = 0.5;
+      apply2();
+      return;
+    }
+    drag = { x: ev.clientX, pan, moved: false };
+    root.classList.add("alius-looking");
+    try {
+      frame.setPointerCapture?.(ev.pointerId);
+    } catch {
+    }
+  };
+  const move = (e) => {
+    if (!drag) return;
+    const width = frame.getBoundingClientRect().width;
+    if (width <= 0) return;
+    const dx = drag.x - e.clientX;
+    if (dx === 0 && !drag.moved) return;
+    if (!drag.moved) opts.onUse?.();
+    drag.moved = true;
+    pan = clamp013(drag.pan + dx / width);
+    apply2();
+  };
+  const up = (e) => {
+    if (!drag || e.button !== 2) return;
+    if (!drag.moved) lastClick = Date.now();
+    drag = null;
+    root.classList.remove("alius-looking");
+  };
+  const menu = (e) => e.preventDefault();
+  frame.addEventListener("pointerdown", down2);
+  frame.addEventListener("pointermove", move);
+  frame.addEventListener("pointerup", up);
+  frame.addEventListener("pointercancel", up);
+  frame.addEventListener("contextmenu", menu);
+  return () => {
+    frame.removeEventListener("pointerdown", down2);
+    frame.removeEventListener("pointermove", move);
+    frame.removeEventListener("pointerup", up);
+    frame.removeEventListener("pointercancel", up);
+    frame.removeEventListener("contextmenu", menu);
+    root.classList.remove("alius-looking");
+  };
+}
+
 // src/ui/scene/stage/topLine.ts
 var used = /* @__PURE__ */ new Set();
 var HINTS = [
@@ -62721,7 +62793,6 @@ function renderSceneScreen(host, ctx2) {
   host.replaceChildren();
   const root = h("div", { class: "alius-scene" });
   host.append(root);
-  attachPan();
   let pacing = false;
   let pending4 = false;
   let disposed = false;
@@ -62736,6 +62807,7 @@ function renderSceneScreen(host, ctx2) {
   const labels = /* @__PURE__ */ new Map();
   const timeouts = /* @__PURE__ */ new Set();
   let layers;
+  let detachLook = null;
   let bg;
   let backdrop;
   let backdropKey = "";
@@ -62828,19 +62900,6 @@ function renderSceneScreen(host, ctx2) {
         }
       }
     })();
-  }
-  function attachPan() {
-    root.style.setProperty("--alius-pan", "0.5");
-    root.addEventListener("pointermove", (ev) => {
-      if (motionReduced(ctx2.settings())) {
-        root.style.setProperty("--alius-pan", "0.5");
-        return;
-      }
-      const box = root.getBoundingClientRect();
-      if (box.width <= 0) return;
-      const f = Math.min(1, Math.max(0, (ev.clientX - box.left) / box.width));
-      root.style.setProperty("--alius-pan", String(Math.round(f * 100) / 100));
-    });
   }
   function setSprite(unit3, labelText) {
     const img = spriteHost.querySelector(`.alius-sprite[data-unit="${unit3.id}"] img`);
@@ -63157,6 +63216,8 @@ function renderSceneScreen(host, ctx2) {
     const units = present2(s);
     sceneKey = s.scene.id;
     layers = buildLayers(root);
+    detachLook?.();
+    detachLook = attachLook(layers.frame, root, { sceneId: () => s.scene.id, reduced: () => motionReduced(ctx2.settings()), onUse: () => markHintUsed("look") });
     bg = h("div", { class: "alius-scene-bg" });
     backdrop = layers.backdrop;
     backdrop.classList.add("alius-scene-backdrop");
@@ -63377,6 +63438,7 @@ function renderSceneScreen(host, ctx2) {
     },
     dispose() {
       disposed = true;
+      detachLook?.();
       cancelPostureCalls();
       clearSlapOverlay(slapHost);
       backdropToken++;
@@ -63393,6 +63455,7 @@ function renderSceneScreen(host, ctx2) {
 // src/ui/scene/stage/index.ts
 function resetSceneStage() {
   resetHints();
+  resetLook();
 }
 
 // src/analysis/providers/commander.ts
@@ -67017,11 +67080,11 @@ function createApp(st, deps) {
       return events.some((e) => e.type === "error") ? { stale: true } : "ok";
     }
   });
-  const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries, generations });
+  const memory2 = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries, generations });
   const sceneDeps = {
     st,
     app: sceneApp,
-    memory,
+    memory: memory2,
     restore: (before, expected) => api.restoreSnapshot(before, expected),
     generations,
     registries: () => registries,
@@ -67444,10 +67507,10 @@ function createApp(st, deps) {
         startRecap();
       }
       if (has3("day_started")) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st), generations }).catch(warn("chronicle compaction"));
-      if (events.length > 0 && !has3("error")) void memory.run().catch(warn("memory"));
+      if (events.length > 0 && !has3("error")) void memory2.run().catch(warn("memory"));
       if (events.length > 0 && !has3("error")) void development.run().catch(warn("development"));
       if (events.length > 0 && !has3("error")) void life.run().catch(warn("life"));
-      if (has3("memory_folded")) setTimeout(() => void memory.run().catch(warn("memory")), 0);
+      if (has3("memory_folded")) setTimeout(() => void memory2.run().catch(warn("memory")), 0);
     });
   }
   function renderSceneView(host) {

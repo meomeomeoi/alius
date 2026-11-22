@@ -38,6 +38,7 @@ import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
 import { inputGauge, type InputGauge } from './stage/gauge';
 import { buildLayers, type StageLayers } from './stage/layers';
+import { attachLook } from './stage/look';
 import { markHintUsed, renderTopLine } from './stage/topLine';
 import { fillProse, proseLength } from './stage/prose';
 
@@ -179,7 +180,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   host.replaceChildren();
   const root = h('div', { class: 'alius-scene' });
   host.append(root);
-  attachPan();
 
   let pacing = false;
   let pending = false;
@@ -196,6 +196,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
   let layers: StageLayers;
+  /** P10e: looking around is wired per built scene (its position is remembered by scene id, see stage/look.ts). */
+  let detachLook: (() => void) | null = null;
   let bg: HTMLElement;
   /** P10c: the full-bleed image layer behind the whole scene (the ASCII art stays in `bg`, inside the stage). */
   let backdrop: HTMLElement;
@@ -301,22 +303,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         }
       }
     })();
-  }
-
-  /** P10c: the pointer pans the wide background over its extra width (0 = left edge, 1 = right); centred under reduced motion. */
-  function attachPan(): void {
-    root.style.setProperty('--alius-pan', '0.5');
-    root.addEventListener('pointermove', (ev) => {
-      // read on every move: Reduce motion may be switched on or off mid-scene
-      if (motionReduced(ctx.settings())) {
-        root.style.setProperty('--alius-pan', '0.5');
-        return;
-      }
-      const box = root.getBoundingClientRect();
-      if (box.width <= 0) return;
-      const f = Math.min(1, Math.max(0, ((ev as PointerEvent).clientX - box.left) / box.width));
-      root.style.setProperty('--alius-pan', String(Math.round(f * 100) / 100));
-    });
   }
 
   function setSprite(unit: Unit, labelText: string): void {
@@ -616,6 +602,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const units = present(s);
     sceneKey = s.scene!.id;
     layers = buildLayers(root);
+    detachLook?.();
+    detachLook = attachLook(layers.frame, root, { sceneId: () => s.scene!.id, reduced: () => motionReduced(ctx.settings()), onUse: () => markHintUsed('look') });
     bg = h('div', { class: 'alius-scene-bg' });
     backdrop = layers.backdrop;
     backdrop.classList.add('alius-scene-backdrop');
@@ -824,6 +812,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     },
     dispose() {
       disposed = true;
+      detachLook?.();
       cancelPostureCalls(); // no late slip for a call whose scene is gone (P16)
       clearSlapOverlay(slapHost); // and no late answer to a slap whose scene is gone
       backdropToken++;

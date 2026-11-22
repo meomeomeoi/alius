@@ -3049,6 +3049,12 @@
 #alius-shell .alius-layer {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
+
+/* the frame layer takes the right mouse button (looking around); the layers above it let the pointer through */
+#alius-shell .alius-layer-frame {
+  pointer-events: auto;
 }
 
 /* the backdrop covers the whole screen; a wide file (3072 x 1280) shows 672 px more than a 1080 px-high screen: the right mouse button looks around */
@@ -3083,6 +3089,7 @@
 }
 
 #alius-shell .alius-scene.alius-look-still > .alius-layer-backdrop,
+#alius-shell .alius-scene.alius-looking > .alius-layer-backdrop,
 #alius-shell.alius-reduced-motion .alius-layer-backdrop {
   transition: none;
 }

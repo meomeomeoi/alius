@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import { h } from '../../src/ui/dom';
 import { renderSceneScreen, resetBackdropCache } from '../../src/ui/scene/sceneScreen';
+import { resetSceneStage } from '../../src/ui/scene/stage';
 import '../../src/engine/actions/immersion';
 import { campaign, errors, loadCore, run } from '../helpers/world';
 
@@ -19,6 +20,7 @@ beforeAll(async () => {
 afterEach(() => {
   document.body.innerHTML = '';
   resetBackdropCache();
+  resetSceneStage(); // scene ids repeat between tests as they do between campaigns
   vi.useRealTimers();
 });
 const ANN = 'unit_ann';
@@ -117,19 +119,13 @@ describe('scene backdrop (P10c)', () => {
     expect(t.image()).toContain(String(other.background));
   });
 
-  it('the pointer pans the background; under reduced motion it stays centred', async () => {
+  it('the pointer no longer pans the background (P10e: the right mouse button looks around, tests/ui/stage/look.test.ts); the view starts centred', async () => {
     const t = setup();
     await flush();
     expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
     Object.defineProperty(t.root(), 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
     t.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 900, bubbles: true }));
-    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.9');
-    document.body.innerHTML = '';
-    const still = setup({ settings: { reducedMotion: true } });
-    await flush();
-    Object.defineProperty(still.root(), 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
-    still.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 900, bubbles: true }));
-    expect(still.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
+    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
   });
 
   it('knee-length sprites are sized by CSS over the whole frame (P10e replaces the measured tuck behind the transcript)', async () => {
@@ -211,14 +207,43 @@ describe('scene backdrop (P10c)', () => {
     void failed;
   });
 
-  it('review fixes: switching Reduce motion mid-scene stops (and re-centres) the pan', async () => {
+  it('review fixes: switching Reduce motion mid-scene turns the easing off; dragging works either way', async () => {
     const t = setup();
     await flush();
-    Object.defineProperty(t.root(), 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
-    t.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 900, bubbles: true }));
-    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.9');
+    const frame = t.host.querySelector<HTMLElement>('.alius-layer-frame')!;
+    Object.defineProperty(frame, 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
+    const ptr = (type: string, x: number) => frame.dispatchEvent(new MouseEvent(type, { clientX: x, button: 2, bubbles: true }));
+    ptr('pointerdown', 500);
+    ptr('pointermove', 400);
+    ptr('pointerup', 400);
+    expect(Number(t.root().style.getPropertyValue('--alius-pan'))).toBeCloseTo(0.6, 6);
+    expect(t.root().classList.contains('alius-look-still')).toBe(false);
     t.settings.reducedMotion = true;
-    t.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 100, bubbles: true }));
+    ptr('pointerdown', 500);
+    expect(t.root().classList.contains('alius-look-still')).toBe(true);
+    ptr('pointermove', 400);
+    ptr('pointerup', 400);
+    expect(Number(t.root().style.getPropertyValue('--alius-pan'))).toBeCloseTo(0.7, 6);
+  });
+
+  it('the looked-around view survives a redraw and starts centred in a new scene', async () => {
+    const t = setup();
+    await flush();
+    const frame = t.host.querySelector<HTMLElement>('.alius-layer-frame')!;
+    Object.defineProperty(frame, 'getBoundingClientRect', { value: () => ({ left: 0, width: 1000, top: 0, height: 500, right: 1000, bottom: 500 }) });
+    const ptr = (type: string, x: number) => frame.dispatchEvent(new MouseEvent(type, { clientX: x, button: 2, bubbles: true }));
+    ptr('pointerdown', 500);
+    ptr('pointermove', 300);
+    ptr('pointerup', 300);
+    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.7');
+    t.screen.refresh();
+    expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.7');
+    const ended = run(t.state(), reg, { type: 'scene/end', payload: {} });
+    t.setState(ended.state);
+    t.screen.refresh();
+    const again = run(t.state(), reg, { type: 'scene/start', payload: { locationId: 'garage', participants: [ANN], origin: 'event', startIndex: 0 } });
+    t.setState(again.state);
+    t.screen.refresh();
     expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
   });
 });

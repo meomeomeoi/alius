@@ -278,7 +278,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 **Interfaces:**
 - Produces: `attachLook(frame: HTMLElement, root: HTMLElement, opts: { sceneId: () => string; reduced: () => boolean; onUse?: () => void }): () => void` (detach). Module memory `Map<sceneId, number>`.
 
-- [ ] **Step 1: Write the failing tests** (jsdom, pointer events dispatched by hand).
+- [x] **Step 1: Write the failing tests** (jsdom, pointer events dispatched by hand).
   - `the right button drags`: pointerdown with `button 2` at x 1000 (frame width 1920), move to x 808, then up → `--alius-pan` = 0.5 + 192/1920 = **0.6**. A left button changes nothing.
   - `the context menu is suppressed on the frame only`: `contextmenu` on the frame is `defaultPrevented`; on a dock button it is not.
   - `a double right-click recentres`: two right-button `pointerdown` within 300 ms → 0.5.
@@ -286,8 +286,8 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `remembered per scene`: a new `attachLook` for the same scene id starts at the stored value. A different id, or `resetSceneStage()`, starts at 0.5.
   - `reduced motion`: dragging still works, and the root has the class `alius-look-still` (no transition).
   - The pointer moving with no button changes nothing (the P10c follow is gone).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the test and `tests/ui/sceneBackdrop.test.ts` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): look around with the right mouse button`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the test and `tests/ui/sceneBackdrop.test.ts` → PASS.
+- [x] **Step 5: Commit** `feat(P10e): look around with the right mouse button`
 
 ### Task 7: The reply block
 
