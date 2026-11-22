@@ -376,6 +376,12 @@ registerMemoryResolver('sworn', (draft, event) => {
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ['her'], vars: ['name'] });
 
+// the dynamic (P15, user ruling 2026-11-22): the commander refused the next step she asked for (card or words alike); hers to remember
+registerMemoryResolver('milestone_refused', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ['her'], vars: ['name'] });
+
 // the dynamic (P15): the commander left what she held; a vow makes it a break (`sworn`), the route and the severity are the event's own
 registerMemoryResolver('dynamic_exit', (draft, event) => {
   const her = subjectOf(draft, event.unitId);

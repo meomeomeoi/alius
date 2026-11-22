@@ -244,6 +244,29 @@ describe('the transfer request, the force exit\'s means', () => {
   });
 });
 
+describe('the transfer request costs her Trust and a slot (user ruling 2026-11-22)', () => {
+  it('takes her Trust and spends one slot, and a second request the same day is refused', () => {
+    const s = world({ frame: 'role', hold: 50, domains: ['private_time'] });
+    const trust = s.relations[ANN].trust;
+    const slot = s.slot;
+    const r = run(s, reg, { type: 'dynamic/request_transfer', payload: { unitId: ANN } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.relations[ANN].trust).toBe(trust - TUNING.dynamic.transferRequest.trust);
+    expect(r.state.slot).not.toBe(slot);
+    expect(r.events.some((e) => e.type === 'slot_advanced')).toBe(true);
+    const again = run(r.state, reg, { type: 'dynamic/request_transfer', payload: { unitId: ANN } });
+    expect(errors(again.events)[0]).toMatchObject({ message: expect.stringMatching(/already/i) });
+  });
+
+  it('is refused while a conversation is open, changing nothing', () => {
+    const s = world({ frame: 'role', hold: 50, domains: ['private_time'] });
+    s.calendar.pendingScene = { locationId: 'quarters_commander' } as never;
+    const r = run(s, reg, { type: 'dynamic/request_transfer', payload: { unitId: ANN } });
+    expect(errors(r.events)).not.toEqual([]);
+    expect(r.state).toBe(s);
+  });
+});
+
 describe('the holder\'s cover', () => {
   it('a role holder takes 20 % off, a rule holder 35 %, a cruel one half of that; nobody takes nothing', () => {
     expect(coverMult(campaign(reg, 3), reg)).toBe(1);

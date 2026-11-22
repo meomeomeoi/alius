@@ -69,6 +69,23 @@ describe('answering a milestone', () => {
     expect(r.state.dynamic!.open.milestones[0]?.milestoneId).toBe('first_protocol');
   });
 
+  it('a refused milestone is remembered by her (user ruling 2026-11-22)', () => {
+    const s = world('play', 45);
+    const before = s.memory?.facts?.length ?? 0;
+    const r = answer(s, 'refuse');
+    expect(errors(r.events)).toEqual([]);
+    const facts = (r.state.memory?.facts ?? []).slice(before);
+    const fact = facts.find((f) => f.tags.includes('milestone_refused'));
+    expect(fact).toBeDefined();
+    expect(fact!.about).toContain(ANN);
+    expect(fact!.knownBy).toContain(ANN);
+    expect(fact!.hiddenFromCommander).toBeUndefined();
+    expect(fact!.text).not.toMatch(/\b(he|him|his)\b/i);
+    // accepting writes no refusal fact
+    const a = answer(world('play', 45), 'accept');
+    expect((a.state.memory?.facts ?? []).some((f) => f.tags.includes('milestone_refused'))).toBe(false);
+  });
+
   it('refuse never goes below the frame floor, and at role it is noted', () => {
     const s = world('role', 65); // owning: the vow is open
     expect(s.dynamic!.open.milestones[0].milestoneId).toBe('vow');

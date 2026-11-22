@@ -3,7 +3,8 @@ import { registerAction, registerAfterAction, type EngineEvent } from '../dispat
 import { EXPECTATION_FIELDS, lockedExpectation, mergeExpectations, validateExpectations, type ExpectationProfile } from '../dynamic/expectations';
 import { mergePractice, validatePractice } from '../dynamic/profile';
 import { contentAllowed } from '../bonds/content';
-import { registerDayEndStep } from '../calendar';
+import { consumeSlots, registerDayEndStep } from '../calendar';
+import { applyRelationDelta } from '../relationGain';
 import { dynamicDayStep } from '../dynamic/dayStep';
 import { holdFeed } from '../dynamic/feed';
 import { revealKnown, signsFromEvents } from '../dynamic/knowledge';
@@ -360,7 +361,8 @@ registerAction('dynamic/bypass_leash', (draft, payload, ctx) => {
 
 /**
  * `dynamic/request_transfer { unitId }`: the commander files the oversight request to move her out, the means of a forced exit that spends no authorization
- * (`dynamic/exit { route: 'force', means: 'transfer_request' }` reads it from the state, for today). Needs her dynamic at `play` or beyond. Draws nothing.
+ * (`dynamic/exit { route: 'force', means: 'transfer_request' }` reads it from the state, for today). Needs her dynamic at `play` or beyond. Costs her Trust
+ * (`TUNING.dynamic.transferRequest`) and a slot, once a day, never during an open conversation (user ruling 2026-11-22). Draws nothing.
  */
 registerAction('dynamic/request_transfer', (draft, payload, ctx) => {
   const p = (payload ?? {}) as { unitId?: unknown };
@@ -368,7 +370,14 @@ registerAction('dynamic/request_transfer', (draft, payload, ctx) => {
   if (!dynamicOn(draft, ctx.registries)) throw new Error('The dynamic is off.');
   const dyn = dynamicOf(draft, unit.id);
   if (dyn === undefined || frameRank(dyn.frame) < frameRank('play')) throw new Error(`${unit.displayName} holds nothing over the commander that oversight could move her from.`);
-  return requestTransfer(draft, unit.id);
+  // user ruling 2026-11-22: filing it costs her Trust and the commander's time, once a day, never inside an open conversation
+  if (draft.calendar.pendingScene) throw new Error('A conversation is still open: end it before filing anything.');
+  if ((draft.dynamic?.oversight?.requests ?? []).some((r) => r.unitId === unit.id && r.day === draft.day)) throw new Error(`The request about ${unit.displayName} is already filed today.`);
+  const events = requestTransfer(draft, unit.id);
+  const lost = applyRelationDelta(draft, unit.id, 'trust', -TUNING.dynamic.transferRequest.trust, 'transfer_request');
+  if (lost !== 0) events.push({ type: 'relation_changed', unitId: unit.id, axis: 'trust', delta: lost, applied: lost });
+  events.push(...consumeSlots(draft, TUNING.dynamic.transferRequest.slots, ctx));
+  return events;
 });
 
 

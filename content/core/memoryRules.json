@@ -1021,6 +1021,19 @@
     ]
   },
   {
+    "id": "dynamic_milestone_refused",
+    "event": "milestone_refused",
+    "text": "AUTHOR TO WRITE: {name} asked the commander for the next step, and the commander said no.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "milestone_refused"
+    ]
+  },
+  {
     "id": "dynamic_domain_yielded",
     "event": "domain_yielded",
     "text": "AUTHOR TO WRITE: {name} was given a say over the commander's life: {domain}.",

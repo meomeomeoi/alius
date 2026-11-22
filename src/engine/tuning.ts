@@ -813,6 +813,8 @@ export const TUNING = Object.freeze({
      * cover shortens the span); `notices` are the segments that give a notice; on fill oversight acts on her: a reprimand takes `reprimandStress` stress and
      * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight and the `force` exit of her dynamic (R16). `AUTHOR TO TUNE`.
      */
+    /** The oversight request to move her out (the force exit's third means; user ruling 2026-11-22): her Trust lost when it is filed, and the slots it takes. Once a day. `AUTHOR TO TUNE`. */
+    transferRequest: Object.freeze({ trust: 10, slots: 1 }),
     oversight: Object.freeze({ blockedMax: 3, spanDays: 14, notices: Object.freeze([3, 5]) as readonly number[], reprimandStress: 15, reprimandHold: 10, threatDays: 7 }),
     /**
      * The holder's cover (R19): the share of the suspicion, the debts' oversight gains and the inquiry's pace she takes off at `role` and at `rule`; a `cruel`

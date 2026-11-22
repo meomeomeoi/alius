@@ -77,6 +77,10 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 - **Emergent rituals and habits:** P15 added the P14b axis kinds `practice` and `expect` (five `developmentAxes` rows), `Development.lapsed` and `habits[].tags` (`respect` lapse on disappointment; no core habit carries the tag yet). The chosen address and the nickname: `reputations[].tone` (`respectful`, `pitying`, `mocking`) and `reputationDayStep`.
 - **Her weakness and the drawn signature:** Regard is hidden everywhere; the profile's `tells` and `traits` appear only once shown.
 
+## Left to this package by P15 (user ruling, 2026-11-22)
+
+- **The position chips `[PROVOKE]` and `[TEST HER]`** (P15 §15.2) are this package's unless the P16b plan takes them (P16b owns `[ANTICIPATE]`; see its note "Left to this package by P15" for the shared rules: shown by her reading's axis thresholds, never region names; a staged act plus a `next_reply` directive; a reading sample; `data-analyze`; the meaning by her style). They belong next to the secret tests: a provocation followed by `returned` is play, followed by leaving is real resistance.
+
 ## Interfaces already provided by P15a (implemented — use, do not rebuild)
 
 P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the parts below as hooks or data only; this package completes them.

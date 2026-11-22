@@ -197,6 +197,10 @@ P15 is implemented (see its **Implemented as**: rulings R1–R25). What follows 
 - **Squad suspicion:** `addSign` rows `seen_together`, `time_alone`, `scent_*` are reserved with no producer.
 - **Moods and combat:** `moodSigns(state, reg, unitId)` returns her tells (revealed fields only), her mood word after a shared scene today and the length of her last DM replies; no meter.
 
+## Left to this package by P15 (user ruling, 2026-11-22)
+
+- **The position chips `[PROVOKE]`, `[TEST HER]`, `[ANTICIPATE]`** (P15 §15.2: "chips such as … tied to axis thresholds, never to region names"). P15 built only `[ASK IN RETURN]`, as the offer composer's toggle; the other three were deferred because they need practices to act on. P16b owns `[ANTICIPATE]` (it is unasked care, §10; anticipation in her presence is P16 §R.5); `[PROVOKE]` and `[TEST HER]` go to P17e unless the P16b plan takes them. Whoever builds them: each chip is shown by her reading's axis thresholds (`HerReading.r` / `.f` / `.p`, never `region`), stages the commander's act as a scene note with a `next_reply` directive, feeds `updateReading` as a sample (`returned` for PROVOKE, `resisted` for TEST HER, `yielded` with motive `her` for ANTICIPATE), carries `data-analyze`, and its meaning depends on her style (a game to `playful` / `cruel` with a bratty reading, an offence to `ritual` / `cold`).
+
 ## Interfaces to be provided by P15a and P16
 
 - P15a: interaction types, segments and the cue pool, the marathon, noise, her gaze, the stimulus layer, her skills (`herSkill`), `contactPhysics`, `blockingPostures` with the point model.

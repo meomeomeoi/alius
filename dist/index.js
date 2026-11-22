@@ -1087,6 +1087,8 @@ var TUNING = Object.freeze({
      * cover shortens the span); `notices` are the segments that give a notice; on fill oversight acts on her: a reprimand takes `reprimandStress` stress and
      * `reprimandHold` hold, a transfer threat gives her `threatDays` to lift the block, a forced Leash is a `done` entry copied to oversight and the `force` exit of her dynamic (R16). `AUTHOR TO TUNE`.
      */
+    /** The oversight request to move her out (the force exit's third means; user ruling 2026-11-22): her Trust lost when it is filed, and the slots it takes. Once a day. `AUTHOR TO TUNE`. */
+    transferRequest: Object.freeze({ trust: 10, slots: 1 }),
     oversight: Object.freeze({ blockedMax: 3, spanDays: 14, notices: Object.freeze([3, 5]), reprimandStress: 15, reprimandHold: 10, threatDays: 7 }),
     /**
      * The holder's cover (R19): the share of the suspicion, the debts' oversight gains and the inquiry's pace she takes off at `role` and at `rule`; a `cruel`
@@ -30118,6 +30120,10 @@ registerMemoryResolver("sworn", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ["her"], vars: ["name"] });
+registerMemoryResolver("milestone_refused", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ["her"], vars: ["name"] });
 registerMemoryResolver("dynamic_exit", (draft, event) => {
   const her = subjectOf2(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
@@ -36369,7 +36375,13 @@ registerAction("dynamic/request_transfer", (draft, payload, ctx2) => {
   if (!dynamicOn(draft, ctx2.registries)) throw new Error("The dynamic is off.");
   const dyn = dynamicOf(draft, unit3.id);
   if (dyn === void 0 || frameRank(dyn.frame) < frameRank("play")) throw new Error(`${unit3.displayName} holds nothing over the commander that oversight could move her from.`);
-  return requestTransfer(draft, unit3.id);
+  if (draft.calendar.pendingScene) throw new Error("A conversation is still open: end it before filing anything.");
+  if ((draft.dynamic?.oversight?.requests ?? []).some((r) => r.unitId === unit3.id && r.day === draft.day)) throw new Error(`The request about ${unit3.displayName} is already filed today.`);
+  const events = requestTransfer(draft, unit3.id);
+  const lost = applyRelationDelta(draft, unit3.id, "trust", -TUNING.dynamic.transferRequest.trust, "transfer_request");
+  if (lost !== 0) events.push({ type: "relation_changed", unitId: unit3.id, axis: "trust", delta: lost, applied: lost });
+  events.push(...consumeSlots(draft, TUNING.dynamic.transferRequest.slots, ctx2));
+  return events;
 });
 registerAction("dynamic/offer", (draft, payload, ctx2) => {
   const p = payload ?? {};
