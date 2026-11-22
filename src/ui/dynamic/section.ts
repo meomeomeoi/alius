@@ -7,7 +7,9 @@
  */
 import type { Registries } from '../../content/types';
 import type { Knowledge } from '../../analysis/knowledge';
+import { frameRank } from '../../engine/blocking/state';
 import type { ExitMeans } from '../../engine/dynamic/exit';
+import { dynamicOf } from '../../engine/dynamic/state';
 import type { ExitRoute } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -147,7 +149,8 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
       },
     });
   };
-  drawExit();
+  // she can be left only once she holds something (play or beyond); a former holder at `equal` has nothing to end
+  if (frameRank(dynamicOf(state, unitId)?.frame ?? 'equal') >= frameRank('play')) drawExit();
 
   host.append(h('h4', {}, 'DYNAMIC'), ...lines, cards, exitHost);
   host.classList.add('alius-dynamic-section');

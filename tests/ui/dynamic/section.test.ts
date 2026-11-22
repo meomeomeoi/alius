@@ -109,6 +109,14 @@ describe('her dossier: the DYNAMIC section', () => {
     expect(squad(s, { raw: true }).section!.querySelector('[data-dyn-hold]')!.textContent).toContain('(62)');
   });
 
+  it('a woman at equal (a former holder) has the section but nothing to end', () => {
+    const s = world();
+    s.relations[ANN].dynamic = { ...blankDynamic(s.day), formerHolder: { endedDay: 2, frame: 'role', sworn: false } };
+    const { section } = squad(s);
+    expect(section).not.toBeNull();
+    expect(section!.querySelector('[data-action="dyn-exit"]')).toBeNull();
+  });
+
   it('the section is not drawn while the dynamic is off, for a grunt, or for a woman who holds nothing', () => {
     const off = world();
     off.content = { enabled: [] };

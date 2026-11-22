@@ -25,7 +25,16 @@ import { renderMomentCard } from '../../src/ui/scene/momentCard';
 import '../../src/engine/actions/dynamic';
 import { milestonesDue } from '../../src/engine/dynamic/milestones';
 import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
-import { renderMilestoneCard } from '../../src/ui/dynamic/cards';
+import { renderClaimCard, renderMilestoneCard, renderReturnCard } from '../../src/ui/dynamic/cards';
+import { bodyMapFor, renderBodyMap } from '../../src/ui/dynamic/bodyMap';
+import { drawFrameChips } from '../../src/ui/dynamic/frameChip';
+import { drawOfferChips } from '../../src/ui/dynamic/offerComposer';
+import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
+import { buildKnowledge } from '../../src/analysis/knowledge';
+import { renderWorldParams } from '../../src/ui/setup/worldParams';
+import { zoneTag } from '../../src/engine/dynamic/zones';
+import { blankReading } from '../../src/engine/dynamic/state';
+import { addFact } from '../../src/engine/memory/facts';
 import { renderPhysicsPanel } from '../../src/ui/scene/physicsPanel';
 import '../../src/engine/actions/blocking';
 import '../../src/engine/actions/moments';
@@ -717,6 +726,117 @@ describe('coverage: her milestone (P15)', () => {
       expect(addresses.has('dynamicMilestones:first_yes')).toBe(true);
       const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
       for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze="glossary:milestone"], [data-analyze="dynamicMilestones:first_yes"]')]) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
+describe('coverage: the dynamic (P15)', () => {
+  /** Ann holds at role (a domain, a track, a vow, a claim and a milestone waiting); Bea at play; Cat's return offer is open and Eve's grief runs; oversight threatens Ann. */
+  function dynWorld(): CampaignState {
+    const s = campaign(reg, 4);
+    const bond = {
+      leadStyle: 'dominant' as const, attachment: 'steady' as const, desire: 'low' as const, caretaker: false, ownLimits: { categories: [] }, publicity: 'known' as const,
+      practice: { categories: { restraint: { as: 'enjoys' as const, witness: 'indifferent' as const } }, style: { primary: 'cold' as const }, audience: 'indifferent' as const, inclination: 'curious' as const, fairness: 'fair' as const, hintStyle: 'offers' as const, drive: 'moderate' as const },
+    };
+    const [ann, bea, cat, dee] = s.squad.map((u) => u.id);
+    for (const u of s.squad.slice(0, 2)) u.bond = bond;
+    s.squad[0].expectations = { worship: { feet: { attitude: 'craves', meaning: 'intimacy' }, toes: { attitude: 'enjoys' } }, holdsUntil: 'limit', tells: { irritation: 'she taps the table' } };
+    s.content = { enabled: ['restraint', 'worship', 'service', 'humiliation', 'objectification'] };
+    s.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+    s.relations[ann].dynamic = {
+      ...blankDynamic(s.day), frame: 'role', hold: 62, domains: [{ id: 'device', since: 1 }], tracks: { restraint: { xp: 40, level: 2 } },
+      readOf: { ...blankReading(), region: 'proud', updates: 4 }, sworn: { day: 3 },
+    };
+    s.relations[bea].dynamic = { ...blankDynamic(s.day), frame: 'play', hold: 45 };
+    s.relations[dee].dynamic = { ...blankDynamic(s.day), aftermath: { id: 'da1', kind: 'grief', stage: 0, untilDay: s.day + 5 } };
+    s.dynamic.open.claims.push({ id: 'dc1', unitId: ann, domainId: 'body', day: s.day });
+    s.dynamic.open.milestones.push({ id: 'dm1', unitId: ann, milestoneId: 'handover', day: s.day, form: 'scene' });
+    s.dynamic.open.returnOffer = { id: 'dr1', unitId: cat, terms: 'lower_band', day: s.day };
+    s.dynamic.oversight = { blocked: [], threat: { unitId: ann, untilDay: s.day + 4 } };
+    addFact(s, { about: [ann], text: 'AUTHOR TO WRITE: Ann likes her feet looked after.', tags: [zoneTag('feet')], importance: 2, day: 4, knownBy: [ann] });
+    return s;
+  }
+
+  it('the section, its cards and exit, the CMDR line, the frame chip, the composer, the body map, the setup block and SYS mark every element, and every one opens a panel with no network or model call', () => {
+    const state = dynWorld();
+    const [ann, , cat] = state.squad.map((u) => u.id);
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const settings = { ...getSettings(st), showRawValues: true };
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    const add = (): HTMLElement => { const el = h('div'); root.append(el); return el; };
+    try {
+      // her dossier: the DYNAMIC section with the exit card open
+      const squadHost = add();
+      renderSquadTab(squadHost, {
+        st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => settings,
+        onNewCampaign: vi.fn(), onPunish: vi.fn(), onLeash: vi.fn(), dynamic: { dispatch: () => [], onChanged: vi.fn(), actions: { exit: vi.fn(), requestTransfer: vi.fn() } },
+      } as never);
+      for (const b of squadHost.querySelectorAll<HTMLElement>('[data-action="dyn-exit"]')) b.click();
+      expect(squadHost.querySelectorAll('.alius-dynamic-section')).toHaveLength(3); // Ann, Bea and Dee (at equal, with an aftermath: nothing to end)
+      expect(squadHost.querySelectorAll('.alius-exit')).toHaveLength(2); // Ann's and Bea's
+      // the cards
+      const cards = add();
+      renderClaimCard(cards, { state, reg, claim: state.dynamic!.open.claims[0], onAnswer: vi.fn() });
+      renderReturnCard(cards, { state, reg, offer: state.dynamic!.open.returnOffer!, onAnswer: vi.fn() });
+      // the CMDR line, the frame chip beside the lead chips, the body map and the offer composer (open)
+      renderCmdrCard(add(), { state, registries: reg, raw: true });
+      drawFrameChips(add(), state, reg, () => true, false);
+      renderBodyMap(add(), bodyMapFor(state, reg, buildKnowledge(state, settings), ann, false));
+      const offer = add();
+      drawOfferChips(offer, { state, reg, pick: (id) => id === ann, onOffer: vi.fn() });
+      offer.querySelector<HTMLElement>('[data-action="offer"]')!.click();
+      expect(offer.querySelector('.alius-offer')).not.toBeNull();
+      // the hub's Tonight lines (a claim and a milestone waiting, a return offer, an aftermath's notice, oversight's threat)
+      const hubHost = add();
+      renderHub(hubHost, h('div'), {
+        getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => settings,
+        ops: { getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn() },
+        onTalk: vi.fn(), onEndSlot: vi.fn(), onOpenPda: vi.fn(), avatar: () => null,
+      });
+      // SYS › Dynamic, and WORLD PARAMETERS › DYNAMIC
+      renderSysTab(add(), { st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), getRegistries: () => reg, dispatch: () => [], toast: vi.fn(), modal: async () => null, onSettingsChanged: vi.fn() } as never);
+      const w = new Wizard(
+        { registries: reg, desireBondDefects: false, importer: async () => ({ kind: 'ok', profile: PROFILE, dropped: [], missing: [] }), onChange: () => {} },
+        { personaName: 'Vale', canBindCurrent: false },
+      );
+      w.setStart('start_vesper');
+      w.setCrime('mutiny');
+      w.setContent(['restraint']);
+      w.setHeadStart(7);
+      renderWorldParams(add(), { wizard: w, registries: reg });
+
+      expect(root.querySelector('.alius-dynamic')).not.toBeNull(); // the setup block was drawn
+      expect(root.querySelector('.alius-dynamic-host select')).not.toBeNull(); // and SYS's
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(state, true))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      const addresses = new Set(unitIdsIn(root));
+      for (const wanted of [
+        'glossary:frame', 'glossary:hold', 'glossary:vow', 'glossary:her_reading', 'glossary:dynamic', 'glossary:dynamic_exit', 'glossary:claim', 'glossary:milestone', 'glossary:aftermath',
+        'glossary:offer', 'glossary:oversight_inquiry', 'dynamicDomains:device', 'dynamicTracks:restraint', 'worshipTargets:feet', 'glossary:dynamic_may_hold', 'glossary:setting_dynamic_holders',
+      ]) expect(addresses.has(wanted), wanted).toBe(true);
+      expect(addresses.has('setting:dynamicHidden')).toBe(true);
+      expect(cat).toBeDefined();
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings }) });
+      const marked = [...root.querySelectorAll<HTMLElement>('[data-analyze]')];
+      expect(marked.length).toBeGreaterThan(80);
+      for (const el of marked) {
         analyzer.openFor(el, { x: 10, y: 10 });
         const text = document.querySelector('.alius-analyze')?.textContent ?? '';
         expect(text, el.getAttribute('data-analyze')!).not.toBe('');

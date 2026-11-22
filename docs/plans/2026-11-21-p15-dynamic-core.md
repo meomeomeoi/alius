@@ -2215,7 +2215,7 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Modify: `tests/fixtures/analyze/hidden.ts` (a P15 section), `tests/analysis/hidden.test.ts`, `tests/ui/analyzeCoverage.test.ts` (the DYNAMIC section, the cards, the composer, the body map, the DYNAMIC setup block, SYS Dynamic), `content/core/glossary.json` (whatever the coverage test still finds).
 - Test: those files.
 
-- [ ] **Step 1: Write the failing tests.** Sentinels:
+- [x] **Step 1: Write the failing tests.** Sentinels:
   - hold 37.37 (raw off);
   - Regard 61.61;
   - suspicion 59.59;
@@ -2227,10 +2227,10 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - her override chance (computed, asserted absent as text).
 
   The test asserts that no reading, label or toast text contains them. The coverage test marks every new screen.
-- [ ] **Step 2: Run** `npx vitest run tests/analysis/hidden.test.ts tests/ui/analyzeCoverage.test.ts` → FAIL (or PASS where earlier tasks did it; add the missing sentinel until one fails, then fix it).
-- [ ] **Step 3: Implement** what is missing.
-- [ ] **Step 4: Run** `npm test` → PASS.
-- [ ] **Step 5: Commit** `test(P15): hidden sentinels and analysis coverage`
+- [x] **Step 2: Run** `npx vitest run tests/analysis/hidden.test.ts tests/ui/analyzeCoverage.test.ts` → FAIL (or PASS where earlier tasks did it; add the missing sentinel until one fails, then fix it).
+- [x] **Step 3: Implement** what is missing.
+- [x] **Step 4: Run** `npm test` → PASS.
+- [x] **Step 5: Commit** `test(P15): hidden sentinels and analysis coverage`
 
 ---
 

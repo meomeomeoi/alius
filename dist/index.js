@@ -49855,7 +49855,7 @@ function renderDynamicSection(host, ctx2) {
       }
     });
   };
-  drawExit();
+  if (frameRank(dynamicOf(state, unitId)?.frame ?? "equal") >= frameRank("play")) drawExit();
   host.append(h("h4", {}, "DYNAMIC"), ...lines, cards, exitHost);
   host.classList.add("alius-dynamic-section");
   host.setAttribute("data-dynamic-section", unitId);

@@ -6,8 +6,11 @@ import { analyzeProviders, readingFor, registerAnalyzeProvider } from '../../src
 import { parseSubject } from '../../src/analysis/subject';
 import type { Registries } from '../../src/content/types';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { holderSource } from '../../src/engine/dynamic/command';
+import { overrideChance } from '../../src/engine/warden/override';
 import { hiddenFixture } from '../fixtures/analyze/hidden';
 import { allReadings, keysWithoutSample, leaks } from '../helpers/analyze';
+import { analyze } from '../helpers/analyzeCoverage';
 import { loadCore } from '../helpers/world';
 
 let reg: Registries;
@@ -52,6 +55,41 @@ describe('hidden state never reaches a reading', () => {
     expect(sentinels.texts).toEqual(expect.arrayContaining(['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED']));
   });
 
+  it('her dynamic is read (so the checks are not vacuous) and its sentinels never are, raw values on or off, immersive or not', () => {
+    const { state, unitId } = hiddenFixture(reg);
+    const decimals = [37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44];
+    const texts = ['SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15'];
+    // her override has a chance and it is computed (the hold is her authority); it is never written, as a fraction or as a percentage
+    const chance = overrideChance(1, holderSource(state, reg, unitId)!);
+    expect(chance).toBeGreaterThan(0);
+    const chanceTexts = [String(chance), String(Math.round(chance * 100) / 100), `${Math.round(chance * 100)}%`];
+    for (const [raw, hidden] of [[false, false], [true, false], [false, true], [true, true]] as const) {
+      const env = { ...envOf(state, raw), settings: { ...DEFAULT_SETTINGS, showRawValues: raw, dynamicHidden: hidden } };
+      const text = allReadings(env, unitId);
+      const label = `raw ${raw}, immersive ${hidden}`;
+      if (hidden) expect(text, label).toContain('[[dynamic_felt]]'); // the band is felt
+      else expect(text, label).toContain('Testing'); // `glossary:hold`: the band her 37.37 gives
+      expect(text, label).toContain('dutiful'); // `glossary:her_reading`: her word, never the readiness behind it
+      expect(text, label).toContain('The command'); // `dynamicDomains:command`
+      expect(leaks(text, { numbers: [], texts: [...texts, ...chanceTexts] }), label).toEqual([]);
+      for (const d of decimals) expect(text, `${label}: ${d}`).not.toContain(String(d));
+      if (!raw) expect(leaks(text, { numbers: decimals, texts: [] }), label).toEqual([]);
+      if (raw && !hidden) expect(analyze('glossary:hold', env, { unitId }).join(' ')).toContain('(37)'); // the whole number, only with raw values
+      if (hidden) expect(analyze('glossary:hold', env, { unitId }).join(' '), label).not.toMatch(/37|Testing/); // never the number, even with raw values on, and not the band
+    }
+  });
+
+  it('what no fact has shown is not read: an unrevealed zone has no attitude, and nothing of the aftermath or the mastery shows', () => {
+    const { state, unitId } = hiddenFixture(reg);
+    const zone = analyze('worshipTargets:feet', envOf(state, true), { unitId }).join(' ');
+    expect(zone).toContain('Not known yet');
+    expect(zone).not.toMatch(/craves|enjoys|dislikes|indifferent/);
+    expect(zone).toMatch(/Mastery: one of five/); // the level, never the 23.23
+    expect(analyze('glossary:compromat', envOf(state, true), { unitId })).toEqual([]);
+    expect(analyze('glossary:aftermath', envOf(state, true), { unitId }).join(' ')).not.toMatch(/7\.77|grief/);
+    expect(analyze('glossary:regard', envOf(state, true), { unitId })).toEqual([]);
+  });
+
   it('every bare-source provider has a sample address', () => {
     expect(keysWithoutSample()).toEqual([]);
   });
@@ -67,6 +105,17 @@ describe('hidden state never reaches a reading', () => {
       unregister();
     }
     expect(leaks(allReadings(envOf(state), unitId), sentinels)).toEqual([]);
+  });
+
+  it('the harness notices a provider that leaks a P15 sentinel', () => {
+    const { state, unitId, sentinels } = hiddenFixture(reg);
+    const unregister = registerAnalyzeProvider('glossary:leaky_test', () => ({ lines: ['Her Regard is 61.61 and she keeps SENTINEL_COMPROMAT_P15, she taps when SENTINEL_TELL.'] }));
+    try {
+      const found = leaks(allReadings(envOf(state), unitId), sentinels);
+      expect(found).toEqual(expect.arrayContaining(['61.61', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL']));
+    } finally {
+      unregister();
+    }
   });
 
   it('leaks() matches whole numbers only', () => {
