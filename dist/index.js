@@ -24141,6 +24141,7 @@ function compromiseTask(draft, ctx2, holderId, ev) {
     delete task.plain;
   }
   task.stakes = STAKES[Math.max(0, stakeRank(task.stakes) - 1)];
+  if (task.kind === "hold") task.slots = HOLD_SLOTS[task.stakes];
   delete task.sealed;
   delete task.said;
   task.acceptForm = acceptFormOf(task.stakes, void 0);
@@ -46668,13 +46669,15 @@ function renderTaskCard(host, ctx2) {
     parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
     parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
-    const due = dueWords({ deadline: deadlineShown(task) ?? void 0 }, state.day);
+    const due = task.kind === "hold" ? null : dueWords({ deadline: deadlineShown(task) ?? void 0 }, state.day);
     if (due !== null) parts.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
     if (task.noDuration === true) parts.push(h("p", { class: "alius-task-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long."));
     if (task.acceptForm === "button_cost") {
+      const hiddenHold = task.kind === "hold" && task.noDuration === true;
       const cost = taskCost(state, reg, task);
       const lines = [
-        ...cost.slots > 0 ? [`Takes ${slotsWord(cost.slots)} of the commander's time.`] : [],
+        ...cost.slots > 0 ? [hiddenHold ? "Takes the commander's time until she decides." : `Takes ${slotsWord(cost.slots)} of the commander's time.`] : [],
+        // a hold with no duration: its slots are its hidden end (R16)
         ...cost.lapses.map((l) => `Would lapse: ${l}.`),
         ...Object.entries(cost.resources).map(([resource, band2]) => `Uses ${band2} ${resource}.`)
       ];

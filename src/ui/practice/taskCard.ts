@@ -86,13 +86,14 @@ export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
     parts.push(h('p', { class: 'alius-task-envelope' }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
     parts.push(h('p', { class: 'alius-task-text' }, plainDraft(task.text)));
-    const due = dueWords({ deadline: deadlineShown(task) ?? undefined }, state.day);
+    const due = task.kind === 'hold' ? null : dueWords({ deadline: deadlineShown(task) ?? undefined }, state.day); // a hold's deadline is when the card goes stale, not when the hold is due
     if (due !== null) parts.push(h('p', { class: 'alius-task-due', ...analyzeAttrs('glossary:practice_task', live) }, `Due: ${due}.`));
     if (task.noDuration === true) parts.push(h('p', { class: 'alius-task-open-ended', ...analyzeAttrs('glossary:no_duration', live) }, 'She has not said how long.')); // no timer, no deadline: the engine keeps the end, the card shows none (R16)
     if (task.acceptForm === 'button_cost') {
+      const hiddenHold = task.kind === 'hold' && task.noDuration === true;
       const cost = taskCost(state, reg, task);
       const lines = [
-        ...(cost.slots > 0 ? [`Takes ${slotsWord(cost.slots)} of the commander's time.`] : []),
+        ...(cost.slots > 0 ? [hiddenHold ? "Takes the commander's time until she decides." : `Takes ${slotsWord(cost.slots)} of the commander's time.`] : []), // a hold with no duration: its slots are its hidden end (R16)
         ...cost.lapses.map((l) => `Would lapse: ${l}.`),
         ...Object.entries(cost.resources).map(([resource, band]) => `Uses ${band} ${resource}.`),
       ];

@@ -209,6 +209,18 @@ describe('talking', () => {
     expect(taskOf(d)).toMatchObject({ stakes: 'minor', summary: 'carry the roster', text: 'Carry the roster to me.' });
   });
 
+  it('a compromise on a hold lowers the slots it takes with its stakes (review M5)', () => {
+    const d = structuredClone(withTask('role', { kind: 'hold', stakes: 'severe', slots: 3, acceptForm: 'signed', check: 'model' }));
+    applyPracticeIntent(d, { registries: reg }, ANN, { type: 'compromise_reached', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'agreed', confidence: 1, taskId: 'pt1', text: 'Agreed.' } as never);
+    expect(taskOf(d)).toMatchObject({ stakes: 'major', slots: 2 });
+    applyPracticeIntent(d, { registries: reg }, ANN, { type: 'compromise_reached', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'agreed', confidence: 1, taskId: 'pt1', text: 'Agreed again.' } as never);
+    expect(taskOf(d)).toMatchObject({ stakes: 'minor', slots: 1 });
+    // a task that is no hold has no slots to lower
+    const t = structuredClone(withTask('role', { stakes: 'major', acceptForm: 'words' }));
+    applyPracticeIntent(t, { registries: reg }, ANN, { type: 'compromise_reached', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'agreed', confidence: 1, taskId: 'pt1', text: 'Agreed.' } as never);
+    expect(taskOf(t).slots).toBeUndefined();
+  });
+
   it('a compromise at the lowest stakes keeps them', () => {
     const d = structuredClone(withTask('play', { stakes: 'trivial', acceptForm: 'button' }));
     applyPracticeIntent(d, { registries: reg }, ANN, { type: 'compromise_reached', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'agreed', confidence: 1, taskId: 'pt1', text: 'Agreed.' } as never);

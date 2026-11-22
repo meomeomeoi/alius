@@ -274,6 +274,7 @@ export function compromiseTask(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
     delete task.plain;
   }
   task.stakes = STAKES[Math.max(0, stakeRank(task.stakes) - 1)];
+  if (task.kind === 'hold') task.slots = HOLD_SLOTS[task.stakes]; // a hold talked down takes fewer of the commander's slots
   delete task.sealed;
   delete task.said;
   task.acceptForm = acceptFormOf(task.stakes, undefined);

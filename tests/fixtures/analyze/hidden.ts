@@ -192,6 +192,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
       taskOf({ id: 'pt1', status: 'offered', sealed: true, acceptForm: 'sealed', summary: 'SENTINEL_SEALED_SUMMARY', text: 'SENTINEL_SEALED_TEXT' }),
       taskOf({ id: 'pt2', summary: 'bring the roster', report: { day: 8, falseReport: true }, deadline: { day: 11, slot: 'evening' }, noDuration: true }),
       taskOf({ id: 'pt3', summary: 'her morning routine', routine: true, brokenDay: 8 }),
+      // an offered hold with no duration: the card says she has not said how long, and never how many slots it takes (R16)
+      taskOf({ id: 'pt4', kind: 'hold', status: 'offered', stakes: 'major', slots: 2, noDuration: true, deadline: { day: 9 }, summary: 'keeps the commander close', text: 'Stay where I can see you.' }),
     ] as never,
     punishments: [
       { id: 'pp1', holderId: unit.id, entryId: 'corner_time', severity: 2, offence: { kind: 'task_broken', stakes: 'minor', day: 8 }, text: 'SENTINEL_SEALED_TEXT', summary: 'SENTINEL_SEALED_SUMMARY', status: 'offered', sealed: true, day: 8 },

@@ -73,6 +73,26 @@ describe('hidden values never reach a card, a label, a directive or the prompt (
     }
   });
 
+  it('an offered hold with no duration says no length: no slot count, no due day (review I4, M13)', () => {
+    const { state, unitId } = fixture();
+    const host = h('div');
+    document.body.append(host);
+    drawTaskCards(host, state, reg, (c) => c.unitId === unitId, { answer: noop, sign: noop, focusInput: noop });
+    const card = host.querySelector('[data-task="pt4"]')!;
+    expect(card, 'the offered hidden hold is drawn').not.toBeNull();
+    expect(card.textContent).toMatch(/She has not said how long/);
+    expect(card.textContent).toMatch(/until she decides/i);
+    expect(card.textContent).not.toMatch(/\d|slot|Due:/i);
+    // a hold that states its end is told how long it takes and when it ends, as before
+    const known = structuredClone(state);
+    delete known.practices!.tasks.find((t) => t.id === 'pt4')!.noDuration;
+    const open = h('div');
+    document.body.append(open);
+    drawTaskCards(open, known, reg, (c) => c.unitId === unitId, { answer: noop, sign: noop, focusInput: noop });
+    expect(open.querySelector('[data-task="pt4"]')!.textContent).toMatch(/Takes 2 slots/);
+    expect(open.querySelector('[data-task="pt4"]')!.textContent).not.toMatch(/Due:/);
+  });
+
   it('every element a card draws is addressed and resolves', () => {
     const { state, unitId } = fixture();
     const host = everything(state, unitId);
