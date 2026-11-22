@@ -9,6 +9,7 @@ import { answerDemonstration, demonstrationsFromEvents } from '../practice/demon
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
+import { confess } from '../practice/service';
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
@@ -105,4 +106,10 @@ registerVoteGate('practice/take_instead', (state, payload, reg) => {
 registerAction('practice/undo', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.punishmentId !== 'string') throw new Error('practice/undo needs { punishmentId }.');
   return undoPractice(draft, ctx, payload.punishmentId);
+});
+
+/** `practice/confess { taskId }`: `[ I DIDN'T ]` on her routine: the commander tells her it was not done today (an offence one weight lighter than a reported one, R10). */
+registerAction('practice/confess', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.taskId !== 'string') throw new Error("practice/confess needs { taskId }.");
+  return confess(draft, ctx, payload.taskId);
 });

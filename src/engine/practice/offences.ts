@@ -34,16 +34,17 @@ function styleTerm(state: CampaignState, reg: Registries, holderId: string): num
 }
 
 /**
- * The weight of a punishment for an offence (1 to 5): the stakes' rank plus one (trivial 1 to severe 4), her style (`cruel` +1, `affectionate` -1; a secondary adds `secondaryStyle` with its sign), her frame (`play` -1, `role` 0, `rule` +1) and a repeat (+1 when she has entered `repeat.count` offences within `repeat.days`), summed as a float, rounded once (half up) and clamped to 1 to 5. Reads only: the offences
+ * The weight of a punishment for an offence (1 to 5): the stakes' rank plus one (trivial 1 to severe 4; a confessed offence one less), her style (`cruel` +1, `affectionate` -1; a secondary adds `secondaryStyle` with its sign), her frame (`play` -1, `role` 0, `rule` +1) and a repeat (+1 when she has entered `repeat.count` offences within `repeat.days`), summed as a float, rounded once (half up) and clamped to 1 to 5. Reads only: the offences
  * counted are the ones noted before this one.
  */
-export function severityOf(state: CampaignState, reg: Registries, holderId: string, offence: Pick<Offence, 'stakes'>): Severity5 {
+export function severityOf(state: CampaignState, reg: Registries, holderId: string, offence: Pick<Offence, 'stakes' | 'confessed'>): Severity5 {
   const T = TUNING.practice.severity;
   const frame = dynamicOf(state, holderId)?.frame;
   const frameTerm = frame === 'rule' || frame === 'role' || frame === 'play' ? T.frame[frame] : 0;
   const recent = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T.repeat.days).length;
   const repeat = recent >= T.repeat.count ? T.repeat.add : 0;
-  const total = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat + 0.5); // one rounding, half up
+  const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0; // telling it herself weighs less (R10)
+  const total = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat - confessed + 0.5); // one rounding, half up
   return Math.min(T.max, Math.max(T.min, total)) as Severity5;
 }
 

@@ -101,7 +101,7 @@ export const PRACTICE_EVENT_TYPES = [
 ] as const;
 export type PracticeEventType = (typeof PRACTICE_EVENT_TYPES)[number];
 
-export interface Offence { kind: OffenceKind; ref?: string; stakes: Stake; day: number; unfair?: true }
+export interface Offence { kind: OffenceKind; ref?: string; stakes: Stake; day: number; unfair?: true; /** The commander told it herself (`[ I DIDN'T ]`): the punishment weighs one less. */ confessed?: true }
 
 export interface PracticeRequest {
   id: string;
@@ -125,6 +125,8 @@ export interface PracticeRequest {
   forUnitId?: string;
   /** A protocol's length in days (a punishment's `protocol_extra`). */
   days?: number;
+  /** A task she asks for to let permission through (her answer `earn`): the permission rule it earns. */
+  earns?: string;
 }
 
 export interface Task {
@@ -170,6 +172,8 @@ export interface Task {
   sceneWith?: string[];
   /** The day a verdict (kept or broken) was settled. */
   settledDay?: number;
+  /** A routine only: the last day it was told (by a report or by `[ I DIDN'T ]`) that it was not done. The day step does not count that day as kept. */
+  brokenDay?: number;
 }
 
 /** A ceremony's progress (R21): the step rows for her style by `order`, the ones done, and the number the commander named. */

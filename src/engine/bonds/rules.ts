@@ -28,7 +28,8 @@ export const activeRules = (state: Pick<CampaignState, 'bonds'>, unitId: string)
 /** Types of the rule events the mechanic model may report. */
 export const RULE_EVENT_TYPES: readonly string[] = ['rule_kept', 'rule_broken', 'compromise_reached'];
 
-type Template = { id: string; practice?: true; check: string; text: string; keepDeltas: { trust: number; affinity: number }; breakDeltas: { trust: number; affinity: number; stress: number }; conditions?: { minLead?: string; tiers?: string[] }; weight: number };
+export type RuleTemplate = { id: string; practice?: true; asks?: string; contentTags?: string[]; check: string; text: string; keepDeltas: { trust: number; affinity: number }; breakDeltas: { trust: number; affinity: number; stress: number }; conditions?: { minLead?: string; tiers?: string[] }; weight: number };
+type Template = RuleTemplate;
 const templateOf = (reg: Registries, rule: Pick<Rule, 'templateId'>): Template | undefined => reg.relationshipRuleTemplates.get(rule.templateId) as unknown as Template | undefined;
 const clean = (t: string, max: number): string => t.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max).trim();
 const ensureBonds = (draft: CampaignState): NonNullable<CampaignState['bonds']> => (draft.bonds ??= { rules: [] });
@@ -50,14 +51,23 @@ function offerable(state: CampaignState, reg: Registries, unitId: string, tpl: T
 /**
  * The templates she may be offered now, or `[]` when she may not be offered one at all: a named living unit, lead style at least assertive, a
  * relationship state of the romantic or close tier, no proposal or negotiation open and fewer than three active rules. A template marked `practice` (a holder's protocol or denial rule)
- * is offered only to a caller that says so (`opts.practice`: P16), and that caller is offered only those. Pure.
+ * is offered only to a caller that says so (`opts.practice`: P16), and that caller is offered only those; `opts.filter` narrows the pool further (P16: only the `service` rows, only the one that asks for permission). Pure.
  */
-function proposalPool(draft: CampaignState, reg: Registries, unit: CampaignState['squad'][number], opts: { practice?: boolean } = {}): Template[] {
+function proposalPool(draft: CampaignState, reg: Registries, unit: CampaignState['squad'][number], opts: { practice?: boolean; filter?: (template: RuleTemplate) => boolean } = {}): Template[] {
   const bond = unit.kind === 'named' && isLiving(unit) ? bondOf(unit) : null;
   if (!bond || leadRank(bond.leadStyle) < leadRank('assertive') || bondTierOf(draft, reg, unit.id) === null) return [];
   const mine = rulesOf(draft).filter((r) => r.unitId === unit.id);
   if (mine.some((r) => r.status === 'proposed' || r.status === 'negotiating') || mine.filter((r) => r.status === 'active').length >= R.maxActive) return [];
-  return [...reg.relationshipRuleTemplates.values()].map((t) => t as unknown as Template).filter((t) => (opts.practice === true ? t.practice === true : t.practice !== true) && offerable(draft, reg, unit.id, t));
+  return [...reg.relationshipRuleTemplates.values()].map((t) => t as unknown as Template).filter((t) => (opts.practice === true ? t.practice === true : t.practice !== true) && (opts.filter === undefined || opts.filter(t)) && offerable(draft, reg, unit.id, t));
+}
+
+/**
+ * Could `proposeRuleHashed` propose something to her now (same options)? Reads only: romance on and a non-empty pool. P16 asks before it requests a denial, and before it
+ * writes a protocol rule, so that a request the engine cannot write as a rule is turned into something else instead.
+ */
+export function canProposeRule(draft: CampaignState, reg: Registries, unitId: string, opts: { practice?: boolean; filter?: (template: RuleTemplate) => boolean } = {}): boolean {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  return unit !== undefined && intimacyOf(draft).romance && proposalPool(draft, reg, unit, opts).length > 0;
 }
 
 /** Writes a rule of a template as proposed by her, and says so. */
@@ -93,7 +103,7 @@ export function rollRules(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
  * templates she may be offered is the hashed number `roll` (0 to under 1), the ones about the commander's other relations first (P16 passes `{ practice: true }` to be offered its own rows, and only those). Nothing when she
  * may not be offered one (romance off, not a leading partner, no bond tier, a proposal already open, no template left).
  */
-export function proposeRuleHashed(draft: CampaignState, reg: Registries, unitId: string, roll: number, opts: { practice?: boolean } = {}): EngineEvent[] {
+export function proposeRuleHashed(draft: CampaignState, reg: Registries, unitId: string, roll: number, opts: { practice?: boolean; filter?: (template: RuleTemplate) => boolean } = {}): EngineEvent[] {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || !intimacyOf(draft).romance) return [];
   const pool = proposalPool(draft, reg, unit, opts);
@@ -278,7 +288,7 @@ export function syncRulesWithContent(draft: CampaignState, reg: Registries): voi
   for (const rule of bonds.rules) {
     const tpl = reg.relationshipRuleTemplates.get(rule.templateId);
     const allowed = tpl === undefined || contentAllowed(draft, reg, tpl, rule.unitId);
-    if (allowed) next.push(rule.status === 'suspended' ? { ...rule, status: 'active' } : rule);
+    if (allowed) next.push(rule.status === 'suspended' && rule.source !== 'item' ? { ...rule, status: 'active' } : rule); // a rule an item put in force (P16) comes back only with the item
     else if (rule.status === 'active' || rule.status === 'suspended') next.push({ ...rule, status: 'suspended' });
     // proposed / negotiating: withdrawn quietly
   }

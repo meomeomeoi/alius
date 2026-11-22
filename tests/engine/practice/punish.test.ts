@@ -74,13 +74,13 @@ describe('the effects', () => {
     expect(vi.mocked(startHold).mock.calls[0].slice(2)).toEqual([ANN, 2, { punitive: true, punishmentId: 'pp1' }]);
   });
 
-  it('privilege_revoked writes a restriction until day + days; protocol_extra asks for nothing yet; cold_shoulder writes cold', () => {
+  it('privilege_revoked writes a restriction until day + days; protocol_extra asks for a protocol; cold_shoulder writes cold', () => {
     const rev = answer(withPun('role', 'no_messages', 2), 'accept').state;
     expect(rev.practices!.restrictions).toEqual([{ holderId: ANN, what: 'no_dms_others', untilDay: 21 }]);
-    // until a protocol can be written (Task 21) the effect asks for nothing: a request nobody can issue would only cost a failed model call and block her new practices
+    // a protocol can be written now (Task 21): the effect asks for one, of the days it names
     const proto = answer(withPun('role', 'extra_protocol', 1), 'accept');
-    expect(proto.state.practices!.requests.filter((q) => q.kind === 'protocol')).toEqual([]);
-    expect(ofType(proto.events, 'practice_requested')).toEqual([]);
+    expect(proto.state.practices!.requests.filter((q) => q.kind === 'protocol').map((q) => q.days)).toEqual([1]);
+    expect(ofType(proto.events, 'practice_requested').map((e) => e.kind)).toEqual(['protocol']);
     expect(errors(proto.events)).toEqual([]);
     const cold = answer(withPun('role', 'cold_shoulder', 2), 'accept').state;
     expect(cold.practices!.cold[ANN]).toBe(21);

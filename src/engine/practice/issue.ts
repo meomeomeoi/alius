@@ -11,6 +11,7 @@ import { fallbackLine, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 import { punishmentEntryFor, severityOfEntry } from './offences';
 import { stakeRank, type OpenPunishment, type PracticeCard, type PracticeKind, type PracticeRequest, type ValidOutput } from './state';
 import { writeDemonstration } from './demonstration';
+import { writeProtocol } from './service';
 import { allCards, requestOf } from './request';
 import { TUNING } from '../tuning';
 import { acceptFormOf, writeTask, type Writer } from './tasks';
@@ -48,7 +49,7 @@ function writePunishment(draft: CampaignState, ctx: EngineCtx, request: Practice
  * The writer of each kind that can be issued. The day step offers only these kinds, so a campaign between tasks never asks for a kind nobody can write. Later tasks add
  * protocol (21), denial (23) and hold (25).
  */
-export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration };
+export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol };
 
 /** The card the fallback writes for a request: its first seed that is still allowed, with the template line and the gist, within the frame's stakes. `null` when none stands. */
 export function fallbackOutput(state: CampaignState, reg: Registries, request: PracticeRequest): ValidOutput | null {

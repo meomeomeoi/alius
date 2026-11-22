@@ -18,6 +18,7 @@ import { practiceLive } from './gate';
 import { noteOffence } from './offences';
 import { seenByChance } from './demonstration';
 import { practiceSample } from './sample';
+import { routineBroken } from './service';
 import { practiceRoll, stakeRank, STAKES, type Stake, type Task } from './state';
 import type { EventIntent } from '../relations/intents';
 import { isLiving } from '../economy';
@@ -282,6 +283,7 @@ export function reportTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registrie
 export function fromIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: Pick<EventIntent, 'type' | 'taskId'>): EngineEvent[] {
   const task = ev.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === unitId && t.kind === 'task');
   if (task === undefined) return [];
+  if (task.routine === true) return ev.type === 'task_broken' ? routineBroken(draft, ctx, task, 'model') : []; // a routine goes on: a report only spoils its day
   if (task.status === 'open') return settleTask(draft, ctx, task.id, ev.type === 'task_kept' ? 'kept' : 'broken', 'model');
   if (ev.type === 'task_broken' && keptByWordRecently(draft, task)) return findFalseReport(draft, ctx, task.id, 'model');
   return [];

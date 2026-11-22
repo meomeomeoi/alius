@@ -1300,6 +1300,10 @@ var TUNING = Object.freeze({
     }),
     refuseRecord: 5,
     coldWant: 5,
+    /** What telling an offence herself (`[ I DIDN'T ]`) takes off the punishment's weight (R10). `AUTHOR TO TUNE`. */
+    confessedLess: 1,
+    /** The routine (R10): the track and the xp a day it is kept gives, and its words (a draft) and summary. */
+    routine: Object.freeze({ track: "service", xp: 1, text: "AUTHOR TO WRITE: Her mornings are hers to start: gear, coffee, a word at first light.", summary: "her morning routine" }),
     /** TAKE IT INSTEAD (R8): the Record each named unit at base gains. The soldier's Trust is the `spared_for` row. */
     takeInstead: Object.freeze({ record: 2 }),
     /**
@@ -12673,7 +12677,11 @@ function proposalPool(draft, reg, unit3, opts = {}) {
   if (!bond || leadRank(bond.leadStyle) < leadRank("assertive") || bondTierOf(draft, reg, unit3.id) === null) return [];
   const mine = rulesOf(draft).filter((r) => r.unitId === unit3.id);
   if (mine.some((r) => r.status === "proposed" || r.status === "negotiating") || mine.filter((r) => r.status === "active").length >= R.maxActive) return [];
-  return [...reg.relationshipRuleTemplates.values()].map((t) => t).filter((t) => (opts.practice === true ? t.practice === true : t.practice !== true) && offerable(draft, reg, unit3.id, t));
+  return [...reg.relationshipRuleTemplates.values()].map((t) => t).filter((t) => (opts.practice === true ? t.practice === true : t.practice !== true) && (opts.filter === void 0 || opts.filter(t)) && offerable(draft, reg, unit3.id, t));
+}
+function canProposeRule(draft, reg, unitId, opts = {}) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  return unit3 !== void 0 && intimacyOf(draft).romance && proposalPool(draft, reg, unit3, opts).length > 0;
 }
 function propose(draft, unit3, tpl) {
   const rule = { id: nextId(draft, "r"), unitId: unit3.id, templateId: tpl.id, text: clean(tpl.text.replaceAll("{name}", unit3.displayName), R.textMax), status: "proposed", day: draft.day, brokenCount: 0 };
@@ -12847,7 +12855,7 @@ function syncRulesWithContent(draft, reg) {
   for (const rule of bonds.rules) {
     const tpl = reg.relationshipRuleTemplates.get(rule.templateId);
     const allowed = tpl === void 0 || contentAllowed(draft, reg, tpl, rule.unitId);
-    if (allowed) next.push(rule.status === "suspended" ? { ...rule, status: "active" } : rule);
+    if (allowed) next.push(rule.status === "suspended" && rule.source !== "item" ? { ...rule, status: "active" } : rule);
     else if (rule.status === "active" || rule.status === "suspended") next.push({ ...rule, status: "suspended" });
   }
   bonds.rules = next;
@@ -22786,7 +22794,8 @@ function severityOf(state, reg, holderId, offence) {
   const frameTerm = frame === "rule" || frame === "role" || frame === "play" ? T5.frame[frame] : 0;
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
-  const total2 = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat + 0.5);
+  const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0;
+  const total2 = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat - confessed + 0.5);
   return Math.min(T5.max, Math.max(T5.min, total2));
 }
 var sceneIsHers = (state, holderId) => state.scene === void 0 || state.scene.participants.length === 1 && state.scene.participants[0] === holderId;
@@ -23127,6 +23136,17 @@ function acceptFormOf(stakes, sealed) {
   return ["button", "button_cost", "words", "signed"][stakeRank(stakes)];
 }
 var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
+var frameOf2 = (state, holderId) => {
+  const f = dynamicOf(state, holderId)?.frame;
+  return f === "rule" || f === "role" ? f : "play";
+};
+var openTasks = (state, holderId) => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === "task" && t.routine !== true && (t.status === "offered" || t.status === "open")).length;
+function taskRoom(state, reg, holderId) {
+  const frame = frameOf2(state, holderId);
+  const open3 = openTasks(state, holderId);
+  if (open3 >= TUNING.practice.taskCap[frame]) return false;
+  return !(frameRank(frame) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
+}
 var targetOf = (request, out) => request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS2.includes(out.check) || out.check === "no_scene_with" ? out.checkArg : void 0);
 var writeTask = (draft, _ctx, request, out, plain8) => {
   const p = ensurePractices(draft);
@@ -23444,6 +23464,96 @@ function practiceSample(draft, reg, unitId, response, opts = {}) {
   return region === void 0 ? [] : [{ type: "position_shifted", unitId, from: region.from, to: region.to }];
 }
 
+// src/engine/practice/service.ts
+var isServiceTemplate = (t) => tagsOf(t).includes(TUNING.offer.serviceCategory);
+var templateOf2 = (reg, rule) => reg.relationshipRuleTemplates.get(rule.templateId);
+function protocolRules(state, reg, holderId) {
+  return rulesOf(state).filter((r) => r.unitId === holderId && r.status !== "suspended" && (() => {
+    const t = templateOf2(reg, r);
+    return t !== void 0 && isServiceTemplate(t);
+  })());
+}
+var protocolRoom = (state, reg, holderId) => protocolRules(state, reg, holderId).length < TUNING.practice.protocolMax[frameOf2(state, holderId)];
+function routineAllowed(state, reg, holderId) {
+  if (!practiceLive(state, reg, holderId) || !hasCapability(state, reg, holderId, "household_protocol")) return false;
+  const as = practiceOf(state, reg, holderId)?.categories[TUNING.offer.serviceCategory]?.as;
+  return as === "enjoys" || as === "craves";
+}
+var routineOf = (state, holderId) => state.practices?.tasks.find((t) => t.holderId === holderId && t.routine === true && t.status === "open");
+function writeRoutine(draft, ctx2, holderId) {
+  if (!routineAllowed(draft, ctx2.registries, holderId) || routineOf(draft, holderId) !== void 0) return [];
+  const T5 = TUNING.practice.routine;
+  const id = nextPracticeId(draft, "pt");
+  ensurePractices(draft).tasks.push({
+    id,
+    holderId,
+    kind: "task",
+    tags: [TUNING.offer.serviceCategory],
+    track: T5.track,
+    tier: 1,
+    stakes: "trivial",
+    check: "model",
+    proof: "none",
+    text: T5.text,
+    summary: T5.summary,
+    status: "open",
+    routine: true,
+    acceptForm: "button",
+    day: draft.day,
+    answeredDay: draft.day
+  });
+  return [{ type: "protocol_set", unitId: holderId, holderId, taskId: id, routine: true }];
+}
+var writeProtocol = (draft, ctx2, request, out, plain8) => {
+  const reg = ctx2.registries;
+  const holderId = request.holderId;
+  const opts = { practice: true, filter: isServiceTemplate };
+  const proposed = protocolRoom(draft, reg, holderId) ? proposeRuleHashed(draft, reg, holderId, practiceRoll(draft, holderId, `protocol:${request.id}`), opts) : [];
+  const proposal = proposed.find((e) => e.type === "rule_proposed");
+  const events = [];
+  if (proposal === void 0) {
+    if (!taskRoom(draft, reg, holderId)) return [];
+    events.push(...writeTask(draft, ctx2, { ...request, kind: "task" }, { ...out, kind: "task", deadline: out.deadline ?? { days: TUNING.practice.defaultDeadlineDays } }, plain8));
+  } else {
+    const rule = rulesOf(draft).find((r) => r.id === proposal.ruleId);
+    events.push(...proposed, ...deliverRule(draft, rule.id, plainDraft(plain8 ? rule.text : out.text)), { type: "protocol_set", unitId: holderId, holderId, ruleId: rule.id, requestId: request.id, ...plain8 ? { plain: true } : {} });
+  }
+  events.push(...writeRoutine(draft, ctx2, holderId));
+  return events;
+};
+var protocolPossible = (state, reg, holderId) => protocolRoom(state, reg, holderId) && canProposeRule(state, reg, holderId, { practice: true, filter: isServiceTemplate });
+function routineBroken(draft, ctx2, task, via) {
+  if (task.routine !== true || task.status !== "open" || task.brokenDay === draft.day || !practiceLive(draft, ctx2.registries, task.holderId)) return [];
+  task.brokenDay = draft.day;
+  return [
+    { type: "task_broken", taskId: task.id, unitId: task.holderId, holderId: task.holderId, via, stakes: "trivial", summary: task.summary, routine: true },
+    ...noteOffence(draft, ctx2, task.holderId, { kind: "task_broken", ref: `routine:${task.id}:${draft.day}`, stakes: "trivial", day: draft.day, ...via === "confess" ? { confessed: true } : {} })
+  ];
+}
+function confess2(draft, ctx2, taskId) {
+  const task = draft.practices?.tasks.find((t) => t.id === taskId && t.routine === true);
+  if (task === void 0 || task.status !== "open") throw new Error("That routine is gone.");
+  if (!practiceLive(draft, ctx2.registries, task.holderId)) throw new Error("She is not holding now.");
+  if (task.brokenDay === draft.day) throw new Error("That was told already today.");
+  return routineBroken(draft, ctx2, task, "confess");
+}
+function routineSweep(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const holderId of practiceHolders(draft, reg)) {
+    const task = routineOf(draft, holderId);
+    if (task === void 0) continue;
+    if (!routineAllowed(draft, reg, holderId)) {
+      task.status = "void";
+      events.push({ type: "task_void", taskId: task.id, holderId, what: "task", reason: "lapsed" });
+      continue;
+    }
+    if (task.brokenDay === draft.day) continue;
+    events.push({ type: "routine_kept", unitId: holderId, holderId, taskId: task.id }, ...addTrackXp(draft, reg, holderId, TUNING.practice.routine.track, TUNING.practice.routine.xp));
+  }
+  return events;
+}
+
 // src/engine/practice/checks.ts
 var ROSTER_CHECKS3 = ["on_roster", "not_on_roster"];
 var SEVERITY = ["minor", "minor", "moderate", "major", "extreme"];
@@ -23656,6 +23766,7 @@ function reportTask(draft, ctx2, taskId) {
 function fromIntent(draft, ctx2, unitId, ev) {
   const task = ev.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === ev.taskId && t.holderId === unitId && t.kind === "task");
   if (task === void 0) return [];
+  if (task.routine === true) return ev.type === "task_broken" ? routineBroken(draft, ctx2, task, "model") : [];
   if (task.status === "open") return settleTask(draft, ctx2, task.id, ev.type === "task_kept" ? "kept" : "broken", "model");
   if (ev.type === "task_broken" && keptByWordRecently(draft, task)) return findFalseReport(draft, ctx2, task.id, "model");
   return [];
@@ -23733,7 +23844,7 @@ function writePunishment(draft, ctx2, request, out, plain8) {
     ...plain8 ? { plain: true } : {}
   }];
 }
-var WRITERS = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration };
+var WRITERS = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol };
 function fallbackOutput(state, reg, request) {
   if (request.kind === "punishment") {
     const entryId = punishmentEntryFor(state, reg, request);
@@ -31029,11 +31140,11 @@ var T3 = () => TUNING.special.debts;
 var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 var named3 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
-function templateOf2(ctx2, context) {
+function templateOf3(ctx2, context) {
   return [...ctx2.registries.dilemmaTemplates.values()].find((t) => t.contexts.includes(context) && t.fixed !== void 0);
 }
 function present(draft, ctx2, context, unitId) {
-  const template = templateOf2(ctx2, context);
+  const template = templateOf3(ctx2, context);
   const fixed = template?.fixed;
   if (!template || !fixed) return [];
   const subject = unitId === void 0 ? void 0 : draft.squad.find((u) => u.id === unitId);
@@ -38683,11 +38794,6 @@ registerAfterAction((draft, _ctx, events) => {
 });
 
 // src/engine/practice/dayStep.ts
-var frameOf2 = (state, holderId) => {
-  const f = dynamicOf(state, holderId)?.frame;
-  return f === "rule" || f === "role" ? f : "play";
-};
-var openTasks = (state, holderId) => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === "task" && (t.status === "offered" || t.status === "open")).length;
 function appetiteOf(state, reg, holderId) {
   const view = practiceOf(state, reg, holderId);
   const T5 = TUNING.practice.frequency.appetite;
@@ -38705,6 +38811,7 @@ function kindsToday(state, reg, holderId) {
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === void 0 || kind === "punishment") return false;
     if (kind === "task" && !taskRoom(state, reg, holderId)) return false;
+    if (kind === "protocol" && !protocolPossible(state, reg, holderId) && !taskRoom(state, reg, holderId)) return false;
     if (kind === "demonstration" && (demonstrationGate(state, reg, holderId) !== null || (state.practices?.demonstrations ?? []).some((d) => d.holderId === holderId && (d.status === "offered" || d.status === "open")))) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
   });
@@ -38720,12 +38827,6 @@ function requestsFallBack(draft, ctx2) {
     events.push(...issuePractice(draft, ctx2, r.id, "fallback"));
   }
   return events;
-}
-function taskRoom(state, reg, holderId) {
-  const frame = frameOf2(state, holderId);
-  const open3 = openTasks(state, holderId);
-  if (open3 >= TUNING.practice.taskCap[frame]) return false;
-  return !(frameRank(frame) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
 }
 function chainRequests(draft, ctx2) {
   const events = [];
@@ -38785,6 +38886,7 @@ function practiceDayStep(draft, ctx2) {
   if (practiceHolders(draft, ctx2.registries).length === 0) return [];
   const events = [];
   events.push(...deadlineSweep(draft, ctx2));
+  events.push(...routineSweep(draft, ctx2));
   events.push(...requestsFallBack(draft, ctx2));
   events.push(...falseReportSweep(draft, ctx2));
   events.push(...chainRequests(draft, ctx2));
@@ -38863,6 +38965,10 @@ registerVoteGate("practice/take_instead", (state, payload, reg) => {
 registerAction("practice/undo", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.punishmentId !== "string") throw new Error("practice/undo needs { punishmentId }.");
   return undoPractice(draft, ctx2, payload.punishmentId);
+});
+registerAction("practice/confess", (draft, payload, ctx2) => {
+  if (!isObj40(payload) || typeof payload.taskId !== "string") throw new Error("practice/confess needs { taskId }.");
+  return confess2(draft, ctx2, payload.taskId);
 });
 
 // src/llm/callTypes.ts
@@ -41884,6 +41990,7 @@ function createDynamic(deps) {
 // src/practice/directives.ts
 var PRACTICE_PREFIX = "practice:";
 var TASKS_PREFIX = "practice:tasks:";
+var PROTOCOL_PREFIX = "practice:protocol:";
 var TARGET_PREFIX = "practice:target:";
 var PUNISHMENT_PREFIX = "practice:punishment:";
 var DEMONSTRATION_PREFIX = "practice:demonstration:";
@@ -41904,6 +42011,11 @@ function practiceDirectives(state, reg, present2) {
     const open3 = (state.practices?.tasks ?? []).filter((t) => t.holderId === unit3.id && t.kind === "task" && t.status === "open").map(taskLine).filter((s) => s !== "");
     if (open3.length === 0) continue;
     out.push({ id: `${TASKS_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} expects the commander to see to: ${open3.join("; ")}. She may ask after them. ${NEVER_NAME}`) });
+  }
+  for (const unit3 of holdersIn(state, reg, present2)) {
+    const forms = protocolRules(state, reg, unit3.id).filter((r) => r.status === "active").map((r) => phrase(r.text)).filter((t) => t !== "");
+    if (forms.length === 0) continue;
+    out.push({ id: `${PROTOCOL_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} holds the commander to these standing forms of address and conduct: ${forms.join("; ")}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit3 of holdersIn(state, reg, present2)) {
     const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit3.id && x.forUnitId === void 0 && x.status === "accepted" && x.answeredDay === state.day && (x.voicedScene === void 0 || x.voicedScene === state.scene?.id));

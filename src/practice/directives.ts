@@ -4,6 +4,7 @@ import { isLiving } from '../engine/economy';
 import { witnessOf } from '../engine/dynamic/witness';
 import { temperamentOf } from '../engine/life/state';
 import { practiceLive } from '../engine/practice/gate';
+import { protocolRules } from '../engine/practice/service';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder, Directive } from '../llm/context';
@@ -17,6 +18,8 @@ import type { ContextBuilder, Directive } from '../llm/context';
 export const PRACTICE_PREFIX = 'practice:';
 /** The tasks she expects, while she is in the room (scene). */
 export const TASKS_PREFIX = 'practice:tasks:';
+/** The rules of address and conduct she has set, while she is in the room (scene). */
+export const PROTOCOL_PREFIX = 'practice:protocol:';
 /** A third party who is in the room: what a holder asked of the commander that involves her. */
 export const TARGET_PREFIX = 'practice:target:';
 /** Her discipline the commander has just accepted, while she is in the room: what she carries out, shown or only reported. Told in one scene only (the one it was answered in, or the first with her after a DM answer). */
@@ -58,6 +61,11 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     const open = (state.practices?.tasks ?? []).filter((t) => t.holderId === unit.id && t.kind === 'task' && t.status === 'open').map(taskLine).filter((s) => s !== '');
     if (open.length === 0) continue;
     out.push({ id: `${TASKS_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} expects the commander to see to: ${open.join('; ')}. She may ask after them. ${NEVER_NAME}`) });
+  }
+  for (const unit of holdersIn(state, reg, present)) {
+    const forms = protocolRules(state, reg, unit.id).filter((r) => r.status === 'active').map((r) => phrase(r.text)).filter((t) => t !== '');
+    if (forms.length === 0) continue;
+    out.push({ id: `${PROTOCOL_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} holds the commander to these standing forms of address and conduct: ${forms.join('; ')}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit of holdersIn(state, reg, present)) {
     const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit.id && x.forUnitId === undefined && x.status === 'accepted' && x.answeredDay === state.day && (x.voicedScene === undefined || x.voicedScene === state.scene?.id));

@@ -1005,6 +1005,10 @@ export const TUNING = Object.freeze({
     }),
     refuseRecord: 5,
     coldWant: 5,
+    /** What telling an offence herself (`[ I DIDN'T ]`) takes off the punishment's weight (R10). `AUTHOR TO TUNE`. */
+    confessedLess: 1,
+    /** The routine (R10): the track and the xp a day it is kept gives, and its words (a draft) and summary. */
+    routine: Object.freeze({ track: 'service', xp: 1, text: 'AUTHOR TO WRITE: Her mornings are hers to start: gear, coffee, a word at first light.', summary: 'her morning routine' }),
     /** TAKE IT INSTEAD (R8): the Record each named unit at base gains. The soldier's Trust is the `spared_for` row. */
     takeInstead: Object.freeze({ record: 2 }),
     /**

@@ -9,6 +9,7 @@ import { frameRank } from '../blocking/state';
 import { slotIndex, SLOT_ORDER } from '../calendar';
 import { refuseLikeDemand } from '../discipline/demands';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { hasCapability } from '../dynamic/capabilities';
 import { dynamicOf } from '../dynamic/state';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { isLiving } from '../economy';
@@ -32,6 +33,25 @@ export function acceptFormOf(stakes: Stake, sealed: boolean | undefined): Accept
 }
 
 const ROSTER_CHECKS: readonly string[] = ['on_roster', 'not_on_roster'];
+
+type Frame3 = 'play' | 'role' | 'rule';
+/** The frame a cap or a ceiling is read at: her frame, `play` when she has none. */
+export const frameOf = (state: CampaignState, holderId: string): Frame3 => {
+  const f = dynamicOf(state, holderId)?.frame;
+  return f === 'rule' || f === 'role' ? f : 'play';
+};
+
+/** Her open tasks (offered or open): the cap and the one-at-a-time rule count these. A routine is a standing arrangement, not one of them. */
+export const openTasks = (state: CampaignState, holderId: string): number =>
+  (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === 'task' && t.routine !== true && (t.status === 'offered' || t.status === 'open')).length;
+
+/** Is there room for another task of hers: under the cap of her frame, and at `role` or beyond one open at a time unless she holds the household protocol. */
+export function taskRoom(state: CampaignState, reg: Registries, holderId: string): boolean {
+  const frame = frameOf(state, holderId);
+  const open = openTasks(state, holderId);
+  if (open >= TUNING.practice.taskCap[frame]) return false;
+  return !(frameRank(frame) >= frameRank('role') && open >= 1 && !hasCapability(state, reg, holderId, 'household_protocol'));
+}
 
 /** The third party a task involves: the request's (a confession), the card's, or the unit a roster or scene check watches. */
 const targetOf = (request: PracticeRequest, out: ValidOutput): string | undefined =>

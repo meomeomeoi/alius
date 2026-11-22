@@ -144,6 +144,8 @@ export interface Rule {
   /** The proposal reached the commander (a DM from her, or said in the scene); only a delivered proposal can be answered. */
   delivered?: boolean;
   dmId?: string;
+  /** P16: the rule is in force because the commander wears an item that names it (a `rule` effect); taking the item off suspends it, wearing it again puts it back. */
+  source?: 'item';
 }
 
 /** P9d: who leads a romantic scene. */

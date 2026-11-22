@@ -7,29 +7,19 @@
 import type { Registries } from '../../content/types';
 import { wantBandOf } from '../bonds/want';
 import type { EngineCtx, EngineEvent } from '../dispatch';
-import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
-import { dynamicOf } from '../dynamic/state';
 import { assertiveness } from '../power/options';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { frameRank } from '../blocking/state';
 import { demonstrationGate, expireDemonstrations } from './demonstration';
 import { deadlineSweep, falseReportSweep } from './checks';
 import { practiceHolders, practiceLive } from './gate';
 import { closePunishments, coldShoulderWants, orderCandidate, orderPunishment } from './punish';
 import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
+import { protocolPossible, routineSweep } from './service';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
-
-type Frame3 = 'play' | 'role' | 'rule';
-const frameOf = (state: CampaignState, holderId: string): Frame3 => {
-  const f = dynamicOf(state, holderId)?.frame;
-  return f === 'rule' || f === 'role' ? f : 'play';
-};
-
-/** Her open tasks (offered or open): the cap and the one-at-a-time rule count these. */
-const openTasks = (state: CampaignState, holderId: string): number => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === 'task' && (t.status === 'offered' || t.status === 'open')).length;
+import { frameOf, taskRoom } from './tasks';
 
 /** The highest appetite she has among the practice categories that stand (`craves` 1.4, `enjoys` 1, `tolerates` 0.6); 1 when none is read. */
 function appetiteOf(state: CampaignState, reg: Registries, holderId: string): number {
@@ -59,6 +49,8 @@ export function kindsToday(state: CampaignState, reg: Registries, holderId: stri
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === undefined || kind === 'punishment') return false; // her discipline comes from an offence, never from the day's roll
     if (kind === 'task' && !taskRoom(state, reg, holderId)) return false;
+    // a protocol becomes a task when no rule can be proposed (R10): with no room for either, there is nothing to ask for
+    if (kind === 'protocol' && !protocolPossible(state, reg, holderId) && !taskRoom(state, reg, holderId)) return false;
     // one demonstration at a time, and only when she may stage one and someone would watch (R9)
     if (kind === 'demonstration' && (demonstrationGate(state, reg, holderId) !== null || (state.practices?.demonstrations ?? []).some((d) => d.holderId === holderId && (d.status === 'offered' || d.status === 'open')))) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
@@ -74,14 +66,6 @@ function requestsFallBack(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
     events.push(...issuePractice(draft, ctx, r.id, 'fallback'));
   }
   return events;
-}
-
-/** Is there room for another task of hers: under the cap of her frame, and at `role` or beyond one open at a time unless she holds the household protocol. */
-function taskRoom(state: CampaignState, reg: Registries, holderId: string): boolean {
-  const frame = frameOf(state, holderId);
-  const open = openTasks(state, holderId);
-  if (open >= TUNING.practice.taskCap[frame]) return false;
-  return !(frameRank(frame) >= frameRank('role') && open >= 1 && !hasCapability(state, reg, holderId, 'household_protocol'));
 }
 
 /**
@@ -151,7 +135,7 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   if (practiceHolders(draft, ctx.registries).length === 0) return [];
   const events: EngineEvent[] = [];
   events.push(...deadlineSweep(draft, ctx)); // 1
-  // 2 routine: no-op until its task
+  events.push(...routineSweep(draft, ctx)); // 2
   events.push(...requestsFallBack(draft, ctx)); // 3
   events.push(...falseReportSweep(draft, ctx)); // 4
   // 5 favour kindnesses, 6 unfairness, 7 handovers: no-ops until their tasks
