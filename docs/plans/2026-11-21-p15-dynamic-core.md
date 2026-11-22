@@ -2243,14 +2243,14 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Consumes: `tests/helpers/unaffectedWeek.ts`, `tests/fixtures/unaffected-week.json` (read-only; never regenerate it for P15).
 
-- [ ] **Step 1: Write the test.** It should pass at once if the gate holds; make it fail first against a deliberately wrong golden, then correct it.
+- [x] **Step 1: Write the test.** It should pass at once if the gate holds; make it fail first against a deliberately wrong golden, then correct it.
   - `unaffected week`: `runWeek` ends deep-equal to the golden (log, rng, state hash) with none of the new keys (`dynamic`, `regard`, `mastery`, `expectations`, `practice`).
   - `categories on but holders 0`: `tweak` enables every category and sets `state.dynamic = { setup: { holders: 0, … } }` → same rng and log; no new relation keys.
   - `a holder in the squad, but nobody eligible present and no probe due`: same rng.
   - `the intent prompt is the pinned fixture`.
   - `the context block for a comrade scene has no dynamic: directive`.
-- [ ] **Step 2: Run** `npx vitest run tests/dynamic/unaffected.test.ts`.
-- [ ] **Step 3: Write `docs/MANUAL_TEST_P15.md`** (about 14 steps, in the style of `MANUAL_TEST_P15a.md`):
+- [x] **Step 2: Run** `npx vitest run tests/dynamic/unaffected.test.ts`.
+- [x] **Step 3: Write `docs/MANUAL_TEST_P15.md`** (about 14 steps, in the style of `MANUAL_TEST_P15a.md`):
   - import a card with practice and expectations, and lock a field;
   - the DYNAMIC block and seeds;
   - a probe directive in the prompt (SYS › debug) and its answer;
@@ -2264,8 +2264,8 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - the offer composer and a revealed zone on the body map;
   - immersive mode;
   - a campaign with no practice category looks as before.
-- [ ] **Step 4: Run** `npm test` → PASS.
-- [ ] **Step 5: Commit** `test(P15): the unaffected guard and the manual test`
+- [x] **Step 4: Run** `npm test` → PASS.
+- [x] **Step 5: Commit** `test(P15): the unaffected guard and the manual test`
 
 ---
 
