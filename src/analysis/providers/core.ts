@@ -337,7 +337,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P15 (the offer composer: the chip, the tabs, the entries and her answer; the body map)
   'offer', 'offer_answer', 'body_map',
   // P15 (her dossier's DYNAMIC section and the exit card; later tasks add their own)
-  'dynamic', 'hold', 'her_reading', 'dynamic_exit', 'leash_block', 'oversight_inquiry',
+  'dynamic', 'hold', 'her_reading', 'dynamic_exit', 'leash_block', 'oversight_inquiry', 'compromat', 'regard', 'probe', 'mastery', 'dynamic_felt',
 ];
 
 let registered = false;

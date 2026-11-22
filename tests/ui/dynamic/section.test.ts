@@ -4,6 +4,9 @@ import '../../../src/engine/actions/dynamic';
 import type { AnalyzeEnv } from '../../../src/analysis/model';
 import { registerCoreProviders } from '../../../src/analysis/providers/core';
 import type { Registries } from '../../../src/content/types';
+import { addCompromat, mentionCompromat } from '../../../src/engine/dynamic/compromat';
+import { DYNAMIC_KNOWLEDGE_TAG } from '../../../src/engine/dynamic/types';
+import { addFact } from '../../../src/engine/memory/facts';
 import { createDynamic } from '../../../src/dynamic/controller';
 import { exitCostWord } from '../../../src/engine/dynamic/exit';
 import { blankDynamic, blankReading, newDynamicCampaign } from '../../../src/engine/dynamic/state';
@@ -155,6 +158,25 @@ describe('her dossier: the DYNAMIC section', () => {
       expect(unreachable(section!)).toEqual([]);
       expect(section!.querySelectorAll('[data-analyze]').length).toBeGreaterThanOrEqual(12);
     }
+  });
+});
+
+describe('what the commander has been shown of her', () => {
+  it('shows what she keeps once she has mentioned it, and who has shown they know, and neither before', () => {
+    const s = world();
+    addCompromat(s, ANN, 'AUTHOR TO WRITE: the commander once did something.', []);
+    addFact(s, { about: [BEA, ANN], text: 'AUTHOR TO WRITE: Bea knows that Ann holds authority over the commander.', tags: [DYNAMIC_KNOWLEDGE_TAG, 'knows_dynamic'], importance: 3, day: 3, knownBy: [BEA], hiddenFromCommander: true });
+    const before = squad(s).section!;
+    expect(before.querySelector('[data-dyn-compromat]')).toBeNull();
+    expect(before.querySelector('[data-dyn-known]')).toBeNull();
+    document.body.innerHTML = '';
+    mentionCompromat(s, undefined, ANN, undefined, 'the commander once did something');
+    delete s.memory.facts.find((f) => f.tags.includes(DYNAMIC_KNOWLEDGE_TAG))!.hiddenFromCommander;
+    const after = squad(s).section!;
+    expect(after.querySelector('[data-dyn-compromat]')!.textContent).toBe('the commander once did something.');
+    expect(after.querySelector('[data-dyn-known="unit_bea"]')!.textContent).toBe('BEA: KNOWS');
+    expect(markedWithout(after)).toEqual([]);
+    expect(unresolved(after, env(s))).toEqual([]);
   });
 });
 

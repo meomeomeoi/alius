@@ -6,13 +6,8 @@
  * pronoun or says what the commander feels. Nothing is drawn for a grunt, a woman who holds nothing, or while the dynamic is off.
  */
 import type { Registries } from '../../content/types';
-import { domainRows, standing } from '../../engine/dynamic/capabilities';
-import { holderOfDomain, meets } from '../../engine/dynamic/domains';
+import type { Knowledge } from '../../analysis/knowledge';
 import type { ExitMeans } from '../../engine/dynamic/exit';
-import { dynamicOn } from '../../engine/dynamic/gate';
-import { holdBandOf } from '../../engine/dynamic/hold';
-import { dynamicOf } from '../../engine/dynamic/state';
-import { trackOpen } from '../../engine/dynamic/tracks';
 import type { ExitRoute } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -32,8 +27,8 @@ export interface DynamicSectionCtx {
   state: CampaignState;
   reg: Registries;
   unitId: string;
-  /** "Show raw values". */
-  raw: boolean;
+  /** What the commander may read: everything the section shows comes from `knowledge.dynamic` (raw values and immersive mode are its). */
+  knowledge: Knowledge;
   /** Immersive mode: nothing of the section is drawn. */
   hidden: boolean;
   actions?: DynamicSectionActions;
@@ -42,45 +37,6 @@ export interface DynamicSectionCtx {
   onLeash?: (unitId: string) => void;
   /** Redraws the surface the section sits on (the dossier), after a means changed the state. */
   onChanged?: () => void;
-}
-
-/** What the section reads of her dynamic (Task 46 moves it behind `Knowledge.dynamic`). */
-export interface DynamicSectionView {
-  frame: string;
-  band: string;
-  hold: number;
-  domains: Array<{ id: string; label: string; partial: boolean }>;
-  mayClaim: Array<{ id: string; label: string }>;
-  tracks: Array<{ id: string; label: string; word: string }>;
-  sworn: boolean;
-  /** Her word for how she reads the commander's position; absent until she has read something. */
-  reading?: string;
-}
-
-/** The words for a track's level (1 to 5): a band, never xp. */
-export const TRACK_WORDS = ['', 'a little', 'some', 'a good deal', 'deeply', 'completely'] as const;
-const LEADING_TRACKS = 3;
-
-export function dynamicSectionView(state: CampaignState, reg: Registries, unitId: string): DynamicSectionView | null {
-  const dyn = dynamicOf(state, unitId);
-  if (!dynamicOn(state, reg) || dyn === undefined) return null;
-  const label = (registry: 'dynamicFrames' | 'holdBands' | 'dynamicTracks', id: string): string => String(reg[registry].get(id)?.label ?? id);
-  const tracks = Object.entries(dyn.tracks)
-    .filter(([id, t]) => t.level >= 1 && trackOpen(state, reg, unitId, id))
-    .sort((a, b) => b[1].level - a[1].level)
-    .slice(0, LEADING_TRACKS)
-    .map(([id, t]) => ({ id, label: label('dynamicTracks', id), word: TRACK_WORDS[t.level] }));
-  const open = new Set(state.dynamic!.open.claims.filter((c) => c.unitId === unitId).map((c) => c.domainId));
-  const held = new Set(dyn.domains.map((d) => d.id));
-  return {
-    frame: label('dynamicFrames', dyn.frame), band: label('holdBands', holdBandOf(reg, dyn.hold)), hold: dyn.hold,
-    domains: dyn.domains.map((d) => ({ id: d.id, label: String(reg.dynamicDomains.get(d.id)?.label ?? d.id), partial: !standing(d, state.day) || d.partialUntil !== undefined })),
-    mayClaim: domainRows(reg)
-      .filter((e) => !held.has(e.id) && !open.has(e.id) && meets(reg, dyn, e) && holderOfDomain(state, e.id, unitId) === null)
-      .map((e) => ({ id: e.id, label: e.label })),
-    tracks, sworn: dyn.sworn !== undefined,
-    ...(dyn.readOf.updates > 0 ? { reading: String(reg.positionRegions.get(dyn.readOf.region)?.label ?? dyn.readOf.region) } : {}),
-  };
 }
 
 /** The exit cards that are open, by campaign and unit (the dossier is rebuilt on every refresh, so the choice is kept here; the campaign's salt keeps another chat's card closed). */
@@ -99,29 +55,43 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
   const { state, reg, unitId } = ctx;
   host.replaceChildren();
   const unit = state.squad.find((u) => u.id === unitId);
-  const view = unit?.kind === 'named' && !ctx.hidden ? dynamicSectionView(state, reg, unitId) : null;
-  if (unit === undefined || view === null) return false;
+  const view = unit?.kind === 'named' && !ctx.hidden ? ctx.knowledge.dynamic(unitId, reg) : null;
+  if (unit === undefined || view === null || view.band === undefined) return false; // no band: she holds nothing, or the dynamic is off
   const live = { unitId };
   const key = exitKey(state, unitId);
   const chip = (text: string, address: string, attrs: Record<string, string> = {}): HTMLElement => h('span', { class: 'alius-chip', ...attrs, ...analyzeAttrs(address, live) }, text);
   const row = (label: string, ...parts: Child[]): HTMLElement => h('p', { class: 'alius-dyn-line' }, `${label} `, ...parts);
   const between = (items: HTMLElement[]): Child[] => items.flatMap((c, i): Child[] => (i === 0 ? [c] : [' ', c]));
 
+  const label = (registry: 'dynamicDomains' | 'dynamicTracks', id: string): string => String(reg[registry].get(id)?.label ?? id).toUpperCase();
+  const claimed = view.domains.filter((d) => d.claimed);
+  const mayClaim = view.domains.filter((d) => !d.claimed);
   const lines: HTMLElement[] = [
-    row('FRAME', chip(view.frame.toUpperCase(), 'glossary:frame', { 'data-dyn-frame': '' }), ...(view.sworn ? [' ', chip('SWORN', 'glossary:vow', { 'data-dyn-vow': '' })] : [])),
-    row('HOLD', chip(`${view.band.toUpperCase()}${ctx.raw ? ` (${Math.round(view.hold)})` : ''}`, 'glossary:hold', { 'data-dyn-hold': '' })),
+    row('FRAME', chip(String(view.frame ?? '').toUpperCase(), 'glossary:frame', { 'data-dyn-frame': '' }), ...(view.sworn ? [' ', chip('SWORN', 'glossary:vow', { 'data-dyn-vow': '' })] : [])),
+    row('HOLD', chip(`${view.band.toUpperCase()}${view.raw !== undefined ? ` (${view.raw})` : ''}`, 'glossary:hold', { 'data-dyn-hold': '' })),
   ];
-  if (view.domains.length > 0) {
-    lines.push(row('DOMAINS', ...between(view.domains.map((d) => chip(`${d.label.toUpperCase()}${d.partial ? ' (PARTLY)' : ''}`, `dynamicDomains:${d.id}`, { 'data-dyn-domain': d.id })))));
+  if (claimed.length > 0) {
+    lines.push(row('DOMAINS', ...between(claimed.map((d) => chip(`${d.label.toUpperCase()}${d.partial === true ? ' (PARTLY)' : ''}`, `dynamicDomains:${d.id}`, { 'data-dyn-domain': d.id })))));
   }
-  if (view.mayClaim.length > 0) {
-    lines.push(row('SHE MAY CLAIM', ...between(view.mayClaim.map((d) => chip(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { 'data-dyn-may-claim': d.id })))));
+  if (mayClaim.length > 0) {
+    lines.push(row('SHE MAY CLAIM', ...between(mayClaim.map((d) => chip(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { 'data-dyn-may-claim': d.id })))));
   }
   if (view.tracks.length > 0) {
-    lines.push(row('PRACTICE', ...between(view.tracks.map((t) => chip(`${t.label.toUpperCase()}: ${t.word.toUpperCase()}`, `dynamicTracks:${t.id}`, { 'data-dyn-track': t.id })))));
+    lines.push(row('PRACTICE', ...between(view.tracks.map((t) => chip(`${label('dynamicTracks', t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { 'data-dyn-track': t.id })))));
   }
   if (view.reading !== undefined) {
     lines.push(row('HER READING', chip(view.reading, 'glossary:her_reading', { 'data-dyn-reading': '' })));
+  }
+  if (view.signs.length > 0) {
+    lines.push(row('SHE SEEMS', ...between(view.signs.map((sign) => chip(sign, 'glossary:dynamic', { 'data-dyn-sign': '' })))));
+  }
+  if (view.compromat.length > 0) {
+    lines.push(row('SHE KEEPS', ...between(view.compromat.map((f) => chip(f.text.replace(/^\s*AUTHOR TO WRITE:\s*/, '').trim(), 'glossary:compromat', { 'data-dyn-compromat': f.id })))));
+  }
+  if (view.knownLevels.length > 0) {
+    const who = (id: string): string => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
+    const word = { suspects_close: 'HAS NOTICED SOMETHING', suspects_dynamic: 'SUSPECTS', knows_dynamic: 'KNOWS' } as const;
+    lines.push(row('WHO KNOWS', ...between(view.knownLevels.map((k) => chip(`${who(k.observerId)}: ${word[k.level]}`, 'glossary:dynamic', { 'data-dyn-known': k.observerId })))));
   }
 
   const cards = h('div', { class: 'alius-dyn-cards' });

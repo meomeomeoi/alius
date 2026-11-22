@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { wentUp } from '../engine/development/moments';
+import { dynamicView, type DynamicView } from '../engine/dynamic/view';
 import { axisWords } from '../engine/development/words';
 import { lifeView, type LifeView } from '../engine/life/known';
 import type { CampaignState, DevFact, Fact } from '../engine/state/types';
@@ -32,9 +33,16 @@ export interface Knowledge {
    * queue, a persuasion count and a joke count never appear here.
    */
   life(unitId: string, reg: Registries): LifeView;
+  /**
+   * P15: what the commander may read of her dynamic: frame, hold band (or `felt` in immersive mode; the number only with raw values and never in immersive mode), the domains she
+   * holds and may claim, her leading tracks as bands, the vow, her reading in her own word, the part of her profile a fact has shown, what can be seen of her mood, who holds what over
+   * the commander, the compromat she has mentioned and what others have shown they know of her. Regard, suspicion, mastery xp, an unshown profile, unmentioned compromat and
+   * the stage of an aftermath are never in it.
+   */
+  dynamic(unitId: string, reg: Registries): DynamicView;
 }
 
-export type { LifeView };
+export type { LifeView, DynamicView };
 
 export interface DevelopmentView {
   axes: Array<{ axis: string; words: string; up: boolean; reason: string; shownDay: number; held: boolean }>;
@@ -83,6 +91,9 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
     life: (unitId, reg) => (state === null
       ? { opinions: [], hobbies: [], told: [], commanderSkills: [], hub: null, temperWords: { talkativeness: 'terse', volatility: 'steady', humor: 'dry' }, mode: 'off' }
       : lifeView(state, reg, unitId, factVisible)),
+    dynamic: (unitId, reg) => (state === null
+      ? { domains: [], asked: [], tracks: [], sworn: false, expectations: {}, signs: [], heldBy: [], compromat: [], knownLevels: [] }
+      : dynamicView(state, reg, unitId, { raw: showRaw, hidden: settings.dynamicHidden === true, factVisible })),
     development(unitId, reg) {
       const unit = state?.squad.find((u) => u.id === unitId);
       const dev = unit?.development;

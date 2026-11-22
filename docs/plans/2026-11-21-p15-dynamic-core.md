@@ -2197,15 +2197,15 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `DynamicView { frame?; band?: string | 'felt'; raw?: number; domains: Array<{ id; label; claimed: boolean; partial?: boolean }>; tracks: Array<{ id; band }>; sworn: boolean; reading?: string; expectations: Partial<ExpectationProfile>; signs: string[]; heldBy: Array<{ unitId; domains: string[] }>; compromat: Fact[]; knownLevels: Array<{ observerId; level }> }`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the view shows only what the commander could know`: an unrevealed expectation is absent, compromat unmentioned is absent, a suspicion level unrevealed is absent, Regard is absent always.
   - `immersive: band is felt and the analyze answer is glossary:dynamic_felt`.
   - `every provider key has a sample address` (`tests/analysis/hidden.test.ts` `keysWithoutSample` stays empty).
   - `the glossary ids match CORE_GLOSSARY_IDS exactly`.
-- [ ] **Step 2: Run** `npx vitest run tests/analysis/dynamicReadings.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R25.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): dynamic readings through Knowledge`
+- [x] **Step 2: Run** `npx vitest run tests/analysis/dynamicReadings.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R25.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): dynamic readings through Knowledge`
 
 ---
 

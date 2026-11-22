@@ -3060,5 +3060,55 @@
       "leash_block",
       "dynamic"
     ]
+  },
+  {
+    "id": "compromat",
+    "term": "What she keeps",
+    "short": "Something of the commander's that a holder keeps to herself. It is shown only once she has mentioned it.",
+    "long": "AUTHOR TO WRITE: She may have seen it, or been told, or found it. Until she speaks of it nothing says it exists. Once she has, it is hers to use: in a demand, in a threat, or in telling the squad.",
+    "see": [
+      "dynamic",
+      "aftermath"
+    ]
+  },
+  {
+    "id": "regard",
+    "term": "Regard",
+    "short": "How she thinks of the commander. It is hers alone, never shown as a number or a band; it shows in how she speaks and in the squad's nicknames.",
+    "long": "AUTHOR TO WRITE: It rises with what the commander bears with dignity and falls with what is lost before others. It does not tell what the commander feels, and no screen reads it out.",
+    "see": [
+      "her_reading",
+      "nickname"
+    ]
+  },
+  {
+    "id": "probe",
+    "term": "A probe",
+    "short": "A small thing she tries, deniably, to see how the commander answers. The answer shapes how she reads the commander.",
+    "long": "AUTHOR TO WRITE: A probe is never an order and she can always say it was nothing. Yielding, deflecting, resisting and returning it each tell her something different. It lasts one scene.",
+    "see": [
+      "her_reading",
+      "dynamic"
+    ]
+  },
+  {
+    "id": "mastery",
+    "term": "Mastery",
+    "short": "How well the commander has learned to serve her in one part of the body, from none to five. Practice raises it; the xp behind it is not shown.",
+    "long": "AUTHOR TO WRITE: Mastery opens a zone on the body map once it is high enough: practice shows what she could not be asked. It is the commander's, with her, per part.",
+    "see": [
+      "body_map",
+      "offer"
+    ]
+  },
+  {
+    "id": "dynamic_felt",
+    "term": "Felt, not read",
+    "short": "With the dynamic's numbers hidden you feel it rather than read it: no band, no value, no frame name. The engine counts as before.",
+    "long": "AUTHOR TO WRITE: Immersive mode changes only what is displayed. Her cards, her notices and the line on the hub still show.",
+    "see": [
+      "setting_dynamic_hidden",
+      "hold"
+    ]
   }
 ]

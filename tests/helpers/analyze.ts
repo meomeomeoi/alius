@@ -32,6 +32,10 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   momentSources: 'momentSources:her_offer', // P15a
   contactPhysics: 'contactPhysics:breath', // P15a
   stimulusKinds: 'stimulusKinds:scent_feet', // P15a
+  dynamicFrames: 'dynamicFrames:role', // P15
+  dynamicDomains: 'dynamicDomains:device', // P15
+  dynamicTracks: 'dynamicTracks:restraint', // P15
+  worshipTargets: 'worshipTargets:feet', // P15
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */
