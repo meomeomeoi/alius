@@ -54,6 +54,42 @@ function builder() {
 const dirs = (s: CampaignState, present = s.scene?.participants ?? [ANN]): Directive[] => dynamicDirectives(s, reg, present);
 const byId = (ds: Directive[], id: string): Directive | undefined => ds.find((d) => d.id === id);
 
+describe('the tone of low Regard reaches every woman in the room (I5)', () => {
+  it('a present non-holder at low Regard gets dynamic:regard:<id> with her style form; one with no practice section gets a neutral form; no number', () => {
+    const s = world({ frame: 'equal', primary: 'cruel', present: [ANN, BEA] });
+    s.relations[ANN].regard = 25;
+    s.relations[BEA].regard = 5;
+    const ds = dirs(s);
+    const ann = byId(ds, `dynamic:regard:${ANN}`)!;
+    expect(ann.expiresAfter).toBe('scene');
+    expect(ann.text).toContain('contempt, enjoyed');
+    expect(ann.text).toContain('Ann');
+    const bea = byId(ds, `dynamic:regard:${BEA}`)!;
+    expect(bea.text).toContain('Bea');
+    expect(bea.text).toMatch(/cool/i); // the neutral form
+    for (const d of [ann, bea]) {
+      expect(d.text).not.toMatch(/\d/);
+      expect(d.text).not.toMatch(/\b(he|him|his)\b/i);
+    }
+  });
+
+  it('nothing at neutral or above, for a woman not in the room, for a holder (her own line carries it) or while off', () => {
+    const s = world({ frame: 'equal', primary: 'cruel', present: [ANN, BEA] });
+    s.relations[ANN].regard = 55;
+    s.relations[BEA].regard = 70;
+    expect(dirs(s).filter((d) => d.id.startsWith('dynamic:regard:'))).toEqual([]);
+    s.relations[ANN].regard = 25;
+    s.relations[BEA].regard = 25;
+    expect(dirs(s, [ANN]).map((d) => d.id)).toContain(`dynamic:regard:${ANN}`);
+    expect(dirs(s, [ANN]).map((d) => d.id)).not.toContain(`dynamic:regard:${BEA}`);
+    dynamicOf(s, ANN)!.frame = 'play';
+    expect(dirs(s).map((d) => d.id)).not.toContain(`dynamic:regard:${ANN}`);
+    expect(byId(dirs(s), `dynamic:${ANN}`)!.text).toContain('Her tone toward the commander');
+    s.dynamic = undefined;
+    expect(dirs(s)).toEqual([]);
+  });
+});
+
 describe('the holder directive', () => {
   it('dynamic:<unitId> for a present holder at play: the frame\'s hint, the style line, no digit', () => {
     const s = world({ frame: 'play', primary: 'cold', secondary: 'ritual' });

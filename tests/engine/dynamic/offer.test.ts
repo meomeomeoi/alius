@@ -39,6 +39,27 @@ function world(style: ProfileStyle = 'cold', opts: { frame?: Frame; hold?: numbe
 const offer = (tab: OfferComposition[number]['tab'], ...ids: string[]): OfferComposition => [{ tab, ids }];
 const send = (s: CampaignState, composition: OfferComposition, extra: Record<string, unknown> = {}) => run(s, reg, { type: 'dynamic/offer', payload: { unitId: ANN, composition, ...extra } });
 
+describe('Regard cost rise (I7)', () => {
+  const costs = (events: Array<{ type: string; [k: string]: unknown }>) => events.filter((e) => e.type === 'regard_changed' && e.cause === 'cost');
+  it('an accepted offer made while her reading has r at 0 or less raises her Regard by what it cost', () => {
+    const s = world('cold', { shown: ['feet'], frame: 'play', hold: 20 });
+    s.relations[ANN].regard = 50;
+    dynamicOf(s, ANN)!.readOf.r = -0.4;
+    const r = send(s, offer('part', 'feet'));
+    expect(costs(r.events)).toEqual([expect.objectContaining({ unitId: ANN, from: 50, to: 53 })]);
+  });
+  it('not when her reading is above 0, when the offer was not accepted, or while she has no reading to be 0', () => {
+    const above = world('cold', { shown: ['feet'], frame: 'play', hold: 20 });
+    above.relations[ANN].regard = 50;
+    dynamicOf(above, ANN)!.readOf.r = 0.4;
+    expect(costs(send(above, offer('part', 'feet')).events)).toEqual([]);
+    const refused = world('affectionate', { shown: ['hands'], frame: 'play', hold: 30 });
+    refused.relations[ANN].regard = 50;
+    dynamicOf(refused, ANN)!.readOf.r = -0.4;
+    expect(costs(send(refused, offer('part', 'hands')).events)).toEqual([]);
+  });
+});
+
 describe('her answer', () => {
   it('craves lands: accepted, hold +6 and favour +3', () => {
     const s = world('cold', { shown: ['feet'] });
@@ -162,7 +183,8 @@ describe('what the offer does', () => {
   });
 
   it('Regard falls for her and for the witnesses by the entry humiliation, and the offer is public', () => {
-    const s0 = world('cold', { shown: ['feet'] });
+    const s0 = world('cold', { shown: ['feet'], frame: 'equal', hold: 0 });
+    dynamicOf(s0, ANN)!.readOf.r = 0.5; // she has no resistance to have overcome: no cost rise here (that is `Regard cost rise`), only the fall
     s0.relations[ANN].regard = 60;
     s0.relations[BEA].regard = 60;
     const started = run(s0, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN, BEA], origin: 'event', consumesSlot: false, startIndex: 0 } });

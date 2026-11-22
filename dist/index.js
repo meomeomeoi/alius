@@ -1264,7 +1264,7 @@ var DEED_COUNTERS = [
   "demands_refused",
   "threats_kept",
   "threats_empty",
-  // P15: what the squad saw of the dynamic (P15 counts `protocol_public`; the others are P16's, `spoken_for` has no producer yet)
+  // P15: what the squad saw of the dynamic (P15 counts `protocol_public` and `spoken_for`; the others are P16's)
   "protocol_public",
   "spoken_for",
   "public_worship",
@@ -17543,6 +17543,13 @@ function regardTone(state, reg, unitId) {
   const form = styleRow(state, reg, unit3).form;
   return form !== void 0 && isLow(reg, regardOf(state, reg, unitId)) ? form : null;
 }
+var NEUTRAL_REGARD_FORM = "coolness";
+function regardToneFor(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return null;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named") return null;
+  return isLow(reg, regardOf(state, reg, unitId)) ? styleRow(state, reg, unit3).form ?? NEUTRAL_REGARD_FORM : null;
+}
 var watchers = [];
 function registerRegardWatcher(fn) {
   if (!watchers.includes(fn)) watchers.push(fn);
@@ -18508,6 +18515,7 @@ function readMoments(draft, ctx2, events) {
     const rel = dynamicOf(draft, unitId);
     if (unit3 === void 0 || rel === void 0 || !isLiving(unit3) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
+    if (e.responseType === "yielded") out.push(...regardRise(draft, ctx2.registries, unitId, "cost"));
     const region = updateReading(rel, { response: e.responseType, ...tone !== void 0 ? { tone } : {}, ...afterThreat ? { afterThreat } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx2.registries), unit3.insight ?? "mid").region;
     if (region !== void 0) out.push({ type: "position_shifted", unitId, from: region.from, to: region.to });
   }
@@ -20885,6 +20893,7 @@ function makeOffer(draft, ctx2, unitId, composition, opts = {}) {
   if (answer.kind === true) return events;
   if (answer.cause !== void 0 && answer.hold !== 0) events.push(...addHold(draft, ctx2, unitId, answer.hold, answer.cause));
   if (answer.favour !== 0) addFavour(draft, unitId, answer.favour);
+  if (answer.answer === "accepted") events.push(...regardRise(draft, reg, unitId, "cost"));
   const dyn = dynamicOf(draft, unitId);
   if (dyn !== void 0) {
     for (const c of composition) {
@@ -21047,6 +21056,7 @@ function answerProbe(draft, ctx2, unitId, response, tone, weight, afterThreat = 
   const cause = answerCause(draft, unitId, response);
   const base = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
   if (!(retro && frameRank(dyn.frame) >= frameRank("play"))) events.push(...addHold(draft, ctx2, unitId, base, cause));
+  if (response === "yielded" && weight === 1 && !retro) events.push(...regardRise(draft, reg, unitId, "cost"));
   const unit3 = draft.squad.find((u) => u.id === unitId);
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
   const shift = updateReading(dyn, { response, ...tone !== void 0 ? { tone } : {}, ...afterThreat ? { afterThreat } : {} }, alpha, physicsStyleOf(draft, unitId, reg), unit3.insight ?? "mid").region;
@@ -24993,6 +25003,14 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   if (!rose.some((e) => e.type === "commander_terminated")) events.push(...afterDefy(draft, ctx2, ov.weight));
   return events;
 }
+function seenSpeakingFor(draft, o, unitId) {
+  const order = o.order;
+  if (order.kind === "roster" || order.kind === "expedition") return true;
+  const others = (ids) => (ids ?? []).some((id) => id !== unitId);
+  if (order.kind === "activity" && (order.companionId === void 0 ? others(order.unitIds) : order.companionId !== unitId || others(order.unitIds))) return true;
+  if (others(draft.scene?.participants)) return true;
+  return draft.combat?.combatants.some((c) => c.side === "squad" && c.unitId !== void 0 && c.unitId !== unitId) === true;
+}
 function answerHolderOverride(draft, ctx2, slot2, answer) {
   if (answer !== "comply" && answer !== "argue" && answer !== "defy") throw new Error("warden/answer: the answer is comply, argue or defy.");
   const ov = slot2.o;
@@ -25016,6 +25034,7 @@ function answerHolderOverride(draft, ctx2, slot2, answer) {
     const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : [];
     events2.push(...addHold(draft, ctx2, unitId, T5.gains.override_comply, "override_comply"));
     addFavour(draft, unitId, T5.override.complyFavour);
+    if (seenSpeakingFor(draft, ov, unitId)) countDeed(draft, "spoken_for");
     return [...events2, done("comply")];
   }
   const events = runOrder(draft, ctx2, ov.order, base);
@@ -39050,6 +39069,7 @@ var WITNESS_PREFIX = "dynamic:witness:";
 var AFTERMATH_PREFIX = "dynamic:aftermath:";
 var LEASH_BLOCK_PREFIX = "dynamic:leash_block:";
 var DISAPPOINTED_PREFIX = "dynamic:disappointed:";
+var REGARD_PREFIX = "dynamic:regard:";
 var OFFER_PREFIX = "dynamic:offer:";
 function styleLine(state, reg, unit3) {
   const pair = unit3.bond?.practice?.style;
@@ -39117,6 +39137,7 @@ function dynamicDirectives(state, reg, present2) {
   out.push(...commandDirectives(state, reg, present2));
   out.push(...witnessDirectives(state, reg, present2));
   out.push(...disappointedDirectives(state, present2));
+  out.push(...regardDirectives(state, reg, present2));
   return out;
 }
 function aftermathDirective2(state, reg, unit3) {
@@ -39137,6 +39158,22 @@ function disappointedDirectives(state, present2) {
       id: `${DISAPPOINTED_PREFIX}${id}`,
       expiresAfter: "scene",
       text: `AUTHOR TO WRITE: ${unit3.displayName} has stopped turning to the commander for advice; when she speaks she addresses ${holder2.displayName}. She does not argue and does not lecture: she is simply quieter and more distant with the commander. Show it in how she acts and speaks; never name it as a mechanic.`
+    });
+  }
+  return out;
+}
+function regardDirectives(state, reg, present2) {
+  const out = [];
+  for (const id of present2) {
+    const unit3 = state.squad.find((u) => u.id === id);
+    if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) continue;
+    if (frameRank(dynamicOf(state, id)?.frame ?? "equal") >= frameRank("play")) continue;
+    const tone = regardToneFor(state, reg, id);
+    if (tone === null) continue;
+    out.push({
+      id: `${REGARD_PREFIX}${id}`,
+      expiresAfter: "scene",
+      text: `AUTHOR TO WRITE: ${unit3.displayName}'s tone toward the commander is ${sentence2(tone)}. Show it in how she acts and speaks; never name it as a mechanic.`
     });
   }
   return out;

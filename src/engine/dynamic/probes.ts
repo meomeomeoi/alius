@@ -20,6 +20,7 @@ import { TUNING } from '../tuning';
 import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap } from './gate';
 import { addHold, bandIndex } from './hold';
 import { practiceOf } from './profile';
+import { regardRise } from './regard';
 import { updateReading } from './reading';
 import { dynamicOf, type DynamicRelation } from './state';
 import { dynamicRoll } from './witness';
@@ -174,6 +175,8 @@ export function answerProbe(
   const cause = answerCause(draft, unitId, response);
   const base = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
   if (!(retro && frameRank(dyn.frame) >= frameRank('play'))) events.push(...addHold(draft, ctx, unitId, base, cause));
+  // a yield that cost her something (her reading's r at 0 or less, read before this answer moves it) raises her Regard (R18); an observed gesture and an answer from before day 1 are not acts she saw the commander make
+  if (response === 'yielded' && weight === 1 && !retro) events.push(...regardRise(draft, reg, unitId, 'cost'));
   // her reading takes the answer after the hold: a gain is scaled by how she read the commander until now
   const unit = draft.squad.find((u) => u.id === unitId)!;
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);

@@ -309,6 +309,18 @@ describe('moment answers', () => {
     expect(r.events.some((e) => e.type === 'hold_changed')).toBe(false);
   });
 
+  it('a yielded moment answer while her r is 0 or less raises her Regard by what it cost; no other answer, and not above 0 (I7)', () => {
+    const answered = (responseType: string) => ({ type: 'moment_answered', unitId: ANN, responseType });
+    const costs = (events: Array<{ type: string; [k: string]: unknown }>) => events.filter((e) => e.type === 'regard_changed' && e.cause === 'cost');
+    const s = world();
+    s.relations[ANN].regard = 50;
+    dynamicOf(s, ANN)!.readOf.r = -0.3;
+    expect(costs(readMoments(structuredClone(s), { registries: reg }, [answered('resisted')]))).toEqual([]);
+    expect(costs(readMoments(structuredClone(s), { registries: reg }, [answered('yielded')]))).toEqual([expect.objectContaining({ unitId: ANN, from: 50, to: 53 })]);
+    dynamicOf(s, ANN)!.readOf.r = 0.3;
+    expect(costs(readMoments(s, { registries: reg }, [answered('yielded')]))).toEqual([]);
+  });
+
   it('a threat in the same exchange moves fear and a run of them reaches cowed', () => {
     const answered = { type: 'moment_answered', unitId: ANN, responseType: 'yielded' };
     // the commander punished or leashed in the same action is the threat; a plain yield is not

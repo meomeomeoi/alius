@@ -41,6 +41,24 @@ function pending(over: { hold?: number; style?: ProfileStyle; sensitivity?: Sens
   if (over.sensitivity !== undefined) s.dynamic!.setup.units[ANN] = { sensitivity: over.sensitivity };
   return s;
 }
+describe('Regard cost rise (I7)', () => {
+  const costs = (events: Array<{ type: string; [k: string]: unknown }>) => events.filter((e) => e.type === 'regard_changed' && e.cause === 'cost');
+  it('a yielded answer while her r is 0 or less raises her Regard by what it cost; a deflected one, or r above 0, does not', () => {
+    const s = pending();
+    s.relations[ANN].regard = 50;
+    expect(costs(answer(structuredClone(s), 'yielded'))).toEqual([expect.objectContaining({ unitId: ANN, from: 50, to: 53 })]);
+    expect(costs(answer(structuredClone(s), 'deflected'))).toEqual([]);
+    expect(costs(answer(structuredClone(s), 'yielded', 0.5))).toEqual([]); // an observed gesture is not an act she saw the commander make
+    dynamicOf(s, ANN)!.readOf.r = 0.5;
+    expect(costs(answer(s, 'yielded'))).toEqual([]);
+  });
+  it('an answer from the weeks before day 1 (the head start) moves no Regard', () => {
+    const s = pending();
+    s.relations[ANN].regard = 50;
+    expect(costs(answerProbe(s, { registries: reg }, ANN, 'yielded', undefined, 1, false, { retro: true }))).toEqual([]);
+  });
+});
+
 const holdOf = (s: CampaignState): number => dynamicOf(s, ANN)!.hold;
 const answer = (s: CampaignState, response: Parameters<typeof answerProbe>[3], weight: 1 | 0.5 = 1, tone?: Parameters<typeof answerProbe>[4]) => answerProbe(s, { registries: reg }, ANN, response, tone, weight);
 function impunity(s: CampaignState, id: string, target: number): void {

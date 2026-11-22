@@ -84,6 +84,28 @@ describe('a holder\'s override answered', () => {
     expect(r.state.dynamic!.override).toBeUndefined();
   });
 
+  describe('spoken for (I7): the squad saw her speak for the commander', () => {
+    const deeds = (st: CampaignState) => st.commander.deeds?.spoken_for ?? 0;
+    it('counts a complied override whose order names someone else, a roster or an expedition; not a defied one', () => {
+      const s = overridden(80); // train with Bea: Bea is in it
+      expect(deeds(answer(structuredClone(s), 'comply').state)).toBe(1);
+      expect(deeds(answer(structuredClone(s), 'defy').state)).toBe(0);
+      for (const order of [{ kind: 'roster', activeIds: [ANN] }, { kind: 'expedition', unitIds: [ANN] }]) {
+        const t = structuredClone(s);
+        t.dynamic!.override!.order = order as never;
+        expect(deeds(answer(t, 'comply').state), order.kind).toBe(1);
+      }
+    });
+    it('counts when another squad member is in the scene with her, not when it is the two alone', () => {
+      const alone = structuredClone(overridden(80));
+      alone.dynamic!.override!.order = { kind: 'activity', activityId: 'train' } as never;
+      expect(deeds(answer(structuredClone(alone), 'comply').state)).toBe(0);
+      const watched = structuredClone(alone);
+      watched.scene = { id: 'sc', participants: [ANN, CAT] } as never;
+      expect(deeds(answer(watched, 'comply').state)).toBe(1);
+    });
+  });
+
   it('the third defiance at rule opens her submit claim', () => {
     const s = overridden(80);
     dyn(s).contest = [s.day - 1, s.day - 2];

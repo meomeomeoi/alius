@@ -15,6 +15,7 @@ import { addDefiance } from './escalation';
 import { punishRoll } from './punish';
 import { carryIfRan } from '../power/votes';
 import { overrideOpen, wardenOf, wardenOverrideOpen, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
+import { countDeed } from '../discipline/deeds';
 import { addFavour, addHold } from '../dynamic/hold';
 import { refusalCost } from '../dynamic/milestones';
 import { dynamicOf } from '../dynamic/state';
@@ -303,6 +304,19 @@ export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId:
 }
 
 /**
+ * Whether the squad saw a holder speak for the commander (the `spoken_for` deed, review I7): her order was a roster or an expedition (everyone hears of those), or another soldier is in it
+ * (a companion or a party member of the order), in the scene with her, or in the fight beside her. Read from state; draws nothing.
+ */
+function seenSpeakingFor(draft: CampaignState, o: OpenOverride, unitId: string): boolean {
+  const order = o.order;
+  if (order.kind === 'roster' || order.kind === 'expedition') return true;
+  const others = (ids: readonly string[] | undefined): boolean => (ids ?? []).some((id) => id !== unitId);
+  if (order.kind === 'activity' && (order.companionId === undefined ? others(order.unitIds) : order.companionId !== unitId || others(order.unitIds))) return true;
+  if (others(draft.scene?.participants)) return true;
+  return draft.combat?.combatants.some((c) => c.side === 'squad' && c.unitId !== undefined && c.unitId !== unitId) === true;
+}
+
+/**
  * A holder's override answered (P15, plan R13). COMPLY: her alternative runs (or nothing, when she holds), her hold rises by `override_comply` and her
  * favour by `complyFavour`. DEFY: the commander's order runs, then `overrode_her` lands on her (her hold falls through the feed, once; her Impunity
  * record rises as for any day of obedience broken), her favour falls by `defyFavour`, and the defiance counts into the contest of authority. No
@@ -331,6 +345,7 @@ function answerHolderOverride(draft: CampaignState, ctx: EngineCtx, slot: Slot, 
     const events = ov.alternative ? runOrder(draft, ctx, ov.alternative, base, false) : [];
     events.push(...addHold(draft, ctx, unitId, T.gains.override_comply, 'override_comply'));
     addFavour(draft, unitId, T.override.complyFavour);
+    if (seenSpeakingFor(draft, ov, unitId)) countDeed(draft, 'spoken_for'); // the commander is spoken for, and the squad saw it (R19b)
     return [...events, done('comply')];
   }
   const events = runOrder(draft, ctx, ov.order, base);

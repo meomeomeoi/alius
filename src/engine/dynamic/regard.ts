@@ -127,6 +127,20 @@ export function regardTone(state: CampaignState, reg: Registries, unitId: string
   return form !== undefined && isLow(reg, regardOf(state, reg, unitId)) ? form : null;
 }
 
+/** The form of low Regard for a woman whose card has no practice section (no style row to read): a plain coolness. AUTHOR TO WRITE. */
+export const NEUTRAL_REGARD_FORM = 'coolness';
+
+/**
+ * The tone word of low or no Regard for any named woman, a holder or not (review I5, R18: "in every named unit's block"): her style's form, or the neutral one
+ * when she has no practice section; nothing above low and nothing while the dynamic is off. A word, never a number.
+ */
+export function regardToneFor(state: CampaignState, reg: Registries, unitId: string): string | null {
+  if (!dynamicOn(state, reg)) return null;
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (unit === undefined || unit.kind !== 'named') return null;
+  return isLow(reg, regardOf(state, reg, unitId)) ? (styleRow(state, reg, unit).form ?? NEUTRAL_REGARD_FORM) : null;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The watchers and the writer
 

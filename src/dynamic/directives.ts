@@ -9,7 +9,7 @@ import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { dynamicOf } from '../engine/dynamic/state';
 import { reactionOf, type Reaction } from '../engine/dynamic/witness';
-import { regardTone } from '../engine/dynamic/regard';
+import { regardTone, regardToneFor } from '../engine/dynamic/regard';
 import { disappointedSince } from '../engine/dynamic/shame';
 import { leadingStyle } from '../engine/dynamic/style';
 import type { DynamicDomainEntry, DynamicMilestoneEntry, PracticeStyleEntry, ProbeAxisEntry } from '../engine/dynamic/types';
@@ -38,6 +38,8 @@ export const WITNESS_PREFIX = 'dynamic:witness:';
 export const AFTERMATH_PREFIX = 'dynamic:aftermath:';
 export const LEASH_BLOCK_PREFIX = 'dynamic:leash_block:';
 export const DISAPPOINTED_PREFIX = 'dynamic:disappointed:';
+/** The tone of low Regard for a woman who is not a holder (a holder's own line carries it). */
+export const REGARD_PREFIX = 'dynamic:regard:';
 /** The line of an offer the commander made, for her next reply only (event-driven like P15a's `moment:`: `applyOfferDirectives`; a refresh leaves it alone). */
 export const OFFER_PREFIX = 'dynamic:offer:';
 
@@ -107,6 +109,7 @@ function probeDirective(reg: Registries, unit: Unit, axisId: string): Directive 
  *  - `dynamic:probe:<unitId>`: her probe is pending (at most one a scene); gone when it is answered or lapses.
  *  - `dynamic:leash_block:<unitId>`: she is in the room and holds the commander's Leash requests: she answers for anything filed on the device.
  *  - `dynamic:command:<unitId>`: she holds the command and someone else is in the room: who gives the orders now. Her own line, while the argument over her override is the scene, adds what she overrode.
+ *  - `dynamic:regard:<unitId>`: she is in the room, is not a holder at `play` or beyond and has lost respect for the commander: her tone, as a word (her style's form, a neutral one without a practice section).
  *  - `dynamic:witness:<observerId>`: she suspects (cautious) or knows (her reaction by profile) a holder's dynamic and is in the room.
  * Nothing while the dynamic is off.
  */
@@ -130,6 +133,7 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   out.push(...commandDirectives(state, reg, present));
   out.push(...witnessDirectives(state, reg, present));
   out.push(...disappointedDirectives(state, present));
+  out.push(...regardDirectives(state, reg, present));
   return out;
 }
 
@@ -156,6 +160,26 @@ function disappointedDirectives(state: CampaignState, present: string[]): Direct
     out.push({
       id: `${DISAPPOINTED_PREFIX}${id}`, expiresAfter: 'scene',
       text: `AUTHOR TO WRITE: ${unit.displayName} has stopped turning to the commander for advice; when she speaks she addresses ${holder.displayName}. She does not argue and does not lecture: she is simply quieter and more distant with the commander. Show it in how she acts and speaks; never name it as a mechanic.`,
+    });
+  }
+  return out;
+}
+
+/**
+ * The tone of a woman who has lost respect for the commander (`dynamic:regard:<unitId>`, R18): every named woman in the room who is not a holder at `play` or beyond (a holder's
+ * own line carries it), at low or no Regard, as a word and never a number. It says how she speaks, not what the commander feels.
+ */
+function regardDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    if (unit === undefined || unit.kind !== 'named' || !isLiving(unit)) continue;
+    if (frameRank(dynamicOf(state, id)?.frame ?? 'equal') >= frameRank('play')) continue;
+    const tone = regardToneFor(state, reg, id);
+    if (tone === null) continue;
+    out.push({
+      id: `${REGARD_PREFIX}${id}`, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: ${unit.displayName}'s tone toward the commander is ${sentence(tone)}. Show it in how she acts and speaks; never name it as a mechanic.`,
     });
   }
   return out;

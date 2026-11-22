@@ -28,7 +28,7 @@ import { addFavour, addHold } from './hold';
 import { addSign } from './knowledge';
 import { practiceOf, type PracticeView } from './profile';
 import { masteryLevel } from './mastery';
-import { regardFall } from './regard';
+import { regardFall, regardRise } from './regard';
 import { resettleReading } from './reading';
 import { dynamicOf, type OpenOffer } from './state';
 import { leadingStyle } from './style';
@@ -352,6 +352,8 @@ export function makeOffer(draft: CampaignState, ctx: Ctx, unitId: string, compos
   // hold and favour; an accepted gain may begin her dynamic (`addHold` starts it for a woman who could hold)
   if (answer.cause !== undefined && answer.hold !== 0) events.push(...addHold(draft, ctx, unitId, answer.hold, answer.cause));
   if (answer.favour !== 0) addFavour(draft, unitId, answer.favour);
+  // what it cost her to take it: her Regard rises when she took it after resisting (her reading's r at 0 or less, read before this offer moves it) (R18)
+  if (answer.answer === 'accepted') events.push(...regardRise(draft, reg, unitId, 'cost'));
   const dyn = dynamicOf(draft, unitId);
   if (dyn !== undefined) {
     for (const c of composition) {

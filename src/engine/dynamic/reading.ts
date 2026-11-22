@@ -13,6 +13,7 @@ import { physicsStyleOf } from '../physics/style';
 import type { CampaignState, Insight } from '../state/types';
 import { TUNING } from '../tuning';
 import { dynamicOn, herPracticeLive } from './gate';
+import { regardRise } from './regard';
 import { blankReading, dynamicOf, type DynamicRelation, type HerReading } from './state';
 import { MOTIVES, TONES, type Motive, type RegionRank, type Tone } from './types';
 
@@ -180,6 +181,7 @@ export function readMoments(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
     const rel = dynamicOf(draft, unitId);
     if (unit === undefined || rel === undefined || !isLiving(unit) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
+    if (e.responseType === 'yielded') out.push(...regardRise(draft, ctx.registries, unitId, 'cost')); // a yield that cost her something (r at 0 or less, read before this answer moves it) (R18)
     const region = updateReading(rel, { response: e.responseType as ResponseType, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx.registries), unit.insight ?? 'mid').region;
     if (region !== undefined) out.push({ type: 'position_shifted', unitId, from: region.from, to: region.to });
   }
