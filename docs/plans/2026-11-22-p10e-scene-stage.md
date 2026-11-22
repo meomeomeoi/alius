@@ -173,7 +173,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `mannequinSvg(p: DialPose, opts?: DialFigureOpts): SVGSVGElement` (viewBox `0 0 200 200`, built with `document.createElementNS`, no `innerHTML`)
   - CSS classes `alius-mq-out`, `alius-mq-fill`, `alius-mq-far`, `alius-mq-ghost`, `alius-mq-hot`, `alius-mq-gaze`, `alius-mq-floor`, `alius-mq-item`, `alius-mq-hint`
 
-- [ ] **Step 1: Write the failing tests** (jsdom).
+- [x] **Step 1: Write the failing tests** (jsdom).
   - `draws far to near`: the stroke `d` order sorts segments by projected depth. The near arm's outline comes after the far arm's.
   - `the head is drawn after its neck` and is an ellipse whose long axis follows `headDir`.
   - `the far side is marked`: the segments of the side with the smaller shoulder depth carry `alius-mq-far`.
@@ -182,8 +182,8 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `fits the dial`: the bounding box of the projected points, after the per-pose scale, lies inside a circle of radius 84 around (100, 102) for every base and fixture preset.
   - `items and hints`: `item: 'tray'` adds one `alius-mq-item` line between the hands; `hint: 'wall'` adds one `alius-mq-hint` line.
   - No `<text>` in the SVG.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/dial/draw.test.ts` → FAIL.
-- [ ] **Step 3: Implement** the spike's drawing rules (spec §7):
+- [x] **Step 2: Run** `npx vitest run tests/ui/dial/draw.test.ts` → FAIL.
+- [x] **Step 3: Implement** the spike's drawing rules (spec §7):
   - segments as capsules: a light outline stroke under a dark fill stroke, with thicknesses torso 0.25, pelvis 0.22, neck 0.07, upper arm 0.085, forearm 0.07, thigh 0.125, shin 0.095, foot 0.07 (× scale);
   - depth sort far to near;
   - an egg head over its neck, with a face dot;
@@ -191,8 +191,8 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - scale `min(96, 158 / max(w, h), 182 / hypot(w, h))`.
 
   `scripts/dial-sheet.mjs` bundles `draw.ts` and the fixture with esbuild into the scratch dir `.superpowers/dial-sheet/` (git-ignored), then writes `sheet.html`: 13 bases, 47 presets and five drift states, the spike's five: hips sink, arms drop, gaze rises, knees slide apart, torso slumps. If `require('playwright')` works it also writes `sheet.png` at deviceScaleFactor 2, and it prints the path.
-- [ ] **Step 4: Run** the test, then `npm run dial:sheet` → a sheet is written; open it and check every figure reads as its posture name.
-- [ ] **Step 5: Commit** `feat(P10e): the mannequin drawing and its contact sheet` (the sheet itself is not committed).
+- [x] **Step 4: Run** the test, then `npm run dial:sheet` → a sheet is written; open it and check every figure reads as its posture name.
+- [x] **Step 5: Commit** `feat(P10e): the mannequin drawing and its contact sheet` (the sheet itself is not committed).
 
 > **Review gate (author):** after Task 3 the controller sends the author the sheet (`sheet.png`) and waits for "looks right" before Chunk (c). Chunk (b) does not depend on it and may proceed.
 

@@ -111,3 +111,85 @@
   75% { transform: translate(calc(var(--alius-strain, 0) * -1.5px), 0); }
   100% { transform: translate(0, 0); }
 }
+
+/* P10e: the posture mannequin (the dial and its fan). An artist's wooden mannequin in line art: palette mixes only, nothing animates. */
+#alius-shell .alius-mannequin {
+  display: block;
+  overflow: visible;
+}
+
+#alius-shell .alius-mq-floor {
+  fill: color-mix(in srgb, var(--alius-trust) 9%, transparent);
+  stroke: color-mix(in srgb, var(--alius-trust) 22%, transparent);
+  stroke-width: 0.8;
+}
+
+#alius-shell .alius-mq-out,
+#alius-shell .alius-mq-fill {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#alius-shell .alius-mq-out {
+  stroke: color-mix(in srgb, var(--alius-trust) 55%, #ffffff);
+}
+
+#alius-shell .alius-mq-fill {
+  stroke: color-mix(in srgb, var(--alius-trust) 14%, #05070b);
+}
+
+#alius-shell .alius-mq-out.alius-mq-far {
+  stroke: color-mix(in srgb, var(--alius-trust) 42%, #05070b);
+}
+
+#alius-shell .alius-mq-fill.alius-mq-far {
+  stroke: color-mix(in srgb, var(--alius-trust) 8%, #05070b);
+}
+
+#alius-shell .alius-mq-head {
+  fill: color-mix(in srgb, var(--alius-trust) 14%, #05070b);
+  stroke: color-mix(in srgb, var(--alius-trust) 55%, #ffffff);
+  stroke-width: 1.6;
+}
+
+#alius-shell .alius-mq-face {
+  fill: color-mix(in srgb, var(--alius-trust) 55%, #ffffff);
+}
+
+#alius-shell .alius-mq-ghost-seg {
+  fill: none;
+  stroke: color-mix(in srgb, var(--alius-trust) 70%, transparent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+#alius-shell .alius-mq-gaze {
+  stroke: color-mix(in srgb, var(--alius-trust) 50%, transparent);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+#alius-shell .alius-mq-hot {
+  fill: none;
+  stroke: var(--alius-warn);
+  stroke-width: 2;
+}
+
+#alius-shell .alius-mq-gaze.alius-mq-hot {
+  stroke-width: 1.8;
+}
+
+#alius-shell .alius-mq-item {
+  fill: none;
+  stroke: color-mix(in srgb, var(--alius-warn) 75%, #ffffff);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+#alius-shell .alius-mq-hint {
+  fill: none;
+  stroke: color-mix(in srgb, var(--alius-dim) 70%, transparent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}

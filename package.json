@@ -8,7 +8,8 @@
     "build": "node scripts/build.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "sim": "node scripts/sim.mjs"
+    "sim": "node scripts/sim.mjs",
+    "dial:sheet": "node scripts/dial-sheet.mjs"
   },
   "dependencies": {
     "zod": "^3.23.8"

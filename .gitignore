@@ -1,3 +1,5 @@
 node_modules/
 *.log
 content/local/
+.superpowers/dial-sheet/
+.superpowers/layout/

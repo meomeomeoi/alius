@@ -77,14 +77,14 @@ const YAW = 38 * DEG;
 const ELEV = 14 * DEG;
 
 /**
- * The fixed three-quarter view, orthographic: x to the right, y up, depth away from the viewer (larger = farther). A figure
- * that faces +z turns its face to the right of the picture; its left side (+x) is the far one.
+ * The fixed three-quarter view, orthographic: x to the right, y up, depth toward the viewer (larger = nearer, so a drawing
+ * goes in ascending depth). A figure that faces +z turns its face to the right of the picture; its left side (+x) is the far one.
  */
 export function project(v: Vec3): [x: number, y: number, depth: number] {
   const x1 = v[0] * Math.cos(YAW) + v[2] * Math.sin(YAW);
   const z1 = -v[0] * Math.sin(YAW) + v[2] * Math.cos(YAW);
   const up = v[1] * Math.cos(ELEV) - z1 * Math.sin(ELEV);
-  const depth = -(v[1] * Math.sin(ELEV) + z1 * Math.cos(ELEV));
+  const depth = v[1] * Math.sin(ELEV) + z1 * Math.cos(ELEV);
   return [x1 + 0, up + 0, depth + 0]; // + 0: no negative zero
 }
 
