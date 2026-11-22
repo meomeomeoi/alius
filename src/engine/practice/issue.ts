@@ -8,7 +8,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
-import { pickHolderPunishment, severityOfEntry } from './offences';
+import { punishmentEntryFor, severityOfEntry } from './offences';
 import { stakeRank, type OpenPunishment, type PracticeKind, type PracticeRequest, type Task, type ValidOutput } from './state';
 import { TUNING } from '../tuning';
 import { acceptFormOf, writeTask, type Writer } from './tasks';
@@ -18,14 +18,13 @@ export { acceptFormOf, type Writer };
 export { requestPractice } from './request';
 
 /**
- * Her punishment, from a card: the engine owns the entry and the weight (picked when the offence was noted; picked again now when the entry is no longer possible), the model's
+ * Her punishment, from a card: the engine owns the entry and the weight (picked when the offence was noted; picked again now when the entry can no longer be carried out; nothing that stands: no punishment), the model's
  * words are the text and the summary. `offered` until the commander answers. A plain (fallback) card says the entry's label. `punishment_issued` is a threat source (R18).
  */
 function writePunishment(draft: CampaignState, ctx: EngineCtx, request: PracticeRequest, out: ValidOutput, plain: boolean): EngineEvent[] {
   const reg = ctx.registries;
   const p = ensurePractices(draft);
-  const asked = request.severity ?? 1;
-  const entryId = request.entryId !== undefined && reg.holderPunishments.has(request.entryId) ? request.entryId : pickHolderPunishment(draft, reg, request.holderId, asked);
+  const entryId = punishmentEntryFor(draft, reg, request);
   if (entryId === null) return [];
   const entry = reg.holderPunishments.get(entryId)!;
   const severity = severityOfEntry(reg, entryId) ?? 1;
@@ -53,7 +52,8 @@ export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask,
 export function fallbackOutput(state: CampaignState, reg: Registries, request: PracticeRequest): ValidOutput | null {
   if (request.kind === 'punishment') {
     // her discipline has its own entry: the line says what the entry is, not an example seed
-    const entry = request.entryId === undefined ? undefined : reg.holderPunishments.get(request.entryId);
+    const entryId = punishmentEntryFor(state, reg, request);
+    const entry = entryId === null ? undefined : reg.holderPunishments.get(entryId);
     if (entry === undefined) return null;
     const label = String(entry.label);
     return { kind: 'punishment', tags: [], track: 'discipline', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text: fallbackLine('punishment', label), summary: label };

@@ -13,9 +13,10 @@ import { dynamicOf } from '../dynamic/state';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { trackLevel, trackOpen } from '../dynamic/tracks';
 import { impunityBand, impunityOf } from '../discipline/impunity';
-import { isLiving } from '../economy';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
+import { eligibleUnits } from './gate';
+import { punishmentEntryFor, severityOfEntry } from './offences';
 import { seedPool, seedRows, stakesCeilingOf } from './seeds';
 import { CHECK_KINDS, OFFENCE_WORDS, PROOFS, severityWord, STAKES, stakeRank, type CheckKind, type PracticeKind, type PracticeRequest, type Proof, type Stake, type ValidOutput } from './state';
 
@@ -66,10 +67,7 @@ const CAPABILITY_WORDS: Readonly<Record<string, string>> = Object.freeze({
 
 const clean = (s: string): string => s.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 
-/** The living named soldiers a practice may name or play to: not her, any of the roster that is still in the squad. */
-export function eligibleUnits(state: CampaignState, holderId: string): string[] {
-  return state.squad.filter((u) => u.kind === 'named' && u.id !== holderId && isLiving(u)).map((u) => u.id);
-}
+export { eligibleUnits };
 
 /** Her active rules (a `rule_kept_until` check names one). */
 function activeRules(state: CampaignState, holderId: string): Array<{ id: string; text: string }> {
@@ -114,10 +112,16 @@ export function buildPracticeInput(state: CampaignState, reg: Registries, reques
     frequency: state.dynamic?.setup.frequency ?? 'normal',
     rules: activeRules(state, holderId),
     seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? 'model' })),
-    ...(request.kind === 'punishment' && request.entryId !== undefined && reg.holderPunishments.has(request.entryId)
-      ? { punishment: { label: String(reg.holderPunishments.get(request.entryId)!.label), weight: severityWord(request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? 'refusal'] } } : {}),
+    ...(request.kind === 'punishment' ? punishmentBlock(state, reg, request) : {}),
     limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } },
   };
+}
+
+/** The punishment part of the input: the entry that will be written (the engine's pick, picked again when it can no longer be carried out) and what it answers, as words. */
+function punishmentBlock(state: CampaignState, reg: Registries, request: PracticeRequest): { punishment?: PracticeGenerateInput['punishment'] } {
+  const entryId = punishmentEntryFor(state, reg, request);
+  const entry = entryId === null ? undefined : reg.holderPunishments.get(entryId);
+  return entry === undefined ? {} : { punishment: { label: String(entry.label), weight: severityWord(severityOfEntry(reg, entryId!) ?? request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? 'refusal'] } };
 }
 
 /** The highest tier any open track of hers allows (her level plus one, at most five); the validator clamps each card to its own track's cap. */
@@ -151,7 +155,7 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
   if (!isObj(raw) || raw.kind !== request.kind) return null;
   const holderId = request.holderId;
   const issues: string[] = [];
-  if (request.kind === 'punishment') return validatePunishmentCard(reg, request, raw);
+  if (request.kind === 'punishment') return validatePunishmentCard(state, reg, request, raw);
   const pool = seedPool(state, reg, holderId, request.kind);
   const seed = typeof raw.seedId === 'string' ? pool.find((s) => s.id === raw.seedId) : undefined;
   if (raw.seedId !== undefined && seed === undefined) issues.push('seedId is not an offered seed and was dropped');
@@ -230,13 +234,14 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
  * The model's card for a punishment: only its words count. The entry and its weight were picked by the engine, so the tags, the track, the tier, the stakes and the check of the card
  * are not read (a card with none is fine); the text and the summary are plain, cut, and a pronoun for the commander in either rejects the card; an empty summary is the entry's label.
  */
-function validatePunishmentCard(reg: Registries, request: PracticeRequest, raw: Record<string, unknown>): { output: ValidOutput; issues: string[] } | null {
+function validatePunishmentCard(state: CampaignState, reg: Registries, request: PracticeRequest, raw: Record<string, unknown>): { output: ValidOutput; issues: string[] } | null {
   const text = plainText(raw.text, TUNING.practice.textMax);
   let summary = plainText(raw.summary, TUNING.practice.summaryMax);
   if (text === '' || hasCommanderPronoun(text) || hasCommanderPronoun(summary)) return null;
   const issues: string[] = [];
   if (summary === '') {
-    const entry = request.entryId === undefined ? undefined : reg.holderPunishments.get(request.entryId);
+    const entryId = punishmentEntryFor(state, reg, request);
+    const entry = entryId === null ? undefined : reg.holderPunishments.get(entryId);
     if (entry === undefined) return null;
     summary = String(entry.label);
     issues.push('summary was empty and is the entry\'s label');

@@ -1980,6 +1980,8 @@ export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   contentTags,
   /** P16: a rule that asks for permission (read by field, never by id): the commander asks before something it covers. */
   asks: z.literal('permission').optional(),
+  /** P16: a rule only a holder's practices propose (a protocol, a denial): P9d's own daily roll and P15's aftermath never offer it. */
+  practice: z.literal(true).optional(),
 }).strict();
 
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;

@@ -12,10 +12,9 @@ import { practiceOf } from '../dynamic/profile';
 import { dynamicOf } from '../dynamic/state';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { ensurePractices, practiceLive } from './gate';
+import { eligibleUnits, ensurePractices, practiceLive } from './gate';
 import { requestPractice } from './request';
-import { eligibleUnits } from './validate';
-import { EFFECT_NEEDS, stakeRank, type Offence, type OffenceKind, type PunishmentEffectType, type Stake } from './state';
+import { EFFECT_NEEDS, stakeRank, type Offence, type OffenceKind, type PracticeRequest, type PunishmentEffectType, type Stake } from './state';
 
 type Severity5 = 1 | 2 | 3 | 4 | 5;
 
@@ -59,7 +58,7 @@ export const atBase = (state: CampaignState, holderId: string): string[] => elig
 const publicAllowed = (state: CampaignState, reg: Registries, holderId: string): boolean => practiceOf(state, reg, holderId)?.audience !== 'private_only';
 
 /** Can this entry be carried out now (read by its effects, never its id)? */
-function possibleNow(state: CampaignState, reg: Registries, holderId: string, entry: Entry): boolean {
+export function possibleNow(state: CampaignState, reg: Registries, holderId: string, entry: Entry): boolean {
   if (!contentAllowed(state, reg, entry, holderId)) return false;
   if (entry.public === true && !publicAllowed(state, reg, holderId)) return false;
   const on = state.content?.enabled ?? [];
@@ -84,6 +83,32 @@ export function pickHolderPunishment(state: CampaignState, reg: Registries, hold
     if (eligible.length > 0) return String(eligible[given % eligible.length].id);
   }
   return null;
+}
+
+/**
+ * The entry a punishment request will be written as: the one picked when the offence was noted, as long as it can still be carried out now, else another for the same weight
+ * (`pickHolderPunishment`), else `null` (nothing stands: no practice). The one rule both the words (`buildPracticeInput`, the fallback) and the writer read. Reads only.
+ */
+export function punishmentEntryFor(state: CampaignState, reg: Registries, request: Pick<PracticeRequest, 'holderId' | 'entryId' | 'severity'>): string | null {
+  const entry = request.entryId === undefined ? undefined : reg.holderPunishments.get(request.entryId);
+  if (entry !== undefined && possibleNow(state, reg, request.holderId, entry)) return request.entryId!;
+  return pickHolderPunishment(state, reg, request.holderId, request.severity ?? 1);
+}
+
+/**
+ * A content category went off (the withdrawal hook): every request for a punishment whose entry can no longer be carried out gets another entry for the same offence, or goes when
+ * none stands. No delta, no event, no draw.
+ */
+export function repickPunishmentRequests(draft: CampaignState, reg: Registries): void {
+  const p = draft.practices;
+  if (p === undefined) return;
+  p.requests = p.requests.flatMap((r) => {
+    if (r.kind !== 'punishment') return [r];
+    const entryId = punishmentEntryFor(draft, reg, r);
+    if (entryId === null) return [];
+    if (entryId === r.entryId) return [r];
+    return [{ ...r, entryId, severity: severityOfEntry(reg, entryId) ?? r.severity }];
+  });
 }
 
 /** The weight a picked entry has (the entry's own: the pick may have come from below the asked one). */

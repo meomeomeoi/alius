@@ -7,6 +7,8 @@ import { setCategories } from '../../../src/engine/bonds/content';
 import { removeFromService } from '../../../src/engine/leash/use';
 import { forgetPractices, holdsPractices, withdrawPractices } from '../../../src/engine/practice/forget';
 import { ensurePractices } from '../../../src/engine/practice/gate';
+import { issuePractice } from '../../../src/engine/practice/issue';
+import { Rng } from '../../../src/engine/rng';
 import type { OpenDemonstration, OpenPunishment, PracticeState, Task } from '../../../src/engine/practice/state';
 import type { Booking, CampaignState, Rule } from '../../../src/engine/state/types';
 import { endDay } from '../../helpers/loyalty';
@@ -200,5 +202,47 @@ describe('withdrawPractices', () => {
     const snapshot = structuredClone(bare);
     expect(withdrawPractices(bare, reg, ['restraint', 'denial', 'public_humiliation'])).toEqual([]);
     expect(bare).toEqual(snapshot);
+  });
+});
+
+describe('a punishment request whose entry can no longer be carried out (I1)', () => {
+  const ctxOf = (d: CampaignState, r: Registries = reg) => ({ registries: r, rng: new Rng(d.rng) });
+  const slapRequest = (s: CampaignState) => {
+    s.content = { enabled: ['restraint', 'public_humiliation', 'denial', 'physical_discipline_shown'] };
+    ensurePractices(s).requests.push({
+      id: 'pq9', holderId: ANN, kind: 'punishment', day: 20, seedIds: [], severity: 4, entryId: 'the_slap', offence: { kind: 'task_broken', stakes: 'minor', day: 20 },
+    });
+    return s;
+  };
+
+  it('switching its category off picks another entry for the same offence (no delta, no event)', () => {
+    const s = slapRequest(world(reg, 'play'));
+    const relations = structuredClone(s.relations);
+    const r = run(s, reg, { type: 'content/set_categories', payload: { enabled: ['restraint', 'public_humiliation', 'denial'] } });
+    expect(errors(r.events)).toEqual([]);
+    const request = r.state.practices!.requests.find((x) => x.id === 'pq9')!;
+    expect(request.entryId).not.toBe('the_slap');
+    expect(request.entryId).toBe('kept_the_day'); // the heaviest that stands
+    expect(request.severity).toBe(4);
+    expect(r.state.relations).toEqual(relations);
+  });
+
+  it('it is issued as the entry that stands, never as the one that went', () => {
+    const s = slapRequest(world(reg, 'play'));
+    s.content = { enabled: ['restraint', 'public_humiliation', 'denial'] }; // switched off without going through the hook
+    const d = structuredClone(s);
+    issuePractice(d, ctxOf(d), 'pq9', 'fallback');
+    expect(d.practices!.punishments).toHaveLength(1);
+    expect(d.practices!.punishments[0].entryId).toBe('kept_the_day');
+    expect(d.practices!.punishments[0].severity).toBe(4);
+  });
+
+  it('when nothing stands the request is dropped and nothing is issued', () => {
+    const s = slapRequest(world(reg, 'play'));
+    const bare = { ...reg, holderPunishments: new Map() } as unknown as Registries;
+    const d = structuredClone(s);
+    expect(issuePractice(d, ctxOf(d, bare), 'pq9', 'fallback')).toEqual([]);
+    expect(d.practices!.punishments).toEqual([]);
+    expect(d.practices!.requests).toEqual([]);
   });
 });

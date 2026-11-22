@@ -57,3 +57,8 @@ export function nextPracticeId(draft: CampaignState, prefix: PracticeIdPrefix): 
 export function freezeOf(state: CampaignState, reg: Registries, holderId: string): boolean {
   return !practiceLive(state, reg, holderId);
 }
+
+/** The living named soldiers a practice may name or play to: not her, any of the roster that is still in the squad. */
+export function eligibleUnits(state: CampaignState, holderId: string): string[] {
+  return state.squad.filter((u) => u.kind === 'named' && u.id !== holderId && isLiving(u)).map((u) => u.id);
+}
