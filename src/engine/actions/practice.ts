@@ -2,12 +2,13 @@ import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
 import { registerPracticeUndone } from '../discipline/record';
 import { registerRestrictionReader } from '../discipline/restrictions';
-import { registerAction, registerAfterAction } from '../dispatch';
+import { registerAction, registerAfterAction, registerVoteGate } from '../dispatch';
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, repickPunishmentRequests } from '../practice/offences';
+import { punishVoteDecision } from '../power/punishGate';
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
@@ -79,6 +80,16 @@ registerAction('practice/answer_punishment', (draft, payload, ctx) => {
 registerAction('practice/take_instead', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.punishmentId !== 'string' || (payload.answer !== 'do_it' && payload.answer !== 'take_it' && payload.answer !== 'refuse')) throw new Error('practice/take_instead needs { punishmentId, answer }.');
   return takeInstead(draft, ctx, payload.punishmentId, payload.answer);
+});
+
+/**
+ * DO IT on her order is the commander imposing a P9 measure on a soldier: the squad votes on it exactly as it does on `discipline/punish` (P9b: the gate is the only way to make an
+ * action votable, and a decision the squad votes on is never skipped by another route). TAKE IT INSTEAD and REFUSE are not that decision.
+ */
+registerVoteGate('practice/take_instead', (state, payload, reg) => {
+  if (!isObj(payload) || payload.answer !== 'do_it' || typeof payload.punishmentId !== 'string') return null;
+  const order = state.practices?.punishments.find((x) => x.id === payload.punishmentId && x.forUnitId !== undefined);
+  return order === undefined ? null : punishVoteDecision(reg, order.forUnitId!, order.entryId);
 });
 
 /** `practice/undo { punishmentId }`: UNDO of an accept or a refuse of her discipline, as P9's (R8). Closes what exists, so it needs no live holder. */

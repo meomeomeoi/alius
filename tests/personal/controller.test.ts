@@ -261,7 +261,7 @@ describe('a due booking', () => {
     const brig = rig(booked((s) => { s.discipline = { defiance: [], threats: [], applications: [], restrictions: [{ unitId: ANN, kind: 'confined', untilDay: 9 }], demands: [], demandLog: [] }; }));
     expect(await brig.personal.onSlotAdvanced()).toBe(false);
     expect(brig.startScene).not.toHaveBeenCalled();
-    expect(dueBooking(brig.h.state())?.status).toBe('booked'); // it lapses free when the slot passes
+    expect(dueBooking(brig.h.state(), reg)?.status).toBe('booked'); // it lapses free when the slot passes
   });
 
   it('a conflict settles itself and its winner is played', async () => {

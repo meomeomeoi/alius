@@ -161,7 +161,7 @@ describe('the slot belongs to her', () => {
 
   it('the due slot refuses activities, expeditions, END SLOT and a scene without her, with booking_due', () => {
     const s = due();
-    expect(dueBooking(s)?.id).toBe('b1');
+    expect(dueBooking(s, reg)?.id).toBe('b1');
     for (const action of [
       { type: 'activity/do', payload: { activityId: 'rest' } },
       { type: 'expedition/start', payload: {} },
@@ -172,7 +172,7 @@ describe('the slot belongs to her', () => {
       expect(errors(r.events)[0], action.type).toMatchObject({ code: 'booking_due', message: MSG });
       expect(r.state).toBe(s);
     }
-    expect(endSlotBlock(s)).toBe(MSG);
+    expect(endSlotBlock(s, reg)).toBe(MSG);
   });
 
   it('a scene with her passes, and counts as playing the booking', () => {
@@ -182,7 +182,7 @@ describe('the slot belongs to her', () => {
     expect(errors(r.events)).toEqual([]);
     expect(r.state.personal!.bookings![0].status).toBe('played');
     expect(r.state.relations[ANN].want).toBeLessThan(50);
-    expect(dueBooking(r.state)).toBeNull();
+    expect(dueBooking(r.state, reg)).toBeNull();
   });
 
   it('a booking of another day or slot, a played one and a cancelled one do not block', () => {
@@ -190,8 +190,8 @@ describe('the slot belongs to her', () => {
       const s = putBookings(eager(), b);
       s.day = 5;
       s.slot = 'evening';
-      expect(dueBooking(s)).toBeNull();
-      expect(endSlotBlock(s)).toBeNull();
+      expect(dueBooking(s, reg)).toBeNull();
+      expect(endSlotBlock(s, reg)).toBeNull();
     }
   });
 
@@ -206,8 +206,8 @@ describe('the slot belongs to her', () => {
       s.slot = 'afternoon'; // not the evening: ending the evening would run the day-end pass and move her numbers
       s.personal!.bookings![0].slot = 'afternoon';
       mutate(s);
-      expect(bookingPlayable(s, s.personal!.bookings![0]), name).toBe(false);
-      expect(endSlotBlock(s), name).toBeNull();
+      expect(bookingPlayable(s, reg, s.personal!.bookings![0]), name).toBe(false);
+      expect(endSlotBlock(s, reg), name).toBeNull();
       const before = structuredClone(s.relations);
       const r = run(s, reg, { type: 'calendar/consume_slot' });
       expect(errors(r.events), name).toEqual([]);

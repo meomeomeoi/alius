@@ -152,7 +152,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
   const objective = currentObjective(state, ctx.registries);
   const items = tonightItems(state, ctx.registries);
   const oversight = latestOversight(state);
-  const block = readOnly ? 'This campaign is read-only.' : endSlotBlock(state);
+  const block = readOnly ? 'This campaign is read-only.' : endSlotBlock(state, ctx.registries);
   const slotName = state.slot.toUpperCase();
 
   const end = readOnly

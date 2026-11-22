@@ -201,7 +201,7 @@ function playSparring(draft: CampaignState, ctx: EngineCtx, w: Wager, pick: stri
   const reg = ctx.registries;
   if (draft.slot === 'night') throw new Error('Nobody spars at night.');
   if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === 'presented') throw new Error('Not now: something else holds this slot.');
-  const due = bookingGuard(draft, { type: 'calendar/consume_slot' });
+  const due = bookingGuard(draft, reg, { type: 'calendar/consume_slot' });
   if (due) throw new Error(due.message);
   checkPick(draft, reg, w.gameId, w.unitId, pick);
   const bout = sparringBout(draft, reg, ctx.rng, w.unitId, pick!);

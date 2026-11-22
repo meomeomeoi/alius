@@ -53,7 +53,7 @@ export function pickPunishment(state: CampaignState, reg: Registries, severity: 
 }
 
 /** What a layer above the warden may add to the commander's restrictions (P16: a holder's discipline): the reason, or null. Asked after the warden. */
-export type CommanderRestrictionReader = (state: CampaignState, use: 'companion' | 'dm' | 'scene', activityId?: string, toUnitId?: string, locationId?: string) => string | null;
+export type CommanderRestrictionReader = (state: CampaignState, reg: Registries, use: 'companion' | 'dm' | 'scene', activityId?: string, toUnitId?: string, locationId?: string) => string | null;
 const readers: CommanderRestrictionReader[] = [];
 
 /** Registers a reader of the commander's restrictions (the holders' discipline hangs here; the warden's own are read first). Registering the same function twice is a no-op. */
@@ -65,7 +65,7 @@ export function registerCommanderRestriction(fn: CommanderRestrictionReader): vo
  * Why the commander cannot do this right now: first because of what the warden revoked (absent mode or no warden in service: nothing), then because of what a registered reader
  * says (a holder's discipline). `toUnitId` is who a DM goes to and `locationId` where a scene would be. Null when nothing stands in the way.
  */
-export function commanderRestriction(state: CampaignState, use: 'companion' | 'dm' | 'scene', activityId?: string, toUnitId?: string, locationId?: string): string | null {
+export function commanderRestriction(state: CampaignState, reg: Registries, use: 'companion' | 'dm' | 'scene', activityId?: string, toUnitId?: string, locationId?: string): string | null {
   const w = wardenOf(state);
   if (w) {
     for (const r of w.restrictions) {
@@ -75,7 +75,7 @@ export function commanderRestriction(state: CampaignState, use: 'companion' | 'd
     }
   }
   for (const read of readers) {
-    const why = read(state, use, activityId, toUnitId, locationId);
+    const why = read(state, reg, use, activityId, toUnitId, locationId);
     if (why !== null) return why;
   }
   return null;

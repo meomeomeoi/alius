@@ -319,40 +319,40 @@ describe('tonightItems: a note under the door (P10b)', () => {
 
 describe('endSlotBlock', () => {
   it('is null on a quiet board', () => {
-    expect(endSlotBlock(campaign(reg, 4))).toBeNull();
+    expect(endSlotBlock(campaign(reg, 4), reg)).toBeNull();
   });
 
   it('an open scene blocks', () => {
     const s = campaign(reg, 4);
     s.scene = { id: 's', day: 1, slot: 'morning', locationId: 'mess_hall', participants: [], mode: 'private', origin: 'activity', consumesSlot: true, startIndex: 0, exchanges: 0 };
-    expect(endSlotBlock(s)).toBe('A conversation is open.');
+    expect(endSlotBlock(s, reg)).toBe('A conversation is open.');
   });
 
   it('a pending talk blocks', () => {
     const s = campaign(reg, 4);
     s.calendar.pendingScene = { unitId: s.squad[0].id, day: s.day, slot: s.slot };
-    expect(endSlotBlock(s)).toBe('A talk is waiting for its scene.');
+    expect(endSlotBlock(s, reg)).toBe('A talk is waiting for its scene.');
   });
 
   it('an open expedition blocks', () => {
     const s = campaign(reg, 4);
     s.expedition = { party: [] } as unknown as CampaignState['expedition'];
-    expect(endSlotBlock(s)).toBe('The squad is out.');
+    expect(endSlotBlock(s, reg)).toBe('The squad is out.');
   });
 
   it('a presented dilemma blocks, a merely requested one does not', () => {
     const s = campaign(reg, 4);
     s.dilemmas = { seq: 1, open: { id: 'd', templateId: 't', scale: 'minor', context: {}, day: 1, status: 'requested', attempts: 0, units: [], beatId: 'b' } as unknown as NonNullable<CampaignState['dilemmas']>['open'] };
-    expect(endSlotBlock(s)).toBeNull();
+    expect(endSlotBlock(s, reg)).toBeNull();
     s.dilemmas.open!.status = 'presented';
-    expect(endSlotBlock(s)).toBe('A decision is waiting.');
+    expect(endSlotBlock(s, reg)).toBe('A decision is waiting.');
   });
 
   it('a night visitor blocks', () => {
     const s = campaign(reg, 4);
     s.slot = 'night';
     s.calendar.nightEvent = night(s.squad[0].id, 'visit');
-    expect(endSlotBlock(s)).toBe('Someone is at the door.');
+    expect(endSlotBlock(s, reg)).toBe('Someone is at the door.');
   });
 });
 

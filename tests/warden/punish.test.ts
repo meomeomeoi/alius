@@ -77,11 +77,11 @@ describe('effects', () => {
     const { d, events } = apply(s, 'privilege_revoked');
     expect(types(events)).toContain('commander_restricted');
     expect(wardenOf(d)!.restrictions.map((r) => r.what).sort()).toEqual(['no_dms', 'no_leave']);
-    expect(commanderRestriction(d, 'companion', 'rest')).toMatch(/revoked the commander's leave until day/);
+    expect(commanderRestriction(d, reg, 'companion', 'rest')).toMatch(/revoked the commander's leave until day/);
     expect(checkActivity(d, reg, { activityId: 'rest', companionId: ID.ann })).toMatch(/leave/);
     expect(checkActivity(d, reg, { activityId: 'talk', companionId: ID.ann })).toBeNull();
     expect(checkActivity(d, reg, { activityId: 'medbay', companionId: ID.ann })).toBeNull();
-    expect(commanderRestriction(d, 'dm')).toMatch(/revoked the commander's messages until day/);
+    expect(commanderRestriction(d, reg, 'dm')).toMatch(/revoked the commander's messages until day/);
     const sent = dispatch(d, { type: 'dm/send', payload: { unitId: ID.ann, text: 'hello' } }, reg);
     expect(err(sent.events)).toBeDefined();
     expect(sent.state).toBe(d);
@@ -93,8 +93,8 @@ describe('effects', () => {
     const until = wardenOf(d)!.restrictions[0].untilDay;
     expect(until).toBe(s.day + 1);
     d.day = until + 1;
-    expect(commanderRestriction(d, 'dm')).toBeNull();
-    expect(commanderRestriction({ ...d, day: until }, 'dm')).not.toBeNull();
+    expect(commanderRestriction(d, reg, 'dm')).toBeNull();
+    expect(commanderRestriction({ ...d, day: until }, reg, 'dm')).not.toBeNull();
   });
 
   it('confinement loses 1–2 slots but never past the evening', () => {
@@ -262,8 +262,8 @@ describe('no mode', () => {
     const s = swap();
     applyCommanderPunishment(s, ctxOf(s), 'privilege_revoked');
     delete s.leashswap;
-    expect(commanderRestriction(s, 'dm')).toBeNull();
-    expect(commanderRestriction(s, 'companion', 'rest')).toBeNull();
+    expect(commanderRestriction(s, reg, 'dm')).toBeNull();
+    expect(commanderRestriction(s, reg, 'companion', 'rest')).toBeNull();
   });
 });
 

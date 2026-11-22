@@ -90,7 +90,7 @@ export function pastimeProblem(
     if (pastimeLocation(state, reg, pastime, unitId) === null) return `Nowhere is open for ${pastime.label} now.`;
     const activity = pastimeActivity(reg);
     if (!activity) return 'This pack has no time together.';
-    const held = restrictionReason(state, unitId, 'companion', String(activity.id));
+    const held = restrictionReason(state, reg, unitId, 'companion', String(activity.id));
     if (held) return held;
     const blocked = checkActivity(state, reg, { activityId: String(activity.id), companionId: unitId });
     if (blocked) return blocked;

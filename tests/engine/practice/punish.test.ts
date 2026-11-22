@@ -208,6 +208,7 @@ describe('public execution', () => {
     expect(px(answer(closed, 'accept').state).audienceIds).toBeUndefined();
 
     const on = withPun('role', 'on_the_record', 3, { public: true });
+    on.scene = { id: 's1', day: 20, slot: on.slot, locationId: 'mess_hall', participants: [ANN, BEA, CAT], mode: 'group', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
     const r = answer(on, 'accept');
     expect(errors(r.events)).toEqual([]);
     expect(ofType(r.events, 'punishment_answered')).toMatchObject([{ public: true, present: [ANN, BEA, CAT] }]);
@@ -223,10 +224,28 @@ describe('public execution', () => {
     expect(quiet.filter((f) => f.tags.includes('punishment_public'))).toEqual([]);
   });
 
-  it('the units in the open scene are the audience first, at most two', () => {
+  it('the audience is the other units of the open scene, at most two: nobody who is merely at base (I4)', () => {
     const s = withPun('role', 'on_the_record', 3, { public: true });
     s.scene = { id: 's1', day: 20, slot: s.slot, locationId: 'quarters_commander', participants: [ANN, CAT], mode: 'group', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
-    expect(px(answer(s, 'accept').state).audienceIds).toEqual([CAT, BEA]);
+    const r = answer(s, 'accept');
+    expect(px(r.state).audienceIds).toEqual([CAT]);
+    expect(ofType(r.events, 'punishment_answered')).toMatchObject([{ public: true, present: [ANN, CAT] }]);
+    expect(Object.keys(r.state.dynamic!.knowledge[BEA] ?? {})).not.toContain(ANN); // Bea was not there and saw nothing
+    expect(record(structuredClone(r.state), r.events as never).filter((f) => f.tags.includes('punishment_public'))[0].knownBy).not.toContain(BEA);
+  });
+
+  it('in a DM, or with no scene, nobody sees it: the punishment is private, whatever the entry says', () => {
+    const s = withPun('role', 'on_the_record', 3, { public: true });
+    expect(s.scene).toBeUndefined();
+    const r = answer(s, 'accept');
+    expect(px(r.state).audienceIds).toBeUndefined();
+    expect(ofType(r.events, 'punishment_answered')[0]).not.toHaveProperty('public');
+    expect(Object.keys(r.state.dynamic?.knowledge[BEA] ?? {})).not.toContain(ANN);
+    expect(record(structuredClone(r.state), r.events as never).filter((f) => f.tags.includes('punishment_public'))).toEqual([]);
+    // a scene with her alone is no audience either
+    const alone = withPun('role', 'on_the_record', 3, { public: true });
+    alone.scene = { id: 's1', day: 20, slot: alone.slot, locationId: 'quarters_commander', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
+    expect(px(answer(alone, 'accept').state).audienceIds).toBeUndefined();
   });
 });
 

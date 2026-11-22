@@ -3,6 +3,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/comms';
 import '../../src/engine/actions/practice';
+import '../../src/engine/actions/power';
+import { withOptions } from '../helpers/power';
 import { requestPractice } from '../../src/engine/practice/issue';
 import { blankPractices, type OpenPunishment } from '../../src/engine/practice/state';
 import { dynamicOf } from '../../src/engine/dynamic/state';
@@ -14,7 +16,7 @@ import { generationSite } from '../../src/llm/sites';
 import { createPractice, siteOf } from '../../src/practice/controller';
 import { errors, loadCore, run } from '../helpers/world';
 import { worldHarness } from '../helpers/worldApp';
-import { ANN, withService, world } from '../engine/practice/world';
+import { ANN, BEA, withService, world } from '../engine/practice/world';
 
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); });
@@ -309,5 +311,38 @@ describe('her discipline (P16)', () => {
     expect(await ctl.answerPunishment('pp1', 'negotiate')).toBe(true);
     expect(startScene).toHaveBeenCalledWith({ locationId: 'quarters_unit', participants: [ANN], origin: 'event' });
     expect(h.state().practices!.punishments[0].status).toBe('negotiating');
+  });
+});
+
+describe('her order about a soldier and the squad vote (I3)', () => {
+  const ordered = (): CampaignState => {
+    const s = withOptions(withService(world(reg, 'rule')), { voting: 'on' });
+    s.practices = {
+      ...blankPractices(), seq: 3,
+      punishments: [{ id: 'pp1', holderId: ANN, entryId: 'verbal', severity: 1, offence: { kind: 'refusal', stakes: 'minor', day: 20 }, text: 't', summary: 's', status: 'offered', forUnitId: BEA, day: 20 }],
+    };
+    return s;
+  };
+
+  it('DO IT goes through the squad vote; the controller does not close the order itself', async () => {
+    const requestVote = vi.fn(async () => 'ran' as const);
+    const h = worldHarness(reg, ordered(), { autoRetry: 0 });
+    const refreshContext = vi.fn();
+    const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext, requestVote });
+    expect(ctl.takeInstead('pp1', 'do_it')).toBe(false);
+    expect(requestVote).toHaveBeenCalledWith({ type: 'practice/take_instead', payload: { punishmentId: 'pp1', answer: 'do_it' } });
+    expect(h.toasts).toEqual([]);
+    expect(h.state().practices!.punishments[0].status).toBe('offered'); // the vote decides
+    await vi.waitFor(() => expect(refreshContext).toHaveBeenCalled());
+    // the other answers are no vote
+    expect(ctl.takeInstead('pp1', 'refuse')).toBe(true);
+    expect(requestVote).toHaveBeenCalledTimes(1);
+  });
+
+  it('without a way to vote the refusal is toasted', () => {
+    const h = worldHarness(reg, ordered(), { autoRetry: 0 });
+    const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn() });
+    expect(ctl.takeInstead('pp1', 'do_it')).toBe(false);
+    expect(h.toasts.at(-1)).toMatchObject({ kind: 'error' });
   });
 });

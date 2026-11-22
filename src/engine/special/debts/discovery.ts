@@ -101,7 +101,7 @@ export function rollUnitDiscovery(draft: CampaignState, ctx: EngineCtx): EngineE
   if (!d) return [];
   const reg = ctx.registries;
   for (const u of draft.squad) {
-    if (u.kind !== 'named' || !isLiving(u) || draft.relations[u.id]?.flags.includes('knows_debts') || restrictionReason(draft, u.id, 'scene') !== null) continue;
+    if (u.kind !== 'named' || !isLiving(u) || draft.relations[u.id]?.flags.includes('knows_debts') || restrictionReason(draft, reg, u.id, 'scene') !== null) continue;
     const aware = u.defects.some((x) => reg.defects.get(x.id)?.nightAware === true);
     if (!aware && u.stress < T().watcherStress) continue;
     if (!ctx.rng.chance(T().watcherChance * (1 + 0.5 * (aware ? 1 : 0)))) continue;

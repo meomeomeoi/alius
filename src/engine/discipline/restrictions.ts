@@ -1,3 +1,4 @@
+import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import type { CampaignState, Restriction, Slot } from '../state/types';
 import { disciplineOf } from './record';
@@ -26,7 +27,7 @@ function reasonOf(state: CampaignState, r: Restriction, use: RestrictionUse, act
 }
 
 /** What a layer above the discipline may add to what stands in the way of a unit (P16: a holder's cold shoulder): the reason, or null. Asked after the discipline's own restrictions. */
-export type RestrictionReader = (state: CampaignState, unitId: string, use: RestrictionUse) => string | null;
+export type RestrictionReader = (state: CampaignState, reg: Registries, unitId: string, use: RestrictionUse) => string | null;
 const readers: RestrictionReader[] = [];
 
 /** Registers a reader of the restrictions of a unit (asked after the discipline's own). Registering the same function twice is a no-op. */
@@ -35,14 +36,14 @@ export function registerRestrictionReader(fn: RestrictionReader): void {
 }
 
 /** Why a unit cannot be asked to do this right now because of the commander's discipline (or of a registered reader: her own cold shoulder), or `null`. Reads nothing in a save without it. */
-export function restrictionReason(state: CampaignState, unitId: string, use: RestrictionUse, activityId?: string): string | null {
+export function restrictionReason(state: CampaignState, reg: Registries, unitId: string, use: RestrictionUse, activityId?: string): string | null {
   for (const r of state.discipline?.restrictions ?? []) {
     if (r.unitId !== unitId) continue;
     const why = reasonOf(state, r, use, activityId);
     if (why) return why;
   }
   for (const read of readers) {
-    const why = read(state, unitId, use);
+    const why = read(state, reg, unitId, use);
     if (why !== null) return why;
   }
   return null;

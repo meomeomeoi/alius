@@ -102,7 +102,7 @@ export function dispatch(
     return { state, events: [{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }] };
   }
   // P9c: a slot she booked and can keep is hers: go to her or cancel the booking
-  const booked = bookingGuard(state, action);
+  const booked = bookingGuard(state, registries, action);
   if (booked) return { state, events: [{ type: 'error', ...booked }] };
   // P9b: a decision the squad votes on does not run without a passed or overruled vote for exactly this decision
   let voteId: string | undefined;

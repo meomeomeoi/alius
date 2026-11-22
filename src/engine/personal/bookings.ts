@@ -60,7 +60,7 @@ export function consentProblem(state: CampaignState, reg: Registries, booking: {
  */
 export function bookingProblem(draft: CampaignState, reg: Registries, unitId: string): string | null {
   if (pressureGate(draft, reg, unitId, 'booking') !== null) return 'no device access';
-  if (restrictionReason(draft, unitId, 'scene') !== null || unitObeys(draft, unitId)) return 'she cannot be met';
+  if (restrictionReason(draft, reg, unitId, 'scene') !== null || unitObeys(draft, unitId)) return 'she cannot be met';
   if ((draft.personal?.noBookUntil?.[unitId] ?? 0) > draft.day) return 'no booking until later';
   if (bookingsOf(draft).some((b) => b.unitId === unitId && b.status === 'booked')) return 'a booking is open';
   const consent = consentProblem(draft, reg, { unitId });
@@ -79,26 +79,26 @@ export function noteConsentRefusal(draft: CampaignState, reg: Registries, unitId
 }
 
 /** The first booking due this slot (today, this slot, `booked`); one she can still keep comes first. `null` when none. */
-export function dueBooking(state: CampaignState): Booking | null {
+export function dueBooking(state: CampaignState, reg: Registries): Booking | null {
   const due = bookingsOf(state).filter((b) => b.status === 'booked' && b.day === state.day && b.slot === state.slot);
-  return due.find((b) => bookingPlayable(state, b)) ?? due[0] ?? null;
+  return due.find((b) => bookingPlayable(state, reg, b)) ?? due[0] ?? null;
 }
 
 /** Can she be met for it now: a named unit in service, not restricted for scenes, not injured and not on a run. */
-export function bookingPlayable(state: CampaignState, booking: Booking): boolean {
+export function bookingPlayable(state: CampaignState, reg: Registries, booking: Booking): boolean {
   const unit = state.squad.find((u) => u.id === booking.unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit)) return false;
   if (unit.status === 'injured' || (unit.injuryDays ?? 0) > 0) return false;
   if (state.expedition?.party.includes(unit.id)) return false;
-  return restrictionReason(state, unit.id, 'scene') === null;
+  return restrictionReason(state, reg, unit.id, 'scene') === null;
 }
 
 /** The refusal of `dispatch` while a playable booking is due: `activity/` (and P14c's `life/time_together`, which spends a slot through the activity), `expedition/start`, END SLOT, a scene without her and (P13) an intrigue slot action. */
-export function bookingGuard(state: CampaignState, action: { type: string; payload?: unknown }): { code: 'booking_due'; message: string } | null {
+export function bookingGuard(state: CampaignState, reg: Registries, action: { type: string; payload?: unknown }): { code: 'booking_due'; message: string } | null {
   const blocked = action.type.startsWith('activity/') || action.type === 'life/time_together' || action.type === 'expedition/start' || action.type === 'calendar/consume_slot' || action.type === 'scene/start' || action.type === 'intrigue/act';
   if (!blocked || state.personal?.bookings === undefined) return null;
-  const due = dueBooking(state);
-  if (!due || !bookingPlayable(state, due)) return null;
+  const due = dueBooking(state, reg);
+  if (!due || !bookingPlayable(state, reg, due)) return null;
   if (action.type === 'scene/start') {
     const ids = (action.payload as { participants?: unknown } | null | undefined)?.participants;
     if (Array.isArray(ids) && ids.includes(due.unitId)) return null;
@@ -151,7 +151,7 @@ export function rollBookings(draft: CampaignState, ctx: EngineCtx): EngineEvent[
   for (const u of draft.squad) {
     if (u.kind !== 'named') continue;
     if (pressureGate(draft, reg, u.id, 'booking') !== null) continue;
-    if (restrictionReason(draft, u.id, 'scene') !== null || unitObeys(draft, u.id)) continue;
+    if (restrictionReason(draft, reg, u.id, 'scene') !== null || unitObeys(draft, u.id)) continue;
     if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
     const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
     if (mine.some((b) => b.status === 'booked')) continue;
@@ -273,7 +273,7 @@ export function markPlayed(draft: CampaignState, reg: Registries, booking: Booki
  */
 export function playBooking(draft: CampaignState, ctx: EngineCtx, id?: string): { events: EngineEvent[]; scene: { locationId: string; participants: string[]; origin: 'event' } } {
   const reg = ctx.registries;
-  let target = id !== undefined ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft) ?? undefined;
+  let target = id !== undefined ? bookingsOf(draft).find((b) => b.id === id) : dueBooking(draft, reg) ?? undefined;
   if (!target || target.status !== 'booked' || target.day !== draft.day || target.slot !== draft.slot) throw new Error('That booking is not due now.');
   const events: EngineEvent[] = [];
   if (target.conflict) {
@@ -282,7 +282,7 @@ export function playBooking(draft: CampaignState, ctx: EngineCtx, id?: string): 
     events.push(...resolveConflict(draft, ctx, { day: draft.day, slot: draft.slot, settle: true }));
     target = winner;
   }
-  if (!bookingPlayable(draft, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
+  if (!bookingPlayable(draft, reg, target)) throw new Error(`${unitName(draft, target.unitId)} cannot be met for it now.`);
   const kind = kindOf(reg, target.kindId);
   events.push(...markPlayed(draft, reg, target));
   const scene = { locationId: String(kind?.locationId ?? 'quarters_unit'), participants: [target.unitId], origin: 'event' as const };

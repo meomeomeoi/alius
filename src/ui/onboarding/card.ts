@@ -62,7 +62,7 @@ export function renderOnboardingCard(host: HTMLElement, ctx: OnboardingCardCtx):
     const spoken = new Set(state.onboarding?.spoken ?? []);
     body.append(h('ul', { class: 'alius-onboarding-units' }, ...livingNamed(state).map((u) => {
       const done = spoken.has(u.id);
-      const held = restrictionReason(state, u.id, 'scene');
+      const held = restrictionReason(state, reg, u.id, 'scene');
       return h('li', { class: 'alius-onboarding-unit', 'data-unit': u.id },
         h('span', { class: 'alius-onboarding-name' }, `${done ? '✓ ' : ''}${u.displayName}`),
         done ? null : button('[ TALK ]', 'talk', address, () => void controller.talkFirstWords(u.id), held ?? (scene !== undefined)),

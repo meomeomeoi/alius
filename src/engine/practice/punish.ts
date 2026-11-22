@@ -57,15 +57,15 @@ export function pendingPunishment(draft: CampaignState, ctx: Pick<EngineCtx, 're
 }
 
 /**
- * Who sees a public punishment carried out (R8): none unless the entry is public, `public_humiliation` is on and her audience is not `private_only`; then up to two others, the ones in
- * the open scene first, then whoever else is at base, in squad order. (The audience pick of the demonstrations, R9, replaces this when they are built.)
+ * Who sees a public punishment carried out (R8): none unless the entry is public, `public_humiliation` is on and her audience is not `private_only`; then the other units of the open
+ * scene, at most two, in the scene's order. Nobody who is merely at base: someone who was not there saw nothing (and in a DM, or a scene with her alone, no one did, so the punishment is
+ * private). (The audience pick of the demonstrations, R9, and the group scene of a public execution replace this when they are built.)
  */
 function publicAudience(draft: CampaignState, reg: Registries, p: OpenPunishment): string[] {
   if (p.public !== true || !(draft.content?.enabled ?? []).includes('public_humiliation')) return [];
   if (practiceOf(draft, reg, p.holderId)?.audience === 'private_only') return [];
   const units = eligibleUnits(draft, p.holderId);
-  const inScene = (draft.scene?.participants ?? []).filter((id) => units.includes(id));
-  return [...new Set([...inScene, ...atBase(draft, p.holderId)])].slice(0, TUNING.practice.punish.publicAudienceMax);
+  return (draft.scene?.participants ?? []).filter((id) => units.includes(id)).slice(0, TUNING.practice.punish.publicAudienceMax);
 }
 
 /** The strongest endurance level the commander has in any contact physics (her trained route, R8). */

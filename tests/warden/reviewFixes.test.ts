@@ -91,14 +91,14 @@ describe('1: a slot action in the evening keeps its work (the day end rebuilds t
 describe('6: slot actions meet the refusals an activity meets', () => {
   it('not at night, not with an open conversation, not while a decision waits, not on a due booking', () => {
     const night = swap(ready); night.slot = 'night';
-    expect(slotActionBusy(night)).toBe('Not at night.');
+    expect(slotActionBusy(night, reg)).toBe('Not at night.');
     expect(hackProblem(night, reg, ID.cat)).toBe('Not at night.');
     const talk = swap(ready); talk.calendar.pendingScene = { unitId: ID.ann } as never;
-    expect(slotActionBusy(talk)).toMatch(/conversation/);
+    expect(slotActionBusy(talk, reg)).toMatch(/conversation/);
     const decision = swap((x) => { ready(x); x.dilemmas = { seq: 1, open: { id: 'dl1', templateId: 't', scale: 'major', context: 'base', day: 1, status: 'presented', attempts: 0, units: [], beatId: 'b', title: 'T', setup: 'S', options: [] } }; });
-    expect(slotActionBusy(decision)).toMatch(/decision is waiting/);
+    expect(slotActionBusy(decision, reg)).toMatch(/decision is waiting/);
     expect(hackProblem(decision, reg, ID.cat)).toMatch(/decision is waiting/);
-    expect(slotActionBusy(swap(ready))).toBeNull();
+    expect(slotActionBusy(swap(ready), reg)).toBeNull();
     const r = dispatch(night, { type: 'intrigue/act', payload: { action: 'dig', unitId: ID.cat } }, reg);
     expect(r.events.find((e) => e.type === 'error')).toBeDefined();
     expect(r.state).toBe(night);

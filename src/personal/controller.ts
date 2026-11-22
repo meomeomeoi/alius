@@ -137,8 +137,8 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
     const s = state();
     if (!s || opening || !deps.startScene) return false;
     if (s.slot === 'night' || s.scene || s.combat || s.expedition || s.calendar.pendingScene || s.calendar.nightEvent) return false;
-    const due = dueBooking(s);
-    if (!due || !bookingPlayable(s, due)) return false;
+    const due = dueBooking(s, reg());
+    if (!due || !bookingPlayable(s, reg(), due)) return false;
     opening = true;
     try {
       const events = deps.app.dispatch({ type: 'booking/play', payload: {} }, { expectChatId: chatId() });

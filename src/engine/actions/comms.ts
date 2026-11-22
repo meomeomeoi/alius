@@ -67,11 +67,11 @@ function textOf(v: unknown): string {
   return t;
 }
 
-registerAction('dm/send', (draft, payload) => {
+registerAction('dm/send', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('dm/send needs { unitId, text }');
   const unit = namedUnit(draft, payload.unitId);
   const text = textOf(payload.text);
-  const revoked = commanderRestriction(draft, 'dm', undefined, unit.id); // P13: the warden revoked the commander's messages; P16: a holder barred them, or her cold shoulder
+  const revoked = commanderRestriction(draft, ctx.registries, 'dm', undefined, unit.id); // P13: the warden revoked the commander's messages; P16: a holder barred them, or her cold shoulder
   if (revoked) throw new Error(revoked);
   // P9c: a DM the commander kept after a level-4 edit says who edited it (the edit is used once)
   const editedBy = payload.interceptId === undefined ? undefined : takeKeptEdit(draft, String(payload.interceptId), unit.id);

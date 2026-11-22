@@ -3,6 +3,7 @@ import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import '../../../src/engine/actions/discipline';
 import '../../../src/engine/actions/personal';
+import '../../../src/engine/actions/power';
 import '../../../src/engine/actions/practice';
 import { deedsOf } from '../../../src/engine/discipline/deeds';
 import { recordOf } from '../../../src/engine/discipline/record';
@@ -14,6 +15,7 @@ import { orderPunishment } from '../../../src/engine/practice/punish';
 import { blankPractices, type OpenPunishment } from '../../../src/engine/practice/state';
 import { Rng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
+import { withOptions } from '../../helpers/power';
 import { errors, loadCore, ofType, run } from '../../helpers/world';
 import { ANN, BEA, CAT, unitOf, withService, world } from './world';
 
@@ -93,6 +95,47 @@ describe('DO IT', () => {
     expect(errors(undone.events)).toEqual([]);
     expect(ofType(undone.events, 'discipline_undone')).toHaveLength(1);
     expect(undone.state.discipline!.defiance).toHaveLength(1); // P9 puts the defiance back
+  });
+});
+
+describe('DO IT and the squad vote (I3)', () => {
+  const voting = (): CampaignState => withOptions(order(ordering()).state, { voting: 'on' });
+
+  it('with voting on it is refused for a vote first: nothing is imposed and the order stays open', () => {
+    const s = voting();
+    const r = take(s, 'do_it');
+    expect(errors(r.events)).toMatchObject([{ code: 'vote_needed', kind: 'punish', subject: BEA }]);
+    expect(r.state).toEqual(s);
+    expect(ofType(r.events, 'discipline_applied')).toEqual([]);
+  });
+
+  it('a passed vote lets it run once, and the vote is spent', () => {
+    const s = voting();
+    const opened = run(s, reg, { type: 'vote/open', payload: { kind: 'punish', subject: BEA } });
+    expect(errors(opened.events)).toEqual([]);
+    const state = opened.state;
+    state.power!.votes.open!.status = 'passed';
+    const id = state.power!.votes.open!.id;
+    const r = run(state, reg, { type: 'practice/take_instead', payload: { punishmentId: asked(state)[0].id, answer: 'do_it', voteId: id } });
+    expect(errors(r.events)).toEqual([]);
+    expect(ofType(r.events, 'discipline_applied')).toMatchObject([{ unitId: BEA }]);
+    expect(r.state.practices!.punishments[0].status).toBe('done');
+    expect(r.state.power!.votes.open).toBeUndefined();
+  });
+
+  it('a vote for another soldier does not count', () => {
+    const s = voting();
+    const opened = run(s, reg, { type: 'vote/open', payload: { kind: 'punish', subject: CAT } }).state;
+    opened.power!.votes.open!.status = 'passed';
+    const r = run(opened, reg, { type: 'practice/take_instead', payload: { punishmentId: asked(opened)[0].id, answer: 'do_it', voteId: opened.power!.votes.open!.id } });
+    expect(errors(r.events)).toMatchObject([{ code: 'vote_needed' }]);
+  });
+
+  it('TAKE IT INSTEAD and REFUSE are not votes, and voting off changes nothing', () => {
+    const s = voting();
+    expect(errors(take(s, 'take_it').events)).toEqual([]);
+    expect(errors(take(s, 'refuse').events)).toEqual([]);
+    expect(errors(take(withOptions(structuredClone(s), { voting: 'off' }), 'do_it').events)).toEqual([]);
   });
 });
 

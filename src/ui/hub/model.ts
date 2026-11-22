@@ -172,13 +172,13 @@ function cutTonight(items: TonightItem[], max: number): TonightItem[] {
 }
 
 /** Why `END {SLOT}` cannot be pressed right now, or `null`. Read-only campaigns are the caller's business. */
-export function endSlotBlock(state: CampaignState): string | null {
+export function endSlotBlock(state: CampaignState, reg: Registries): string | null {
   if (state.scene) return 'A conversation is open.';
   if (state.calendar.pendingScene) return 'A talk is waiting for its scene.';
   if (state.expedition) return 'The squad is out.';
   if (state.dilemmas?.open?.status === 'presented') return 'A decision is waiting.';
   if (state.calendar.nightEvent) return 'Someone is at the door.';
-  return bookingGuard(state, { type: 'calendar/consume_slot' })?.message ?? null; // P9c: a slot she booked and can keep
+  return bookingGuard(state, reg, { type: 'calendar/consume_slot' })?.message ?? null; // P9c: a slot she booked and can keep
 }
 
 /** The newest Leash request of today or yesterday, for the hub's oversight card. */

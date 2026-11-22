@@ -143,7 +143,7 @@ export function checkExpedition(state: CampaignState, reg: Registries, p: StartE
     if (!isLiving(u) || u.status !== 'active') return `${u.displayName} is not available (${u.status}).`;
     if (u.breakdown) return `${u.displayName} is in a breakdown.`;
     if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
-    const held = restrictionReason(state, id, 'expedition'); // P9: the brig, a bench, extra duty
+    const held = restrictionReason(state, reg, id, 'expedition'); // P9: the brig, a bench, extra duty
     if (held) return held;
   }
   const formation = formationProblem(ids, p.formation);

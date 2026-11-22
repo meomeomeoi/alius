@@ -89,10 +89,10 @@ registerAction('scene/start', (draft, payload, ctx) => {
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === 'grunt') throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
     // P9: the brig and extra duty. A night knock is an event that happens to the commander, so it is not held back.
-    const held = origin === 'night' ? null : restrictionReason(draft, id, 'scene');
+    const held = origin === 'night' ? null : restrictionReason(draft, ctx.registries, id, 'scene');
     if (held) throw new Error(held);
   }
-  const barred = origin === 'night' ? null : commanderRestriction(draft, 'scene', undefined, undefined, loc.id); // P16: a holder barred the room (a night knock is not held back)
+  const barred = origin === 'night' ? null : commanderRestriction(draft, ctx.registries, 'scene', undefined, undefined, loc.id); // P16: a holder barred the room (a night knock is not held back)
   if (barred) throw new Error(barred);
   const participants = ids as string[];
   const pending = draft.calendar.pendingScene;

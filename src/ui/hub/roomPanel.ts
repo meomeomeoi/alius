@@ -25,9 +25,9 @@ export function talkActivity(reg: Registries): Entry | undefined {
 
 /** Why she cannot be talked to in this room right now, or `null`. The first reason that applies wins. */
 export function talkBlock(state: CampaignState, reg: Registries, unit: Unit, room: Entry): string | null {
-  const open = endSlotBlock(state);
+  const open = endSlotBlock(state, reg);
   if (open) return open;
-  const restricted = restrictionReason(state, unit.id, 'scene');
+  const restricted = restrictionReason(state, reg, unit.id, 'scene');
   if (restricted) return restricted;
   const slots = reg.locations.get(room.sceneLocationId as string)?.slots as string[] | undefined;
   if (slots && !slots.includes(state.slot)) return `Closed this ${state.slot}.`;
@@ -80,7 +80,7 @@ export function renderRoomPanel(
       : null;
     // P14c: a quiet hour with her (the card of that activity opens the pastime picker) and the line under her name
     const quiet = pastimeActivity(reg);
-    const hasQuiet = !opts.readOnly && unit.kind === 'named' && quiet !== undefined && ctx.ops.onTimeTogether !== undefined && lifeMode(state) !== 'off' && endSlotBlock(state) === null;
+    const hasQuiet = !opts.readOnly && unit.kind === 'named' && quiet !== undefined && ctx.ops.onTimeTogether !== undefined && lifeMode(state) !== 'off' && endSlotBlock(state, ctx.registries) === null;
     const quietMenu = hasQuiet ? quietHour(state, ctx, unit, quiet!) : null;
     const row = h(
       'li', { class: 'alius-room-person', 'data-unit': unit.id },

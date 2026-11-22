@@ -8,8 +8,8 @@ import { scapegoatOptionId } from '../power/scapegoat';
 import { TUNING } from '../tuning';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
-import { punishmentFor } from '../discipline/perception';
 import { registerAction, registerVoteGate } from '../dispatch';
+import { punishVoteDecision } from '../power/punishGate';
 import { rationsVotable, RATION_MODES, setRations } from '../power/rations';
 import { dropVote, openVote, overruleVote, type OverruleMeans } from '../power/votes';
 import { powerDayStep } from '../power/dayStep';
@@ -61,18 +61,9 @@ registerVoteGate('expedition/start', (state, payload, reg) => {
 
 registerVoteGate('base/upgrade', (_state, payload) => (isObj(payload) && typeof payload.facilityId === 'string' ? { kind: 'upgrade', subject: payload.facilityId } : null));
 
-/** The weight of the lightest punishment that benches her: a measure at most this heavy goes to a vote, a heavier one does not. Read from the side effects. */
-function benchSeverity(reg: Parameters<typeof punishmentFor>[0]): number | null {
-  const heavy = [...reg.punishments.values()].filter((p) => (p.sideEffects as Array<{ type: string }> | undefined)?.some((e) => e.type === 'bench'));
-  return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
-}
-
 registerVoteGate('discipline/punish', (_state, payload, reg) => {
   if (!isObj(payload) || typeof payload.unitId !== 'string' || typeof payload.measure !== 'string') return null;
-  const pun = punishmentFor(reg, payload.measure);
-  const limit = benchSeverity(reg);
-  if (!pun || limit === null || Number(pun.severity) > limit) return null;
-  return { kind: 'punish', subject: payload.unitId };
+  return punishVoteDecision(reg, payload.unitId, payload.measure);
 });
 
 /** Rations are voted on only while a shortage is on or coming; an unknown mode is left to the action to refuse. */

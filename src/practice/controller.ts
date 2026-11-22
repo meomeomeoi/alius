@@ -38,7 +38,10 @@ export interface PracticeController {
    * Toasts the reason and answers false when the engine refuses.
    */
   answerPunishment(punishmentId: string, answer: 'accept' | 'negotiate' | 'refuse'): Promise<boolean>;
-  /** DO IT, TAKE IT INSTEAD or REFUSE on her order to punish a soldier (`practice/take_instead`). Toasts the reason and answers false when the engine refuses. */
+  /**
+   * DO IT, TAKE IT INSTEAD or REFUSE on her order to punish a soldier (`practice/take_instead`). Toasts the reason and answers false when the engine refuses. DO IT on a measure the squad votes on
+   * answers false at once and goes through the squad vote (`requestVote`); the order closes when the vote carries it.
+   */
   takeInstead(punishmentId: string, answer: 'do_it' | 'take_it' | 'refuse'): boolean;
   /** UNDO of an answer to her discipline (`practice/undo`). Toasts the reason and answers false when the engine refuses. */
   undoPunishment(punishmentId: string): boolean;
@@ -244,7 +247,14 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       return true;
     },
     takeInstead(punishmentId, answer) {
-      const done = ok(deps.app.dispatch({ type: 'practice/take_instead', payload: { punishmentId, answer } }, { expectChatId: chatId() }));
+      const action = { type: 'practice/take_instead', payload: { punishmentId, answer } };
+      const events = deps.app.dispatch(action, { expectChatId: chatId() });
+      // P9b: DO IT imposes a measure the squad may vote on: the vote runs first, and the order is closed by the dispatch that carries it
+      if (events.some((e) => e.type === 'error' && e.code === 'vote_needed') && deps.requestVote !== undefined) {
+        void deps.requestVote(action).then((r) => { if (r === 'ran') deps.refreshContext(); });
+        return false;
+      }
+      const done = ok(events);
       if (done) deps.refreshContext();
       return done;
     },

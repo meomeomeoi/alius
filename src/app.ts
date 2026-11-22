@@ -641,7 +641,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
-  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -834,7 +834,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const chatId = st.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
-    const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated' && restrictionReason(s, u.id, 'scene') === null);
+    const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated' && restrictionReason(s, registries, u.id, 'scene') === null);
     // the squad lingering over the meal is the active roster; reserve and injured units are elsewhere
     const ids = [...new Set(named(s.roster.activeIds).map((u) => u!.id))].slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
@@ -1050,7 +1050,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (!resolved || !s || s.scene || s.combat || s.expedition) return;
     const ids = (resolved.affected as string[]).filter((id) => {
       const u = s.squad.find((x) => x.id === id);
-      return u !== undefined && u.kind === 'named' && isLiving(u) && restrictionReason(s, id, 'scene') === null; // not the one in the brig
+      return u !== undefined && u.kind === 'named' && isLiving(u) && restrictionReason(s, registries, id, 'scene') === null; // not the one in the brig
     }).slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const names = ids.map((id) => s.squad.find((u) => u.id === id)!.displayName).join(', ');
@@ -2613,7 +2613,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const s = state;
       const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === 'required' && a.pastime !== true);
       if (!s || load.kind !== 'ok' || !talk || !s.squad.some((u) => u.id === unitId)) return false;
-      const why = endSlotBlock(s) ?? restrictionReason(s, unitId, 'scene');
+      const why = endSlotBlock(s, registries) ?? restrictionReason(s, registries, unitId, 'scene');
       if (why) {
         toast('warn', why);
         return false;
@@ -2632,7 +2632,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         const chatId = st.getActiveChat()?.chatId;
         const s = state;
         if (!s || load.kind !== 'ok') return false;
-        const why = endSlotBlock(s) ?? pastimeProblem(s, registries, unitId, pastimeId);
+        const why = endSlotBlock(s, registries) ?? pastimeProblem(s, registries, unitId, pastimeId);
         if (why) {
           toast('warn', why);
           return false;
@@ -2654,7 +2654,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const chatId = st.getActiveChat()?.chatId;
       const s = state;
       if (!s || load.kind !== 'ok') return;
-      const why = endSlotBlock(s);
+      const why = endSlotBlock(s, registries);
       if (why) {
         toast('warn', why);
         return;

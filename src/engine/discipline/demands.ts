@@ -117,7 +117,7 @@ export function openDemand(
   const reg = ctx.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit) || unitObeys(draft, unitId) || hasOpen(draft, unitId) || (opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek)) return null;
-  if (restrictionReason(draft, unitId, 'scene') !== null) return null; // in the brig or on duty she cannot be talked to: its [TALK] would always fail
+  if (restrictionReason(draft, reg, unitId, 'scene') !== null) return null; // in the brig or on duty she cannot be talked to: its [TALK] would always fail
   let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? 'desire' : undefined);
   if (opts.only !== undefined) pool = pool.filter((t) => t.kind === opts.only);
   const last = [...(draft.discipline?.demandLog ?? [])].reverse().find((e) => e.unitId === unitId)?.templateId;

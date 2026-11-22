@@ -39,21 +39,21 @@ describe('restrictionReason', () => {
   it('the exact reasons', () => {
     const s = fresh();
     confined(s, 7);
-    expect(restrictionReason(s, ANN, 'scene')).toBe('Ann is in the brig until day 7.');
+    expect(restrictionReason(s, reg, ANN, 'scene')).toBe('Ann is in the brig until day 7.');
     restrict(s, { unitId: BEA, kind: 'no_leave', untilDay: 8 });
-    expect(restrictionReason(s, BEA, 'companion', 'rest')).toBe('Bea has no leave until day 8.');
+    expect(restrictionReason(s, reg, BEA, 'companion', 'rest')).toBe('Bea has no leave until day 8.');
     restrict(s, { unitId: 'unit_cat', kind: 'benched' });
-    expect(restrictionReason(s, 'unit_cat', 'expedition')).toBe('Cat is benched for the next expedition.');
+    expect(restrictionReason(s, reg, 'unit_cat', 'expedition')).toBe('Cat is benched for the next expedition.');
     restrict(s, { unitId: 'unit_dee', kind: 'duty', day: s.day, slot: s.slot });
-    expect(restrictionReason(s, 'unit_dee', 'scene')).toBe('Dee is on extra duty this slot.');
+    expect(restrictionReason(s, reg, 'unit_dee', 'scene')).toBe('Dee is on extra duty this slot.');
   });
 
   it('a free unit, a grunt and an unknown id have no reason', () => {
     const s = fresh();
-    expect(restrictionReason(s, ANN, 'scene')).toBeNull();
-    expect(restrictionReason(s, 'nobody', 'scene')).toBeNull();
+    expect(restrictionReason(s, reg, ANN, 'scene')).toBeNull();
+    expect(restrictionReason(s, reg, 'nobody', 'scene')).toBeNull();
     delete s.discipline;
-    expect(restrictionReason(s, ANN, 'expedition')).toBeNull();
+    expect(restrictionReason(s, reg, ANN, 'expedition')).toBeNull();
   });
 
   it('what each kind blocks', () => {
@@ -62,7 +62,7 @@ describe('restrictionReason', () => {
     restrict(s, { unitId: BEA, kind: 'no_leave', untilDay: 6 });
     restrict(s, { unitId: 'unit_cat', kind: 'benched' });
     restrict(s, { unitId: 'unit_dee', kind: 'duty', day: s.day, slot: s.slot });
-    const blocked = (id: string, use: 'scene' | 'companion' | 'expedition', activity?: string) => restrictionReason(s, id, use, activity) !== null;
+    const blocked = (id: string, use: 'scene' | 'companion' | 'expedition', activity?: string) => restrictionReason(s, reg, id, use, activity) !== null;
     expect([ANN, BEA, 'unit_cat', 'unit_dee'].map((id) => blocked(id, 'scene'))).toEqual([true, false, false, true]);
     expect([ANN, BEA, 'unit_cat', 'unit_dee'].map((id) => blocked(id, 'expedition'))).toEqual([true, false, true, true]);
     expect([ANN, BEA, 'unit_cat', 'unit_dee'].map((id) => blocked(id, 'companion', 'rest'))).toEqual([true, true, false, true]);
@@ -74,11 +74,11 @@ describe('restrictionReason', () => {
   it('a restriction of another slot or day does not block', () => {
     const s = fresh();
     restrict(s, { unitId: ANN, kind: 'duty', day: s.day, slot: 'evening' });
-    expect(restrictionReason(s, ANN, 'scene')).toBeNull(); // it is the morning
+    expect(restrictionReason(s, reg, ANN, 'scene')).toBeNull(); // it is the morning
     s.slot = 'evening';
-    expect(restrictionReason(s, ANN, 'scene')).not.toBeNull();
+    expect(restrictionReason(s, reg, ANN, 'scene')).not.toBeNull();
     s.day += 1;
-    expect(restrictionReason(s, ANN, 'scene')).toBeNull();
+    expect(restrictionReason(s, reg, ANN, 'scene')).toBeNull();
   });
 });
 

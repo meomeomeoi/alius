@@ -119,7 +119,7 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
 
   /** The units the step's scene can take: living, named, not held back by discipline, at most one scene's worth. */
   function candidates(s: CampaignState): string[] {
-    return livingNamed(s).filter((u) => restrictionReason(s, u.id, 'scene') === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
+    return livingNamed(s).filter((u) => restrictionReason(s, reg(), u.id, 'scene') === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
   }
 
   async function open(step: StepWithId, participants: string[]): Promise<boolean> {
@@ -151,7 +151,7 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== 'scene' || step.perUnit !== true || s.scene) return false;
       if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
-      const held = restrictionReason(s, unitId, 'scene');
+      const held = restrictionReason(s, reg(), unitId, 'scene');
       if (held) {
         deps.toast('warn', held);
         return false;
@@ -189,7 +189,7 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       const step = s ? currentStep(s, reg()) : null;
       const report = s?.lastExpedition;
       if (!s || !step || step.completion !== 'debriefed' || !report || report.missionId !== s.onboarding?.tutorialMissionId) return false;
-      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, id, 'scene') === null).slice(0, TUNING.scene.maxParticipants);
+      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, 'scene') === null).slice(0, TUNING.scene.maxParticipants);
       if (who.length === 0) {
         deps.toast('warn', 'Nobody from the patrol is free to debrief.');
         return false;

@@ -125,7 +125,7 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
     if (mode === 'none') return `${name} cannot be done with a companion.`;
     const c = state.squad.find((u) => u.id === req.companionId);
     if (!c || !isLiving(c)) return `Companion "${req.companionId}" is not available.`;
-    return restrictionReason(state, c.id, 'companion', req.activityId) ?? commanderRestriction(state, 'companion', req.activityId); // P9: the brig, no leave, extra duty; P13: what the warden revoked
+    return restrictionReason(state, reg, c.id, 'companion', req.activityId) ?? commanderRestriction(state, reg, 'companion', req.activityId); // P9: the brig, no leave, extra duty; P13: what the warden revoked
   }
   if (mode === 'required') return `${name} needs a companion.`;
 
