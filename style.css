@@ -1770,6 +1770,15 @@
   margin-top: 6px;
 }
 
+/* Her notices and the frame chip of a scene (P15): the title of her toast takes her accent, which is readable on the personal voice's bubble. */
+#alius-shell .alius-toast[data-voice="personal"] .alius-toast-title {
+  color: var(--toast-accent, inherit);
+}
+
+#alius-shell .alius-frame-chips {
+  margin: 2px 0;
+}
+
 /*
  * P11: the prologue's paper forms (cold open, intake, medical exam, signed dossier) and, later, the hub card, the coach
  * strip and locked tabs. The paper voice supplies colours; this file only lays the forms out. Typing reveals are CSS so the

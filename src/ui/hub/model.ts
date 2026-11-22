@@ -1,4 +1,5 @@
 import { fullOpenRecords } from '../../llm/sites';
+import { aftermathRowOf } from '../../engine/dynamic/aftermath';
 import { dynamicOn } from '../../engine/dynamic/gate';
 import type { Registries } from '../../content/types';
 import { HANDLER_VISIT_KIND } from '../../engine/special/state';
@@ -139,6 +140,16 @@ export function tonightItems(state: CampaignState, reg: Registries): TonightItem
     for (const id of [...open.milestones.map((m) => m.unitId), ...open.claims.map((c) => c.unitId), ...(open.returnOffer ? [open.returnOffer.unitId] : [])]) if (nameOf(id)) waiting.add(id);
     for (const id of waiting) {
       out.push({ kind: 'dynamic', text: `${nameOf(id)} has something to ask.`, unitId: id, tone: 'warn', analyze: milestoneFor.has(id) ? 'glossary:milestone' : claimFor.has(id) ? 'glossary:claim' : returnFor === id ? 'glossary:aftermath' : 'glossary:frame' });
+    }
+    // P15: the notice of the stage an aftermath of hers is in (her words; never the kind, the stage number or a day), and oversight's threat to move a holder (no day either)
+    for (const u of living) {
+      const aftermath = state.relations[u.id]?.dynamic?.aftermath;
+      const notice = aftermath === undefined ? undefined : (aftermathRowOf(reg, aftermath.kind)?.stages[aftermath.stage]?.notice);
+      if (notice !== undefined) out.push({ kind: 'dynamic', text: `${u.displayName}: ${notice}`, unitId: u.id, tone: 'neutral', analyze: 'glossary:aftermath' });
+    }
+    const threat = state.dynamic!.oversight?.threat;
+    if (threat !== undefined && nameOf(threat.unitId) !== '') {
+      out.push({ kind: 'dynamic', text: `Oversight will move ${nameOf(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: 'danger', analyze: 'glossary:oversight_inquiry' });
     }
   }
   // P14: failed generations that wait for a retry, always the last line (the cut keeps room for it, so a full list never drops it)

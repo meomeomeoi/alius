@@ -3039,5 +3039,26 @@
       "aftermath",
       "vow"
     ]
+  },
+  {
+    "id": "leash_block",
+    "term": "Her answer on the Leash",
+    "short": "A holder who answers for the Leash may hold the commander's requests: they go no further unless she signs. A request held spends nothing.",
+    "long": "AUTHOR TO WRITE: Every request filed from the device goes to her first, for anyone it names. She signs more readily the more she owes the commander. A held request is noted by oversight; enough of them draw its attention. The commander can go around her, and she may find out.",
+    "see": [
+      "capability_leash_block",
+      "oversight_inquiry",
+      "leash"
+    ]
+  },
+  {
+    "id": "oversight_inquiry",
+    "term": "Oversight's inquiry",
+    "short": "Oversight has noticed how many of the commander's Leash requests were held or never filed, and may act on the soldier who held the requests.",
+    "long": "AUTHOR TO WRITE: It builds slowly, in notices, and the corporation's voice says each step. When it is full oversight acts on her: a reprimand, a threat to move her, or the controller used on her. Her cover slows it.",
+    "see": [
+      "leash_block",
+      "dynamic"
+    ]
   }
 ]

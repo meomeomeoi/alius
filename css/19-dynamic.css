@@ -285,3 +285,12 @@
 #alius-shell .alius-exit-close {
   margin-top: 6px;
 }
+
+/* Her notices and the frame chip of a scene (P15): the title of her toast takes her accent, which is readable on the personal voice's bubble. */
+#alius-shell .alius-toast[data-voice="personal"] .alius-toast-title {
+  color: var(--toast-accent, inherit);
+}
+
+#alius-shell .alius-frame-chips {
+  margin: 2px 0;
+}

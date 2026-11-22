@@ -41182,6 +41182,64 @@ function oversightNotice(e, state) {
       return null;
   }
 }
+function dynamicNotices(events, state, reg, opts = {}) {
+  if (!dynamicOn(state, reg)) return [];
+  const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? "She";
+  const hers = (unitId, kind, text2, cutIn2) => ({
+    kind,
+    voice: VOICE_OF.dynamic,
+    title: name(unitId),
+    text: text2,
+    accent: unitAccent(String(unitId)),
+    ...cutIn2 !== void 0 ? { cutIn: cutIn2 } : {}
+  });
+  const out = [];
+  for (const e of events) {
+    switch (e.type) {
+      case "frame_changed": {
+        const text2 = reg.dynamicMilestones.get(String(e.milestoneId))?.text;
+        if (typeof text2 !== "string") break;
+        out.push(hers(e.unitId, "info", text2.replaceAll("{name}", name(e.unitId)), {
+          kind: "dynamic",
+          text: (opts.hidden === true ? name(e.unitId) : String(reg.dynamicFrames.get(String(e.to))?.label ?? name(e.unitId))).toUpperCase()
+        }));
+        break;
+      }
+      case "aftermath_started": {
+        const stages = aftermathRowOf(reg, e.kind)?.stages ?? [];
+        if (stages.length === 0) break;
+        out.push(hers(e.unitId, e.forced === true ? "warn" : "info", stages[0].notice, { kind: "dynamic", text: name(e.unitId).toUpperCase() }));
+        break;
+      }
+      case "domain_lost": {
+        if (e.reason === "exit") break;
+        const label2 = String(reg.dynamicDomains.get(String(e.domainId))?.label ?? "a domain");
+        const why = e.reason === "contest" ? "another has taken it" : e.reason === "force" ? "the commander has taken it back" : "her place has slipped";
+        out.push(hers(e.unitId, "warn", `AUTHOR TO WRITE: ${name(e.unitId)} no longer holds ${label2}: ${why}.`));
+        break;
+      }
+      case "sworn": {
+        const vow = [...reg.dynamicMilestones.values()].find((m) => m.sworn === true);
+        out.push(hers(e.unitId, "info", (vow?.text ?? "AUTHOR TO WRITE: {name} has made a vow.").replaceAll("{name}", name(e.unitId)), { kind: "dynamic", text: "VOW" }));
+        break;
+      }
+      case "leash_blocked":
+        out.push(hers(e.holderId, "warn", `AUTHOR TO WRITE: ${name(e.holderId)} held the request and did not sign it. Nothing was spent.`));
+        break;
+      case "compromat_revealed":
+        out.push(hers(e.unitId, "warn", `AUTHOR TO WRITE: ${name(e.unitId)} lets the commander know what she has.`));
+        break;
+      case "compromat_told":
+        out.push(hers(e.unitId, "warn", `AUTHOR TO WRITE: ${name(e.unitId)} has told ${e.audience === "outside" ? "people outside the squad" : "the squad"} what she has on the commander.`));
+        break;
+      default: {
+        const n = oversightNotice(e, state);
+        if (n !== null) out.push({ kind: n.kind, voice: VOICE_OF.warden_notice, title: n.title, text: n.text, ...n.cutIn === true ? { cutIn: { kind: "warden", text: n.title } } : {} });
+      }
+    }
+  }
+  return out;
+}
 
 // src/ui/dilemma/routePicker.ts
 function renderRoutePicker(ctx2) {
@@ -50086,6 +50144,12 @@ function unitPortrait(st, unit3, o) {
   return img;
 }
 
+// src/engine/dynamic/view.ts
+function heldBy(state, reg) {
+  if (!dynamicOn(state, reg)) return [];
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => ({ unitId: u.id, domains: dynamicOf(state, u.id).domains.filter((d) => standing(d, state.day)).map((d) => d.id) }));
+}
+
 // src/analysis/providers.ts
 var providers = /* @__PURE__ */ new Map();
 var stateless = /* @__PURE__ */ new WeakSet();
@@ -50393,6 +50457,12 @@ function renderCmdrCard(host, ctx2) {
       i === 0 ? "" : " \xB7 ",
       h("span", { class: "alius-chip", "data-commander-condition": c.id, ...analyzeAttrs(`commanderConditions:${c.id}`) }, String(reg.commanderConditions.get(c.id)?.label ?? c.id).toUpperCase())
     ])),
+    ...heldBy(state, reg).map((line2) => h(
+      "p",
+      { "data-held-by": line2.unitId },
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:dynamic", { unitId: line2.unitId }) }, `Held by ${state.squad.find((u) => u.id === line2.unitId)?.displayName ?? line2.unitId}`),
+      ...line2.domains.flatMap((id) => [" ", h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${id}`, { unitId: line2.unitId }) }, String(reg.dynamicDomains.get(id)?.label ?? id).toUpperCase())])
+    )),
     renderTokens(state, reg, { onWear: (id) => ctx2.onWear?.(id), onTakeOff: (id) => ctx2.onTakeOff?.(id) })
   );
   renderInterceptLog(file, state, reg);
@@ -51656,6 +51726,15 @@ function tonightItems(state, reg) {
     for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf21(id)) waiting2.add(id);
     for (const id of waiting2) {
       out.push({ kind: "dynamic", text: `${nameOf21(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : claimFor.has(id) ? "glossary:claim" : returnFor === id ? "glossary:aftermath" : "glossary:frame" });
+    }
+    for (const u of living2) {
+      const aftermath = state.relations[u.id]?.dynamic?.aftermath;
+      const notice = aftermath === void 0 ? void 0 : aftermathRowOf(reg, aftermath.kind)?.stages[aftermath.stage]?.notice;
+      if (notice !== void 0) out.push({ kind: "dynamic", text: `${u.displayName}: ${notice}`, unitId: u.id, tone: "neutral", analyze: "glossary:aftermath" });
+    }
+    const threat = state.dynamic.oversight?.threat;
+    if (threat !== void 0 && nameOf21(threat.unitId) !== "") {
+      out.push({ kind: "dynamic", text: `Oversight will move ${nameOf21(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: "danger", analyze: "glossary:oversight_inquiry" });
     }
   }
   const failed = fullOpenRecords(state).length;
@@ -55269,6 +55348,17 @@ async function pickLocation(modal, ctx2) {
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
 }
 
+// src/ui/dynamic/frameChip.ts
+function drawFrameChips(host, state, reg, pick3, hidden) {
+  if (hidden || !dynamicOn(state, reg)) return;
+  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick3(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
+    "span",
+    { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
+    `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
+  ));
+  if (chips.length > 0) host.append(h("div", { class: "alius-lead-chips alius-frame-chips" }, ...chips));
+}
+
 // src/ui/special/freqChip.ts
 function renderFreqChip(host, state, reg, unitId) {
   const f = state.special?.frequency;
@@ -55971,6 +56061,7 @@ function renderSceneScreen(host, ctx2) {
       ask: () => controller.ask?.(),
       limit: (text2) => controller.limit?.(text2)
     }, pending4);
+    drawFrameChips(leadChips, s, registries, (id) => ids.has(id), ctx2.settings().dynamicHidden === true);
     if (ctx2.onOffer) drawOfferChips(offerHost, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx2.onOffer, answered: () => controller.replyPending?.() !== true });
     else offerHost.replaceChildren();
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
@@ -59166,6 +59257,7 @@ function createToasts(host) {
   return {
     show(kind, text2, opts = {}) {
       const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status", "data-voice": opts.voice ?? "terminal" });
+      if (opts.accent) el.style.setProperty("--toast-accent", opts.accent);
       if (opts.title) el.append(h("strong", { class: "alius-toast-title" }, `${opts.title} `));
       el.append(text2);
       const remove = () => el.remove();
@@ -61402,24 +61494,12 @@ function createApp(st, deps) {
       const root = document.getElementById("alius-shell");
       if (n.cutIn && root) cutIn(root, "warden", n.title);
     }
-    for (const e of events) {
-      if (e.type !== "frame_changed" || !state) continue;
-      const name = state.squad.find((u) => u.id === e.unitId)?.displayName ?? "She";
-      toast("info", String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? "").replaceAll("{name}", name), { voice: VOICE_OF.dynamic, title: name });
-      const root = document.getElementById("alius-shell");
-      if (root) cutIn(root, "dynamic", (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
-    }
-    for (const e of events) {
-      const n = state ? oversightNotice(e, state) : null;
-      if (!n) continue;
-      toast(n.kind, n.text, { voice: VOICE_OF.warden_notice, title: n.title });
-      const root = document.getElementById("alius-shell");
-      if (n.cutIn && root) cutIn(root, "warden", n.title);
-    }
-    for (const e of events) {
-      if (e.type !== "leash_blocked" || !state) continue;
-      const name = state.squad.find((u) => u.id === e.holderId)?.displayName ?? "She";
-      toast("warn", `AUTHOR TO WRITE: ${name} held the request and did not sign it. Nothing was spent.`, { voice: VOICE_OF.dynamic, title: name });
+    if (state) {
+      for (const n of dynamicNotices(events, state, registries, { hidden: getSettings(st).dynamicHidden === true })) {
+        toast(n.kind, n.text, { voice: n.voice, title: n.title, ...n.accent !== void 0 ? { accent: n.accent } : {} });
+        const root = document.getElementById("alius-shell");
+        if (n.cutIn && root) cutIn(root, n.cutIn.kind, n.cutIn.text);
+      }
     }
     if (events.some((e) => e.type === "warden_override")) setTimeout(showOverrideModal, 0);
     if (events.some((e) => e.type === "error" && typeof e.message === "string" && e.message.includes("has overridden an order"))) setTimeout(showOverrideModal, 0);

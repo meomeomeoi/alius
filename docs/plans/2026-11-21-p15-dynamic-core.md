@@ -2173,11 +2173,11 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
   - `src/app.ts` (`reportEvents`: `aftermath_started` cut-in plus a toast in her voice; `domain_lost`, `sworn` and `leash_blocked` toasts in her voice; all hidden by nothing, immersive or not).
 - Test: `tests/ui/dynamic/surfaces.test.ts`
 
-- [ ] **Step 1: Write the failing tests** (jsdom): `the CMDR card lists each holder and her domains`; `the frame chip is beside the lead chip with data-analyze glossary:frame`; `notices use VOICE_OF.dynamic and her accent`; `nothing renders while off`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): CMDR lines, the frame chip and her notices`
+- [x] **Step 1: Write the failing tests** (jsdom): `the CMDR card lists each holder and her domains`; `the frame chip is beside the lead chip with data-analyze glossary:frame`; `notices use VOICE_OF.dynamic and her accent`; `nothing renders while off`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): CMDR lines, the frame chip and her notices`
 
 ---
 

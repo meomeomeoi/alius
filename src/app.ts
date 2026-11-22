@@ -88,7 +88,7 @@ import type { GenerationUi } from './ui/generation/surface';
 import { generationBadge } from './ui/shell/generationsSection';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
-import { oversightNotice } from './ui/dynamic/notices';
+import { dynamicNotices } from './ui/dynamic/notices';
 import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
@@ -2098,27 +2098,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const root = document.getElementById('alius-shell');
       if (n.cutIn && root) cutIn(root, 'warden', n.title);
     }
-    // P15: a frame that moved is her notice (a toast in her voice, in the words of the milestone) and a cut-in; the frame's name only while the numbers are shown
-    for (const e of events) {
-      if (e.type !== 'frame_changed' || !state) continue;
-      const name = state.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She';
-      toast('info', String(registries.dynamicMilestones.get(String(e.milestoneId))?.text ?? '').replaceAll('{name}', name), { voice: VOICE_OF.dynamic, title: name });
-      const root = document.getElementById('alius-shell');
-      if (root) cutIn(root, 'dynamic', (getSettings(st).dynamicHidden ? name : String(registries.dynamicFrames.get(String(e.to))?.label ?? name)).toUpperCase());
-    }
-    // P15: oversight's inquiry into the cancelled Leash requests speaks in the corporation's voice
-    for (const e of events) {
-      const n = state ? oversightNotice(e, state) : null;
-      if (!n) continue;
-      toast(n.kind, n.text, { voice: VOICE_OF.warden_notice, title: n.title });
-      const root = document.getElementById('alius-shell');
-      if (n.cutIn && root) cutIn(root, 'warden', n.title);
-    }
-    // P15: a Leash request a holder held is her notice (nothing is spent; the chance she was given is hidden)
-    for (const e of events) {
-      if (e.type !== 'leash_blocked' || !state) continue;
-      const name = state.squad.find((u) => u.id === e.holderId)?.displayName ?? 'She';
-      toast('warn', `AUTHOR TO WRITE: ${name} held the request and did not sign it. Nothing was spent.`, { voice: VOICE_OF.dynamic, title: name });
+    // P15: her notices (a frame that moved, an aftermath that began, a domain lost, a vow, a Leash request she held, what she has on the commander) in her voice and accent, and
+    // oversight's inquiry in the corporation's; shown in immersive mode too (only the frame's name is left out of a cut-in)
+    if (state) {
+      for (const n of dynamicNotices(events, state, registries, { hidden: getSettings(st).dynamicHidden === true })) {
+        toast(n.kind, n.text, { voice: n.voice, title: n.title, ...(n.accent !== undefined ? { accent: n.accent } : {}) });
+        const root = document.getElementById('alius-shell');
+        if (n.cutIn && root) cutIn(root, n.cutIn.kind, n.cutIn.text);
+      }
     }
     if (events.some((e) => e.type === 'warden_override')) setTimeout(showOverrideModal, 0);
     if (events.some((e) => e.type === 'error' && typeof e.message === 'string' && e.message.includes('has overridden an order'))) setTimeout(showOverrideModal, 0);

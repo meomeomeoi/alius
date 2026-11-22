@@ -13,6 +13,7 @@ import { cssUrl } from '../fx';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
+import { drawFrameChips } from '../dynamic/frameChip';
 import { drawOfferChips } from '../dynamic/offerComposer';
 import type { OfferComposition } from '../../engine/dynamic/offer';
 import { renderDisciplineMenu } from '../discipline/menu';
@@ -381,6 +382,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : undefined, {
       follow: () => controller.follow?.(), ask: () => controller.ask?.(), limit: (text) => controller.limit?.(text),
     }, pending);
+    drawFrameChips(leadChips, s, registries, (id) => ids.has(id), ctx.settings().dynamicHidden === true); // P15: the frame of a woman present who holds, beside the lead chips
     // P15: `[ OFFER MYSELF ]` beside the lead chips, and her answer once the reply is in (nothing without a handler, nothing while the dynamic is off)
     if (ctx.onOffer) drawOfferChips(offerHost, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx.onOffer, answered: () => controller.replyPending?.() !== true });
     else offerHost.replaceChildren();

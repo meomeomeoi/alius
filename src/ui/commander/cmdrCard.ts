@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { commanderProfile, descriptor } from '../../engine/commander/profile';
+import { heldBy } from '../../engine/dynamic/view';
 import { commanderHobbyWord } from '../../engine/life/meetings';
 import { conditionsOf } from '../../engine/physics/conditions';
 import { commanderSkill } from '../../engine/physics/skill';
@@ -93,6 +94,10 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
           i === 0 ? '' : ' · ',
           h('span', { class: 'alius-chip', 'data-commander-condition': c.id, ...analyzeAttrs(`commanderConditions:${c.id}`) }, String(reg.commanderConditions.get(c.id)?.label ?? c.id).toUpperCase()),
         ])),
+      // P15: who holds something over the commander, and what (never her hold, her frame or a number)
+      ...heldBy(state, reg).map((line) => h('p', { 'data-held-by': line.unitId },
+        h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:dynamic', { unitId: line.unitId }) }, `Held by ${state.squad.find((u) => u.id === line.unitId)?.displayName ?? line.unitId}`),
+        ...line.domains.flatMap((id): Child[] => [' ', h('span', { class: 'alius-chip', ...analyzeAttrs(`dynamicDomains:${id}`, { unitId: line.unitId }) }, String(reg.dynamicDomains.get(id)?.label ?? id).toUpperCase())]))),
       renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
   renderInterceptLog(file, state, reg); // P12: nothing without the frequency
   renderPremonitions(file, state, reg); // P12: nothing without the paranoia
