@@ -19,7 +19,7 @@ import { acceptFormOf, writeHold, writeTask, type Writer } from './tasks';
 import { validatePracticeOutput } from './validate';
 
 export { acceptFormOf, type Writer };
-export { allCards, cardOf, practiceKindOf, requestOf, requestPractice } from './request';
+export { allCards, cardOf, noDurationShare, practiceKindOf, requestOf, requestPractice, rollNoDuration, rollSealed, sealedShare } from './request';
 
 /**
  * Her punishment, from a card: the engine owns the entry and the weight (picked when the offence was noted; picked again now when the entry can no longer be carried out; nothing that stands: no punishment), the model's
@@ -37,7 +37,7 @@ function writePunishment(draft: CampaignState, ctx: EngineCtx, request: Practice
   const punishment: OpenPunishment = {
     id, holderId: request.holderId, entryId, severity, offence, text: out.text, summary: out.summary, ...(plain ? { plain: true as const } : {}), status: 'offered',
     ...(entry.public === true ? { public: true as const } : {}), ...(request.sealed === true ? { sealed: true as const } : {}), ...(request.escalated === true ? { escalated: true as const } : {}),
-    ...(request.forUnitId !== undefined ? { forUnitId: request.forUnitId } : {}), day: draft.day, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}), requestId: request.id,
+    ...(request.forUnitId !== undefined ? { forUnitId: request.forUnitId } : {}), ...(request.noDuration === true ? { hiddenCount: true as const } : {}), day: draft.day, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}), requestId: request.id,
   };
   p.punishments.push(punishment);
   return [{

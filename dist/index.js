@@ -22921,7 +22921,7 @@ function requestOf(state, reg, requestId) {
     const p = card2;
     return {
       replaced: card2,
-      request: { ...base, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...p.escalated === true ? { escalated: true } : {}, ...p.sealed === true ? { sealed: true } : {} }
+      request: { ...base, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...p.escalated === true ? { escalated: true } : {}, ...p.sealed === true ? { sealed: true } : {}, ...p.hiddenCount === true ? { noDuration: true } : {} }
     };
   }
   const seedId = found.list === "tasks" ? card2.seedId : void 0;
@@ -22939,6 +22939,17 @@ function requestOf(state, reg, requestId) {
     }
   };
 }
+var SEALABLE = ["task", "hold", "punishment"];
+function sealedShare(state, reg, holderId) {
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  return (style === void 0 ? void 0 : TUNING.practice.sealedShare[style]) ?? 0.05;
+}
+function noDurationShare(state, reg, holderId) {
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  return (style === void 0 ? void 0 : TUNING.practice.noDurationShare[style]) ?? 0.1;
+}
+var rollSealed = (state, reg, holderId, key) => practiceRoll(state, holderId, `sealed:${key}`) < sealedShare(state, reg, holderId);
+var rollNoDuration = (state, reg, holderId, key) => practiceRoll(state, holderId, `noduration:${key}`) < noDurationShare(state, reg, holderId);
 function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   if (!practiceLive(draft, ctx2.registries, holderId)) return [];
   const reg = ctx2.registries;
@@ -22946,7 +22957,9 @@ function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   const seedIds = pickSeeds(draft, reg, holderId, kind, last === void 0 ? {} : { minTier: last.tier });
   if (seedIds.length === 0 && extra.offence === void 0) return [];
   const id = nextPracticeId(draft, "pq");
-  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds });
+  const sealed = extra.sealed === true || SEALABLE.includes(kind) && extra.asked !== true && rollSealed(draft, reg, holderId, id);
+  const noDuration = extra.noDuration === true || SEALABLE.includes(kind) && rollNoDuration(draft, reg, holderId, id);
+  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds, ...sealed ? { sealed: true } : {}, ...noDuration ? { noDuration: true } : {} });
   return [{ type: "practice_requested", requestId: id, holderId, kind }];
 }
 
@@ -24668,6 +24681,7 @@ function writePunishment(draft, ctx2, request, out, plain8) {
     ...request.sealed === true ? { sealed: true } : {},
     ...request.escalated === true ? { escalated: true } : {},
     ...request.forUnitId !== void 0 ? { forUnitId: request.forUnitId } : {},
+    ...request.noDuration === true ? { hiddenCount: true } : {},
     day: draft.day,
     ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {},
     requestId: request.id
@@ -24864,6 +24878,10 @@ function accept(draft, ctx2, p) {
     summary: p.summary,
     ...audience.length > 0 ? { public: true, present: [holderId, ...audience] } : {}
   }];
+  if (p.sealed === true) {
+    ensurePractices(draft).records.push({ day: draft.day, holderId, line: recordLine({ summary: p.summary, sealed: true, answeredDay: draft.day, day: p.day }) });
+    events.push({ type: "practice_opened", punishmentId: p.id, holderId }, { type: "practice_signed", punishmentId: p.id, unitId: holderId, holderId, summary: p.summary, sealed: true });
+  }
   events.push(...hitHer(draft, reg, holderId, "punishment_accepted", SEVERITY2[p.severity - 1], "took her punishment"));
   events.push(...addTrackXp(draft, reg, holderId, "discipline", TUNING.practice.xp.discipline * p.severity));
   events.push(...practiceSample(draft, reg, holderId, "yielded", { afterThreat: true }));
@@ -24950,6 +24968,7 @@ function canUndoPractice(state, punishmentId) {
   const p = state.practices?.punishments.find((x) => x.id === punishmentId);
   const undo = p?.inverse?.practice;
   if (p === void 0 || undo === void 0 || p.forUnitId !== void 0 || p.status !== "accepted" && p.status !== "refused") return "There is nothing to undo.";
+  if (p.sealed === true && p.status === "accepted") return "It was signed blank, and the record keeps it.";
   const at = undo.stamp;
   if (at.day !== state.day) return "It can only be undone on the day it was answered.";
   if (at.sceneId !== void 0 && state.scene?.id !== at.sceneId) return "Its scene has ended.";
@@ -46351,6 +46370,14 @@ function renderAlarmCard(state, reg, shown2, handlers2) {
   return card2;
 }
 
+// src/engine/practice/view.ts
+function deadlineShown(task) {
+  return task.noDuration === true || task.deadline === void 0 ? null : task.deadline;
+}
+function heldEndShown(held3) {
+  return held3.hidden === true ? null : held3.until;
+}
+
 // src/ui/practice/heldStrip.ts
 var SLOT_WORDS = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
 function endsWords(state, until) {
@@ -46370,7 +46397,8 @@ function drawHeldStrip(host, state, reg, handlers2) {
     host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ask2, ...send !== null ? [send] : []);
     return;
   }
-  const until = held3.hidden === true ? "" : ` until ${endsWords(state, held3.until)}`;
+  const end = heldEndShown(held3);
+  const until = end === null ? "" : ` until ${endsWords(state, end)}`;
   host.append(h(
     "div",
     { class: "alius-held-strip", "data-held-strip": "", role: "status" },
@@ -55301,8 +55329,9 @@ function renderTaskCard(host, ctx2) {
     parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
     parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
-    const due = task.noDuration === true ? null : dueWords(task, state.day);
+    const due = dueWords({ deadline: deadlineShown(task) ?? void 0 }, state.day);
     if (due !== null) parts.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
+    if (task.noDuration === true) parts.push(h("p", { class: "alius-task-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long."));
     if (task.acceptForm === "button_cost") {
       const cost = taskCost(state, reg, task);
       const lines = [
@@ -59457,6 +59486,8 @@ function renderPunishmentCard(host, ctx2) {
     h("p", { class: "alius-punishment-text" }, plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text)),
     ...p.sealed === true ? [] : [h("p", { class: "alius-punishment-weight", ...analyzeAttrs("glossary:holder_punishment", live3) }, `${label2}. Weight: ${WEIGHT_WORDS2[severityWord(p.severity)]}.`)],
     ...p.status === "negotiating" ? [h("p", { class: "alius-punishment-hint" }, "It is being talked over.")] : [],
+    ...p.hiddenCount === true && p.sealed !== true ? [h("p", { class: "alius-punishment-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long.")] : [],
+    // no count, no end shown (R16)
     h(
       "div",
       { class: "alius-punishment-answers" },

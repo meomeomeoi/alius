@@ -351,6 +351,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'held', 'sensory_mode', 'ask_release', 'alarm', 'without_command', 'squad_call',
   // P16 (the commander's own chips: asking for a task or a punishment, telling a routine, asking permission)
   'ask_for_task', 'ask_for_punishment', 'confess', 'ask_permission',
+  // P16 (no duration: until she decides)
+  'no_duration',
 ];
 
 let registered = false;

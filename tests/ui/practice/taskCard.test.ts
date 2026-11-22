@@ -293,6 +293,19 @@ describe('when it is due (M9)', () => {
     expect(due(draw(state({})).host)).toBeNull();
   });
 
+  it('with no duration it says so, in her words, with no day and no number, and the line is addressed by the glossary; a card with a deadline says nothing of it', () => {
+    const { host } = draw(state({ deadline: { day: 22 }, noDuration: true }));
+    const line = host.querySelector('.alius-task-open-ended')!;
+    expect(line.textContent).toBe('She has not said how long.');
+    expect(line.getAttribute('data-analyze')).toBe('glossary:no_duration');
+    expect(host.textContent).not.toMatch(/\d/);
+    expect(host.querySelector('.alius-task-open-ended')).not.toBeNull();
+    expect(draw(state({ deadline: { day: 22 } })).host.querySelector('.alius-task-open-ended')).toBeNull();
+    expect(draw(state({ deadline: { day: 22 }, noDuration: true, sealed: true, acceptForm: 'sealed' })).host.querySelector('.alius-task-open-ended')).toBeNull(); // the envelope shows nothing of it
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(state()))).toEqual([]);
+  });
+
   it('is addressed by the glossary', () => {
     const host = draw(state({ deadline: { day: 21 } })).host;
     expect(markedWithout(host)).toEqual([]);

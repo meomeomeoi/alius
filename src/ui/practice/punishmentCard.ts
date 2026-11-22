@@ -55,6 +55,7 @@ export function renderPunishmentCard(host: HTMLElement, ctx: PunishmentCardCtx):
     h('p', { class: 'alius-punishment-text' }, plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text)),
     ...(p.sealed === true ? [] : [h('p', { class: 'alius-punishment-weight', ...analyzeAttrs('glossary:holder_punishment', live) }, `${label}. Weight: ${WEIGHT_WORDS[severityWord(p.severity)]}.`)]),
     ...(p.status === 'negotiating' ? [h('p', { class: 'alius-punishment-hint' }, 'It is being talked over.')] : []),
+    ...(p.hiddenCount === true && p.sealed !== true ? [h('p', { class: 'alius-punishment-open-ended', ...analyzeAttrs('glossary:no_duration', live) }, 'She has not said how long.')] : []), // no count, no end shown (R16)
     h('div', { class: 'alius-punishment-answers' }, button('accept', '[ ACCEPT ]', 'glossary:punishment_card'), button('negotiate', '[ NEGOTIATE ]', 'glossary:punishment_card'), button('refuse', '[ REFUSE ]', 'glossary:punishment_card'),
       p.status === 'offered' ? drawPracticeReroll(h('span', { class: 'alius-punishment-reroll' }), ctx.generation, 'punishment', p.requestId) : null),
   ];

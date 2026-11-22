@@ -36,7 +36,7 @@ import { requestPractice } from './request';
 import { startSlap } from './slap';
 import { fallbackLine } from './seeds';
 import { practiceRoll, type OpenPunishment, type PracticeUndo, type PunishmentEffectType, type Task } from './state';
-import { acceptFormOf } from './tasks';
+import { acceptFormOf, recordLine } from './tasks';
 import { eligibleUnits, plainText } from './validate';
 
 type Effect = { type: PunishmentEffectType; [k: string]: unknown };
@@ -151,6 +151,11 @@ function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): Engine
     type: 'punishment_answered', punishmentId: p.id, unitId: holderId, holderId, answer: 'accept', severity: p.severity, summary: p.summary,
     ...(audience.length > 0 ? { public: true, present: [holderId, ...audience] } : {}),
   }];
+  if (p.sealed === true) {
+    // a sealed envelope is opened by the accept and signed blank, as a sealed task is (R.1, R.8): the record keeps the line, so the answer cannot be taken back
+    ensurePractices(draft).records.push({ day: draft.day, holderId, line: recordLine({ summary: p.summary, sealed: true, answeredDay: draft.day, day: p.day }) });
+    events.push({ type: 'practice_opened', punishmentId: p.id, holderId }, { type: 'practice_signed', punishmentId: p.id, unitId: holderId, holderId, summary: p.summary, sealed: true });
+  }
   events.push(...hitHer(draft, reg, holderId, 'punishment_accepted', SEVERITY[p.severity - 1], 'took her punishment'));
   events.push(...addTrackXp(draft, reg, holderId, 'discipline', TUNING.practice.xp.discipline * p.severity));
   events.push(...practiceSample(draft, reg, holderId, 'yielded', { afterThreat: true }));
@@ -241,6 +246,7 @@ export function canUndoPractice(state: CampaignState, punishmentId: string): str
   const p = state.practices?.punishments.find((x) => x.id === punishmentId);
   const undo = p?.inverse?.practice;
   if (p === undefined || undo === undefined || p.forUnitId !== undefined || (p.status !== 'accepted' && p.status !== 'refused')) return 'There is nothing to undo.';
+  if (p.sealed === true && p.status === 'accepted') return 'It was signed blank, and the record keeps it.';
   const at = undo.stamp;
   if (at.day !== state.day) return 'It can only be undone on the day it was answered.';
   if (at.sceneId !== undefined && state.scene?.id !== at.sceneId) return 'Its scene has ended.';

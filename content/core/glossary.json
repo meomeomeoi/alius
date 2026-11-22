@@ -3369,5 +3369,16 @@
       "practice",
       "ask_for_task"
     ]
+  },
+  {
+    "id": "no_duration",
+    "term": "Until she decides",
+    "short": "She has not said how long. There is no timer, no deadline and no count on the card; only she knows when it ends, and it still ends.",
+    "long": "AUTHOR TO WRITE: A task, a hold or a punishment may run with no end named. The game keeps the end all the same: a task is still judged at its deadline and a hold still runs out. Ritual and drill women never leave one open.",
+    "see": [
+      "practice",
+      "sealed",
+      "held"
+    ]
   }
 ]

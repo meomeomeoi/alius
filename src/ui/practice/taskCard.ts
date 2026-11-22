@@ -5,6 +5,7 @@ import { dynamicOn } from '../../engine/dynamic/gate';
 import { practiceLive } from '../../engine/practice/gate';
 import type { Proof, Stake, Task } from '../../engine/practice/state';
 import { taskCost } from '../../engine/practice/tasks';
+import { deadlineShown } from '../../engine/practice/view';
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -85,8 +86,9 @@ export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
     parts.push(h('p', { class: 'alius-task-envelope' }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
     parts.push(h('p', { class: 'alius-task-text' }, plainDraft(task.text)));
-    const due = task.noDuration === true ? null : dueWords(task, state.day);
+    const due = dueWords({ deadline: deadlineShown(task) ?? undefined }, state.day);
     if (due !== null) parts.push(h('p', { class: 'alius-task-due', ...analyzeAttrs('glossary:practice_task', live) }, `Due: ${due}.`));
+    if (task.noDuration === true) parts.push(h('p', { class: 'alius-task-open-ended', ...analyzeAttrs('glossary:no_duration', live) }, 'She has not said how long.')); // no timer, no deadline: the engine keeps the end, the card shows none (R16)
     if (task.acceptForm === 'button_cost') {
       const cost = taskCost(state, reg, task);
       const lines = [

@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { heldNow } from '../../engine/practice/held';
+import { heldEndShown } from '../../engine/practice/view';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
@@ -39,7 +40,8 @@ export function drawHeldStrip(host: HTMLElement, state: CampaignState, reg: Regi
     host.append(h('p', { 'data-held-line': '', ...analyzeAttrs('glossary:sensory_mode', ctx) }, `Held in ${holder.displayName}'s quarters.`), ask, ...(send !== null ? [send] : []));
     return;
   }
-  const until = held.hidden === true ? '' : ` until ${endsWords(state, held.until)}`;
+  const end = heldEndShown(held); // a hold with no duration shows no end (R16)
+  const until = end === null ? '' : ` until ${endsWords(state, end)}`;
   host.append(h('div', { class: 'alius-held-strip', 'data-held-strip': '', role: 'status' },
     h('span', { class: 'alius-chip', 'data-held-chip': '', ...analyzeAttrs('glossary:held', ctx) }, 'HELD'),
     h('span', { class: 'alius-held-text' }, ` in ${holder.displayName}'s quarters${until}. `),

@@ -4,10 +4,12 @@
  */
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { practiceOf } from '../dynamic/profile';
 import type { CampaignState } from '../state/types';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { pickSeeds } from './seeds';
-import type { OpenPunishment, PracticeCard, PracticeKind, PracticeRequest, Task } from './state';
+import { practiceRoll, type OpenPunishment, type PracticeCard, type PracticeKind, type PracticeRequest, type Task } from './state';
+import { TUNING } from '../tuning';
 
 /** Every card written for a request, in the order of the lists: tasks, punishments, demonstrations. */
 export const allCards = (state: Pick<CampaignState, 'practices'>): PracticeCard[] => {
@@ -51,7 +53,7 @@ export function requestOf(state: CampaignState, reg: Registries, requestId: stri
     const p = card as OpenPunishment;
     return {
       replaced: card,
-      request: { ...base, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...(p.escalated === true ? { escalated: true as const } : {}), ...(p.sealed === true ? { sealed: true as const } : {}) },
+      request: { ...base, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...(p.escalated === true ? { escalated: true as const } : {}), ...(p.sealed === true ? { sealed: true as const } : {}), ...(p.hiddenCount === true ? { noDuration: true as const } : {}) },
     };
   }
   const seedId = found.list === 'tasks' ? (card as Task).seedId : undefined;
@@ -67,6 +69,27 @@ export function requestOf(state: CampaignState, reg: Registries, requestId: stri
   };
 }
 
+/** The kinds that may come sealed (a task, a hold, a punishment: R16) and the kinds that may run "until I decide" (the same three: R16). A protocol, a denial rule and a demonstration are neither. */
+const SEALABLE: readonly PracticeKind[] = ['task', 'hold', 'punishment'];
+
+/** Her share of sealed practices by her primary style (R16, R.12; a style the table does not list takes `base` of nothing: 0.05, the "others" row). */
+export function sealedShare(state: CampaignState, reg: Registries, holderId: string): number {
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  return (style === undefined ? undefined : (TUNING.practice.sealedShare as Readonly<Record<string, number>>)[style]) ?? 0.05;
+}
+
+/** Her share of practices that run with no duration by her primary style (R16, R.12: `ritual` and `drill` 0). */
+export function noDurationShare(state: CampaignState, reg: Registries, holderId: string): number {
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  return (style === undefined ? undefined : (TUNING.practice.noDurationShare as Readonly<Record<string, number>>)[style]) ?? 0.1;
+}
+
+/** Does the request with this key come sealed? `practiceRoll(holderId, 'sealed:' + key) < her share`; hashed, no draw. */
+export const rollSealed = (state: CampaignState, reg: Registries, holderId: string, key: string): boolean => practiceRoll(state, holderId, `sealed:${key}`) < sealedShare(state, reg, holderId);
+
+/** Does the request with this key run with no duration? `practiceRoll(holderId, 'noduration:' + key) < her share`; hashed, no draw. A share of 0 never hits. */
+export const rollNoDuration = (state: CampaignState, reg: Registries, holderId: string, key: string): boolean => practiceRoll(state, holderId, `noduration:${key}`) < noDurationShare(state, reg, holderId);
+
 /**
  * Writes a request: the seeds are picked now (gated, 3 to 6), the id is taken and `practice_requested` tells the controller to ask for the words. Nothing is written for a
  * holder who is not live, or when no seed stands (a request with no candidate has no fallback either), except an offence's punishment, which has its own entry. A chain's request
@@ -79,7 +102,10 @@ export function requestPractice<C extends Pick<EngineCtx, 'registries'>>(draft: 
   const seedIds = pickSeeds(draft, reg, holderId, kind, last === undefined ? {} : { minTier: last.tier });
   if (seedIds.length === 0 && extra.offence === undefined) return [];
   const id = nextPracticeId(draft, 'pq');
-  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds });
+  // R16: a task, a hold or a punishment may come sealed, and may run until she decides; what the commander asked for is never sealed. Hashed from the request's own id: no draw.
+  const sealed = extra.sealed === true || (SEALABLE.includes(kind) && extra.asked !== true && rollSealed(draft, reg, holderId, id));
+  const noDuration = extra.noDuration === true || (SEALABLE.includes(kind) && rollNoDuration(draft, reg, holderId, id));
+  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds, ...(sealed ? { sealed: true as const } : {}), ...(noDuration ? { noDuration: true as const } : {}) });
   return [{ type: 'practice_requested', requestId: id, holderId, kind }];
 }
 
