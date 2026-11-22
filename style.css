@@ -3057,6 +3057,17 @@
   pointer-events: auto;
 }
 
+/* back to front, explicitly: nothing inside a layer (a speaker's sprite) may climb over the layers above it */
+#alius-shell .alius-layer-backdrop { z-index: 0; }
+#alius-shell .alius-layer-ascii { z-index: 1; }
+#alius-shell .alius-layer-frame { z-index: 2; }
+#alius-shell .alius-layer-pose { z-index: 3; }
+#alius-shell .alius-layer-sprites { z-index: 4; }
+#alius-shell .alius-layer-effects { z-index: 5; }
+#alius-shell .alius-layer-ui { z-index: 6; }
+#alius-shell .alius-layer-moment { z-index: 7; }
+#alius-shell .alius-layer-curtain { z-index: 8; }
+
 /* the backdrop covers the whole screen; a wide file (3072 x 1280) shows 672 px more than a 1080 px-high screen: the right mouse button looks around */
 #alius-shell .alius-layer-backdrop {
   display: none;
@@ -3147,9 +3158,10 @@
     color-mix(in srgb, var(--alius-bg) 78%, transparent) 0,
     color-mix(in srgb, var(--alius-bg) 8%, transparent) 13%,
     transparent 22%,
-    transparent 50%,
-    color-mix(in srgb, var(--alius-bg) 60%, transparent) 70%,
-    color-mix(in srgb, var(--alius-bg) 90%, transparent) 100%
+    transparent 44%,
+    color-mix(in srgb, var(--alius-bg) 58%, transparent) 66%,
+    color-mix(in srgb, var(--alius-bg) 84%, transparent) 84%,
+    color-mix(in srgb, var(--alius-bg) 94%, transparent) 100%
   );
 }
 
@@ -3241,7 +3253,7 @@
 }
 
 #alius-shell .alius-scene > .alius-cutin {
-  z-index: 6;
+  z-index: 9;
 }
 
 /* the top line: small and low-contrast, over the top gradient */
@@ -3387,6 +3399,10 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
+}
+
+#alius-shell .alius-input-tools select {
+  max-width: 9em;
 }
 
 #alius-shell .alius-input-tools .alius-btn,
