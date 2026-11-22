@@ -114,6 +114,7 @@ registerAction('combat/order', (draft, payload, ctx) => {
 registerAction('combat/compel', (draft, _payload, ctx) => {
   const cs = open(draft, 'combat/compel');
   if (cs.phase !== 'awaiting') throw new Error('combat/compel: the combat is not running');
+  if (cs.noCommand === true) throw new Error('The commander is not with the squad.'); // P16: nobody is there to compel
   const refusal = cs.lastRefusal;
   if (!refusal) throw new Error('No order was refused: there is nothing to compel.');
   const target = cs.combatants.find((c) => c.cid === refusal.targetCid);

@@ -303,6 +303,8 @@ export interface CombatState {
   inExtra?: boolean;
   /** The last order a unit refused and nothing has been ordered since: what `combat/compel` runs (P6). */
   lastRefusal?: { orderId: string; targetCid: string; /** P13: the warden denied the Leash request for this refusal; it is not asked again. */ cosignDenied?: true };
+  /** P16: a fight of a run the commander is not on (a holder keeps the commander): no CP is gained, no order is given, no commander stands in it. */
+  noCommand?: true;
   /** P7: the once-per-combat presence action (absent in a combat saved before P7: then there is no commander to act). */
   presence?: { kind: PresenceKind; used: boolean; /** Steady Voice: the next paid order costs 1 CP less. */ steadyVoicePending?: boolean };
   /** Unit ids whose refusals were Compelled in this combat; the Leash is paid when the combat is finalized (P6). */

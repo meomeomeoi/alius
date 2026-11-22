@@ -30,7 +30,7 @@ function endCombat(ctx: EffectCtx, outcome: CombatOutcome): void {
 export function startRound(ctx: EffectCtx): void {
   const { cs } = ctx;
   cs.round += 1;
-  if (cs.round > 1) cs.cp = Math.min(TUNING.combat.cpMax, cs.cp + 1);
+  if (cs.round > 1 && cs.noCommand !== true) cs.cp = Math.min(TUNING.combat.cpMax, cs.cp + 1); // P16: nobody commands the squad of a run the commander is not on
   clearRoundLimits(cs);
   cs.ordersThisRound = [];
   fireTrigger(ctx, 'onRoundStart', {});

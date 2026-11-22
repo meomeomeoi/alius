@@ -430,7 +430,7 @@ function runEffect(ctx: EffectCtx, ownerCid: string, effect: EffectSpec, ev: Eff
       break;
     case 'stress': for (const t of targets) addStress(ctx, t, e.amount, t === ownerCid ? 'self' : owner.side === 'squad' ? 'ally' : 'enemy'); break;
     case 'cp':
-      if (owner.side === 'squad') ctx.cs.cp = Math.min(TUNING.combat.cpMax, Math.max(0, ctx.cs.cp + e.amount));
+      if (owner.side === 'squad' && ctx.cs.noCommand !== true) ctx.cs.cp = Math.min(TUNING.combat.cpMax, Math.max(0, ctx.cs.cp + e.amount)); // P16: no command points to gain
       break;
     case 'move': for (const t of targets) moveCombatant(ctx, t, e.to); break;
     case 'extra_action': ctx.cs.extraAction = ownerCid; break; // read by turn.ts after the action resolves

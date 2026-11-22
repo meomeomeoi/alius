@@ -47,6 +47,8 @@ export interface StartExpedition {
   unitIds: string[];
   formation: Formation;
   supplies: number;
+  /** P16: the run leaves without the commander (the action checked that a holder keeps the commander and says who). */
+  withoutCommand?: { holderId: string };
 }
 
 
@@ -215,6 +217,7 @@ export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartEx
     hints: [],
     objectiveDone: false,
     reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0),
+    ...(p.withoutCommand !== undefined ? { withoutCommand: { ...p.withoutCommand } } : {}),
   };
   addLog(exp, 'start', `Departed for ${regionName(region)}: ${mission.title}.`);
   const waiting = ambushFor(draft, mission.regionId); // P12: sold intel can send the squad into an ambush (absent without an exposure)
@@ -500,6 +503,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   };
   if (rewards) report.rewards = structuredClone(rewards);
   if (exp.herCalls && exp.herCalls.length > 0) report.herCalls = structuredClone(exp.herCalls); // P9e
+  if (exp.withoutCommand !== undefined) report.withoutCommand = { ...exp.withoutCommand }; // P16
   draft.lastExpedition = report;
   events.push(...resolveBets(draft, ctx, outcome)); // P9c: a bet on this run is settled before the slots are spent
   events.push(...hideInjuries(draft, reg, exp.party, [...injuries, ...deaths])); // P9c: a bad injury she hides from the commander is a squad secret
@@ -726,9 +730,36 @@ function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObje
     exp.phase = 'event';
     return events;
   }
+  if (exp.withoutCommand !== undefined) return squadCallAtEntry(draft, ctx, nodeId, templateId, isObjective); // P16: no run dilemma and no choice: the squad takes the node
   exp.pending = { kind: 'event', nodeId, templateId };
   exp.phase = 'event';
   return [{ type: 'expedition_event', nodeId, templateId }];
+}
+
+/**
+ * P16: an event node of a run without the commander. Nobody is there to choose, so the squad takes the first option that asks nothing of the commander (`squadChoice`): its effects apply
+ * at once and the node waits for ACKNOWLEDGE (`expedition/ack_squad_call`), as a her-call does. No option left: "Nothing here." and the run goes on. No `expedition_event` is emitted, so
+ * no run dilemma is opened for the node. Draws nothing.
+ */
+function squadCallAtEntry(draft: CampaignState, ctx: EngineCtx, nodeId: string, templateId: string, isObjective: boolean): EngineEvent[] {
+  const exp = draft.expedition!;
+  exp.pending = { kind: 'event', nodeId, templateId };
+  exp.phase = 'event';
+  const index = squadChoice(draft, ctx.registries);
+  const found = optionsOf(draft, ctx.registries);
+  if (index === null || !found) {
+    delete exp.pending;
+    exp.phase = 'travel';
+    addLog(exp, 'event', 'Nothing here.', nodeId);
+    if (isObjective) exp.objectiveDone = true;
+    return [];
+  }
+  const chosen = found.options[index];
+  const events = applyWorldEffects(draft, ctx, chosen.effects, { kind: 'event', id: templateId, label: found.title });
+  addLog(exp, 'event', `${found.title}: ${chosen.label}. The squad decided.`, nodeId, { templateId, option: chosen.label, squadCall: true });
+  exp.pending = { kind: 'event', nodeId, templateId, squadCall: { index } };
+  events.push({ type: 'expedition_choice', nodeId, templateId, option: index, label: chosen.label, squadCall: true });
+  return events;
 }
 
 const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -764,6 +795,18 @@ export function eventOptions(state: CampaignState, reg: Registries): Array<{ ind
   });
 }
 
+/**
+ * P16: the option of the pending event the squad takes when the commander is not there: the first one that `eventOptions` leaves open, never one that needs the commander (a social
+ * requirement, a routed option). `null` when none is left (or no event is pending). Reads only.
+ */
+export function squadChoice(state: CampaignState, reg: Registries): number | null {
+  const found = optionsOf(state, reg);
+  if (!found) return null;
+  const shown = eventOptions(state, reg);
+  const at = found.options.findIndex((o, i) => o.requires === undefined && o.routeCheck === undefined && shown[i]?.disabled === null);
+  return at < 0 ? null : at;
+}
+
 /** Closes the pending event node: a log line, the run travels on, an objective node counts as done. Used by `chooseOption` and by P6 dilemmas. */
 export function finishEventNode(draft: CampaignState, nodeId: string, text: string, data?: Record<string, unknown>): void {
   addLog(draft.expedition!, 'event', text, nodeId, data);
@@ -787,6 +830,15 @@ export function acknowledgeHerCall(draft: CampaignState): EngineEvent[] {
   return [{ type: 'her_call_acknowledged', nodeId }];
 }
 
+/** P16: the commander has read what the squad decided (its effects applied when the node was entered): the node closes. */
+export function acknowledgeSquadCall(draft: CampaignState): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp || exp.pending?.kind !== 'event' || !exp.pending.squadCall) throw new Error('There is no decision to acknowledge.');
+  const nodeId = exp.pending.nodeId;
+  closeEventNode(draft, nodeId);
+  return [{ type: 'squad_call_acknowledged', nodeId }];
+}
+
 /** Picks an option of the pending event: its effects apply, the node is resolved and the run travels on. */
 export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number, route?: RoutePick): EngineEvent[] {
   const exp = draft.expedition;
@@ -794,6 +846,7 @@ export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number
   if (!exp || exp.phase !== 'event' || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
   if (draft.dilemmas?.open?.context === 'expedition_event') throw new Error('A decision is waiting: answer it first.');
   if (exp.pending.herCall) throw new Error('She has already decided: acknowledge it.');
+  if (exp.pending.squadCall) throw new Error('The squad has already decided: acknowledge it.'); // P16
   if (!found) {
     // the event was removed from the pack under a save: the node resolves as nothing and the run goes on
     finishEventNode(draft, exp.pending.nodeId, 'Nothing here.');

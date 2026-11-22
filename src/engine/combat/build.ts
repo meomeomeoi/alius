@@ -54,12 +54,16 @@ export function checkStart(state: CampaignState, reg: Registries, p: StartPayloa
     for (const a of e.affixes) if (reg.affixes.get(a)?.appliesTo !== 'enemy') return `Unknown enemy affix "${a}".`;
   }
   if (p.encounter.lootTableId !== undefined && !reg.lootTables.has(p.encounter.lootTableId)) return `Unknown loot table "${p.encounter.lootTableId}".`;
+  if (withoutCommand(state, p)) return null; // P16: nobody is exposed, so no cover is asked for
   if (p.encounter.exposesCommander) {
     if (!p.coverId) return 'The commander is exposed: a cover unit is required.';
     if (!ids.includes(p.coverId)) return 'The cover unit must be fielded.';
   } else if (p.coverId !== undefined) return 'A cover unit is only used when the commander is exposed.';
   return null;
 }
+
+/** P16: is this fight one of a run the commander is not on (a holder keeps the commander)? */
+export const withoutCommand = (state: CampaignState, p: { expedition?: boolean }): boolean => p.expedition === true && state.expedition?.withoutCommand !== undefined;
 
 /** Σ `cp_start` over the commander's crime perk and flaw and corporation bonus. */
 function startingCp(state: CampaignState, reg: Registries): number {
@@ -142,6 +146,7 @@ export function buildCombat(state: CampaignState, reg: Registries, rng: Rng, p: 
   const formation = { front: [...p.formation.front], back: [...p.formation.back] };
   const unitIds = [...formation.front, ...formation.back];
   const synergies = getSynergies(state, reg, unitIds);
+  const noCommand = withoutCommand(state, p);
   const squad = unitIds.map((id, i) =>
     squadCombatant(state, reg, state.squad.find((u) => u.id === id)!, i, formation.front.includes(id) ? 'front' : 'back', synergies));
 
@@ -149,7 +154,7 @@ export function buildCombat(state: CampaignState, reg: Registries, rng: Rng, p: 
     id: `cmb_${state.day}_${rngState[0].toString(36)}`,
     round: 0,
     phase: 'awaiting',
-    cp: startingCp(state, reg),
+    cp: noCommand ? 0 : startingCp(state, reg), // P16: a run without the commander has no command points
     timeline: [],
     turn: 0,
     combatants: squad,
@@ -166,10 +171,11 @@ export function buildCombat(state: CampaignState, reg: Registries, rng: Rng, p: 
     hints: [],
     nextCid: 1,
   };
-  cs.presence = { kind: presenceKind(commanderProfile(state).archetype), used: false };
+  if (noCommand) cs.noCommand = true;
+  else cs.presence = { kind: presenceKind(commanderProfile(state).archetype), used: false };
   for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
   for (const m of p.encounter.mutineers ?? []) spawnMutineer(cs, state, reg, m);
-  if (p.encounter.exposesCommander && p.coverId) {
+  if (!noCommand && p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId)!;
     const maxHp = commanderMaxHp(state, reg);
     cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false, build: commanderProfile(state).archetype };

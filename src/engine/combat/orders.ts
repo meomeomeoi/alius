@@ -31,6 +31,7 @@ export function orderCost(ctx: EffectCtx, orderId: string, targetCid?: string): 
 /** Why the order cannot be issued now, or null. Orders are accepted while a squad unit awaits input. */
 export function checkOrder(ctx: EffectCtx, orderId: string, targetCid?: string): string | null {
   const { cs } = ctx;
+  if (cs.noCommand === true) return 'The commander is not with the squad.'; // P16: a run the commander is not on has no orders
   const order = orderOf(ctx, orderId);
   if (!order) return `Unknown order "${orderId}".`;
   if (!orderUnlocked(ctx.state, ctx.reg, orderId)) return 'Not available to this commander.'; // P12

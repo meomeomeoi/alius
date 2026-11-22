@@ -3,8 +3,9 @@ import { judgedOf, plainPayload } from '../warden/override';
 import { rollOverrides } from '../dynamic/command';
 import { readRoutePick } from '../commander/checks';
 import { registerAction } from '../dispatch';
+import { leaveWithoutCommand, withoutCommandProblem } from '../practice/alarm';
 import {
-  acknowledgeHerCall, checkExpedition, chooseOption, cleanRecap, moveTo, resolveCombat, retreatFromExpedition, returnFromExpedition, setFormation, startExpedition, treat, type StartExpedition, type TreatKind,
+  acknowledgeHerCall, acknowledgeSquadCall, checkExpedition, chooseOption, cleanRecap, moveTo, resolveCombat, retreatFromExpedition, returnFromExpedition, setFormation, startExpedition, treat, type StartExpedition, type TreatKind,
 } from '../world/expedition';
 
 // Importing this module registers the expedition actions.
@@ -30,12 +31,19 @@ registerAction('expedition/start', (draft, payload, ctx) => {
   }
   const problem = checkExpedition(draft, ctx.registries, p);
   if (problem) throw new Error(problem);
+  // P16: the squad may leave without the commander only while a holder keeps the commander and her alarm said keep
+  if (payload.withoutCommand !== undefined) {
+    const why = payload.withoutCommand === true ? withoutCommandProblem(draft, ctx.registries, payload) : 'The commander is not held back.';
+    if (why !== null) throw new Error(why);
+    p.withoutCommand = { holderId: draft.practices!.alarm!.holderId };
+  }
   // P13 / P15: the warden, then a holder of the command, may override a roster she does not want (nothing happens, nothing is spent)
   if (payload.wardenChecked !== true) {
     const overridden = rollOverrides(draft, ctx, { kind: 'expedition', ...(p.missionId !== undefined ? { missionId: p.missionId } : {}), unitIds: [...unitIds] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
     if (overridden) return overridden;
   }
   const events = startExpedition(draft, ctx, p);
+  if (p.withoutCommand !== undefined && draft.expedition?.withoutCommand !== undefined) events.push(...leaveWithoutCommand(draft, ctx)); // P16: the hold goes on for the run, the squad hears why
   if (p.missionId !== undefined) markDecidedBy(draft, p.missionId, payload.voteId); // P9b: who answers for a mission the squad voted for
   return events;
 });
@@ -68,6 +76,9 @@ registerAction('expedition/choose', (draft, payload, ctx) => {
 
 /** P9e: the commander has read what a soldier decided on her own at an event node. */
 registerAction('expedition/ack_her_call', (draft) => acknowledgeHerCall(draft));
+
+/** P16: ACKNOWLEDGE on what the squad decided at an event node of a run without the commander. */
+registerAction('expedition/ack_squad_call', (draft) => acknowledgeSquadCall(draft));
 
 registerAction('expedition/return', (draft, _payload, ctx) => returnFromExpedition(draft, ctx));
 

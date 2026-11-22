@@ -17,8 +17,8 @@ import { practiceOf } from '../dynamic/profile';
 import type { EventIntent } from '../relations/intents';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { endHold } from './hold';
-import { heldLocation, heldNow } from './held';
+import { endHold, extendHold } from './hold';
+import { heldLocation, heldNow, posOf } from './held';
 import { ensurePractices, nextPracticeId } from './gate';
 import { atBase, noteOffence } from './offences';
 import { ALARM_KINDS, practiceRoll, type AlarmAnswer, type AlarmKind, type HeldState, type OpenAlarm } from './state';
@@ -189,4 +189,44 @@ export function compromiseAlarm(draft: CampaignState, ctx: Pick<EngineCtx, 'regi
   if (alarm === undefined || alarm.id !== ev.alarmId || alarm.holderId !== holderId || alarm.answer !== 'keep' || alarm.argued !== true || draft.practices?.held === undefined) return [];
   alarm.answer = 'release_late';
   return [alarmEvent(alarm, 'release_late', { phase: 'compromise' }), ...releaseLate(draft, ctx as EngineCtx, alarm, false)]; // no slot is spent here, so the rng and the clock of the full context are not read
+}
+
+// ---------------------------------------------------------------------------------------------
+// the run without the commander (Task 28)
+
+/**
+ * Why a launch cannot go without the commander, or `null` (R12): a hold is on and its alarm is a `keep` (a launch, or a deadline: for that one only its own mission goes), and the holder is
+ * not in the party. Reads only; `expedition/start` asks it for a payload with `withoutCommand: true`.
+ */
+export function withoutCommandProblem(state: CampaignState, _reg: Registries, payload: unknown): string | null {
+  const alarm = state.practices?.alarm;
+  if (heldNow(state) === null || alarm === undefined || alarm.answer !== 'keep' || (alarm.kind !== 'launch' && alarm.kind !== 'deadline')) return 'The commander is not held back.';
+  if (partyOf(payload).includes(alarm.holderId)) return 'She keeps the commander and cannot go with the squad.';
+  if (alarm.kind === 'deadline' && (!isObj(payload) || !isObj(alarm.payload) || payload.missionId !== alarm.payload.missionId)) return 'That is not the mission that is running out of time.';
+  return null;
+}
+
+/**
+ * The squad has left without the commander (`expedition/start` with the flag, the run is open): the hold is extended to cover the run's slots (`hold_extended`, reason `alarm`; it is
+ * `run` from now, and ends when the run returns), the alarm is spent and says so (`hold_alarm` with `run: true`: the squad learns why, memory rule `held_alarm_kept`). Draws nothing.
+ */
+export function leaveWithoutCommand(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const held = draft.practices?.held;
+  const alarm = draft.practices?.alarm;
+  const exp = draft.expedition;
+  if (held === undefined || alarm === undefined || exp === undefined) return [];
+  const events: EngineEvent[] = [];
+  const need = posOf(draft.day, draft.slot) + exp.slots - 1; // the last slot the run takes
+  let extended = false;
+  while (posOf(held.until.day, held.until.slot) < need) {
+    const more = extendHold(draft, ctx, 'alarm');
+    if (more.length === 0) break;
+    events.push(...more);
+    extended = true;
+  }
+  held.run = true;
+  if (!extended) events.push({ type: 'hold_extended', holderId: held.by, unitId: held.by, reason: 'alarm', run: true });
+  events.push(alarmEvent(alarm, 'keep', { run: true, party: exp.party }));
+  closeAlarm(draft, alarm);
+  return events;
 }

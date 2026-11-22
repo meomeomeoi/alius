@@ -172,7 +172,7 @@ export interface ExpeditionLogEntry {
 export type PendingNode =
   | { kind: 'combat'; nodeId: string; encounter: Encounter; prevCombatId?: string }
   /** P9e: `herCall` is set when a soldier took the decision herself: the node waits for ACKNOWLEDGE and offers no choice. */
-  | { kind: 'event'; nodeId: string; templateId: string; herCall?: { unitId: string; outcome: 'good' | 'bad' } };
+  | { kind: 'event'; nodeId: string; templateId: string; herCall?: { unitId: string; outcome: 'good' | 'bad' }; /** P16: a run without the commander: the squad took the option at `index` when the node was entered; the node waits for ACKNOWLEDGE. */ squadCall?: { index: number } };
 
 /** P9e: one decision a soldier took on her own during a run (`odds` = the stored chance it would go well, for the analysis). */
 export interface HerCallEntry {
@@ -201,6 +201,8 @@ export interface ExpeditionState {
   herCalls?: HerCallEntry[];
   /** P9c: per unit, the killing blows she landed and the hits she took in this run's fights (absent = no fight yet); expedition bets read it. */
   tally?: Record<string, { kills: number; hits: number }>;
+  /** P16: the squad left while a holder kept the commander in her quarters: no commander points, no orders and no compel in a fight, and the event nodes are the squad's (absent = the commander is with the squad). */
+  withoutCommand?: { holderId: string };
   missionId: string;
   regionId: string;
   day: number;
@@ -244,6 +246,8 @@ export interface ExpeditionReport {
   debriefed: boolean;
   /** P9e: copied from the run (absent = none). */
   herCalls?: HerCallEntry[];
+  /** P16: copied from the run (absent = the commander was with the squad). */
+  withoutCommand?: { holderId: string };
 }
 
 export interface DirectorRequest {

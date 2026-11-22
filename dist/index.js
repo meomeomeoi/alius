@@ -17593,7 +17593,7 @@ function runEffect2(ctx2, ownerCid, effect, ev, keyBase) {
       for (const t of targets) addStress(ctx2, t, e.amount, t === ownerCid ? "self" : owner.side === "squad" ? "ally" : "enemy");
       break;
     case "cp":
-      if (owner.side === "squad") ctx2.cs.cp = Math.min(TUNING.combat.cpMax, Math.max(0, ctx2.cs.cp + e.amount));
+      if (owner.side === "squad" && ctx2.cs.noCommand !== true) ctx2.cs.cp = Math.min(TUNING.combat.cpMax, Math.max(0, ctx2.cs.cp + e.amount));
       break;
     case "move":
       for (const t of targets) moveCombatant(ctx2, t, e.to);
@@ -24567,6 +24567,33 @@ function compromiseAlarm(draft, ctx2, holderId, ev) {
   alarm.answer = "release_late";
   return [alarmEvent(alarm, "release_late", { phase: "compromise" }), ...releaseLate(draft, ctx2, alarm, false)];
 }
+function withoutCommandProblem(state, _reg, payload) {
+  const alarm = state.practices?.alarm;
+  if (heldNow(state) === null || alarm === void 0 || alarm.answer !== "keep" || alarm.kind !== "launch" && alarm.kind !== "deadline") return "The commander is not held back.";
+  if (partyOf(payload).includes(alarm.holderId)) return "She keeps the commander and cannot go with the squad.";
+  if (alarm.kind === "deadline" && (!isObj7(payload) || !isObj7(alarm.payload) || payload.missionId !== alarm.payload.missionId)) return "That is not the mission that is running out of time.";
+  return null;
+}
+function leaveWithoutCommand(draft, ctx2) {
+  const held3 = draft.practices?.held;
+  const alarm = draft.practices?.alarm;
+  const exp = draft.expedition;
+  if (held3 === void 0 || alarm === void 0 || exp === void 0) return [];
+  const events = [];
+  const need = posOf(draft.day, draft.slot) + exp.slots - 1;
+  let extended = false;
+  while (posOf(held3.until.day, held3.until.slot) < need) {
+    const more = extendHold(draft, ctx2, "alarm");
+    if (more.length === 0) break;
+    events.push(...more);
+    extended = true;
+  }
+  held3.run = true;
+  if (!extended) events.push({ type: "hold_extended", holderId: held3.by, unitId: held3.by, reason: "alarm", run: true });
+  events.push(alarmEvent(alarm, "keep", { run: true, party: exp.party }));
+  closeAlarm(draft, alarm);
+  return events;
+}
 
 // src/engine/practice/threats.ts
 var PRACTICE_THREATS = ["punishment_issued", "punishment_answered", "slap_dealt", "threat_voiced", "hold_started"];
@@ -28752,6 +28779,7 @@ function orderCost(ctx2, orderId, targetCid) {
 }
 function checkOrder(ctx2, orderId, targetCid) {
   const { cs } = ctx2;
+  if (cs.noCommand === true) return "The commander is not with the squad.";
   const order = orderOf(ctx2, orderId);
   if (!order) return `Unknown order "${orderId}".`;
   if (!orderUnlocked(ctx2.state, ctx2.reg, orderId)) return "Not available to this commander.";
@@ -28854,7 +28882,7 @@ function endCombat(ctx2, outcome) {
 function startRound(ctx2) {
   const { cs } = ctx2;
   cs.round += 1;
-  if (cs.round > 1) cs.cp = Math.min(TUNING.combat.cpMax, cs.cp + 1);
+  if (cs.round > 1 && cs.noCommand !== true) cs.cp = Math.min(TUNING.combat.cpMax, cs.cp + 1);
   clearRoundLimits(cs);
   cs.ordersThisRound = [];
   fireTrigger(ctx2, "onRoundStart", {});
@@ -29567,12 +29595,14 @@ function checkStart(state, reg, p) {
     for (const a of e.affixes) if (reg.affixes.get(a)?.appliesTo !== "enemy") return `Unknown enemy affix "${a}".`;
   }
   if (p.encounter.lootTableId !== void 0 && !reg.lootTables.has(p.encounter.lootTableId)) return `Unknown loot table "${p.encounter.lootTableId}".`;
+  if (withoutCommand(state, p)) return null;
   if (p.encounter.exposesCommander) {
     if (!p.coverId) return "The commander is exposed: a cover unit is required.";
     if (!ids.includes(p.coverId)) return "The cover unit must be fielded.";
   } else if (p.coverId !== void 0) return "A cover unit is only used when the commander is exposed.";
   return null;
 }
+var withoutCommand = (state, p) => p.expedition === true && state.expedition?.withoutCommand !== void 0;
 function startingCp(state, reg) {
   let cp = TUNING.combat.cpStart;
   const lists = [];
@@ -29641,12 +29671,14 @@ function buildCombat(state, reg, rng, p) {
   const formation = { front: [...p.formation.front], back: [...p.formation.back] };
   const unitIds = [...formation.front, ...formation.back];
   const synergies = getSynergies(state, reg, unitIds);
+  const noCommand = withoutCommand(state, p);
   const squad = unitIds.map((id, i) => squadCombatant(state, reg, state.squad.find((u) => u.id === id), i, formation.front.includes(id) ? "front" : "back", synergies));
   const cs = {
     id: `cmb_${state.day}_${rngState[0].toString(36)}`,
     round: 0,
     phase: "awaiting",
-    cp: startingCp(state, reg),
+    cp: noCommand ? 0 : startingCp(state, reg),
+    // P16: a run without the commander has no command points
     timeline: [],
     turn: 0,
     combatants: squad,
@@ -29663,10 +29695,11 @@ function buildCombat(state, reg, rng, p) {
     hints: [],
     nextCid: 1
   };
-  cs.presence = { kind: presenceKind(commanderProfile(state).archetype), used: false };
+  if (noCommand) cs.noCommand = true;
+  else cs.presence = { kind: presenceKind(commanderProfile(state).archetype), used: false };
   for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
   for (const m of p.encounter.mutineers ?? []) spawnMutineer(cs, state, reg, m);
-  if (p.encounter.exposesCommander && p.coverId) {
+  if (!noCommand && p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId);
     const maxHp = commanderMaxHp(state, reg);
     cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false, build: commanderProfile(state).archetype };
@@ -30579,7 +30612,8 @@ function startExpedition(draft, ctx2, p) {
     log: [],
     hints: [],
     objectiveDone: false,
-    reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0)
+    reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0),
+    ...p.withoutCommand !== void 0 ? { withoutCommand: { ...p.withoutCommand } } : {}
   };
   addLog(exp, "start", `Departed for ${regionName(region)}: ${mission.title}.`);
   const waiting2 = ambushFor(draft, mission.regionId);
@@ -30828,6 +30862,7 @@ function endExpedition(draft, ctx2, outcome) {
   };
   if (rewards) report.rewards = structuredClone(rewards);
   if (exp.herCalls && exp.herCalls.length > 0) report.herCalls = structuredClone(exp.herCalls);
+  if (exp.withoutCommand !== void 0) report.withoutCommand = { ...exp.withoutCommand };
   draft.lastExpedition = report;
   events.push(...resolveBets(draft, ctx2, outcome));
   events.push(...hideInjuries(draft, reg, exp.party, [...injuries, ...deaths]));
@@ -31007,9 +31042,30 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
     exp.phase = "event";
     return events;
   }
+  if (exp.withoutCommand !== void 0) return squadCallAtEntry(draft, ctx2, nodeId, templateId, isObjective);
   exp.pending = { kind: "event", nodeId, templateId };
   exp.phase = "event";
   return [{ type: "expedition_event", nodeId, templateId }];
+}
+function squadCallAtEntry(draft, ctx2, nodeId, templateId, isObjective) {
+  const exp = draft.expedition;
+  exp.pending = { kind: "event", nodeId, templateId };
+  exp.phase = "event";
+  const index2 = squadChoice(draft, ctx2.registries);
+  const found = optionsOf(draft, ctx2.registries);
+  if (index2 === null || !found) {
+    delete exp.pending;
+    exp.phase = "travel";
+    addLog(exp, "event", "Nothing here.", nodeId);
+    if (isObjective) exp.objectiveDone = true;
+    return [];
+  }
+  const chosen = found.options[index2];
+  const events = applyWorldEffects(draft, ctx2, chosen.effects, { kind: "event", id: templateId, label: found.title });
+  addLog(exp, "event", `${found.title}: ${chosen.label}. The squad decided.`, nodeId, { templateId, option: chosen.label, squadCall: true });
+  exp.pending = { kind: "event", nodeId, templateId, squadCall: { index: index2 } };
+  events.push({ type: "expedition_choice", nodeId, templateId, option: index2, label: chosen.label, squadCall: true });
+  return events;
 }
 var capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function optionsOf(state, reg) {
@@ -31039,6 +31095,13 @@ function eventOptions(state, reg) {
     return { index: index2, label: o.label, disabled, ...routes ? { routes } : {} };
   });
 }
+function squadChoice(state, reg) {
+  const found = optionsOf(state, reg);
+  if (!found) return null;
+  const shown2 = eventOptions(state, reg);
+  const at = found.options.findIndex((o, i) => o.requires === void 0 && o.routeCheck === void 0 && shown2[i]?.disabled === null);
+  return at < 0 ? null : at;
+}
 function finishEventNode(draft, nodeId, text2, data) {
   addLog(draft.expedition, "event", text2, nodeId, data);
   closeEventNode(draft, nodeId);
@@ -31056,12 +31119,20 @@ function acknowledgeHerCall(draft) {
   closeEventNode(draft, nodeId);
   return [{ type: "her_call_acknowledged", nodeId }];
 }
+function acknowledgeSquadCall(draft) {
+  const exp = draft.expedition;
+  if (!exp || exp.pending?.kind !== "event" || !exp.pending.squadCall) throw new Error("There is no decision to acknowledge.");
+  const nodeId = exp.pending.nodeId;
+  closeEventNode(draft, nodeId);
+  return [{ type: "squad_call_acknowledged", nodeId }];
+}
 function chooseOption(draft, ctx2, index2, route) {
   const exp = draft.expedition;
   const found = optionsOf(draft, ctx2.registries);
   if (!exp || exp.phase !== "event" || exp.pending?.kind !== "event") throw new Error("There is no event to answer.");
   if (draft.dilemmas?.open?.context === "expedition_event") throw new Error("A decision is waiting: answer it first.");
   if (exp.pending.herCall) throw new Error("She has already decided: acknowledge it.");
+  if (exp.pending.squadCall) throw new Error("The squad has already decided: acknowledge it.");
   if (!found) {
     finishEventNode(draft, exp.pending.nodeId, "Nothing here.");
     return [];
@@ -36301,6 +36372,7 @@ registerAction("combat/order", (draft, payload, ctx2) => {
 registerAction("combat/compel", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/compel");
   if (cs.phase !== "awaiting") throw new Error("combat/compel: the combat is not running");
+  if (cs.noCommand === true) throw new Error("The commander is not with the squad.");
   const refusal2 = cs.lastRefusal;
   if (!refusal2) throw new Error("No order was refused: there is nothing to compel.");
   const target = cs.combatants.find((c) => c.cid === refusal2.targetCid);
@@ -36503,11 +36575,17 @@ registerAction("expedition/start", (draft, payload, ctx2) => {
   }
   const problem = checkExpedition(draft, ctx2.registries, p);
   if (problem) throw new Error(problem);
+  if (payload.withoutCommand !== void 0) {
+    const why = payload.withoutCommand === true ? withoutCommandProblem(draft, ctx2.registries, payload) : "The commander is not held back.";
+    if (why !== null) throw new Error(why);
+    p.withoutCommand = { holderId: draft.practices.alarm.holderId };
+  }
   if (payload.wardenChecked !== true) {
     const overridden = rollOverrides(draft, ctx2, { kind: "expedition", ...p.missionId !== void 0 ? { missionId: p.missionId } : {}, unitIds: [...unitIds] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
     if (overridden) return overridden;
   }
   const events = startExpedition(draft, ctx2, p);
+  if (p.withoutCommand !== void 0 && draft.expedition?.withoutCommand !== void 0) events.push(...leaveWithoutCommand(draft, ctx2));
   if (p.missionId !== void 0) markDecidedBy(draft, p.missionId, payload.voteId);
   return events;
 });
@@ -36533,6 +36611,7 @@ registerAction("expedition/choose", (draft, payload, ctx2) => {
   return chooseOption(draft, ctx2, option2, readRoutePick(isObj22(payload) ? payload.route : void 0));
 });
 registerAction("expedition/ack_her_call", (draft) => acknowledgeHerCall(draft));
+registerAction("expedition/ack_squad_call", (draft) => acknowledgeSquadCall(draft));
 registerAction("expedition/return", (draft, _payload, ctx2) => returnFromExpedition(draft, ctx2));
 registerAction("expedition/retreat", (draft, _payload, ctx2) => retreatFromExpedition(draft, ctx2));
 registerAction("expedition/ack_report", (draft) => {
