@@ -427,3 +427,9 @@ registerMemoryResolver('zone_revealed', (draft, event) => {
   if (!her || target === undefined) return null;
   return { ids: { her: [her.id] }, vars: { name: her.name, what: str(event.what) ?? target, attitude: ATTITUDE_WORDS[str(event.attitude) ?? ''] ?? '' }, tags: [zoneTag(target)] };
 }, { ids: ['her'], vars: ['name', 'what', 'attitude'] });
+
+// the practices (P16, R6): a severe or sealed task was signed (the record's line); the holder's alone, the summary is the task's own words (pronoun-checked when it was written)
+registerMemoryResolver('practice_signed', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str(event.summary) ?? 'something' } } : null;
+}, { ids: ['her'], vars: ['name', 'what'] });

@@ -8,38 +8,11 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
+import { stakeRank, type PracticeKind, type PracticeRequest, type Task, type ValidOutput } from './state';
+import { acceptFormOf, writeTask, type Writer } from './tasks';
 import { validatePracticeOutput } from './validate';
-import { stakeRank, type AcceptForm, type PracticeKind, type PracticeRequest, type Stake, type Task, type ValidOutput } from './state';
 
-/** What a writer is given: the request that is closing, the card (validated, or built from a seed), and whether it is the plain fallback. */
-export type Writer = (draft: CampaignState, ctx: EngineCtx, request: PracticeRequest, output: ValidOutput, plain: boolean) => EngineEvent[];
-
-/** How the commander accepts a task by what it weighs (R6, the consent ladder): a sealed one is one button, a trivial one a button, a minor one a button that shows its cost, a major one words, a severe one words and a signature. */
-export function acceptFormOf(stakes: Stake, sealed: boolean | undefined): AcceptForm {
-  if (sealed === true) return 'sealed';
-  return (['button', 'button_cost', 'words', 'signed'] as const)[stakeRank(stakes)];
-}
-
-const ROSTER_CHECKS: readonly string[] = ['on_roster', 'not_on_roster'];
-
-/** A task of hers, from a card (R5, R6). `field` only with the roster checks, a deadline from the card's days (kept even when no duration is shown), the chain from the request. */
-const writeTask: Writer = (draft, _ctx, request, out, plain) => {
-  const p = ensurePractices(draft);
-  const id = nextPracticeId(draft, 'pt');
-  const chainId = request.chainOf;
-  const step = chainId === undefined ? undefined : p.tasks.filter((t) => t.chainId === chainId).reduce((m, t) => Math.max(m, t.step ?? 1), 1) + 1;
-  const task: Task = {
-    id, holderId: request.holderId, kind: 'task', ...(out.seedId !== undefined ? { seedId: out.seedId } : {}), tags: [...out.tags], track: out.track, tier: out.tier,
-    stakes: out.stakes, check: out.check, ...(out.checkArg !== undefined ? { checkArg: out.checkArg } : {}), proof: out.proof,
-    ...(out.deadline !== undefined ? { deadline: { day: draft.day + out.deadline.days, ...(out.deadline.slot !== undefined ? { slot: out.deadline.slot } : {}) } } : {}),
-    ...(request.noDuration === true ? { noDuration: true as const } : {}), ...(out.audienceIds !== undefined && out.audienceIds.length > 0 ? { audienceIds: [...out.audienceIds] } : {}),
-    text: out.text, summary: out.summary, ...(plain ? { plain: true as const } : {}), ...(chainId !== undefined ? { chainId, step } : {}), status: 'offered',
-    ...(request.targetUnitId !== undefined ? { targetUnitId: request.targetUnitId } : {}), ...(ROSTER_CHECKS.includes(out.check) ? { field: true as const } : {}),
-    ...(request.sealed === true ? { sealed: true as const } : {}), acceptForm: acceptFormOf(out.stakes, request.sealed), day: draft.day,
-  };
-  p.tasks.push(task);
-  return [{ type: 'task_issued', taskId: id, holderId: request.holderId, kind: 'task', requestId: request.id, ...(plain ? { plain: true } : {}), ...(request.sealed === true ? { sealed: true } : {}) }];
-};
+export { acceptFormOf, type Writer };
 
 /**
  * The writer of each kind that can be issued. The day step offers only these kinds, so a campaign between tasks never asks for a kind nobody can write. Later tasks add

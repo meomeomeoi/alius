@@ -15,7 +15,7 @@ import { commanderObeys, unitObeys } from '../personal/state';
 import { assertiveness } from '../power/options';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
-import { RARITIES, resourceWord, type CampaignState, type Demand, type Unit } from '../state/types';
+import { RARITIES, resourceWord, type CampaignState, type Demand, type Severity, type Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { dispositionFor } from '../worldOptions';
 import { inAcquaintance } from './acquaintance';
@@ -256,10 +256,12 @@ function pay(draft: CampaignState, ctx: EngineCtx, unit: Unit, cost: DemandCost)
  * (moderate) at her weight, ×`refuseHighMult` at Impunity 50 or more, where it also holds a moderate defiance; the deed
  * `demands_refused` is counted. Her relationship state is not re-evaluated here (the caller does that once).
  */
-export function refuseLikeDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { templateId?: string; evidence: string; lapsed?: boolean }): EngineEvent[] {
+export function refuseLikeDemand(
+  draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { templateId?: string; evidence: string; lapsed?: boolean; /** P16: how heavy the thing refused was; `moderate` (the default) for every other caller. */ severity?: Severity },
+): EngineEvent[] {
   const high = (impunityOf(draft, ctx.registries, unitId)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
   const events = applyEventToUnit(draft, ctx.registries, unitId, {
-    type: 'refused_demand', actor: 'commander', targets: [unitId], severity: 'moderate', ...(opts.templateId !== undefined ? { templateId: opts.templateId } : {}),
+    type: 'refused_demand', actor: 'commander', targets: [unitId], severity: opts.severity ?? 'moderate', ...(opts.templateId !== undefined ? { templateId: opts.templateId } : {}),
     ...(opts.lapsed === true ? { lapsed: true } : {}), evidence: opts.evidence, confidence: 1,
   } as never, { scale: high ? TUNING.demands.refuseHighMult : 1 });
   countDeed(draft, 'demands_refused');

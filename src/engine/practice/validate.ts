@@ -127,7 +127,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const LABEL = /^(?:her words|text|summary|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
 
 /** Plain text: markup, markdown, control characters, a leading label and wrapping quotes go, then cut. */
-function plainText(v: unknown, max: number): string {
+export function plainText(v: unknown, max: number): string {
   if (typeof v !== 'string') return '';
   return v.replace(/<[^>]*>/g, '').replace(/[*_`~#>]+/g, '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
     .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim().replace(LABEL, '').slice(0, max).trim();

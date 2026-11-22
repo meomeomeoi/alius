@@ -151,6 +151,12 @@ export interface Task {
   handover?: HandoverKind;
   /** The request this card was written for (the key of its generation: a reroll while it is offered replaces the card). */
   requestId?: string;
+  /** The slots of the commander the task takes (a hold's span; the cost the card shows). */
+  slots?: number;
+  /** A `signed` task whose words were said: only the signature is left (R6). */
+  said?: true;
+  /** The scene with her that is open and would keep a `slot_with_her` task when it ends. */
+  sceneId?: string;
 }
 
 /** A ceremony's progress (R21): the step rows for her style by `order`, the ones done, and the number the commander named. */

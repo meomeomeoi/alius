@@ -206,9 +206,15 @@ describe('the router', () => {
   it('a type whose handler is not built is dropped: nothing changes, nothing is drawn', () => {
     const s = scene({ practices: { tasks: [task()] } });
     const d = structuredClone(s);
-    for (const type of PRACTICE_INTENT_TYPES) expect(PRACTICE_HANDLERS[type]).toBeUndefined();
-    const out = applyPracticeIntent(d, { registries: reg }, ANN, { type: 'task_kept', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'x', confidence: 1, taskId: 'pt1' });
-    expect(out).toEqual([]);
+    const saved = { ...PRACTICE_HANDLERS }; // a type is dropped while it has no handler, whichever tasks have built theirs by now
+    for (const type of Object.keys(PRACTICE_HANDLERS)) delete PRACTICE_HANDLERS[type];
+    try {
+      for (const type of PRACTICE_INTENT_TYPES) {
+        expect(applyPracticeIntent(d, { registries: reg }, ANN, { type, actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'x', confidence: 1, taskId: 'pt1' } as never)).toEqual([]);
+      }
+    } finally {
+      Object.assign(PRACTICE_HANDLERS, saved);
+    }
     expect(d).toEqual(s);
   });
 });

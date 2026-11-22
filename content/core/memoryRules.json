@@ -1169,5 +1169,19 @@
       "dynamic",
       "zone"
     ]
+  },
+  {
+    "id": "practice_signed",
+    "event": "practice_signed",
+    "text": "AUTHOR TO WRITE: The commander put a name to what {name} asked: {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "practice_signed"
+    ]
   }
 ]

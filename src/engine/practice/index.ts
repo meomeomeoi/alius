@@ -1,6 +1,8 @@
 export { ensurePractices, freezeOf, nextPracticeId, practiceHolders, practiceLive, practicesOf, practicesOn } from './gate';
 export { newPracticeChance, kindsToday, practiceDayStep } from './dayStep';
-export { acceptFormOf, fallbackOutput, issuePractice, requestOf, requestPractice, WRITERS } from './issue';
+export { fallbackOutput, issuePractice, requestOf, requestPractice, WRITERS } from './issue';
+export { acceptByWords, acceptFormOf, answerTask, compromiseTask, recordLine, signTask, taskCost, writeTask } from './tasks';
+export { noteOffence } from './offences';
 export { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 export { applyPracticeIntent, PRACTICE_HANDLERS, PRACTICE_ROW_IS_CONDITIONAL, practiceIntentInput } from './intents';
 export type { PracticeOffer, PracticeRow } from './intents';

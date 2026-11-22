@@ -15,6 +15,7 @@ import { PRACTICE_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { practiceLive, practicesOn } from './gate';
+import { acceptByWords, compromiseTask } from './tasks';
 
 /** The model-reported types of the practices: their own rows are zero or are applied by their handlers, so `applyIntents` leaves them to `applyPracticeIntent`. */
 export const PRACTICE_ROW_IS_CONDITIONAL: readonly string[] = PRACTICE_INTENT_TYPES;
@@ -108,7 +109,10 @@ export type PracticeHandler = (draft: CampaignState, ctx: Pick<EngineCtx, 'regis
  * `acceptByWords` for `practice_accepted`, `rateService`, `denialBroken`, `voiceThreat`, `ceremonyStep`, and the compromise's own); a type with no entry yet is
  * dropped: the report passes validation and does nothing.
  */
-export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {};
+export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
+  practice_accepted: (draft, ctx, unitId, ev) => (ev.handoverId !== undefined ? [] : acceptByWords(draft, ctx, unitId, ev)), // a handover's words are built with the handover
+  compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : []), // a punishment's and an alarm's own compromise are built with them
+};
 
 /** Routes one validated report to its handler. A type whose handler is not built yet changes nothing. */
 export function applyPracticeIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, ev: EventIntent, batch: readonly EngineEvent[] = []): EngineEvent[] {
