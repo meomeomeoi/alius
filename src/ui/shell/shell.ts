@@ -373,6 +373,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     device = null;
     router.render(view);
     renderedScreen = router.current();
+    root.dataset.screen = renderedScreen; // P10e: the scene screen is the whole viewport (css/10-shell.css hides the ASCII frame)
     updateTitle();
   }
 

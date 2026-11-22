@@ -172,7 +172,7 @@ describe('scene screen', () => {
   it('CMD> Enter calls controller.send and disables input until done', async () => {
     const { q, controller, finishSend } = setup();
     const input = q<HTMLInputElement>('input[name="cmd"]')!;
-    expect(q('.alius-cmd')!.textContent).toContain('CMD>');
+    expect(q('.alius-stage-cmd')!.textContent).toContain('CMD>');
     input.value = 'Hello, Ann.';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(controller.send).toHaveBeenCalledWith('Hello, Ann.');

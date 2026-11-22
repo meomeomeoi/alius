@@ -131,8 +131,9 @@
 }
 
 #alius-shell.alius-sensory .alius-scene-bg,
-#alius-shell.alius-sensory .alius-scene-backdrop,
-#alius-shell.alius-sensory .alius-stage,
+#alius-shell.alius-sensory .alius-layer-backdrop,
+#alius-shell.alius-sensory .alius-layer-ascii,
+#alius-shell.alius-sensory .alius-layer-sprites,
 #alius-shell.alius-sensory .alius-stage-caption {
   display: none;
 }

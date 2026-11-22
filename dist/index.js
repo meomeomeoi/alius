@@ -62466,6 +62466,20 @@ function actRow(host, ctx2) {
   )];
 }
 
+// src/ui/scene/stage/layers.ts
+var LAYER_NAMES = ["backdrop", "ascii", "frame", "pose", "sprites", "effects", "ui", "moment", "curtain"];
+var UI_HOSTS = [["topLine", "topline"], ["status", "status"], ["reply", "reply"], ["chipRow", "chips"], ["input", "input"], ["dock", "dock"], ["dial", "dial"]];
+function buildLayers(root) {
+  const layer = (name) => h("div", { class: `alius-layer alius-layer-${name}` });
+  const layers = Object.fromEntries(LAYER_NAMES.map((n) => [n, layer(n)]));
+  for (const n of ["backdrop", "ascii", "frame", "pose", "effects"]) layers[n].setAttribute("aria-hidden", "true");
+  const hosts = Object.fromEntries(UI_HOSTS.map(([name, cls]) => [name, h("div", { class: `alius-stage-${cls}` })]));
+  layers.ui.append(...UI_HOSTS.map(([name]) => hosts[name]));
+  root.replaceChildren(...LAYER_NAMES.map((n) => layers[n]));
+  root.dataset.stage = "frame";
+  return { root, ...layers, hosts };
+}
+
 // src/ui/scene/stage/prose.ts
 var CLOSER = { '"': '"', "\u201C": "\u201D" };
 function closeOnLine(text3, from, mark) {
@@ -62606,7 +62620,6 @@ function tryLoad(url, load) {
   }
   return p;
 }
-var SPRITE_TUCK = 14;
 var PULSE_MS = 1500;
 var TICK_MS2 = 50;
 var NON_ROMANTIC_KINDS = ["friendship_deepen", "confide", "rivalry", "reconcile", "break_up"];
@@ -62632,8 +62645,6 @@ function renderSceneScreen(host, ctx2) {
   const root = h("div", { class: "alius-scene" });
   host.append(root);
   attachPan();
-  const resizer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => placeSprites());
-  resizer?.observe(root);
   let pacing = false;
   let pending4 = false;
   let disposed = false;
@@ -62647,6 +62658,7 @@ function renderSceneScreen(host, ctx2) {
   let busyStarted = 0;
   const labels = /* @__PURE__ */ new Map();
   const timeouts = /* @__PURE__ */ new Set();
+  let layers;
   let bg;
   let backdrop;
   let backdropKey = "";
@@ -62701,7 +62713,6 @@ function renderSceneScreen(host, ctx2) {
     const art2 = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
     art2.textContent = (loc?.ascii ?? []).join("\n");
     bg.replaceChildren(art2);
-    placeSprites();
   }
   function showImage(url, light) {
     root.dataset.backdrop = "image";
@@ -62709,7 +62720,6 @@ function renderSceneScreen(host, ctx2) {
     else delete root.dataset.light;
     backdrop.style.backgroundImage = cssUrl(url);
     bg.replaceChildren();
-    placeSprites();
   }
   function drawBackground(s) {
     caption.textContent = locationName(s, present2(s)).toUpperCase();
@@ -62742,16 +62752,6 @@ function renderSceneScreen(host, ctx2) {
       }
     })();
   }
-  function placeSprites() {
-    if (!spriteHost) return;
-    const stage2 = spriteHost.parentElement;
-    if (root.dataset.backdrop !== "image" || !stage2 || !log) {
-      spriteHost.style.bottom = "";
-      return;
-    }
-    const gap = Math.max(0, log.getBoundingClientRect().top - stage2.getBoundingClientRect().bottom);
-    spriteHost.style.bottom = `-${Math.round(gap + SPRITE_TUCK)}px`;
-  }
   function attachPan() {
     root.style.setProperty("--alius-pan", "0.5");
     root.addEventListener("pointermove", (ev) => {
@@ -62778,6 +62778,7 @@ function renderSceneScreen(host, ctx2) {
   }
   function drawSprites(s, speakerAvatar) {
     const units = present2(s);
+    spriteHost.dataset.count = String(units.length);
     const positions = units.length === 1 ? ["pos-center"] : units.length === 2 ? ["pos-left", "pos-right"] : ["pos-left", "pos-center", "pos-right"];
     spriteHost.replaceChildren(...units.map((u, i) => {
       const img = h("img", { alt: u.displayName, class: "alius-sprite-img" });
@@ -63078,15 +63079,17 @@ function renderSceneScreen(host, ctx2) {
   function build(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
+    layers = buildLayers(root);
     bg = h("div", { class: "alius-scene-bg" });
-    backdrop = h("div", { class: "alius-scene-backdrop", "aria-hidden": "true" });
+    backdrop = layers.backdrop;
+    backdrop.classList.add("alius-scene-backdrop");
     backdropKey = "";
     backdropToken++;
     delete root.dataset.backdrop;
     delete root.dataset.light;
-    spriteHost = h("div", { class: "alius-sprites" });
+    spriteHost = layers.sprites;
+    spriteHost.classList.add("alius-sprites");
     hud = h("div", { class: "alius-hud" });
-    resizer?.observe(hud);
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
@@ -63181,8 +63184,10 @@ function renderSceneScreen(host, ctx2) {
     const act = (action, text3, onclick, aria) => h("button", { type: "button", class: "alius-btn", "data-action": action, "aria-label": aria, onclick }, text3);
     const ignore = (p) => void p.catch(() => {
     });
-    root.replaceChildren(
-      backdrop,
+    const { hosts } = layers;
+    layers.ascii.append(bg, caption);
+    layers.moment.append(slapHost);
+    hosts.topLine.append(
       h(
         "div",
         { class: "alius-scene-header" },
@@ -63200,35 +63205,14 @@ function renderSceneScreen(host, ctx2) {
           }), "End the conversation")
         )
       ),
-      banner,
-      deviceHost,
-      busyHost,
-      h("div", { class: "alius-stage" }, bg, spriteHost, caption),
-      hud,
-      log,
-      genChips,
-      blockingHost,
-      momentHost,
-      physicsHost,
-      chips,
-      leadChips,
-      offerHost,
-      ruleChips,
-      disciplineChips,
-      demandChips,
-      milestoneCards,
-      claimCards,
-      returnCards,
-      taskCards,
-      punishmentCards,
-      demonstrationCards,
-      postureCall,
-      slapHost,
-      freqChips,
-      disciplineMenus,
-      letsHost,
-      h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose2, who)
+      hud
     );
+    hosts.status.append(banner, deviceHost, busyHost);
+    hosts.reply.append(log);
+    hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
+    hosts.input.append(h("div", { class: "alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose2, who));
+    hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
+    hosts.dial.append(blockingHost);
     drawBackground(s);
   }
   function syncOrder() {
@@ -63241,6 +63225,7 @@ function renderSceneScreen(host, ctx2) {
     const s = state();
     if (!s?.scene) {
       root.replaceChildren(h("div", { class: "alius-stub" }, "NO SCENE OPEN"));
+      delete root.dataset.stage;
       sceneKey = "";
       backdropKey = "";
       backdropToken++;
@@ -63249,7 +63234,7 @@ function renderSceneScreen(host, ctx2) {
       stopTyping();
       return;
     }
-    if (sceneKey !== s.scene.id || !root.querySelector(".alius-stage")) {
+    if (sceneKey !== s.scene.id || !root.querySelector(".alius-layer-sprites")) {
       seen2 = -1;
       progress = /* @__PURE__ */ new Map();
       stopTyping();
@@ -63270,7 +63255,6 @@ function renderSceneScreen(host, ctx2) {
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
-    placeSprites();
   }
   function pulse(e) {
     const holder2 = hud.querySelector(`.alius-hud-unit[data-unit="${e.unitId}"] .alius-pulses`);
@@ -63317,7 +63301,6 @@ function renderSceneScreen(host, ctx2) {
       cancelPostureCalls();
       clearSlapOverlay(slapHost);
       backdropToken++;
-      resizer?.disconnect();
       stopTyping();
       if (busyTimer) clearInterval(busyTimer);
       for (const t of timeouts) clearTimeout(t);
@@ -66478,6 +66461,7 @@ function createShell(deps) {
     device = null;
     router.render(view);
     renderedScreen = router.current();
+    root.dataset.screen = renderedScreen;
     updateTitle();
   }
   function open3() {

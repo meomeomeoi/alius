@@ -212,3 +212,34 @@
   justify-content: flex-end;
   margin-top: 14px;
 }
+
+/* P10e: the scene screen is the whole viewport: no padding, no ASCII frame. Its two jobs (close, key hints) are on the scene's top line. */
+#alius-shell[data-screen="scene"] {
+  padding: 0;
+}
+
+#alius-shell[data-screen="scene"] .alius-frame {
+  border: 0;
+}
+
+#alius-shell[data-screen="scene"] :is(.alius-titlebar, .alius-footer) {
+  display: none;
+}
+
+#alius-shell[data-screen="scene"] .alius-view {
+  padding: 0;
+}
+
+/* the error banner and the HELD strip float over the frame instead of pushing it down */
+#alius-shell[data-screen="scene"] :is(.alius-banner-host, .alius-held-host) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+#alius-shell[data-screen="scene"] :is(.alius-banner-host, .alius-held-host) > * {
+  pointer-events: auto;
+}

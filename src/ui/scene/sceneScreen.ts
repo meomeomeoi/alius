@@ -36,6 +36,7 @@ import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
+import { buildLayers, type StageLayers } from './stage/layers';
 import { fillProse, proseLength } from './stage/prose';
 
 export interface SceneScreenCtx {
@@ -152,9 +153,6 @@ function tryLoad(url: string, load: (url: string) => Promise<boolean>): Promise<
   return p;
 }
 
-/** P10c: how far a knee-length sprite reaches behind the top of the transcript panel. */
-const SPRITE_TUCK = 14;
-
 const PULSE_MS = 1500;
 const TICK_MS = 50;
 const NON_ROMANTIC_KINDS = ['friendship_deepen', 'confide', 'rivalry', 'reconcile', 'break_up'] as const;
@@ -176,9 +174,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const root = h('div', { class: 'alius-scene' });
   host.append(root);
   attachPan();
-  // P10c: a window resize, or a HUD that wraps (a pulse, a REFUSED line, a late font), moves the transcript; the sprites follow
-  const resizer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => placeSprites());
-  resizer?.observe(root);
 
   let pacing = false;
   let pending = false;
@@ -194,6 +189,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const labels = new Map<string, string>();
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
+  let layers: StageLayers;
   let bg: HTMLElement;
   /** P10c: the full-bleed image layer behind the whole scene (the ASCII art stays in `bg`, inside the stage). */
   let backdrop: HTMLElement;
@@ -254,7 +250,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const art = h('pre', { class: 'alius-ascii', 'aria-hidden': 'true' });
     art.textContent = ((loc?.ascii as string[] | undefined) ?? []).join('\n');
     bg.replaceChildren(art);
-    placeSprites();
   }
 
   function showImage(url: string, light: string | null): void {
@@ -263,7 +258,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     else delete root.dataset.light;
     backdrop.style.backgroundImage = cssUrl(url);
     bg.replaceChildren();
-    placeSprites();
   }
 
   /**
@@ -303,22 +297,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     })();
   }
 
-  /**
-   * P10c: sprites are knee-length, so over a full-bleed picture their cut must never show: the sprite layer reaches down
-   * past the HUD to the transcript's top edge and `SPRITE_TUCK` px behind it (the panel covers the cut, the CSS fades it).
-   * Measured from the layout because the HUD's height varies (a REFUSED line, wrapping names). Image mode only.
-   */
-  function placeSprites(): void {
-    if (!spriteHost) return;
-    const stage = spriteHost.parentElement;
-    if (root.dataset.backdrop !== 'image' || !stage || !log) {
-      spriteHost.style.bottom = '';
-      return;
-    }
-    const gap = Math.max(0, log.getBoundingClientRect().top - stage.getBoundingClientRect().bottom);
-    spriteHost.style.bottom = `-${Math.round(gap + SPRITE_TUCK)}px`;
-  }
-
   /** P10c: the pointer pans the wide background over its extra width (0 = left edge, 1 = right); centred under reduced motion. */
   function attachPan(): void {
     root.style.setProperty('--alius-pan', '0.5');
@@ -348,6 +326,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   function drawSprites(s: CampaignState, speakerAvatar: string | undefined): void {
     const units = present(s);
+    spriteHost.dataset.count = String(units.length);
     const positions = units.length === 1 ? ['pos-center'] : units.length === 2 ? ['pos-left', 'pos-right'] : ['pos-left', 'pos-center', 'pos-right'];
     spriteHost.replaceChildren(...units.map((u, i) => {
       const img = h('img', { alt: u.displayName, class: 'alius-sprite-img' });
@@ -630,15 +609,17 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function build(s: CampaignState): void {
     const units = present(s);
     sceneKey = s.scene!.id;
+    layers = buildLayers(root);
     bg = h('div', { class: 'alius-scene-bg' });
-    backdrop = h('div', { class: 'alius-scene-backdrop', 'aria-hidden': 'true' });
+    backdrop = layers.backdrop;
+    backdrop.classList.add('alius-scene-backdrop');
     backdropKey = '';
     backdropToken++; // a load still running for the previous scene must not paint this one
     delete root.dataset.backdrop;
     delete root.dataset.light;
-    spriteHost = h('div', { class: 'alius-sprites' });
+    spriteHost = layers.sprites;
+    spriteHost.classList.add('alius-sprites');
     hud = h('div', { class: 'alius-hud' });
-    resizer?.observe(hud);
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
@@ -655,7 +636,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     punishmentCards = h('div', { class: 'alius-punishment-cards' });
     demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
     postureCall = h('div', { class: 'alius-posture-call-host' });
-    slapHost = h('div', { class: 'alius-slap-host' }); // an overlay: it takes no room of the scene's own
+    slapHost = h('div', { class: 'alius-slap-host' }); // an overlay: it lives in the full-screen moment layer and takes no room
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
@@ -729,8 +710,11 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       h('button', { type: 'button', class: 'alius-btn', 'data-action': action, 'aria-label': aria, onclick }, text);
     const ignore = (p: Promise<void>): void => void p.catch(() => {});
 
-    root.replaceChildren(
-      backdrop,
+    const { hosts } = layers;
+    layers.ascii.append(bg, caption);
+    layers.moment.append(slapHost);
+    // P10e: the hosts the later tasks redraw (top line, reply, chip row, dock, dial) hold today's elements until each is replaced
+    hosts.topLine.append(
       h('div', { class: 'alius-scene-header' },
         h('span', {}, locationName(s, units)),
         h('span', { class: 'alius-dim' }, ` // DAY ${String(s.day).padStart(3, '0')} // ${s.slot.toUpperCase()} // ${s.scene!.mode === 'group' ? 'GROUP' : 'PRIVATE'}`),
@@ -741,35 +725,14 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           act('swipe-right', '›', () => ignore(st.swipeLast('right')), 'Next reply'),
           act('end', '[ END TRANSMISSION ]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
       ),
-      banner,
-      deviceHost,
-      busyHost,
-      h('div', { class: 'alius-stage' }, bg, spriteHost, caption),
       hud,
-      log,
-      genChips,
-      blockingHost,
-      momentHost,
-      physicsHost,
-      chips,
-      leadChips,
-      offerHost,
-      ruleChips,
-      disciplineChips,
-      demandChips,
-      milestoneCards,
-      claimCards,
-      returnCards,
-      taskCards,
-      punishmentCards,
-      demonstrationCards,
-      postureCall,
-      slapHost,
-      freqChips,
-      disciplineMenus,
-      letsHost,
-      h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who),
     );
+    hosts.status.append(banner, deviceHost, busyHost);
+    hosts.reply.append(log);
+    hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
+    hosts.input.append(h('div', { class: 'alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who));
+    hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
+    hosts.dial.append(blockingHost);
     drawBackground(s);
   }
 
@@ -784,6 +747,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const s = state();
     if (!s?.scene) {
       root.replaceChildren(h('div', { class: 'alius-stub' }, 'NO SCENE OPEN'));
+      delete root.dataset.stage;
       sceneKey = '';
       backdropKey = '';
       backdropToken++;
@@ -792,7 +756,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       stopTyping();
       return;
     }
-    if (sceneKey !== s.scene.id || !root.querySelector('.alius-stage')) {
+    if (sceneKey !== s.scene.id || !root.querySelector('.alius-layer-sprites')) {
       seen = -1;
       progress = new Map();
       stopTyping();
@@ -813,7 +777,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
-    placeSprites();
   }
 
   function pulse(e: Extract<SceneUiEvent, { type: 'pulse' }>): void {
@@ -857,7 +820,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       cancelPostureCalls(); // no late slip for a call whose scene is gone (P16)
       clearSlapOverlay(slapHost); // and no late answer to a slap whose scene is gone
       backdropToken++;
-      resizer?.disconnect();
       stopTyping();
       if (busyTimer) clearInterval(busyTimer);
       for (const t of timeouts) clearTimeout(t);

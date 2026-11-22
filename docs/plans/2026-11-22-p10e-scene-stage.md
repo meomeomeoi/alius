@@ -214,13 +214,13 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `ui` holds the UI hosts: `topLine`, `status`, `reply`, `chipRow`, `input`, `dock`, `dial`
   - the root carries `data-stage="frame"`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the layer order`: `buildLayers` yields the ten layers in order.
   - `the scene builds on layers`: `renderSceneScreen` with a scene gives the root `data-stage="frame"`, the sprites in `.alius-layer-sprites` and the backdrop in `.alius-layer-backdrop`. `.alius-stage` and `.alius-cmd` no longer exist. The P10c `data-backdrop` / `data-light` attributes are as before (the existing backdrop tests pass with updated selectors).
   - `one, two, three women`: the sprites carry `pos-center`; `pos-left pos-right`; `pos-left pos-center pos-right` (as today) and `is-speaking` on the last speaker.
   - `the shell marks the screen`: after `showScreen('scene')`, `#alius-shell` has `data-screen="scene"`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/stage/layers.test.ts tests/ui/sceneBackdrop.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** CSS in `62-stage.css`:
+- [x] **Step 2: Run** `npx vitest run tests/ui/stage/layers.test.ts tests/ui/sceneBackdrop.test.ts` → FAIL.
+- [x] **Step 3: Implement.** CSS in `62-stage.css`:
   - every layer `position:absolute; inset:0`;
   - the backdrop `cover` with `background-position-x: calc(var(--alius-pan) * 100%)`;
   - one sprite `height: 110vh; top: 3vh`, centred; two or three at 92 vh, spaced so they overlap by at most a shoulder;
@@ -229,8 +229,8 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - the bottom gradient on `effects::after`.
 
   The `ui` layer has `pointer-events:none` and each host inside it `pointer-events:auto`, so the frame below gets the right mouse button.
-- [ ] **Step 4: Run** the tests, `npx vitest run tests/ui/scene.test.ts tests/ui/sceneOrder.test.ts`, `npx tsc --noEmit`, `npm run build` → PASS (update selectors only).
-- [ ] **Step 5: Commit** `feat(P10e): the scene as one full frame`
+- [x] **Step 4: Run** the tests, `npx vitest run tests/ui/scene.test.ts tests/ui/sceneOrder.test.ts`, `npx tsc --noEmit`, `npm run build` → PASS (update selectors only).
+- [x] **Step 5: Commit** `feat(P10e): the scene as one full frame`
 
 ### Task 5: The top line and the input
 

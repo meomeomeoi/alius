@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { quartersOf } from '../../src/engine/backdrops';
@@ -131,19 +132,13 @@ describe('scene backdrop (P10c)', () => {
     expect(still.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
   });
 
-  it('knee-length sprites reach down behind the transcript, measured from the layout (image mode only)', async () => {
+  it('knee-length sprites are sized by CSS over the whole frame (P10e replaces the measured tuck behind the transcript)', async () => {
     const t = setup();
     await flush();
-    const rect = (top: number, bottom: number) => () => ({ top, bottom, left: 0, right: 1000, width: 1000, height: bottom - top, x: 0, y: top, toJSON() {} });
-    Object.defineProperty(t.host.querySelector('.alius-stage')!, 'getBoundingClientRect', { value: rect(50, 600) });
-    Object.defineProperty(t.host.querySelector('.alius-transcript')!, 'getBoundingClientRect', { value: rect(640, 900) });
-    t.screen.refresh();
-    expect(t.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe('-54px');
-    document.body.innerHTML = '';
-    const ascii = setup({ locationId: 'garage', broken: ['loc_garage'] });
-    await flush();
-    ascii.screen.refresh();
-    expect(ascii.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe('');
+    expect(t.host.querySelector('.alius-layer-sprites .alius-sprite')).not.toBeNull();
+    expect(t.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe(''); // nothing is measured from the layout any more
+    const css = readFileSync('css/62-stage.css', 'utf8');
+    expect(css).toMatch(/\.alius-sprite \{[^}]*top: 3vh;[^}]*height: 110vh;/s);
   });
 
   it('review fixes: the ASCII stage shows while a picture loads; a new scene does not inherit the last one\'s image mode', async () => {
@@ -225,18 +220,5 @@ describe('scene backdrop (P10c)', () => {
     t.settings.reducedMotion = true;
     t.root().dispatchEvent(new MouseEvent('pointermove', { clientX: 100, bubbles: true }));
     expect(t.root().style.getPropertyValue('--alius-pan')).toBe('0.5');
-  });
-
-  it('review fixes: the HUD is observed, so a pulse that wraps it moves the sprites', async () => {
-    const observed: Element[] = [];
-    vi.stubGlobal('ResizeObserver', class { observe(el: Element) { observed.push(el); } disconnect() {} });
-    try {
-      const t = setup();
-      await flush();
-      expect(observed).toContain(t.root());
-      expect(observed).toContain(t.host.querySelector('.alius-hud'));
-    } finally {
-      vi.unstubAllGlobals();
-    }
   });
 });

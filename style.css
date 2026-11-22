@@ -281,6 +281,37 @@
   margin-top: 14px;
 }
 
+/* P10e: the scene screen is the whole viewport: no padding, no ASCII frame. Its two jobs (close, key hints) are on the scene's top line. */
+#alius-shell[data-screen="scene"] {
+  padding: 0;
+}
+
+#alius-shell[data-screen="scene"] .alius-frame {
+  border: 0;
+}
+
+#alius-shell[data-screen="scene"] :is(.alius-titlebar, .alius-footer) {
+  display: none;
+}
+
+#alius-shell[data-screen="scene"] .alius-view {
+  padding: 0;
+}
+
+/* the error banner and the HELD strip float over the frame instead of pushing it down */
+#alius-shell[data-screen="scene"] :is(.alius-banner-host, .alius-held-host) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+#alius-shell[data-screen="scene"] :is(.alius-banner-host, .alius-held-host) > * {
+  pointer-events: auto;
+}
+
 /*
  * Motion, readable mode and the boot. Everything that moves stops under `alius-reduced-motion` (the SYS setting, or the
  * system's `prefers-reduced-motion`, through `motionReduced`). Readable mode drops the CRT effects and raises the text.
@@ -2455,16 +2486,6 @@
 }
 
 /* Scene screen, COMMS, LOG and the night knock (P3). Palette variables only; every text colour keeps its 7:1 contrast. */
-#alius-shell .alius-scene {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  overflow: hidden;
-}
-
 #alius-shell .alius-scene-header {
   flex: none;
   display: flex;
@@ -2487,14 +2508,6 @@
   color: var(--alius-dim);
 }
 
-#alius-shell .alius-stage {
-  position: relative;
-  flex: 1 1 40%;
-  min-height: 120px;
-  border: var(--alius-line);
-  overflow: hidden;
-}
-
 /* the ASCII art of a place without a picture (P10c: the picture itself is .alius-scene-backdrop) */
 #alius-shell .alius-scene-bg {
   position: absolute;
@@ -2509,38 +2522,6 @@
   font-size: 12px;
   line-height: 1.1;
   overflow: hidden;
-}
-
-#alius-shell .alius-sprites {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  pointer-events: none;
-}
-
-#alius-shell .alius-sprite {
-  position: absolute;
-  bottom: 0;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  filter: brightness(0.55);
-  transition: filter 0.2s;
-}
-
-#alius-shell .alius-sprite.is-speaking {
-  filter: brightness(1);
-}
-
-#alius-shell .alius-sprite.pos-left { left: 8%; }
-#alius-shell .alius-sprite.pos-center { left: 50%; transform: translateX(-50%); }
-#alius-shell .alius-sprite.pos-right { right: 8%; }
-
-#alius-shell .alius-sprite-img {
-  max-height: 100%;
-  max-width: 40vw;
-  object-fit: contain;
 }
 
 #alius-shell .alius-hud {
@@ -2855,109 +2836,6 @@
   #alius-shell .alius-busy-text::after { animation: none; }
 }
 
-/*
- * P10c: the full-bleed backdrop. Only while an image is shown (`data-backdrop="image"`); without one the scene is the
- * bordered ASCII stage above. The scene spreads under the view's side padding, the image covers it (a 21:9 file at
- * 16:9 leaves ~25 % of its width to pan, `--alius-pan` 0…1), the palette background darkens the top (header) and the
- * bottom (transcript, input), and the transcript sits on a translucent panel. Colours come from the palette only.
- */
-#alius-shell .alius-scene-backdrop {
-  display: none;
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] {
-  margin: 0 -12px;
-  padding: 0 12px;
-  isolation: isolate;
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] > .alius-scene-backdrop {
-  display: block;
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: calc(var(--alius-pan, 0.5) * 100%) center;
-  transition: background-position 0.8s ease-out, filter 0.6s;
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] > .alius-scene-backdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--alius-bg) 82%, transparent) 0,
-    color-mix(in srgb, var(--alius-bg) 10%, transparent) 9%,
-    transparent 20%,
-    transparent 46%,
-    color-mix(in srgb, var(--alius-bg) 70%, transparent) 64%,
-    color-mix(in srgb, var(--alius-bg) 90%, transparent) 100%
-  );
-}
-
-/* P17c §4: the light of the slot over a file that was not drawn for it (night: warm and dark) */
-#alius-shell .alius-scene[data-light="evening"] > .alius-scene-backdrop {
-  filter: brightness(0.82) sepia(0.18) saturate(1.05);
-}
-
-#alius-shell .alius-scene[data-light="night"] > .alius-scene-backdrop {
-  filter: brightness(0.5) sepia(0.25) saturate(0.85);
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] .alius-stage {
-  flex: 1 1 52%;
-  border: none;
-  overflow: visible; /* the knee-length sprites reach down behind the transcript (placeSprites) */
-  z-index: 0;
-}
-
-/* the rows below the stage sit above the sprites' legs; the transcript panel hides their cut (the cut-in keeps its own position) */
-#alius-shell .alius-scene[data-backdrop="image"] > :is(.alius-hud, .alius-transcript, .alius-chips, .alius-generation-chips, .alius-discipline-units, .alius-cmd) {
-  position: relative;
-  z-index: 1;
-}
-
-/* the cut fades out under the panel's top edge, so no hard line shows through its translucency */
-#alius-shell .alius-scene[data-backdrop="image"] .alius-sprite-img {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] .alius-stage-caption {
-  z-index: 1;
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] .alius-scene-bg {
-  display: none;
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] .alius-transcript {
-  flex: 1 1 30%;
-  background: color-mix(in srgb, var(--alius-bg) 74%, transparent);
-  border-color: color-mix(in srgb, var(--alius-dim) 70%, transparent);
-  backdrop-filter: blur(3px);
-}
-
-#alius-shell .alius-scene[data-backdrop="image"] .alius-scene-header {
-  border-bottom-color: color-mix(in srgb, var(--alius-dim) 60%, transparent);
-}
-
-#alius-shell.alius-readable .alius-scene[data-backdrop="image"] .alius-transcript {
-  background: color-mix(in srgb, var(--alius-bg) 92%, transparent);
-  backdrop-filter: none;
-}
-
-#alius-shell.alius-reduced-motion .alius-scene-backdrop {
-  transition: none;
-}
-
-/* the rows below the stage sit at z-index 1 over a picture: a cut-in must stay above them */
-#alius-shell .alius-scene[data-backdrop="image"] > .alius-cutin {
-  z-index: 2;
-}
-
 /* The BLOCKING strip of the scene screen (P15a). Palette variables only; nothing animates, nothing relies on colour alone. */
 #alius-shell .alius-blocking {
   display: flex;
@@ -3152,6 +3030,211 @@
   stroke: color-mix(in srgb, var(--alius-dim) 70%, transparent);
   stroke-width: 1.6;
   stroke-linecap: round;
+}
+
+/*
+ * P10e: the scene stage. The scene screen is one full frame, built from layers back to front (backdrop, ASCII art, frame,
+ * pose shot, sprites, effects, UI, moments, curtain); every layer covers the whole viewport and the UI layer lets the pointer
+ * through to the frame (the right mouse button looks around there). Colours are palette mixes; blur is off in readable mode;
+ * every easing has a reduced-motion form.
+ */
+#alius-shell .alius-scene {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+#alius-shell .alius-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* the backdrop covers the whole screen; a wide file (3072 x 1280) shows 672 px more than a 1080 px-high screen: the right mouse button looks around */
+#alius-shell .alius-layer-backdrop {
+  display: none;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: calc(var(--alius-pan, 0.5) * 100%) center;
+  transition: background-position 0.5s ease-out, filter 0.6s;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] > .alius-layer-backdrop {
+  display: block;
+}
+
+#alius-shell .alius-scene[data-backdrop="image"] > .alius-layer-ascii {
+  display: none;
+}
+
+#alius-shell .alius-layer-ascii .alius-stage-caption {
+  left: 12px;
+  bottom: 12px;
+}
+
+/* the light of the slot over a file that was not drawn for it (P17c §4) */
+#alius-shell .alius-scene[data-light="evening"] > .alius-layer-backdrop {
+  filter: brightness(0.82) sepia(0.18) saturate(1.05);
+}
+
+#alius-shell .alius-scene[data-light="night"] > .alius-layer-backdrop {
+  filter: brightness(0.5) sepia(0.25) saturate(0.85);
+}
+
+#alius-shell .alius-scene.alius-look-still > .alius-layer-backdrop,
+#alius-shell.alius-reduced-motion .alius-layer-backdrop {
+  transition: none;
+}
+
+/* the sprites: one woman is about 1.1 x the viewport high with her top 3 % below the edge, so the head and shoulders sit high and
+   the knees fall under the bottom gradient; two or three are smaller so they overlap by no more than a shoulder */
+#alius-shell .alius-layer-sprites {
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#alius-shell .alius-sprite {
+  --alius-sprite-light: 1;
+  --alius-sprite-back: 1;
+  --alius-sprite-tint: saturate(1);
+  position: absolute;
+  top: 3vh;
+  height: 110vh;
+  display: flex;
+  align-items: flex-start;
+  filter: brightness(calc(var(--alius-sprite-light) * var(--alius-sprite-back))) var(--alius-sprite-tint);
+  transition: filter 0.2s;
+}
+
+#alius-shell .alius-sprite.pos-center { left: 50%; transform: translateX(-50%); }
+#alius-shell .alius-sprite.pos-left { left: 28%; transform: translateX(-50%); }
+#alius-shell .alius-sprite.pos-right { left: 72%; transform: translateX(-50%); }
+#alius-shell .alius-sprite:not(:only-child) { height: 92vh; top: 8vh; --alius-sprite-back: 0.62; }
+#alius-shell .alius-sprite:not(:only-child).is-speaking { --alius-sprite-back: 1; z-index: 1; }
+#alius-shell .alius-layer-sprites[data-count="3"] .alius-sprite.pos-left { left: 20%; }
+#alius-shell .alius-layer-sprites[data-count="3"] .alius-sprite.pos-right { left: 80%; }
+
+#alius-shell .alius-sprite-img {
+  height: 100%;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+}
+
+/* the scene's light tints the sprite, so a daylight sprite does not glow in a dark room */
+#alius-shell .alius-scene[data-light="evening"] .alius-sprite { --alius-sprite-light: 0.9; --alius-sprite-tint: sepia(0.2) saturate(1.05); }
+#alius-shell .alius-scene[data-light="night"] .alius-sprite { --alius-sprite-light: 0.62; --alius-sprite-tint: saturate(0.8) hue-rotate(-8deg); }
+
+/* effects: the top line and the bottom third (reply, input) sit on a soft gradient, never in a box */
+#alius-shell .alius-layer-effects {
+  pointer-events: none;
+}
+
+#alius-shell .alius-layer-effects::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--alius-bg) 78%, transparent) 0,
+    color-mix(in srgb, var(--alius-bg) 8%, transparent) 13%,
+    transparent 22%,
+    transparent 50%,
+    color-mix(in srgb, var(--alius-bg) 60%, transparent) 70%,
+    color-mix(in srgb, var(--alius-bg) 90%, transparent) 100%
+  );
+}
+
+/* the UI: the pointer goes through the layer to the frame; each host takes it back */
+#alius-shell .alius-layer-ui {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 20px 22px;
+}
+
+#alius-shell .alius-layer-ui > * {
+  pointer-events: auto;
+}
+
+#alius-shell .alius-stage-topline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 18px;
+}
+
+#alius-shell .alius-stage-status,
+#alius-shell .alius-stage-reply,
+#alius-shell .alius-stage-chips,
+#alius-shell .alius-stage-input {
+  width: min(56%, 1080px);
+  min-width: min(100%, 320px);
+}
+
+#alius-shell .alius-stage-status:empty,
+#alius-shell .alius-stage-chips:empty,
+#alius-shell .alius-stage-dock:empty,
+#alius-shell .alius-stage-dial:empty {
+  display: none;
+}
+
+/* her hand of cards, left of her (the dock proper is Task 10; until then the hosts it will hold stack here) */
+#alius-shell .alius-stage-dock {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(420px, 26vw);
+  max-height: 64vh;
+  overflow-y: auto;
+}
+
+/* the posture dial's corner (the dial proper is Task 12) */
+#alius-shell .alius-stage-dial {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  max-width: 30vw;
+}
+
+#alius-shell .alius-stage-reply .alius-transcript {
+  flex: none;
+  min-height: 0;
+  max-height: 30vh;
+  background: color-mix(in srgb, var(--alius-bg) 74%, transparent);
+  border-color: color-mix(in srgb, var(--alius-dim) 60%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+#alius-shell.alius-readable .alius-stage-reply .alius-transcript {
+  background: color-mix(in srgb, var(--alius-bg) 92%, transparent);
+  backdrop-filter: none;
+}
+
+#alius-shell .alius-stage-cmd {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+#alius-shell .alius-stage-cmd .alius-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* the full-screen moments (the slap) and the history curtain: layers of their own, never in the column */
+#alius-shell .alius-layer-moment,
+#alius-shell .alius-layer-curtain {
+  pointer-events: none;
+}
+
+#alius-shell .alius-scene > .alius-cutin {
+  z-index: 6;
 }
 
 /* World parameters and disposition controls (P8). Palette variables only. */
@@ -4423,8 +4506,9 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 }
 
 #alius-shell.alius-sensory .alius-scene-bg,
-#alius-shell.alius-sensory .alius-scene-backdrop,
-#alius-shell.alius-sensory .alius-stage,
+#alius-shell.alius-sensory .alius-layer-backdrop,
+#alius-shell.alius-sensory .alius-layer-ascii,
+#alius-shell.alius-sensory .alius-layer-sprites,
 #alius-shell.alius-sensory .alius-stage-caption {
   display: none;
 }
