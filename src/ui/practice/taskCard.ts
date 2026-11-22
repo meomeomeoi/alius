@@ -45,7 +45,7 @@ const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'sev
 const SLOT_WORDS: Readonly<Record<string, string>> = { morning: 'morning', afternoon: 'afternoon', evening: 'evening', night: 'night' };
 
 /** When a task is due, in words (never a number): "today", "tomorrow evening", "in two days, in the morning". A deadline already past is "today": all that is left of it. */
-function dueWords(task: Pick<Task, 'deadline'>, today: number): string | null {
+export function dueWords(task: Pick<Task, 'deadline'>, today: number): string | null {
   if (task.deadline === undefined) return null;
   const days = Math.max(0, task.deadline.day - today);
   const slot = task.deadline.slot === undefined ? undefined : SLOT_WORDS[task.deadline.slot];

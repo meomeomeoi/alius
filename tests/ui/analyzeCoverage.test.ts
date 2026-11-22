@@ -948,6 +948,12 @@ describe('coverage: the dynamic (P15)', () => {
       readOf: { ...blankReading(), region: 'proud', updates: 4 }, sworn: { day: 3 },
     };
     s.relations[bea].dynamic = { ...blankDynamic(s.day), frame: 'play', hold: 45 };
+    s.relations[ann].dynamic!.favour = 11.11; // P16: her favour (a word), a task she asked and a posture she named: the PRACTICES block
+    s.practices = {
+      ...blankPractices(), seq: 4,
+      tasks: [{ id: 'pt1', holderId: ann, kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text: 'Bring the roster.', summary: 'bring the roster', status: 'open', acceptForm: 'button_cost', day: s.day }],
+      postures: { [ann]: [{ postureId: 'kneeling_upright', name: 'the post', day: s.day - 1 }] },
+    };
     s.relations[dee].dynamic = { ...blankDynamic(s.day), aftermath: { id: 'da1', kind: 'grief', stage: 0, untilDay: s.day + 5 } };
     s.dynamic.open.claims.push({ id: 'dc1', unitId: ann, domainId: 'body', day: s.day });
     s.dynamic.open.milestones.push({ id: 'dm1', unitId: ann, milestoneId: 'handover', day: s.day, form: 'scene' });
@@ -1018,7 +1024,7 @@ describe('coverage: the dynamic (P15)', () => {
       const addresses = new Set(unitIdsIn(root));
       for (const wanted of [
         'glossary:frame', 'glossary:hold', 'glossary:vow', 'glossary:her_reading', 'glossary:dynamic', 'glossary:dynamic_exit', 'glossary:claim', 'glossary:milestone', 'glossary:aftermath',
-        'glossary:offer', 'glossary:oversight_inquiry', 'dynamicDomains:device', 'dynamicTracks:restraint', 'worshipTargets:feet', 'glossary:dynamic_may_hold', 'glossary:setting_dynamic_holders',
+        'glossary:offer', 'glossary:oversight_inquiry', 'glossary:practice_task', 'glossary:favour', 'glossary:named_posture', 'dynamicDomains:device', 'dynamicTracks:restraint', 'worshipTargets:feet', 'glossary:dynamic_may_hold', 'glossary:setting_dynamic_holders',
       ]) expect(addresses.has(wanted), wanted).toBe(true);
       expect(addresses.has('setting:dynamicHidden')).toBe(true);
       expect(cat).toBeDefined();

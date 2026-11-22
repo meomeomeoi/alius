@@ -13,6 +13,8 @@ import { drawHeldStrip } from '../../../src/ui/practice/heldStrip';
 import { drawInitiativeChips } from '../../../src/ui/practice/initiativeChips';
 import { drawPunishmentCards } from '../../../src/ui/practice/punishmentCard';
 import { renderSlapOverlay } from '../../../src/ui/practice/slapOverlay';
+import { buildKnowledge } from '../../../src/analysis/knowledge';
+import { renderDynamicSection } from '../../../src/ui/dynamic/section';
 import { drawTaskCards, renderRecordLines } from '../../../src/ui/practice/taskCard';
 import { hiddenFixture } from '../../fixtures/analyze/hidden';
 import { leaks } from '../../helpers/analyze';
@@ -88,6 +90,28 @@ describe('hidden values never reach a card, a label, a directive or the prompt (
     fair.practices!.tasks[1].report = { day: 8 };
     expect(everything(fair, unitId).outerHTML).toBe(everything(state, unitId).outerHTML);
     expect(practiceDirectives(fair, reg, [unitId]).map((d) => d.text)).toEqual(practiceDirectives(state, reg, [unitId]).map((d) => d.text));
+  });
+
+  it('the PRACTICES block of her dossier shows no sentinel, with raw values on or off, and nothing at all in immersive mode', () => {
+    const { state, unitId, sentinels } = fixture();
+    for (const [showRawValues, dynamicHidden] of [[false, false], [true, false], [false, true], [true, true]] as const) {
+      const settings = { ...DEFAULT_SETTINGS, showRawValues, dynamicHidden };
+      const host = h('div');
+      document.body.append(host);
+      renderDynamicSection(host, { state, reg, unitId, knowledge: buildKnowledge(state, settings), hidden: dynamicHidden });
+      const label = `raw ${showRawValues}, immersive ${dynamicHidden}`;
+      const block = host.querySelector('[data-practices-block]');
+      if (dynamicHidden) expect(block, label).toBeNull();
+      else {
+        expect(block, label).not.toBeNull();
+        expect(block!.textContent, label).toContain('bring the roster');
+        expect(block!.textContent, label).toMatch(/a sealed task/);
+        expect(block!.textContent, label).toMatch(/WARM/);
+        expect(block!.textContent, label).toMatch(/until she decides/); // the task with no duration shows no deadline
+      }
+      expect(leaks(host.outerHTML, { numbers: [], texts: sentinels.texts }), label).toEqual([]);
+      expect(leaks(host.textContent ?? '', { numbers: [13.37, 26, 34, 733], texts: [] }), label).toEqual([]);
+    }
   });
 
   it('the directives carry no sentinel: a sealed task is "a sealed task", the hold has no end, a pretext never says nothing was done', () => {

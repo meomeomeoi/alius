@@ -46560,6 +46560,191 @@ function dynamicNotices(events, state, reg, opts = {}) {
   return out.map((n) => ({ ...n, text: plainDraft(n.text), ...n.cutIn !== void 0 ? { cutIn: { ...n.cutIn, text: plainDraft(n.cutIn.text) } } : {} }));
 }
 
+// src/ui/practice/generation.ts
+var practiceSite = (kind) => `practice.${kind}`;
+function drawPracticeReroll(host, generation, kind, requestId) {
+  if (generation === void 0 || requestId === void 0) return null;
+  return drawSiteReroll(host, generation, practiceSite(kind), requestId);
+}
+function drawPracticeChips(host, generation, state, reg, pick3) {
+  if (generation === void 0 || !dynamicOn(state, reg)) return 0;
+  const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
+  return drawGenerationChips(host, generation, state, "comms", (r) => {
+    if (!r.siteId.startsWith("practice.")) return false;
+    const holder2 = holderOf5(r.key);
+    return holder2 !== void 0 && pick3({ unitId: holder2 });
+  });
+}
+
+// src/ui/practice/signature.ts
+var custom2 = null;
+function holdButton(o) {
+  const button2 = h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip alius-sign",
+    "data-task-sign": "",
+    "aria-label": "Sign: hold to sign",
+    style: `--alius-sign-ms: ${TUNING.practice.sign.holdMs}ms`,
+    ...analyzeNative(o.analyze, o.ctx)
+  }, "[ SIGN ]");
+  let timer;
+  const stop2 = () => {
+    if (timer !== void 0) clearTimeout(timer);
+    timer = void 0;
+    button2.classList.remove("alius-signing");
+  };
+  const start = () => {
+    if (timer !== void 0) return;
+    button2.classList.add("alius-signing");
+    timer = setTimeout(() => {
+      timer = void 0;
+      button2.classList.remove("alius-signing");
+      o.onSign();
+    }, TUNING.practice.sign.holdMs);
+  };
+  button2.addEventListener("pointerdown", start);
+  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop2);
+  button2.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
+      e.preventDefault();
+      start();
+    }
+  });
+  button2.addEventListener("keyup", (e) => {
+    if (e.key === "Enter" || e.key === " ") stop2();
+  });
+  return button2;
+}
+function renderSignature(o) {
+  return custom2 !== null ? custom2(o) : holdButton(o);
+}
+
+// src/ui/practice/taskCard.ts
+var WEIGHT_WORDS = { trivial: "slight", minor: "light", major: "heavy", severe: "grave" };
+var PROOF_WORDS = { none: "", dm_report: "a report to her", in_person: "in person", witness: "before a witness" };
+var HANDOVER_WORDS = { device: "the device", key: "the key to the quarters", calendar: "the calendar" };
+var SPARE_STYLES = ["cruel", "vindictive"];
+var slotsWord = (n) => `${n} slot${n === 1 ? "" : "s"}`;
+var NUMBER_WORDS2 = ["zero", "one", "two", "three", "four", "five", "six", "seven"];
+var SLOT_WORDS = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
+function dueWords(task, today) {
+  if (task.deadline === void 0) return null;
+  const days = Math.max(0, task.deadline.day - today);
+  const slot2 = task.deadline.slot === void 0 ? void 0 : SLOT_WORDS[task.deadline.slot];
+  if (days <= 1) return `${days === 0 ? "today" : "tomorrow"}${slot2 !== void 0 && days === 1 ? ` ${slot2}` : ""}${slot2 !== void 0 && days === 0 ? `, ${slot2}` : ""}`;
+  const count2 = days <= 7 ? NUMBER_WORDS2[days] : "several";
+  return `in ${count2} days${slot2 !== void 0 ? `, in the ${slot2}` : ""}`;
+}
+function closesOf(task) {
+  if (task.handover !== void 0) return `Hands over: ${HANDOVER_WORDS[task.handover] ?? task.handover}.`;
+  return `Closes: ${plainDraft(task.summary).replace(/[.\s]+$/, "")}.`;
+}
+function renderTaskCard(host, ctx2) {
+  const { state, reg, task } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === task.holderId);
+  if (unit3 === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const sealed = task.sealed === true;
+  const style = practiceOf(state, reg, unit3.id)?.style.primary;
+  const ladder = task.acceptForm === "words" ? "glossary:accept_words" : task.acceptForm === "signed" ? "glossary:accept_signed" : sealed ? "glossary:sealed" : "glossary:consent_ladder";
+  const button2 = (kind, text3, onclick, address) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-task-answer": kind,
+    "data-task": task.id,
+    ...analyzeNative(address, live3),
+    onclick
+  }, text3);
+  const parts = [];
+  if (sealed) {
+    const label2 = String(reg.dynamicTracks.get(task.track)?.label ?? "");
+    const weight = SPARE_STYLES.includes(String(style)) ? "" : ` Weight: ${WEIGHT_WORDS[task.stakes]}.`;
+    const hint = style === "affectionate" && label2 !== "" ? ` About: ${label2}.` : "";
+    parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
+  } else {
+    parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
+    const due = dueWords({ deadline: deadlineShown(task) ?? void 0 }, state.day);
+    if (due !== null) parts.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
+    if (task.noDuration === true) parts.push(h("p", { class: "alius-task-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long."));
+    if (task.acceptForm === "button_cost") {
+      const cost = taskCost(state, reg, task);
+      const lines = [
+        ...cost.slots > 0 ? [`Takes ${slotsWord(cost.slots)} of the commander's time.`] : [],
+        ...cost.lapses.map((l) => `Would lapse: ${l}.`),
+        ...Object.entries(cost.resources).map(([resource, band2]) => `Uses ${band2} ${resource}.`)
+      ];
+      parts.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
+    }
+    if (task.acceptForm === "words" || task.acceptForm === "signed") {
+      const names2 = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
+      const proof = PROOF_WORDS[task.proof];
+      parts.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names2.length > 0 ? names2.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
+    }
+    if (task.acceptForm === "signed") parts.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
+    if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
+  }
+  const answers2 = [];
+  if (task.acceptForm === "signed" && task.said === true) answers2.push(renderSignature({ onSign: ctx2.onSign, analyze: "glossary:accept_signed", ctx: live3 }));
+  else if (task.acceptForm === "words" || task.acceptForm === "signed") answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.focusInput(), ladder));
+  else answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
+  answers2.push(button2("refuse", task.handover !== void 0 ? "[ CANCEL ]" : "[ REFUSE ]", () => ctx2.onAnswer("refuse"), task.handover !== void 0 ? "glossary:handover" : "glossary:practice_task"));
+  if (!sealed && task.handover === void 0) answers2.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
+  parts.push(h("div", { class: "alius-task-answers" }, ...answers2, drawPracticeReroll(h("span", { class: "alius-task-reroll" }), ctx2.generation, task.kind, task.requestId)));
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-task-body" }, ...parts), accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-task");
+  card2.setAttribute("data-task", task.id);
+  card2.setAttribute("data-task-form", task.acceptForm);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawTaskCards(host, state, reg, pick3, handlers2) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const task of state.practices?.tasks ?? []) {
+    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation });
+  }
+  drawPracticeChips(host, handlers2.generation, state, reg, pick3);
+}
+var RECORD_LINES = 5;
+function renderRecordLines(state, reg) {
+  const records = state.practices?.records ?? [];
+  if (records.length === 0 || !dynamicOn(state, reg)) return null;
+  const lines = records.slice(-RECORD_LINES).reverse();
+  return h(
+    "div",
+    { class: "alius-practice-records", "data-practice-records": "" },
+    ...lines.map((r) => h("p", { "data-practice-record": r.holderId, ...analyzeAttrs("glossary:practice_record", { unitId: r.holderId }) }, `${state.squad.find((u) => u.id === r.holderId)?.displayName ?? r.holderId}: ${plainDraft(r.line)}`))
+  );
+}
+
+// src/ui/practice/block.ts
+var FORM_WORDS = { button: "on a button", button_cost: "on a button, with its cost", words: "in words", signed: "in words and a signature", sealed: "sealed" };
+function practicesBlock(state, reg, knowledge2, unitId, hidden) {
+  if (hidden) return null;
+  const view = knowledge2.practice(unitId, reg);
+  const live3 = { unitId };
+  const chip2 = (text3, address, attrs) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
+  const row4 = (label2, ...parts) => h("p", { class: "alius-dyn-line" }, `${label2} `, ...parts);
+  const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
+  const rows = [];
+  if (view.tasks.length > 0) {
+    rows.push(row4("SHE ASKED", ...between(view.tasks.map((t) => {
+      const due = t.sealed && t.summary === null ? null : t.noDuration ? "until she decides" : dueWords({ deadline: t.due ?? void 0 }, state.day);
+      const what = t.summary === null ? "a sealed task" : t.summary;
+      return chip2(`${what} (${[FORM_WORDS[t.acceptForm], ...due !== null ? [due] : []].join("; ")})`, "glossary:practice_task", { "data-practice-task": t.id });
+    }))));
+  }
+  if (view.protocol.length > 0) rows.push(row4("PROTOCOL", ...between(view.protocol.map((p) => chip2(p, "glossary:protocol", { "data-practice-protocol": "" })))));
+  if (view.routine !== null) rows.push(row4("ROUTINE", chip2(view.routine, "glossary:routine", { "data-practice-routine": "" })));
+  if (view.favour !== void 0) rows.push(row4("FAVOR", chip2(view.favour.toUpperCase(), "glossary:favour", { "data-practice-favour": view.favour })));
+  if (view.postures.length > 0) rows.push(row4("SHE CALLS", ...between(view.postures.map((p) => chip2(p.name, "glossary:named_posture", { "data-practice-posture": p.postureId })))));
+  if (rows.length === 0) return null;
+  return h("div", { class: "alius-practices-block", "data-practices-block": unitId }, h("h5", {}, "PRACTICES"), ...rows);
+}
+
 // src/ui/hub/plan/svg.ts
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var fmt = (v) => typeof v === "number" ? String(Math.round(v * 10) / 10) : v;
@@ -47169,6 +47354,7 @@ function renderDynamicSection(host, ctx2) {
     const word2 = { suspects_close: "HAS NOTICED SOMETHING", suspects_dynamic: "SUSPECTS", knows_dynamic: "KNOWS" };
     lines.push(row4("WHO KNOWS", ...between(view.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
   }
+  const practices = practicesBlock(state, reg, ctx2.knowledge, unitId, ctx2.hidden);
   const cards = h("div", { class: "alius-dyn-cards" });
   const pick3 = (c) => c.unitId === unitId;
   const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
@@ -47180,7 +47366,7 @@ function renderDynamicSection(host, ctx2) {
   const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
   const mapHost = h("div", { class: "alius-dyn-bodymap" });
   if (map.zones.length > 0) renderBodyMap(mapHost, map);
-  host.append(h("h4", {}, "DYNAMIC"), ...lines, ...map.zones.length > 0 ? [mapHost] : [], cards, exitHost);
+  host.append(h("h4", {}, "DYNAMIC"), ...lines, ...practices !== null ? [practices] : [], ...map.zones.length > 0 ? [mapHost] : [], cards, exitHost);
   host.classList.add("alius-dynamic-section");
   host.setAttribute("data-dynamic-section", unitId);
   return true;
@@ -47253,9 +47439,9 @@ function renderAlarmCard(state, reg, shown2, handlers2) {
 }
 
 // src/ui/practice/heldStrip.ts
-var SLOT_WORDS = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
+var SLOT_WORDS2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
 function endsWords(state, until) {
-  const slot2 = SLOT_WORDS[until.slot] ?? until.slot;
+  const slot2 = SLOT_WORDS2[until.slot] ?? until.slot;
   return until.day === state.day ? `the end of the ${slot2}` : `the end of tomorrow's ${slot2}`;
 }
 function drawHeldStrip(host, state, reg, handlers2) {
@@ -56125,166 +56311,6 @@ function registerBlockingProviders() {
   registerAnalyzeProvider("momentSources", momentOption2);
   registerAnalyzeProvider("contactPhysics", contactPhysicsReading);
   registerAnalyzeProvider("stimulusKinds", stimulusReading);
-}
-
-// src/ui/practice/generation.ts
-var practiceSite = (kind) => `practice.${kind}`;
-function drawPracticeReroll(host, generation, kind, requestId) {
-  if (generation === void 0 || requestId === void 0) return null;
-  return drawSiteReroll(host, generation, practiceSite(kind), requestId);
-}
-function drawPracticeChips(host, generation, state, reg, pick3) {
-  if (generation === void 0 || !dynamicOn(state, reg)) return 0;
-  const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
-  return drawGenerationChips(host, generation, state, "comms", (r) => {
-    if (!r.siteId.startsWith("practice.")) return false;
-    const holder2 = holderOf5(r.key);
-    return holder2 !== void 0 && pick3({ unitId: holder2 });
-  });
-}
-
-// src/ui/practice/signature.ts
-var custom2 = null;
-function holdButton(o) {
-  const button2 = h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip alius-sign",
-    "data-task-sign": "",
-    "aria-label": "Sign: hold to sign",
-    style: `--alius-sign-ms: ${TUNING.practice.sign.holdMs}ms`,
-    ...analyzeNative(o.analyze, o.ctx)
-  }, "[ SIGN ]");
-  let timer;
-  const stop2 = () => {
-    if (timer !== void 0) clearTimeout(timer);
-    timer = void 0;
-    button2.classList.remove("alius-signing");
-  };
-  const start = () => {
-    if (timer !== void 0) return;
-    button2.classList.add("alius-signing");
-    timer = setTimeout(() => {
-      timer = void 0;
-      button2.classList.remove("alius-signing");
-      o.onSign();
-    }, TUNING.practice.sign.holdMs);
-  };
-  button2.addEventListener("pointerdown", start);
-  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop2);
-  button2.addEventListener("keydown", (e) => {
-    if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
-      e.preventDefault();
-      start();
-    }
-  });
-  button2.addEventListener("keyup", (e) => {
-    if (e.key === "Enter" || e.key === " ") stop2();
-  });
-  return button2;
-}
-function renderSignature(o) {
-  return custom2 !== null ? custom2(o) : holdButton(o);
-}
-
-// src/ui/practice/taskCard.ts
-var WEIGHT_WORDS = { trivial: "slight", minor: "light", major: "heavy", severe: "grave" };
-var PROOF_WORDS = { none: "", dm_report: "a report to her", in_person: "in person", witness: "before a witness" };
-var HANDOVER_WORDS = { device: "the device", key: "the key to the quarters", calendar: "the calendar" };
-var SPARE_STYLES = ["cruel", "vindictive"];
-var slotsWord = (n) => `${n} slot${n === 1 ? "" : "s"}`;
-var NUMBER_WORDS2 = ["zero", "one", "two", "three", "four", "five", "six", "seven"];
-var SLOT_WORDS2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
-function dueWords(task, today) {
-  if (task.deadline === void 0) return null;
-  const days = Math.max(0, task.deadline.day - today);
-  const slot2 = task.deadline.slot === void 0 ? void 0 : SLOT_WORDS2[task.deadline.slot];
-  if (days <= 1) return `${days === 0 ? "today" : "tomorrow"}${slot2 !== void 0 && days === 1 ? ` ${slot2}` : ""}${slot2 !== void 0 && days === 0 ? `, ${slot2}` : ""}`;
-  const count2 = days <= 7 ? NUMBER_WORDS2[days] : "several";
-  return `in ${count2} days${slot2 !== void 0 ? `, in the ${slot2}` : ""}`;
-}
-function closesOf(task) {
-  if (task.handover !== void 0) return `Hands over: ${HANDOVER_WORDS[task.handover] ?? task.handover}.`;
-  return `Closes: ${plainDraft(task.summary).replace(/[.\s]+$/, "")}.`;
-}
-function renderTaskCard(host, ctx2) {
-  const { state, reg, task } = ctx2;
-  const unit3 = state.squad.find((u) => u.id === task.holderId);
-  if (unit3 === void 0) return;
-  const live3 = { unitId: unit3.id };
-  const sealed = task.sealed === true;
-  const style = practiceOf(state, reg, unit3.id)?.style.primary;
-  const ladder = task.acceptForm === "words" ? "glossary:accept_words" : task.acceptForm === "signed" ? "glossary:accept_signed" : sealed ? "glossary:sealed" : "glossary:consent_ladder";
-  const button2 = (kind, text3, onclick, address) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-task-answer": kind,
-    "data-task": task.id,
-    ...analyzeNative(address, live3),
-    onclick
-  }, text3);
-  const parts = [];
-  if (sealed) {
-    const label2 = String(reg.dynamicTracks.get(task.track)?.label ?? "");
-    const weight = SPARE_STYLES.includes(String(style)) ? "" : ` Weight: ${WEIGHT_WORDS[task.stakes]}.`;
-    const hint = style === "affectionate" && label2 !== "" ? ` About: ${label2}.` : "";
-    parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
-  } else {
-    parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
-    const due = dueWords({ deadline: deadlineShown(task) ?? void 0 }, state.day);
-    if (due !== null) parts.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
-    if (task.noDuration === true) parts.push(h("p", { class: "alius-task-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long."));
-    if (task.acceptForm === "button_cost") {
-      const cost = taskCost(state, reg, task);
-      const lines = [
-        ...cost.slots > 0 ? [`Takes ${slotsWord(cost.slots)} of the commander's time.`] : [],
-        ...cost.lapses.map((l) => `Would lapse: ${l}.`),
-        ...Object.entries(cost.resources).map(([resource, band2]) => `Uses ${band2} ${resource}.`)
-      ];
-      parts.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
-    }
-    if (task.acceptForm === "words" || task.acceptForm === "signed") {
-      const names2 = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
-      const proof = PROOF_WORDS[task.proof];
-      parts.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names2.length > 0 ? names2.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
-    }
-    if (task.acceptForm === "signed") parts.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
-    if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
-  }
-  const answers2 = [];
-  if (task.acceptForm === "signed" && task.said === true) answers2.push(renderSignature({ onSign: ctx2.onSign, analyze: "glossary:accept_signed", ctx: live3 }));
-  else if (task.acceptForm === "words" || task.acceptForm === "signed") answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.focusInput(), ladder));
-  else answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
-  answers2.push(button2("refuse", task.handover !== void 0 ? "[ CANCEL ]" : "[ REFUSE ]", () => ctx2.onAnswer("refuse"), task.handover !== void 0 ? "glossary:handover" : "glossary:practice_task"));
-  if (!sealed && task.handover === void 0) answers2.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
-  parts.push(h("div", { class: "alius-task-answers" }, ...answers2, drawPracticeReroll(h("span", { class: "alius-task-reroll" }), ctx2.generation, task.kind, task.requestId)));
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-task-body" }, ...parts), accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-task");
-  card2.setAttribute("data-task", task.id);
-  card2.setAttribute("data-task-form", task.acceptForm);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawTaskCards(host, state, reg, pick3, handlers2) {
-  host.replaceChildren();
-  if (!dynamicOn(state, reg)) return;
-  for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
-    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation });
-  }
-  drawPracticeChips(host, handlers2.generation, state, reg, pick3);
-}
-var RECORD_LINES = 5;
-function renderRecordLines(state, reg) {
-  const records = state.practices?.records ?? [];
-  if (records.length === 0 || !dynamicOn(state, reg)) return null;
-  const lines = records.slice(-RECORD_LINES).reverse();
-  return h(
-    "div",
-    { class: "alius-practice-records", "data-practice-records": "" },
-    ...lines.map((r) => h("p", { "data-practice-record": r.holderId, ...analyzeAttrs("glossary:practice_record", { unitId: r.holderId }) }, `${state.squad.find((u) => u.id === r.holderId)?.displayName ?? r.holderId}: ${plainDraft(r.line)}`))
-  );
 }
 
 // src/ui/personal/tokens.ts

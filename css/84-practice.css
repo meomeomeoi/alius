@@ -214,3 +214,17 @@
   animation: none;
   transform: scaleX(1);
 }
+
+/* The PRACTICES block of her DYNAMIC section (P16): the same one-line-a-reading rows as the section's, set a little apart under their own small heading. Words only; no colour carries a meaning alone. */
+#alius-shell .alius-practices-block {
+  margin: 8px 0 4px;
+}
+
+#alius-shell .alius-practices-block h5 {
+  margin: 0 0 2px;
+  letter-spacing: 0.1em;
+}
+
+#alius-shell .alius-practices-block .alius-dyn-line {
+  margin: 3px 0;
+}

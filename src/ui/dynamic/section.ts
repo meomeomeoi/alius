@@ -17,6 +17,7 @@ import type { ExitRoute } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { practicesBlock } from '../practice/block';
 import { bodyMapFor, renderBodyMap } from './bodyMap';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, renderExitCard, type ClaimAnswer, type ReturnAnswer } from './cards';
 import { plainDraft } from '../../content/draft';
@@ -160,6 +161,7 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
     lines.push(row('WHO KNOWS', ...between(view.knownLevels.map((k) => chip(`${who(k.observerId)}: ${word[k.level]}`, 'glossary:dynamic', { 'data-dyn-known': k.observerId })))));
   }
 
+  const practices = practicesBlock(state, reg, ctx.knowledge, unitId, ctx.hidden); // P16: what she asked and the forms she set (nothing in immersive mode, which returned above)
   const cards = h('div', { class: 'alius-dyn-cards' });
   const pick = (c: { unitId: string }): boolean => c.unitId === unitId;
   const slots = [h('div', { class: 'alius-milestone-cards' }), h('div', { class: 'alius-claim-cards' }), h('div', { class: 'alius-return-cards' })];
@@ -173,7 +175,7 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
   const mapHost = h('div', { class: 'alius-dyn-bodymap' });
   if (map.zones.length > 0) renderBodyMap(mapHost, map);
 
-  host.append(h('h4', {}, 'DYNAMIC'), ...lines, ...(map.zones.length > 0 ? [mapHost] : []), cards, exitHost);
+  host.append(h('h4', {}, 'DYNAMIC'), ...lines, ...(practices !== null ? [practices] : []), ...(map.zones.length > 0 ? [mapHost] : []), cards, exitHost);
   host.classList.add('alius-dynamic-section');
   host.setAttribute('data-dynamic-section', unitId);
   return true;
