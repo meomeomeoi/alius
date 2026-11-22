@@ -4101,6 +4101,41 @@
   backdrop-filter: none;
 }
 
+/* NOW: what is set on each person, as small pills with the guarded × (the strip's rows, in the fan) */
+#alius-shell .alius-dial-now {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#alius-shell .alius-dial-now > strong {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+#alius-shell .alius-dial-now .alius-blocking-row {
+  gap: 4px 6px;
+  font-size: 12px;
+}
+
+#alius-shell .alius-dial-now .alius-blocking-name {
+  min-width: 6em;
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-dial-now .alius-chip {
+  padding: 1px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 62%, transparent);
+}
+
+#alius-shell .alius-dial-now .alius-blocking-x {
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
 #alius-shell .alius-dial-moves {
   display: flex;
   flex-wrap: wrap;

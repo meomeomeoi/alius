@@ -124,6 +124,25 @@ export function blockingChoices(state: CampaignState | null, reg: Registries): B
   return { units, rows: [...units, COMMANDER].map(row), moves, add, name, label: labelOf };
 }
 
+/** A refused change is greyed out with its reason; it does nothing when pressed. */
+function guardedButton(onStage: (action: Action) => void, change: BlockingChange, why: string | null, attrs: Record<string, unknown>, text: string): HTMLElement {
+  return h('button', {
+    type: 'button', ...attrs, 'aria-disabled': why !== null ? 'true' : null, title: why ?? attrs.title ?? null,
+    onclick: () => { if (why === null) onStage(set(change)); },
+  }, text);
+}
+
+/**
+ * The fields set on one person as chips (each carries `data-analyze`), each item or contact followed by its guarded × (P10e review C1: the scene's
+ * dial lists these in its fan, the strip draws them in its rows).
+ */
+export function blockingChipEls(r: BlockingRow, onStage: (action: Action) => void): HTMLElement[] {
+  return r.chips.flatMap((c) => [
+    h('span', { class: 'alius-chip', 'data-kind': c.kind, ...analyzeAttrs(`${c.registry}:${c.id}`) }, c.label),
+    ...(c.remove ? [guardedButton(onStage, c.remove.change, c.remove.why, { class: 'alius-btn alius-blocking-x', 'data-action': 'remove', 'data-person': c.remove.person, 'data-id': c.remove.id, 'aria-label': `Remove ${c.remove.label}` }, '×')] : []),
+  ]);
+}
+
 /**
  * The BLOCKING strip of the scene screen (P15a): one row per person with the fields that are set as chips (each can be analyzed, an item or
  * a contact can be removed with ×), the commander's movement chips, and a `[ + ]` menu of the places, contacts and items the scene allows
@@ -141,19 +160,12 @@ export function renderBlockingStrip(host: HTMLElement, ctx: BlockingStripCtx): v
   }
   const { units, name } = choices;
 
+  const chipsOf = (r: BlockingRow): HTMLElement[] => blockingChipEls(r, ctx.onStage);
   /** A refused change is greyed out with its reason; it does nothing when pressed. */
-  const guarded = (change: BlockingChange, why: string | null, attrs: Record<string, unknown>, text: string): HTMLElement =>
-    h('button', {
-      type: 'button', ...attrs, 'aria-disabled': why !== null ? 'true' : null, title: why ?? attrs.title ?? null,
-      onclick: () => { if (why === null) ctx.onStage(set(change)); },
-    }, text);
-
-  const chipEl = (c: BlockingChip): HTMLElement => h('span', { class: 'alius-chip', 'data-kind': c.kind, ...analyzeAttrs(`${c.registry}:${c.id}`) }, c.label);
-  const remover = (r: NonNullable<BlockingChip['remove']>): HTMLElement =>
-    guarded(r.change, r.why, { class: 'alius-btn alius-blocking-x', 'data-action': 'remove', 'data-person': r.person, 'data-id': r.id, 'aria-label': `Remove ${r.label}` }, '×');
+  const guarded = (change: BlockingChange, why: string | null, attrs: Record<string, unknown>, text: string): HTMLElement => guardedButton(ctx.onStage, change, why, attrs, text);
 
   const row = (r: BlockingRow): HTMLElement | null => {
-    const chips = r.chips.flatMap((c) => [chipEl(c), ...(c.remove ? [remover(c.remove)] : [])]);
+    const chips = chipsOf(r);
     const moves = r.person === COMMANDER
       ? choices.moves.map((m) => guarded(m.change, m.why, { class: 'alius-btn alius-option', 'data-move': m.move, title: m.label, ...analyzeNative(`blockingPostures:${m.posture}`) }, m.text))
       : [];

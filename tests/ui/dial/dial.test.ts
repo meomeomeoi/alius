@@ -2,7 +2,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { registerCoreProviders } from '../../../src/analysis/providers/core';
 import type { Registries } from '../../../src/content/types';
-import { COMMANDER, resetBlockingHooks, setBlocking, type BlockingChange } from '../../../src/engine/blocking';
+import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking, type BlockingChange } from '../../../src/engine/blocking';
 import { blankPractices } from '../../../src/engine/practice/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
@@ -25,10 +25,10 @@ afterEach(() => {
   resetBlockingHooks();
 });
 
-function scene(): CampaignState {
+function scene(...tags: string[]): CampaignState {
   const s = campaign(reg, 4);
   setRelation(s, 'unit_ann', { stateId: 'confidant' });
-  enable(s, 'pet_play', 'restraint');
+  enable(s, 'pet_play', 'restraint', ...tags);
   const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: ['unit_ann'], origin: 'event', consumesSlot: false, startIndex: 0 } });
   expect(errors(r.events)).toEqual([]);
   return r.state;
@@ -160,6 +160,29 @@ describe('the posture dial (P10e §7)', () => {
     const ok = choices.add.find((e) => e.why(choices.units[0]) === null)!;
     t.q(`.alius-dial-fan [data-group="${ok.group}"][data-id="${ok.id}"]${ok.direction ? `[data-direction="${ok.direction}"]` : ''}`)!.click();
     expect(t.onStage).toHaveBeenCalledWith({ type: 'blocking/set', payload: { ...ok.change(choices.units[0]) } });
+  });
+
+  it('the fan lists what is set on each person (NOW), with the chips of the strip and the guarded × (review C1)', () => {
+    registerFrameReader(() => 'play');
+    const s = put(scene('worship'), { person: 'unit_ann', field: 'posture', value: 'sitting' }, { person: 'unit_ann', field: 'activity', value: 'on_comms' },
+      { person: COMMANDER, field: 'worn', value: 'hood' }, { person: COMMANDER, field: 'contact', value: 'foot_worship', with: 'unit_ann' });
+    const t = draw(s);
+    t.q('[data-dial-open]')!.click();
+    expect(t.qa('.alius-dial-now .alius-blocking-row').map((r) => r.dataset.person)).toEqual(['unit_ann', COMMANDER]);
+    const chips = (person: string) => t.qa(`.alius-dial-now .alius-blocking-row[data-person="${person}"] .alius-chip`).map((c) => c.dataset.analyze);
+    expect(chips('unit_ann')).toEqual(['blockingPostures:sitting', 'blockingContacts:foot_worship', 'blockingActivities:on_comms']);
+    expect(chips(COMMANDER)).toEqual(expect.arrayContaining(['blockingItems:hood']));
+    expect(t.q('.alius-dial-now .alius-blocking-row[data-person="unit_ann"]')!.textContent).toContain('Ann');
+    const x = t.qa('.alius-dial-now [data-action="remove"]');
+    expect(x.map((b) => `${b.dataset.person}:${b.dataset.id}`).sort()).toEqual([`${COMMANDER}:hood`, `unit_ann:foot_worship`].sort());
+    expect(x[0].getAttribute('aria-label')).toMatch(/^Remove /);
+    t.q('[data-action="remove"][data-id="hood"]')!.click();
+    expect(t.onStage).toHaveBeenLastCalledWith({ type: 'blocking/set', payload: { person: COMMANDER, field: 'removed', value: 'hood' } });
+  });
+
+  it('nothing set: no NOW block', () => {
+    const t = draw(scene());
+    expect(t.q('.alius-dial-now')).toBeNull();
   });
 
   it('an open fan stays open across a redraw', () => {

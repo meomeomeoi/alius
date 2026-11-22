@@ -102,6 +102,8 @@ const PLACES: Array<[string, string]> = [
   ['pastime menu', '.alius-stage-chips [data-slot="lets"] .alius-lets-host'],
   ['blocking strip: the dial', '.alius-stage-dial .alius-dial [data-dial-open]'],
   ['blocking strip: its moves and its menu', '.alius-stage-dial .alius-dial-fan [data-move="kneel"]'],
+  ['blocking strip: the commander\'s row (what is worn)', '.alius-stage-dial .alius-dial-fan .alius-dial-now .alius-blocking-row[data-person="commander"] .alius-chip[data-analyze="blockingItems:paw_mitts"]'],
+  ['blocking strip: the × that takes an item off', '.alius-stage-dial .alius-dial-fan .alius-dial-now [data-action="remove"][data-id="paw_mitts"]'],
   ['moment card', '.alius-stage-dock [data-slot="moment"] [data-moment]'],
   ['milestone card', '.alius-stage-dock [data-slot="milestone"] [data-milestone]'],
   ['task card', '.alius-stage-dock [data-slot="task"] [data-task]'],

@@ -15,7 +15,7 @@ import type { CampaignState } from '../../../engine/state/types';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../../settings';
 import { analyzeAttrs, analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
-import { blockingChoices, setBlocking, type BlockingAdd } from '../blockingStrip';
+import { blockingChipEls, blockingChoices, setBlocking, type BlockingAdd } from '../blockingStrip';
 import { mannequinSvg } from './draw';
 import { poseOf, type DialPose } from './points';
 
@@ -93,6 +93,11 @@ export function renderPostureDial(host: HTMLElement, ctx: PostureDialCtx): void 
     return items.length === 0 ? null : h('div', { class: 'alius-blocking-group alius-dial-list', 'data-list': g }, h('strong', { class: 'alius-dim' }, title), ...items);
   };
 
+  // NOW: what is set on each person (her posture, place, activity, what is worn, the contact), each item or contact with its × (the strip's rows)
+  const nowRows = choices.rows.filter((r) => r.chips.length > 0).map((r) => h('div', { class: 'alius-blocking-row', 'data-person': r.person },
+    h('span', { class: 'alius-blocking-name' }, r.name), ...blockingChipEls(r, ctx.onStage)));
+  const now = nowRows.length === 0 ? null : h('div', { class: 'alius-dial-now', 'data-list': 'now' }, h('strong', { class: 'alius-dim' }, 'NOW'), ...nowRows);
+
   const open = h('summary', {
     class: 'alius-dial-open', 'data-dial-open': '', 'aria-label': `Posture: ${label}. Choose a posture`, ...analyzeAttrs('glossary:posture_dial'),
   }, h('span', { class: 'alius-dial-face' }, mannequinSvg(pose)));
@@ -101,7 +106,7 @@ export function renderPostureDial(host: HTMLElement, ctx: PostureDialCtx): void 
     ev.preventDefault();
     fan.open = !fan.open;
   });
-  fan.append(open, h('div', { class: 'alius-dial-menu' },
+  fan.append(open, h('div', { class: 'alius-dial-menu' }, now,
     h('div', { class: 'alius-dial-moves', 'data-list': 'posture' }, h('strong', { class: 'alius-dim' }, 'POSTURE'), ...choices.moves.map(moveOption)),
     who, list('PLACE', 'anchor'), list('CONTACT', 'contact'), list('WEARING', 'worn')));
   if (wasOpen) fan.open = true;

@@ -20974,17 +20974,17 @@ function unsetActivity(draft, personId) {
 function startBlocking(draft, reg) {
   const scene = draft.scene;
   if (!scene || !blockingLive(draft, reg)) return;
-  const set = (person, value, actor) => typeof value === "string" && reg.blockingActivities.get(value)?.actor === actor && setQuietly(draft, reg, { person, field: "activity", value });
+  const set2 = (person, value, actor) => typeof value === "string" && reg.blockingActivities.get(value)?.actor === actor && setQuietly(draft, reg, { person, field: "activity", value });
   const pastime = scene.pastime ? reg.pastimes.get(scene.pastime.id) : void 0;
   if (pastime && scene.pastime) {
-    set(scene.pastime.unitId, pastime.herActivity, "her");
-    set(COMMANDER, pastime.commanderActivity, "commander");
+    set2(scene.pastime.unitId, pastime.herActivity, "her");
+    set2(COMMANDER, pastime.commanderActivity, "commander");
     return;
   }
   const first2 = scene.participants[0];
   if (scene.activityId === void 0 || first2 === void 0) return;
   for (const a of reg.blockingActivities.values()) {
-    if (a.actor === "her" && Array.isArray(a.fromActivities) && a.fromActivities.includes(scene.activityId) && set(first2, a.id, "her")) return;
+    if (a.actor === "her" && Array.isArray(a.fromActivities) && a.fromActivities.includes(scene.activityId) && set2(first2, a.id, "her")) return;
   }
 }
 
@@ -39316,9 +39316,9 @@ function typedBeats(draft, chars, from) {
   if (draft.settings.physicsRealtime === true) return [];
   const n = Math.max(0, Math.ceil(chars / TUNING.physics.typing.charsPerBeat));
   const total2 = run.segment.plan.beats.length;
-  const set = new Set(run.segment.lapsed ?? []);
-  for (let b = Math.max(0, from); b < Math.min(total2, Math.max(0, from) + n); b++) set.add(b);
-  run.segment.lapsed = [...set].sort((a, b) => a - b);
+  const set2 = new Set(run.segment.lapsed ?? []);
+  for (let b = Math.max(0, from); b < Math.min(total2, Math.max(0, from) + n); b++) set2.add(b);
+  run.segment.lapsed = [...set2].sort((a, b) => a - b);
   return [{ type: "physics_segment", runId: run.id, n: run.segment.n, phase: "typed", lapsed: run.segment.lapsed.length }];
 }
 function phaseBoundary(draft, reg, run) {
@@ -41643,36 +41643,36 @@ function createLoyalty(deps) {
     const state = deps.app.current().state;
     if (!state?.scene) return;
     const log = leashLog(state);
-    let set = false;
+    let set2 = false;
     for (const id of state.scene.participants) {
       const rel = state.relations[id];
       if (!rel) continue;
       const band2 = bandDirective(id, nameOf28(id), rel.loyaltyBand);
       if (band2) {
         deps.context.setDirective(band2);
-        set = true;
+        set2 = true;
       }
       const recent2 = log.some((e) => e.unitId === id && state.day - e.day <= TUNING.leash.traumaDays);
       if (rel.flags.includes("leashed") && recent2) {
         deps.context.setDirective(traumaDirective(id, nameOf28(id)));
-        set = true;
+        set2 = true;
       }
     }
-    if (set) deps.refreshContext();
+    if (set2) deps.refreshContext();
   }
   function onSceneClosed() {
     deps.context.clearMatching((d) => d.id === "dilemma" || SCENE_PREFIXES.some((p) => d.id.startsWith(p)));
     deps.refreshContext();
   }
   function onEvents(events) {
-    let set = false;
+    let set2 = false;
     const sceneOpen = deps.app.current().state?.scene !== void 0;
     for (const e of events) {
       if (e.type !== "dilemma_resolved" || e.nothing === true || typeof e.label !== "string") continue;
       deps.context.setDirective(aftermathDirective(String(e.title ?? e.templateId), e.label, sceneOpen ? "scene" : "next_reply"));
-      set = true;
+      set2 = true;
     }
-    if (set) deps.refreshContext();
+    if (set2) deps.refreshContext();
   }
   return { order, compel: compel2, onSceneOpened, onSceneClosed, onEvents };
 }
@@ -45430,12 +45430,12 @@ function createDiscipline(deps) {
     await deps.generations.reroll("flavor.demand", demandId);
   }
   function onEvents(events) {
-    let set = false;
+    let set2 = false;
     for (const e of events) {
       if (e.type === "threat_registered" && (e.channel ?? "scene") === "scene") {
         const unitId = String(e.unitId);
         deps.context.setDirective(threatDirective(unitId, nameOf28(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
-        set = true;
+        set2 = true;
       } else if (e.type === "delegate_demand" && typeof e.demandId === "string") {
         void wordAndDeliver(e.demandId, chatId()).catch(() => {
         });
@@ -45448,7 +45448,7 @@ function createDiscipline(deps) {
         deps.toast("info", `Covert sabotage (${String(e.kind)}).`);
       }
     }
-    if (set) deps.refreshContext();
+    if (set2) deps.refreshContext();
   }
   function onSceneOpened() {
     const state2 = deps.app.current().state;
@@ -45925,9 +45925,9 @@ var rerollId = (siteId, key) => `reroll:${siteId}:${key}`;
 function drawRecordChip(host, ui, state, rec, opts = {}) {
   const site = generationSite(rec.siteId);
   const label2 = site ? site.label(state, rec.key) : rec.siteId;
-  const set = ui.settings();
-  const base = site ? Math.ceil((set.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
-  const text3 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set.llmTimeoutMs, expiredWhy: rec.expiredWhy });
+  const set2 = ui.settings();
+  const base = site ? Math.ceil((set2.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
+  const text3 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set2.llmTimeoutMs, expiredWhy: rec.expiredWhy });
   const held3 = site?.held === true;
   const retry = (opts2) => runPending(ui, rec.id, async () => {
     await ui.generations.retry(rec.id, opts2);
@@ -51589,9 +51589,9 @@ function createSceneController(deps) {
     return events;
   }
   function reflect(events, extremeKinds = []) {
-    const set = [];
+    const set2 = [];
     const s = state();
-    if (!s) return set;
+    if (!s) return set2;
     for (const e of events) {
       switch (e.type) {
         case "relation_changed":
@@ -51615,14 +51615,14 @@ function createSceneController(deps) {
           if (!unit4) break;
           const result = e.receptive === true ? { receptive: true } : { receptive: false, reason: e.reason };
           app.context.setDirective(proposalDirective(unit4.id, unit4.displayName, String(e.kind), result));
-          set.push(`proposal:${unit4.id}`);
+          set2.push(`proposal:${unit4.id}`);
           break;
         }
       }
     }
     for (const kind of extremeKinds) deps.onUi({ type: "cut_in", kind });
     app.refreshContext();
-    return set;
+    return set2;
   }
   const avatarsOf = (s, ids) => ids.map((id) => unitById(s, id)?.cardRef).filter((a) => typeof a === "string");
   function setSceneContext(s) {
@@ -54556,10 +54556,10 @@ function renderCalibration(host, ctx2) {
     care.addEventListener("change", () => write3({ caretaker: care.checked }));
     const limited = bond.ownLimits.categories;
     const toggleLimit = (id) => {
-      const set = new Set(limited);
-      if (set.has(id)) set.delete(id);
-      else set.add(id);
-      const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set.has(x));
+      const set2 = new Set(limited);
+      if (set2.has(id)) set2.delete(id);
+      else set2.add(id);
+      const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set2.has(x));
       write3({ ownLimits: { categories, note: bond.ownLimits.note ?? "" } });
     };
     const fromCard = !manual && cand?.bondReason ? cand.bondReason : "";
@@ -61868,11 +61868,11 @@ function drawPostureCall(host, state, reg, pick3, handlers2) {
     started.clear();
     return;
   }
-  const set = (state.practices.postures[unit4.id] ?? []).filter((p) => {
+  const set2 = (state.practices.postures[unit4.id] ?? []).filter((p) => {
     const entry = reg.blockingPostures.get(p.postureId);
     return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
   });
-  const wanted2 = set.find((p) => p.postureId === call.postureId);
+  const wanted2 = set2.find((p) => p.postureId === call.postureId);
   if (wanted2 === void 0) return;
   const windowMs = postureWindowMs(state, reg, unit4.id);
   if (handlers2.timed && !started.has(call.id)) {
@@ -61888,7 +61888,7 @@ function drawPostureCall(host, state, reg, pick3, handlers2) {
     stop2(call.id);
     handlers2.take(call.id, postureId, late2);
   };
-  const choices = set.map((p) => h("button", {
+  const choices = set2.map((p) => h("button", {
     type: "button",
     class: "alius-btn alius-tagchip",
     "data-posture-choice": p.postureId,
@@ -62057,6 +62057,7 @@ var MOVES = [
   { move: "lie", text: "[ LIE DOWN ]", posture: "lying_back" }
 ];
 var setBlocking2 = (change) => ({ type: "blocking/set", payload: { ...change } });
+var set = setBlocking2;
 function blockingChoices(state, reg) {
   if (!state?.scene || !blockingLive(state, reg)) return null;
   const scene = state.scene;
@@ -62106,6 +62107,23 @@ function blockingChoices(state, reg) {
     ...vocab.item.map((e) => entry("worn", "blockingItems", e.id, String(e.label), (unit4) => ({ person: e.wornBy === "her" ? unit4 : COMMANDER, field: "worn", value: e.id })))
   ];
   return { units, rows: [...units, COMMANDER].map(row4), moves, add: add2, name, label: labelOf4 };
+}
+function guardedButton(onStage, change, why, attrs, text3) {
+  return h("button", {
+    type: "button",
+    ...attrs,
+    "aria-disabled": why !== null ? "true" : null,
+    title: why ?? attrs.title ?? null,
+    onclick: () => {
+      if (why === null) onStage(set(change));
+    }
+  }, text3);
+}
+function blockingChipEls(r, onStage) {
+  return r.chips.flatMap((c) => [
+    h("span", { class: "alius-chip", "data-kind": c.kind, ...analyzeAttrs(`${c.registry}:${c.id}`) }, c.label),
+    ...c.remove ? [guardedButton(onStage, c.remove.change, c.remove.why, { class: "alius-btn alius-blocking-x", "data-action": "remove", "data-person": c.remove.person, "data-id": c.remove.id, "aria-label": `Remove ${c.remove.label}` }, "\xD7")] : []
+  ]);
 }
 
 // src/ui/scene/dial/points.ts
@@ -62655,6 +62673,13 @@ function renderPostureDial(host, ctx2) {
     const items = choices.add.filter((e) => e.group === g).map(addOption);
     return items.length === 0 ? null : h("div", { class: "alius-blocking-group alius-dial-list", "data-list": g }, h("strong", { class: "alius-dim" }, title3), ...items);
   };
+  const nowRows = choices.rows.filter((r) => r.chips.length > 0).map((r) => h(
+    "div",
+    { class: "alius-blocking-row", "data-person": r.person },
+    h("span", { class: "alius-blocking-name" }, r.name),
+    ...blockingChipEls(r, ctx2.onStage)
+  ));
+  const now = nowRows.length === 0 ? null : h("div", { class: "alius-dial-now", "data-list": "now" }, h("strong", { class: "alius-dim" }, "NOW"), ...nowRows);
   const open3 = h("summary", {
     class: "alius-dial-open",
     "data-dial-open": "",
@@ -62668,6 +62693,7 @@ function renderPostureDial(host, ctx2) {
   fan.append(open3, h(
     "div",
     { class: "alius-dial-menu" },
+    now,
     h("div", { class: "alius-dial-moves", "data-list": "posture" }, h("strong", { class: "alius-dim" }, "POSTURE"), ...choices.moves.map(moveOption)),
     who,
     list5("PLACE", "anchor"),
@@ -63004,23 +63030,23 @@ function actRow(host, ctx2) {
 var clamp012 = (n) => Math.min(1, Math.max(0, n));
 var VARS = ["--alius-gauge-narrow", "--alius-gauge-pulse", "--alius-gauge-from", "--alius-gauge-to"];
 function inputGauge(host) {
-  const set = (name, n) => {
+  const set2 = (name, n) => {
     if (Number.isFinite(n)) host.style.setProperty(name, String(clamp012(n)));
     else host.style.removeProperty(name);
   };
   return {
-    narrow: (f) => set("--alius-gauge-narrow", f),
+    narrow: (f) => set2("--alius-gauge-narrow", f),
     tremble(level) {
       if (level >= 1) host.dataset.tremble = String(Math.min(3, Math.round(level)));
       else delete host.dataset.tremble;
     },
     pulse(at) {
       if (at === null) host.style.removeProperty("--alius-gauge-pulse");
-      else set("--alius-gauge-pulse", at);
+      else set2("--alius-gauge-pulse", at);
     },
     window(from, to) {
-      set("--alius-gauge-from", from);
-      set("--alius-gauge-to", to);
+      set2("--alius-gauge-from", from);
+      set2("--alius-gauge-to", to);
     },
     clear() {
       for (const v of VARS) host.style.removeProperty(v);

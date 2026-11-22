@@ -245,4 +245,21 @@ describe('in the scene screen', () => {
     expect(onStage).toHaveBeenCalledOnce();
     expect(own.stage).not.toHaveBeenCalled();
   });
+  it('an item or a contact is taken off with its × in the scene too, and a person\'s row shows what is set (review C1)', async () => {
+    registerFrameReader(() => 'play');
+    const { renderSceneScreen } = await import('../../src/ui/scene/sceneScreen');
+    const { FakeStAdapter } = await import('../../src/st/fake');
+    const s = put(scene({ on: ['restraint', 'worship'] }), { person: COMMANDER, field: 'worn', value: 'hood' }, { person: COMMANDER, field: 'contact', value: 'foot_worship', with: ANN }, { person: ANN, field: 'posture', value: 'sitting' });
+    const stage = vi.fn(() => []);
+    const controller = { send: vi.fn(), propose: vi.fn(), answer: vi.fn(), end: vi.fn(), edit: vi.fn(), stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn(), stage } as never;
+    const host = h('div');
+    document.body.append(host);
+    renderSceneScreen(host, { controller, getState: () => s, registries: reg, st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }), settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded: vi.fn() });
+    const x = [...host.querySelectorAll<HTMLElement>('[data-action="remove"]')];
+    expect(x.map((b) => `${b.dataset.person}:${b.dataset.id}`).sort()).toEqual([`${ANN}:foot_worship`, `${COMMANDER}:hood`].sort());
+    expect([...host.querySelectorAll<HTMLElement>('.alius-blocking-row')].map((r) => r.dataset.person)).toEqual([ANN, COMMANDER]);
+    expect(host.querySelector('.alius-blocking-row[data-person="unit_ann"] .alius-chip[data-analyze="blockingPostures:sitting"]')).not.toBeNull();
+    host.querySelector<HTMLElement>('[data-action="remove"][data-id="hood"]')!.click();
+    expect(stage).toHaveBeenCalledWith({ type: 'blocking/set', payload: { person: COMMANDER, field: 'removed', value: 'hood' } });
+  });
 });
