@@ -3,10 +3,10 @@ import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/practice';
-import type { Task } from '../../src/engine/practice/state';
+import type { OpenPunishment, Task } from '../../src/engine/practice/state';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { Directive } from '../../src/llm/context';
-import { applyIssuedDirectives, clearPracticeDirectives, ISSUED_PREFIX, PRACTICE_PREFIX, practiceDirectives, refreshPracticeDirectives, TASKS_PREFIX } from '../../src/practice/directives';
+import { applyIssuedDirectives, clearPracticeDirectives, ISSUED_PREFIX, PRACTICE_PREFIX, practiceDirectives, PUNISHMENT_PREFIX, refreshPracticeDirectives, TASKS_PREFIX } from '../../src/practice/directives';
 import { errors, loadCore, run } from '../helpers/world';
 import { ANN, BEA, withBea, withService, world } from '../engine/practice/world';
 
@@ -112,6 +112,43 @@ describe('the practice directives', () => {
     expect(b.all().map((d) => d.id)).toEqual(['dynamic:x']);
     refreshPracticeDirectives(b as never, null, reg);
     expect(b.all().map((d) => d.id)).toEqual(['dynamic:x']);
+  });
+});
+
+describe('her discipline (P16)', () => {
+  const punishment = (over: Partial<OpenPunishment> = {}): OpenPunishment => ({
+    id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: 'No messages today.', summary: 'a day without messages', status: 'offered', day: 20, ...over,
+  });
+  const withPunishments = (s: CampaignState, list: OpenPunishment[]): CampaignState => {
+    s.practices = { seq: 9, requests: [], tasks: [], punishments: list, demonstrations: [], restrictions: [], cold: {}, postures: {}, offences: {}, records: [], handovers: [] };
+    return s;
+  };
+
+  it('the issued line says the consequence she told, for the next reply only, for a holder in the open scene; an order names the soldier; a sealed one is an envelope', () => {
+    const s = inScene(withPunishments(holding(), [punishment(), punishment({ id: 'pp2', forUnitId: BEA, summary: 'a talking-to' }), punishment({ id: 'pp3', sealed: true, summary: 'secret thing' })]), [ANN]);
+    const b = builder();
+    for (const id of ['pp1', 'pp2', 'pp3']) {
+      applyIssuedDirectives(b as never, [{ type: 'punishment_issued', punishmentId: id, holderId: ANN }], s, reg);
+      const d = b.all().find((x) => x.id === `${ISSUED_PREFIX}${ANN}`)!;
+      expect(d.expiresAfter).toBe('next_reply');
+      expect(d.text).not.toMatch(/\d|AUTHOR TO WRITE|secret thing/);
+      expect(d.text).not.toMatch(/\b(he|him|his|himself)\b/i);
+      if (id === 'pp1') expect(d.text).toContain('a day without messages');
+      if (id === 'pp2') expect(d.text).toContain(`about ${BEA === 'unit_bea' ? 'Bea' : BEA}`);
+      if (id === 'pp3') expect(d.text).toContain('sealed envelope');
+    }
+    // not for a holder outside the scene, not for one who does not hold
+    const outside = withPunishments(holding(), [punishment()]);
+    expect(applyIssuedDirectives(builder() as never, [{ type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN }], outside, reg)).toBe(false);
+  });
+
+  it('an accepted punishment of today is carried out in the scene: practice:punishment:<holderId>, by summary, nothing else', () => {
+    const s = inScene(withPunishments(holding(), [punishment({ status: 'accepted', answeredDay: 20 }), punishment({ id: 'pp2', status: 'offered' }), punishment({ id: 'pp3', status: 'accepted', answeredDay: 19 })]), [ANN]);
+    const ds = practiceDirectives(s, reg, [ANN]).filter((d) => d.id.startsWith(PUNISHMENT_PREFIX));
+    expect(ds.map((d) => d.id)).toEqual([`${PUNISHMENT_PREFIX}${ANN}`]);
+    expect(ds[0].text).toContain('a day without messages');
+    expect(ds[0].expiresAfter).toBe('scene');
+    expect(ds[0].text).not.toMatch(/\d|AUTHOR TO WRITE/);
   });
 });
 

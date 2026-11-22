@@ -4,6 +4,8 @@ import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/comms';
 import '../../src/engine/actions/practice';
 import { requestPractice } from '../../src/engine/practice/issue';
+import { blankPractices, type OpenPunishment } from '../../src/engine/practice/state';
+import { dynamicOf } from '../../src/engine/dynamic/state';
 import { Rng } from '../../src/engine/rng';
 import type { CampaignState } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
@@ -249,5 +251,63 @@ describe('reroll before the commander answered', () => {
     h.setState((x) => { x.practices!.tasks[0].status = 'open'; }); // answered
     expect(ctl.rerollState(requestId)).toEqual({ enabled: false, reason: 'It was answered.' });
     expect(ctl.rerollState('pq404')).toMatchObject({ enabled: false });
+  });
+});
+
+describe('her discipline (P16)', () => {
+  const punishment = (over: Partial<OpenPunishment> = {}): OpenPunishment => ({
+    id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: 'No messages today.', summary: 'a day without messages', status: 'offered', day: 20, ...over,
+  });
+  const withPunishment = (over: Partial<OpenPunishment> = {}): CampaignState => {
+    const s = withService(world(reg, 'role'));
+    s.settings.unitDms = true;
+    dynamicOf(s, ANN)!.hold = 45;
+    s.practices = { ...blankPractices(), seq: 3, punishments: [punishment(over)] };
+    return s;
+  };
+  const issued = { type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN, unitId: ANN, severity: 2, offence: 'task_broken' };
+
+  it('a punishment is delivered as a DM from her with her words, once; not in a scene with her, not in her cold shoulder', async () => {
+    const { h, ctl } = rig(withPunishment());
+    ctl.onEvents([issued]);
+    await vi.waitFor(() => expect(dms(h)).toHaveLength(1));
+    expect(dms(h)[0]).toMatchObject({ from: ANN, initiated: true, text: 'No messages today.' });
+    ctl.onEvents([issued]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dms(h)).toHaveLength(1);
+    const cold = withPunishment();
+    cold.practices!.cold[ANN] = cold.day + 1;
+    const c = rig(cold);
+    c.ctl.onEvents([issued]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dms(c.h)).toHaveLength(0);
+    const plain = rig(withPunishment({ text: 'AUTHOR TO WRITE: a day without messages.', plain: true }));
+    plain.ctl.onEvents([issued]);
+    await vi.waitFor(() => expect(dms(plain.h)).toHaveLength(1));
+    expect(dms(plain.h)[0].text).not.toMatch(/AUTHOR TO WRITE/);
+  });
+
+  it('answers go to the engine; the engine\'s refusal is toasted and answers false; UNDO and TAKE IT INSTEAD are dispatched', async () => {
+    const { h, ctl } = rig(withPunishment());
+    expect(await ctl.answerPunishment('pp1', 'accept')).toBe(true);
+    expect(h.state().practices!.punishments[0].status).toBe('accepted');
+    expect(await ctl.answerPunishment('pp1', 'accept')).toBe(false); // already answered
+    expect(h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+    expect(ctl.undoPunishment('pp1')).toBe(true);
+    expect(h.state().practices!.punishments[0].status).toBe('offered');
+    expect(ctl.undoPunishment('pp1')).toBe(false);
+    expect(ctl.takeInstead('pp1', 'do_it')).toBe(false); // not an order
+    expect(h.log.map((a) => a.type)).toEqual(expect.arrayContaining(['practice/answer_punishment', 'practice/undo', 'practice/take_instead']));
+    expect(await ctl.answerPunishment('pp9', 'accept')).toBe(false);
+  });
+
+  it('NEGOTIATE opens a one-to-one scene with her unless she is in the open scene', async () => {
+    const startScene = vi.fn(async () => true);
+    const s = withPunishment();
+    const h = worldHarness(reg, s, { autoRetry: 0 });
+    const ctl = createPractice({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene });
+    expect(await ctl.answerPunishment('pp1', 'negotiate')).toBe(true);
+    expect(startScene).toHaveBeenCalledWith({ locationId: 'quarters_unit', participants: [ANN], origin: 'event' });
+    expect(h.state().practices!.punishments[0].status).toBe('negotiating');
   });
 });

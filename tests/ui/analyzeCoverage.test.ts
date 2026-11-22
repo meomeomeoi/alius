@@ -23,6 +23,8 @@ import { renderHub, type HubCtx } from '../../src/ui/hub/hubScreen';
 import { renderBlockingStrip } from '../../src/ui/scene/blockingStrip';
 import { renderMomentCard } from '../../src/ui/scene/momentCard';
 import '../../src/engine/actions/dynamic';
+import '../../src/engine/actions/personal';
+import '../../src/engine/actions/practice';
 import { milestonesDue } from '../../src/engine/dynamic/milestones';
 import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
 import { renderClaimCard, renderMilestoneCard, renderReturnCard } from '../../src/ui/dynamic/cards';
@@ -31,6 +33,7 @@ import { drawFrameChips } from '../../src/ui/dynamic/frameChip';
 import { drawOfferChips } from '../../src/ui/dynamic/offerComposer';
 import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
 import { renderTaskCard } from '../../src/ui/practice/taskCard';
+import { drawPunishmentCards } from '../../src/ui/practice/punishmentCard';
 import { blankPractices } from '../../src/engine/practice/state';
 import { ANN as PRACTICE_ANN, BEA as PRACTICE_BEA, withService, world as practiceWorld } from '../engine/practice/world';
 import { buildKnowledge } from '../../src/analysis/knowledge';
@@ -779,6 +782,52 @@ describe('coverage: her task card and the record (P16)', () => {
       const addresses = new Set(unitIdsIn(root));
       for (const id of ['task_card', 'practice_task', 'consent_ladder', 'accept_words', 'accept_signed', 'practice_record', 'sealed']) expect(addresses.has(`glossary:${id}`), id).toBe(true);
       const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state, settings: getSettings(st) }) });
+      for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze^="glossary:"]')]) {
+        analyzer.openFor(el, { x: 10, y: 10 });
+        const text = document.querySelector('.alius-analyze')?.textContent ?? '';
+        expect(text, el.getAttribute('data-analyze')!).not.toBe('');
+        expect(text, el.getAttribute('data-analyze')!).not.toContain('NO DATA');
+        analyzer.close();
+      }
+      analyzer.destroy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(st.calls).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
+describe('coverage: her discipline cards (P16)', () => {
+  it('the punishment card, the TAKE IT INSTEAD card and the UNDO chip mark every element, and every one opens a panel with no network or model call', async () => {
+    const state = withService(practiceWorld(reg, 'role'));
+    const { dynamicOf } = await import('../../src/engine/dynamic/state');
+    const { run } = await import('../helpers/world');
+    dynamicOf(state, PRACTICE_ANN)!.hold = 45;
+    const pun = (id: string, over: Record<string, unknown> = {}) => ({ id, holderId: PRACTICE_ANN, entryId: 'no_messages', severity: 2 as const, offence: { kind: 'task_broken' as const, stakes: 'major' as const, day: state.day }, text: 'A day without messages.', summary: 'a day without messages', status: 'offered' as const, day: state.day, ...over });
+    state.practices = { ...blankPractices(), seq: 9, punishments: [pun('pp1'), pun('pp2', { entryId: 'verbal', severity: 1, forUnitId: PRACTICE_BEA, text: 'Bea earned a talking-to.', summary: 'a talking-to for Bea', plain: true }), pun('pp3', { status: 'negotiating', entryId: 'kept_in_quarters', severity: 3 })] };
+    const answered = run(structuredClone(state), reg, { type: 'practice/answer_punishment', payload: { punishmentId: 'pp1', answer: 'accept' } }).state;
+    const fetchSpy = vi.fn();
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as never;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    try {
+      for (const s of [state, answered]) {
+        const host = h('div');
+        root.append(host);
+        drawPunishmentCards(host, s, reg, () => true, { answer: vi.fn(), takeInstead: vi.fn(), undo: vi.fn() });
+      }
+      expect(root.querySelector('[data-undo-practice]')).not.toBeNull();
+      expect(root.querySelector('.alius-take-instead')).not.toBeNull();
+      expect(markedWithout(root)).toEqual([]);
+      expect(unresolved(root, env(answered))).toEqual([]);
+      expect(unreachable(root)).toEqual([]);
+      const addresses = new Set(unitIdsIn(root));
+      for (const id of ['holder_punishment', 'punishment_card', 'take_it_instead']) expect(addresses.has(`glossary:${id}`), id).toBe(true);
+      const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state: answered, settings: getSettings(st) }) });
       for (const el of [...root.querySelectorAll<HTMLElement>('[data-analyze^="glossary:"]')]) {
         analyzer.openFor(el, { x: 10, y: 10 });
         const text = document.querySelector('.alius-analyze')?.textContent ?? '';

@@ -33,6 +33,15 @@ export interface PracticeController {
   answerTask(taskId: string, answer: 'accept' | 'refuse' | 'talk'): Promise<boolean>;
   /** The signature of a `signed` task whose words were said (`practice/sign`). Toasts the reason and answers false when the engine refuses. */
   sign(taskId: string): boolean;
+  /**
+   * ACCEPT, NEGOTIATE or REFUSE on her discipline (`practice/answer_punishment`). NEGOTIATE also opens a one-to-one scene with her (her quarters) unless she is in the open scene already.
+   * Toasts the reason and answers false when the engine refuses.
+   */
+  answerPunishment(punishmentId: string, answer: 'accept' | 'negotiate' | 'refuse'): Promise<boolean>;
+  /** DO IT, TAKE IT INSTEAD or REFUSE on her order to punish a soldier (`practice/take_instead`). Toasts the reason and answers false when the engine refuses. */
+  takeInstead(punishmentId: string, answer: 'do_it' | 'take_it' | 'refuse'): boolean;
+  /** UNDO of an answer to her discipline (`practice/undo`). Toasts the reason and answers false when the engine refuses. */
+  undoPunishment(punishmentId: string): boolean;
   /** Waits for the call in flight (tests). */
   idle(): Promise<void>;
 }
@@ -151,12 +160,31 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     deps.app.dispatch({ type: 'dm/receive', payload: { unitId: task.holderId, text: plainDraft(task.sealed === true ? TUNING.practice.sealedLine : task.text), initiated: true } }, { expectChatId: chatId() });
   }
 
+  /** Delivers her discipline (or her order about a soldier): a DM from her, unless she is in the open scene, her DMs are off or she is giving the cold shoulder. */
+  function deliverPunishment(punishmentId: string): void {
+    const s = state();
+    const p = s?.practices?.punishments.find((x) => x.id === punishmentId);
+    if (s === null || p === undefined || p.status !== 'offered') return;
+    const key = `${chatId() ?? ''}|${punishmentId}`;
+    if (delivered.has(key) || s.scene?.participants.includes(p.holderId) === true || s.settings.unitDms !== true || (s.practices?.cold[p.holderId] ?? -1) >= s.day) return;
+    delivered.add(key);
+    deps.app.dispatch({ type: 'dm/receive', payload: { unitId: p.holderId, text: plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text), initiated: true } }, { expectChatId: chatId() });
+  }
+
+  /** The error of a dispatch, toasted; whether there was none. */
+  function ok(events: Array<{ type: string; [k: string]: unknown }>): boolean {
+    const bad = events.find((e) => e.type === 'error');
+    if (bad) deps.toast('error', String(bad.message ?? bad.code));
+    return bad === undefined;
+  }
+
   return {
     onEvents(events) {
       let refresh = false;
       for (const e of events) {
         if (OWN.includes(e.type)) refresh = true;
         if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') deliver(e.taskId);
+        if (e.type === 'punishment_issued' && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
       }
       if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh = true;
       if (refresh) deps.refreshContext();
@@ -205,6 +233,25 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       }
       deps.refreshContext();
       return true;
+    },
+    async answerPunishment(punishmentId, answer) {
+      const s = state();
+      const p = s?.practices?.punishments.find((x) => x.id === punishmentId);
+      if (s === null || p === undefined) return false;
+      if (!ok(deps.app.dispatch({ type: 'practice/answer_punishment', payload: { punishmentId, answer } }, { expectChatId: chatId() }))) return false;
+      if (answer === 'negotiate' && deps.startScene !== undefined && s.scene?.participants.includes(p.holderId) !== true) await deps.startScene({ locationId: 'quarters_unit', participants: [p.holderId], origin: 'event' });
+      deps.refreshContext();
+      return true;
+    },
+    takeInstead(punishmentId, answer) {
+      const done = ok(deps.app.dispatch({ type: 'practice/take_instead', payload: { punishmentId, answer } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    undoPunishment(punishmentId) {
+      const done = ok(deps.app.dispatch({ type: 'practice/undo', payload: { punishmentId } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     async idle() { while (flight) await flight.catch(() => {}); },
   };

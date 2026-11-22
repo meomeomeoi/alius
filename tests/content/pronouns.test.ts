@@ -384,7 +384,7 @@ describe('no pronoun for the commander in the text modules the main model and th
     // P16
     'src/practice/directives.ts', 'src/practice/controller.ts', 'src/practice/deps.ts', 'src/llm/calls/practiceGenerate.ts', 'src/engine/practice/validate.ts', 'src/engine/practice/seeds.ts', 'src/engine/practice/issue.ts',
     'src/engine/practice/tasks.ts', 'src/engine/practice/checks.ts', 'src/engine/practice/offences.ts', 'src/engine/practice/sample.ts', 'src/engine/practice/intents.ts', 'src/engine/practice/dayStep.ts',
-    'src/ui/practice/taskCard.ts', 'src/ui/practice/signature.ts',
+    'src/ui/practice/taskCard.ts', 'src/ui/practice/signature.ts', 'src/ui/practice/punishmentCard.ts', 'src/engine/practice/punish.ts', 'src/engine/practice/threats.ts', 'src/engine/practice/restrict.ts', 'src/engine/practice/request.ts',
   ];
   it.each(FILES)('%s', async (file) => {
     const { readFile } = await import('node:fs/promises');

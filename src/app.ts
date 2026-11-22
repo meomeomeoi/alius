@@ -953,6 +953,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
         onAnswerTask: (id, answer) => void practice.answerTask(id, answer), // P16: her task
         onSignTask: (id) => void practice.sign(id),
+        onAnswerPunishment: (id, answer) => void practice.answerPunishment(id, answer), // P16: her discipline
+        onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
+        onUndoPunishment: (id) => void practice.undoPunishment(id),
         onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
@@ -2493,6 +2496,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onAnswerReturn: (answer) => void dynamic.answerReturn(answer), // P15: her offer to begin again
       onAnswerTask: (id, answer) => void practice.answerTask(id, answer), // P16: her task
       onSignTask: (id) => void practice.sign(id),
+      onAnswerPunishment: (id, answer) => void practice.answerPunishment(id, answer), // P16: her discipline
+      onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
+      onUndoPunishment: (id) => void practice.undoPunishment(id),
       onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onAnswerRule: answerRule,

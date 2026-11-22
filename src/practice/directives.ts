@@ -86,11 +86,24 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
  * a sealed envelope. Only for a holder who is in the open scene (a practice delivered as a DM has its message instead).
  */
 export function issuedDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  if (event.type === 'punishment_issued') return punishmentIssuedDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
   const unit = task === undefined ? undefined : state.squad.find((u) => u.id === task.holderId);
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
+  return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+
+/** What she has just told the commander about a punishment (or an order about a soldier), for her next reply only. Only for a holder who is in the open scene. */
+function punishmentIssuedDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const p = typeof event.punishmentId === 'string' ? state.practices?.punishments.find((x) => x.id === event.punishmentId) : undefined;
+  const unit = p === undefined ? undefined : state.squad.find((u) => u.id === p.holderId);
+  if (p === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
+  const soldier = p.forUnitId === undefined ? undefined : state.squad.find((u) => u.id === p.forUnitId);
+  const what = p.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.`
+    : soldier !== undefined ? `${unit.displayName} has just told the commander what she wants done about ${soldier.displayName}: ${phrase(p.summary)}. She waits to see whether the commander does it, takes it, or refuses.`
+      : `${unit.displayName} has just told the commander the consequence of what was broken: ${phrase(p.summary)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
 }
 

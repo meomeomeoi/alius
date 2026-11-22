@@ -3205,5 +3205,36 @@
       "practice_record",
       "consent_ladder"
     ]
+  },
+  {
+    "id": "holder_punishment",
+    "term": "Her discipline",
+    "short": "What she does when something she asked for was broken or she was refused: a card with her words, its name and its weight in a word (light, heavy, harsh).",
+    "long": "AUTHOR TO WRITE: The weight is hers to set by what was broken, by her manner and by how often it has happened. The commander answers it: accept, negotiate or refuse.",
+    "see": [
+      "punishment_card",
+      "take_it_instead",
+      "practice"
+    ]
+  },
+  {
+    "id": "punishment_card",
+    "term": "Answering her discipline",
+    "short": "Accept: it is carried out, part of the cost comes back. Negotiate: a talk may lighten it. Refuse: a defiance. UNDO takes an answer back until something follows.",
+    "long": "AUTHOR TO WRITE: An answer cannot be taken back once the day, the slot or the scene has moved on, or once others saw it, or after anything it started has gone further.",
+    "see": [
+      "holder_punishment",
+      "take_it_instead"
+    ]
+  },
+  {
+    "id": "take_it_instead",
+    "term": "Take it instead",
+    "short": "She wants a soldier punished through the commander. Do it, take it instead (the soldier is spared, the commander takes the same weight), or refuse her.",
+    "long": "AUTHOR TO WRITE: The squad sees who took what. A soldier who was spared remembers it.",
+    "see": [
+      "holder_punishment",
+      "punishment_card"
+    ]
   }
 ]

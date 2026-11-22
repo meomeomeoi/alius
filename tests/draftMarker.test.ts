@@ -246,6 +246,23 @@ describe('cards', () => {
 
 // ---------------------------------------------------------------------------------------------
 
+describe('her discipline cards (P16)', () => {
+  it('the punishment card and the TAKE IT INSTEAD card render no marker, in the text or in an attribute', async () => {
+    const { drawPunishmentCards } = await import('../src/ui/practice/punishmentCard');
+    const { blankPractices } = await import('../src/engine/practice/state');
+    const s = world('role', [ANN, BEA]);
+    const pun = (id: string, over: Record<string, unknown> = {}) => ({ id, holderId: ANN, entryId: 'no_messages', severity: 2 as const, offence: { kind: 'task_broken' as const, stakes: 'major' as const, day: s.day }, text: 'AUTHOR TO WRITE: a day without messages.', summary: 'a day without messages', plain: true as const, status: 'offered' as const, day: s.day, ...over });
+    s.practices = { ...blankPractices(), seq: 5, punishments: [pun('pp1'), pun('pp2', { entryId: 'verbal', severity: 1, forUnitId: BEA, text: 'AUTHOR TO WRITE: Bea earned a talking-to.' }), pun('pp3', { sealed: true })] };
+    const host = h('div');
+    document.body.append(host);
+    drawPunishmentCards(host, s, reg, () => true, { answer: vi.fn(), takeInstead: vi.fn(), undo: vi.fn() });
+    expect(host.querySelectorAll('.alius-punishment').length).toBeGreaterThanOrEqual(2);
+    expect(host.innerHTML).not.toMatch(MARKER);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+
 describe('facts', () => {
   /** An event for each memory rule whose text is still a draft, with what its resolver needs. */
   const eventOf = (): Readonly<Record<string, EngineEvent>> => ({

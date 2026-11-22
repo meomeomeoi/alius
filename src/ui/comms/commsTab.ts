@@ -12,6 +12,7 @@ import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
+import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } from '../practice/punishmentCard';
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawOfferChips } from '../dynamic/offerComposer';
 import type { OfferComposition } from '../../engine/dynamic/offer';
@@ -44,6 +45,10 @@ export interface CommsTabCtx {
   /** P16: ACCEPT / REFUSE / TALK on a task she offered in her thread (the task's id); the signature of a signed one. */
   onAnswerTask?: (taskId: string, answer: TaskAnswer) => void;
   onSignTask?: (taskId: string) => void;
+  /** P16: her discipline in her thread: ACCEPT / NEGOTIATE / REFUSE, DO IT / TAKE IT INSTEAD / REFUSE on her order about a soldier, and UNDO of an answer. */
+  onAnswerPunishment?: (punishmentId: string, answer: PunishmentAnswer) => void;
+  onTakeInstead?: (punishmentId: string, answer: TakeInsteadAnswer) => void;
+  onUndoPunishment?: (punishmentId: string) => void;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: straight to the engine in a thread). Absent = no chip. */
   onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule she proposed. */
@@ -202,6 +207,8 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     drawReturnCards(returnCards, state, ctx.registries, (c) => c.unitId === current, (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again, under the thread
     const taskCards = h('div', { class: 'alius-task-cards' });
     drawTaskCards(taskCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerTask?.(id, answer), sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus() }); // P16: her task, under the thread (words are typed in the thread's own input)
+    const punishmentCards = h('div', { class: 'alius-punishment-cards' });
+    drawPunishmentCards(punishmentCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id) }); // P16: her discipline, under the thread
     // P15: `[ OFFER MYSELF ]` under the thread, and her answer once she has written back (the composer keeps its choice on the tab's own element across the tab's redraws)
     const offerChips = h('div', { class: 'alius-offer-surface' });
     if (ctx.onOffer) drawOfferChips(offerChips, { state, reg: ctx.registries, pick: (id) => id === current, onOffer: ctx.onOffer, answered: () => messages.at(-1)?.from !== 'commander', memory: host });
@@ -216,7 +223,7 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       ? editChip(waiting, editor?.displayName ?? waiting.editorId, () => ctx.onAnswerEdit?.(true), () => ctx.onAnswerEdit?.(false))
       : null;
     const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', ...(waiting ? { 'aria-disabled': 'true' } : {}), onclick: send }, '[ SEND ]');
-    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, taskCards, offerChips, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, offerChips, ruleChips, personalChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }

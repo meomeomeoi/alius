@@ -13,6 +13,7 @@ import { cssUrl } from '../fx';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
+import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } from '../practice/punishmentCard';
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawFrameChips } from '../dynamic/frameChip';
 import { drawOfferChips } from '../dynamic/offerComposer';
@@ -62,6 +63,10 @@ export interface SceneScreenCtx {
   /** P16: ACCEPT / REFUSE / TALK on a task of a unit in the scene (the task's id); the signature of a signed one. */
   onAnswerTask?: (taskId: string, answer: TaskAnswer) => void;
   onSignTask?: (taskId: string) => void;
+  /** P16: ACCEPT / NEGOTIATE / REFUSE on her discipline (the punishment's id), DO IT / TAKE IT INSTEAD / REFUSE on her order about a soldier, and UNDO of an answer. */
+  onAnswerPunishment?: (punishmentId: string, answer: PunishmentAnswer) => void;
+  onTakeInstead?: (punishmentId: string, answer: TakeInsteadAnswer) => void;
+  onUndoPunishment?: (punishmentId: string) => void;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: staged through the scene controller). Absent = no chip. */
   onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
@@ -220,6 +225,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let offerHost: HTMLElement;
   let returnCards: HTMLElement;
   let taskCards: HTMLElement;
+  let punishmentCards: HTMLElement;
   let freqChips: HTMLElement;
   let genChips: HTMLElement;
   let genTools: HTMLElement;
@@ -411,6 +417,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') input.focus(); }, sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus() }); // P16: her task
+    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') input.focus(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id) }); // P16: her discipline
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
     // an open menu stays open across a redraw
@@ -634,6 +641,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     claimCards = h('div', { class: 'alius-claim-cards' });
     returnCards = h('div', { class: 'alius-return-cards' });
     taskCards = h('div', { class: 'alius-task-cards' });
+    punishmentCards = h('div', { class: 'alius-punishment-cards' });
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
     genTools = h('span', { class: 'alius-scene-reroll' });
@@ -739,6 +747,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       claimCards,
       returnCards,
       taskCards,
+      punishmentCards,
       freqChips,
       disciplineMenus,
       letsHost,
