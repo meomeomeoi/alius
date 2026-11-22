@@ -19,7 +19,7 @@ const HIP_HALF = 0.1;
 const SHOULDER_HALF = 0.2;
 const SPINE = 0.46;
 const NECK_BASE = 0.03;
-const NECK = 0.14;
+const NECK = 0.07;
 const FOOT = 0.17;
 const DEG = Math.PI / 180;
 
@@ -242,7 +242,7 @@ export function pose(p: DialPose): Skeleton {
   if (pts.head === 'back') theta = Math.min(theta, -Math.asin(0.35)); // a tilt back always lifts the chin
   const headDir: Vec3 = [0, Math.cos(theta), Math.sin(theta)];
   const faceDir: Vec3 = [0, -Math.sin(theta), Math.cos(theta)];
-  const head = add(neckTop, mul(headDir, 0.1));
+  const head = add(neckTop, mul(headDir, 0.09));
   const gazeDir =
     pts.gaze === 'closed' ? null
     : pts.gaze === 'down' ? unit(add(faceDir, [0, -0.8, 0]))
