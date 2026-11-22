@@ -1238,9 +1238,9 @@ var TUNING = Object.freeze({
   }),
   /**
    * P15: mastery per target (R20, spec §15.10): `act` xp for each act on a target, `how` more when her `how` for it is set and the act ended clean; `levels` are the xp
-   * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `AUTHOR TO TUNE`.
+   * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `signs`: her last `replies` in the thread within `recentDays` average under `short` or over `long` characters. `AUTHOR TO TUNE`.
    */
-  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]), revealLevel: 2, clean: Object.freeze(["released", "checked"]) })
+  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]), revealLevel: 2, clean: Object.freeze(["released", "checked"]), signs: Object.freeze({ replies: 3, short: 60, long: 220, recentDays: 2 }) })
 });
 
 // src/engine/state/types.ts
@@ -19915,6 +19915,15 @@ function restraintEffects(state, reg, personId) {
   const contact = personId === COMMANDER ? contactOf(scene) : void 0;
   return contact ? effects2.concat(effectsOfEntry(reg.blockingContacts.get(contact.id))) : effects2;
 }
+function contactTargetOf(scene, reg, contactId) {
+  for (const b of Object.values(scene?.blocking ?? {})) {
+    if (!b.contact || contactId !== void 0 && b.contact.id !== contactId) continue;
+    if (b.contact.target !== void 0) return b.contact.target;
+    const own = reg.blockingContacts.get(b.contact.id)?.target ?? [];
+    return own.length === 1 ? own[0] : void 0;
+  }
+  return void 0;
+}
 function contactOf(scene) {
   for (const b of Object.values(scene.blocking ?? {})) if (b.contact) return b.contact;
   return void 0;
@@ -20417,6 +20426,65 @@ function exchangeDayStep(draft, reg) {
   return events;
 }
 
+// src/engine/dynamic/zones.ts
+var expectTag = (field2, id) => `expect_${field2}${id === void 0 ? "" : `_${id}`}`.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").slice(0, 32);
+var zoneTag = (targetId) => expectTag("worship", targetId);
+function zoneFacts(facts, unitId, targetId) {
+  const tag2 = zoneTag(targetId);
+  return facts.filter((f) => f.tags.includes(tag2) && f.about.includes(unitId));
+}
+function zoneRevealed(state, unitId, targetId) {
+  return zoneFacts(state.memory.facts, unitId, targetId).some((f) => f.hiddenFromCommander !== true);
+}
+
+// src/engine/dynamic/mastery.ts
+var round45 = (n) => Math.round(n * 1e4) / 1e4;
+function masteryLevel(state, unitId, targetId) {
+  const xp = state.relations[unitId]?.mastery?.[targetId] ?? 0;
+  return TUNING.mastery.levels.filter((t) => xp >= t).length;
+}
+function addMastery(draft, reg, unitId, targetId, xp) {
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  const rel = draft.relations[unitId];
+  if (!dynamicOn(draft, reg) || unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || rel === void 0 || !reg.worshipTargets.has(targetId) || !(xp > 0)) return [];
+  const before = masteryLevel(draft, unitId, targetId);
+  rel.mastery = { ...rel.mastery, [targetId]: round45((rel.mastery?.[targetId] ?? 0) + xp) };
+  const after = masteryLevel(draft, unitId, targetId);
+  const events = [];
+  for (let level = before + 1; level <= after; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
+  const open3 = TUNING.mastery.revealLevel;
+  const target = reg.worshipTargets.get(targetId);
+  if (before < open3 && after >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
+    events.push({
+      type: "zone_revealed",
+      unitId,
+      targetId,
+      attitude: expectationsOf(draft, reg, unitId).worship?.[targetId]?.attitude ?? "indifferent",
+      what: String(target.label).toLowerCase(),
+      via: "mastery"
+    });
+  }
+  return events;
+}
+function xpFor(draft, reg, unitId, targetId, clean10) {
+  const how = expectationsOf(draft, reg, unitId).worship?.[targetId]?.how;
+  return TUNING.mastery.act + (clean10 && how !== void 0 && how.trim() !== "" ? TUNING.mastery.how : 0);
+}
+function masteryFromEvents(draft, ctx2, events) {
+  const reg = ctx2.registries;
+  if (!dynamicOn(draft, reg)) return [];
+  const out = [];
+  for (const e of events) {
+    if (e.type === "physics_outcome" && typeof e.targetId === "string" && typeof e.holderId === "string") {
+      out.push(...addMastery(draft, reg, e.holderId, e.targetId, xpFor(draft, reg, e.holderId, e.targetId, TUNING.mastery.clean.includes(String(e.result)))));
+    } else if (e.type === "mouth_act" && e.kind === "kiss" || e.type === "mouth_act_done" && e.kind === "counted") {
+      const target = contactTargetOf(draft.scene, reg);
+      if (target !== void 0 && typeof e.unitId === "string") out.push(...addMastery(draft, reg, e.unitId, target, xpFor(draft, reg, e.unitId, target, true)));
+    }
+  }
+  return out;
+}
+
 // src/engine/dynamic/style.ts
 var FRAME_KEYS = ["0", "1", "2"];
 var entryOf2 = (reg, key) => reg.practiceStyles.get(key);
@@ -20518,17 +20586,6 @@ function noteEvents(draft, ctx2, events) {
   return [];
 }
 
-// src/engine/dynamic/zones.ts
-var ZONE_PREFIX = "expect_worship_";
-var zoneTag = (targetId) => `${ZONE_PREFIX}${targetId}`.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").slice(0, 32);
-function zoneFacts(facts, unitId, targetId) {
-  const tag2 = zoneTag(targetId);
-  return facts.filter((f) => f.tags.includes(tag2) && f.about.includes(unitId));
-}
-function zoneRevealed(state, unitId, targetId) {
-  return zoneFacts(state.memory.facts, unitId, targetId).some((f) => f.hiddenFromCommander !== true);
-}
-
 // src/engine/dynamic/offer.ts
 var RANK2 = { dislikes: 0, indifferent: 1, enjoys: 2, craves: 3 };
 var TIME_LABEL = { evening: "An evening", night: "A night" };
@@ -20622,12 +20679,12 @@ function categoryAttitude(view, tags) {
   if (view === null) return "indifferent";
   return bestOf(tags.filter((t) => view.categories[t] !== void 0).map((t) => ATTITUDE_OF_AS[view.categories[t].as]));
 }
-function readEntry(state, reg, unitId, tab, id, opts = {}) {
+function readEntry(state, reg, unitId, tab, id) {
   const view = practiceOf(state, reg, unitId);
   switch (tab) {
     case "part": {
       const shown = zoneRevealed(state, unitId, id);
-      const open3 = shown || opts.openZone?.(id) === true;
+      const open3 = shown || masteryLevel(state, unitId, id) >= TUNING.mastery.revealLevel;
       const attitude = worshipOf(state, reg, unitId, id);
       return open3 ? { attitude, ...shown ? {} : { reveal: id } } : { attitude, unknown: id };
     }
@@ -20676,9 +20733,9 @@ function mocks(state, reg, unitId) {
   const key = leadingStyle(state, reg, unitId).key;
   return TUNING.offer.mockers.includes(key) || TUNING.offer.mockingHumor.includes(key) && temperamentOf(state, unitId).humor === "mocking";
 }
-function answerOffer(state, reg, unitId, composition, opts = {}) {
+function answerOffer(state, reg, unitId, composition) {
   if (capped(state, reg, unitId)) return { answer: "refused", hold: 0, favour: 0, kind: true };
-  const reads = composition.flatMap((c) => c.ids.map((id) => readEntry(state, reg, unitId, c.tab, id, opts)));
+  const reads = composition.flatMap((c) => c.ids.map((id) => readEntry(state, reg, unitId, c.tab, id)));
   const T5 = TUNING.offer;
   const reveals = reads.flatMap((r) => r.reveal !== void 0 ? [r.reveal] : []);
   const sharp = reads.find((r) => r.attitude === "dislikes" && r.unknown === void 0);
@@ -20746,7 +20803,7 @@ function makeOffer(draft, ctx2, unitId, composition, opts = {}) {
   for (const c of composition) {
     for (const id2 of c.ids) if (!choices[c.tab].some((e) => e.id === id2)) throw new Error(`${offerLabel(reg, c.tab, id2)} is not on offer.`);
   }
-  const answer = answerOffer(draft, reg, unitId, composition, {});
+  const answer = answerOffer(draft, reg, unitId, composition);
   const x = draft.dynamic;
   const scene = draft.scene;
   const id = `do${x.seq++}`;
@@ -31351,6 +31408,7 @@ function startPhysics(draft, ctx2, o) {
     sourceKind: o.sourceKind,
     sourceId: o.sourceId,
     holderId: o.holderId,
+    ...o.sourceKind === "contact" && contactTargetOf(scene, reg, o.sourceId) !== void 0 ? { targetId: contactTargetOf(scene, reg, o.sourceId) } : {},
     ...gaugeFor(draft, phys),
     ...range2 ? { sealRange: range2 } : {},
     ...seal ? { seal } : {},
@@ -31401,7 +31459,7 @@ function stopPhysics(draft, reg, result) {
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   removeSource(draft, run.sourceKind, run.sourceId);
-  const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {} }];
+  const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...run.targetId !== void 0 ? { targetId: run.targetId } : {} }];
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
 }
@@ -36016,6 +36074,7 @@ registerAfterAction((draft, ctx2, events) => {
   }
   return [];
 });
+registerAfterAction((draft, ctx2, events) => masteryFromEvents(draft, ctx2, events));
 registerEnforced(commandKeptEnforced);
 registerUndone(restoreCommandKept);
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);

@@ -20,3 +20,4 @@ export type { DynamicIntentInput } from './intents';
 export { answerOffer, confirmOffer, makeOffer, offerChoices, offerLabel, readComposition } from './offer';
 export type { AnswerResult, OfferChoice, OfferComposition } from './offer';
 export { zoneFacts, zoneRevealed, zoneTag } from './zones';
+export { addMastery, masteryFromEvents, masteryLevel, moodSigns, revealedExpectations } from './mastery';

@@ -946,7 +946,7 @@ export const TUNING = Object.freeze({
   }),
   /**
    * P15: mastery per target (R20, spec §15.10): `act` xp for each act on a target, `how` more when her `how` for it is set and the act ended clean; `levels` are the xp
-   * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `AUTHOR TO TUNE`.
+   * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `signs`: her last `replies` in the thread within `recentDays` average under `short` or over `long` characters. `AUTHOR TO TUNE`.
    */
-  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]) as readonly number[], revealLevel: 2, clean: Object.freeze(['released', 'checked']) as readonly string[] }),
+  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]) as readonly number[], revealLevel: 2, clean: Object.freeze(['released', 'checked']) as readonly string[], signs: Object.freeze({ replies: 3, short: 60, long: 220, recentDays: 2 }) }),
 });

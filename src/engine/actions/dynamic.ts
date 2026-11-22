@@ -14,6 +14,7 @@ import { bypassLeash } from '../dynamic/bypass';
 import { noteLeashOnHer } from '../dynamic/compromat';
 import { requestTransfer } from '../dynamic/oversight';
 import { answerClaim } from '../dynamic/domains';
+import { masteryFromEvents } from '../dynamic/mastery';
 import { makeOffer, readComposition } from '../dynamic/offer';
 import { registerEnforced, registerUndone } from '../discipline/record';
 import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
@@ -71,6 +72,8 @@ registerAfterAction((draft, ctx, events) => {
   }
   return [];
 });
+// Every act of the commander's on a worship target is xp for that target with that woman; a level shows the zone (R20); nothing while off.
+registerAfterAction((draft, ctx, events) => masteryFromEvents(draft, ctx, events));
 // A severe enforcement on the one who kept the command (a bench, a brig, the Leash) ends the struggle for it (R15a); nothing for anyone else.
 registerEnforced(commandKeptEnforced);
 // ... and UNDO of that enforcement (a punishment read from dialogue) gives the struggle back (the Inverse carries what it took).

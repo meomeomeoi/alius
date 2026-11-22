@@ -8,7 +8,9 @@ import type { CampaignState, Fact } from '../state/types';
 
 /** The tag of the facts that reveal a worship target of hers (`expect:worship.<target>` as the fact store spells it). */
 export const ZONE_PREFIX = 'expect_worship_';
-export const zoneTag = (targetId: string): string => `${ZONE_PREFIX}${targetId}`.toLowerCase().replace(/[^a-z0-9 '_-]/g, '').slice(0, 32);
+/** The tag a fact of hers carries when it shows the commander a field of her profile (`expect:<field>` or `expect:<field>.<id>` in the plan's spelling): `expect_<field>` and `expect_<field>_<id>`. */
+export const expectTag = (field: string, id?: string): string => `expect_${field}${id === undefined ? '' : `_${id}`}`.toLowerCase().replace(/[^a-z0-9 '_-]/g, '').slice(0, 32);
+export const zoneTag = (targetId: string): string => expectTag('worship', targetId);
 
 /** The facts that reveal one target of hers: about her, tagged for the zone. Oldest first. */
 export function zoneFacts(facts: readonly Fact[], unitId: string, targetId: string): Fact[] {

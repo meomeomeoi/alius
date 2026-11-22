@@ -119,6 +119,8 @@ export interface PhysicsRun {
   sourceKind: 'contact' | 'item';
   sourceId: string;
   holderId: string;
+  /** The worship target of the contact the run started from (read when it starts, because the contact is gone when the run ends): P15 counts the act on it (mastery). */
+  targetId?: string;
   gauge: number;
   capacity: number;
   /** The seals the source allows, loosest first, and the one she is using. */

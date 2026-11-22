@@ -2064,20 +2064,21 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 - Create: `src/engine/dynamic/mastery.ts`
 - Modify: `src/engine/actions/dynamic.ts` (`registerAfterAction`: `physics_outcome` with a contact target, the mouth acts); `src/engine/tuning.ts` (`TUNING.mastery`); memory rule `zone_revealed`.
 - Test: `tests/engine/dynamic/mastery.test.ts`
+- **Memory check:** mastery xp and levels are bookkeeping (`mastery_gained` gets no rule, and the number is never shown); `zone_revealed` (from a level of mastery too) is the rule written in Task 40. Her act's target is read when a physics run starts (`PhysicsRun.targetId`) because the contact is gone when the run ends. The signs are read, never stored.
 
 **Interfaces:**
 - Produces: `addMastery(draft, reg, unitId, targetId, xp): EngineEvent[]`; `masteryLevel(state, unitId, targetId): number`; `revealedExpectations(state, reg, unitId): Partial<ExpectationProfile>` (fields with a revealing fact); `moodSigns(state, reg, unitId): string[]`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `+5 per act and +3 when the how matched`; levels at 20 / 60 / 120 / 200 / 320; `mastery_gained` once per level.
   - `another woman starts from zero`.
   - `mastery ≥ 2 reveals an unknown target without a corrected answer`.
   - `revealed shows only fields with a fact`.
   - `moodSigns shows tells only once revealed, and the satisfaction word only after a shared scene today`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/mastery.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): mastery per target and revealed zones`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/mastery.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): mastery per target and revealed zones`
 
 ---
 

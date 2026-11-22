@@ -27,6 +27,7 @@ import { canHold, dynamicOn, ensureDynamic, herPracticeLive } from './gate';
 import { addFavour, addHold } from './hold';
 import { addSign } from './knowledge';
 import { practiceOf, type PracticeView } from './profile';
+import { masteryLevel } from './mastery';
 import { regardFall } from './regard';
 import { resettleReading } from './reading';
 import { dynamicOf, type OpenOffer } from './state';
@@ -173,12 +174,12 @@ interface EntryRead {
 }
 
 /** The attitude one entry meets (see the file header). A contact's targets decide it when she has a word on any; a tab with no profile of its own reads her practice. */
-function readEntry(state: CampaignState, reg: Registries, unitId: string, tab: OfferTab, id: string, opts: { openZone?: (targetId: string) => boolean } = {}): EntryRead {
+function readEntry(state: CampaignState, reg: Registries, unitId: string, tab: OfferTab, id: string): EntryRead {
   const view = practiceOf(state, reg, unitId);
   switch (tab) {
     case 'part': {
       const shown = zoneRevealed(state, unitId, id);
-      const open = shown || opts.openZone?.(id) === true;
+      const open = shown || masteryLevel(state, unitId, id) >= TUNING.mastery.revealLevel; // a zone the commander's mastery has opened is shown by the answer, not by a correction
       const attitude = worshipOf(state, reg, unitId, id);
       return open ? { attitude, ...(shown ? {} : { reveal: id }) } : { attitude, unknown: id };
     }
@@ -244,13 +245,11 @@ function mocks(state: CampaignState, reg: Registries, unitId: string): boolean {
  * unshown zone, then the best): `craves` is accepted (hold +6, favour +3), `enjoys` accepted (+3, +1), `indifferent` is "tonight" from a cold or ritual manner and
  * accepted for nothing from any other, `dislikes` is mocked (cruel, cold, a mocking playful) or refused (-3, -2). A worship zone the commander has not been shown is a correction instead: no
  * hold, the zone is shown (`reveal`) and she names one she craves (`corrected`). A good mood (her satisfaction `content`) multiplies a gain by 1.5, an irritated one (`frustrated`) by 0.5; a loss is
- * never softened. With the holder cap reached and she no holder, she refuses kindly (`kind`) with nothing moved. `openZone` names the targets the commander's mastery already shows (Task 41).
+ * never softened. With the holder cap reached and she no holder, she refuses kindly (`kind`) with nothing moved. A zone the commander's mastery has opened (level 2) is not a correction: the answer is hers and shows it.
  */
-export function answerOffer(
-  state: CampaignState, reg: Registries, unitId: string, composition: OfferComposition, opts: { openZone?: (targetId: string) => boolean } = {},
-): AnswerResult {
+export function answerOffer(state: CampaignState, reg: Registries, unitId: string, composition: OfferComposition): AnswerResult {
   if (capped(state, reg, unitId)) return { answer: 'refused', hold: 0, favour: 0, kind: true };
-  const reads = composition.flatMap((c) => c.ids.map((id) => readEntry(state, reg, unitId, c.tab, id, opts)));
+  const reads = composition.flatMap((c) => c.ids.map((id) => readEntry(state, reg, unitId, c.tab, id)));
   const T = TUNING.offer;
   const reveals = reads.flatMap((r) => (r.reveal !== undefined ? [r.reveal] : []));
   const sharp = reads.find((r) => r.attitude === 'dislikes' && r.unknown === undefined);
@@ -337,7 +336,7 @@ export function makeOffer(draft: CampaignState, ctx: Ctx, unitId: string, compos
   for (const c of composition) {
     for (const id of c.ids) if (!choices[c.tab].some((e) => e.id === id)) throw new Error(`${offerLabel(reg, c.tab, id)} is not on offer.`);
   }
-  const answer = answerOffer(draft, reg, unitId, composition, {});
+  const answer = answerOffer(draft, reg, unitId, composition);
   const x = draft.dynamic!;
   const scene = draft.scene;
   const id = `do${x.seq++}`;

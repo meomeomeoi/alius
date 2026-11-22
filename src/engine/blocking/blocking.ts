@@ -97,6 +97,20 @@ function restraintEffects(state: CampaignState, reg: Registries, personId: strin
   return contact ? effects.concat(effectsOfEntry(reg.blockingContacts.get(contact.id))) : effects;
 }
 
+/**
+ * The worship target a contact of the scene is on: the one the chip set, else the only one its entry has; `undefined` when there is none or the contact is not there.
+ * With no `contactId` it is the commander's contact. Reads only (P15 mastery reads it before a contact is taken away).
+ */
+export function contactTargetOf(scene: Pick<SceneRecord, 'blocking'> | undefined, reg: Registries, contactId?: string): string | undefined {
+  for (const b of Object.values(scene?.blocking ?? {})) {
+    if (!b.contact || (contactId !== undefined && b.contact.id !== contactId)) continue;
+    if (b.contact.target !== undefined) return b.contact.target;
+    const own = (reg.blockingContacts.get(b.contact.id)?.target as string[] | undefined) ?? [];
+    return own.length === 1 ? own[0] : undefined;
+  }
+  return undefined;
+}
+
 /** The contact the commander is in, wherever its record sits (on the commander as a receiver, or on the soldier). */
 export function contactOf(scene: Pick<SceneRecord, 'blocking'>): BlockingContact | undefined {
   for (const b of Object.values(scene.blocking ?? {})) if (b.contact) return b.contact;

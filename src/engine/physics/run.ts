@@ -5,7 +5,7 @@
  * when its source goes, and ends when a switched-off category takes its source away.
  */
 import type { Entry, Registries } from '../../content/types';
-import { blockingLive, COMMANDER, contactOf, hasSource, registerAfterChange, removeSource, type BlockingChange } from '../blocking';
+import { blockingLive, COMMANDER, contactOf, contactTargetOf, hasSource, registerAfterChange, removeSource, type BlockingChange } from '../blocking';
 import { contentAllowed, registerWithdrawal } from '../bonds/content';
 import type { EngineEvent } from '../dispatch';
 import { sceneSettingsOf } from '../moments/settings';
@@ -109,6 +109,7 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
   const run: PhysicsRun = {
     id: `p${scene.physicsCount}`, physicsId: o.physicsId, sourceKind: o.sourceKind, sourceId: o.sourceId, holderId: o.holderId,
+    ...(o.sourceKind === 'contact' && contactTargetOf(scene, reg, o.sourceId) !== undefined ? { targetId: contactTargetOf(scene, reg, o.sourceId)! } : {}),
     ...gaugeFor(draft, phys), ...(range ? { sealRange: range } : {}), ...(seal ? { seal } : {}), ...(ref?.pressure !== undefined ? { pressure: ref.pressure } : {}),
     segment: { n: 0, state: 'held' }, startedExchange: scene.exchanges, taps: 0, streak: 0, extend: 0,
     ...(o.duration !== undefined ? { duration: o.duration } : {}),
@@ -157,7 +158,7 @@ export function stopPhysics(draft: CampaignState, reg: Registries, result: Outco
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   removeSource(draft, run.sourceKind, run.sourceId);
-  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}) }];
+  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
 }
