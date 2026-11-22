@@ -445,3 +445,11 @@ registerMemoryResolver('punishment_issued', (draft, event) => {
   const her = subjectOf(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, unfair: yes(event.unfair === true) } } : null;
 }, { ids: ['her'], vars: ['name', 'unfair'] });
+
+// the practices (P16, R8): the commander answered her discipline. A taken punishment is the pair's to remember; one carried out in public is the audience's too (`present` is her and who watched)
+registerMemoryResolver('punishment_answered', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  if (!her) return null;
+  const present = strs(event.present);
+  return { ids: { her: [her.id], present: present.length > 0 ? present : [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', public: yes(event.public === true), what: str(event.summary) ?? 'something' } };
+}, { ids: ['her', 'present'], vars: ['name', 'answer', 'public', 'what'] });

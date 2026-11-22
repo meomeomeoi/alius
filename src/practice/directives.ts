@@ -18,6 +18,8 @@ export const PRACTICE_PREFIX = 'practice:';
 export const TASKS_PREFIX = 'practice:tasks:';
 /** A third party who is in the room: what a holder asked of the commander that involves her. */
 export const TARGET_PREFIX = 'practice:target:';
+/** Her discipline the commander has just accepted, while she is in the room: what she carries out, shown or only reported. */
+export const PUNISHMENT_PREFIX = 'practice:punishment:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
 
@@ -50,6 +52,19 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     const open = (state.practices?.tasks ?? []).filter((t) => t.holderId === unit.id && t.kind === 'task' && t.status === 'open').map(taskLine).filter((s) => s !== '');
     if (open.length === 0) continue;
     out.push({ id: `${TASKS_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} expects the commander to see to: ${open.join('; ')}. She may ask after them. ${NEVER_NAME}`) });
+  }
+  for (const unit of holdersIn(state, reg, present)) {
+    const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit.id && x.forUnitId === undefined && x.status === 'accepted' && x.answeredDay === state.day);
+    if (done.length === 0) continue;
+    const shown = (state.content?.enabled ?? []).includes('physical_discipline_shown');
+    const lines = done.map((x) => {
+      const physical = (reg.holderPunishments.get(x.entryId)?.effects as Array<{ type: string }> | undefined)?.some((e) => e.type === 'physical' || e.type === 'slap') === true;
+      const how = !physical ? '' : shown ? ' It is shown as it happens.' : ' It is only reported, in a line, and never shown.';
+      const crowd = (x.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
+      const before = crowd.length > 0 ? ` It is done before ${crowd.join(' and ')}, who watch.` : '';
+      return `${unit.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before}`;
+    });
+    out.push({ id: `${PUNISHMENT_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} ${NEVER_NAME}`) });
   }
   for (const id of present) {
     const target = state.squad.find((u) => u.id === id);

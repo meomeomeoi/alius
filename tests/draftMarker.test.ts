@@ -276,6 +276,8 @@ describe('facts', () => {
     zone_revealed: { type: 'zone_revealed', unitId: ANN, targetId: 'feet', what: 'her feet', attitude: 'craves' },
     practice_signed: { type: 'practice_signed', taskId: 'pt1', unitId: ANN, summary: 'carry the roster' },
     false_report_found: { type: 'task_broken', taskId: 'pt1', unitId: ANN, falseReport: true, summary: 'keep Bea off the run' },
+    punishment_given: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', summary: 'a day without messages' },
+    punishment_public: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', public: true, present: [ANN, BEA], summary: 'read out before her friends' },
   });
 
   const draftRules = () => [...reg.memoryRules.values()].filter((r) => MARKER.test(String(r.text)));

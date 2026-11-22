@@ -6,6 +6,7 @@
  * Nothing here draws from the campaign's rng: every chance is `practiceRoll` (a `dynamicRoll` with a `practice:` key) and every pick is an
  * index into a registry-ordered list by `Math.floor(practiceRoll × n)`.
  */
+import type { TrackState } from '../dynamic/state';
 import type { Frame } from '../dynamic/types';
 import { dynamicRoll } from '../dynamic/witness';
 import type { CampaignState, Inverse, Slot } from '../state/types';
@@ -195,6 +196,35 @@ export interface OpenPunishment {
   inverse?: Inverse;
   /** The request this card was written for (the key of its generation). */
   requestId?: string;
+  /** The day the commander answered it (UNDO reads it, and the day step closes an accepted one the day after). */
+  answeredDay?: number;
+  /** Who watched it be carried out, when it was done in public (R8). */
+  audienceIds?: string[];
+}
+
+/**
+ * What an answer to her discipline put back besides the relation numbers (R8, UNDO): the status it had, her hold and favour before, her track xp before, how many
+ * restrictions of hers there were and the cold shoulder and the hold she kept before, and the escalation request it made. `Inverse.practice` holds it; `revertInverse` does the axes
+ * and `registerPracticeUndone`'s reader does this.
+ */
+export interface PracticeUndo {
+  punishmentId: string;
+  status: PunishmentStatus;
+  hold: number;
+  favour: number;
+  tracks: Record<string, TrackState>;
+  restrictions: number;
+  cold?: number;
+  heldBy?: string;
+  escalationRequestId?: string;
+  /** The hold it started (a `slot_held` effect) and the mark it set, so UNDO ends them. */
+  startedHold?: true;
+  markSet?: true;
+  /** The task a confession wrote and the protocol request it made. */
+  taskIds?: string[];
+  requestIds?: string[];
+  /** The id of a punishment's answered day (UNDO is for the day it was given). */
+  day: number;
 }
 
 /** A demonstration she has staged and not yet seen through (R9). `observed` lists who saw it at the scene's end. */

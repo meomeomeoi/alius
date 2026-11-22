@@ -17,6 +17,7 @@ import { TUNING } from '../tuning';
 import { fromIntent, keptByWordRecently } from './checks';
 import { practiceLive, practicesOn } from './gate';
 import { noteOffence } from './offences';
+import { compromisePunishment } from './punish';
 import { acceptByWords, compromiseTask } from './tasks';
 
 /** The model-reported types of the practices: their own rows are zero or are applied by their handlers, so `applyIntents` leaves them to `applyPracticeIntent`. */
@@ -119,7 +120,7 @@ export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
   practice_accepted: (draft, ctx, unitId, ev) => (ev.handoverId !== undefined ? [] : acceptByWords(draft, ctx, unitId, ev)), // a handover's words are built with the handover
   // her habit slipped out (P15's intent, applied by the dynamic): it is also an offence of hers (R8), a minor one before others, a trivial one alone
   protocol_slip: (draft, ctx, unitId) => noteOffence(draft, ctx, unitId, { kind: 'protocol_slip', ref: 'slip', stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? 'minor' : 'trivial', day: draft.day }),
-  compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : []), // a punishment's and an alarm's own compromise are built with them
+  compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : ev.punishmentId !== undefined ? compromisePunishment(draft, ctx, unitId, ev) : []), // an alarm's own compromise is built with it
 };
 
 /** Routes one validated report to its handler. A type whose handler is not built yet changes nothing. */

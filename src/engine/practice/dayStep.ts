@@ -16,6 +16,7 @@ import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
 import { deadlineSweep, falseReportSweep } from './checks';
 import { practiceHolders, practiceLive } from './gate';
+import { closePunishments, coldShoulderWants } from './punish';
 import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
@@ -121,6 +122,8 @@ function newPractices(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
 function expiry(draft: CampaignState): EngineEvent[] {
   const p = draft.practices;
   if (p === undefined) return [];
+  const events = coldShoulderWants(draft); // her Want rises each day of her cold shoulder (it is read before the shoulder's last day expires)
+  closePunishments(draft);
   p.restrictions = p.restrictions.filter((r) => r.untilDay >= draft.day);
   for (const [id, until] of Object.entries(p.cold)) if (until < draft.day) delete p.cold[id];
   const trim = <T extends { status: string }>(rows: T[], open: (r: T) => boolean): T[] => {
@@ -131,7 +134,7 @@ function expiry(draft: CampaignState): EngineEvent[] {
   p.tasks = trim(p.tasks, (t) => live(t.status));
   p.punishments = trim(p.punishments, (x) => live(x.status));
   p.demonstrations = trim(p.demonstrations, (x) => x.status === 'offered' || x.status === 'open');
-  return [];
+  return events;
 }
 
 /** The day-end step of the practices (registered on `dm_rumors`): nothing happens, and nothing is written, while nobody is live. */

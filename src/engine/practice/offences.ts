@@ -53,7 +53,7 @@ const sceneIsHers = (state: CampaignState, holderId: string): boolean =>
   state.scene === undefined || (state.scene.participants.length === 1 && state.scene.participants[0] === holderId);
 
 /** Units a confession may name: living named soldiers who are at base (not on a run). */
-const atBase = (state: CampaignState, holderId: string): string[] => eligibleUnits(state, holderId).filter((id) => !(state.expedition?.party ?? []).includes(id));
+export const atBase = (state: CampaignState, holderId: string): string[] => eligibleUnits(state, holderId).filter((id) => !(state.expedition?.party ?? []).includes(id));
 
 /** Her public gate (R8): `public_humiliation` is on (the entry's own tags check that) and her audience is not `private_only`. */
 const publicAllowed = (state: CampaignState, reg: Registries, holderId: string): boolean => practiceOf(state, reg, holderId)?.audience !== 'private_only';
@@ -138,7 +138,8 @@ const answers = (state: CampaignState, holderId: string): boolean => {
 export function offencesFromEvents(draft: CampaignState, ctx: EngineCtx, events: readonly EngineEvent[]): EngineEvent[] {
   if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
   const out: EngineEvent[] = [];
-  const refusedTask = (unitId: string): boolean => events.some((x) => x.type === 'task_answered' && x.answer === 'refuse' && x.holderId === unitId);
+  // a refused task or punishment enters its own offence (or none): the `refusal_noted` beside it is the same refusal
+  const refusedTask = (unitId: string): boolean => events.some((x) => (x.type === 'task_answered' || x.type === 'punishment_answered') && x.answer === 'refuse' && x.holderId === unitId);
   const note = (holderId: string | undefined, kind: OffenceKind, ref: string | undefined, stakes: Stake): void => {
     if (holderId === undefined) return;
     out.push(...noteOffence(draft, ctx, holderId, { kind, ...(ref !== undefined ? { ref } : {}), stakes, day: draft.day }));

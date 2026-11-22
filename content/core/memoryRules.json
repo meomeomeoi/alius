@@ -1200,5 +1200,39 @@
       "practice",
       "false_report"
     ]
+  },
+  {
+    "id": "punishment_given",
+    "event": "punishment_answered",
+    "when": {
+      "answer": "accept"
+    },
+    "text": "AUTHOR TO WRITE: The commander took {name}'s punishment: {what}.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "punishment_given"
+    ]
+  },
+  {
+    "id": "punishment_public",
+    "event": "punishment_answered",
+    "when": {
+      "public": true
+    },
+    "text": "AUTHOR TO WRITE: {name} punished the commander before others: {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "slow",
+    "tags": [
+      "dynamic",
+      "practice",
+      "punishment_public"
+    ]
   }
 ]

@@ -6,6 +6,7 @@ import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents } from '../practice/offences';
+import { answerPunishment } from '../practice/punish';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
 
@@ -49,4 +50,10 @@ registerAction('practice/sign', (draft, payload, ctx) => {
 registerAction('practice/report', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.taskId !== 'string') throw new Error('practice/report needs { taskId }.');
   return reportTask(draft, ctx, payload.taskId);
+});
+
+/** `practice/answer_punishment { punishmentId, answer }`: ACCEPT, NEGOTIATE or REFUSE on her discipline (R8). */
+registerAction('practice/answer_punishment', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.punishmentId !== 'string' || (payload.answer !== 'accept' && payload.answer !== 'negotiate' && payload.answer !== 'refuse')) throw new Error('practice/answer_punishment needs { punishmentId, answer }.');
+  return answerPunishment(draft, ctx, payload.punishmentId, payload.answer);
 });
