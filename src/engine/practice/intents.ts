@@ -15,6 +15,7 @@ import { PRACTICE_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { fromIntent, keptByWordRecently } from './checks';
+import { compromiseAlarm } from './alarm';
 import { denialBroken, permissionRuleOf } from './denial';
 import { practiceLive, practicesOn } from './gate';
 import { noteOffence } from './offences';
@@ -48,6 +49,9 @@ export interface PracticeOffer {
   service: string[];
   threats: string[];
 }
+
+/** What an alarm is, in a few words for the model (no number, no pronoun for the commander). */
+const ALARM_WORDS: Readonly<Record<string, string>> = { launch: 'a launch that waits on the hold', deadline: 'a mission that is running out of time', night: 'a knock at the door' };
 
 const SUMMARY_MAX = TUNING.practice.summaryMax;
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, SUMMARY_MAX);
@@ -86,7 +90,8 @@ export function practiceIntentInput(state: CampaignState, reg: Registries, parti
   const accepts = offered.filter((t) => t.acceptForm === 'words' || t.acceptForm === 'signed').map(row);
   const talks = offered.map(row);
   const punishments = (p?.punishments ?? []).filter((x) => mine(x.holderId) && (x.status === 'offered' || x.status === 'negotiating') && x.sealed !== true).map(row);
-  const alarms = p?.alarm !== undefined && mine(p.alarm.holderId) && p.alarm.answer === undefined ? [{ id: p.alarm.id, unitId: p.alarm.holderId, summary: '' }] : [];
+  // a keep that the commander argued over (the one exchange was had) may be settled by a compromise: the hold ends late
+  const alarms = p?.alarm !== undefined && mine(p.alarm.holderId) && p.alarm.answer === 'keep' && p.alarm.argued === true && p.held !== undefined ? [{ id: p.alarm.id, unitId: p.alarm.holderId, summary: ALARM_WORDS[p.alarm.kind] }] : [];
   const ceremonies = (p?.punishments ?? []).flatMap((x) => {
     if (!mine(x.holderId) || x.status !== 'accepted' || x.ceremony === undefined) return [];
     const step = x.ceremony.steps.find((id) => !x.ceremony!.done.includes(id));
@@ -124,7 +129,7 @@ export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
   service_rated: (draft, ctx, unitId, ev) => noteSaid(draft, ctx, unitId, ev), // her verdict is held to the scene's end, where the engine's own wins (R10)
   denial_broken: (draft, ctx, unitId) => denialBroken(draft, ctx, unitId), // a slip against her permission rule is her discipline (R13)
   threat_voiced: (draft, ctx, unitId) => voiceThreat(draft, ctx, unitId), // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
-  compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : ev.punishmentId !== undefined ? compromisePunishment(draft, ctx, unitId, ev) : []), // an alarm's own compromise is built with it
+  compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : ev.punishmentId !== undefined ? compromisePunishment(draft, ctx, unitId, ev) : ev.alarmId !== undefined ? compromiseAlarm(draft, ctx, unitId, ev) : []),
 };
 
 /** Routes one validated report to its handler. A type whose handler is not built yet changes nothing. */

@@ -473,3 +473,13 @@ registerMemoryResolver('demonstration_staged', (draft, event) => {
     vars: { name: her.name, what: str(event.summary) ?? 'something', humbling: yes(event.humbling === true), watchers: joinNames(audience.map((id) => nameOf(draft, id))) },
   };
 }, { ids: ['her', 'audience'], vars: ['name', 'what', 'humbling', 'watchers'] });
+
+// the practices (P16, R12): a duty came while the commander was held. Only two answers are remembered: the squad left without command (`run`: the keep that a run then followed), and a late release (the party
+// waited; the squad when no run was named). The party is the units a launch named; the commander's own answers to a keep (`phase`) carry a different shape and no rule.
+registerMemoryResolver('hold_alarm', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  if (!her) return null;
+  const party = strs(event.party);
+  const squad = draft.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id);
+  return { ids: { her: [her.id], party: party.length > 0 ? party : squad }, vars: { name: her.name, answer: str(event.answer) ?? '', run: yes(event.run === true), phase: str(event.phase) ?? '' } };
+}, { ids: ['her', 'party'], vars: ['name', 'answer', 'run', 'phase'] });

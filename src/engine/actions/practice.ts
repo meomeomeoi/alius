@@ -7,6 +7,7 @@ import { registerAction, registerAfterAction, registerVoteGate } from '../dispat
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { answerDemonstration, demonstrationsFromEvents } from '../practice/demonstration';
+import { alarmsFromEvents, answerAlarm, raiseAlarm } from '../practice/alarm';
 import { askRelease, blindfoldFromEvents, holdSweep } from '../practice/hold';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
@@ -52,6 +53,8 @@ registerAfterAction((draft, _ctx, events) => callsFromEvents(draft, events));
 registerAfterAction(holdSweep);
 // A scene with her in a sensory hold darkens the commander's sight through the blocking (R11); it comes off with the hold.
 registerAfterAction(blindfoldFromEvents);
+// A mission whose deadline is today raises its alarm once while the commander is held (R12): the holder decides what comes first.
+registerAfterAction(alarmsFromEvents);
 // A punishment she was given in a DM is told to the model in the first scene with her, once.
 registerAfterAction(voiceWaitingPunishments);
 
@@ -158,3 +161,15 @@ registerAction('practice/name_posture', (draft, payload, ctx) => {
 
 /** `practice/ask_release {}`: `[ ASK TO BE LET GO ]` while the commander is held (R11). Her answer is the engine's (style and frame); it releases, keeps the commander one slot longer or refuses (in silence for `cold`). Throws while not held. */
 registerAction('practice/ask_release', (draft, _payload, ctx) => askRelease(draft, ctx));
+
+/** `practice/raise_alarm { kind, payload }`: a duty came while the commander is held (the UI sends it when the guard refuses a launch or a knock with `held_alarm`). Her answer is decided and applied at once (R12). Throws while not held, with an alarm open or with a payload that does not fit. */
+registerAction('practice/raise_alarm', (draft, payload, ctx) => {
+  if (!isObj(payload)) throw new Error('practice/raise_alarm needs { kind, payload }.');
+  return raiseAlarm(draft, ctx, payload.kind, payload.payload);
+});
+
+/** `practice/answer_alarm { alarmId, answer: 'accept' | 'argue' | 'defy' }`: the commander's answer to her `keep` (R12). Closes what exists, so it needs no live holder. */
+registerAction('practice/answer_alarm', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.alarmId !== 'string') throw new Error('practice/answer_alarm needs { alarmId, answer }.');
+  return answerAlarm(draft, ctx, payload.alarmId, payload.answer);
+});

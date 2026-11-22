@@ -296,11 +296,18 @@ export interface HeldState {
   defied?: true;
   /** The bookings of others it made lapse (UNDO of the answer that started it puts them back). */
   lapsedIds?: string[];
+  /** The missions whose deadline already raised an alarm during this hold (once per mission). */
+  alarmed?: string[];
   /** The item of the blocking that darkens the commander's sight during a sensory hold (it comes off with the hold). */
   eyes?: string;
 }
 
-export interface OpenAlarm { id: string; holderId: string; kind: AlarmKind; day: number; slot: Slot; answer?: AlarmAnswer; argued?: true; payload?: unknown }
+export interface OpenAlarm {
+  id: string; holderId: string; kind: AlarmKind; day: number; slot: Slot; answer?: AlarmAnswer; argued?: true;
+  /** The commander said ACCEPT to a `keep` (the hold stands; sending the squad without the commander is still possible while the alarm is open). */
+  accepted?: true;
+  payload?: unknown;
+}
 
 export interface PracticeState {
   seq: number;

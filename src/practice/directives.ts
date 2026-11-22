@@ -32,6 +32,8 @@ export const DEMONSTRATION_PREFIX = 'practice:demonstration:';
 export const PERMISSION_PREFIX = 'practice:permission:';
 /** Her verdict on the commander's service, for her next reply only (event-driven). */
 export const VERDICT_PREFIX = 'practice:verdict:';
+/** Her answer to a duty that came while the commander was held, for her next reply only (event-driven). */
+export const ALARM_PREFIX = 'practice:alarm:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
 
@@ -131,6 +133,7 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (event.type === 'service_rated') return verdictDirective(event, state, reg);
   if (event.type === 'permission_answered') return permissionDirective(event, state, reg);
   if (event.type === 'hold_asked') return holdAskedDirective(event, state, reg);
+  if (event.type === 'hold_alarm') return alarmDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -151,6 +154,21 @@ function holdAskedDirective(event: { type: string; [k: string]: unknown }, state
   const how = typeof event.answer === 'string' ? ASKED_PHRASE[event.answer] : undefined;
   if (event.silent === true || unit === undefined || how === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} ${how}. ${NEVER_NAME}`) };
+}
+
+/** What she decided when a duty came while she held the commander, as prose (never the word of a mechanic). */
+const ALARM_PHRASE: Readonly<Record<string, string>> = {
+  release: 'has decided the duty comes first and lets the commander go, saying so in her own way',
+  release_late: 'lets the commander go, late, and knows the squad waited for it',
+  keep: 'will not let the commander go: the hold comes first, and the squad can manage without',
+};
+
+/** Her answer to a duty against the hold, for her next reply only. Nothing for the commander's own answer to it (the argument, the defiance), for a run that left, or when she is not in the open scene. */
+function alarmDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const unit = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.answer === 'string' ? ALARM_PHRASE[event.answer] : undefined;
+  if (event.phase !== undefined || event.run === true || unit === undefined || how === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
+  return { id: `${ALARM_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} ${how}. ${NEVER_NAME}`) };
 }
 
 /** The verdict words: how she took the service, as prose (never the word of a mechanic). */

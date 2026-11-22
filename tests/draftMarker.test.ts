@@ -297,6 +297,8 @@ describe('facts', () => {
     punishment_taken_for: { type: 'punishment_taken_for', punishmentId: 'pp1', unitId: ANN, sparedId: BEA, present: [ANN, BEA, CAT], summary: 'a day without leave for Bea' },
     punishment_public: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', public: true, present: [ANN, BEA], summary: 'read out before her friends' },
     demonstration_staged: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: false, summary: 'service at the mess table' },
+    held_alarm_kept: { type: 'hold_alarm', alarmId: 'pa1', kind: 'launch', unitId: ANN, answer: 'keep', run: true, party: [BEA] },
+    held_alarm_late: { type: 'hold_alarm', alarmId: 'pa1', kind: 'launch', unitId: ANN, answer: 'release_late', party: [BEA] },
     demonstration_humbling: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: true, summary: 'fetching for her before the mess' },
   });
 

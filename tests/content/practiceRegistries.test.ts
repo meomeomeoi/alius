@@ -100,7 +100,7 @@ describe('the four practice registries (P16)', () => {
   it('every engine event of the package is reserved', () => {
     for (const t of PRACTICE_EVENT_TYPES) expect(RESERVED_EVENT_TYPES, t).toContain(t);
     expect(new Set(PRACTICE_EVENT_TYPES).size).toBe(PRACTICE_EVENT_TYPES.length);
-    expect(PRACTICE_EVENT_TYPES).toHaveLength(33);
+    expect(PRACTICE_EVENT_TYPES).toHaveLength(34); // hold_asked: the answer to `[ ASK TO BE LET GO ]`
   });
 
   it('TUNING.practice holds the spec drafts (R.12) as given and every key of the task', () => {
@@ -114,7 +114,7 @@ describe('the four practice registries (P16)', () => {
     expect(t.xp).toEqual({ kept: 2, discipline: 2, demonstration: 6, hold: 3 });
     expect(t.takeInstead).toEqual({ record: 2 });
     expect(t.momentGap).toEqual({ matched: 2, partial: 0, opposite: -3 });
-    expect(t.alarm).toEqual({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 });
+    expect(t.alarm).toEqual({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5, mercy: 1, corporate: 0.5, style: { possessive: -1, cruel: -1.5, affectionate: 1, drill: 0.5 }, frame: { play: 0, role: -0.5, rule: -1 } });
     expect(t.slap.windowMs).toEqual({ affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300 });
     expect([t.slap.unannounced, t.slap.feintPerLevel, t.slap.obsessiveSpread]).toEqual([0.3, 0.1, 400]);
     expect(t.unfairness).toMatchObject({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15 });

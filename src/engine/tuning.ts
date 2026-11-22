@@ -1058,7 +1058,12 @@ export const TUNING = Object.freeze({
       words: Object.freeze({ grant: 'gives permission', deny: 'refuses permission', wait: 'says not yet, and to ask again tomorrow', earn: 'says it has to be earned first' } as const),
     }),
     hold: Object.freeze({ gain: 2, /** `forgot`: the chance a day the last slot ends that she lets it run on (by her primary style, else `base`; a style at 0 never forgets and gets no Impunity bonus). */ forgot: Object.freeze({ base: 0.05, cruel: 0.3, drill: 0, impunityBonus: 0.2 } as Readonly<Record<string, number>>), impunityAt: 60, sensoryVolume: 0.3 }),
-    alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
+    /** Her answer to a duty that comes while the commander is held (R12, `AUTHOR TO TUNE`): the score is `mercy x values.mercy + corporate x values.corporate + style + frame + roll - 0.5`; at `release` or more she lets go, at `late` or more she lets go late, else she keeps. */
+    alarm: Object.freeze({
+      release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5, mercy: 1, corporate: 0.5,
+      style: Object.freeze({ possessive: -1, cruel: -1.5, affectionate: 1, drill: 0.5 } as Readonly<Record<string, number>>),
+      frame: Object.freeze({ play: 0, role: -0.5, rule: -1 } as const),
+    }),
     ask: Object.freeze({ hold: 2, mockRecord: 3 }),
     posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),
     slap: Object.freeze({

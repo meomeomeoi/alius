@@ -143,12 +143,14 @@ describe('each type only with its subject', () => {
   });
 
   it('a negotiable task, punishment or alarm: compromise_reached with its id', () => {
-    const s = scene({ practices: { tasks: [task({ id: 'pt1', status: 'offered' })], punishments: [punishment(), punishment({ id: 'pp2', status: 'accepted' })], alarm: { id: 'pa1', holderId: ANN, kind: 'launch', day: 20, slot: 'morning' } } });
+    const s = scene({ practices: { tasks: [task({ id: 'pt1', status: 'offered' })], punishments: [punishment(), punishment({ id: 'pp2', status: 'accepted' })], held: { by: ANN, since: { day: 20, slot: 'morning' }, until: { day: 20, slot: 'afternoon' }, sensory: false, extended: 0, bookingIds: [] }, alarm: { id: 'pa1', holderId: ANN, kind: 'launch', day: 20, slot: 'morning', answer: 'keep', argued: true } } });
     const o = offer(s)!;
     expect(o.types).toContain('compromise_reached');
     expect(o.talks.map((t) => t.id)).toEqual(['pt1']);
     expect(o.punishments.map((t) => t.id)).toEqual(['pp1']);
-    expect(o.alarms.map((t) => t.id)).toEqual(['pa1']);
+    expect(o.alarms.map((t) => t.id)).toEqual(['pa1']); // a keep the commander argued over (R12)
+    const unargued = scene({ practices: { tasks: [], punishments: [], held: s.practices!.held, alarm: { id: 'pa1', holderId: ANN, kind: 'launch', day: 20, slot: 'morning', answer: 'keep' } } });
+    expect(offer(unargued)?.alarms ?? []).toEqual([]);
     const kept = validate([ev({ type: 'compromise_reached', taskId: 'pt1', text: 'once' }), ev({ type: 'compromise_reached', taskId: undefined, punishmentId: 'pp1' }), ev({ type: 'compromise_reached', taskId: undefined, alarmId: 'pa1' }), ev({ type: 'compromise_reached', taskId: undefined, punishmentId: 'pp2' })], s);
     expect(kept.map((e) => [e.taskId, e.punishmentId, e.alarmId])).toEqual([['pt1', undefined, undefined], [undefined, 'pp1', undefined], [undefined, undefined, 'pa1']]);
   });

@@ -1292,5 +1292,43 @@
       "practice",
       "demonstration_staged"
     ]
+  },
+  {
+    "id": "held_alarm_kept",
+    "event": "hold_alarm",
+    "when": {
+      "answer": "keep",
+      "run": true
+    },
+    "text": "AUTHOR TO WRITE: {name} kept the commander in her quarters while the squad had to go, and the squad left without command.",
+    "importance": 3,
+    "about": "her",
+    "audience": "squad",
+    "spread": "slow",
+    "tags": [
+      "dynamic",
+      "practice",
+      "held_alarm"
+    ]
+  },
+  {
+    "id": "held_alarm_late",
+    "event": "hold_alarm",
+    "when": {
+      "answer": "release_late"
+    },
+    "text": "AUTHOR TO WRITE: {name} let the commander go late, and the squad waited for it.",
+    "importance": 2,
+    "about": "her",
+    "audience": [
+      "her",
+      "party"
+    ],
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "held_alarm"
+    ]
   }
 ]
