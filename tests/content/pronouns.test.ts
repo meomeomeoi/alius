@@ -387,6 +387,8 @@ describe('no pronoun for the commander in the text modules the main model and th
     'src/ui/practice/taskCard.ts', 'src/ui/practice/signature.ts', 'src/ui/practice/punishmentCard.ts', 'src/engine/practice/punish.ts', 'src/engine/practice/threats.ts', 'src/engine/practice/restrict.ts', 'src/engine/practice/request.ts',
     'src/engine/practice/hold.ts', 'src/engine/practice/held.ts', 'src/engine/practice/alarm.ts', 'src/ui/practice/alarmCard.ts', 'src/ui/practice/heldStrip.ts', 'src/ui/expedition/squadCallCard.ts',
     'src/engine/practice/initiative.ts', 'src/ui/practice/initiativeChips.ts', 'src/ui/practice/slapOverlay.ts', 'src/engine/practice/view.ts', 'src/engine/practice/unfair.ts', 'src/engine/practice/slap.ts', 'src/engine/practice/handover.ts', 'src/ui/practice/handoverComposer.ts', 'src/engine/practice/askHer.ts', 'src/ui/practice/askHer.ts', 'src/practice/askHer.ts',
+    // P16 (review M2): every other file of the package
+    'src/ui/practice/block.ts', 'src/ui/practice/demonstrationCard.ts', 'src/ui/practice/generation.ts', 'src/ui/practice/postureCall.ts', 'src/engine/practice/audience.ts', 'src/engine/practice/demonstration.ts', 'src/engine/practice/denial.ts', 'src/engine/practice/forget.ts', 'src/engine/practice/gate.ts', 'src/engine/practice/index.ts', 'src/engine/practice/postures.ts', 'src/engine/practice/service.ts', 'src/engine/practice/state.ts',
   ];
   it.each(FILES)('%s', async (file) => {
     const { readFile } = await import('node:fs/promises');

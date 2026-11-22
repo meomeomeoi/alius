@@ -72,6 +72,15 @@ describe('the effects', () => {
     expect(r.state.practices!.held!.bookingIds).toHaveLength(2);
   });
 
+  it('a punishment with no duration keeps its hold hidden: the hold says no end in its state or its event (review M4)', () => {
+    const r = answer(withPun('role', 'kept_in_quarters', 3, { hiddenCount: true }, ['restraint']), 'accept');
+    expect(r.state.practices!.held).toMatchObject({ by: ANN, punitive: true, hidden: true });
+    const started = ofType(r.events, 'hold_started')[0];
+    expect(started).toMatchObject({ hidden: true });
+    expect(started).not.toHaveProperty('slots');
+    expect(started).not.toHaveProperty('until');
+  });
+
   it('privilege_revoked writes a restriction until day + days; protocol_extra asks for a protocol; cold_shoulder writes cold', () => {
     const rev = answer(withPun('role', 'no_messages', 2), 'accept').state;
     expect(rev.practices!.restrictions).toEqual([{ holderId: ANN, what: 'no_dms_others', untilDay: 21 }]);

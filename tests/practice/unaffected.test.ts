@@ -87,11 +87,14 @@ describe('the unaffected week (P16)', () => {
     const stacks: string[] = [];
     const proto = Rng.prototype as unknown as { next: () => number };
     const original = proto.next;
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = Infinity; // the worker's default of 10 would only see practice frames near the draw (review M1)
     const spy = vi.spyOn(proto, 'next').mockImplementation(function (this: Rng) { stacks.push(new Error().stack ?? ''); return original.call(this); });
     try {
       runWeek(reg, { tweak: everythingOn });
     } finally {
       spy.mockRestore();
+      Error.stackTraceLimit = limit;
     }
     expect(stacks.length).toBeGreaterThan(50);
     expect(stacks.filter((st) => /src\/engine\/practice\//.test(st)).slice(0, 1)).toEqual([]);

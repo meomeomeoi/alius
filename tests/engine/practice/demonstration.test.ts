@@ -59,6 +59,7 @@ function offered(s: CampaignState, out: ValidOutput = card()): CampaignState {
   ensurePractices(s).requests.push({ id: 'pq1', holderId: ANN, kind: 'demonstration', day: s.day, seedIds: [out.seedId ?? 'demo_mess_table'] });
   const r = run(s, reg, { type: 'practice/issue', payload: { requestId: 'pq1', output: out } });
   expect(errors(r.events)).toEqual([]);
+  r.state.slot = 'evening'; // GO is the slot she named (review M6)
   return r.state;
 }
 const demo = (s: CampaignState): OpenDemonstration => s.practices!.demonstrations[0];
@@ -188,6 +189,19 @@ describe('answering', () => {
     const open = structuredClone(s);
     open.scene = { id: 's9', day: 20, slot: 'afternoon', locationId: 'quarters_commander', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
     expect(errors(run(open, reg, { type: 'practice/answer_demonstration', payload: { demonstrationId: demo(s).id, answer: 'go' } }).events)).not.toEqual([]);
+  });
+
+  it('GO is the slot she named: in another slot it is refused and nothing changes (review M6)', () => {
+    const s = offered(staging('select_few'));
+    s.slot = 'afternoon';
+    const r = run(s, reg, { type: 'practice/answer_demonstration', payload: { demonstrationId: demo(s).id, answer: 'go' } });
+    expect(errors(r.events)[0]?.message).toMatch(/evening/i);
+    expect(demo(s).status).toBe('offered');
+    const evening = structuredClone(s);
+    evening.slot = 'evening';
+    expect(errors(run(evening, reg, { type: 'practice/answer_demonstration', payload: { demonstrationId: demo(evening).id, answer: 'go' } }).events)).toEqual([]);
+    // REFUSE has no slot
+    expect(errors(run(s, reg, { type: 'practice/answer_demonstration', payload: { demonstrationId: demo(s).id, answer: 'refuse' } }).events)).toEqual([]);
   });
 
   it('with nobody left to watch, GO makes it void at no cost', () => {

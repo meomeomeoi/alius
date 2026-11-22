@@ -81,7 +81,7 @@ function demonstrationOf(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'
 /**
  * The commander answers a demonstration card. REFUSE is a refusal of a task at its stakes (`refusePractice`: the P9 path, and an offence at `role` or beyond). GO checks that someone is
  * still there to watch (when nobody is the demonstration is void, no cost), marks it `open` and says the scene to open: the event `task_answered` carries it (`scene`), the controller opens
- * it. A GO that did not get its scene (the scene could not start) may be pressed again. Throws for a demonstration that is gone, answered or hers while she is not holding.
+ * it. A GO that did not get its scene (the scene could not start) may be pressed again. Throws for a demonstration that is gone, answered, hers while she is not holding, or a GO in another slot than the one she named.
  */
 export function answerDemonstration(draft: CampaignState, ctx: EngineCtx, id: string, answer: DemonstrationAnswer): { events: EngineEvent[]; scene?: DemonstrationScene } {
   const d = demonstrationOf(draft, ctx, id);
@@ -93,6 +93,8 @@ export function answerDemonstration(draft: CampaignState, ctx: EngineCtx, id: st
   }
   if (answer !== 'go') throw new Error('Unknown answer.');
   if (draft.scene !== undefined) throw new Error('A scene is open: end it first.');
+  const slot = d.slot ?? TUNING.practice.demonstration.slot;
+  if (draft.slot !== slot) throw new Error(`She wants it in the ${slot}.`); // the stage and the audience were picked for that slot (R9)
   const cards = stillThere(draft, d, d.audienceIds);
   const narrated = stillThere(draft, d, d.narrated ?? []);
   if (cards.length === 0 && narrated.length === 0) {

@@ -29,6 +29,7 @@ const demo = (over: Partial<OpenDemonstration> = {}): OpenDemonstration => ({
 });
 function state(over: Partial<OpenDemonstration> = {}): CampaignState {
   const s = withService(world(reg, 'play'));
+  s.slot = over.slot ?? 'evening'; // GO is the slot she named
   s.practices = { ...blankPractices(), seq: 3, demonstrations: [demo(over)] };
   return s;
 }
@@ -43,6 +44,21 @@ const draw = (s: CampaignState, generation?: GenerationUi, pick: (c: { unitId: s
 const buttons = (host: HTMLElement) => [...host.querySelectorAll<HTMLButtonElement>('button')].map((b) => b.textContent);
 
 describe('the demonstration card', () => {
+  it('GO is closed outside the slot she named, with the reason; REFUSE is always open (review M6)', () => {
+    const s = state();
+    s.slot = 'morning';
+    const { host, answer } = draw(s);
+    const go = host.querySelector<HTMLElement>('[data-demonstration-answer="go"]')!;
+    expect(go.getAttribute('aria-disabled')).toBe('true');
+    expect(go.getAttribute('title')).toMatch(/evening/i);
+    go.click();
+    expect(answer).not.toHaveBeenCalled();
+    host.querySelector<HTMLElement>('[data-demonstration-answer="refuse"]')!.click();
+    expect(answer).toHaveBeenCalledWith('pd1', 'refuse');
+    const now = draw(state());
+    expect(now.host.querySelector('[data-demonstration-answer="go"]')!.getAttribute('aria-disabled')).toBeNull();
+  });
+
   it('speaks in her voice, names the audience on the card (names, never numbers), the place and the slot', () => {
     const { host } = draw(state());
     expect(host.querySelector('.alius-voice-personal')).not.toBeNull();

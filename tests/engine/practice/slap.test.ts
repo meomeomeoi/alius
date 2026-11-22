@@ -51,7 +51,10 @@ describe('the window by style (R.12)', () => {
     for (const style of ['affectionate', 'regal', 'ritual', 'drill', 'cold', 'clinical', 'possessive', 'playful', 'vindictive', 'cruel'] as const) {
       const { slap, events } = start(slapWorld(style));
       expect(slap, style).toMatchObject({ holderId: ANN, windowMs: TUNING.practice.slap.windowMs[style], feints: 0 });
-      expect(ofType(events, 'slap_started')).toMatchObject([{ slapId: slap!.id, holderId: ANN, windowMs: TUNING.practice.slap.windowMs[style] }]);
+      expect(ofType(events, 'slap_started')).toMatchObject([{ slapId: slap!.id, holderId: ANN }]);
+      // the window and the feints are hers to keep: the overlay reads them from the state, an event (a toast, the model, a reading) never carries them (review M3)
+      expect(ofType(events, 'slap_started')[0]).not.toHaveProperty('windowMs');
+      expect(ofType(events, 'slap_started')[0]).not.toHaveProperty('feints');
     }
     expect(TUNING.practice.slap.windowMs.affectionate).toBe(700);
     expect(TUNING.practice.slap.windowMs.cruel).toBe(300);

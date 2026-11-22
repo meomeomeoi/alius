@@ -16,7 +16,8 @@ import { book, bookingKindsFor } from '../personal/bookings';
 import type { Booking, CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
-import { holderStands, keyPlaceAt } from './held';
+import { cancelBookingsQuietly } from './forget';
+import { keyPlaceAt } from './held';
 import { practiceSample } from './sample';
 import { HANDOVER_KINDS, type HandoverKind, type PracticeState, type Task } from './state';
 import { refusePractice } from './tasks';
@@ -106,6 +107,7 @@ export function takeBack(draft: CampaignState, ctx: EngineCtx, handoverId: strin
   const h = p?.handovers.find((x) => x.id === handoverId);
   if (p === undefined || h === undefined) throw new Error('That handover is gone.');
   p.handovers = p.handovers.filter((x) => x !== h);
+  if (h.kind === 'calendar') cancelBookingsQuietly(draft, bookingsOf(draft).filter((b) => b.practiceId === h.id && b.status === 'booked').map((b) => b.id)); // the days its sweep already filled: no second cost on top of the refusal
   const events: EngineEvent[] = [{ type: 'handover_ended', handoverId, holderId: h.holderId, kind: h.kind, reason: 'taken_back' }];
   if (practiceLive(draft, ctx.registries, h.holderId)) {
     const what = TUNING.practice.handover.what[h.kind];

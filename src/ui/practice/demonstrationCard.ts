@@ -37,11 +37,14 @@ export function renderDemonstrationCard(host: HTMLElement, ctx: DemonstrationCar
   const unit = state.squad.find((u) => u.id === d.holderId);
   if (unit === undefined) return;
   const live = { unitId: unit.id };
+  const slot = d.slot ?? 'evening';
+  const closed = state.slot !== slot; // GO is the slot she named: the stage and the audience were picked for it
   const button = (kind: DemonstrationAnswer, text: string): HTMLElement => h('button', {
-    type: 'button', class: 'alius-btn alius-tagchip', 'data-demonstration-answer': kind, 'data-demonstration': d.id, ...analyzeNative('glossary:demonstration', live), onclick: () => ctx.onAnswer(kind),
+    type: 'button', class: 'alius-btn alius-tagchip', 'data-demonstration-answer': kind, 'data-demonstration': d.id, ...analyzeNative('glossary:demonstration', live),
+    ...(kind === 'go' && closed ? { 'aria-disabled': 'true', title: `She wants it in the ${slot}.` } : {}),
+    onclick: () => { if (kind === 'go' && closed) return; ctx.onAnswer(kind); },
   }, text);
   const place = String(reg.locations.get(d.stage)?.name ?? d.stage);
-  const slot = d.slot ?? 'evening';
   const names = d.audienceIds.map((id) => nameOf(state, id));
   const others = (d.narrated ?? []).length > 0;
   const before = names.length === 0 ? 'others' : others ? `${joinNames(names)} and others` : joinNames(names);

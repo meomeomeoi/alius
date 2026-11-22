@@ -64,7 +64,7 @@ export function startSlap(draft: CampaignState, ctx: Pick<EngineCtx, 'registries
     id, holderId, sceneId: scene.id, windowMs, feints, ...(seen ? { public: true as const } : {}), ...(opts.punishmentId !== undefined ? { punishmentId: opts.punishmentId } : {}),
     ...(opts.again === true ? { again: true as const } : {}), ...(opts.unannounced === true ? { unannounced: true as const } : {}),
   };
-  return [{ type: 'slap_started', slapId: id, holderId, unitId: holderId, windowMs, feints, ...(seen ? { public: true } : {}), ...(opts.unannounced === true ? { unannounced: true } : {}) }];
+  return [{ type: 'slap_started', slapId: id, holderId, unitId: holderId, ...(seen ? { public: true } : {}), ...(opts.unannounced === true ? { unannounced: true } : {}) }];
 }
 
 /**

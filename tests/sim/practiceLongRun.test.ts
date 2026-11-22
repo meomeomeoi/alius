@@ -84,7 +84,8 @@ function play(seed: number): { log: Entry[]; state: CampaignState } {
         if (s.practices?.punishments.find((x) => x.id === punishment.id)?.status === 'offered') step('practice/answer_punishment', { punishmentId: punishment.id, answer: 'refuse' });
         continue;
       }
-      if (demo !== undefined) {
+      // GO is the slot she named (the evening): the commander waits for it, and may refuse at any time
+      if (demo !== undefined && (n % 3 === 2 || s.slot === (demo.slot ?? 'evening'))) {
         const r = step('practice/answer_demonstration', { demonstrationId: demo.id, answer: n++ % 3 === 2 ? 'refuse' : 'go' });
         const scene = r.events.find((e) => e.type === 'task_answered' && e.answer === 'go')?.scene as { locationId: string; participants: string[]; origin: 'event'; consumesSlot?: boolean } | undefined;
         if (scene !== undefined) {
@@ -176,6 +177,8 @@ describe('the long run: practices over 120 seeded days (Task 41)', () => {
     // every draw goes through `next`; the spy wraps it and records where it was called from
     const proto = Rng.prototype as unknown as { next: () => number };
     const original = proto.next;
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = Infinity; // the worker's default of 10 would only see practice frames near the draw (review M1)
     const spy = vi.spyOn(proto, 'next').mockImplementation(function (this: Rng) { stacks.push(new Error().stack ?? ''); return original.call(this); });
     try {
       const { log } = play(11);

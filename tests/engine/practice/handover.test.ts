@@ -314,6 +314,26 @@ describe('taking it back early', () => {
   });
 });
 
+describe('taking the calendar back (review M7)', () => {
+  it('the bookings its sweep already made for tomorrow are cancelled quietly; the refusal is the only cost', () => {
+    const g = given('calendar', 3).state;
+    const d = structuredClone(g);
+    practiceDayStep(d, ctxOf(d, reg));
+    const id = handovers(d)[0].id;
+    const mine = () => (d.personal!.bookings ?? []).filter((b) => b.practiceId === id);
+    expect(mine().filter((b) => b.status === 'booked').length).toBeGreaterThan(0);
+    const before = structuredClone(d.relations[ANN].history.length);
+    const r = run(d, reg, { type: 'practice/take_back', payload: { handoverId: id } });
+    expect(errors(r.events)).toEqual([]);
+    const after = (r.state.personal!.bookings ?? []).filter((b) => b.practiceId === id);
+    expect(after.length).toBe(mine().length);
+    expect(after.every((b) => b.status === 'cancelled')).toBe(true);
+    expect(ofType(r.events, 'booking_cancelled')).toEqual([]); // no cancel at the commander's cost on top of the severe refusal
+    expect(r.state.relations[ANN].history.filter((h) => h.kind === 'event' && h.type === 'refused_demand')).toHaveLength(1);
+    expect(r.state.relations[ANN].history.length).toBeGreaterThanOrEqual(before);
+  });
+});
+
 describe('what is remembered', () => {
   it('handover_given is a fact for the pair, and the record line says what was given', () => {
     const g = given('device');

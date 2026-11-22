@@ -87,7 +87,7 @@ export function runPunishmentEffect(draft: CampaignState, ctx: Pick<EngineCtx, '
   const pr = ensurePractices(draft);
   switch (fx.type) {
     case 'slot_held':
-      return startHold(draft, ctx, holderId, fx.slots as 1 | 2 | 'day', { punitive: true, punishmentId: p.id });
+      return startHold(draft, ctx, holderId, fx.slots as 1 | 2 | 'day', { punitive: true, punishmentId: p.id, ...(p.hiddenCount === true ? { hidden: true } : {}) }); // no duration: she alone knows the end (R16)
     case 'privilege_revoked': {
       const what = fx.what as 'no_dms_others' | 'no_free_activities' | 'room';
       const arg = what === 'room' && typeof fx.arg === 'string' ? fx.arg : undefined; // the location the row names (the schema requires it for a room)

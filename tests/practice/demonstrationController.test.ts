@@ -20,7 +20,7 @@ function offered(over: Partial<OpenDemonstration> = {}): CampaignState {
   unitOf(s, ANN).bond!.practice!.audience = 'select_few';
   s.relations[BEA].trust = 60;
   s.relations[CAT].trust = 60;
-  s.slot = 'afternoon';
+  s.slot = 'evening'; // GO is the slot she named
   s.settings.unitDms = true;
   s.practices = { ...blankPractices(), seq: 3, demonstrations: [demo(over)] };
   return s;

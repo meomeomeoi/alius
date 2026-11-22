@@ -23073,7 +23073,7 @@ function startSlap(draft, ctx2, holderId, opts = {}) {
     ...opts.again === true ? { again: true } : {},
     ...opts.unannounced === true ? { unannounced: true } : {}
   };
-  return [{ type: "slap_started", slapId: id, holderId, unitId: holderId, windowMs, feints, ...seen2 ? { public: true } : {}, ...opts.unannounced === true ? { unannounced: true } : {} }];
+  return [{ type: "slap_started", slapId: id, holderId, unitId: holderId, ...seen2 ? { public: true } : {}, ...opts.unannounced === true ? { unannounced: true } : {} }];
 }
 function slapAfterSlip(draft, ctx2, holderId, offence) {
   if (offence.kind !== "protocol_slip" && offence.kind !== "denial_broken") return [];
@@ -23675,6 +23675,7 @@ function takeBack(draft, ctx2, handoverId) {
   const h2 = p?.handovers.find((x) => x.id === handoverId);
   if (p === void 0 || h2 === void 0) throw new Error("That handover is gone.");
   p.handovers = p.handovers.filter((x) => x !== h2);
+  if (h2.kind === "calendar") cancelBookingsQuietly(draft, bookingsOf3(draft).filter((b) => b.practiceId === h2.id && b.status === "booked").map((b) => b.id));
   const events = [{ type: "handover_ended", handoverId, holderId: h2.holderId, kind: h2.kind, reason: "taken_back" }];
   if (practiceLive(draft, ctx2.registries, h2.holderId)) {
     const what = TUNING.practice.handover.what[h2.kind];
@@ -24206,6 +24207,8 @@ function answerDemonstration(draft, ctx2, id, answer) {
   }
   if (answer !== "go") throw new Error("Unknown answer.");
   if (draft.scene !== void 0) throw new Error("A scene is open: end it first.");
+  const slot2 = d.slot ?? TUNING.practice.demonstration.slot;
+  if (draft.slot !== slot2) throw new Error(`She wants it in the ${slot2}.`);
   const cards = stillThere(draft, d, d.audienceIds);
   const narrated = stillThere(draft, d, d.narrated ?? []);
   if (cards.length === 0 && narrated.length === 0) {
@@ -25188,7 +25191,8 @@ function runPunishmentEffect(draft, ctx2, p, fx2) {
   const pr = ensurePractices(draft);
   switch (fx2.type) {
     case "slot_held":
-      return startHold(draft, ctx2, holderId, fx2.slots, { punitive: true, punishmentId: p.id });
+      return startHold(draft, ctx2, holderId, fx2.slots, { punitive: true, punishmentId: p.id, ...p.hiddenCount === true ? { hidden: true } : {} });
+    // no duration: she alone knows the end (R16)
     case "privilege_revoked": {
       const what = fx2.what;
       const arg = what === "room" && typeof fx2.arg === "string" ? fx2.arg : void 0;
@@ -60387,16 +60391,21 @@ function renderDemonstrationCard(host, ctx2) {
   const unit3 = state.squad.find((u) => u.id === d.holderId);
   if (unit3 === void 0) return;
   const live3 = { unitId: unit3.id };
+  const slot2 = d.slot ?? "evening";
+  const closed = state.slot !== slot2;
   const button2 = (kind, text3) => h("button", {
     type: "button",
     class: "alius-btn alius-tagchip",
     "data-demonstration-answer": kind,
     "data-demonstration": d.id,
     ...analyzeNative("glossary:demonstration", live3),
-    onclick: () => ctx2.onAnswer(kind)
+    ...kind === "go" && closed ? { "aria-disabled": "true", title: `She wants it in the ${slot2}.` } : {},
+    onclick: () => {
+      if (kind === "go" && closed) return;
+      ctx2.onAnswer(kind);
+    }
   }, text3);
   const place2 = String(reg.locations.get(d.stage)?.name ?? d.stage);
-  const slot2 = d.slot ?? "evening";
   const names2 = d.audienceIds.map((id) => nameOf20(state, id));
   const others = (d.narrated ?? []).length > 0;
   const before = names2.length === 0 ? "others" : others ? `${joinNames3(names2)} and others` : joinNames3(names2);
