@@ -19,6 +19,7 @@ import { addFavour, restoreHold } from '../dynamic/hold';
 import { threatNear } from '../dynamic/reading';
 import { regardFall, regardRise } from '../dynamic/regard';
 import { dynamicOf } from '../dynamic/state';
+import { blockingOf, COMMANDER } from '../blocking';
 import { addTrackXp } from '../dynamic/tracks';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { raiseWant } from '../bonds/want';
@@ -80,7 +81,7 @@ const trainedLevel = (draft: CampaignState): number => Math.max(0, ...Object.val
  * enforce), an extra protocol (a request), a cold shoulder, a confession (a task that names the first soldier at base), a mark (only when none is set), stress, an injury roll
  * (`practiceRoll < chance - perEndurance x endurance - perTrained x trained`), the narrated hand (a directive) and the slap (Task 33).
  */
-export function runPunishmentEffect(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment, fx: Effect): EngineEvent[] {
+export function runPunishmentEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment, fx: Effect): EngineEvent[] {
   const reg = ctx.registries;
   const holderId = p.holderId;
   const pr = ensurePractices(draft);
@@ -170,13 +171,121 @@ function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): Engine
     ensurePractices(draft).records.push({ day: draft.day, holderId, line: recordLine({ summary: p.summary, sealed: true, answeredDay: draft.day, day: p.day }) });
     events.push({ type: 'practice_opened', punishmentId: p.id, holderId }, { type: 'practice_signed', punishmentId: p.id, unitId: holderId, holderId, summary: p.summary, sealed: true });
   }
+  // a punishment of weight 3 or more from a holder who keeps a ceremony is carried out as one: the commander takes the steps, and what ACCEPT would have done is done at the last (R21)
+  const steps = p.forUnitId === undefined ? ceremonyOf(draft, reg, holderId, p.severity) : null;
+  if (steps !== null) {
+    p.ceremony = { steps, done: [] };
+    events[0].ceremony = true;
+    return events;
+  }
+  events.push(...carryOut(draft, ctx, p));
+  return events;
+}
+
+/**
+ * What accepting her punishment does (R8), once the commander has said yes and the ceremony, if there is one, is done: the repair lands (its row, and P15's feed adds hold), `discipline` xp by the weight,
+ * a yield into her reading (a punishment she knew to be unfair is read by `unfairAccepted`), the effects of the entry, and the sign for each who watched it done in public.
+ */
+function carryOut(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment): EngineEvent[] {
+  const reg = ctx.registries;
+  const holderId = p.holderId;
+  const events: EngineEvent[] = [];
   events.push(...hitHer(draft, reg, holderId, 'punishment_accepted', SEVERITY[p.severity - 1], 'took her punishment'));
   events.push(...addTrackXp(draft, reg, holderId, 'discipline', TUNING.practice.xp.discipline * p.severity));
   if (p.offence.unfair === true) events.push(...unfairAccepted(draft, reg, holderId));
   else events.push(...practiceSample(draft, reg, holderId, 'yielded', { afterThreat: true }));
   for (const fx of effectsOf(entryOf(reg, p))) events.push(...runPunishmentEffect(draft, ctx, p, fx));
-  for (const id of audience) events.push(...addSign(draft, ctx, id, holderId, 'demonstration'));
+  for (const id of p.audienceIds ?? []) events.push(...addSign(draft, ctx, id, holderId, 'demonstration'));
   return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The ceremony (R21, spec §R.4)
+
+/**
+ * The steps of the ceremony she holds for a punishment of this weight, in order, or `null`: the weight is 3 or more and her primary style is in the `styles` of some rows of `ceremonySteps` (never `cold`:
+ * its rows do not list it). Read by the rows' own `styles` and `order`, never by id. Reads only.
+ */
+export function ceremonyOf(state: CampaignState, reg: Registries, holderId: string, severity: number): string[] | null {
+  const style = styleOf(state, reg, holderId);
+  if (style === undefined || severity < TUNING.practice.ceremony.minSeverity) return null;
+  const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && (e.styles as unknown[]).includes(style)).sort((a, b) => Number(a.order) - Number(b.order));
+  return rows.length === 0 ? null : rows.map((e) => String(e.id));
+}
+
+/**
+ * The count she keeps for a number the commander named (R21): a number under her table's row for the weight (`lowNumber`) is doubled by `cruel` and `vindictive` (`TUNING.practice.ceremony.doubledBy`), any
+ * other number stands. The commander is never told it was doubled. Pure.
+ */
+export function ceremonyCount(style: string | undefined, severity: number, named: number): number {
+  const C = TUNING.practice.ceremony;
+  const low = (C.lowNumber as Readonly<Record<number, number>>)[severity] ?? 0;
+  return style !== undefined && C.doubledBy.includes(style) && named < low ? named * 2 : named;
+}
+
+const stepEntry = (reg: Registries, id: string): { check?: string; posture?: string } | undefined => reg.ceremonySteps.get(id) as { check?: string; posture?: string } | undefined;
+/** Her punishment whose ceremony is running (accepted, not all steps done). */
+const runningCeremony = (state: CampaignState, id: string): OpenPunishment | undefined => {
+  const p = state.practices?.punishments.find((x) => x.id === id);
+  return p !== undefined && p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.done.length < p.ceremony.steps.length ? p : undefined;
+};
+/** The step that is next: the first of the steps that is not done. */
+export const nextCeremonyStep = (p: Pick<OpenPunishment, 'ceremony'>): string | undefined => p.ceremony?.steps.find((id) => !p.ceremony!.done.includes(id));
+
+/** All steps done (or none left to do) runs what ACCEPT would have done, and says `ceremony_done` (`lapsed` when the day ended before the commander did the rest and she carried it out herself). */
+function finishCeremony(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: OpenPunishment, lapsed: boolean): EngineEvent[] {
+  return [{ type: 'ceremony_done', punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, ...(lapsed ? { lapsed: true } : {}) }, ...carryOut(draft, ctx, p)];
+}
+
+/**
+ * One step of the ceremony is done (R21): by the action (`practice/ceremony_step`: a `chip` step, or a `number` step with the number in the payload), by the intent (`words` and `number` steps: what the commander
+ * said) or by the commander's posture (a `posture` step, from `blocking_changed`). It must be the next step; the number is a whole number from 1 to 50 and `ceremonyCount` decides what she keeps of it. The action
+ * throws with the reason, the intent and the posture do nothing. The last step carries the punishment out (`ceremony_done`). Draws nothing.
+ */
+export function ceremonyStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, punishmentId: string, step: string, via: 'action' | 'intent' | 'posture', number?: number): EngineEvent[] {
+  const reg = ctx.registries;
+  const p = runningCeremony(draft, punishmentId);
+  const refuse = (message: string): EngineEvent[] => { if (via === 'action') throw new Error(message); return []; };
+  if (p === undefined || p.forUnitId !== undefined || !practiceLive(draft, reg, p.holderId)) return refuse('That ceremony is gone.');
+  if (nextCeremonyStep(p) !== step) return refuse('That is not the next step.');
+  const check = stepEntry(reg, step)?.check;
+  if (check === 'chip' && via !== 'action') return [];
+  if (check === 'words' && via !== 'intent') return refuse('Say it in your own words.');
+  if (check === 'posture' && via !== 'posture') return refuse('Take the posture she names.');
+  if (check === 'number') {
+    if (via === 'posture') return [];
+    if (typeof number !== 'number' || !Number.isInteger(number) || number < TUNING.practice.ceremony.number.min || number > TUNING.practice.ceremony.number.max) return refuse('A whole number from one to fifty.');
+    p.ceremony!.number = number;
+    p.count = ceremonyCount(styleOf(draft, reg, p.holderId), p.severity, number);
+  }
+  p.ceremony!.done.push(step);
+  const events: EngineEvent[] = [{ type: 'ceremony_step', punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, step }];
+  if (nextCeremonyStep(p) === undefined) events.push(...finishCeremony(draft, ctx, p, false));
+  return events;
+}
+
+/**
+ * The after-action of the posture steps (registered by `actions/practice.ts`): when the commander's posture in the open scene with her is the posture the next step of her running ceremony names, the step is done;
+ * each following posture step the same posture already satisfies is too. Nothing without a scene with her or a ceremony.
+ */
+export function ceremonyPostures(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, events: readonly EngineEvent[]): EngineEvent[] {
+  if (!events.some((e) => e.type === 'blocking_changed' || e.type === 'ceremony_step')) return [];
+  const scene = draft.scene;
+  if (scene === undefined || draft.practices === undefined) return [];
+  const out: EngineEvent[] = [];
+  for (const p of [...draft.practices.punishments]) {
+    if (!scene.participants.includes(p.holderId)) continue;
+    for (;;) {
+      const live = runningCeremony(draft, p.id);
+      const next = live === undefined ? undefined : nextCeremonyStep(live);
+      const entry = next === undefined ? undefined : stepEntry(ctx.registries, next);
+      if (next === undefined || entry?.check !== 'posture' || entry.posture === undefined || blockingOf(scene, COMMANDER).posture !== entry.posture) break;
+      const done = ceremonyStep(draft, ctx, p.id, next, 'posture');
+      if (done.length === 0) break;
+      out.push(...done);
+    }
+  }
+  return out;
 }
 
 /** REFUSE (R8): a refusal costs hold by her frame (P15's `refusalCost`, the contest at `rule`), her record rises, a `resisted` sample; she escalates once (not an affectionate one, not past the heaviest). */
@@ -266,6 +375,7 @@ export function canUndoPractice(state: CampaignState, punishmentId: string): str
   if (p === undefined || undo === undefined || p.forUnitId !== undefined || (p.status !== 'accepted' && p.status !== 'refused')) return 'There is nothing to undo.';
   if (p.sealed === true && p.status === 'accepted') return 'It was signed blank, and the record keeps it.';
   const at = undo.stamp;
+  if (p.ceremony !== undefined && p.ceremony.done.length > 0) return 'A step of the ceremony was done.';
   if (undo.struck === true || (undo.slapId !== undefined && state.practices?.slap?.id !== undo.slapId)) return 'The slap has landed.';
   if (at.day !== state.day) return 'It can only be undone on the day it was answered.';
   if (at.sceneId !== undefined && state.scene?.id !== at.sceneId) return 'Its scene has ended.';
@@ -330,6 +440,7 @@ export function restorePractice(draft: CampaignState, ctx: EngineCtx, unitId: st
   delete p.answeredDay;
   delete p.audienceIds;
   delete p.voicedScene;
+  delete p.ceremony;
   delete p.inverse;
   return events;
 }
@@ -385,12 +496,16 @@ export function voiceWaitingPunishments(draft: CampaignState, _ctx: Pick<EngineC
  * Closes what a day left behind (the day step, sub-step 9): an accepted punishment of an earlier day is done. UNDO is the day's (`canUndoPractice`), so the stored inverse (a whole
  * `Inverse`, with a clone of her tracks) of any answered punishment of an earlier day goes with the day.
  */
-export function closePunishments(draft: CampaignState): void {
+export function closePunishments(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const events: EngineEvent[] = [];
   for (const p of draft.practices?.punishments ?? []) {
     if ((p.answeredDay ?? p.day) >= draft.day) continue;
+    // a ceremony the commander left open is finished by her: she carries the punishment out herself (no dodging it by not taking the steps)
+    if (p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx.registries, p.holderId)) events.push(...finishCeremony(draft, ctx, p, true));
     if (p.status === 'accepted') p.status = 'done';
     delete p.inverse;
   }
+  return events;
 }
 
 /** The days the cold shoulder wakes the commander's Want daily (sub-step 9): hers rises while the shoulder lasts. */

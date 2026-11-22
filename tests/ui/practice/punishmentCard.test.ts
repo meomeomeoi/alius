@@ -200,3 +200,103 @@ describe('REROLL of her words (I8, R24)', () => {
     expect(rerollOf(talked)).toBeNull(); // being talked over: her words are the talk's
   });
 });
+
+describe('the ceremony card (R21)', () => {
+  const STEP_LABELS = ['Fetch the implement', 'Ask for it formally', 'Name the number', 'Take the posture', 'The execution', 'Corner time', 'The thanks', 'The reconciliation'];
+  const STEPS = ['fetch_implement', 'ask_formally', 'name_the_number', 'take_the_posture', 'the_execution', 'corner_time', 'the_thanks', 'the_reconciliation'];
+
+  /** Ann (a ritual holder) is carrying a punishment out as a ceremony; `done` steps are behind. */
+  function ceremonial(done: string[] = [], over: Partial<OpenPunishment> = {}): CampaignState {
+    const s = state({ status: 'accepted', answeredDay: 20, ceremony: { steps: STEPS, done }, ...over });
+    s.squad.find((u) => u.id === ANN)!.bond!.practice!.style.primary = 'ritual';
+    return s;
+  }
+  const ceremonyHandlers = () => ({ ...handlers(), ceremony: vi.fn() });
+  const draw = (s: CampaignState, hs = ceremonyHandlers()) => {
+    const host = h('div');
+    document.body.append(host);
+    drawPunishmentCards(host, s, reg, () => true, hs);
+    return { host, hs };
+  };
+
+  it('lists the steps in order with their labels and marks the ones done and the next', () => {
+    const { host } = draw(ceremonial(['fetch_implement']));
+    const rows = [...host.querySelectorAll('[data-ceremony-step]')];
+    expect(rows.map((r) => r.querySelector('.alius-ceremony-label')!.textContent)).toEqual(STEP_LABELS);
+    expect(rows.map((r) => r.getAttribute('data-ceremony-state'))).toEqual(['done', 'next', ...Array(6).fill('later')]);
+    expect(host.querySelectorAll('.alius-ceremony')).toHaveLength(1);
+    expect(host.textContent).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+
+  it('a chip step is a button that sends the step; only the next step has one', () => {
+    const { host, hs } = draw(ceremonial());
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>('[data-ceremony-do]')];
+    expect(buttons.map((b) => b.textContent)).toEqual(['[ FETCH THE IMPLEMENT ]']);
+    buttons[0].click();
+    expect(hs.ceremony).toHaveBeenCalledWith('pp1', 'fetch_implement', undefined);
+    const later = draw(ceremonial(['fetch_implement', 'ask_formally', 'name_the_number', 'take_the_posture']));
+    expect([...later.host.querySelectorAll('[data-ceremony-do]')].map((b) => b.textContent)).toEqual(['[ THE EXECUTION ]']);
+  });
+
+  it('a words step says to say it in her own words and has no button; a posture step names the posture and has none either', () => {
+    const words = draw(ceremonial(['fetch_implement'])).host;
+    expect(words.querySelector('[data-ceremony-do]')).toBeNull();
+    expect(words.textContent).toContain('Say it in your own words.');
+    const posture = draw(ceremonial(['fetch_implement', 'ask_formally', 'name_the_number'])).host;
+    expect(posture.querySelector('[data-ceremony-do]')).toBeNull();
+    expect(posture.querySelector('.alius-ceremony-hint')!.textContent).toMatch(/posture/i);
+  });
+
+  it('a number step has a field for 1 to 50 and a button that sends the number; a number out of range or none sends nothing', () => {
+    const { host, hs } = draw(ceremonial(['fetch_implement', 'ask_formally']));
+    const input = host.querySelector<HTMLInputElement>('input[data-ceremony-number]')!;
+    expect(input.min).toBe('1');
+    expect(input.max).toBe('50');
+    const button = host.querySelector<HTMLButtonElement>('[data-ceremony-do]')!;
+    expect(button.textContent).toBe('[ NAME IT ]');
+    for (const bad of ['', '0', '51', '2.5', '-1']) {
+      input.value = bad;
+      button.click();
+    }
+    expect(hs.ceremony).not.toHaveBeenCalled();
+    input.value = '8';
+    button.click();
+    expect(hs.ceremony).toHaveBeenCalledWith('pp1', 'name_the_number', 8);
+  });
+
+  it('shows no number the player did not type: a hidden or doubled count never reaches the card', () => {
+    const s = ceremonial(['fetch_implement', 'ask_formally', 'name_the_number'], { hiddenCount: true, count: 16, ceremony: { steps: STEPS, done: ['fetch_implement', 'ask_formally', 'name_the_number'], number: 8 } });
+    const { host } = draw(s);
+    expect(host.textContent).not.toMatch(/\d/);
+    expect(host.innerHTML).not.toContain('16');
+  });
+
+  it('draws nothing of a ceremony that is finished, not accepted or hers while she is not holding; the plain accepted punishment keeps its UNDO chip', () => {
+    expect(draw(ceremonial(STEPS)).host.querySelector('.alius-ceremony')).toBeNull();
+    expect(draw(state()).host.querySelector('.alius-ceremony')).toBeNull();
+    const frozen = ceremonial();
+    dynamicOf(frozen, ANN)!.frame = 'equal';
+    expect(draw(frozen).host.children).toHaveLength(0);
+  });
+
+  it('a ceremony that has only been started can still be undone; once a step was done the chip is gone', () => {
+    const started = run(state({ severity: 3 }), reg, { type: 'practice/answer_punishment', payload: { punishmentId: 'pp1', answer: 'accept' } }).state;
+    expect(started.practices!.punishments[0].ceremony).toBeUndefined(); // cold holder: no ceremony here
+    const s = ceremonial();
+    s.practices!.punishments[0].inverse = { practice: { punishmentId: 'pp1', status: 'offered', hold: 60, favour: 0, tracks: {}, refusals: [], contest: [], restrictionsAdded: [], domains: [], lastPracticeDay: 20, stamp: { day: 20, slot: s.slot, frame: 'role', milestones: [], claims: [], injuredUntil: 0, expedition: null, lastExpedition: null } } } as never;
+    expect(draw(s).host.querySelector('[data-undo-practice="pp1"]')).not.toBeNull();
+    const stepped = ceremonial(['fetch_implement']);
+    stepped.practices!.punishments[0].inverse = s.practices!.punishments[0].inverse;
+    expect(draw(stepped).host.querySelector('[data-undo-practice]')).toBeNull();
+  });
+
+  it('every element carries data-analyze, resolves and is reachable', () => {
+    const s = ceremonial(['fetch_implement', 'ask_formally']);
+    const { host } = draw(s);
+    expect(host.querySelector('.alius-ceremony')!.getAttribute('data-analyze')).toBe('glossary:ceremony');
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(s))).toEqual([]);
+    expect(unreachable(host)).toEqual([]);
+    for (const b of host.querySelectorAll('button, input')) expect(b.getAttribute('data-analyze'), b.outerHTML.slice(0, 60)).toBe('glossary:ceremony');
+  });
+});

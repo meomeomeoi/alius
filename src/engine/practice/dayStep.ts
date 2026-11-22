@@ -122,7 +122,7 @@ function expiry(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const p = draft.practices;
   if (p === undefined) return [];
   const events = [...coldShoulderWants(draft), ...expireDemonstrations(draft, ctx)]; // her Want rises each day of her cold shoulder (it is read before the shoulder's last day expires)
-  closePunishments(draft);
+  events.push(...closePunishments(draft, ctx));
   if (p.call !== undefined && p.call.sceneId !== draft.scene?.id) delete p.call; // a call of a scene that never ended
   if (p.service !== undefined) { for (const [id, rec] of Object.entries(p.service)) if (rec.sceneId !== draft.scene?.id) delete p.service[id]; if (Object.keys(p.service).length === 0) delete p.service; } // what she saw of a scene that never ended
   p.restrictions = p.restrictions.filter((r) => r.untilDay >= draft.day);

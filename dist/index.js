@@ -1458,7 +1458,16 @@ var TUNING = Object.freeze({
         flinched: "has struck the commander, who flinched, and is displeased by it"
       })
     }),
-    ceremony: Object.freeze({ lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 }) }),
+    /**
+     * The ceremony (R21, `AUTHOR TO TUNE`): the lightest punishment that is carried out as one, the count under which a number the commander named is too low for a weight (`lowNumber`), the styles that double it, and the
+     * range of a number that may be named.
+     */
+    ceremony: Object.freeze({
+      minSeverity: 3,
+      lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 }),
+      doubledBy: Object.freeze(["cruel", "vindictive"]),
+      number: Object.freeze({ min: 1, max: 50 })
+    }),
     sealedShare: Object.freeze({
       affectionate: 0.05,
       cold: 0.05,
@@ -7536,6 +7545,7 @@ var PRACTICE_EVENT_TYPES = [
   "posture_slip",
   "slap_started",
   "slap_dealt",
+  "ceremony_step",
   "ceremony_done",
   "handover_given",
   "handover_ended",
@@ -25102,13 +25112,89 @@ function accept(draft, ctx2, p) {
     ensurePractices(draft).records.push({ day: draft.day, holderId, line: recordLine({ summary: p.summary, sealed: true, answeredDay: draft.day, day: p.day }) });
     events.push({ type: "practice_opened", punishmentId: p.id, holderId }, { type: "practice_signed", punishmentId: p.id, unitId: holderId, holderId, summary: p.summary, sealed: true });
   }
+  const steps = p.forUnitId === void 0 ? ceremonyOf(draft, reg, holderId, p.severity) : null;
+  if (steps !== null) {
+    p.ceremony = { steps, done: [] };
+    events[0].ceremony = true;
+    return events;
+  }
+  events.push(...carryOut(draft, ctx2, p));
+  return events;
+}
+function carryOut(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const holderId = p.holderId;
+  const events = [];
   events.push(...hitHer(draft, reg, holderId, "punishment_accepted", SEVERITY2[p.severity - 1], "took her punishment"));
   events.push(...addTrackXp(draft, reg, holderId, "discipline", TUNING.practice.xp.discipline * p.severity));
   if (p.offence.unfair === true) events.push(...unfairAccepted(draft, reg, holderId));
   else events.push(...practiceSample(draft, reg, holderId, "yielded", { afterThreat: true }));
   for (const fx2 of effectsOf5(entryOf3(reg, p))) events.push(...runPunishmentEffect(draft, ctx2, p, fx2));
-  for (const id of audience) events.push(...addSign(draft, ctx2, id, holderId, "demonstration"));
+  for (const id of p.audienceIds ?? []) events.push(...addSign(draft, ctx2, id, holderId, "demonstration"));
   return events;
+}
+function ceremonyOf(state, reg, holderId, severity) {
+  const style = styleOf3(state, reg, holderId);
+  if (style === void 0 || severity < TUNING.practice.ceremony.minSeverity) return null;
+  const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && e.styles.includes(style)).sort((a, b) => Number(a.order) - Number(b.order));
+  return rows.length === 0 ? null : rows.map((e) => String(e.id));
+}
+function ceremonyCount(style, severity, named4) {
+  const C = TUNING.practice.ceremony;
+  const low = C.lowNumber[severity] ?? 0;
+  return style !== void 0 && C.doubledBy.includes(style) && named4 < low ? named4 * 2 : named4;
+}
+var stepEntry = (reg, id) => reg.ceremonySteps.get(id);
+var runningCeremony = (state, id) => {
+  const p = state.practices?.punishments.find((x) => x.id === id);
+  return p !== void 0 && p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.done.length < p.ceremony.steps.length ? p : void 0;
+};
+var nextCeremonyStep = (p) => p.ceremony?.steps.find((id) => !p.ceremony.done.includes(id));
+function finishCeremony(draft, ctx2, p, lapsed) {
+  return [{ type: "ceremony_done", punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, ...lapsed ? { lapsed: true } : {} }, ...carryOut(draft, ctx2, p)];
+}
+function ceremonyStep(draft, ctx2, punishmentId, step, via, number) {
+  const reg = ctx2.registries;
+  const p = runningCeremony(draft, punishmentId);
+  const refuse2 = (message) => {
+    if (via === "action") throw new Error(message);
+    return [];
+  };
+  if (p === void 0 || p.forUnitId !== void 0 || !practiceLive(draft, reg, p.holderId)) return refuse2("That ceremony is gone.");
+  if (nextCeremonyStep(p) !== step) return refuse2("That is not the next step.");
+  const check = stepEntry(reg, step)?.check;
+  if (check === "chip" && via !== "action") return [];
+  if (check === "words" && via !== "intent") return refuse2("Say it in your own words.");
+  if (check === "posture" && via !== "posture") return refuse2("Take the posture she names.");
+  if (check === "number") {
+    if (via === "posture") return [];
+    if (typeof number !== "number" || !Number.isInteger(number) || number < TUNING.practice.ceremony.number.min || number > TUNING.practice.ceremony.number.max) return refuse2("A whole number from one to fifty.");
+    p.ceremony.number = number;
+    p.count = ceremonyCount(styleOf3(draft, reg, p.holderId), p.severity, number);
+  }
+  p.ceremony.done.push(step);
+  const events = [{ type: "ceremony_step", punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, step }];
+  if (nextCeremonyStep(p) === void 0) events.push(...finishCeremony(draft, ctx2, p, false));
+  return events;
+}
+function ceremonyPostures(draft, ctx2, events) {
+  if (!events.some((e) => e.type === "blocking_changed" || e.type === "ceremony_step")) return [];
+  const scene = draft.scene;
+  if (scene === void 0 || draft.practices === void 0) return [];
+  const out = [];
+  for (const p of [...draft.practices.punishments]) {
+    if (!scene.participants.includes(p.holderId)) continue;
+    for (; ; ) {
+      const live3 = runningCeremony(draft, p.id);
+      const next = live3 === void 0 ? void 0 : nextCeremonyStep(live3);
+      const entry = next === void 0 ? void 0 : stepEntry(ctx2.registries, next);
+      if (next === void 0 || entry?.check !== "posture" || entry.posture === void 0 || blockingOf(scene, COMMANDER).posture !== entry.posture) break;
+      const done = ceremonyStep(draft, ctx2, p.id, next, "posture");
+      if (done.length === 0) break;
+      out.push(...done);
+    }
+  }
+  return out;
 }
 function refuse(draft, ctx2, p) {
   const reg = ctx2.registries;
@@ -25194,6 +25280,7 @@ function canUndoPractice(state, punishmentId) {
   if (p === void 0 || undo === void 0 || p.forUnitId !== void 0 || p.status !== "accepted" && p.status !== "refused") return "There is nothing to undo.";
   if (p.sealed === true && p.status === "accepted") return "It was signed blank, and the record keeps it.";
   const at = undo.stamp;
+  if (p.ceremony !== void 0 && p.ceremony.done.length > 0) return "A step of the ceremony was done.";
   if (undo.struck === true || undo.slapId !== void 0 && state.practices?.slap?.id !== undo.slapId) return "The slap has landed.";
   if (at.day !== state.day) return "It can only be undone on the day it was answered.";
   if (at.sceneId !== void 0 && state.scene?.id !== at.sceneId) return "Its scene has ended.";
@@ -25251,6 +25338,7 @@ function restorePractice(draft, ctx2, unitId, undo) {
   delete p.answeredDay;
   delete p.audienceIds;
   delete p.voicedScene;
+  delete p.ceremony;
   delete p.inverse;
   return events;
 }
@@ -25290,12 +25378,15 @@ function voiceWaitingPunishments(draft, _ctx, events) {
   }
   return [];
 }
-function closePunishments(draft) {
+function closePunishments(draft, ctx2) {
+  const events = [];
   for (const p of draft.practices?.punishments ?? []) {
     if ((p.answeredDay ?? p.day) >= draft.day) continue;
+    if (p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx2.registries, p.holderId)) events.push(...finishCeremony(draft, ctx2, p, true));
     if (p.status === "accepted") p.status = "done";
     delete p.inverse;
   }
+  return events;
 }
 function coldShoulderWants(draft) {
   const events = [];
@@ -25466,6 +25557,8 @@ var PRACTICE_HANDLERS = {
   // a slip against her permission rule is her discipline (R13)
   threat_voiced: (draft, ctx2, unitId) => voiceThreat(draft, ctx2, unitId),
   // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
+  // a step of her ceremony said in words, or the number named (R21): only the next one counts, and the engine re-checks the number
+  ceremony_step: (draft, ctx2, unitId, ev) => ev.punishmentId === void 0 || ev.step === void 0 || draft.practices?.punishments.find((x) => x.id === ev.punishmentId)?.holderId !== unitId ? [] : ceremonyStep(draft, ctx2, ev.punishmentId, ev.step, "intent", ev.number),
   compromise_reached: (draft, ctx2, unitId, ev) => ev.taskId !== void 0 ? compromiseTask(draft, ctx2, unitId, ev) : ev.punishmentId !== void 0 ? compromisePunishment(draft, ctx2, unitId, ev) : ev.alarmId !== void 0 ? compromiseAlarm(draft, ctx2, unitId, ev) : []
 };
 function applyPracticeIntent(draft, ctx2, unitId, ev, batch = []) {
@@ -40037,7 +40130,7 @@ function expiry(draft, ctx2) {
   const p = draft.practices;
   if (p === void 0) return [];
   const events = [...coldShoulderWants(draft), ...expireDemonstrations(draft, ctx2)];
-  closePunishments(draft);
+  events.push(...closePunishments(draft, ctx2));
   if (p.call !== void 0 && p.call.sceneId !== draft.scene?.id) delete p.call;
   if (p.service !== void 0) {
     for (const [id, rec] of Object.entries(p.service)) if (rec.sceneId !== draft.scene?.id) delete p.service[id];
@@ -40279,6 +40372,7 @@ registerMomentTrigger("permission", permissionLive);
 registerMomentTrigger("her_demand", herDemandLive);
 registerMomentTrigger("her_test", herTestLive);
 registerAfterAction(doubleStandardFromEvents);
+registerAfterAction(ceremonyPostures);
 registerAfterAction((draft, _ctx, events) => slapSceneEnded(draft, events));
 registerFeedSuppressor((state, unitId, event) => event.type === "task_kept" && pendingUnfair(state, unitId, "cancelled_reward") !== void 0);
 registerAfterAction(notePosture);
@@ -40371,6 +40465,10 @@ registerAction("practice/slap_start", (draft, payload, ctx2) => {
 registerAction("practice/slap_answer", (draft, payload, ctx2) => {
   if (!isObj41(payload) || typeof payload.slapId !== "string") throw new Error("practice/slap_answer needs { slapId, result }.");
   return answerSlap(draft, ctx2, payload.slapId, payload.result);
+});
+registerAction("practice/ceremony_step", (draft, payload, ctx2) => {
+  if (!isObj41(payload) || typeof payload.punishmentId !== "string" || typeof payload.step !== "string" || payload.number !== void 0 && typeof payload.number !== "number") throw new Error("practice/ceremony_step needs { punishmentId, step, number? }.");
+  return ceremonyStep(draft, ctx2, payload.punishmentId, payload.step, "action", payload.number);
 });
 
 // src/llm/callTypes.ts
@@ -43443,6 +43541,15 @@ function practiceDirectives(state, reg, present2) {
     out.push({ id: `${PROTOCOL_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} holds the commander to these standing forms of address and conduct: ${forms.join("; ")}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit3 of holdersIn(state, reg, present2)) {
+    const running2 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit3.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
+    if (running2.length > 0) {
+      const lines2 = running2.map((x) => {
+        const hint = String(reg.ceremonySteps.get(nextCeremonyStep(x))?.promptHint ?? "");
+        return `${unit3.displayName} is carrying out the punishment she gave the commander as a ceremony, one step at a time: ${phrase(x.summary)}. The next step: ${phrase(hint)}.`;
+      });
+      out.push({ id: `${PUNISHMENT_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${lines2.join(" ")} ${NEVER_NAME}`) });
+      continue;
+    }
     const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit3.id && x.forUnitId === void 0 && x.status === "accepted" && x.answeredDay === state.day && (x.voicedScene === void 0 || x.voicedScene === state.scene?.id));
     if (done.length === 0) continue;
     const shown2 = (state.content?.enabled ?? []).includes("physical_discipline_shown");
@@ -43880,6 +43987,11 @@ function createPractice(deps) {
       }
       deps.openPlanner(target);
       return true;
+    },
+    ceremonyStep(punishmentId, step, number) {
+      const done = ok(deps.app.dispatch({ type: "practice/ceremony_step", payload: { punishmentId, step, ...number !== void 0 ? { number } : {} } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     slapAnswer(slapId, result) {
       const events = deps.app.dispatch({ type: "practice/slap_answer", payload: { slapId, result } }, { expectChatId: chatId() });
@@ -59816,6 +59928,66 @@ function renderTakeInsteadCard(host, ctx2) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:take_it_instead", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
+var STEP_MARK = { done: "\u2713", next: "\u203A", later: "\xB7" };
+function renderCeremonyCard(host, ctx2) {
+  const { state, reg, punishment: p } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === p.holderId);
+  const ceremony = p.ceremony;
+  if (unit3 === void 0 || ceremony === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const next = nextCeremonyStep(p);
+  const entryOf4 = (id) => {
+    const e = reg.ceremonySteps.get(id);
+    return { label: String(e?.label ?? id), check: String(e?.check ?? "chip"), ...typeof e?.posture === "string" ? { posture: e.posture } : {} };
+  };
+  const rows = ceremony.steps.map((id) => {
+    const e = entryOf4(id);
+    const mode = ceremony.done.includes(id) ? "done" : id === next ? "next" : "later";
+    const extra = [];
+    if (mode === "next") {
+      if (e.check === "chip") {
+        extra.push(h("button", { type: "button", class: "alius-btn alius-tagchip", "data-ceremony-do": id, "data-punishment": p.id, ...analyzeNative("glossary:ceremony", live3), onclick: () => ctx2.onStep(id, void 0) }, `[ ${e.label.toUpperCase()} ]`));
+      } else if (e.check === "words") {
+        extra.push(h("p", { class: "alius-ceremony-hint" }, "Say it in your own words."));
+      } else if (e.check === "number") {
+        const input = h("input", { type: "number", min: "1", max: "50", step: "1", "data-ceremony-number": id, "aria-label": "The number", ...analyzeNative("glossary:ceremony", live3) });
+        extra.push(input, h("button", {
+          type: "button",
+          class: "alius-btn alius-tagchip",
+          "data-ceremony-do": id,
+          "data-punishment": p.id,
+          ...analyzeNative("glossary:ceremony", live3),
+          onclick: () => {
+            const n = Number(input.value);
+            if (input.value.trim() !== "" && Number.isInteger(n) && n >= 1 && n <= 50) ctx2.onStep(id, n);
+          }
+        }, "[ NAME IT ]"));
+      } else if (e.check === "posture") {
+        const posture = e.posture === void 0 ? "" : String(reg.blockingPostures.get(e.posture)?.label ?? e.posture).toLowerCase();
+        extra.push(h("p", { class: "alius-ceremony-hint" }, `Take the posture${posture !== "" ? `: ${posture}` : ""}.`));
+      }
+    }
+    return h(
+      "li",
+      { class: "alius-ceremony-step", "data-ceremony-step": id, "data-ceremony-state": mode },
+      h("span", { class: "alius-ceremony-mark", "aria-hidden": "true" }, STEP_MARK[mode]),
+      h("span", { class: "alius-ceremony-label" }, e.label),
+      ...extra
+    );
+  });
+  const card2 = renderVoiceCard({
+    voice: VOICE_OF.practice,
+    from: unit3.displayName,
+    accent: unitAccent(unit3.id),
+    body: h("div", { class: "alius-ceremony-body" }, h("p", { class: "alius-ceremony-title" }, `${labelOf3(reg, p)}: a ceremony.`), h("ol", { class: "alius-ceremony-steps" }, ...rows))
+  });
+  card2.classList.add("alius-ceremony");
+  card2.setAttribute("data-punishment", p.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} carries out her punishment as a ceremony`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:ceremony", live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
 function drawPunishmentCards(host, state, reg, pick3, handlers2) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
@@ -59824,13 +59996,16 @@ function drawPunishmentCards(host, state, reg, pick3, handlers2) {
     const open3 = p.status === "offered" || p.status === "negotiating";
     if (open3 && p.forUnitId !== void 0) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.takeInstead(p.id, a) });
     else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a), generation: handlers2.generation });
-    else if ((p.status === "accepted" || p.status === "refused") && p.forUnitId === void 0 && canUndoPractice(state, p.id) === null) {
-      host.append(h(
-        "div",
-        { class: "alius-chip-group", "data-punishment-answered": p.id },
-        h("span", { class: "alius-chip", "data-chip-unit": p.holderId, ...analyzeAttrs("glossary:holder_punishment", { unitId: p.holderId }) }, `${p.status === "accepted" ? "ACCEPTED" : "REFUSED"} \u2014 ${labelOf3(reg, p)} (${nameOf21(state, p.holderId)})`),
-        h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo-practice": p.id, ...analyzeNative("glossary:punishment_card", { unitId: p.holderId }), onclick: () => handlers2.undo(p.id) }, "[ UNDO \u2014 not what I meant ]")
-      ));
+    else {
+      if (p.status === "accepted" && p.forUnitId === void 0 && nextCeremonyStep(p) !== void 0) renderCeremonyCard(host, { state, reg, punishment: p, onStep: (step, number) => handlers2.ceremony?.(p.id, step, number) });
+      if ((p.status === "accepted" || p.status === "refused") && p.forUnitId === void 0 && canUndoPractice(state, p.id) === null) {
+        host.append(h(
+          "div",
+          { class: "alius-chip-group", "data-punishment-answered": p.id },
+          h("span", { class: "alius-chip", "data-chip-unit": p.holderId, ...analyzeAttrs("glossary:holder_punishment", { unitId: p.holderId }) }, `${p.status === "accepted" ? "ACCEPTED" : "REFUSED"} \u2014 ${labelOf3(reg, p)} (${nameOf21(state, p.holderId)})`),
+          h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo-practice": p.id, ...analyzeNative("glossary:punishment_card", { unitId: p.holderId }), onclick: () => handlers2.undo(p.id) }, "[ UNDO \u2014 not what I meant ]")
+        ));
+      }
     }
   }
 }
@@ -60330,7 +60505,7 @@ function renderCommsTab(host, ctx2) {
     const taskCards = h("div", { class: "alius-task-cards" });
     drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
     const punishmentCards = h("div", { class: "alius-punishment-cards" });
-    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), generation: ctx2.generation });
+    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
     const demonstrationCards = h("div", { class: "alius-demonstration-cards" });
     drawDemonstrationCards(demonstrationCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
     const offerInner = h("div", { class: "alius-offer-chips-host" });
@@ -61871,7 +62046,7 @@ function renderSceneScreen(host, ctx2) {
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => {
       ctx2.onAnswerPunishment?.(id, answer);
       if (answer === "negotiate") input.focus();
-    }, takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), generation: ctx2.generation });
+    }, takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
       timed: ctx2.settings().physicsInteractions?.order !== false,
@@ -66319,6 +66494,7 @@ function createApp(st, deps) {
         // P16: her discipline
         onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
         onUndoPunishment: (id) => void practice.undoPunishment(id),
+        onCeremonyStep: (id, step, number) => void practice.ceremonyStep(id, step, number),
         onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer),
         // P16: her demonstration: GO opens the scene the engine describes
         initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) },
@@ -67921,6 +68097,7 @@ function createApp(st, deps) {
       // P16: her discipline
       onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
       onUndoPunishment: (id) => void practice.undoPunishment(id),
+      onCeremonyStep: (id, step, number) => void practice.ceremonyStep(id, step, number),
       onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer),
       // P16: her demonstration
       initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) },

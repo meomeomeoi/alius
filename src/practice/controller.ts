@@ -63,6 +63,8 @@ export interface PracticeController {
   answerAlarm(alarmId: string, answer: 'accept' | 'argue' | 'defy'): Promise<boolean>;
   /** `[ SEND THE SQUAD ]` on a kept alarm of a launch or a deadline: opens the expedition setup for that mission without the commander. Answers false when nothing can be opened. */
   sendSquad(alarmId: string): boolean;
+  /** A chip step of her ceremony, or the number of a number step (`practice/ceremony_step`). Toasts the reason and answers false when the engine refuses. */
+  ceremonyStep(punishmentId: string, step: string, number?: number): boolean;
   /** The commander's answer to the slap that is open (`practice/slap_answer`): none, braced or flinched. An answer for a slap that is gone is dropped without a word. */
   slapAnswer(slapId: string, result: 'none' | 'braced' | 'flinched'): boolean;
   /** `[ ASK FOR A TASK ]` / `[ ASK FOR PUNISHMENT ]` (`practice/ask`). Toasts the reason and answers false when the engine refuses. */
@@ -383,6 +385,11 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       }
       deps.openPlanner(target);
       return true;
+    },
+    ceremonyStep(punishmentId, step, number) {
+      const done = ok(deps.app.dispatch({ type: 'practice/ceremony_step', payload: { punishmentId, step, ...(number !== undefined ? { number } : {}) } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     slapAnswer(slapId, result) {
       const events = deps.app.dispatch({ type: 'practice/slap_answer', payload: { slapId, result } }, { expectChatId: chatId() });

@@ -3,6 +3,7 @@ import type { Registries } from '../../content/types';
 import { dynamicOn } from '../../engine/dynamic/gate';
 import { practiceLive } from '../../engine/practice/gate';
 import { canUndoPractice } from '../../engine/practice/punish';
+import { nextCeremonyStep } from '../../engine/practice/punish';
 import { severityWord, type OpenPunishment } from '../../engine/practice/state';
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
@@ -95,11 +96,78 @@ export function renderTakeInsteadCard(host: HTMLElement, ctx: TakeInsteadCardCtx
   host.append(card);
 }
 
+export interface CeremonyCardCtx {
+  state: CampaignState;
+  reg: Registries;
+  punishment: OpenPunishment;
+  /** A chip step, or the number of the number step (a whole number from 1 to 50). */
+  onStep: (step: string, number?: number) => void;
+}
+
+/** The marks of a step in the list (no digit): done, the next one, the ones to come. */
+const STEP_MARK = { done: '✓', next: '›', later: '·' } as const;
+
+/**
+ * Her ceremony as a card (P16, plan R21, spec §R.4): the steps in order with their labels, the ones done, the next one marked and what it asks: a chip step is a button, a words step says to say it in the
+ * commander's own words (the intent does it), a number step has a field for 1 to 50 and a button, a posture step names the posture to take (the commander's posture does it). The count she keeps is never shown,
+ * and no number but the one typed in the field. Every part is addressed by the glossary; no pronoun for the commander.
+ */
+export function renderCeremonyCard(host: HTMLElement, ctx: CeremonyCardCtx): void {
+  const { state, reg, punishment: p } = ctx;
+  const unit = state.squad.find((u) => u.id === p.holderId);
+  const ceremony = p.ceremony;
+  if (unit === undefined || ceremony === undefined) return;
+  const live = { unitId: unit.id };
+  const next = nextCeremonyStep(p);
+  const entryOf = (id: string): { label: string; check: string; posture?: string } => {
+    const e = reg.ceremonySteps.get(id) as { label?: unknown; check?: unknown; posture?: unknown } | undefined;
+    return { label: String(e?.label ?? id), check: String(e?.check ?? 'chip'), ...(typeof e?.posture === 'string' ? { posture: e.posture } : {}) };
+  };
+  const rows = ceremony.steps.map((id) => {
+    const e = entryOf(id);
+    const mode = ceremony.done.includes(id) ? 'done' : id === next ? 'next' : 'later';
+    const extra: Child[] = [];
+    if (mode === 'next') {
+      if (e.check === 'chip') {
+        extra.push(h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-ceremony-do': id, 'data-punishment': p.id, ...analyzeNative('glossary:ceremony', live), onclick: () => ctx.onStep(id, undefined) }, `[ ${e.label.toUpperCase()} ]`));
+      } else if (e.check === 'words') {
+        extra.push(h('p', { class: 'alius-ceremony-hint' }, 'Say it in your own words.'));
+      } else if (e.check === 'number') {
+        const input = h('input', { type: 'number', min: '1', max: '50', step: '1', 'data-ceremony-number': id, 'aria-label': 'The number', ...analyzeNative('glossary:ceremony', live) }) as HTMLInputElement;
+        extra.push(input, h('button', {
+          type: 'button', class: 'alius-btn alius-tagchip', 'data-ceremony-do': id, 'data-punishment': p.id, ...analyzeNative('glossary:ceremony', live),
+          onclick: () => {
+            const n = Number(input.value);
+            if (input.value.trim() !== '' && Number.isInteger(n) && n >= 1 && n <= 50) ctx.onStep(id, n);
+          },
+        }, '[ NAME IT ]'));
+      } else if (e.check === 'posture') {
+        const posture = e.posture === undefined ? '' : String(reg.blockingPostures.get(e.posture)?.label ?? e.posture).toLowerCase();
+        extra.push(h('p', { class: 'alius-ceremony-hint' }, `Take the posture${posture !== '' ? `: ${posture}` : ''}.`));
+      }
+    }
+    return h('li', { class: 'alius-ceremony-step', 'data-ceremony-step': id, 'data-ceremony-state': mode },
+      h('span', { class: 'alius-ceremony-mark', 'aria-hidden': 'true' }, STEP_MARK[mode]), h('span', { class: 'alius-ceremony-label' }, e.label), ...extra);
+  });
+  const card = renderVoiceCard({
+    voice: VOICE_OF.practice, from: unit.displayName, accent: unitAccent(unit.id),
+    body: h('div', { class: 'alius-ceremony-body' }, h('p', { class: 'alius-ceremony-title' }, `${labelOf(reg, p)}: a ceremony.`), h('ol', { class: 'alius-ceremony-steps' }, ...rows)),
+  });
+  card.classList.add('alius-ceremony');
+  card.setAttribute('data-punishment', p.id);
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', `${unit.displayName} carries out her punishment as a ceremony`);
+  for (const [k, v] of Object.entries(analyzeAttrs('glossary:ceremony', live))) card.setAttribute(k, v);
+  host.append(card);
+}
+
 /** Handlers of the cards a surface draws: the punishment's id comes with each answer. */
 export interface PunishmentCardHandlers {
   answer: (punishmentId: string, answer: PunishmentAnswer) => void;
   takeInstead: (punishmentId: string, answer: TakeInsteadAnswer) => void;
   undo: (punishmentId: string) => void;
+  /** A step of her ceremony: a chip step, or the number of a number step. Absent = the ceremony card draws no buttons. */
+  ceremony?: (punishmentId: string, step: string, number?: number) => void;
   /** P14: the surface's generation ui: the card draws REROLL. */
   generation?: GenerationUi;
 }
@@ -117,10 +185,14 @@ export function drawPunishmentCards(host: HTMLElement, state: CampaignState, reg
     const open = p.status === 'offered' || p.status === 'negotiating';
     if (open && p.forUnitId !== undefined) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers.takeInstead(p.id, a) });
     else if (open) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers.answer(p.id, a), generation: handlers.generation });
-    else if ((p.status === 'accepted' || p.status === 'refused') && p.forUnitId === undefined && canUndoPractice(state, p.id) === null) {
-      host.append(h('div', { class: 'alius-chip-group', 'data-punishment-answered': p.id },
-        h('span', { class: 'alius-chip', 'data-chip-unit': p.holderId, ...analyzeAttrs('glossary:holder_punishment', { unitId: p.holderId }) }, `${p.status === 'accepted' ? 'ACCEPTED' : 'REFUSED'} — ${labelOf(reg, p)} (${nameOf(state, p.holderId)})`),
-        h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-undo-practice': p.id, ...analyzeNative('glossary:punishment_card', { unitId: p.holderId }), onclick: () => handlers.undo(p.id) }, '[ UNDO — not what I meant ]')));
+    else {
+      // a ceremony she is holding: the steps (and, until a step is done, the way back)
+      if (p.status === 'accepted' && p.forUnitId === undefined && nextCeremonyStep(p) !== undefined) renderCeremonyCard(host, { state, reg, punishment: p, onStep: (step, number) => handlers.ceremony?.(p.id, step, number) });
+      if ((p.status === 'accepted' || p.status === 'refused') && p.forUnitId === undefined && canUndoPractice(state, p.id) === null) {
+        host.append(h('div', { class: 'alius-chip-group', 'data-punishment-answered': p.id },
+          h('span', { class: 'alius-chip', 'data-chip-unit': p.holderId, ...analyzeAttrs('glossary:holder_punishment', { unitId: p.holderId }) }, `${p.status === 'accepted' ? 'ACCEPTED' : 'REFUSED'} — ${labelOf(reg, p)} (${nameOf(state, p.holderId)})`),
+          h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-undo-practice': p.id, ...analyzeNative('glossary:punishment_card', { unitId: p.holderId }), onclick: () => handlers.undo(p.id) }, '[ UNDO — not what I meant ]')));
+      }
     }
   }
 }

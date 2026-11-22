@@ -73,6 +73,8 @@ export interface SceneScreenCtx {
   onAnswerPunishment?: (punishmentId: string, answer: PunishmentAnswer) => void;
   onTakeInstead?: (punishmentId: string, answer: TakeInsteadAnswer) => void;
   onUndoPunishment?: (punishmentId: string) => void;
+  /** P16: a chip step of her ceremony, or the number of its number step. */
+  onCeremonyStep?: (punishmentId: string, step: string, number?: number) => void;
   /** P16: GO / REFUSE on a demonstration of a unit in the scene (the demonstration's id): GO opens the group scene the engine describes. */
   onAnswerDemonstration?: (demonstrationId: string, answer: DemonstrationAnswer) => void;
   /** P16: the answer to the slap that is open (`practice/slap_answer`): the id and none, braced or flinched. Absent = the overlay is not drawn. */
@@ -436,7 +438,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') input.focus(); }, sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx.generation }); // P16: her task
-    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') input.focus(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), generation: ctx.generation }); // P16: her discipline
+    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') input.focus(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }); // P16: her discipline
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration
     // P16: her call of a named posture: the choices, and (with the order interaction on) the window; the answer is staged like a chip so a swipe takes the posture back
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {

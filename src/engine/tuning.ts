@@ -1101,7 +1101,13 @@ export const TUNING = Object.freeze({
         flinched: 'has struck the commander, who flinched, and is displeased by it',
       } as const),
     }),
-    ceremony: Object.freeze({ lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 } as const) }),
+    /**
+     * The ceremony (R21, `AUTHOR TO TUNE`): the lightest punishment that is carried out as one, the count under which a number the commander named is too low for a weight (`lowNumber`), the styles that double it, and the
+     * range of a number that may be named.
+     */
+    ceremony: Object.freeze({
+      minSeverity: 3, lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 } as const), doubledBy: Object.freeze(['cruel', 'vindictive'] as readonly string[]), number: Object.freeze({ min: 1, max: 50 }),
+    }),
     sealedShare: Object.freeze({
       affectionate: 0.05, cold: 0.05, ritual: 0.02, clinical: 0.05, possessive: 0.05, playful: 0.15, cruel: 0.25, obsessive: 0.05, drill: 0.05, regal: 0.15, vindictive: 0.25,
     } as const),

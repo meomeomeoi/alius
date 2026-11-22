@@ -51,6 +51,8 @@ export interface CommsTabCtx {
   onAnswerPunishment?: (punishmentId: string, answer: PunishmentAnswer) => void;
   onTakeInstead?: (punishmentId: string, answer: TakeInsteadAnswer) => void;
   onUndoPunishment?: (punishmentId: string) => void;
+  /** P16: a chip step of her ceremony, or the number of its number step. */
+  onCeremonyStep?: (punishmentId: string, step: string, number?: number) => void;
   /** P16: GO / REFUSE on a demonstration she wants to stage (the demonstration's id): GO opens the group scene the engine describes. */
   onAnswerDemonstration?: (demonstrationId: string, answer: DemonstrationAnswer) => void;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: straight to the engine in a thread). Absent = no chip. */
@@ -214,7 +216,7 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     const taskCards = h('div', { class: 'alius-task-cards' });
     drawTaskCards(taskCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerTask?.(id, answer), sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx.generation }); // P16: her task, under the thread (words are typed in the thread's own input)
     const punishmentCards = h('div', { class: 'alius-punishment-cards' });
-    drawPunishmentCards(punishmentCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), generation: ctx.generation }); // P16: her discipline, under the thread
+    drawPunishmentCards(punishmentCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }); // P16: her discipline, under the thread
     const demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
     drawDemonstrationCards(demonstrationCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration, under the thread
     // P15: `[ OFFER MYSELF ]` under the thread, and her answer once she has written back (the composer keeps its choice on the tab's own element across the tab's redraws)

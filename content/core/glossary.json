@@ -3390,5 +3390,15 @@
       "holder_punishment",
       "practice"
     ]
+  },
+  {
+    "id": "ceremony",
+    "term": "Ceremony",
+    "short": "Some women carry a heavy punishment out as a ceremony: steps in order by chip, in the commander's words, a number and postures. The last step carries it out.",
+    "long": "AUTHOR TO WRITE: A woman of ritual, drill or regal bearing, or a vindictive one, does it for a punishment of weight three or more. A number she finds too low may be doubled by the harsher ones, and the commander is not told. A ceremony left open at the day's end is finished by her.",
+    "see": [
+      "holder_punishment",
+      "punishment_card"
+    ]
   }
 ]

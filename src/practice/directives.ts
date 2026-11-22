@@ -6,6 +6,7 @@ import { temperamentOf } from '../engine/life/state';
 import { practiceLive } from '../engine/practice/gate';
 import { heldNow } from '../engine/practice/held';
 import { askWords } from '../engine/practice/initiative';
+import { nextCeremonyStep } from '../engine/practice/punish';
 import { pendingUnfair } from '../engine/practice/unfair';
 import { protocolRules } from '../engine/practice/service';
 import type { Task } from '../engine/practice/state';
@@ -87,6 +88,16 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     out.push({ id: `${PROTOCOL_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} holds the commander to these standing forms of address and conduct: ${forms.join('; ')}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit of holdersIn(state, reg, present)) {
+    // a ceremony she is holding (R21): the next step, by its hint, for as long as it runs and wherever she is in the room (told again in each scene)
+    const running = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit.id && x.forUnitId === undefined && x.status === 'accepted' && nextCeremonyStep(x) !== undefined);
+    if (running.length > 0) {
+      const lines = running.map((x) => {
+        const hint = String((reg.ceremonySteps.get(nextCeremonyStep(x)!) as { promptHint?: unknown } | undefined)?.promptHint ?? '');
+        return `${unit.displayName} is carrying out the punishment she gave the commander as a ceremony, one step at a time: ${phrase(x.summary)}. The next step: ${phrase(hint)}.`;
+      });
+      out.push({ id: `${PUNISHMENT_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} ${NEVER_NAME}`) });
+      continue;
+    }
     const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit.id && x.forUnitId === undefined && x.status === 'accepted' && x.answeredDay === state.day && (x.voicedScene === undefined || x.voicedScene === state.scene?.id));
     if (done.length === 0) continue;
     const shown = (state.content?.enabled ?? []).includes('physical_discipline_shown');

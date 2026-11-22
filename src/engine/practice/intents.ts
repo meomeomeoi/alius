@@ -20,7 +20,7 @@ import { denialBroken, permissionRuleOf } from './denial';
 import { practiceLive, practicesOn } from './gate';
 import { noteOffence } from './offences';
 import { voiceThreat } from './threats';
-import { compromisePunishment } from './punish';
+import { ceremonyStep, compromisePunishment } from './punish';
 import { noteSaid } from './service';
 import { acceptByWords, compromiseTask } from './tasks';
 
@@ -129,6 +129,8 @@ export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
   service_rated: (draft, ctx, unitId, ev) => noteSaid(draft, ctx, unitId, ev), // her verdict is held to the scene's end, where the engine's own wins (R10)
   denial_broken: (draft, ctx, unitId) => denialBroken(draft, ctx, unitId), // a slip against her permission rule is her discipline (R13)
   threat_voiced: (draft, ctx, unitId) => voiceThreat(draft, ctx, unitId), // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
+  // a step of her ceremony said in words, or the number named (R21): only the next one counts, and the engine re-checks the number
+  ceremony_step: (draft, ctx, unitId, ev) => (ev.punishmentId === undefined || ev.step === undefined || draft.practices?.punishments.find((x) => x.id === ev.punishmentId)?.holderId !== unitId ? [] : ceremonyStep(draft, ctx, ev.punishmentId, ev.step, 'intent', ev.number)),
   compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : ev.punishmentId !== undefined ? compromisePunishment(draft, ctx, unitId, ev) : ev.alarmId !== undefined ? compromiseAlarm(draft, ctx, unitId, ev) : []),
 };
 

@@ -96,7 +96,7 @@ export const PRACTICE_EVENT_TYPES = [
   'practice_requested', 'task_issued', 'task_answered', 'task_kept', 'task_broken', 'task_void', 'practice_opened', 'practice_signed',
   'punishment_issued', 'punishment_answered', 'punishment_taken_for', 'demonstration_staged', 'demonstration_seen', 'protocol_set', 'routine_kept',
   'permission_answered', 'hold_started', 'hold_extended', 'hold_released', 'hold_asked', 'hold_alarm', 'ask_answered', 'favour_kindness', 'practice_anticipated',
-  'posture_named', 'posture_called', 'posture_slip', 'slap_started', 'slap_dealt', 'ceremony_done', 'handover_given', 'handover_ended',
+  'posture_named', 'posture_called', 'posture_slip', 'slap_started', 'slap_dealt', 'ceremony_step', 'ceremony_done', 'handover_given', 'handover_ended',
   'threat_voiced', 'practice_undone',
 ] as const;
 export type PracticeEventType = (typeof PRACTICE_EVENT_TYPES)[number];

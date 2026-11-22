@@ -355,6 +355,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'no_duration',
   // P16 (the slap: the time allowed and the one key)
   'slap',
+  // P16 (the ceremony)
+  'ceremony',
 ];
 
 let registered = false;

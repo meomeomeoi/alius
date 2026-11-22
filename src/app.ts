@@ -959,6 +959,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerPunishment: (id, answer) => void practice.answerPunishment(id, answer), // P16: her discipline
         onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
         onUndoPunishment: (id) => void practice.undoPunishment(id),
+        onCeremonyStep: (id, step, number) => void practice.ceremonyStep(id, step, number),
         onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer), // P16: her demonstration: GO opens the scene the engine describes
         initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) }, // P16: the commander's own chips
         onSlap: (slapId, result) => void practice.slapAnswer(slapId, result), // P16: the slap's time allowed and its one key
@@ -2578,6 +2579,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onAnswerPunishment: (id, answer) => void practice.answerPunishment(id, answer), // P16: her discipline
       onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
       onUndoPunishment: (id) => void practice.undoPunishment(id),
+      onCeremonyStep: (id, step, number) => void practice.ceremonyStep(id, step, number),
       onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer), // P16: her demonstration
       initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) }, // P16: the commander's own chips
       onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`

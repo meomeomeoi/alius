@@ -18,7 +18,7 @@ import { askPermission, herDemandLive, itemRulesFromEvents, permissionLive } fro
 import { callPosture, callsFromEvents, namePosture, notePosture, takePosture } from '../practice/postures';
 import { confess, momentGapFavour, serviceFromEvents } from '../practice/service';
 import { noteThreat } from '../practice/threats';
-import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
+import { answerPunishment, ceremonyPostures, ceremonyStep, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import { answerSlap, slapSceneEnded, startSlap } from '../practice/slap';
 import type { ValidOutput } from '../practice/state';
@@ -52,6 +52,8 @@ registerMomentTrigger('her_demand', herDemandLive);
 // Unfairness (R16): a double standard is carried by her next scene and makes her test live while it runs; a cancelled reward takes the hold of her next kept task away (the feed asks before it adds)
 registerMomentTrigger('her_test', herTestLive);
 registerAfterAction(doubleStandardFromEvents);
+// A ceremony's posture steps are done by the commander's own posture (R21): a posture set that is the step's ends it
+registerAfterAction(ceremonyPostures);
 // A slap belongs to the scene it was raised in (R21): the scene ending or being aborted with it still open drops it (nothing lands; the scene was the cost)
 registerAfterAction((draft, _ctx, events) => slapSceneEnded(draft, events));
 registerFeedSuppressor((state, unitId, event) => event.type === 'task_kept' && pendingUnfair(state, unitId, 'cancelled_reward') !== undefined);
@@ -210,4 +212,13 @@ registerAction('practice/slap_start', (draft, payload, ctx) => {
 registerAction('practice/slap_answer', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.slapId !== 'string') throw new Error('practice/slap_answer needs { slapId, result }.');
   return answerSlap(draft, ctx, payload.slapId, payload.result);
+});
+
+/**
+ * `practice/ceremony_step { punishmentId, step, number? }`: a step of the ceremony she holds for a punishment (R21): a chip step, or the number of a number step. A words step is the intent's and a posture step the
+ * posture's (the action says so). Throws with the reason for a step that is not the next one, a number that is not from one to fifty or a ceremony that is gone.
+ */
+registerAction('practice/ceremony_step', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.punishmentId !== 'string' || typeof payload.step !== 'string' || (payload.number !== undefined && typeof payload.number !== 'number')) throw new Error('practice/ceremony_step needs { punishmentId, step, number? }.');
+  return ceremonyStep(draft, ctx, payload.punishmentId, payload.step, 'action', payload.number as number | undefined);
 });
