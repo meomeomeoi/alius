@@ -1,6 +1,6 @@
 # P10e — The scene stage: full frame, prose subtitles, the history curtain, the posture dial
 
-**Status: spec** (design session 2026-11-22). **Depends on:** P10 (shell, `motionReduced` / `visualFlags`, `unitAccent`), P10b, P10c (full-bleed backdrop, light, knee-length sprites), P14 (generation chips), P15a (blocking, moments, physics), P15, P16. **Prepares:** the mini-games design session (next), P16b, P17, P17c (camera, POV views, pose shots, frames).
+**Status: implemented** (2026-11-22; plan `docs/plans/2026-11-22-p10e-scene-stage.md`; manual test `docs/MANUAL_TEST_P10e.md`). **Depends on:** P10 (shell, `motionReduced` / `visualFlags`, `unitAccent`), P10b, P10c (full-bleed backdrop, light, knee-length sprites), P14 (generation chips), P15a (blocking, moments, physics), P15, P16. **Prepares:** the mini-games design session (next), P16b, P17, P17c (camera, POV views, pose shots, frames).
 
 **Analysis tool (P7a)** rules apply: every chip, option, card and the dial carry `data-analyze`.
 
@@ -184,3 +184,42 @@ A reviewer read this spec as a builder would; these answer its questions. They a
 ## 14. Next: the mini-games session
 
 A separate design session goes through every mini-game (P15a's seven physics, P16's slap and posture call, P16b's eight) in this new space. Its principle, from this session: **the signal comes from the world** (light, sound, her line, the camera), **the control from the body** (the dial, the mouse), **the gauge on the screen or the input frame**; trackers appear only while their mini-game runs. Examples to start from: weight tilts and sags the whole frame and the commander levels it; the gaze rule makes the cursor the commander's gaze, with everything above her line blurred; stillness turns every key or mouse move into a ripple across the frame; balancing a tray is a liquid level at the bottom of the frame.
+
+## Implemented as
+
+Built as the plan describes, in `src/ui/scene/stage/` (the frame, the reply, the curtain, the top line, the chip row, the dock, looking around, the gauge, the flash), `src/ui/scene/dial/` (the mannequin and the dial) and `css/62-stage.css` (the mannequin's own classes are in `css/61-blocking.css`). Rendering only: no engine file, action, event, rng draw, state field or registry changed. The one engine-adjacent change is `ChatMessage.swipeCount?`.
+
+**Rulings of the plan as built**
+- **R1 (held strip, alarm card, wake card stay where they are).** The held strip is the shell's element and gets a glass pill look under the top line (`[data-screen="scene"]` rules); the alarm and wake cards are modals.
+- **R2 (the shell's ASCII frame is hidden on the scene screen).** The shell marks `#alius-shell[data-screen]`; the close button is on the top line (`SceneScreenCtx.onClose`), the key hints are the two hints at the bottom-left.
+- **R3 (swipes show n / m).** `ChatMessage.swipeCount` comes from `chat[i].swipes.length` (real) or is kept after the first swipe (fake); without it the curtain shows only ‹ ›.
+- **R4 (the dial draws the 13 base postures from data).** The 47 presets of `docs/content/blocking.md` §7.3 are a test fixture (`tests/fixtures/dial/presets.ts`), not registry content. The drift ghost (`target`, `hot`) is a drawing API; nothing drives it yet.
+- **R5 (the fan reuses the strip's model).** `blockingChoices(state, reg)` in `blockingStrip.ts` is the one model: rows, the commander's moves and the `[ + ]` entries with the reason a gate refuses each. The strip and the dial's fan both read it.
+- **R6 (the physics panel is a dock card).** Its stop word is mirrored by a `[data-stop-word]` button in the chip row's `stop` slot while the panel draws one.
+- **R7 (looking around).** `stage/look.ts`; the frame layer is the only layer that takes the pointer.
+
+**Where each host went** is the table of §12a.5; `tests/ui/stage/hosts.test.ts` holds it as data and finds each of today's hosts in its new place.
+
+**Non-obvious things to know**
+- **Layers are explicit.** Nine layers in a fixed z-order (`css/62-stage.css`); every z-index in the stylesheet stays below the analysis panel's 10 (a test pins it). Only the frame layer has `pointer-events: auto`; the UI layer and its children take it back host by host.
+- **The scene is not rebuilt for a redraw.** `refresh()` keeps the layers, the reply, the curtain and the dock; a new scene id rebuilds everything. Anything keyed by scene id (the looked-around view, the cards set aside, the open history, the hints) is module memory that `resetSceneStage()` clears (the app calls it beside `practice.onChatChanged()`); a module with such memory registers with `onStageReset`.
+- **The reply block is not the transcript.** It shows the replies since the commander's last message (only the echo while the commander waits); the whole transcript, the edit box and the swipe tools are the curtain's, drawn only while it is open. Edit tests open the history first.
+- **The curtain moves the input line, not a copy.** The same nodes (text and focus) move between the input host and the curtain.
+- **Esc.** The scene's Esc is a document listener (closes the history); the shell's runs first, so it looks for `.alius-scene[data-curtain="open"]` instead of relying on `defaultPrevented`.
+- **The dock's slots are the hosts the draw functions write into** (they keep their old classes); a card is a direct child of a slot; its key is `sceneId|slot|first data-* id`. The slot order is the order of precedence: the first non-empty slot's first card is open, a click on a collapsed card's first child opens it. Cards are decorated after every redraw (`dock.layout`).
+- **The chip row's slots wrap the old chip hosts.** Overflow scrolls sideways and ends with "+N"; a discipline menu opens upward over the row (the row stops clipping while a menu is open).
+- **The device over the scene** is a second host (`.alius-scene-device`) built by the same `buildDevice` as the hub's; raising it never re-renders the scene. `ShellDeps.deviceLocked` / `onDeviceRefused` refuse Tab while the hands are busy.
+- **The dial draws the base the blocking holds** (standing while none is set), by `mannequinSvg` as the per-posture review fixed it (see §7). Her name for a posture is read through `Knowledge.practice(...).postures`. Anchors and held items are not hinted on the figure yet (the mannequin supports `hint` / `item`; mapping an anchor or a worn item to one is P16b's).
+- **Bracketed labels.** The stage's own `[ SAVE ]`, `[ CANCEL ]` and `[ STOP ]` are `Save`, `Cancel`, `Stop`; `[ ORDER ]`, `[ COMPEL ]` and the cards of other packages keep their text.
+- **Tests that changed beyond a selector, by design:** the two P10c tests that pinned `placeSprites` (replaced by a CSS assertion), the pointer-follow pan tests (replaced by the right-button look), the speaker label (`ANN //` is now `ANN`, `YOU` for the commander), and two `shellDevice` tests that used the scene route as "a full-window screen with no device" (they use `combat`; the scene now carries the device, tested in `tests/ui/shell/sceneDevice.test.ts`).
+- **`npm run test:layout`** (not in `npm test`; needs Chromium) renders the real scene screen with a generated placeholder sprite at 1920×1080, 1280×800 and 2560×1440 for five fixtures and measures the acceptance criteria of §12. Run it after any change to the stage's CSS. `LAYOUT_SHOTS=<dir>` also writes screenshots. `npm run dial:sheet` renders the contact sheet of the mannequin.
+
+**Open items**
+- The 48 presets, drift and named postures come with P16b; the dial then supplies `target` and `hot`.
+- Each mini-game's instrument comes with the mini-games session (the input frame's gauge API and the dial's dimming while one runs are ready).
+- Using the device in front of her as an act she may notice is a later package.
+- P17c's camera fills the frame, surface and pose-shot layers (empty today) and hides the sprites layer for a POV view.
+- The art in the layout test is a placeholder: legibility of the reply over the author's sprites is judged by eye (the bottom gradient is the lever).
+- A card's heading is its first child; a card whose first child is not a heading collapses oddly.
+- No touch or keyboard fallback for looking around; the curtain and the history button work by click.
+- Inter and Plex carry no Cyrillic (the game is English).

@@ -175,3 +175,8 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **Channels:** the `strain` channel and the obscured presence layer (`perception`) have no reader in P15a beyond the `blocking:pov` directive. Strain and suspicion from noise are yours to read from `physics_noise { loudness, kind }`.
 - **The stop word:** `physics/stop_word` ends a hold and removes its contact or item whatever her profile. Its outcomes (Trust +, her resentment) and the staging stop are yours.
 - **Read from the events:** `physics_noise { loudness, kind }`, `physics_outcome { result: 'stopped', … }`. `blocking:pov` is the directive that carries the obscured presence today.
+## Interfaces already provided by P10e (implemented — use, do not rebuild)
+
+P10e (the scene stage) is implemented; see its **Implemented as**. It rebuilt only how the scene is drawn.
+
+- A new card goes into a dock slot (`DOCK_SLOTS` in `src/ui/scene/stage/dock.ts`; add a slot there and a host in `sceneScreen.build()`), a new chip into a chip-row slot (`CHIP_SLOTS`); neither needs a new column. The scene's mini-game surface is the input line (`SceneScreen.gauge()`: `narrow`, `tremble`, `pulse`, `window`); a mini-game that needs its own instrument draws it over the frame in the `ui` layer and removes it when it ends.

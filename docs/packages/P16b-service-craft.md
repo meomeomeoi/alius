@@ -243,3 +243,8 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **Shape of the endurance book:** `Commander.endurance?: Record<physicsId, { xp, level 0–5, trainedDay? }>`; `commanderSkill(state, physicsId)` is the only reader; the drills are `train` focuses with the effect `commander_endurance_xp`, once a day per physics.
 - **Her skills:** `Relation.herSkill { seal, weight, reading, swing, rhythm, practice }`, read by `herSkillOf`; `practise` is the only writer.
 - **Hooks you may use:** `stillnessOf` (reads 0) and `rhythmOffset` (her personal rhythm, `fnv1a`) in `src/engine/physics/`.
+## Interfaces already provided by P10e (implemented — use, do not rebuild)
+
+P10e (the scene stage) is implemented; see its **Implemented as**. It rebuilt only how the scene is drawn.
+
+- The posture dial (`renderPostureDial`, bottom right of the scene) draws the commander's body with `mannequinSvg(pose, { target, hot })`: pass the target pose and the drifting joints (`shoulders`, `elbows`, `hips`, `knees`, `head`, `gaze`) and it draws the dashed ghost and the amber rings; nothing drives them yet. Point states are `PointStates` (`dial/points.ts`); the 47 presets of blocking.md §7.3 are a test fixture (`tests/fixtures/dial/presets.ts`) for you to turn into registry content, and `npm run dial:sheet` renders them. Keys 1-7 for joints have no handler (the scene leaves them to you). Her name for a posture is read through `Knowledge.practice`. The fan reads `blockingChoices`; new choices there appear in the dial and the strip.

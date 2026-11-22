@@ -156,3 +156,8 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **The PDA lock:** `device lock tabs` already locks the tabs.
 - **The remote toy:** its pulses from her PDA (`escalation remote_pulse`) and a slip's screen glitch are yours.
 - **Readers:** `effectsOf(blocking, reg, channel)` (`src/engine/blocking`); `deviceTabLocks`, `muffled` and `bellsFor` (`src/blocking/`) are the device and sound readers P15a built.
+## Interfaces already provided by P10e (implemented — use, do not rebuild)
+
+P10e (the scene stage) is implemented; see its **Implemented as**. It rebuilt only how the scene is drawn.
+
+- The scene stage has the layers you fill: `buildLayers(root)` gives `backdrop`, `ascii`, `frame` (the surface and the frame; the only layer that takes the pointer), `pose` (the pose shot), `sprites`, `effects`, `ui`, `moment` and `curtain`, back to front with explicit z-indexes. Hide `sprites` or fill `pose` for a POV view; the reply, the input, the chips, the dock and the dial stay. The light of the slot is `data-light` on the scene root (sprites and backdrop read it); add your alarm, sensory and hold tints as filters there. `SceneScreen.flashDeviceOut()` and `flashLine(layer, text, analyze)` are the short lines over the frame.
