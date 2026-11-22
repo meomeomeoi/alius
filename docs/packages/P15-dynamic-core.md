@@ -716,7 +716,7 @@ Nothing remembered, with the reason: `hold_changed`, `hold_band_changed`, probes
 
 ### Open items
 
-- **`MANUAL_TEST_P15.md` has not been run by hand.** Step 5 says a refusal is "remembered"; no rule writes a fact for a refused milestone or claim (hold, `refusals` and the reading carry it). Decide whether a `milestone_refused` rule is wanted.
+- **`MANUAL_TEST_P15.md` has not been run by hand.** A refused milestone or claim writes no fact (R24: hold, `refusals` and the reading carry it); step 5 of the checklist says so. Whether a `milestone_refused` memory rule is wanted is an author decision.
 - **Fear and `cowed` are quiet in play** until P16 supplies threat sources (`THREAT_EVENTS`). A threat intent for her voicing one is a P16 decision.
 - **Track xp has no producer** (P16); `first_night_held` is unreachable until then. The P16 gain rows have no producer. Favour has no verdict or moment-gap source. Reserved sign rows have no producer (R14).
 - **`dynamic/request_transfer` is free and repeatable daily** (the force exit's third means costs a click) and **the transfer threat has no line in her directive**; both need an author ruling (a cost, a line).
