@@ -1377,7 +1377,14 @@ var TUNING = Object.freeze({
         vindictive: "earn"
       }),
       /** What she says, as prose for the directive, by answer (drafts). */
-      words: Object.freeze({ grant: "gives permission", deny: "refuses permission", wait: "says not yet, and to ask again tomorrow", earn: "says it has to be earned first" })
+      words: Object.freeze({ grant: "gives permission", deny: "refuses permission", wait: "says not yet, and to ask again tomorrow", earn: "says it has to be earned first" }),
+      /** What she says under the chip once she has answered, in her voice (drafts, `AUTHOR TO WRITE`): the card's own line, never a number. */
+      lines: Object.freeze({
+        grant: "AUTHOR TO WRITE: Yes. Go on.",
+        deny: "AUTHOR TO WRITE: No.",
+        wait: "AUTHOR TO WRITE: Not yet. Ask me again tomorrow.",
+        earn: "AUTHOR TO WRITE: You will have to earn it first."
+      })
     }),
     hold: Object.freeze({
       gain: 2,
@@ -1398,7 +1405,27 @@ var TUNING = Object.freeze({
       style: Object.freeze({ possessive: -1, cruel: -1.5, affectionate: 1, drill: 0.5 }),
       frame: Object.freeze({ play: 0, role: -0.5, rule: -1 })
     }),
-    ask: Object.freeze({ hold: 2, mockRecord: 3 }),
+    /**
+     * The commander's initiative (R15, `AUTHOR TO TUNE`): the hold a yes gives (`hold`), the Record a mock gives her (`mockRecord`), the hold from which any holder says yes (`acceptHold`), the hold
+     * under which a `playful` one mocks (`playfulBelow`), the styles that say yes and the ones that mock, and the hold a refusal that she takes as an opening gives (`openingHold`).
+     */
+    ask: Object.freeze({
+      hold: 2,
+      mockRecord: 3,
+      acceptHold: 40,
+      playfulBelow: 20,
+      openingHold: 1,
+      accepts: Object.freeze(["ritual", "drill", "regal"]),
+      mocks: Object.freeze(["cruel", "cold"]),
+      /** What she says to the model for her next reply, by answer (drafts). */
+      words: Object.freeze({
+        accepted: "has agreed to what the commander asked, and says so in her own way",
+        mocked: "laughs at the request and mocks it",
+        refused: "turns the request down",
+        kind: "turns the request down gently, and means no harm by it",
+        opening: "turns the request down, and keeps it in mind"
+      })
+    }),
     posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4e3, drill: 3e3, other: 5e3 }) }),
     slap: Object.freeze({
       windowMs: Object.freeze({
@@ -2078,10 +2105,10 @@ function entryEffects(registry2, entry, reg, data) {
 function scapegoatView(state, reg) {
   const open3 = state.dilemmas?.open;
   if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !open3.options) return null;
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   return {
-    subject: open3.subjectId !== void 0 ? nameOf26(open3.subjectId) : "Unknown",
-    witnesses: (open3.witnessIds ?? []).map(nameOf26),
+    subject: open3.subjectId !== void 0 ? nameOf27(open3.subjectId) : "Unknown",
+    witnesses: (open3.witnessIds ?? []).map(nameOf27),
     options: open3.options.map((o) => ({
       answer: o.id ?? "",
       lines: o.effects.map((fx2) => summarizeWorldEffect(fx2, reg)).filter((l) => l !== null)
@@ -15509,13 +15536,13 @@ function objectiveList(state, reg) {
   if (beat && state.world.spine?.proposed === beat.id) out.push({ id: `spine:${beat.id}`, text: String(beat.goal), source: "spine", dueDays: null });
   const lead = (state.objectives ?? []).find((o) => !o.done && (o.dueDay === void 0 || state.day - o.dueDay <= LEAD_GRACE_DAYS));
   if (lead) out.push({ id: lead.id, text: lead.text, source: "director", dueDays: lead.dueDay === void 0 ? null : lead.dueDay - state.day });
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName;
   const guide = step && step.kind === "guided_slot" ? state.onboarding?.guideUnitId : void 0;
   if (guide !== void 0 && livingNamed(state).some((u) => u.id === guide)) {
-    out.push({ id: `unit:guide:${guide}`, text: `${nameOf26(guide)} wants to talk.`, source: "unit", dueDays: null });
+    out.push({ id: `unit:guide:${guide}`, text: `${nameOf27(guide)} wants to talk.`, source: "unit", dueDays: null });
   }
   for (const d of waitingDemands(state)) {
-    out.push({ id: `unit:demand:${d.id}`, text: `${nameOf26(d.unitId)} is waiting for an answer.`, source: "unit", dueDays: null });
+    out.push({ id: `unit:demand:${d.id}`, text: `${nameOf27(d.unitId)} is waiting for an answer.`, source: "unit", dueDays: null });
   }
   return out;
 }
@@ -22692,7 +22719,7 @@ function eligibleUnits(state, holderId) {
 function holdsPractices(state, unitId) {
   const p = state.practices;
   if (p === void 0) return false;
-  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId) || x.narrated?.includes(unitId) === true) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0 || p.service?.[unitId] !== void 0 || p.softer?.[unitId] !== void 0;
+  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId) || x.narrated?.includes(unitId) === true) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0 || p.service?.[unitId] !== void 0 || p.softer?.[unitId] !== void 0 || p.askedOn?.[unitId] !== void 0;
 }
 var isOpen = (status) => status === "offered" || status === "open" || status === "negotiating" || status === "accepted";
 var tagsOf3 = (entry) => {
@@ -22785,6 +22812,10 @@ function forgetPractices(draft, unitId) {
   if (p.softer !== void 0) {
     delete p.softer[unitId];
     if (Object.keys(p.softer).length === 0) delete p.softer;
+  }
+  if (p.askedOn !== void 0) {
+    delete p.askedOn[unitId];
+    if (Object.keys(p.askedOn).length === 0) delete p.askedOn;
   }
   return events;
 }
@@ -30801,7 +30832,7 @@ function endExpedition(draft, ctx2, outcome) {
   const mission = draft.missions.active.find((m) => m.id === exp.missionId);
   const region = reg.regions.get(exp.regionId);
   const regionLabel = region ? regionName(region) : exp.regionId;
-  const nameOf26 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
   draft.resources.supplies += exp.supplies;
   const abandoned = draft.dilemmas?.open;
   if (abandoned && abandoned.context === "expedition_event") {
@@ -30867,8 +30898,8 @@ function endExpedition(draft, ctx2, outcome) {
   events.push(...resolveBets(draft, ctx2, outcome));
   events.push(...hideInjuries(draft, reg, exp.party, [...injuries, ...deaths]));
   let line2 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
-  if (injuries.length > 0) line2 += ` ${injuries.map(nameOf26).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
-  if (deaths.length > 0) line2 += ` ${deaths.map(nameOf26).join(" and ")} did not return.`;
+  if (injuries.length > 0) line2 += ` ${injuries.map(nameOf27).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
+  if (deaths.length > 0) line2 += ` ${deaths.map(nameOf27).join(" and ")} did not return.`;
   addChronicle(draft, { kind: "scene", day: draft.day, text: line2, audience: [...exp.party] });
   const rs = draft.world.regions[exp.regionId] ?? { known: true };
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
@@ -30916,14 +30947,14 @@ function cleanRecap(text2) {
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
 function reportLines(report, state, reg) {
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const region = reg.regions.get(report.regionId);
   const lines = [
     "AFTER-ACTION REPORT",
     `Mission: ${report.missionTitle}`,
     `Region: ${region ? regionName(region) : report.regionId} // Day ${report.day}`,
     `Outcome: ${OUTCOME_LABEL[report.outcome]}`,
-    `Squad: ${report.party.map(nameOf26).join(", ")}`
+    `Squad: ${report.party.map(nameOf27).join(", ")}`
   ];
   const route = report.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
   if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
@@ -30937,9 +30968,9 @@ function reportLines(report, state, reg) {
     if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
     lines.push(`Rewards: ${parts.join(", ")}.`);
   }
-  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf26).join(", ")}.`);
-  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf26).join(", ")}.`);
-  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf26).join(", ")}.`);
+  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf27).join(", ")}.`);
+  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf27).join(", ")}.`);
+  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf27).join(", ")}.`);
   if (report.recap) lines.push("", report.recap);
   return lines;
 }
@@ -33412,6 +33443,10 @@ registerMemoryResolver("hold_alarm", (draft, event) => {
   const squad = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
   return { ids: { her: [her.id], party: party.length > 0 ? party : squad }, vars: { name: her.name, answer: str4(event.answer) ?? "", run: yes(event.run === true), phase: str4(event.phase) ?? "" } };
 }, { ids: ["her", "party"], vars: ["name", "answer", "run", "phase"] });
+registerMemoryResolver("ask_answered", (draft, event) => {
+  const her = subjectOf3(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str4(event.answer) ?? "", what: str4(event.what) === "punishment" ? "a punishment" : "a task" } } : null;
+}, { ids: ["her"], vars: ["name", "answer", "what"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -39779,6 +39814,89 @@ function practiceDayStep(draft, ctx2) {
   return events;
 }
 
+// src/engine/practice/initiative.ts
+var nameOf14 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function askable2(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return false;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3) || !herPracticeLive(state, unitId)) return false;
+  return practiceLive(state, reg, unitId) || canHold(state, reg, unitId) === null;
+}
+function askRefusal(state, reg, unitId, _what) {
+  const name = nameOf14(state, unitId);
+  if (!askable2(state, reg, unitId)) return `${name} cannot be asked now.`;
+  if (state.scene !== void 0 && !state.scene.participants.includes(unitId)) return `${name} is not here: the commander is in a scene without her.`;
+  if (state.practices?.askedOn?.[unitId] === state.day) return `${name} has answered already today.`;
+  const keeper = practiceHolders(state, reg).find((id) => id !== unitId && !hasCapability(state, reg, id, "relation_rules"));
+  if (keeper !== void 0) return `The commander is held by ${nameOf14(state, keeper)}: turning to others is hers to allow, and she has not.`;
+  return null;
+}
+function askAnswer(state, reg, unitId, _what) {
+  const T5 = TUNING.practice.ask;
+  const dyn = dynamicOf(state, unitId);
+  const hold = dyn?.hold ?? 0;
+  const favour = dyn?.favour ?? 0;
+  const style = practiceOf(state, reg, unitId)?.style.primary;
+  if (favour <= TUNING.practice.refusalAt) return { answer: "mocked" };
+  if (hold >= T5.acceptHold || style !== void 0 && T5.accepts.includes(style)) return { answer: "accepted" };
+  if (style !== void 0 && T5.mocks.includes(style) || style === "playful" && hold < T5.playfulBelow) return { answer: "mocked" };
+  if (style === "affectionate") return { answer: "refused", kind: true };
+  if (style === "possessive") return { answer: "refused", opening: true };
+  return { answer: "refused" };
+}
+function witnessesOf4(state, unitId) {
+  const scene = state.scene;
+  if (scene === void 0 || !scene.participants.includes(unitId)) return [];
+  return scene.participants.filter((id) => id !== unitId && state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+}
+function ask(draft, ctx2, unitId, what) {
+  const reg = ctx2.registries;
+  const why = askRefusal(draft, reg, unitId, what);
+  if (why !== null) throw new Error(why);
+  const live3 = practiceLive(draft, reg, unitId);
+  const result = askAnswer(draft, reg, unitId, what);
+  const T5 = TUNING.practice.ask;
+  const events = [];
+  let request = [];
+  if (result.answer === "accepted" && live3) {
+    if (what === "task") {
+      if (!taskRoom(draft, reg, unitId) || pickSeeds(draft, reg, unitId, "task").length === 0) throw new Error(`${nameOf14(draft, unitId)} has nothing to ask of the commander now.`);
+      request = requestPractice(draft, ctx2, unitId, "task", { asked: true });
+    } else {
+      const severity = severityOf(draft, reg, unitId, { stakes: "minor" });
+      const entryId = punishmentOpen(draft, unitId) ? null : pickHolderPunishment(draft, reg, unitId, severity);
+      if (entryId === null) throw new Error(`${nameOf14(draft, unitId)} has nothing to give the commander now.`);
+      request = requestPractice(draft, ctx2, unitId, "punishment", { asked: true, offence: { kind: "asked", stakes: "minor", day: draft.day }, severity: severityOfEntry(reg, entryId) ?? severity, entryId });
+    }
+  }
+  const present2 = [];
+  if (result.answer === "accepted") events.push(...addHold(draft, ctx2, unitId, T5.hold, "asked"), ...request);
+  if (result.answer === "mocked") {
+    events.push(...addRecord(draft, unitId, T5.mockRecord, "ask_mocked"));
+    const watchers2 = witnessesOf4(draft, unitId);
+    if (watchers2.length > 0) present2.push(unitId, ...watchers2);
+    for (const w of watchers2) events.push(...addSign(draft, ctx2, w, unitId, "protocol_public"));
+  }
+  if (result.answer === "refused" && result.opening === true) {
+    const dyn = dynamicOf(draft, unitId);
+    if (dyn !== void 0) {
+      dyn.recent.push("opening");
+      while (dyn.recent.length > TUNING.probes.recentMax) dyn.recent.shift();
+    }
+    events.push(...addHold(draft, ctx2, unitId, T5.openingHold, "asked"));
+  }
+  (ensurePractices(draft).askedOn ??= {})[unitId] = draft.day;
+  events.unshift({ type: "ask_answered", unitId, holderId: unitId, what, answer: result.answer, ...result.kind === true ? { kind: true } : {}, ...result.opening === true ? { opening: true } : {}, ...present2.length > 0 ? { present: present2 } : {} });
+  return events;
+}
+function askWords(event) {
+  const W = TUNING.practice.ask.words;
+  if (event.answer === "accepted") return W.accepted;
+  if (event.answer === "mocked") return W.mocked;
+  if (event.answer !== "refused") return void 0;
+  return event.kind === true ? W.kind : event.opening === true ? W.opening : W.refused;
+}
+
 // src/engine/practice/postures.ts
 var POSTURE_NAME_MAX = 30;
 var TRACK = TUNING.practice.routine.track;
@@ -39871,13 +39989,13 @@ function callsFromEvents(draft, events) {
 }
 
 // src/engine/practice/restrict.ts
-var nameOf14 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf15 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function commanderRestrictionOf(state, reg, use, activityId, toUnitId, locationId) {
   const p = state.practices;
   if (p === void 0) return null;
   for (const r of p.restrictions) {
     if (state.day > r.untilDay || !practiceLive(state, reg, r.holderId)) continue;
-    const name = nameOf14(state, r.holderId);
+    const name = nameOf15(state, r.holderId);
     if (r.what === "no_dms_others" && use === "dm" && toUnitId !== void 0 && toUnitId !== r.holderId) return `${name} has barred the commander's messages to anyone else until day ${r.untilDay}.`;
     if (r.what === "no_free_activities" && use === "companion" && !(activityId !== void 0 && NOT_LEAVE.includes(activityId))) return `${name} has barred the commander's free time until day ${r.untilDay}.`;
     if (r.what === "room" && use === "scene" && r.arg !== void 0 && r.arg === locationId) return `${name} has barred the commander from that room until day ${r.untilDay}.`;
@@ -39888,7 +40006,7 @@ function commanderRestrictionOf(state, reg, use, activityId, toUnitId, locationI
 function unitRestrictionOf(state, reg, unitId, use) {
   const until = state.practices?.cold[unitId];
   if (use !== "scene" || until === void 0 || until < state.day || !practiceLive(state, reg, unitId)) return null;
-  return `${nameOf14(state, unitId)} is not seeing the commander until day ${until}.`;
+  return `${nameOf15(state, unitId)} is not seeing the commander until day ${until}.`;
 }
 
 // src/engine/actions/practice.ts
@@ -39977,6 +40095,10 @@ registerAction("practice/raise_alarm", (draft, payload, ctx2) => {
 registerAction("practice/answer_alarm", (draft, payload, ctx2) => {
   if (!isObj41(payload) || typeof payload.alarmId !== "string") throw new Error("practice/answer_alarm needs { alarmId, answer }.");
   return answerAlarm(draft, ctx2, payload.alarmId, payload.answer);
+});
+registerAction("practice/ask", (draft, payload, ctx2) => {
+  if (!isObj41(payload) || typeof payload.unitId !== "string" || payload.what !== "task" && payload.what !== "punishment") throw new Error("practice/ask needs { unitId, what }.");
+  return ask(draft, ctx2, payload.unitId, payload.what);
 });
 
 // src/llm/callTypes.ts
@@ -40737,7 +40859,7 @@ function refusalReason(state, reg, unitId) {
 // src/loyalty/loyaltyController.ts
 var SCENE_PREFIXES = ["refusal:", "loyalty:", "leash_trauma:"];
 function createLoyalty(deps) {
-  const nameOf26 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const nameOf27 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const failure = (events) => events.find((e) => e.type === "error");
   const toastFailure = (e) => void deps.toast("error", String(e.message ?? e.code));
   function order(unitId) {
@@ -40756,7 +40878,7 @@ function createLoyalty(deps) {
       const stance = commandStance(state, reg, unitId);
       const entry = stance === null ? void 0 : stanceEntry(reg, stance);
       const reason = refusalReason(state, reg, unitId);
-      deps.context.setDirective(entry ? stanceRefusalDirective(unitId, nameOf26(unitId), entry, reason) : refusalDirective(unitId, nameOf26(unitId), reason));
+      deps.context.setDirective(entry ? stanceRefusalDirective(unitId, nameOf27(unitId), entry, reason) : refusalDirective(unitId, nameOf27(unitId), reason));
     } else deps.context.clearDirective(`refusal:${unitId}`);
     deps.refreshContext();
     return refused;
@@ -40770,7 +40892,7 @@ function createLoyalty(deps) {
     }
     if (!events.some((e) => e.type === "scene_compelled")) return false;
     const forced = events.find((e) => e.type === "scene_compelled")?.forced === true;
-    deps.context.setDirective(forced ? compelledDirective(unitId, nameOf26(unitId)) : compelFailedDirective(unitId, nameOf26(unitId)));
+    deps.context.setDirective(forced ? compelledDirective(unitId, nameOf27(unitId)) : compelFailedDirective(unitId, nameOf27(unitId)));
     deps.refreshContext();
     return forced;
   }
@@ -40782,14 +40904,14 @@ function createLoyalty(deps) {
     for (const id of state.scene.participants) {
       const rel = state.relations[id];
       if (!rel) continue;
-      const band2 = bandDirective(id, nameOf26(id), rel.loyaltyBand);
+      const band2 = bandDirective(id, nameOf27(id), rel.loyaltyBand);
       if (band2) {
         deps.context.setDirective(band2);
         set2 = true;
       }
       const recent2 = log.some((e) => e.unitId === id && state.day - e.day <= TUNING.leash.traumaDays);
       if (rel.flags.includes("leashed") && recent2) {
-        deps.context.setDirective(traumaDirective(id, nameOf26(id)));
+        deps.context.setDirective(traumaDirective(id, nameOf27(id)));
         set2 = true;
       }
     }
@@ -41037,7 +41159,7 @@ function createPower(deps) {
     drop2(opened.id);
     return answer.choice === "accept" ? "dropped" : "cancelled";
   }
-  const nameOf26 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? String(id);
+  const nameOf27 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? String(id);
   function endorse2() {
     const events = deps.app.dispatch({ type: "power/endorse", payload: {} }, { expectChatId: chatId() });
     const bad = failure(events);
@@ -41046,7 +41168,7 @@ function createPower(deps) {
       return false;
     }
     const id = events.find((e) => e.type === "leader_endorsed" && e.unitId !== void 0)?.unitId;
-    deps.toast("info", `${nameOf26(id)} is now second-in-command.`);
+    deps.toast("info", `${nameOf27(id)} is now second-in-command.`);
     deps.refreshContext();
     return true;
   }
@@ -41066,7 +41188,7 @@ function createPower(deps) {
     if (!result?.unitId) return true;
     const opened = deps.startScene ? await deps.startScene({ locationId: "quarters_unit", participants: [result.unitId], origin: "event" }) : false;
     if (opened && chatId() === chat) {
-      deps.context.setDirective({ id: "power:challenge", expiresAfter: "scene", text: challengeText(nameOf26(result.unitId), stat3, result.won === true) });
+      deps.context.setDirective({ id: "power:challenge", expiresAfter: "scene", text: challengeText(nameOf27(result.unitId), stat3, result.won === true) });
       deps.refreshContext();
     }
     return true;
@@ -41089,14 +41211,14 @@ function createPower(deps) {
       for (const e of events) {
         if (e.type === "countermanded") {
           const activity = String(deps.registries().activities.get(String(e.activityId))?.name ?? e.activityId);
-          deps.toast("warn", `${nameOf26(e.leaderId)} countermands ${activity} with ${nameOf26(e.unitId)}: ACCEPT or OVERRULE.`);
+          deps.toast("warn", `${nameOf27(e.leaderId)} countermands ${activity} with ${nameOf27(e.unitId)}: ACCEPT or OVERRULE.`);
         } else if (e.type === "leader_changed") {
-          deps.toast("info", e.to !== void 0 ? `${nameOf26(e.to)} has become the one the squad looks to.` : `The squad no longer looks to ${nameOf26(e.from)}.`);
+          deps.toast("info", e.to !== void 0 ? `${nameOf27(e.to)} has become the one the squad looks to.` : `The squad no longer looks to ${nameOf27(e.from)}.`);
         } else if (e.type === "countermand_overruled" && state()?.scene?.participants.includes(String(e.leaderId))) {
           deps.context.setDirective({
             id: "power:countermand",
             expiresAfter: "next_reply",
-            text: `The commander has just overruled ${nameOf26(e.leaderId)}'s call in front of her; she reacts in character.`
+            text: `The commander has just overruled ${nameOf27(e.leaderId)}'s call in front of her; she reacts in character.`
           });
           deps.refreshContext();
         }
@@ -41141,7 +41263,7 @@ function createPersonal(deps) {
   const reg = () => deps.registries();
   const wording2 = /* @__PURE__ */ new Map();
   const keyOf = (id) => `${chatId() ?? ""}:${id}`;
-  const nameOf26 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? "She";
+  const nameOf27 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? "She";
   const interceptOf = (id) => {
     const open3 = state()?.personal?.intercepts?.open;
     return open3?.id === id ? open3 : void 0;
@@ -41156,7 +41278,7 @@ function createPersonal(deps) {
         kind: "dm_edit",
         unitName: unit3.displayName,
         stateHint: String(reg().relationshipStates.get(s.relations[unit3.id]?.stateId ?? "")?.promptHint ?? ""),
-        recipientName: nameOf26(s, open3.toUnitId) === "She" ? "" : nameOf26(s, open3.toUnitId),
+        recipientName: nameOf27(s, open3.toUnitId) === "She" ? "" : nameOf27(s, open3.toUnitId),
         original: open3.original ?? ""
       };
     },
@@ -41229,7 +41351,7 @@ function createPersonal(deps) {
       const s = state();
       const open3 = s?.personal?.intercepts?.open;
       if (!s || !open3 || !events.some((e) => e.type === "device_intercept" && e.hit === true)) return { cancelled: false };
-      const editorName = nameOf26(s, open3.unitId);
+      const editorName = nameOf27(s, open3.unitId);
       const answer = await deps.confirmEdit({
         editorName,
         channel: kind,
@@ -41293,10 +41415,10 @@ function createPersonal(deps) {
         if (e.type === "wager_resolved") {
           const s = state();
           if (deps.onWagerResult) deps.onWagerResult(e);
-          else if (s) deps.toast("info", `${nameOf26(s, String(e.unitId))}'s wager is decided: ${e.winner === "unit" ? "she wins" : e.winner === "commander" ? "the commander wins" : "nobody wins"}.`);
+          else if (s) deps.toast("info", `${nameOf27(s, String(e.unitId))}'s wager is decided: ${e.winner === "unit" ? "she wins" : e.winner === "commander" ? "the commander wins" : "nobody wins"}.`);
         } else if (e.type === "wager_refused") {
           const s = state();
-          if (s) deps.toast("info", `${nameOf26(s, String(e.unitId))} refuses the bet.`);
+          if (s) deps.toast("info", `${nameOf27(s, String(e.unitId))} refuses the bet.`);
         }
         if (e.type === "secret_found") foundSecret = foundSecret ?? String(e.secretId);
         if (e.type === "booking_conflict") {
@@ -41304,7 +41426,7 @@ function createPersonal(deps) {
         } else if (e.type === "claimed") {
           const s = state();
           if (deps.onClaim) deps.onClaim(String(e.unitId));
-          else if (s) deps.toast("info", `${nameOf26(s, String(e.unitId))} has told everyone the commander is hers.`);
+          else if (s) deps.toast("info", `${nameOf27(s, String(e.unitId))} has told everyone the commander is hers.`);
         }
       }
       if (foundSecret !== void 0) {
@@ -41353,7 +41475,7 @@ function createSpecial(deps) {
     }
     deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: fallbackFragment(deps.registries(), x, nameFor2(s, x.unitId)) } }, { expectChatId: expect });
   }
-  const nameOf26 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? "A soldier";
+  const nameOf27 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? "A soldier";
   let dreamt = null;
   const handlerId = () => state()?.special?.debts?.handlerId ?? "";
   const CONSEQUENCE_WORDS = {
@@ -41382,18 +41504,18 @@ function createSpecial(deps) {
         if (e.type === "frequency_intercept") void word2(String(e.interceptId), expect).catch(() => {
         });
         else if (e.type === "frequency_discovered") {
-          deps.notice?.("warn", `${nameOf26(e.unitId)} found out about the frequency. Expect her to confront you.`, "FREQUENCY", "frequency");
+          deps.notice?.("warn", `${nameOf27(e.unitId)} found out about the frequency. Expect her to confront you.`, "FREQUENCY", "frequency");
           deps.cutIn?.("FOUND OUT");
         } else if (e.type === "implant_burned") deps.notice?.("info", "The implant is burned out. The fragments stop for good.", "FREQUENCY", "frequency");
         else if (e.type === "premonition") {
           const p = state()?.special?.paranoia?.premonitions.find((x) => x.id === e.premonitionId);
-          if (p) deps.notice?.("warn", premonitionLine(deps.registries(), p, nameOf26(p.unitId)), "PREMONITION", "premonition");
+          if (p) deps.notice?.("warn", premonitionLine(deps.registries(), p, nameOf27(p.unitId)), "PREMONITION", "premonition");
         } else if (e.type === "handler_threat") deps.notice?.("warn", handlerLine(deps.registries(), handlerId(), "threat"), "HANDLER", "handler");
         else if (e.type === "handler_leak") {
           deps.notice?.("warn", handlerLine(deps.registries(), handlerId(), "leak"), "HANDLER", "handler");
           deps.cutIn?.("EXPOSED");
         } else if (e.type === "debts_consequence") deps.notice?.("warn", CONSEQUENCE_WORDS[String(e.kind)] ?? "Something you sold came back.", "HANDLER", "handler");
-        else if (e.type === "debts_discovered") deps.notice?.("warn", `${nameOf26(e.unitId)} found out about the handler.`, "HANDLER", "handler");
+        else if (e.type === "debts_discovered") deps.notice?.("warn", `${nameOf27(e.unitId)} found out about the handler.`, "HANDLER", "handler");
         else if (e.type === "defector_arc") deps.notice?.("warn", "The dealings with the rival corporation are out. This is the defector arc now.", "HANDLER", "handler");
         else if (e.type === "bloom_nightmare") dreamt = nightmareLine(Number(e.day));
         else if (e.type === "day_started" && dreamt !== null) {
@@ -42108,7 +42230,7 @@ function createWarden(deps) {
       return s && w && agendaKey(w) === key && w.agenda === "fallback" && w.overrideFired !== true && !s.ended ? null : "Her agenda is set.";
     }
   });
-  async function ask() {
+  async function ask2() {
     const s = state();
     const w = s ? wardenOf(s) : null;
     const expect = chatId();
@@ -42252,7 +42374,7 @@ function createWarden(deps) {
       if (w) await deps.generations.reroll("warden.agenda", agendaKey(w));
     },
     onEvents(events) {
-      if (events.some((e) => e.type === "warden_assigned")) void ask().catch(() => {
+      if (events.some((e) => e.type === "warden_assigned")) void ask2().catch(() => {
       });
       if (events.some((e) => e.type === "day_started")) snapshot();
       const dead = events.find((e) => e.type === "commander_died" && e.rule === "rewind_day");
@@ -42270,7 +42392,7 @@ function createWarden(deps) {
         const snap = readDayStart(deps.st);
         if (!snap || snap.chatId !== chatId()) snapshot();
       }
-      void ask().catch(() => {
+      void ask2().catch(() => {
       });
       refreshDirectives();
     }
@@ -42443,7 +42565,7 @@ function createHeadStart(deps) {
       return s.headStart.recap === void 0 ? null : recapCommitted(s);
     }
   });
-  async function ask() {
+  async function ask2() {
     const s = state();
     if (!s || !s.headStart || s.headStart.recap !== void 0) return;
     const key = `${chatId() ?? ""}:${KEY}`;
@@ -42455,7 +42577,7 @@ function createHeadStart(deps) {
   const clear = () => deps.context.clearMatching((d) => d.id === OPENING_DIRECTIVE);
   return {
     onLoaded() {
-      void ask().catch(() => {
+      void ask2().catch(() => {
       });
     },
     onSceneOpened() {
@@ -43021,6 +43143,7 @@ var DEMONSTRATION_PREFIX = "practice:demonstration:";
 var PERMISSION_PREFIX = "practice:permission:";
 var VERDICT_PREFIX = "practice:verdict:";
 var ALARM_PREFIX = "practice:alarm:";
+var ASK_PREFIX = "practice:ask:";
 var ISSUED_PREFIX = "practice:issued:";
 var HELD_ID = "practice:held";
 var WITNESS_PHRASE = { drawn: "is drawn to it", indifferent: "is unmoved by it", dislikes: "is put off by it" };
@@ -43095,6 +43218,7 @@ function issuedDirective(event, state, reg) {
   if (event.type === "permission_answered") return permissionDirective(event, state, reg);
   if (event.type === "hold_asked") return holdAskedDirective(event, state, reg);
   if (event.type === "hold_alarm") return alarmDirective(event, state, reg);
+  if (event.type === "ask_answered") return askDirective(event, state, reg);
   if (event.type !== "task_issued" || typeof event.taskId !== "string") return null;
   if (event.kind === "demonstration") return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -43102,6 +43226,14 @@ function issuedDirective(event, state, reg) {
   if (task === void 0 || unit3 === void 0 || state.scene?.participants.includes(unit3.id) !== true || !practiceLive(state, reg, unit3.id)) return null;
   const what = task.sealed === true ? `${unit3.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit3.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+var ASKED_FOR = { task: "a task", punishment: "a punishment" };
+function askDirective(event, state, reg) {
+  const unit3 = state.squad.find((u) => u.id === event.unitId);
+  const how = askWords(event);
+  const what = typeof event.what === "string" ? ASKED_FOR[event.what] : void 0;
+  if (unit3 === void 0 || how === void 0 || what === void 0) return null;
+  return { id: `${ASK_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`The commander has asked ${unit3.displayName} for ${what}, and she ${how}. ${NEVER_NAME}`) };
 }
 var ASKED_PHRASE = {
   release: "has agreed to let the commander go, and says so",
@@ -43168,7 +43300,7 @@ function clearPracticeDirectives(builder, opts = {}) {
   builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !(opts.keepVerdict === true && d.id.startsWith(VERDICT_PREFIX)));
 }
 function refreshPracticeDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX));
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX) && !d.id.startsWith(ASK_PREFIX));
   if (state === null) return;
   for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }
@@ -43456,6 +43588,21 @@ function createPractice(deps) {
       }
       deps.openPlanner(target);
       return true;
+    },
+    ask(unitId, what) {
+      const done = ok(deps.app.dispatch({ type: "practice/ask", payload: { unitId, what } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    confess(taskId) {
+      const done = ok(deps.app.dispatch({ type: "practice/confess", payload: { taskId } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    askPermission(holderId) {
+      const done = ok(deps.app.dispatch({ type: "practice/ask_permission", payload: { holderId } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     async idle() {
       while (flight) await flight.catch(() => {
@@ -44087,12 +44234,12 @@ function measures(state, reg) {
 function renderVotePanel(host, vote, lines, ctx2) {
   host.replaceChildren();
   const { state, registries: reg } = ctx2;
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const kindLabel2 = String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind);
   const rows = vote.ballots.map((b) => h(
     "li",
     { class: "alius-ballot", "data-ballot": b.unitId, "data-side": b.vote },
-    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vote", { unitId: b.unitId }) }, nameOf26(b.unitId)),
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vote", { unitId: b.unitId }) }, nameOf27(b.unitId)),
     ` ${SIDE_WORD[b.vote]}${b.vote === "abstain" ? "" : ` \xD7${num4(b.weight)}`} `,
     h("span", { class: "alius-dim" }, lines[b.unitId] ?? "")
   ));
@@ -44118,7 +44265,7 @@ function renderVotePanel(host, vote, lines, ctx2) {
   const act = (id, label2, onclick, extra = {}) => h("button", { type: "button", class: "alius-btn alius-option", "data-vote-act": id, ...analyzeNative("glossary:vote"), onclick, ...extra }, label2);
   const actions = [];
   const o = obedienceOf(state);
-  const against = o !== null && o.who === "commander" && herVote(state, reg, vote) === "against" ? nameOf26(o.unitId) : null;
+  const against = o !== null && o.who === "commander" && herVote(state, reg, vote) === "against" ? nameOf27(o.unitId) : null;
   if (vote.status === "passed") {
     actions.push(act("carry", "[ CARRY OUT ]", ctx2.onCarry));
     if (against !== null) {
@@ -44133,7 +44280,7 @@ function renderVotePanel(host, vote, lines, ctx2) {
       picker2.hidden = false;
       if (picker2.childElementCount > 0) return;
       const dissent = vote.ballots.filter((b) => b.vote === "against" && state.squad.find((u) => u.id === b.unitId)?.kind === "named");
-      const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf26(b.unitId))));
+      const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf27(b.unitId))));
       const how = h("select", { class: "alius-select", "data-punish-measure": "", "aria-label": "Measure" }, ...measures(state, reg).map((e) => h("option", { value: String(e.id) }, String(e.label))));
       picker2.append(who, how, act("punish-confirm", "[ CONFIRM ]", () => ctx2.onOverrule("punish", { unitId: who.value, measure: how.value })));
     };
@@ -44305,13 +44452,13 @@ function bondsDirectives(builder, state, reg) {
 function patienceDirective(unitId, name) {
   return { id: `want:${unitId}`, expiresAfter: "next_reply", text: `${name} was asked to wait; she is trying to be patient.` };
 }
-function askDirective(unitId, name) {
+function askDirective2(unitId, name) {
   return { id: `ask:${unitId}`, expiresAfter: "next_reply", text: `The commander asks ${name} what she wants; she answers plainly, in character.` };
 }
 
 // src/discipline/controller.ts
 function createDiscipline(deps) {
-  const nameOf26 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const nameOf27 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
   const syncDirectives = () => {
@@ -44386,7 +44533,7 @@ function createDiscipline(deps) {
       deps.toast("error", String(bad.message ?? bad.code));
       return false;
     }
-    if (postponed && asked && state()?.scene?.participants.includes(asked.unitId)) deps.context.setDirective(patienceDirective(asked.unitId, nameOf26(asked.unitId)));
+    if (postponed && asked && state()?.scene?.participants.includes(asked.unitId)) deps.context.setDirective(patienceDirective(asked.unitId, nameOf27(asked.unitId)));
     syncDirectives();
     return true;
   }
@@ -44405,7 +44552,7 @@ function createDiscipline(deps) {
     for (const e of events) {
       if (e.type === "threat_registered" && (e.channel ?? "scene") === "scene") {
         const unitId = String(e.unitId);
-        deps.context.setDirective(threatDirective(unitId, nameOf26(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
+        deps.context.setDirective(threatDirective(unitId, nameOf27(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
         set2 = true;
       } else if (e.type === "delegate_demand" && typeof e.demandId === "string") {
         void wordAndDeliver(e.demandId, chatId()).catch(() => {
@@ -44414,7 +44561,7 @@ function createDiscipline(deps) {
         void wordAndDeliver(e.demandId, chatId()).catch(() => {
         });
       } else if (e.type === "threat_lapsed") {
-        deps.toast("info", `A threat lapsed: ${nameOf26(String(e.unitId))} saw the commander back down.`);
+        deps.toast("info", `A threat lapsed: ${nameOf27(String(e.unitId))} saw the commander back down.`);
       } else if (e.type === "covert_sabotage" && deps.settings().debug) {
         deps.toast("info", `Covert sabotage (${String(e.kind)}).`);
       }
@@ -44436,7 +44583,7 @@ function createDiscipline(deps) {
     const events = deps.app.dispatch({ type: "reputation/introduce", payload: { unitId: only } });
     const given = events.find((e) => e.type === "nickname_given");
     if (!given) return;
-    deps.context.setDirective(nicknameDirective(nameOf26(only), String(given.name)));
+    deps.context.setDirective(nicknameDirective(nameOf27(only), String(given.name)));
   }
   function onSceneClosed() {
     clearDisciplineDirectives(deps.context);
@@ -44446,7 +44593,7 @@ function createDiscipline(deps) {
   function announcePunish(unitId, measure) {
     const state2 = deps.app.current().state;
     const reg = deps.registries();
-    const name = nameOf26(unitId);
+    const name = nameOf27(unitId);
     const label2 = measureLabel(reg, measure);
     if (state2?.scene?.participants.includes(unitId)) {
       const stance = commandStance(state2, reg, unitId);
@@ -46216,11 +46363,11 @@ function drawHeldStrip(host, state, reg, handlers2) {
   const holder2 = held3 === null ? void 0 : state.squad.find((u) => u.id === held3.by);
   if (held3 === null || holder2 === void 0) return;
   const ctx2 = { unitId: holder2.id };
-  const ask = h("button", { type: "button", class: "alius-btn", "data-ask-release": "", ...analyzeNative("glossary:ask_release", ctx2), onclick: () => handlers2.askRelease() }, "[ ASK TO BE LET GO ]");
+  const ask2 = h("button", { type: "button", class: "alius-btn", "data-ask-release": "", ...analyzeNative("glossary:ask_release", ctx2), onclick: () => handlers2.askRelease() }, "[ ASK TO BE LET GO ]");
   const alarm = state.practices?.alarm;
   const send = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted === true && alarm.kind !== "night" ? h("button", { type: "button", class: "alius-btn", "data-held-send": "", ...analyzeNative("glossary:without_command", ctx2), onclick: () => handlers2.sendSquad(alarm.id) }, "[ SEND THE SQUAD ]") : null;
   if (handlers2.sensory) {
-    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ask, ...send !== null ? [send] : []);
+    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ask2, ...send !== null ? [send] : []);
     return;
   }
   const until = held3.hidden === true ? "" : ` until ${endsWords(state, held3.until)}`;
@@ -46229,7 +46376,7 @@ function drawHeldStrip(host, state, reg, handlers2) {
     { class: "alius-held-strip", "data-held-strip": "", role: "status" },
     h("span", { class: "alius-chip", "data-held-chip": "", ...analyzeAttrs("glossary:held", ctx2) }, "HELD"),
     h("span", { class: "alius-held-text" }, ` in ${holder2.displayName}'s quarters${until}. `),
-    ask,
+    ask2,
     send
   ));
 }
@@ -46652,7 +46799,7 @@ function renderCombatScreen(host, ctx2) {
     }, `${PRESENCE_LABEL2[p.kind]}${p.used ? " \u2014 USED" : ""}`);
   }
   const unitOf13 = (state, c) => state.squad.find((u) => u.id === c.unitId);
-  const nameOf26 = (state, c) => {
+  const nameOf27 = (state, c) => {
     if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf13(state, c)?.displayName ?? c.nameKey;
     const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
@@ -46818,7 +46965,7 @@ function renderCombatScreen(host, ctx2) {
       if (!cid) return "";
       if (cid === "commander") return "Commander";
       const c = cs?.combatants.find((x) => x.cid === cid);
-      return c ? nameOf26(state, c) : cid;
+      return c ? nameOf27(state, c) : cid;
     };
     const skill = l.skillId ? reg.skills.get(l.skillId)?.name ?? l.skillId : "";
     const order = l.orderId ? reg.orders.get(l.orderId)?.name ?? l.orderId : "";
@@ -46912,7 +47059,7 @@ function renderCombatScreen(host, ctx2) {
         if (s) clickCard(s, c.cid);
       }
     });
-    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf26(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
+    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf27(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
     const live3 = c.unitId ? { unitId: c.unitId } : void 0;
     lines.push(h("div", { class: "alius-cc-hp alius-stat", ...analyzeAttrs("glossary:stat_hp", live3) }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
     if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st alius-stat", ...analyzeAttrs("glossary:stress", live3) }, `ST ${bar(c.stress, 100)} ${c.stress}`));
@@ -46981,7 +47128,7 @@ function renderCombatScreen(host, ctx2) {
       { class: "alius-combat-timeline", "aria-label": "Turn order" },
       ...cs.timeline.map((cid, i) => {
         const c = cs.combatants.find((x) => x.cid === cid);
-        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf26(state, c).slice(0, 6));
+        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf27(state, c).slice(0, 6));
       })
     );
     const waiting2 = cs.phase === "awaiting" && cs.awaitingCid;
@@ -47183,7 +47330,7 @@ function renderInvTab(host, ctx2) {
       return;
     }
     const slotOf = (i) => reg.items.get(i.itemId)?.slot;
-    const nameOf26 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
+    const nameOf27 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
     const current = state.inventory.find((i) => i.uid === selected2) ?? null;
     if (!current) selected2 = null;
@@ -47223,7 +47370,7 @@ function renderInvTab(host, ctx2) {
               render();
             }
           },
-          h("span", { class: "alius-inv-name" }, nameOf26(i)),
+          h("span", { class: "alius-inv-name" }, nameOf27(i)),
           h("span", { class: `alius-rarity alius-rarity-${i.rarity} alius-chip`, ...analyzeAttrs("glossary:rarity") }, i.rarity),
           h("span", {}, i.upgrade > 0 ? `+${i.upgrade}` : ""),
           h("span", { class: "alius-dim" }, ...i.affixes.flatMap((a, k) => [...k > 0 ? [", "] : [], h("span", { class: "alius-chip", ...analyzeAttrs(`affixes:${a}`) }, String(reg.affixes.get(a)?.name ?? a))])),
@@ -48697,7 +48844,7 @@ function createMemoryController(deps) {
     void p.finally(() => inflight.delete(p));
     return p;
   };
-  const nameOf26 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? id;
   const texts = (facts) => facts.map((f) => f.text);
   function dispatchFold(target, answer) {
     const s = state();
@@ -48720,7 +48867,7 @@ function createMemoryController(deps) {
       if (!s || !due || due.target !== target) return { expired: "Nothing is waiting to be folded." };
       const prev = s.memory.dossiers?.[due.target];
       return {
-        name: due.target === WORLD ? "the squad as a whole" : nameOf26(s, due.target),
+        name: due.target === WORLD ? "the squad as a whole" : nameOf27(s, due.target),
         own: prev?.own ?? "",
         shared: prev?.shared ?? "",
         ownFacts: texts(due.own),
@@ -48803,7 +48950,7 @@ function createMemoryController(deps) {
       const excluded = disabledCategories(s, deps.registries());
       return {
         location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
-        participants: scene.participants.map((id) => ({ id, name: nameOf26(s, id) })),
+        participants: scene.participants.map((id) => ({ id, name: nameOf27(s, id) })),
         transcript: slice.map((x) => ({ speaker: x.isUser ? s.commander.name : x.name, text: x.text, ...flagged.has(x.index) ? { flagged: true } : {} })),
         ...excluded.length > 0 ? { excluded } : {},
         ...scene.digest ? { previous: scene.digest.text } : {},
@@ -48868,7 +49015,7 @@ function createMemoryController(deps) {
 // src/scene/memoryContext.ts
 var DM_DAYS = 2;
 var DM_TEXT_MAX = 120;
-var nameOf15 = (s, id) => {
+var nameOf16 = (s, id) => {
   if (id === "commander") return s.commander.name;
   return s.squad.find((u) => u.id === id)?.displayName ?? id;
 };
@@ -48946,7 +49093,7 @@ function registerMemoryContext(builder, deps) {
     render: (s, budget) => {
       if (!s.scene) return null;
       const open3 = openPromises(s, s.scene.participants, s.scene.participants);
-      return fitItems("Open promises:", open3.map((p) => `- ${nameOf15(s, p.by)} promised ${nameOf15(s, p.to)}: ${p.text}`), budget);
+      return fitItems("Open promises:", open3.map((p) => `- ${nameOf16(s, p.by)} promised ${nameOf16(s, p.to)}: ${p.text}`), budget);
     }
   });
   builder.register({
@@ -48969,7 +49116,7 @@ function registerMemoryContext(builder, deps) {
       if (n <= 0) return null;
       let messages = threadOf(s, unitId).filter((m) => m.day >= s.day - DM_DAYS).slice(-n);
       const limit = budget ?? Infinity;
-      const text2 = (ms) => `Messages lately: ${ms.map((m) => `${m.from === "commander" ? "commander" : nameOf15(s, m.from)}: ${m.text.replace(/\s+/g, " ").trim().slice(0, DM_TEXT_MAX)}`).join("; ")}`;
+      const text2 = (ms) => `Messages lately: ${ms.map((m) => `${m.from === "commander" ? "commander" : nameOf16(s, m.from)}: ${m.text.replace(/\s+/g, " ").trim().slice(0, DM_TEXT_MAX)}`).join("; ")}`;
       while (messages.length > 1 && estTokens(text2(messages)) > limit) messages = messages.slice(1);
       if (messages.length === 0) return null;
       const out = text2(messages);
@@ -50791,7 +50938,7 @@ function createSceneController(deps) {
       const lead = s?.scene?.lead;
       const unit3 = lead ? unitById(s, lead.unitId) : void 0;
       if (!lead || !unit3) return;
-      app.context.setDirective(askDirective(unit3.id, unit3.displayName));
+      app.context.setDirective(askDirective2(unit3.id, unit3.displayName));
       app.refreshContext();
     },
     limit(text2) {
@@ -52890,7 +53037,7 @@ var TAG_FIELDS = [
   ["triggers", "Triggers (hard lines)", SETUP_LIMITS.triggers]
 ];
 var BASELINE_FIELDS = ["trust", "affinity", "attraction"];
-var nameOf16 = (e, id) => e ? String(e.name) : `UNKNOWN ${id}`;
+var nameOf17 = (e, id) => e ? String(e.name) : `UNKNOWN ${id}`;
 function pickCard(address, cls, id, selected2, onClick, ...children) {
   return h("button", { type: "button", class: `alius-card alius-option ${cls}`, "data-id": id, "aria-pressed": String(selected2), ...analyzeNative(address), onclick: onClick }, ...children);
 }
@@ -52954,7 +53101,7 @@ function renderCalibration(host, ctx2) {
           id,
           ch.roleId === id,
           () => onUpdate({ roleId: id }),
-          h("strong", {}, nameOf16(role, id)),
+          h("strong", {}, nameOf17(role, id)),
           h("span", {}, role ? ` \u2014 ${String(role.summary)}` : ""),
           reason ? h("em", {}, ` ${reason}`) : ""
         );
@@ -52994,7 +53141,7 @@ function renderCalibration(host, ctx2) {
             h("span", { class: "alius-field-label" }, "Description"),
             textArea("sig-desc", cur.description, 240, (v) => onUpdate({ signature: { ...cur, description: v } }))
           ),
-          h("p", { class: "alius-dim" }, `Template: ${nameOf16(tpl, cur.templateId)} \u2014 ${tpl ? String(tpl.mechanic) : ""}`)
+          h("p", { class: "alius-dim" }, `Template: ${nameOf17(tpl, cur.templateId)} \u2014 ${tpl ? String(tpl.mechanic) : ""}`)
         ) : null
       )
     );
@@ -53024,7 +53171,7 @@ function renderCalibration(host, ctx2) {
             id,
             ch.defects.some((x) => x.id === id),
             () => pick3(id, origin),
-            h("strong", {}, nameOf16(d, id)),
+            h("strong", {}, nameOf17(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
             origin ? h("p", {}, `Origin: ${origin}`) : ""
@@ -53033,7 +53180,7 @@ function renderCalibration(host, ctx2) {
         ...ch.defects.map((sel) => h(
           "label",
           { class: "alius-field" },
-          h("span", { class: "alius-field-label" }, `Origin \u2014 ${nameOf16(reg.defects.get(sel.id), sel.id)}`),
+          h("span", { class: "alius-field-label" }, `Origin \u2014 ${nameOf17(reg.defects.get(sel.id), sel.id)}`),
           textArea(`origin-${sel.id}`, sel.origin, 300, (v) => onUpdate({ defects: ch.defects.map((d) => d.id === sel.id ? { ...d, origin: v } : d) }))
         ))
       )
@@ -53482,7 +53629,7 @@ function renderNewArrivals(host, wizard) {
 }
 
 // src/ui/setup/shared.ts
-var nameOf17 = (reg, registry2, id) => {
+var nameOf18 = (reg, registry2, id) => {
   if (!id) return "\u2014";
   const e = reg[registry2].get(id);
   return e ? String(e.name) : `UNKNOWN ${id}`;
@@ -53526,9 +53673,9 @@ function unitLines(wizard, reg, u, n) {
   const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? "+" : ""}${c.values[a]}`).join("  ");
   return [
     "",
-    `[${n + 1}] ${u.displayName} \u2014 ${nameOf17(reg, "roles", c.roleId)}`,
+    `[${n + 1}] ${u.displayName} \u2014 ${nameOf18(reg, "roles", c.roleId)}`,
     `    SIGNATURE : ${c.signature ? c.signature.name : "\u2014"}`,
-    `    DEFECTS   : ${c.defects.map((d) => nameOf17(reg, "defects", d.id)).join(", ") || "\u2014"}`,
+    `    DEFECTS   : ${c.defects.map((d) => nameOf18(reg, "defects", d.id)).join(", ") || "\u2014"}`,
     `    VALUES    : ${values}`,
     `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
     ...preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity}${preview.headStartDays > 0 ? ", BEFORE THE HEAD START" : ""})`] : []
@@ -53539,8 +53686,8 @@ function reviewLines(wizard, reg) {
   const corpId = s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null;
   return [
     `COMMANDER   : ${s.commanderName.trim()}`,
-    `CORPORATION : ${nameOf17(reg, "corporations", corpId)} \u2014 ${nameOf17(reg, "starts", s.startId)}`,
-    `CRIME       : ${nameOf17(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
+    `CORPORATION : ${nameOf18(reg, "corporations", corpId)} \u2014 ${nameOf18(reg, "starts", s.startId)}`,
+    `CRIME       : ${nameOf18(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
     ...commanderLines(s, reg),
     ...s.campaign.kind === "leashswap" ? [`MODE        : LEASHSWAP \u2014 ${s.campaign.deathRule === "rewind_day" ? "REWIND DAY" : "CAMPAIGN END"} \u2014 WARDEN: ${s.campaign.warden.by === "player" ? s.units[s.campaign.warden.index]?.displayName ?? "CORPORATE ASSIGNMENT" : "CORPORATE ASSIGNMENT"}`] : [],
     ...s.headStart.days > 0 ? [`HEAD START  : ${HEAD_START_LABEL[s.headStart.days]}${s.headStart.newArrivals.length > 0 ? ` \u2014 NEW ARRIVALS: ${s.headStart.newArrivals.map((a) => s.units.find((u) => u.avatar === a)?.displayName ?? a).join(", ")}` : ""}`] : [],
@@ -53603,7 +53750,7 @@ function renderIntake(host, ctx2) {
   const step = wizard.prologueStep();
   const lines = linesOf(ctx2);
   const s = wizard.state;
-  const corporation = nameOf17(reg, "corporations", s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null);
+  const corporation = nameOf18(reg, "corporations", s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null);
   const name = h("input", { type: "text", class: "alius-input", "data-key": "name", maxlength: "60" });
   name.value = s.commanderName;
   name.addEventListener("input", () => wizard.setCommanderName(name.value));
@@ -54096,7 +54243,7 @@ function renderSetupScreen(host, ctx2) {
       classic ? h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, "Commander name"), name) : null,
       h("h3", {}, "STARTING POINT"),
       h("div", { class: "alius-cards" }, ...[...reg.starts.values()].map((st0) => {
-        const corp = nameOf17(reg, "corporations", String(st0.corporationId));
+        const corp = nameOf18(reg, "corporations", String(st0.corporationId));
         return card(
           `starts:${st0.id}`,
           "alius-start-card",
@@ -55439,7 +55586,7 @@ function renderSkillTree(host, ctx2) {
 
 // src/ui/squad/squadTab.ts
 var unknown = (id) => `UNKNOWN ${id}`;
-var nameOf18 = (e, id) => e ? String(e.name) : unknown(id);
+var nameOf19 = (e, id) => e ? String(e.name) : unknown(id);
 function defectBlock(reg, d) {
   const def = reg.defects.get(d.id);
   if (!def) return h("div", { class: "alius-defect" }, h("strong", {}, unknown(d.id)));
@@ -55815,7 +55962,7 @@ function unitBlock(unit3, ctx2, state) {
       "div",
       {},
       unit3.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit3.designation ?? ""}`.trimEnd()) : null,
-      h("p", {}, roleEntry ? chip2(nameOf18(roleEntry, unit3.roleId), `roles:${unit3.roleId}`) : nameOf18(roleEntry, unit3.roleId), ` \xB7 LVL ${unit3.level}`),
+      h("p", {}, roleEntry ? chip2(nameOf19(roleEntry, unit3.roleId), `roles:${unit3.roleId}`) : nameOf19(roleEntry, unit3.roleId), ` \xB7 LVL ${unit3.level}`),
       h("p", { class: "alius-xp" }, chip2(`XP ${unit3.xp}/${xpToNext(unit3.level)}`, "glossary:level_xp"), " \xB7 ", chip2(`SKILL POINTS ${unit3.skillPoints}`, "glossary:skill_points")),
       unit3.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit3.breakdown.defectId)?.breakdown?.name ?? unit3.breakdown.defectId)}`) : null,
       gone3 ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit3.status.toUpperCase()}`) : null
@@ -55873,7 +56020,7 @@ function unitBlock(unit3, ctx2, state) {
       ...unit3.kind === "grunt" ? [] : [
         h("h4", {}, "SIGNATURE"),
         h("p", {}, sigTpl ? h("strong", { class: "alius-chip", ...analyzeAttrs(`signatures:${unit3.signatureSkill.templateId}`) }, unit3.signatureSkill.name) : h("strong", {}, unit3.signatureSkill.name), ` \u2014 ${unit3.signatureSkill.description}`),
-        h("p", { class: "alius-dim" }, `Template: ${nameOf18(sigTpl, unit3.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
+        h("p", { class: "alius-dim" }, `Template: ${nameOf19(sigTpl, unit3.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
       ],
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
       ctx2.onResync && unit3.cardRef && !ctx2.settings().editLock ? h("button", { type: "button", class: "alius-btn", "data-resync": unit3.id, onclick: () => ctx2.onResync(unit3.id) }, "[ RE-SYNC FROM CARD ]") : null
@@ -55936,14 +56083,14 @@ function drawCountermandChips(host, state, reg, onAnswer) {
   host.replaceChildren();
   const c = countermandOpen(state);
   if (!c) return;
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const activityId = c.payload?.activityId;
   const activity = typeof activityId === "string" ? String(reg.activities.get(activityId)?.name ?? activityId) : "the order";
   host.append(h(
     "p",
     { class: "alius-countermand", "data-countermand-line": "" },
-    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:countermand") }, `${nameOf26(c.leaderId)} COUNTERMANDS`),
-    ` ${activity} with ${nameOf26(c.unitId)}. `,
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:countermand") }, `${nameOf27(c.leaderId)} COUNTERMANDS`),
+    ` ${activity} with ${nameOf27(c.unitId)}. `,
     h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "accept", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("accept") }, "[ ACCEPT ]"),
     " ",
     h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "overrule", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("overrule") }, "[ OVERRULE ]")
@@ -56603,10 +56750,10 @@ var unreadFrom = (state, unitId) => (state.dms[unitId] ?? []).filter((m) => m.fr
 function tonightItems(state, reg) {
   const out = [];
   const living2 = state.squad.filter(isLiving);
-  const nameOf26 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
+  const nameOf27 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
   for (const e of state.calendar.nightEventsQueue) {
-    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf26(e.unitId)) continue;
-    out.push({ kind: "knock", text: `${nameOf26(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
+    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf27(e.unitId)) continue;
+    out.push({ kind: "knock", text: `${nameOf27(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
   }
   if (state.calendar.nightEventsQueue.some((e) => e.kind === HANDLER_VISIT_KIND && e.expiresDay >= state.day)) {
     out.push({ kind: "knock", text: "A visitor at the gate.", tone: "warn", analyze: "glossary:handler" });
@@ -56616,11 +56763,11 @@ function tonightItems(state, reg) {
     if (n > 0) out.push({ kind: "dm", text: `${u.displayName}: ${n} unread message${n === 1 ? "" : "s"}.`, unitId: u.id, tone: "neutral", analyze: "glossary:tonight" });
   }
   for (const n of state.notes?.list ?? []) {
-    if (n.where !== "door" || n.read === true || state.day - n.day > 1 || !nameOf26(n.unitId)) continue;
-    out.push({ kind: "note", text: `${nameOf26(n.unitId)} left a note under your door.`, unitId: n.unitId, tone: "neutral", analyze: "glossary:hand_note" });
+    if (n.where !== "door" || n.read === true || state.day - n.day > 1 || !nameOf27(n.unitId)) continue;
+    out.push({ kind: "note", text: `${nameOf27(n.unitId)} left a note under your door.`, unitId: n.unitId, tone: "neutral", analyze: "glossary:hand_note" });
   }
   for (const d of waitingDemands(state)) {
-    out.push({ kind: "demand", text: `${nameOf26(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
+    out.push({ kind: "demand", text: `${nameOf27(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
   }
   if ((state.world.incomingUnits ?? 0) > 0) out.push({ kind: "intake", text: "A new unit is waiting for intake.", tone: "neutral", analyze: "glossary:tonight" });
   for (const m of [...state.missions.active, ...state.missions.offered]) {
@@ -56632,11 +56779,11 @@ function tonightItems(state, reg) {
   if (shortage > 0) out.push({ kind: "warning", text: `SHORTAGE ${shortage}d`, tone: "danger", analyze: "glossary:upkeep" });
   const injured = (state.commander.injuredUntilDay ?? 0) - state.day;
   if (injured > 0) out.push({ kind: "warning", text: `INJURED ${injured}d`, tone: "danger", analyze: "glossary:commander_injury" });
-  const booked = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && (b.day === state.day || b.day === state.day + 1) && nameOf26(b.unitId)).sort((a, b) => a.day - b.day || SLOT_RANK2[a.slot] - SLOT_RANK2[b.slot])[0];
+  const booked = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && (b.day === state.day || b.day === state.day + 1) && nameOf27(b.unitId)).sort((a, b) => a.day - b.day || SLOT_RANK2[a.slot] - SLOT_RANK2[b.slot])[0];
   if (booked) {
     out.push({
       kind: "booking",
-      text: `${nameOf26(booked.unitId)} has booked ${booked.day === state.day ? "today" : "tomorrow"}'s ${booked.slot}.`,
+      text: `${nameOf27(booked.unitId)} has booked ${booked.day === state.day ? "today" : "tomorrow"}'s ${booked.slot}.`,
       unitId: booked.unitId,
       tone: booked.day === state.day ? "warn" : "neutral",
       analyze: "glossary:booking"
@@ -56648,9 +56795,9 @@ function tonightItems(state, reg) {
     const milestoneFor = new Set(open3.milestones.map((m) => m.unitId));
     const claimFor = new Set(open3.claims.map((c) => c.unitId));
     const returnFor = open3.returnOffer?.unitId;
-    for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf26(id)) waiting2.add(id);
+    for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf27(id)) waiting2.add(id);
     for (const id of waiting2) {
-      out.push({ kind: "dynamic", text: `${nameOf26(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : claimFor.has(id) ? "glossary:claim" : returnFor === id ? "glossary:aftermath" : "glossary:frame" });
+      out.push({ kind: "dynamic", text: `${nameOf27(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : claimFor.has(id) ? "glossary:claim" : returnFor === id ? "glossary:aftermath" : "glossary:frame" });
     }
     for (const u of living2) {
       const aftermath = state.relations[u.id]?.dynamic?.aftermath;
@@ -56658,8 +56805,8 @@ function tonightItems(state, reg) {
       if (notice !== void 0) out.push({ kind: "dynamic", text: `${u.displayName}: ${notice}`, unitId: u.id, tone: "neutral", analyze: "glossary:aftermath" });
     }
     const threat = state.dynamic.oversight?.threat;
-    if (threat !== void 0 && nameOf26(threat.unitId) !== "") {
-      out.push({ kind: "dynamic", text: `Oversight will move ${nameOf26(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: "danger", analyze: "glossary:oversight_inquiry" });
+    if (threat !== void 0 && nameOf27(threat.unitId) !== "") {
+      out.push({ kind: "dynamic", text: `Oversight will move ${nameOf27(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: "danger", analyze: "glossary:oversight_inquiry" });
     }
   }
   const failed = fullOpenRecords(state).length;
@@ -59107,7 +59254,7 @@ function editChip(edit, name, onKeep, onRevert) {
 var HANDS2 = ["rock", "paper", "scissors"];
 function drawPersonalChips(host, state, reg, pick3, on) {
   host.replaceChildren();
-  const nameOf26 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
+  const nameOf27 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
   const group = (unitId, address, ctx2, label2, ...kids) => {
     const g = h(
       "div",
@@ -59125,7 +59272,7 @@ function drawPersonalChips(host, state, reg, pick3, on) {
       offer.giverId,
       "glossary:token",
       { unitId: offer.giverId },
-      `${nameOf26(offer.giverId)} OFFERS: ${offer.label.toUpperCase()}`,
+      `${nameOf27(offer.giverId)} OFFERS: ${offer.label.toUpperCase()}`,
       button2("[ ACCEPT ]", "accept", () => on.onAnswerToken(offer.id, true)),
       button2("[ DECLINE ]", "decline", () => on.onAnswerToken(offer.id, false))
     ));
@@ -59141,16 +59288,16 @@ function drawPersonalChips(host, state, reg, pick3, on) {
         w.unitId,
         "glossary:wager",
         live3,
-        `${nameOf26(w.unitId)} CHALLENGES: ${what}`,
+        `${nameOf27(w.unitId)} CHALLENGES: ${what}`,
         button2("[ ACCEPT ]", "accept", () => on.onAnswerWager(w.id, true)),
         button2("[ DECLINE ]", "decline", () => on.onAnswerWager(w.id, false))
       ));
     } else if (w.status === "pending_run") {
-      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf26(w.unitId)}: ${what} \u2014 WAITS FOR THE NEXT RUN`));
+      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf27(w.unitId)}: ${what} \u2014 WAITS FOR THE NEXT RUN`));
     } else if (game?.kind === "rps") {
-      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf26(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[ ${hand.toUpperCase()} ]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
+      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf27(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[ ${hand.toUpperCase()} ]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
     } else {
-      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf26(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[ FIGHT ]" : "[ PLAY ]", "play", () => on.onPlayWager(w.id, void 0))));
+      host.append(group(w.unitId, "glossary:wager", live3, `WAGER WITH ${nameOf27(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[ FIGHT ]" : "[ PLAY ]", "play", () => on.onPlayWager(w.id, void 0))));
     }
   }
   const q = state.personal?.pendingQuestion;
@@ -59168,7 +59315,7 @@ function drawPersonalChips(host, state, reg, pick3, on) {
       q.unitId,
       "glossary:wager",
       { unitId: q.unitId },
-      asks ? `YOU WON A QUESTION: ASK ${nameOf26(q.unitId)}` : `${nameOf26(q.unitId)} WON A QUESTION: ANSWER TRUTHFULLY`,
+      asks ? `YOU WON A QUESTION: ASK ${nameOf27(q.unitId)}` : `${nameOf27(q.unitId)} WON A QUESTION: ANSWER TRUTHFULLY`,
       h("span", { class: "alius-condition" }, input, button2(asks ? "[ ASK ]" : "[ ANSWER ]", "question-ok", send))
     ));
   }
@@ -59237,7 +59384,7 @@ function drawDemandChips(host, state, reg, pick3, on) {
 }
 
 // src/ui/practice/demonstrationCard.ts
-var nameOf19 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf20 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var joinNames3 = (names2) => names2.length <= 1 ? names2.join("") : `${names2.slice(0, -1).join(", ")} and ${names2[names2.length - 1]}`;
 function renderDemonstrationCard(host, ctx2) {
   const { state, reg, demonstration: d } = ctx2;
@@ -59254,7 +59401,7 @@ function renderDemonstrationCard(host, ctx2) {
   }, text2);
   const place2 = String(reg.locations.get(d.stage)?.name ?? d.stage);
   const slot2 = d.slot ?? "evening";
-  const names2 = d.audienceIds.map((id) => nameOf19(state, id));
+  const names2 = d.audienceIds.map((id) => nameOf20(state, id));
   const others = (d.narrated ?? []).length > 0;
   const before = names2.length === 0 ? "others" : others ? `${joinNames3(names2)} and others` : joinNames3(names2);
   const parts = [
@@ -59291,7 +59438,7 @@ function drawDemonstrationCards(host, state, reg, pick3, handlers2) {
 // src/ui/practice/punishmentCard.ts
 var WEIGHT_WORDS2 = { light: "light", heavy: "heavy", harsh: "harsh" };
 var labelOf3 = (reg, p) => String(reg.holderPunishments.get(p.entryId)?.label ?? reg.punishments.get(p.entryId)?.label ?? "");
-var nameOf20 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf21 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function renderPunishmentCard(host, ctx2) {
   const { state, reg, punishment: p } = ctx2;
   const unit3 = state.squad.find((u) => u.id === p.holderId);
@@ -59366,7 +59513,7 @@ function drawPunishmentCards(host, state, reg, pick3, handlers2) {
       host.append(h(
         "div",
         { class: "alius-chip-group", "data-punishment-answered": p.id },
-        h("span", { class: "alius-chip", "data-chip-unit": p.holderId, ...analyzeAttrs("glossary:holder_punishment", { unitId: p.holderId }) }, `${p.status === "accepted" ? "ACCEPTED" : "REFUSED"} \u2014 ${labelOf3(reg, p)} (${nameOf20(state, p.holderId)})`),
+        h("span", { class: "alius-chip", "data-chip-unit": p.holderId, ...analyzeAttrs("glossary:holder_punishment", { unitId: p.holderId }) }, `${p.status === "accepted" ? "ACCEPTED" : "REFUSED"} \u2014 ${labelOf3(reg, p)} (${nameOf21(state, p.holderId)})`),
         h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo-practice": p.id, ...analyzeNative("glossary:punishment_card", { unitId: p.holderId }), onclick: () => handlers2.undo(p.id) }, "[ UNDO \u2014 not what I meant ]")
       ));
     }
@@ -59481,9 +59628,9 @@ function renderOfferComposer(host, ctx2) {
         if (row4 !== void 0) row4.ids.push(p.id);
         else composition.push({ tab: p.tab, ids: [p.id] });
       }
-      const ask = mem.ask;
+      const ask2 = mem.ask;
       memories.delete(key);
-      ctx2.onSend(composition, ask);
+      ctx2.onSend(composition, ask2);
     }, mem.picks.length === 0 ? { "aria-disabled": "true" } : {}),
     button2("cancel", "[ CANCEL ]", () => {
       memories.delete(key);
@@ -59534,9 +59681,9 @@ function drawOfferChips(host, ctx2) {
     unitId: open3,
     choices: offerChoices(state, reg, open3),
     memory: key,
-    onSend: (composition, ask) => {
+    onSend: (composition, ask2) => {
       openFor2.delete(key);
-      ctx2.onOffer(open3, composition, ask);
+      ctx2.onOffer(open3, composition, ask2);
       redraw();
     },
     onClose: () => {
@@ -59544,6 +59691,75 @@ function drawOfferChips(host, ctx2) {
       redraw();
     }
   });
+}
+
+// src/ui/practice/initiativeChips.ts
+var LABEL8 = { task: "ASK FOR A TASK", punishment: "ASK FOR PUNISHMENT" };
+var GLOSSARY2 = { task: "glossary:ask_for_task", punishment: "glossary:ask_for_punishment" };
+function permissionLine(state, unitId) {
+  const asked = state.practices?.permission?.holderId === unitId ? state.practices.permission.asked : void 0;
+  if (asked === void 0) return null;
+  return asked.day === state.day || asked.answer === "wait" && (asked.untilDay ?? 0) > state.day ? asked.answer : null;
+}
+function drawInitiativeChips(host, ctx2) {
+  host.replaceChildren();
+  const { state, reg } = ctx2;
+  if (!dynamicOn(state, reg)) return;
+  const women = state.squad.filter((u) => u.kind === "named" && ctx2.pick(u.id));
+  const several = women.filter((u) => askable2(state, reg, u.id) || practiceLive(state, reg, u.id)).length > 1;
+  const chips = [];
+  const lines = [];
+  const suffix = (name) => several ? ` > ${name.toUpperCase()}` : "";
+  for (const unit3 of women) {
+    const live3 = { unitId: unit3.id };
+    if (askable2(state, reg, unit3.id)) {
+      for (const what of ["task", "punishment"]) {
+        const why = askRefusal(state, reg, unit3.id, what);
+        chips.push(h("button", {
+          type: "button",
+          class: "alius-btn alius-chip",
+          "data-action": `ask-${what}`,
+          "data-unit": unit3.id,
+          ...analyzeNative(GLOSSARY2[what], live3),
+          ...why !== null ? { "aria-disabled": "true", title: why } : {},
+          onclick: () => {
+            if (why === null) ctx2.onAsk(unit3.id, what);
+          }
+        }, `[ ${LABEL8[what]}${suffix(unit3.displayName)} ]`));
+      }
+    }
+    if (!practiceLive(state, reg, unit3.id)) continue;
+    for (const task of state.practices?.tasks ?? []) {
+      if (task.holderId !== unit3.id || task.routine !== true || task.status !== "open" || task.brokenDay === state.day) continue;
+      chips.push(h("button", {
+        type: "button",
+        class: "alius-btn alius-chip",
+        "data-action": "confess",
+        "data-unit": unit3.id,
+        "data-task": task.id,
+        ...analyzeNative("glossary:confess", live3),
+        onclick: () => ctx2.onConfess(task.id)
+      }, "[ I DIDN'T ]"));
+    }
+    if (permissionRuleOf(state, reg, unit3.id) !== void 0) {
+      chips.push(h("button", {
+        type: "button",
+        class: "alius-btn alius-chip",
+        "data-action": "ask-permission",
+        "data-unit": unit3.id,
+        ...analyzeNative("glossary:ask_permission", live3),
+        onclick: () => ctx2.onAskPermission(unit3.id)
+      }, `[ ASK PERMISSION${suffix(unit3.displayName)} ]`));
+      const answer = permissionLine(state, unit3.id);
+      if (answer !== null) {
+        const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("p", { class: "alius-permission-line", "data-permission-answer": answer, ...analyzeAttrs("glossary:ask_permission", live3) }, plainDraft(TUNING.practice.permission.lines[answer])), accent: unitAccent(unit3.id) });
+        card2.classList.add("alius-permission-answer");
+        lines.push(card2);
+      }
+    }
+  }
+  if (chips.length === 0) return;
+  host.append(h("div", { class: "alius-chips alius-initiative-chips" }, ...chips), ...lines);
 }
 
 // src/ui/comms/living.ts
@@ -59802,8 +60018,11 @@ function renderCommsTab(host, ctx2) {
     drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), generation: ctx2.generation });
     const demonstrationCards = h("div", { class: "alius-demonstration-cards" });
     drawDemonstrationCards(demonstrationCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
-    const offerChips = h("div", { class: "alius-offer-surface" });
-    if (ctx2.onOffer) drawOfferChips(offerChips, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
+    const offerInner = h("div", { class: "alius-offer-chips-host" });
+    const initiativeInner = h("div", { class: "alius-initiative-host" });
+    const offerChips = h("div", { class: "alius-offer-surface" }, offerInner, initiativeInner);
+    if (ctx2.onOffer) drawOfferChips(offerInner, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
+    if (ctx2.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx2.registries, pick: (id) => id === current, ...ctx2.initiative });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     const answers2 = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
     for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers2, { motion: ctx2.motion?.() ?? true }));
@@ -59823,7 +60042,7 @@ function renderIntrigueSection(host, state, reg, deps = {}) {
   const ls = state.leashswap;
   if (!ls || !wardenOf(state)) return;
   const allyIds = allies(state);
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const kompromat = kompromatOf(state).length;
   const need = TUNING.warden.kompromat.needed;
   const steps = TUNING.warden.hack.steps;
@@ -59852,7 +60071,7 @@ function renderIntrigueSection(host, state, reg, deps = {}) {
     "div",
     { class: "alius-warden-intrigue" },
     h("h4", {}, "INTRIGUE"),
-    h("p", {}, h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:intrigue") }, `ALLIES: ${allyIds.length === 0 ? "NONE" : allyIds.map(nameOf26).join(", ").toUpperCase()}`)),
+    h("p", {}, h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:intrigue") }, `ALLIES: ${allyIds.length === 0 ? "NONE" : allyIds.map(nameOf27).join(", ").toUpperCase()}`)),
     h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "kompromat", ...analyzeAttrs("glossary:kompromat") }, `KOMPROMAT: ${kompromat} / ${need}`)),
     h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "hack", ...analyzeAttrs("glossary:implant_hack") }, `IMPLANT HACK: STEP ${ls.intrigue.hack.step} / ${steps}`)),
     h(
@@ -59970,7 +60189,7 @@ function fadedWallpaperUnit(state) {
   }
   return best?.id ?? null;
 }
-var nameOf21 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf22 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function renderHomeTab(host, ctx2) {
   host.replaceChildren();
   const state = ctx2.getState();
@@ -60029,12 +60248,12 @@ function renderHomeTab(host, ctx2) {
   const answers2 = ctx2.rule;
   for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers2, { motion: !motionReduced(settings) }));
   for (const p of pinnedNotes(state, reg)) {
-    for (const line2 of p.lines) notes.push(renderNote({ text: line2, unitName: nameOf21(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
+    for (const line2 of p.lines) notes.push(renderNote({ text: line2, unitName: nameOf22(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
   }
   for (const n of [...notesFor(state, "quarters"), ...notesFor(state, "door")]) {
     notes.push(renderNote({
       text: n.text,
-      unitName: nameOf21(state, n.unitId),
+      unitName: nameOf22(state, n.unitId),
       hand: handOf(state, reg, n.unitId),
       read: n.read === true,
       onRead: () => ctx2.onReadNote(n.id),
@@ -60191,11 +60410,11 @@ function renderLogTab(host, ctx2) {
 }
 function oversightLog(state) {
   const entries2 = leashLog(state).sort((a, b) => b.no - a.no);
-  const nameOf26 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf27 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const body = entries2.length > 0 ? h("div", {}, ...entries2.map((e) => h(
     "p",
     { class: "alius-oversight-entry", "data-no": String(e.no) },
-    `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf26(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}${e.cc !== void 0 ? ` \xB7 CC: ${nameOf26(e.cc)}` : ""}`
+    `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf27(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}${e.cc !== void 0 ? ` \xB7 CC: ${nameOf27(e.cc)}` : ""}`
   ))) : h("p", { class: "alius-dim" }, "NO REQUESTS FILED");
   const log = renderVoiceCard({ voice: "corporate", title: "OVERSIGHT LOG", body });
   log.classList.add("alius-section", "alius-oversight-log");
@@ -61038,6 +61257,8 @@ function renderSceneScreen(host, ctx2) {
   let milestoneCards;
   let claimCards;
   let offerHost;
+  let offerInner;
+  let initiativeInner;
   let returnCards;
   let taskCards;
   let punishmentCards;
@@ -61198,8 +61419,10 @@ function renderSceneScreen(host, ctx2) {
       limit: (text2) => controller.limit?.(text2)
     }, pending4);
     drawFrameChips(leadChips, s, registries, (id) => ids.has(id), ctx2.settings().dynamicHidden === true);
-    if (ctx2.onOffer) drawOfferChips(offerHost, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx2.onOffer, answered: () => controller.replyPending?.() !== true });
-    else offerHost.replaceChildren();
+    if (ctx2.onOffer) drawOfferChips(offerInner, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx2.onOffer, answered: () => controller.replyPending?.() !== true });
+    else offerInner.replaceChildren();
+    if (ctx2.initiative) drawInitiativeChips(initiativeInner, { state: s, reg: registries, pick: (id) => ids.has(id), ...ctx2.initiative });
+    else initiativeInner.replaceChildren();
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx2.onAnswerRule?.(id, "accept"),
       negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
@@ -61450,7 +61673,9 @@ function renderSceneScreen(host, ctx2) {
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
-    offerHost = h("div", { class: "alius-offer-surface" });
+    offerInner = h("div", { class: "alius-offer-chips-host" });
+    initiativeInner = h("div", { class: "alius-initiative-host" });
+    offerHost = h("div", { class: "alius-offer-surface" }, offerInner, initiativeInner);
     ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
@@ -62026,7 +62251,7 @@ function registerBondsProviders() {
 
 // src/analysis/providers/dynamic.ts
 var unitIdOf3 = (s) => typeof s.data.unitId === "string" ? s.data.unitId : null;
-var nameOf22 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
+var nameOf23 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
 var FELT_LINE = "[[dynamic_felt]]";
 var plain7 = (text2) => plainDraft(text2).trim();
 var LEVEL_WORDS2 = { suspects_close: "has noticed something", suspects_dynamic: "suspects", knows_dynamic: "knows" };
@@ -62042,27 +62267,27 @@ function viewed(read) {
 var holdReading = (_s, env, v, unitId) => {
   if (v.band === void 0) return [];
   if (v.band === "felt") return [FELT_LINE];
-  return [`${nameOf22(env, unitId)}: ${v.band}${v.raw !== void 0 ? ` (${v.raw})` : ""}.`];
+  return [`${nameOf23(env, unitId)}: ${v.band}${v.raw !== void 0 ? ` (${v.raw})` : ""}.`];
 };
-var frameReading = (_s, env, v, unitId) => v.band === "felt" ? [FELT_LINE] : v.frame !== void 0 ? [`${nameOf22(env, unitId)}: ${v.frame}.`] : [];
+var frameReading = (_s, env, v, unitId) => v.band === "felt" ? [FELT_LINE] : v.frame !== void 0 ? [`${nameOf23(env, unitId)}: ${v.frame}.`] : [];
 var frameRowReading = (s, env, v, unitId) => {
   if (v.band === "felt") return [FELT_LINE];
-  return v.frame !== void 0 && v.frame === String(env.registries.dynamicFrames.get(s.id)?.label) ? [`${nameOf22(env, unitId)} is here.`] : [];
+  return v.frame !== void 0 && v.frame === String(env.registries.dynamicFrames.get(s.id)?.label) ? [`${nameOf23(env, unitId)} is here.`] : [];
 };
 var domainReading = (s, env, v, unitId) => {
   const d = v.domains.find((x) => x.id === s.id);
-  const name = nameOf22(env, unitId);
+  const name = nameOf23(env, unitId);
   if (d?.claimed === true) return [`${name} holds it${d.partial === true ? ", in part" : ""}.`];
   if (v.asked.includes(s.id)) return [`${name} has asked for it. The card waits.`];
   return d !== void 0 ? [`${name} may claim it.`] : [];
 };
 var trackReading = (s, env, v, unitId) => {
   const t = v.tracks.find((x) => x.id === s.id);
-  return t === void 0 ? [] : t.band === "felt" ? [FELT_LINE] : [`${nameOf22(env, unitId)}: ${t.band}.`];
+  return t === void 0 ? [] : t.band === "felt" ? [FELT_LINE] : [`${nameOf23(env, unitId)}: ${t.band}.`];
 };
-var readingReading = (_s, env, v, unitId) => v.reading !== void 0 ? [`${nameOf22(env, unitId)} takes the commander to be: ${v.reading}.`] : [];
+var readingReading = (_s, env, v, unitId) => v.reading !== void 0 ? [`${nameOf23(env, unitId)} takes the commander to be: ${v.reading}.`] : [];
 var dynamicReading = (s, env, v, unitId) => {
-  const name = nameOf22(env, unitId);
+  const name = nameOf23(env, unitId);
   const lines = [];
   if (v.band === "felt") lines.push(FELT_LINE);
   else if (v.band !== void 0) lines.push(`${name}: ${v.frame ?? ""}${v.frame !== void 0 ? ", " : ""}${v.band}${v.raw !== void 0 ? ` (${v.raw})` : ""}.`);
@@ -62071,17 +62296,17 @@ var dynamicReading = (s, env, v, unitId) => {
   if (v.sworn) lines.push(`${name} has sworn.`);
   lines.push(...readingReading(s, env, v, unitId));
   for (const sign2 of v.signs) lines.push(`${name}: ${sign2}.`);
-  for (const k of v.knownLevels) lines.push(`${nameOf22(env, k.observerId)} ${LEVEL_WORDS2[k.level]}.`);
+  for (const k of v.knownLevels) lines.push(`${nameOf23(env, k.observerId)} ${LEVEL_WORDS2[k.level]}.`);
   return lines;
 };
-var compromatReading = (_s, env, v, unitId) => v.compromat.map((f) => `${nameOf22(env, unitId)} keeps: ${plain7(f.text)}`);
+var compromatReading = (_s, env, v, unitId) => v.compromat.map((f) => `${nameOf23(env, unitId)} keeps: ${plain7(f.text)}`);
 var zoneReading = (s, env, v, unitId) => {
   if (!dynamicOn(env.state, env.registries)) return [];
   const shown2 = v.expectations.worship?.[s.id];
   const zone = v.zones[s.id];
   const level = zone?.mastery ?? 0;
   return [
-    shown2 === void 0 ? "Not known yet." : `${nameOf22(env, unitId)}: ${shown2.attitude}${shown2.meaning !== void 0 ? `, ${shown2.meaning}` : ""}.`,
+    shown2 === void 0 ? "Not known yet." : `${nameOf23(env, unitId)}: ${shown2.attitude}${shown2.meaning !== void 0 ? `, ${shown2.meaning}` : ""}.`,
     ...(zone?.facts ?? []).map((f) => `Shown: ${plain7(f)}`),
     ...level > 0 ? [`Mastery: ${MASTERY_WORDS[level]} of five.`] : []
   ];
@@ -62189,7 +62414,7 @@ function registerMemoryProviders() {
 
 // src/analysis/providers/personal.ts
 var LEVEL_WORD2 = ["no access", "decor", "notes", "calendar", "messages"];
-var nameOf23 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf24 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var unitIdOf4 = (subject) => typeof subject.data.unitId === "string" ? subject.data.unitId : null;
 var SLOT_WORD2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
 function branchWords(b) {
@@ -62210,7 +62435,7 @@ function deviceAccessProvider(subject, env, k) {
     return holders2.length === 0 ? { lines: [] } : { lines: [`Soldiers with access: ${holders2.map((x) => `${x.u.displayName} (${LEVEL_WORD2[x.level]})`).join(", ")}.`] };
   }
   if (!state.squad.some((u) => u.id === unitId)) return null;
-  const name = nameOf23(state, unitId);
+  const name = nameOf24(state, unitId);
   const why = deviceAccessWhy(state, env.registries, unitId);
   if (!why) return { lines: [`${name} has no access to the commander's device.`] };
   const lines = [`${name}: level ${why.level} (${LEVEL_WORD2[why.level]}).`, why.branch === null ? "It comes from the device she holds for the commander." : `It comes from ${branchWords(why.branch)}.`];
@@ -62228,7 +62453,7 @@ function bookingProvider(subject, env, k) {
   const booking = bookingId !== null ? bookings.find((b) => b.id === bookingId) : bookings.find((b) => b.status === "booked" && (unitId === null || b.unitId === unitId));
   const who = booking?.unitId ?? unitId;
   if (who === null || !state.squad.some((u) => u.id === who)) return null;
-  const name = nameOf23(state, who);
+  const name = nameOf24(state, who);
   const lines = [];
   if (booking) {
     const kind = env.registries.bookingKinds.get(booking.kindId);
@@ -62247,7 +62472,7 @@ function courtshipProvider(subject, env) {
   const state = env.state;
   const unitId = unitIdOf4(subject);
   if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
-  const name = nameOf23(state, unitId);
+  const name = nameOf24(state, unitId);
   return {
     lines: pressureGate(state, env.registries, unitId, "courtship") === null ? [`${name} courts the commander: she writes and knocks twice as often, may propose the next step herself and may claim the commander in public.`] : [`${name} does not court the commander.`]
   };
@@ -62256,7 +62481,7 @@ function claimedProvider(subject, env) {
   const state = env.state;
   const unitId = unitIdOf4(subject);
   if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
-  const name = nameOf23(state, unitId);
+  const name = nameOf24(state, unitId);
   const claim2 = [...state.personal?.claims ?? []].reverse().find((c) => c.unitId === unitId);
   if (!claim2) return { lines: [`${name} has not claimed the commander in public.`] };
   const lines = [`${name} claimed the commander in public on day ${claim2.day}${claim2.refused ? " and was refused in front of the squad" : ""}.`];
@@ -62307,7 +62532,7 @@ function tokenProvider(subject, env, k) {
   const unitId = (tokenId !== null ? owned.find((t) => t.id === tokenId)?.giverId : void 0) ?? unitIdOf4(subject);
   if (unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
   const token = tokenId !== null ? owned.find((t) => t.id === tokenId) : owned.find((t) => t.giverId === unitId);
-  const name = nameOf23(state, unitId);
+  const name = nameOf24(state, unitId);
   if (!token) {
     const given = (state.personal?.tokens?.given ?? []).includes(unitId);
     return { lines: [given ? `${name} has given the commander a token.` : `${name} has not given a token: a close soldier gives one, once.`] };
@@ -62332,7 +62557,7 @@ function wagerProvider(subject, env, k) {
   const w = wagerId !== null ? open3.find((x) => x.id === wagerId) : open3.find((x) => unitIdOf4(subject) === null || x.unitId === unitIdOf4(subject));
   const unitId = w?.unitId ?? unitIdOf4(subject);
   if (unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
-  const name = nameOf23(state, unitId);
+  const name = nameOf24(state, unitId);
   if (!w) return { lines: [`${name} has no wager open: a soldier with a will of her own may challenge the commander, and the commander may challenge her.`] };
   const game = reg.wagerGames.get(w.gameId);
   const stake = reg.wagerStakes.get(w.stakeId);
@@ -62364,7 +62589,7 @@ function stakeProvider(subject, env) {
   const lines = stakeLines(env.registries, subject.id);
   const unitId = unitIdOf4(subject);
   if (unitId !== null && state.squad.some((u) => u.id === unitId)) {
-    const name = nameOf23(state, unitId);
+    const name = nameOf24(state, unitId);
     if (stakeOffered(state, env.registries, unitId, stake)) lines.push(`It is offered to ${name} now.`);
     else lines.push(contentAllowed(state, env.registries, stake, unitId) ? `It is not offered to ${name} now: what it asks for is not possible.` : `It is not offered to ${name}: its content category is switched off, or one of her own limits.`);
   }
@@ -62375,7 +62600,7 @@ function obedienceProvider(_subject, env) {
   if (!state) return null;
   const o = obedienceOf(state);
   if (o === null) return { lines: ["No day of obedience is under way."] };
-  const name = nameOf23(state, o.unitId);
+  const name = nameOf24(state, o.unitId);
   return {
     lines: o.who === "commander" ? [`Today the commander follows ${name}'s choices outside combat: her pick is pre-selected, and choosing against it counts as overriding her (Trust and Affinity fall, her Impunity rises).`] : [`Today ${name} is under the commander's orders: she follows the commander's non-combat orders, refuses nothing and asks for nothing on her own.`]
   };
@@ -62389,10 +62614,10 @@ function squadSecretProvider(_subject, env) {
     lines: known3.map((x) => {
       if (x.status === "found") {
         let masked = x.text;
-        for (const id of x.knownBy) masked = masked.replace(new RegExp(`\\b${nameOf23(state, id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"), "\u2588\u2588\u2588\u2588\u2588");
+        for (const id of x.knownBy) masked = masked.replace(new RegExp(`\\b${nameOf24(state, id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"), "\u2588\u2588\u2588\u2588\u2588");
         return `${masked} Waiting for an answer.`;
       }
-      const who = x.knownBy.map((id) => nameOf23(state, id)).join(", ");
+      const who = x.knownBy.map((id) => nameOf24(state, id)).join(", ");
       const how = x.status === "confronted" ? "out in the open: the squad was confronted" : x.status === "pretend" ? "the commander pretends not to know" : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : "the commander used it, and the hold is over";
       return `${x.text} Known by ${who}; ${how}.`;
     })
@@ -62674,20 +62899,20 @@ function registerDevelopmentProviders() {
 
 // src/analysis/providers/life.ts
 var unitIdOf6 = (s) => typeof s.data.unitId === "string" ? s.data.unitId : null;
-var nameOf24 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
+var nameOf25 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
 function opinionProvider(s, env, k) {
   const unitId = unitIdOf6(s);
   if (!env.state || unitId === null) return null;
   const heard = k.life(unitId, env.registries).opinions.find((o) => o.topicId === s.id);
   if (!heard) return { lines: ["Nothing she has said yet."] };
-  return { lines: [`${nameOf24(env, unitId)}: ${heard.text}`, ...heard.history.map((was) => `She used to think: ${was}`)] };
+  return { lines: [`${nameOf25(env, unitId)}: ${heard.text}`, ...heard.history.map((was) => `She used to think: ${was}`)] };
 }
 function hobbyProvider(s, env, k) {
   const unitId = unitIdOf6(s);
   if (!env.state || unitId === null) return null;
   const hb = k.life(unitId, env.registries).hobbies.find((x) => x.id === s.id);
   if (!hb) return { lines: ["Nothing she has shown yet."] };
-  return { lines: [`${nameOf24(env, unitId)}: ${hb.word.toUpperCase()}`, ...hb.milestones, ...hb.traces] };
+  return { lines: [`${nameOf25(env, unitId)}: ${hb.word.toUpperCase()}`, ...hb.milestones, ...hb.traces] };
 }
 function eventProvider(s, env, k) {
   const unitId = unitIdOf6(s);
@@ -62709,7 +62934,7 @@ function temperamentProvider(s, env, k) {
   const unitId = unitIdOf6(s);
   if (!env.state || unitId === null) return null;
   const t = k.life(unitId, env.registries).temperWords;
-  return { lines: [`${nameOf24(env, unitId)}: ${t.talkativeness}, ${t.volatility}, ${t.humor}.`] };
+  return { lines: [`${nameOf25(env, unitId)}: ${t.talkativeness}, ${t.volatility}, ${t.humor}.`] };
 }
 function settingProvider(_s, env, k) {
   const state = env.state;
@@ -62790,7 +63015,7 @@ function rationsProvider(subject, env) {
   return { lines };
 }
 var band = (n) => n < 40 ? "low" : n < 70 ? "notable" : "dominant";
-var nameOf25 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf26 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function standingProvider(subject, env, k) {
   const state = env.state;
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
@@ -62799,7 +63024,7 @@ function standingProvider(subject, env, k) {
   const leader = leaderOf(state);
   const lines = [`Her standing: ${band(n)}.`];
   if (leader?.id === unitId) lines.push("She is the squad leader.");
-  else if (leader) lines.push(`The squad leader is ${nameOf25(state, leader.id)}.`);
+  else if (leader) lines.push(`The squad leader is ${nameOf26(state, leader.id)}.`);
   lines.push("It rests on her fights of the last two weeks, how well the others get on with her and how safe she feels defying the commander, times how hard her card says she pushes for power.");
   const raw = k.raw(n);
   if (raw !== null) {
@@ -62821,7 +63046,7 @@ function leaderProvider(_subject, env, k) {
   }
   if (h2?.deposed && h2.deposed.untilDay > state.day) {
     const days = k.raw(h2.deposed.untilDay - state.day);
-    lines.push(`${nameOf25(state, h2.deposed.unitId)} lost a challenge and cannot lead for a while${days !== null ? ` (${days} more days)` : ""}.`);
+    lines.push(`${nameOf26(state, h2.deposed.unitId)} lost a challenge and cannot lead for a while${days !== null ? ` (${days} more days)` : ""}.`);
   }
   const left = challengeCooldown(state);
   if (left > 0) {
@@ -62860,17 +63085,17 @@ function countermandProvider(_subject, env) {
   if (!state || !c) return null;
   const activityId = c.payload?.activityId;
   const activity = typeof activityId === "string" ? String(env.registries.activities.get(activityId)?.name ?? activityId) : "an order";
-  return { lines: [`${nameOf25(state, c.leaderId)} countermanded ${activity} with ${nameOf25(state, c.unitId)}; it waits for your answer.`] };
+  return { lines: [`${nameOf26(state, c.leaderId)} countermanded ${activity} with ${nameOf26(state, c.unitId)}; it waits for your answer.`] };
 }
 function scapegoatProvider(_subject, env) {
   const state = env.state;
   const open3 = state?.dilemmas?.open;
   if (!state || !open3 || open3.context !== "scapegoat" || open3.subjectId === void 0) return null;
-  const witnesses = (open3.witnessIds ?? []).map((id) => nameOf25(state, id));
+  const witnesses = (open3.witnessIds ?? []).map((id) => nameOf26(state, id));
   const herCall = open3.scapegoatSource === "her_call";
   return {
     lines: [
-      herCall ? `${nameOf25(state, open3.subjectId)} made the call herself in the field, and the run failed.` : `${nameOf25(state, open3.subjectId)} carried the squad's vote for the decision that failed.`,
+      herCall ? `${nameOf26(state, open3.subjectId)} made the call herself in the field, and the run failed.` : `${nameOf26(state, open3.subjectId)} carried the squad's vote for the decision that failed.`,
       witnesses.length > 0 ? `${herCall ? "Also there" : "Also for it"}: ${witnesses.join(", ")}.` : herCall ? "Nobody else was named." : "Nobody else voted for it.",
       "Take the blame and oversight punishes the commander; shift it and oversight punishes her."
     ]
@@ -62884,7 +63109,7 @@ function herCallProvider(subject, env, k) {
   const entries2 = [...state.lastExpedition?.herCalls ?? [], ...state.expedition?.herCalls ?? []].filter((c) => (unitId === null || c.unitId === unitId) && (nodeId === null || c.nodeId === nodeId));
   const call = entries2.at(-1);
   if (!call) return null;
-  const name = nameOf25(state, call.unitId);
+  const name = nameOf26(state, call.unitId);
   const lines = [`${name} took the decision herself in the field; it went ${call.outcome === "good" ? "well" : "badly"}.`];
   const missionId = typeof subject.data.missionId === "string" ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
   const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
@@ -62893,7 +63118,7 @@ function herCallProvider(subject, env, k) {
   else if (by?.source === "her_call" && by.unitId === call.unitId) {
     lines.push("The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.");
   } else if (by !== void 0) {
-    lines.push(`The run already carries another mark (${nameOf25(state, by.unitId)}'s decision), so this call added none.`);
+    lines.push(`The run already carries another mark (${nameOf26(state, by.unitId)}'s decision), so this call added none.`);
   } else if (call.marked === true) {
     lines.push("The run was marked on her call; that mark is spent now that the run has ended.");
   } else if (call.marked === false && mission !== void 0) {
@@ -62907,7 +63132,7 @@ function askFirstProvider(subject, env) {
   const state = env.state;
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
   if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
-  const name = nameOf25(state, unitId);
+  const name = nameOf26(state, unitId);
   const since = state.power?.askFirst?.[unitId];
   return {
     lines: [
@@ -63901,7 +64126,7 @@ function renderFill(host, state, build, settings) {
 
 // src/ui/memory/memorySection.ts
 var PRESETS3 = ["short", "normal", "long", "custom"];
-var LABEL8 = {
+var LABEL9 = {
   factsMax: "Facts kept before the fold",
   foldAfterDays: "A fact may be folded after (days)",
   recencyBase: "How fast old facts fade (0.5\u20130.95)",
@@ -63913,7 +64138,7 @@ var LABEL8 = {
   hideScenesAfter: "Hide scenes older than the last N (0 = off)",
   factTextMax: "Longest text of a fact (characters)"
 };
-var GLOSSARY2 = { memoryTokens: "memory_budget", hideScenesAfter: "hidden_scenes", factTextMax: "fact_length" };
+var GLOSSARY3 = { memoryTokens: "memory_budget", hideScenesAfter: "hidden_scenes", factTextMax: "fact_length" };
 function renderMemorySection(host, ctx2) {
   const cfg = memoryConfig(ctx2.state);
   const locked = ctx2.settings.editLock;
@@ -63952,7 +64177,7 @@ function renderMemorySection(host, ctx2) {
       }
       send(own ? { preset: cfg.preset, [field2]: n } : { preset: "custom", [field2]: n });
     });
-    return h("label", { class: "alius-field alius-option", ...analyzeNative(`glossary:${GLOSSARY2[field2] ?? "memory"}`) }, h("span", { class: "alius-field-label" }, LABEL8[field2]), el);
+    return h("label", { class: "alius-field alius-option", ...analyzeNative(`glossary:${GLOSSARY3[field2] ?? "memory"}`) }, h("span", { class: "alius-field-label" }, LABEL9[field2]), el);
   };
   const mode = h(
     "select",
@@ -65656,7 +65881,9 @@ function createApp(st, deps) {
         onUndoPunishment: (id) => void practice.undoPunishment(id),
         onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer),
         // P16: her demonstration: GO opens the scene the engine describes
-        onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask),
+        initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) },
+        // P16: the commander's own chips
+        onOffer: (unitId, composition, ask2) => void dynamic.offer(unitId, composition, ask2),
         // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule2,
         onStage: (action) => {
@@ -67254,7 +67481,9 @@ function createApp(st, deps) {
       onUndoPunishment: (id) => void practice.undoPunishment(id),
       onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer),
       // P16: her demonstration
-      onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask),
+      initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) },
+      // P16: the commander's own chips
+      onOffer: (unitId, composition, ask2) => void dynamic.offer(unitId, composition, ask2),
       // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => {
         if (ok) shell.open();

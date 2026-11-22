@@ -3327,5 +3327,47 @@
       "without_command",
       "her_call"
     ]
+  },
+  {
+    "id": "ask_for_task",
+    "term": "Ask for a task",
+    "short": "The commander asks her for something to do. She says yes (a task is written and her hold rises), mocks the request, or turns it down. Once a day for each woman.",
+    "long": "AUTHOR TO WRITE: Her answer follows her manner, how far her hold has come and how she stands with the commander. A woman who could hold but does not yet may be asked: a yes can start it. A mocked request is seen by those in the room.",
+    "see": [
+      "practice",
+      "ask_for_punishment",
+      "task_card"
+    ]
+  },
+  {
+    "id": "ask_for_punishment",
+    "term": "Ask for punishment",
+    "short": "The commander asks her for a punishment. She gives a light one, mocks the request, or turns it down. Once a day for each woman.",
+    "long": "AUTHOR TO WRITE: What she gives is picked by the engine from her limits and what is switched on; her manner decides whether she says yes at all. Asking another woman while a holder has the commander is for the holder to allow.",
+    "see": [
+      "practice",
+      "ask_for_task",
+      "holder_punishment"
+    ]
+  },
+  {
+    "id": "confess",
+    "term": "I didn't",
+    "short": "The commander tells her the daily routine was not done today. It costs the day and a small offense, one weight lighter than if she found out.",
+    "long": "AUTHOR TO WRITE: Telling her first is cheaper than being found out. A routine told once is told for the day.",
+    "see": [
+      "practice",
+      "holder_punishment"
+    ]
+  },
+  {
+    "id": "ask_permission",
+    "term": "Ask permission",
+    "short": "While a rule of hers asks for permission, the commander asks her. She grants it, refuses, says not yet, or says to earn it. Her answer shows under the button.",
+    "long": "AUTHOR TO WRITE: The answer is the same for the same state. A refusal and a not yet relieve her own wanting a little. Doing it without asking is a slip against her rule.",
+    "see": [
+      "practice",
+      "ask_for_task"
+    ]
   }
 ]

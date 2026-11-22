@@ -16,6 +16,7 @@ import { drawDemonstrationCards, type DemonstrationAnswer } from '../practice/de
 import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } from '../practice/punishmentCard';
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawOfferChips } from '../dynamic/offerComposer';
+import { drawInitiativeChips, type InitiativeHandlers } from '../practice/initiativeChips';
 import type { OfferComposition } from '../../engine/dynamic/offer';
 import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
@@ -54,6 +55,8 @@ export interface CommsTabCtx {
   onAnswerDemonstration?: (demonstrationId: string, answer: DemonstrationAnswer) => void;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: straight to the engine in a thread). Absent = no chip. */
   onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
+  /** P16: the commander's own chips under the thread: ASK FOR A TASK / FOR PUNISHMENT, I DIDN'T, ASK PERMISSION. Absent = none drawn. */
+  initiative?: InitiativeHandlers;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule she proposed. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P10: a small portrait for each contact row (absent = none). */
@@ -215,8 +218,11 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     const demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
     drawDemonstrationCards(demonstrationCards, state, ctx.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration, under the thread
     // P15: `[ OFFER MYSELF ]` under the thread, and her answer once she has written back (the composer keeps its choice on the tab's own element across the tab's redraws)
-    const offerChips = h('div', { class: 'alius-offer-surface' });
-    if (ctx.onOffer) drawOfferChips(offerChips, { state, reg: ctx.registries, pick: (id) => id === current, onOffer: ctx.onOffer, answered: () => messages.at(-1)?.from !== 'commander', memory: host });
+    const offerInner = h('div', { class: 'alius-offer-chips-host' });
+    const initiativeInner = h('div', { class: 'alius-initiative-host' }); // P16: inside the offer surface, so the thread gains no host of its own
+    const offerChips = h('div', { class: 'alius-offer-surface' }, offerInner, initiativeInner);
+    if (ctx.onOffer) drawOfferChips(offerInner, { state, reg: ctx.registries, pick: (id) => id === current, onOffer: ctx.onOffer, answered: () => messages.at(-1)?.from !== 'commander', memory: host });
+    if (ctx.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx.registries, pick: (id) => id === current, ...ctx.initiative });
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
     const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse'), generation: ctx.generation };

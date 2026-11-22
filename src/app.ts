@@ -960,6 +960,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
         onUndoPunishment: (id) => void practice.undoPunishment(id),
         onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer), // P16: her demonstration: GO opens the scene the engine describes
+        initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) }, // P16: the commander's own chips
         onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
@@ -2577,6 +2578,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onTakeInstead: (id, answer) => void practice.takeInstead(id, answer),
       onUndoPunishment: (id) => void practice.undoPunishment(id),
       onAnswerDemonstration: (id, answer) => void practice.answerDemonstration(id, answer), // P16: her demonstration
+      initiative: { onAsk: (unitId, what) => void practice.ask(unitId, what), onConfess: (id) => void practice.confess(id), onAskPermission: (id) => void practice.askPermission(id) }, // P16: the commander's own chips
       onOffer: (unitId, composition, ask) => void dynamic.offer(unitId, composition, ask), // P15: `[ OFFER MYSELF ]`
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onAnswerRule: answerRule,

@@ -9,6 +9,7 @@ import { practiceDayStep } from '../practice/dayStep';
 import { answerDemonstration, demonstrationsFromEvents } from '../practice/demonstration';
 import { alarmsFromEvents, answerAlarm, raiseAlarm } from '../practice/alarm';
 import { askRelease, blindfoldFromEvents, holdSweep } from '../practice/hold';
+import { ask } from '../practice/initiative';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
@@ -172,4 +173,13 @@ registerAction('practice/raise_alarm', (draft, payload, ctx) => {
 registerAction('practice/answer_alarm', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.alarmId !== 'string') throw new Error('practice/answer_alarm needs { alarmId, answer }.');
   return answerAlarm(draft, ctx, payload.alarmId, payload.answer);
+});
+
+/**
+ * `practice/ask { unitId, what: 'task' | 'punishment' }`: the commander asks her for a task or a punishment (R15). It is the commander's initiative, so it is open to an eligible unit that
+ * holds nothing yet (a yes raises her hold and starts the dynamic). Her answer is the engine's; throws with the reason when she cannot be asked now.
+ */
+registerAction('practice/ask', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || (payload.what !== 'task' && payload.what !== 'punishment')) throw new Error('practice/ask needs { unitId, what }.');
+  return ask(draft, ctx, payload.unitId, payload.what);
 });

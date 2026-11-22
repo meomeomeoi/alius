@@ -349,6 +349,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'demonstration', 'named_posture', 'posture_call',
   // P16 (holding: the hold, the dim device, asking to be let go; the alarm and the run without the commander)
   'held', 'sensory_mode', 'ask_release', 'alarm', 'without_command', 'squad_call',
+  // P16 (the commander's own chips: asking for a task or a punishment, telling a routine, asking permission)
+  'ask_for_task', 'ask_for_punishment', 'confess', 'ask_permission',
 ];
 
 let registered = false;

@@ -1330,5 +1330,22 @@
       "practice",
       "held_alarm"
     ]
+  },
+  {
+    "id": "ask_mocked",
+    "event": "ask_answered",
+    "when": {
+      "answer": "mocked"
+    },
+    "text": "AUTHOR TO WRITE: {name} mocked the commander for asking her for {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "ask_mocked"
+    ]
   }
 ]

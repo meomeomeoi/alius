@@ -21,7 +21,7 @@ export function holdsPractices(state: Pick<CampaignState, 'practices'>, unitId: 
     || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== undefined
     || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h) => h.holderId === unitId)
     || p.asked?.holderId === unitId || p.unfair?.[unitId] !== undefined || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== undefined
-    || p.service?.[unitId] !== undefined || p.softer?.[unitId] !== undefined;
+    || p.service?.[unitId] !== undefined || p.softer?.[unitId] !== undefined || p.askedOn?.[unitId] !== undefined;
 }
 
 const isOpen = (status: string): boolean => status === 'offered' || status === 'open' || status === 'negotiating' || status === 'accepted';
@@ -111,6 +111,7 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
   if (p.verdictScene !== undefined) { delete p.verdictScene[unitId]; if (Object.keys(p.verdictScene).length === 0) delete p.verdictScene; }
   if (p.service !== undefined) { delete p.service[unitId]; if (Object.keys(p.service).length === 0) delete p.service; }
   if (p.softer !== undefined) { delete p.softer[unitId]; if (Object.keys(p.softer).length === 0) delete p.softer; }
+  if (p.askedOn !== undefined) { delete p.askedOn[unitId]; if (Object.keys(p.askedOn).length === 0) delete p.askedOn; }
   return events;
 }
 

@@ -341,6 +341,8 @@ export interface PracticeState {
   relaxed?: Array<{ ruleId: string; day: number }>;
   /** holderId → her next punishment weighs one less (a kindness); used once. */
   softer?: Record<string, true>;
+  /** unitId → the day the commander last asked her for a task or a punishment (R15: once a day per woman). */
+  askedOn?: Record<string, number>;
 }
 
 /**

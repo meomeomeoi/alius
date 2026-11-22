@@ -5,6 +5,7 @@ import { witnessOf } from '../engine/dynamic/witness';
 import { temperamentOf } from '../engine/life/state';
 import { practiceLive } from '../engine/practice/gate';
 import { heldNow } from '../engine/practice/held';
+import { askWords } from '../engine/practice/initiative';
 import { protocolRules } from '../engine/practice/service';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
@@ -34,6 +35,8 @@ export const PERMISSION_PREFIX = 'practice:permission:';
 export const VERDICT_PREFIX = 'practice:verdict:';
 /** Her answer to a duty that came while the commander was held, for her next reply only (event-driven). */
 export const ALARM_PREFIX = 'practice:alarm:';
+/** Her answer to being asked for a task or a punishment, for her next reply only (event-driven). */
+export const ASK_PREFIX = 'practice:ask:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
 
@@ -134,6 +137,7 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (event.type === 'permission_answered') return permissionDirective(event, state, reg);
   if (event.type === 'hold_asked') return holdAskedDirective(event, state, reg);
   if (event.type === 'hold_alarm') return alarmDirective(event, state, reg);
+  if (event.type === 'ask_answered') return askDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -141,6 +145,18 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+
+/** What the commander asked her for, as prose. */
+const ASKED_FOR: Readonly<Record<string, string>> = { task: 'a task', punishment: 'a punishment' };
+
+/** Her answer to the commander asking her for a task or a punishment, for her next reply only: the engine's answer word and nothing of what moved it. */
+function askDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const unit = state.squad.find((u) => u.id === event.unitId);
+  const how = askWords(event);
+  const what = typeof event.what === 'string' ? ASKED_FOR[event.what] : undefined;
+  if (unit === undefined || how === undefined || what === undefined) return null;
+  return { id: `${ASK_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`The commander has asked ${unit.displayName} for ${what}, and she ${how}. ${NEVER_NAME}`) };
 }
 
 /** What she answered to being asked to let the commander go, as prose; a silent refusal (`cold`) has no line. */
@@ -234,7 +250,7 @@ export function clearPracticeDirectives(builder: Pick<ContextBuilder, 'clearMatc
 
 /** Sets the derived directives and drops the ones that no longer hold; without a state it only clears. The issued line is event-driven and lives out its reply. */
 export function refreshPracticeDirectives(builder: Pick<ContextBuilder, 'clearMatching' | 'setDirective'>, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX));
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX) && !d.id.startsWith(ASK_PREFIX));
   if (state === null) return;
   for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }

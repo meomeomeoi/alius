@@ -129,7 +129,7 @@ export function severityOfEntry(reg: Registries, entryId: string): Severity5 | u
 }
 
 /** Is a punishment of hers already waiting for the commander's answer (or being worded)? One at a time: a burst of offences makes one punishment. */
-function punishmentOpen(state: CampaignState, holderId: string): boolean {
+export function punishmentOpen(state: CampaignState, holderId: string): boolean {
   const p = state.practices;
   return p?.requests.some((r) => r.holderId === holderId && r.kind === 'punishment') === true
     || p?.punishments.some((x) => x.holderId === holderId && x.forUnitId === undefined && (x.status === 'offered' || x.status === 'negotiating')) === true;

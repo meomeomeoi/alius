@@ -19,6 +19,7 @@ import { drawPunishmentCards, type PunishmentAnswer, type TakeInsteadAnswer } fr
 import { drawTaskCards, type TaskAnswer } from '../practice/taskCard';
 import { drawFrameChips } from '../dynamic/frameChip';
 import { drawOfferChips } from '../dynamic/offerComposer';
+import { drawInitiativeChips, type InitiativeHandlers } from '../practice/initiativeChips';
 import type { OfferComposition } from '../../engine/dynamic/offer';
 import { renderDisciplineMenu } from '../discipline/menu';
 import { renderFreqChip } from '../special/freqChip';
@@ -71,6 +72,8 @@ export interface SceneScreenCtx {
   onUndoPunishment?: (punishmentId: string) => void;
   /** P16: GO / REFUSE on a demonstration of a unit in the scene (the demonstration's id): GO opens the group scene the engine describes. */
   onAnswerDemonstration?: (demonstrationId: string, answer: DemonstrationAnswer) => void;
+  /** P16: the commander's own chips beside the offer chips: ASK FOR A TASK / FOR PUNISHMENT, I DIDN'T, ASK PERMISSION. Absent = none drawn. */
+  initiative?: InitiativeHandlers;
   /** P15: `[ OFFER MYSELF ]` sent from the composer (the app's `dynamic.offer`: staged through the scene controller). Absent = no chip. */
   onOffer?: (unitId: string, composition: OfferComposition, askInReturn: boolean) => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
@@ -227,6 +230,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let milestoneCards: HTMLElement;
   let claimCards: HTMLElement;
   let offerHost: HTMLElement;
+  let offerInner: HTMLElement;
+  let initiativeInner: HTMLElement;
   let returnCards: HTMLElement;
   let taskCards: HTMLElement;
   let punishmentCards: HTMLElement;
@@ -401,8 +406,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }, pending);
     drawFrameChips(leadChips, s, registries, (id) => ids.has(id), ctx.settings().dynamicHidden === true); // P15: the frame of a woman present who holds, beside the lead chips
     // P15: `[ OFFER MYSELF ]` beside the lead chips, and her answer once the reply is in (nothing without a handler, nothing while the dynamic is off)
-    if (ctx.onOffer) drawOfferChips(offerHost, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx.onOffer, answered: () => controller.replyPending?.() !== true });
-    else offerHost.replaceChildren();
+    if (ctx.onOffer) drawOfferChips(offerInner, { state: s, reg: registries, pick: (id) => ids.has(id), onOffer: ctx.onOffer, answered: () => controller.replyPending?.() !== true });
+    else offerInner.replaceChildren();
+    if (ctx.initiative) drawInitiativeChips(initiativeInner, { state: s, reg: registries, pick: (id) => ids.has(id), ...ctx.initiative }); // P16: ask for a task or a punishment, I didn't, ask permission
+    else initiativeInner.replaceChildren();
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
       generation: ctx.generation,
@@ -645,7 +652,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
-    offerHost = h('div', { class: 'alius-offer-surface' });
+    offerInner = h('div', { class: 'alius-offer-chips-host' });
+    initiativeInner = h('div', { class: 'alius-initiative-host' }); // P16: inside the offer surface, so the scene gains no host of its own
+    offerHost = h('div', { class: 'alius-offer-surface' }, offerInner, initiativeInner);
     ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });

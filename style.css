@@ -4379,6 +4379,15 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   margin: 4px 0;
 }
 
+/* The commander's own chips (P16): asking for a task or a punishment, telling a routine, asking permission; her answer under them. */
+#alius-shell .alius-initiative-chips {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-permission-answer {
+  margin: 4px 0;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

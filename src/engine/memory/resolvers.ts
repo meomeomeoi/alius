@@ -483,3 +483,9 @@ registerMemoryResolver('hold_alarm', (draft, event) => {
   const squad = draft.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id);
   return { ids: { her: [her.id], party: party.length > 0 ? party : squad }, vars: { name: her.name, answer: str(event.answer) ?? '', run: yes(event.run === true), phase: str(event.phase) ?? '' } };
 }, { ids: ['her', 'party'], vars: ['name', 'answer', 'run', 'phase'] });
+
+// the practices (P16, R15): the commander asked her for a task or a punishment and she answered. Only a mocked ask is remembered (by those in the room); a yes lands as a request and a refusal is minor
+registerMemoryResolver('ask_answered', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', what: str(event.what) === 'punishment' ? 'a punishment' : 'a task' } } : null;
+}, { ids: ['her'], vars: ['name', 'answer', 'what'] });

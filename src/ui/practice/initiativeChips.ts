@@ -1,0 +1,91 @@
+import { plainDraft } from '../../content/draft';
+import type { Registries } from '../../content/types';
+import { dynamicOn } from '../../engine/dynamic/gate';
+import { permissionRuleOf } from '../../engine/practice/denial';
+import { practiceLive } from '../../engine/practice/gate';
+import { askable, askRefusal, type AskWhat } from '../../engine/practice/initiative';
+import type { PermissionAnswer } from '../../engine/practice/state';
+import type { CampaignState } from '../../engine/state/types';
+import { TUNING } from '../../engine/tuning';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { h, type Child } from '../dom';
+import { VOICE_OF } from '../voice/sources';
+import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
+
+/** What the chips do: the surface hands each to the app, which dispatches the engine action. */
+export interface InitiativeHandlers {
+  /** `[ ASK FOR A TASK ]` / `[ ASK FOR PUNISHMENT ]` (`practice/ask`). */
+  onAsk: (unitId: string, what: AskWhat) => void;
+  /** `[ I DIDN'T ]` on her routine (`practice/confess`). */
+  onConfess: (taskId: string) => void;
+  /** `[ ASK PERMISSION ]` while a rule of hers asks for it (`practice/ask_permission`). */
+  onAskPermission: (holderId: string) => void;
+}
+
+export interface InitiativeSurfaceCtx extends InitiativeHandlers {
+  state: CampaignState;
+  reg: Registries;
+  /** Which women this surface is about (a scene's participants, the open thread). */
+  pick: (unitId: string) => boolean;
+}
+
+const LABEL: Readonly<Record<AskWhat, string>> = { task: 'ASK FOR A TASK', punishment: 'ASK FOR PUNISHMENT' };
+const GLOSSARY: Readonly<Record<AskWhat, string>> = { task: 'glossary:ask_for_task', punishment: 'glossary:ask_for_punishment' };
+
+/**
+ * Her answer to a request for permission as a line, or `null` while none stands (P16, plan R13, R24): the answer of today, and a "not yet" until the day she named. Nothing is shown before
+ * the question was asked: the answer never exists before it is given.
+ */
+function permissionLine(state: CampaignState, unitId: string): PermissionAnswer | null {
+  const asked = state.practices?.permission?.holderId === unitId ? state.practices.permission.asked : undefined;
+  if (asked === undefined) return null;
+  return asked.day === state.day || (asked.answer === 'wait' && (asked.untilDay ?? 0) > state.day) ? asked.answer : null;
+}
+
+/**
+ * The commander's own chips beside the offer chips (P16, plan R15, R10, R13, R24): `[ ASK FOR A TASK ]` and `[ ASK FOR PUNISHMENT ]` for each woman `pick` chooses whom the commander may
+ * ask (a holder, or an eligible unit); `[ I DIDN'T ]` for her open routine that was not told today; `[ ASK PERMISSION ]` while a permission rule of hers is in force, with her answer under it as a
+ * line in her voice once she has given it. A chip the engine would refuse is `aria-disabled` and says why. Every chip is addressed by the glossary. Nothing while the dynamic is off. Replaces what `host` held.
+ */
+export function drawInitiativeChips(host: HTMLElement, ctx: InitiativeSurfaceCtx): void {
+  host.replaceChildren();
+  const { state, reg } = ctx;
+  if (!dynamicOn(state, reg)) return;
+  const women = state.squad.filter((u) => u.kind === 'named' && ctx.pick(u.id));
+  const several = women.filter((u) => askable(state, reg, u.id) || practiceLive(state, reg, u.id)).length > 1;
+  const chips: Child[] = [];
+  const lines: HTMLElement[] = [];
+  const suffix = (name: string): string => (several ? ` > ${name.toUpperCase()}` : '');
+  for (const unit of women) {
+    const live = { unitId: unit.id };
+    if (askable(state, reg, unit.id)) {
+      for (const what of ['task', 'punishment'] as const) {
+        const why = askRefusal(state, reg, unit.id, what);
+        chips.push(h('button', {
+          type: 'button', class: 'alius-btn alius-chip', 'data-action': `ask-${what}`, 'data-unit': unit.id, ...analyzeNative(GLOSSARY[what], live),
+          ...(why !== null ? { 'aria-disabled': 'true', title: why } : {}), onclick: () => { if (why === null) ctx.onAsk(unit.id, what); },
+        }, `[ ${LABEL[what]}${suffix(unit.displayName)} ]`));
+      }
+    }
+    if (!practiceLive(state, reg, unit.id)) continue;
+    for (const task of state.practices?.tasks ?? []) {
+      if (task.holderId !== unit.id || task.routine !== true || task.status !== 'open' || task.brokenDay === state.day) continue;
+      chips.push(h('button', {
+        type: 'button', class: 'alius-btn alius-chip', 'data-action': 'confess', 'data-unit': unit.id, 'data-task': task.id, ...analyzeNative('glossary:confess', live), onclick: () => ctx.onConfess(task.id),
+      }, "[ I DIDN'T ]"));
+    }
+    if (permissionRuleOf(state, reg, unit.id) !== undefined) {
+      chips.push(h('button', {
+        type: 'button', class: 'alius-btn alius-chip', 'data-action': 'ask-permission', 'data-unit': unit.id, ...analyzeNative('glossary:ask_permission', live), onclick: () => ctx.onAskPermission(unit.id),
+      }, `[ ASK PERMISSION${suffix(unit.displayName)} ]`));
+      const answer = permissionLine(state, unit.id);
+      if (answer !== null) {
+        const card = renderVoiceCard({ voice: VOICE_OF.practice, from: unit.displayName, body: h('p', { class: 'alius-permission-line', 'data-permission-answer': answer, ...analyzeAttrs('glossary:ask_permission', live) }, plainDraft(TUNING.practice.permission.lines[answer])), accent: unitAccent(unit.id) });
+        card.classList.add('alius-permission-answer');
+        lines.push(card);
+      }
+    }
+  }
+  if (chips.length === 0) return;
+  host.append(h('div', { class: 'alius-chips alius-initiative-chips' }, ...chips), ...lines);
+}

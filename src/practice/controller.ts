@@ -63,6 +63,12 @@ export interface PracticeController {
   answerAlarm(alarmId: string, answer: 'accept' | 'argue' | 'defy'): Promise<boolean>;
   /** `[ SEND THE SQUAD ]` on a kept alarm of a launch or a deadline: opens the expedition setup for that mission without the commander. Answers false when nothing can be opened. */
   sendSquad(alarmId: string): boolean;
+  /** `[ ASK FOR A TASK ]` / `[ ASK FOR PUNISHMENT ]` (`practice/ask`). Toasts the reason and answers false when the engine refuses. */
+  ask(unitId: string, what: 'task' | 'punishment'): boolean;
+  /** `[ I DIDN'T ]` on her routine (`practice/confess`). Toasts the reason and answers false when the engine refuses. */
+  confess(taskId: string): boolean;
+  /** `[ ASK PERMISSION ]` (`practice/ask_permission`). Toasts the reason and answers false when the engine refuses. */
+  askPermission(holderId: string): boolean;
   /** Waits for the call in flight (tests). */
   idle(): Promise<void>;
 }
@@ -375,6 +381,21 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       }
       deps.openPlanner(target);
       return true;
+    },
+    ask(unitId, what) {
+      const done = ok(deps.app.dispatch({ type: 'practice/ask', payload: { unitId, what } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    confess(taskId) {
+      const done = ok(deps.app.dispatch({ type: 'practice/confess', payload: { taskId } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    askPermission(holderId) {
+      const done = ok(deps.app.dispatch({ type: 'practice/ask_permission', payload: { holderId } }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
     },
     async idle() { while (flight) await flight.catch(() => {}); },
   };

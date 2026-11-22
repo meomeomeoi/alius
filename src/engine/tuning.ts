@@ -1056,6 +1056,10 @@ export const TUNING = Object.freeze({
       } as Readonly<Record<string, 'grant' | 'deny' | 'wait' | 'earn'>>),
       /** What she says, as prose for the directive, by answer (drafts). */
       words: Object.freeze({ grant: 'gives permission', deny: 'refuses permission', wait: 'says not yet, and to ask again tomorrow', earn: 'says it has to be earned first' } as const),
+      /** What she says under the chip once she has answered, in her voice (drafts, `AUTHOR TO WRITE`): the card's own line, never a number. */
+      lines: Object.freeze({
+        grant: 'AUTHOR TO WRITE: Yes. Go on.', deny: 'AUTHOR TO WRITE: No.', wait: 'AUTHOR TO WRITE: Not yet. Ask me again tomorrow.', earn: 'AUTHOR TO WRITE: You will have to earn it first.',
+      } as const),
     }),
     hold: Object.freeze({ gain: 2, /** `forgot`: the chance a day the last slot ends that she lets it run on (by her primary style, else `base`; a style at 0 never forgets and gets no Impunity bonus). */ forgot: Object.freeze({ base: 0.05, cruel: 0.3, drill: 0, impunityBonus: 0.2 } as Readonly<Record<string, number>>), impunityAt: 60, sensoryVolume: 0.3 }),
     /** Her answer to a duty that comes while the commander is held (R12, `AUTHOR TO TUNE`): the score is `mercy x values.mercy + corporate x values.corporate + style + frame + roll - 0.5`; at `release` or more she lets go, at `late` or more she lets go late, else she keeps. */
@@ -1064,7 +1068,22 @@ export const TUNING = Object.freeze({
       style: Object.freeze({ possessive: -1, cruel: -1.5, affectionate: 1, drill: 0.5 } as Readonly<Record<string, number>>),
       frame: Object.freeze({ play: 0, role: -0.5, rule: -1 } as const),
     }),
-    ask: Object.freeze({ hold: 2, mockRecord: 3 }),
+    /**
+     * The commander's initiative (R15, `AUTHOR TO TUNE`): the hold a yes gives (`hold`), the Record a mock gives her (`mockRecord`), the hold from which any holder says yes (`acceptHold`), the hold
+     * under which a `playful` one mocks (`playfulBelow`), the styles that say yes and the ones that mock, and the hold a refusal that she takes as an opening gives (`openingHold`).
+     */
+    ask: Object.freeze({
+      hold: 2, mockRecord: 3, acceptHold: 40, playfulBelow: 20, openingHold: 1,
+      accepts: Object.freeze(['ritual', 'drill', 'regal'] as readonly string[]), mocks: Object.freeze(['cruel', 'cold'] as readonly string[]),
+      /** What she says to the model for her next reply, by answer (drafts). */
+      words: Object.freeze({
+        accepted: 'has agreed to what the commander asked, and says so in her own way',
+        mocked: 'laughs at the request and mocks it',
+        refused: 'turns the request down',
+        kind: 'turns the request down gently, and means no harm by it',
+        opening: 'turns the request down, and keeps it in mind',
+      } as const),
+    }),
     posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),
     slap: Object.freeze({
       windowMs: Object.freeze({
