@@ -4,6 +4,7 @@ import { describeOrder, revealPending, wardenOf, wardenOverrideOpen } from '../e
 import type { Registries } from '../content/types';
 import type { CampaignState } from '../engine/state/types';
 import type { Directive } from '../llm/context';
+import { plainDraft } from '../content/draft';
 
 /**
  * What the main model is told about the warden (P13). Every id starts with `warden:` and none starts with a prefix an older package
@@ -68,5 +69,5 @@ export function wardenDirectives(state: CampaignState, reg: Registries): Directi
       text: `AUTHOR TO WRITE: ${unit.displayName} holds the controller of the commander's implant, by order of the corporation. The commander has not been formally told yet: if it comes up, it comes out in this scene, not as old news.`,
     });
   }
-  return out;
+  return out.map((d) => ({ ...d, text: plainDraft(d.text) })); // the draft marker is for authors: the model never reads it
 }

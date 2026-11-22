@@ -26,6 +26,7 @@ import { addHold } from './hold';
 import { leashBlockOf } from './leashBlock';
 import { dynamicOf } from './state';
 import { dynamicRoll } from './witness';
+import { plainDraft } from '../../content/draft';
 
 export { coverMult };
 
@@ -172,7 +173,7 @@ export function oversightDayStep(draft: CampaignState, ctx: Ctx): EngineEvent[] 
   }
   if (O.notices.includes(filled.filled) && NOTICE_TEXT[filled.filled] !== undefined) {
     events.push(stage('notice', { filled: filled.filled }));
-    addFact(draft, { about: [], text: NOTICE_TEXT[filled.filled], tags: ['world', 'oversight_inquiry'], importance: 3, day: draft.day, knownBy: ['*'] });
+    addFact(draft, { about: [], text: plainDraft(NOTICE_TEXT[filled.filled]), tags: ['world', 'oversight_inquiry'], importance: 3, day: draft.day, knownBy: ['*'] });
   }
   return events;
 }

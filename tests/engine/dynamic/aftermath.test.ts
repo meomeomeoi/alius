@@ -330,7 +330,7 @@ describe('every effect type', () => {
     const s = left('cold');
     fx(s, { type: 'rumor' });
     const fact = s.memory.facts.find((f) => f.tags.includes('rumor') && f.about.includes(ANN))!;
-    expect(fact.text).toMatch(/^AUTHOR TO WRITE: /); // a draft text carries the marker (review M10)
+    expect(fact.text).not.toContain('AUTHOR TO WRITE'); // the draft marker is for authors: a fact never carries it
     expect(fact).toMatchObject({ spread: 'fast', knownBy: [ANN] });
     expect(fact.text).not.toMatch(/\b(he|him|his)\b/i);
   });

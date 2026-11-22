@@ -272,29 +272,29 @@ describe('the witness directive', () => {
   });
 });
 
-describe('draft texts carry the marker (review M10)', () => {
-  const MARK = /^AUTHOR TO WRITE: /;
+describe('the draft marker stays in the data and never reaches a fact or a directive (P15 follow-up to review M10)', () => {
+  const MARK = /AUTHOR TO WRITE/;
 
-  it('the facts of what a woman knows and how she reacts, the witness directive and the memory rules of the dynamic are marked', () => {
+  it('the facts of what a woman knows and how she reacts and the witness directive are plain; the memory rules of the dynamic keep the marker in the data', () => {
     // the three levels of knowledge, and a reaction fact of each kind
     const s = world('role', 'indifferent');
     for (let i = 0; i < 3; i++) addSign(s, ctxOf(s, reg), BEA, ANN, 'protocol_slip');
     know(s);
     expect(facts(s).length).toBeGreaterThanOrEqual(2);
-    for (const f of facts(s)) expect(f.text, f.text).toMatch(MARK);
+    for (const f of facts(s)) expect(f.text, f.text).not.toMatch(MARK);
     const rival = world('role', 'indifferent', { hold: 70 });
     rival.relations[ANN].dynamic!.domains = [{ id: 'private_time', since: 1 }];
     practise(rival, BEA, { style: 'ritual', lead: 'dominant' });
     rival.relations[BEA].dynamic = { ...blankDynamic(rival.day), frame: 'play', hold: 45 };
     know(rival);
     expect(facts(rival).filter((f) => f.tags.includes('reaction')).length).toBeGreaterThan(0);
-    for (const f of facts(rival)) expect(f.text, f.text).toMatch(MARK);
+    for (const f of facts(rival)) expect(f.text, f.text).not.toMatch(MARK);
     // the witness directive: every line of it
     const d = dynamicDirectives(s, reg, [BEA, ANN]).find((x) => x.id === 'dynamic:witness:unit_bea')!;
-    expect(d.text).toMatch(MARK);
-    // the memory rules the dynamic added
+    expect(d.text).not.toMatch(MARK);
+    // the memory rules the dynamic added are drafts in the data (authors search for the marker); the fact a rule writes drops it
     for (const id of ['dynamic_frame_play', 'dynamic_frame_role', 'dynamic_frame_rule', 'dynamic_sworn', 'dynamic_domain_yielded', 'dynamic_break', 'dynamic_ended', 'aftermath_return_refused']) {
-      expect(String(reg.memoryRules.get(id)?.text), id).toMatch(MARK);
+      expect(String(reg.memoryRules.get(id)?.text), id).toMatch(/^AUTHOR TO WRITE: /);
     }
   });
 });

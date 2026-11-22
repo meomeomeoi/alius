@@ -35,6 +35,7 @@ import { leadingStyle } from './style';
 import { MOTIVES, OFFER_TABS, type DynamicDomainEntry, type OfferAnswer, type OfferTab, type PracticeAs } from './types';
 import { zoneRevealed } from './zones';
 import { hasCommanderPronoun } from './pronoun';
+import { plainDraft } from '../../content/draft';
 
 type Ctx = Pick<EngineCtx, 'registries' | 'rng'>;
 
@@ -383,7 +384,7 @@ export function makeOffer(draft: CampaignState, ctx: Ctx, unitId: string, compos
   }
   if (taken && witnesses.length > 0) {
     addFact(draft, {
-      about: [unitId, ...witnesses], text: `AUTHOR TO WRITE: ${nameOf(draft, unitId)} took what the commander offered before ${witnesses.map((w) => nameOf(draft, w)).join(' and ')}.`, tags: ['dynamic', 'offer'],
+      about: [unitId, ...witnesses], text: plainDraft(`AUTHOR TO WRITE: ${nameOf(draft, unitId)} took what the commander offered before ${witnesses.map((w) => nameOf(draft, w)).join(' and ')}.`), tags: ['dynamic', 'offer'],
       importance: 2, day: draft.day, knownBy: [unitId, ...witnesses],
     });
     for (const w of witnesses) events.push(...addSign(draft, ctx, w, unitId, 'protocol_public'));
@@ -409,7 +410,7 @@ export function confirmOffer(draft: CampaignState, unitId: string, offerId: stri
   open.confirmed = true;
   const text = (correction ?? '').replace(/\s+/g, ' ').trim().slice(0, TUNING.dynamic.intents.correctionMax).trim();
   if (answer === 'corrected' && text !== '' && !hasCommanderPronoun(text)) {
-    addFact(draft, { about: [unitId], text: `AUTHOR TO WRITE: ${nameOf(draft, unitId)} corrected the commander: "${text}".`, tags: ['dynamic', 'offer_correction'], importance: 2, day: draft.day, knownBy: [unitId] });
+    addFact(draft, { about: [unitId], text: plainDraft(`AUTHOR TO WRITE: ${nameOf(draft, unitId)} corrected the commander: "${text}".`), tags: ['dynamic', 'offer_correction'], importance: 2, day: draft.day, knownBy: [unitId] });
   }
   return [];
 }

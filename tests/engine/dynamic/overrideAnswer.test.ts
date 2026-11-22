@@ -246,6 +246,8 @@ describe('an old save', () => {
     comply: { events: unknown[]; state: CampaignState }; defy: { events: unknown[]; state: CampaignState };
   };
   const plain = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+  // The golden predates the rule that the draft marker never reaches a fact (P15 follow-up): the file stays as it was, and both sides are compared without the marker.
+  const unmarked = <T,>(v: T): T => JSON.parse(JSON.stringify(v).replaceAll('AUTHOR TO WRITE: ', '')) as T;
 
   it('a P13 save with leashswap.warden.override open loads and answers COMPLY exactly as before', () => {
     expect(fixture.before.dynamic).toBeUndefined();
@@ -258,8 +260,8 @@ describe('an old save', () => {
 
   it('and DEFY too', () => {
     const r = run(structuredClone(fixture.before), { type: 'warden/answer', payload: { overrideId: fixture.overrideId, answer: 'defy' } });
-    expect(plain(r.events)).toEqual(fixture.defy.events);
-    expect(plain(r.state)).toEqual(fixture.defy.state);
+    expect(unmarked(r.events)).toEqual(unmarked(fixture.defy.events));
+    expect(unmarked(r.state)).toEqual(unmarked(fixture.defy.state));
   });
 });
 

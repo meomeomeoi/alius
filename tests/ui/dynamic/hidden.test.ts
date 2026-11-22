@@ -15,6 +15,7 @@ import { renderSquadTab } from '../../../src/ui/squad/squadTab';
 import { hiddenFixture } from '../../fixtures/analyze/hidden';
 import { leaks } from '../../helpers/analyze';
 import { loadCore } from '../../helpers/world';
+import { plainDraft } from '../../../src/content/draft';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -59,7 +60,7 @@ describe('what the dynamic keeps never reaches a screen, a label or a toast', ()
     expect(text).toContain('HOLD'); // her section
     expect(text).toContain('TESTING'); // the band, as a word
     expect(text).toContain('Held by Ann'); // the CMDR line
-    expect(text).toContain(String(reg.dynamicMilestones.get('first_yes')!.text).replaceAll('{name}', 'Ann')); // her notice
+    expect(text).toContain(plainDraft(String(reg.dynamicMilestones.get('first_yes')!.text)).replaceAll('{name}', 'Ann')); // her notice
   });
 
   for (const [raw, hidden] of [[false, false], [true, false], [false, true], [true, true]] as const) {

@@ -22,6 +22,7 @@ import { VOICE_OF } from '../../../src/ui/voice/sources';
 import { unitAccent } from '../../../src/ui/voice/voiceCard';
 import { campaign, loadCore, run } from '../../helpers/world';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
+import { plainDraft } from '../../../src/content/draft';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -132,7 +133,7 @@ describe('notices', () => {
     expect(n.voice).toBe(VOICE_OF.dynamic);
     expect(n.accent).toBe(unitAccent(ANN));
     expect(n.title).toBe('Ann');
-    expect(n.text).toBe(String(reg.dynamicMilestones.get('first_yes')!.text).replaceAll('{name}', 'Ann'));
+    expect(n.text).toBe(plainDraft(String(reg.dynamicMilestones.get('first_yes')!.text)).replaceAll('{name}', 'Ann'));
     expect(n.cutIn).toEqual({ kind: 'dynamic', text: 'PLAY' });
     expect(notices([{ type: 'frame_changed', unitId: ANN, from: 'equal', to: 'play', milestoneId: 'first_yes' }], world(), true)[0].cutIn).toEqual({ kind: 'dynamic', text: 'ANN' }); // the frame's name only while the numbers are shown
   });
@@ -159,7 +160,7 @@ describe('notices', () => {
 
   it('the aftermath starts with a cut-in naming her and the words of its first stage; no kind, no number', () => {
     const [n] = notices([{ type: 'aftermath_started', unitId: ANN, id: 'da1', kind: 'grief' }]);
-    expect(n.text).toBe((reg.aftermaths.get('grief')!.stages as Array<{ notice: string }>)[0].notice);
+    expect(n.text).toBe(plainDraft((reg.aftermaths.get('grief')!.stages as Array<{ notice: string }>)[0].notice));
     expect(n.cutIn).toEqual({ kind: 'dynamic', text: 'ANN' });
     expect(`${n.title} ${n.text} ${n.cutIn!.text}`).not.toMatch(/grief|\d/i);
   });

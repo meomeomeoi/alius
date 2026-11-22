@@ -19,6 +19,7 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
 import { bodyMapFor, renderBodyMap } from './bodyMap';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, renderExitCard, type ClaimAnswer, type ReturnAnswer } from './cards';
+import { plainDraft } from '../../content/draft';
 
 /** What the section hands back to the app (every one optional: a surface without a controller draws the section without acting). */
 export interface DynamicSectionActions {
@@ -151,7 +152,7 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
     lines.push(row('SHE SEEMS', ...between(view.signs.map((sign) => chip(sign, 'glossary:dynamic', { 'data-dyn-sign': '' })))));
   }
   if (view.compromat.length > 0) {
-    lines.push(row('SHE KEEPS', ...between(view.compromat.map((f) => chip(f.text.replace(/^\s*AUTHOR TO WRITE:\s*/, '').trim(), 'glossary:compromat', { 'data-dyn-compromat': f.id })))));
+    lines.push(row('SHE KEEPS', ...between(view.compromat.map((f) => chip(plainDraft(f.text).trim(), 'glossary:compromat', { 'data-dyn-compromat': f.id })))));
   }
   if (view.knownLevels.length > 0) {
     const who = (id: string): string => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();

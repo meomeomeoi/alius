@@ -6,6 +6,7 @@ import type { DynamicMilestoneEntry } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { VOICE_OF, type Voice } from '../voice/sources';
 import { unitAccent } from '../voice/voiceCard';
+import { plainDraft } from '../../content/draft';
 
 /**
  * The corporate-voice notices of oversight's inquiry into the commander's cancelled Leash requests (P15, plan R16). Every text is AUTHOR TO WRITE and
@@ -15,6 +16,11 @@ import { unitAccent } from '../voice/voiceCard';
 export interface OversightNotice { kind: 'info' | 'warn'; title: string; text: string; /** A major moment the app draws as a cut-in too. */ cutIn?: boolean }
 
 export function oversightNotice(e: EngineEvent, state: CampaignState): OversightNotice | null {
+  const n = draftOversightNotice(e, state);
+  return n === null ? null : { ...n, text: plainDraft(n.text) }; // the draft marker is for authors: the toast never shows it
+}
+
+function draftOversightNotice(e: EngineEvent, state: CampaignState): OversightNotice | null {
   if (e.type !== 'oversight_inquiry') return null;
   const name = (): string => state.squad.find((u) => u.id === e.unitId)?.displayName ?? 'The soldier';
   switch (e.stage) {
@@ -105,5 +111,6 @@ export function dynamicNotices(events: readonly EngineEvent[], state: CampaignSt
       }
     }
   }
-  return out;
+  // the draft marker is for authors: whether a text is a template's or the registry's, a toast and a cut-in never show it
+  return out.map((n) => ({ ...n, text: plainDraft(n.text), ...(n.cutIn !== undefined ? { cutIn: { ...n.cutIn, text: plainDraft(n.cutIn.text) } } : {}) }));
 }

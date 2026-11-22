@@ -70,7 +70,7 @@ describe('Knowledge.dynamic', () => {
     expect(view.expectations.holdsUntil).toBe('limit');
     expect(view.expectations.worship).toEqual({ feet: { attitude: 'craves', meaning: 'intimacy' } }); // not the hands she dislikes
     expect(view.expectations.tells).toBeUndefined();
-    expect(view.compromat.map((f) => f.text)).toEqual(['AUTHOR TO WRITE: the commander once did something.']);
+    expect(view.compromat.map((f) => f.text)).toEqual(['the commander once did something.']);
     expect(view.knownLevels).toEqual([{ observerId: BEA, level: 'knows_dynamic' }]);
   });
 

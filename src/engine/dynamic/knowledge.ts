@@ -24,6 +24,7 @@ import { reactToDynamic } from './reactions';
 import { dynamicRoll } from './witness';
 import { dynamicOf, type KnowledgeRecord } from './state';
 import { DYNAMIC_KNOWLEDGE_TAG, type DynamicSignEntry, type KnowledgeLevel, type SignKind } from './types';
+import { plainDraft } from '../../content/draft';
 
 type Ctx = Pick<EngineCtx, 'registries'>;
 
@@ -90,7 +91,7 @@ function raise(draft: CampaignState, ctx: Ctx, observerId: string, holderId: str
   rec.level = level;
   rec.levelDay = draft.day;
   addFact(draft, {
-    about: [observerId, holderId], text: FACT_TEXT[level](nameOf(draft, observerId), nameOf(draft, holderId)), tags: [DYNAMIC_KNOWLEDGE_TAG, level], importance: 3,
+    about: [observerId, holderId], text: plainDraft(FACT_TEXT[level](nameOf(draft, observerId), nameOf(draft, holderId))), tags: [DYNAMIC_KNOWLEDGE_TAG, level], importance: 3,
     day: draft.day, knownBy: [observerId], hiddenFromCommander: true,
   });
   const events: EngineEvent[] = [{ type: 'dynamic_known', observerId, holderId, level }];

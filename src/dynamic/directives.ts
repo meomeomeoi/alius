@@ -19,8 +19,9 @@ import type { CampaignState, Unit } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { describeOrder } from '../engine/warden';
 import type { ContextBuilder, Directive } from '../llm/context';
+import { plainDraft } from '../content/draft';
 
-const clean = (text: string): string => text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+const clean = (text: string): string => plainDraft(text).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 const sentence = (text: string): string => clean(text).replace(/[.\s]+$/, '');
 
 /**
@@ -76,7 +77,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
   const regard = holds ? regardTone(state, reg, unit.id) : null;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   // her compromat is hers: she knows it whether or not the commander does (the player's view, `Knowledge`, is not what this reads); the newest few, no count
-  const kept = compromatOf(state, unit.id).slice(-3).map((f) => sentence(f.text.replace(/^AUTHOR TO WRITE:\s*/, ''))).filter((t) => t !== '');
+  const kept = compromatOf(state, unit.id).slice(-3).map((f) => sentence(f.text)).filter((t) => t !== '');
   const parts = [
     ...(holds ? [`${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`] : []),
     ...(holds && claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
@@ -135,8 +136,11 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   out.push(...witnessDirectives(state, reg, present));
   out.push(...disappointedDirectives(state, present));
   out.push(...regardDirectives(state, reg, present));
-  return out;
+  return out.map(plainDirective);
 }
+
+/** A directive the main model reads: a draft text reaches it without the marker (`plainDraft`), whichever part of it came from a template or the registry. */
+const plainDirective = (d: Directive): Directive => ({ ...d, text: plainDraft(d.text) });
 
 /** The line of her aftermath while its stage runs (`dynamic:aftermath:<unitId>`): the stage's `directive`, with her name; one line, gone with the aftermath. */
 function aftermathDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
@@ -261,7 +265,7 @@ export function offerDirective(event: { type: string; [k: string]: unknown }, st
     answer: String(event.answer), what: String(event.what ?? 'something'), conditions: event.conditions === true, kind: event.kind === true,
     ...(typeof event.corrected === 'string' ? { corrected: event.corrected } : {}),
   });
-  return parts === null ? null : { id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: [...parts, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') };
+  return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: [...parts, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') });
 }
 
 /** What an offer says about itself, in the words of its answer: the same for the scene directive and the DM reply line. */
@@ -288,7 +292,7 @@ export function offerReplyLine(state: CampaignState, reg: Registries, unitId: st
   if ((state.dms[unitId] ?? []).slice(open.dmAt).some((m) => m.from !== 'commander')) return null; // she has answered since: it is not carried again
   const what = open.composition.flatMap((c) => c.ids.map((id) => offerLabel(reg, c.tab, id).toLowerCase())).join(' and ');
   const parts = offerSentences(reg, unit, { answer: open.answer, what, conditions: open.conditions === true, kind: open.kind === true, ...(open.corrected !== undefined ? { corrected: open.corrected } : {}) });
-  return parts === null ? null : parts.join(' ');
+  return parts === null ? null : plainDraft(parts.join(' '));
 }
 
 /** Sets the directives the events of one dispatch call for. Returns whether any was set. */

@@ -731,6 +731,11 @@ Nothing remembered, with the reason: `hold_changed`, `hold_band_changed`, probes
 - **`DynamicView.asked`, the glossary `dynamic_exit` and the `dynamic:regard:` directive** are additions beyond the plan's list.
 - **Every `AUTHOR TO WRITE` text and `AUTHOR TO TUNE` number** is a draft.
 
+### Follow-up of 2026-11-22: the draft marker and the habits of respect
+
+- **The draft marker never reaches the player or the model.** `plainDraft` (`src/content/draft.ts`, a leaf both the engine and the UI import) strips `AUTHOR TO WRITE:` (case-insensitive, with the whitespace around it, also inside a composed text). It is applied where a draft becomes something read: the fact a **memory rule** writes (`remember.ts`, every rule, P13's too), `addCompromat`, the knowledge, reaction, offer, aftermath-rumor and oversight-notice facts of `src/engine/dynamic/`, every directive of `dynamicDirectives` / `offerDirective` / `offerReplyLine` and of `wardenDirectives`, `dynamicNotices` (toast and cut-in), `oversightNotice`, `wardenNotice`, and the four cards. The marker stays in the data and in the source. `tests/draftMarker.test.ts` renders every directive kind, every notice, the cards and a fact from each of the 25 draft memory rules and asserts none carries it (a new draft rule fails it until its event is added to the table). Expectations that asserted the marker in a model- or player-facing text were turned around (`reactions.test.ts` review M10, `aftermath.test.ts`, `dynamicReadings.test.ts`, three UI tests now compare with `plainDraft` of the registry text). `tests/engine/dynamic/overrideAnswer.test.ts` compares the P13 DEFY golden (`p13_override_open.json`) with the marker removed from both sides: the golden file itself is unchanged and still carries it in the fact it recorded.
+- **Counter kinds `meeting` and `run`** (habits `asks_advice`, `reports_first`); see the open item on the `respect` tag, closed above.
+
 ### Fixed after review
 
 Three Opus reviews (a–d: ea49b44..463a5ef; e–h: 8073969..d5e3623; i–m: e1f786f..59c0924) found 0 Critical, 4 + 11 + 7 Important issues and 13 + 16 + 20 Minor ones. Each fix was test first. What changed beyond the rulings above:

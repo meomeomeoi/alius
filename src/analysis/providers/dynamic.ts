@@ -13,11 +13,12 @@ import type { Knowledge } from '../knowledge';
 import type { AnalyzeEnv } from '../model';
 import { registerAnalyzeProvider } from '../providers';
 import type { Subject } from '../subject';
+import { plainDraft } from '../../content/draft';
 
 const unitIdOf = (s: Subject): string | null => (typeof s.data.unitId === 'string' ? s.data.unitId : null);
 const nameOf = (env: AnalyzeEnv, unitId: string): string => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? 'She';
 const FELT_LINE = '[[dynamic_felt]]';
-const plain = (text: string): string => text.replace(/^\s*AUTHOR TO WRITE:\s*/, '').trim();
+const plain = (text: string): string => plainDraft(text).trim();
 
 /** What an observer has shown she knows, in words (never the suspicion behind it). */
 const LEVEL_WORDS: Readonly<Record<KnowledgeLevel, string>> = { suspects_close: 'has noticed something', suspects_dynamic: 'suspects', knows_dynamic: 'knows' };

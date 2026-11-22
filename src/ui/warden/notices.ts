@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../../engine/dispatch';
 import type { CampaignState } from '../../engine/state/types';
 import { wardenOf } from '../../engine/warden';
+import { plainDraft } from '../../content/draft';
 
 /**
  * The corporate-voice notices of the warden's moves (P13 §6). Every text is AUTHOR TO WRITE and gives the commander no pronoun. A notice
@@ -10,6 +11,11 @@ import { wardenOf } from '../../engine/warden';
 export interface WardenNotice { kind: 'info' | 'warn'; title: string; text: string; /** A major moment the app draws as a cut-in too. */ cutIn?: boolean }
 
 export function wardenNotice(e: EngineEvent, state: CampaignState, reg: Registries): WardenNotice | null {
+  const n = draftWardenNotice(e, state, reg);
+  return n === null ? null : { ...n, text: plainDraft(n.text) }; // the draft marker is for authors: the toast never shows it
+}
+
+function draftWardenNotice(e: EngineEvent, state: CampaignState, reg: Registries): WardenNotice | null {
   const name = (): string => {
     const id = wardenOf(state)?.unitId;
     return state.squad.find((u) => u.id === id)?.displayName ?? 'The warden';

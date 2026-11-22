@@ -12,6 +12,7 @@ import { h } from '../dom';
 import { VOICE_OF } from '../voice/sources';
 import { renderDisciplineMenu } from '../discipline/menu';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
+import { plainDraft } from '../../content/draft';
 
 export interface MilestoneCardCtx {
   state: CampaignState;
@@ -37,7 +38,7 @@ export function renderMilestoneCard(host: HTMLElement, ctx: MilestoneCardCtx): v
     onclick: () => ctx.onAnswer(kind),
   }, text);
   const body = h('div', { class: 'alius-milestone-body' },
-    h('p', { class: 'alius-milestone-text' }, entry.text.replaceAll('{name}', unit.displayName)),
+    h('p', { class: 'alius-milestone-text' }, plainDraft(entry.text).replaceAll('{name}', unit.displayName)),
     h('div', { class: 'alius-milestone-answers' }, button('accept', '[ ACCEPT ]'), button('refuse', '[ REFUSE ]')));
   const card = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit.displayName, body, accent: unitAccent(unit.id) });
   card.classList.add('alius-milestone');
@@ -88,7 +89,7 @@ export function renderClaimCard(host: HTMLElement, ctx: ClaimCardCtx): void {
     ...analyzeNative('glossary:claim', live),
     onclick: () => ctx.onAnswer(kind),
   }, text);
-  const words = (entry?.text ?? SUBMIT_WORDS).replaceAll('{name}', unit.displayName);
+  const words = plainDraft(entry?.text ?? SUBMIT_WORDS).replaceAll('{name}', unit.displayName);
   const grants = (entry?.grants ?? []).map((cap) => h('li', { class: 'alius-claim-grant', 'data-grants': cap, ...analyzeAttrs(`glossary:capability_${cap}`, live) }, String(reg.glossary.get(`capability_${cap}`)?.term ?? cap)));
   const body = h('div', { class: 'alius-claim-body' },
     ...(entry === undefined ? [] : [h('p', { class: 'alius-claim-domain' }, h('span', { class: 'alius-chip', ...analyzeAttrs(`dynamicDomains:${entry.id}`, live) }, String(entry.label).toUpperCase()))]),
@@ -146,7 +147,7 @@ export function renderReturnCard(host: HTMLElement, ctx: ReturnCardCtx): void {
     onclick: () => ctx.onAnswer(kind),
   }, text);
   const body = h('div', { class: 'alius-return-body' },
-    h('p', { class: 'alius-return-text' }, RETURN_WORDS[offer.terms].replaceAll('{name}', unit.displayName)),
+    h('p', { class: 'alius-return-text' }, plainDraft(RETURN_WORDS[offer.terms]).replaceAll('{name}', unit.displayName)),
     h('div', { class: 'alius-return-answers' }, button('accept', '[ ACCEPT ]'), button('refuse', '[ REFUSE ]')));
   const card = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit.displayName, body, accent: unitAccent(unit.id) });
   card.classList.add('alius-return');
@@ -252,7 +253,7 @@ export function renderExitCard(host: HTMLElement, ctx: ExitCardCtx): void {
   rows.push(forced);
 
   const body = h('div', { class: 'alius-exit-body' },
-    h('p', { class: 'alius-exit-text' }, 'AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.'.replaceAll('{name}', unit.displayName)),
+    h('p', { class: 'alius-exit-text' }, plainDraft('AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.').replaceAll('{name}', unit.displayName)),
     ...rows,
     h('div', { class: 'alius-exit-close' }, h('button', {
       type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'dyn-exit-close', ...analyzeNative('glossary:dynamic_exit', live), onclick: () => ctx.onClose?.(),

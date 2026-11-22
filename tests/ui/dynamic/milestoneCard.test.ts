@@ -19,6 +19,7 @@ import { FakeStAdapter } from '../../../src/st/fake';
 import type { SceneController } from '../../../src/scene/sceneController';
 import { campaign, ctxOf, loadCore, run } from '../../helpers/world';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
+import { plainDraft } from '../../../src/content/draft';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -57,7 +58,7 @@ describe('the milestone card', () => {
     expect(card.getAttribute('data-milestone')).toBe(milestone.id);
     expect(host.querySelector('.alius-voice-personal')).not.toBeNull(); // her voice
     expect(host.textContent).toContain('Ann');
-    expect(host.textContent).toContain(String(reg.dynamicMilestones.get('first_yes')!.text));
+    expect(host.textContent).toContain(plainDraft(String(reg.dynamicMilestones.get('first_yes')!.text)));
     const accept = host.querySelector<HTMLButtonElement>('button[data-milestone-answer="accept"]')!;
     const refuse = host.querySelector<HTMLButtonElement>('button[data-milestone-answer="refuse"]')!;
     expect([accept.textContent, refuse.textContent]).toEqual(['[ ACCEPT ]', '[ REFUSE ]']);

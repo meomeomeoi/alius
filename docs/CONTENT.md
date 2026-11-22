@@ -48,6 +48,8 @@ Each registry file is a JSON **array** of entries. Every entry has:
 
 Other fields depend on the registry.
 
+**The draft marker.** A text that an author still has to write starts with `AUTHOR TO WRITE:` in the file (and in the source), so it can be found. The marker is for authors only: every place that turns such a text into something a player or the main model reads strips it with `plainDraft` (`src/content/draft.ts`): the fact a memory rule writes, a directive, a toast, a card. A new sink that shows a registry text or a template draft must do the same (`tests/draftMarker.test.ts` guards the P13 and P15 ones).
+
 ### Overriding and `extends`
 
 - **Override by id:** a higher-priority pack that defines an entry with an existing id replaces it completely.
@@ -823,7 +825,7 @@ One entry per votable decision; the id must be one of `mission`, `upgrade`, `pun
 `squad_assertiveness` choices carry `{ type: 'squad_power', privilegeMult, demandMult, commanderVoteMult, soldierVoteMult? }` (the last is each named soldier's own vote weight, default 1); `voting`'s `on` choice carries `{ type: 'voting' }`. Both are `live: false`. The lore lines are short (the WORLD SETTINGS block holds about 120 tokens for every option together).
 
 ## Memory rules (P3b)
-`memoryRules` (core: `content/core/memoryRules.json`) makes an engine event a fact. Every text is a draft (`AUTHOR TO WRITE`); keep them short (≤ 200 characters) and give the commander no pronoun (write "the commander").
+`memoryRules` (core: `content/core/memoryRules.json`) makes an engine event a fact. Every text is a draft (`AUTHOR TO WRITE`; the marker stays in the file and is stripped when the fact is written, `plainDraft` in `src/content/draft.ts`, so no fact, prompt or panel ever shows it); keep them short (≤ 200 characters) and give the commander no pronoun (write "the commander").
 
 ```
 { id, event, when?, text, importance 1–5, about, audience, spread, hiddenFromCommander?, tags }

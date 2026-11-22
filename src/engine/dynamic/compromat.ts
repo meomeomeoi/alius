@@ -14,6 +14,7 @@ import { factTextMax } from '../memory/config';
 import { addFact } from '../memory/facts';
 import type { CampaignState, Fact } from '../state/types';
 import { hasCommanderPronoun } from './pronoun';
+import { plainDraft } from '../../content/draft';
 
 export const COMPROMAT_TAG = 'compromat';
 export const holderTag = (holderId: string): string => `holder:${holderId}`;
@@ -30,7 +31,7 @@ export function compromatOf(state: Pick<CampaignState, 'memory'>, holderId: stri
  */
 export function addCompromat(draft: CampaignState, holderId: string, text: string, witnesses: readonly string[]): Fact {
   return tagHolder(addFact(draft, {
-    about: ['commander', ...new Set(witnesses.filter((id) => id !== holderId))], text, tags: [COMPROMAT_TAG], importance: 4, day: draft.day,
+    about: ['commander', ...new Set(witnesses.filter((id) => id !== holderId))], text: plainDraft(text), tags: [COMPROMAT_TAG], importance: 4, day: draft.day,
     knownBy: [holderId], hiddenFromCommander: true,
   }), holderId);
 }

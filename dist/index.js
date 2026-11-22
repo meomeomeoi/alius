@@ -18108,6 +18108,13 @@ function metAtScene(draft, reg, participants) {
   return [...events, { type: "booking_played", bookingId: due.id, unitId: due.unitId }];
 }
 
+// src/content/draft.ts
+var HAS_MARKER = /AUTHOR TO WRITE:/i;
+var MARKER = /\s*AUTHOR TO WRITE:\s*/gi;
+function plainDraft(text2) {
+  return HAS_MARKER.test(text2) ? text2.replace(MARKER, " ").trim() : text2;
+}
+
 // src/engine/dynamic/compromat.ts
 var COMPROMAT_TAG = "compromat";
 var holderTag = (holderId) => `holder:${holderId}`;
@@ -18118,7 +18125,7 @@ function compromatOf(state, holderId) {
 function addCompromat(draft, holderId, text2, witnesses) {
   return tagHolder(addFact(draft, {
     about: ["commander", ...new Set(witnesses.filter((id) => id !== holderId))],
-    text: text2,
+    text: plainDraft(text2),
     tags: [COMPROMAT_TAG],
     importance: 4,
     day: draft.day,
@@ -18909,7 +18916,7 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
       const name = unit3.displayName;
       addFact(draft, {
         about: [unitId],
-        text: `AUTHOR TO WRITE: ${name} is telling anyone who will listen what went on between ${name} and the commander.`,
+        text: plainDraft(`AUTHOR TO WRITE: ${name} is telling anyone who will listen what went on between ${name} and the commander.`),
         tags: ["rumor", "dynamic", "aftermath"],
         importance: 3,
         day: draft.day,
@@ -19313,7 +19320,7 @@ function compromiseExit(draft, ctx2, unitId) {
 // src/engine/dynamic/reactions.ts
 var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function reactionFact(draft, observerId, holderId, text2) {
-  addFact(draft, { about: [observerId, holderId], text: text2, tags: [DYNAMIC_KNOWLEDGE_TAG, "reaction"], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
+  addFact(draft, { about: [observerId, holderId], text: plainDraft(text2), tags: [DYNAMIC_KNOWLEDGE_TAG, "reaction"], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
 }
 function contestableDomain(draft, reg, rivalId, holderId) {
   const rival = dynamicOf(draft, rivalId);
@@ -19388,7 +19395,7 @@ function raise(draft, ctx2, observerId, holderId, rec, level) {
   rec.levelDay = draft.day;
   addFact(draft, {
     about: [observerId, holderId],
-    text: FACT_TEXT2[level](nameOf5(draft, observerId), nameOf5(draft, holderId)),
+    text: plainDraft(FACT_TEXT2[level](nameOf5(draft, observerId), nameOf5(draft, holderId))),
     tags: [DYNAMIC_KNOWLEDGE_TAG, level],
     importance: 3,
     day: draft.day,
@@ -20975,7 +20982,7 @@ function makeOffer(draft, ctx2, unitId, composition, opts = {}) {
   if (taken && witnesses.length > 0) {
     addFact(draft, {
       about: [unitId, ...witnesses],
-      text: `AUTHOR TO WRITE: ${nameOf7(draft, unitId)} took what the commander offered before ${witnesses.map((w) => nameOf7(draft, w)).join(" and ")}.`,
+      text: plainDraft(`AUTHOR TO WRITE: ${nameOf7(draft, unitId)} took what the commander offered before ${witnesses.map((w) => nameOf7(draft, w)).join(" and ")}.`),
       tags: ["dynamic", "offer"],
       importance: 2,
       day: draft.day,
@@ -21000,7 +21007,7 @@ function confirmOffer(draft, unitId, offerId, answer, correction) {
   open3.confirmed = true;
   const text2 = (correction ?? "").replace(/\s+/g, " ").trim().slice(0, TUNING.dynamic.intents.correctionMax).trim();
   if (answer === "corrected" && text2 !== "" && !hasCommanderPronoun(text2)) {
-    addFact(draft, { about: [unitId], text: `AUTHOR TO WRITE: ${nameOf7(draft, unitId)} corrected the commander: "${text2}".`, tags: ["dynamic", "offer_correction"], importance: 2, day: draft.day, knownBy: [unitId] });
+    addFact(draft, { about: [unitId], text: plainDraft(`AUTHOR TO WRITE: ${nameOf7(draft, unitId)} corrected the commander: "${text2}".`), tags: ["dynamic", "offer_correction"], importance: 2, day: draft.day, knownBy: [unitId] });
   }
   return [];
 }
@@ -30225,7 +30232,7 @@ function rememberEvents(draft, events, reg) {
       const names = res.vars.names ?? (rule.about === "world" ? "" : joinNames(aboutIds.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id)));
       addFact(draft, {
         about: aboutIds,
-        text: fill3(rule.text, { ...res.vars, names }),
+        text: fill3(plainDraft(rule.text), { ...res.vars, names }),
         tags: [...rule.tags, ...res.tags ?? []],
         importance: rule.importance,
         day: draft.day,
@@ -35866,7 +35873,7 @@ function oversightDayStep(draft, ctx2) {
   }
   if (O.notices.includes(filled.filled) && NOTICE_TEXT[filled.filled] !== void 0) {
     events.push(stage("notice", { filled: filled.filled }));
-    addFact(draft, { about: [], text: NOTICE_TEXT[filled.filled], tags: ["world", "oversight_inquiry"], importance: 3, day: draft.day, knownBy: ["*"] });
+    addFact(draft, { about: [], text: plainDraft(NOTICE_TEXT[filled.filled]), tags: ["world", "oversight_inquiry"], importance: 3, day: draft.day, knownBy: ["*"] });
   }
   return events;
 }
@@ -38463,7 +38470,7 @@ function wardenDirectives(state, reg) {
       text: `AUTHOR TO WRITE: ${unit3.displayName} holds the controller of the commander's implant, by order of the corporation. The commander has not been formally told yet: if it comes up, it comes out in this scene, not as old news.`
     });
   }
-  return out;
+  return out.map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 
 // src/warden/controller.ts
@@ -39097,7 +39104,7 @@ function createDevelopment(deps) {
 }
 
 // src/dynamic/directives.ts
-var clean5 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean5 = (text2) => plainDraft(text2).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var sentence2 = (text2) => clean5(text2).replace(/[.\s]+$/, "");
 var DYNAMIC_PREFIX = "dynamic:";
 var PROBE_PREFIX = "dynamic:probe:";
@@ -39130,7 +39137,7 @@ function holderDirective(state, reg, unit3) {
   const arguing = override !== void 0 && override.unitId === unit3.id && state.scene !== void 0 && override.arguing === state.scene.id ? override : void 0;
   const regard2 = holds6 ? regardTone(state, reg, unit3.id) : null;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
-  const kept = compromatOf(state, unit3.id).slice(-3).map((f) => sentence2(f.text.replace(/^AUTHOR TO WRITE:\s*/, ""))).filter((t) => t !== "");
+  const kept = compromatOf(state, unit3.id).slice(-3).map((f) => sentence2(f.text)).filter((t) => t !== "");
   const parts = [
     ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`] : [],
     ...holds6 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
@@ -39175,8 +39182,9 @@ function dynamicDirectives(state, reg, present2) {
   out.push(...witnessDirectives(state, reg, present2));
   out.push(...disappointedDirectives(state, present2));
   out.push(...regardDirectives(state, reg, present2));
-  return out;
+  return out.map(plainDirective);
 }
+var plainDirective = (d) => ({ ...d, text: plainDraft(d.text) });
 function aftermathDirective2(state, reg, unit3) {
   const a = dynamicOf(state, unit3.id)?.aftermath;
   const row4 = a === void 0 ? void 0 : aftermathRowOf(reg, a.kind);
@@ -39273,7 +39281,7 @@ function offerDirective(event, state, reg) {
     kind: event.kind === true,
     ...typeof event.corrected === "string" ? { corrected: event.corrected } : {}
   });
-  return parts === null ? null : { id: `${OFFER_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") };
+  return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit3, o) {
   const say = OFFER_LINE[o.answer];
@@ -39293,7 +39301,7 @@ function offerReplyLine(state, reg, unitId) {
   if ((state.dms[unitId] ?? []).slice(open3.dmAt).some((m) => m.from !== "commander")) return null;
   const what = open3.composition.flatMap((c) => c.ids.map((id) => offerLabel(reg, c.tab, id).toLowerCase())).join(" and ");
   const parts = offerSentences(reg, unit3, { answer: open3.answer, what, conditions: open3.conditions === true, kind: open3.kind === true, ...open3.corrected !== void 0 ? { corrected: open3.corrected } : {} });
-  return parts === null ? null : parts.join(" ");
+  return parts === null ? null : plainDraft(parts.join(" "));
 }
 function applyOfferDirectives(builder, events, state, reg) {
   if (state === null) return false;
@@ -41345,6 +41353,10 @@ function renderOverrideChip(host, state, reg, onAnswer) {
 
 // src/ui/warden/notices.ts
 function wardenNotice(e, state, reg) {
+  const n = draftWardenNotice(e, state, reg);
+  return n === null ? null : { ...n, text: plainDraft(n.text) };
+}
+function draftWardenNotice(e, state, reg) {
   const name = () => {
     const id = wardenOf(state)?.unitId;
     return state.squad.find((u) => u.id === id)?.displayName ?? "The warden";
@@ -41373,6 +41385,10 @@ function wardenNotice(e, state, reg) {
 
 // src/ui/dynamic/notices.ts
 function oversightNotice(e, state) {
+  const n = draftOversightNotice(e, state);
+  return n === null ? null : { ...n, text: plainDraft(n.text) };
+}
+function draftOversightNotice(e, state) {
   if (e.type !== "oversight_inquiry") return null;
   const name = () => state.squad.find((u) => u.id === e.unitId)?.displayName ?? "The soldier";
   switch (e.stage) {
@@ -41448,7 +41464,7 @@ function dynamicNotices(events, state, reg, opts = {}) {
       }
     }
   }
-  return out;
+  return out.map((n) => ({ ...n, text: plainDraft(n.text), ...n.cutIn !== void 0 ? { cutIn: { ...n.cutIn, text: plainDraft(n.cutIn.text) } } : {} }));
 }
 
 // src/ui/hub/plan/svg.ts
@@ -41595,7 +41611,7 @@ function detailPaths(build, side) {
   for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
   return out;
 }
-var plain4 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
+var plain4 = (text2) => plainDraft(text2).trim();
 function bodyMapZones(state, reg, knowledge2, unitId) {
   const profile = expectationsOf(state, reg, unitId);
   const facts = knowledge2.facts();
@@ -41775,7 +41791,7 @@ function renderMilestoneCard(host, ctx2) {
   const body = h(
     "div",
     { class: "alius-milestone-body" },
-    h("p", { class: "alius-milestone-text" }, entry.text.replaceAll("{name}", unit3.displayName)),
+    h("p", { class: "alius-milestone-text" }, plainDraft(entry.text).replaceAll("{name}", unit3.displayName)),
     h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
   );
   const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
@@ -41808,7 +41824,7 @@ function renderClaimCard(host, ctx2) {
     ...analyzeNative("glossary:claim", live3),
     onclick: () => ctx2.onAnswer(kind)
   }, text2);
-  const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
+  const words3 = plainDraft(entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
   const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live3) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
   const body = h(
     "div",
@@ -41853,7 +41869,7 @@ function renderReturnCard(host, ctx2) {
   const body = h(
     "div",
     { class: "alius-return-body" },
-    h("p", { class: "alius-return-text" }, RETURN_WORDS[offer.terms].replaceAll("{name}", unit3.displayName)),
+    h("p", { class: "alius-return-text" }, plainDraft(RETURN_WORDS[offer.terms]).replaceAll("{name}", unit3.displayName)),
     h("div", { class: "alius-return-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
   );
   const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
@@ -41935,7 +41951,7 @@ function renderExitCard(host, ctx2) {
   const body = h(
     "div",
     { class: "alius-exit-body" },
-    h("p", { class: "alius-exit-text" }, "AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.".replaceAll("{name}", unit3.displayName)),
+    h("p", { class: "alius-exit-text" }, plainDraft("AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.").replaceAll("{name}", unit3.displayName)),
     ...rows,
     h("div", { class: "alius-exit-close" }, h("button", {
       type: "button",
@@ -42053,7 +42069,7 @@ function renderDynamicSection(host, ctx2) {
     lines.push(row4("SHE SEEMS", ...between(view.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
   }
   if (view.compromat.length > 0) {
-    lines.push(row4("SHE KEEPS", ...between(view.compromat.map((f) => chip2(f.text.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
+    lines.push(row4("SHE KEEPS", ...between(view.compromat.map((f) => chip2(plainDraft(f.text).trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
   }
   if (view.knownLevels.length > 0) {
     const who = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
@@ -57317,7 +57333,7 @@ function registerBondsProviders() {
 var unitIdOf3 = (s) => typeof s.data.unitId === "string" ? s.data.unitId : null;
 var nameOf18 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
 var FELT_LINE = "[[dynamic_felt]]";
-var plain7 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
+var plain7 = (text2) => plainDraft(text2).trim();
 var LEVEL_WORDS = { suspects_close: "has noticed something", suspects_dynamic: "suspects", knows_dynamic: "knows" };
 var MASTERY_WORDS = ["no", "one", "two", "three", "four", "five"];
 function viewed(read) {

@@ -20,6 +20,7 @@ import { addHold } from './hold';
 import { dynamicOf } from './state';
 import { DYNAMIC_KNOWLEDGE_TAG } from './types';
 import { dynamicRoll, reactionOf } from './witness';
+import { plainDraft } from '../../content/draft';
 
 export { dynamicTerm, standingMalus } from './witness';
 
@@ -29,7 +30,7 @@ const nameOf = (state: CampaignState, id: string): string => state.squad.find((u
 
 /** A fact of her reaction: hers, hidden from the commander until she shows it (the same rule as what she knows). No pronoun for the commander. */
 function reactionFact(draft: CampaignState, observerId: string, holderId: string, text: string): void {
-  addFact(draft, { about: [observerId, holderId], text, tags: [DYNAMIC_KNOWLEDGE_TAG, 'reaction'], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
+  addFact(draft, { about: [observerId, holderId], text: plainDraft(text), tags: [DYNAMIC_KNOWLEDGE_TAG, 'reaction'], importance: 2, day: draft.day, knownBy: [observerId], hiddenFromCommander: true });
 }
 
 /**

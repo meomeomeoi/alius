@@ -38,6 +38,7 @@ export { commandStruggleOf };
 import { AFTERMATH_KINDS, type AftermathEffect, type AftermathEntry, type AftermathKind, type ExitRoute } from './types';
 import { dynamicRoll } from './witness';
 import type { AftermathRequest } from './exit';
+import { plainDraft } from '../../content/draft';
 
 type Ctx = Pick<EngineCtx, 'registries' | 'rng'>;
 export type AftermathEndReason = 'time' | 'resolved' | 'refused' | 'returned' | 'gone';
@@ -193,7 +194,7 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'rumor': {
       const name = unit.displayName;
       addFact(draft, {
-        about: [unitId], text: `AUTHOR TO WRITE: ${name} is telling anyone who will listen what went on between ${name} and the commander.`, tags: ['rumor', 'dynamic', 'aftermath'], importance: 3,
+        about: [unitId], text: plainDraft(`AUTHOR TO WRITE: ${name} is telling anyone who will listen what went on between ${name} and the commander.`), tags: ['rumor', 'dynamic', 'aftermath'], importance: 3,
         day: draft.day, knownBy: [unitId], spread: 'fast',
       });
       return [];

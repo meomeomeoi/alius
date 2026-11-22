@@ -21,6 +21,7 @@ import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 import { svgEl } from '../hub/plan/svg';
+import { plainDraft } from '../../content/draft';
 
 type Pt = [number, number];
 export type Side = 'front' | 'back';
@@ -188,7 +189,7 @@ export interface BodyMapCtx {
 }
 
 /** The text of a fact as a note (the placeholder mark of authored texts is not part of it). */
-const plain = (text: string): string => text.replace(/^\s*AUTHOR TO WRITE:\s*/, '').trim();
+const plain = (text: string): string => plainDraft(text).trim();
 
 /**
  * The zones of the map for her: every worship target the campaign allows (the category on and none of her own limits; the explicit ones only with `explicit_scenes`), once for each side it
