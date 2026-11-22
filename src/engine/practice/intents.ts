@@ -17,6 +17,7 @@ import { TUNING } from '../tuning';
 import { fromIntent, keptByWordRecently } from './checks';
 import { practiceLive, practicesOn } from './gate';
 import { noteOffence } from './offences';
+import { voiceThreat } from './threats';
 import { compromisePunishment } from './punish';
 import { acceptByWords, compromiseTask } from './tasks';
 
@@ -120,6 +121,7 @@ export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
   practice_accepted: (draft, ctx, unitId, ev) => (ev.handoverId !== undefined ? [] : acceptByWords(draft, ctx, unitId, ev)), // a handover's words are built with the handover
   // her habit slipped out (P15's intent, applied by the dynamic): it is also an offence of hers (R8), a minor one before others, a trivial one alone
   protocol_slip: (draft, ctx, unitId) => noteOffence(draft, ctx, unitId, { kind: 'protocol_slip', ref: 'slip', stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? 'minor' : 'trivial', day: draft.day }),
+  threat_voiced: (draft, ctx, unitId) => voiceThreat(draft, ctx, unitId), // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
   compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : ev.punishmentId !== undefined ? compromisePunishment(draft, ctx, unitId, ev) : []), // an alarm's own compromise is built with it
 };
 

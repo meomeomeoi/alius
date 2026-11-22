@@ -8,6 +8,7 @@ import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents } from '../practice/offences';
+import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import type { ValidOutput } from '../practice/state';
@@ -25,6 +26,8 @@ registerDayEndStep('dm_rumors', practiceDayStep);
 registerAfterAction(taskChecksFromEvents);
 // What she answers in what the lower layers said (a refusal at `role`, a refused milestone, an overruled countermand, a slip or a caught cheat in a run, a broken rule): her offences (R8).
 registerAfterAction(offencesFromEvents);
+// What she did that reads as a threat to the commander is remembered for the next exchange (R18): a yield right after it is fear.
+registerAfterAction(noteThreat);
 
 // What her discipline stands in the way of: the commander's messages, free time and rooms, and a scene with her in her cold shoulder. The warden's own restrictions come first.
 registerCommanderRestriction(commanderRestrictionOf);

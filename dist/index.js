@@ -18760,8 +18760,23 @@ function leadStyle(style) {
 // src/engine/dynamic/reading.ts
 var round42 = (n) => Math.round(n * 1e4) / 1e4;
 var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var THREAT_EVENTS = ["commander_punished", "commander_leashed"];
-var threatIn = (events) => events.some((e) => THREAT_EVENTS.includes(e.type));
+var THREAT_EVENTS = ["commander_punished", "commander_leashed", "punishment_issued", "punishment_answered", "slap_dealt", "threat_voiced", "hold_started"];
+function isThreat(e) {
+  if (!THREAT_EVENTS.includes(e.type)) return false;
+  if (e.type === "hold_started") return e.punitive === true;
+  if (e.type === "punishment_issued") return e.forUnitId === void 0;
+  if (e.type === "punishment_answered") return e.answer !== "compromise" && e.answer !== "do_it";
+  return true;
+}
+var threatIn = (events) => events.some(isThreat);
+function threatNear(state, events, unitId) {
+  if (threatIn(events)) return true;
+  const last = state.practices?.lastThreat;
+  if (last === void 0 || last.unitId !== unitId) return false;
+  const scene = state.scene;
+  if (scene !== void 0) return last.sceneId === scene.id && scene.exchanges - last.exchange <= 1 && scene.exchanges - last.exchange >= 0;
+  return last.sceneId === void 0 && last.day === state.day;
+}
 function blended(m, declared) {
   if (declared === void 0 || declared.weight <= 0) return m;
   const w = Math.min(1, declared.weight);
@@ -18868,13 +18883,13 @@ function readMoments(draft, ctx2, events) {
   const answers2 = events.filter((e) => e.type === "moment_answered");
   if (answers2.length === 0 || !dynamicOn(draft, ctx2.registries)) return [];
   const out = [];
-  const afterThreat = threatIn(events);
   for (const e of answers2) {
     const unitId = String(e.unitId);
     const unit3 = draft.squad.find((u) => u.id === unitId);
     const rel = dynamicOf(draft, unitId);
     if (unit3 === void 0 || rel === void 0 || !isLiving(unit3) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
+    const afterThreat = threatNear(draft, events, unitId);
     if (e.responseType === "yielded") out.push(...regardRise(draft, ctx2.registries, unitId, "cost"));
     const region = updateReading(rel, { response: e.responseType, ...tone !== void 0 ? { tone } : {}, ...afterThreat ? { afterThreat } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx2.registries), unit3.insight ?? "mid").region;
     if (region !== void 0) out.push({ type: "position_shifted", unitId, from: region.from, to: region.to });
@@ -21542,9 +21557,9 @@ function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
   if (!dynamicOn(draft, reg)) return [];
   switch (ev.type) {
     case "probe_answered":
-      return ev.response === void 0 || pendingProbe(draft, unitId) === void 0 ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 1, threatIn(batch));
+      return ev.response === void 0 || pendingProbe(draft, unitId) === void 0 ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 1, threatNear(draft, batch, unitId));
     case "probe_observed":
-      return ev.response === void 0 || dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 0.5, threatIn(batch));
+      return ev.response === void 0 || dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx2, unitId, ev.response, ev.tone, 0.5, threatNear(draft, batch, unitId));
     case "milestone_accepted":
     case "milestone_refused": {
       const open3 = ev.milestoneId === void 0 ? void 0 : draft.dynamic?.open.milestones.find((m) => m.id === ev.milestoneId && m.unitId === unitId);
@@ -23064,6 +23079,23 @@ function falseReportSweep(draft, ctx2) {
   return out;
 }
 
+// src/engine/practice/threats.ts
+var PRACTICE_THREATS = ["punishment_issued", "punishment_answered", "slap_dealt", "threat_voiced", "hold_started"];
+var str3 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+function noteThreat(draft, ctx2, events) {
+  for (const e of events) {
+    if (!PRACTICE_THREATS.includes(e.type) || !isThreat(e)) continue;
+    const unitId = str3(e.holderId) ?? str3(e.unitId);
+    if (unitId === void 0 || !practiceLive(draft, ctx2.registries, unitId)) continue;
+    ensurePractices(draft).lastThreat = { unitId, ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {}, exchange: draft.scene?.exchanges ?? 0, day: draft.day };
+  }
+  return [];
+}
+function voiceThreat(draft, ctx2, unitId) {
+  if (!practiceLive(draft, ctx2.registries, unitId)) return [];
+  return [{ type: "threat_voiced", unitId, holderId: unitId }, ...hitHer(draft, ctx2.registries, unitId, "threat_voiced", "minor", "threatened the commander")];
+}
+
 // src/engine/practice/hold.ts
 function startHold(_draft, _ctx, _holderId, _span, _opts = {}) {
   return [];
@@ -23656,6 +23688,8 @@ var PRACTICE_HANDLERS = {
   // a handover's words are built with the handover
   // her habit slipped out (P15's intent, applied by the dynamic): it is also an offence of hers (R8), a minor one before others, a trivial one alone
   protocol_slip: (draft, ctx2, unitId) => noteOffence(draft, ctx2, unitId, { kind: "protocol_slip", ref: "slip", stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? "minor" : "trivial", day: draft.day }),
+  threat_voiced: (draft, ctx2, unitId) => voiceThreat(draft, ctx2, unitId),
+  // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
   compromise_reached: (draft, ctx2, unitId, ev) => ev.taskId !== void 0 ? compromiseTask(draft, ctx2, unitId, ev) : ev.punishmentId !== void 0 ? compromisePunishment(draft, ctx2, unitId, ev) : []
   // an alarm's own compromise is built with it
 };
@@ -23709,7 +23743,7 @@ var COMMANDER_SIDE = ["hobby_praised", "opinion_challenged", "opinion_agreed"];
 function lifeFields(type, e, intent, life) {
   if (!life) return null;
   const candidates3 = intent.actor === "commander" ? intent.targets : [intent.actor];
-  const str8 = (v) => typeof v === "string" && v !== "" ? v : null;
+  const str9 = (v) => typeof v === "string" && v !== "" ? v : null;
   let who;
   let key = null;
   const pick3 = (list5, id) => {
@@ -23719,14 +23753,14 @@ function lifeFields(type, e, intent, life) {
   };
   switch (type) {
     case "news_told": {
-      const row4 = pick3(life.news, str8(e.newsId));
+      const row4 = pick3(life.news, str9(e.newsId));
       if (!row4) return null;
       intent.newsId = row4.id;
       key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row4 = pick3(life.hobbies, str8(e.hobbyId));
+      const row4 = pick3(life.hobbies, str9(e.hobbyId));
       if (!row4) return null;
       intent.hobbyId = row4.id;
       key = row4.id;
@@ -23735,10 +23769,10 @@ function lifeFields(type, e, intent, life) {
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row4 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str8(e.topicId));
+      const row4 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
       if (!row4) return null;
       intent.topicId = row4.id;
-      const position = str8(e.positionId);
+      const position = str9(e.positionId);
       if (type === "opinion_challenged" && position !== null && row4.positions.includes(position)) intent.positionId = position;
       key = row4.id;
       break;
@@ -23753,7 +23787,7 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row4 = pick3(life.jokes, str8(e.factId));
+      const row4 = pick3(life.jokes, str9(e.factId));
       if (!row4) return null;
       intent.factId = row4.id;
       key = row4.id;
@@ -31619,7 +31653,7 @@ function memoryResolverFor(type) {
 }
 var nameOf11 = (draft, id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
 var yes = (b) => b ? "yes" : "";
-var str3 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var str4 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var strs = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 function joinNames(names) {
   if (names.length <= 1) return names.join("");
@@ -31631,7 +31665,7 @@ var regionNameOf = (reg, regionId) => {
   return r ? String(r.name) : regionId;
 };
 var subjectOf3 = (draft, id) => {
-  const unitId = str3(id);
+  const unitId = str4(id);
   return unitId === void 0 ? null : { id: unitId, name: nameOf11(draft, unitId) };
 };
 registerMemoryResolver("expedition_ended", (draft, event, reg) => {
@@ -31680,8 +31714,8 @@ registerMemoryResolver("vote_overruled", (draft, event) => {
 }, { ids: ["against"], vars: ["names"] });
 registerMemoryResolver("vote_carried", (draft, event, reg) => {
   if (event.overruled === true) return null;
-  const kind = str3(event.kind);
-  const subject = str3(event.subject);
+  const kind = str4(event.kind);
+  const subject = str4(event.subject);
   if (kind === void 0 || subject === void 0) return null;
   return { ids: {}, vars: { subject: String(reg.voteKinds.get(kind)?.label ?? kind), what: voteSubjectLabel(draft, reg, kind, subject) } };
 }, { ids: [], vars: ["subject", "what"] });
@@ -31692,18 +31726,18 @@ registerMemoryResolver("countermanded", (draft, event) => {
   return { ids: { subject: [subject.id], leader: [leader.id] }, vars: { name: subject.name, leader: leader.name } };
 }, { ids: ["subject", "leader"], vars: ["name", "leader"] });
 registerMemoryResolver("rations_set", (_draft, event) => {
-  const mode = str3(event.mode);
+  const mode = str4(event.mode);
   return mode === void 0 ? null : { ids: {}, vars: { mode } };
 }, { ids: [], vars: ["mode"] });
 registerMemoryResolver("dilemma_resolved", (draft, event) => {
   if (event.nothing === true) return null;
-  const answer = scapegoatOptionId({ id: str3(event.optionId) });
+  const answer = scapegoatOptionId({ id: str4(event.optionId) });
   const subject = subjectOf3(draft, event.subjectId);
   return {
     ids: { affected: strs(event.affected), units: strs(event.units), subject: subject ? [subject.id] : [] },
     vars: {
-      title: str3(event.title) ?? "",
-      option: str3(event.label) ?? "",
+      title: str4(event.title) ?? "",
+      option: str4(event.label) ?? "",
       scapegoat: answer === "take_blame" ? "take" : answer === "shift_blame" ? "shift" : "",
       name: subject?.name ?? ""
     }
@@ -31712,13 +31746,13 @@ registerMemoryResolver("dilemma_resolved", (draft, event) => {
 registerMemoryResolver("demand_resolved", (draft, event) => {
   const subject = subjectOf3(draft, event.unitId);
   if (!subject) return null;
-  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str3(event.answer) ?? "", expired: yes(event.expired === true), postponed: yes(event.postponed === true) } };
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str4(event.answer) ?? "", expired: yes(event.expired === true), postponed: yes(event.postponed === true) } };
 }, { ids: ["subject"], vars: ["name", "answer", "expired", "postponed"] });
 registerMemoryResolver("leash_used", (draft, event) => {
   const subject = subjectOf3(draft, event.unitId);
   if (!subject || event.outcome !== "done") return null;
   if (event.by === "oversight") return null;
-  return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str3(event.kind) ?? "" } };
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str4(event.kind) ?? "" } };
 }, { ids: ["subject"], vars: ["name", "kind"] });
 registerMemoryResolver("decor_removed_by_commander", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
 registerMemoryResolver("token_taken_off", (draft, event) => {
@@ -31751,15 +31785,15 @@ registerMemoryResolver("intercept_resolved", (draft, event) => {
   return subject ? { ids: { subject: [subject.id] }, vars: { name: subject.name, keep: yes(event.keep === true) } } : null;
 }, { ids: ["subject"], vars: ["name", "keep"] });
 registerMemoryResolver("activity_done", (draft, event, reg) => {
-  const companion = str3(event.companionId);
-  const activityId = str3(event.activityId);
+  const companion = str4(event.companionId);
+  const activityId = str4(event.activityId);
   if (activityId === void 0) return null;
   return {
     ids: { subject: companion !== void 0 ? [companion] : [] },
     vars: {
       name: companion !== void 0 ? nameOf11(draft, companion) : "",
       activity: String(reg.activities.get(activityId)?.name ?? activityId),
-      slot: str3(event.slot) ?? draft.slot,
+      slot: str4(event.slot) ?? draft.slot,
       // an activity that opens a scene (a talk) is remembered by that scene's summary, not by this rule
       scene: yes(reg.activities.get(activityId)?.startsScene === true)
     }
@@ -31773,7 +31807,7 @@ registerMemoryResolver("override_answered", (draft, event) => {
   if (event.source === "holder") return null;
   const her = holderOf2(draft);
   if (!her) return null;
-  return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str3(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
+  return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str4(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
 }, { ids: ["subject"], vars: ["name", "answer", "witnessed"] });
 registerMemoryResolver("commander_punished", (draft, event, reg) => {
   const her = holderOf2(draft);
@@ -31783,7 +31817,7 @@ registerMemoryResolver("commander_punished", (draft, event, reg) => {
 }, { ids: ["subject"], vars: ["name", "label", "heavy"] });
 registerMemoryResolver("commander_leashed", (draft, event) => {
   const her = holderOf2(draft);
-  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str3(event.kind) ?? "" } } : null;
+  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str4(event.kind) ?? "" } } : null;
 }, { ids: ["subject"], vars: ["name", "kind"] });
 registerMemoryResolver("warden_warning", (draft, event) => {
   const her = holderOf2(draft);
@@ -31791,24 +31825,24 @@ registerMemoryResolver("warden_warning", (draft, event) => {
 }, { ids: ["subject"], vars: ["name", "level"] });
 registerMemoryResolver("warden_removed", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  const route = str3(event.route);
+  const route = str4(event.route);
   if (!her || route === void 0) return null;
   const allies2 = draft.squad.filter((u) => u.kind === "named" && isLiving(u) && draft.relations[u.id]?.flags.includes("warden_ally")).map((u) => u.id);
   return { ids: { subject: [her.id], commander: ["commander"], allies: allies2 }, vars: { name: her.name, route } };
 }, { ids: ["subject", "commander", "allies"], vars: ["name", "route"] });
 registerMemoryResolver("verdict", (_draft, event) => {
-  const outcome = str3(event.outcome);
+  const outcome = str4(event.outcome);
   return outcome === void 0 ? null : { ids: {}, vars: { outcome } };
 }, { ids: [], vars: ["outcome"] });
 registerMemoryResolver("ally_won", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
 registerMemoryResolver("head_start_moment", (draft, event) => {
   const subject = subjectOf3(draft, event.unitId);
-  const text2 = str3(event.text);
+  const text2 = str4(event.text);
   if (!subject || text2 === void 0 || !draft.squad.some((u) => u.id === subject.id)) return null;
   return {
     ids: { unit: [subject.id] },
-    vars: { text: text2, kind: str3(event.kind) ?? "", importance: String(event.importance ?? "") },
-    ...str3(event.kind) !== void 0 ? { tags: [momentTag(str3(event.kind))] } : {}
+    vars: { text: text2, kind: str4(event.kind) ?? "", importance: String(event.importance ?? "") },
+    ...str4(event.kind) !== void 0 ? { tags: [momentTag(str4(event.kind))] } : {}
   };
 }, { ids: ["unit"], vars: ["text", "kind", "importance"] });
 registerMemoryResolver("opinion_changed", (draft, event, reg) => {
@@ -31820,14 +31854,14 @@ registerMemoryResolver("moment_answered", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   if (!her) return null;
   const present2 = strs(event.present);
-  const visitorId = str3(event.visitorId);
-  const type = str3(event.responseType) ?? "";
-  const key = str3(event.key) ?? "";
+  const visitorId = str4(event.visitorId);
+  const type = str4(event.responseType) ?? "";
+  const key = str4(event.key) ?? "";
   return {
     ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id], visitor: visitorId !== void 0 ? [visitorId] : [] },
     vars: {
       name: her.name,
-      source: str3(event.sourceId) ?? "",
+      source: str4(event.sourceId) ?? "",
       key,
       type,
       visitor: visitorId !== void 0 ? nameOf11(draft, visitorId) : "someone",
@@ -31838,14 +31872,14 @@ registerMemoryResolver("moment_answered", (draft, event) => {
 }, { ids: ["her", "present", "visitor"], vars: ["name", "source", "key", "type", "visitor", "exposed"] });
 var holder = (draft, event) => {
   const her = subjectOf3(draft, event.holderId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, result: str3(event.result) ?? "", physics: str3(event.physicsId) ?? "" } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, result: str4(event.result) ?? "", physics: str4(event.physicsId) ?? "" } } : null;
 };
 registerMemoryResolver("physics_outcome", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
 registerMemoryResolver("physics_caught", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
 registerMemoryResolver("stimulus_stage_changed", (draft, event, reg) => {
   const her = subjectOf3(draft, event.holderId);
   const kind = reg.stimulusKinds.get(String(event.kind));
-  return her && kind ? { ids: { her: [her.id] }, vars: { name: her.name, to: str3(event.to) ?? "", herPresent: yes(event.herPresent === true), what: String(kind.label).toLowerCase() } } : null;
+  return her && kind ? { ids: { her: [her.id] }, vars: { name: her.name, to: str4(event.to) ?? "", herPresent: yes(event.herPresent === true), what: String(kind.label).toLowerCase() } } : null;
 }, { ids: ["her"], vars: ["name", "to", "herPresent", "what"] });
 registerMemoryResolver("hobby_taught", (draft, event, reg) => {
   const her = subjectOf3(draft, event.unitId);
@@ -31854,7 +31888,7 @@ registerMemoryResolver("hobby_taught", (draft, event, reg) => {
 }, { ids: ["her"], vars: ["name", "hobby"] });
 registerMemoryResolver("first_moment_kept", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  const kind = str3(event.kind);
+  const kind = str4(event.kind);
   return her && kind !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, kind } } : null;
 }, { ids: ["her"], vars: ["name", "kind"] });
 registerMemoryResolver("position_shifted", (draft, event, reg) => {
@@ -31898,22 +31932,22 @@ registerMemoryResolver("disappointed", (draft, event) => {
 }, { ids: ["her"], vars: ["name"] });
 registerMemoryResolver("offer_made", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str3(event.answer) ?? "", what: str3(event.what) ?? "something" } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str4(event.answer) ?? "", what: str4(event.what) ?? "something" } } : null;
 }, { ids: ["her"], vars: ["name", "answer", "what"] });
 var ATTITUDE_WORDS = { craves: "she craves it", enjoys: "she enjoys it", indifferent: "it leaves her cold", dislikes: "she dislikes it" };
 registerMemoryResolver("zone_revealed", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  const target = str3(event.targetId);
+  const target = str4(event.targetId);
   if (!her || target === void 0) return null;
-  return { ids: { her: [her.id] }, vars: { name: her.name, what: str3(event.what) ?? target, attitude: ATTITUDE_WORDS[str3(event.attitude) ?? ""] ?? "" }, tags: [zoneTag(target)] };
+  return { ids: { her: [her.id] }, vars: { name: her.name, what: str4(event.what) ?? target, attitude: ATTITUDE_WORDS[str4(event.attitude) ?? ""] ?? "" }, tags: [zoneTag(target)] };
 }, { ids: ["her"], vars: ["name", "what", "attitude"] });
 registerMemoryResolver("practice_signed", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str3(event.summary) ?? "something" } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str4(event.summary) ?? "something" } } : null;
 }, { ids: ["her"], vars: ["name", "what"] });
 registerMemoryResolver("task_broken", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str3(event.summary) ?? "something", falseReport: yes(event.falseReport === true) } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str4(event.summary) ?? "something", falseReport: yes(event.falseReport === true) } } : null;
 }, { ids: ["her"], vars: ["name", "what", "falseReport"] });
 registerMemoryResolver("punishment_issued", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
@@ -31923,14 +31957,14 @@ registerMemoryResolver("punishment_answered", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   if (!her) return null;
   const present2 = strs(event.present);
-  return { ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id] }, vars: { name: her.name, answer: str3(event.answer) ?? "", public: yes(event.public === true), what: str3(event.summary) ?? "something" } };
+  return { ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id] }, vars: { name: her.name, answer: str4(event.answer) ?? "", public: yes(event.public === true), what: str4(event.summary) ?? "something" } };
 }, { ids: ["her", "present"], vars: ["name", "answer", "public", "what"] });
 registerMemoryResolver("punishment_taken_for", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   const spared = subjectOf3(draft, event.sparedId);
   if (!her || !spared) return null;
   const present2 = strs(event.present);
-  return { ids: { her: [her.id], spared: [spared.id], present: present2.length > 0 ? present2 : [her.id, spared.id] }, vars: { name: her.name, spared: spared.name, what: str3(event.summary) ?? "something" } };
+  return { ids: { her: [her.id], spared: [spared.id], present: present2.length > 0 ? present2 : [her.id, spared.id] }, vars: { name: her.name, spared: spared.name, what: str4(event.summary) ?? "something" } };
 }, { ids: ["her", "spared", "present"], vars: ["name", "spared", "what"] });
 
 // src/engine/memory/remember.ts
@@ -34975,23 +35009,23 @@ registerAction("campaign/set_difficulty", (draft, payload) => {
 
 // src/engine/actions/progression.ts
 var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str4 = (v, what) => {
+var str5 = (v, what) => {
   if (typeof v !== "string") throw new Error(`${what} must be a string`);
   return v;
 };
 registerAction("squad/unlock_node", (draft, payload, ctx2) => {
   const p = isObj19(payload) ? payload : {};
-  return unlockNode(draft, ctx2.registries, str4(p.unitId, "unitId"), str4(p.nodeId, "nodeId"));
+  return unlockNode(draft, ctx2.registries, str5(p.unitId, "unitId"), str5(p.nodeId, "nodeId"));
 });
 registerAction("squad/respec", (draft, payload, ctx2) => {
   const p = isObj19(payload) ? payload : {};
-  return respec(draft, ctx2.registries, str4(p.unitId, "unitId"));
+  return respec(draft, ctx2.registries, str5(p.unitId, "unitId"));
 });
 registerAction("squad/set_loadout", (draft, payload, ctx2) => {
   const p = isObj19(payload) ? payload : {};
   const ids = p.skillIds;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("squad/set_loadout needs { unitId, skillIds: string[] }");
-  setLoadout(draft, ctx2.registries, str4(p.unitId, "unitId"), ids);
+  setLoadout(draft, ctx2.registries, str5(p.unitId, "unitId"), ids);
   return [{ type: "loadout_changed", unitId: p.unitId }];
 });
 registerAction("squad/release_breakdowns", (draft, payload, ctx2) => {
@@ -36534,27 +36568,27 @@ registerAction("development/remove_fact", (draft, payload) => {
 // src/engine/actions/blocking.ts
 registerWithdrawal(stripTagged);
 var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str5 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var str6 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 registerAction("blocking/set", (draft, payload, ctx2) => {
   if (!isObj36(payload)) throw new Error("blocking/set needs a payload");
   if (!draft.scene) throw new Error("blocking/set: no scene is open");
   if (!blockingLive(draft, ctx2.registries)) throw new Error("blocking/set: the blocking is not live in this scene");
   const at = payload.at;
   if (typeof at !== "number" || !Number.isInteger(at) || at < 0) throw new Error("blocking/set: at must be a non-negative integer (the chat index)");
-  const person = str5(payload.person);
-  const field2 = str5(payload.field);
+  const person = str6(payload.person);
+  const field2 = str6(payload.field);
   if (person === void 0 || field2 === void 0) throw new Error("blocking/set needs { person, field }");
   const direction = payload.direction;
   if (direction !== void 0 && direction !== "from" && direction !== "to") throw new Error('blocking/set: direction is "from" or "to"');
   const change = {
     person,
     field: field2,
-    ...str5(payload.value) !== void 0 ? { value: str5(payload.value) } : {},
-    ...str5(payload.relTo) !== void 0 ? { relTo: str5(payload.relTo) } : {},
-    ...str5(payload.with) !== void 0 ? { with: str5(payload.with) } : {},
+    ...str6(payload.value) !== void 0 ? { value: str6(payload.value) } : {},
+    ...str6(payload.relTo) !== void 0 ? { relTo: str6(payload.relTo) } : {},
+    ...str6(payload.with) !== void 0 ? { with: str6(payload.with) } : {},
     ...direction !== void 0 ? { direction } : {},
-    ...str5(payload.slot) !== void 0 ? { slot: str5(payload.slot) } : {},
-    ...str5(payload.target) !== void 0 ? { target: str5(payload.target) } : {}
+    ...str6(payload.slot) !== void 0 ? { slot: str6(payload.slot) } : {},
+    ...str6(payload.target) !== void 0 ? { target: str6(payload.target) } : {}
   };
   return setBlocking(draft, ctx2, change, { at, source: "chip" });
 });
@@ -37263,7 +37297,7 @@ var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId
 
 // src/engine/actions/physics.ts
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str6 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var str7 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 function live2(draft, reg, what) {
   if (!draft.scene) throw new Error(`${what}: no scene is open`);
   if (!blockingLive(draft, reg)) throw new Error(`${what}: the blocking is not live in this scene`);
@@ -37272,8 +37306,8 @@ registerAction("physics/start", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/start");
   if (!isObj38(payload)) throw new Error("physics/start needs a payload");
   const { physicsId, sourceId, holderId, sourceKind, duration, second } = payload;
-  if (second !== void 0 && str6(second) === void 0) throw new Error("physics/start: second is a physics id");
-  if (str6(physicsId) === void 0 || str6(sourceId) === void 0 || str6(holderId) === void 0 || sourceKind !== "contact" && sourceKind !== "item") {
+  if (second !== void 0 && str7(second) === void 0) throw new Error("physics/start: second is a physics id");
+  if (str7(physicsId) === void 0 || str7(sourceId) === void 0 || str7(holderId) === void 0 || sourceKind !== "contact" && sourceKind !== "item") {
     throw new Error("physics/start needs { physicsId, sourceKind: contact | item, sourceId, holderId }");
   }
   const hours = isObj38(duration) && typeof duration.hours === "number" && Number.isFinite(duration.hours) && duration.hours > 0 ? { hours: duration.hours } : void 0;
@@ -37297,12 +37331,12 @@ registerAction("physics/stop_word", (draft, _payload, ctx2) => {
 });
 registerAction("physics/next_segment", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/next_segment");
-  if (!isObj38(payload) || str6(payload.runId) === void 0) throw new Error("physics/next_segment needs { runId }");
+  if (!isObj38(payload) || str7(payload.runId) === void 0) throw new Error("physics/next_segment needs { runId }");
   return nextSegment(draft, ctx2, payload.runId);
 });
 registerAction("physics/segment_end", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/segment_end");
-  if (!isObj38(payload) || str6(payload.runId) === void 0 || typeof payload.segment !== "number") throw new Error("physics/segment_end needs { runId, segment, inputs }");
+  if (!isObj38(payload) || str7(payload.runId) === void 0 || typeof payload.segment !== "number") throw new Error("physics/segment_end needs { runId, segment, inputs }");
   return physicsInput(draft, ctx2, payload.runId, payload.segment, payload.inputs ?? []);
 });
 registerAction("physics/typed", (draft, payload, ctx2) => {
@@ -38431,6 +38465,7 @@ registerWithdrawal(withdrawPractices);
 registerDayEndStep("dm_rumors", practiceDayStep);
 registerAfterAction(taskChecksFromEvents);
 registerAfterAction(offencesFromEvents);
+registerAfterAction(noteThreat);
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
 registerPracticeUndone(restorePractice);
@@ -46546,7 +46581,7 @@ var roomHash = (unitId) => fnv1a3(`${unitId}|quarters`) >>> 8;
 function slotLight(slot2) {
   return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
 }
-var str7 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
+var str8 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
 function sceneBackdrop(state, reg, locationId, ownerId) {
   const loc = reg.locations.get(locationId);
   if (!loc) return [];
@@ -46554,10 +46589,10 @@ function sceneBackdrop(state, reg, locationId, ownerId) {
   const add = (file, slotted) => {
     if (file && !out.some((c) => c.file === file)) out.push({ file, slotted });
   };
-  if (loc.perUnit === true && ownerId !== null) add(str7(quartersOf(state, reg, ownerId)?.background), false);
-  if (state.slot === "evening") add(str7(loc.backgroundEvening), true);
-  if (state.slot === "night") add(str7(loc.backgroundNight), true);
-  add(str7(loc.background), false);
+  if (loc.perUnit === true && ownerId !== null) add(str8(quartersOf(state, reg, ownerId)?.background), false);
+  if (state.slot === "evening") add(str8(loc.backgroundEvening), true);
+  if (state.slot === "night") add(str8(loc.backgroundNight), true);
+  add(str8(loc.background), false);
   return out;
 }
 
@@ -49403,16 +49438,16 @@ function stanceOptionIds(registries, world) {
   return worldChoices({ world: { options: world } }, registries).filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2 }) => option2.id);
 }
 function worldImportInfo(registries, world) {
-  const str8 = (v) => typeof v === "string" ? v : "";
+  const str9 = (v) => typeof v === "string" ? v : "";
   const level = worldDispositionLevel({ world: { options: world } }, registries);
   const picked = worldChoices({ world: { options: world } }, registries);
   return {
-    disposition: { name: str8(level.name), description: str8(level.description) },
-    options: picked.filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2, choice }) => ({ id: option2.id, label: str8(option2.label), choice: str8(choice.label), description: str8(choice.description) }))
+    disposition: { name: str9(level.name), description: str9(level.description) },
+    options: picked.filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2, choice }) => ({ id: option2.id, label: str9(option2.label), choice: str9(choice.label), description: str9(choice.description) }))
   };
 }
 function buildImportInput(card2, registries, settings, sections, world, bond, content) {
-  const str8 = (v) => typeof v === "string" ? v : "";
+  const str9 = (v) => typeof v === "string" ? v : "";
   const info = world ? worldImportInfo(registries, world) : void 0;
   const enabledPractice = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
   const holder2 = { content: { enabled: [...content ?? []] } };
@@ -49421,13 +49456,13 @@ function buildImportInput(card2, registries, settings, sections, world, bond, co
     card: card2,
     sections: asked,
     ...info ? { world: info } : {},
-    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str8(r.summary) })),
-    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str8(s.fits) })),
-    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str8(d.lore) })),
-    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str8(t.description) })),
-    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str8(c.label) })) } : {},
+    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str9(r.summary) })),
+    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str9(s.fits) })),
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str9(d.lore) })),
+    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str9(t.description) })),
+    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str9(c.label) })) } : {},
     ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries, content) } } : {},
-    ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str8(h2.description) })) } : {},
+    ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str9(h2.description) })) } : {},
     ...sections.includes("opinions") ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: t.positions.map((p) => p.id) })) } : {},
     ...asked.includes("practice") ? { practice: { categories: enabledPractice } } : {},
     ...asked.includes("expectations") ? {

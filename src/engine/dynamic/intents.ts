@@ -18,7 +18,7 @@ import { slipSeen } from './knowledge';
 import { confirmOffer } from './offer';
 import { answerMilestone } from './milestones';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
-import { threatIn } from './reading';
+import { threatNear } from './reading';
 import { slipsOpen } from './struggle';
 import { dynamicOf } from './state';
 import type { DynamicMilestoneEntry, DynamicOffer, ProbeAxisEntry } from './types';
@@ -91,9 +91,9 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
   if (!dynamicOn(draft, reg)) return [];
   switch (ev.type) {
     case 'probe_answered':
-      return ev.response === undefined || pendingProbe(draft, unitId) === undefined ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 1, threatIn(batch));
+      return ev.response === undefined || pendingProbe(draft, unitId) === undefined ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 1, threatNear(draft, batch, unitId));
     case 'probe_observed':
-      return ev.response === undefined || dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 0.5, threatIn(batch));
+      return ev.response === undefined || dynamicIntentInput(draft, reg, [unitId], 'scene').dynamic?.observed?.includes(unitId) !== true ? [] : answerProbe(draft, ctx, unitId, ev.response, ev.tone, 0.5, threatNear(draft, batch, unitId));
     case 'milestone_accepted':
     case 'milestone_refused': {
       // only the milestone that is open for this unit (the offer was built from the same state): a stale or foreign id does nothing

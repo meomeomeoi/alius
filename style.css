@@ -4254,6 +4254,24 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   margin: 2px 0;
 }
 
+/* Her discipline (P16): the card in her voice, the answers side by side, the UNDO chip beside an answered one. */
+#alius-shell .alius-punishment-cards {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-punishment-text,
+#alius-shell .alius-punishment-weight,
+#alius-shell .alius-punishment-hint {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-punishment-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

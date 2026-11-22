@@ -27,11 +27,36 @@ export const newReading = (): HerReading => blankReading();
 export interface ReadingSample { response: ResponseType; tone?: Tone; afterThreat?: boolean }
 
 /**
- * Events that are a threat to the commander (user ruling, I4): the commander punished or leashed. A sample of an action that holds one is
- * `afterThreat`. (`threatened` is the commander's own threat toward a unit, so it can say nothing about hers.)
+ * Events that are a threat to the commander (user ruling, I4; P16 R18): the commander punished or leashed, and what a holder did to the commander in the practices: a punishment issued or
+ * answered, a slap dealt, a threat voiced, a hold that is a punishment. A sample of an action that holds one is `afterThreat`. Read through `isThreat`: a hold that is not punitive, an
+ * order about a soldier (`forUnitId`) and an answer that is a compromise or an order carried out are not. (`threatened` is the commander's own threat toward a unit, so it can say nothing
+ * about hers.)
  */
-const THREAT_EVENTS: readonly string[] = ['commander_punished', 'commander_leashed'];
-export const threatIn = (events: readonly EngineEvent[]): boolean => events.some((e) => THREAT_EVENTS.includes(e.type));
+const THREAT_EVENTS: readonly string[] = ['commander_punished', 'commander_leashed', 'punishment_issued', 'punishment_answered', 'slap_dealt', 'threat_voiced', 'hold_started'];
+
+/** Is this event a threat to the commander (the types above, less the ones that are not)? */
+export function isThreat(e: Pick<EngineEvent, 'type'> & { [k: string]: unknown }): boolean {
+  if (!THREAT_EVENTS.includes(e.type)) return false;
+  if (e.type === 'hold_started') return e.punitive === true;
+  if (e.type === 'punishment_issued') return e.forUnitId === undefined; // her order about a soldier is not a threat to the commander
+  if (e.type === 'punishment_answered') return e.answer !== 'compromise' && e.answer !== 'do_it';
+  return true;
+}
+export const threatIn = (events: readonly EngineEvent[]): boolean => events.some(isThreat);
+
+/**
+ * Was there a threat in this action (`threatIn`), or just before it in the same exchange: the practices write `lastThreat` on each threat event (an after-action), and it names the
+ * unit, the scene and its exchange (or, in a DM, the day). It counts in the same exchange and the next of the same scene, never in another scene, for another woman or on another day.
+ * Reads the shared state only (the practices are above this layer). False without a threat.
+ */
+export function threatNear(state: CampaignState, events: readonly EngineEvent[], unitId: string): boolean {
+  if (threatIn(events)) return true;
+  const last = state.practices?.lastThreat;
+  if (last === undefined || last.unitId !== unitId) return false;
+  const scene = state.scene;
+  if (scene !== undefined) return last.sceneId === scene.id && scene.exchanges - last.exchange <= 1 && scene.exchanges - last.exchange >= 0;
+  return last.sceneId === undefined && last.day === state.day;
+}
 
 /** The motive weights with a declaration blended in (`declared.weight` of the way toward its motive). */
 function blended(m: Record<Motive, number>, declared?: { motive: Motive; weight: number }): Record<Motive, number> {
@@ -174,13 +199,13 @@ export function readMoments(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const answers = events.filter((e) => e.type === 'moment_answered');
   if (answers.length === 0 || !dynamicOn(draft, ctx.registries)) return [];
   const out: EngineEvent[] = [];
-  const afterThreat = threatIn(events); // the same action
   for (const e of answers) {
     const unitId = String(e.unitId);
     const unit = draft.squad.find((u) => u.id === unitId);
     const rel = dynamicOf(draft, unitId);
     if (unit === undefined || rel === undefined || !isLiving(unit) || !herPracticeLive(draft, unitId)) continue;
     const tone = TONES.find((t) => t === e.tone);
+    const afterThreat = threatNear(draft, events, unitId); // a threat in the same action, or just before in the same exchange (P16)
     if (e.responseType === 'yielded') out.push(...regardRise(draft, ctx.registries, unitId, 'cost')); // a yield that cost her something (r at 0 or less, read before this answer moves it) (R18)
     const region = updateReading(rel, { response: e.responseType as ResponseType, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx.registries), unit.insight ?? 'mid').region;
     if (region !== undefined) out.push({ type: 'position_shifted', unitId, from: region.from, to: region.to });
