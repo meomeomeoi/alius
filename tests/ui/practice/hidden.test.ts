@@ -93,6 +93,27 @@ describe('hidden values never reach a card, a label, a directive or the prompt (
     expect(open.querySelector('[data-task="pt4"]')!.textContent).not.toMatch(/Due:/);
   });
 
+  it('an offered hold with no duration names nothing it would push out: the card reads the same with bookings ahead or none (author ruling: the length stays truly hidden)', () => {
+    const { state, unitId } = fixture();
+    const other = state.squad.find((u) => u.id !== unitId)!;
+    const kind = [...reg.bookingKinds.values()][0];
+    const card = (s: CampaignState): string => {
+      const host = h('div');
+      document.body.append(host);
+      drawTaskCards(host, s, reg, (c) => c.unitId === unitId, { answer: noop, sign: noop, focusInput: noop });
+      return host.querySelector('[data-task="pt4"]')!.textContent ?? '';
+    };
+    const bare = structuredClone(state);
+    bare.personal = { ...(bare.personal ?? {}), bookings: [] } as never;
+    const booked = structuredClone(state);
+    booked.personal = { ...(booked.personal ?? {}), bookings: [{ id: 'bk1', unitId: other.id, kindId: kind.id, day: state.day, slot: state.slot, status: 'booked', source: 'her' }] } as never;
+    expect(card(booked)).toBe(card(bare));
+    expect(card(booked)).not.toContain(String(kind.label));
+    // a hold that states its end still names what would lapse
+    delete booked.practices!.tasks.find((t) => t.id === 'pt4')!.noDuration;
+    expect(card(booked)).toContain(`Would lapse: ${String(kind.label)}.`);
+  });
+
   it('every element a card draws is addressed and resolves', () => {
     const { state, unitId } = fixture();
     const host = everything(state, unitId);

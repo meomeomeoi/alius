@@ -394,6 +394,7 @@ Nothing remembered, with the reason: `practice_requested`, `task_issued`, `task_
 - **Reads by field:** her default activity (`defaultActivity`), her quarters (`holderQuarters`); no P16 code names `attending` or `quarters_unit`.
 - **Tests:** the draw spies run with `Error.stackTraceLimit = Infinity`; `tests/content/pronouns.test.ts` lists every file of `src/engine/practice/`, `src/practice/` and `src/ui/practice/`.
 - **Planner:** the WITHOUT COMMAND banner and the holder's "Keeps the commander" reason carry `data-analyze` (`glossary:without_command`, `glossary:held`).
+- **An offered hold with no duration names nothing it would push out** (author ruling, 2026-11-22): its card shows one fixed line, "Whatever is booked meanwhile may lapse.", instead of the "Would lapse" list, whose count would tell the hidden length; a hold that states its length still lists them (`tests/ui/practice/hidden.test.ts`).
 
 ### Open items
 
@@ -412,7 +413,6 @@ Nothing remembered, with the reason: `practice_requested`, `task_issued`, `task_
 - **Re-review of the fix wave (minors, parked):**
   - `takeOffEyes` (`src/engine/practice/forget.ts`) removes the blindfold without `scrubLog` / `tidy`: a blocking-log entry can remain.
   - An alarm raised while the review, dilemma or override modal is up opens its card only on reload or through `[ ANSWER HER ]`, not when that modal closes.
-  - An offered hold with no duration keeps its "Would lapse" lines; with bookings ahead their count roughly reveals the hidden slots (author decision pending).
   - When a second ALARM modal replaces the first, the first one's cleanup clears `alarmModalOpen` while the second is up (harmless).
   - A lapsed ceremony at the day end skips its slap and a blocked held slot, but a hold can still start from the day step with no scene.
 

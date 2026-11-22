@@ -46721,7 +46721,8 @@ function renderTaskCard(host, ctx2) {
       const lines = [
         ...cost.slots > 0 ? [hiddenHold ? "Takes the commander's time until she decides." : `Takes ${slotsWord(cost.slots)} of the commander's time.`] : [],
         // a hold with no duration: its slots are its hidden end (R16)
-        ...cost.lapses.map((l) => `Would lapse: ${l}.`),
+        // a hold with no duration names nothing it would push out: what lapses would tell its length (author ruling: the length stays truly hidden)
+        ...hiddenHold ? ["Whatever is booked meanwhile may lapse."] : cost.lapses.map((l) => `Would lapse: ${l}.`),
         ...Object.entries(cost.resources).map(([resource, band2]) => `Uses ${band2} ${resource}.`)
       ];
       parts.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
