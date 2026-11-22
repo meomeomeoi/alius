@@ -22477,6 +22477,8 @@ function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
   }
   task.status = outcome;
   task.settledDay = draft.day;
+  const target = task.targetUnitId;
+  const sees = target !== void 0 && target !== holderId && draft.scene?.participants.includes(target) === true ? addSign(draft, ctx2, target, holderId, "step_behind") : [];
   const dyn = dynamicOf(draft, holderId);
   if (dyn !== void 0) {
     dyn.recent.push(formOf(reg, task));
@@ -22487,13 +22489,13 @@ function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
     events2.push(...hitHer(draft, reg, holderId, "task_kept", SEVERITY[stakeRank(task.stakes)], "kept her task"));
     events2.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
-    events2.push(...practiceSample(draft, reg, holderId, "yielded"));
+    events2.push(...practiceSample(draft, reg, holderId, "yielded"), ...sees);
     return events2;
   }
   const stakes = opts.falseReport === true ? stepUp(task.stakes) : task.stakes;
   const events = [{ type: "task_broken", taskId, unitId: holderId, holderId, via, stakes, summary: task.summary, ...opts.falseReport === true ? { falseReport: true } : {} }];
   events.push(...hitHer(draft, reg, holderId, "task_broken", SEVERITY[stakeRank(stakes) + (opts.falseReport === true && stakes === task.stakes ? 1 : 0)], "broke her task"));
-  events.push(...practiceSample(draft, reg, holderId, "resisted"));
+  events.push(...practiceSample(draft, reg, holderId, "resisted"), ...sees);
   events.push(...noteOffence(draft, ctx2, holderId, { kind: opts.falseReport === true ? "false_report" : "task_broken", ref: task.id, stakes, day: draft.day }));
   return events;
 }
@@ -22783,6 +22785,7 @@ function plainText2(v, max) {
   return v.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL, "").slice(0, max).trim();
 }
 var SLOTS2 = ["morning", "afternoon", "evening", "night"];
+var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
 function validatePracticeOutput(state, reg, request, raw) {
   if (!isObj6(raw) || raw.kind !== request.kind) return null;
   const holderId = request.holderId;
@@ -22800,22 +22803,33 @@ function validatePracticeOutput(state, reg, request, raw) {
   if (track !== asked) issues.push("track was not open and was replaced");
   const cap8 = trackLevel(state, holderId, track) + 1;
   const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed?.tier ?? 1;
-  const tier = Math.min(Math.min(5, cap8), Math.max(1, tierRaw));
+  const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
+  const tier = Math.min(Math.min(5, cap8), Math.max(1, floor, tierRaw));
   if (tier !== raw.tier) issues.push("tier was clamped");
   const ceiling = stakesCeilingOf(state, holderId);
   const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed?.stakes ?? "minor";
   const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
   if (stakes !== raw.stakes) issues.push("stakes were clamped");
+  const units = eligibleUnits(state, holderId);
+  const targetAsked = typeof raw.targetId === "string" ? raw.targetId : raw.targetUnitId;
+  const targetRaw = typeof targetAsked === "string" && units.includes(targetAsked) ? targetAsked : void 0;
   let check = CHECK_KINDS.includes(raw.check) ? raw.check : "model";
   let checkArg = typeof raw.checkArg === "string" ? raw.checkArg : void 0;
-  if (check === "no_scene_with" && (checkArg === void 0 || !eligibleUnits(state, holderId).includes(checkArg))) {
+  if (check === "no_scene_with" && (checkArg === void 0 || !units.includes(checkArg))) {
     check = "model";
     checkArg = void 0;
   } else if (check === "rule_kept_until" && (checkArg === void 0 || !activeRules2(state, holderId).some((r) => r.id === checkArg))) {
     check = "model";
     checkArg = void 0;
-  } else if (check !== "no_scene_with" && check !== "rule_kept_until") checkArg = void 0;
-  if (check !== raw.check) issues.push("check was changed to model");
+  } else if (ROSTER_CHECKS2.includes(check)) checkArg = checkArg !== void 0 && units.includes(checkArg) ? checkArg : void 0;
+  else if (check !== "no_scene_with" && check !== "rule_kept_until") checkArg = void 0;
+  const argAsked = typeof raw.checkArg === "string" && units.includes(raw.checkArg) ? raw.checkArg : void 0;
+  const fieldUnit = argAsked ?? targetRaw;
+  if (raw.field === true && !ROSTER_CHECKS2.includes(check) && check === raw.check && fieldUnit !== void 0) {
+    check = "on_roster";
+    checkArg = fieldUnit;
+    issues.push("a field task takes a roster check");
+  } else if (check !== raw.check) issues.push("check was changed to model");
   const proof = PROOFS.includes(raw.proof) ? raw.proof : seed?.proof ?? "none";
   let deadline;
   if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
@@ -22824,7 +22838,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     if (days !== raw.deadline.days) issues.push("deadline was clamped");
     deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
   }
-  const eligible4 = eligibleUnits(state, holderId);
+  const eligible4 = units;
   const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id) => typeof id === "string").filter((id, i, all) => all.indexOf(id) === i);
   const audienceIds = asked2.filter((id) => eligible4.includes(id));
   if (audienceIds.length < asked2.length) issues.push("audience was filtered");
@@ -22850,6 +22864,7 @@ function validatePracticeOutput(state, reg, request, raw) {
       ...deadline !== void 0 ? { deadline } : {},
       proof,
       ...audienceIds.length > 0 ? { audienceIds } : {},
+      ...targetRaw !== void 0 ? { targetUnitId: targetRaw } : {},
       text: text2,
       summary
     },
@@ -22862,7 +22877,8 @@ function acceptFormOf(stakes, sealed) {
   if (sealed === true) return "sealed";
   return ["button", "button_cost", "words", "signed"][stakeRank(stakes)];
 }
-var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
+var ROSTER_CHECKS3 = ["on_roster", "not_on_roster"];
+var targetOf = (request, out) => request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS3.includes(out.check) || out.check === "no_scene_with" ? out.checkArg : void 0);
 var writeTask = (draft, _ctx, request, out, plain8) => {
   const p = ensurePractices(draft);
   const id = nextPracticeId(draft, "pt");
@@ -22888,8 +22904,8 @@ var writeTask = (draft, _ctx, request, out, plain8) => {
     ...plain8 ? { plain: true } : {},
     ...chainId !== void 0 ? { chainId, step } : {},
     status: "offered",
-    ...request.targetUnitId !== void 0 ? { targetUnitId: request.targetUnitId } : {},
-    ...ROSTER_CHECKS2.includes(out.check) ? { field: true } : {},
+    ...targetOf(request, out) !== void 0 ? { targetUnitId: targetOf(request, out) } : {},
+    ...ROSTER_CHECKS3.includes(out.check) ? { field: true } : {},
     ...request.sealed === true ? { sealed: true } : {},
     acceptForm: acceptFormOf(out.stakes, request.sealed),
     day: draft.day
@@ -37647,14 +37663,9 @@ function newPracticeChance(state, reg, holderId) {
   return Math.min(1, Math.max(0, p));
 }
 function kindsToday(state, reg, holderId) {
-  const frame = frameOf2(state, holderId);
-  const open3 = openTasks(state, holderId);
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === void 0) return false;
-    if (kind === "task") {
-      if (open3 >= TUNING.practice.taskCap[frame]) return false;
-      if (frameRank(frame) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol")) return false;
-    }
+    if (kind === "task" && !taskRoom(state, reg, holderId)) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
   });
 }
@@ -37667,6 +37678,24 @@ function requestsFallBack(draft, ctx2) {
       continue;
     }
     events.push(...issuePractice(draft, ctx2, r.id, "fallback"));
+  }
+  return events;
+}
+function taskRoom(state, reg, holderId) {
+  const frame = frameOf2(state, holderId);
+  const open3 = openTasks(state, holderId);
+  if (open3 >= TUNING.practice.taskCap[frame]) return false;
+  return !(frameRank(frame) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
+}
+function chainRequests(draft, ctx2) {
+  const events = [];
+  for (const task of [...draft.practices?.tasks ?? []]) {
+    if (task.kind !== "task" || task.status !== "kept" || task.settledDay !== draft.day - 1 || task.chainId === void 0 && task.seedId === void 0) continue;
+    if (!practiceLive(draft, ctx2.registries, task.holderId) || draft.practices.requests.some((r) => r.holderId === task.holderId) || !taskRoom(draft, ctx2.registries, task.holderId)) continue;
+    if (practiceRoll(draft, task.holderId, `chain:${task.id}`) >= TUNING.practice.chainChance) continue;
+    task.chainId ??= task.id;
+    task.step ??= 1;
+    events.push(...requestPractice(draft, ctx2, task.holderId, "task", { chainOf: task.chainId }));
   }
   return events;
 }
@@ -37708,6 +37737,7 @@ function practiceDayStep(draft, ctx2) {
   events.push(...deadlineSweep(draft, ctx2));
   events.push(...requestsFallBack(draft, ctx2));
   events.push(...falseReportSweep(draft, ctx2));
+  events.push(...chainRequests(draft, ctx2));
   events.push(...newPractices(draft, ctx2));
   events.push(...expiry(draft));
   return events;
@@ -40755,6 +40785,7 @@ function createDynamic(deps) {
 // src/practice/directives.ts
 var PRACTICE_PREFIX = "practice:";
 var TASKS_PREFIX = "practice:tasks:";
+var TARGET_PREFIX = "practice:target:";
 var ISSUED_PREFIX = "practice:issued:";
 var NEVER_NAME = "Show it in how she acts and speaks; never name it as a mechanic.";
 var phrase = (text2) => plainDraft(text2).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
@@ -40771,6 +40802,18 @@ function practiceDirectives(state, reg, present2) {
     const open3 = (state.practices?.tasks ?? []).filter((t) => t.holderId === unit3.id && t.kind === "task" && t.status === "open").map(taskLine).filter((s) => s !== "");
     if (open3.length === 0) continue;
     out.push({ id: `${TASKS_PREFIX}${unit3.id}`, expiresAfter: "scene", text: plainDraft(`${unit3.displayName} expects the commander to see to: ${open3.join("; ")}. She may ask after them. ${NEVER_NAME}`) });
+  }
+  for (const id of present2) {
+    const target = state.squad.find((u) => u.id === id);
+    if (target === void 0 || target.kind !== "named" || !isLiving(target)) continue;
+    const asked = (state.practices?.tasks ?? []).filter((t) => t.kind === "task" && t.status === "open" && t.targetUnitId === id && t.holderId !== id && practiceLive(state, reg, t.holderId));
+    if (asked.length === 0) continue;
+    const lines = asked.flatMap((t) => {
+      const holder2 = state.squad.find((u) => u.id === t.holderId);
+      const what = taskLine(t);
+      return holder2 === void 0 || what === "" ? [] : [`${holder2.displayName} asked the commander for this, which involves ${target.displayName}: ${what}. Her own stance toward what ${holder2.displayName} leads in: ${witnessOf(state, reg, id, t.holderId)}.`];
+    });
+    if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: "scene", text: plainDraft(`${lines.join(" ")} She reacts as she would. ${NEVER_NAME}`) });
   }
   return out;
 }
@@ -47198,7 +47241,7 @@ registerCallType({
       "You word one practice that a soldier of a dark, near-future squad-command roleplay gives the commander, so that the engine can run it.",
       `This one is ${KIND_LINE[kind]}.`,
       "Reply with a single JSON object and nothing else:",
-      `{ "kind": "${kind}", "seedId": "<id of one of the listed seeds, or omit>", "tags": ["<category id>"], "track": "<track id>", "tier": <whole number>, "stakes": "${STAKES.join("|")}", "check": "${CHECK_KINDS.join("|")}", "checkArg": "<unit id or rule id, only for no_scene_with or rule_kept_until>", "deadline": { "days": <whole number>, "slot": "morning|afternoon|evening|night" }, "proof": "${PROOFS.join("|")}", "audienceIds": ["<unit id>"], "text": "<what she says>", "summary": "<the practice in a few words>" }`,
+      `{ "kind": "${kind}", "seedId": "<id of one of the listed seeds, or omit>", "tags": ["<category id>"], "track": "<track id>", "tier": <whole number>, "stakes": "${STAKES.join("|")}", "check": "${CHECK_KINDS.join("|")}", "checkArg": "<unit id or rule id, only for no_scene_with, on_roster, not_on_roster or rule_kept_until>", "targetId": "<unit id of a third soldier the task involves, or omit>", "deadline": { "days": <whole number>, "slot": "morning|afternoon|evening|night" }, "proof": "${PROOFS.join("|")}", "audienceIds": ["<unit id>"], "text": "<what she says>", "summary": "<the practice in a few words>" }`,
       "Hard rules:",
       "- The listed seeds are examples, not orders: you may write something of your own in the same spirit. Use only the listed categories and tracks, and stay inside the listed limits.",
       `- "text" is her own words to the commander, in her manner, at most ${TUNING.practice.textMax} characters. "summary" names the practice in a few words, at most ${TUNING.practice.summaryMax} characters.`,

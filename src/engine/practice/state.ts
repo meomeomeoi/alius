@@ -259,6 +259,8 @@ export interface ValidOutput {
   deadline?: { days: number; slot?: Slot };
   proof: Proof;
   audienceIds?: string[];
+  /** A third party the task involves (a living named unit other than her): the card may name one, or a roster or scene check does. */
+  targetUnitId?: string;
   text: string;
   summary: string;
 }

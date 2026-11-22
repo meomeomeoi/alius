@@ -54,14 +54,9 @@ export function newPracticeChance(state: CampaignState, reg: Registries, holderI
  * (one open task at `role` or beyond unless she holds the household protocol).
  */
 export function kindsToday(state: CampaignState, reg: Registries, holderId: string): PracticeKind[] {
-  const frame = frameOf(state, holderId);
-  const open = openTasks(state, holderId);
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === undefined) return false;
-    if (kind === 'task') {
-      if (open >= TUNING.practice.taskCap[frame]) return false;
-      if (frameRank(frame) >= frameRank('role') && open >= 1 && !hasCapability(state, reg, holderId, 'household_protocol')) return false;
-    }
+    if (kind === 'task' && !taskRoom(state, reg, holderId)) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
   });
 }
@@ -73,6 +68,32 @@ function requestsFallBack(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
     if (r.day >= draft.day || !practiceLive(draft, ctx.registries, r.holderId)) continue;
     if (WRITERS[r.kind] === undefined) { draft.practices!.requests = draft.practices!.requests.filter((x) => x.id !== r.id); continue; }
     events.push(...issuePractice(draft, ctx, r.id, 'fallback'));
+  }
+  return events;
+}
+
+/** Is there room for another task of hers: under the cap of her frame, and at `role` or beyond one open at a time unless she holds the household protocol. */
+function taskRoom(state: CampaignState, reg: Registries, holderId: string): boolean {
+  const frame = frameOf(state, holderId);
+  const open = openTasks(state, holderId);
+  if (open >= TUNING.practice.taskCap[frame]) return false;
+  return !(frameRank(frame) >= frameRank('role') && open >= 1 && !hasCapability(state, reg, holderId, 'household_protocol'));
+}
+
+/**
+ * 8a. A task kept yesterday may continue its chain (B1): a kept task that has a chain, or came from a seed (the first of a seed starts one of its own id), asks for the next step
+ * the day after with the chance `chainChance` (`practiceRoll(holderId, 'chain:' + id)`), if there is room for another task. The request carries `chainOf`; its seeds start at the
+ * last tier. At most one request a holder a day.
+ */
+function chainRequests(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const events: EngineEvent[] = [];
+  for (const task of [...(draft.practices?.tasks ?? [])]) {
+    if (task.kind !== 'task' || task.status !== 'kept' || task.settledDay !== draft.day - 1 || (task.chainId === undefined && task.seedId === undefined)) continue;
+    if (!practiceLive(draft, ctx.registries, task.holderId) || draft.practices!.requests.some((r) => r.holderId === task.holderId) || !taskRoom(draft, ctx.registries, task.holderId)) continue;
+    if (practiceRoll(draft, task.holderId, `chain:${task.id}`) >= TUNING.practice.chainChance) continue;
+    task.chainId ??= task.id;
+    task.step ??= 1;
+    events.push(...requestPractice(draft, ctx, task.holderId, 'task', { chainOf: task.chainId }));
   }
   return events;
 }
@@ -122,6 +143,7 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   events.push(...requestsFallBack(draft, ctx)); // 3
   events.push(...falseReportSweep(draft, ctx)); // 4
   // 5 favour kindnesses, 6 unfairness, 7 handovers: no-ops until their tasks
+  events.push(...chainRequests(draft, ctx)); // 8a
   events.push(...newPractices(draft, ctx)); // 8
   events.push(...expiry(draft)); // 9
   return events;

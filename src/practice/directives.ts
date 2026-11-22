@@ -1,6 +1,7 @@
 import { plainDraft } from '../content/draft';
 import type { Registries } from '../content/types';
 import { isLiving } from '../engine/economy';
+import { witnessOf } from '../engine/dynamic/witness';
 import { practiceLive } from '../engine/practice/gate';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
@@ -15,6 +16,8 @@ import type { ContextBuilder, Directive } from '../llm/context';
 export const PRACTICE_PREFIX = 'practice:';
 /** The tasks she expects, while she is in the room (scene). */
 export const TASKS_PREFIX = 'practice:tasks:';
+/** A third party who is in the room: what a holder asked of the commander that involves her. */
+export const TARGET_PREFIX = 'practice:target:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
 
@@ -37,7 +40,9 @@ function holdersIn(state: CampaignState, reg: Registries, present: readonly stri
 /**
  * Derived directives for the women in the scene (`present`):
  *  - `practice:tasks:<holderId>`: she holds, and has tasks open that the commander accepted: what she expects, by summary (a sealed one as "a sealed task").
- * Nothing while nobody in the room holds. The event-driven `practice:issued:` line is `issuedDirective`.
+ *  - `practice:target:<unitId>`: someone in the room is the third party of a task that is open (a holder asked the commander for something that involves her): what was asked,
+ *    by summary, and her own stance toward what the holder leads in (her `witness` word), so that she reacts as she would.
+ * Nothing while nobody in the room holds and nobody is a target. The event-driven `practice:issued:` line is `issuedDirective`.
  */
 export function practiceDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
   const out: Directive[] = [];
@@ -45,6 +50,18 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     const open = (state.practices?.tasks ?? []).filter((t) => t.holderId === unit.id && t.kind === 'task' && t.status === 'open').map(taskLine).filter((s) => s !== '');
     if (open.length === 0) continue;
     out.push({ id: `${TASKS_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} expects the commander to see to: ${open.join('; ')}. She may ask after them. ${NEVER_NAME}`) });
+  }
+  for (const id of present) {
+    const target = state.squad.find((u) => u.id === id);
+    if (target === undefined || target.kind !== 'named' || !isLiving(target)) continue;
+    const asked = (state.practices?.tasks ?? []).filter((t) => t.kind === 'task' && t.status === 'open' && t.targetUnitId === id && t.holderId !== id && practiceLive(state, reg, t.holderId));
+    if (asked.length === 0) continue;
+    const lines = asked.flatMap((t) => {
+      const holder = state.squad.find((u) => u.id === t.holderId);
+      const what = taskLine(t);
+      return holder === undefined || what === '' ? [] : [`${holder.displayName} asked the commander for this, which involves ${target.displayName}: ${what}. Her own stance toward what ${holder.displayName} leads in: ${witnessOf(state, reg, id, t.holderId)}.`];
+    });
+    if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} She reacts as she would. ${NEVER_NAME}`) });
   }
   return out;
 }

@@ -134,6 +134,7 @@ export function plainText(v: unknown, max: number): string {
 }
 
 const SLOTS: readonly string[] = ['morning', 'afternoon', 'evening', 'night'];
+const ROSTER_CHECKS: readonly string[] = ['on_roster', 'not_on_roster'];
 
 /**
  * The model's card (`raw`) as the engine accepts it, or `null` (the fallback runs). The kind must be the request's; an unknown `seedId` is dropped; a tag that is not switched
@@ -161,7 +162,9 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
   if (track !== asked) issues.push('track was not open and was replaced');
   const cap = trackLevel(state, holderId, track) + 1;
   const tierRaw = typeof raw.tier === 'number' && Number.isFinite(raw.tier) ? Math.round(raw.tier) : (seed?.tier ?? 1);
-  const tier = Math.min(Math.min(5, cap), Math.max(1, tierRaw)) as ValidOutput['tier'];
+  // a chain goes up or holds: the next step is at least the last one's tier, and still at most her level plus one
+  const floor = request.chainOf === undefined ? 1 : (state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1);
+  const tier = Math.min(Math.min(5, cap), Math.max(1, floor, tierRaw)) as ValidOutput['tier'];
   if (tier !== raw.tier) issues.push('tier was clamped');
 
   const ceiling = stakesCeilingOf(state, holderId);
@@ -169,12 +172,20 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
   const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
   if (stakes !== raw.stakes) issues.push('stakes were clamped');
 
+  const units = eligibleUnits(state, holderId);
+  const targetAsked = typeof raw.targetId === 'string' ? raw.targetId : raw.targetUnitId; // the model's key, or a card read again (`issuePractice`)
+  const targetRaw = typeof targetAsked === 'string' && units.includes(targetAsked) ? targetAsked : undefined;
   let check: CheckKind = (CHECK_KINDS as readonly unknown[]).includes(raw.check) ? (raw.check as CheckKind) : 'model';
   let checkArg = typeof raw.checkArg === 'string' ? raw.checkArg : undefined;
-  if (check === 'no_scene_with' && (checkArg === undefined || !eligibleUnits(state, holderId).includes(checkArg))) { check = 'model'; checkArg = undefined; }
+  if (check === 'no_scene_with' && (checkArg === undefined || !units.includes(checkArg))) { check = 'model'; checkArg = undefined; }
   else if (check === 'rule_kept_until' && (checkArg === undefined || !activeRules(state, holderId).some((r) => r.id === checkArg))) { check = 'model'; checkArg = undefined; }
+  else if (ROSTER_CHECKS.includes(check)) checkArg = checkArg !== undefined && units.includes(checkArg) ? checkArg : undefined; // the unit she watches (else the card's target)
   else if (check !== 'no_scene_with' && check !== 'rule_kept_until') checkArg = undefined;
-  if (check !== raw.check) issues.push('check was changed to model');
+  // a field task (judged when a run ends) takes only a roster check: a slot or a booking check with the flag becomes one, when there is a unit to judge
+  const argAsked = typeof raw.checkArg === 'string' && units.includes(raw.checkArg) ? raw.checkArg : undefined;
+  const fieldUnit = argAsked ?? targetRaw;
+  if (raw.field === true && !ROSTER_CHECKS.includes(check) && check === raw.check && fieldUnit !== undefined) { check = 'on_roster'; checkArg = fieldUnit; issues.push('a field task takes a roster check'); }
+  else if (check !== raw.check) issues.push('check was changed to model');
 
   const proof: Proof = (PROOFS as readonly unknown[]).includes(raw.proof) ? (raw.proof as Proof) : (seed?.proof ?? 'none');
 
@@ -186,7 +197,7 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
     deadline = { days, ...(typeof raw.deadline.slot === 'string' && SLOTS.includes(raw.deadline.slot) ? { slot: raw.deadline.slot as Slot } : {}) };
   }
 
-  const eligible = eligibleUnits(state, holderId);
+  const eligible = units;
   const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id): id is string => typeof id === 'string').filter((id, i, all) => all.indexOf(id) === i);
   const audienceIds = asked2.filter((id) => eligible.includes(id));
   if (audienceIds.length < asked2.length) issues.push('audience was filtered');
@@ -200,7 +211,7 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
   return {
     output: {
       kind: request.kind, ...(seed !== undefined ? { seedId: seed.id } : {}), tags: kept, track, tier, stakes, check, ...(checkArg !== undefined ? { checkArg } : {}),
-      ...(deadline !== undefined ? { deadline } : {}), proof, ...(audienceIds.length > 0 ? { audienceIds } : {}), text, summary,
+      ...(deadline !== undefined ? { deadline } : {}), proof, ...(audienceIds.length > 0 ? { audienceIds } : {}), ...(targetRaw !== undefined ? { targetUnitId: targetRaw } : {}), text, summary,
     },
     issues,
   };

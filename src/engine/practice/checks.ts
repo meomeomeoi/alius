@@ -6,6 +6,7 @@
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addCompromat } from '../dynamic/compromat';
+import { addSign } from '../dynamic/knowledge';
 import { addFavour } from '../dynamic/hold';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
@@ -56,6 +57,9 @@ export function settleTask(
   }
   task.status = outcome;
   task.settledDay = draft.day;
+  // a third party in the room sees what the commander was asked to do for her, or failed to (R6): a step behind, by her own stance
+  const target = task.targetUnitId;
+  const sees = target !== undefined && target !== holderId && draft.scene?.participants.includes(target) === true ? addSign(draft, ctx, target, holderId, 'step_behind') : [];
   const dyn = dynamicOf(draft, holderId);
   if (dyn !== undefined) {
     dyn.recent.push(formOf(reg, task));
@@ -66,13 +70,13 @@ export function settleTask(
     events.push(...hitHer(draft, reg, holderId, 'task_kept', SEVERITY[stakeRank(task.stakes)], 'kept her task'));
     events.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
-    events.push(...practiceSample(draft, reg, holderId, 'yielded'));
+    events.push(...practiceSample(draft, reg, holderId, 'yielded'), ...sees);
     return events;
   }
   const stakes = opts.falseReport === true ? stepUp(task.stakes) : task.stakes;
   const events: EngineEvent[] = [{ type: 'task_broken', taskId, unitId: holderId, holderId, via, stakes, summary: task.summary, ...(opts.falseReport === true ? { falseReport: true } : {}) }];
   events.push(...hitHer(draft, reg, holderId, 'task_broken', SEVERITY[stakeRank(stakes) + (opts.falseReport === true && stakes === task.stakes ? 1 : 0)], 'broke her task'));
-  events.push(...practiceSample(draft, reg, holderId, 'resisted'));
+  events.push(...practiceSample(draft, reg, holderId, 'resisted'), ...sees);
   events.push(...noteOffence(draft, ctx, holderId, { kind: opts.falseReport === true ? 'false_report' : 'task_broken', ref: task.id, stakes, day: draft.day }));
   return events;
 }

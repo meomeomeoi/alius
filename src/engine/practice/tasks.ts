@@ -33,6 +33,10 @@ export function acceptFormOf(stakes: Stake, sealed: boolean | undefined): Accept
 
 const ROSTER_CHECKS: readonly string[] = ['on_roster', 'not_on_roster'];
 
+/** The third party a task involves: the request's (a confession), the card's, or the unit a roster or scene check watches. */
+const targetOf = (request: PracticeRequest, out: ValidOutput): string | undefined =>
+  request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS.includes(out.check) || out.check === 'no_scene_with' ? out.checkArg : undefined);
+
 /** A task of hers, from a card (R5, R6). `field` only with the roster checks, a deadline from the card's days (kept even when no duration is shown), the chain from the request. */
 export const writeTask: Writer = (draft, _ctx, request, out, plain) => {
   const p = ensurePractices(draft);
@@ -45,7 +49,7 @@ export const writeTask: Writer = (draft, _ctx, request, out, plain) => {
     ...(out.deadline !== undefined ? { deadline: { day: draft.day + out.deadline.days, ...(out.deadline.slot !== undefined ? { slot: out.deadline.slot } : {}) } } : {}),
     ...(request.noDuration === true ? { noDuration: true as const } : {}), ...(out.audienceIds !== undefined && out.audienceIds.length > 0 ? { audienceIds: [...out.audienceIds] } : {}),
     text: out.text, summary: out.summary, ...(plain ? { plain: true as const } : {}), ...(chainId !== undefined ? { chainId, step } : {}), status: 'offered',
-    ...(request.targetUnitId !== undefined ? { targetUnitId: request.targetUnitId } : {}), ...(ROSTER_CHECKS.includes(out.check) ? { field: true as const } : {}),
+    ...(targetOf(request, out) !== undefined ? { targetUnitId: targetOf(request, out) } : {}), ...(ROSTER_CHECKS.includes(out.check) ? { field: true as const } : {}),
     ...(request.sealed === true ? { sealed: true as const } : {}), acceptForm: acceptFormOf(out.stakes, request.sealed), day: draft.day,
   };
   p.tasks.push(task);
