@@ -185,6 +185,8 @@ export interface ExitCardCtx {
     request?: () => void;
   };
   onClose?: () => void;
+  /** Draw the cost of each route as a word (default); immersive mode draws none. */
+  costWords?: boolean;
 }
 
 /** The other holders a transfer may go to: named, living, at `play` or beyond. */
@@ -206,7 +208,7 @@ export function renderExitCard(host: HTMLElement, ctx: ExitCardCtx): void {
   const unit = state.squad.find((u) => u.id === unitId);
   if (unit === undefined) return;
   const live = { unitId };
-  const cost = (word: string): HTMLElement => h('span', { class: 'alius-chip', 'data-cost': '', ...analyzeAttrs('glossary:dynamic_exit', live) }, word);
+  const cost = (word: string): HTMLElement | null => ctx.costWords === false ? null : h('span', { class: 'alius-chip', 'data-cost': '', ...analyzeAttrs('glossary:dynamic_exit', live) }, word);
   const go = (route: ExitRoute, opts: { toUnitId?: string; means?: ExitMeans } | undefined, text: string, soft?: string): HTMLElement => h('button', {
     type: 'button', class: 'alius-btn alius-option', ...(opts?.means !== undefined ? { 'data-means': opts.means } : {}), ...analyzeNative('glossary:dynamic_exit', live),
     ...(soft !== undefined ? { 'aria-disabled': 'true', title: soft } : {}),

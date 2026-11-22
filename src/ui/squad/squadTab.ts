@@ -410,7 +410,7 @@ function dynamicSection(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTM
   if (unit.kind !== 'named') return null;
   const host = h('div', { class: 'alius-dyn-section-host' });
   const drawn = renderDynamicSection(host, {
-    state, reg: ctx.registries, unitId: unit.id, knowledge: buildKnowledge(state, ctx.settings()), hidden: ctx.settings().dynamicHidden === true,
+    state, reg: ctx.registries, unitId: unit.id, knowledge: buildKnowledge(state, ctx.settings()), hidden: ctx.settings().dynamicHidden === true, readable: ctx.settings().readableMode,
     ...(ctx.dynamic?.actions !== undefined ? { actions: ctx.dynamic.actions } : {}),
     ...(ctx.onPunish !== undefined ? { onPunish: (id: string, measure: string, days?: number) => ctx.onPunish!(id, measure, days) } : {}),
     ...(ctx.onLeash !== undefined ? { onLeash: (id: string) => ctx.onLeash!(id, 'compel') } : {}),

@@ -89,6 +89,7 @@ import { generationBadge } from './ui/shell/generationsSection';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
 import { dynamicNotices } from './ui/dynamic/notices';
+import { resetDynamicSection } from './ui/dynamic/section';
 import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
@@ -2726,6 +2727,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           seenOffers.clear();
           generations.clearSnapshots(); // a revert snapshot belongs to one campaign
           staging.reset(); // P15a: a hold's clock, inputs and cue pool belong to one chat
+          resetDynamicSection(); // P15: an exit card left open in a dossier belongs to one chat (the key repeats across campaigns)
           openCampaign();
           staging.resume();
           shell.refresh();

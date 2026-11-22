@@ -57,13 +57,13 @@ function world(frame: Frame = 'role', hold = 62, over: { sworn?: boolean } = {})
 }
 const env = (s: CampaignState, raw = false): AnalyzeEnv => ({ state: s, registries: reg, settings: { ...DEFAULT_SETTINGS, showRawValues: raw } }) as unknown as AnalyzeEnv;
 
-function squad(s: CampaignState, opts: { raw?: boolean; hidden?: boolean; actions?: Record<string, unknown> } = {}) {
+function squad(s: CampaignState, opts: { raw?: boolean; hidden?: boolean; readable?: boolean; actions?: Record<string, unknown> } = {}) {
   const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
   const host = h('div');
   document.body.append(host);
   renderSquadTab(host, {
     st, getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg,
-    settings: () => ({ ...DEFAULT_SETTINGS, showRawValues: opts.raw === true, dynamicHidden: opts.hidden === true }),
+    settings: () => ({ ...DEFAULT_SETTINGS, showRawValues: opts.raw === true, dynamicHidden: opts.hidden === true, readableMode: opts.readable === true }),
     onNewCampaign: vi.fn(), onPunish: vi.fn(), onLeash: vi.fn(),
     dynamic: { dispatch: vi.fn(() => []), onChanged: vi.fn(), ...(opts.actions !== undefined ? { actions: opts.actions } : {}) },
   } as never);
@@ -131,10 +131,9 @@ describe('her dossier: the DYNAMIC section', () => {
     expect(squad(none).section).toBeNull();
   });
 
-  it('immersive hides the section and the bands but the hub chip and the cards still show', () => {
+  it('immersive hides the bands but the hub chip and the cards still show', () => {
     const s = world();
-    const { host, section } = squad(s, { hidden: true });
-    expect(section).toBeNull();
+    const { host } = squad(s, { hidden: true });
     expect(host.querySelector('[data-dyn-hold]')).toBeNull();
     expect(host.querySelector('[data-dyn-frame]')).toBeNull();
     expect(tonightItems(s, reg).some((i) => i.kind === 'dynamic' && i.unitId === ANN)).toBe(true); // the hub chip
@@ -142,6 +141,61 @@ describe('her dossier: the DYNAMIC section', () => {
     document.body.append(card);
     renderMilestoneCard(card, { state: s, reg, milestone: s.dynamic!.open.milestones[0], onAnswer: vi.fn() }); // the card
     expect(card.querySelector('[data-milestone="dm1"]')).not.toBeNull();
+  });
+
+  describe('the body map (I1)', () => {
+    it('is drawn in the section: unrevealed zones are a question mark, every zone carries data-analyze', () => {
+      const s = world();
+      s.content = { enabled: ['restraint', 'worship'] };
+      const { section } = squad(s);
+      const map = section!.querySelector('.alius-bodymap');
+      expect(map).not.toBeNull();
+      expect(map!.querySelector('svg.alius-bm-svg')).not.toBeNull();
+      const zones = [...map!.querySelectorAll<SVGGElement>('g.alius-bm-zone')];
+      expect(zones.length).toBeGreaterThan(0);
+      for (const z of zones) {
+        expect(z.getAttribute('data-analyze')).toMatch(/^worshipTargets:/);
+        expect(z.getAttribute('data-known')).toBe('false');
+        expect(z.querySelector('.alius-bm-q')!.textContent).toBe('?');
+      }
+    });
+    it('readable mode draws the list only, and nothing is drawn without a worship category or in immersive mode', () => {
+      const s = world();
+      s.content = { enabled: ['restraint', 'worship'] };
+      const map = squad(s, { readable: true }).section!.querySelector('.alius-bodymap')!;
+      expect(map.classList.contains('is-readable')).toBe(true);
+      expect(map.querySelector('svg')).toBeNull();
+      expect(map.querySelector('li.alius-bm-row')).not.toBeNull();
+      document.body.innerHTML = '';
+      const none = world();
+      expect(squad(none).section!.querySelector('.alius-bodymap')).toBeNull();
+      document.body.innerHTML = '';
+      expect(squad(s, { hidden: true }).host.querySelector('.alius-bodymap')).toBeNull();
+    });
+  });
+
+  describe('immersive mode keeps one way out (I2)', () => {
+    it('holds draws a single END IT row, no frame, band or cost word, and the exit card has no cost words', () => {
+      const s = world();
+      const { host, unit } = squad(s, { hidden: true });
+      const row = unit.querySelector<HTMLElement>('.alius-dynamic-section')!;
+      expect(row).not.toBeNull();
+      expect(row.querySelector('[data-dyn-frame]')).toBeNull();
+      expect(row.querySelector('[data-dyn-hold]')).toBeNull();
+      expect(row.querySelector('.alius-bodymap')).toBeNull();
+      expect(row.querySelector('.alius-claim, .alius-milestone')).toBeNull();
+      const btn = row.querySelector<HTMLButtonElement>('[data-action="dyn-exit"]')!;
+      expect(btn.textContent).toBe('[ END IT ]');
+      btn.click();
+      expect(host.querySelector('.alius-exit')).not.toBeNull();
+      expect(host.querySelector('.alius-exit [data-cost]')).toBeNull();
+      expect(host.querySelector('.alius-exit [data-exit-route="abrupt"] button')).not.toBeNull();
+    });
+    it('a woman who holds nothing gets no row in immersive mode', () => {
+      const s = world();
+      s.relations[ANN].dynamic = { ...blankDynamic(s.day), formerHolder: { endedDay: 2, frame: 'role', sworn: false } };
+      expect(squad(s, { hidden: true }).section).toBeNull();
+    });
   });
 
   it('the cards answer through the callbacks', () => {

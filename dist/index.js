@@ -1674,9 +1674,9 @@ function effectsFor(registry2, entry, reg, data) {
     case "relationshipStates": {
       const syn = e.unlocks && typeof e.unlocks === "object" && Array.isArray(e.unlocks.synergies) ? e.unlocks.synergies : [];
       const mod = (kind, word2) => {
-        const row3 = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
-        if (!row3 || typeof row3 !== "object") return [];
-        return Object.entries(row3).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap(axis)} ${word2} \xD7${num(n)}`);
+        const row4 = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
+        if (!row4 || typeof row4 !== "object") return [];
+        return Object.entries(row4).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap(axis)} ${word2} \xD7${num(n)}`);
       };
       return compact([syn.length ? `Unlocks: ${syn.map((s) => `[[synergies:${s}]]`).join(", ")}` : null, ...mod("gain", "gains"), ...mod("loss", "losses")]);
     }
@@ -9988,13 +9988,13 @@ Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });
 
 // src/engine/onboarding/prologue.ts
 function prologueFor(reg, startId, mode) {
-  let plain7 = null;
+  let plain8 = null;
   for (const p of reg.prologues.values()) {
     if (p.startId !== startId) continue;
-    if (p.mode === void 0) plain7 ??= p;
+    if (p.mode === void 0) plain8 ??= p;
     else if (p.mode === mode) return p;
   }
-  return plain7;
+  return plain8;
 }
 function stepsOf(entry) {
   const steps = entry.steps ?? {};
@@ -10757,9 +10757,9 @@ function defaultFormation(state, reg, unitIds) {
     return (u && reg.roles.get(u.roleId)?.row) ?? "either";
   };
   for (const id of unitIds) {
-    const row3 = rowOf3(id);
-    if (row3 === "front") (front.length < max ? front : back).push(id);
-    else if (row3 === "back") (back.length < max ? back : front).push(id);
+    const row4 = rowOf3(id);
+    if (row4 === "front") (front.length < max ? front : back).push(id);
+    else if (row4 === "back") (back.length < max ? back : front).push(id);
   }
   for (const id of unitIds) {
     if (rowOf3(id) !== "either") continue;
@@ -11123,11 +11123,11 @@ function meetsSocialRequirements(state, requires) {
 var clamp6 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function presenceOf(state, reg) {
   const profile = commanderProfile(state);
-  const row3 = (factor, key) => {
+  const row4 = (factor, key) => {
     for (const e of reg.presence.values()) if (e.factor === factor && String(e.key) === key) return Number(e.presence);
     return 0;
   };
-  const sum = row3("archetype", profile.archetype) + row3("seasoning", String(profile.seasoning)) + row3("authority", String(socialRank(state, "authority")));
+  const sum = row4("archetype", profile.archetype) + row4("seasoning", String(profile.seasoning)) + row4("authority", String(socialRank(state, "authority")));
   return clamp6(sum, -TUNING.commander.presenceMax, TUNING.commander.presenceMax);
 }
 function firstImpressionWeight(state, unitId) {
@@ -11491,9 +11491,9 @@ function dislikers(state, reg, holderId) {
 function dynamicTerm(state, reg, unitId) {
   const x = state.dynamic;
   if (x === void 0 || !dynamicLive(state, reg)) return 0;
-  const row3 = x.knowledge[unitId];
-  if (row3 === void 0) return 0;
-  const dislikes = Object.entries(row3).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
+  const row4 = x.knowledge[unitId];
+  if (row4 === void 0) return 0;
+  const dislikes = Object.entries(row4).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
   return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
 }
 function standingMalus(state, reg, holderId) {
@@ -11873,8 +11873,8 @@ function romanceStepDown(draft, reg, unitId) {
   const rel = draft.relations[unitId];
   if (rel === void 0) return [];
   const stepOf = (id) => {
-    const row3 = reg.relationshipStates.get(id);
-    return row3?.romance === true && row3.stepDown !== void 0 && row3.stepDown !== id ? row3.stepDown : void 0;
+    const row4 = reg.relationshipStates.get(id);
+    return row4?.romance === true && row4.stepDown !== void 0 && row4.stepDown !== id ? row4.stepDown : void 0;
   };
   if (rel.affair !== void 0 && rel.stateId === "secret_affair") {
     const next2 = stepOf(rel.affair.as);
@@ -13196,8 +13196,8 @@ function developmentDayStep(draft, ctx2) {
 // src/engine/development/appraisal.ts
 function readingFor(reg, event) {
   if (event.reading) return event.reading;
-  const row3 = reg.eventDeltas.get(event.type)?.appraisal;
-  return row3 ?? null;
+  const row4 = reg.eventDeltas.get(event.type)?.appraisal;
+  return row4 ?? null;
 }
 var nameOf = (state, subject) => subject === "commander" ? state.commander.name : state.squad.find((u) => u.id === subject)?.displayName ?? subject;
 function summaryOf(state, a, evidence) {
@@ -13376,12 +13376,12 @@ function computeDeltas(state, reg, unitId, event) {
   const pun = event.type === "commander_enforced" ? punishmentFor(reg, event.measure) : void 0;
   const severity = pun ? SEVERITIES[Number(pun.severity) - 1] ?? event.severity : triggered ? escalate(event.severity) : event.severity;
   const def = reg.eventDeltas.get(event.type);
-  const row3 = rowFor(state, reg, unitId, event, severity);
-  if (!row3) return { ...zero, severity };
-  let trust = row3.trust ?? 0;
-  let affinity = row3.affinity ?? 0;
-  let attraction = row3.attraction ?? 0;
-  let stress = (row3.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
+  const row4 = rowFor(state, reg, unitId, event, severity);
+  if (!row4) return { ...zero, severity };
+  let trust = row4.trust ?? 0;
+  let affinity = row4.affinity ?? 0;
+  let attraction = row4.attraction ?? 0;
+  let stress = (row4.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
   for (const fx2 of stanceEffects(state, reg, unit3, "event_stress")) if (fx2.events.includes(event.type)) stress += fx2.amount;
   if (def?.valueAligned === true) {
     const values = effectiveValues(state, reg, unit3);
@@ -14974,8 +14974,8 @@ registerStepEntry("guided_slot", (draft, _ctx, step) => {
 });
 
 // src/engine/onboarding/unlocks.ts
-var conditionOf = (row3) => row3.condition ?? {};
-var tabOf = (row3) => String(row3.target.tab);
+var conditionOf = (row4) => row4.condition ?? {};
+var tabOf = (row4) => String(row4.target.tab);
 function holds(state, c) {
   if (c.minDay !== void 0 && state.day < c.minDay) return false;
   if (c.afterStep !== void 0) {
@@ -14987,13 +14987,13 @@ function holds(state, c) {
 function lockedTabs(state, reg) {
   const out = /* @__PURE__ */ new Set();
   if (onboardingDone(state)) return out;
-  for (const row3 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row3))) out.add(tabOf(row3));
+  for (const row4 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row4))) out.add(tabOf(row4));
   return out;
 }
 function unlockedBetween(before, after, reg) {
   const was = lockedTabs(before, reg);
   const now = lockedTabs(after, reg);
-  return [...reg.uiUnlocks.values()].filter((row3) => was.has(tabOf(row3)) && !now.has(tabOf(row3)));
+  return [...reg.uiUnlocks.values()].filter((row4) => was.has(tabOf(row4)) && !now.has(tabOf(row4)));
 }
 
 // src/engine/onboarding/objectives.ts
@@ -15617,11 +15617,11 @@ var RANGE4 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 function applyMoment(draft, reg, unitId, moment) {
   const rel = draft.relations[unitId];
   if (!rel) return;
-  const row3 = moment.eventDelta;
-  const byCommander = row3.actor === "commander";
+  const row4 = moment.eventDelta;
+  const byCommander = row4.actor === "commander";
   const event = {
-    type: row3.type,
-    severity: row3.severity,
+    type: row4.type,
+    severity: row4.severity,
     actor: byCommander ? "commander" : unitId,
     targets: byCommander ? [unitId] : [],
     evidence: "head start",
@@ -16172,11 +16172,11 @@ function commanderSkill(state, physicsId) {
 }
 function addEnduranceXp(draft, physicsId, xp) {
   const book2 = draft.commander.endurance ??= {};
-  const row3 = book2[physicsId] ??= { xp: 0, level: 0 };
-  const before = row3.level;
-  row3.xp += xp;
-  row3.level = levelForXp(row3.xp);
-  return { type: "endurance_gained", physicsId, xp: row3.xp, gained: xp, level: row3.level, leveledUp: row3.level > before };
+  const row4 = book2[physicsId] ??= { xp: 0, level: 0 };
+  const before = row4.level;
+  row4.xp += xp;
+  row4.level = levelForXp(row4.xp);
+  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before };
 }
 function trainEndurance(draft, physicsId) {
   if (draft.commander.endurance?.[physicsId]?.trainedDay === draft.day) return null;
@@ -16483,8 +16483,8 @@ function spawnEnemy(cs, state, reg, spec, summonedBy) {
   const inRow = (r) => enemies.filter((c2) => c2.row === r).length;
   const preferred = spec.row ?? tpl.rowPreference;
   const other = preferred === "front" ? "back" : "front";
-  const row3 = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
-  if (row3 === null) return null;
+  const row4 = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row4 === null) return null;
   const stats = enemyStats(reg, spec.enemyId, spec.level, spec.affixes, state.difficulty);
   const skills = [...tpl.skills];
   const passives = [];
@@ -16500,7 +16500,7 @@ function spawnEnemy(cs, state, reg, spec, summonedBy) {
     enemyId: spec.enemyId,
     nameKey: enemyNameKey(spec.enemyId, spec.affixes),
     level: spec.level,
-    row: row3,
+    row: row4,
     index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
     hp: stats.hp,
     maxHp: stats.hp,
@@ -16527,8 +16527,8 @@ function spawnMutineer(cs, state, reg, spec) {
   const inRow = (r) => enemies.filter((c2) => c2.row === r).length;
   const preferred = spec.row ?? "front";
   const other = preferred === "front" ? "back" : "front";
-  const row3 = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
-  if (row3 === null) return null;
+  const row4 = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row4 === null) return null;
   const stats = unitStats(state, reg, unit3);
   const passives = [];
   for (const d of unit3.defects) {
@@ -16542,7 +16542,7 @@ function spawnMutineer(cs, state, reg, spec) {
     unitId: unit3.id,
     nameKey: unit3.displayName,
     level: unit3.level,
-    row: row3,
+    row: row4,
     index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
     hp: Math.max(1, Math.min(unit3.currentHp, stats.hp)),
     maxHp: stats.hp,
@@ -17492,9 +17492,9 @@ function isLow(reg, n) {
 }
 function styleRow(state, reg, unit3) {
   const key = styleOf(unit3)?.primary;
-  const row3 = key === void 0 ? void 0 : reg.practiceStyles.get(key);
-  if (row3 === void 0) return { factor: 1, speed: R2.speed.normal, floor: 0, form: void 0, key };
-  return { factor: row3.regardFactor, speed: R2.speed[row3.regardSpeed] ?? R2.speed.normal, floor: row3.regardFloor, form: row3.regardForm, key };
+  const row4 = key === void 0 ? void 0 : reg.practiceStyles.get(key);
+  if (row4 === void 0) return { factor: 1, speed: R2.speed.normal, floor: 0, form: void 0, key };
+  return { factor: row4.regardFactor, speed: R2.speed[row4.regardSpeed] ?? R2.speed.normal, floor: row4.regardFloor, form: row4.regardForm, key };
 }
 function regardStart(state, reg, unitId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
@@ -17554,10 +17554,10 @@ function write(draft, reg, unitId, next, cause) {
 function regardFall(draft, reg, unitId, humiliation, opts) {
   const unit3 = dynamicOn(draft, reg) ? holderOf(draft, unitId) : void 0;
   if (unit3 === void 0 || !(humiliation > 0)) return [];
-  const row3 = styleRow(draft, reg, unit3);
-  const fall = humiliation * R2.fall * row3.factor * row3.speed * (opts.witness ? R2.witness : 1);
+  const row4 = styleRow(draft, reg, unit3);
+  const fall = humiliation * R2.fall * row4.factor * row4.speed * (opts.witness ? R2.witness : 1);
   const now = ensureRegard(draft, reg, unitId);
-  return write(draft, reg, unitId, Math.min(now, Math.max(row3.floor, now - fall)), opts.cause ?? "act");
+  return write(draft, reg, unitId, Math.min(now, Math.max(row4.floor, now - fall)), opts.cause ?? "act");
 }
 function regardRise(draft, reg, unitId, kind, amount) {
   const unit3 = dynamicOn(draft, reg) ? holderOf(draft, unitId) : void 0;
@@ -18270,19 +18270,19 @@ function applyMilestone(draft, ctx2, unitId, milestoneId) {
 }
 function answerMilestone(draft, ctx2, milestoneId, answer, via) {
   const reg = ctx2.registries;
-  const row3 = draft.dynamic?.open.milestones.find((m2) => m2.id === milestoneId);
-  const unit3 = row3 === void 0 ? void 0 : draft.squad.find((u) => u.id === row3.unitId);
-  const m = row3 === void 0 ? void 0 : milestoneEntry(reg, row3.milestoneId);
-  const dyn = row3 === void 0 ? void 0 : dynamicOf(draft, row3.unitId);
-  if (!dynamicOn(draft, reg) || row3 === void 0 || unit3 === void 0 || m === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("That milestone is not open.");
-  draft.dynamic.open.milestones = draft.dynamic.open.milestones.filter((o) => o.id !== row3.id);
-  const base = { unitId: row3.unitId, id: row3.id, milestoneId: m.id, via };
-  if (answer === "accept") return [{ type: "milestone_accepted", ...base }, ...applyMilestone(draft, ctx2, row3.unitId, m.id)];
+  const row4 = draft.dynamic?.open.milestones.find((m2) => m2.id === milestoneId);
+  const unit3 = row4 === void 0 ? void 0 : draft.squad.find((u) => u.id === row4.unitId);
+  const m = row4 === void 0 ? void 0 : milestoneEntry(reg, row4.milestoneId);
+  const dyn = row4 === void 0 ? void 0 : dynamicOf(draft, row4.unitId);
+  if (!dynamicOn(draft, reg) || row4 === void 0 || unit3 === void 0 || m === void 0 || dyn === void 0 || !isLiving(unit3)) throw new Error("That milestone is not open.");
+  draft.dynamic.open.milestones = draft.dynamic.open.milestones.filter((o) => o.id !== row4.id);
+  const base = { unitId: row4.unitId, id: row4.id, milestoneId: m.id, via };
+  if (answer === "accept") return [{ type: "milestone_accepted", ...base }, ...applyMilestone(draft, ctx2, row4.unitId, m.id)];
   dyn.cooldowns[m.id] = draft.day + TUNING.dynamic.milestones.refuseCooldownDays;
   return [
     { type: "milestone_refused", ...base },
-    ...addHold(draft, ctx2, row3.unitId, -TUNING.dynamic.milestones.refuseDrop, "milestone_refused"),
-    ...refusalCost(draft, ctx2, row3.unitId, "milestone")
+    ...addHold(draft, ctx2, row4.unitId, -TUNING.dynamic.milestones.refuseDrop, "milestone_refused"),
+    ...refusalCost(draft, ctx2, row4.unitId, "milestone")
   ];
 }
 function milestonesDue(draft, ctx2, unitId) {
@@ -18588,8 +18588,8 @@ function addFavour(draft, unitId, n) {
 function runningStage(state, reg, unitId) {
   const a = dynamicOf(state, unitId)?.aftermath;
   if (a === void 0) return void 0;
-  const row3 = [...reg.aftermaths.values()].find((r) => r.kind === a.kind);
-  const stage2 = row3?.stages[a.stage];
+  const row4 = [...reg.aftermaths.values()].find((r) => r.kind === a.kind);
+  const stage2 = row4?.stages[a.stage];
   return stage2 === void 0 ? void 0 : { stage: stage2, startDay: (a.stageUntil ?? state.day) - stage2.days };
 }
 var hasEffect2 = (effects2, type) => effects2.some((e) => e.type === type);
@@ -18728,8 +18728,8 @@ function answerClaim(draft, ctx2, claimId, answer) {
     }
     dyn.contest = [];
     const events = [{ type: "domain_refused", ...base, submit: true }, ...addHold(draft, ctx2, claim2.unitId, -TUNING.dynamic.milestones.refuseDrop, "refusal")];
-    for (const [observer, row3] of Object.entries(draft.dynamic.knowledge)) {
-      if (row3[claim2.unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, TUNING.dynamic.contestImpunity, "dynamic_contest"));
+    for (const [observer, row4] of Object.entries(draft.dynamic.knowledge)) {
+      if (row4[claim2.unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, TUNING.dynamic.contestImpunity, "dynamic_contest"));
     }
     return events;
   }
@@ -18788,10 +18788,10 @@ function aftermathWeights(state, reg, unitId, ctx2) {
   const band2 = regardBandOf2(state, reg, unitId);
   const holdsCommand = hasCapability(state, reg, unitId, "countermand");
   const mult = ctx2.force ? TUNING.dynamic.aftermath.forceMult : 1;
-  for (const row3 of rowsOf(reg)) {
-    const wt = row3.weights;
+  for (const row4 of rowsOf(reg)) {
+    const wt = row4.weights;
     if (wt.needsCommand === true) {
-      if (holdsCommand) out[row3.kind] = Math.max(wt.base, 1) * (wt.command ?? 1) * mult;
+      if (holdsCommand) out[row4.kind] = Math.max(wt.base, 1) * (wt.command ?? 1) * mult;
       continue;
     }
     if (holdsCommand) continue;
@@ -18812,7 +18812,7 @@ function aftermathWeights(state, reg, unitId, ctx2) {
       weight *= wt.frames?.[dyn.formerHolder.frame] ?? 1;
       if (dyn.formerHolder.sworn) weight *= wt.sworn ?? 1;
     }
-    out[row3.kind] = weight * mult;
+    out[row4.kind] = weight * mult;
   }
   return out;
 }
@@ -18883,8 +18883,8 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
     }
     case "squad_impunity": {
       const events = [];
-      for (const [observer, row3] of Object.entries(draft.dynamic?.knowledge ?? {})) {
-        if (row3[unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, fx2.amount, "dynamic_aftermath"));
+      for (const [observer, row4] of Object.entries(draft.dynamic?.knowledge ?? {})) {
+        if (row4[unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, fx2.amount, "dynamic_aftermath"));
       }
       return events;
     }
@@ -18916,8 +18916,8 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
       return [];
   }
 }
-function enterStage(draft, ctx2, unitId, row3, stage2) {
-  return (row3.stages[stage2]?.effects ?? []).flatMap((fx2) => runAftermathEffect(draft, ctx2, unitId, fx2));
+function enterStage(draft, ctx2, unitId, row4, stage2) {
+  return (row4.stages[stage2]?.effects ?? []).flatMap((fx2) => runAftermathEffect(draft, ctx2, unitId, fx2));
 }
 function endAftermath(draft, unitId, reason) {
   const dyn = dynamicOf(draft, unitId);
@@ -18929,17 +18929,17 @@ function endAftermath(draft, unitId, reason) {
   return { type: "aftermath_ended", unitId, id, kind, reason };
 }
 function startAftermath(draft, ctx2, unitId, kind, opts = {}) {
-  const row3 = rowOf(ctx2.registries, kind);
+  const row4 = rowOf(ctx2.registries, kind);
   const dyn = dynamicOf(draft, unitId);
   const x = draft.dynamic;
-  if (row3 === void 0 || dyn === void 0 || x === void 0) return [];
+  if (row4 === void 0 || dyn === void 0 || x === void 0) return [];
   const events = [];
   if (dyn.aftermath !== void 0) events.push(endAftermath(draft, unitId, "time"));
   const id = `da${x.seq++}`;
-  const total2 = row3.stages.reduce((n, s) => n + s.days, 0);
-  dyn.aftermath = { id, kind, stage: 0, untilDay: draft.day + total2, stageUntil: draft.day + row3.stages[0].days, ...opts.forced === true ? { forced: true } : {} };
+  const total2 = row4.stages.reduce((n, s) => n + s.days, 0);
+  dyn.aftermath = { id, kind, stage: 0, untilDay: draft.day + total2, stageUntil: draft.day + row4.stages[0].days, ...opts.forced === true ? { forced: true } : {} };
   events.push({ type: "aftermath_started", unitId, id, kind, ...opts.forced === true ? { forced: true } : {} });
-  events.push(...enterStage(draft, ctx2, unitId, row3, 0));
+  events.push(...enterStage(draft, ctx2, unitId, row4, 0));
   return events;
 }
 function startAftermathOnExit(draft, ctx2, req) {
@@ -18949,30 +18949,30 @@ function startAftermathOnExit(draft, ctx2, req) {
   const kind = live3.length === 0 ? null : req.commandKept ? "command_kept" : pickKind(weights, ctx2.rng.float());
   return kind === null ? [] : startAftermath(draft, ctx2, req.unitId, kind, { forced: req.force });
 }
-function advance(draft, ctx2, unitId, dyn, row3) {
+function advance(draft, ctx2, unitId, dyn, row4) {
   const a = dyn.aftermath;
   const events = [];
   while (dyn.aftermath === a && a.stageUntil !== void 0 && draft.day >= a.stageUntil) {
-    if (a.stage + 1 < row3.stages.length) {
+    if (a.stage + 1 < row4.stages.length) {
       a.stage += 1;
-      a.stageUntil += row3.stages[a.stage].days;
-      events.push(...enterStage(draft, ctx2, unitId, row3, a.stage));
+      a.stageUntil += row4.stages[a.stage].days;
+      events.push(...enterStage(draft, ctx2, unitId, row4, a.stage));
       continue;
     }
-    if (row3.weights.needsCommand === true && hasCapability(draft, ctx2.registries, unitId, "countermand")) {
-      a.stageUntil += row3.stages[a.stage].days;
+    if (row4.weights.needsCommand === true && hasCapability(draft, ctx2.registries, unitId, "countermand")) {
+      a.stageUntil += row4.stages[a.stage].days;
       a.untilDay = a.stageUntil;
       continue;
     }
     events.push(endAftermath(draft, unitId, "time"));
-    events.push(...chain(draft, ctx2, unitId, row3, a.forced === true));
+    events.push(...chain(draft, ctx2, unitId, row4, a.forced === true));
   }
   return events;
 }
-function chain(draft, ctx2, unitId, row3, forced) {
-  if (row3.chainsTo === void 0) return [];
+function chain(draft, ctx2, unitId, row4, forced) {
+  if (row4.chainsTo === void 0) return [];
   const all = aftermathWeights(draft, ctx2.registries, unitId, { route: "abrupt", clean: false, force: forced });
-  const weights = Object.fromEntries(AFTERMATH_KINDS.map((k) => [k, row3.chainsTo.includes(k) ? all[k] : 0]));
+  const weights = Object.fromEntries(AFTERMATH_KINDS.map((k) => [k, row4.chainsTo.includes(k) ? all[k] : 0]));
   if (AFTERMATH_KINDS.every((k) => weights[k] <= 0)) return [];
   const next = pickKind(weights, ctx2.rng.float());
   return next === null ? [] : startAftermath(draft, ctx2, unitId, next, { forced });
@@ -18984,12 +18984,12 @@ function aftermathDayStep(draft, ctx2) {
   for (const unit3 of draft.squad) {
     const dyn = dynamicOf(draft, unit3.id);
     if (dyn?.aftermath === void 0) continue;
-    const row3 = rowOf(reg, dyn.aftermath.kind);
-    if (unit3.kind !== "named" || !isLiving(unit3) || row3 === void 0) {
+    const row4 = rowOf(reg, dyn.aftermath.kind);
+    if (unit3.kind !== "named" || !isLiving(unit3) || row4 === void 0) {
       events.push(endAftermath(draft, unit3.id, "gone"));
       continue;
     }
-    events.push(...advance(draft, ctx2, unit3.id, dyn, row3));
+    events.push(...advance(draft, ctx2, unit3.id, dyn, row4));
   }
   events.push(...successorsDue(draft, ctx2));
   return events;
@@ -19277,8 +19277,8 @@ function levelOf2(state, observerId, holderId) {
 }
 function recordFor(draft, observerId, holderId) {
   const x = draft.dynamic;
-  const row3 = x.knowledge[observerId] ??= {};
-  return row3[holderId] ??= { suspicion: 0 };
+  const row4 = x.knowledge[observerId] ??= {};
+  return row4[holderId] ??= { suspicion: 0 };
 }
 function mayObserve(draft, reg, observerId, holderId) {
   return dynamicOn(draft, reg) && draft.dynamic !== void 0 && observerId !== holderId && observerUnit(draft, observerId) !== void 0 && observerUnit(draft, holderId) !== void 0 && dynamicOf(draft, holderId) !== void 0;
@@ -19329,16 +19329,16 @@ function gain(draft, ctx2, observerId, holderId, amount) {
 }
 function addSign(draft, ctx2, observerId, holderId, kind) {
   const reg = ctx2.registries;
-  const row3 = signRow(reg, kind);
-  if (row3 === void 0 || !mayObserve(draft, reg, observerId, holderId) || !contentAllowed(draft, reg, row3)) return [];
-  if (row3.instant === true) return knowInstantly(draft, ctx2, observerId, holderId, kind);
-  if (row3.closenessOnly === true) return raise(draft, ctx2, observerId, holderId, recordFor(draft, observerId, holderId), "suspects_close");
-  return gain(draft, ctx2, observerId, holderId, round44(row3.amount * multiplier2(draft, reg, observerId, holderId)));
+  const row4 = signRow(reg, kind);
+  if (row4 === void 0 || !mayObserve(draft, reg, observerId, holderId) || !contentAllowed(draft, reg, row4)) return [];
+  if (row4.instant === true) return knowInstantly(draft, ctx2, observerId, holderId, kind);
+  if (row4.closenessOnly === true) return raise(draft, ctx2, observerId, holderId, recordFor(draft, observerId, holderId), "suspects_close");
+  return gain(draft, ctx2, observerId, holderId, round44(row4.amount * multiplier2(draft, reg, observerId, holderId)));
 }
 function knowInstantly(draft, ctx2, observerId, holderId, cause) {
   const reg = ctx2.registries;
-  const row3 = signRow(reg, cause);
-  if (row3 === void 0 || !mayObserve(draft, reg, observerId, holderId) || !contentAllowed(draft, reg, row3)) return [];
+  const row4 = signRow(reg, cause);
+  if (row4 === void 0 || !mayObserve(draft, reg, observerId, holderId) || !contentAllowed(draft, reg, row4)) return [];
   const rec = recordFor(draft, observerId, holderId);
   if (rec.level === "knows_dynamic") return [];
   rec.suspicion = TUNING.squadKnowledge.knowsAt;
@@ -19404,8 +19404,8 @@ function slipSeen(draft, ctx2, holderId) {
 }
 function decay2(draft) {
   const T5 = TUNING.squadKnowledge;
-  for (const row3 of Object.values(draft.dynamic.knowledge)) {
-    for (const rec of Object.values(row3)) {
+  for (const row4 of Object.values(draft.dynamic.knowledge)) {
+    for (const rec of Object.values(row4)) {
       if (rec.suspicion <= 0 || rec.peakDay === draft.day || rec.level === "knows_dynamic") continue;
       const floor = rec.level === "suspects_dynamic" && draft.day - (rec.levelDay ?? draft.day) <= T5.floorDays ? T5.suspectsAt : 0;
       rec.suspicion = Math.max(floor, round44(rec.suspicion - T5.decayPerDay));
@@ -19466,8 +19466,8 @@ function gossip(draft, ctx2, holders2) {
       for (const [y, level] of before) {
         if (y === o || level !== "knows_dynamic" && level !== "suspects_dynamic") continue;
         if (dynamicRoll(draft, o, `gossip:${y}:${h2}`) >= T5.gossipChance) continue;
-        const row3 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
-        if (row3 !== void 0 && contentAllowed(draft, reg, row3)) total2 += row3.amount * multiplier2(draft, reg, o, h2);
+        const row4 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
+        if (row4 !== void 0 && contentAllowed(draft, reg, row4)) total2 += row4.amount * multiplier2(draft, reg, o, h2);
       }
       if (total2 > 0 && mayObserve(draft, reg, o, h2)) events.push(...gain(draft, ctx2, o, h2, round44(Math.min(T5.gossipCap, total2))));
     }
@@ -20705,9 +20705,9 @@ function offerLabel(reg, tab, id) {
 function readComposition(raw) {
   if (!Array.isArray(raw) || raw.length === 0) throw new Error("An offer needs at least one entry.");
   const out = [];
-  for (const row3 of raw) {
-    const tab = row3?.tab;
-    const ids = row3?.ids;
+  for (const row4 of raw) {
+    const tab = row4?.tab;
+    const ids = row4?.ids;
     if (typeof tab !== "string" || !OFFER_TABS.includes(tab)) throw new Error(`An offer tab is ${OFFER_TABS.join(", ")}.`);
     if (out.some((c) => c.tab === tab)) throw new Error("Each tab may appear once.");
     if (!Array.isArray(ids) || ids.length === 0 || ids.some((i) => typeof i !== "string" || i === "")) throw new Error("Each tab needs the ids it offers.");
@@ -21474,7 +21474,7 @@ function lifeView(state, reg, unitId, visible = () => true) {
     const topic = reg.opinionTopics.get(o.topicId);
     if (!topic) continue;
     const words3 = (id) => plainText(String(topic.positions.find((p) => p.id === id)?.description ?? ""));
-    const history = (unit3.opinions?.[o.topicId]?.history ?? []).map((row3) => words3(row3.from)).filter((t) => t !== "");
+    const history = (unit3.opinions?.[o.topicId]?.history ?? []).map((row4) => words3(row4.from)).filter((t) => t !== "");
     opinions.push({ topicId: o.topicId, label: String(topic.label), text: o.text !== void 0 && o.text !== "" ? o.text : words3(o.position), history });
   }
   const hobbies = [];
@@ -21957,34 +21957,34 @@ function lifeFields(type, e, intent, life) {
   let who;
   let key = null;
   const pick3 = (list5, id) => {
-    const row3 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
-    who = row3?.unitId;
-    return row3;
+    const row4 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
+    who = row4?.unitId;
+    return row4;
   };
   switch (type) {
     case "news_told": {
-      const row3 = pick3(life.news, str7(e.newsId));
-      if (!row3) return null;
-      intent.newsId = row3.id;
-      key = row3.id;
+      const row4 = pick3(life.news, str7(e.newsId));
+      if (!row4) return null;
+      intent.newsId = row4.id;
+      key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row3 = pick3(life.hobbies, str7(e.hobbyId));
-      if (!row3) return null;
-      intent.hobbyId = row3.id;
-      key = row3.id;
+      const row4 = pick3(life.hobbies, str7(e.hobbyId));
+      if (!row4) return null;
+      intent.hobbyId = row4.id;
+      key = row4.id;
       break;
     }
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row3 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str7(e.topicId));
-      if (!row3) return null;
-      intent.topicId = row3.id;
+      const row4 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str7(e.topicId));
+      if (!row4) return null;
+      intent.topicId = row4.id;
       const position = str7(e.positionId);
-      if (type === "opinion_challenged" && position !== null && row3.positions.includes(position)) intent.positionId = position;
-      key = row3.id;
+      if (type === "opinion_challenged" && position !== null && row4.positions.includes(position)) intent.positionId = position;
+      key = row4.id;
       break;
     }
     case "first_moment": {
@@ -21997,10 +21997,10 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row3 = pick3(life.jokes, str7(e.factId));
-      if (!row3) return null;
-      intent.factId = row3.id;
-      key = row3.id;
+      const row4 = pick3(life.jokes, str7(e.factId));
+      if (!row4) return null;
+      intent.factId = row4.id;
+      key = row4.id;
       break;
     }
     default:
@@ -22737,7 +22737,7 @@ function holdsDynamic(state, unitId) {
   const rel = state.relations[unitId]?.dynamic;
   if (rel !== void 0 && (rel.domains.length > 0 || rel.aftermath !== void 0 || rel.probes.pending !== void 0 || rel.leashBlock !== void 0)) return true;
   if (x === void 0) return false;
-  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.open.exits?.some((e) => e.unitId === unitId) === true || x.queue.includes(unitId) || x.override?.unitId === unitId || x.oversight?.threat?.unitId === unitId || x.oversight?.holderId === unitId || x.oversight?.requests?.some((r) => r.unitId === unitId) === true || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row3) => row3[unitId] !== void 0);
+  return x.open.claims.some((c) => c.unitId === unitId) || x.open.milestones.some((m) => m.unitId === unitId) || x.open.offers.some((o) => o.unitId === unitId) || x.open.returnOffer?.unitId === unitId || x.open.exits?.some((e) => e.unitId === unitId) === true || x.queue.includes(unitId) || x.override?.unitId === unitId || x.oversight?.threat?.unitId === unitId || x.oversight?.holderId === unitId || x.oversight?.requests?.some((r) => r.unitId === unitId) === true || x.knowledge[unitId] !== void 0 || Object.values(x.knowledge).some((row4) => row4[unitId] !== void 0);
 }
 function forgetDynamic(draft, unitId) {
   const events = [];
@@ -22749,9 +22749,9 @@ function forgetDynamic(draft, unitId) {
     if (x.open.returnOffer?.unitId === unitId) delete x.open.returnOffer;
     if (x.open.exits !== void 0) x.open.exits = x.open.exits.filter((e) => e.unitId !== unitId);
     delete x.knowledge[unitId];
-    for (const [observer, row3] of Object.entries(x.knowledge)) {
-      delete row3[unitId];
-      if (Object.keys(row3).length === 0) delete x.knowledge[observer];
+    for (const [observer, row4] of Object.entries(x.knowledge)) {
+      delete row4[unitId];
+      if (Object.keys(row4).length === 0) delete x.knowledge[observer];
     }
     x.queue = x.queue.filter((id) => id !== unitId);
     if (x.noted !== void 0) {
@@ -24522,9 +24522,9 @@ function herAlternative(state, reg, order, expectationId, source) {
     case "dilemma": {
       const options2 = dilemmaOptions(state, reg);
       const hers = herPick(state, reg, src.unitId);
-      const plain7 = (i) => options2[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === void 0;
-      const ok = (i) => i !== order.index && plain7(i) && conflictOf(state, reg, { kind: "dilemma", index: i }, void 0, source) === null;
-      const index2 = hers !== null && hers !== order.index && plain7(hers) ? hers : options2.findIndex((_, i) => ok(i));
+      const plain8 = (i) => options2[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === void 0;
+      const ok = (i) => i !== order.index && plain8(i) && conflictOf(state, reg, { kind: "dilemma", index: i }, void 0, source) === null;
+      const index2 = hers !== null && hers !== order.index && plain8(hers) ? hers : options2.findIndex((_, i) => ok(i));
       return index2 >= 0 ? { order: { kind: "dilemma", index: index2 }, label: options2[index2].label } : HOLD();
     }
     case "combat_order":
@@ -26348,7 +26348,7 @@ var combatPassives = [];
 function registerCombatPassive(fn) {
   if (!combatPassives.includes(fn)) combatPassives.push(fn);
 }
-function squadCombatant(state, reg, unit3, index2, row3, synergies) {
+function squadCombatant(state, reg, unit3, index2, row4, synergies) {
   const stats = unitStats(state, reg, unit3);
   const role = reg.roles.get(unit3.roleId);
   const skills = unitSkillIds(reg, unit3);
@@ -26378,7 +26378,7 @@ function squadCombatant(state, reg, unit3, index2, row3, synergies) {
     unitId: unit3.id,
     nameKey: unit3.displayName,
     level: unit3.level,
-    row: row3,
+    row: row4,
     index: index2,
     hp: Math.max(1, Math.min(unit3.currentHp, stats.hp)),
     maxHp: stats.hp,
@@ -30248,8 +30248,8 @@ function generatePortrait(rng) {
   ];
   const mark = rng.pick(MARKS);
   if (mark) {
-    const [row3, col, glyph] = mark;
-    rows[row3] = rows[row3].slice(0, col) + glyph + rows[row3].slice(col + 1);
+    const [row4, col, glyph] = mark;
+    rows[row4] = rows[row4].slice(0, col) + glyph + rows[row4].slice(col + 1);
   }
   const frame = `+${"-".repeat(INNER)}+`;
   return [frame, ...rows.map((r) => `|${r}|`), frame].join("\n");
@@ -34760,6 +34760,9 @@ function scentLevel(state, _reg, unitId, part) {
 function bandOfLevel(level) {
   return level >= S.bands.overwhelming ? "overwhelming" : level >= S.bands.strong ? "strong" : level >= S.bands.noticeable ? "noticeable" : "faint";
 }
+function scentBand(state, reg, unitId, part) {
+  return bandOfLevel(scentLevel(state, reg, unitId, part));
+}
 var BAND_INDEX = { faint: 0, noticeable: 1, strong: 2, overwhelming: 3 };
 
 // src/engine/physics/stimuli.ts
@@ -34806,45 +34809,45 @@ function stimulusUnits(state, reg, ex) {
   return level * T4.unitsPerLevel;
 }
 var bandOf = (state, reg, ex) => bandOfLevel(stimulusUnits(state, reg, ex) / T4.unitsPerLevel);
-function updateTrajectory(row3, seeking) {
-  row3.seek += T4.seekAlpha * ((seeking ? 1 : 0) - row3.seek);
-  const target = stageIndex(stageOf(row3.seek));
-  const at = stageIndex(row3.stage);
+function updateTrajectory(row4, seeking) {
+  row4.seek += T4.seekAlpha * ((seeking ? 1 : 0) - row4.seek);
+  const target = stageIndex(stageOf(row4.seek));
+  const at = stageIndex(row4.stage);
   if (target === at) {
-    delete row3.pending;
+    delete row4.pending;
     return null;
   }
   const step = STAGES[at + (target > at ? 1 : -1)];
-  row3.pending = row3.pending?.stage === step ? { stage: step, n: row3.pending.n + 1 } : { stage: step, n: 1 };
-  if (row3.pending.n < T4.hysteresis) return null;
-  const from = row3.stage;
-  row3.stage = step;
-  delete row3.pending;
+  row4.pending = row4.pending?.stage === step ? { stage: step, n: row4.pending.n + 1 } : { stage: step, n: 1 };
+  if (row4.pending.n < T4.hysteresis) return null;
+  const from = row4.stage;
+  row4.stage = step;
+  delete row4.pending;
   return { from, to: step };
 }
 function perceptionWord(state, reg, kind, band2) {
   const entry = reg.stimulusKinds.get(kind);
-  const row3 = rowOf2(state, kind);
+  const row4 = rowOf2(state, kind);
   if (!entry) return null;
   const words3 = entry.perception;
-  if (band2 === "faint" && (row3?.tolerance ?? T4.startTolerance) >= T4.faintFadeAt) return null;
-  if (!row3) return words3.aversion ?? null;
-  const apart = state.day - row3.lastDay;
-  if (stageIndex(row3.stage) >= stageIndex("craving") && apart >= T4.missingDays) return "Something is missing: it has been too long.";
+  if (band2 === "faint" && (row4?.tolerance ?? T4.startTolerance) >= T4.faintFadeAt) return null;
+  if (!row4) return words3.aversion ?? null;
+  const apart = state.day - row4.lastDay;
+  if (stageIndex(row4.stage) >= stageIndex("craving") && apart >= T4.missingDays) return "Something is missing: it has been too long.";
   if (apart >= T4.separatedDays) return words3.separated ?? null;
-  return words3[row3.stage] ?? null;
+  return words3[row4.stage] ?? null;
 }
 function decayStimuli(draft, reg) {
   const events = [];
-  for (const [kind, row3] of Object.entries(draft.commander.stimuli ?? {})) {
-    if (draft.day - Math.max(row3.lastDay, row3.decayDay ?? row3.lastDay) >= T4.decayDays) {
-      row3.tolerance = Math.max(Math.min(row3.tolerance, row3.best / 2), row3.tolerance - 1);
-      row3.decayDay = draft.day;
+  for (const [kind, row4] of Object.entries(draft.commander.stimuli ?? {})) {
+    if (draft.day - Math.max(row4.lastDay, row4.decayDay ?? row4.lastDay) >= T4.decayDays) {
+      row4.tolerance = Math.max(Math.min(row4.tolerance, row4.best / 2), row4.tolerance - 1);
+      row4.decayDay = draft.day;
     }
-    const apart = draft.day - row3.lastDay;
+    const apart = draft.day - row4.lastDay;
     const allowed = reg === void 0 || contentAllowed(draft, reg, reg.stimulusKinds.get(kind) ?? {});
-    if (allowed && stageIndex(row3.stage) >= stageIndex("craving") && apart >= T4.missingDays && apart < T4.separatedDays && row3.missedDay !== draft.day) {
-      row3.missedDay = draft.day;
+    if (allowed && stageIndex(row4.stage) >= stageIndex("craving") && apart >= T4.missingDays && apart < T4.separatedDays && row4.missedDay !== draft.day) {
+      row4.missedDay = draft.day;
       events.push(...addCommanderStress(draft, T4.missingStress, "stimulus"));
     }
   }
@@ -34864,15 +34867,15 @@ function applyWay(draft, ctx2, way, kind, depth) {
   if ((w === "inhale" || w === "sniff" || w === "nuzzle") && family === "taste") throw new Error("physics/stimulus: a taste is not breathed in");
   if (w === "inhale" && !sceneSettingsOf(draft).physicsInteractions.inhale) throw new Error("physics/stimulus: the deep inhale is switched off");
   const rows = draft.commander.stimuli ??= {};
-  const row3 = rows[ex.kind] ??= { tolerance: T4.startTolerance, exposure: 0, lastDay: draft.day, best: T4.startTolerance, seek: 0, stage: "aversion" };
-  if (row3.session !== scene.id) {
-    row3.session = scene.id;
-    row3.exposure += 1;
-    row3.tolerance = Math.min(100, row3.tolerance + T4.tolerancePerSession);
-    row3.best = Math.max(row3.best, row3.tolerance);
+  const row4 = rows[ex.kind] ??= { tolerance: T4.startTolerance, exposure: 0, lastDay: draft.day, best: T4.startTolerance, seek: 0, stage: "aversion" };
+  if (row4.session !== scene.id) {
+    row4.session = scene.id;
+    row4.exposure += 1;
+    row4.tolerance = Math.min(100, row4.tolerance + T4.tolerancePerSession);
+    row4.best = Math.max(row4.best, row4.tolerance);
   }
-  row3.lastDay = draft.day;
-  delete row3.missedDay;
+  row4.lastDay = draft.day;
+  delete row4.missedDay;
   const band2 = bandOf(draft, reg, ex);
   const units = stimulusUnits(draft, reg, ex);
   const events = [];
@@ -34883,13 +34886,13 @@ function applyWay(draft, ctx2, way, kind, depth) {
     const n = typeof depth === "number" ? depth : isStr(depth) ? T4.inhale.depths[depth] : void 0;
     if (n === void 0 || !Number.isFinite(n)) throw new Error("physics/stimulus: an inhale needs a depth");
     if (typeof depth === "number") {
-      const [lo, hi] = inhaleZone(band2, row3.tolerance);
+      const [lo, hi] = inhaleZone(band2, row4.tolerance);
       result = n < lo ? "shallow" : n <= hi ? "ok" : "reflex";
     } else {
       const target = BAND_INDEX[band2] + 1;
       result = n < target ? "shallow" : n === target ? "ok" : "reflex";
     }
-  } else if ((w === "nuzzle" || w === "taste") && units > row3.tolerance * T4.reflexMult) result = "reflex";
+  } else if ((w === "nuzzle" || w === "taste") && units > row4.tolerance * T4.reflexMult) result = "reflex";
   else if (w === "avoid") noticed = ctx2.rng.chance(T4.noticed);
   else if (w === "secret") {
     const activity = blockingOf(scene, ex.holderId).activity;
@@ -34907,7 +34910,7 @@ function applyWay(draft, ctx2, way, kind, depth) {
     }
   }
   if (caught) events.push({ type: "physics_caught", runId: scene.physics?.id ?? null, holderId: ex.holderId, kind: "secret", beat: -1 });
-  const moved = updateTrajectory(row3, SEEKING.has(w));
+  const moved = updateTrajectory(row4, SEEKING.has(w));
   if (moved) events.push({ type: "stimulus_stage_changed", kind: ex.kind, from: moved.from, to: moved.to, herPresent: scene.participants.includes(ex.holderId), holderId: ex.holderId });
   return events;
 }
@@ -39094,8 +39097,8 @@ function dynamicDirectives(state, reg, present2) {
 }
 function aftermathDirective2(state, reg, unit3) {
   const a = dynamicOf(state, unit3.id)?.aftermath;
-  const row3 = a === void 0 ? void 0 : aftermathRowOf(reg, a.kind);
-  const stage2 = a === void 0 ? void 0 : row3?.stages[a.stage];
+  const row4 = a === void 0 ? void 0 : aftermathRowOf(reg, a.kind);
+  const stage2 = a === void 0 ? void 0 : row4?.stages[a.stage];
   if (stage2 === void 0) return null;
   return { id: `${AFTERMATH_PREFIX}${unit3.id}`, expiresAfter: "scene", text: `${sentence2(stage2.directive.replaceAll("{name}", unit3.displayName))}. Show it in how she acts and speaks; never name it as a mechanic.` };
 }
@@ -40756,10 +40759,10 @@ function drawGenerationChips(host, ui, state, surface, filter) {
   for (const rec of list5) drawRecordChip(host, ui, state, rec);
   return list5.length;
 }
-function drawSiteReroll(host, ui, siteId, key, run, stateOf) {
+function drawSiteReroll(host, ui, siteId, key, run, stateOf2) {
   if (!ui) return null;
   const id = rerollId(siteId, key);
-  const state = stateOf ?? ui.generations.rerollState(siteId, key);
+  const state = stateOf2 ?? ui.generations.rerollState(siteId, key);
   return drawReroll(host, state, () => runPending(ui, id, async () => {
     const out = await (run ? run() : ui.generations.reroll(siteId, key));
     if (out && typeof out === "object" && out.kind === "expired") ui.toast("warn", String(out.why ?? "This can no longer be rerolled."));
@@ -41139,12 +41142,12 @@ function renderGenerationsSection(host, ctx2) {
     const list5 = h("ul", { class: "alius-generations-list" });
     for (const rec of records) {
       const site = generationSite(rec.siteId);
-      const row3 = h("li", { class: "alius-generations-row", "data-record": rec.id });
-      drawRecordChip(row3, ui, state, rec, { showDrop: true });
-      row3.append(h("span", { class: "alius-dim" }, ` Day ${rec.day}, ${rec.slot} \xB7 ${rec.attempts} ${rec.attempts === 1 ? "try" : "tries"}${site?.record === "quiet" ? " \xB7 background" : ""}`));
+      const row4 = h("li", { class: "alius-generations-row", "data-record": rec.id });
+      drawRecordChip(row4, ui, state, rec, { showDrop: true });
+      row4.append(h("span", { class: "alius-dim" }, ` Day ${rec.day}, ${rec.slot} \xB7 ${rec.attempts} ${rec.attempts === 1 ? "try" : "tries"}${site?.record === "quiet" ? " \xB7 background" : ""}`));
       const entry = settings.debug ? ctx2.debugLog?.find((e) => e.at === rec.at && e.callType === site?.callType) : void 0;
-      if (entry) row3.append(h("pre", { class: "alius-generations-raw", "data-raw": "" }, entry.raw === "" ? "(no text)" : entry.raw));
-      list5.append(row3);
+      if (entry) row4.append(h("pre", { class: "alius-generations-raw", "data-raw": "" }, entry.raw === "" ? "(no text)" : entry.raw));
+      list5.append(row4);
     }
     section.append(list5);
   }
@@ -41326,6 +41329,629 @@ function dynamicNotices(events, state, reg, opts = {}) {
   return out;
 }
 
+// src/ui/hub/plan/svg.ts
+var SVG_NS2 = "http://www.w3.org/2000/svg";
+var fmt = (v) => typeof v === "number" ? String(Math.round(v * 10) / 10) : v;
+function svgEl(tag2, attrs = {}) {
+  const el = document.createElementNS(SVG_NS2, tag2);
+  for (const [k, v] of Object.entries(attrs)) if (v !== void 0) el.setAttribute(k, fmt(v));
+  return el;
+}
+var Pen = class _Pen {
+  constructor(g) {
+    this.g = g;
+  }
+  static group(cls) {
+    return new _Pen(svgEl("g", { class: cls }));
+  }
+  add(el) {
+    this.g.append(el);
+    return el;
+  }
+  rect(x, y, w, h2, cls) {
+    return this.add(svgEl("rect", { x, y, width: Math.max(0, w), height: Math.max(0, h2), class: cls }));
+  }
+  line(x1, y1, x2, y2, cls) {
+    return this.add(svgEl("line", { x1, y1, x2, y2, class: cls }));
+  }
+  circle(cx, cy, r, cls) {
+    return this.add(svgEl("circle", { cx, cy, r, class: cls }));
+  }
+  ellipse(cx, cy, rx, ry, cls) {
+    return this.add(svgEl("ellipse", { cx, cy, rx, ry, class: cls }));
+  }
+  path(d, cls) {
+    return this.add(svgEl("path", { d, class: cls }));
+  }
+  polygon(points, cls) {
+    return this.add(svgEl("polygon", { points: points.map(([x, y]) => `${fmt(x)},${fmt(y)}`).join(" "), class: cls }));
+  }
+  child(cls) {
+    const pen = _Pen.group(cls);
+    this.g.append(pen.g);
+    return pen;
+  }
+};
+function scatter(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = Math.imul(s, 1664525) + 1013904223 >>> 0;
+    return s / 4294967296;
+  };
+}
+
+// src/ui/dynamic/bodyMap.ts
+var f1 = (n) => n.toFixed(1);
+function catmull(pts, closed) {
+  const n = pts.length;
+  const at = (i) => closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  const last = closed ? n : n - 1;
+  for (let i = 0; i < last; i++) {
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${f1(c1[0])},${f1(c1[1])} ${f1(c2[0])},${f1(c2[1])} ${f1(p2[0])},${f1(p2[1])}`;
+  }
+  return d + (closed ? "Z" : "");
+}
+var RIGHT = [[9, 60], [10, 80], [16, 92], [30, 96], [40, 100], [45, 114], [45, 132], [47, 150], [43, 170], [34, 192], [31, 208], [36, 228], [47, 250], [50, 272], [47, 300], [42, 335], [37, 370], [34, 392], [36, 420], [33, 448], [24, 470], [26, 484], [22, 494], [12, 495], [9, 484], [10, 468], [11, 440], [10, 410], [11, 388], [9, 360], [6, 325], [3, 300], [0, 292]];
+var ARM = [[34, 97], [48, 100], [57, 108], [61, 128], [62, 165], [63, 200], [66, 240], [69, 272], [73, 292], [72, 310], [66, 322], [60, 318], [58, 300], [57, 276], [54, 245], [51, 208], [49, 172], [46, 145], [40, 124], [36, 108]];
+function lerp(keys, y) {
+  for (let i = 0; i < keys.length - 1; i++) {
+    const [a, m] = keys[i];
+    const [b, n] = keys[i + 1];
+    if (y <= b) return m + (n - m) * Math.max(0, (y - a) / (b - a));
+  }
+  return keys[keys.length - 1][1];
+}
+var BUILDS = {
+  slim: { w: [[0, 1], [500, 1]], arm: 1, armOut: [[0, 1], [500, 1]], lines: [] },
+  athletic: {
+    w: [[60, 1], [92, 1.05], [104, 1.13], [130, 1.1], [150, 1], [205, 1.07], [250, 1], [300, 1.06], [340, 1.07], [392, 1], [420, 1.1], [470, 1.05], [500, 1]],
+    arm: 1.25,
+    armOut: [[90, 1.1], [200, 1.08], [320, 1.06]],
+    lines: ["M-9,180 v10 M9,180 v10 M-9,198 v10 M9,198 v10 M-9,216 v8 M9,216 v8", "M0,172 V236", "M-46,104 C-56,112 -58,124 -55,134 M46,104 C56,112 58,124 55,134", "M-30,300 C-28,320 -26,336 -24,350 M30,300 C28,320 26,336 24,350"]
+  },
+  curvy: {
+    w: [[60, 1], [104, 1.02], [132, 1.08], [150, 1.18], [172, 1.12], [208, 1.05], [250, 1.2], [272, 1.22], [300, 1.2], [340, 1.15], [392, 1.06], [420, 1.08], [470, 1.05], [500, 1]],
+    arm: 1.15,
+    armOut: [[90, 1.03], [200, 1.05], [250, 1.12], [320, 1.12]],
+    lines: ["M-26,236 C-14,244 14,244 26,236"]
+  }
+};
+var BUILD_KEYS = ["slim", "athletic", "curvy"];
+function shares(build) {
+  const w = BUILD_KEYS.map((k) => Number.isFinite(build[k]) && build[k] > 0 ? build[k] : 0);
+  const sum = w.reduce((a, b) => a + b, 0);
+  return sum > 0 ? { slim: w[0] / sum, athletic: w[1] / sum, curvy: w[2] / sum } : { slim: 1, athletic: 0, curvy: 0 };
+}
+function blend(build) {
+  const s = shares(build);
+  const sum = (f) => BUILD_KEYS.reduce((acc, k) => acc + s[k] * f(BUILDS[k]), 0);
+  return { width: (y) => sum((c) => lerp(c.w, y)), arm: sum((c) => c.arm), armOut: (y) => sum((c) => lerp(c.armOut, y)) };
+}
+var armCenter = (y) => lerp([[100, 44], [200, 57], [300, 65], [320, 64]], y);
+function outlinePath(build, _side) {
+  const { width } = blend(build);
+  const right = RIGHT.map(([x, y]) => [x * width(y), y]);
+  const left = right.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
+  return catmull([...right, ...left], true);
+}
+function armPaths(build) {
+  const { arm, armOut } = blend(build);
+  const one3 = (sign2) => catmull(ARM.map(([x, y]) => [(armCenter(y) + (x - armCenter(y)) * arm) * armOut(y) * sign2, y]), true);
+  return [one3(1), one3(-1)];
+}
+var HEAD_PATH = "M-22,38 a22,29 0 1,0 44,0 a22,29 0 1,0 -44,0Z";
+var HAIR_CAP = [[-24, 38], [-25, 18], [-14, 6], [0, 3], [14, 6], [25, 18], [24, 38], [16, 22], [0, 16], [-16, 22]];
+var HAIR2 = {
+  short: HAIR_CAP,
+  bob: [[-24, 40], [-25, 18], [-14, 6], [0, 3], [14, 6], [25, 18], [24, 40], [26, 56], [20, 61], [-20, 61], [-26, 56]],
+  long: [[-24, 40], [-25, 18], [-14, 6], [0, 3], [14, 6], [25, 18], [24, 40], [26, 62], [20, 76], [-20, 76], [-26, 62]],
+  tail: HAIR_CAP
+};
+var TAIL_BACK = [[-6, 24], [-9, 50], [-6, 92], [0, 128], [6, 92], [9, 50], [6, 24]];
+var TAIL_FRONT = [[22, 24], [32, 34], [34, 56], [28, 66], [24, 48]];
+var FRINGE = [[-22, 30], [-20, 14], [-8, 8], [4, 9], [16, 13], [22, 26], [12, 20], [0, 19], [-12, 22]];
+function hairPath(hair, side) {
+  const base = catmull(HAIR2[hair], true);
+  if (hair !== "tail") return base;
+  return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
+}
+var fringePath = () => catmull(FRINGE, true);
+function detailPaths(build, side) {
+  const { width } = blend(build);
+  const bw = width(150);
+  const out = side === "back" ? ["M0,96 C1,140 -1,190 0,232", "M-30,118 C-24,132 -14,138 -8,136 M30,118 C24,132 14,138 8,136", "M-30,268 C-18,286 -6,284 0,272 C6,284 18,286 30,268", "M-24,40 C-22,60 -16,72 -12,76 M24,40 C22,60 16,72 12,76"] : [
+    "M-30,100 C-18,106 -8,104 -3,101 M30,100 C18,106 8,104 3,101",
+    `M${f1(-38 * bw)},150 C${f1(-30 * bw)},${f1(166 + (bw - 1) * 20)} ${f1(-14 * bw)},${f1(166 + (bw - 1) * 20)} -6,152 M${f1(38 * bw)},150 C${f1(30 * bw)},${f1(166 + (bw - 1) * 20)} ${f1(14 * bw)},${f1(166 + (bw - 1) * 20)} 6,152`,
+    `M${f1(-30 * width(250))},250 C-20,262 -12,270 -6,276 M${f1(30 * width(250))},250 C20,262 12,270 6,276`,
+    "M-22,388 q4,6 8,0 M22,388 q-4,6 -8,0"
+  ];
+  const s = shares(build);
+  for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
+  return out;
+}
+var plain4 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
+function bodyMapZones(state, reg, knowledge2, unitId) {
+  const profile = expectationsOf(state, reg, unitId);
+  const facts = knowledge2.facts();
+  const out = [];
+  for (const t of reg.worshipTargets.values()) {
+    if (!contentAllowed(state, reg, t, unitId)) continue;
+    const shown = zoneFacts(facts, unitId, t.id);
+    const entry = profile.worship?.[t.id];
+    const explicit = Array.isArray(t.contentTags) && t.contentTags.includes("explicit_scenes");
+    const zone = t.zone;
+    for (const side of ["front", "back"]) {
+      const at = zone[side];
+      if (at === void 0) continue;
+      out.push({
+        targetId: t.id,
+        label: String(t.label),
+        side,
+        x: at.x,
+        y: at.y,
+        r: at.r,
+        known: shown.length > 0,
+        ...shown.length > 0 ? { attitude: entry?.attitude ?? "indifferent", ...entry?.meaning !== void 0 ? { meaning: entry.meaning } : {} } : {},
+        mastery: masteryLevel(state, unitId, t.id),
+        scent: BAND_INDEX[scentBand(state, reg, unitId, t.id)],
+        sources: shown.map((f) => plain4(f.text)),
+        ...explicit ? { explicit: true } : {}
+      });
+    }
+  }
+  return out;
+}
+function bodyMapFor(state, reg, knowledge2, unitId, readable) {
+  const profile = expectationsOf(state, reg, unitId);
+  return { unitId, zones: bodyMapZones(state, reg, knowledge2, unitId), build: profile.build ?? { slim: 1, athletic: 0, curvy: 0 }, hair: profile.hair ?? "long", readable };
+}
+var ATTITUDE_WORD = { craves: "CRAVES", enjoys: "ENJOYS", indifferent: "INDIFFERENT", dislikes: "DISLIKES" };
+var MEANING_ICON = { reward: "\u2605", duty: "\u25A0", humiliation: "\u25BC", intimacy: "\u2665", play: "\u2726", comfort: "\u263E" };
+var SCENT_WORD = ["FAINT", "NOTICEABLE", "STRONG", "OVERWHELMING"];
+var LEVEL_WORD = ["no", "one", "two", "three", "four", "five"];
+var MAX_LEVEL = 5;
+var dotsOf = (n) => Array.from({ length: MAX_LEVEL }, (_, i) => i < n ? "\u25CF" : "\u25CB").join("");
+var stateOf = (z2) => z2.known && z2.attitude !== void 0 ? z2.attitude : "unknown";
+var wordOf = (z2) => z2.known && z2.attitude !== void 0 ? ATTITUDE_WORD[z2.attitude] : "NOT YET KNOWN";
+function figure(ctx2, side, cx, oy) {
+  const g = svgEl("g", { class: "alius-bm-figure", "data-side": side, transform: `translate(${cx},${oy})` });
+  const shapes = svgEl("g", { class: "alius-bm-outline" });
+  for (const d of [outlinePath(ctx2.build, side), ...armPaths(ctx2.build), HEAD_PATH]) shapes.append(svgEl("path", { d }));
+  const hair = svgEl("path", { d: hairPath(ctx2.hair, side), class: "alius-bm-hair" });
+  if (side === "front") g.append(hair, shapes, svgEl("path", { d: fringePath(), class: "alius-bm-hair" }));
+  else g.append(shapes, hair);
+  for (const d of detailPaths(ctx2.build, side)) g.append(svgEl("path", { d, class: "alius-bm-ln" }));
+  for (const z2 of ctx2.zones.filter((zone) => zone.side === side)) g.append(zoneEl(ctx2, z2));
+  return g;
+}
+function zoneEl(ctx2, z2) {
+  const X = (z2.x - 50) * 2.5;
+  const Y = z2.y * 5;
+  const R4 = Math.max(6, z2.r * 2);
+  const word2 = z2.known && z2.attitude !== void 0 ? z2.attitude : "not known yet";
+  const g = svgEl("g", {
+    class: `alius-bm-zone is-${stateOf(z2)}`,
+    "data-target": z2.targetId,
+    "data-side": z2.side,
+    "data-known": String(z2.known),
+    "data-analyze": `worshipTargets:${z2.targetId}`,
+    "data-analyze-ctx": JSON.stringify({ unitId: ctx2.unitId }),
+    tabindex: "0",
+    role: "img",
+    "aria-label": `${z2.label}: ${word2}`,
+    ...z2.known && z2.attitude !== void 0 ? { "data-attitude": z2.attitude } : {}
+  });
+  g.append(svgEl("circle", { cx: X, cy: Y, r: R4, class: "alius-bm-ring" }));
+  const rings = z2.scent !== void 0 ? z2.scent : 0;
+  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X, cy: Y, r: R4 * i / (rings + 1), class: "alius-bm-scent" }));
+  const mark = (cls, x, y, text2) => {
+    const t = svgEl("text", { x, y, class: cls, "text-anchor": "middle" });
+    t.textContent = text2;
+    g.append(t);
+  };
+  if (!z2.known) mark("alius-bm-q", X, Y + 4, "?");
+  else if (z2.meaning !== void 0) mark("alius-bm-meaning", X, Y + 4, MEANING_ICON[z2.meaning]);
+  if (z2.explicit === true) mark("alius-bm-explicit", X - R4, Y - R4 + 4, "\u25C7");
+  if (z2.mastery > 0) mark("alius-bm-dots", X, Y + R4 + 9, dotsOf(z2.mastery));
+  return g;
+}
+function row2(ctx2, z2, label2) {
+  const dots = z2.mastery > 0 ? h("span", { class: "alius-bm-dots", "aria-label": `Mastery: ${LEVEL_WORD[Math.min(MAX_LEVEL, z2.mastery)]} of five` }, dotsOf(z2.mastery)) : null;
+  const scent = z2.scent !== void 0 && z2.scent >= 1 ? h("span", { class: "alius-bm-scent-word" }, `SCENT: ${SCENT_WORD[Math.min(3, z2.scent)]}`) : null;
+  return h(
+    "li",
+    { class: `alius-bm-row is-${stateOf(z2)}`, "data-target": z2.targetId, ...analyzeAttrs(`worshipTargets:${z2.targetId}`, { unitId: ctx2.unitId }) },
+    h("span", { class: "alius-bm-label" }, label2, z2.explicit === true ? h("span", { class: "alius-bm-explicit", "aria-label": "explicit" }, " \u25C7") : null),
+    " ",
+    h("span", { class: "alius-bm-state" }, wordOf(z2)),
+    z2.known && z2.meaning !== void 0 ? h("span", { class: "alius-bm-meaning-word" }, ` ${z2.meaning}`) : null,
+    dots ? h("span", {}, " ", dots) : null,
+    scent ? h("span", {}, " ", scent) : null,
+    ...z2.sources.map((note) => h("p", { class: "alius-bm-note" }, note))
+  );
+}
+function renderBodyMap(host, ctx2) {
+  const seen2 = /* @__PURE__ */ new Set();
+  const rows = [];
+  for (const z2 of ctx2.zones) {
+    if (seen2.has(z2.targetId)) continue;
+    seen2.add(z2.targetId);
+    const both = ctx2.zones.filter((o) => o.targetId === z2.targetId);
+    rows.push(row2(ctx2, both.find((o) => o.known) ?? z2, z2.label));
+  }
+  const list5 = h("ul", { class: "alius-bm-list", role: "list", "aria-label": "Somatic response map, by zone" }, ...rows);
+  if (ctx2.zones.length === 0) {
+    host.replaceChildren(h("div", { class: "alius-bodymap", ...analyzeAttrs("glossary:body_map", { unitId: ctx2.unitId }) }, h("p", { class: "alius-dim alius-bm-empty" }, "Nothing is on the form.")));
+    return;
+  }
+  if (ctx2.readable) {
+    host.replaceChildren(h("div", { class: "alius-bodymap is-readable", ...analyzeAttrs("glossary:body_map", { unitId: ctx2.unitId }) }, list5));
+    return;
+  }
+  const svg3 = svgEl("svg", { class: "alius-bm-svg", viewBox: "0 0 440 520", role: "group", "aria-label": "Somatic response map, front and back" });
+  svg3.append(figure(ctx2, "front", 110, 10), figure(ctx2, "back", 330, 10));
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-bodymap", ...analyzeAttrs("glossary:body_map", { unitId: ctx2.unitId }) },
+    svg3,
+    h("p", { class: "alius-dim alius-bm-caption" }, "? not known yet \xB7 dots: mastery \xB7 rings: scent now \xB7 \u25C7 explicit"),
+    list5
+  ));
+}
+
+// src/ui/discipline/menu.ts
+var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
+function renderDisciplineMenu(ctx2) {
+  const { state, registries: reg, unitId } = ctx2;
+  const entries2 = [...reg.punishments.values()].filter((e) => contentAllowed(state, reg, e)).map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
+  const rows = entries2.map((e) => {
+    const id = String(e.id);
+    const confine = confineOf(e);
+    let days = null;
+    if (confine) {
+      days = h(
+        "select",
+        { class: "alius-select", "data-brig-days": id, "aria-label": `Days of ${String(e.label)}` },
+        ...Array.from({ length: confine.maxDays - confine.minDays + 1 }, (_, n) => h("option", { value: String(confine.minDays + n) }, String(confine.minDays + n)))
+      );
+    }
+    const why = checkPunish(state, reg, unitId, id, days ? Number(days.value) : void 0);
+    const button2 = h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-punish": id,
+      ...analyzeNative(`punishments:${id}`, { unitId }),
+      ...why !== null ? { "aria-disabled": "true", title: why } : {},
+      onclick: () => {
+        if (button2.getAttribute("aria-disabled") === "true") return;
+        ctx2.onPunish(id, days ? Number(days.value) : void 0);
+      }
+    }, String(e.label).toUpperCase());
+    return h("div", { class: "alius-punish-row" }, button2, days);
+  });
+  return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
+}
+
+// src/ui/dynamic/cards.ts
+function renderMilestoneCard(host, ctx2) {
+  const { state, reg, milestone } = ctx2;
+  const entry = reg.dynamicMilestones.get(milestone.milestoneId);
+  const unit3 = state.squad.find((u) => u.id === milestone.unitId);
+  if (entry === void 0 || unit3 === void 0) return;
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-milestone-answer": kind,
+    "data-milestone": milestone.id,
+    ...analyzeNative("glossary:milestone", { unitId: unit3.id }),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const body = h(
+    "div",
+    { class: "alius-milestone-body" },
+    h("p", { class: "alius-milestone-text" }, entry.text.replaceAll("{name}", unit3.displayName)),
+    h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-milestone");
+  card2.setAttribute("data-milestone", milestone.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit3.id }))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawMilestoneCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const milestone of state.dynamic?.open.milestones ?? []) {
+    if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
+  }
+}
+var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
+function renderClaimCard(host, ctx2) {
+  const { state, reg, claim: claim2 } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === claim2.unitId);
+  const entry = claim2.domainId === void 0 ? void 0 : reg.dynamicDomains.get(claim2.domainId);
+  if (unit3 === void 0 || claim2.domainId !== void 0 && entry === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-claim-answer": kind,
+    "data-claim": claim2.id,
+    ...analyzeNative("glossary:claim", live3),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
+  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live3) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
+  const body = h(
+    "div",
+    { class: "alius-claim-body" },
+    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live3) }, String(entry.label).toUpperCase()))],
+    h("p", { class: "alius-claim-text" }, words3),
+    ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
+    h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-claim");
+  card2.setAttribute("data-claim", claim2.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawClaimCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  if (!dynamicOn(state, reg)) return;
+  for (const claim2 of state.dynamic?.open.claims ?? []) {
+    if (pick3({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) });
+  }
+}
+var RETURN_WORDS = {
+  lower_band: "AUTHOR TO WRITE: {name} offers to begin again, from a smaller step than before.",
+  after_punishment: "AUTHOR TO WRITE: {name} offers to begin again, once the commander has paid for what ended it."
+};
+function renderReturnCard(host, ctx2) {
+  const { state, offer } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === offer.unitId);
+  if (unit3 === void 0) return;
+  const live3 = { unitId: unit3.id };
+  const button2 = (kind, text2) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-return-answer": kind,
+    "data-return": offer.id,
+    ...analyzeNative("glossary:aftermath", live3),
+    onclick: () => ctx2.onAnswer(kind)
+  }, text2);
+  const body = h(
+    "div",
+    { class: "alius-return-body" },
+    h("p", { class: "alius-return-text" }, RETURN_WORDS[offer.terms].replaceAll("{name}", unit3.displayName)),
+    h("div", { class: "alius-return-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-return");
+  card2.setAttribute("data-return", offer.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} offers to begin again`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawReturnCards(host, state, reg, pick3, onAnswer) {
+  host.replaceChildren();
+  const offer = state.dynamic?.open.returnOffer;
+  if (!dynamicOn(state, reg) || offer === void 0 || !pick3({ unitId: offer.unitId })) return;
+  renderReturnCard(host, { state, reg, offer, onAnswer });
+}
+function transferTargets(state, unitId) {
+  return state.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play"));
+}
+var MEANS_LABEL = { discipline: "A PUNISHMENT", leash: "THE LEASH", transfer_request: "AN OVERSIGHT REQUEST" };
+var ROUTE_LABEL = { abrupt: "[ LEAVE NOW ]", negotiated: "[ TALK IT THROUGH ]", transfer: "[ HAND OVER ]", force: "[ FORCE IT ]" };
+function renderExitCard(host, ctx2) {
+  const { state, reg, unitId } = ctx2;
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0) return;
+  const live3 = { unitId };
+  const cost = (word2) => ctx2.costWords === false ? null : h("span", { class: "alius-chip", "data-cost": "", ...analyzeAttrs("glossary:dynamic_exit", live3) }, word2);
+  const go = (route, opts, text2, soft) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    ...opts?.means !== void 0 ? { "data-means": opts.means } : {},
+    ...analyzeNative("glossary:dynamic_exit", live3),
+    ...soft !== void 0 ? { "aria-disabled": "true", title: soft } : {},
+    onclick: () => {
+      if (soft === void 0) ctx2.onExit?.(route, opts);
+    }
+  }, text2);
+  const row4 = (route, ...parts) => h("div", { class: "alius-exit-route", "data-exit-route": route }, ...parts);
+  const rows = [
+    row4("abrupt", go("abrupt", void 0, ROUTE_LABEL.abrupt), " ", cost(exitCostWord(state, reg, unitId, "abrupt"))),
+    row4(
+      "negotiated",
+      go("negotiated", void 0, ROUTE_LABEL.negotiated),
+      " ",
+      cost(exitCostWord(state, reg, unitId, "negotiated", true)),
+      state.dynamic?.open.exits?.some((e) => e.unitId === unitId) === true ? h("span", { class: "alius-dim", "data-negotiating": "" }, " A talk is open: no compromise yet.") : null
+    )
+  ];
+  for (const to of transferTargets(state, unitId)) {
+    const r = row4("transfer", go("transfer", { toUnitId: to.id }, `${ROUTE_LABEL.transfer} > ${to.displayName.toUpperCase()}`), " ", cost(exitCostWord(state, reg, unitId, "transfer")));
+    r.setAttribute("data-to", to.id);
+    rows.push(r);
+  }
+  const means = (m) => {
+    const done = meansDone(state, unitId, m);
+    const doIt = ctx2.means?.[m === "discipline" ? "punish" : m === "leash" ? "leash" : "request"];
+    return h(
+      "div",
+      { class: "alius-exit-means", "data-exit-means": m },
+      h("span", { class: "alius-exit-means-label" }, `${MEANS_LABEL[m]}: ${done ? "done today" : "not yet"} `),
+      done ? null : m === "discipline" ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure, days) => ctx2.means?.punish?.(measure, days) }) : h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-do-means": m,
+        ...analyzeNative("glossary:dynamic_exit", live3),
+        onclick: () => {
+          if (doIt !== void 0) doIt();
+        }
+      }, m === "leash" ? "[ FILE THE LEASH ]" : "[ FILE THE REQUEST ]"),
+      " ",
+      go("force", { means: m }, ROUTE_LABEL.force, done ? void 0 : "Do it first.")
+    );
+  };
+  const forced = row4("force", cost(exitCostWord(state, reg, unitId, "force")), ...EXIT_MEANS.map(means));
+  rows.push(forced);
+  const body = h(
+    "div",
+    { class: "alius-exit-body" },
+    h("p", { class: "alius-exit-text" }, "AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.".replaceAll("{name}", unit3.displayName)),
+    ...rows,
+    h("div", { class: "alius-exit-close" }, h("button", {
+      type: "button",
+      class: "alius-btn alius-tagchip",
+      "data-action": "dyn-exit-close",
+      ...analyzeNative("glossary:dynamic_exit", live3),
+      onclick: () => ctx2.onClose?.()
+    }, "[ CLOSE ]"))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
+  card2.classList.add("alius-exit");
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `Ending it with ${unit3.displayName}`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:dynamic_exit", live3))) card2.setAttribute(k, v);
+  host.replaceChildren(card2);
+}
+
+// src/ui/dynamic/section.ts
+var exitOpen = /* @__PURE__ */ new Set();
+var exitKey = (state, unitId) => `${state.dynamic?.salt ?? 0}|${unitId}`;
+function resetDynamicSection() {
+  exitOpen.clear();
+}
+function renderDynamicSection(host, ctx2) {
+  const { state, reg, unitId } = ctx2;
+  host.replaceChildren();
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named") return false;
+  const view = ctx2.hidden ? null : ctx2.knowledge.dynamic(unitId, reg);
+  const live3 = { unitId };
+  const key = exitKey(state, unitId);
+  const exitHost = h("div", { class: "alius-dyn-exit" });
+  const redraw = () => {
+    if (ctx2.onChanged !== void 0) ctx2.onChanged();
+    else renderDynamicSection(host, ctx2);
+  };
+  const drawExit = (costWords) => {
+    exitHost.replaceChildren();
+    if (!exitOpen.has(key)) {
+      exitHost.append(h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-action": "dyn-exit",
+        ...analyzeNative("glossary:dynamic_exit", live3),
+        onclick: () => {
+          exitOpen.add(key);
+          drawExit(costWords);
+        }
+      }, "[ END IT ]"));
+      return;
+    }
+    renderExitCard(exitHost, {
+      state,
+      reg,
+      unitId,
+      costWords,
+      onExit: (route, opts) => {
+        exitOpen.delete(key);
+        ctx2.actions?.exit?.(unitId, route, opts);
+        redraw();
+      },
+      means: {
+        punish: (measure, days) => {
+          ctx2.onPunish?.(unitId, measure, days);
+          redraw();
+        },
+        leash: () => {
+          ctx2.onLeash?.(unitId);
+          redraw();
+        },
+        request: () => {
+          ctx2.actions?.requestTransfer?.(unitId);
+          redraw();
+        }
+      },
+      onClose: () => {
+        exitOpen.delete(key);
+        drawExit(costWords);
+      }
+    });
+  };
+  const holds6 = dynamicOn(state, reg) && frameRank(dynamicOf(state, unitId)?.frame ?? "equal") >= frameRank("play");
+  if (ctx2.hidden) {
+    if (!holds6) return false;
+    drawExit(false);
+    host.append(exitHost);
+    host.classList.add("alius-dynamic-section");
+    host.setAttribute("data-dynamic-section", unitId);
+    return true;
+  }
+  if (view === null || view.band === void 0) return false;
+  const chip2 = (text2, address, attrs = {}) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text2);
+  const row4 = (label3, ...parts) => h("p", { class: "alius-dyn-line" }, `${label3} `, ...parts);
+  const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
+  const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id).toUpperCase();
+  const claimed = view.domains.filter((d) => d.claimed);
+  const mayClaim = view.domains.filter((d) => !d.claimed);
+  const lines = [
+    row4("FRAME", chip2(String(view.frame ?? "").toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
+    row4("HOLD", chip2(`${view.band.toUpperCase()}${view.raw !== void 0 ? ` (${view.raw})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
+  ];
+  if (claimed.length > 0) {
+    lines.push(row4("DOMAINS", ...between(claimed.map((d) => chip2(`${d.label.toUpperCase()}${d.partial === true ? " (PARTLY)" : ""}`, `dynamicDomains:${d.id}`, { "data-dyn-domain": d.id })))));
+  }
+  if (mayClaim.length > 0) {
+    lines.push(row4("SHE MAY CLAIM", ...between(mayClaim.map((d) => chip2(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { "data-dyn-may-claim": d.id })))));
+  }
+  if (view.tracks.length > 0) {
+    lines.push(row4("PRACTICE", ...between(view.tracks.map((t) => chip2(`${label2("dynamicTracks", t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
+  }
+  if (view.reading !== void 0) {
+    lines.push(row4("HER READING", chip2(view.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
+  }
+  if (view.signs.length > 0) {
+    lines.push(row4("SHE SEEMS", ...between(view.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
+  }
+  if (view.compromat.length > 0) {
+    lines.push(row4("SHE KEEPS", ...between(view.compromat.map((f) => chip2(f.text.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
+  }
+  if (view.knownLevels.length > 0) {
+    const who = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
+    const word2 = { suspects_close: "HAS NOTICED SOMETHING", suspects_dynamic: "SUSPECTS", knows_dynamic: "KNOWS" };
+    lines.push(row4("WHO KNOWS", ...between(view.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
+  }
+  const cards = h("div", { class: "alius-dyn-cards" });
+  const pick3 = (c) => c.unitId === unitId;
+  const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
+  cards.append(...slots);
+  drawMilestoneCards(slots[0], state, reg, pick3, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
+  drawClaimCards(slots[1], state, reg, pick3, (id, a) => ctx2.actions?.answerClaim?.(id, a));
+  drawReturnCards(slots[2], state, reg, pick3, (a) => ctx2.actions?.answerReturn?.(a));
+  if (holds6) drawExit(true);
+  const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
+  const mapHost = h("div", { class: "alius-dyn-bodymap" });
+  if (map.zones.length > 0) renderBodyMap(mapHost, map);
+  host.append(h("h4", {}, "DYNAMIC"), ...lines, ...map.zones.length > 0 ? [mapHost] : [], cards, exitHost);
+  host.classList.add("alius-dynamic-section");
+  host.setAttribute("data-dynamic-section", unitId);
+  return true;
+}
+
 // src/ui/dilemma/routePicker.ts
 function renderRoutePicker(ctx2) {
   const root = h("div", { class: "alius-routes" });
@@ -41470,8 +42096,8 @@ function motionReduced(s, media = systemReduced) {
 }
 function visualFlags(s, media) {
   const motion = !motionReduced(s, media);
-  const plain7 = s.readableMode;
-  return { scanlines: !plain7 && s.scanlines, flicker: !plain7 && s.flicker, glitch: !plain7 && motion, dither: !plain7 && s.ditheredPortraits, motion };
+  const plain8 = s.readableMode;
+  return { scanlines: !plain8 && s.scanlines, flicker: !plain8 && s.flicker, glitch: !plain8 && motion, dither: !plain8 && s.ditheredPortraits, motion };
 }
 
 // src/ui/leash/requestForm.ts
@@ -41501,9 +42127,9 @@ function consequence(o) {
 }
 var line = (key, id, value) => h("div", { class: "alius-form-line", "data-line": id }, h("span", { class: "alius-form-key" }, key), h("span", { class: "alius-form-val" }, value));
 var heldLine = (by) => {
-  const row3 = line("CO-SIGN", "cosign", `HELD FOR ${by.toUpperCase()}'S CO-SIGN`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:capability_leash_block"))) row3.setAttribute(k, v);
-  return row3;
+  const row4 = line("CO-SIGN", "cosign", `HELD FOR ${by.toUpperCase()}'S CO-SIGN`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:capability_leash_block"))) row4.setAttribute(k, v);
+  return row4;
 };
 async function fileLeashRequest(shell, o) {
   const title3 = `OVERSIGHT REQUEST #${String(o.no).padStart(4, "0")}`;
@@ -41794,11 +42420,11 @@ function renderCombatScreen(host, ctx2) {
   function pickSkill(state, index2) {
     const cs = state.combat;
     if (!cs?.awaitingCid) return;
-    const row3 = skillRows(state, cs.awaitingCid)[index2];
-    if (!row3 || row3.reason) return;
+    const row4 = skillRows(state, cs.awaitingCid)[index2];
+    if (!row4 || row4.reason) return;
     orderMode = null;
-    selSkill = row3.skill.id;
-    selTarget = needsTarget(row3.skill) ? row3.targets[0] ?? null : null;
+    selSkill = row4.skill.id;
+    selTarget = needsTarget(row4.skill) ? row4.targets[0] ?? null : null;
     render();
   }
   function confirm(state) {
@@ -42056,7 +42682,7 @@ function renderCombatScreen(host, ctx2) {
     const legal = new Set(targetsOfSelection(state));
     const fielded = cs.combatants.filter((c) => c.side === "squad" && c.unitId).map((c) => c.unitId);
     const synergyOf = (unitId) => unitId ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => s.synergyId) : [];
-    const row3 = (side, r) => {
+    const row4 = (side, r) => {
       const cards = cs.combatants.filter((c) => c.side === side && c.row === r).map((c) => card2(state, c, side === "squad" ? synergyOf(c.unitId) : [], legal.has(c.cid), selTarget === c.cid));
       if (side === "squad" && r === "back" && cs.commander) {
         const cmd = cs.commander;
@@ -42179,11 +42805,11 @@ function renderCombatScreen(host, ctx2) {
       h(
         "div",
         { class: "alius-combat-field" },
-        row3("enemy", "back"),
-        row3("enemy", "front"),
+        row4("enemy", "back"),
+        row4("enemy", "front"),
         h("div", { class: "alius-combat-mid" }, "\u2550".repeat(40)),
-        row3("squad", "front"),
-        row3("squad", "back")
+        row4("squad", "front"),
+        row4("squad", "back")
       ),
       h("div", { class: "alius-combat-skills" }, ...skillButtons),
       h("div", { class: "alius-combat-orders" }, ...orders),
@@ -44164,7 +44790,7 @@ var ADDITION_WORDS = {
   look: "ask her with a look",
   ally: "look at an ally"
 };
-var plain4 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
+var plain5 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
 var GAP_WORDS = { matched: "what she expected", partial: "only partly what she expected", opposite: "the opposite of what she expected" };
 function genericWord(reg, sourceId, key) {
   const frame = reg.momentSources.get(sourceId)?.frame;
@@ -44176,10 +44802,10 @@ function momentDirective2(event, state, reg) {
   if (event.type === "moment_fired" && open3 !== void 0 && open3.id === event.momentId) {
     const source = reg.momentSources.get(open3.sourceId);
     if (!source) return null;
-    const hint = typeof source.promptHint === "string" && source.promptHint.trim() !== "" ? `: ${plain4(source.promptHint)}` : "";
+    const hint = typeof source.promptHint === "string" && source.promptHint.trim() !== "" ? `: ${plain5(source.promptHint)}` : "";
     const visitor = open3.visitorId !== void 0 ? ` ${name(open3.visitorId)} is the one who comes in.` : "";
     const fact = open3.factId !== void 0 ? state.memory.facts.find((f) => f.id === open3.factId) : void 0;
-    const brings = fact ? ` What she brings up: ${plain4(fact.text)}.` : "";
+    const brings = fact ? ` What she brings up: ${plain5(fact.text)}.` : "";
     const exposing = open3.exposing !== void 0 ? ` ${open3.exposing} may give the commander away.` : "";
     return { id: `${MOMENT_PREFIX}${open3.sourceId}`, expiresAfter: "next_reply", text: `A moment of tension for ${name(open3.unitId)}${hint}.${visitor}${brings}${exposing}` };
   }
@@ -45966,7 +46592,7 @@ function renderHandlerPanel(host, ctx2) {
     else submit.setAttribute("aria-disabled", "true");
   };
   const rows = visit.items.map((item) => {
-    const row3 = h("div", { class: "alius-handler-row", "data-intel": item.id }, h("p", {}, item.label));
+    const row4 = h("div", { class: "alius-handler-row", "data-intel": item.id }, h("p", {}, item.label));
     const group = h("div", { class: "alius-handler-answers" });
     for (const a of INTEL_ANSWERS) {
       const b = h("button", {
@@ -45978,15 +46604,15 @@ function renderHandlerPanel(host, ctx2) {
         onclick: () => {
           if (locked) return;
           picked[item.id] = a;
-          for (const x of buttons.filter((y) => row3.contains(y))) x.setAttribute("aria-pressed", String(x.dataset.answer === a));
+          for (const x of buttons.filter((y) => row4.contains(y))) x.setAttribute("aria-pressed", String(x.dataset.answer === a));
           refresh2();
         }
       }, LABEL6[a]);
       buttons.push(b);
       group.append(b);
     }
-    row3.append(group);
-    return row3;
+    row4.append(group);
+    return row4;
   });
   submit.addEventListener("click", () => {
     if (locked || !complete()) return;
@@ -46024,7 +46650,7 @@ function renderCommanderFile(host, ctx2) {
   }));
   const spent = poolSpent(c.body);
   const left = TUNING.commander.pool - spent;
-  const row3 = (stat3) => {
+  const row4 = (stat3) => {
     const v = c.body[stat3];
     const step = (sign2, next, disabled) => h("button", {
       type: "button",
@@ -46050,7 +46676,7 @@ function renderCommanderFile(host, ctx2) {
       "section",
       { class: "alius-section alius-cmdr-body" },
       h("h3", {}, "BODY"),
-      ...BODY_STATS.map(row3),
+      ...BODY_STATS.map(row4),
       h("p", { class: "alius-hint" }, `POINTS LEFT ${left}`),
       h("p", {}, "BUILD: ", h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, archetype))
     )
@@ -47474,20 +48100,20 @@ function renderHobbiesEditor(host, ctx2) {
   const send = (hobbies, aptitudes = apt) => ctx2.onSet(hobbies, { high: [...aptitudes.high], low: [...aptitudes.low] });
   host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live3) }, "HOBBIES"));
   if (ctx2.hobbies.length === 0) host.append(h("p", { class: "alius-dim", "data-empty": "hobbies" }, "No hobby yet."));
-  for (const row3 of ctx2.hobbies) {
-    const dots = row3.milestones === void 0 ? null : h(
+  for (const row4 of ctx2.hobbies) {
+    const dots = row4.milestones === void 0 ? null : h(
       "span",
-      { class: "alius-stat alius-life-dots", "data-milestones": String(row3.milestones), ...analyzeAttrs("glossary:hobby_cycle", live3) },
-      `${"\u25C6".repeat(Math.min(MILESTONES, row3.milestones))}${"\u25C7".repeat(Math.max(0, MILESTONES - row3.milestones))}`
+      { class: "alius-stat alius-life-dots", "data-milestones": String(row4.milestones), ...analyzeAttrs("glossary:hobby_cycle", live3) },
+      `${"\u25C6".repeat(Math.min(MILESTONES, row4.milestones))}${"\u25C7".repeat(Math.max(0, MILESTONES - row4.milestones))}`
     );
-    const word2 = STATE_WORD[row3.state ?? "active"];
+    const word2 = STATE_WORD[row4.state ?? "active"];
     host.append(h(
       "div",
-      { class: "alius-life-row", "data-hobby": row3.id },
-      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${row3.id}`, live3) }, label2(row3.id)),
+      { class: "alius-life-row", "data-hobby": row4.id },
+      h("span", { class: "alius-chip", ...analyzeAttrs(`hobbies:${row4.id}`, live3) }, label2(row4.id)),
       dots,
       word2 ? h("span", { class: "alius-stat", ...analyzeAttrs("glossary:hobby_cycle", live3) }, word2) : null,
-      control("[ REMOVE ]", { "data-remove-hobby": row3.id }, `hobbies:${row3.id}`, live3, ctx2.editable, () => send(ids.filter((x) => x !== row3.id)))
+      control("[ REMOVE ]", { "data-remove-hobby": row4.id }, `hobbies:${row4.id}`, live3, ctx2.editable, () => send(ids.filter((x) => x !== row4.id)))
     ));
   }
   const addable = [...reg.hobbies.values()].filter((e) => !ids.includes(e.id));
@@ -49276,11 +49902,11 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   if (!isLeader) return;
   const left = challengeCooldown(state);
   const picker2 = h("div", { class: "alius-challenge-picker", hidden: true });
-  const row3 = h("p", { class: "alius-hierarchy-actions" });
+  const row4 = h("p", { class: "alius-hierarchy-actions" });
   if (!endorsed) {
-    row3.append(h("button", { type: "button", class: "alius-btn alius-option", "data-power-act": "endorse", ...analyzeNative("glossary:endorse"), onclick: handlers2.onEndorse }, "[ ENDORSE ]"), " ");
+    row4.append(h("button", { type: "button", class: "alius-btn alius-option", "data-power-act": "endorse", ...analyzeNative("glossary:endorse"), onclick: handlers2.onEndorse }, "[ ENDORSE ]"), " ");
   }
-  row3.append(h("button", {
+  row4.append(h("button", {
     type: "button",
     class: "alius-btn alius-option",
     "data-power-act": "challenge",
@@ -49302,7 +49928,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
       }
     }
   }, "[ CHALLENGE ]"));
-  host.append(row3);
+  host.append(row4);
   if (left > 0) host.append(h("p", { class: "alius-dim alius-reason" }, `CHALLENGE AVAILABLE IN ${left} DAYS`));
   host.append(picker2);
 }
@@ -49403,12 +50029,12 @@ function renderMemoryBlock(host, ctx2) {
   const factRow = (f) => {
     const chip2 = audienceChip(f);
     const text2 = h("span", { "data-role": "text" }, f.text);
-    const row3 = h("div", { class: "alius-memory-fact", "data-fact": f.id });
+    const row4 = h("div", { class: "alius-memory-fact", "data-fact": f.id });
     const draw2 = (editing) => {
       if (editing) {
         const ta = h("textarea", { class: "alius-input", rows: "2", "aria-label": "Fact text" });
         ta.value = f.text;
-        row3.replaceChildren(ta, h(
+        row4.replaceChildren(ta, h(
           "div",
           { class: "alius-memory-actions" },
           h("button", { type: "button", class: "alius-btn alius-option", "data-action": "save", ...analyzeNative("glossary:memory"), onclick: () => send({ type: "memory/edit", payload: { factId: f.id, text: ta.value } }) }, "[ SAVE ]"),
@@ -49416,7 +50042,7 @@ function renderMemoryBlock(host, ctx2) {
         ));
         return;
       }
-      row3.replaceChildren(
+      row4.replaceChildren(
         h(
           "div",
           { class: "alius-memory-fact-head" },
@@ -49450,7 +50076,7 @@ function renderMemoryBlock(host, ctx2) {
       );
     };
     draw2(false);
-    return row3;
+    return row4;
   };
   host.replaceChildren(h(
     "section",
@@ -49491,12 +50117,12 @@ function renderDevelopmentBlock(host, ctx2) {
     control2(a.held ? "[ HELD ]" : "[ HOLD ]", "hold", "glossary:development_hold", () => send({ type: "development/hold", payload: { unitId, axis: a.axis, on: !a.held } }), a.held)
   );
   const factRow = (f) => {
-    const row3 = h("div", { class: "alius-dev-fact", "data-fact": f.id });
+    const row4 = h("div", { class: "alius-dev-fact", "data-fact": f.id });
     const draw2 = (editing) => {
       if (editing) {
         const ta = h("textarea", { class: "alius-input", rows: "2", maxlength: String(TUNING.development.factTextMax), "aria-label": "Her line" });
         ta.value = f.text;
-        row3.replaceChildren(ta, h(
+        row4.replaceChildren(ta, h(
           "div",
           { class: "alius-dev-actions" },
           control2("[ SAVE ]", "save", "glossary:development_fact", () => send({ type: "development/edit_fact", payload: { unitId, factId: f.id, text: ta.value } })),
@@ -49504,7 +50130,7 @@ function renderDevelopmentBlock(host, ctx2) {
         ));
         return;
       }
-      row3.replaceChildren(
+      row4.replaceChildren(
         h("span", { class: "alius-stat", "data-role": "text", ...analyzeAttrs(f.habitId !== void 0 ? "glossary:habit" : "glossary:development_fact", { unitId }) }, f.text),
         ...f.edited ? [h("span", { class: "alius-chip", ...analyzeAttrs("glossary:development_fact", { unitId }) }, "EDITED")] : [],
         h(
@@ -49516,7 +50142,7 @@ function renderDevelopmentBlock(host, ctx2) {
       );
     };
     draw2(false);
-    return row3;
+    return row4;
   };
   const lone = view.habits.filter((id) => !view.facts.some((f) => f.habitId === id));
   const loneRows = lone.flatMap((id) => {
@@ -49528,338 +50154,6 @@ function renderDevelopmentBlock(host, ctx2) {
     return;
   }
   host.append(...view.axes.map(axisRow), ...[...view.facts].reverse().map(factRow), ...loneRows);
-}
-
-// src/ui/discipline/menu.ts
-var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
-function renderDisciplineMenu(ctx2) {
-  const { state, registries: reg, unitId } = ctx2;
-  const entries2 = [...reg.punishments.values()].filter((e) => contentAllowed(state, reg, e)).map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
-  const rows = entries2.map((e) => {
-    const id = String(e.id);
-    const confine = confineOf(e);
-    let days = null;
-    if (confine) {
-      days = h(
-        "select",
-        { class: "alius-select", "data-brig-days": id, "aria-label": `Days of ${String(e.label)}` },
-        ...Array.from({ length: confine.maxDays - confine.minDays + 1 }, (_, n) => h("option", { value: String(confine.minDays + n) }, String(confine.minDays + n)))
-      );
-    }
-    const why = checkPunish(state, reg, unitId, id, days ? Number(days.value) : void 0);
-    const button2 = h("button", {
-      type: "button",
-      class: "alius-btn alius-option",
-      "data-punish": id,
-      ...analyzeNative(`punishments:${id}`, { unitId }),
-      ...why !== null ? { "aria-disabled": "true", title: why } : {},
-      onclick: () => {
-        if (button2.getAttribute("aria-disabled") === "true") return;
-        ctx2.onPunish(id, days ? Number(days.value) : void 0);
-      }
-    }, String(e.label).toUpperCase());
-    return h("div", { class: "alius-punish-row" }, button2, days);
-  });
-  return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
-}
-
-// src/ui/dynamic/cards.ts
-function renderMilestoneCard(host, ctx2) {
-  const { state, reg, milestone } = ctx2;
-  const entry = reg.dynamicMilestones.get(milestone.milestoneId);
-  const unit3 = state.squad.find((u) => u.id === milestone.unitId);
-  if (entry === void 0 || unit3 === void 0) return;
-  const button2 = (kind, text2) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-milestone-answer": kind,
-    "data-milestone": milestone.id,
-    ...analyzeNative("glossary:milestone", { unitId: unit3.id }),
-    onclick: () => ctx2.onAnswer(kind)
-  }, text2);
-  const body = h(
-    "div",
-    { class: "alius-milestone-body" },
-    h("p", { class: "alius-milestone-text" }, entry.text.replaceAll("{name}", unit3.displayName)),
-    h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-milestone");
-  card2.setAttribute("data-milestone", milestone.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
-  for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit3.id }))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawMilestoneCards(host, state, reg, pick3, onAnswer) {
-  host.replaceChildren();
-  if (!dynamicOn(state, reg)) return;
-  for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
-  }
-}
-var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
-function renderClaimCard(host, ctx2) {
-  const { state, reg, claim: claim2 } = ctx2;
-  const unit3 = state.squad.find((u) => u.id === claim2.unitId);
-  const entry = claim2.domainId === void 0 ? void 0 : reg.dynamicDomains.get(claim2.domainId);
-  if (unit3 === void 0 || claim2.domainId !== void 0 && entry === void 0) return;
-  const live3 = { unitId: unit3.id };
-  const button2 = (kind, text2) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-claim-answer": kind,
-    "data-claim": claim2.id,
-    ...analyzeNative("glossary:claim", live3),
-    onclick: () => ctx2.onAnswer(kind)
-  }, text2);
-  const words3 = (entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit3.displayName);
-  const grants = (entry?.grants ?? []).map((cap7) => h("li", { class: "alius-claim-grant", "data-grants": cap7, ...analyzeAttrs(`glossary:capability_${cap7}`, live3) }, String(reg.glossary.get(`capability_${cap7}`)?.term ?? cap7)));
-  const body = h(
-    "div",
-    { class: "alius-claim-body" },
-    ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live3) }, String(entry.label).toUpperCase()))],
-    h("p", { class: "alius-claim-text" }, words3),
-    ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
-    h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-claim");
-  card2.setAttribute("data-claim", claim2.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} asks something of the commander`);
-  for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawClaimCards(host, state, reg, pick3, onAnswer) {
-  host.replaceChildren();
-  if (!dynamicOn(state, reg)) return;
-  for (const claim2 of state.dynamic?.open.claims ?? []) {
-    if (pick3({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) });
-  }
-}
-var RETURN_WORDS = {
-  lower_band: "AUTHOR TO WRITE: {name} offers to begin again, from a smaller step than before.",
-  after_punishment: "AUTHOR TO WRITE: {name} offers to begin again, once the commander has paid for what ended it."
-};
-function renderReturnCard(host, ctx2) {
-  const { state, offer } = ctx2;
-  const unit3 = state.squad.find((u) => u.id === offer.unitId);
-  if (unit3 === void 0) return;
-  const live3 = { unitId: unit3.id };
-  const button2 = (kind, text2) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-return-answer": kind,
-    "data-return": offer.id,
-    ...analyzeNative("glossary:aftermath", live3),
-    onclick: () => ctx2.onAnswer(kind)
-  }, text2);
-  const body = h(
-    "div",
-    { class: "alius-return-body" },
-    h("p", { class: "alius-return-text" }, RETURN_WORDS[offer.terms].replaceAll("{name}", unit3.displayName)),
-    h("div", { class: "alius-return-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-return");
-  card2.setAttribute("data-return", offer.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit3.displayName} offers to begin again`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-function drawReturnCards(host, state, reg, pick3, onAnswer) {
-  host.replaceChildren();
-  const offer = state.dynamic?.open.returnOffer;
-  if (!dynamicOn(state, reg) || offer === void 0 || !pick3({ unitId: offer.unitId })) return;
-  renderReturnCard(host, { state, reg, offer, onAnswer });
-}
-function transferTargets(state, unitId) {
-  return state.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play"));
-}
-var MEANS_LABEL = { discipline: "A PUNISHMENT", leash: "THE LEASH", transfer_request: "AN OVERSIGHT REQUEST" };
-var ROUTE_LABEL = { abrupt: "[ LEAVE NOW ]", negotiated: "[ TALK IT THROUGH ]", transfer: "[ HAND OVER ]", force: "[ FORCE IT ]" };
-function renderExitCard(host, ctx2) {
-  const { state, reg, unitId } = ctx2;
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  if (unit3 === void 0) return;
-  const live3 = { unitId };
-  const cost = (word2) => h("span", { class: "alius-chip", "data-cost": "", ...analyzeAttrs("glossary:dynamic_exit", live3) }, word2);
-  const go = (route, opts, text2, soft) => h("button", {
-    type: "button",
-    class: "alius-btn alius-option",
-    ...opts?.means !== void 0 ? { "data-means": opts.means } : {},
-    ...analyzeNative("glossary:dynamic_exit", live3),
-    ...soft !== void 0 ? { "aria-disabled": "true", title: soft } : {},
-    onclick: () => {
-      if (soft === void 0) ctx2.onExit?.(route, opts);
-    }
-  }, text2);
-  const row3 = (route, ...parts) => h("div", { class: "alius-exit-route", "data-exit-route": route }, ...parts);
-  const rows = [
-    row3("abrupt", go("abrupt", void 0, ROUTE_LABEL.abrupt), " ", cost(exitCostWord(state, reg, unitId, "abrupt"))),
-    row3(
-      "negotiated",
-      go("negotiated", void 0, ROUTE_LABEL.negotiated),
-      " ",
-      cost(exitCostWord(state, reg, unitId, "negotiated", true)),
-      state.dynamic?.open.exits?.some((e) => e.unitId === unitId) === true ? h("span", { class: "alius-dim", "data-negotiating": "" }, " A talk is open: no compromise yet.") : null
-    )
-  ];
-  for (const to of transferTargets(state, unitId)) {
-    const r = row3("transfer", go("transfer", { toUnitId: to.id }, `${ROUTE_LABEL.transfer} > ${to.displayName.toUpperCase()}`), " ", cost(exitCostWord(state, reg, unitId, "transfer")));
-    r.setAttribute("data-to", to.id);
-    rows.push(r);
-  }
-  const means = (m) => {
-    const done = meansDone(state, unitId, m);
-    const doIt = ctx2.means?.[m === "discipline" ? "punish" : m === "leash" ? "leash" : "request"];
-    return h(
-      "div",
-      { class: "alius-exit-means", "data-exit-means": m },
-      h("span", { class: "alius-exit-means-label" }, `${MEANS_LABEL[m]}: ${done ? "done today" : "not yet"} `),
-      done ? null : m === "discipline" ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure, days) => ctx2.means?.punish?.(measure, days) }) : h("button", {
-        type: "button",
-        class: "alius-btn alius-option",
-        "data-do-means": m,
-        ...analyzeNative("glossary:dynamic_exit", live3),
-        onclick: () => {
-          if (doIt !== void 0) doIt();
-        }
-      }, m === "leash" ? "[ FILE THE LEASH ]" : "[ FILE THE REQUEST ]"),
-      " ",
-      go("force", { means: m }, ROUTE_LABEL.force, done ? void 0 : "Do it first.")
-    );
-  };
-  const forced = row3("force", cost(exitCostWord(state, reg, unitId, "force")), ...EXIT_MEANS.map(means));
-  rows.push(forced);
-  const body = h(
-    "div",
-    { class: "alius-exit-body" },
-    h("p", { class: "alius-exit-text" }, "AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.".replaceAll("{name}", unit3.displayName)),
-    ...rows,
-    h("div", { class: "alius-exit-close" }, h("button", {
-      type: "button",
-      class: "alius-btn alius-tagchip",
-      "data-action": "dyn-exit-close",
-      ...analyzeNative("glossary:dynamic_exit", live3),
-      onclick: () => ctx2.onClose?.()
-    }, "[ CLOSE ]"))
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
-  card2.classList.add("alius-exit");
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `Ending it with ${unit3.displayName}`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:dynamic_exit", live3))) card2.setAttribute(k, v);
-  host.replaceChildren(card2);
-}
-
-// src/ui/dynamic/section.ts
-var exitOpen = /* @__PURE__ */ new Set();
-var exitKey = (state, unitId) => `${state.dynamic?.salt ?? 0}|${unitId}`;
-function renderDynamicSection(host, ctx2) {
-  const { state, reg, unitId } = ctx2;
-  host.replaceChildren();
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  const view = unit3?.kind === "named" && !ctx2.hidden ? ctx2.knowledge.dynamic(unitId, reg) : null;
-  if (unit3 === void 0 || view === null || view.band === void 0) return false;
-  const live3 = { unitId };
-  const key = exitKey(state, unitId);
-  const chip2 = (text2, address, attrs = {}) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text2);
-  const row3 = (label3, ...parts) => h("p", { class: "alius-dyn-line" }, `${label3} `, ...parts);
-  const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
-  const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id).toUpperCase();
-  const claimed = view.domains.filter((d) => d.claimed);
-  const mayClaim = view.domains.filter((d) => !d.claimed);
-  const lines = [
-    row3("FRAME", chip2(String(view.frame ?? "").toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
-    row3("HOLD", chip2(`${view.band.toUpperCase()}${view.raw !== void 0 ? ` (${view.raw})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
-  ];
-  if (claimed.length > 0) {
-    lines.push(row3("DOMAINS", ...between(claimed.map((d) => chip2(`${d.label.toUpperCase()}${d.partial === true ? " (PARTLY)" : ""}`, `dynamicDomains:${d.id}`, { "data-dyn-domain": d.id })))));
-  }
-  if (mayClaim.length > 0) {
-    lines.push(row3("SHE MAY CLAIM", ...between(mayClaim.map((d) => chip2(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { "data-dyn-may-claim": d.id })))));
-  }
-  if (view.tracks.length > 0) {
-    lines.push(row3("PRACTICE", ...between(view.tracks.map((t) => chip2(`${label2("dynamicTracks", t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
-  }
-  if (view.reading !== void 0) {
-    lines.push(row3("HER READING", chip2(view.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
-  }
-  if (view.signs.length > 0) {
-    lines.push(row3("SHE SEEMS", ...between(view.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
-  }
-  if (view.compromat.length > 0) {
-    lines.push(row3("SHE KEEPS", ...between(view.compromat.map((f) => chip2(f.text.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
-  }
-  if (view.knownLevels.length > 0) {
-    const who = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
-    const word2 = { suspects_close: "HAS NOTICED SOMETHING", suspects_dynamic: "SUSPECTS", knows_dynamic: "KNOWS" };
-    lines.push(row3("WHO KNOWS", ...between(view.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
-  }
-  const cards = h("div", { class: "alius-dyn-cards" });
-  const pick3 = (c) => c.unitId === unitId;
-  const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
-  cards.append(...slots);
-  drawMilestoneCards(slots[0], state, reg, pick3, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
-  drawClaimCards(slots[1], state, reg, pick3, (id, a) => ctx2.actions?.answerClaim?.(id, a));
-  drawReturnCards(slots[2], state, reg, pick3, (a) => ctx2.actions?.answerReturn?.(a));
-  const exitHost = h("div", { class: "alius-dyn-exit" });
-  const redraw = () => {
-    if (ctx2.onChanged !== void 0) ctx2.onChanged();
-    else renderDynamicSection(host, ctx2);
-  };
-  const drawExit = () => {
-    exitHost.replaceChildren();
-    if (!exitOpen.has(key)) {
-      exitHost.append(h("button", {
-        type: "button",
-        class: "alius-btn alius-option",
-        "data-action": "dyn-exit",
-        ...analyzeNative("glossary:dynamic_exit", live3),
-        onclick: () => {
-          exitOpen.add(key);
-          drawExit();
-        }
-      }, "[ END IT ]"));
-      return;
-    }
-    renderExitCard(exitHost, {
-      state,
-      reg,
-      unitId,
-      onExit: (route, opts) => {
-        exitOpen.delete(key);
-        ctx2.actions?.exit?.(unitId, route, opts);
-        redraw();
-      },
-      means: {
-        punish: (measure, days) => {
-          ctx2.onPunish?.(unitId, measure, days);
-          redraw();
-        },
-        leash: () => {
-          ctx2.onLeash?.(unitId);
-          redraw();
-        },
-        request: () => {
-          ctx2.actions?.requestTransfer?.(unitId);
-          redraw();
-        }
-      },
-      onClose: () => {
-        exitOpen.delete(key);
-        drawExit();
-      }
-    });
-  };
-  if (frameRank(dynamicOf(state, unitId)?.frame ?? "equal") >= frameRank("play")) drawExit();
-  host.append(h("h4", {}, "DYNAMIC"), ...lines, cards, exitHost);
-  host.classList.add("alius-dynamic-section");
-  host.setAttribute("data-dynamic-section", unitId);
-  return true;
 }
 
 // src/ui/life/lifeViews.ts
@@ -49952,7 +50246,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 }
 
 // src/ui/vitals/trace.ts
-var SVG_NS2 = "http://www.w3.org/2000/svg";
+var SVG_NS3 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit2 = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
 var clamp41 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
@@ -49984,13 +50278,13 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   return out;
 }
 function renderTrace(pattern, seed, opts) {
-  const svg3 = document.createElementNS(SVG_NS2, "svg");
+  const svg3 = document.createElementNS(SVG_NS3, "svg");
   svg3.setAttribute("viewBox", `0 0 ${POINTS * 2} 24`);
   svg3.setAttribute("class", `alius-trace${opts.motion ? " is-sweeping" : ""}`);
   svg3.setAttribute("data-pattern", pattern);
   svg3.setAttribute("role", "img");
   svg3.setAttribute("aria-label", opts.label ?? `Vitals trace: ${pattern}`);
-  const line2 = document.createElementNS(SVG_NS2, "polyline");
+  const line2 = document.createElementNS(SVG_NS3, "polyline");
   const points = tracePoints(pattern, seed, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
   line2.setAttribute("points", points.join(" "));
   line2.setAttribute("fill", "none");
@@ -50890,6 +51184,7 @@ function dynamicSection(unit3, ctx2, state) {
     unitId: unit3.id,
     knowledge: buildKnowledge(state, ctx2.settings()),
     hidden: ctx2.settings().dynamicHidden === true,
+    readable: ctx2.settings().readableMode,
     ...ctx2.dynamic?.actions !== void 0 ? { actions: ctx2.dynamic.actions } : {},
     ...ctx2.onPunish !== void 0 ? { onPunish: (id, measure, days) => ctx2.onPunish(id, measure, days) } : {},
     ...ctx2.onLeash !== void 0 ? { onLeash: (id) => ctx2.onLeash(id, "compel") } : {},
@@ -51123,7 +51418,7 @@ function renderSchedule(state, reg, handlers2) {
     const rows = upcoming.filter((b) => b.day === day).sort((a, b) => SLOT_ORDER2.indexOf(a.slot) - SLOT_ORDER2.indexOf(b.slot));
     const settled = /* @__PURE__ */ new Set();
     for (const b of rows) {
-      section.append(row2(state, reg, b, handlers2));
+      section.append(row3(state, reg, b, handlers2));
       const key = `${b.day}|${b.slot}`;
       if (b.conflict && !settled.has(key) && rows.filter((x) => x.slot === b.slot && x.conflict).at(-1) === b) {
         settled.add(key);
@@ -51137,7 +51432,7 @@ function renderSchedule(state, reg, handlers2) {
   }
   return section;
 }
-function row2(state, reg, b, handlers2) {
+function row3(state, reg, b, handlers2) {
   const name = state.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId;
   const chip2 = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId: b.unitId }) }, `${name.toUpperCase()} \xB7 ${SLOT_WORD[b.slot]}`);
   chip2.style.setProperty("--unit-accent", unitAccent(b.unitId));
@@ -51442,7 +51737,7 @@ function renderOpsTab(host, ctx2) {
 }
 
 // src/ui/device/marks.ts
-var SVG_NS3 = "http://www.w3.org/2000/svg";
+var SVG_NS4 = "http://www.w3.org/2000/svg";
 function stickerFor(state, reg, unitId) {
   const unit3 = state.squad.find((u) => u.id === unitId);
   const all = [...reg.stickerArt.values()];
@@ -51453,11 +51748,11 @@ function stickerFor(state, reg, unitId) {
 }
 function art(entry) {
   if (typeof entry.svg === "string") {
-    const svg3 = document.createElementNS(SVG_NS3, "svg");
+    const svg3 = document.createElementNS(SVG_NS4, "svg");
     svg3.setAttribute("viewBox", "0 0 24 24");
     svg3.setAttribute("width", "100%");
     svg3.setAttribute("height", "100%");
-    const path = document.createElementNS(SVG_NS3, "path");
+    const path = document.createElementNS(SVG_NS4, "path");
     path.setAttribute("d", entry.svg);
     path.setAttribute("fill", "currentColor");
     svg3.append(path);
@@ -51902,7 +52197,7 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
     const quiet = pastimeActivity(reg);
     const hasQuiet = !opts.readOnly && unit3.kind === "named" && quiet !== void 0 && ctx2.ops.onTimeTogether !== void 0 && lifeMode(state) !== "off" && endSlotBlock(state) === null;
     const quietMenu = hasQuiet ? quietHour(state, ctx2, unit3, quiet) : null;
-    const row3 = h(
+    const row4 = h(
       "li",
       { class: "alius-room-person", "data-unit": unit3.id },
       avatar ? h("span", { class: "alius-room-avatar" }, avatar) : null,
@@ -51912,8 +52207,8 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
       quietMenu,
       reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
     );
-    if (unit3.kind === "named") renderHubDayLine(row3, state, reg, unit3.id);
-    return row3;
+    if (unit3.kind === "named") renderHubDayLine(row4, state, reg, unit3.id);
+    return row4;
   });
   const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
   const noteCards = room2.commanderCell === true && (view === void 0 || view.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
@@ -52224,57 +52519,6 @@ function outline(rects) {
     }
   }
   return segs;
-}
-
-// src/ui/hub/plan/svg.ts
-var SVG_NS4 = "http://www.w3.org/2000/svg";
-var fmt = (v) => typeof v === "number" ? String(Math.round(v * 10) / 10) : v;
-function svgEl(tag2, attrs = {}) {
-  const el = document.createElementNS(SVG_NS4, tag2);
-  for (const [k, v] of Object.entries(attrs)) if (v !== void 0) el.setAttribute(k, fmt(v));
-  return el;
-}
-var Pen = class _Pen {
-  constructor(g) {
-    this.g = g;
-  }
-  static group(cls) {
-    return new _Pen(svgEl("g", { class: cls }));
-  }
-  add(el) {
-    this.g.append(el);
-    return el;
-  }
-  rect(x, y, w, h2, cls) {
-    return this.add(svgEl("rect", { x, y, width: Math.max(0, w), height: Math.max(0, h2), class: cls }));
-  }
-  line(x1, y1, x2, y2, cls) {
-    return this.add(svgEl("line", { x1, y1, x2, y2, class: cls }));
-  }
-  circle(cx, cy, r, cls) {
-    return this.add(svgEl("circle", { cx, cy, r, class: cls }));
-  }
-  ellipse(cx, cy, rx, ry, cls) {
-    return this.add(svgEl("ellipse", { cx, cy, rx, ry, class: cls }));
-  }
-  path(d, cls) {
-    return this.add(svgEl("path", { d, class: cls }));
-  }
-  polygon(points, cls) {
-    return this.add(svgEl("polygon", { points: points.map(([x, y]) => `${fmt(x)},${fmt(y)}`).join(" "), class: cls }));
-  }
-  child(cls) {
-    const pen = _Pen.group(cls);
-    this.g.append(pen.g);
-    return pen;
-  }
-};
-function scatter(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = Math.imul(s, 1664525) + 1013904223 >>> 0;
-    return s / 4294967296;
-  };
 }
 
 // src/ui/hub/plan/draw.ts
@@ -53091,7 +53335,7 @@ function renderMapTab(host, ctx2) {
     const rule = (l, m, r) => h("div", { class: "alius-ascii-rule", "aria-hidden": "true" }, `${l}${"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}${m}${"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}${m}${"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}${r}`);
     const wrap = h("div", { class: "alius-map alius-ascii-map" }, rule("\u250C", "\u252C", "\u2510"));
     for (let y = 0; y < 3; y++) {
-      const row3 = h("div", { class: "alius-ascii-row" });
+      const row4 = h("div", { class: "alius-ascii-row" });
       for (let x = 0; x < 3; x++) {
         const r = regions.find((q) => q.mapCell.x === x && q.mapCell.y === y);
         const cell = h("div", { class: "alius-ascii-cell", "data-cell": `${x},${y}` });
@@ -53105,9 +53349,9 @@ function renderMapTab(host, ctx2) {
         } else if (r) {
           cell.append(h("span", { class: "alius-nosignal" }, "[ NO SIGNAL ]"));
         }
-        row3.append(cell);
+        row4.append(cell);
       }
-      wrap.append(row3, y < 2 ? rule("\u251C", "\u253C", "\u2524") : rule("\u2514", "\u2534", "\u2518"));
+      wrap.append(row4, y < 2 ? rule("\u251C", "\u253C", "\u2524") : rule("\u2514", "\u2534", "\u2518"));
     }
     return wrap;
   }
@@ -53247,16 +53491,16 @@ function renderPlanner(host, ctx2) {
       draft.picked = box.checked ? [...draft.picked, u.id] : draft.picked.filter((id) => id !== u.id);
       ctx2.redraw();
     });
-    const row3 = h(
+    const row4 = h(
       "div",
       { class: "alius-planner-unit", "data-unit-row": u.id },
       h("label", { class: "alius-check" }, box, ` ${u.displayName}`)
     );
-    if (reason2) row3.append(h("span", { class: "alius-dim alius-reason" }, ` ${reason2}`));
+    if (reason2) row4.append(h("span", { class: "alius-dim alius-reason" }, ` ${reason2}`));
     else {
-      row3.append(h("span", { class: "alius-dim" }, ` SKILLS ${activeLoadout(reg, u).length}/${loadoutSize(reg, u)} \xB7 ${gearText(state, u)} `));
+      row4.append(h("span", { class: "alius-dim" }, ` SKILLS ${activeLoadout(reg, u).length}/${loadoutSize(reg, u)} \xB7 ${gearText(state, u)} `));
       if (picked) {
-        row3.append(h("button", {
+        row4.append(h("button", {
           type: "button",
           class: "alius-btn",
           "data-row": u.id,
@@ -53267,7 +53511,7 @@ function renderPlanner(host, ctx2) {
         }, rowOf3(u.id) === "front" ? "[ FRONT ]" : "[ BACK ]"));
       }
     }
-    root.append(row3);
+    root.append(row4);
   }
   const maxSupplies = Math.min(state.resources.supplies, TUNING.expedition.suppliesMax);
   draft.supplies = Math.max(0, Math.min(maxSupplies, Math.trunc(draft.supplies) || 0));
@@ -53917,8 +54161,8 @@ function schematic(state, reg) {
   const width = PER_ROW * (BOX_INNER + 2) + (PER_ROW - 1);
   const lines = [];
   for (let i = 0; i < boxes.length; i += PER_ROW) {
-    const row3 = boxes.slice(i, i + PER_ROW);
-    for (let k = 0; k < 4; k++) lines.push(row3.map((b) => b[k]).join(" ").padEnd(width));
+    const row4 = boxes.slice(i, i + PER_ROW);
+    for (let k = 0; k < 4; k++) lines.push(row4.map((b) => b[k]).join(" ").padEnd(width));
   }
   return lines.join("\n");
 }
@@ -54064,7 +54308,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
       if (!soft) onclick();
     }
   }, label2);
-  const row3 = h(
+  const row4 = h(
     "div",
     { class: "alius-lead-chips" },
     chip2("follow", "[ FOLLOW ]", () => handlers2.follow(), scene.followed === true),
@@ -54074,7 +54318,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
       redraw();
     })
   );
-  host.append(row3);
+  host.append(row4);
   if (!field2.open) return;
   const input = h("input", { type: "text", class: "alius-input", "data-key": "lead-limit", maxlength: String(TUNING.bonds.limits.sceneLimitMax), "aria-label": "A boundary for this scene", disabled });
   input.value = field2.text;
@@ -54404,7 +54648,7 @@ var TAB_LABEL = {
   role: "ROLE",
   endurance: "ENDURANCE"
 };
-var ATTITUDE_WORD = { craves: "CRAVES", enjoys: "ENJOYS", indifferent: "INDIFFERENT", dislikes: "DISLIKES" };
+var ATTITUDE_WORD2 = { craves: "CRAVES", enjoys: "ENJOYS", indifferent: "INDIFFERENT", dislikes: "DISLIKES" };
 var ANSWER_WORD = { accepted: "ACCEPTED", corrected: "CORRECTED", mocked: "MOCKED", refused: "REFUSED", tonight: "TONIGHT" };
 var memories = /* @__PURE__ */ new WeakMap();
 function addressOf(tab, id) {
@@ -54456,7 +54700,7 @@ function renderOfferComposer(host, ctx2) {
   );
   const list5 = choices[mem.tab];
   const entries2 = list5.length === 0 ? h("p", { class: "alius-dim alius-offer-empty" }, "Nothing here is on offer.") : h("div", { class: "alius-offer-entries", role: "tabpanel" }, ...list5.map((c) => {
-    const known3 = c.known === void 0 ? null : h("span", { class: "alius-offer-known" }, c.known === "unknown" ? "?" : ATTITUDE_WORD[c.known]);
+    const known3 = c.known === void 0 ? null : h("span", { class: "alius-offer-known" }, c.known === "unknown" ? "?" : ATTITUDE_WORD2[c.known]);
     return h("button", {
       type: "button",
       class: `alius-btn alius-option${c.known === void 0 ? "" : ` is-${c.known}`}`,
@@ -54498,8 +54742,8 @@ function renderOfferComposer(host, ctx2) {
       if (mem.picks.length === 0) return;
       const composition = [];
       for (const p of mem.picks) {
-        const row3 = composition.find((c) => c.tab === p.tab);
-        if (row3 !== void 0) row3.ids.push(p.id);
+        const row4 = composition.find((c) => c.tab === p.tab);
+        if (row4 !== void 0) row4.ids.push(p.id);
         else composition.push({ tab: p.tab, ids: [p.id] });
       }
       const ask = mem.ask;
@@ -54723,16 +54967,16 @@ function renderCommsTab(host, ctx2) {
     const dot = n > 0 ? h("span", { class: "alius-dot", "aria-label": `${n} unread` }, "\u25CF") : null;
     const decor = decorOf(state, u.id);
     const renamed = decor !== null && decor.parts.includes("contact") ? decor : null;
-    const row3 = h("button", {
+    const row4 = h("button", {
       type: "button",
       class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}${renamed?.fadedUntil !== void 0 ? " is-faded" : ""}`,
       "data-unit": u.id,
       onclick: () => open3(u.id)
     }, renamed ? renamed.contactName : u.displayName, " ", dot);
     const face = ctx2.avatar?.(u);
-    if (face) row3.prepend(h("span", { class: "alius-contact-avatar" }, face));
-    row3.style.setProperty("--unit-accent", unitAccent(u.id));
-    return row3;
+    if (face) row4.prepend(h("span", { class: "alius-contact-avatar" }, face));
+    row4.style.setProperty("--unit-accent", unitAccent(u.id));
+    return row4;
   }));
   const thread = h("div", { class: "alius-thread alius-voice alius-voice-personal", "data-voice": "personal", role: "log", "aria-live": "polite" });
   if (!current) {
@@ -54930,9 +55174,9 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     ...w.punishLog.length === 0 ? [h("p", { class: "alius-dim" }, "NOTHING ON THE RECORD.")] : w.punishLog.slice(-5).reverse().map((p) => h("p", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:commander_punishment") }, `Day ${p.day}: ${String(reg.commanderPunishments.get(p.punishmentId)?.label ?? "Punishment")}`))
   ];
   if (deps.generation && w.agenda === "fallback" && w.overrideFired !== true) {
-    const row3 = h("p", { class: "alius-warden-agenda" }, h("span", { class: "alius-dim" }, "AGENDA: PLAIN "));
-    drawSiteReroll(row3, deps.generation, "warden.agenda", `${w.unitId}:${w.sinceDay}`, deps.onRerollAgenda);
-    rows.push(row3);
+    const row4 = h("p", { class: "alius-warden-agenda" }, h("span", { class: "alius-dim" }, "AGENDA: PLAIN "));
+    drawSiteReroll(row4, deps.generation, "warden.agenda", `${w.unitId}:${w.sinceDay}`, deps.onRerollAgenda);
+    rows.push(row4);
   }
   const portrait = deps.avatar?.(unit3) ?? null;
   const body = h(
@@ -55331,9 +55575,9 @@ function renderDoor(host, ctx2) {
       else renderDoor(host, ctx2);
     });
   }
-  const row3 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press(ctx2.onOpen)));
-  if (!entry.door) row3.append(option2("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
-  row3.append(option2("ignore", "[ STAY SILENT ]", press(ctx2.onSilent)));
+  const row4 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press(ctx2.onOpen)));
+  if (!entry.door) row4.append(option2("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
+  row4.append(option2("ignore", "[ STAY SILENT ]", press(ctx2.onSilent)));
   host.append(h(
     "section",
     { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
@@ -55344,7 +55588,7 @@ function renderDoor(host, ctx2) {
     status,
     ...timer ? [timer] : [],
     form,
-    row3
+    row4
   ));
   const draft = drafts2.get(entry.id);
   if (draft && !entry.door && !pending3.has(entry.id)) {
@@ -55481,7 +55725,7 @@ function renderBlockingStrip(host, ctx2) {
     const change = { person, field: "removed", value: id };
     return guarded2(change, "button", { class: "alius-btn alius-blocking-x", "data-action": "remove", "data-person": person, "data-id": id, "aria-label": `Remove ${label2}` }, "\xD7");
   };
-  const row3 = (person) => {
+  const row4 = (person) => {
     const b = blockingOf(scene, person);
     const chips = [];
     if (b.posture !== void 0) chips.push(chip2("blockingPostures", b.posture, labelOf2("blockingPostures", b.posture), "posture"));
@@ -55543,7 +55787,7 @@ function renderBlockingStrip(host, ctx2) {
     "div",
     { class: "alius-blocking", "aria-label": "Blocking" },
     h("span", { class: "alius-stat alius-blocking-title", ...analyzeAttrs("glossary:blocking_strip") }, "BLOCKING"),
-    ...[...units, COMMANDER].map(row3).filter((r) => r !== null),
+    ...[...units, COMMANDER].map(row4).filter((r) => r !== null),
     menu
   ));
 }
@@ -55775,7 +56019,7 @@ function wayGroups(ctx2, exposures) {
     const kind = reg.stimulusKinds.get(ex.kind);
     const taste = kind?.family === "taste";
     const stamp = (way) => analyzeNative(`stimulusKinds:${ex.kind}`, { way });
-    const plain7 = WAY_BUTTONS.filter((b) => b.family === "taste" === taste || b.way === "avoid" || b.way === "secret").filter((b) => !(taste && (b.way === "sniff" || b.way === "nuzzle")));
+    const plain8 = WAY_BUTTONS.filter((b) => b.family === "taste" === taste || b.way === "avoid" || b.way === "secret").filter((b) => !(taste && (b.way === "sniff" || b.way === "nuzzle")));
     const push = (way, depth) => () => {
       staging.stimulus(way, ex.kind, depth);
     };
@@ -55797,7 +56041,7 @@ function wayGroups(ctx2, exposures) {
       "div",
       { class: "alius-physics-ways", "data-kind": ex.kind, role: "group", "aria-label": String(kind?.label ?? ex.kind) },
       h("span", { class: "alius-dim" }, `${String(kind?.label ?? ex.kind)}: `),
-      ...plain7.map((b) => h("button", { type: "button", class: "alius-btn alius-option alius-way", "data-way": b.way, ...stamp(b.way), onclick: push(b.way) }, b.text)),
+      ...plain8.map((b) => h("button", { type: "button", class: "alius-btn alius-option alius-way", "data-way": b.way, ...stamp(b.way), onclick: push(b.way) }, b.text)),
       ...inhale
     );
   });
@@ -56831,7 +57075,7 @@ function registerImmersionProviders() {
 // src/analysis/providers/bonds.ts
 var orderedCategories2 = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
 var link = (id, label2) => `[[contentCategories:${id}|${label2}]]`;
-var plain5 = (t) => t.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim();
+var plain6 = (t) => t.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim();
 function categoryProvider(subject, env) {
   if (!env.state || !env.registries.contentCategories.has(subject.id)) return null;
   const lines = [enabledCategories(env.state).includes(subject.id) ? "In this campaign: switched on." : "In this campaign: off. It is excluded from every generation."];
@@ -56854,7 +57098,7 @@ function bondProvider(subject, env) {
   if (bond.caretaker) lines.push("A caretaker: she looks after others at her own cost.");
   lines.push(`She wants a relationship to be: ${bond.publicity}.`);
   const cats = orderedCategories2(env.registries).filter((c) => bond.ownLimits.categories.includes(String(c.id))).map((c) => link(String(c.id), String(c.label)));
-  const note = plain5(bond.ownLimits.note ?? "");
+  const note = plain6(bond.ownLimits.note ?? "");
   if (cats.length > 0) lines.push(`She will not take part in: ${cats.join(", ")}.${note !== "" ? ` ${note}` : ""}`);
   else if (note !== "") lines.push(`Her own limit: ${note}`);
   return { lines };
@@ -56939,7 +57183,7 @@ function registerBondsProviders() {
 var unitIdOf3 = (s) => typeof s.data.unitId === "string" ? s.data.unitId : null;
 var nameOf18 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
 var FELT_LINE = "[[dynamic_felt]]";
-var plain6 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
+var plain7 = (text2) => text2.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim();
 var LEVEL_WORDS = { suspects_close: "has noticed something", suspects_dynamic: "suspects", knows_dynamic: "knows" };
 var MASTERY_WORDS = ["no", "one", "two", "three", "four", "five"];
 function viewed(read) {
@@ -56985,7 +57229,7 @@ var dynamicReading = (s, env, v, unitId) => {
   for (const k of v.knownLevels) lines.push(`${nameOf18(env, k.observerId)} ${LEVEL_WORDS[k.level]}.`);
   return lines;
 };
-var compromatReading = (_s, env, v, unitId) => v.compromat.map((f) => `${nameOf18(env, unitId)} keeps: ${plain6(f.text)}`);
+var compromatReading = (_s, env, v, unitId) => v.compromat.map((f) => `${nameOf18(env, unitId)} keeps: ${plain7(f.text)}`);
 var zoneReading = (s, env, v, unitId) => {
   if (!dynamicOn(env.state, env.registries)) return [];
   const shown = v.expectations.worship?.[s.id];
@@ -57097,7 +57341,7 @@ function registerMemoryProviders() {
 }
 
 // src/analysis/providers/personal.ts
-var LEVEL_WORD = ["no access", "decor", "notes", "calendar", "messages"];
+var LEVEL_WORD2 = ["no access", "decor", "notes", "calendar", "messages"];
 var nameOf19 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var unitIdOf4 = (subject) => typeof subject.data.unitId === "string" ? subject.data.unitId : null;
 var SLOT_WORD2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
@@ -57116,13 +57360,13 @@ function deviceAccessProvider(subject, env, k) {
   const unitId = unitIdOf4(subject);
   if (unitId === null) {
     const holders2 = state.squad.filter((u) => u.kind === "named").map((u) => ({ u, level: deviceAccess(state, env.registries, u.id) })).filter((x) => x.level > 0);
-    return holders2.length === 0 ? { lines: [] } : { lines: [`Soldiers with access: ${holders2.map((x) => `${x.u.displayName} (${LEVEL_WORD[x.level]})`).join(", ")}.`] };
+    return holders2.length === 0 ? { lines: [] } : { lines: [`Soldiers with access: ${holders2.map((x) => `${x.u.displayName} (${LEVEL_WORD2[x.level]})`).join(", ")}.`] };
   }
   if (!state.squad.some((u) => u.id === unitId)) return null;
   const name = nameOf19(state, unitId);
   const why = deviceAccessWhy(state, env.registries, unitId);
   if (!why) return { lines: [`${name} has no access to the commander's device.`] };
-  const lines = [`${name}: level ${why.level} (${LEVEL_WORD[why.level]}).`, why.branch === null ? "It comes from the device she holds for the commander." : `It comes from ${branchWords(why.branch)}.`];
+  const lines = [`${name}: level ${why.level} (${LEVEL_WORD2[why.level]}).`, why.branch === null ? "It comes from the device she holds for the commander." : `It comes from ${branchWords(why.branch)}.`];
   lines.push(`She can: ${CAPABILITIES2.slice(0, why.level).join(", ")}.`);
   const impunity = k.raw(impunityOf(state, env.registries, unitId)?.value ?? 0);
   if (impunity !== null && why.branch?.minImpunity !== void 0) lines.push(`Impunity ${impunity}.`);
@@ -57964,7 +58208,7 @@ var axisProvider2 = (axis) => (subject, env, knowledge2) => {
   lines.push(`Trend ${arrow(knowledge2, net)}`);
   const moves = (type) => {
     const rows = env.registries.eventDeltas.get(type)?.rows;
-    return !!rows && Object.values(rows).some((row3) => typeof row3?.[axis] === "number" && row3[axis] !== 0);
+    return !!rows && Object.values(rows).some((row4) => typeof row4?.[axis] === "number" && row4[axis] !== 0);
   };
   const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
@@ -59845,7 +60089,7 @@ function createShell(deps) {
       return;
     }
     if (modals?.isOpen()) return;
-    const plain7 = !e.ctrlKey && !e.metaKey && !e.altKey;
+    const plain8 = !e.ctrlKey && !e.metaKey && !e.altKey;
     const typing = isEditable2(e.target);
     const where = router.current();
     if (e.key === "Escape") {
@@ -59856,14 +60100,14 @@ function createShell(deps) {
       return;
     }
     if (e.key === "Tab") {
-      if (!plain7 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
+      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
       }
       return;
     }
-    if (/^[0-8]$/.test(e.key) && plain7 && !typing) {
+    if (/^[0-8]$/.test(e.key) && plain8 && !typing) {
       const id = e.key === "0" ? "home" : KEY_TABS[Number(e.key) - 1];
       if (where === "pda") selectTab(id);
       else if (where === "hub") api.showTab(id);
@@ -59935,7 +60179,7 @@ function createApp(st, deps) {
     for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
   function announceUnlocks(before, after) {
-    for (const row3 of unlockedBetween(before, after, registries)) toast("info", String(row3.notice), { voice: VOICE_OF.toast });
+    for (const row4 of unlockedBetween(before, after, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
   }
   function syncBadges() {
     syncLocks();
@@ -62278,6 +62522,7 @@ function createApp(st, deps) {
           seenOffers.clear();
           generations.clearSnapshots();
           staging.reset();
+          resetDynamicSection();
           openCampaign();
           staging.resume();
           shell.refresh();
@@ -63932,17 +64177,17 @@ function addDrawer(host, actions) {
   header.append(title3, chevron);
   const content = document.createElement("div");
   content.className = "inline-drawer-content";
-  const row3 = document.createElement("div");
-  row3.className = "flex-container flexFlowColumn";
+  const row4 = document.createElement("div");
+  row4.className = "flex-container flexFlowColumn";
   for (const it of ITEMS) {
     const btn = document.createElement("input");
     btn.type = "button";
     btn.className = "menu_button";
     btn.value = it.buttonLabel;
     btn.addEventListener("click", () => actions[it.action]());
-    row3.append(btn);
+    row4.append(btn);
   }
-  content.append(row3);
+  content.append(row4);
   drawer.append(header, content);
   wrap.append(drawer);
   host.append(wrap);
