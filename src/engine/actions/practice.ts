@@ -1,6 +1,7 @@
 import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
-import { registerAction } from '../dispatch';
+import { registerAction, registerAfterAction } from '../dispatch';
+import { taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
@@ -14,6 +15,8 @@ import { answerTask, signTask } from '../practice/tasks';
 registerWithdrawal(withdrawPractices);
 // What a day does to the practices (R7): fallback of old requests, new requests, expiry; nothing while nobody holds.
 registerDayEndStep('dm_rumors', practiceDayStep);
+// What an event decides about an open task (a scene with her, a booking, a token, a DM, a run): the engine checks of R2.
+registerAfterAction(taskChecksFromEvents);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

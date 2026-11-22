@@ -18474,6 +18474,16 @@ function trackLevel(state, unitId, trackId) {
 function trackCap(state, reg, unitId, trackId) {
   return trackOpen(state, reg, unitId, trackId) ? trackLevel(state, unitId, trackId) : 0;
 }
+function addTrackXp(draft, reg, unitId, trackId, xp) {
+  const entry = trackEntry(reg, trackId);
+  const dyn = dynamicOf(draft, unitId);
+  if (entry === void 0 || dyn === void 0 || xp === 0 || !trackOpen(draft, reg, unitId, trackId)) return [];
+  const track = dyn.tracks[trackId] ?? { xp: 0, level: 0 };
+  track.xp = Math.max(0, Math.round((track.xp + xp) * 1e4) / 1e4);
+  track.level = levelOfXp(entry.thresholds, track.xp);
+  dyn.tracks[trackId] = track;
+  return [];
+}
 
 // src/engine/dynamic/milestones.ts
 var milestoneRows = (reg) => [...reg.dynamicMilestones.values()];
@@ -37302,6 +37312,173 @@ registerAfterAction((draft, _ctx, events) => {
   return [];
 });
 
+// src/engine/practice/sample.ts
+function practiceSample(draft, reg, unitId, response, opts = {}) {
+  const dyn = dynamicOf(draft, unitId);
+  const unit3 = draft.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit3 === void 0) return [];
+  const region = updateReading(dyn, { response, ...opts.afterThreat === true ? { afterThreat: true } : {} }, TUNING.position.alpha.practice, physicsStyleOf(draft, unitId, reg), unit3.insight ?? "mid").region;
+  return region === void 0 ? [] : [{ type: "position_shifted", unitId, from: region.from, to: region.to }];
+}
+
+// src/engine/practice/checks.ts
+var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
+var SEVERITY = ["minor", "minor", "moderate", "major", "extreme"];
+var RECENT_MAX = TUNING.probes.recentMax;
+var isOpenTask = (t) => t.kind === "task" && t.status === "open" && t.routine !== true;
+var stepUp = (s) => STAKES[Math.min(STAKES.length - 1, stakeRank(s) + 1)];
+function formOf(reg, task) {
+  const seed = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
+  return typeof seed?.gist === "string" ? seed.gist : task.summary.slice(0, 40);
+}
+function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
+  const reg = ctx2.registries;
+  const task = draft.practices?.tasks.find((t) => t.id === taskId);
+  if (task === void 0 || task.kind !== "task" || task.status !== "open" || !practiceLive(draft, reg, task.holderId)) return [];
+  const holderId = task.holderId;
+  delete task.sceneId;
+  if (outcome === "void") {
+    task.status = "void";
+    return [{ type: "task_void", taskId, holderId, what: "task", reason: via }];
+  }
+  task.status = outcome;
+  const dyn = dynamicOf(draft, holderId);
+  if (dyn !== void 0) {
+    dyn.recent.push(formOf(reg, task));
+    while (dyn.recent.length > RECENT_MAX) dyn.recent.shift();
+  }
+  if (outcome === "kept") {
+    const events2 = [{ type: "task_kept", taskId, unitId: holderId, holderId, via, stakes: task.stakes }];
+    events2.push(...hitHer(draft, reg, holderId, "task_kept", SEVERITY[stakeRank(task.stakes)], "kept her task"));
+    events2.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
+    addFavour(draft, holderId, 1);
+    events2.push(...practiceSample(draft, reg, holderId, "yielded"));
+    return events2;
+  }
+  const stakes = opts.falseReport === true ? stepUp(task.stakes) : task.stakes;
+  const events = [{ type: "task_broken", taskId, unitId: holderId, holderId, via, stakes, ...opts.falseReport === true ? { falseReport: true } : {} }];
+  events.push(...hitHer(draft, reg, holderId, "task_broken", SEVERITY[stakeRank(stakes) + (opts.falseReport === true && stakes === task.stakes ? 1 : 0)], "broke her task"));
+  events.push(...practiceSample(draft, reg, holderId, "resisted"));
+  events.push(...noteOffence(draft, ctx2, holderId, { kind: opts.falseReport === true ? "false_report" : "task_broken", ref: task.id, stakes, day: draft.day }));
+  return events;
+}
+var subjectOf3 = (t) => t.checkArg ?? t.targetUnitId;
+function verdictNow(state, task) {
+  const unit3 = subjectOf3(task);
+  switch (task.check) {
+    case "on_roster":
+      return unit3 === void 0 ? "unknown" : state.roster.activeIds.includes(unit3) ? "kept" : "broken";
+    case "not_on_roster":
+      return unit3 === void 0 ? "unknown" : state.roster.activeIds.includes(unit3) ? "broken" : "kept";
+    case "token_worn":
+      return wornTokens(state).some((t) => t.giverId === task.holderId) ? "kept" : "broken";
+    case "no_scene_with":
+      return "kept";
+    case "rule_kept_until":
+      return "kept";
+    default:
+      return "unknown";
+  }
+}
+function sceneCounts(state, task) {
+  const d = task.deadline;
+  if (d === void 0) return true;
+  if (d.slot !== void 0) return state.day === d.day && state.slot === d.slot;
+  return state.day <= d.day;
+}
+function markReport(task, day) {
+  if (task.report === void 0) task.report = { day };
+}
+function taskChecksFromEvents(draft, ctx2, events) {
+  const p = draft.practices;
+  if (p === void 0 || p.tasks.length === 0) return [];
+  const reg = ctx2.registries;
+  const out = [];
+  const live3 = () => p.tasks.filter((t) => isOpenTask(t) && practiceLive(draft, reg, t.holderId));
+  const settle6 = (t, outcome) => {
+    out.push(...settleTask(draft, ctx2, t.id, outcome, "engine"));
+  };
+  for (const e of events) {
+    switch (e.type) {
+      case "scene_started": {
+        const present2 = Array.isArray(e.participants) ? e.participants : [];
+        for (const t of live3()) {
+          if (t.check === "no_scene_with" && t.checkArg !== void 0 && present2.includes(t.checkArg)) settle6(t, "broken");
+          else if (t.check === "slot_with_her" && present2.includes(t.holderId) && sceneCounts(draft, t)) t.sceneId = String(e.sceneId);
+        }
+        break;
+      }
+      case "scene_ended":
+        for (const t of live3()) if (t.check === "slot_with_her" && t.sceneId === e.sceneId) settle6(t, "kept");
+        break;
+      case "scene_aborted":
+        for (const t of p.tasks) if (t.sceneId === e.sceneId) delete t.sceneId;
+        break;
+      case "token_taken_off":
+        for (const t of live3()) if (t.check === "token_worn" && t.holderId === e.giverId) settle6(t, "broken");
+        break;
+      case "booking_played":
+        for (const t of live3()) if (t.check === "booking_kept" && (t.bookingId === void 0 ? t.holderId === e.unitId : t.bookingId === e.bookingId)) settle6(t, "kept");
+        break;
+      case "booking_cancelled":
+      case "booking_lapsed":
+        for (const t of live3()) if (t.check === "booking_kept" && t.bookingId !== void 0 && t.bookingId === e.bookingId) settle6(t, e.lost === true ? "void" : "broken");
+        break;
+      case "rule_broken":
+        for (const t of live3()) if (t.check === "rule_kept_until" && t.checkArg === e.ruleId) settle6(t, "broken");
+        break;
+      case "dm_sent":
+        for (const t of live3()) if (t.check === "dm_report" && t.holderId === e.unitId) markReport(t, draft.day);
+        break;
+      case "expedition_ended": {
+        const last = draft.lastExpedition;
+        const party = last !== void 0 && last.id === e.reportId ? last.party : void 0;
+        if (party === void 0) break;
+        for (const t of live3()) {
+          if (t.field !== true || !ROSTER_CHECKS2.includes(t.check)) continue;
+          const unit3 = subjectOf3(t);
+          if (unit3 === void 0) settle6(t, "void");
+          else settle6(t, party.includes(unit3) === (t.check === "on_roster") ? "kept" : "broken");
+        }
+        break;
+      }
+      default:
+    }
+  }
+  return out;
+}
+function atDeadline(draft, task) {
+  const now = verdictNow(draft, task);
+  if (now !== "unknown") return now;
+  if (task.check === "on_roster" || task.check === "not_on_roster") return "void";
+  if (task.check === "dm_report" || task.check === "model") return task.report !== void 0 ? "kept" : "broken";
+  return "broken";
+}
+function deadlineSweep(draft, ctx2) {
+  const p = draft.practices;
+  if (p === void 0) return [];
+  const reg = ctx2.registries;
+  const out = [];
+  for (const task of [...p.tasks]) {
+    if (task.kind !== "task" || task.routine === true || !practiceLive(draft, reg, task.holderId)) continue;
+    if (task.status === "offered") {
+      if (task.deadline !== void 0 && task.deadline.day < draft.day) {
+        task.status = "void";
+        out.push({ type: "task_void", taskId: task.id, holderId: task.holderId, what: "task", reason: "expired" });
+      }
+      continue;
+    }
+    if (task.status !== "open") continue;
+    if (task.check === "token_worn" && verdictNow(draft, task) === "broken") {
+      out.push(...settleTask(draft, ctx2, task.id, "broken", "engine"));
+      continue;
+    }
+    if (task.deadline === void 0 || task.deadline.day > draft.day) continue;
+    out.push(...settleTask(draft, ctx2, task.id, atDeadline(draft, task), "engine"));
+  }
+  return out;
+}
+
 // src/engine/practice/issue.ts
 var WRITERS = { task: writeTask };
 function fallbackOutput2(state, reg, request) {
@@ -37463,6 +37640,7 @@ function expiry(draft) {
 function practiceDayStep(draft, ctx2) {
   if (practiceHolders(draft, ctx2.registries).length === 0) return [];
   const events = [];
+  events.push(...deadlineSweep(draft, ctx2));
   events.push(...requestsFallBack(draft, ctx2));
   events.push(...newPractices(draft, ctx2));
   events.push(...expiry(draft));
@@ -37472,6 +37650,7 @@ function practiceDayStep(draft, ctx2) {
 // src/engine/actions/practice.ts
 registerWithdrawal(withdrawPractices);
 registerDayEndStep("dm_rumors", practiceDayStep);
+registerAfterAction(taskChecksFromEvents);
 var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("practice/issue", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.requestId !== "string") throw new Error("practice/issue needs { requestId }.");
@@ -60098,7 +60277,7 @@ var isTyping = (t) => {
   return el.tagName === "INPUT" && TEXT_INPUT_TYPES.has(el.type ?? "");
 };
 var prefersReducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-function subjectOf3(el) {
+function subjectOf4(el) {
   const raw = el.getAttribute("data-analyze") ?? "";
   return parseSubject(raw, el.getAttribute("data-analyze-ctx")) ?? { address: raw, source: "", id: "", data: {} };
 }
@@ -60212,7 +60391,7 @@ function attachAnalyzer(root, deps) {
     closeTimer = clear(closeTimer);
     const rect = target.getBoundingClientRect();
     anchor = at ?? { x: rect.left, y: rect.bottom };
-    stack = [subjectOf3(target)];
+    stack = [subjectOf4(target)];
     pinned = opts?.pinned === true;
     if (!panelEl) {
       panelEl = h("div", { class: "alius-analyze", tabindex: "-1" });
