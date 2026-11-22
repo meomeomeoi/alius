@@ -9,6 +9,7 @@ import { rollSecretNight, secretDayStep } from './secrets';
 import { tokenDayStep } from './tokens';
 import { wagerDayStep } from './wagers';
 import { forgetDynamic, holdsDynamic } from '../dynamic/forget';
+import { forgetPractices, holdsPractices } from '../practice/forget';
 import { forgetPersonal, holdsPersonal } from './state';
 
 /**
@@ -25,5 +26,7 @@ export function personalDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   }
   // P15: the same for what the dynamic holds of her (a no-op without it; draws nothing)
   const gone = draft.squad.filter((u) => !isLiving(u) && holdsDynamic(draft, u.id)).flatMap((u) => forgetDynamic(draft, u.id));
+  // P16: and of the practices (the same sweep, idempotent: a removal already dropped them; a no-op without `practices`)
+  gone.push(...draft.squad.filter((u) => !isLiving(u) && holdsPractices(draft, u.id)).flatMap((u) => forgetPractices(draft, u.id)));
   return [...gone, ...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx), ...rollClaims(draft, ctx), ...tokenDayStep(draft, ctx), ...wagerDayStep(draft, ctx), ...secretDayStep(draft, ctx.registries), ...rollSecretNight(draft, ctx)];
 }

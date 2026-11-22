@@ -4,6 +4,7 @@ import type { Practice, PracticeCategory, ProfileStyle } from '../dynamic/types'
 import type { DynamicCampaign, DynamicRelation, DynamicUndo } from '../dynamic/state';
 import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
+import type { PracticeState } from '../practice/state';
 import type { PhysicsRun } from '../physics/state';
 import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
@@ -1287,6 +1288,8 @@ export interface CampaignState {
   life?: LifeState;
   /** P15: the dynamic (holders, probes, claims, knowledge). Written by the setup or `dynamic/set_setup` while a practice category is on; absent = off. */
   dynamic?: DynamicCampaign;
+  /** P16: what the holders do with the commander (requests, tasks, punishments, demonstrations, the hold). Written by `ensurePractices` on the first write; absent while nobody has been live (old saves too). */
+  practices?: PracticeState;
   /** P11b: set only when the campaign began with a head start (`days > 0`); absent = 0. World time never moves: `day` is still 1 at the start. */
   headStart?: HeadStartState;
   /**

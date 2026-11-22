@@ -23140,6 +23140,118 @@ function forgetDynamic(draft, unitId) {
   return events;
 }
 
+// src/engine/practice/forget.ts
+function holdsPractices(state, unitId) {
+  const p = state.practices;
+  if (p === void 0) return false;
+  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId)) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0;
+}
+var isOpen = (status) => status === "offered" || status === "open" || status === "negotiating" || status === "accepted";
+var tagsOf4 = (entry) => {
+  const tags = entry?.contentTags;
+  return Array.isArray(tags) ? tags.map(String) : [];
+};
+var voided = (taskId, holderId, what, reason) => ({ type: "task_void", taskId, holderId, what, reason });
+function cancelHeld(draft, held3) {
+  const bookings = draft.personal?.bookings;
+  if (bookings === void 0) return;
+  const touched = [];
+  for (const b of bookings) if (held3.bookingIds.includes(b.id) && b.status === "booked") {
+    b.status = "cancelled";
+    touched.push(b);
+  }
+  for (const t of touched) {
+    const same = bookings.filter((b) => b.status === "booked" && b.day === t.day && b.slot === t.slot);
+    for (const b of same) if (same.length > 1) b.conflict = true;
+    else delete b.conflict;
+  }
+}
+function endHold(draft, p, reason) {
+  const held3 = p.held;
+  cancelHeld(draft, held3);
+  if (p.alarm !== void 0 && (held3.alarm === p.alarm.id || p.alarm.holderId === held3.by)) delete p.alarm;
+  delete p.held;
+  return { type: "hold_released", holderId: held3.by, reason };
+}
+function endHandover(h2, reason) {
+  return { type: "handover_ended", handoverId: h2.id, holderId: h2.holderId, reason };
+}
+function forgetPractices(draft, unitId) {
+  const p = draft.practices;
+  if (p === void 0 || !holdsPractices(draft, unitId)) return [];
+  const events = [];
+  p.requests = p.requests.filter((r) => r.holderId !== unitId && r.targetUnitId !== unitId);
+  for (const t of p.tasks) if (t.holderId === unitId && isOpen(t.status)) events.push(voided(t.id, unitId, "task", "gone"));
+  p.tasks = p.tasks.filter((t) => t.holderId !== unitId);
+  for (const x of p.punishments) if (x.holderId === unitId && isOpen(x.status)) events.push(voided(x.id, unitId, "punishment", "gone"));
+  p.punishments = p.punishments.filter((x) => x.holderId !== unitId);
+  for (const x of p.demonstrations) if (x.holderId === unitId && (x.status === "offered" || x.status === "open")) events.push(voided(x.id, unitId, "demonstration", "gone"));
+  p.demonstrations = p.demonstrations.filter((x) => x.holderId !== unitId);
+  for (const t of p.tasks) if (t.targetUnitId === unitId && isOpen(t.status)) {
+    t.status = "void";
+    events.push(voided(t.id, t.holderId, "task", "gone"));
+  }
+  for (const x of p.punishments) if (x.forUnitId === unitId && isOpen(x.status)) {
+    x.status = "void";
+    events.push(voided(x.id, x.holderId, "punishment", "gone"));
+  }
+  for (const x of p.demonstrations) x.audienceIds = x.audienceIds.filter((id) => id !== unitId);
+  if (p.held?.by === unitId) events.push(endHold(draft, p, "gone"));
+  if (p.alarm?.holderId === unitId) delete p.alarm;
+  if (p.permission?.holderId === unitId) delete p.permission;
+  p.restrictions = p.restrictions.filter((r) => r.holderId !== unitId);
+  delete p.cold[unitId];
+  delete p.postures[unitId];
+  if (p.call?.holderId === unitId) delete p.call;
+  if (p.slap?.holderId === unitId) delete p.slap;
+  delete p.offences[unitId];
+  p.records = p.records.filter((r) => r.holderId !== unitId);
+  for (const h2 of p.handovers) if (h2.holderId === unitId) events.push(endHandover(h2, "gone"));
+  p.handovers = p.handovers.filter((h2) => h2.holderId !== unitId);
+  if (p.asked?.holderId === unitId) delete p.asked;
+  if (p.unfair !== void 0) {
+    delete p.unfair[unitId];
+    if (Object.keys(p.unfair).length === 0) delete p.unfair;
+  }
+  if (p.lastThreat?.unitId === unitId) delete p.lastThreat;
+  if (p.verdictScene !== void 0) {
+    delete p.verdictScene[unitId];
+    if (Object.keys(p.verdictScene).length === 0) delete p.verdictScene;
+  }
+  return events;
+}
+function withdrawPractices(draft, reg, changed) {
+  const p = draft.practices;
+  if (p === void 0 || changed.length === 0) return [];
+  const events = [];
+  const hit = (tags) => tags.some((t) => changed.includes(t));
+  p.requests = p.requests.filter((r) => r.seedIds.length === 0 || !r.seedIds.every((id) => hit(tagsOf4(reg.practiceSeeds.get(id)))));
+  for (const t of p.tasks) if (isOpen(t.status) && hit(t.tags)) {
+    t.status = "void";
+    events.push(voided(t.id, t.holderId, "task", "content"));
+  }
+  for (const x of p.punishments) if (isOpen(x.status) && hit(tagsOf4(reg.holderPunishments.get(x.entryId)))) {
+    x.status = "void";
+    events.push(voided(x.id, x.holderId, "punishment", "content"));
+  }
+  for (const x of p.demonstrations) if ((x.status === "offered" || x.status === "open") && hit(x.tags)) {
+    x.status = "void";
+    events.push(voided(x.id, x.holderId, "demonstration", "content"));
+  }
+  if (p.held !== void 0 && [...reg.bookingKinds.values()].some((k) => k.held === true && hit(tagsOf4(k)))) events.push(endHold(draft, p, "content"));
+  const enabled = draft.content?.enabled ?? [];
+  const needs = EFFECT_NEEDS.slap;
+  if (p.slap !== void 0 && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;
+  if (p.permission !== void 0) {
+    const rule = draft.bonds?.rules.find((r) => r.id === p.permission.ruleId);
+    if (rule !== void 0 && hit(tagsOf4(reg.relationshipRuleTemplates.get(rule.templateId)))) {
+      if (rule.status === "proposed" || rule.status === "negotiating") delete p.permission;
+      else delete p.permission.asked;
+    } else if (rule === void 0) delete p.permission;
+  }
+  return events;
+}
+
 // src/engine/leash/use.ts
 var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
@@ -23300,7 +23412,7 @@ function removeFromService(draft, unitId, status, ctx2) {
   forgetBonds(draft, unitId);
   forgetPower(draft, unitId);
   forgetPersonal(draft, unitId);
-  const gone3 = forgetDynamic(draft, unitId);
+  const gone3 = [...forgetDynamic(draft, unitId), ...forgetPractices(draft, unitId)];
   forgetNotes(draft, unitId);
   forgetSpecial(draft, unitId);
   forgetWarden(draft, unitId);
@@ -33892,6 +34004,7 @@ function personalDayStep(draft, ctx2) {
     }
   }
   const gone3 = draft.squad.filter((u) => !isLiving(u) && holdsDynamic(draft, u.id)).flatMap((u) => forgetDynamic(draft, u.id));
+  gone3.push(...draft.squad.filter((u) => !isLiving(u) && holdsPractices(draft, u.id)).flatMap((u) => forgetPractices(draft, u.id)));
   return [...gone3, ...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries), ...rollSecretNight(draft, ctx2)];
 }
 
@@ -36664,6 +36777,9 @@ registerAfterAction((draft, _ctx, events) => {
   for (const e of events) if (e.type === "scene_ended" || e.type === "scene_aborted") x.open.offers = x.open.offers.filter((o) => o.sceneId !== e.sceneId);
   return [];
 });
+
+// src/engine/actions/practice.ts
+registerWithdrawal(withdrawPractices);
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -60093,7 +60209,7 @@ function createShell(deps) {
   let hubHost = null;
   let device = null;
   let hubRender = defaultHub;
-  const isOpen = () => root !== null;
+  const isOpen2 = () => root !== null;
   function toast(kind, text2, opts) {
     if (toasts) {
       toasts.show(kind, text2, opts);
@@ -60212,7 +60328,7 @@ function createShell(deps) {
   function defaultHub(host) {
     host.append(h("button", { type: "button", class: "alius-btn alius-open-pda", "data-open-pda": true, onclick: () => api.setDevice(true) }, "OPEN PDA [TAB]"));
   }
-  const isDeviceUp = () => isOpen() && router.current() === "pda";
+  const isDeviceUp = () => isOpen2() && router.current() === "pda";
   const onHubLayer = () => router.current() === "hub" || router.current() === "pda";
   function updateTitle() {
     if (titleEl) titleEl.textContent = router.current() === "hub" ? "\u2554\u2550[ ALIUS // OUTPOST ]" : "\u2554\u2550[ ALIUS // PDA ]";
@@ -60374,10 +60490,10 @@ function createShell(deps) {
   const api = {
     open: open3,
     close,
-    isOpen,
+    isOpen: isOpen2,
     showScreen(id) {
       const wasUp = isDeviceUp();
-      const inPlace = isOpen() && (id === "pda" || id === "hub") && onHubLayer() && renderedScreen !== null && device !== null;
+      const inPlace = isOpen2() && (id === "pda" || id === "hub") && onHubLayer() && renderedScreen !== null && device !== null;
       router.go(id);
       if (inPlace) {
         renderedScreen = id;
@@ -60390,7 +60506,7 @@ function createShell(deps) {
       } else {
         renderView();
       }
-      if (isOpen() && isDeviceUp() !== wasUp) {
+      if (isOpen2() && isDeviceUp() !== wasUp) {
         deps.onDevice?.(isDeviceUp());
         deps.sound?.play(isDeviceUp() ? "open" : "close");
       }
@@ -60399,7 +60515,7 @@ function createShell(deps) {
     showTab(id) {
       if (lockedTabs2.has(id)) return;
       tab = id;
-      if (!isOpen()) {
+      if (!isOpen2()) {
         router.go("pda");
         return;
       }
@@ -60411,23 +60527,23 @@ function createShell(deps) {
     },
     registerHub(render) {
       hubRender = render;
-      if (isOpen() && onHubLayer()) renderHub2();
+      if (isOpen2() && onHubLayer()) renderHub2();
     },
     isDeviceUp,
     setDevice(up) {
-      if (!isOpen() || up === isDeviceUp()) return;
+      if (!isOpen2() || up === isDeviceUp()) return;
       if (up) api.showScreen("pda");
       else if (router.current() === "pda") api.showScreen("hub");
     },
     registerTab(id, render) {
       tabRenderers.set(id, render);
-      if (isOpen() && isDeviceUp() && tab === id) renderTab();
+      if (isOpen2() && isDeviceUp() && tab === id) renderTab();
     },
     registerScreen(id, render, opts) {
       router.register(id, render);
       if (opts?.refresh) screenRefresh.set(id, opts.refresh);
       else screenRefresh.delete(id);
-      if (isOpen() && router.current() === id) renderView();
+      if (isOpen2() && router.current() === id) renderView();
     },
     setTabLocked(id, locked) {
       if (id === "home") return;
@@ -60440,7 +60556,7 @@ function createShell(deps) {
         if (next) {
           tab = next;
           tabBar?.setSelected(next);
-          if (isOpen() && isDeviceUp()) renderTab();
+          if (isOpen2() && isDeviceUp()) renderTab();
         }
       }
     },
@@ -60483,11 +60599,11 @@ function createShell(deps) {
   function onKeyDown(e) {
     if (e.altKey && e.shiftKey && (e.code === "KeyA" || e.key.toLowerCase() === "a")) {
       e.preventDefault();
-      if (isOpen()) close();
+      if (isOpen2()) close();
       else open3();
       return;
     }
-    if (!isOpen()) return;
+    if (!isOpen2()) return;
     if (e.key === "Escape" && modals?.isOpen()) {
       e.preventDefault();
       e.stopPropagation();

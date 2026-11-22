@@ -32,6 +32,7 @@ import './engine/actions/moments'; // registers moment/answer (P15a)
 import './engine/actions/physics'; // registers the physics actions (P15a)
 import './engine/actions/life'; // registers life/set_frequency and, later, the life and profile actions (P14c)
 import './engine/actions/dynamic'; // registers the profile/set_practice and the dynamic's actions (P15)
+import './engine/actions/practice'; // registers the practices' hooks (P16), after the dynamic
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
 import { sanitizeVignette, type VignetteInput } from './llm/calls/activityVignette'; // registers the activity_vignette call type
