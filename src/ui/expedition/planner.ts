@@ -80,7 +80,10 @@ export function renderPlanner(host: HTMLElement, ctx: PlannerCtx): void {
   }
   const region = reg.regions.get(info.regionId);
   const end = SLOT_INDEX[state.slot] + info.slots === 2 ? 'returns in the Evening' : 'returns after the day ends';
+  const without = ctx.target.withoutCommand === true;
+  const keeper = without ? state.practices?.alarm?.holderId : undefined; // the holder who keeps the commander cannot go with the squad
   root.append(
+    ...(without ? [h('p', { class: 'alius-banner', 'data-without-command': '' }, 'The commander is held back: the squad goes without command (no orders, no command points).')] : []),
     h('h2', {}, `[ PLAN ] ${info.title}`),
     h('p', {}, `${String(region?.name ?? info.regionId)} · DANGER ${info.danger} · OBJECTIVE: ${info.objective}`),
     h('p', {}, `DURATION ${info.slots} SLOTS (${end})`),
@@ -94,7 +97,7 @@ export function renderPlanner(host: HTMLElement, ctx: PlannerCtx): void {
 
   root.append(h('h3', {}, 'SQUAD'));
   for (const u of living) {
-    const reason = unitReason(state, u);
+    const reason = u.id === keeper ? 'Keeps the commander' : unitReason(state, u);
     const picked = draft.picked.includes(u.id);
     const box = h('input', {
       type: 'checkbox', 'data-unit': u.id, checked: picked, disabled: reason !== null || (!picked && full),

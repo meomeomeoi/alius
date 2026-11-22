@@ -16,6 +16,8 @@ import { h } from '../dom';
 import { coachStrip, type CoachCtx } from '../onboarding/coach';
 import { herCallChip } from '../power/chips';
 import { renderHerCallCard } from './herCallCard';
+import { renderSquadCallCard } from './squadCallCard';
+import { analyzeAttrs } from '../analyze/mark';
 import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
 import { renderReport } from './report';
@@ -76,6 +78,8 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     const marked = state.missions.active.find((m) => m.id === exp.missionId);
     const chip = marked ? herCallChip(state, marked) : null;
     if (chip) root.append(h('p', {}, chip));
+    // P16: the commander is held back and the squad is out alone: no orders, no command points, no one exposed, and the squad decides the events
+    if (exp.withoutCommand !== undefined) root.append(h('p', {}, h('span', { class: 'alius-chip', 'data-without-command': '', ...analyzeAttrs('glossary:without_command', { unitId: exp.withoutCommand.holderId }) }, '[ WITHOUT COMMAND ]')));
     root.append(h('p', {}, `SUPPLIES ${exp.supplies} · LOOT ${exp.loot.length}`));
     const strip = h('div', { class: 'alius-party' });
     const able = new Set(ableParty(state));
@@ -143,7 +147,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     }
     const enc = exp.pending.encounter;
     panel.append(h('div', { 'data-enemies': '' }, ...enc.enemies.map((e) => h('p', {}, `${defaultEnemyName(reg, e.enemyId, e.affixes)} · LVL ${e.level}`))));
-    const needsCover = enc.exposesCommander === true;
+    const needsCover = enc.exposesCommander === true && exp.withoutCommand === undefined; // P16: with no commander on the run nobody is exposed
     if (needsCover) {
       const select = h('select', { name: 'cover', 'aria-label': 'Cover unit' },
         h('option', { value: '' }, '— choose a cover unit —'),
@@ -165,6 +169,12 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
   function eventPanel(root: HTMLElement, state: CampaignState): void {
     const pending = state.expedition!.pending;
     if (pending?.kind !== 'event') return;
+    // P16: the squad decided at the node of a run without the commander: the notice replaces the options
+    const squad = renderSquadCallCard(state, reg, () => controller.ackSquadCall());
+    if (squad) {
+      root.append(h('section', { class: 'alius-section alius-event' }, squad));
+      return;
+    }
     // P9e: a soldier took the decision herself: the notice replaces the options
     const notice = renderHerCallCard(state, reg, () => controller.ackHerCall());
     if (notice) {

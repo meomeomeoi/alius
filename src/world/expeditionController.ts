@@ -8,7 +8,8 @@ import { sanitizeRecap, type RecapInput } from '../llm/calls/expeditionRecap';
 import type { StartOptions } from '../scene/sceneController';
 import type { WorldDeps } from './deps';
 
-export type PlanTarget = { missionId: string } | { poi: { regionId: string; poiId: string } };
+/** What the commander plans: a mission or a point of interest. `withoutCommand` (P16: `[ SEND THE SQUAD ]` on a kept alarm) sends the squad with no commander; the planner leaves the holder out. */
+export type PlanTarget = ({ missionId: string } | { poi: { regionId: string; poiId: string } }) & { withoutCommand?: true };
 
 export interface ExpeditionController {
   plan(target: PlanTarget): void;
@@ -29,6 +30,8 @@ export interface ExpeditionController {
   acknowledge(): void;
   /** P9e: closes an event node a soldier decided on her own (`acknowledge` is the after-action report's). */
   ackHerCall(): void;
+  /** P16: closes an event node the squad decided without the commander. */
+  ackSquadCall(): void;
   debrief(unitIds: string[]): Promise<boolean>;
 }
 
@@ -50,7 +53,7 @@ export function createExpedition(deps: WorldDeps & {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
     const failed = events.find((e) => e.type === 'error');
     const voteNeeded = failed?.code === 'vote_needed' && deps.requestVote !== undefined; // the vote panel answers it, not a toast
-    if (failed && failed.code !== 'chat_changed' && !voteNeeded) deps.toast('error', String(failed.message ?? failed.code));
+    if (failed && failed.code !== 'chat_changed' && !voteNeeded && failed.handled !== true) deps.toast('error', String(failed.message ?? failed.code));
     return { ok: !failed, events };
   }
 
@@ -69,6 +72,7 @@ export function createExpedition(deps: WorldDeps & {
         environment: String(region?.environmentPrompt ?? ''),
         outcome: report.outcome,
         lines: reportLines(report, s, reg),
+        ...(report.withoutCommand !== undefined ? { withoutCommand: true as const } : {}), // P16: the commander was not with the squad
         units: report.party.map((id) => {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? '')?.name ?? u?.roleId ?? 'soldier') };
@@ -145,6 +149,7 @@ export function createExpedition(deps: WorldDeps & {
     return() { act('expedition/return'); },
     acknowledge() { act('expedition/ack_report'); },
     ackHerCall() { act('expedition/ack_her_call'); },
+    ackSquadCall() { act('expedition/ack_squad_call'); },
 
     async requestRecap() {
       const report = state()?.lastExpedition;

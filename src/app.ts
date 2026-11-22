@@ -96,6 +96,8 @@ import { resetDynamicSection } from './ui/dynamic/section';
 import { openOverrideOf, overrideOpen } from './engine/warden';
 import { isQuietNight, slotIndex } from './engine/calendar';
 import { sensoryNow } from './engine/practice/hold';
+import { renderAlarmCard, type AlarmShown } from './ui/practice/alarmCard';
+import { drawHeldStrip } from './ui/practice/heldStrip';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
 import { fileLeashRequest, type LeashFormOpts } from './ui/leash/requestForm';
@@ -642,7 +644,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext }); // P14b: the weekly review of how she has changed
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
-  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a), openPlanner: (t) => { expedition.plan({ ...t, withoutCommand: true }); showExpedition(); } }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -1034,6 +1036,74 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       herPick: herPickView(s, registries), // P9c: a day the commander obeys her
       generation: { ui: genUi, state: s, id: open.id },
     });
+  }
+
+  /**
+   * P16: the alarm card in a modal (her answer to a duty that came while the commander is held). ACCEPT, ARGUE and DEFY answer her keep through the practice controller; SEND THE SQUAD opens the
+   * planner without the commander. A card that only tells (a late release that then failed its own departure check) carries OK.
+   */
+  function openAlarmCard(shown: AlarmShown | null): void {
+    const s = state;
+    if (!s) return;
+    const done = (): void => shell.closeModal();
+    const card = renderAlarmCard(s, registries, shown, {
+      accept: (id) => { done(); void practice.answerAlarm(id, 'accept'); },
+      argue: (id) => { done(); void practice.answerAlarm(id, 'argue'); },
+      defy: (id) => { done(); void practice.answerAlarm(id, 'defy'); },
+      sendSquad: (id) => { done(); practice.sendSquad(id); },
+      dismiss: done,
+    });
+    if (!card) return;
+    shell.open();
+    void shell.modal({ title: 'ALARM', body: h('div', {}, card), actions: [] });
+  }
+
+  /** True while the alarm of a refused action is being raised (the raise itself is never refused for a hold, so this only guards a loop). */
+  let raisingAlarm = false;
+
+  /**
+   * P16: a launch or a night knock was refused because the commander is held (`held_alarm`): the duty is weighed against the hold now. The holder's answer decides: `release` lets the launch go on at once,
+   * `release_late` too (the card says why when it then fails its own departure check), `keep` shows the card with ACCEPT, ARGUE, DEFY and SEND THE SQUAD. A knock that was let through is answered by the
+   * player again (the night controller opens it). The refusal carries `handled` so no toast repeats the card.
+   */
+  function raiseHeldAlarm(action: Action, events: EngineEvent[]): EngineEvent[] {
+    const chat = st.getActiveChat()?.chatId;
+    const night = action.type === 'night/open';
+    const handled = events.map((e) => (e.type === 'error' && e.code === 'held_alarm' ? { ...e, handled: true } : e));
+    raisingAlarm = true;
+    let raised: EngineEvent[];
+    try {
+      raised = api.dispatch({ type: 'practice/raise_alarm', payload: { kind: night ? 'night' : 'launch', payload: night ? { entryId: state?.calendar.nightEvent?.id } : action.payload } }, { expectChatId: chat });
+    } finally {
+      raisingAlarm = false;
+    }
+    const answered = raised.find((e) => e.type === 'hold_alarm');
+    if (answered === undefined) {
+      // an alarm of hers is already open (the card was put away): show it again
+      if (state?.practices?.alarm?.answer === 'keep' && state.practices.alarm.accepted !== true) openAlarmCard(null);
+      return [...handled, ...raised];
+    }
+    const holderId = String(answered.holderId);
+    const name = state?.squad.find((u) => u.id === holderId)?.displayName ?? 'She';
+    const kind = night ? ('night' as const) : ('launch' as const);
+    if (answered.answer === 'keep') {
+      openAlarmCard(null);
+      return [...handled, ...raised];
+    }
+    const late = answered.answer === 'release_late';
+    if (night) {
+      toast('info', late ? `${name} let the commander go late: the knock waited.` : `${name} let the commander go. The knock can be answered.`);
+      return [...handled, ...raised];
+    }
+    const again = api.dispatch(action, { expectChatId: chat }); // the launch she held back goes on
+    const failed = again.find((e) => e.type === 'error');
+    if (failed) {
+      if (late) openAlarmCard({ holderId, kind, answer: 'release_late', reason: String(failed.message ?? failed.code) });
+      else toast('error', String(failed.message ?? failed.code));
+      return [...handled, ...raised, ...again];
+    }
+    if (late) toast('info', `${name} let the commander go late: the squad waited.`);
+    return [...raised, ...again];
   }
 
   function openDilemmaModal(): void {
@@ -2263,7 +2333,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       void power.requestVote(action);
       return events;
     }
-    if (failed) toast('error', String(failed.message ?? failed.code));
+    if (failed && failed.handled !== true) toast('error', String(failed.message ?? failed.code));
     return events;
   }
 
@@ -2280,6 +2350,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
     sensory: () => (state !== null && sensoryNow(state, registries)), // P16: a sensory hold or a blindfold dims the device
+    held: (host) => { // P16: the HELD strip while the commander is kept in her quarters
+      if (state === null) host.replaceChildren();
+      else drawHeldStrip(host, state, registries, { sensory: sensoryNow(state, registries), askRelease: () => { practice.askRelease(); }, sendSquad: (id) => { practice.sendSquad(id); } });
+    },
     lastBuild: () => context.lastBuild(), // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
     marks: (layer) => {
@@ -2804,6 +2878,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (r.events.some((e) => e.type === 'error' && /deal with it first/.test(String(e.message)))) openConfrontationModal();
       shell.refresh();
       followUps(r.events);
+      // P16: a launch or a night knock refused because the commander is held: the holder's duty-or-hold answer comes now (a refused raise or answer is never raised again)
+      if (!raisingAlarm && (action.type === 'expedition/start' || action.type === 'night/open') && r.events.some((e) => e.type === 'error' && e.code === 'held_alarm')) return raiseHeldAlarm(action, r.events);
       return r.events;
     },
 

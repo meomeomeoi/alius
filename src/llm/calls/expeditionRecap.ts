@@ -10,6 +10,8 @@ export interface RecapInput {
   /** The deterministic after-action report lines: the only facts the recap may use. */
   lines: string[];
   units: Array<{ name: string; role: string }>;
+  /** P16: the squad ran without the commander (a holder kept the commander in her quarters): one more fact for the recap. Absent: the prompt is as it always was. */
+  withoutCommand?: true;
 }
 
 const LABEL = /^\s*(?:\*\*|__)?\s*(?:narrator|recap|report|after-action report|summary|assistant|ai|chronicle|story)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*/i;
@@ -48,6 +50,7 @@ registerCallType<string>({
       `Squad: ${i.units.map((u) => `${u.name} (${u.role})`).join(', ')}`,
       '<report>',
       ...i.lines.map((l) => l.replace(/<\/?report>/gi, '')),
+      ...(i.withoutCommand === true ? ['The commander was not with the squad.'] : []),
       '</report>',
       'Write the report.',
     ].join('\n');

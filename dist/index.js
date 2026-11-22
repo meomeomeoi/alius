@@ -43430,6 +43430,33 @@ function createPractice(deps) {
       if (done) deps.refreshContext();
       return done;
     },
+    askRelease() {
+      const done = ok(deps.app.dispatch({ type: "practice/ask_release", payload: {} }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    async answerAlarm(alarmId, answer) {
+      const alarm = state()?.practices?.alarm;
+      if (alarm === void 0 || alarm.id !== alarmId) return false;
+      const events = deps.app.dispatch({ type: "practice/answer_alarm", payload: { alarmId, answer } }, { expectChatId: chatId() });
+      if (!ok(events)) return false;
+      const scene = answer === "argue" ? events.find((e) => e.type === "hold_alarm" && e.phase === "argue")?.scene : void 0;
+      if (scene !== void 0 && deps.startScene !== void 0 && !await deps.startScene(scene)) deps.toast("error", "The scene did not open.");
+      if (answer === "defy" && alarm.kind === "launch") ok(deps.app.dispatch({ type: "expedition/start", payload: alarm.payload }, { expectChatId: chatId() }));
+      deps.refreshContext();
+      return true;
+    },
+    sendSquad(alarmId) {
+      const alarm = state()?.practices?.alarm;
+      const p = alarm?.payload;
+      const target = typeof p?.missionId === "string" ? { missionId: p.missionId } : p?.poi !== void 0 ? { poi: p.poi } : void 0;
+      if (alarm === void 0 || alarm.id !== alarmId || target === void 0 || deps.openPlanner === void 0) {
+        deps.toast("error", "The squad cannot be sent from here.");
+        return false;
+      }
+      deps.openPlanner(target);
+      return true;
+    },
     async idle() {
       while (flight) await flight.catch(() => {
       });
@@ -46109,6 +46136,102 @@ function renderDynamicSection(host, ctx2) {
   host.classList.add("alius-dynamic-section");
   host.setAttribute("data-dynamic-section", unitId);
   return true;
+}
+
+// src/ui/practice/alarmCard.ts
+var LINES = {
+  keep: {
+    launch: "AUTHOR TO WRITE: The squad can go without you. You stay where I put you.",
+    deadline: "AUTHOR TO WRITE: The mission will not wait for you, and neither will I. Send them, or let it fail.",
+    night: "AUTHOR TO WRITE: Let them knock. You are not leaving this room."
+  },
+  release_late: {
+    launch: "AUTHOR TO WRITE: Go, then. They have waited long enough for you.",
+    deadline: "AUTHOR TO WRITE: Fine. The squad waited on you. Do not make it a habit.",
+    night: "AUTHOR TO WRITE: Answer your door. Whoever it is has waited."
+  },
+  release: {
+    launch: "AUTHOR TO WRITE: Go. The squad needs you more than I do.",
+    deadline: "AUTHOR TO WRITE: This one cannot wait. Go.",
+    night: "AUTHOR TO WRITE: Go and see who it is."
+  }
+};
+var TITLES = { launch: "A LAUNCH WAITS", deadline: "A MISSION IS DUE", night: "A KNOCK AT THE DOOR" };
+function renderAlarmCard(state, reg, shown2, handlers2) {
+  const alarm = state.practices?.alarm;
+  const open3 = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted !== true ? alarm : void 0;
+  const holderId = open3?.holderId ?? shown2?.holderId;
+  const kind = open3?.kind ?? shown2?.kind;
+  const answer = open3 !== void 0 ? "keep" : shown2?.answer;
+  const unit3 = holderId === void 0 ? void 0 : state.squad.find((u) => u.id === holderId);
+  if (unit3 === void 0 || kind === void 0 || answer === void 0) return null;
+  const ctx2 = { unitId: unit3.id, kind };
+  const line2 = h("p", { "data-alarm-line": "", ...analyzeAttrs("glossary:alarm", ctx2) }, plainDraft(LINES[answer][kind]));
+  const body = h("div", { class: "alius-alarm-body" }, line2);
+  if (open3 !== void 0) {
+    const answers2 = h(
+      "div",
+      { class: "alius-alarm-answers" },
+      h("button", { type: "button", class: "alius-btn alius-option", "data-alarm-answer": "accept", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.accept(open3.id) }, "[ ACCEPT ]"),
+      h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-alarm-answer": "argue",
+        disabled: open3.argued === true,
+        ...analyzeNative("glossary:alarm", ctx2),
+        onclick: () => handlers2.argue(open3.id)
+      }, "[ ARGUE ]"),
+      h("button", { type: "button", class: "alius-btn alius-option", "data-alarm-answer": "defy", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.defy(open3.id) }, "[ DEFY ]"),
+      kind === "night" ? null : h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-alarm-send": "",
+        ...analyzeNative("glossary:without_command", ctx2),
+        onclick: () => handlers2.sendSquad(open3.id)
+      }, "[ SEND THE SQUAD ]")
+    );
+    body.append(answers2);
+  } else {
+    if (shown2?.reason) body.append(h("p", { class: "alius-banner", "data-alarm-reason": "", ...analyzeAttrs("glossary:alarm", ctx2) }, plainDraft(shown2.reason)));
+    body.append(h("button", { type: "button", class: "alius-btn alius-option", "data-alarm-dismiss": "", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.dismiss() }, "[ OK ]"));
+  }
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, title: TITLES[kind], from: unit3.displayName, body, accent: unitAccent(unit3.id), level: 3 });
+  card2.classList.add("alius-alarm-card");
+  card2.setAttribute("data-alarm", open3?.id ?? "told");
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit3.displayName} answers a duty`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:alarm", ctx2))) card2.setAttribute(k, v);
+  return card2;
+}
+
+// src/ui/practice/heldStrip.ts
+var SLOT_WORDS = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
+function endsWords(state, until) {
+  const slot2 = SLOT_WORDS[until.slot] ?? until.slot;
+  return until.day === state.day ? `the end of the ${slot2}` : `the end of tomorrow's ${slot2}`;
+}
+function drawHeldStrip(host, state, reg, handlers2) {
+  host.replaceChildren();
+  const held3 = heldNow(state);
+  const holder2 = held3 === null ? void 0 : state.squad.find((u) => u.id === held3.by);
+  if (held3 === null || holder2 === void 0) return;
+  const ctx2 = { unitId: holder2.id };
+  const ask = h("button", { type: "button", class: "alius-btn", "data-ask-release": "", ...analyzeNative("glossary:ask_release", ctx2), onclick: () => handlers2.askRelease() }, "[ ASK TO BE LET GO ]");
+  const alarm = state.practices?.alarm;
+  const send = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted === true && alarm.kind !== "night" ? h("button", { type: "button", class: "alius-btn", "data-held-send": "", ...analyzeNative("glossary:without_command", ctx2), onclick: () => handlers2.sendSquad(alarm.id) }, "[ SEND THE SQUAD ]") : null;
+  if (handlers2.sensory) {
+    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ask, ...send !== null ? [send] : []);
+    return;
+  }
+  const until = held3.hidden === true ? "" : ` until ${endsWords(state, held3.until)}`;
+  host.append(h(
+    "div",
+    { class: "alius-held-strip", "data-held-strip": "", role: "status" },
+    h("span", { class: "alius-chip", "data-held-chip": "", ...analyzeAttrs("glossary:held", ctx2) }, "HELD"),
+    h("span", { class: "alius-held-text" }, ` in ${holder2.displayName}'s quarters${until}. `),
+    ask,
+    send
+  ));
 }
 
 // src/ui/dilemma/routePicker.ts
@@ -49633,6 +49756,7 @@ registerCallType({
       `Squad: ${i.units.map((u) => `${u.name} (${u.role})`).join(", ")}`,
       "<report>",
       ...i.lines.map((l) => l.replace(/<\/?report>/gi, "")),
+      ...i.withoutCommand === true ? ["The commander was not with the squad."] : [],
       "</report>",
       "Write the report."
     ].join("\n");
@@ -54993,11 +55117,11 @@ var HANDOVER_WORDS = { device: "the device", key: "the key to the quarters", cal
 var SPARE_STYLES = ["cruel", "vindictive"];
 var slotsWord = (n) => `${n} slot${n === 1 ? "" : "s"}`;
 var NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven"];
-var SLOT_WORDS = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
+var SLOT_WORDS2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
 function dueWords(task, today) {
   if (task.deadline === void 0) return null;
   const days = Math.max(0, task.deadline.day - today);
-  const slot2 = task.deadline.slot === void 0 ? void 0 : SLOT_WORDS[task.deadline.slot];
+  const slot2 = task.deadline.slot === void 0 ? void 0 : SLOT_WORDS2[task.deadline.slot];
   if (days <= 1) return `${days === 0 ? "today" : "tomorrow"}${slot2 !== void 0 && days === 1 ? ` ${slot2}` : ""}${slot2 !== void 0 && days === 0 ? `, ${slot2}` : ""}`;
   const count2 = days <= 7 ? NUMBER_WORDS[days] : "several";
   return `in ${count2} days${slot2 !== void 0 ? `, in the ${slot2}` : ""}`;
@@ -57828,6 +57952,27 @@ function renderHerCallCard(state, reg, onAck) {
   return card2;
 }
 
+// src/ui/expedition/squadCallCard.ts
+function renderSquadCallCard(state, reg, onAck) {
+  const exp = state.expedition;
+  const pending4 = exp?.pending;
+  if (!exp || pending4?.kind !== "event" || !pending4.squadCall) return null;
+  const fixed = reg.dilemmaTemplates.get(pending4.templateId)?.fixed;
+  const title3 = fixed?.title ?? "A decision in the field";
+  const label2 = fixed?.options?.[pending4.squadCall.index]?.label;
+  const ctx2 = { nodeId: pending4.nodeId };
+  const body = h(
+    "div",
+    {},
+    h("p", {}, label2 ? `The squad decided without the commander: ${label2}.` : "The squad decided without the commander."),
+    h("button", { type: "button", class: "alius-btn alius-option", "data-ack-squad-call": "", ...analyzeNative("glossary:squad_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, title: title3, body, level: 3 });
+  card2.setAttribute("data-squad-call", pending4.nodeId);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:squad_call", ctx2))) card2.setAttribute(k, v);
+  return card2;
+}
+
 // src/ui/expedition/nodeMapView.ts
 function renderNodeMap(host, view) {
   const root = h("div", { class: "alius-nodemap", role: "group", "aria-label": "Expedition map" });
@@ -57905,7 +58050,10 @@ function renderPlanner(host, ctx2) {
   }
   const region = reg.regions.get(info.regionId);
   const end = SLOT_INDEX[state.slot] + info.slots === 2 ? "returns in the Evening" : "returns after the day ends";
+  const without = ctx2.target.withoutCommand === true;
+  const keeper = without ? state.practices?.alarm?.holderId : void 0;
   root.append(
+    ...without ? [h("p", { class: "alius-banner", "data-without-command": "" }, "The commander is held back: the squad goes without command (no orders, no command points).")] : [],
     h("h2", {}, `[ PLAN ] ${info.title}`),
     h("p", {}, `${String(region?.name ?? info.regionId)} \xB7 DANGER ${info.danger} \xB7 OBJECTIVE: ${info.objective}`),
     h("p", {}, `DURATION ${info.slots} SLOTS (${end})`)
@@ -57917,7 +58065,7 @@ function renderPlanner(host, ctx2) {
   const rowOf3 = (id) => draft.rows[id] ?? (defaults.front.includes(id) ? "front" : "back");
   root.append(h("h3", {}, "SQUAD"));
   for (const u of living2) {
-    const reason2 = unitReason(state, u);
+    const reason2 = u.id === keeper ? "Keeps the commander" : unitReason(state, u);
     const picked = draft.picked.includes(u.id);
     const box = h("input", {
       type: "checkbox",
@@ -58070,6 +58218,7 @@ function renderExpeditionScreen(host, ctx2) {
     const marked = state.missions.active.find((m) => m.id === exp.missionId);
     const chip2 = marked ? herCallChip(state, marked) : null;
     if (chip2) root.append(h("p", {}, chip2));
+    if (exp.withoutCommand !== void 0) root.append(h("p", {}, h("span", { class: "alius-chip", "data-without-command": "", ...analyzeAttrs("glossary:without_command", { unitId: exp.withoutCommand.holderId }) }, "[ WITHOUT COMMAND ]")));
     root.append(h("p", {}, `SUPPLIES ${exp.supplies} \xB7 LOOT ${exp.loot.length}`));
     const strip2 = h("div", { class: "alius-party" });
     const able = new Set(ableParty(state));
@@ -58145,7 +58294,7 @@ function renderExpeditionScreen(host, ctx2) {
     }
     const enc = exp.pending.encounter;
     panel.append(h("div", { "data-enemies": "" }, ...enc.enemies.map((e) => h("p", {}, `${defaultEnemyName(reg, e.enemyId, e.affixes)} \xB7 LVL ${e.level}`))));
-    const needsCover = enc.exposesCommander === true;
+    const needsCover = enc.exposesCommander === true && exp.withoutCommand === void 0;
     if (needsCover) {
       const select = h(
         "select",
@@ -58171,6 +58320,11 @@ function renderExpeditionScreen(host, ctx2) {
   function eventPanel(root, state) {
     const pending4 = state.expedition.pending;
     if (pending4?.kind !== "event") return;
+    const squad = renderSquadCallCard(state, reg, () => controller.ackSquadCall());
+    if (squad) {
+      root.append(h("section", { class: "alius-section alius-event" }, squad));
+      return;
+    }
     const notice = renderHerCallCard(state, reg, () => controller.ackHerCall());
     if (notice) {
       root.append(h("section", { class: "alius-section alius-event" }, notice));
@@ -58440,7 +58594,7 @@ function createExpedition(deps) {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
     const failed = events.find((e) => e.type === "error");
     const voteNeeded = failed?.code === "vote_needed" && deps.requestVote !== void 0;
-    if (failed && failed.code !== "chat_changed" && !voteNeeded) deps.toast("error", String(failed.message ?? failed.code));
+    if (failed && failed.code !== "chat_changed" && !voteNeeded && failed.handled !== true) deps.toast("error", String(failed.message ?? failed.code));
     return { ok: !failed, events };
   }
   deps.generations.bind("expedition.recap", {
@@ -58457,6 +58611,8 @@ function createExpedition(deps) {
         environment: String(region?.environmentPrompt ?? ""),
         outcome: report.outcome,
         lines: reportLines(report, s, reg),
+        ...report.withoutCommand !== void 0 ? { withoutCommand: true } : {},
+        // P16: the commander was not with the squad
         units: report.party.map((id) => {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? "")?.name ?? u?.roleId ?? "soldier") };
@@ -58551,6 +58707,9 @@ function createExpedition(deps) {
     },
     ackHerCall() {
       act("expedition/ack_her_call");
+    },
+    ackSquadCall() {
+      act("expedition/ack_squad_call");
     },
     async requestRecap() {
       const report = state()?.lastExpedition;
@@ -64364,6 +64523,7 @@ function createShell(deps) {
   let previousFocus = null;
   let view;
   let bannerHost;
+  let heldHost = null;
   let toasts = null;
   let modals = null;
   let tabBar = null;
@@ -64410,6 +64570,7 @@ function createShell(deps) {
     root.classList.toggle("alius-flicker", flags.flicker);
     root.classList.toggle("alius-readable", s.readableMode);
     root.classList.toggle("alius-reduced-motion", motionReduced(s));
+    if (heldHost) deps.held?.(heldHost);
     root.classList.toggle("alius-sensory", flags.sensory);
     renderStatus();
     deps.sound?.setSensory?.(flags.sensory);
@@ -64581,6 +64742,7 @@ function createShell(deps) {
     const toastHost = h("div", { class: "alius-toasts", "aria-live": "polite" });
     const modalLayer = h("div", { class: "alius-modal-layer" });
     bannerHost = h("div", { class: "alius-banner-host" });
+    heldHost = h("div", { class: "alius-held-host" });
     view = h("div", { class: "alius-view" });
     view.addEventListener("scroll", () => {
       if (view && (view.scrollTop !== 0 || view.scrollLeft !== 0)) {
@@ -64603,6 +64765,7 @@ function createShell(deps) {
           h("span", { class: "alius-frame-corner" }, "\u2550\u2557")
         ),
         bannerHost,
+        heldHost,
         view,
         h(
           "div",
@@ -64656,6 +64819,7 @@ function createShell(deps) {
     tabBar = null;
     panel = null;
     statusHost = null;
+    heldHost = null;
     hubHost = null;
     device = null;
     titleEl = null;
@@ -65155,7 +65319,10 @@ function createApp(st, deps) {
   const development = createDevelopment({ ...worldDeps, context, refreshContext: applyContext });
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext });
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) });
-  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
+  const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a), openPlanner: (t) => {
+    expedition.plan({ ...t, withoutCommand: true });
+    showExpedition();
+  } });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -65589,6 +65756,72 @@ function createApp(st, deps) {
       // P9c: a day the commander obeys her
       generation: { ui: genUi, state: s, id: open3.id }
     });
+  }
+  function openAlarmCard(shown2) {
+    const s = state;
+    if (!s) return;
+    const done = () => shell.closeModal();
+    const card2 = renderAlarmCard(s, registries, shown2, {
+      accept: (id) => {
+        done();
+        void practice.answerAlarm(id, "accept");
+      },
+      argue: (id) => {
+        done();
+        void practice.answerAlarm(id, "argue");
+      },
+      defy: (id) => {
+        done();
+        void practice.answerAlarm(id, "defy");
+      },
+      sendSquad: (id) => {
+        done();
+        practice.sendSquad(id);
+      },
+      dismiss: done
+    });
+    if (!card2) return;
+    shell.open();
+    void shell.modal({ title: "ALARM", body: h("div", {}, card2), actions: [] });
+  }
+  let raisingAlarm = false;
+  function raiseHeldAlarm(action, events) {
+    const chat = st.getActiveChat()?.chatId;
+    const night = action.type === "night/open";
+    const handled = events.map((e) => e.type === "error" && e.code === "held_alarm" ? { ...e, handled: true } : e);
+    raisingAlarm = true;
+    let raised;
+    try {
+      raised = api.dispatch({ type: "practice/raise_alarm", payload: { kind: night ? "night" : "launch", payload: night ? { entryId: state?.calendar.nightEvent?.id } : action.payload } }, { expectChatId: chat });
+    } finally {
+      raisingAlarm = false;
+    }
+    const answered = raised.find((e) => e.type === "hold_alarm");
+    if (answered === void 0) {
+      if (state?.practices?.alarm?.answer === "keep" && state.practices.alarm.accepted !== true) openAlarmCard(null);
+      return [...handled, ...raised];
+    }
+    const holderId = String(answered.holderId);
+    const name = state?.squad.find((u) => u.id === holderId)?.displayName ?? "She";
+    const kind = night ? "night" : "launch";
+    if (answered.answer === "keep") {
+      openAlarmCard(null);
+      return [...handled, ...raised];
+    }
+    const late2 = answered.answer === "release_late";
+    if (night) {
+      toast("info", late2 ? `${name} let the commander go late: the knock waited.` : `${name} let the commander go. The knock can be answered.`);
+      return [...handled, ...raised];
+    }
+    const again = api.dispatch(action, { expectChatId: chat });
+    const failed = again.find((e) => e.type === "error");
+    if (failed) {
+      if (late2) openAlarmCard({ holderId, kind, answer: "release_late", reason: String(failed.message ?? failed.code) });
+      else toast("error", String(failed.message ?? failed.code));
+      return [...handled, ...raised, ...again];
+    }
+    if (late2) toast("info", `${name} let the commander go late: the squad waited.`);
+    return [...raised, ...again];
   }
   function openDilemmaModal() {
     if (reviewOpen) return;
@@ -66731,7 +66964,7 @@ function createApp(st, deps) {
       void power.requestVote(action);
       return events;
     }
-    if (failed) toast("error", String(failed.message ?? failed.code));
+    if (failed && failed.handled !== true) toast("error", String(failed.message ?? failed.code));
     return events;
   }
   const SHORT_NAME = (reg, registry2, id) => String(reg[registry2].get(id)?.name ?? id);
@@ -66748,6 +66981,14 @@ function createApp(st, deps) {
     analyze: { registries: () => registries },
     sensory: () => state !== null && sensoryNow(state, registries),
     // P16: a sensory hold or a blindfold dims the device
+    held: (host) => {
+      if (state === null) host.replaceChildren();
+      else drawHeldStrip(host, state, registries, { sensory: sensoryNow(state, registries), askRelease: () => {
+        practice.askRelease();
+      }, sendSquad: (id) => {
+        practice.sendSquad(id);
+      } });
+    },
     lastBuild: () => context.lastBuild(),
     // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
@@ -67288,6 +67529,7 @@ function createApp(st, deps) {
       if (r.events.some((e) => e.type === "error" && /deal with it first/.test(String(e.message)))) openConfrontationModal();
       shell.refresh();
       followUps(r.events);
+      if (!raisingAlarm && (action.type === "expedition/start" || action.type === "night/open") && r.events.some((e) => e.type === "error" && e.code === "held_alarm")) return raiseHeldAlarm(action, r.events);
       return r.events;
     },
     restoreSnapshot(snap, expectedCurrent) {

@@ -88,6 +88,8 @@ export interface ShellDeps {
   sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void; /** P10b: night halves the gain. */ setNight?(on: boolean): void; /** P16: a sensory hold turns every sound down. */ setSensory?(on: boolean): void };
   /** Called when the device goes up or down. */
   onDevice?(up: boolean): void;
+  /** P16: draws the HELD strip (who keeps the commander, ASK TO BE LET GO) into its host on every refresh; the app decides whether the commander is held and whether the strip is plain (sensory). Absent: no strip. */
+  held?: (host: HTMLElement) => void;
   /** P16: is the commander's sight taken now (the engine's `sensoryNow`)? The device dims: no portraits, no header, a low sound (absent: never). */
   sensory?: () => boolean;
   /** P14: what SYS › GENERATIONS needs (the envelope, the settings, the redraw); absent = no list. */
@@ -113,6 +115,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   let previousFocus: HTMLElement | null = null;
   let view: HTMLElement;
   let bannerHost: HTMLElement;
+  let heldHost: HTMLElement | null = null;
   let toasts: ReturnType<typeof createToasts> | null = null;
   let modals: ReturnType<typeof createModalHost> | null = null;
   let tabBar: ReturnType<typeof createTabBar> | null = null;
@@ -171,6 +174,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     root.classList.toggle('alius-flicker', flags.flicker);
     root.classList.toggle('alius-readable', s.readableMode);
     root.classList.toggle('alius-reduced-motion', motionReduced(s));
+    if (heldHost) deps.held?.(heldHost); // P16: the strip while the commander is held
     root.classList.toggle('alius-sensory', flags.sensory); // P16: a sensory hold or a blindfold takes the sight: no portraits, no header, plain lines
     renderStatus(); // the header goes (or comes back) with it
     deps.sound?.setSensory?.(flags.sensory);
@@ -377,6 +381,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     const toastHost = h('div', { class: 'alius-toasts', 'aria-live': 'polite' });
     const modalLayer = h('div', { class: 'alius-modal-layer' });
     bannerHost = h('div', { class: 'alius-banner-host' });
+    heldHost = h('div', { class: 'alius-held-host' });
     view = h('div', { class: 'alius-view' });
     // the view is clipped (overflow hidden) and must never scroll: anything that tries (a focus, a find) is put back at once
     view.addEventListener('scroll', () => {
@@ -400,6 +405,7 @@ export function createShell(deps: ShellDeps): ShellApi {
           h('span', { class: 'alius-frame-corner' }, '═╗'),
         ),
         bannerHost,
+        heldHost,
         view,
         h(
           'div',
@@ -456,6 +462,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     tabBar = null;
     panel = null;
     statusHost = null;
+    heldHost = null;
     hubHost = null;
     device = null;
     titleEl = null;

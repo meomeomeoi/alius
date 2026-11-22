@@ -3266,5 +3266,66 @@
       "named_posture",
       "practice"
     ]
+  },
+  {
+    "id": "held",
+    "term": "Held",
+    "short": "A holder keeps the commander in her quarters for a slot or more. Nothing that leaves is allowed. Ask to be let go, or let the slot pass.",
+    "long": "AUTHOR TO WRITE: The hold is a booking of the commander's own slots. Other bookings in those slots lapse (another holder's is left to be settled). Scenes with her in her quarters, DMs and ending the slot go on. A duty that comes meanwhile is an alarm. A hold that runs to its end with no defiance raises her restraint and her hold.",
+    "see": [
+      "sensory_mode",
+      "ask_release",
+      "alarm"
+    ]
+  },
+  {
+    "id": "sensory_mode",
+    "term": "Sensory mode",
+    "short": "The commander's sight is taken, by a hold in the dark or a blindfold: the device dims, no portraits, no header, low sound, only plain lines of text.",
+    "long": "AUTHOR TO WRITE: It is read from the hold and from what the commander wears in the scene, never from the system's own display settings. It ends with the hold or when the blindfold comes off.",
+    "see": [
+      "held"
+    ]
+  },
+  {
+    "id": "ask_release",
+    "term": "Ask to be let go",
+    "short": "A plea to the holder to end the hold. Her answer follows her style and frame: she lets go, refuses in silence or in words, or keeps the commander longer.",
+    "long": "AUTHOR TO WRITE: A gentle holder lets go when she is content; a ritual one only at the end she named; a cruel one may take the plea as a reason to keep longer. The answer is the engine's and is the same every time for the same state.",
+    "see": [
+      "held",
+      "alarm"
+    ]
+  },
+  {
+    "id": "alarm",
+    "term": "Alarm",
+    "short": "A duty that comes while the commander is held: a launch, a mission due today, a knock at night. The holder lets go, lets go late, or keeps.",
+    "long": "AUTHOR TO WRITE: She decides from her values, her style and her frame. A keep can be accepted, argued once or defied; defying it ends the hold and counts against the commander as an offense of hers. A keep over a launch lets the squad leave without the commander.",
+    "see": [
+      "held",
+      "without_command",
+      "ask_release"
+    ]
+  },
+  {
+    "id": "without_command",
+    "term": "Without command",
+    "short": "The squad left without the commander: no command points, no orders and no compel in a fight, no one exposed, and the squad decides the event nodes.",
+    "long": "AUTHOR TO WRITE: It is only possible while a holder keeps the commander and her answer to the duty was keep. The report and the recap say so.",
+    "see": [
+      "alarm",
+      "squad_call"
+    ]
+  },
+  {
+    "id": "squad_call",
+    "term": "Squad call",
+    "short": "At an event node of a run without the commander the squad takes the first option that asks nothing of the commander. ACKNOWLEDGE closes the node.",
+    "long": "AUTHOR TO WRITE: Options that need the commander's own stats or a way chosen by the commander are closed to the squad. When nothing is left the node holds nothing.",
+    "see": [
+      "without_command",
+      "her_call"
+    ]
   }
 ]

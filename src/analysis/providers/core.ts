@@ -347,6 +347,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'holder_punishment', 'punishment_card', 'take_it_instead',
   // P16 (her demonstration: the card; her named postures and the call)
   'demonstration', 'named_posture', 'posture_call',
+  // P16 (holding: the hold, the dim device, asking to be let go; the alarm and the run without the commander)
+  'held', 'sensory_mode', 'ask_release', 'alarm', 'without_command', 'squad_call',
 ];
 
 let registered = false;

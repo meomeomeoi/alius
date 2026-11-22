@@ -1,0 +1,12 @@
+Commander: Vale
+Mission: Recover the cache
+Region: District 7 Quarantine (Overgrown arcology.)
+Outcome: OBJECTIVE SECURED
+Squad: Ann (Assault), Bea (Medic)
+<report>
+AFTER-ACTION REPORT
+Fight at node 1 against Husk: won in 4 round(s).
+Injured: Bea.
+Loot banked: 12 credits.
+</report>
+Write the report.

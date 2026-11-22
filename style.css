@@ -4347,6 +4347,38 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   display: none;
 }
 
+/* The alarm (P16): her answer to a duty that comes while the commander is held, and the three answers side by side. */
+#alius-shell .alius-alarm-card {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-alarm-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* The HELD strip under the title bar: who keeps the commander, when it ends and the way to ask. */
+#alius-shell .alius-held-host:empty {
+  display: none;
+}
+
+#alius-shell .alius-held-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+}
+
+/* Sensory mode: plain lines of text, no frame. */
+#alius-shell.alius-sensory .alius-held-host {
+  margin: 4px 0;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

@@ -54,6 +54,15 @@ export interface PracticeController {
   answerDemonstration(demonstrationId: string, answer: 'go' | 'refuse'): Promise<boolean>;
   /** UNDO of an answer to her discipline (`practice/undo`). Toasts the reason and answers false when the engine refuses. */
   undoPunishment(punishmentId: string): boolean;
+  /** `[ ASK TO BE LET GO ]` while the commander is held (`practice/ask_release`). Toasts the reason and answers false when the engine refuses. */
+  askRelease(): boolean;
+  /**
+   * ACCEPT, ARGUE or DEFY on her `keep` (`practice/answer_alarm`). ARGUE opens the one-exchange scene the engine describes (her quarters, no slot); DEFY, for a launch, goes on with the launch
+   * that was refused. Toasts the reason and answers false when the engine refuses.
+   */
+  answerAlarm(alarmId: string, answer: 'accept' | 'argue' | 'defy'): Promise<boolean>;
+  /** `[ SEND THE SQUAD ]` on a kept alarm of a launch or a deadline: opens the expedition setup for that mission without the commander. Answers false when nothing can be opened. */
+  sendSquad(alarmId: string): boolean;
   /** Waits for the call in flight (tests). */
   idle(): Promise<void>;
 }
@@ -339,6 +348,33 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       const done = ok(deps.app.dispatch({ type: 'practice/undo', payload: { punishmentId } }, { expectChatId: chatId() }));
       if (done) deps.refreshContext();
       return done;
+    },
+    askRelease() {
+      const done = ok(deps.app.dispatch({ type: 'practice/ask_release', payload: {} }, { expectChatId: chatId() }));
+      if (done) deps.refreshContext();
+      return done;
+    },
+    async answerAlarm(alarmId, answer) {
+      const alarm = state()?.practices?.alarm;
+      if (alarm === undefined || alarm.id !== alarmId) return false;
+      const events = deps.app.dispatch({ type: 'practice/answer_alarm', payload: { alarmId, answer } }, { expectChatId: chatId() });
+      if (!ok(events)) return false;
+      const scene = answer === 'argue' ? (events.find((e) => e.type === 'hold_alarm' && e.phase === 'argue')?.scene as { locationId: string; participants: string[]; origin: 'event'; consumesSlot?: boolean } | undefined) : undefined;
+      if (scene !== undefined && deps.startScene !== undefined && !(await deps.startScene(scene))) deps.toast('error', 'The scene did not open.');
+      if (answer === 'defy' && alarm.kind === 'launch') ok(deps.app.dispatch({ type: 'expedition/start', payload: alarm.payload }, { expectChatId: chatId() })); // the launch that was refused goes on
+      deps.refreshContext();
+      return true;
+    },
+    sendSquad(alarmId) {
+      const alarm = state()?.practices?.alarm;
+      const p = alarm?.payload as { missionId?: unknown; poi?: unknown } | undefined;
+      const target = typeof p?.missionId === 'string' ? { missionId: p.missionId } : p?.poi !== undefined ? { poi: p.poi as { regionId: string; poiId: string } } : undefined;
+      if (alarm === undefined || alarm.id !== alarmId || target === undefined || deps.openPlanner === undefined) {
+        deps.toast('error', 'The squad cannot be sent from here.');
+        return false;
+      }
+      deps.openPlanner(target);
+      return true;
     },
     async idle() { while (flight) await flight.catch(() => {}); },
   };
