@@ -78,6 +78,45 @@ describe('the dock', () => {
     void dock;
   });
 
+  it('a running hold\'s card is never collapsed: it stays open beside the moment or the posture call that comes first (review I2)', () => {
+    const physics = h('div', { class: 'alius-physics', 'data-run': 'r1' }, h('div', { class: 'alius-physics-title' }, 'A HOLD'), h('button', { 'data-action': 'tap' }, '[ TAP ]'));
+    const moment = card('m1');
+    const call = card('c1');
+    const dock = dockWith(['moment', moment], ['physics', physics], ['posture-call', call]);
+    expect(open(physics)).toBe(true);
+    expect(physics.dataset.collapsed).toBeUndefined();
+    expect(open(moment)).toBe(true); // the card that comes first opens as always
+    expect(open(call)).toBe(false);
+    expect(call.dataset.collapsed).toBe('true');
+    // a click on the collapsed call opens it and still leaves the hold open
+    call.querySelector('h3')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    dock.layout('sc1');
+    expect(open(call)).toBe(true);
+    expect(open(moment)).toBe(false);
+    expect(open(physics)).toBe(true);
+  });
+
+  it('a hold that is not running (the ways, the held strip) collapses like any other card', () => {
+    const idle = h('div', { class: 'alius-physics' }, h('div', {}, 'WHAT REACHES THE BODY'), h('button', {}, 'sniff'));
+    const moment = card('m1');
+    dockWith(['moment', moment], ['physics', idle]);
+    expect(open(moment)).toBe(true);
+    expect(open(idle)).toBe(false);
+  });
+
+  it('a button inside a collapsed card does its own action and does not open the card (review, declined item)', () => {
+    const action = vi.fn();
+    const task = h('section', { 'data-task': 't1' }, h('h3', {}, 'task', h('button', { type: 'button', 'data-x': '', onclick: action }, 'x')), h('p', {}, 'body'));
+    const pun = card('p1');
+    dockWith(['punishment', pun], ['task', task]);
+    expect(open(task)).toBe(false);
+    task.querySelector<HTMLButtonElement>('[data-x]')!.click();
+    expect(action).toHaveBeenCalledOnce();
+    expect(open(task)).toBe(false);
+    task.querySelector('h3')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(open(task)).toBe(true);
+  });
+
   it('set a card aside: it is hidden and counted ("1 waiting"); a click on the counter brings it back', () => {
     const pun = card('p1');
     const task = card('t1');

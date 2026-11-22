@@ -1,6 +1,6 @@
 /**
  * P10e §6: her hand of cards. Every card the scene draws (moment, posture call, physics, punishment, task, demonstration,
- * milestone, claim, return) lands in one dock at the left of the frame, never over her face. One card is open at a time; the
+ * milestone, claim, return) lands in one dock at the left of the frame, never over her face. One card is open at a time (a running hold stays open beside it); the
  * others collapse to their heading (the first one in the slot order is the newest on top; a click on a collapsed heading opens
  * it). A card can be set aside to a counter ("2 waiting", a click brings them back). The draw functions of the other packages
  * are not changed: each writes into its slot, and `layout()` decorates what they drew after every redraw.
@@ -22,6 +22,9 @@ const setAside = new Set<string>();
 export function resetDock(): void {
   setAside.clear();
 }
+
+/** A hold that is running (`data-run`, drawn by the physics panel): real time, so its controls stay open next to whatever else is open. */
+const running = (card: HTMLElement): boolean => card.hasAttribute('data-run');
 
 const SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice)/;
 /** The first `data-*` id on the card (or on a descendant, for a card that carries none itself); the index when there is none. */
@@ -80,15 +83,17 @@ export function createDock(host: HTMLElement, names: readonly string[]): Dock {
           el.querySelector(':scope > [data-set-aside]')?.remove();
           continue;
         }
-        const isOpen = key === openKey;
+        const isOpen = key === openKey || running(el); // a running hold's controls never fold away behind another card (review I2)
         el.dataset.open = String(isOpen);
         if (isOpen) delete el.dataset.collapsed;
         else el.dataset.collapsed = 'true';
         // a click on a collapsed card (its heading) opens it
         if (!el.hasAttribute('data-dock-wired')) {
           el.setAttribute('data-dock-wired', '');
-          el.addEventListener('click', () => {
+          el.addEventListener('click', (ev) => {
             if (el.dataset.collapsed !== 'true') return;
+            // a button, link or field inside the heading does only its own action
+            if (ev.target instanceof Element && ev.target.closest('button, a, input, select, textarea, summary') !== null) return;
             const k = el.getAttribute('data-dock-key');
             if (k) {
               chosen = k;

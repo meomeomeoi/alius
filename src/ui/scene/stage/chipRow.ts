@@ -61,8 +61,9 @@ export function createChipRow(host: HTMLElement, names: readonly string[]): Chip
         refreshMark();
         return;
       }
-      const width = element.clientWidth;
-      hidden = items().filter((el) => el.offsetLeft + el.offsetWidth > width + 1).length;
+      // measured against the row itself (not `offsetLeft`, whose parent is whatever positioned ancestor is nearest: review I3)
+      const edge = element.getBoundingClientRect().left + element.clientWidth;
+      hidden = items().filter((el) => el.getBoundingClientRect().right > edge + 1).length;
       if (hidden > 0) {
         element.dataset.overflow = 'true';
         mark();

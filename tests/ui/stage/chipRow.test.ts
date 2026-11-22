@@ -44,11 +44,13 @@ describe('createChipRow', () => {
     const row = createChipRow(host, ['a']);
     const chips = [1, 2, 3, 4].map((n) => h('button', { type: 'button', class: 'alius-chip' }, `c${n}`));
     row.slot('a').append(...chips);
-    // widths: each chip 100 px at 0, 110, 220, 330; the row is 250 px wide: the last two do not fit
+    // the row starts at x = 400 and is 250 px wide; each chip is 100 px wide at 410, 520, 630, 740: the last two lie past its edge
+    const box = (left: number, width: number) => () => ({ left, right: left + width, top: 0, bottom: 20, width, height: 20, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
     chips.forEach((c, i) => {
-      Object.defineProperty(c, 'offsetLeft', { value: i * 110, configurable: true });
-      Object.defineProperty(c, 'offsetWidth', { value: 100, configurable: true });
+      c.getBoundingClientRect = box(410 + i * 110, 100);
+      Object.defineProperty(c, 'offsetLeft', { value: 410 + i * 110, configurable: true }); // the layer's offset, not the row's: it must not be read
     });
+    row.element.getBoundingClientRect = box(400, 250);
     Object.defineProperty(row.element, 'clientWidth', { value: 250, configurable: true });
     Object.defineProperty(row.element, 'scrollWidth', { value: 430, configurable: true });
     row.layout();

@@ -19443,13 +19443,13 @@ function runningStage(state, reg, unitId) {
 var hasEffect2 = (effects2, type) => effects2.some((e) => e.type === type);
 function sabotagesVotes(state, reg, unitId) {
   if (!dynamicLive(state, reg)) return false;
-  const running2 = runningStage(state, reg, unitId);
-  return running2 !== void 0 && hasEffect2(running2.stage.effects, "vote_sabotage");
+  const running3 = runningStage(state, reg, unitId);
+  return running3 !== void 0 && hasEffect2(running3.stage.effects, "vote_sabotage");
 }
 function slipsOpen(state, reg, unitId) {
-  const running2 = runningStage(state, reg, unitId);
-  const fx2 = running2?.stage.effects.find((e) => e.type === "protocol_slips");
-  return running2 !== void 0 && fx2 !== void 0 && state.day <= running2.startDay + fx2.days;
+  const running3 = runningStage(state, reg, unitId);
+  const fx2 = running3?.stage.effects.find((e) => e.type === "protocol_slips");
+  return running3 !== void 0 && fx2 !== void 0 && state.day <= running3.startDay + fx2.days;
 }
 function commandStruggleOf(state, reg) {
   if (reg !== void 0 && !dynamicLive(state, reg)) return null;
@@ -41404,7 +41404,7 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
 
 // src/loyalty/dilemmaController.ts
 function createDilemmas(deps) {
-  const running2 = /* @__PURE__ */ new Set();
+  const running3 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -41472,8 +41472,8 @@ function createDilemmas(deps) {
     const first2 = deps.app.current().state?.dilemmas?.open;
     const chat = chatId();
     const key = `${chat ?? ""}:${first2?.id ?? ""}`;
-    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running2.has(key)) return;
-    running2.add(key);
+    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running3.has(key)) return;
+    running3.add(key);
     writing.add(first2.id);
     try {
       const fallback = (id) => void answer({ type: "dilemma/fallback", payload: { requestId: id } }, chat);
@@ -41481,7 +41481,7 @@ function createDilemmas(deps) {
       const out = await deps.generations.generate("dilemma.generate", first2.id);
       if (out.kind === "expired" && chatId() === chat && requestOf2(first2.id)?.status === "requested") fallback(first2.id);
     } finally {
-      running2.delete(key);
+      running3.delete(key);
       writing.delete(first2.id);
     }
   }
@@ -41505,7 +41505,7 @@ function createDilemmas(deps) {
     if (failed && failed.message !== "Stale dilemma answer.") deps.toast("error", String(failed.message ?? failed.code));
     return events;
   }
-  return { onRequested, choose, busy: () => running2.size > 0 };
+  return { onRequested, choose, busy: () => running3.size > 0 };
 }
 
 // src/discipline/directives.ts
@@ -43914,9 +43914,9 @@ function practiceDirectives(state, reg, present2) {
     out.push({ id: `${PROTOCOL_PREFIX}${unit4.id}`, expiresAfter: "scene", text: plainDraft(`${unit4.displayName} holds the commander to these standing forms of address and conduct: ${forms.join("; ")}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit4 of holdersIn(state, reg, present2)) {
-    const running2 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit4.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
-    if (running2.length > 0) {
-      const lines2 = running2.map((x) => {
+    const running3 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit4.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
+    if (running3.length > 0) {
+      const lines2 = running3.map((x) => {
         const hint = String(reg.ceremonySteps.get(nextCeremonyStep(x))?.promptHint ?? "");
         return `${unit4.displayName} is carrying out the punishment she gave the commander as a ceremony, one step at a time: ${phrase(x.summary)}. The next step: ${phrase(hint)}.`;
       });
@@ -59696,7 +59696,7 @@ function worldDirectives(builder, state, reg) {
 // src/world/directorController.ts
 var DAY_ENDED = "The day ended: the engine planned the world.";
 function createDirector(deps) {
-  const running2 = /* @__PURE__ */ new Set();
+  const running3 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -59745,8 +59745,8 @@ function createDirector(deps) {
     const chat = chatId();
     expireStale(pending4?.id, chat);
     const key = `${chat ?? ""}:${pending4?.id ?? ""}`;
-    if (!state || !pending4 || running2.has(key)) return;
-    running2.add(key);
+    if (!state || !pending4 || running3.has(key)) return;
+    running3.add(key);
     try {
       const settings = deps.settings();
       if (!settings.directorEnabled) {
@@ -59756,7 +59756,7 @@ function createDirector(deps) {
       const out = await deps.generations.generate("director.tick", pending4.id);
       if (out.kind === "failed" && out.reason === "no_profile" && chatId() === chat) answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     } finally {
-      running2.delete(key);
+      running3.delete(key);
     }
   }
   function useFallback() {
@@ -59767,7 +59767,7 @@ function createDirector(deps) {
     answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     deps.app.dispatch({ type: "generation/close", payload: { siteId: "director.tick", key: pending4.id, outcome: "kept_fallback" } }, { expectChatId: chat });
   }
-  return { onRequested, useFallback, busy: () => running2.size > 0 };
+  return { onRequested, useFallback, busy: () => running3.size > 0 };
 }
 
 // src/world/expeditionController.ts
@@ -62801,7 +62801,7 @@ function renderPhysicsPanel(host, ctx2) {
   const phys = reg.contactPhysics.get(run.physicsId);
   const interaction = String(phys?.interaction ?? "");
   const realtime = ctx2.settings.physicsRealtime === true;
-  const running2 = run.segment.state === "running" && run.segment.plan !== void 0;
+  const running3 = run.segment.state === "running" && run.segment.plan !== void 0;
   const total2 = run.segment.plan?.beats.length ?? 0;
   const key = `${run.id}|${run.segment.n}`;
   if (pointers.get(host)?.key !== key) pointers.set(host, { key, beat: 0 });
@@ -62813,7 +62813,7 @@ function renderPhysicsPanel(host, ctx2) {
   };
   const stamp = (physics) => analyzeNative(`contactPhysics:${run.physicsId}`, { input: physics });
   const press = (c) => {
-    if (!running2) return;
+    if (!running3) return;
     if (realtime) {
       if (c.kind === "wait") return;
       staging.input({ beat: staging.beat(), kind: c.kind });
@@ -62828,8 +62828,8 @@ function renderPhysicsPanel(host, ctx2) {
     }
   };
   const secondPhys = run.second ? reg.contactPhysics.get(run.second.physicsId) : void 0;
-  const owned = running2 ? [...controlsOf(interaction, run), ...run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...run.second.seal ? { seal: run.second.seal } : {} }) : []] : [];
-  const controls = running2 ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: "wait", text: "[ WAIT ]" }] : [];
+  const owned = running3 ? [...controlsOf(interaction, run), ...run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...run.second.seal ? { seal: run.second.seal } : {} }) : []] : [];
+  const controls = running3 ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: "wait", text: "[ WAIT ]" }] : [];
   const button2 = (c) => h("button", {
     type: "button",
     class: "alius-btn alius-option alius-physics-input",
@@ -62841,9 +62841,9 @@ function renderPhysicsPanel(host, ctx2) {
   const remaining = remainingOf(reg, run);
   const reduced = motionReduced(ctx2.settings) || ctx2.settings.readableMode;
   const strain2 = 1 - remaining;
-  const tremor = running2 && strain2 >= 0.7 && !reduced;
+  const tremor = running3 && strain2 >= 0.7 && !reduced;
   const tint = strain2 >= 0.7 && reduced;
-  const cue = running2 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
+  const cue = running3 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
   const cueLine = cue !== void 0 ? staging.cue(cue, pointer.beat) : null;
   const gauge = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
   const root = h(
@@ -62866,7 +62866,7 @@ function renderPhysicsPanel(host, ctx2) {
     ) : null,
     run.segment.state === "held" && !run.marathon?.waiting ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null,
     cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null,
-    running2 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null,
+    running3 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null,
     ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
     ...wayGroups(ctx2, exposedKinds(state, reg)),
     h(
@@ -63114,8 +63114,8 @@ function createChipRow(host, names2) {
         refreshMark();
         return;
       }
-      const width = element.clientWidth;
-      hidden = items().filter((el) => el.offsetLeft + el.offsetWidth > width + 1).length;
+      const edge = element.getBoundingClientRect().left + element.clientWidth;
+      hidden = items().filter((el) => el.getBoundingClientRect().right > edge + 1).length;
       if (hidden > 0) {
         element.dataset.overflow = "true";
         mark();
@@ -63134,6 +63134,7 @@ var setAside = /* @__PURE__ */ new Set();
 function resetDock() {
   setAside.clear();
 }
+var running2 = (card2) => card2.hasAttribute("data-run");
 var SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice)/;
 function idOf2(card2, index2) {
   const own = card2.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
@@ -63186,14 +63187,15 @@ function createDock(host, names2) {
           el.querySelector(":scope > [data-set-aside]")?.remove();
           continue;
         }
-        const isOpen2 = key === openKey;
+        const isOpen2 = key === openKey || running2(el);
         el.dataset.open = String(isOpen2);
         if (isOpen2) delete el.dataset.collapsed;
         else el.dataset.collapsed = "true";
         if (!el.hasAttribute("data-dock-wired")) {
           el.setAttribute("data-dock-wired", "");
-          el.addEventListener("click", () => {
+          el.addEventListener("click", (ev) => {
             if (el.dataset.collapsed !== "true") return;
+            if (ev.target instanceof Element && ev.target.closest("button, a, input, select, textarea, summary") !== null) return;
             const k = el.getAttribute("data-dock-key");
             if (k) {
               chosen = k;

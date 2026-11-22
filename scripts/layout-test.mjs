@@ -33,13 +33,24 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'three', 'curtain', 'long', 'physics'];
+const FIXTURES = ['one', 'three', 'curtain', 'long', 'physics', 'chips', 'chipsmany'];
 const failures = [];
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
 const SHOTS = process.env.LAYOUT_SHOTS ? resolve(process.env.LAYOUT_SHOTS) : null;
 
 /** Runs in the page: every measurement the assertions need. */
 function measure() {
+  /** The chip row's "+N" against the chips that really lie past its right edge (review I3). */
+  const chipRowMeasure = () => {
+    const row = document.querySelector('.alius-chip-row');
+    if (!row) return null;
+    const rr = row.getBoundingClientRect();
+    const items = [...row.querySelectorAll('.alius-chip, button, summary, [data-chip-item]')].filter((el) => !el.hasAttribute('data-more-chips') && (el.tagName === 'SUMMARY' || el.closest('details') === null));
+    const past = items.filter((el) => el.getBoundingClientRect().right > rr.right + 1).length;
+    const more = row.querySelector('[data-more-chips]');
+    return { overflow: row.dataset.overflow === 'true', more: more ? more.textContent : null, past, items: items.length, scrollW: row.scrollWidth, clientW: row.clientWidth };
+  };
+
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom }; };
   const q = (s) => document.querySelector(s);
   const imgs = [...document.querySelectorAll('.alius-sprite-img')].map(r);
@@ -50,6 +61,7 @@ function measure() {
     sprites: imgs, reply: r(q('.alius-reply')), replyOverflow: q('.alius-reply')?.dataset.overflow, input: r(q('.alius-input-line')), dial: r(q('.alius-dial-face')),
     dock: r(q('.alius-dock-card')), curtain: r(q('.alius-curtain')), curtainOpen: q('.alius-curtain')?.dataset.open, stop: r(q('[data-stop-word]')),
     stopVisible: q('[data-stop-word]') ? getComputedStyle(q('[data-stop-word]')).visibility !== 'hidden' : false,
+    chipRow: chipRowMeasure(),
     ui: [...document.querySelectorAll(UI)].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
   };
 }
@@ -110,6 +122,17 @@ for (const size of SIZES) {
     if (fixture === 'long') {
       if (m.replyOverflow !== 'true') fail(size, fixture, 'a long reply shows no "more above"');
       if (m.reply && m.reply.h > H * 0.3 + 1) fail(size, fixture, `the reply is ${Math.round(m.reply.h)} px high (max 30% = ${Math.round(H * 0.3)})`);
+    }
+    if (fixture === 'chips') {
+      const c = m.chipRow;
+      if (!c) fail(size, fixture, 'no chip row');
+      else if (c.past > 0) fail(size, fixture, `${c.past} chips of an ordinary row lie past its edge (the fixture is too wide for this size)`);
+      else if (c.overflow || c.more !== null) fail(size, fixture, `a row that fits shows "${c.more}" (scrollWidth ${c.scrollW}, clientWidth ${c.clientW})`);
+    }
+    if (fixture === 'chipsmany') {
+      const c = m.chipRow;
+      if (!c || c.past === 0) fail(size, fixture, 'forty chips did not overflow the row');
+      else if (!c.overflow || c.more !== `+${c.past}`) fail(size, fixture, `the row shows "${c.more}" for ${c.past} chips past its edge`);
     }
     if (fixture === 'physics' || fixture === 'three') {
       if (!m.stop || !m.stopVisible) fail(size, fixture, 'the stop word is not visible');
