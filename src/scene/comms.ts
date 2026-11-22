@@ -1,6 +1,7 @@
 import { clockText } from '../engine/calendar';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
 import { dynamicIntentInput } from '../engine/dynamic/intents';
+import { practiceIntentInput } from '../engine/practice/intents';
 import { lifeIntentInput } from '../engine/life/intents';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { dmMode, threadOf } from '../engine/dms';
@@ -109,6 +110,7 @@ export function createComms(deps: CommsDeps): Comms {
       ...warnedInput(s, [unitId]), // P12: the units the commander has an open warning about
       ...lifeIntentInput(s, deps.registries(), [unitId], null, 'dm'), // P14c: her news and her hobbies only
       ...dynamicIntentInput(s, deps.registries(), [unitId], 'dm'), // P15: her probe, an open milestone, claim or offer (nothing while off or with no subject)
+      ...practiceIntentInput(s, deps.registries(), [unitId], 'dm'), // P16: her open tasks, a punishment, a denial, a threat she may voice (nothing while she does not hold)
     };
   }
 

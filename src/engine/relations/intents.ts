@@ -2,9 +2,11 @@ import { RESPONSE_TYPES, type ResponseType } from '../blocking/types';
 import { OFFER_ANSWERS, TONES, type DynamicOffer, type OfferAnswer, type Tone } from '../dynamic/types';
 import { normalizeTag } from '../setup';
 import type { LifeOffer } from '../life/types';
+import type { PracticeOffer } from '../practice/intents';
+import { VERDICTS, type Verdict } from '../practice/state';
 import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
-import { DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
+import { DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
 export { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES };
 export type { EventType, ProposalKind };
@@ -49,6 +51,13 @@ export interface EventIntent {
   answer?: OfferAnswer;
   correction?: string;
   summary?: string;
+  /** P16: the task, punishment, alarm or handover an event is about, the ceremony step it names and the number said at it (each an id or a word from what the model was offered); a `service_rated` verdict is in `kind`. */
+  taskId?: string;
+  punishmentId?: string;
+  alarmId?: string;
+  handoverId?: string;
+  step?: string;
+  number?: number;
   /** P14b: how the person it happened to took it, read by the model (character development); only a complete, valid reading is kept. */
   reading?: Reading;
   evidence: string;
@@ -278,6 +287,95 @@ function dynamicFields(type: EventType, e: Record<string, unknown>, intent: Even
   }
 }
 
+/** The longest agreed wording a compromise over a practice keeps. */
+const PRACTICE_TEXT_MAX = 160;
+/** The ceremony number she can be told: a whole number from 1 to 50. */
+const CEREMONY_NUMBER = { min: 1, max: 50 } as const;
+
+/** The unit an event of the practices is about, whichever side the model wrote her on: the commander is the actor and she the target. `null` when no unit is named. */
+function practiceUnit(intent: EventIntent): string | null {
+  const who = intent.actor !== 'commander' ? intent.actor : intent.targets[0];
+  if (who === undefined) return null;
+  intent.actor = 'commander';
+  intent.targets = [who];
+  return who;
+}
+
+/**
+ * P16: validates one event of the practices against what the model was offered (`PracticeOffer`), filling its fields. The type and every id it names must be among what
+ * was offered for the woman it is about (a foreign id, a stale id or an id of another kind drops the event); the commander is the actor and she the only target. A
+ * `service_rated` needs a verdict of the closed list (kept in `kind`), a `ceremony_step` the step that is next (and for a number, a whole number from 1 to 50). Returns a key
+ * that is the same for the same report (a task reported kept and broken in one answer counts once), or `null` to drop the event.
+ */
+function practiceFields(type: EventType, e: Record<string, unknown>, intent: EventIntent, offer: PracticeOffer | undefined): { key: string } | null {
+  if (offer === undefined || !offer.types.includes(type)) return null;
+  const who = practiceUnit(intent);
+  if (who === null) return null;
+  const word = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+  switch (type) {
+    case 'task_kept':
+    case 'task_broken': {
+      const id = word(e.taskId);
+      const row = id === null ? undefined : offer.tasks.find((t) => t.id === id && t.unitId === who);
+      if (row === undefined) return null;
+      intent.taskId = row.id;
+      return { key: `task|${row.id}` };
+    }
+    case 'practice_accepted': {
+      const task = offer.accepts.find((t) => t.id === word(e.taskId) && t.unitId === who);
+      const handover = task === undefined ? offer.handovers.find((h) => h.id === word(e.handoverId) && h.unitId === who) : undefined;
+      if (task !== undefined) intent.taskId = task.id;
+      else if (handover !== undefined) intent.handoverId = handover.id;
+      else return null;
+      return { key: `accept|${(task ?? handover)!.id}` };
+    }
+    case 'service_rated': {
+      if (!offer.service.includes(who) || !(VERDICTS as readonly unknown[]).includes(e.verdict)) return null;
+      intent.kind = e.verdict as Verdict;
+      return { key: `service|${who}` };
+    }
+    case 'denial_broken':
+      return offer.denial.includes(who) ? { key: `denial|${who}` } : null;
+    case 'threat_voiced':
+      return offer.threats.includes(who) ? { key: `threat|${who}` } : null;
+    case 'ceremony_step': {
+      const row = offer.ceremonies.find((c) => c.id === word(e.punishmentId) && c.unitId === who && c.step === word(e.step));
+      if (row === undefined) return null;
+      if (row.check === 'number') {
+        const n = e.number;
+        if (typeof n !== 'number' || !Number.isInteger(n) || n < CEREMONY_NUMBER.min || n > CEREMONY_NUMBER.max) return null;
+        intent.number = n;
+      }
+      intent.punishmentId = row.id;
+      intent.step = row.step;
+      return { key: `ceremony|${row.id}|${row.step}` };
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * P16: a `compromise_reached` that settles an offered task, punishment or alarm (the id is one the model was shown for her; the commander is the only actor). Fills the id and
+ * the agreed wording (cut) and returns the report's key, or `null` to drop it.
+ */
+function practiceCompromise(e: Record<string, unknown>, intent: EventIntent, offer: PracticeOffer): { key: string } | null {
+  if (!offer.types.includes('compromise_reached')) return null;
+  const who = practiceUnit(intent);
+  if (who === null) return null;
+  const word = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+  const task = offer.talks.find((t) => t.id === word(e.taskId) && t.unitId === who);
+  const punishment = task === undefined ? offer.punishments.find((t) => t.id === word(e.punishmentId) && t.unitId === who) : undefined;
+  const alarm = task === undefined && punishment === undefined ? offer.alarms.find((t) => t.id === word(e.alarmId) && t.unitId === who) : undefined;
+  const row = task ?? punishment ?? alarm;
+  if (row === undefined) return null;
+  if (task !== undefined) intent.taskId = row.id;
+  else if (punishment !== undefined) intent.punishmentId = row.id;
+  else intent.alarmId = row.id;
+  intent.text = oneLineText(e.text, PRACTICE_TEXT_MAX);
+  return { key: `compromise|${row.id}` };
+}
+
 /**
  * Re-validates whatever the mechanic model returned. Never throws; drops what it cannot trust: unknown enums,
  * ids that are not scene participants (or not in the squad), unit→unit events, events without evidence,
@@ -307,6 +405,8 @@ export function validateIntents(
     life?: LifeOffer;
     /** P15: what the model was offered about the dynamic (`dynamicIntentInput`). Without it, or for a type or an id it does not list, a report of the dynamic is dropped. */
     dynamic?: DynamicOffer;
+    /** P16: what the model was offered about the practices (`practiceIntentInput`). Without it, or for a type or an id it does not list, a report of the practices is dropped. */
+    practice?: PracticeOffer;
     /** P11b: the longest text a fact or a promise keeps (the campaign's memory setting); default `TUNING.memory.factTextMax`. */
     factTextMax?: number;
   },
@@ -348,6 +448,11 @@ export function validateIntents(
       if (claim !== undefined) intent.claimId = claim;
       if (exit !== undefined) intent.exitId = exit;
       if (typeof e.text === 'string') intent.text = e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim();
+    } else if (type === 'compromise_reached' && ctx.practice !== undefined && (typeof e.taskId === 'string' || typeof e.punishmentId === 'string' || typeof e.alarmId === 'string')) {
+      // P16: a compromise settles one of her open practices; only an id it was shown for her, and only the commander reaches it
+      const found = actor === 'commander' ? practiceCompromise(e, intent, ctx.practice) : null;
+      if (found === null || seenLife.has(found.key)) continue;
+      seenLife.add(found.key);
     } else if (RULE_EVENTS.includes(type)) {
       // a rule event names a rule of one of the units it lands on; an unknown or missing id drops it
       const rule = typeof e.ruleId === 'string' ? (ctx.rules ?? []).find((r) => r.id === e.ruleId && targets.includes(r.unitId)) : undefined;
@@ -388,6 +493,12 @@ export function validateIntents(
       const dyn = dynamicFields(type, e, intent, ctx.dynamic);
       if (dyn === null || seenLife.has(dyn.key)) continue;
       seenLife.add(dyn.key);
+    }
+    if (PRACTICE_INTENT_TYPES.includes(type)) {
+      // the practices: the type and the ids it names must be among what was offered, for a woman who is here; the sides are the type's own
+      const practice = practiceFields(type, e, intent, ctx.practice);
+      if (practice === null || seenLife.has(practice.key)) continue;
+      seenLife.add(practice.key);
     }
     if (type === 'commander_enforced' || type === 'threatened') {
       const word = typeof e.measure === 'string' ? e.measure : '';

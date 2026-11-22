@@ -6760,10 +6760,19 @@ var EVENT_TYPES = [
   "milestone_refused",
   "compromat_mentioned",
   "protocol_slip",
-  "offer_answered"
+  "offer_answered",
+  // P16: the practices (each offered to the model only while its subject exists: an open task of hers, a task answered in words, a service she judges, a denial of hers, a ceremony step, a holder in the room)
+  "task_kept",
+  "task_broken",
+  "service_rated",
+  "denial_broken",
+  "practice_accepted",
+  "threat_voiced",
+  "ceremony_step"
 ];
 var LIFE_EVENT_TYPES = ["news_told", "hobby_praised", "opinion_voiced", "opinion_challenged", "opinion_agreed", "first_moment", "joke_returned"];
 var DYNAMIC_INTENT_TYPES = ["probe_answered", "probe_observed", "milestone_accepted", "milestone_refused", "compromat_mentioned", "protocol_slip", "offer_answered"];
+var PRACTICE_INTENT_TYPES = ["task_kept", "task_broken", "service_rated", "denial_broken", "practice_accepted", "threat_voiced", "ceremony_step"];
 var FIRST_KINDS = ["laughed", "fell_asleep_beside", "told_her_past", "cried", "taught", "asked_about_commander"];
 var ENGINE_EVENT_TYPES = [
   "warden_complied",
@@ -6798,7 +6807,10 @@ var ENGINE_EVENT_TYPES = [
   // P14c: a quiet meeting with her (a pastime) ended; never reported by the model
   "time_together",
   // P15: the commander left a dynamic (the exit, by route and severity); the engine's own
-  "dynamic_exit"
+  "dynamic_exit",
+  // P16: she gave a punishment of hers its due (the commander accepted it), and the commander took one for a soldier; the engine's own
+  "punishment_accepted",
+  "spared_for"
 ];
 var WORLD_EFFECT_EVENT_TYPES = [...EVENT_TYPES, "shielded"];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
@@ -7320,6 +7332,7 @@ var STAKES = ["trivial", "minor", "major", "severe"];
 var CHECK_KINDS = ["slot_with_her", "booking_kept", "token_worn", "on_roster", "not_on_roster", "dm_report", "no_scene_with", "rule_kept_until", "model"];
 var PROOFS = ["none", "dm_report", "in_person", "witness"];
 var SEED_AUDIENCE = ["none", "select_few", "any"];
+var VERDICTS = ["pleased", "adequate", "displeased"];
 var CEREMONY_CHECKS = ["chip", "words", "number", "posture"];
 var EFFECT_NEEDS = Object.freeze({
   slot_held: [],
@@ -22274,6 +22287,87 @@ function applyLifeIntent(draft, ctx2, unitId, ev) {
 }
 var ROW_IS_CONDITIONAL = ["opinion_agreed", "first_moment"];
 
+// src/engine/practice/gate.ts
+function practiceLive(state, reg, holderId) {
+  if (!dynamicOn(state, reg)) return false;
+  const unit3 = state.squad.find((u) => u.id === holderId);
+  if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return false;
+  const dyn = dynamicOf(state, holderId);
+  if (dyn === void 0 || frameRank(dyn.frame) < frameRank("play") || dyn.aftermath !== void 0) return false;
+  return herPracticeLive(state, holderId);
+}
+function practiceHolders(state, reg) {
+  return state.squad.filter((u) => practiceLive(state, reg, u.id)).map((u) => u.id);
+}
+function practicesOn(state, reg) {
+  return state.squad.some((u) => practiceLive(state, reg, u.id));
+}
+function ensurePractices(draft) {
+  return draft.practices ??= blankPractices();
+}
+function nextPracticeId(draft, prefix) {
+  return `${prefix}${ensurePractices(draft).seq++}`;
+}
+
+// src/engine/practice/intents.ts
+var PRACTICE_ROW_IS_CONDITIONAL = PRACTICE_INTENT_TYPES;
+var SUMMARY_MAX = TUNING.practice.summaryMax;
+var oneLine = (text2) => text2.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, SUMMARY_MAX);
+var ASKS_PERMISSION = "permission";
+function hasPermissionRule(state, reg, unitId) {
+  if (state.practices?.permission?.holderId === unitId) return true;
+  return (state.bonds?.rules ?? []).some((r) => r.unitId === unitId && r.status === "active" && reg.relationshipRuleTemplates.get(r.templateId)?.asks === ASKS_PERMISSION);
+}
+function serviceNow(state, reg) {
+  const activity = state.scene?.blocking?.[COMMANDER]?.activity;
+  const entry = activity === void 0 ? void 0 : reg.blockingActivities.get(activity);
+  return entry !== void 0 && entry.actor === "commander" && entry.scope === "dynamic";
+}
+function practiceIntentInput(state, reg, participants, channel) {
+  if (!practicesOn(state, reg)) return {};
+  const present2 = participants.filter((id) => {
+    const unit3 = state.squad.find((u) => u.id === id);
+    return unit3 !== void 0 && unit3.kind === "named" && isLiving(unit3) && practiceLive(state, reg, id);
+  });
+  if (present2.length === 0) return {};
+  const p = state.practices;
+  const row4 = (t) => ({ id: t.id, unitId: t.holderId, summary: oneLine(t.summary) });
+  const mine = (holderId) => present2.includes(holderId);
+  const tasks = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === "task" && t.status === "open" && (t.check === "model" || t.check === "dm_report")).map(row4);
+  const offered2 = (p?.tasks ?? []).filter((t) => mine(t.holderId) && t.kind === "task" && t.status === "offered" && t.sealed !== true);
+  const accepts = offered2.filter((t) => t.acceptForm === "words" || t.acceptForm === "signed").map(row4);
+  const talks = offered2.map(row4);
+  const punishments = (p?.punishments ?? []).filter((x) => mine(x.holderId) && (x.status === "offered" || x.status === "negotiating") && x.sealed !== true).map(row4);
+  const alarms = p?.alarm !== void 0 && mine(p.alarm.holderId) && p.alarm.answer === void 0 ? [{ id: p.alarm.id, unitId: p.alarm.holderId, summary: "" }] : [];
+  const ceremonies = (p?.punishments ?? []).flatMap((x) => {
+    if (!mine(x.holderId) || x.status !== "accepted" || x.ceremony === void 0) return [];
+    const step = x.ceremony.steps.find((id) => !x.ceremony.done.includes(id));
+    const entry = step === void 0 ? void 0 : reg.ceremonySteps.get(step);
+    const check = entry?.check === "words" ? "words" : entry?.check === "number" ? "number" : void 0;
+    return step !== void 0 && check !== void 0 ? [{ id: x.id, unitId: x.holderId, step, check, label: oneLine(String(entry?.label ?? step)) }] : [];
+  });
+  const denial = present2.filter((id) => hasPermissionRule(state, reg, id));
+  const view = (id) => practiceOf(state, reg, id)?.categories[TUNING.offer.serviceCategory];
+  const service = channel === "scene" && serviceNow(state, reg) ? present2.filter((id) => (view(id)?.as ?? "none") !== "none") : [];
+  const threats = [...present2];
+  const types = [
+    ...tasks.length > 0 ? ["task_kept", "task_broken"] : [],
+    ...accepts.length > 0 ? ["practice_accepted"] : [],
+    ...talks.length > 0 || punishments.length > 0 || alarms.length > 0 ? ["compromise_reached"] : [],
+    ...ceremonies.length > 0 ? ["ceremony_step"] : [],
+    ...denial.length > 0 ? ["denial_broken"] : [],
+    ...service.length > 0 ? ["service_rated"] : [],
+    ...threats.length > 0 ? ["threat_voiced"] : []
+  ];
+  if (types.length === 0) return {};
+  return { practice: { types, tasks, accepts, talks, punishments, alarms, ceremonies, handovers: [], denial, service, threats } };
+}
+var PRACTICE_HANDLERS = {};
+function applyPracticeIntent(draft, ctx2, unitId, ev, batch = []) {
+  if (!practicesOn(draft, ctx2.registries)) return [];
+  return PRACTICE_HANDLERS[ev.type]?.(draft, ctx2, unitId, ev, batch) ?? [];
+}
+
 // src/engine/relations/intents.ts
 var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], stressHints: [] });
 var EVIDENCE_WORDS = 20;
@@ -22432,6 +22526,78 @@ function dynamicFields(type, e, intent, offer) {
       return null;
   }
 }
+var PRACTICE_TEXT_MAX = 160;
+var CEREMONY_NUMBER = { min: 1, max: 50 };
+function practiceUnit(intent) {
+  const who = intent.actor !== "commander" ? intent.actor : intent.targets[0];
+  if (who === void 0) return null;
+  intent.actor = "commander";
+  intent.targets = [who];
+  return who;
+}
+function practiceFields(type, e, intent, offer) {
+  if (offer === void 0 || !offer.types.includes(type)) return null;
+  const who = practiceUnit(intent);
+  if (who === null) return null;
+  const word2 = (v) => typeof v === "string" && v !== "" ? v : null;
+  switch (type) {
+    case "task_kept":
+    case "task_broken": {
+      const id = word2(e.taskId);
+      const row4 = id === null ? void 0 : offer.tasks.find((t) => t.id === id && t.unitId === who);
+      if (row4 === void 0) return null;
+      intent.taskId = row4.id;
+      return { key: `task|${row4.id}` };
+    }
+    case "practice_accepted": {
+      const task = offer.accepts.find((t) => t.id === word2(e.taskId) && t.unitId === who);
+      const handover = task === void 0 ? offer.handovers.find((h2) => h2.id === word2(e.handoverId) && h2.unitId === who) : void 0;
+      if (task !== void 0) intent.taskId = task.id;
+      else if (handover !== void 0) intent.handoverId = handover.id;
+      else return null;
+      return { key: `accept|${(task ?? handover).id}` };
+    }
+    case "service_rated": {
+      if (!offer.service.includes(who) || !VERDICTS.includes(e.verdict)) return null;
+      intent.kind = e.verdict;
+      return { key: `service|${who}` };
+    }
+    case "denial_broken":
+      return offer.denial.includes(who) ? { key: `denial|${who}` } : null;
+    case "threat_voiced":
+      return offer.threats.includes(who) ? { key: `threat|${who}` } : null;
+    case "ceremony_step": {
+      const row4 = offer.ceremonies.find((c) => c.id === word2(e.punishmentId) && c.unitId === who && c.step === word2(e.step));
+      if (row4 === void 0) return null;
+      if (row4.check === "number") {
+        const n = e.number;
+        if (typeof n !== "number" || !Number.isInteger(n) || n < CEREMONY_NUMBER.min || n > CEREMONY_NUMBER.max) return null;
+        intent.number = n;
+      }
+      intent.punishmentId = row4.id;
+      intent.step = row4.step;
+      return { key: `ceremony|${row4.id}|${row4.step}` };
+    }
+    default:
+      return null;
+  }
+}
+function practiceCompromise(e, intent, offer) {
+  if (!offer.types.includes("compromise_reached")) return null;
+  const who = practiceUnit(intent);
+  if (who === null) return null;
+  const word2 = (v) => typeof v === "string" && v !== "" ? v : null;
+  const task = offer.talks.find((t) => t.id === word2(e.taskId) && t.unitId === who);
+  const punishment = task === void 0 ? offer.punishments.find((t) => t.id === word2(e.punishmentId) && t.unitId === who) : void 0;
+  const alarm = task === void 0 && punishment === void 0 ? offer.alarms.find((t) => t.id === word2(e.alarmId) && t.unitId === who) : void 0;
+  const row4 = task ?? punishment ?? alarm;
+  if (row4 === void 0) return null;
+  if (task !== void 0) intent.taskId = row4.id;
+  else if (punishment !== void 0) intent.punishmentId = row4.id;
+  else intent.alarmId = row4.id;
+  intent.text = oneLineText(e.text, PRACTICE_TEXT_MAX);
+  return { key: `compromise|${row4.id}` };
+}
 function validateIntents(raw, ctx2) {
   const out = emptyIntents();
   if (!isObj6(raw)) return out;
@@ -22466,6 +22632,10 @@ function validateIntents(raw, ctx2) {
       if (claim2 !== void 0) intent.claimId = claim2;
       if (exit !== void 0) intent.exitId = exit;
       if (typeof e.text === "string") intent.text = e.text.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim();
+    } else if (type === "compromise_reached" && ctx2.practice !== void 0 && (typeof e.taskId === "string" || typeof e.punishmentId === "string" || typeof e.alarmId === "string")) {
+      const found = actor === "commander" ? practiceCompromise(e, intent, ctx2.practice) : null;
+      if (found === null || seenLife.has(found.key)) continue;
+      seenLife.add(found.key);
     } else if (RULE_EVENTS.includes(type)) {
       const rule = typeof e.ruleId === "string" ? (ctx2.rules ?? []).find((r) => r.id === e.ruleId && targets.includes(r.unitId)) : void 0;
       if (actor !== "commander" || !rule) continue;
@@ -22499,6 +22669,11 @@ function validateIntents(raw, ctx2) {
       const dyn = dynamicFields(type, e, intent, ctx2.dynamic);
       if (dyn === null || seenLife.has(dyn.key)) continue;
       seenLife.add(dyn.key);
+    }
+    if (PRACTICE_INTENT_TYPES.includes(type)) {
+      const practice = practiceFields(type, e, intent, ctx2.practice);
+      if (practice === null || seenLife.has(practice.key)) continue;
+      seenLife.add(practice.key);
     }
     if (type === "commander_enforced" || type === "threatened") {
       const word2 = typeof e.measure === "string" ? e.measure : "";
@@ -24289,7 +24464,9 @@ function applyIntents(draft, ctx2, p) {
     // P13: the units the commander may enlist against her
     ...lifeIntentInput(draft, reg, p.participants, p.channel === "scene" ? draft.scene ?? null : null, p.channel),
     // P14c: what she may tell, her hobbies, her views
-    ...dynamicIntentInput(draft, reg, p.participants, p.channel)
+    ...dynamicIntentInput(draft, reg, p.participants, p.channel),
+    // P15: a probe to answer, an open milestone, claim or offer (nothing while off)
+    ...practiceIntentInput(draft, reg, p.participants, p.channel)
   });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
@@ -24299,18 +24476,22 @@ function applyIntents(draft, ctx2, p) {
     const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS2 < TUNING.impunity.minConfidence;
     return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
   }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
+  judged.sort((a, b) => Number(!PRACTICE_INTENT_TYPES.includes(a.e.type)) - Number(!PRACTICE_INTENT_TYPES.includes(b.e.type)));
   intents.events = judged.map((j) => j.e);
   for (const { e, believed } of judged) {
     for (const id of believed) {
-      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e));
+      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e));
       if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
       if (e.type === "conspired") events.push(...tryAlly(draft, ctx2, id));
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
+      if (PRACTICE_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyPracticeIntent(draft, ctx2, id, e, events));
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx2, id, e, events));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
       else if (e.type === "compromise_reached" && (e.claimId !== void 0 || e.exitId !== void 0)) {
         if (e.claimId !== void 0 && draft.dynamic?.open.claims.some((c) => c.id === e.claimId && c.unitId === id)) events.push(...yieldPartial(draft, ctx2, e.claimId));
         if (e.exitId !== void 0 && draft.dynamic?.open.exits?.some((x) => x.id === e.exitId && x.unitId === id)) events.push(...compromiseExit(draft, ctx2, id));
+      } else if (e.type === "compromise_reached" && (e.taskId !== void 0 || e.punishmentId !== void 0 || e.alarmId !== void 0)) {
+        events.push(...applyPracticeIntent(draft, ctx2, id, e, events));
       } else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
       if (e.type === "knowledge_leak" && e.itemId !== void 0) events.push(...frequencyLeak(draft, ctx2, id, e.itemId, e.severity));
@@ -36787,25 +36968,6 @@ registerAfterAction((draft, _ctx, events) => {
   return [];
 });
 
-// src/engine/practice/gate.ts
-function practiceLive(state, reg, holderId) {
-  if (!dynamicOn(state, reg)) return false;
-  const unit3 = state.squad.find((u) => u.id === holderId);
-  if (unit3 === void 0 || unit3.kind !== "named" || !isLiving(unit3)) return false;
-  const dyn = dynamicOf(state, holderId);
-  if (dyn === void 0 || frameRank(dyn.frame) < frameRank("play") || dyn.aftermath !== void 0) return false;
-  return herPracticeLive(state, holderId);
-}
-function practiceHolders(state, reg) {
-  return state.squad.filter((u) => practiceLive(state, reg, u.id)).map((u) => u.id);
-}
-function ensurePractices(draft) {
-  return draft.practices ??= blankPractices();
-}
-function nextPracticeId(draft, prefix) {
-  return `${prefix}${ensurePractices(draft).seq++}`;
-}
-
 // src/engine/practice/seeds.ts
 var seedRows = (reg) => [...reg.practiceSeeds.values()];
 function seedPool(state, reg, holderId, kind, opts = {}) {
@@ -44604,7 +44766,7 @@ function lifeFlags(life) {
   ]);
   return { news, hobbies, topics: voice || voiced, voice, voiced, jokes, firsts, types };
 }
-var oneLine = (text2) => text2.replace(/[\r\n]+/g, " ");
+var oneLine2 = (text2) => text2.replace(/[\r\n]+/g, " ");
 function dynamicFlags(d) {
   const types = new Set(d?.types ?? []);
   return {
@@ -44622,9 +44784,9 @@ function dynamicFlags(d) {
 function dynamicBlock(d) {
   const f = dynamicFlags(d);
   const out = [];
-  if (f.probe) out.push("PROBES (unit: what she is testing, in words):", ...d.probes.map((id) => `- ${id}: ${oneLine(d.probeAxes[id] ?? "")}`));
+  if (f.probe) out.push("PROBES (unit: what she is testing, in words):", ...d.probes.map((id) => `- ${id}: ${oneLine2(d.probeAxes[id] ?? "")}`));
   if (f.observed) out.push(`OBSERVED (units who may lead with a gesture of their own): ${d.observed.join(", ")}`);
-  if (f.milestones) out.push("MILESTONES (id: what she asked):", ...d.milestones.map((id) => `- ${id}: ${oneLine(d.milestoneLabels[id] ?? "")}`));
+  if (f.milestones) out.push("MILESTONES (id: what she asked):", ...d.milestones.map((id) => `- ${id}: ${oneLine2(d.milestoneLabels[id] ?? "")}`));
   if (f.claims) out.push(`CLAIMS (ids): ${d.claims.join(", ")}`);
   if (f.exits) out.push(`EXITS (ids): ${d.exits.join(", ")}`);
   if (f.offers) out.push(`OFFERS (ids): ${d.offers.join(", ")}`);
@@ -44632,20 +44794,46 @@ function dynamicBlock(d) {
   if (f.slips) out.push(`PROTOCOL (units whose forms may slip): ${d.slips.join(", ")}`);
   return out.length > 0 ? ["DYNAMIC (what the commander may be answering; a report may name only the ids listed here):", ...out] : [];
 }
+function practiceFlags(p) {
+  const types = new Set(p?.types ?? []);
+  return {
+    tasks: (p?.tasks ?? []).length > 0 && types.has("task_kept"),
+    accepts: (p?.accepts ?? []).length > 0 && types.has("practice_accepted"),
+    compromise: ((p?.talks ?? []).length > 0 || (p?.punishments ?? []).length > 0 || (p?.alarms ?? []).length > 0) && types.has("compromise_reached"),
+    ceremonies: (p?.ceremonies ?? []).length > 0 && types.has("ceremony_step"),
+    denial: (p?.denial ?? []).length > 0 && types.has("denial_broken"),
+    service: (p?.service ?? []).length > 0 && types.has("service_rated"),
+    threats: (p?.threats ?? []).length > 0 && types.has("threat_voiced"),
+    types
+  };
+}
+function practiceBlock(p) {
+  const f = practiceFlags(p);
+  const out = [];
+  const row4 = (r) => `- ${r.id} \u2014 ${r.unitId}${r.summary !== "" ? `: ${oneLine2(r.summary)}` : ""}`;
+  if (f.tasks) out.push("TASKS (id \u2014 unit: what she asked of the commander, accepted and open):", ...p.tasks.map(row4));
+  if (f.accepts) out.push("ACCEPTS (id \u2014 unit: what she asked, waiting for the commander to say yes in words):", ...p.accepts.map(row4));
+  if (f.compromise) out.push("TALKS (id \u2014 unit: a task, a punishment or an alarm of hers that the two may settle):", ...p.talks.map(row4), ...p.punishments.map(row4), ...p.alarms.map(row4));
+  if (f.ceremonies) out.push("CEREMONY (punishment id \u2014 unit: the step she waits for, said in words or as a number):", ...p.ceremonies.map((c) => `- ${c.id} \u2014 ${c.unitId}: ${c.step} (${oneLine2(c.label)}; ${c.check})`));
+  if (f.denial) out.push(`DENIAL (units who keep a rule of asking for permission): ${p.denial.join(", ")}`);
+  if (f.service) out.push(`SERVICE (units who judge what the commander does for her): ${p.service.join(", ")}`);
+  if (f.threats) out.push(`THREATS (units who hold the lead and may threaten the commander): ${p.threats.join(", ")}`);
+  return out.length > 0 ? ["PRACTICE (what the commander may be answering; a report may name only the ids listed here):", ...out] : [];
+}
 function lifeBlock(life) {
   const f = lifeFlags(life);
   const out = [];
-  if (f.news) out.push("NEWS (id \u2014 unit: what she has to tell):", ...life.news.map((n) => `- ${n.id} \u2014 ${n.unitId}: ${oneLine(n.text)}`));
-  if (f.hobbies) out.push("HOBBIES (id \u2014 unit: label):", ...life.hobbies.map((h2) => `- ${h2.id} \u2014 ${h2.unitId}: ${oneLine(h2.label)}`));
+  if (f.news) out.push("NEWS (id \u2014 unit: what she has to tell):", ...life.news.map((n) => `- ${n.id} \u2014 ${n.unitId}: ${oneLine2(n.text)}`));
+  if (f.hobbies) out.push("HOBBIES (id \u2014 unit: label):", ...life.hobbies.map((h2) => `- ${h2.id} \u2014 ${h2.unitId}: ${oneLine2(h2.label)}`));
   if (f.topics) {
     out.push('TOPICS (id \u2014 unit: label; positions; marked "may voice" or "has told"):');
     for (const t of life.topics) {
       if (t.pick !== true && t.voiced !== true) continue;
       const marks = [...t.pick === true ? ["may voice"] : [], ...t.voiced === true ? ["has told"] : []].join(", ");
-      out.push(`- ${t.id} \u2014 ${t.unitId}: ${oneLine(t.label)}; positions: ${t.positions.join(", ")}; ${marks}${t.view !== void 0 ? `; her view now: ${oneLine(t.view)}` : ""}`);
+      out.push(`- ${t.id} \u2014 ${t.unitId}: ${oneLine2(t.label)}; positions: ${t.positions.join(", ")}; ${marks}${t.view !== void 0 ? `; her view now: ${oneLine2(t.view)}` : ""}`);
     }
   }
-  if (f.jokes) out.push("JOKES (id \u2014 unit: what it is about):", ...life.jokes.map((j) => `- ${j.id} \u2014 ${j.unitId}: ${oneLine(j.text)}`));
+  if (f.jokes) out.push("JOKES (id \u2014 unit: what it is about):", ...life.jokes.map((j) => `- ${j.id} \u2014 ${j.unitId}: ${oneLine2(j.text)}`));
   return out.length > 0 ? ["LIFE (what the units may bring up; a report may name only the ids listed here):", ...out] : [];
 }
 function stagingShape(s) {
@@ -44678,7 +44866,8 @@ function system3(raw) {
   const asksReading = input.reading === true;
   const life = lifeFlags(input.life);
   const dyn = dynamicFlags(input.dynamic);
-  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) && (hasRules || hasOverride && t === "compromise_reached" || (dyn.claims || dyn.exits) && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const prac = practiceFlags(input.practice);
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) && (hasRules || hasOverride && t === "compromise_reached" || (dyn.claims || dyn.exits) && t === "compromise_reached" || prac.compromise && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : [],
@@ -44711,6 +44900,9 @@ function system3(raw) {
     ...dyn.exits ? ['               "exitId": "<id from EXITS>"   // only for compromise_reached about an exit'] : [],
     ...dyn.offers ? ['               "offerId": "<id from OFFERS>", "answer": "accepted" | "corrected" | "mocked" | "refused" | "tonight", "correction": "<a few words>"   // only for offer_answered; correction only with corrected'] : [],
     ...dyn.compromat ? ['               "summary": "<one short line>", "factId": "<its id, when one is named>"   // only for compromat_mentioned'] : [],
+    ...prac.tasks || prac.accepts || prac.compromise ? ['               "taskId": "<id from TASKS, ACCEPTS or TALKS>"   // only for task_kept / task_broken / practice_accepted / compromise_reached about a task'] : [],
+    ...prac.ceremonies || prac.compromise ? ['               "punishmentId": "<id from CEREMONY or TALKS>", "step": "<its step id>", "number": <whole number>, "alarmId": "<id from TALKS>"   // punishmentId and step for ceremony_step (number only when the step is a number), punishmentId or alarmId for compromise_reached'] : [],
+    ...prac.service ? [`               "verdict": ${VERDICTS.map((v) => `"${v}"`).join(" | ")}   // only for service_rated`] : [],
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -44762,6 +44954,13 @@ function system3(raw) {
     ...dyn.offers ? ['"offer_answered": a unit answers what the commander offered her, one of OFFERS; the unit is the target; set "offerId" and "answer": "accepted", "corrected" (she takes it with a change: put it in "correction"), "mocked", "refused" or "tonight" (she takes it up now).'] : [],
     ...dyn.compromat ? ['"compromat_mentioned": the commander or a unit speaks of something a unit listed under HOLDER COMPROMAT holds over the commander; that unit is the target; "summary" is one short line of what was said, "factId" an id only when the exchange names one.'] : [],
     ...dyn.slips ? ['"protocol_slip": the commander lapses, with others present, from the form of address or the manner a unit listed under PROTOCOL expects of the commander; that unit is the target. Report it only when the exchange plainly shows the lapse.'] : [],
+    ...prac.tasks ? ['"task_kept" / "task_broken": the commander does, or fails to do, what a task listed under TASKS asked, in this exchange (or reports on it); the unit is the target; set "taskId". Report it only when the exchange shows it, not when the task is merely mentioned.'] : [],
+    ...prac.accepts ? [`"practice_accepted": the commander says yes, in the commander's own words, to a task listed under ACCEPTS; the unit is the target; set "taskId". A silence or a refusal is not reported.`] : [],
+    ...prac.compromise ? ['"compromise_reached" about a task, a punishment or an alarm: the commander and the unit agree a smaller or a different version of one listed under TALKS; set "taskId", "punishmentId" or "alarmId" and put the agreed wording in "text" (at most 160 characters). Report it only when the exchange shows both accepting it.'] : [],
+    ...prac.ceremonies ? ['"ceremony_step": the commander says the step of a ceremony listed under CEREMONY that is waiting (its words, or the number it asks for); the unit is the target; set "punishmentId" and "step", and "number" when the step is a number. Report only the step that is waiting.'] : [],
+    ...prac.denial ? ['"denial_broken": the commander does what a unit listed under DENIAL forbade without her permission, or asks her too late; that unit is the target. Report it only when the exchange plainly shows it.'] : [],
+    ...prac.service ? ['"service_rated": a unit listed under SERVICE judges what the commander just did for her; the unit is the target; set "verdict": "pleased", "adequate" or "displeased". Report it only when the exchange shows her judgement.'] : [],
+    ...prac.threats ? ['"threat_voiced": a unit listed under THREATS threatens the commander in words (a consequence for what the commander does or fails to do); that unit is the target. A warning she means kindly, or a plain order, is not a threat.'] : [],
     ...input.staging ? stagingRules(input.staging) : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");
@@ -44777,7 +44976,7 @@ function stagingBlock(s) {
     `contact: ${v.contact.join(", ") || "-"}`,
     `worn: ${v.worn.join(", ") || "-"}`,
     ...s.ripe.length > 0 ? [`RIPE: ${s.ripe.join(", ")}`] : [],
-    ...s.open ? [`OPEN (id \u2014 source): ${s.open.id} \u2014 ${s.open.sourceId}; options: ${s.open.options.map((o, i) => `${i} ${oneLine(o)}`).join("; ")}${extra.length > 0 ? `; extra keys: ${extra.join(", ")}` : ""}`] : []
+    ...s.open ? [`OPEN (id \u2014 source): ${s.open.id} \u2014 ${s.open.sourceId}; options: ${s.open.options.map((o, i) => `${i} ${oneLine2(o)}`).join("; ")}${extra.length > 0 ? `; extra keys: ${extra.join(", ")}` : ""}`] : []
   ];
 }
 function prompt3(raw) {
@@ -44806,6 +45005,7 @@ function prompt3(raw) {
   const lifeList = input.life;
   if (lifeList && lifeBlock(lifeList).length > 0) out.push("", ...lifeBlock(lifeList));
   if (input.dynamic && dynamicBlock(input.dynamic).length > 0) out.push("", ...dynamicBlock(input.dynamic));
+  if (input.practice && practiceBlock(input.practice).length > 0) out.push("", ...practiceBlock(input.practice));
   if (input.staging) out.push("", ...stagingBlock(input.staging));
   if (input.openPromises.length > 0) {
     out.push("", "Open promises:", ...input.openPromises.map((p) => `- ${p.by} \u2192 ${p.to}: ${p.text}`));
@@ -44828,7 +45028,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
   const events = src.events.filter((e) => isObj45(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj45(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.dynamic ? { dynamic: ctx2.dynamic } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.dynamic ? { dynamic: ctx2.dynamic } : {}, ...ctx2.practice ? { practice: ctx2.practice } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj45(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -44892,6 +45092,7 @@ function readIntentOutput(raw, input, opts) {
     conspire: input.conspire ?? [],
     ...input.life ? { life: input.life } : {},
     ...input.dynamic ? { dynamic: input.dynamic } : {},
+    ...input.practice ? { practice: input.practice } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
   return input.staging ? { ...base, staging: sanitizeStaging(isObj45(raw) ? raw.staging : void 0, input.staging) } : base;
@@ -44958,8 +45159,10 @@ function createComms(deps) {
       // P12: the units the commander has an open warning about
       ...lifeIntentInput(s, deps.registries(), [unitId], null, "dm"),
       // P14c: her news and her hobbies only
-      ...dynamicIntentInput(s, deps.registries(), [unitId], "dm")
+      ...dynamicIntentInput(s, deps.registries(), [unitId], "dm"),
       // P15: her probe, an open milestone, claim or offer (nothing while off or with no subject)
+      ...practiceIntentInput(s, deps.registries(), [unitId], "dm")
+      // P16: her open tasks, a punishment, a denial, a threat she may voice (nothing while she does not hold)
     };
   }
   async function readExchange(unitId, ref) {
@@ -47192,6 +47395,8 @@ function createSceneController(deps) {
       // P14c: what she may tell, her hobbies, her views (nothing while life is off)
       ...dynamicIntentInput(s0, deps.registries(), scene.participants, "scene"),
       // P15: a probe to answer, an open milestone, claim or offer (nothing while off or with no subject)
+      ...practiceIntentInput(s0, deps.registries(), scene.participants, "scene"),
+      // P16: an open task, a ceremony, a denial, a service, a holder in the room (nothing while nobody holds)
       ...stagingInput(s0, deps.registries(), scene.participants)
       // P15a: the closed vocabulary of the blocking and the ripe sources (nothing while it is not live)
     };

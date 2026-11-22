@@ -13,8 +13,9 @@ import { yieldPartial } from '../dynamic/domains';
 import { compromiseExit } from '../dynamic/exit';
 import { applyDynamicIntent, DYNAMIC_ROW_IS_CONDITIONAL, dynamicIntentInput } from '../dynamic/intents';
 import { applyLifeIntent, lifeIntentInput, ROW_IS_CONDITIONAL } from '../life/intents';
+import { applyPracticeIntent, PRACTICE_ROW_IS_CONDITIONAL, practiceIntentInput } from '../practice/intents';
 import { validateIntents } from './intents';
-import { LIFE_EVENT_TYPES } from './vocab';
+import { LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES } from './vocab';
 import { commanderProposal, offerProposal } from './proposals';
 import { applyRuleEvent, RULE_EVENT_TYPES, rulesOf } from '../bonds/rules';
 import { expectationEvent } from '../warden/agenda';
@@ -69,7 +70,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     expectations: expectationIds(draft, p.participants), // P13: her expectations, while she is present
     ...conspireInput(draft, reg, p.participants), // P13: the units the commander may enlist against her
     ...lifeIntentInput(draft, reg, p.participants, p.channel === 'scene' ? draft.scene ?? null : null, p.channel), // P14c: what she may tell, her hobbies, her views
-    ...dynamicIntentInput(draft, reg, p.participants, p.channel) }); // P15: a probe to answer, an open milestone, claim or offer (nothing while off)
+    ...dynamicIntentInput(draft, reg, p.participants, p.channel), // P15: a probe to answer, an open milestone, claim or offer (nothing while off)
+    ...practiceIntentInput(draft, reg, p.participants, p.channel) }); // P16: an open task, a punishment or ceremony, a denial, a service, a holder in the room (nothing while nobody holds)
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -83,23 +85,28 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS < TUNING.impunity.minConfidence;
     return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
   }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
+  // P16: what she did to the commander (a threat voiced, a task kept) lands before what the dynamic reads from the same batch, so her reading sees the threat (stable: a batch with no practice event keeps its order)
+  judged.sort((a, b) => Number(!PRACTICE_INTENT_TYPES.includes(a.e.type)) - Number(!PRACTICE_INTENT_TYPES.includes(b.e.type)));
   intents.events = judged.map((j) => j.e);
 
   for (const { e, believed } of judged) {
     for (const id of believed) {
       events.push(...(DISCIPLINE_EVENTS.includes(e.type)
         ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
-        : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only; P15: the dynamic's rows are zero, its effect is applyDynamicIntent's
+        : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only; P15: the dynamic's rows are zero, its effect is applyDynamicIntent's; P16: the practices' rows are applied by their handlers (a type with none yet does nothing)
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'conspired') events.push(...tryAlly(draft, ctx, id)); // P13: the ally check
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx, id, e)); // P14c: her news told, a hobby praised, ...
+      if (PRACTICE_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyPracticeIntent(draft, ctx, id, e, events)); // P16: a task kept or broken, a threat voiced, ...
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx, id, e, events)); // P15: a probe answered or observed, ...
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
       else if (e.type === 'compromise_reached' && (e.claimId !== undefined || e.exitId !== undefined)) {
         // P15: a compromise with her over a claim yields the domain for a week; over an exit she was offered it makes the exit clean. Only her own open one
         if (e.claimId !== undefined && draft.dynamic?.open.claims.some((c) => c.id === e.claimId && c.unitId === id)) events.push(...yieldPartial(draft, ctx, e.claimId));
         if (e.exitId !== undefined && draft.dynamic?.open.exits?.some((x) => x.id === e.exitId && x.unitId === id)) events.push(...compromiseExit(draft, ctx, id));
+      } else if (e.type === 'compromise_reached' && (e.taskId !== undefined || e.punishmentId !== undefined || e.alarmId !== undefined)) {
+        events.push(...applyPracticeIntent(draft, ctx, id, e, events)); // P16: a compromise over her task, punishment or alarm (the handler of each lands with its task)
       } else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)
       if (e.type === 'accused') events.push(...actOnWarning(draft, ctx, id, 'accused')); // P12: scored by the warning's truth

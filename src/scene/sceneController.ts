@@ -2,6 +2,7 @@ import type { Registries } from '../content/types';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
 import { stagingInput } from '../blocking/input';
 import { dynamicIntentInput } from '../engine/dynamic/intents';
+import { practiceIntentInput } from '../engine/practice/intents';
 import { lifeIntentInput } from '../engine/life/intents';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
@@ -300,6 +301,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       ...conspireInput(s0, deps.registries(), scene.participants), // P13: who the commander may enlist against her, while she is not present
       ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, 'scene'), // P14c: what she may tell, her hobbies, her views (nothing while life is off)
       ...dynamicIntentInput(s0, deps.registries(), scene.participants, 'scene'), // P15: a probe to answer, an open milestone, claim or offer (nothing while off or with no subject)
+      ...practiceIntentInput(s0, deps.registries(), scene.participants, 'scene'), // P16: an open task, a ceremony, a denial, a service, a holder in the room (nothing while nobody holds)
       ...stagingInput(s0, deps.registries(), scene.participants), // P15a: the closed vocabulary of the blocking and the ripe sources (nothing while it is not live)
     };
   }

@@ -2,6 +2,8 @@ export { ensurePractices, freezeOf, nextPracticeId, practiceHolders, practiceLiv
 export { newPracticeChance, kindsToday, practiceDayStep } from './dayStep';
 export { acceptFormOf, fallbackOutput, issuePractice, requestOf, requestPractice, WRITERS } from './issue';
 export { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
+export { applyPracticeIntent, PRACTICE_HANDLERS, PRACTICE_ROW_IS_CONDITIONAL, practiceIntentInput } from './intents';
+export type { PracticeOffer, PracticeRow } from './intents';
 export { buildPracticeInput, eligibleUnits, validatePracticeOutput } from './validate';
 export type { PracticeGenerateInput } from './validate';
 export { forgetPractices, holdsPractices, withdrawPractices } from './forget';

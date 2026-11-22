@@ -1,6 +1,6 @@
 import type { Severity } from '../state/types';
 
-/** The event types the mechanic model may report (the 26 of P3 spec §3, then P9, P9d, P12, P13, P14c's seven and P15's seven). Content (`eventDeltas`) must have a row for each. */
+/** The event types the mechanic model may report (the 26 of P3 spec §3, then P9, P9d, P12, P13, P14c's seven, P15's seven and P16's seven). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
@@ -22,6 +22,8 @@ export const EVENT_TYPES = [
   'news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned',
   // P15: the dynamic (each offered to the model only while its subject exists: a pending probe, an open milestone or offer, a holder's compromat, a holder at role in company)
   'probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered',
+  // P16: the practices (each offered to the model only while its subject exists: an open task of hers, a task answered in words, a service she judges, a denial of hers, a ceremony step, a holder in the room)
+  'task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step',
 ] as const;
 
 /** P14c: the model-reportable types of her life. The intent prompt offers each only with its own list, and `validateIntents` drops one it was not offered. */
@@ -29,6 +31,9 @@ export const LIFE_EVENT_TYPES: readonly string[] = ['news_told', 'hobby_praised'
 
 /** P15: the model-reportable types of the dynamic. The intent prompt offers each only while its subject exists, and `validateIntents` drops one it was not offered. */
 export const DYNAMIC_INTENT_TYPES: readonly string[] = ['probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered'];
+
+/** P16: the model-reportable types of the practices. The intent prompt offers each only while its subject exists, and `validateIntents` drops one it was not offered. */
+export const PRACTICE_INTENT_TYPES: readonly string[] = ['task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step'];
 
 /** P14c: the kinds of a `first_moment` (a closed enum; a kind the pair has not had yet is kept). */
 export const FIRST_KINDS = ['laughed', 'fell_asleep_beside', 'told_her_past', 'cried', 'taught', 'asked_about_commander'] as const;
@@ -52,6 +57,8 @@ export const ENGINE_EVENT_TYPES = ['warden_complied', 'warden_defied', 'warden_b
   'time_together',
   // P15: the commander left a dynamic (the exit, by route and severity); the engine's own
   'dynamic_exit',
+  // P16: she gave a punishment of hers its due (the commander accepted it), and the commander took one for a soldier; the engine's own
+  'punishment_accepted', 'spared_for',
 ] as const;
 
 /** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */

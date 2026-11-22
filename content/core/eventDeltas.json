@@ -1695,5 +1695,79 @@
         "stress": 20
       }
     }
+  },
+  {
+    "id": "task_kept",
+    "cause": "The commander kept what she asked",
+    "journal": "the commander kept what she asked",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "task_broken",
+    "cause": "The commander broke what she asked",
+    "journal": "the commander broke what she asked",
+    "rows": {
+      "minor": { "trust": -1, "affinity": -2 },
+      "moderate": { "trust": -2, "affinity": -4 },
+      "major": { "trust": -4, "affinity": -6 },
+      "extreme": { "trust": -6, "affinity": -10 }
+    }
+  },
+  {
+    "id": "service_rated",
+    "cause": "She judged the commander's service",
+    "journal": "she judged the commander's service",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "denial_broken",
+    "cause": "The commander broke her denial",
+    "journal": "the commander broke her denial",
+    "rows": {
+      "minor": { "trust": -0.5, "affinity": -1 },
+      "moderate": { "trust": -1, "affinity": -2 },
+      "major": { "trust": -2, "affinity": -3 },
+      "extreme": { "trust": -3, "affinity": -5 }
+    }
+  },
+  {
+    "id": "practice_accepted",
+    "cause": "The commander said yes to her",
+    "journal": "the commander said yes to her",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "threat_voiced",
+    "cause": "She threatened the commander",
+    "journal": "she threatened the commander",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "ceremony_step",
+    "cause": "A step of her ceremony",
+    "journal": "a step of her ceremony",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "punishment_accepted",
+    "cause": "The commander took her punishment",
+    "journal": "the commander took her punishment",
+    "rows": {
+      "minor": { "trust": 1, "affinity": 1 },
+      "moderate": { "trust": 1, "affinity": 2 },
+      "major": { "trust": 2, "affinity": 3 },
+      "extreme": { "trust": 3, "affinity": 5 }
+    }
+  },
+  {
+    "id": "spared_for",
+    "cause": "The commander took a punishment for her",
+    "journal": "the commander took a punishment for her",
+    "rows": {
+      "minor": { "trust": 5 },
+      "moderate": { "trust": 5 },
+      "major": { "trust": 5 },
+      "extreme": { "trust": 5 }
+    }
   }
 ]
