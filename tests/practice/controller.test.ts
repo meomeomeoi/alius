@@ -395,3 +395,24 @@ describe('TALK and NEGOTIATE cost no slot (I7)', () => {
     expect(h.state().slot).toBe(slot);
   });
 });
+
+describe('her kindness is a DM line', () => {
+  it('a favour_kindness is told in a short message from her, with no draft marker', async () => {
+    const { s } = waiting();
+    const { h, ctl } = rig(s);
+    ctl.onEvents([{ type: 'favour_kindness', unitId: ANN, holderId: ANN, kind: 'softer' }]);
+    await vi.waitFor(() => expect(dms(h)).toHaveLength(1));
+    expect(dms(h)[0]).toMatchObject({ from: ANN, initiated: true });
+    expect(dms(h)[0].text).not.toMatch(/AUTHOR TO WRITE/);
+    expect(dms(h)[0].text.length).toBeGreaterThan(5);
+  });
+
+  it('in her cold shoulder or with her DMs off it writes nothing', async () => {
+    const { s } = waiting();
+    s.practices!.cold[ANN] = s.day + 1;
+    const { h, ctl } = rig(s);
+    ctl.onEvents([{ type: 'favour_kindness', unitId: ANN, holderId: ANN, kind: 'gift' }]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dms(h)).toHaveLength(0);
+  });
+});

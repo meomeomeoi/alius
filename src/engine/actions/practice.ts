@@ -9,7 +9,7 @@ import { answerDemonstration, demonstrationsFromEvents } from '../practice/demon
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
-import { confess } from '../practice/service';
+import { confess, momentGapFavour, serviceFromEvents } from '../practice/service';
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
@@ -32,6 +32,9 @@ registerAfterAction(demonstrationsFromEvents);
 registerAfterAction(offencesFromEvents);
 // What she did that reads as a threat to the commander is remembered for the next exchange (R18): a yield right after it is fear.
 registerAfterAction(noteThreat);
+// Her verdict on the commander's service (a pair of activities in the scene, anticipation, the scene's end) and what a moment she asked moves in her favour (R10).
+registerAfterAction(serviceFromEvents);
+registerAfterAction(momentGapFavour);
 // A punishment she was given in a DM is told to the model in the first scene with her, once.
 registerAfterAction(voiceWaitingPunishments);
 

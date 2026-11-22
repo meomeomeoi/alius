@@ -315,6 +315,12 @@ export interface PracticeState {
   lastThreat?: { unitId: string; sceneId?: string; exchange: number; day: number };
   /** holderId → the scene id that already got a verdict. */
   verdictScene?: Record<string, string>;
+  /** holderId → what she has seen of the commander's service in the open scene (R10); gone with the scene. */
+  service?: Record<string, SceneService>;
+  /** A protocol rule she relaxed for a day (a kindness): put back the day after. */
+  relaxed?: Array<{ ruleId: string; day: number }>;
+  /** holderId → her next punishment weighs one less (a kindness); used once. */
+  softer?: Record<string, true>;
 }
 
 /**
@@ -351,6 +357,12 @@ export const OFFENCE_WORDS: Readonly<Record<OffenceKind, string>> = Object.freez
 export function severityWord(severity: number): 'light' | 'heavy' | 'harsh' {
   return severity <= 2 ? 'light' : severity === 3 ? 'heavy' : 'harsh';
 }
+
+/**
+ * What one holder has seen of the commander's service in the scene she is in (R10): the judged pair that last ran (her activity and the commander's: whether it fits and whether it is felt
+ * as she wishes), the verdict the model reported (it lands at the scene's end, and only when no pair ran), and how many steps up anticipation takes the verdict.
+ */
+export interface SceneService { sceneId: string; pair?: { fit: boolean; felt: boolean }; said?: Verdict; bonus: number; anticipated?: true }
 
 /** What a campaign that never had a holder at `play` has: nothing (`practices` is absent). The first write creates this. */
 export function blankPractices(): PracticeState {

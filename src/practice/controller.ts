@@ -193,6 +193,14 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     deps.app.dispatch({ type: 'dm/receive', payload: { unitId: p.holderId, text: plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text), initiated: true } }, { expectChatId: chatId() });
   }
 
+  /** Her kindness (a slot given back, a relaxed protocol, relief, a gift, a softer next punishment) is told in a short DM from her: nothing in a scene (a day end has none), her DMs off or her cold shoulder. */
+  function deliverKindness(holderId: string, kind: string): void {
+    const s = state();
+    const line = (TUNING.practice.kindness.lines as Record<string, string | undefined>)[kind];
+    if (s === null || line === undefined || s.scene?.participants.includes(holderId) === true || s.settings.unitDms !== true || (s.practices?.cold[holderId] ?? -1) >= s.day) return;
+    deps.app.dispatch({ type: 'dm/receive', payload: { unitId: holderId, text: plainDraft(line), initiated: true } }, { expectChatId: chatId() });
+  }
+
   /** The error of a dispatch, toasted; whether there was none. */
   function ok(events: Array<{ type: string; [k: string]: unknown }>): boolean {
     const bad = events.find((e) => e.type === 'error');
@@ -207,6 +215,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
         if (OWN.includes(e.type)) refresh = true;
         if (e.type === 'task_issued' && e.rerolled !== true && typeof e.taskId === 'string') { if (e.kind === 'demonstration') deliverDemonstration(e.taskId); else deliver(e.taskId); }
         if (e.type === 'punishment_issued' && e.rerolled !== true && typeof e.punishmentId === 'string') deliverPunishment(e.punishmentId);
+        if (e.type === 'favour_kindness' && typeof e.holderId === 'string' && typeof e.kind === 'string') deliverKindness(e.holderId, e.kind);
       }
       if (applyIssuedDirectives(deps.context, events, state(), deps.registries())) refresh = true;
       if (refresh) deps.refreshContext();
@@ -218,7 +227,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       deps.refreshContext();
     },
     onSceneClosed() {
-      clearPracticeDirectives(deps.context);
+      clearPracticeDirectives(deps.context, { keepVerdict: true });
       deps.refreshContext();
     },
     onLoaded() {

@@ -20,7 +20,8 @@ export function holdsPractices(state: Pick<CampaignState, 'practices'>, unitId: 
     || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== undefined || p.postures[unitId] !== undefined
     || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== undefined
     || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h) => h.holderId === unitId)
-    || p.asked?.holderId === unitId || p.unfair?.[unitId] !== undefined || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== undefined;
+    || p.asked?.holderId === unitId || p.unfair?.[unitId] !== undefined || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== undefined
+    || p.service?.[unitId] !== undefined || p.softer?.[unitId] !== undefined;
 }
 
 const isOpen = (status: string): boolean => status === 'offered' || status === 'open' || status === 'negotiating' || status === 'accepted';
@@ -30,17 +31,23 @@ const tagsOf = (entry: unknown): string[] => {
 };
 const voided = (taskId: string, holderId: string, what: 'task' | 'punishment' | 'demonstration', reason: 'gone' | 'content'): EngineEvent => ({ type: 'task_void', taskId, holderId, what, reason });
 
-/** Marks the bookings of a hold cancelled and clears the conflict flag of the slots they left (the personal layer's own rule, copied so this file stays a leaf). */
-function cancelHeld(draft: CampaignState, held: HeldState): void {
+/**
+ * Marks bookings cancelled and clears the conflict flag of the slots they left (the personal layer's own rule, copied so this file stays a leaf). No event, no consequence: a hold that ends
+ * with no delta, and a slot a holder gives back, are cancelled this way and never through the commander's own cancel (which costs).
+ */
+export function cancelBookingsQuietly(draft: CampaignState, ids: readonly string[]): void {
   const bookings = draft.personal?.bookings;
   if (bookings === undefined) return;
   const touched: Booking[] = [];
-  for (const b of bookings) if (held.bookingIds.includes(b.id) && b.status === 'booked') { b.status = 'cancelled'; touched.push(b); }
+  for (const b of bookings) if (ids.includes(b.id) && b.status === 'booked') { b.status = 'cancelled'; touched.push(b); }
   for (const t of touched) {
     const same = bookings.filter((b) => b.status === 'booked' && b.day === t.day && b.slot === t.slot);
     for (const b of same) if (same.length > 1) b.conflict = true; else delete b.conflict;
   }
 }
+
+/** Marks the bookings of a hold cancelled. */
+const cancelHeld = (draft: CampaignState, held: HeldState): void => cancelBookingsQuietly(draft, held.bookingIds);
 
 /** The booking kinds of the hold's own bookings (read by what the hold booked, not by every kind that is held). */
 function holdKindsOf(draft: CampaignState, reg: Registries, held: HeldState): unknown[] {
@@ -102,6 +109,8 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
   if (p.unfair !== undefined) { delete p.unfair[unitId]; if (Object.keys(p.unfair).length === 0) delete p.unfair; }
   if (p.lastThreat?.unitId === unitId) delete p.lastThreat;
   if (p.verdictScene !== undefined) { delete p.verdictScene[unitId]; if (Object.keys(p.verdictScene).length === 0) delete p.verdictScene; }
+  if (p.service !== undefined) { delete p.service[unitId]; if (Object.keys(p.service).length === 0) delete p.service; }
+  if (p.softer !== undefined) { delete p.softer[unitId]; if (Object.keys(p.softer).length === 0) delete p.softer; }
   return events;
 }
 

@@ -147,11 +147,17 @@ export function noteOffence(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const key = `${holderId}|${offence.kind}|${offence.ref ?? ''}`;
   if (p.noted.keys.includes(key)) return [];
   p.noted.keys.push(key);
-  const severity = severityOf(draft, reg, holderId, offence);
+  let severity = severityOf(draft, reg, holderId, offence);
   const days = (p.offences[holderId] ??= []);
   days.push(offence.day);
   p.offences[holderId] = days.filter((d) => draft.day - d <= TUNING.practice.punish.keepDays);
   if (punishmentOpen(draft, holderId)) return [];
+  // a kindness she did (R10): her next punishment weighs one less, once
+  if (p.softer?.[holderId] === true) {
+    delete p.softer[holderId];
+    if (Object.keys(p.softer).length === 0) delete p.softer;
+    severity = Math.max(TUNING.practice.severity.min, severity - 1) as Severity5;
+  }
   const entryId = pickHolderPunishment(draft, reg, holderId, severity);
   if (entryId === null) return [];
   return requestPractice(draft, ctx, holderId, 'punishment', { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId });

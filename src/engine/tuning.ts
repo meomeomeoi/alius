@@ -1021,7 +1021,29 @@ export const TUNING = Object.freeze({
       stage: Object.freeze({ evening: 'mess_hall', other: 'quarters_unit' } as Readonly<Record<string, string>>), cardsMax: 2, offerDays: 2,
       compromat: 'AUTHOR TO WRITE: {names} saw the commander do this for {name}: {what}.',
     }),
-    verdict: Object.freeze({ favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 } as const) }),
+    /**
+     * Her verdict (R10): the favour each gives; `highFavour` the favour from which `pleased` also raises Regard; `wish` how she wants service to be felt, by style (the profile has no field for
+     * it: `felt` is for the styles that want it seen, `unnoticed` for those that want it done quietly). `AUTHOR TO TUNE`.
+     */
+    verdict: Object.freeze({
+      favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 } as const), highFavour: 10,
+      wish: Object.freeze({
+        affectionate: 'unnoticed', cold: 'unnoticed', clinical: 'unnoticed', ritual: 'felt', possessive: 'felt', playful: 'felt', cruel: 'felt', obsessive: 'felt', drill: 'felt', regal: 'felt', vindictive: 'felt',
+      } as Readonly<Record<string, 'felt' | 'unnoticed'>>),
+    }),
+    /** What anticipation (R.5) gives: favour, and the Regard rise's amount. */
+    anticipation: Object.freeze({ favour: 1, regard: 1 }),
+    /** Her kindnesses (R10): the daily chance at favour `kindnessAt`, the Want a relief takes off, and the DM line of each (drafts, `AUTHOR TO WRITE`). */
+    kindness: Object.freeze({
+      chance: 0.25, wantRelief: 15,
+      lines: Object.freeze({
+        slot_back: 'AUTHOR TO WRITE: I will not need that slot. Take it back.',
+        protocol_relaxed: 'AUTHOR TO WRITE: No forms tomorrow. I will not mark a slip.',
+        want_relief: 'AUTHOR TO WRITE: That settled me. Thank you.',
+        gift: 'AUTHOR TO WRITE: I left something for you. Keep it close.',
+        softer: 'AUTHOR TO WRITE: Next time I will go easier. Remember that.',
+      } as const),
+    }),
     momentGap: Object.freeze({ matched: 2, partial: 0, opposite: -3 }),
     kindnessAt: 8,
     refusalAt: -8,

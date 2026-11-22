@@ -17,7 +17,7 @@ import { practiceHolders, practiceLive } from './gate';
 import { closePunishments, coldShoulderWants, orderCandidate, orderPunishment } from './punish';
 import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
-import { protocolPossible, routineSweep } from './service';
+import { kindnessSweep, protocolPossible, routineSweep } from './service';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
 import { frameOf, taskRoom } from './tasks';
 
@@ -117,6 +117,7 @@ function expiry(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   if (p === undefined) return [];
   const events = [...coldShoulderWants(draft), ...expireDemonstrations(draft, ctx)]; // her Want rises each day of her cold shoulder (it is read before the shoulder's last day expires)
   closePunishments(draft);
+  if (p.service !== undefined) { for (const [id, rec] of Object.entries(p.service)) if (rec.sceneId !== draft.scene?.id) delete p.service[id]; if (Object.keys(p.service).length === 0) delete p.service; } // what she saw of a scene that never ended
   p.restrictions = p.restrictions.filter((r) => r.untilDay >= draft.day);
   for (const [id, until] of Object.entries(p.cold)) if (until < draft.day) delete p.cold[id];
   const trim = <T extends { status: string }>(rows: T[], open: (r: T) => boolean): T[] => {
@@ -138,7 +139,8 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   events.push(...routineSweep(draft, ctx)); // 2
   events.push(...requestsFallBack(draft, ctx)); // 3
   events.push(...falseReportSweep(draft, ctx)); // 4
-  // 5 favour kindnesses, 6 unfairness, 7 handovers: no-ops until their tasks
+  events.push(...kindnessSweep(draft, ctx)); // 5
+  // 6 unfairness, 7 handovers: no-ops until their tasks
   events.push(...chainRequests(draft, ctx)); // 8a
   events.push(...newPractices(draft, ctx)); // 8
   events.push(...expiry(draft, ctx)); // 9
