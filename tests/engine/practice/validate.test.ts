@@ -26,6 +26,14 @@ const valid = (over: Record<string, unknown> = {}): Record<string, unknown> => (
   deadline: { days: 2, slot: 'evening' }, text: 'Report to me at dusk.', summary: 'report at dusk', ...over,
 });
 const roleWorld = (): CampaignState => withService(world(reg, 'role'));
+/** She stages for a few: Bea and Cat are close to the commander, so both may watch (R9). */
+const demoWorld = (): CampaignState => {
+  const s = roleWorld();
+  unitOf(s, ANN).bond!.practice!.audience = 'select_few';
+  s.relations[BEA].trust = 60;
+  s.relations[CAT].trust = 60;
+  return s;
+};
 
 describe('validatePracticeOutput: the table', () => {
   it('a valid card is kept as it is', () => {
@@ -119,7 +127,7 @@ describe('validatePracticeOutput: the table', () => {
   });
 
   it('the default deadline is for a task only: a demonstration card with none has none (N3)', () => {
-    const s = roleWorld();
+    const s = demoWorld();
     const req = { ...requestFor(s), kind: 'demonstration' as const };
     const card = { kind: 'demonstration', seedId: 'demo_her_verdict', tags: ['service'], track: 'service', tier: 1, stakes: 'trivial', check: 'model', proof: 'none', audienceIds: [BEA], text: 'Show them.', summary: 'show them' };
     const r = validatePracticeOutput(s, reg, req, card)!;
@@ -137,10 +145,23 @@ describe('validatePracticeOutput: the table', () => {
     const req = requestFor(s);
     expect(validatePracticeOutput(s, reg, req, valid({ audienceIds: [BEA, 'unit_nobody', ANN] }))!.output.audienceIds).toEqual([BEA]);
     expect(validatePracticeOutput(s, reg, req, valid({ audienceIds: ['unit_nobody'] }))!.output.audienceIds).toBeUndefined();
+    const d = demoWorld();
     const demo = { ...req, kind: 'demonstration' as const };
     const raw = valid({ kind: 'demonstration', seedId: 'demo_her_verdict', audienceIds: ['unit_nobody'] });
+    expect(validatePracticeOutput(d, reg, demo, raw)).toBeNull();
+    expect(validatePracticeOutput(d, reg, demo, { ...raw, audienceIds: [CAT] })!.output.audienceIds).toEqual([CAT]);
+  });
+
+  it('a demonstration names only who would watch it, and only when she may stage one (R9)', () => {
+    const s = demoWorld();
+    s.relations[CAT].trust = 0;
+    s.relations[CAT].affinity = 0; // Cat is no friend: she is not on the list
+    const demo = { ...requestFor(s), kind: 'demonstration' as const };
+    const raw = valid({ kind: 'demonstration', seedId: 'demo_her_verdict', audienceIds: [BEA, CAT] });
+    expect(validatePracticeOutput(s, reg, demo, raw)!.output.audienceIds).toEqual([BEA]);
+    expect(validatePracticeOutput(s, reg, demo, { ...raw, audienceIds: [CAT] })).toBeNull();
+    unitOf(s, ANN).bond!.practice!.audience = 'indifferent'; // she stages nothing
     expect(validatePracticeOutput(s, reg, demo, raw)).toBeNull();
-    expect(validatePracticeOutput(s, reg, demo, { ...raw, audienceIds: [CAT] })!.output.audienceIds).toEqual([CAT]);
   });
 
   it('text of 3000 characters is cut to 400 and markup is stripped', () => {

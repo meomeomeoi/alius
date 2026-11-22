@@ -1007,7 +1007,16 @@ export const TUNING = Object.freeze({
     coldWant: 5,
     /** TAKE IT INSTEAD (R8): the Record each named unit at base gains. The soldier's Trust is the `spared_for` row. */
     takeInstead: Object.freeze({ record: 2 }),
-    demonstration: Object.freeze({ hold: 3, seenByChance: 0.2, wantRelief: Object.freeze({ craves: 20, enjoys: 10, tolerates: 5 } as const) }),
+    /**
+     * Demonstrations (R9): `hold` and `wantRelief` (by appetite) when one is staged; `seenByChance` the hashed chance an `indifferent` holder's kept task is seen by another in the room. `slot` the slot it
+     * is staged for and `stage` the location by slot (`other`: her quarters), `cardsMax` the units that come into the scene (the rest are narrated), `offerDays` the days a card waits for GO before it is void,
+     * `compromat` the text of what she keeps (`{names}`, `{name}`, `{what}`). `AUTHOR TO TUNE`.
+     */
+    demonstration: Object.freeze({
+      hold: 3, seenByChance: 0.2, wantRelief: Object.freeze({ craves: 20, enjoys: 10, tolerates: 5 } as const), slot: 'evening' as 'morning' | 'afternoon' | 'evening' | 'night',
+      stage: Object.freeze({ evening: 'mess_hall', other: 'quarters_unit' } as Readonly<Record<string, string>>), cardsMax: 2, offerDays: 2,
+      compromat: 'AUTHOR TO WRITE: {names} saw the commander do this for {name}: {what}.',
+    }),
     verdict: Object.freeze({ favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 } as const) }),
     momentGap: Object.freeze({ matched: 2, partial: 0, opposite: -3 }),
     kindnessAt: 8,

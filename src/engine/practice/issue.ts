@@ -10,6 +10,7 @@ import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { fallbackLine, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 import { punishmentEntryFor, severityOfEntry } from './offences';
 import { stakeRank, type OpenPunishment, type PracticeCard, type PracticeKind, type PracticeRequest, type ValidOutput } from './state';
+import { writeDemonstration } from './demonstration';
 import { allCards, requestOf } from './request';
 import { TUNING } from '../tuning';
 import { acceptFormOf, writeTask, type Writer } from './tasks';
@@ -45,9 +46,9 @@ function writePunishment(draft: CampaignState, ctx: EngineCtx, request: Practice
 
 /**
  * The writer of each kind that can be issued. The day step offers only these kinds, so a campaign between tasks never asks for a kind nobody can write. Later tasks add
- * demonstration (19), protocol (21), denial (23) and hold (25).
+ * protocol (21), denial (23) and hold (25).
  */
-export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask, punishment: writePunishment };
+export const WRITERS: Partial<Record<PracticeKind, Writer>> = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration };
 
 /** The card the fallback writes for a request: its first seed that is still allowed, with the template line and the gist, within the frame's stakes. `null` when none stands. */
 export function fallbackOutput(state: CampaignState, reg: Registries, request: PracticeRequest): ValidOutput | null {
@@ -109,4 +110,4 @@ export function issuePractice(draft: CampaignState, ctx: EngineCtx, requestId: s
 }
 
 /** The event a writer says its card with, and the field that names the card: a reroll keeps the id of the card it replaced. */
-const REISSUED: Readonly<Record<string, string>> = { task_issued: 'taskId', punishment_issued: 'punishmentId', demonstration_staged: 'demonstrationId' };
+const REISSUED: Readonly<Record<string, string>> = { task_issued: 'taskId', punishment_issued: 'punishmentId' };

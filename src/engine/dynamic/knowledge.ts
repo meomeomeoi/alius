@@ -63,7 +63,7 @@ function mayObserve(draft: CampaignState, reg: Registries, observerId: string, h
 }
 
 /** Close to the pair: Trust or Affinity of `closeAt` or more toward the commander (the engine has no unit-to-unit axes; see the spec's Implemented as). */
-function isClose(state: CampaignState, observerId: string): boolean {
+export function isClose(state: CampaignState, observerId: string): boolean {
   const rel = state.relations[observerId];
   return rel !== undefined && (rel.trust >= TUNING.squadKnowledge.closeAt || rel.affinity >= TUNING.squadKnowledge.closeAt);
 }

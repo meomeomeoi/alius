@@ -5,6 +5,8 @@ export { acceptByWords, acceptFormOf, answerTask, compromiseTask, recordLine, si
 export { noteOffence, withdrawAndRepick } from './offences';
 export { deadlineSweep, falseReportChance, falseReportSweep, findFalseReport, fromIntent, reportTask, settleTask, taskChecksFromEvents, verdictNow } from './checks';
 export { practiceSample } from './sample';
+export { answerDemonstration, demonstrationEnded, demonstrationGate, demonstrationsFromEvents, expireDemonstrations, isHumbling, pickAudience, seenByChance, serviceSeen, stageOf, writeDemonstration } from './demonstration';
+export type { DemonstrationAnswer, DemonstrationScene } from './demonstration';
 export { fallbackLine, pickSeeds, plainSummary, seedPool, stakesCeilingOf } from './seeds';
 export { applyPracticeIntent, PRACTICE_HANDLERS, PRACTICE_ROW_IS_CONDITIONAL, practiceIntentInput } from './intents';
 export type { PracticeOffer, PracticeRow } from './intents';

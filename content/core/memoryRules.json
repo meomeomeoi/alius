@@ -1252,5 +1252,45 @@
       "practice",
       "punishment_taken_for"
     ]
+  },
+  {
+    "id": "demonstration_staged",
+    "event": "demonstration_staged",
+    "when": {
+      "humbling": false
+    },
+    "text": "AUTHOR TO WRITE: {name} had the commander do this before {watchers}: {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": [
+      "her",
+      "audience"
+    ],
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "demonstration_staged"
+    ]
+  },
+  {
+    "id": "demonstration_humbling",
+    "event": "demonstration_staged",
+    "when": {
+      "humbling": true
+    },
+    "text": "AUTHOR TO WRITE: {name} had the commander humbled before {watchers}: {what}.",
+    "importance": 3,
+    "about": "her",
+    "audience": [
+      "her",
+      "audience"
+    ],
+    "spread": "slow",
+    "tags": [
+      "dynamic",
+      "practice",
+      "demonstration_staged"
+    ]
   }
 ]

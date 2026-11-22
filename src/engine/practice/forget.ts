@@ -15,7 +15,7 @@ export function holdsPractices(state: Pick<CampaignState, 'practices'>, unitId: 
   return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId)
     || p.tasks.some((t) => t.holderId === unitId || (t.targetUnitId === unitId && isOpen(t.status)))
     || p.punishments.some((x) => x.holderId === unitId || (x.forUnitId === unitId && isOpen(x.status)))
-    || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId))
+    || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId) || x.narrated?.includes(unitId) === true)
     || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId
     || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== undefined || p.postures[unitId] !== undefined
     || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== undefined
@@ -81,7 +81,10 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
   p.demonstrations = p.demonstrations.filter((x) => x.holderId !== unitId);
   for (const t of p.tasks) if (t.targetUnitId === unitId && isOpen(t.status)) { t.status = 'void'; events.push(voided(t.id, t.holderId, 'task', 'gone')); }
   for (const x of p.punishments) if (x.forUnitId === unitId && isOpen(x.status)) { x.status = 'void'; events.push(voided(x.id, x.holderId, 'punishment', 'gone')); }
-  for (const x of p.demonstrations) x.audienceIds = x.audienceIds.filter((id) => id !== unitId);
+  for (const x of p.demonstrations) {
+    x.audienceIds = x.audienceIds.filter((id) => id !== unitId);
+    if (x.narrated !== undefined) { x.narrated = x.narrated.filter((id) => id !== unitId); if (x.narrated.length === 0) delete x.narrated; }
+  }
   if (p.held?.by === unitId) events.push(endHold(draft, p, 'gone'));
   if (p.alarm?.holderId === unitId) delete p.alarm;
   if (p.permission?.holderId === unitId) delete p.permission;

@@ -296,6 +296,8 @@ describe('facts', () => {
     punishment_given: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', summary: 'a day without messages' },
     punishment_taken_for: { type: 'punishment_taken_for', punishmentId: 'pp1', unitId: ANN, sparedId: BEA, present: [ANN, BEA, CAT], summary: 'a day without leave for Bea' },
     punishment_public: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', public: true, present: [ANN, BEA], summary: 'read out before her friends' },
+    demonstration_staged: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: false, summary: 'service at the mess table' },
+    demonstration_humbling: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: true, summary: 'fetching for her before the mess' },
   });
 
   const draftRules = () => [...reg.memoryRules.values()].filter((r) => MARKER.test(String(r.text)));

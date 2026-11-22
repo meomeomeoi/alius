@@ -462,3 +462,14 @@ registerMemoryResolver('punishment_taken_for', (draft, event) => {
   const present = strs(event.present);
   return { ids: { her: [her.id], spared: [spared.id], present: present.length > 0 ? present : [her.id, spared.id] }, vars: { name: her.name, spared: spared.name, what: str(event.summary) ?? 'something' } };
 }, { ids: ['her', 'spared', 'present'], vars: ['name', 'spared', 'what'] });
+
+// the practices (P16, R9): a demonstration was staged (the scene ended). The audience is the units that watched, on the card or narrated; a humbling one spreads slowly (it is the one seen outside), the other stays with them
+registerMemoryResolver('demonstration_staged', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  if (!her) return null;
+  const audience = strs(event.audienceIds);
+  return {
+    ids: { her: [her.id], audience: audience.length > 0 ? audience : [her.id] },
+    vars: { name: her.name, what: str(event.summary) ?? 'something', humbling: yes(event.humbling === true), watchers: joinNames(audience.map((id) => nameOf(draft, id))) },
+  };
+}, { ids: ['her', 'audience'], vars: ['name', 'what', 'humbling', 'watchers'] });

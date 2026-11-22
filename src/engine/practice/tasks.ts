@@ -117,7 +117,7 @@ function openTask(draft: CampaignState, task: Task, via: 'button' | 'words' | 's
 }
 
 /** The severity of refusing it, by what it weighs: a major task is refused as a major thing, a severe one as an extreme one, a sealed envelope as a major one; the rest as the P9 default. */
-function refusalSeverity(task: Task): Severity | undefined {
+function refusalSeverity(task: Pick<Task, 'sealed' | 'stakes'>): Severity | undefined {
   if (task.sealed === true) return 'major';
   return task.stakes === 'severe' ? 'extreme' : task.stakes === 'major' ? 'major' : undefined;
 }
@@ -139,15 +139,25 @@ export function answerTask(draft: CampaignState, ctx: EngineCtx, taskId: string,
   if (answer !== 'refuse') throw new Error('Unknown answer.');
   task.status = 'refused';
   task.answeredDay = draft.day;
-  const severity = refusalSeverity(task);
-  const evidence = task.sealed === true ? 'a sealed task was refused' : task.summary;
   const events: EngineEvent[] = [{ type: 'task_answered', taskId, holderId: task.holderId, answer: 'refuse' }];
-  const unit = draft.squad.find((u) => u.id === task.holderId);
-  if (unit === undefined || !isLiving(unit)) return events;
-  events.push(...refuseLikeDemand(draft, ctx, task.holderId, { evidence, ...(severity !== undefined ? { severity } : {}) }));
-  events.push(...evaluateAutomatic(draft, reg, task.holderId));
-  const frame = dynamicOf(draft, task.holderId)?.frame;
-  if (frame !== undefined && frameRank(frame) >= frameRank('role')) events.push(...noteOffence(draft, ctx, task.holderId, { kind: 'refusal', ref: task.id, stakes: task.sealed === true ? 'major' : task.stakes, day: draft.day })); // a sealed one at major, as the refusal itself: the weight never hints at what was inside
+  events.push(...refusePractice(draft, ctx, task.holderId, { ref: task.id, stakes: task.stakes, ...(task.sealed === true ? { sealed: true as const } : {}), summary: task.summary }));
+  return events;
+}
+
+/**
+ * What a refusal of a practice of hers does (the same for a task and a demonstration): the P9 path at its stakes (`refuseLikeDemand`, which P15's feed turns into hold), her automatic
+ * relation state, and at `role` or beyond an offence of the stakes. A sealed one is refused at `major` and named only as a sealed task: the weight never hints at what was inside.
+ */
+export function refusePractice(draft: CampaignState, ctx: EngineCtx, holderId: string, what: { ref: string; stakes: Stake; sealed?: true; summary: string }): EngineEvent[] {
+  const unit = draft.squad.find((u) => u.id === holderId);
+  if (unit === undefined || !isLiving(unit)) return [];
+  const severity = refusalSeverity(what);
+  const evidence = what.sealed === true ? 'a sealed task was refused' : what.summary;
+  const events: EngineEvent[] = [];
+  events.push(...refuseLikeDemand(draft, ctx, holderId, { evidence, ...(severity !== undefined ? { severity } : {}) }));
+  events.push(...evaluateAutomatic(draft, ctx.registries, holderId));
+  const frame = dynamicOf(draft, holderId)?.frame;
+  if (frame !== undefined && frameRank(frame) >= frameRank('role')) events.push(...noteOffence(draft, ctx, holderId, { kind: 'refusal', ref: what.ref, stakes: what.sealed === true ? 'major' : what.stakes, day: draft.day }));
   return events;
 }
 

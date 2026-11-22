@@ -2,6 +2,7 @@ import { plainDraft } from '../content/draft';
 import type { Registries } from '../content/types';
 import { isLiving } from '../engine/economy';
 import { witnessOf } from '../engine/dynamic/witness';
+import { temperamentOf } from '../engine/life/state';
 import { practiceLive } from '../engine/practice/gate';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
@@ -20,8 +21,13 @@ export const TASKS_PREFIX = 'practice:tasks:';
 export const TARGET_PREFIX = 'practice:target:';
 /** Her discipline the commander has just accepted, while she is in the room: what she carries out, shown or only reported. Told in one scene only (the one it was answered in, or the first with her after a DM answer). */
 export const PUNISHMENT_PREFIX = 'practice:punishment:';
+/** The demonstration she is staging, while it is on (scene). */
+export const DEMONSTRATION_PREFIX = 'practice:demonstration:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
+
+/** How an onlooker takes to what the holder leads in, as prose (never the word of a mechanic). */
+const WITNESS_PHRASE: Readonly<Record<string, string>> = { drawn: 'is drawn to it', indifferent: 'is unmoved by it', dislikes: 'is put off by it' };
 
 const NEVER_NAME = 'Show it in how she acts and speaks; never name it as a mechanic.';
 
@@ -66,6 +72,17 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     });
     out.push({ id: `${PUNISHMENT_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} ${NEVER_NAME}`) });
   }
+  for (const unit of holdersIn(state, reg, present)) {
+    const staged = (state.practices?.demonstrations ?? []).filter((d) => d.holderId === unit.id && d.status === 'open' && d.sceneId !== undefined && d.sceneId === state.scene?.id);
+    if (staged.length === 0) continue;
+    const lines = staged.map((d) => {
+      const watchers = [...d.audienceIds, ...(d.narrated ?? [])].map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== undefined);
+      const stance = watchers.map((w) => `${w.displayName} ${WITNESS_PHRASE[witnessOf(state, reg, w.id, unit.id)] ?? 'is unmoved by it'}`);
+      const voice = temperamentOf(state, unit.id).talkativeness !== 'silent' ? ' Others address her, and she answers for the commander.' : '';
+      return `${unit.displayName} is showing the commander's service before others: ${phrase(d.summary)}.${stance.length > 0 ? ` Watching: ${stance.join('; ')}.` : ''}${voice}`;
+    });
+    out.push({ id: `${DEMONSTRATION_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${lines.join(' ')} ${NEVER_NAME}`) });
+  }
   for (const id of present) {
     const target = state.squad.find((u) => u.id === id);
     if (target === undefined || target.kind !== 'named' || !isLiving(target)) continue;
@@ -88,11 +105,20 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
 export function issuedDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
   if (event.type === 'punishment_issued') return punishmentIssuedDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
+  if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
   const unit = task === undefined ? undefined : state.squad.find((u) => u.id === task.holderId);
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+
+/** What she has just proposed to show before others, for her next reply only. Only for a holder who is in the open scene. */
+function demonstrationIssuedDirective(id: string, state: CampaignState, reg: Registries): Directive | null {
+  const d = state.practices?.demonstrations.find((x) => x.id === id);
+  const unit = d === undefined ? undefined : state.squad.find((u) => u.id === d.holderId);
+  if (d === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
+  return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} has just told the commander she wants to show the commander's service before others: ${phrase(d.summary)}. She waits for the answer. ${NEVER_NAME}`) };
 }
 
 /** What she has just told the commander about a punishment (or an order about a soldier), for her next reply only. Only for a holder who is in the open scene. */

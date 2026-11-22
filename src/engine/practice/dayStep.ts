@@ -14,6 +14,7 @@ import { assertiveness } from '../power/options';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
+import { demonstrationGate, expireDemonstrations } from './demonstration';
 import { deadlineSweep, falseReportSweep } from './checks';
 import { practiceHolders, practiceLive } from './gate';
 import { closePunishments, coldShoulderWants, orderCandidate, orderPunishment } from './punish';
@@ -58,6 +59,8 @@ export function kindsToday(state: CampaignState, reg: Registries, holderId: stri
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === undefined || kind === 'punishment') return false; // her discipline comes from an offence, never from the day's roll
     if (kind === 'task' && !taskRoom(state, reg, holderId)) return false;
+    // one demonstration at a time, and only when she may stage one and someone would watch (R9)
+    if (kind === 'demonstration' && (demonstrationGate(state, reg, holderId) !== null || (state.practices?.demonstrations ?? []).some((d) => d.holderId === holderId && (d.status === 'offered' || d.status === 'open')))) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
   });
 }
@@ -125,10 +128,10 @@ function newPractices(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
 }
 
 /** 9. Expiry: restrictions and cold shoulders past their last day go, and the closed practices are trimmed to the newest `keep` (open ones always stay). */
-function expiry(draft: CampaignState): EngineEvent[] {
+function expiry(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const p = draft.practices;
   if (p === undefined) return [];
-  const events = coldShoulderWants(draft); // her Want rises each day of her cold shoulder (it is read before the shoulder's last day expires)
+  const events = [...coldShoulderWants(draft), ...expireDemonstrations(draft, ctx)]; // her Want rises each day of her cold shoulder (it is read before the shoulder's last day expires)
   closePunishments(draft);
   p.restrictions = p.restrictions.filter((r) => r.untilDay >= draft.day);
   for (const [id, until] of Object.entries(p.cold)) if (until < draft.day) delete p.cold[id];
@@ -154,6 +157,6 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   // 5 favour kindnesses, 6 unfairness, 7 handovers: no-ops until their tasks
   events.push(...chainRequests(draft, ctx)); // 8a
   events.push(...newPractices(draft, ctx)); // 8
-  events.push(...expiry(draft)); // 9
+  events.push(...expiry(draft, ctx)); // 9
   return events;
 }

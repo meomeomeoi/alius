@@ -5,6 +5,7 @@ import { registerRestrictionReader } from '../discipline/restrictions';
 import { registerAction, registerAfterAction, registerVoteGate } from '../dispatch';
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
+import { answerDemonstration, demonstrationsFromEvents } from '../practice/demonstration';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
@@ -24,6 +25,8 @@ registerWithdrawal(withdrawAndRepick); // and her punishment that was asked for 
 registerDayEndStep('dm_rumors', practiceDayStep);
 // What an event decides about an open task (a scene with her, a booking, a token, a DM, a run): the engine checks of R2.
 registerAfterAction(taskChecksFromEvents);
+// A scene at the stage after GO is her demonstration; when it ends the audience knows and the outcomes land. A service activity before another holder is a demonstration of one (R9).
+registerAfterAction(demonstrationsFromEvents);
 // What she answers in what the lower layers said (a refusal at `role`, a refused milestone, an overruled countermand, a slip or a caught cheat in a run, a broken rule): her offences (R8).
 registerAfterAction(offencesFromEvents);
 // What she did that reads as a threat to the commander is remembered for the next exchange (R18): a yield right after it is fear.
@@ -65,6 +68,15 @@ registerAction('practice/sign', (draft, payload, ctx) => {
 registerAction('practice/report', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.taskId !== 'string') throw new Error('practice/report needs { taskId }.');
   return reportTask(draft, ctx, payload.taskId);
+});
+
+/**
+ * `practice/answer_demonstration { demonstrationId, answer: 'go' | 'refuse' }`: GO on a demonstration card says the scene to open (the event `task_answered` carries `scene`: where, who comes, that it costs the slot;
+ * the controller opens it), REFUSE is a refusal at its stakes (R9). Throws for one that is gone, answered or hers while she is not holding.
+ */
+registerAction('practice/answer_demonstration', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.demonstrationId !== 'string' || (payload.answer !== 'go' && payload.answer !== 'refuse')) throw new Error('practice/answer_demonstration needs { demonstrationId, answer }.');
+  return answerDemonstration(draft, ctx, payload.demonstrationId, payload.answer).events;
 });
 
 /** `practice/answer_punishment { punishmentId, answer }`: ACCEPT, NEGOTIATE or REFUSE on her discipline (R8). */

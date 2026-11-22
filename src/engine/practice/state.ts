@@ -165,8 +165,9 @@ export interface Task {
   slots?: number;
   /** A `signed` task whose words were said: only the signature is left (R6). */
   said?: true;
-  /** The scene with her that is open and would keep a `slot_with_her` task when it ends. */
+  /** The scene with her that is open and would keep a `slot_with_her` task when it ends, and who else was in it (an `indifferent` holder's task kept before them may be seen, R9). */
   sceneId?: string;
+  sceneWith?: string[];
   /** The day a verdict (kept or broken) was settled. */
   settledDay?: number;
 }
@@ -246,11 +247,22 @@ export interface OpenDemonstration {
   summary: string;
   text: string;
   plain?: true;
+  /** Who is on the card (they come into the scene: at most `cardsMax`, in the order of the card) and who is narrated as present at the stage. */
   audienceIds: string[];
+  narrated?: string[];
+  /** The location the scene is staged at and the slot it is staged for (the audience was read for that slot). */
   stage: string;
+  slot?: Slot;
   day: number;
+  /** The scene that holds it (set when a scene with her opens at the stage after GO); a scene that is aborted clears it and the card is offered again. */
   sceneId?: string;
   status: 'offered' | 'open' | 'done' | 'refused' | 'void';
+  /** What it weighs (the refusal costs by it) and the seed and track it came from. */
+  stakes?: Stake;
+  tier?: 1 | 2 | 3 | 4 | 5;
+  track?: string;
+  seedId?: string;
+  answeredDay?: number;
   observed?: string[];
   /** The request this card was written for (the key of its generation: a reroll while it is offered replaces the card). */
   requestId?: string;

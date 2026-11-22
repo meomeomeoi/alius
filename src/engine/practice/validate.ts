@@ -10,11 +10,13 @@ import { wantBandOf, type WantBand } from '../bonds/want';
 import { capabilitiesOf } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
 import { dynamicOf } from '../dynamic/state';
+import { witnessOf } from '../dynamic/witness';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { trackLevel, trackOpen } from '../dynamic/tracks';
 import { impunityBand, impunityOf } from '../discipline/impunity';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
+import { demonstrationGate, pickAudience } from './audience';
 import { eligibleUnits } from './gate';
 import { punishmentEntryFor, severityOfEntry } from './offences';
 import { seedPool, seedRows, stakesCeilingOf } from './seeds';
@@ -46,6 +48,8 @@ export interface PracticeGenerateInput {
   /** Her active relation rules, for a `rule_kept_until` check. */
   rules: Array<{ id: string; text: string }>;
   seeds: Array<{ id: string; gist: string; stakes: Stake; check: CheckKind }>;
+  /** A demonstration's audience (R9): who may watch, each with her stance toward what the holder leads in, as a word (the model words a form that fits who is watching). */
+  audience?: Array<{ id: string; name: string; witness: string }>;
   /** A punishment's entry and what it answers, as words (R5): the engine picked both; the model words it. */
   punishment?: { label: string; weight: 'light' | 'heavy' | 'harsh'; offence: string };
   limits: { stakes: Stake; tierCap: string; deadlineDays: { min: number; max: number } };
@@ -108,13 +112,20 @@ export function buildPracticeInput(state: CampaignState, reg: Registries, reques
       impunity: impunityBand(impunityOf(state, reg, holderId)?.value ?? 0),
       present: (state.scene?.participants ?? []).filter((id) => id !== holderId).map((id) => ({ id, name: unitName(id) })),
     },
-    units: eligibleUnits(state, holderId).map((id) => ({ id, name: unitName(id) })),
+    units: (request.kind === 'demonstration' ? watchersOf(state, reg, holderId) : eligibleUnits(state, holderId)).map((id) => ({ id, name: unitName(id) })),
     frequency: state.dynamic?.setup.frequency ?? 'normal',
     rules: activeRules(state, holderId),
     seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? 'model' })),
     ...(request.kind === 'punishment' ? punishmentBlock(state, reg, request) : {}),
+    ...(request.kind === 'demonstration' ? { audience: watchersOf(state, reg, holderId).map((id) => ({ id, name: unitName(id), witness: witnessOf(state, reg, id, holderId) })) } : {}),
     limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } },
   };
+}
+
+/** Everyone who may watch a demonstration of hers (the card's and the narrated, R9). */
+function watchersOf(state: CampaignState, reg: Registries, holderId: string): string[] {
+  const a = pickAudience(state, reg, holderId, TUNING.practice.demonstration.slot);
+  return [...a.cards, ...a.narrated];
 }
 
 /** The punishment part of the input: the entry that will be written (the engine's pick, picked again when it can no longer be carried out) and what it answers, as words. */
@@ -210,11 +221,11 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
     issues.push('deadline was missing and is the seed\'s or the default');
   }
 
-  const eligible = units;
+  const eligible = request.kind === 'demonstration' ? watchersOf(state, reg, holderId) : units; // a demonstration names only who would watch it (R9)
   const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id): id is string => typeof id === 'string').filter((id, i, all) => all.indexOf(id) === i);
   const audienceIds = asked2.filter((id) => eligible.includes(id));
   if (audienceIds.length < asked2.length) issues.push('audience was filtered');
-  if (request.kind === 'demonstration' && audienceIds.length === 0) return null;
+  if (request.kind === 'demonstration' && (audienceIds.length === 0 || demonstrationGate(state, reg, holderId, { tags: kept, tier }) !== null)) return null;
 
   const text = plainText(raw.text, TUNING.practice.textMax);
   let summary = plainText(raw.summary, TUNING.practice.summaryMax);

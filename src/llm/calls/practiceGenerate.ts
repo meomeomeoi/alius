@@ -59,6 +59,7 @@ registerCallType<PracticeGenerateRaw>({
       `Soldiers who may be named (id, name): ${list(i.units.map((u) => `${u.id} (${one(u.name)})`))}.`,
       `Her active rules (id, text): ${list(i.rules.map((r) => `${r.id} (${one(r.text)})`))}.`,
       ...(i.punishment !== undefined ? [`She is answering: ${one(i.punishment.offence)}. The punishment is fixed: "${one(i.punishment.label)}", ${i.punishment.weight}. Word that one; do not change it.`] : []),
+      ...(i.audience !== undefined ? [`Who would watch it, and how each takes to what she leads in (name each you want on the scene in "audienceIds"; at most two come): ${list(i.audience.map((u) => `${u.id} (${one(u.name)}, ${u.witness})`))}.`] : []),
       'SEEDS (id | gist | stakes | check):', ...i.seeds.map((s) => `- ${s.id} | ${one(s.gist)} | ${s.stakes} | ${s.check}`),
       `Limits: stakes at most ${i.limits.stakes}; tier at most ${i.limits.tierCap}. Deadline: ${i.limits.deadlineDays.min} to ${i.limits.deadlineDays.max} days.`,
       '', 'Write the practice as JSON.',

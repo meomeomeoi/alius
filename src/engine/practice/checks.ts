@@ -16,6 +16,7 @@ import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { practiceLive } from './gate';
 import { noteOffence } from './offences';
+import { seenByChance } from './demonstration';
 import { practiceSample } from './sample';
 import { practiceRoll, stakeRank, STAKES, type Stake, type Task } from './state';
 import type { EventIntent } from '../relations/intents';
@@ -50,7 +51,9 @@ export function settleTask(
   const task = draft.practices?.tasks.find((t) => t.id === taskId);
   if (task === undefined || task.kind !== 'task' || task.status !== 'open' || !practiceLive(draft, reg, task.holderId)) return [];
   const holderId = task.holderId;
+  const peers = task.sceneWith ?? (draft.scene?.participants.includes(holderId) === true ? draft.scene.participants : []);
   delete task.sceneId;
+  delete task.sceneWith;
   if (outcome === 'void') {
     task.status = 'void';
     return [{ type: 'task_void', taskId, holderId, what: 'task', reason: via }];
@@ -70,7 +73,7 @@ export function settleTask(
     events.push(...hitHer(draft, reg, holderId, 'task_kept', SEVERITY[stakeRank(task.stakes)], 'kept her task'));
     events.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
-    events.push(...practiceSample(draft, reg, holderId, 'yielded'), ...sees);
+    events.push(...practiceSample(draft, reg, holderId, 'yielded'), ...sees, ...seenByChance(draft, ctx, task, peers.filter((id) => id !== holderId))); // an `indifferent` holder stages nothing, but a task kept in person before others may be seen (R9)
     return events;
   }
   const stakes = opts.falseReport === true ? stepUp(task.stakes) : task.stakes;
@@ -132,7 +135,7 @@ export function taskChecksFromEvents(draft: CampaignState, ctx: Pick<EngineCtx, 
         const present = Array.isArray(e.participants) ? (e.participants as string[]) : [];
         for (const t of live()) {
           if (t.check === 'no_scene_with' && t.checkArg !== undefined && present.includes(t.checkArg)) settle(t, 'broken');
-          else if (t.check === 'slot_with_her' && present.includes(t.holderId) && sceneCounts(draft, t)) t.sceneId = String(e.sceneId);
+          else if (t.check === 'slot_with_her' && present.includes(t.holderId) && sceneCounts(draft, t)) { t.sceneId = String(e.sceneId); t.sceneWith = present.filter((id) => id !== t.holderId); }
         }
         break;
       }
@@ -140,7 +143,7 @@ export function taskChecksFromEvents(draft: CampaignState, ctx: Pick<EngineCtx, 
         for (const t of live()) if (t.check === 'slot_with_her' && t.sceneId === e.sceneId) settle(t, 'kept');
         break;
       case 'scene_aborted':
-        for (const t of p.tasks) if (t.sceneId === e.sceneId) delete t.sceneId;
+        for (const t of p.tasks) if (t.sceneId === e.sceneId) { delete t.sceneId; delete t.sceneWith; }
         break;
       case 'token_taken_off':
         for (const t of live()) if (t.check === 'token_worn' && t.holderId === e.giverId) settle(t, 'broken');
