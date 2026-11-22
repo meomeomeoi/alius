@@ -55,7 +55,7 @@ Within B, **the whole last reply is shown at once** (option "b" of the session),
 
 ## 4. The curtain (history)
 
-- Opens with: the **wheel up** over the frame or the reply, **Tab** (when the input is empty or not focused), or the **history** button on the top line. Closes with: the wheel down past the end, **Esc**, or the same button.
+- Opens with: the **wheel up** over the frame or the reply, **↑ in an empty input** (as a terminal's command history), or the **history** button on the top line. Closes with: the wheel down past the end, **Esc**, or the same button. Tab is the device's key (§5a), not the curtain's (author ruling, 2026-11-22).
 - A glass panel from the left edge, **45 % of the width**, full height, a strong blur behind it. The frame dims; the sprite slides right and stays visible; the dial stays.
 - Inside: the whole scene transcript (the same messages the transcript shows today), the same prose rendering as §3, the speaker's name over each message ("YOU" over the commander's), scrollable, newest at the bottom. The **input moves into the curtain** (attached at its bottom), so the commander can answer without closing it.
 - **Per-message tools** (shown on hover and on keyboard focus): ✎ edit on every message; on the last model reply ‹ n / m › swipes and ↻ regenerate. Editing works in place as today (`controller.edit`).
@@ -67,6 +67,14 @@ Within B, **the whole last reply is shown at once** (option "b" of the session),
 - **The input** is one rounded line under the reply (about the reply's width). Inside it, at the right: ORDER and PROPOSE ▾ (and the unit pickers when more than one woman is present), in small low-contrast type. The P15a input effects (gag, narrowing, smearing) and P17c's later ones act on this element.
 - **The input frame is a gauge surface** for mini-games: it can narrow, tremble, carry a pulse that runs along its top edge and a highlighted window. This package provides the surface and its API; what each mini-game shows on it is decided in the mini-games session.
 - **Chips** (offer chips, initiative chips, rule / discipline / demand chips, generation chips, frequency chips, the pastime menu) form **one row above the input**, small rounded pills in the speaker's accent; if they do not fit, the row scrolls sideways and ends with "+N". The discipline menus per unit move into a chip that opens them.
+
+## 5a. The device in a scene
+
+Today the PDA cannot be raised during a scene (Tab and OPEN PDA act only on the hub). In P10e:
+
+- **Tab raises the device in the scene as on the hub** (author ruling, 2026-11-22): the PDA slides up over the dimmed scene, which stays rendered underneath and keeps receiving the reply; Tab or Esc lowers it. The shell's Tab rule applies (not from a control, not while typing). The device layer gains a second host: the scene, beside the hub; the scene screen is not rebuilt when the device goes up or down.
+- **Hands busy** (`deviceLocked`, P15a §10): Tab does not raise the device; "The device is out of reach." flashes briefly over the frame (`data-analyze="glossary:device_out_of_reach"`) instead of the standing line in today's column.
+- Using the device in front of her as an act she may notice (P17c's permissions in the interface) is a later package; in P10e the device is simply available.
 
 ## 6. Cards: her hand
 
@@ -136,7 +144,7 @@ A reviewer read this spec as a builder would; these answer its questions. They a
    | header (place, day, slot, mode), swipe / regenerate / end, P14 reroll tools | the top line |
    | HUD (per-unit glyph, name, pulses, REFUSED mark) | the top line, after the place, as small name tags |
    | pacing banner ("TIME IS PASSING"), busy indicator ("AWAITING REPLY…") | a dim status line just above the reply |
-   | device-out note | the chip row (a non-clickable pill) |
+   | device-out note | a short flash when Tab is refused (§5a); no standing line |
    | transcript | the reply block (last reply) and the curtain (all) |
    | generation chips, chips, lead chips, offer surface (offer + initiative chips), rule / discipline / demand chips, frequency chips, pastime menu (`lets`) | the chip row |
    | discipline menus per unit | a chip per unit that opens its menu |
@@ -147,7 +155,7 @@ A reviewer read this spec as a builder would; these answer its questions. They a
    | CMD line (input, ORDER, PROPOSE, unit pickers) | the input (§5) |
 
 6. **Speakers and typing.** Messages carry `name`, `avatar` and `isUser` (`ChatMessage`), so the reply block groups by them. The `typingSpeed` reveal stays: it *is* the streaming highlight (the revealed tail is the highlighted part, and the highlight fades when the reveal ends); `typingSpeed: 0` shows the reply at once with no highlight. The violation marker (`drawViolation`) is kept in the reply block and in the curtain.
-7. **Keys.** In the scene the shell binds neither Tab nor the number keys (they act only on the hub and the PDA). The curtain follows the shell's own Tab rule: **Tab toggles the curtain only from a place that is not a control and not while typing**; anywhere else Tab moves focus as usual. Keys 1–7 for joints work only while nothing editable has the focus.
+7. **Keys** (author ruling on Tab, 2026-11-22). Today the shell binds neither Tab nor the number keys in the scene (they act only on the hub and the PDA). **Tab raises the device in the scene too** (§5a), under the shell's own rule: only from a place that is not a control and not while typing; anywhere else Tab moves focus as usual. The curtain opens with the wheel, ↑ in an empty input or the history button. Keys 1–7 for joints work only while nothing editable has the focus and the device is down.
 8. **The layout test** is a Playwright script on a standalone page built from `dist/index.js`, `style.css` and a fixture state, with a fixture sprite (a generated knee-length placeholder PNG in `tests/fixtures/`, never the author's art). It runs as `npm run test:layout`, not inside `npm test` (it needs a browser); the plan's last task runs it.
 9. **Touch and mobile are out of scope.** The extension is played on a desktop; the curtain and the history button work by click, so nothing becomes unreachable on touch, only looking around does.
 
