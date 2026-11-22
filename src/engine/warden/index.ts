@@ -8,7 +8,7 @@ export { revealPending } from './reveal';
 export { AGENDA_MAX, AGENDA_MIN, PERSONAL_MAX, PERSONAL_TEXT_MAX, agendaProblem, fallbackAgenda, learnExpectation, normalizeAgenda, setAgenda, expectationEvent } from './agenda';
 export { commanderDies, DEATH_CAUSES, type DeathCause } from './death';
 export { describeOrder, expectationInput, investigationBand, orderOfAction, overrideInput } from './describe';
-export { applyCommanderPunishment, applyRemotePunishment, commanderRestriction, painBurstId, pickPunishment, punishRoll } from './punish';
+export { applyCommanderPunishment, applyRemotePunishment, commanderRestriction, painBurstId, registerCommanderRestriction, pickPunishment, punishRoll } from './punish';
 export { wardenDayStep } from './dayStep';
 export { addDefiance, checkEscalation } from './escalation';
 export { INVESTIGATION_CLOCK, investigationDayStep, openQueuedReport, openReportCase, remoteDayStep, remoteExpectations, reportChance, reportProblem, rollVerdict, startRemoval, verdictChance, wardenGone, wardenReportChoice } from './removal';

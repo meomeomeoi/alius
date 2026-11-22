@@ -52,14 +52,31 @@ export function pickPunishment(state: CampaignState, reg: Registries, severity: 
   return null;
 }
 
-/** Why the commander cannot do this right now because of what the warden revoked, or null. Absent mode (or no warden in service): null. */
-export function commanderRestriction(state: CampaignState, use: 'companion' | 'dm', activityId?: string): string | null {
+/** What a layer above the warden may add to the commander's restrictions (P16: a holder's discipline): the reason, or null. Asked after the warden. */
+export type CommanderRestrictionReader = (state: CampaignState, use: 'companion' | 'dm' | 'scene', activityId?: string, toUnitId?: string, locationId?: string) => string | null;
+const readers: CommanderRestrictionReader[] = [];
+
+/** Registers a reader of the commander's restrictions (the holders' discipline hangs here; the warden's own are read first). Registering the same function twice is a no-op. */
+export function registerCommanderRestriction(fn: CommanderRestrictionReader): void {
+  if (!readers.includes(fn)) readers.push(fn);
+}
+
+/**
+ * Why the commander cannot do this right now: first because of what the warden revoked (absent mode or no warden in service: nothing), then because of what a registered reader
+ * says (a holder's discipline). `toUnitId` is who a DM goes to and `locationId` where a scene would be. Null when nothing stands in the way.
+ */
+export function commanderRestriction(state: CampaignState, use: 'companion' | 'dm' | 'scene', activityId?: string, toUnitId?: string, locationId?: string): string | null {
   const w = wardenOf(state);
-  if (!w) return null;
-  for (const r of w.restrictions) {
-    if (state.day > r.untilDay) continue;
-    if (r.what === 'no_leave' && use === 'companion' && !(activityId !== undefined && NOT_LEAVE.includes(activityId))) return `The warden has revoked the commander's leave until day ${r.untilDay}.`;
-    if (r.what === 'no_dms' && use === 'dm') return `The warden has revoked the commander's messages until day ${r.untilDay}.`;
+  if (w) {
+    for (const r of w.restrictions) {
+      if (state.day > r.untilDay) continue;
+      if (r.what === 'no_leave' && use === 'companion' && !(activityId !== undefined && NOT_LEAVE.includes(activityId))) return `The warden has revoked the commander's leave until day ${r.untilDay}.`;
+      if (r.what === 'no_dms' && use === 'dm') return `The warden has revoked the commander's messages until day ${r.untilDay}.`;
+    }
+  }
+  for (const read of readers) {
+    const why = read(state, use, activityId, toUnitId, locationId);
+    if (why !== null) return why;
   }
   return null;
 }

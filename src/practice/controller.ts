@@ -146,6 +146,7 @@ export function createPractice(deps: PracticeDeps): PracticeController {
     if (s === null || task === undefined || task.status !== 'offered') return;
     const key = `${chatId() ?? ''}|${taskId}`;
     if (delivered.has(key) || s.scene?.participants.includes(task.holderId) === true || s.settings.unitDms !== true) return;
+    if ((s.practices?.cold[task.holderId] ?? -1) >= s.day) return; // in her cold shoulder she writes nothing (the card is in her thread all the same)
     delivered.add(key);
     deps.app.dispatch({ type: 'dm/receive', payload: { unitId: task.holderId, text: plainDraft(task.sealed === true ? TUNING.practice.sealedLine : task.text), initiated: true } }, { expectChatId: chatId() });
   }

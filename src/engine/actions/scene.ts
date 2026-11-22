@@ -30,6 +30,7 @@ import { endSceneNews } from '../life/news';
 import { endSceneLife, startSceneLife } from '../life/opinions';
 import { busySlot } from '../life/places';
 import { restrictionReason, settleDefiance } from '../discipline';
+import { commanderRestriction } from '../warden/punish';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { validateIntents } from '../relations/intents';
@@ -91,6 +92,8 @@ registerAction('scene/start', (draft, payload, ctx) => {
     const held = origin === 'night' ? null : restrictionReason(draft, id, 'scene');
     if (held) throw new Error(held);
   }
+  const barred = origin === 'night' ? null : commanderRestriction(draft, 'scene', undefined, undefined, loc.id); // P16: a holder barred the room (a night knock is not held back)
+  if (barred) throw new Error(barred);
   const participants = ids as string[];
   const pending = draft.calendar.pendingScene;
   if (origin === 'activity') {

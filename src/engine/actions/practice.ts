@@ -1,5 +1,6 @@
 import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
+import { registerRestrictionReader } from '../discipline/restrictions';
 import { registerAction, registerAfterAction } from '../dispatch';
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
@@ -7,8 +8,10 @@ import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents } from '../practice/offences';
 import { answerPunishment } from '../practice/punish';
+import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
+import { registerCommanderRestriction } from '../warden/punish';
 
 // Importing this module registers what the practices (P16) hang on the lower layers and the actions of the package, as each task adds them. It is
 // imported by `src/app.ts` after `actions/dynamic`, so the day step it registers runs after the dynamic's own.
@@ -21,6 +24,10 @@ registerDayEndStep('dm_rumors', practiceDayStep);
 registerAfterAction(taskChecksFromEvents);
 // What she answers in what the lower layers said (a refusal at `role`, a refused milestone, an overruled countermand, a slip or a caught cheat in a run, a broken rule): her offences (R8).
 registerAfterAction(offencesFromEvents);
+
+// What her discipline stands in the way of: the commander's messages, free time and rooms, and a scene with her in her cold shoulder. The warden's own restrictions come first.
+registerCommanderRestriction(commanderRestrictionOf);
+registerRestrictionReader(unitRestrictionOf);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

@@ -86,6 +86,7 @@ export function rollInitiative(draft: CampaignState, reg: Registries, rng: Rng):
   const hits: string[] = [];
   for (const u of draft.squad) {
     if (!isNamedLiving(draft, u.id) || !ok.has(draft.relations[u.id]?.stateId) || waiting(draft, u.id)) continue;
+    if ((draft.practices?.cold[u.id] ?? -1) >= draft.day) continue; // P16: in her cold shoulder she starts no DM (nothing is drawn for her)
     if (rng.chance(initiativeChance(draft, reg, u.id))) hits.push(u.id);
   }
   for (let i = hits.length - 1; i > 0; i--) {

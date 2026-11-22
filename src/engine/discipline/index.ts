@@ -16,7 +16,7 @@ export {
 export const measureList = (reg: Registries, state?: ContentHolder): string[] => [
   ...[...reg.punishments.values()].filter((p) => state === undefined || contentAllowed(state, reg, p)).map((p) => String(p.id)), 'leash', 'unspecified',
 ];
-export { activeRestrictions, addRestriction, dutySlot, expireRestrictions, removeRestrictions, restrictionReason, type RestrictionUse } from './restrictions';
+export { activeRestrictions, addRestriction, dutySlot, expireRestrictions, registerRestrictionReader, removeRestrictions, restrictionReason, type RestrictionReader, type RestrictionUse } from './restrictions';
 export { gearFault, GEAR_FAULT_LOG, isCovert, queueSabotage, sabotageDayStep } from './sabotage';
 export { acquaintanceDays, inAcquaintance } from './acquaintance';
 export { commandStance, stanceEntry, type CommandStance } from './stance';

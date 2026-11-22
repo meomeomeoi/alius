@@ -998,6 +998,8 @@ export const TUNING = Object.freeze({
       confession: Object.freeze({ days: 2, text: 'AUTHOR TO WRITE: Tell {name} what was done, plainly.', summary: 'tell {name} what was done', track: 'discipline' }),
       keepDays: 60,
       publicAudienceMax: 2,
+      /** TAKE IT INSTEAD (R8): the share of a day's new practice that is her order to punish a soldier when one can be made, and her words and the summary (`{soldier}`, `{what}`). */
+      order: Object.freeze({ share: 0.5, text: 'AUTHOR TO WRITE: {soldier} earned {what}. The commander may do it, or take it for {soldier}.', summary: '{what} for {soldier}' }),
     }),
     refuseRecord: 5,
     coldWant: 5,

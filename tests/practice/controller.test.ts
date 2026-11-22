@@ -87,6 +87,18 @@ describe('a request is worded and delivered', () => {
     expect(`${call.system}\n${call.prompt}`).not.toMatch(/\b(he|him|his|himself)\b/i);
   });
 
+  it('in her cold shoulder the task is issued but no DM comes from her', async () => {
+    const { s, requestId } = waiting();
+    s.practices!.cold[ANN] = s.day + 1;
+    const { h, ctl } = rig(s);
+    h.st.mainReplies = [fixture('valid')];
+    ctl.onEvents([requested(requestId)]);
+    await ctl.idle();
+    expect(tasks(h)).toHaveLength(1);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(dms(h)).toHaveLength(0);
+  });
+
   it('invalid output falls back: an invalid_output record and the plain task', async () => {
     const { s, requestId } = waiting();
     const { h, ctl } = rig(s);
