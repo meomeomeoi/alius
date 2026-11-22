@@ -112,7 +112,8 @@ describe('scene screen', () => {
   it('speaker tag and emphasized text render as glitch spans', () => {
     const { q, qa } = setup({ messages: [msg(0, { text: 'I *really* mean it, *truly*.' })] });
     expect(q('.alius-speaker')!.textContent).toBe('ANN //');
-    expect(qa('em.alius-glitch').map((e) => e.textContent)).toEqual(['really', 'truly']);
+    expect(qa('.alius-text em.alius-glitch').map((e) => e.textContent)).toEqual(['really', 'truly']);
+    expect(qa('.alius-reply-text em.alius-glitch').map((e) => e.textContent)).toEqual(['really', 'truly']); // P10e: the reply block shows it too
     expect(q('.alius-text')!.textContent).toBe('I really mean it, truly.');
   });
 
@@ -147,18 +148,18 @@ describe('scene screen', () => {
     const t = setup({ messages, settings: { typingSpeed: 20, reducedMotion: true } });
     messages.push(msg(1, { text: 'abcdefghij' }));
     t.screen.handle({ type: 'transcript' });
-    expect(t.qa('.alius-text').at(-1)!.textContent).toBe('abcdefghij');
+    expect(t.qa('.alius-reply-text').at(-1)!.textContent).toBe('abcdefghij');
   });
 
   it('typing speed 0 renders instantly; a positive speed types the newest reply out', () => {
     const instant = setup({ messages: [msg(0, { text: 'Hello there' })] });
-    expect(instant.q('.alius-text')!.textContent).toBe('Hello there');
+    expect(instant.q('.alius-reply-text')!.textContent).toBe('Hello there');
 
     const messages: ChatMessage[] = [msg(0, { isUser: true, name: 'Vale', avatar: undefined, text: 'Hi' })];
     const typed = setup({ messages, settings: { typingSpeed: 20 } });
     messages.push(msg(1, { text: 'abcdefghij' }));
     typed.screen.handle({ type: 'transcript' });
-    const text = () => typed.qa('.alius-text').at(-1)!.textContent!;
+    const text = () => typed.qa('.alius-reply-text').at(-1)!.textContent!;
     expect(text().length).toBeLessThan(10);
     vi.advanceTimersByTime(250);
     expect(text().length).toBeGreaterThan(0);
@@ -229,14 +230,14 @@ describe('scene screen', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     messages.push(msg(1, { text: 'Streaming in' }));
     vi.advanceTimersByTime(600);
-    expect(qa('.alius-text').at(-1)!.textContent).toBe('Streaming in');
+    expect(qa('.alius-reply-text').at(-1)!.textContent).toBe('Streaming in');
     messages[1].text = 'Streaming in, and more';
     vi.advanceTimersByTime(600);
-    expect(qa('.alius-text').at(-1)!.textContent).toBe('Streaming in, and more');
+    expect(qa('.alius-reply-text').at(-1)!.textContent).toBe('Streaming in, and more');
     finishSend();
     await vi.advanceTimersByTimeAsync(0);
     screen.handle({ type: 'transcript' });
-    expect(qa('.alius-text').at(-1)!.textContent).toBe('Streaming in, and more'); // not restarted as an animation
+    expect(qa('.alius-reply-text').at(-1)!.textContent).toBe('Streaming in, and more'); // not restarted as an animation
   });
 
   it('every message has an edit button; saving calls controller.edit with the new text', () => {

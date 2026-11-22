@@ -62732,6 +62732,77 @@ function fillProse(el, text3, visible, opts = {}) {
     el.append(node);
   });
 }
+function sentenceRunIndex(text3, visible) {
+  const runs2 = proseRuns(text3);
+  const shown2 = runs2.map((r) => r.text).join("").slice(0, Math.max(0, visible));
+  let start = 0;
+  for (const m of shown2.matchAll(/[.!?…]["”’']?\s+(?=\S)/g)) start = m.index + m[0].length;
+  let acc = 0;
+  for (let i = 0; i < runs2.length; i++) {
+    if (start < acc + runs2[i].text.length) return i;
+    acc += runs2[i].text.length;
+  }
+  return Math.max(0, runs2.length - 1);
+}
+
+// src/ui/scene/stage/reply.ts
+var REPLY_MAX_LINES = 8;
+function replyView(messages) {
+  let lastUser = -1;
+  messages.forEach((m, i) => {
+    if (m.isUser) lastUser = i;
+  });
+  const replies = messages.slice(lastUser + 1).filter((m) => !m.isUser).map((m) => ({ index: m.index, name: m.name, ...m.avatar !== void 0 ? { avatar: m.avatar } : {}, text: m.text }));
+  return { echo: lastUser >= 0 ? messages[lastUser].text : null, replies };
+}
+function measureReply(host, onMore) {
+  const block2 = host.querySelector(".alius-reply");
+  const body = host.querySelector(".alius-reply-body");
+  if (!block2 || !body) return;
+  const over2 = body.scrollHeight > body.clientHeight + 1;
+  if (over2) {
+    block2.dataset.overflow = "true";
+    body.scrollTop = body.scrollHeight;
+    if (!block2.querySelector("[data-more]")) {
+      const handler2 = onMore ?? (moreHandlers.get(block2) ?? (() => {
+      }));
+      block2.prepend(h("button", { type: "button", class: "alius-reply-more", "data-more": "", "aria-label": "Open the history: more above", onclick: handler2 }, "\u25B2 more above"));
+    }
+  } else {
+    delete block2.dataset.overflow;
+    block2.querySelector("[data-more]")?.remove();
+  }
+}
+var moreHandlers = /* @__PURE__ */ new WeakMap();
+function renderReply(host, view, opts) {
+  if (view.echo === null && view.replies.length === 0) {
+    host.replaceChildren();
+    return;
+  }
+  const body = h("div", { class: "alius-reply-body" });
+  body.style.setProperty("--alius-reply-lines", String(opts.maxLines));
+  for (const r of view.replies) {
+    const name = h("span", { class: "alius-reply-name" });
+    name.textContent = r.name.toUpperCase();
+    const text3 = h("span", { class: "alius-reply-text" });
+    fillProse(text3, r.text, opts.visibleOf(r.index), { speechClass: "alius-speech", ...opts.newestFrom(r.index) !== void 0 ? { newestFrom: opts.newestFrom(r.index) } : {} });
+    const line2 = h("div", { class: "alius-line alius-reply-line", "data-index": r.index }, name, text3);
+    const accent = opts.accentOf(r);
+    if (accent) line2.style.setProperty("--alius-accent", accent);
+    opts.flag?.(line2, r.index);
+    body.append(line2);
+  }
+  const block2 = h("div", { class: "alius-reply" });
+  moreHandlers.set(block2, opts.onMore);
+  if (view.echo !== null) {
+    const echo = h("div", { class: "alius-reply-echo", "aria-label": "Your last message" });
+    echo.textContent = view.echo;
+    block2.append(echo);
+  }
+  block2.append(body);
+  host.replaceChildren(block2);
+  measureReply(host, opts.onMore);
+}
 
 // src/ui/scene/sceneScreen.ts
 var loaded = /* @__PURE__ */ new Map();
@@ -62815,6 +62886,7 @@ function renderSceneScreen(host, ctx2) {
   let spriteHost;
   let hud;
   let log;
+  let replyHost;
   let chips;
   let disciplineChips;
   let demandChips;
@@ -63052,6 +63124,40 @@ function renderSceneScreen(host, ctx2) {
     void controller.edit(e.index, e.value).catch(() => {
     });
   }
+  function drawReply(s, messages) {
+    const view = replyView(messages);
+    const speed = typingSpeed();
+    const streaming = pending4 && view.replies.length > 0 ? view.replies[view.replies.length - 1].index : null;
+    const lit = (index2) => {
+      if (speed <= 0) return void 0;
+      const text3 = view.replies.find((r) => r.index === index2)?.text ?? "";
+      if (index2 === animating) return sentenceRunIndex(text3, progress.get(index2) ?? 0);
+      return index2 === streaming ? sentenceRunIndex(text3, Infinity) : void 0;
+    };
+    renderReply(replyHost, view, {
+      maxLines: REPLY_MAX_LINES,
+      visibleOf: (index2) => index2 === animating ? progress.get(index2) ?? 0 : Infinity,
+      newestFrom: lit,
+      accentOf: (r) => {
+        const u = s.squad.find((x) => x.cardRef !== void 0 && x.cardRef === r.avatar) ?? s.squad.find((x) => x.displayName === r.name);
+        return u ? unitAccent(u.id) : null;
+      },
+      flag: (line2, index2) => {
+        const flagged = s.scene?.violations?.find((v) => v.index === index2);
+        if (flagged) drawViolation(line2, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {
+        }), pending4);
+      },
+      onMore: () => {
+        markHintUsed("history");
+        log.focus();
+      }
+      // (the curtain, Task 8, replaces this)
+    });
+    if (messages.length === 0) {
+      const prologue = s.scene?.origin === "prologue";
+      replyHost.replaceChildren(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene."));
+    }
+  }
   function drawLog(s) {
     const messages = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
@@ -63094,7 +63200,7 @@ function renderSceneScreen(host, ctx2) {
         ));
       }
       const text3 = h("span", { class: "alius-text" });
-      fillProse(text3, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
+      fillProse(text3, m.text, Infinity);
       const edit = h("button", {
         type: "button",
         class: "alius-edit",
@@ -63107,16 +63213,9 @@ function renderSceneScreen(host, ctx2) {
           drawLog(s);
         }
       }, "\u270E");
-      const line2 = h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text3, " ", edit);
-      const flagged = s.scene?.violations?.find((v) => v.index === m.index);
-      if (flagged && !m.isUser) drawViolation(line2, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {
-      }), pending4);
-      return line2;
+      return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text3, " ", edit);
     }));
-    if (messages.length === 0) {
-      const prologue = s.scene?.origin === "prologue";
-      log.append(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene."));
-    }
+    drawReply(s, messages);
     const box = log.querySelector("textarea.alius-edit-box");
     if (box && (editing?.focus || boxHadFocus)) {
       box.focus();
@@ -63131,8 +63230,9 @@ function renderSceneScreen(host, ctx2) {
         const shown2 = Math.min(total2, Math.floor((Date.now() - started2) * typingSpeed() / 1e3));
         if (shown2 > (progress.get(idx) ?? 0)) ctx2.sound?.play("typing");
         progress.set(idx, shown2);
-        const el = log.querySelector(`.alius-line[data-index="${idx}"] .alius-text`);
-        if (el) fillProse(el, msg.text, shown2);
+        const el = replyHost.querySelector(`.alius-reply-line[data-index="${idx}"] .alius-reply-text`);
+        if (el) fillProse(el, msg.text, shown2, { newestFrom: shown2 >= total2 ? void 0 : sentenceRunIndex(msg.text, shown2) });
+        measureReply(replyHost);
         if (shown2 >= total2) {
           progress.delete(idx);
           stopTyping();
@@ -63229,6 +63329,7 @@ function renderSceneScreen(host, ctx2) {
     spriteHost.classList.add("alius-sprites");
     hud = h("div", { class: "alius-hud" });
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
+    replyHost = layers.hosts.reply;
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
     offerInner = h("div", { class: "alius-offer-chips-host" });
@@ -63347,7 +63448,7 @@ function renderSceneScreen(host, ctx2) {
       ...ctx2.onClose ? { onClose: ctx2.onClose } : {}
     });
     hosts.status.append(banner, deviceHost, busyHost);
-    hosts.reply.append(log);
+    layers.curtain.append(h("div", { class: "alius-curtain-interim", hidden: true }, log));
     hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
     hosts.input.append(h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who)));
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);

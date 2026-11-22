@@ -422,3 +422,110 @@
     transform: translateX(var(--alius-amp));
   }
 }
+
+/* the reply: prose subtitles on the bottom gradient, no frame. Inter light for prose, regular for speech. */
+#alius-shell .alius-stage-reply {
+  margin-bottom: 10px;
+}
+
+#alius-shell .alius-reply {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--alius-font-sans);
+  font-weight: 300;
+  font-size: clamp(15px, 1.9vh, 22px);
+  line-height: 1.6;
+  color: var(--alius-fg);
+  text-shadow: 0 1px 6px color-mix(in srgb, var(--alius-bg) 90%, transparent);
+}
+
+#alius-shell .alius-reply-echo {
+  order: 1;
+  margin-bottom: 4px;
+  font-size: 0.78em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--alius-dim);
+  opacity: 0.8;
+}
+
+#alius-shell .alius-reply-more {
+  order: 2;
+  align-self: center;
+  background: transparent;
+  border: 0;
+  padding: 0 10px;
+  font-family: var(--alius-font);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--alius-dim);
+  cursor: pointer;
+}
+
+#alius-shell .alius-reply-more:hover {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-reply-body {
+  order: 3;
+  max-height: min(calc(var(--alius-reply-lines, 8) * 1.6em), 30vh);
+  overflow: hidden;
+}
+
+/* a reply too long for its lines shows its last ones under a fade */
+#alius-shell .alius-reply[data-overflow="true"] .alius-reply-body {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 2.2em);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 2.2em);
+}
+
+#alius-shell .alius-reply-line {
+  margin: 0 0 0.45em;
+}
+
+#alius-shell .alius-reply-name {
+  display: block;
+  font-family: var(--alius-font);
+  font-weight: 400;
+  font-size: 10px;
+  line-height: 1.8;
+  letter-spacing: 0.16em;
+  color: var(--alius-accent);
+  opacity: 0.85;
+}
+
+#alius-shell .alius-reply-text {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#alius-shell .alius-reply .alius-glitch {
+  font-style: italic;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+#alius-shell .alius-speech {
+  font-weight: 400;
+  color: color-mix(in srgb, var(--alius-accent) 86%, #ffffff);
+}
+
+/* the newest sentence while a reply streams in or is typed out; gone when it is complete */
+#alius-shell .alius-prose-new {
+  background: color-mix(in srgb, var(--alius-accent) 14%, transparent);
+  border-radius: 3px;
+}
+
+#alius-shell .alius-stage-status {
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-stage-status .alius-busy {
+  gap: 10px;
+}

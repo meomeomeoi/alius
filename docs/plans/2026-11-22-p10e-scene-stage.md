@@ -304,7 +304,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `renderReply(host: HTMLElement, view: ReplyView, opts: { maxLines: number; visibleOf(index: number): number; newestFrom(index: number): number | undefined; accentOf(reply: { name: string; avatar?: string }): string | null; flag?(line: HTMLElement, index: number): void; onMore(): void }): void`
   - `REPLY_MAX_LINES = 8`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the replies since the commander's last message`:
     - transcript `[u0, Ann1, Bea2]` → the replies Ann1 then Bea2, each under its name, with echo u0's text;
     - `[Ann0]` → Ann0, no echo;
@@ -315,10 +315,10 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `too long`: when the block's `scrollHeight` exceeds `maxLines × line-height`, the block gets `data-overflow="true"` and a `[data-more]` mark that calls `onMore` (stub the measurement in jsdom).
   - `the violation marker` (P9d) is drawn on a flagged reply as today.
   - `status line`: "AWAITING REPLY… Ns" with STOP while busy, and "TIME IS PASSING" while pacing, both in `.alius-stage-status`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/stage/reply.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The accent comes from `unitAccent(unit)` (P10) on the unit whose `cardRef` matches the message's `avatar`, falling back to the name.
-- [ ] **Step 4: Run** the test, `tests/ui/scene.test.ts`, `tests/ui/generationSurfaces.test.ts` (selectors only), tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the reply as prose subtitles`
+- [x] **Step 2: Run** `npx vitest run tests/ui/stage/reply.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The accent comes from `unitAccent(unit)` (P10) on the unit whose `cardRef` matches the message's `avatar`, falling back to the name.
+- [x] **Step 4: Run** the test, `tests/ui/scene.test.ts`, `tests/ui/generationSurfaces.test.ts` (selectors only), tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the reply as prose subtitles`
 
 ### Task 8: The curtain
 

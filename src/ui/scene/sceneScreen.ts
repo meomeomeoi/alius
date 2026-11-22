@@ -40,7 +40,9 @@ import { inputGauge, type InputGauge } from './stage/gauge';
 import { buildLayers, type StageLayers } from './stage/layers';
 import { attachLook } from './stage/look';
 import { markHintUsed, renderTopLine } from './stage/topLine';
-import { fillProse, proseLength } from './stage/prose';
+import { fillProse, proseLength, sentenceRunIndex } from './stage/prose';
+import { REPLY_MAX_LINES, measureReply, renderReply, replyView } from './stage/reply';
+import { unitAccent } from '../voice/voiceCard';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -206,6 +208,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let spriteHost: HTMLElement;
   let hud: HTMLElement;
   let log: HTMLElement;
+  /** P10e: the reply block (the last replies as prose subtitles); `log` is the whole transcript, which the curtain takes over (Task 8). */
+  let replyHost: HTMLElement;
   let chips: HTMLElement;
   let disciplineChips: HTMLElement;
   let demandChips: HTMLElement;
@@ -445,6 +449,42 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     void controller.edit(e.index, e.value).catch(() => {});
   }
 
+  /** P10e §3: the last replies as prose subtitles (the typing reveal and the streaming highlight live here). */
+  function drawReply(s: CampaignState, messages: ChatMessage[]): void {
+    const view = replyView(messages);
+    const speed = typingSpeed();
+    // the newest sentence is highlighted while a reply streams in or is typed out (never with speed 0 or reduced motion)
+    const streaming = pending && view.replies.length > 0 ? view.replies[view.replies.length - 1].index : null;
+    const lit = (index: number): number | undefined => {
+      if (speed <= 0) return undefined;
+      const text = view.replies.find((r) => r.index === index)?.text ?? '';
+      if (index === animating) return sentenceRunIndex(text, progress.get(index) ?? 0);
+      return index === streaming ? sentenceRunIndex(text, Infinity) : undefined;
+    };
+    renderReply(replyHost, view, {
+      maxLines: REPLY_MAX_LINES,
+      visibleOf: (index) => (index === animating ? progress.get(index) ?? 0 : Infinity),
+      newestFrom: lit,
+      accentOf: (r) => {
+        const u = s.squad.find((x) => x.cardRef !== undefined && x.cardRef === r.avatar) ?? s.squad.find((x) => x.displayName === r.name);
+        return u ? unitAccent(u.id) : null;
+      },
+      flag: (line, index) => {
+        // P9d: a reply the reading flagged as depicting content that is switched off
+        const flagged = s.scene?.violations?.find((v) => v.index === index);
+        if (flagged) drawViolation(line, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {}), pending);
+      },
+      onMore: () => { markHintUsed('history'); log.focus(); }, // (the curtain, Task 8, replaces this)
+    });
+    // an empty scene waits for the commander: say so, or nobody knows what to do (the prologue's scenes are the first the player sees)
+    if (messages.length === 0) {
+      const prologue = s.scene?.origin === 'prologue';
+      replyHost.replaceChildren(h('p', { class: 'alius-dim alius-scene-hint' }, prologue
+        ? 'The squad is about to speak first. Answer them below (Enter sends); ‹ ↻ › above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like.'
+        : 'Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene.'));
+    }
+  }
+
   function drawLog(s: CampaignState): void {
     const messages: ChatMessage[] = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
@@ -483,7 +523,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => cancelEdit(s) }, '[ CANCEL ]')));
       }
       const text = h('span', { class: 'alius-text' });
-      fillProse(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
+      fillProse(text, m.text, Infinity);
       const edit = h('button', {
         type: 'button', class: 'alius-edit', 'data-edit': m.index, 'aria-label': 'Edit message', title: 'Edit this message', disabled: pending,
         onclick: () => {
@@ -491,19 +531,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           drawLog(s);
         },
       }, '✎');
-      const line = h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
-      // P9d: a reply the reading flagged as depicting content that is switched off
-      const flagged = s.scene?.violations?.find((v) => v.index === m.index);
-      if (flagged && !m.isUser) drawViolation(line, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {}), pending);
-      return line;
+      return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
     }));
-    // an empty scene waits for the commander: say so, or nobody knows what to do (the prologue's scenes are the first the player sees)
-    if (messages.length === 0) {
-      const prologue = s.scene?.origin === 'prologue';
-      log.append(h('p', { class: 'alius-dim alius-scene-hint' }, prologue
-        ? 'The squad is about to speak first. Answer them below (Enter sends); ‹ ↻ › above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [ END TRANSMISSION ] closes the scene whenever you like.'
-        : 'Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [ END TRANSMISSION ] closes the scene.'));
-    }
+    drawReply(s, messages);
     const box = log.querySelector<HTMLTextAreaElement>('textarea.alius-edit-box');
     if (box && (editing?.focus || boxHadFocus)) {
       box.focus();
@@ -519,8 +549,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         const shown = Math.min(total, Math.floor(((Date.now() - started) * typingSpeed()) / 1000));
         if (shown > (progress.get(idx) ?? 0)) ctx.sound?.play('typing');
         progress.set(idx, shown);
-        const el = log.querySelector<HTMLElement>(`.alius-line[data-index="${idx}"] .alius-text`);
-        if (el) fillProse(el, msg.text, shown);
+        const el = replyHost.querySelector<HTMLElement>(`.alius-reply-line[data-index="${idx}"] .alius-reply-text`);
+        if (el) fillProse(el, msg.text, shown, { newestFrom: shown >= total ? undefined : sentenceRunIndex(msg.text, shown) });
+        measureReply(replyHost);
         if (shown >= total) {
           progress.delete(idx);
           stopTyping();
@@ -615,6 +646,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     spriteHost.classList.add('alius-sprites');
     hud = h('div', { class: 'alius-hud' });
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
+    replyHost = layers.hosts.reply;
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
     offerInner = h('div', { class: 'alius-offer-chips-host' });
@@ -722,7 +754,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       ...(ctx.onClose ? { onClose: ctx.onClose } : {}),
     });
     hosts.status.append(banner, deviceHost, busyHost);
-    hosts.reply.append(log);
+    layers.curtain.append(h('div', { class: 'alius-curtain-interim', hidden: true }, log)); // (Task 8: the curtain proper)
     hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
     hosts.input.append(h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who)));
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);

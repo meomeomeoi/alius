@@ -127,3 +127,20 @@ export function fillProse(el: HTMLElement, text: string, visible: number, opts: 
     el.append(node);
   });
 }
+
+/**
+ * The run the newest sentence of the first `visible` characters starts in (the streaming highlight marks from it on).
+ * A sentence ends at `.`, `!`, `?` or `…` (with a closing quote) followed by a space; an empty text answers 0.
+ */
+export function sentenceRunIndex(text: string, visible: number): number {
+  const runs = proseRuns(text);
+  const shown = runs.map((r) => r.text).join('').slice(0, Math.max(0, visible));
+  let start = 0;
+  for (const m of shown.matchAll(/[.!?…]["”’']?\s+(?=\S)/g)) start = m.index! + m[0].length;
+  let acc = 0;
+  for (let i = 0; i < runs.length; i++) {
+    if (start < acc + runs[i].text.length) return i;
+    acc += runs[i].text.length;
+  }
+  return Math.max(0, runs.length - 1);
+}
