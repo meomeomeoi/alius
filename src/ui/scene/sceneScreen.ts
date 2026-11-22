@@ -31,14 +31,15 @@ import { cutIn } from './cutIn';
 import { lifeMode } from '../../engine/life/state';
 import { renderLetsMenu } from '../life/lifeViews';
 import { analyzeAttrs } from '../analyze/mark';
-import { deviceLocked } from '../../engine/blocking';
 import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
 import { inputGauge, type InputGauge } from './stage/gauge';
 import { buildLayers, type StageLayers } from './stage/layers';
+import { CHIP_SLOTS, createChipRow, type ChipRow } from './stage/chipRow';
 import { createCurtain, type Curtain } from './stage/curtain';
+import { flashLine } from './stage/flash';
 import { attachLook } from './stage/look';
 import { markHintUsed, renderTopLine } from './stage/topLine';
 import { fillProse, proseLength, sentenceRunIndex } from './stage/prose';
@@ -112,6 +113,8 @@ export interface SceneScreen {
   dispose(): void;
   /** P10e §5: the input line as a gauge surface for mini-games (null while no scene is drawn). */
   gauge(): InputGauge | null;
+  /** P10e §5a: the short "The device is out of reach." line over the frame (Tab refused while the hands are busy). */
+  flashDeviceOut(): void;
 }
 
 /**
@@ -199,6 +202,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
   let layers: StageLayers;
+  let chipResizer: ResizeObserver | null = null;
   /** P10e: looking around is wired per built scene (its position is remembered by scene id, see stage/look.ts). */
   let detachLook: (() => void) | null = null;
   let bg: HTMLElement;
@@ -237,8 +241,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let disciplineMenus: HTMLElement;
   let letsHost: HTMLElement;
   let banner: HTMLElement;
-  /** P15a: "The device is out of reach." while busy hands or a covered face lock the PDA. */
-  let deviceHost: HTMLElement;
+  let chipRow: ChipRow;
   /** P15a: the BLOCKING strip (drawn only while the blocking is live). */
   let blockingHost: HTMLElement;
   let momentHost: HTMLElement;
@@ -404,7 +407,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     disciplineMenus.replaceChildren(...present(s).filter((u) => u.kind === 'named').map((u) => {
       const menu = renderDisciplineMenu({ state: s, registries, unitId: u.id, onPunish: (measure, days) => ctx.onPunish!(u.id, measure, days) }) as HTMLDetailsElement;
       if (open.has(u.id)) menu.open = true;
-      return h('div', { class: 'alius-discipline-unit' }, h('span', { class: 'alius-dim' }, u.displayName), menu);
+      // P10e: one chip per woman; her name in front when more than one is present; the menu opens over the row
+      const many = present(s).filter((x) => x.kind === 'named').length > 1;
+      return h('div', { class: 'alius-discipline-unit', 'data-discipline-chip': u.id }, many ? h('span', { class: 'alius-dim alius-discipline-name' }, u.displayName) : null, menu);
     }));
   }
 
@@ -578,12 +583,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (state.enabled || state.reason !== 'Nothing was read yet.') drawSiteReroll(genTools, ui, 'scene.intents', 'last', () => controller.rerollLast(), state);
   }
 
-  /** P15a: the PDA is out of reach (the tabs are locked); the line is gone with the item or the contact. */
-  function drawDevice(s: CampaignState): void {
-    deviceHost.replaceChildren();
-    if (deviceLocked(s, registries)) deviceHost.append(h('p', { class: 'alius-device-out alius-dim', role: 'note', ...analyzeAttrs('glossary:device_out_of_reach') }, 'The device is out of reach.'));
-  }
-
   /** P15a: the strip; a chip dispatches through `stage` and the screen redraws. */
   function drawBlocking(s: CampaignState): void {
     renderBlockingStrip(blockingHost, {
@@ -702,7 +701,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
     letsHost = h('div', { class: 'alius-lets-host' });
     banner = h('div', { class: 'alius-pacing-host' });
-    deviceHost = h('div', { class: 'alius-device-host' });
     blockingHost = h('div', { class: 'alius-blocking-host' });
     momentHost = h('div', { class: 'alius-moment-host' });
     physicsHost = h('div', { class: 'alius-physics-host' });
@@ -793,8 +791,14 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       onEnd: () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }),
       ...(ctx.onClose ? { onClose: ctx.onClose } : {}),
     });
-    hosts.status.append(banner, deviceHost, busyHost);
-    hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
+    hosts.status.append(banner, busyHost);
+    chipRow = createChipRow(hosts.chipRow, CHIP_SLOTS);
+    for (const [slot, el] of [['generation', genChips], ['proposals', chips], ['lead', leadChips], ['offer', offerHost], ['rules', ruleChips], ['demands', demandChips], ['discipline', disciplineChips], ['discipline-menus', disciplineMenus], ['freq', freqChips], ['lets', letsHost]] as const) chipRow.slot(slot).append(el);
+    if (typeof ResizeObserver !== 'undefined') {
+      chipResizer?.disconnect();
+      chipResizer = new ResizeObserver(() => chipRow.layout());
+      chipResizer.observe(chipRow.element);
+    }
     inputLine = h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who));
     hosts.input.append(inputLine);
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
@@ -843,10 +847,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
-    drawDevice(s);
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
+    chipRow.layout();
   }
 
   function pulse(e: Extract<SceneUiEvent, { type: 'pulse' }>): void {
@@ -862,6 +866,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   const screen: SceneScreen = {
     refresh,
+    flashDeviceOut: () => { if (layers) flashLine(layers.moment, 'The device is out of reach.', 'glossary:device_out_of_reach'); }, // P10e §5a: shown when Tab is refused (the app/shell calls it)
     gauge: () => (layers && root.dataset.stage === 'frame' ? inputGauge(layers.hosts.input) : null),
     handle(e) {
       if (disposed) return;
@@ -888,6 +893,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     },
     dispose() {
       disposed = true;
+      chipResizer?.disconnect();
       document.removeEventListener('keydown', onDocKey);
       curtain?.destroy();
       detachLook?.();

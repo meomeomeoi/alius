@@ -62511,6 +62511,65 @@ function buildLayers(root) {
   return { root, ...layers, hosts };
 }
 
+// src/ui/scene/stage/chipRow.ts
+var CHIP_SLOTS = ["generation", "proposals", "lead", "offer", "rules", "demands", "discipline", "discipline-menus", "freq", "lets", "stop"];
+var ITEMS = ".alius-chip, button, summary, [data-chip-item]";
+function createChipRow(host, names2) {
+  const slots = /* @__PURE__ */ new Map();
+  for (const n of names2) slots.set(n, h("div", { class: "alius-chip-slot", "data-slot": n }));
+  const element = h("div", { class: "alius-chip-row" }, ...slots.values());
+  host.append(element);
+  let hidden = 0;
+  const items = () => [...element.querySelectorAll(ITEMS)].filter((el) => !el.hasAttribute("data-more-chips") && (el.tagName === "SUMMARY" || el.closest("details") === null));
+  const mark = () => {
+    let more = element.querySelector("[data-more-chips]");
+    if (!more) {
+      more = h("button", {
+        type: "button",
+        class: "alius-chip-more",
+        "data-more-chips": "",
+        "aria-label": "Show every chip",
+        onclick: () => {
+          if (element.dataset.expanded === "true") delete element.dataset.expanded;
+          else element.dataset.expanded = "true";
+          refreshMark();
+        }
+      });
+      element.append(more);
+    }
+    return more;
+  };
+  const refreshMark = () => {
+    const more = element.querySelector("[data-more-chips]");
+    if (more) more.textContent = element.dataset.expanded === "true" ? "\u2212" : `+${hidden}`;
+  };
+  return {
+    element,
+    slot(name) {
+      const s = slots.get(name);
+      if (!s) throw new Error(`no chip slot ${name}`);
+      return s;
+    },
+    layout() {
+      if (element.dataset.expanded === "true") {
+        mark();
+        refreshMark();
+        return;
+      }
+      const width = element.clientWidth;
+      hidden = items().filter((el) => el.offsetLeft + el.offsetWidth > width + 1).length;
+      if (hidden > 0) {
+        element.dataset.overflow = "true";
+        mark();
+        refreshMark();
+      } else {
+        delete element.dataset.overflow;
+        element.querySelector("[data-more-chips]")?.remove();
+      }
+    }
+  };
+}
+
 // src/ui/scene/stage/look.ts
 var memory = /* @__PURE__ */ new Map();
 var DOUBLE_MS = 300;
@@ -62883,6 +62942,20 @@ function createCurtain(host, opts) {
   return curtain;
 }
 
+// src/ui/scene/stage/flash.ts
+var FLASH_MS = 2400;
+var timers2 = /* @__PURE__ */ new WeakMap();
+function flashLine(layer, text3, analyze, ms = FLASH_MS) {
+  for (const old of layer.querySelectorAll("[data-flash]")) {
+    const t = timers2.get(old);
+    if (t) clearTimeout(t);
+    old.remove();
+  }
+  const el = h("p", { class: "alius-flash", "data-flash": "", role: "status", ...analyzeAttrs(analyze) }, text3);
+  layer.append(el);
+  timers2.set(el, setTimeout(() => el.remove(), ms));
+}
+
 // src/ui/scene/stage/reply.ts
 var REPLY_MAX_LINES = 8;
 function replyView(messages) {
@@ -63016,6 +63089,7 @@ function renderSceneScreen(host, ctx2) {
   const labels = /* @__PURE__ */ new Map();
   const timeouts = /* @__PURE__ */ new Set();
   let layers;
+  let chipResizer = null;
   let detachLook = null;
   let bg;
   let backdrop;
@@ -63049,7 +63123,7 @@ function renderSceneScreen(host, ctx2) {
   let disciplineMenus;
   let letsHost;
   let banner;
-  let deviceHost;
+  let chipRow;
   let blockingHost;
   let momentHost;
   let physicsHost;
@@ -63217,7 +63291,8 @@ function renderSceneScreen(host, ctx2) {
     disciplineMenus.replaceChildren(...present2(s).filter((u) => u.kind === "named").map((u) => {
       const menu = renderDisciplineMenu({ state: s, registries, unitId: u.id, onPunish: (measure, days) => ctx2.onPunish(u.id, measure, days) });
       if (open3.has(u.id)) menu.open = true;
-      return h("div", { class: "alius-discipline-unit" }, h("span", { class: "alius-dim" }, u.displayName), menu);
+      const many2 = present2(s).filter((x) => x.kind === "named").length > 1;
+      return h("div", { class: "alius-discipline-unit", "data-discipline-chip": u.id }, many2 ? h("span", { class: "alius-dim alius-discipline-name" }, u.displayName) : null, menu);
     }));
   }
   function drawSlap(s) {
@@ -63374,10 +63449,6 @@ function renderSceneScreen(host, ctx2) {
     const state2 = controller.rerollState();
     if (state2.enabled || state2.reason !== "Nothing was read yet.") drawSiteReroll(genTools, ui, "scene.intents", "last", () => controller.rerollLast(), state2);
   }
-  function drawDevice(s) {
-    deviceHost.replaceChildren();
-    if (deviceLocked(s, registries)) deviceHost.append(h("p", { class: "alius-device-out alius-dim", role: "note", ...analyzeAttrs("glossary:device_out_of_reach") }, "The device is out of reach."));
-  }
   function drawBlocking(s) {
     renderBlockingStrip(blockingHost, {
       state: s,
@@ -63500,7 +63571,6 @@ function renderSceneScreen(host, ctx2) {
     disciplineMenus = h("div", { class: "alius-discipline-units" });
     letsHost = h("div", { class: "alius-lets-host" });
     banner = h("div", { class: "alius-pacing-host" });
-    deviceHost = h("div", { class: "alius-device-host" });
     blockingHost = h("div", { class: "alius-blocking-host" });
     momentHost = h("div", { class: "alius-moment-host" });
     physicsHost = h("div", { class: "alius-physics-host" });
@@ -63598,8 +63668,14 @@ function renderSceneScreen(host, ctx2) {
       }),
       ...ctx2.onClose ? { onClose: ctx2.onClose } : {}
     });
-    hosts.status.append(banner, deviceHost, busyHost);
-    hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
+    hosts.status.append(banner, busyHost);
+    chipRow = createChipRow(hosts.chipRow, CHIP_SLOTS);
+    for (const [slot2, el] of [["generation", genChips], ["proposals", chips], ["lead", leadChips], ["offer", offerHost], ["rules", ruleChips], ["demands", demandChips], ["discipline", disciplineChips], ["discipline-menus", disciplineMenus], ["freq", freqChips], ["lets", letsHost]]) chipRow.slot(slot2).append(el);
+    if (typeof ResizeObserver !== "undefined") {
+      chipResizer?.disconnect();
+      chipResizer = new ResizeObserver(() => chipRow.layout());
+      chipResizer.observe(chipRow.element);
+    }
     inputLine = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
     hosts.input.append(inputLine);
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
@@ -63647,10 +63723,10 @@ function renderSceneScreen(host, ctx2) {
     drawFreq(s);
     drawGeneration(s);
     drawBanner();
-    drawDevice(s);
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
+    chipRow.layout();
   }
   function pulse(e) {
     const holder2 = hud.querySelector(`.alius-hud-unit[data-unit="${e.unitId}"] .alius-pulses`);
@@ -63667,6 +63743,10 @@ function renderSceneScreen(host, ctx2) {
   }
   const screen = {
     refresh: refresh2,
+    flashDeviceOut: () => {
+      if (layers) flashLine(layers.moment, "The device is out of reach.", "glossary:device_out_of_reach");
+    },
+    // P10e §5a: shown when Tab is refused (the app/shell calls it)
     gauge: () => layers && root.dataset.stage === "frame" ? inputGauge(layers.hosts.input) : null,
     handle(e) {
       if (disposed) return;
@@ -63695,6 +63775,7 @@ function renderSceneScreen(host, ctx2) {
     },
     dispose() {
       disposed = true;
+      chipResizer?.disconnect();
       document.removeEventListener("keydown", onDocKey);
       curtain?.destroy();
       detachLook?.();
@@ -65846,12 +65927,12 @@ function playBoot(screen, opts) {
     screen.append(overlay);
     const lines = [`${opts.skinLabel} // BOOT`, "LINK ........ OK", "CCP OVERSIGHT HANDSHAKE ........ OK"];
     const show = (i) => void overlay.append(h("div", { class: "alius-boot-line" }, lines[i]));
-    const timers2 = [];
+    const timers3 = [];
     let over2 = false;
     const finish2 = () => {
       if (over2) return;
       over2 = true;
-      timers2.forEach(clearTimeout);
+      timers3.forEach(clearTimeout);
       document.removeEventListener("keydown", finish2);
       document.removeEventListener("pointerdown", finish2);
       opts.signal?.removeEventListener("abort", finish2);
@@ -65859,10 +65940,10 @@ function playBoot(screen, opts) {
       resolve();
     };
     show(0);
-    timers2.push(setTimeout(() => show(1), STEP_MS));
-    timers2.push(setTimeout(() => show(2), STEP_MS * 2));
-    timers2.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
-    timers2.push(setTimeout(finish2, STEP_MS * 4));
+    timers3.push(setTimeout(() => show(1), STEP_MS));
+    timers3.push(setTimeout(() => show(2), STEP_MS * 2));
+    timers3.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
+    timers3.push(setTimeout(finish2, STEP_MS * 4));
     document.addEventListener("keydown", finish2);
     document.addEventListener("pointerdown", finish2);
     opts.signal?.addEventListener("abort", finish2);
@@ -66615,7 +66696,7 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
 // src/ui/shell/toast.ts
 var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
-  const timers2 = /* @__PURE__ */ new Set();
+  const timers3 = /* @__PURE__ */ new Set();
   return {
     show(kind, text3, opts = {}) {
       const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status", "data-voice": opts.voice ?? "terminal" });
@@ -66625,11 +66706,11 @@ function createToasts(host) {
       const remove = () => el.remove();
       el.addEventListener("click", remove);
       host.append(el);
-      timers2.add(setTimeout(remove, LIFETIME_MS[kind]));
+      timers3.add(setTimeout(remove, LIFETIME_MS[kind]));
     },
     dispose() {
-      for (const t of timers2) clearTimeout(t);
-      timers2.clear();
+      for (const t of timers3) clearTimeout(t);
+      timers3.clear();
     }
   };
 }
@@ -71285,7 +71366,7 @@ var RealStAdapter = class {
 };
 
 // src/ui/launcher.ts
-var ITEMS = [
+var ITEMS2 = [
   { id: "open", icon: "fa-solid fa-satellite-dish", menuLabel: "Alius", buttonLabel: "Open Alius", action: "open" },
   { id: "new", icon: "fa-solid fa-file-signature", menuLabel: "Alius: New campaign", buttonLabel: "New campaign", action: "newCampaign" },
   { id: "init", icon: "fa-solid fa-flag-checkered", menuLabel: "Alius: Initialize campaign (debug)", buttonLabel: "Initialize campaign (debug)", action: "init" },
@@ -71302,7 +71383,7 @@ async function waitFor(selectors, retryMs, retries) {
   return null;
 }
 function addMenuItems(menu, actions) {
-  for (const it of ITEMS) {
+  for (const it of ITEMS2) {
     const id = `alius_menu_${it.id}`;
     if (document.getElementById(id)) continue;
     const item = document.createElement("div");
@@ -71341,7 +71422,7 @@ function addDrawer(host, actions) {
   content.className = "inline-drawer-content";
   const row4 = document.createElement("div");
   row4.className = "flex-container flexFlowColumn";
-  for (const it of ITEMS) {
+  for (const it of ITEMS2) {
     const btn = document.createElement("input");
     btn.type = "button";
     btn.className = "menu_button";

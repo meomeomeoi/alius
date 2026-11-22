@@ -375,13 +375,13 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `createChipRow(host: HTMLElement, names: readonly string[]): ChipRow` (one child per slot, in the given order; `layout()` sets `data-overflow` and a `[data-more-chips]` "+N" button that toggles `data-expanded`)
   - `flashLine(layer: HTMLElement, text: string, analyze: string, ms?: number): void` (default 2400 ms; reduced motion: no fade)
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `every chip host has a slot`: the row has slots in this order: `generation, proposals, lead, offer, rules, demands, discipline, discipline-menus, freq, lets, stop`. Each existing draw function writes into its slot. `tests/ui/demandChips.test.ts`, `tests/ui/dynamic/offerComposer.test.ts` and `tests/ui/life/lifeViews.test.ts` pass with selectors updated.
   - `discipline menus as chips`: one `[data-discipline-chip=unitId]` per named woman. A click opens that unit's `renderDisciplineMenu`, and an open one stays open across `refresh()` (as today).
   - `overflow`: with a row narrower than its chips (stubbed widths), `+N` shows the hidden count, and clicking it sets `data-expanded="true"`.
   - `device out of reach`: no standing line. `flashLine` adds one `[data-flash]` with `data-analyze="glossary:device_out_of_reach"` and removes it after 2400 ms (fake timers).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the test and the three suites above, plus `tests/ui/blockingDevice.test.ts` (its line assertion becomes the flash), tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): one chip row above the input`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the test and the three suites above, plus `tests/ui/blockingDevice.test.ts` (its line assertion becomes the flash), tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): one chip row above the input`
 
 ### Task 10: The dock (her hand)
 

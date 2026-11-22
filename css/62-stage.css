@@ -696,3 +696,144 @@
   margin-left: 47%;
   width: min(50%, 900px);
 }
+
+/* the chip row: every chip of the scene in one row above the input, small rounded pills; it scrolls sideways and ends with +N */
+#alius-shell .alius-chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+  padding: 2px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  font-size: 12px;
+}
+
+#alius-shell .alius-chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+#alius-shell .alius-chip-row[data-expanded="true"],
+#alius-shell .alius-chip-row:has(details[open]) {
+  overflow: visible;
+}
+
+#alius-shell .alius-chip-row[data-expanded="true"] {
+  flex-wrap: wrap;
+}
+
+#alius-shell .alius-chip-slot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+#alius-shell .alius-chip-slot > *,
+#alius-shell .alius-chip-slot .alius-chip-group,
+#alius-shell .alius-chip-slot .alius-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+#alius-shell .alius-chip-slot[data-slot="stop"] {
+  margin-left: auto;
+  position: sticky;
+  right: 0;
+}
+
+#alius-shell .alius-chip-row .alius-btn,
+#alius-shell .alius-chip-more,
+#alius-shell .alius-chip-row summary {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 62%, transparent);
+  color: var(--alius-accent);
+  padding: 1px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#alius-shell .alius-chip-row .alius-btn:hover,
+#alius-shell .alius-chip-more:hover {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-chip-row [aria-disabled="true"] {
+  opacity: 0.5;
+}
+
+/* one chip per woman for her discipline menu: it opens upward over the row, summary at the bottom */
+#alius-shell .alius-discipline-unit {
+  position: relative;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#alius-shell .alius-discipline-unit details.alius-discipline {
+  margin: 0;
+}
+
+#alius-shell .alius-discipline-unit details.alius-discipline[open] {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--alius-bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+}
+
+#alius-shell.alius-readable .alius-discipline-unit details.alius-discipline[open] {
+  background: var(--alius-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* a short line over the frame ("The device is out of reach.") */
+#alius-shell .alius-flash {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--alius-bg) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 60%, transparent);
+  color: var(--alius-accent);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  pointer-events: auto;
+  animation: alius-flash 2.4s ease-out forwards;
+}
+
+@keyframes alius-flash {
+  0% { opacity: 0; }
+  10%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#alius-shell.alius-reduced-motion .alius-flash {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-flash { animation: none; }
+}

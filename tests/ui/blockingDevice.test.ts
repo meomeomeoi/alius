@@ -74,14 +74,20 @@ describe('the device out of reach', () => {
     return { host, screen, set: (s: CampaignState) => { current = s; screen.refresh(); } };
   };
 
-  it('the scene says so, with a data-analyze, and the line goes when the mitts do', () => {
-    const open = put(scene(), mitts);
-    const v = draw(open);
-    const line = v.host.querySelector('[data-analyze="glossary:device_out_of_reach"]');
-    expect(line!.textContent).toBe('The device is out of reach.');
-    v.set(put(open, { person: COMMANDER, field: 'removed', value: 'paw_mitts' }));
-    expect(v.host.querySelector('[data-analyze="glossary:device_out_of_reach"]')).toBeNull();
-    expect(draw(scene()).host.textContent).not.toContain('out of reach');
+  it('the scene says so with a flash (P10e: no standing line), with a data-analyze; it goes by itself', () => {
+    vi.useFakeTimers();
+    try {
+      const v = draw(put(scene(), mitts));
+      expect(v.host.querySelector('[data-analyze="glossary:device_out_of_reach"]')).toBeNull(); // nothing stands in the scene
+      v.screen.flashDeviceOut();
+      const line = v.host.querySelector('[data-analyze="glossary:device_out_of_reach"]');
+      expect(line!.textContent).toBe('The device is out of reach.');
+      vi.advanceTimersByTime(2500);
+      expect(v.host.querySelector('[data-analyze="glossary:device_out_of_reach"]')).toBeNull();
+      expect(draw(scene()).host.textContent).not.toContain('out of reach');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('the glossary entry exists', () => {
