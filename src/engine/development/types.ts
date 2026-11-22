@@ -29,7 +29,7 @@ export interface DevelopmentRuleEntry {
 /** `habits`: a counter that reaches `threshold` forms the habit. */
 export interface HabitEntry {
   id: string;
-  counter: { kind: 'activity' | 'companion' | 'region' | 'joke'; id?: string };
+  counter: { kind: 'activity' | 'companion' | 'region' | 'joke' | 'meeting' | 'run'; id?: string };
   threshold: number;
   fallback: string;
   effect?: { type: 'unit_stress' | 'unit_xp'; amount: number; activityId: string };

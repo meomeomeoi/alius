@@ -2454,7 +2454,7 @@ registrySchemas.developmentRules = DevelopmentRuleSchema;
 
 /** A counter that reaches `threshold` forms the habit. `fallback` is the fact text (`{name}`, and `{other}` for a companion habit). */
 export const HabitSchema = BaseEntrySchema.extend({
-  counter: z.object({ kind: z.enum(['activity', 'companion', 'region', 'joke']), id: str.optional() }).strict(),
+  counter: z.object({ kind: z.enum(['activity', 'companion', 'region', 'joke', 'meeting', 'run']), id: str.optional() }).strict(),
   threshold: int.min(2).max(60),
   fallback: str.max(140),
   effect: z.object({ type: z.enum(['unit_stress', 'unit_xp']), amount: int.min(-20).max(20).refine((n) => n !== 0, 'an effect amount is not 0'), activityId: str }).strict().optional(),

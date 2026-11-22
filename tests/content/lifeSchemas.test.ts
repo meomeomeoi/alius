@@ -133,6 +133,7 @@ describe('the core pack (P14c)', () => {
   it('the running joke habit counts jokes', () => {
     expect(reg.habits.get('running_joke')?.counter).toEqual({ kind: 'joke' });
     expect(reg.habits.get('running_joke')?.threshold).toBe(3);
+    expect(reg.habits.get('running_joke')?.tags).toEqual(['respect']); // P15: disappointment lets it lapse
   });
 
   it('the glossary has the twelve entries', () => {

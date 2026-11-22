@@ -3,7 +3,7 @@ import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/development';
 import '../../../src/engine/actions/scene';
 import '../../../src/engine/actions/expedition';
-import { countRun, habitEffect } from '../../../src/engine/development/habits';
+import { countMeeting, countRun, habitEffect, habitLapsed, lapseHabits } from '../../../src/engine/development/habits';
 import { developmentOf, ensureDevelopment } from '../../../src/engine/development/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { sanitizeHabitWording } from '../../../src/llm/calls/flavor';
@@ -82,6 +82,56 @@ describe('counting', () => {
     expect(dev(draft).habits).toContain('knows_region');
     expect(ofType(events, 'habit_formed').map((e) => e.unitId)).toEqual([ANN, BEA]);
     expect(dev(draft).counters[`companion:${BEA}`]).toBe(4);
+  });
+});
+
+describe('the habits of respect (P15)', () => {
+  it('the three carry the respect tag and are read by counter kind', () => {
+    const tagged = [...reg.habits.values()].filter((h) => (h.tags as string[] | undefined)?.includes('respect')).map((h) => [h.id, (h.counter as { kind: string }).kind]);
+    expect(tagged).toEqual([['running_joke', 'joke'], ['asks_advice', 'meeting'], ['reports_first', 'run']]);
+  });
+
+  it('asks_advice forms from the quiet meetings she finished', () => {
+    const draft = on(campaign(reg, 4));
+    const need = reg.habits.get('asks_advice')!.threshold as number;
+    for (let i = 0; i < need - 1; i++) expect(countMeeting(draft, reg, ANN)).toEqual([]);
+    expect(dev(draft).counters['meeting:commander']).toBe(need - 1);
+    const events = countMeeting(draft, reg, ANN);
+    expect(ofType(events, 'habit_formed')).toEqual([expect.objectContaining({ unitId: ANN, habitId: 'asks_advice' })]);
+    expect(dev(draft).habits).toEqual(['asks_advice']);
+    expect(dev(draft).facts[0].text).not.toMatch(/AUTHOR TO WRITE|\{name\}/);
+    expect(dev(draft, BEA).habits).toEqual([]);
+    expect(ofType(countMeeting(draft, reg, ANN), 'habit_formed')).toEqual([]);
+  });
+
+  it('reports_first forms from the runs she finished, every member of the party', () => {
+    const draft = on(campaign(reg, 4));
+    const need = reg.habits.get('reports_first')!.threshold as number;
+    for (let i = 0; i < need - 1; i++) countRun(draft, reg, [ANN, BEA], i % 2 === 0 ? 'quarantine_d7' : 'other_ground');
+    expect(dev(draft).counters['run:commander']).toBe(need - 1);
+    expect(dev(draft).habits).not.toContain('reports_first');
+    const events = countRun(draft, reg, [ANN, BEA], 'quarantine_d7');
+    expect(ofType(events, 'habit_formed').filter((e) => e.habitId === 'reports_first').map((e) => e.unitId)).toEqual([ANN, BEA]);
+  });
+
+  it('counts nothing while development is off', () => {
+    const draft = campaign(reg, 4);
+    expect(countMeeting(draft, reg, ANN)).toEqual([]);
+    expect(countRun(draft, reg, [ANN], 'quarantine_d7')).toEqual([]);
+    expect(unit(draft).development).toBeUndefined();
+  });
+
+  it('the three lapse for 14 days on disappointment and come back (by tag, by counter kind)', () => {
+    const s = on(campaign(reg, 4));
+    ensureDevelopment(unit(s)).habits = ['running_joke', 'asks_advice', 'reports_first', 'drills_daily'];
+    expect(lapseHabits(s, reg, ANN, 'respect', 14).sort()).toEqual(['asks_advice', 'reports_first', 'running_joke']);
+    for (const id of ['running_joke', 'asks_advice', 'reports_first']) expect(habitLapsed(s, unit(s), id)).toBe(true);
+    expect(habitLapsed(s, unit(s), 'drills_daily')).toBe(false);
+    s.day += 13;
+    expect(habitLapsed(s, unit(s), 'asks_advice')).toBe(true);
+    s.day += 1;
+    for (const id of ['running_joke', 'asks_advice', 'reports_first']) expect(habitLapsed(s, unit(s), id)).toBe(false);
+    expect(dev(s).habits).toEqual(['running_joke', 'asks_advice', 'reports_first', 'drills_daily']);
   });
 });
 

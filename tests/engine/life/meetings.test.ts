@@ -194,6 +194,15 @@ describe('the meeting', () => {
     expect(ended.state.slot).not.toBe('afternoon'); // the slot was spent by the scene
   });
 
+  it('counts toward asks_advice with development on, and nothing with it off (P15)', () => {
+    const s = world('afternoon');
+    s.settings.characterDevelopment = 'normal';
+    const ended = run(meet(s, 'tidy_her_quarters'), reg, { type: 'scene/end', payload: {} });
+    expect(mine(ended.state).development?.counters['meeting:commander']).toBe(1);
+    const off = run(meet(world('afternoon'), 'tidy_her_quarters'), reg, { type: 'scene/end', payload: {} });
+    expect(mine(off.state).development).toBeUndefined();
+  });
+
   it('an Affinity gain that has already been made today is diminished like any other', () => {
     const s = world('afternoon');
     s.relations[ANN].affinity = 10;

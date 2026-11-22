@@ -32,7 +32,7 @@ describe('the core pack (P14b)', () => {
   it('loads the three registries', () => {
     expect(reg.developmentAxes.size).toBe(18); // P15: + the practice, holds-until and worship axes
     expect(reg.developmentRules.size).toBe(16);
-    expect(reg.habits.size).toBe(6); // P14c: + running_joke
+    expect(reg.habits.size).toBe(8); // P14c: + running_joke; P15: + asks_advice, reports_first
   });
 
   it('every value axis and every bond field has an axis entry, and the wildcards exist', () => {

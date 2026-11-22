@@ -9506,7 +9506,7 @@ var DevelopmentRuleSchema = BaseEntrySchema.extend({
 }).strict();
 registrySchemas.developmentRules = DevelopmentRuleSchema;
 var HabitSchema = BaseEntrySchema.extend({
-  counter: external_exports.object({ kind: external_exports.enum(["activity", "companion", "region", "joke"]), id: str.optional() }).strict(),
+  counter: external_exports.object({ kind: external_exports.enum(["activity", "companion", "region", "joke", "meeting", "run"]), id: str.optional() }).strict(),
   threshold: int.min(2).max(60),
   fallback: str.max(140),
   effect: external_exports.object({ type: external_exports.enum(["unit_stress", "unit_xp"]), amount: int.min(-20).max(20).refine((n) => n !== 0, "an effect amount is not 0"), activityId: str }).strict().optional(),
@@ -21261,10 +21261,18 @@ function countCompanions(draft, reg, ids) {
   }
   return events;
 }
+function countMeeting(draft, reg, unitId) {
+  if (developmentMode(draft) === "off" || !bump(draft, unitId, "meeting:commander")) return [];
+  return checkHabits(draft, reg, unitId);
+}
 function countRun(draft, reg, ids, regionId) {
   if (developmentMode(draft) === "off") return [];
   const events = [];
-  for (const id of ids) if (bump(draft, id, `region:${regionId}`)) events.push(...checkHabits(draft, reg, id));
+  for (const id of ids) {
+    if (!bump(draft, id, `region:${regionId}`)) continue;
+    bump(draft, id, "run:commander");
+    events.push(...checkHabits(draft, reg, id));
+  }
   events.push(...countCompanions(draft, reg, ids));
   return events;
 }
@@ -21883,6 +21891,7 @@ function finishMeeting(draft, ctx2, scene) {
   if (!meeting || !unit3 || unit3.kind !== "named" || !draft.life) return [];
   const pastime = reg.pastimes.get(meeting.id);
   const events = applyEventToUnit(draft, reg, unit3.id, meetingEvent(unit3.id));
+  events.push(...countMeeting(draft, reg, unit3.id));
   const mine = draft.life.units[unit3.id] ??= { last: {} };
   mine.meetingDay = draft.day;
   if (pastime?.hobby !== true) return events;
@@ -63502,6 +63511,7 @@ registerChecks("habits", (entry, regs) => {
     if (counter.kind === "activity" && !regs.activities.has(counter.id)) out.push({ path: "counter.id", message: `unknown activity "${counter.id}"` });
     else if (counter.kind === "region" && !regs.regions.has(counter.id)) out.push({ path: "counter.id", message: `unknown region "${counter.id}"` });
     else if (counter.kind === "companion") out.push({ path: "counter.id", message: "a companion habit counts every companion; it names none" });
+    else if (counter.kind === "meeting" || counter.kind === "run") out.push({ path: "counter.id", message: `a ${counter.kind} habit counts every ${counter.kind === "meeting" ? "quiet meeting with the commander" : "run in the party"}; it names none` });
   }
   const fx2 = entry.effect;
   if (fx2 && !regs.activities.has(String(fx2.activityId))) out.push({ path: "effect.activityId", message: `unknown activity "${String(fx2.activityId)}"` });

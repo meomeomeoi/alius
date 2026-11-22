@@ -960,6 +960,7 @@ registerChecks('habits', (entry, regs) => {
     if (counter.kind === 'activity' && !regs.activities.has(counter.id)) out.push({ path: 'counter.id', message: `unknown activity "${counter.id}"` });
     else if (counter.kind === 'region' && !regs.regions.has(counter.id)) out.push({ path: 'counter.id', message: `unknown region "${counter.id}"` });
     else if (counter.kind === 'companion') out.push({ path: 'counter.id', message: 'a companion habit counts every companion; it names none' });
+    else if (counter.kind === 'meeting' || counter.kind === 'run') out.push({ path: 'counter.id', message: `a ${counter.kind} habit counts every ${counter.kind === 'meeting' ? 'quiet meeting with the commander' : 'run in the party'}; it names none` });
   }
   const fx = entry.effect as { activityId?: string } | undefined;
   if (fx && !regs.activities.has(String(fx.activityId))) out.push({ path: 'effect.activityId', message: `unknown activity "${String(fx.activityId)}"` });

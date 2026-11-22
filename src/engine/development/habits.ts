@@ -84,11 +84,24 @@ export function countCompanions(draft: CampaignState, reg: Registries, ids: stri
   return events;
 }
 
-/** An ended expedition: `region:<id>` +1 for each party member (grunts too), and the companion pairs of the party. */
+/** `meeting:commander` +1 when a quiet meeting with the commander (P14c) is finished (the habit `asks_advice`, counter kind `meeting`). */
+export function countMeeting(draft: CampaignState, reg: Registries, unitId: string): EngineEvent[] {
+  if (developmentMode(draft) === 'off' || !bump(draft, unitId, 'meeting:commander')) return [];
+  return checkHabits(draft, reg, unitId);
+}
+
+/**
+ * An ended expedition: `region:<id>` +1 and `run:commander` +1 (the runs she finished in the party under the commander's orders; counter kind
+ * `run`) for each party member (grunts too), and the companion pairs of the party.
+ */
 export function countRun(draft: CampaignState, reg: Registries, ids: string[], regionId: string): EngineEvent[] {
   if (developmentMode(draft) === 'off') return [];
   const events: EngineEvent[] = [];
-  for (const id of ids) if (bump(draft, id, `region:${regionId}`)) events.push(...checkHabits(draft, reg, id));
+  for (const id of ids) {
+    if (!bump(draft, id, `region:${regionId}`)) continue;
+    bump(draft, id, 'run:commander');
+    events.push(...checkHabits(draft, reg, id));
+  }
   events.push(...countCompanions(draft, reg, ids));
   return events;
 }

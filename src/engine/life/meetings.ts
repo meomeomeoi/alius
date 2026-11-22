@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import { checkActivity } from '../activities';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { countMeeting } from '../development/habits';
 import { restrictionReason } from '../discipline/restrictions';
 import { isLiving } from '../economy';
 import type { EventIntent } from '../relations/intents';
@@ -139,6 +140,7 @@ export function finishMeeting(draft: CampaignState, ctx: EngineCtx, scene: Pick<
   if (!meeting || !unit || unit.kind !== 'named' || !draft.life) return [];
   const pastime = reg.pastimes.get(meeting.id) as unknown as PastimeEntry | undefined;
   const events = applyEventToUnit(draft, reg, unit.id, meetingEvent(unit.id));
+  events.push(...countMeeting(draft, reg, unit.id)); // P15: the habit `asks_advice` counts the meetings she finished
   const mine = (draft.life.units[unit.id] ??= { last: {} });
   mine.meetingDay = draft.day;
   if (pastime?.hobby !== true) return events;

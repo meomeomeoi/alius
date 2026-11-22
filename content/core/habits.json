@@ -64,6 +64,33 @@
     },
     "threshold": 3,
     "fallback": "AUTHOR TO WRITE: {name} and the commander have a running joke.",
-    "description": "AUTHOR TO WRITE: A joke she and the commander have brought back often enough to be theirs."
+    "description": "AUTHOR TO WRITE: A joke she and the commander have brought back often enough to be theirs.",
+    "tags": [
+      "respect"
+    ]
+  },
+  {
+    "id": "asks_advice",
+    "counter": {
+      "kind": "meeting"
+    },
+    "threshold": 4,
+    "fallback": "AUTHOR TO WRITE: {name} brings her own problems to the commander now.",
+    "tags": [
+      "respect"
+    ],
+    "description": "AUTHOR TO WRITE: She has spent enough quiet hours with the commander that she brings her own problems."
+  },
+  {
+    "id": "reports_first",
+    "counter": {
+      "kind": "run"
+    },
+    "threshold": 5,
+    "fallback": "AUTHOR TO WRITE: {name} reports to the commander first after a run.",
+    "tags": [
+      "respect"
+    ],
+    "description": "AUTHOR TO WRITE: She has come back from enough runs under the commander's orders that she reports first."
   }
 ]
