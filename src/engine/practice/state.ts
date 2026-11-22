@@ -234,6 +234,8 @@ export interface PracticeUndo {
   /** What the answer started that UNDO must end (filled by the tasks that start them: the hold of Task 25 and the slap of Task 33; `restorePractice` ends them). */
   startedHold?: true;
   slapId?: string;
+  /** The answer let a slap land (it lands at once when no scene with her is open): the numbers it moved are not put back, so UNDO is refused. */
+  struck?: true;
   /** What the answer wrote: the stress it gave the commander, the mark it set, the tasks (a confession) and the requests (a protocol, the escalation) it made. */
   commanderStress?: number;
   markSet?: true;
@@ -323,7 +325,11 @@ export interface PracticeState {
   cold: Record<string, number>;
   postures: Record<string, Array<{ postureId: string; name: string; day: number }>>;
   call?: { id: string; holderId: string; postureId: string; sceneId: string; at: number };
-  slap?: { id: string; holderId: string; sceneId: string; windowMs: number; feints: number; public?: true };
+  /**
+   * The slap that is open (R21): her time allowed in milliseconds, the feints she will make, whether others see it, the punishment it belongs to (a flinch may add to its count) and whether
+   * it is the second (`again`: `cruel` slaps once more after a flinch, never twice) or came with no warning (`unannounced`, after a slip). `sceneId` is the scene the commander braces in.
+   */
+  slap?: { id: string; holderId: string; sceneId?: string; windowMs: number; feints: number; public?: true; punishmentId?: string; again?: true; unannounced?: true };
   /** holderId → the days of her offences (the repeat count). */
   offences: Record<string, number[]>;
   /** The offences already entered today (`holderId|kind|ref`): an offence is noted once per ref and day. Reset when the day changes. */

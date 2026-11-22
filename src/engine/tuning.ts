@@ -1090,6 +1090,14 @@ export const TUNING = Object.freeze({
         affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300,
       } as const),
       obsessiveSpread: 400, unannounced: 0.3, feintFrom: 2, feintPerLevel: 0.1,
+      /** The styles that slap with no warning after a slip (R21); the favour each outcome moves, the Regard a slap before others costs those who saw it (`regardFall`'s humiliation) and what she says (drafts, no number). */
+      unannouncedStyles: Object.freeze(['cold', 'cruel', 'drill', 'vindictive'] as readonly string[]),
+      favour: Object.freeze({ none: 1, braced: 2, flinched: -1, softer: 1 } as const), publicRegard: 3,
+      words: Object.freeze({
+        none: 'has struck the commander, and is content that it was taken',
+        braced: 'has struck the commander, who held still, and is pleased by it',
+        flinched: 'has struck the commander, who flinched, and is displeased by it',
+      } as const),
     }),
     ceremony: Object.freeze({ lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 } as const) }),
     sealedShare: Object.freeze({

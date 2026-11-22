@@ -20,6 +20,7 @@ import { confess, momentGapFavour, serviceFromEvents } from '../practice/service
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
+import { answerSlap, startSlap } from '../practice/slap';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
 import { doubleStandardFromEvents, herTestLive, pendingUnfair } from '../practice/unfair';
@@ -188,4 +189,23 @@ registerAction('practice/answer_alarm', (draft, payload, ctx) => {
 registerAction('practice/ask', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.unitId !== 'string' || (payload.what !== 'task' && payload.what !== 'punishment')) throw new Error('practice/ask needs { unitId, what }.');
   return ask(draft, ctx, payload.unitId, payload.what);
+});
+
+/**
+ * `practice/slap_start { holderId, punishmentId }`: engine-internal (the `slap` effect of an accepted punishment and the unannounced slap after a slip start theirs themselves): it opens the slap of a punishment of hers
+ * that was accepted and carries the effect, when none is open. Throws otherwise.
+ */
+registerAction('practice/slap_start', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.holderId !== 'string' || typeof payload.punishmentId !== 'string') throw new Error('practice/slap_start needs { holderId, punishmentId }.');
+  const p = draft.practices?.punishments.find((x) => x.id === payload.punishmentId && x.holderId === payload.holderId && x.status === 'accepted');
+  const slaps = (ctx.registries.holderPunishments.get(p?.entryId ?? '')?.effects as Array<{ type: string }> | undefined)?.some((e) => e.type === 'slap') === true;
+  if (p === undefined || !slaps) throw new Error('A slap starts only from her discipline.');
+  if (draft.practices?.slap !== undefined) throw new Error('A slap is open already.');
+  return startSlap(draft, ctx, p.holderId, { punishmentId: p.id });
+});
+
+/** `practice/slap_answer { slapId, result }`: the commander's answer to the open slap: none, braced or flinched (R21). Throws for a slap that is not open or a result that is no result. */
+registerAction('practice/slap_answer', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.slapId !== 'string') throw new Error('practice/slap_answer needs { slapId, result }.');
+  return answerSlap(draft, ctx, payload.slapId, payload.result);
 });

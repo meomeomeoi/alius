@@ -1365,5 +1365,22 @@
       "practice",
       "punishment_unfair"
     ]
+  },
+  {
+    "id": "slap_public",
+    "event": "slap_dealt",
+    "when": {
+      "public": true
+    },
+    "text": "AUTHOR TO WRITE: {name} struck the commander before the others, and they saw it.",
+    "importance": 3,
+    "about": "her",
+    "audience": "present",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "practice",
+      "slap_public"
+    ]
   }
 ]

@@ -236,8 +236,11 @@ function withUndo(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment, answe
   const requestsBefore = pr.requests.map((r) => r.id);
   const markBefore = draft.personal?.mark;
   const heldBefore = pr.held;
+  const slapBefore = pr.slap;
   const { events, inverse } = captureInverse(draft, holderId, answer);
   if (heldBefore === undefined && pr.held !== undefined && pr.held.by === holderId) undo.startedHold = true; // the answer started a hold: UNDO ends it
+  if (pr.slap !== undefined && pr.slap !== slapBefore && pr.slap.holderId === holderId) undo.slapId = pr.slap.id; // the answer started a slap that is still open: UNDO ends it
+  if (events.some((e) => e.type === 'slap_dealt')) undo.struck = true; // one that landed at once (no scene with her to brace in) cannot be taken back
   undo.restrictionsAdded = pr.restrictions.filter((r) => !restrictionsBefore.includes(r)).map((r) => ({ ...r }));
   const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
   const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
@@ -263,6 +266,7 @@ export function canUndoPractice(state: CampaignState, punishmentId: string): str
   if (p === undefined || undo === undefined || p.forUnitId !== undefined || (p.status !== 'accepted' && p.status !== 'refused')) return 'There is nothing to undo.';
   if (p.sealed === true && p.status === 'accepted') return 'It was signed blank, and the record keeps it.';
   const at = undo.stamp;
+  if (undo.struck === true || (undo.slapId !== undefined && state.practices?.slap?.id !== undo.slapId)) return 'The slap has landed.';
   if (at.day !== state.day) return 'It can only be undone on the day it was answered.';
   if (at.sceneId !== undefined && state.scene?.id !== at.sceneId) return 'Its scene has ended.';
   if (dynamicOf(state, p.holderId)?.frame !== at.frame) return 'Her frame has changed since.';
@@ -297,6 +301,7 @@ export function restorePractice(draft: CampaignState, ctx: EngineCtx, unitId: st
   if (pr === undefined || p === undefined) return [];
   const events: EngineEvent[] = [];
   if (undo.startedHold === true && pr.held?.by === unitId) events.push(...endHold(draft, ctx, 'undone')); // its bookings are cancelled with no cost
+  if (undo.slapId !== undefined && pr.slap?.id === undo.slapId) delete pr.slap; // the slap the answer opened is closed with no outcome
   if (dyn !== undefined) {
     events.push(...restoreHold(draft, unitId, undo.hold));
     addFavour(draft, unitId, undo.favour - dyn.favour);

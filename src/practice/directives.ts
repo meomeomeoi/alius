@@ -36,6 +36,8 @@ export const PERMISSION_PREFIX = 'practice:permission:';
 export const VERDICT_PREFIX = 'practice:verdict:';
 /** Her answer to a duty that came while the commander was held, for her next reply only (event-driven). */
 export const ALARM_PREFIX = 'practice:alarm:';
+/** What she did when she struck the commander and how the commander took it, for her next reply only (event-driven). */
+export const SLAP_PREFIX = 'practice:slap:';
 /** She breaks what she demands, while she is in the room and her next scene is the one (scene). Derived from `practices.unfair`; the commander is never told it is unfair. */
 export const DOUBLE_PREFIX = 'practice:double:';
 /** Her answer to being asked for a task or a punishment, for her next reply only (event-driven). */
@@ -147,6 +149,7 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (event.type === 'hold_asked') return holdAskedDirective(event, state, reg);
   if (event.type === 'hold_alarm') return alarmDirective(event, state, reg);
   if (event.type === 'ask_answered') return askDirective(event, state, reg);
+  if (event.type === 'slap_dealt') return slapDirective(event, state, reg);
   if (event.type === 'task_kept' && event.cancelled === true) return cancelledRewardDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
@@ -155,6 +158,14 @@ export function issuedDirective(event: { type: string; [k: string]: unknown }, s
   if (task === undefined || unit === undefined || state.scene?.participants.includes(unit.id) !== true || !practiceLive(state, reg, unit.id)) return null;
   const what = task.sealed === true ? `${unit.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+
+/** How she took the commander's answer to her slap, for her next reply only: what happened and what she thinks of it, never a number. */
+function slapDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const unit = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.result === 'string' ? (TUNING.practice.slap.words as Record<string, string | undefined>)[event.result] : undefined;
+  if (unit === undefined || how === undefined || !practiceLive(state, reg, unit.id)) return null;
+  return { id: `${SLAP_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} ${how}. ${NEVER_NAME}`) };
 }
 
 /** A task kept and given nothing for it (a cancelled reward, R16), for her next reply only: it was good, and it was not good enough. Nothing is said of why. */
@@ -267,7 +278,7 @@ export function clearPracticeDirectives(builder: Pick<ContextBuilder, 'clearMatc
 
 /** Sets the derived directives and drops the ones that no longer hold; without a state it only clears. The issued line is event-driven and lives out its reply. */
 export function refreshPracticeDirectives(builder: Pick<ContextBuilder, 'clearMatching' | 'setDirective'>, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX) && !d.id.startsWith(ASK_PREFIX));
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX) && !d.id.startsWith(ASK_PREFIX) && !d.id.startsWith(SLAP_PREFIX));
   if (state === null) return;
   for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }

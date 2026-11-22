@@ -1444,7 +1444,16 @@ var TUNING = Object.freeze({
       obsessiveSpread: 400,
       unannounced: 0.3,
       feintFrom: 2,
-      feintPerLevel: 0.1
+      feintPerLevel: 0.1,
+      /** The styles that slap with no warning after a slip (R21); the favour each outcome moves, the Regard a slap before others costs those who saw it (`regardFall`'s humiliation) and what she says (drafts, no number). */
+      unannouncedStyles: Object.freeze(["cold", "cruel", "drill", "vindictive"]),
+      favour: Object.freeze({ none: 1, braced: 2, flinched: -1, softer: 1 }),
+      publicRegard: 3,
+      words: Object.freeze({
+        none: "has struck the commander, and is content that it was taken",
+        braced: "has struck the commander, who held still, and is pleased by it",
+        flinched: "has struck the commander, who flinched, and is displeased by it"
+      })
     }),
     ceremony: Object.freeze({ lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 }) }),
     sealedShare: Object.freeze({
@@ -7480,6 +7489,7 @@ var ALARM_KINDS = ["launch", "deadline", "night"];
 var VERDICTS = ["pleased", "adequate", "displeased"];
 var KINDNESS_KINDS = ["slot_back", "protocol_relaxed", "want_relief", "gift", "softer"];
 var UNFAIR_KINDS = ["no_guilt", "double_standard", "cancelled_reward", "moved_goal"];
+var SLAP_RESULTS = ["none", "braced", "flinched"];
 var CEREMONY_CHECKS = ["chip", "words", "number", "posture"];
 var EFFECT_NEEDS = Object.freeze({
   slot_held: ["restraint"],
@@ -22977,6 +22987,94 @@ function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   return [{ type: "practice_requested", requestId: id, holderId, kind }];
 }
 
+// src/engine/practice/slap.ts
+var styleOf2 = (state, reg, holderId) => practiceOf(state, reg, holderId)?.style.primary;
+function slapWindowMs(state, reg, holderId, slapId) {
+  const T5 = TUNING.practice.slap;
+  const style = styleOf2(state, reg, holderId);
+  const base = (style === void 0 ? void 0 : T5.windowMs[style]) ?? 500;
+  return style === "obsessive" ? Math.round(base + practiceRoll(state, holderId, `slapwin:${slapId}`) * T5.obsessiveSpread) : base;
+}
+function slapFeints(state, holderId, slapId) {
+  const T5 = TUNING.practice.slap;
+  const swing = herSkillOf(state, holderId).swing;
+  if (swing < T5.feintFrom) return 0;
+  return practiceRoll(state, holderId, `feint:${slapId}`) < T5.feintPerLevel * (swing - (T5.feintFrom - 1)) ? 1 : 0;
+}
+var witnessesOf2 = (state, holderId) => (state.scene?.participants ?? []).filter((id) => id !== holderId && state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+function startSlap(draft, ctx2, holderId, opts = {}) {
+  const reg = ctx2.registries;
+  const on = draft.content?.enabled ?? [];
+  if (!practiceLive(draft, reg, holderId) || !on.includes("physical_discipline_shown") || draft.practices?.slap !== void 0) return [];
+  const scene = draft.scene;
+  if (scene === void 0 || !scene.participants.includes(holderId)) {
+    return opts.unannounced === true ? [] : deal(draft, ctx2, holderId, "none", { id: "", holderId, windowMs: 0, feints: 0, ...opts.punishmentId !== void 0 ? { punishmentId: opts.punishmentId } : {} });
+  }
+  const seen2 = witnessesOf2(draft, holderId).length > 0;
+  if (seen2 && !on.includes("public_humiliation")) return [];
+  const id = nextPracticeId(draft, "ps");
+  const windowMs = slapWindowMs(draft, reg, holderId, id);
+  const feints = slapFeints(draft, holderId, id);
+  ensurePractices(draft).slap = {
+    id,
+    holderId,
+    sceneId: scene.id,
+    windowMs,
+    feints,
+    ...seen2 ? { public: true } : {},
+    ...opts.punishmentId !== void 0 ? { punishmentId: opts.punishmentId } : {},
+    ...opts.again === true ? { again: true } : {},
+    ...opts.unannounced === true ? { unannounced: true } : {}
+  };
+  return [{ type: "slap_started", slapId: id, holderId, unitId: holderId, windowMs, feints, ...seen2 ? { public: true } : {}, ...opts.unannounced === true ? { unannounced: true } : {} }];
+}
+function slapAfterSlip(draft, ctx2, holderId, offence) {
+  if (offence.kind !== "protocol_slip" && offence.kind !== "denial_broken") return [];
+  if (draft.scene?.participants.includes(holderId) !== true) return [];
+  const style = styleOf2(draft, ctx2.registries, holderId);
+  if (style === void 0 || !TUNING.practice.slap.unannouncedStyles.includes(style)) return [];
+  if (practiceRoll(draft, holderId, `slap:${offence.kind}:${offence.ref ?? ""}`) >= TUNING.practice.slap.unannounced) return [];
+  return startSlap(draft, ctx2, holderId, { unannounced: true });
+}
+var punishmentOf = (state, slap) => slap.punishmentId === void 0 ? void 0 : state.practices?.punishments.find((p) => p.id === slap.punishmentId);
+function flinchedSentence(draft, reg, slap, style) {
+  const p = punishmentOf(draft, slap);
+  if (p === void 0) return;
+  if (style === "vindictive") p.count = (p.count ?? p.ceremony?.number ?? 0) + 1;
+  if (style === "ritual" && p.ceremony?.number !== void 0) {
+    delete p.ceremony.number;
+    p.ceremony.done = p.ceremony.done.filter((id) => reg.ceremonySteps.get(id)?.check !== "number");
+  }
+}
+function deal(draft, ctx2, holderId, result, slap) {
+  const reg = ctx2.registries;
+  const T5 = TUNING.practice.slap;
+  const style = styleOf2(draft, reg, holderId);
+  const witnesses = slap.public === true ? witnessesOf2(draft, holderId) : [];
+  const events = [{ type: "slap_dealt", unitId: holderId, holderId, result, public: slap.public === true, ...witnesses.length > 0 ? { present: [holderId, ...witnesses] } : {} }];
+  addFavour(draft, holderId, T5.favour[result]);
+  if (result === "braced") events.push(...regardRise(draft, reg, holderId, "dignity"));
+  if (result === "flinched") {
+    if (style === "affectionate") addFavour(draft, holderId, T5.favour.softer);
+    flinchedSentence(draft, reg, slap, style);
+    if (style === "cruel" && slap.again !== true) events.push(...startSlap(draft, ctx2, holderId, { again: true, ...slap.punishmentId !== void 0 ? { punishmentId: slap.punishmentId } : {} }));
+  }
+  events.push(...practise2(draft, holderId, ["swing"], style ?? ""));
+  if (witnesses.length > 0) {
+    for (const w of witnesses) events.push(...regardFall(draft, reg, w, T5.publicRegard, { witness: true, cause: "slap" }));
+    countDeed(draft, "slapped_public");
+  }
+  return events;
+}
+function answerSlap(draft, ctx2, slapId, result) {
+  const slap = draft.practices?.slap;
+  if (slap === void 0 || slap.id !== slapId) throw new Error("There is no slap to answer.");
+  if (typeof result !== "string" || !SLAP_RESULTS.includes(result)) throw new Error("A slap is answered none, braced or flinched.");
+  if (!practiceLive(draft, ctx2.registries, slap.holderId)) throw new Error("She is not holding now.");
+  delete draft.practices.slap;
+  return deal(draft, ctx2, slap.holderId, result, slap);
+}
+
 // src/engine/practice/offences.ts
 var entriesOf = (reg) => [...reg.holderPunishments.values()];
 var effectsOf4 = (entry) => Array.isArray(entry.effects) ? entry.effects : [];
@@ -23010,6 +23108,7 @@ function possibleNow(state, reg, holderId, entry) {
     if (needs.length > 0 && !needs.some((t) => on.includes(t))) return false;
     if (fx2.type === "slot_held" && (state.expedition !== void 0 || state.combat !== void 0 || !sceneIsHers(state, holderId))) return false;
     if (fx2.type === "confession" && atBase(state, holderId).length === 0) return false;
+    if (fx2.type === "slap" && state.scene?.participants.includes(holderId) === true && state.scene.participants.some((id) => id !== holderId) && !on.includes("public_humiliation")) return false;
   }
   return true;
 }
@@ -23062,15 +23161,16 @@ function noteOffence(draft, ctx2, holderId, offence) {
   const days = p.offences[holderId] ??= [];
   days.push(offence.day);
   p.offences[holderId] = days.filter((d) => draft.day - d <= TUNING.practice.punish.keepDays);
-  if (punishmentOpen(draft, holderId)) return [];
+  const slap = slapAfterSlip(draft, ctx2, holderId, offence);
+  if (punishmentOpen(draft, holderId)) return slap;
   if (p.softer?.[holderId] === true) {
     delete p.softer[holderId];
     if (Object.keys(p.softer).length === 0) delete p.softer;
     severity = Math.max(TUNING.practice.severity.min, severity - 1);
   }
   const entryId = pickHolderPunishment(draft, reg, holderId, severity);
-  if (entryId === null) return [];
-  return requestPractice(draft, ctx2, holderId, "punishment", { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId });
+  if (entryId === null) return slap;
+  return [...slap, ...requestPractice(draft, ctx2, holderId, "punishment", { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId })];
 }
 var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var answers = (state, holderId) => {
@@ -24541,7 +24641,7 @@ function deadlineSweep(draft, ctx2) {
   return out;
 }
 var bySay = (t) => t.check === "model" || t.check === "dm_report";
-function witnessesOf2(state, task) {
+function witnessesOf3(state, task) {
   const named4 = [subjectOf(task), ...task.audienceIds ?? []].filter((id) => id !== void 0 && id !== task.holderId);
   const away = state.expedition?.party ?? [];
   return [...new Set(named4)].filter((id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)) && !away.includes(id));
@@ -24549,7 +24649,7 @@ function witnessesOf2(state, task) {
 function falseReportChance(state, _reg, task) {
   const T5 = TUNING.practice.falseReport;
   const insight = state.squad.find((u) => u.id === task.holderId)?.insight ?? "mid";
-  return Math.min(1, (witnessesOf2(state, task).length > 0 ? T5.witness : 0) + T5.insight[insight]);
+  return Math.min(1, (witnessesOf3(state, task).length > 0 ? T5.witness : 0) + T5.insight[insight]);
 }
 var recentEnough = (state, task) => {
   const since = task.report?.day ?? task.settledDay ?? task.day;
@@ -24566,7 +24666,7 @@ function findFalseReport(draft, ctx2, taskId, via) {
     return [];
   }
   task.report = { ...task.report ?? { day: draft.day }, falseReport: true };
-  addCompromat(draft, task.holderId, TUNING.practice.falseReport.compromat.replaceAll("{what}", task.summary), witnessesOf2(draft, task));
+  addCompromat(draft, task.holderId, TUNING.practice.falseReport.compromat.replaceAll("{what}", task.summary), witnessesOf3(draft, task));
   return events;
 }
 function reportTask(draft, ctx2, taskId) {
@@ -24871,11 +24971,6 @@ function issuePractice(draft, ctx2, requestId, output) {
 }
 var REISSUED = { task_issued: "taskId", punishment_issued: "punishmentId" };
 
-// src/engine/practice/slap.ts
-function startSlap(_draft, _ctx, _holderId, _opts = {}) {
-  return [];
-}
-
 // src/engine/practice/punish.ts
 var SEVERITY2 = ["minor", "minor", "moderate", "major", "extreme"];
 var num3 = (v, fallback = 0) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
@@ -24968,10 +25063,10 @@ function runPunishmentEffect(draft, ctx2, p, fx2) {
       return [];
   }
 }
-var styleOf2 = (draft, reg, holderId) => practiceOf(draft, reg, holderId)?.style.primary;
+var styleOf3 = (draft, reg, holderId) => practiceOf(draft, reg, holderId)?.style.primary;
 function unfairAccepted(draft, reg, holderId) {
   const events = practiceSample(draft, reg, holderId, "yielded", { motive: threatNear(draft, [], holderId) ? "fear" : "her" });
-  const style = styleOf2(draft, reg, holderId);
+  const style = styleOf3(draft, reg, holderId);
   if (style === "ritual" || style === "cold") events.push(...regardFall(draft, reg, holderId, 1, { witness: false, cause: "unfair" }));
   else if (style === "cruel" || style === "vindictive") events.push(...regardRise(draft, reg, holderId, "cost"));
   return events;
@@ -25015,7 +25110,7 @@ function refuse(draft, ctx2, p) {
   events.push(...refusalCost(draft, ctx2, holderId, "demand"));
   events.push(...addRecord(draft, holderId, TUNING.practice.refuseRecord, "practice_refused"));
   events.push(...practiceSample(draft, reg, holderId, "resisted"));
-  if (p.escalated !== true && styleOf2(draft, reg, holderId) !== "affectionate" && p.severity < 5) {
+  if (p.escalated !== true && styleOf3(draft, reg, holderId) !== "affectionate" && p.severity < 5) {
     const entryId = pickHolderPunishment(draft, reg, holderId, p.severity + 1);
     const severity = entryId === null ? void 0 : severityOfEntry(reg, entryId);
     if (entryId !== null && severity !== void 0 && severity > p.severity) events.push(...requestPractice(draft, ctx2, holderId, "punishment", { offence: p.offence, severity, entryId, escalated: true }));
@@ -25065,8 +25160,11 @@ function withUndo(draft, ctx2, p, answer) {
   const requestsBefore = pr.requests.map((r) => r.id);
   const markBefore = draft.personal?.mark;
   const heldBefore = pr.held;
+  const slapBefore = pr.slap;
   const { events, inverse } = captureInverse(draft, holderId, answer);
   if (heldBefore === void 0 && pr.held !== void 0 && pr.held.by === holderId) undo.startedHold = true;
+  if (pr.slap !== void 0 && pr.slap !== slapBefore && pr.slap.holderId === holderId) undo.slapId = pr.slap.id;
+  if (events.some((e) => e.type === "slap_dealt")) undo.struck = true;
   undo.restrictionsAdded = pr.restrictions.filter((r) => !restrictionsBefore.includes(r)).map((r) => ({ ...r }));
   const tasks = pr.tasks.map((t) => t.id).filter((id) => !tasksBefore.includes(id));
   const requests = pr.requests.filter((r) => !requestsBefore.includes(r.id));
@@ -25087,6 +25185,7 @@ function canUndoPractice(state, punishmentId) {
   if (p === void 0 || undo === void 0 || p.forUnitId !== void 0 || p.status !== "accepted" && p.status !== "refused") return "There is nothing to undo.";
   if (p.sealed === true && p.status === "accepted") return "It was signed blank, and the record keeps it.";
   const at = undo.stamp;
+  if (undo.struck === true || undo.slapId !== void 0 && state.practices?.slap?.id !== undo.slapId) return "The slap has landed.";
   if (at.day !== state.day) return "It can only be undone on the day it was answered.";
   if (at.sceneId !== void 0 && state.scene?.id !== at.sceneId) return "Its scene has ended.";
   if (dynamicOf(state, p.holderId)?.frame !== at.frame) return "Her frame has changed since.";
@@ -25114,6 +25213,7 @@ function restorePractice(draft, ctx2, unitId, undo) {
   if (pr === void 0 || p === void 0) return [];
   const events = [];
   if (undo.startedHold === true && pr.held?.by === unitId) events.push(...endHold2(draft, ctx2, "undone"));
+  if (undo.slapId !== void 0 && pr.slap?.id === undo.slapId) delete pr.slap;
   if (dyn !== void 0) {
     events.push(...restoreHold(draft, unitId, undo.hold));
     addFavour(draft, unitId, undo.favour - dyn.favour);
@@ -26344,7 +26444,7 @@ function leashCost(state, reg, unitId, kind) {
     failChance
   };
 }
-function witnessesOf3(state, unitId) {
+function witnessesOf4(state, unitId) {
   const pool = state.scene?.participants.includes(unitId) ? state.scene.participants : state.expedition ? state.expedition.party : state.roster.activeIds;
   return pool.filter((id) => {
     const u = unitOf6(state, id);
@@ -26422,7 +26522,7 @@ function compel(draft, ctx2, p) {
   const forced = !(p.roll !== false && cost.failChance > 0 && ctx2.rng.chance(cost.failChance));
   const events = [];
   events.push(...payCost(draft, reg, p.unitId, cost, { skipStress: p.skipStress }));
-  const witnesses = witnessesOf3(draft, p.unitId);
+  const witnesses = witnessesOf4(draft, p.unitId);
   for (const w of witnesses) {
     const unit3 = unitOf6(draft, w);
     events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: "moderate" }, { scale: witnessScale(unit3), witnessOf: p.unitId }));
@@ -33583,6 +33683,12 @@ registerMemoryResolver("ask_answered", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str4(event.answer) ?? "", what: str4(event.what) === "punishment" ? "a punishment" : "a task" } } : null;
 }, { ids: ["her"], vars: ["name", "answer", "what"] });
+registerMemoryResolver("slap_dealt", (draft, event) => {
+  const her = subjectOf3(draft, event.unitId);
+  if (!her) return null;
+  const present2 = strs2(event.present);
+  return { ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id] }, vars: { name: her.name, public: yes(event.public === true), result: str4(event.result) ?? "" } };
+}, { ids: ["her", "present"], vars: ["name", "public", "result"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -39985,7 +40091,7 @@ function askAnswer(state, reg, unitId, _what) {
   if (style === "possessive") return { answer: "refused", opening: true };
   return { answer: "refused" };
 }
-function witnessesOf4(state, unitId) {
+function witnessesOf5(state, unitId) {
   const scene = state.scene;
   if (scene === void 0 || !scene.participants.includes(unitId)) return [];
   return scene.participants.filter((id) => id !== unitId && state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
@@ -40014,7 +40120,7 @@ function ask(draft, ctx2, unitId, what) {
   if (result.answer === "accepted") events.push(...addHold(draft, ctx2, unitId, T5.hold, "asked"), ...request);
   if (result.answer === "mocked") {
     events.push(...addRecord(draft, unitId, T5.mockRecord, "ask_mocked"));
-    const watchers2 = witnessesOf4(draft, unitId);
+    const watchers2 = witnessesOf5(draft, unitId);
     if (watchers2.length > 0) present2.push(unitId, ...watchers2);
     for (const w of watchers2) events.push(...addSign(draft, ctx2, w, unitId, "protocol_public"));
   }
@@ -40243,6 +40349,18 @@ registerAction("practice/answer_alarm", (draft, payload, ctx2) => {
 registerAction("practice/ask", (draft, payload, ctx2) => {
   if (!isObj41(payload) || typeof payload.unitId !== "string" || payload.what !== "task" && payload.what !== "punishment") throw new Error("practice/ask needs { unitId, what }.");
   return ask(draft, ctx2, payload.unitId, payload.what);
+});
+registerAction("practice/slap_start", (draft, payload, ctx2) => {
+  if (!isObj41(payload) || typeof payload.holderId !== "string" || typeof payload.punishmentId !== "string") throw new Error("practice/slap_start needs { holderId, punishmentId }.");
+  const p = draft.practices?.punishments.find((x) => x.id === payload.punishmentId && x.holderId === payload.holderId && x.status === "accepted");
+  const slaps = ctx2.registries.holderPunishments.get(p?.entryId ?? "")?.effects?.some((e) => e.type === "slap") === true;
+  if (p === void 0 || !slaps) throw new Error("A slap starts only from her discipline.");
+  if (draft.practices?.slap !== void 0) throw new Error("A slap is open already.");
+  return startSlap(draft, ctx2, p.holderId, { punishmentId: p.id });
+});
+registerAction("practice/slap_answer", (draft, payload, ctx2) => {
+  if (!isObj41(payload) || typeof payload.slapId !== "string") throw new Error("practice/slap_answer needs { slapId, result }.");
+  return answerSlap(draft, ctx2, payload.slapId, payload.result);
 });
 
 // src/llm/callTypes.ts
@@ -43287,6 +43405,7 @@ var DEMONSTRATION_PREFIX = "practice:demonstration:";
 var PERMISSION_PREFIX = "practice:permission:";
 var VERDICT_PREFIX = "practice:verdict:";
 var ALARM_PREFIX = "practice:alarm:";
+var SLAP_PREFIX = "practice:slap:";
 var DOUBLE_PREFIX = "practice:double:";
 var ASK_PREFIX = "practice:ask:";
 var ISSUED_PREFIX = "practice:issued:";
@@ -43369,6 +43488,7 @@ function issuedDirective(event, state, reg) {
   if (event.type === "hold_asked") return holdAskedDirective(event, state, reg);
   if (event.type === "hold_alarm") return alarmDirective(event, state, reg);
   if (event.type === "ask_answered") return askDirective(event, state, reg);
+  if (event.type === "slap_dealt") return slapDirective(event, state, reg);
   if (event.type === "task_kept" && event.cancelled === true) return cancelledRewardDirective(event, state, reg);
   if (event.type !== "task_issued" || typeof event.taskId !== "string") return null;
   if (event.kind === "demonstration") return demonstrationIssuedDirective(event.taskId, state, reg);
@@ -43377,6 +43497,12 @@ function issuedDirective(event, state, reg) {
   if (task === void 0 || unit3 === void 0 || state.scene?.participants.includes(unit3.id) !== true || !practiceLive(state, reg, unit3.id)) return null;
   const what = task.sealed === true ? `${unit3.displayName} hands the commander a sealed envelope and waits for it to be opened.` : `${unit3.displayName} has just asked the commander for something: ${taskLine(task)}. She waits for the answer.`;
   return { id: `${ISSUED_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${what} ${NEVER_NAME}`) };
+}
+function slapDirective(event, state, reg) {
+  const unit3 = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.result === "string" ? TUNING.practice.slap.words[event.result] : void 0;
+  if (unit3 === void 0 || how === void 0 || !practiceLive(state, reg, unit3.id)) return null;
+  return { id: `${SLAP_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit3.displayName} ${how}. ${NEVER_NAME}`) };
 }
 function cancelledRewardDirective(event, state, reg) {
   const unit3 = state.squad.find((u) => u.id === event.holderId);
@@ -43456,7 +43582,7 @@ function clearPracticeDirectives(builder, opts = {}) {
   builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !(opts.keepVerdict === true && d.id.startsWith(VERDICT_PREFIX)));
 }
 function refreshPracticeDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX) && !d.id.startsWith(ASK_PREFIX));
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX) && !d.id.startsWith(ASK_PREFIX) && !d.id.startsWith(SLAP_PREFIX));
   if (state === null) return;
   for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }

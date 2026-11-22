@@ -15,6 +15,7 @@ import { TUNING } from '../tuning';
 import { eligibleUnits, ensurePractices, practiceLive } from './gate';
 import { withdrawPractices } from './forget';
 import { requestPractice } from './request';
+import { slapAfterSlip } from './slap';
 import { EFFECT_NEEDS, stakeRank, type Offence, type OffenceKind, type PracticeRequest, type PunishmentEffectType, type Stake } from './state';
 
 type Severity5 = 1 | 2 | 3 | 4 | 5;
@@ -68,6 +69,8 @@ export function possibleNow(state: CampaignState, reg: Registries, holderId: str
     if (needs.length > 0 && !needs.some((t) => on.includes(t))) return false; // `physical`, `slap`, `mark` and the rest need what the player switched on
     if (fx.type === 'slot_held' && (state.expedition !== undefined || state.combat !== undefined || !sceneIsHers(state, holderId))) return false;
     if (fx.type === 'confession' && atBase(state, holderId).length === 0) return false;
+    // a slap before others needs `public_humiliation`: without it it waits for a private moment, which is not built (R21), so no such entry is picked
+    if (fx.type === 'slap' && state.scene?.participants.includes(holderId) === true && state.scene.participants.some((id) => id !== holderId) && !on.includes('public_humiliation')) return false;
   }
   return true;
 }
@@ -151,7 +154,8 @@ export function noteOffence(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const days = (p.offences[holderId] ??= []);
   days.push(offence.day);
   p.offences[holderId] = days.filter((d) => draft.day - d <= TUNING.practice.punish.keepDays);
-  if (punishmentOpen(draft, holderId)) return [];
+  const slap = slapAfterSlip(draft, ctx, holderId, offence); // a slip in a scene with her may be answered at once, with no warning (R21)
+  if (punishmentOpen(draft, holderId)) return slap;
   // a kindness she did (R10): her next punishment weighs one less, once
   if (p.softer?.[holderId] === true) {
     delete p.softer[holderId];
@@ -159,8 +163,8 @@ export function noteOffence(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
     severity = Math.max(TUNING.practice.severity.min, severity - 1) as Severity5;
   }
   const entryId = pickHolderPunishment(draft, reg, holderId, severity);
-  if (entryId === null) return [];
-  return requestPractice(draft, ctx, holderId, 'punishment', { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId });
+  if (entryId === null) return slap;
+  return [...slap, ...requestPractice(draft, ctx, holderId, 'punishment', { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId })];
 }
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== '' ? v : undefined);

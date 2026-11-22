@@ -489,3 +489,11 @@ registerMemoryResolver('ask_answered', (draft, event) => {
   const her = subjectOf(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', what: str(event.what) === 'punishment' ? 'a punishment' : 'a task' } } : null;
 }, { ids: ['her'], vars: ['name', 'answer', 'what'] });
+
+// the practices (P16, R21): a holder struck the commander (the slap's outcome). Only one before others is remembered, by those present (`present` is her and who saw it)
+registerMemoryResolver('slap_dealt', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  if (!her) return null;
+  const present = strs(event.present);
+  return { ids: { her: [her.id], present: present.length > 0 ? present : [her.id] }, vars: { name: her.name, public: yes(event.public === true), result: str(event.result) ?? '' } };
+}, { ids: ['her', 'present'], vars: ['name', 'public', 'result'] });

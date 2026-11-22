@@ -14,8 +14,8 @@ import type { CampaignState } from '../../../src/engine/state/types';
 import { errors, loadCore, ofType, run } from '../../helpers/world';
 import { ANN, BEA, CAT, unitOf, withService, world } from './world';
 
-// the slap (Task 33) is a stub: what is asked of it is what is tested
-vi.mock('../../../src/engine/practice/slap', () => ({ startSlap: vi.fn(() => []) }));
+// the slap itself is `slap.test.ts`'s: what is asked of it here is what is tested
+vi.mock('../../../src/engine/practice/slap', async (importActual) => ({ ...(await importActual<typeof import('../../../src/engine/practice/slap')>()), startSlap: vi.fn(() => []) }));
 
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); });
@@ -137,7 +137,7 @@ describe('the effects', () => {
     expect(hurt.commander.injuredUntilDay).toBe(22);
   });
 
-  it('physical is narrated and slap asks for a slap (a stub until it is built)', () => {
+  it('physical is narrated and slap asks for a slap', () => {
     const phys = answer(withPun('role', 'her_hand', 5, {}, ['physical_discipline_shown', 'pain_rough']), 'accept');
     expect(ofType(phys.events, 'punishment_carried_out')).toMatchObject([{ punishmentId: 'pp1', physical: true }]);
     vi.mocked(startSlap).mockClear();
