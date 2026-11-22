@@ -18,6 +18,7 @@ import { practiceLive } from './gate';
 import { noteOffence } from './offences';
 import { seenByChance } from './demonstration';
 import { practiceSample } from './sample';
+import { earnedPermission } from './denial';
 import { routineBroken } from './service';
 import { practiceRoll, stakeRank, STAKES, type Stake, type Task } from './state';
 import type { EventIntent } from '../relations/intents';
@@ -74,6 +75,7 @@ export function settleTask(
     events.push(...hitHer(draft, reg, holderId, 'task_kept', SEVERITY[stakeRank(task.stakes)], 'kept her task'));
     events.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
+    earnedPermission(draft, task); // a task she gave to earn her permission grants it for today
     events.push(...practiceSample(draft, reg, holderId, 'yielded'), ...sees, ...seenByChance(draft, ctx, task, peers.filter((id) => id !== holderId))); // an `indifferent` holder stages nothing, but a task kept in person before others may be seen (R9)
     return events;
   }

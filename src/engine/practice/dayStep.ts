@@ -12,6 +12,7 @@ import { assertiveness } from '../power/options';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { demonstrationGate, expireDemonstrations } from './demonstration';
+import { denialPossible, permissionRuleOf } from './denial';
 import { deadlineSweep, falseReportSweep } from './checks';
 import { practiceHolders, practiceLive } from './gate';
 import { closePunishments, coldShoulderWants, orderCandidate, orderPunishment } from './punish';
@@ -49,6 +50,8 @@ export function kindsToday(state: CampaignState, reg: Registries, holderId: stri
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === undefined || kind === 'punishment') return false; // her discipline comes from an offence, never from the day's roll
     if (kind === 'task' && !taskRoom(state, reg, holderId)) return false;
+    // a denial is a permission rule: only while she has none and one could be proposed (R13)
+    if (kind === 'denial' && (permissionRuleOf(state, reg, holderId) !== undefined || !denialPossible(state, reg, holderId))) return false;
     // a protocol becomes a task when no rule can be proposed (R10): with no room for either, there is nothing to ask for
     if (kind === 'protocol' && !protocolPossible(state, reg, holderId) && !taskRoom(state, reg, holderId)) return false;
     // one demonstration at a time, and only when she may stage one and someone would watch (R9)

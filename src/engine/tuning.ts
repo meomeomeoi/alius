@@ -1048,6 +1048,15 @@ export const TUNING = Object.freeze({
     kindnessAt: 8,
     refusalAt: -8,
     denialRelief: 10,
+    /** Her answer to `[ ASK PERMISSION ]` (R13): the favour from which she grants (with her Want no higher than restless), and the answer each style gives otherwise (the frame `rule` and a favour at `refusalAt` deny first; `affectionate` grants). `AUTHOR TO TUNE`. */
+    permission: Object.freeze({
+      grantFavour: 5,
+      byStyle: Object.freeze({
+        affectionate: 'grant', cold: 'deny', ritual: 'wait', clinical: 'wait', possessive: 'earn', playful: 'earn', cruel: 'deny', obsessive: 'earn', drill: 'wait', regal: 'wait', vindictive: 'earn',
+      } as Readonly<Record<string, 'grant' | 'deny' | 'wait' | 'earn'>>),
+      /** What she says, as prose for the directive, by answer (drafts). */
+      words: Object.freeze({ grant: 'gives permission', deny: 'refuses permission', wait: 'says not yet, and to ask again tomorrow', earn: 'says it has to be earned first' } as const),
+    }),
     hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
     alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
     ask: Object.freeze({ hold: 2, mockRecord: 3 }),

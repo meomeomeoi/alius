@@ -1,5 +1,6 @@
 import { registerWithdrawal } from '../bonds/content';
 import { registerDayEndStep } from '../calendar';
+import { registerMomentTrigger } from '../moments/live';
 import { registerPracticeUndone } from '../discipline/record';
 import { registerRestrictionReader } from '../discipline/restrictions';
 import { registerAction, registerAfterAction, registerVoteGate } from '../dispatch';
@@ -9,6 +10,7 @@ import { answerDemonstration, demonstrationsFromEvents } from '../practice/demon
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
+import { askPermission, herDemandLive, itemRulesFromEvents, permissionLive } from '../practice/denial';
 import { confess, momentGapFavour, serviceFromEvents } from '../practice/service';
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
@@ -35,6 +37,11 @@ registerAfterAction(noteThreat);
 // Her verdict on the commander's service (a pair of activities in the scene, anticipation, the scene's end) and what a moment she asked moves in her favour (R10).
 registerAfterAction(serviceFromEvents);
 registerAfterAction(momentGapFavour);
+// What the commander wears can put a rule in force (the `rule` channel of P15a: a chastity item names the permission rule), and takes it away with the item or the scene (R13).
+registerAfterAction(itemRulesFromEvents);
+// Two moment sources are live because of what a holder has asked (R13): her demand waits for an answer; a permission rule stands while the commander is in contact with her.
+registerMomentTrigger('permission', permissionLive);
+registerMomentTrigger('her_demand', herDemandLive);
 // A punishment she was given in a DM is told to the model in the first scene with her, once.
 registerAfterAction(voiceWaitingPunishments);
 
@@ -115,4 +122,10 @@ registerAction('practice/undo', (draft, payload, ctx) => {
 registerAction('practice/confess', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.taskId !== 'string') throw new Error("practice/confess needs { taskId }.");
   return confess(draft, ctx, payload.taskId);
+});
+
+/** `practice/ask_permission { holderId }`: `[ ASK PERMISSION ]` (R13). Her answer is the engine's (style, favour, Want, frame) and is told to the model for her next reply. Throws with no rule of hers that asks for permission. */
+registerAction('practice/ask_permission', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.holderId !== 'string') throw new Error('practice/ask_permission needs { holderId }.');
+  return askPermission(draft, ctx, payload.holderId);
 });

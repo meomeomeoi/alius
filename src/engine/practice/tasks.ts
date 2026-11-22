@@ -70,7 +70,7 @@ export const writeTask: Writer = (draft, _ctx, request, out, plain) => {
     ...(request.noDuration === true ? { noDuration: true as const } : {}), ...(out.audienceIds !== undefined && out.audienceIds.length > 0 ? { audienceIds: [...out.audienceIds] } : {}),
     text: out.text, summary: out.summary, ...(plain ? { plain: true as const } : {}), ...(chainId !== undefined ? { chainId, step } : {}), status: 'offered',
     ...(targetOf(request, out) !== undefined ? { targetUnitId: targetOf(request, out) } : {}), ...(ROSTER_CHECKS.includes(out.check) ? { field: true as const } : {}),
-    ...(request.sealed === true ? { sealed: true as const } : {}), acceptForm: acceptFormOf(out.stakes, request.sealed), day: draft.day, requestId: request.id,
+    ...(request.sealed === true ? { sealed: true as const } : {}), ...(request.earns !== undefined ? { ruleId: request.earns } : {}), acceptForm: acceptFormOf(out.stakes, request.sealed), day: draft.day, requestId: request.id,
   };
   p.tasks.push(task);
   return [{ type: 'task_issued', taskId: id, holderId: request.holderId, kind: 'task', requestId: request.id, ...(plain ? { plain: true } : {}), ...(request.sealed === true ? { sealed: true } : {}) }];

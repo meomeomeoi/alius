@@ -15,6 +15,7 @@ import { PRACTICE_INTENT_TYPES } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { fromIntent, keptByWordRecently } from './checks';
+import { denialBroken, permissionRuleOf } from './denial';
 import { practiceLive, practicesOn } from './gate';
 import { noteOffence } from './offences';
 import { voiceThreat } from './threats';
@@ -50,12 +51,10 @@ export interface PracticeOffer {
 
 const SUMMARY_MAX = TUNING.practice.summaryMax;
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, SUMMARY_MAX);
-const ASKS_PERMISSION = 'permission';
 
 /** A rule of hers that asks for permission (a denial): by the template's `asks` field, never by id. */
 function hasPermissionRule(state: CampaignState, reg: Registries, unitId: string): boolean {
-  if (state.practices?.permission?.holderId === unitId) return true;
-  return (state.bonds?.rules ?? []).some((r) => r.unitId === unitId && r.status === 'active' && (reg.relationshipRuleTemplates.get(r.templateId) as { asks?: unknown } | undefined)?.asks === ASKS_PERMISSION);
+  return permissionRuleOf(state, reg, unitId) !== undefined;
 }
 
 /** Is the commander doing one of the services she asked for right now (a `scope: dynamic` activity of the commander's in the open scene)? */
@@ -123,6 +122,7 @@ export const PRACTICE_HANDLERS: Partial<Record<string, PracticeHandler>> = {
   // her habit slipped out (P15's intent, applied by the dynamic): it is also an offence of hers (R8), a minor one before others, a trivial one alone
   protocol_slip: (draft, ctx, unitId) => noteOffence(draft, ctx, unitId, { kind: 'protocol_slip', ref: 'slip', stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? 'minor' : 'trivial', day: draft.day }),
   service_rated: (draft, ctx, unitId, ev) => noteSaid(draft, ctx, unitId, ev), // her verdict is held to the scene's end, where the engine's own wins (R10)
+  denial_broken: (draft, ctx, unitId) => denialBroken(draft, ctx, unitId), // a slip against her permission rule is her discipline (R13)
   threat_voiced: (draft, ctx, unitId) => voiceThreat(draft, ctx, unitId), // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
   compromise_reached: (draft, ctx, unitId, ev) => (ev.taskId !== undefined ? compromiseTask(draft, ctx, unitId, ev) : ev.punishmentId !== undefined ? compromisePunishment(draft, ctx, unitId, ev) : []), // an alarm's own compromise is built with it
 };

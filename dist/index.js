@@ -1360,6 +1360,25 @@ var TUNING = Object.freeze({
     kindnessAt: 8,
     refusalAt: -8,
     denialRelief: 10,
+    /** Her answer to `[ ASK PERMISSION ]` (R13): the favour from which she grants (with her Want no higher than restless), and the answer each style gives otherwise (the frame `rule` and a favour at `refusalAt` deny first; `affectionate` grants). `AUTHOR TO TUNE`. */
+    permission: Object.freeze({
+      grantFavour: 5,
+      byStyle: Object.freeze({
+        affectionate: "grant",
+        cold: "deny",
+        ritual: "wait",
+        clinical: "wait",
+        possessive: "earn",
+        playful: "earn",
+        cruel: "deny",
+        obsessive: "earn",
+        drill: "wait",
+        regal: "wait",
+        vindictive: "earn"
+      }),
+      /** What she says, as prose for the directive, by answer (drafts). */
+      words: Object.freeze({ grant: "gives permission", deny: "refuses permission", wait: "says not yet, and to ask again tomorrow", earn: "says it has to be earned first" })
+    }),
     hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
     alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
     ask: Object.freeze({ hold: 2, mockRecord: 3 }),
@@ -14452,14 +14471,14 @@ function followLead(draft, ctx2) {
 }
 function setSceneLimit(draft, text2) {
   const { unitId, name } = leadPartner(draft);
-  const clean11 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
-  if (clean11 === "") throw new Error("A limit needs some text.");
+  const clean12 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean12 === "") throw new Error("A limit needs some text.");
   const scene = draft.scene;
   const limits = scene.limits ?? [];
   if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
-  scene.limits = [...limits, clean11];
-  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean11}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
-  return [{ type: "scene_limit_set", unitId, text: clean11 }];
+  scene.limits = [...limits, clean12];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean12}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean12 }];
 }
 
 // src/engine/night.ts
@@ -18043,8 +18062,8 @@ function regardFromEvents(draft, reg, events) {
         }
         break;
       case "physics_outcome": {
-        const clean11 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
-        if (clean11 && holder2 !== void 0) out.push(...regardRise(draft, reg, holder2, "dignity"));
+        const clean12 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
+        if (clean12 && holder2 !== void 0) out.push(...regardRise(draft, reg, holder2, "dignity"));
         if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
         break;
       }
@@ -19634,7 +19653,7 @@ var DO_FIRST = {
 var named2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var clampSteps = (n) => Math.min(SEVERITIES.length - 1, Math.max(0, n));
 var keepsCommand = (state, reg, domainId) => domainEntry(reg, domainId)?.grants.includes("countermand") === true;
-function exitSeverity(state, _reg, unitId, route, clean11 = false) {
+function exitSeverity(state, _reg, unitId, route, clean12 = false) {
   const dyn = dynamicOf(state, unitId);
   const T5 = TUNING.dynamic.exit;
   if (dyn === void 0) return "minor";
@@ -19643,13 +19662,13 @@ function exitSeverity(state, _reg, unitId, route, clean11 = false) {
   if (steps === 0 && dyn.hold >= T5.freeHold) steps = 1;
   if (dyn.sworn !== void 0) steps = SEVERITIES.length - 1;
   if (route === "force") steps += T5.forceSteps;
-  if (clean11) steps -= T5.cleanSteps;
+  if (clean12) steps -= T5.cleanSteps;
   return SEVERITIES[clampSteps(steps)];
 }
-function exitCostWord(state, reg, unitId, route, clean11 = false) {
+function exitCostWord(state, reg, unitId, route, clean12 = false) {
   const dyn = dynamicOf(state, unitId);
   if (dyn?.sworn !== void 0) return "a break";
-  const severity = exitSeverity(state, reg, unitId, route, clean11);
+  const severity = exitSeverity(state, reg, unitId, route, clean12);
   if (severity === "minor") return route !== "force" && dyn?.frame === "play" && dyn.hold < TUNING.dynamic.exit.freeHold ? "nearly free" : "light";
   return severity === "moderate" ? "costly" : "heavy";
 }
@@ -20999,9 +21018,9 @@ function addMastery(draft, reg, unitId, targetId, xp) {
   }
   return events;
 }
-function xpFor(draft, reg, unitId, targetId, clean11) {
+function xpFor(draft, reg, unitId, targetId, clean12) {
   const how = expectationsOf(draft, reg, unitId).worship?.[targetId]?.how;
-  return TUNING.mastery.act + (clean11 && how !== void 0 && how.trim() !== "" ? TUNING.mastery.how : 0);
+  return TUNING.mastery.act + (clean12 && how !== void 0 && how.trim() !== "" ? TUNING.mastery.how : 0);
 }
 function masteryFromEvents(draft, ctx2, events) {
   const reg = ctx2.registries;
@@ -23225,6 +23244,7 @@ var writeTask = (draft, _ctx, request, out, plain8) => {
     ...targetOf(request, out) !== void 0 ? { targetUnitId: targetOf(request, out) } : {},
     ...ROSTER_CHECKS2.includes(out.check) ? { field: true } : {},
     ...request.sealed === true ? { sealed: true } : {},
+    ...request.earns !== void 0 ? { ruleId: request.earns } : {},
     acceptForm: acceptFormOf(out.stakes, request.sealed),
     day: draft.day,
     requestId: request.id
@@ -23513,12 +23533,127 @@ function practiceSample(draft, reg, unitId, response, opts = {}) {
   return region === void 0 ? [] : [{ type: "position_shifted", unitId, from: region.from, to: region.to }];
 }
 
+// src/engine/practice/denial.ts
+var ASKS_PERMISSION = "permission";
+var asksPermission = (t) => t.asks === ASKS_PERMISSION;
+var templateOf2 = (reg, rule) => reg.relationshipRuleTemplates.get(rule.templateId);
+function permissionRuleOf(state, reg, holderId) {
+  const mine = rulesOf(state).filter((r) => r.unitId === holderId && r.status === "active" && templateOf2(reg, r)?.asks === ASKS_PERMISSION);
+  const named4 = state.practices?.permission;
+  return mine.find((r) => named4 !== void 0 && named4.holderId === holderId && named4.ruleId === r.id) ?? mine[0];
+}
+var denialPossible = (state, reg, holderId) => canProposeRule(state, reg, holderId, { practice: true, filter: asksPermission });
+var writeDenialRule = (draft, ctx2, request, out, plain8) => {
+  const reg = ctx2.registries;
+  const proposed = proposeRuleHashed(draft, reg, request.holderId, practiceRoll(draft, request.holderId, `denial:${request.id}`), { practice: true, filter: asksPermission });
+  const proposal = proposed.find((e) => e.type === "rule_proposed");
+  if (proposal === void 0) return [];
+  const rule = rulesOf(draft).find((r) => r.id === proposal.ruleId);
+  return [...proposed, ...deliverRule(draft, rule.id, plainDraft(plain8 ? rule.text : out.text)), { type: "protocol_set", unitId: request.holderId, holderId: request.holderId, ruleId: rule.id, requestId: request.id, denial: true, ...plain8 ? { plain: true } : {} }];
+};
+function itemRules(state, reg) {
+  const scene = state.scene;
+  if (scene === void 0) return [];
+  const holderId = scene.participants.find((id) => practiceLive(state, reg, id));
+  if (holderId === void 0) return [];
+  const seen2 = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const e of personEffects(state, reg, COMMANDER)) {
+    if (e.type !== "rule" || seen2.has(e.template) || reg.relationshipRuleTemplates.get(e.template) === void 0) continue;
+    seen2.add(e.template);
+    out.push({ templateId: e.template, holderId });
+  }
+  return out;
+}
+var clean4 = (t) => t.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim();
+function syncItemRules(draft, ctx2) {
+  const reg = ctx2.registries;
+  const wanted2 = itemRules(draft, reg);
+  const events = [];
+  for (const w of wanted2) {
+    const own = rulesOf(draft).find((r) => r.unitId === w.holderId && r.templateId === w.templateId);
+    if (own === void 0) {
+      const tpl = templateOf2(reg, { templateId: w.templateId });
+      const unit3 = draft.squad.find((u) => u.id === w.holderId);
+      const rule = { id: nextId(draft, "r"), unitId: w.holderId, templateId: w.templateId, text: clean4(plainDraft(tpl.text).replaceAll("{name}", unit3.displayName)), status: "active", day: draft.day, brokenCount: 0, delivered: true, source: "item" };
+      (draft.bonds ??= { rules: [] }).rules.push(rule);
+      events.push({ type: "rule_active", ruleId: rule.id, unitId: w.holderId, source: "item" });
+    } else if (own.source === "item" && own.status === "suspended") {
+      own.status = "active";
+      events.push({ type: "rule_active", ruleId: own.id, unitId: w.holderId, source: "item" });
+    }
+    const inForce = rulesOf(draft).find((r) => r.unitId === w.holderId && r.templateId === w.templateId && r.status === "active");
+    if (inForce !== void 0 && templateOf2(reg, inForce)?.asks === ASKS_PERMISSION) ensurePractices(draft).permission = { holderId: w.holderId, ruleId: inForce.id, ...draft.practices?.permission?.ruleId === inForce.id && draft.practices.permission.asked !== void 0 ? { asked: draft.practices.permission.asked } : {} };
+  }
+  for (const rule of rulesOf(draft)) {
+    if (rule.source !== "item" || rule.status !== "active" || wanted2.some((w) => w.holderId === rule.unitId && w.templateId === rule.templateId)) continue;
+    rule.status = "suspended";
+    events.push({ type: "rule_suspended", ruleId: rule.id, unitId: rule.unitId, source: "item" });
+  }
+  return events;
+}
+function itemRulesFromEvents(draft, ctx2, events) {
+  if (!events.some((e) => e.type === "blocking_changed" || e.type === "scene_ended" || e.type === "scene_aborted")) return [];
+  if (itemRules(draft, ctx2.registries).length === 0 && !rulesOf(draft).some((r) => r.source === "item")) return [];
+  return syncItemRules(draft, ctx2);
+}
+function permissionAnswer(state, reg, holderId) {
+  const T5 = TUNING.practice.permission;
+  const favour = dynamicOf(state, holderId)?.favour ?? 0;
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  if (frameOf2(state, holderId) === "rule" || favour <= TUNING.practice.refusalAt) return "deny";
+  const band2 = wantBandOf(state, reg, holderId);
+  if (favour >= T5.grantFavour && (band2 === "calm" || band2 === "restless") || style === "affectionate") return "grant";
+  return (style === void 0 ? void 0 : T5.byStyle[style]) ?? "wait";
+}
+function askPermission(draft, ctx2, holderId) {
+  const reg = ctx2.registries;
+  if (!practiceLive(draft, reg, holderId)) throw new Error("She is not holding now.");
+  const rule = permissionRuleOf(draft, reg, holderId);
+  if (rule === void 0) throw new Error("She has no rule that asks for her permission.");
+  const p = ensurePractices(draft);
+  const kept = p.permission?.holderId === holderId && p.permission.ruleId === rule.id ? p.permission.asked : void 0;
+  const base = { type: "permission_answered", unitId: holderId, holderId, ruleId: rule.id };
+  if (kept !== void 0 && (kept.answer === "wait" && (kept.untilDay ?? 0) > draft.day || kept.answer === "grant" && kept.day === draft.day)) return [{ ...base, answer: kept.answer, again: true }];
+  const answer = permissionAnswer(draft, reg, holderId);
+  p.permission = { holderId, ruleId: rule.id, asked: { day: draft.day, answer, ...answer === "wait" ? { untilDay: draft.day + 1 } : {} } };
+  const events = [{ ...base, answer }];
+  if (answer === "deny" || answer === "wait") events.push(...relieveWant(draft, holderId, TUNING.practice.denialRelief, "denial"));
+  if (answer === "earn") events.push(...requestPractice(draft, ctx2, holderId, "task", { earns: rule.id }));
+  return events;
+}
+function earnedPermission(draft, task) {
+  const p = draft.practices;
+  if (p?.permission === void 0 || task.ruleId === void 0 || p.permission.holderId !== task.holderId || p.permission.ruleId !== task.ruleId) return;
+  p.permission.asked = { day: draft.day, answer: "grant" };
+}
+function denialBroken(draft, ctx2, unitId) {
+  const reg = ctx2.registries;
+  if (!practiceLive(draft, reg, unitId)) return [];
+  const asked = draft.practices?.permission?.holderId === unitId ? draft.practices.permission.asked : void 0;
+  if (asked?.answer === "grant" && asked.day === draft.day) return [];
+  const stakes = frameOf2(draft, unitId) === "rule" ? "major" : "minor";
+  const events = applyEventToUnit(draft, reg, unitId, { type: "denial_broken", actor: "commander", targets: [unitId], severity: stakes, evidence: "she broke her denial", confidence: 1 });
+  events.push(...evaluateAutomatic(draft, reg, unitId));
+  events.push(...noteOffence(draft, ctx2, unitId, { kind: "denial_broken", ref: `denial:${draft.day}`, stakes, day: draft.day }));
+  return events;
+}
+function permissionLive(state, reg, unitId) {
+  if (!practiceLive(state, reg, unitId) || permissionRuleOf(state, reg, unitId) === void 0) return false;
+  return Object.entries(state.scene?.blocking ?? {}).some(([person, rec]) => rec.contact !== void 0 && (rec.contact.with === unitId || person === unitId && rec.contact.with === COMMANDER));
+}
+function herDemandLive(state, reg, unitId) {
+  if (!practiceLive(state, reg, unitId)) return false;
+  const p = state.practices;
+  return p !== void 0 && (p.tasks.some((t) => t.holderId === unitId && t.kind === "task" && t.status === "offered") || p.punishments.some((x) => x.holderId === unitId && x.status === "offered"));
+}
+
 // src/engine/practice/service.ts
 var isServiceTemplate = (t) => tagsOf(t).includes(TUNING.offer.serviceCategory);
-var templateOf2 = (reg, rule) => reg.relationshipRuleTemplates.get(rule.templateId);
+var templateOf3 = (reg, rule) => reg.relationshipRuleTemplates.get(rule.templateId);
 function protocolRules(state, reg, holderId) {
   return rulesOf(state).filter((r) => r.unitId === holderId && r.status !== "suspended" && (() => {
-    const t = templateOf2(reg, r);
+    const t = templateOf3(reg, r);
     return t !== void 0 && isServiceTemplate(t);
   })());
 }
@@ -23786,6 +23921,7 @@ function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
     events2.push(...hitHer(draft, reg, holderId, "task_kept", SEVERITY[stakeRank(task.stakes)], "kept her task"));
     events2.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
+    earnedPermission(draft, task);
     events2.push(...practiceSample(draft, reg, holderId, "yielded"), ...sees, ...seenByChance(draft, ctx2, task, peers.filter((id) => id !== holderId)));
     return events2;
   }
@@ -24040,7 +24176,7 @@ function writePunishment(draft, ctx2, request, out, plain8) {
     ...plain8 ? { plain: true } : {}
   }];
 }
-var WRITERS = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol };
+var WRITERS = { task: writeTask, punishment: writePunishment, demonstration: writeDemonstration, protocol: writeProtocol, denial: writeDenialRule };
 function fallbackOutput(state, reg, request) {
   if (request.kind === "punishment") {
     const entryId = punishmentEntryFor(state, reg, request);
@@ -24512,10 +24648,8 @@ function takeInstead(draft, ctx2, punishmentId, answer) {
 var PRACTICE_ROW_IS_CONDITIONAL = PRACTICE_INTENT_TYPES;
 var SUMMARY_MAX = TUNING.practice.summaryMax;
 var oneLine = (text2) => text2.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, SUMMARY_MAX);
-var ASKS_PERMISSION = "permission";
 function hasPermissionRule(state, reg, unitId) {
-  if (state.practices?.permission?.holderId === unitId) return true;
-  return (state.bonds?.rules ?? []).some((r) => r.unitId === unitId && r.status === "active" && reg.relationshipRuleTemplates.get(r.templateId)?.asks === ASKS_PERMISSION);
+  return permissionRuleOf(state, reg, unitId) !== void 0;
 }
 function serviceNow(state, reg) {
   const activity = state.scene?.blocking?.[COMMANDER]?.activity;
@@ -24570,6 +24704,8 @@ var PRACTICE_HANDLERS = {
   protocol_slip: (draft, ctx2, unitId) => noteOffence(draft, ctx2, unitId, { kind: "protocol_slip", ref: "slip", stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? "minor" : "trivial", day: draft.day }),
   service_rated: (draft, ctx2, unitId, ev) => noteSaid(draft, ctx2, unitId, ev),
   // her verdict is held to the scene's end, where the engine's own wins (R10)
+  denial_broken: (draft, ctx2, unitId) => denialBroken(draft, ctx2, unitId),
+  // a slip against her permission rule is her discipline (R13)
   threat_voiced: (draft, ctx2, unitId) => voiceThreat(draft, ctx2, unitId),
   // she threatened the commander in words: the event is a threat the dynamic's intents of the batch read
   compromise_reached: (draft, ctx2, unitId, ev) => ev.taskId !== void 0 ? compromiseTask(draft, ctx2, unitId, ev) : ev.punishmentId !== void 0 ? compromisePunishment(draft, ctx2, unitId, ev) : []
@@ -31177,12 +31313,12 @@ function rollDemands(draft, ctx2) {
   }
   return [];
 }
-var clean4 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.demands.textMax).trim();
+var clean5 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.demands.textMax).trim();
 function deliverDemand(draft, demandId, text2) {
   const demand = draft.discipline?.demands.find((d) => d.id === demandId);
   if (!demand) throw new Error(`Unknown demand "${demandId}".`);
   if (demand.status !== "undelivered") throw new Error("That demand was already delivered.");
-  const worded = text2 === void 0 ? "" : clean4(text2);
+  const worded = text2 === void 0 ? "" : clean5(text2);
   if (worded !== "") demand.text = worded;
   demand.status = "open";
   const viaDm = draft.scene?.participants.includes(demand.unitId) !== true;
@@ -31193,7 +31329,7 @@ function rewordDemand(draft, demandId, text2) {
   const demand = draft.discipline?.demands.find((d) => d.id === demandId);
   if (!demand) throw new Error(`Unknown demand "${demandId}".`);
   if (demand.status !== "open") throw new Error("Only a demand that waits for an answer can be reworded.");
-  const worded = clean4(text2);
+  const worded = clean5(text2);
   if (worded === "") throw new Error("The wording is empty.");
   demand.text = worded;
   const carrier = demand.dmId === void 0 ? void 0 : draft.dms[demand.unitId]?.find((m) => m.id === demand.dmId);
@@ -31338,11 +31474,11 @@ var T3 = () => TUNING.special.debts;
 var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 var named3 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
-function templateOf3(ctx2, context) {
+function templateOf4(ctx2, context) {
   return [...ctx2.registries.dilemmaTemplates.values()].find((t) => t.contexts.includes(context) && t.fixed !== void 0);
 }
 function present(draft, ctx2, context, unitId) {
-  const template = templateOf3(ctx2, context);
+  const template = templateOf4(ctx2, context);
   const fixed = template?.fixed;
   if (!template || !fixed) return [];
   const subject = unitId === void 0 ? void 0 : draft.squad.find((u) => u.id === unitId);
@@ -39009,6 +39145,7 @@ function kindsToday(state, reg, holderId) {
   return PRACTICE_KINDS.filter((kind) => {
     if (WRITERS[kind] === void 0 || kind === "punishment") return false;
     if (kind === "task" && !taskRoom(state, reg, holderId)) return false;
+    if (kind === "denial" && (permissionRuleOf(state, reg, holderId) !== void 0 || !denialPossible(state, reg, holderId))) return false;
     if (kind === "protocol" && !protocolPossible(state, reg, holderId) && !taskRoom(state, reg, holderId)) return false;
     if (kind === "demonstration" && (demonstrationGate(state, reg, holderId) !== null || (state.practices?.demonstrations ?? []).some((d) => d.holderId === holderId && (d.status === "offered" || d.status === "open")))) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
@@ -39128,6 +39265,9 @@ registerAfterAction(offencesFromEvents);
 registerAfterAction(noteThreat);
 registerAfterAction(serviceFromEvents);
 registerAfterAction(momentGapFavour);
+registerAfterAction(itemRulesFromEvents);
+registerMomentTrigger("permission", permissionLive);
+registerMomentTrigger("her_demand", herDemandLive);
 registerAfterAction(voiceWaitingPunishments);
 registerCommanderRestriction(commanderRestrictionOf);
 registerRestrictionReader(unitRestrictionOf);
@@ -39174,6 +39314,10 @@ registerAction("practice/undo", (draft, payload, ctx2) => {
 registerAction("practice/confess", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.taskId !== "string") throw new Error("practice/confess needs { taskId }.");
   return confess2(draft, ctx2, payload.taskId);
+});
+registerAction("practice/ask_permission", (draft, payload, ctx2) => {
+  if (!isObj40(payload) || typeof payload.holderId !== "string") throw new Error("practice/ask_permission needs { holderId }.");
+  return askPermission(draft, ctx2, payload.holderId);
 });
 
 // src/llm/callTypes.ts
@@ -39575,11 +39719,11 @@ registerFlavorKind("ballot", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean11 = (t) => String(t).replace(/[<>]/g, "");
+    const clean12 = (t) => String(t).replace(/[<>]/g, "");
     return [
       `<vote>`,
-      `Decision (${clean11(i.voteKind)}): ${clean11(i.subjectLabel)}`,
-      ...i.ballots.map((b) => `${clean11(b.name)}: voted ${b.vote}; what moved her most: ${clean11(b.term)}`),
+      `Decision (${clean12(i.voteKind)}): ${clean12(i.subjectLabel)}`,
+      ...i.ballots.map((b) => `${clean12(b.name)}: voted ${b.vote}; what moved her most: ${clean12(b.term)}`),
       `</vote>`,
       "Give each soldier her line."
     ].join("\n");
@@ -39608,12 +39752,12 @@ registerFlavorKind("dm_edit", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean11 = (t) => String(t).replace(/<\/?dm>/gi, "");
+    const clean12 = (t) => String(t).replace(/<\/?dm>/gi, "");
     return [
-      `Soldier who edits: ${clean11(i.unitName)}`,
-      `How she feels about the commander: ${clean11(i.stateHint) || "unclear"}`,
-      `Recipient: ${clean11(i.recipientName) || "none"}`,
-      `<dm>${clean11(i.original)}</dm>`,
+      `Soldier who edits: ${clean12(i.unitName)}`,
+      `How she feels about the commander: ${clean12(i.stateHint) || "unclear"}`,
+      `Recipient: ${clean12(i.recipientName) || "none"}`,
+      `<dm>${clean12(i.original)}</dm>`,
       "Rewrite the message."
     ].join("\n");
   }
@@ -39657,10 +39801,10 @@ registerFlavorKind("frequency_fragment", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean11 = (t) => String(t).replace(/<\/?gist>/gi, "");
+    const clean12 = (t) => String(t).replace(/<\/?gist>/gi, "");
     return [
-      `Soldier: ${clean11(i.name)}`,
-      `<gist>${clean11(i.gist)}</gist>`,
+      `Soldier: ${clean12(i.name)}`,
+      `<gist>${clean12(i.gist)}</gist>`,
       i.partial ? "The fragment is cut off: give only the subject (her name and what it is about), not the conclusion." : "Give the fragment."
     ].join("\n");
   }
@@ -39673,7 +39817,7 @@ function sanitizeFragment(raw) {
 }
 var LIFE_SHARE_MAX = 300;
 var LIFE_TRACE_MAX = 400;
-var clean5 = (t, tag2) => String(t).replace(new RegExp(`</?${tag2}>`, "gi"), "");
+var clean6 = (t, tag2) => String(t).replace(new RegExp(`</?${tag2}>`, "gi"), "");
 registerFlavorKind("life_share", {
   system: () => [
     "A soldier tells the commander, in one short direct message, something that happened to her off-screen, for a dark, near-future squad-command RPG.",
@@ -39684,11 +39828,11 @@ registerFlavorKind("life_share", {
   prompt: (raw) => {
     const i = raw;
     return [
-      `Soldier: ${clean5(i.name, "news")}`,
-      `How she talks: ${clean5(i.talk, "news")}`,
-      `Time of day: ${clean5(i.slot, "news")}`,
-      `<news>${clean5(i.what, "news")}</news>`,
-      ...i.lines.map((l) => `<tone>${clean5(l, "tone")}</tone>`),
+      `Soldier: ${clean6(i.name, "news")}`,
+      `How she talks: ${clean6(i.talk, "news")}`,
+      `Time of day: ${clean6(i.slot, "news")}`,
+      `<news>${clean6(i.what, "news")}</news>`,
+      ...i.lines.map((l) => `<tone>${clean6(l, "tone")}</tone>`),
       "Write her message."
     ].join("\n");
   }
@@ -39703,10 +39847,10 @@ registerFlavorKind("life_trace", {
   prompt: (raw) => {
     const i = raw;
     return [
-      `Soldier: ${clean5(i.name, "milestone")}`,
-      `Her pastime: ${clean5(i.hobby, "milestone")}`,
-      `<milestone>${clean5(i.milestone, "milestone")}</milestone>`,
-      `<trace>${clean5(i.trace, "trace")}</trace>`,
+      `Soldier: ${clean6(i.name, "milestone")}`,
+      `Her pastime: ${clean6(i.hobby, "milestone")}`,
+      `<milestone>${clean6(i.milestone, "milestone")}</milestone>`,
+      `<trace>${clean6(i.trace, "trace")}</trace>`,
       "Write the note."
     ].join("\n");
   }
@@ -41870,8 +42014,8 @@ function createDevelopment(deps) {
 }
 
 // src/dynamic/directives.ts
-var clean6 = (text2) => plainDraft(text2).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-var sentence2 = (text2) => clean6(text2).replace(/[.\s]+$/, "");
+var clean7 = (text2) => plainDraft(text2).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var sentence2 = (text2) => clean7(text2).replace(/[.\s]+$/, "");
 var DYNAMIC_PREFIX = "dynamic:";
 var PROBE_PREFIX = "dynamic:probe:";
 var COMMAND_PREFIX = "dynamic:command:";
@@ -41884,7 +42028,7 @@ var OFFER_PREFIX = "dynamic:offer:";
 function styleLine(state, reg, unit3) {
   const pair = unit3.bond?.practice?.style;
   if (pair === void 0) return "";
-  const label2 = (key) => clean6(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
+  const label2 = (key) => clean7(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit3.id);
   const base = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}.` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak.`;
   return lead.phaseLead === "secondary" ? `${base} Her ${label2(lead.key)} side comes through now.` : base;
@@ -41921,7 +42065,7 @@ function holderDirective(state, reg, unit3) {
 }
 function probeDirective(reg, unit3, axisId) {
   const axis = reg.probeAxes.get(axisId);
-  const label2 = clean6(String(axis?.label ?? axisId));
+  const label2 = clean7(String(axis?.label ?? axisId));
   const hint = axis === void 0 ? "" : ` (she ${sentence2(axis.promptHint)})`;
   return {
     id: `${PROBE_PREFIX}${unit3.id}`,
@@ -42199,6 +42343,7 @@ var PROTOCOL_PREFIX = "practice:protocol:";
 var TARGET_PREFIX = "practice:target:";
 var PUNISHMENT_PREFIX = "practice:punishment:";
 var DEMONSTRATION_PREFIX = "practice:demonstration:";
+var PERMISSION_PREFIX = "practice:permission:";
 var VERDICT_PREFIX = "practice:verdict:";
 var ISSUED_PREFIX = "practice:issued:";
 var WITNESS_PHRASE = { drawn: "is drawn to it", indifferent: "is unmoved by it", dislikes: "is put off by it" };
@@ -42264,6 +42409,7 @@ function practiceDirectives(state, reg, present2) {
 function issuedDirective(event, state, reg) {
   if (event.type === "punishment_issued") return punishmentIssuedDirective(event, state, reg);
   if (event.type === "service_rated") return verdictDirective(event, state, reg);
+  if (event.type === "permission_answered") return permissionDirective(event, state, reg);
   if (event.type !== "task_issued" || typeof event.taskId !== "string") return null;
   if (event.kind === "demonstration") return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -42278,6 +42424,12 @@ function verdictDirective(event, state, reg) {
   const how = typeof event.kind === "string" ? VERDICT_PHRASE[event.kind] : void 0;
   if (unit3 === void 0 || how === void 0 || !practiceLive(state, reg, unit3.id)) return null;
   return { id: `${VERDICT_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit3.displayName} has judged the commander's service and ${how}. ${NEVER_NAME}`) };
+}
+function permissionDirective(event, state, reg) {
+  const unit3 = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.answer === "string" ? TUNING.practice.permission.words[event.answer] : void 0;
+  if (unit3 === void 0 || how === void 0 || !practiceLive(state, reg, unit3.id)) return null;
+  return { id: `${PERMISSION_PREFIX}${unit3.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit3.displayName} has been asked for permission and ${how}. ${NEVER_NAME}`) };
 }
 function demonstrationIssuedDirective(id, state, reg) {
   const d = state.practices?.demonstrations.find((x) => x.id === id);
@@ -42309,7 +42461,7 @@ function clearPracticeDirectives(builder, opts = {}) {
   builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !(opts.keepVerdict === true && d.id.startsWith(VERDICT_PREFIX)));
 }
 function refreshPracticeDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX));
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX));
   if (state === null) return;
   for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }
@@ -42602,7 +42754,7 @@ registerCallType({
 });
 
 // src/life/directives.ts
-var clean7 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean8 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var LIFE_DERIVED = ["life:"];
 var NEWS_PREFIX = "life:news:";
 var OPINION_PREFIX = "life:opinion:";
@@ -42616,7 +42768,7 @@ function jokeDirective(state, unit3) {
   return {
     id: `${JOKE_PREFIX}${unit3.id}`,
     expiresAfter: "scene",
-    text: `If it fits, ${unit3.displayName} may bring back a running joke she shares with the commander: ${clean7(text2)} Lightly, once.`
+    text: `If it fits, ${unit3.displayName} may bring back a running joke she shares with the commander: ${clean8(text2)} Lightly, once.`
   };
 }
 function opinionDirective(state, reg, unit3) {
@@ -42626,12 +42778,12 @@ function opinionDirective(state, reg, unit3) {
   const topic = reg.opinionTopics.get(sc.topic);
   const position = topic?.positions.find((p) => p.id === opinion?.position);
   if (!opinion || !topic || !position) return null;
-  const hint = clean7(plainText(position.description));
-  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean7(opinion.text)}"` : "";
+  const hint = clean8(plainText(position.description));
+  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean8(opinion.text)}"` : "";
   return {
     id: `${OPINION_PREFIX}${unit3.id}`,
     expiresAfter: "scene",
-    text: `If it fits, ${unit3.displayName} may say what she thinks about ${clean7(topic.label)}: ${hint}${words3} Lightly, once.`
+    text: `If it fits, ${unit3.displayName} may say what she thinks about ${clean8(topic.label)}: ${hint}${words3} Lightly, once.`
   };
 }
 function pastimeDirective(state, reg, unit3) {
@@ -42640,19 +42792,19 @@ function pastimeDirective(state, reg, unit3) {
   if (!pastime) return null;
   const hobby = pastime.hobby === true ? keenestHobby(state, reg, unit3) : void 0;
   const label2 = hobby ? reg.hobbies.get(hobby.id)?.label : void 0;
-  const what = clean7(plainText(pastime.description)).replace(/\.$/, "");
-  const hers = label2 !== void 0 ? clean7(label2) : clean7(pastime.herActivity);
+  const what = clean8(plainText(pastime.description)).replace(/\.$/, "");
+  const hers = label2 !== void 0 ? clean8(label2) : clean8(pastime.herActivity);
   const breaks = hobby !== void 0 && plateauBreaks(state, unit3.id, hobby.id) ? " She gets it right for the first time today." : "";
   const blocking = state.scene?.blocking;
   const doing = [
     ...blocking?.[unit3.id]?.activity === void 0 ? [`${unit3.displayName}: ${hers}`] : [],
-    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean7(pastime.commanderActivity)}`] : []
+    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean8(pastime.commanderActivity)}`] : []
   ].join("; ");
   const activities = doing === "" ? "" : ` ${doing[0].toUpperCase()}${doing.slice(1)}.`;
   return {
     id: `${PASTIME_PREFIX}${unit3.id}`,
     expiresAfter: "scene",
-    text: `${clean7(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
+    text: `${clean8(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
   };
 }
 function lifeDirectives(state, reg, present2) {
@@ -42664,7 +42816,7 @@ function lifeDirectives(state, reg, present2) {
     const name = unit3.displayName;
     const first2 = pendingNews(state, id)[0];
     if (first2) {
-      const raw = clean7(first2.text);
+      const raw = clean8(first2.text);
       const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
       out.push({
         id: `${NEWS_PREFIX}${id}`,
@@ -42886,7 +43038,7 @@ function createLife(deps) {
 }
 
 // src/personal/directives.ts
-var clean8 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean9 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var DERIVED = [
   "personal:court:",
   "personal:claimed:",
@@ -42924,7 +43076,7 @@ function personalDirectives(state, reg, present2) {
     }
     const truth = state.personal?.truth;
     if (truth && truth.unitId === id) {
-      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean8(truth.question)}". She does not lie or dodge.` });
+      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean9(truth.question)}". She does not lie or dodge.` });
     }
     const mine = (state.personal?.bookings ?? []).filter((b) => b.unitId === id);
     const played2 = mine.some((b) => b.status === "played" && b.day === state.day && b.slot === state.slot);
@@ -42939,7 +43091,7 @@ function personalDirectives(state, reg, present2) {
     const names = x.knownBy.filter((id) => present2.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named").map((u) => u.displayName);
     if (names.length === 0) continue;
     const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-    const text2 = clean8(x.text);
+    const text2 = clean9(x.text);
     if (x.status === "kept" || x.status === "pretend") {
       out.push({
         id: `personal:secret:${x.id}`,
@@ -43304,7 +43456,7 @@ function refreshPowerDirectives(builder, state, reg) {
 // src/bonds/directives.ts
 var EXPLICIT_CATEGORY = "explicit_scenes";
 var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
-var clean9 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean10 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 function contentLine(state, reg) {
   if (state === null) return "";
   const on = enabledCategories(state);
@@ -43332,7 +43484,7 @@ function bondsDirectives(builder, state, reg) {
     if (!unit3 || !bond) continue;
     const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
     const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
-    const note = clean9(bond.ownLimits.note ?? "");
+    const note = clean10(bond.ownLimits.note ?? "");
     if (ordered.length === 0 && note === "") continue;
     const text2 = ordered.length > 0 ? `${unit3.displayName} will not take part in: ${ordered.map(labelOf3).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit3.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
@@ -43368,7 +43520,7 @@ function bondsDirectives(builder, state, reg) {
   for (const rule of state.bonds?.rules ?? []) {
     const unit3 = state.squad.find((u) => u.id === rule.unitId);
     if (!unit3 || !state.scene.participants.includes(unit3.id) || rule.status !== "negotiating" && !(rule.status === "proposed" && rule.delivered === true)) continue;
-    const text2 = clean9(rule.text);
+    const text2 = clean10(rule.text);
     builder.setDirective({
       id: `rule:${unit3.id}`,
       expiresAfter: "scene",
@@ -43383,7 +43535,7 @@ function bondsDirectives(builder, state, reg) {
     builder.setDirective({ id: "lead", expiresAfter: "scene", text: text2 });
   }
   (state.scene.limits ?? []).forEach((text2, i) => {
-    const t = clean9(text2);
+    const t = clean10(text2);
     if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
   });
 }
@@ -48271,7 +48423,7 @@ var CUE_LINES_MAX = 5;
 var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
 var isObj46 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PhysicsCuesRawSchema = external_exports.object({ cues: external_exports.unknown().optional() }).passthrough();
-var clean10 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
+var clean11 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
 function sanitizeCues(raw) {
   const cues = isObj46(raw) ? raw.cues : void 0;
   if (!isObj46(cues)) return null;
@@ -48282,7 +48434,7 @@ function sanitizeCues(raw) {
     const lines = [];
     for (const l of list5) {
       if (typeof l !== "string") continue;
-      const c = clean10(l);
+      const c = clean11(l);
       if (c === "" || COMMANDER_PRONOUN7.test(c) || lines.includes(c)) continue;
       if (lines.length < CUE_LINES_MAX) lines.push(c);
     }

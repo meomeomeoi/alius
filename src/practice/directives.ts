@@ -7,6 +7,7 @@ import { practiceLive } from '../engine/practice/gate';
 import { protocolRules } from '../engine/practice/service';
 import type { Task } from '../engine/practice/state';
 import type { CampaignState } from '../engine/state/types';
+import { TUNING } from '../engine/tuning';
 import type { ContextBuilder, Directive } from '../llm/context';
 
 /**
@@ -26,6 +27,8 @@ export const TARGET_PREFIX = 'practice:target:';
 export const PUNISHMENT_PREFIX = 'practice:punishment:';
 /** The demonstration she is staging, while it is on (scene). */
 export const DEMONSTRATION_PREFIX = 'practice:demonstration:';
+/** Her answer to a request for permission, for her next reply only (event-driven). */
+export const PERMISSION_PREFIX = 'practice:permission:';
 /** Her verdict on the commander's service, for her next reply only (event-driven). */
 export const VERDICT_PREFIX = 'practice:verdict:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
@@ -115,6 +118,7 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
 export function issuedDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
   if (event.type === 'punishment_issued') return punishmentIssuedDirective(event, state, reg);
   if (event.type === 'service_rated') return verdictDirective(event, state, reg);
+  if (event.type === 'permission_answered') return permissionDirective(event, state, reg);
   if (event.type !== 'task_issued' || typeof event.taskId !== 'string') return null;
   if (event.kind === 'demonstration') return demonstrationIssuedDirective(event.taskId, state, reg);
   const task = state.practices?.tasks.find((t) => t.id === event.taskId);
@@ -133,6 +137,14 @@ function verdictDirective(event: { type: string; [k: string]: unknown }, state: 
   const how = typeof event.kind === 'string' ? VERDICT_PHRASE[event.kind] : undefined;
   if (unit === undefined || how === undefined || !practiceLive(state, reg, unit.id)) return null;
   return { id: `${VERDICT_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} has judged the commander's service and ${how}. ${NEVER_NAME}`) };
+}
+
+/** Her answer to a request for permission, for her next reply only: the answer word and nothing of what moved it. */
+function permissionDirective(event: { type: string; [k: string]: unknown }, state: CampaignState, reg: Registries): Directive | null {
+  const unit = state.squad.find((u) => u.id === event.holderId);
+  const how = typeof event.answer === 'string' ? (TUNING.practice.permission.words as Record<string, string | undefined>)[event.answer] : undefined;
+  if (unit === undefined || how === undefined || !practiceLive(state, reg, unit.id)) return null;
+  return { id: `${PERMISSION_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} has been asked for permission and ${how}. ${NEVER_NAME}`) };
 }
 
 /** What she has just proposed to show before others, for her next reply only. Only for a holder who is in the open scene. */
@@ -179,7 +191,7 @@ export function clearPracticeDirectives(builder: Pick<ContextBuilder, 'clearMatc
 
 /** Sets the derived directives and drops the ones that no longer hold; without a state it only clears. The issued line is event-driven and lives out its reply. */
 export function refreshPracticeDirectives(builder: Pick<ContextBuilder, 'clearMatching' | 'setDirective'>, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX));
+  builder.clearMatching((d) => d.id.startsWith(PRACTICE_PREFIX) && !d.id.startsWith(ISSUED_PREFIX) && !d.id.startsWith(VERDICT_PREFIX) && !d.id.startsWith(PERMISSION_PREFIX));
   if (state === null) return;
   for (const d of practiceDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }
