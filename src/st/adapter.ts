@@ -23,6 +23,8 @@ export interface ChatMessage {
   avatar?: string;
   text: string;
   swipeId: number;
+  /** How many swipes the message has (P10e: the curtain shows `n / m`); absent when the host does not say. */
+  swipeCount?: number;
 }
 
 export type StEvent =

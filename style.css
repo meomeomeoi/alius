@@ -3564,6 +3564,157 @@
   gap: 10px;
 }
 
+/* the curtain: the history, a glass panel from the left (45 % of the width, 55 % on a small screen), the input at its bottom */
+#alius-shell .alius-curtain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 18px 22px;
+  background: color-mix(in srgb, var(--alius-bg) 66%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid color-mix(in srgb, var(--alius-dim) 45%, transparent);
+  pointer-events: auto;
+  transform: translateX(-102%);
+  visibility: hidden;
+  transition: transform 0.28s ease-out, visibility 0s linear 0.28s;
+}
+
+#alius-shell .alius-curtain[data-open="true"] {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.28s ease-out, visibility 0s;
+}
+
+#alius-shell.alius-readable .alius-curtain {
+  background: color-mix(in srgb, var(--alius-bg) 95%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+#alius-shell.alius-reduced-motion .alius-curtain,
+#alius-shell.alius-reduced-motion .alius-curtain[data-open="true"] {
+  transition: none;
+}
+
+#alius-shell .alius-curtain-head {
+  flex: none;
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-curtain-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+  font-family: var(--alius-font-sans);
+  font-weight: 300;
+  font-size: clamp(14px, 1.8vh, 20px);
+  line-height: 1.6;
+}
+
+#alius-shell .alius-curtain-line {
+  position: relative;
+  margin: 0 0 1em;
+}
+
+#alius-shell .alius-curtain-line .alius-speaker {
+  display: block;
+  font-family: var(--alius-font);
+  font-weight: 400;
+  font-size: 10px;
+  line-height: 1.8;
+  letter-spacing: 0.16em;
+  color: var(--alius-accent);
+  animation: none;
+}
+
+#alius-shell .alius-curtain-line.is-user {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-curtain-line .alius-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#alius-shell .alius-curtain-line .alius-glitch {
+  font-style: italic;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+/* the tools of a message show on hover and on keyboard focus */
+#alius-shell .alius-curtain-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#alius-shell .alius-curtain-line:hover .alius-curtain-tools,
+#alius-shell .alius-curtain-line:focus-within .alius-curtain-tools,
+#alius-shell .alius-curtain-line.is-editing .alius-curtain-tools {
+  opacity: 1;
+}
+
+#alius-shell .alius-curtain-btn {
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+#alius-shell .alius-curtain-swipes {
+  font-family: var(--alius-font);
+  font-size: 11px;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-curtain-input {
+  flex: none;
+  margin-top: 12px;
+}
+
+#alius-shell .alius-curtain-input .alius-input-line {
+  width: 100%;
+}
+
+/* with the curtain down: the frame dims, the sprites slide right and stay visible, the reply and the input are the curtain's, the rest keeps to the right of it */
+#alius-shell .alius-scene[data-curtain="open"] > .alius-layer-backdrop {
+  filter: brightness(0.6);
+}
+
+#alius-shell .alius-layer-sprites {
+  transition: transform 0.28s ease-out;
+}
+
+#alius-shell .alius-scene[data-curtain="open"] > .alius-layer-sprites {
+  transform: translateX(18vw);
+}
+
+#alius-shell.alius-reduced-motion .alius-layer-sprites {
+  transition: none;
+}
+
+#alius-shell .alius-scene[data-curtain="open"] .alius-stage-reply {
+  visibility: hidden;
+}
+
+#alius-shell .alius-scene[data-curtain="open"] :is(.alius-stage-status, .alius-stage-chips) {
+  margin-left: 47%;
+  width: min(50%, 900px);
+}
+
 /* World parameters and disposition controls (P8). Palette variables only. */
 #alius-shell .alius-world-option {
   margin: 0 0 14px;

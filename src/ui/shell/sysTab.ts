@@ -343,6 +343,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Minimum confidence (0–1)', decimalInput('intentMinConfidence', settings.intentMinConfidence, { min: '0', max: '1' }), 'intentMinConfidence'),
     field('Scene pacing (exchanges, ≥5)', numberInput('scenePacing', settings.scenePacing, (n) => apply({ scenePacing: n }).scenePacing, { min: '5' }), 'scenePacing'),
     field('Typing speed (chars/s, 0 = instant)', numberInput('typingSpeed', settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed), 'typingSpeed'),
+    field('Open the history for replies longer than N words (0 = never)', numberInput('curtainWords', settings.curtainWords, (n) => apply({ curtainWords: n }).curtainWords, { min: '0' }), 'curtainWords'),
     field('Units may start DMs', checkbox('unitDms', settings.unitDms), 'unitDms'),
     field('Compact the chronicle with the mechanic model', checkbox('chronicleCompaction', settings.chronicleCompaction), 'chronicleCompaction'),
     h('h3', {}, 'Scene'),

@@ -330,7 +330,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 **Interfaces:**
 - Produces: `interface Curtain { open(): void; close(): void; isOpen(): boolean; draw(messages: ChatMessage[], ctx: CurtainDrawCtx): void; element: HTMLElement }`; `createCurtain(host: HTMLElement, opts: { onOpen(): void; onClose(): void }): Curtain`; `CurtainDrawCtx` holds `commanderName`, `pending`, `editing`, `onEdit(index)`, `onSave`, `onCancel`, `onSwipe(dir)`, `onRegenerate()`, `flagged(index)` and `accentOf(name)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `opens and closes`:
     - `wheel` with `deltaY < 0` over the frame or the reply opens it;
     - ↑ (`ArrowUp`) in an **empty** input opens it, but not with text in the input;
@@ -349,10 +349,10 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `the input moves with it`: while the curtain is open the same `input[name="cmd"]` element is inside `.alius-curtain`, and on close it is back in the input host. Focus is kept.
   - `curtainWords`: with 120, a reply of 121 words opens the curtain when it arrives (a `transcript` event); with 0 it never does.
   - `resetSceneStage()` closes it.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/stage/curtain.test.ts tests/st/fake.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** The curtain is a child of `StageLayers.curtain`. Opening sets `root.dataset.curtain = 'open'`; CSS slides the sprites right by 18 vw and moves the dock right of the curtain. Reduced motion gives no slide transition.
-- [ ] **Step 4: Run** the tests, `tests/ui/scene.test.ts` (edit tests moved), `tests/settings.test.ts`, tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the history curtain`
+- [x] **Step 2: Run** `npx vitest run tests/ui/stage/curtain.test.ts tests/st/fake.test.ts` → FAIL.
+- [x] **Step 3: Implement.** The curtain is a child of `StageLayers.curtain`. Opening sets `root.dataset.curtain = 'open'`; CSS slides the sprites right by 18 vw and moves the dock right of the curtain. Reduced motion gives no slide transition.
+- [x] **Step 4: Run** the tests, `tests/ui/scene.test.ts` (edit tests moved), `tests/settings.test.ts`, tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the history curtain`
 
 ---
 

@@ -38,6 +38,7 @@ import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
 import { inputGauge, type InputGauge } from './stage/gauge';
 import { buildLayers, type StageLayers } from './stage/layers';
+import { createCurtain, type Curtain } from './stage/curtain';
 import { attachLook } from './stage/look';
 import { markHintUsed, renderTopLine } from './stage/topLine';
 import { fillProse, proseLength, sentenceRunIndex } from './stage/prose';
@@ -207,8 +208,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let backdropToken = 0;
   let spriteHost: HTMLElement;
   let hud: HTMLElement;
-  let log: HTMLElement;
-  /** P10e: the reply block (the last replies as prose subtitles); `log` is the whole transcript, which the curtain takes over (Task 8). */
+  let curtain: Curtain;
+  /** The whole input line (the field, ORDER, PROPOSE): it moves into the curtain while that is open. */
+  let inputLine: HTMLElement;
+  /** The newest reply whose length was already judged (null until the first draw of a scene). */
+  let wordsChecked: number | null = null;
+  /** P10e: the reply block (the last replies as prose subtitles); the whole transcript is the curtain's. */
   let replyHost: HTMLElement;
   let chips: HTMLElement;
   let disciplineChips: HTMLElement;
@@ -449,6 +454,31 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     void controller.edit(e.index, e.value).catch(() => {});
   }
 
+  /** The accent of the speaker of a message: the unit whose card spoke it, else the one with that name. */
+  function accentOf(s: CampaignState, name: string, avatar?: string): string | null {
+    const u = s.squad.find((x) => x.cardRef !== undefined && x.cardRef === avatar) ?? s.squad.find((x) => x.displayName === name);
+    return u ? unitAccent(u.id) : null;
+  }
+
+  /** P9d: a reply the reading flagged as depicting content that is switched off (in the reply block and in the history). */
+  function flagViolation(s: CampaignState, line: HTMLElement, index: number): void {
+    const flagged = s.scene?.violations?.find((v) => v.index === index);
+    if (flagged) drawViolation(line, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {}), pending);
+  }
+
+  /** P10e §3: a reply longer than `curtainWords` words opens the history by itself when it arrives (never for what was there when the scene opened). */
+  function checkWords(messages: ChatMessage[]): void {
+    const lastReply = [...messages].reverse().find((m) => !m.isUser);
+    if (wordsChecked === null) {
+      wordsChecked = lastReply?.index ?? -1;
+      return;
+    }
+    if (pending || !lastReply || lastReply.index <= wordsChecked) return;
+    wordsChecked = lastReply.index;
+    const limit = ctx.settings().curtainWords;
+    if (limit > 0 && lastReply.text.trim().split(/\s+/).filter(Boolean).length > limit) curtain.open();
+  }
+
   /** P10e §3: the last replies as prose subtitles (the typing reveal and the streaming highlight live here). */
   function drawReply(s: CampaignState, messages: ChatMessage[]): void {
     const view = replyView(messages);
@@ -465,16 +495,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       maxLines: REPLY_MAX_LINES,
       visibleOf: (index) => (index === animating ? progress.get(index) ?? 0 : Infinity),
       newestFrom: lit,
-      accentOf: (r) => {
-        const u = s.squad.find((x) => x.cardRef !== undefined && x.cardRef === r.avatar) ?? s.squad.find((x) => x.displayName === r.name);
-        return u ? unitAccent(u.id) : null;
-      },
-      flag: (line, index) => {
-        // P9d: a reply the reading flagged as depicting content that is switched off
-        const flagged = s.scene?.violations?.find((v) => v.index === index);
-        if (flagged) drawViolation(line, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {}), pending);
-      },
-      onMore: () => { markHintUsed('history'); log.focus(); }, // (the curtain, Task 8, replaces this)
+      accentOf: (r) => accentOf(s, r.name, r.avatar),
+      flag: (line, index) => flagViolation(s, line, index),
+      onMore: () => curtain.open(),
     });
     // an empty scene waits for the commander: say so, or nobody knows what to do (the prologue's scenes are the first the player sees)
     if (messages.length === 0) {
@@ -504,41 +527,23 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       if (seen < 0 || lastIndex > seen) seen = lastIndex;
     }
 
-    const boxHadFocus = document.activeElement instanceof HTMLTextAreaElement && log.contains(document.activeElement);
-    log.replaceChildren(...messages.map((m) => {
-      const speaker = h('span', { class: 'alius-speaker' });
-      speaker.textContent = `${(m.isUser ? s.commander.name : m.name).toUpperCase()} //`;
-      if (editing && editing.index === m.index) {
-        const e = editing;
-        const box = h('textarea', { class: 'alius-edit-box', rows: '3', 'aria-label': 'Edit message' }) as HTMLTextAreaElement;
-        box.value = e.value;
-        box.addEventListener('input', () => { e.value = box.value; });
-        box.addEventListener('keydown', (ev) => {
-          const k = ev as KeyboardEvent;
-          if (k.key === 'Escape') cancelEdit(s);
-          else if (k.key === 'Enter' && (k.ctrlKey || k.metaKey)) saveEdit(s);
-        });
-        return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''} is-editing`, 'data-index': m.index }, speaker, ' ', h('div', { class: 'alius-edit-form' }, box,
-          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-save', onclick: () => saveEdit(s) }, '[ SAVE ]'),
-          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => cancelEdit(s) }, '[ CANCEL ]')));
-      }
-      const text = h('span', { class: 'alius-text' });
-      fillProse(text, m.text, Infinity);
-      const edit = h('button', {
-        type: 'button', class: 'alius-edit', 'data-edit': m.index, 'aria-label': 'Edit message', title: 'Edit this message', disabled: pending,
-        onclick: () => {
-          editing = { index: m.index, value: m.text, focus: true };
-          drawLog(s);
-        },
-      }, '✎');
-      return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
-    }));
+    curtain.draw(messages, {
+      commanderName: s.commander.name, pending, editing,
+      onEdit: (index) => {
+        const m = messages.find((x) => x.index === index);
+        if (!m) return;
+        editing = { index, value: m.text, focus: true };
+        drawLog(s);
+      },
+      onSave: () => saveEdit(s),
+      onCancel: () => cancelEdit(s),
+      onSwipe: (dir) => void st.swipeLast(dir).catch(() => {}),
+      onRegenerate: () => void st.regenerateLast().catch(() => {}),
+      flag: (line, index) => flagViolation(s, line, index),
+      accentOf: (name, avatar) => accentOf(s, name, avatar),
+    });
     drawReply(s, messages);
-    const box = log.querySelector<HTMLTextAreaElement>('textarea.alius-edit-box');
-    if (box && (editing?.focus || boxHadFocus)) {
-      box.focus();
-      if (editing) editing.focus = false;
-    } else log.scrollTop = log.scrollHeight;
+    checkWords(messages);
 
     if (animating !== null && !timer) {
       timer = setInterval(() => {
@@ -629,10 +634,39 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }, BUSY_TICK_MS);
   }
 
+  /** Moves the input line (the same nodes, so the text and the focus survive) between its host and the curtain. */
+  function moveInput(to: HTMLElement): void {
+    const focused = document.activeElement === input;
+    to.append(inputLine);
+    if (focused) input.focus();
+  }
+
+  /** Esc closes the history (an edit box takes its own Esc first; a modal that took the key already is left alone). */
+  const onDocKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape' && curtain?.isOpen() && !e.defaultPrevented) {
+      e.preventDefault();
+      curtain.close();
+    }
+  };
+  document.addEventListener('keydown', onDocKey);
+
   function build(s: CampaignState): void {
     const units = present(s);
     sceneKey = s.scene!.id;
     layers = buildLayers(root);
+    curtain?.destroy();
+    wordsChecked = null;
+    curtain = createCurtain(layers.curtain, {
+      onOpen: () => {
+        markHintUsed('history');
+        root.dataset.curtain = 'open';
+        moveInput(curtain.inputSlot);
+      },
+      onClose: () => {
+        delete root.dataset.curtain;
+        moveInput(layers.hosts.input);
+      },
+    });
     detachLook?.();
     detachLook = attachLook(layers.frame, root, { sceneId: () => s.scene!.id, reduced: () => motionReduced(ctx.settings()), onUse: () => markHintUsed('look') });
     bg = h('div', { class: 'alius-scene-bg' });
@@ -645,7 +679,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     spriteHost = layers.sprites;
     spriteHost.classList.add('alius-sprites');
     hud = h('div', { class: 'alius-hud' });
-    log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     replyHost = layers.hosts.reply;
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
@@ -678,6 +711,11 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
     input.addEventListener('input', () => ctx.physics?.keystroke()); // P15a: typing under load lets maintenance lapse (real time)
     input.addEventListener('keydown', (ev) => {
+      if ((ev as KeyboardEvent).key === 'ArrowUp' && input.value === '' && !pending) {
+        ev.preventDefault();
+        curtain.open(); // ↑ in an empty line, as a terminal's history
+        return;
+      }
       if ((ev as KeyboardEvent).key !== 'Enter' || pending) return;
       const text = input.value.trim();
       if (text === '') return;
@@ -700,6 +738,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         input.disabled = false;
         if (sent) input.value = ''; // a message that did not go out (the scene is busy, or it closed) stays in the line
         input.focus();
+        const s0 = state();
+        if (s0?.scene) checkWords(controller.transcript()); // the reply that streamed in while the line was busy
       });
     });
 
@@ -749,16 +789,20 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         genTools,
         act('swipe-right', '›', () => ignore(st.swipeLast('right')), 'Next reply'),
       ],
-      onHistory: () => { markHintUsed('history'); log.focus(); }, // (the curtain, Task 8, replaces this)
+      onHistory: () => (curtain.isOpen() ? curtain.close() : curtain.open()),
       onEnd: () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }),
       ...(ctx.onClose ? { onClose: ctx.onClose } : {}),
     });
     hosts.status.append(banner, deviceHost, busyHost);
-    layers.curtain.append(h('div', { class: 'alius-curtain-interim', hidden: true }, log)); // (Task 8: the curtain proper)
     hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
-    hosts.input.append(h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who)));
+    inputLine = h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who));
+    hosts.input.append(inputLine);
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
     hosts.dial.append(blockingHost);
+    // the wheel up over the frame or the reply lets the history down
+    const wheelUp = (ev: Event): void => { if ((ev as WheelEvent).deltaY < 0) curtain.open(); };
+    layers.frame.addEventListener('wheel', wheelUp);
+    hosts.reply.addEventListener('wheel', wheelUp);
     drawBackground(s);
   }
 
@@ -844,6 +888,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     },
     dispose() {
       disposed = true;
+      document.removeEventListener('keydown', onDocKey);
+      curtain?.destroy();
       detachLook?.();
       cancelPostureCalls(); // no late slip for a call whose scene is gone (P16)
       clearSlapOverlay(slapHost); // and no late answer to a slap whose scene is gone

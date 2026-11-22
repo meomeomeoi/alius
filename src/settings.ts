@@ -35,6 +35,8 @@ export interface AliusSettings {
   scenePacing: number;
   /** Typed-out dialogue speed in characters per second; 0 = instant. */
   typingSpeed: number;
+  /** P10e: a reply longer than this many words opens the scene's history by itself; 0 = never. */
+  curtainWords: number;
   romance: boolean;
   /** Old switch (P3): read ONLY once, to carry `explicit_scenes` over into a campaign or a wizard that has no content choice yet (P9d). It is not in SYS any more. */
   explicitContent: boolean;
@@ -160,6 +162,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   intentMinConfidence: 0.5,
   scenePacing: 30,
   typingSpeed: 60,
+  curtainWords: 0,
   romance: true,
   explicitContent: false,
   romanticInitiative: 'med',
@@ -223,6 +226,7 @@ const fieldSchemas = {
   intentMinConfidence: z.number().min(0).max(1),
   scenePacing: z.number().int().min(5),
   typingSpeed: z.number().min(0),
+  curtainWords: z.number().int().min(0),
   romance: z.boolean(),
   explicitContent: z.boolean(),
   romanticInitiative: z.enum(['low', 'med', 'high']),

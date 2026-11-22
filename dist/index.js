@@ -36386,8 +36386,8 @@ var defectSocialHook = (draft, ctx2, done) => {
   for (const unit3 of draft.squad) {
     if (unit3.kind !== "named" || !isLiving(unit3)) continue;
     for (const d of unit3.defects) {
-      const hooks2 = ctx2.registries.defects.get(d.id)?.socialHooks ?? [];
-      for (const h2 of hooks2) {
+      const hooks3 = ctx2.registries.defects.get(d.id)?.socialHooks ?? [];
+      for (const h2 of hooks3) {
         if (h2.activity !== done.activityId) continue;
         const involved = h2.who === "companion" ? done.companionId === unit3.id : done.rosterIds.includes(unit3.id);
         if (!involved) continue;
@@ -46218,6 +46218,7 @@ var DEFAULT_SETTINGS = {
   intentMinConfidence: 0.5,
   scenePacing: 30,
   typingSpeed: 60,
+  curtainWords: 0,
   romance: true,
   explicitContent: false,
   romanticInitiative: "med",
@@ -46280,6 +46281,7 @@ var fieldSchemas = {
   intentMinConfidence: external_exports.number().min(0).max(1),
   scenePacing: external_exports.number().int().min(5),
   typingSpeed: external_exports.number().min(0),
+  curtainWords: external_exports.number().int().min(0),
   romance: external_exports.boolean(),
   explicitContent: external_exports.boolean(),
   romanticInitiative: external_exports.enum(["low", "med", "high"]),
@@ -62629,6 +62631,18 @@ function renderTopLine(host, ctx2) {
   ), hints);
 }
 
+// src/ui/scene/stage/index.ts
+var hooks2 = /* @__PURE__ */ new Set();
+function onStageReset(fn) {
+  hooks2.add(fn);
+  return () => void hooks2.delete(fn);
+}
+function resetSceneStage() {
+  resetHints();
+  resetLook();
+  for (const fn of [...hooks2]) fn();
+}
+
 // src/ui/scene/stage/prose.ts
 var CLOSER = { '"': '"', "\u201C": "\u201D" };
 function closeOnLine(text3, from, mark) {
@@ -62743,6 +62757,130 @@ function sentenceRunIndex(text3, visible) {
     acc += runs2[i].text.length;
   }
   return Math.max(0, runs2.length - 1);
+}
+
+// src/ui/scene/stage/curtain.ts
+var atEnd = (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+function createCurtain(host, opts) {
+  const scroller = h("div", { class: "alius-curtain-scroll", role: "log", "aria-live": "polite", tabindex: "0" });
+  const inputSlot = h("div", { class: "alius-curtain-input" });
+  const element = h(
+    "div",
+    { class: "alius-curtain", "data-open": "false", role: "region", "aria-label": "Scene history", "aria-hidden": "true" },
+    h("div", { class: "alius-curtain-head" }, "HISTORY"),
+    scroller,
+    inputSlot
+  );
+  host.append(element);
+  let opened = false;
+  let last = null;
+  function render() {
+    if (!last) return;
+    const { messages, ctx: ctx2 } = last;
+    const stick = scroller.childElementCount === 0 || atEnd(scroller);
+    const previous = scroller.scrollTop;
+    const boxHadFocus = document.activeElement instanceof HTMLTextAreaElement && scroller.contains(document.activeElement);
+    let lastReply = -1;
+    messages.forEach((m, i) => {
+      if (!m.isUser) lastReply = i;
+    });
+    scroller.replaceChildren(...messages.map((m, i) => {
+      const name = h("span", { class: "alius-speaker" });
+      name.textContent = m.isUser ? "YOU" : m.name.toUpperCase();
+      const cls = `alius-line alius-curtain-line${m.isUser ? " is-user" : ""}`;
+      let line2;
+      if (ctx2.editing && ctx2.editing.index === m.index) {
+        const e = ctx2.editing;
+        const box2 = h("textarea", { class: "alius-edit-box", rows: "3", "aria-label": "Edit message" });
+        box2.value = e.value;
+        box2.addEventListener("input", () => {
+          e.value = box2.value;
+        });
+        box2.addEventListener("keydown", (ev) => {
+          const k = ev;
+          if (k.key === "Escape") {
+            k.stopPropagation();
+            ctx2.onCancel();
+          } else if (k.key === "Enter" && (k.ctrlKey || k.metaKey)) ctx2.onSave();
+        });
+        line2 = h("div", { class: `${cls} is-editing`, "data-index": m.index }, name, h(
+          "div",
+          { class: "alius-edit-form" },
+          box2,
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => ctx2.onSave() }, "[ SAVE ]"),
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => ctx2.onCancel() }, "[ CANCEL ]")
+        ));
+      } else {
+        const text3 = h("span", { class: "alius-text" });
+        fillProse(text3, m.text, Infinity);
+        const tools = h(
+          "span",
+          { class: "alius-curtain-tools" },
+          h("button", {
+            type: "button",
+            class: "alius-edit",
+            "data-edit": m.index,
+            "aria-label": "Edit message",
+            title: "Edit this message",
+            disabled: ctx2.pending,
+            onclick: () => ctx2.onEdit(m.index)
+          }, "\u270E")
+        );
+        if (i === lastReply) {
+          const tool = (action, label2, aria, onclick) => h("button", { type: "button", class: "alius-btn alius-curtain-btn", "data-action": action, "aria-label": aria, disabled: ctx2.pending, onclick }, label2);
+          tools.append(
+            tool("swipe-left", "\u2039", "Previous reply", () => ctx2.onSwipe("left")),
+            ...m.swipeCount !== void 0 ? [h("span", { class: "alius-curtain-swipes" }, `${m.swipeId + 1} / ${m.swipeCount}`)] : [],
+            tool("swipe-right", "\u203A", "Next reply", () => ctx2.onSwipe("right")),
+            tool("regenerate", "\u21BB", "Regenerate the last reply", () => ctx2.onRegenerate())
+          );
+        }
+        line2 = h("div", { class: cls, "data-index": m.index }, name, text3, tools);
+        const accent = ctx2.accentOf(m.name, m.avatar);
+        if (accent && !m.isUser) line2.style.setProperty("--alius-accent", accent);
+        if (!m.isUser) ctx2.flag?.(line2, m.index);
+      }
+      return line2;
+    }));
+    const box = scroller.querySelector("textarea.alius-edit-box");
+    if (box && (ctx2.editing?.focus || boxHadFocus)) {
+      box.focus();
+      if (ctx2.editing) ctx2.editing.focus = false;
+    } else if (stick) scroller.scrollTop = scroller.scrollHeight;
+    else scroller.scrollTop = previous;
+  }
+  scroller.addEventListener("wheel", (ev) => {
+    if (opened && ev.deltaY > 0 && atEnd(scroller)) curtain.close();
+  });
+  const curtain = {
+    element,
+    scroller,
+    inputSlot,
+    open() {
+      if (opened) return;
+      opened = true;
+      element.dataset.open = "true";
+      element.setAttribute("aria-hidden", "false");
+      opts.onOpen();
+      render();
+      scroller.scrollTop = scroller.scrollHeight;
+    },
+    close() {
+      if (!opened) return;
+      opened = false;
+      element.dataset.open = "false";
+      element.setAttribute("aria-hidden", "true");
+      opts.onClose();
+    },
+    isOpen: () => opened,
+    draw(messages, ctx2) {
+      last = { messages, ctx: ctx2 };
+      if (opened) render();
+    },
+    destroy: () => stop2()
+  };
+  const stop2 = onStageReset(() => curtain.close());
+  return curtain;
 }
 
 // src/ui/scene/stage/reply.ts
@@ -62885,7 +63023,9 @@ function renderSceneScreen(host, ctx2) {
   let backdropToken = 0;
   let spriteHost;
   let hud;
-  let log;
+  let curtain;
+  let inputLine;
+  let wordsChecked = null;
   let replyHost;
   let chips;
   let disciplineChips;
@@ -63124,6 +63264,26 @@ function renderSceneScreen(host, ctx2) {
     void controller.edit(e.index, e.value).catch(() => {
     });
   }
+  function accentOf(s, name, avatar) {
+    const u = s.squad.find((x) => x.cardRef !== void 0 && x.cardRef === avatar) ?? s.squad.find((x) => x.displayName === name);
+    return u ? unitAccent(u.id) : null;
+  }
+  function flagViolation(s, line2, index2) {
+    const flagged = s.scene?.violations?.find((v) => v.index === index2);
+    if (flagged) drawViolation(line2, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {
+    }), pending4);
+  }
+  function checkWords(messages) {
+    const lastReply = [...messages].reverse().find((m) => !m.isUser);
+    if (wordsChecked === null) {
+      wordsChecked = lastReply?.index ?? -1;
+      return;
+    }
+    if (pending4 || !lastReply || lastReply.index <= wordsChecked) return;
+    wordsChecked = lastReply.index;
+    const limit = ctx2.settings().curtainWords;
+    if (limit > 0 && lastReply.text.trim().split(/\s+/).filter(Boolean).length > limit) curtain.open();
+  }
   function drawReply(s, messages) {
     const view = replyView(messages);
     const speed = typingSpeed();
@@ -63138,20 +63298,9 @@ function renderSceneScreen(host, ctx2) {
       maxLines: REPLY_MAX_LINES,
       visibleOf: (index2) => index2 === animating ? progress.get(index2) ?? 0 : Infinity,
       newestFrom: lit,
-      accentOf: (r) => {
-        const u = s.squad.find((x) => x.cardRef !== void 0 && x.cardRef === r.avatar) ?? s.squad.find((x) => x.displayName === r.name);
-        return u ? unitAccent(u.id) : null;
-      },
-      flag: (line2, index2) => {
-        const flagged = s.scene?.violations?.find((v) => v.index === index2);
-        if (flagged) drawViolation(line2, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {
-        }), pending4);
-      },
-      onMore: () => {
-        markHintUsed("history");
-        log.focus();
-      }
-      // (the curtain, Task 8, replaces this)
+      accentOf: (r) => accentOf(s, r.name, r.avatar),
+      flag: (line2, index2) => flagViolation(s, line2, index2),
+      onMore: () => curtain.open()
     });
     if (messages.length === 0) {
       const prologue = s.scene?.origin === "prologue";
@@ -63175,52 +63324,27 @@ function renderSceneScreen(host, ctx2) {
       }
       if (seen2 < 0 || lastIndex > seen2) seen2 = lastIndex;
     }
-    const boxHadFocus = document.activeElement instanceof HTMLTextAreaElement && log.contains(document.activeElement);
-    log.replaceChildren(...messages.map((m) => {
-      const speaker = h("span", { class: "alius-speaker" });
-      speaker.textContent = `${(m.isUser ? s.commander.name : m.name).toUpperCase()} //`;
-      if (editing && editing.index === m.index) {
-        const e = editing;
-        const box2 = h("textarea", { class: "alius-edit-box", rows: "3", "aria-label": "Edit message" });
-        box2.value = e.value;
-        box2.addEventListener("input", () => {
-          e.value = box2.value;
-        });
-        box2.addEventListener("keydown", (ev) => {
-          const k = ev;
-          if (k.key === "Escape") cancelEdit(s);
-          else if (k.key === "Enter" && (k.ctrlKey || k.metaKey)) saveEdit(s);
-        });
-        return h("div", { class: `alius-line${m.isUser ? " is-user" : ""} is-editing`, "data-index": m.index }, speaker, " ", h(
-          "div",
-          { class: "alius-edit-form" },
-          box2,
-          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => saveEdit(s) }, "[ SAVE ]"),
-          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => cancelEdit(s) }, "[ CANCEL ]")
-        ));
-      }
-      const text3 = h("span", { class: "alius-text" });
-      fillProse(text3, m.text, Infinity);
-      const edit = h("button", {
-        type: "button",
-        class: "alius-edit",
-        "data-edit": m.index,
-        "aria-label": "Edit message",
-        title: "Edit this message",
-        disabled: pending4,
-        onclick: () => {
-          editing = { index: m.index, value: m.text, focus: true };
-          drawLog(s);
-        }
-      }, "\u270E");
-      return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text3, " ", edit);
-    }));
+    curtain.draw(messages, {
+      commanderName: s.commander.name,
+      pending: pending4,
+      editing,
+      onEdit: (index2) => {
+        const m = messages.find((x) => x.index === index2);
+        if (!m) return;
+        editing = { index: index2, value: m.text, focus: true };
+        drawLog(s);
+      },
+      onSave: () => saveEdit(s),
+      onCancel: () => cancelEdit(s),
+      onSwipe: (dir) => void st.swipeLast(dir).catch(() => {
+      }),
+      onRegenerate: () => void st.regenerateLast().catch(() => {
+      }),
+      flag: (line2, index2) => flagViolation(s, line2, index2),
+      accentOf: (name, avatar) => accentOf(s, name, avatar)
+    });
     drawReply(s, messages);
-    const box = log.querySelector("textarea.alius-edit-box");
-    if (box && (editing?.focus || boxHadFocus)) {
-      box.focus();
-      if (editing) editing.focus = false;
-    } else log.scrollTop = log.scrollHeight;
+    checkWords(messages);
     if (animating !== null && !timer) {
       timer = setInterval(() => {
         const idx = animating;
@@ -63312,10 +63436,35 @@ function renderSceneScreen(host, ctx2) {
       if (s?.scene) drawLog(s);
     }, BUSY_TICK_MS);
   }
+  function moveInput(to) {
+    const focused = document.activeElement === input;
+    to.append(inputLine);
+    if (focused) input.focus();
+  }
+  const onDocKey = (e) => {
+    if (e.key === "Escape" && curtain?.isOpen() && !e.defaultPrevented) {
+      e.preventDefault();
+      curtain.close();
+    }
+  };
+  document.addEventListener("keydown", onDocKey);
   function build(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
     layers = buildLayers(root);
+    curtain?.destroy();
+    wordsChecked = null;
+    curtain = createCurtain(layers.curtain, {
+      onOpen: () => {
+        markHintUsed("history");
+        root.dataset.curtain = "open";
+        moveInput(curtain.inputSlot);
+      },
+      onClose: () => {
+        delete root.dataset.curtain;
+        moveInput(layers.hosts.input);
+      }
+    });
     detachLook?.();
     detachLook = attachLook(layers.frame, root, { sceneId: () => s.scene.id, reduced: () => motionReduced(ctx2.settings()), onUse: () => markHintUsed("look") });
     bg = h("div", { class: "alius-scene-bg" });
@@ -63328,7 +63477,6 @@ function renderSceneScreen(host, ctx2) {
     spriteHost = layers.sprites;
     spriteHost.classList.add("alius-sprites");
     hud = h("div", { class: "alius-hud" });
-    log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     replyHost = layers.hosts.reply;
     chips = h("div", { class: "alius-chips" });
     leadChips = h("div", { class: "alius-chips alius-lead-host" });
@@ -63361,6 +63509,11 @@ function renderSceneScreen(host, ctx2) {
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
     input.addEventListener("input", () => ctx2.physics?.keystroke());
     input.addEventListener("keydown", (ev) => {
+      if (ev.key === "ArrowUp" && input.value === "" && !pending4) {
+        ev.preventDefault();
+        curtain.open();
+        return;
+      }
       if (ev.key !== "Enter" || pending4) return;
       const text3 = input.value.trim();
       if (text3 === "") return;
@@ -63385,6 +63538,8 @@ function renderSceneScreen(host, ctx2) {
         input.disabled = false;
         if (sent) input.value = "";
         input.focus();
+        const s0 = state();
+        if (s0?.scene) checkWords(controller.transcript());
       });
     });
     const romance = intimacyOf(s).romance;
@@ -63437,22 +63592,23 @@ function renderSceneScreen(host, ctx2) {
         genTools,
         act("swipe-right", "\u203A", () => ignore(st.swipeLast("right")), "Next reply")
       ],
-      onHistory: () => {
-        markHintUsed("history");
-        log.focus();
-      },
-      // (the curtain, Task 8, replaces this)
+      onHistory: () => curtain.isOpen() ? curtain.close() : curtain.open(),
       onEnd: () => void controller.end().then(() => {
         if (!disposed) ctx2.onEnded();
       }),
       ...ctx2.onClose ? { onClose: ctx2.onClose } : {}
     });
     hosts.status.append(banner, deviceHost, busyHost);
-    layers.curtain.append(h("div", { class: "alius-curtain-interim", hidden: true }, log));
     hosts.chipRow.append(genChips, chips, leadChips, offerHost, ruleChips, disciplineChips, demandChips, freqChips, disciplineMenus, letsHost);
-    hosts.input.append(h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who)));
+    inputLine = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
+    hosts.input.append(inputLine);
     hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
     hosts.dial.append(blockingHost);
+    const wheelUp = (ev) => {
+      if (ev.deltaY < 0) curtain.open();
+    };
+    layers.frame.addEventListener("wheel", wheelUp);
+    hosts.reply.addEventListener("wheel", wheelUp);
     drawBackground(s);
   }
   function syncOrder() {
@@ -63539,6 +63695,8 @@ function renderSceneScreen(host, ctx2) {
     },
     dispose() {
       disposed = true;
+      document.removeEventListener("keydown", onDocKey);
+      curtain?.destroy();
       detachLook?.();
       cancelPostureCalls();
       clearSlapOverlay(slapHost);
@@ -63551,12 +63709,6 @@ function renderSceneScreen(host, ctx2) {
   };
   refresh2();
   return screen;
-}
-
-// src/ui/scene/stage/index.ts
-function resetSceneStage() {
-  resetHints();
-  resetLook();
 }
 
 // src/analysis/providers/commander.ts
@@ -66240,6 +66392,7 @@ function renderSysTab(host, ctx2) {
     field("Minimum confidence (0\u20131)", decimalInput("intentMinConfidence", settings.intentMinConfidence, { min: "0", max: "1" }), "intentMinConfidence"),
     field("Scene pacing (exchanges, \u22655)", numberInput("scenePacing", settings.scenePacing, (n) => apply2({ scenePacing: n }).scenePacing, { min: "5" }), "scenePacing"),
     field("Typing speed (chars/s, 0 = instant)", numberInput("typingSpeed", settings.typingSpeed, (n) => apply2({ typingSpeed: n }).typingSpeed), "typingSpeed"),
+    field("Open the history for replies longer than N words (0 = never)", numberInput("curtainWords", settings.curtainWords, (n) => apply2({ curtainWords: n }).curtainWords, { min: "0" }), "curtainWords"),
     field("Units may start DMs", checkbox("unitDms", settings.unitDms), "unitDms"),
     field("Compact the chronicle with the mechanic model", checkbox("chronicleCompaction", settings.chronicleCompaction), "chronicleCompaction"),
     h("h3", {}, "Scene"),
@@ -70753,7 +70906,8 @@ function mapChatMessages(chat, from = 0) {
       name: String(m.name ?? ""),
       ...avatar ? { avatar } : {},
       text: typeof m.mes === "string" ? m.mes : "",
-      swipeId: typeof m.swipe_id === "number" ? m.swipe_id : 0
+      swipeId: typeof m.swipe_id === "number" ? m.swipe_id : 0,
+      ...Array.isArray(m.swipes) && m.swipes.length > 0 ? { swipeCount: m.swipes.length } : {}
     });
   }
   return out;

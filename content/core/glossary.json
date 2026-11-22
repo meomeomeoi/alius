@@ -552,6 +552,11 @@
     "short": "How fast dialogue types out, in characters per second. Zero shows it at once."
   },
   {
+    "id": "setting_curtain_words",
+    "term": "History for long replies",
+    "short": "A reply longer than this many words opens the scene's history by itself. Zero never does."
+  },
+  {
     "id": "setting_romance",
     "term": "Romance",
     "short": "Switches romantic states, Attraction and proposals on or off."

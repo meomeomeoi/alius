@@ -38,6 +38,12 @@ describe('chat mapping', () => {
     null,
     { name: 'Odd', mes: 7 },
   ];
+  it('a message with swipes carries their count (P10e: the curtain shows n / m); one without carries none', () => {
+    const out = mapChatMessages([{ name: 'Ann', is_user: false, mes: 'b', swipe_id: 1, swipes: ['a', 'b', 'c'] }, { name: 'Bea', is_user: false, mes: 'x' }]);
+    expect(out[0]).toMatchObject({ swipeId: 1, swipeCount: 3 });
+    expect('swipeCount' in out[1]).toBe(false);
+  });
+
   it('maps fields and keeps true indices; system messages and junk are skipped', () => {
     const out = mapChatMessages(raw);
     expect(out).toEqual([

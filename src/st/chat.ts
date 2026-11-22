@@ -13,6 +13,7 @@ export function mapChatMessages(chat: unknown, from = 0): ChatMessage[] {
     out.push({
       index, isUser: m.is_user === true, name: String(m.name ?? ''), ...(avatar ? { avatar } : {}),
       text: typeof m.mes === 'string' ? m.mes : '', swipeId: typeof m.swipe_id === 'number' ? m.swipe_id : 0,
+      ...(Array.isArray(m.swipes) && m.swipes.length > 0 ? { swipeCount: m.swipes.length } : {}),
     });
   }
   return out;

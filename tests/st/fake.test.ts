@@ -142,6 +142,20 @@ describe('FakeStAdapter chat (P3)', () => {
     expect(st.groupReplies).toHaveLength(1);
   });
 
+  it('a swiped reply knows how many swipes it has (P10e: the curtain shows n / m); an untouched one has no count', async () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    st.groupReplies = [[reply('Ann', 'first')]];
+    await st.sendUserMessage('Hello');
+    expect(st.getChatMessages().at(-1)!.swipeCount).toBeUndefined();
+    st.swipeReplies = [reply('Ann', 'second'), reply('Ann', 'third')];
+    await st.swipeLast('right');
+    expect(st.getChatMessages().at(-1)).toMatchObject({ swipeId: 1, swipeCount: 2 });
+    await st.swipeLast('right');
+    expect(st.getChatMessages().at(-1)).toMatchObject({ swipeId: 2, swipeCount: 3 });
+    await st.swipeLast('left');
+    expect(st.getChatMessages().at(-1)).toMatchObject({ swipeId: 1, swipeCount: 3 });
+  });
+
   it('swipe replaces the last reply and fires message_swiped', async () => {
     const st = make();
     st.groupReplies = [[reply('Ann', 'first')]];

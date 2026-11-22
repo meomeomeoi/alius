@@ -111,7 +111,8 @@ describe('scene screen', () => {
 
   it('speaker tag and emphasized text render as glitch spans', () => {
     const { q, qa } = setup({ messages: [msg(0, { text: 'I *really* mean it, *truly*.' })] });
-    expect(q('.alius-speaker')!.textContent).toBe('ANN //');
+    q('[data-action="history"]')!.click(); // P10e: the whole transcript is the history's
+    expect(q('.alius-speaker')!.textContent).toBe('ANN');
     expect(qa('.alius-text em.alius-glitch').map((e) => e.textContent)).toEqual(['really', 'truly']);
     expect(qa('.alius-reply-text em.alius-glitch').map((e) => e.textContent)).toEqual(['really', 'truly']); // P10e: the reply block shows it too
     expect(q('.alius-text')!.textContent).toBe('I really mean it, truly.');
@@ -120,11 +121,12 @@ describe('scene screen', () => {
   it('model text with <script> stays text', () => {
     const evil = '<script>window.__pwned = 1</script><img src=x onerror="window.__pwned=2"> *<b>bold</b>*';
     const { q, host } = setup({ messages: [msg(0, { text: evil, name: '<i>Ann</i>' })] });
+    q('[data-action="history"]')!.click();
     expect(host.querySelector('script')).toBeNull();
     expect(host.querySelector('img[onerror]')).toBeNull();
     expect(host.querySelector('b')).toBeNull();
     expect(q('.alius-text')!.textContent).toContain('<script>');
-    expect(q('.alius-speaker')!.textContent).toBe('<I>ANN</I> //');
+    expect(q('.alius-speaker')!.textContent).toBe('<I>ANN</I>');
     expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined();
   });
 
@@ -166,8 +168,8 @@ describe('scene screen', () => {
     expect(text().length).toBeLessThan(10);
     vi.advanceTimersByTime(1000);
     expect(text()).toBe('abcdefghij');
-    // the user line was never typed
-    expect(typed.qa('.alius-text')[0].textContent).toBe('Hi');
+    // the commander's line was never typed: it is the reply block's echo
+    expect(typed.q('.alius-reply-echo')!.textContent).toBe('Hi');
   });
 
   it('CMD> Enter calls controller.send and disables input until done', async () => {
@@ -242,6 +244,7 @@ describe('scene screen', () => {
 
   it('every message has an edit button; saving calls controller.edit with the new text', () => {
     const { q, qa, controller } = setup({ messages: [msg(0, { isUser: true, name: 'Vale', avatar: undefined, text: 'Hi' }), msg(1, { text: 'Hello *there*' })] });
+    q('[data-action="history"]')!.click(); // editing lives in the history (P10e)
     expect(qa('button.alius-edit').map((b) => b.dataset.edit)).toEqual(['0', '1']);
     qa('button.alius-edit')[1].click();
     const box = q<HTMLTextAreaElement>('textarea.alius-edit-box')!;
@@ -255,6 +258,7 @@ describe('scene screen', () => {
 
   it('cancel, Escape and an unchanged save call nothing; Ctrl+Enter saves', () => {
     const { q, qa, controller } = setup({ messages: [msg(0, { text: 'Hello' })] });
+    q('[data-action="history"]')!.click();
     qa('button.alius-edit')[0].click();
     q('button[data-action="edit-cancel"]')!.click();
     expect(q('textarea.alius-edit-box')).toBeNull();
@@ -274,6 +278,7 @@ describe('scene screen', () => {
 
   it('a half-edited message survives a redraw and the edit box shows markup as text', () => {
     const { q, qa, screen } = setup({ messages: [msg(0, { text: '<b>bold</b>' })] });
+    q('[data-action="history"]')!.click();
     qa('button.alius-edit')[0].click();
     const box = q<HTMLTextAreaElement>('textarea.alius-edit-box')!;
     expect(box.value).toBe('<b>bold</b>');

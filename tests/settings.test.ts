@@ -83,6 +83,18 @@ describe('settings', () => {
     expect(s.budgets.chronicle_compact).toBe(400);
   });
 
+  it('P10e: curtainWords is 0 (off) by default, a bad value falls back, an update is kept', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).curtainWords).toBe(0);
+    for (const bad of [-1, 1.5, 'many']) {
+      st.settings = { curtainWords: bad };
+      expect(getSettings(st).curtainWords).toBe(0);
+    }
+    st.settings = { curtainWords: 150 };
+    expect(getSettings(st).curtainWords).toBe(150);
+    expect(updateSettings(st, { curtainWords: 80 }).curtainWords).toBe(80);
+  });
+
   it('P9: demandWording defaults to on, a bad value falls back, an update is kept', () => {
     const st = new FakeStAdapter();
     expect(getSettings(st).demandWording).toBe(true);

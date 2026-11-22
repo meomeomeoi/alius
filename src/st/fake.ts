@@ -305,14 +305,17 @@ export class FakeStAdapter implements StAdapter {
   private doSwipe(dir: 'left' | 'right'): void {
     const last = this.lastReply();
     if (!last) return;
+    const known = last.swipeCount ?? last.swipeId + 1; // an untouched reply has one swipe
     if (dir === 'right') {
       const next = this.swipeReplies.shift();
       if (!next) return;
       last.text = next.text;
       last.swipeId += 1;
+      last.swipeCount = Math.max(known, last.swipeId + 1);
     } else {
       if (last.swipeId === 0) return;
       last.swipeId -= 1;
+      last.swipeCount = known;
     }
     this.emit('message_swiped', last.index);
     this.emit('generation_ended');
