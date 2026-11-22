@@ -63498,8 +63498,8 @@ function createCurtain(host, opts) {
           "div",
           { class: "alius-edit-form" },
           box2,
-          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => ctx2.onSave() }, "[ SAVE ]"),
-          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => ctx2.onCancel() }, "[ CANCEL ]")
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => ctx2.onSave() }, "Save"),
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => ctx2.onCancel() }, "Cancel")
         ));
       } else {
         const text3 = h("span", { class: "alius-text" });
@@ -64142,7 +64142,7 @@ function renderSceneScreen(host, ctx2) {
       "div",
       { class: "alius-busy", role: "status" },
       text3,
-      h("button", { type: "button", class: "alius-btn", "data-action": "stop", "aria-label": "Stop the generation", onclick: () => controller.stop() }, "[ STOP ]")
+      h("button", { type: "button", class: "alius-btn", "data-action": "stop", "aria-label": "Stop the generation", onclick: () => controller.stop() }, "Stop")
     ));
     busyTimer = setInterval(() => {
       text3.textContent = `AWAITING REPLY\u2026 ${Math.floor((Date.now() - busyStarted) / 1e3)}s`;

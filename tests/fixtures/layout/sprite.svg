@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 847 1238">
+  <!-- a generated knee-length placeholder: head, shoulders, body, down to the knees. Never the author's art. -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cdb4a6"/><stop offset="1" stop-color="#6b5566"/></linearGradient></defs>
+  <ellipse cx="423" cy="170" rx="92" ry="118" fill="#e0c3ab"/>
+  <rect x="388" y="270" width="70" height="70" fill="#d6b79f"/>
+  <path d="M236 350 Q423 290 610 350 L650 720 L566 770 L546 1238 L300 1238 L280 770 L196 720 Z" fill="url(#g)"/>
+</svg>

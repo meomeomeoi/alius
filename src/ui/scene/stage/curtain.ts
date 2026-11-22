@@ -80,8 +80,8 @@ export function createCurtain(host: HTMLElement, opts: { onOpen(): void; onClose
           } else if (k.key === 'Enter' && (k.ctrlKey || k.metaKey)) ctx.onSave();
         });
         line = h('div', { class: `${cls} is-editing`, 'data-index': m.index }, name, h('div', { class: 'alius-edit-form' }, box,
-          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-save', onclick: () => ctx.onSave() }, '[ SAVE ]'),
-          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => ctx.onCancel() }, '[ CANCEL ]')));
+          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-save', onclick: () => ctx.onSave() }, 'Save'),
+          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => ctx.onCancel() }, 'Cancel')));
       } else {
         const text = h('span', { class: 'alius-text' });
         fillProse(text, m.text, Infinity);

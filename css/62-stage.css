@@ -5,6 +5,7 @@
  * every easing has a reduced-motion form.
  */
 #alius-shell .alius-scene {
+  --alius-curtain-w: 45%;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -83,7 +84,7 @@
   --alius-sprite-back: 1;
   --alius-sprite-tint: saturate(1);
   position: absolute;
-  top: 3vh;
+  top: max(3vh, 46px); /* about 3 % below the edge, never under the top line */
   height: 110vh;
   display: flex;
   align-items: flex-start;
@@ -551,7 +552,7 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: 45%;
+  width: var(--alius-curtain-w);
   display: flex;
   flex-direction: column;
   padding: 16px 18px 18px 22px;
@@ -679,8 +680,9 @@
   transition: transform 0.28s ease-out;
 }
 
+/* the figure moves to the middle of what the curtain leaves free and shrinks a little, so no head is ever under it */
 #alius-shell .alius-scene[data-curtain="open"] > .alius-layer-sprites {
-  transform: translateX(18vw);
+  transform: translateX(calc(var(--alius-curtain-w) / 2)) scale(0.9);
 }
 
 #alius-shell.alius-reduced-motion .alius-layer-sprites {
@@ -1096,4 +1098,57 @@
   border-radius: 999px;
   padding: 1px 12px;
   font-size: 12px;
+}
+
+/* the visual language (spec §9) in the places the stage draws itself, and the screen sizes (§10) */
+#alius-shell .alius-curtain-line .alius-btn[data-action="edit-save"],
+#alius-shell .alius-curtain-line .alius-btn[data-action="edit-cancel"],
+#alius-shell .alius-stage-status .alius-btn {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 62%, transparent);
+  color: var(--alius-accent);
+  padding: 1px 14px;
+  font-size: 12px;
+}
+
+#alius-shell .alius-curtain .alius-edit-box {
+  background: color-mix(in srgb, var(--alius-bg) 70%, transparent);
+  border-radius: 10px;
+  font-family: var(--alius-font-sans);
+  font-size: inherit;
+}
+
+/* the HELD strip (P16) over the scene: a glass pill under the top line, at the right */
+#alius-shell[data-screen="scene"] :is(.alius-banner-host, .alius-held-host) {
+  top: 44px;
+  left: auto;
+  right: 18px;
+  width: auto;
+  max-width: min(46vw, 640px);
+}
+
+#alius-shell[data-screen="scene"] .alius-held-strip {
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 4px 12px;
+}
+
+#alius-shell.alius-readable[data-screen="scene"] .alius-held-strip {
+  background: var(--alius-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (max-width: 1400px) {
+  #alius-shell .alius-scene { --alius-curtain-w: 55%; }
+  #alius-shell .alius-stage-dock { width: min(360px, 30vw); }
+}
+
+@media (max-width: 1100px) {
+  #alius-shell .alius-stage-dock { left: 0; }
+  #alius-shell .alius-dial-face { width: 140px; height: 140px; }
 }

@@ -633,7 +633,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     busyStarted = Date.now();
     const text = h('span', { class: 'alius-busy-text' }, 'AWAITING REPLY… 0s');
     busyHost.append(h('div', { class: 'alius-busy', role: 'status' }, text,
-      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'stop', 'aria-label': 'Stop the generation', onclick: () => controller.stop() }, '[ STOP ]')));
+      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'stop', 'aria-label': 'Stop the generation', onclick: () => controller.stop() }, 'Stop')));
     busyTimer = setInterval(() => {
       text.textContent = `AWAITING REPLY… ${Math.floor((Date.now() - busyStarted) / 1000)}s`;
       const s = state();

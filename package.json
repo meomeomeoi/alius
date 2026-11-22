@@ -9,7 +9,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "sim": "node scripts/sim.mjs",
-    "dial:sheet": "node scripts/dial-sheet.mjs"
+    "dial:sheet": "node scripts/dial-sheet.mjs",
+    "test:layout": "node scripts/layout-test.mjs"
   },
   "dependencies": {
     "zod": "^3.23.8"

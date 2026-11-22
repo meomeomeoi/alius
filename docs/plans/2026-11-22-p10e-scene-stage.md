@@ -496,7 +496,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 **Interfaces:**
 - Consumes: everything above.
 
-- [ ] **Step 1: Write the tests.**
+- [x] **Step 1: Write the tests.**
   - `tests/ui/stage/hosts.test.ts` (jsdom, the spec §12a.5 table as data): for a state where every host has content, each of today's hosts is found in its new place. The test renders a fixture with a proposal, a demand, a rule, a milestone, a task, a punishment, a posture call, a moment, a physics run, a frequency fragment and a pastime menu. The places are the top line, the status line, the reply, the curtain, the chip-row slot or the dock slot; the table names each.
   - `scripts/layout-test.mjs`:
     - esbuild bundles `tests/layout/entry.ts` (browser platform) into `.superpowers/layout/` (git-ignored);
@@ -513,10 +513,10 @@ The approved mockups and the mannequin spike live outside the repo (the author h
       - (`long`) the reply block has `data-overflow="true"` and its height ≤ 30 % of the viewport;
       - (`physics`) the stop word is visible;
     - exits non-zero with a list of failures.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/stage/hosts.test.ts` and `npm run test:layout` → FAIL until the CSS is done.
-- [ ] **Step 3: Implement** the CSS until both pass.
-- [ ] **Step 4: Run** `npm run test:layout` → PASS at all three sizes. Then run `npm test` (full) and `npx tsc --noEmit` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the stage's look, the sizes and the layout test`
+- [x] **Step 2: Run** `npx vitest run tests/ui/stage/hosts.test.ts` and `npm run test:layout` → FAIL until the CSS is done.
+- [x] **Step 3: Implement** the CSS until both pass.
+- [x] **Step 4: Run** `npm run test:layout` → PASS at all three sizes. Then run `npm test` (full) and `npx tsc --noEmit` → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the stage's look, the sizes and the layout test`
 
 ### Task 14: Docs, manual test and hand-off
 

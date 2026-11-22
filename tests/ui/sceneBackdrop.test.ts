@@ -134,7 +134,7 @@ describe('scene backdrop (P10c)', () => {
     expect(t.host.querySelector('.alius-layer-sprites .alius-sprite')).not.toBeNull();
     expect(t.host.querySelector<HTMLElement>('.alius-sprites')!.style.bottom).toBe(''); // nothing is measured from the layout any more
     const css = readFileSync('css/62-stage.css', 'utf8');
-    expect(css).toMatch(/\.alius-sprite \{[^}]*top: 3vh;[^}]*height: 110vh;/s);
+    expect(css).toMatch(/\.alius-sprite \{[^}]*top: max\(3vh, 46px\);[^}]*height: 110vh;/s);
   });
 
   it('review fixes: the ASCII stage shows while a picture loads; a new scene does not inherit the last one\'s image mode', async () => {
