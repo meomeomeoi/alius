@@ -26,14 +26,14 @@ afterEach(() => {
 const msg = (index: number, over: Partial<ChatMessage> = {}): ChatMessage => ({ index, isUser: false, name: 'Ann', avatar: 'ann.png', text: 'hi', swipeId: 0, ...over });
 const key = (target: EventTarget, k: string, init: KeyboardEventInit = {}) => target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init }));
 
-function setup(opts: { locked?: boolean } = {}) {
+function setup(opts: { locked?: boolean; send?: () => Promise<boolean> } = {}) {
   let state: CampaignState = campaign(reg, 4);
   const r = run(state, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: ['unit_ann'], origin: 'event', startIndex: 0 } });
   expect(errors(r.events)).toEqual([]);
   state = r.state;
   const messages: ChatMessage[] = [msg(0)];
   const controller = {
-    send: vi.fn(async () => true), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(), stop: vi.fn(), onEdited: vi.fn(),
+    send: vi.fn(opts.send ?? (async () => true)), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(), stop: vi.fn(), onEdited: vi.fn(),
     transcript: () => messages, onSwipe: vi.fn(),
   } as unknown as SceneController;
   const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
@@ -149,4 +149,61 @@ describe('the device over the scene (P10e §5a)', () => {
     key(document.body, '2');
     expect(t.q('.alius-scene-device .alius-tab[aria-selected="true"]')!.textContent).toMatch(/OPS/i);
   });
+describe('the scene under the raised device (review I1, M3, the controller\'s rulings)', () => {
+  const flush = async (): Promise<void> => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
+  const sceneEl = () => document.querySelector<HTMLElement>('.alius-scene')!;
+
+  it('the scene is inert and aria-hidden while the device is up, and free again when it is lowered', () => {
+    const t = setup();
+    expect(sceneEl().hasAttribute('inert')).toBe(false);
+    key(document.body, 'Tab');
+    expect(sceneEl().hasAttribute('inert')).toBe(true);
+    expect(sceneEl().getAttribute('aria-hidden')).toBe('true');
+    expect(t.q('.alius-scene-device')!.hasAttribute('inert')).toBe(false);
+    key(document.body, 'Tab');
+    expect(sceneEl().hasAttribute('inert')).toBe(false);
+    expect(sceneEl().hasAttribute('aria-hidden')).toBe(false);
+  });
+
+  it('a send that settles while the device is up does not pull the focus into the hidden command line; Esc lowers the device and the focus returns to it', async () => {
+    let settle: (ok: boolean) => void = () => {};
+    const t = setup({ send: () => new Promise<boolean>((r) => { settle = r; }) });
+    const cmd = t.q<HTMLInputElement>('input[name="cmd"]')!;
+    cmd.value = 'hello';
+    key(cmd, 'Enter');
+    expect(cmd.disabled).toBe(true);
+    key(document.body, 'Tab');
+    expect(deviceUp()).toBe(true);
+    expect(document.activeElement?.classList.contains('alius-tab')).toBe(true);
+    settle(true);
+    await flush();
+    expect(cmd.disabled).toBe(false);
+    expect(document.activeElement).not.toBe(cmd);
+    key(document.activeElement ?? document.body, 'Escape');
+    expect(deviceUp()).toBe(false);
+    expect(document.activeElement).toBe(cmd);
+  });
+
+  it('showing the scene again while the device is up opens it with the device down', () => {
+    const t = setup();
+    key(document.body, 'Tab');
+    expect(deviceUp()).toBe(true);
+    t.shell.showScreen('scene');
+    expect(deviceUp()).toBe(false);
+    expect(t.shell.isDeviceUp()).toBe(false);
+    expect(sceneEl().hasAttribute('inert')).toBe(false);
+  });
+
+  it('showTab raises the device over the scene on that tab instead of leaving the scene', () => {
+    const t = setup();
+    t.shell.showTab('ops');
+    expect(document.querySelector('.alius-scene')).not.toBeNull();
+    expect(deviceUp()).toBe(true);
+    expect(t.q('.alius-scene-device .alius-tab[aria-selected="true"]')!.textContent).toMatch(/OPS/i);
+    t.shell.showTab('inv'); // already up: only the tab changes
+    expect(deviceUp()).toBe(true);
+    expect(t.q('.alius-scene-device .alius-tab[aria-selected="true"]')!.textContent).toMatch(/INV/i);
+    expect(t.renders).toHaveBeenCalledTimes(1);
+  });
+});
 });

@@ -63794,6 +63794,9 @@ function renderSceneScreen(host, ctx2) {
   let orderToggle = null;
   let orderWho = null;
   const state = () => ctx2.getState();
+  const focusInput = () => {
+    if (root.closest("[inert]") === null) input.focus();
+  };
   const present2 = (s) => (s.scene?.participants ?? []).map((id) => s.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
   function locationName(s, units) {
     const loc = registries.locations.get(s.scene.locationId);
@@ -63928,11 +63931,11 @@ function renderSceneScreen(host, ctx2) {
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx2.onAnswerReturn?.(answer));
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => {
       ctx2.onAnswerTask?.(id, answer);
-      if (answer === "talk") input.focus();
-    }, sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
+      if (answer === "talk") focusInput();
+    }, sign: (id) => ctx2.onSignTask?.(id), focusInput, generation: ctx2.generation });
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => {
       ctx2.onAnswerPunishment?.(id, answer);
-      if (answer === "negotiate") input.focus();
+      if (answer === "negotiate") focusInput();
     }, takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
@@ -64179,7 +64182,7 @@ function renderSceneScreen(host, ctx2) {
   function moveInput(to) {
     const focused = document.activeElement === input;
     to.append(inputLine);
-    if (focused) input.focus();
+    if (focused) focusInput();
   }
   const onDocKey = (e) => {
     if (e.key === "Escape" && curtain?.isOpen() && !e.defaultPrevented) {
@@ -64266,7 +64269,7 @@ function renderSceneScreen(host, ctx2) {
         lock(false);
         input.disabled = false;
         if (sent) input.value = "";
-        input.focus();
+        focusInput();
         const s0 = state();
         if (s0?.scene) checkWords(controller.transcript());
       });
@@ -67622,12 +67625,21 @@ function createShell(deps) {
     updateNarrow();
     renderStatus();
     tabBar.setSelected(tab);
+    syncSceneInert();
     if (sceneDeviceUp) renderTab();
+  }
+  function syncSceneInert() {
+    for (const el of view.querySelectorAll(":scope > :not(.alius-scene-device)")) {
+      el.toggleAttribute("inert", sceneDeviceUp);
+      if (sceneDeviceUp) el.setAttribute("aria-hidden", "true");
+      else el.removeAttribute("aria-hidden");
+    }
   }
   function setSceneDevice(up) {
     if (!device || up === sceneDeviceUp) return;
     sceneDeviceUp = up;
     sceneDeviceHost?.setAttribute("data-up", String(up));
+    syncSceneInert();
     applyDevice(up);
     if (up) {
       renderStatus();
@@ -67752,6 +67764,7 @@ function createShell(deps) {
     isOpen: isOpen2,
     showScreen(id) {
       const wasUp = isDeviceUp();
+      if (id === "scene") sceneDeviceUp = false;
       const inPlace = isOpen2() && (id === "pda" || id === "hub") && onHubLayer() && renderedScreen !== null && device !== null;
       router.go(id);
       if (inPlace) {
@@ -67779,7 +67792,13 @@ function createShell(deps) {
         return;
       }
       if (router.current() === "pda") selectTab(id);
-      else {
+      else if (onScene()) {
+        if (sceneDeviceUp) selectTab(id);
+        else {
+          tabBar?.setSelected(id);
+          setSceneDevice(true);
+        }
+      } else {
         tabBar?.setSelected(id);
         api.showScreen("pda");
       }

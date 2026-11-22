@@ -257,6 +257,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let orderWho: HTMLSelectElement | null = null;
 
   const state = (): CampaignState | null => ctx.getState();
+  /** The command line takes the focus, unless the device is raised over the scene (the shell makes the scene inert then and gives the focus back to the line when it is lowered). */
+  const focusInput = (): void => {
+    if (root.closest('[inert]') === null) input.focus();
+  };
   const present = (s: CampaignState): Unit[] => (s.scene?.participants ?? []).map((id) => s.squad.find((u) => u.id === id)).filter((u): u is Unit => u !== undefined);
 
   function locationName(s: CampaignState, units: Unit[]): string {
@@ -393,8 +397,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerMilestone?.(id, answer)); // P15: her step
     drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again
-    drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') input.focus(); }, sign: (id) => ctx.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx.generation }); // P16: her task
-    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') input.focus(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }); // P16: her discipline
+    drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') focusInput(); }, sign: (id) => ctx.onSignTask?.(id), focusInput, generation: ctx.generation }); // P16: her task
+    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') focusInput(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }); // P16: her discipline
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration
     // P16: her call of a named posture: the choices, and (with the order interaction on) the window; the answer is staged like a chip so a swipe takes the posture back
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
@@ -645,7 +649,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function moveInput(to: HTMLElement): void {
     const focused = document.activeElement === input;
     to.append(inputLine);
-    if (focused) input.focus();
+    if (focused) focusInput();
   }
 
   /** Esc closes the history (an edit box takes its own Esc first; a modal that took the key already is left alone). */
@@ -733,7 +737,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         lock(false);
         input.disabled = false;
         if (sent) input.value = ''; // a message that did not go out (the scene is busy, or it closed) stays in the line
-        input.focus();
+        focusInput();
         const s0 = state();
         if (s0?.scene) checkWords(controller.transcript()); // the reply that streamed in while the line was busy
       });

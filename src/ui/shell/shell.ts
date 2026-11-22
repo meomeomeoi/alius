@@ -388,7 +388,17 @@ export function createShell(deps: ShellDeps): ShellApi {
     updateNarrow();
     renderStatus();
     tabBar!.setSelected(tab);
+    syncSceneInert();
     if (sceneDeviceUp) renderTab();
+  }
+
+  /** While the device is up over the scene, the scene is neither focusable nor read (nor does a click reach it): `inert` and `aria-hidden`. */
+  function syncSceneInert(): void {
+    for (const el of view.querySelectorAll<HTMLElement>(':scope > :not(.alius-scene-device)')) {
+      el.toggleAttribute('inert', sceneDeviceUp);
+      if (sceneDeviceUp) el.setAttribute('aria-hidden', 'true');
+      else el.removeAttribute('aria-hidden');
+    }
   }
 
   /** Raises or lowers the device over the scene without touching the scene. */
@@ -396,6 +406,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (!device || up === sceneDeviceUp) return;
     sceneDeviceUp = up;
     sceneDeviceHost?.setAttribute('data-up', String(up));
+    syncSceneInert();
     applyDevice(up);
     if (up) {
       renderStatus();
@@ -528,6 +539,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     isOpen,
     showScreen(id) {
       const wasUp = isDeviceUp();
+      if (id === 'scene') sceneDeviceUp = false; // a scene always opens with the device down (also when it is shown again)
       const inPlace = isOpen() && (id === 'pda' || id === 'hub') && onHubLayer() && renderedScreen !== null && device !== null;
       router.go(id);
       if (inPlace) {
@@ -556,7 +568,14 @@ export function createShell(deps: ShellDeps): ShellApi {
         return;
       }
       if (router.current() === 'pda') selectTab(id);
-      else {
+      else if (onScene()) {
+        // the device rises over the scene on that tab; the scene is not left (a scene is not the PDA's route)
+        if (sceneDeviceUp) selectTab(id);
+        else {
+          tabBar?.setSelected(id);
+          setSceneDevice(true);
+        }
+      } else {
         tabBar?.setSelected(id);
         api.showScreen('pda');
       }
