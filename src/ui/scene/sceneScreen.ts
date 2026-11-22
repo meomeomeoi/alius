@@ -36,6 +36,7 @@ import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
+import { fillProse, proseLength } from './stage/prose';
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -166,36 +167,6 @@ const KIND_HINT: Record<string, string> = {
   exclusive: 'ask for exclusivity', secret_affair: 'propose a secret relationship',
 };
 const BUSY_TICK_MS = 500;
-
-interface Segment { text: string; em: boolean }
-/** Splits `*emphasis*` out of model text; nothing here ever becomes markup. */
-function segments(text: string): Segment[] {
-  const out: Segment[] = [];
-  let last = 0;
-  for (const m of text.matchAll(/\*([^*\n]+)\*/g)) {
-    if (m.index! > last) out.push({ text: text.slice(last, m.index), em: false });
-    out.push({ text: m[1], em: true });
-    last = m.index! + m[0].length;
-  }
-  if (last < text.length) out.push({ text: text.slice(last), em: false });
-  return out;
-}
-
-function fillText(el: HTMLElement, text: string, visible: number): void {
-  el.replaceChildren();
-  let left = visible;
-  for (const seg of segments(text)) {
-    if (left <= 0) break;
-    const part = seg.text.slice(0, left);
-    left -= part.length;
-    if (seg.em) {
-      const em = h('em', { class: 'alius-glitch' });
-      em.textContent = part;
-      el.append(em);
-    } else el.append(document.createTextNode(part));
-  }
-}
-const visibleLength = (text: string): number => segments(text).reduce((n, s) => n + s.text.length, 0);
 
 export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): SceneScreen {
   const { controller, registries, st } = ctx;
@@ -541,7 +512,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => cancelEdit(s) }, '[ CANCEL ]')));
       }
       const text = h('span', { class: 'alius-text' });
-      fillText(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
+      fillProse(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
       const edit = h('button', {
         type: 'button', class: 'alius-edit', 'data-edit': m.index, 'aria-label': 'Edit message', title: 'Edit this message', disabled: pending,
         onclick: () => {
@@ -573,12 +544,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         const idx = animating;
         const msg = idx === null ? undefined : messages.find((m) => m.index === idx) ?? controller.transcript().find((m) => m.index === idx);
         if (idx === null || !msg) return stopTyping();
-        const total = visibleLength(msg.text);
+        const total = proseLength(msg.text);
         const shown = Math.min(total, Math.floor(((Date.now() - started) * typingSpeed()) / 1000));
         if (shown > (progress.get(idx) ?? 0)) ctx.sound?.play('typing');
         progress.set(idx, shown);
         const el = log.querySelector<HTMLElement>(`.alius-line[data-index="${idx}"] .alius-text`);
-        if (el) fillText(el, msg.text, shown);
+        if (el) fillProse(el, msg.text, shown);
         if (shown >= total) {
           progress.delete(idx);
           stopTyping();

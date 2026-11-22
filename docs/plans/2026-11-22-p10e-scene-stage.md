@@ -93,7 +93,7 @@ The approved mockups and the mannequin spike live outside the repo (the author h
 **Interfaces:**
 - Produces: `type ProseKind = 'prose' | 'speech' | 'em'`; `interface ProseRun { kind: ProseKind; text: string }`; `proseRuns(text: string): ProseRun[]`; `proseLength(text: string): number` (visible characters); `fillProse(el: HTMLElement, text: string, visible: number, opts?: { speechClass?: string; newestFrom?: number }): void`. Runs with `newestFrom ≤ index` get the class `alius-prose-new`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `speech in straight and curly quotes`: `proseRuns('She nods. "Close it." Then: “Now.”')` → `[prose 'She nods. ', speech '"Close it."', prose ' Then: ', speech '“Now.”']`. The quote marks stay in the speech text.
   - `asterisks become em and lose the marks`: `proseRuns('*She stretches.* "Sit."')` → `[em 'She stretches.', prose ' ', speech '"Sit."']`.
   - `speech inside an em stays em`: `*she says "no"*` → one em run with the text `she says "no"`.
@@ -101,15 +101,15 @@ The approved mockups and the mannequin spike live outside the repo (the author h
   - `literary prose`: `'She stretches. "Close the door," she says.'` → prose, speech `'"Close the door,"'`, prose `' she says.'`.
   - `proseLength` counts what shows (asterisks of a balanced pair excluded): `proseLength('*ab* "c"') === 6`.
   - `fillProse` with `visible` 3 shows the first 3 visible characters across runs. Speech gets `speechClass`, em is `<em>`. No `innerHTML` (a `<b>` in the text stays text).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/stage/prose.test.ts` → FAIL (module missing).
-- [ ] **Step 3: Implement** `proseRuns` as one left-to-right scan:
+- [x] **Step 2: Run** `npx vitest run tests/ui/stage/prose.test.ts` → FAIL (module missing).
+- [x] **Step 3: Implement** `proseRuns` as one left-to-right scan:
   - a balanced `*…*` pair on one line is em;
   - a balanced quote pair (`"…"`, `“…”`) outside em is speech;
   - anything unmatched is prose.
 
   Then swap `sceneScreen.ts` to `fillProse` / `proseLength`. Today's `.alius-glitch` em class stays on em.
-- [ ] **Step 4: Run** the test, `npx vitest run tests/ui/scene.test.ts`, `npx tsc --noEmit`, `npm run build` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): prose runs for the reply`
+- [x] **Step 4: Run** the test, `npx vitest run tests/ui/scene.test.ts`, `npx tsc --noEmit`, `npm run build` → PASS.
+- [x] **Step 5: Commit** `feat(P10e): prose runs for the reply`
 
 ### Task 2: The mannequin (point states, 3D pose, projection)
 

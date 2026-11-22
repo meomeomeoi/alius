@@ -36579,12 +36579,12 @@ function startRemoval(draft, ctx2, route) {
   ls.intrigue.hack.step = 0;
   delete ls.intrigue.reportQueued;
   if (draft.dilemmas?.open?.context === "warden_report") delete draft.dilemmas.open;
-  const segments2 = TUNING.warden.removal.clock[route];
-  addClock(draft, { id: INVESTIGATION_CLOCK, label: "INVESTIGATION", segments: segments2, filled: 0, visibleToPlayer: false, engine: true });
+  const segments = TUNING.warden.removal.clock[route];
+  addClock(draft, { id: INVESTIGATION_CLOCK, label: "INVESTIGATION", segments, filled: 0, visibleToPlayer: false, engine: true });
   if (route === "report" && !draft.world.flags.includes("warden_reassigned")) draft.world.flags.push("warden_reassigned");
   const events = [
     { type: "warden_removed", unitId: former, route },
-    { type: "investigation_opened", route, segments: segments2 },
+    { type: "investigation_opened", route, segments },
     { type: "remote_control_started" }
   ];
   const axes = reactionAxes(draft, former, route);
@@ -42333,7 +42333,7 @@ function expectationInput(state, reg, participants) {
   const textOf2 = (x) => x.kind === "personal" ? x.text ?? "" : String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.description ?? x.kind);
   return { expectations: w.expectations.map((x) => ({ id: x.id, text: textOf2(x) })) };
 }
-var investigationBand = (filled, segments2) => filled * 3 < segments2 ? "JUST OPENED" : filled * 3 < segments2 * 2 ? "UNDER WAY" : "NEARLY CLOSED";
+var investigationBand = (filled, segments) => filled * 3 < segments ? "JUST OPENED" : filled * 3 < segments * 2 ? "UNDER WAY" : "NEARLY CLOSED";
 
 // src/llm/calls/wardenJudge.ts
 function readJudgement(raw, input) {
@@ -62466,6 +62466,110 @@ function actRow(host, ctx2) {
   )];
 }
 
+// src/ui/scene/stage/prose.ts
+var CLOSER = { '"': '"', "\u201C": "\u201D" };
+function closeOnLine(text3, from, mark) {
+  for (let i = from + 1; i < text3.length; i++) {
+    if (text3[i] === "\n") return -1;
+    if (text3[i] === mark) return i;
+  }
+  return -1;
+}
+function speechRuns(region) {
+  const out = [];
+  let cur = "";
+  let j = 0;
+  while (j < region.length) {
+    if (region[j] === "*") {
+      const e = region.indexOf("*", j + 1);
+      if (e > j + 1) {
+        if (cur) out.push({ kind: "speech", text: cur });
+        cur = "";
+        out.push({ kind: "em", text: region.slice(j + 1, e), speech: true });
+        j = e + 1;
+        continue;
+      }
+    }
+    cur += region[j];
+    j++;
+  }
+  if (cur) out.push({ kind: "speech", text: cur });
+  return out;
+}
+function proseRuns(text3) {
+  const out = [];
+  let buf = "";
+  const flush = () => {
+    if (buf) out.push({ kind: "prose", text: buf });
+    buf = "";
+  };
+  const plainRest = (i2) => {
+    flush();
+    const nl = text3.indexOf("\n", i2);
+    const end = nl < 0 ? text3.length : nl;
+    out.push({ kind: "prose", text: text3.slice(i2, end) });
+    return end;
+  };
+  let i = 0;
+  while (i < text3.length) {
+    const c = text3[i];
+    if (c === "*") {
+      const end = closeOnLine(text3, i, "*");
+      if (end < 0) i = plainRest(i);
+      else if (end === i + 1) {
+        buf += "**";
+        i += 2;
+      } else {
+        flush();
+        out.push({ kind: "em", text: text3.slice(i + 1, end) });
+        i = end + 1;
+      }
+      continue;
+    }
+    const closer = CLOSER[c];
+    if (closer !== void 0) {
+      const end = closeOnLine(text3, i, closer);
+      if (end < 0) i = plainRest(i);
+      else if (end === i + 1) {
+        buf += c + closer;
+        i += 2;
+      } else {
+        flush();
+        out.push(...speechRuns(text3.slice(i, end + 1)));
+        i = end + 1;
+      }
+      continue;
+    }
+    buf += c;
+    i++;
+  }
+  flush();
+  return out;
+}
+var proseLength = (text3) => proseRuns(text3).reduce((n, r) => n + r.text.length, 0);
+function fillProse(el, text3, visible, opts = {}) {
+  const speechClass = opts.speechClass ?? "alius-speech";
+  el.replaceChildren();
+  let left = visible;
+  proseRuns(text3).forEach((run, index2) => {
+    if (left <= 0) return;
+    const part = run.text.slice(0, left);
+    left -= part.length;
+    const fresh = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
+    const cls = (...c) => c.filter(Boolean).join(" ");
+    let node;
+    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh && "alius-prose-new") });
+    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh && "alius-prose-new") });
+    else if (fresh) node = h("span", { class: "alius-prose-new" });
+    else {
+      el.append(document.createTextNode(part));
+      return;
+    }
+    node.textContent = part;
+    el.append(node);
+  });
+}
+
 // src/ui/scene/sceneScreen.ts
 var loaded = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
@@ -62521,32 +62625,6 @@ var KIND_HINT = {
   secret_affair: "propose a secret relationship"
 };
 var BUSY_TICK_MS = 500;
-function segments(text3) {
-  const out = [];
-  let last = 0;
-  for (const m of text3.matchAll(/\*([^*\n]+)\*/g)) {
-    if (m.index > last) out.push({ text: text3.slice(last, m.index), em: false });
-    out.push({ text: m[1], em: true });
-    last = m.index + m[0].length;
-  }
-  if (last < text3.length) out.push({ text: text3.slice(last), em: false });
-  return out;
-}
-function fillText(el, text3, visible) {
-  el.replaceChildren();
-  let left = visible;
-  for (const seg of segments(text3)) {
-    if (left <= 0) break;
-    const part = seg.text.slice(0, left);
-    left -= part.length;
-    if (seg.em) {
-      const em = h("em", { class: "alius-glitch" });
-      em.textContent = part;
-      el.append(em);
-    } else el.append(document.createTextNode(part));
-  }
-}
-var visibleLength = (text3) => segments(text3).reduce((n, s) => n + s.text.length, 0);
 function renderSceneScreen(host, ctx2) {
   const { controller, registries, st } = ctx2;
   const typingSpeed = () => motionReduced(ctx2.settings()) ? 0 : ctx2.settings().typingSpeed;
@@ -62879,7 +62957,7 @@ function renderSceneScreen(host, ctx2) {
         ));
       }
       const text3 = h("span", { class: "alius-text" });
-      fillText(text3, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
+      fillProse(text3, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
       const edit = h("button", {
         type: "button",
         class: "alius-edit",
@@ -62912,12 +62990,12 @@ function renderSceneScreen(host, ctx2) {
         const idx = animating;
         const msg = idx === null ? void 0 : messages.find((m) => m.index === idx) ?? controller.transcript().find((m) => m.index === idx);
         if (idx === null || !msg) return stopTyping();
-        const total2 = visibleLength(msg.text);
+        const total2 = proseLength(msg.text);
         const shown2 = Math.min(total2, Math.floor((Date.now() - started2) * typingSpeed() / 1e3));
         if (shown2 > (progress.get(idx) ?? 0)) ctx2.sound?.play("typing");
         progress.set(idx, shown2);
         const el = log.querySelector(`.alius-line[data-index="${idx}"] .alius-text`);
-        if (el) fillText(el, msg.text, shown2);
+        if (el) fillProse(el, msg.text, shown2);
         if (shown2 >= total2) {
           progress.delete(idx);
           stopTyping();
