@@ -30,7 +30,7 @@ import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../gener
 import { cutIn } from './cutIn';
 import { lifeMode } from '../../engine/life/state';
 import { renderLetsMenu } from '../life/lifeViews';
-import { analyzeAttrs } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import type { Action } from '../../engine/dispatch';
 import { renderBlockingStrip } from './blockingStrip';
 import { renderMomentCard } from './momentCard';
@@ -39,6 +39,7 @@ import { inputGauge, type InputGauge } from './stage/gauge';
 import { buildLayers, type StageLayers } from './stage/layers';
 import { CHIP_SLOTS, createChipRow, type ChipRow } from './stage/chipRow';
 import { createCurtain, type Curtain } from './stage/curtain';
+import { DOCK_SLOTS, createDock, type Dock } from './stage/dock';
 import { flashLine } from './stage/flash';
 import { attachLook } from './stage/look';
 import { markHintUsed, renderTopLine } from './stage/topLine';
@@ -242,6 +243,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let letsHost: HTMLElement;
   let banner: HTMLElement;
   let chipRow: ChipRow;
+  let dock: Dock;
   /** P15a: the BLOCKING strip (drawn only while the blocking is live). */
   let blockingHost: HTMLElement;
   let momentHost: HTMLElement;
@@ -601,9 +603,15 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   /** P15a: the hold panel (nothing without a run or without the staging controller). */
   function drawPhysics(s: CampaignState): void {
-    if (!ctx.physics) { physicsHost.replaceChildren(); return; }
+    const stop = chipRow.slot('stop');
+    if (!ctx.physics) { physicsHost.replaceChildren(); stop.replaceChildren(); return; }
     const staging = ctx.physics;
     renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
+    // P10e R6: the stop word is also pinned at the right end of the chip row, so a collapsed or set-aside card never hides it
+    if (physicsHost.querySelector('[data-action="stop-word"]') === null) stop.replaceChildren();
+    else if (stop.querySelector('[data-stop-word]') === null) {
+      stop.replaceChildren(h('button', { type: 'button', class: 'alius-btn alius-option', 'data-stop-word': '', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, 'STOP WORD'));
+    }
   }
 
   function drawBanner(): void {
@@ -687,13 +695,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
-    milestoneCards = h('div', { class: 'alius-milestone-cards' });
-    claimCards = h('div', { class: 'alius-claim-cards' });
-    returnCards = h('div', { class: 'alius-return-cards' });
-    taskCards = h('div', { class: 'alius-task-cards' });
-    punishmentCards = h('div', { class: 'alius-punishment-cards' });
-    demonstrationCards = h('div', { class: 'alius-demonstration-cards' });
-    postureCall = h('div', { class: 'alius-posture-call-host' });
     slapHost = h('div', { class: 'alius-slap-host' }); // an overlay: it lives in the full-screen moment layer and takes no room
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     genChips = h('div', { class: 'alius-generation-chips' });
@@ -702,8 +703,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     letsHost = h('div', { class: 'alius-lets-host' });
     banner = h('div', { class: 'alius-pacing-host' });
     blockingHost = h('div', { class: 'alius-blocking-host' });
-    momentHost = h('div', { class: 'alius-moment-host' });
-    physicsHost = h('div', { class: 'alius-physics-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
@@ -801,7 +800,22 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }
     inputLine = h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who));
     hosts.input.append(inputLine);
-    hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
+    // P10e §6: her hand: every card host is a slot of the dock (the host keeps its old class, the draw functions are unchanged)
+    dock = createDock(hosts.dock, DOCK_SLOTS);
+    const cards = (slot: string, cls: string): HTMLElement => {
+      const el = dock.slot(slot);
+      el.classList.add(cls);
+      return el;
+    };
+    momentHost = cards('moment', 'alius-moment-host');
+    postureCall = cards('posture-call', 'alius-posture-call-host');
+    physicsHost = cards('physics', 'alius-physics-host');
+    punishmentCards = cards('punishment', 'alius-punishment-cards');
+    taskCards = cards('task', 'alius-task-cards');
+    demonstrationCards = cards('demonstration', 'alius-demonstration-cards');
+    milestoneCards = cards('milestone', 'alius-milestone-cards');
+    claimCards = cards('claim', 'alius-claim-cards');
+    returnCards = cards('return', 'alius-return-cards');
     hosts.dial.append(blockingHost);
     // the wheel up over the frame or the reply lets the history down
     const wheelUp = (ev: Event): void => { if ((ev as WheelEvent).deltaY < 0) curtain.open(); };
@@ -850,6 +864,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
+    dock.layout(s.scene.id);
     chipRow.layout();
   }
 

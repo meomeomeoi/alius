@@ -837,3 +837,78 @@
 @media (prefers-reduced-motion: reduce) {
   #alius-shell .alius-flash { animation: none; }
 }
+
+/* the dock: her hand of cards. One open, the rest collapsed to their heading; the voices (P10) keep their own look inside. */
+#alius-shell .alius-stage-dock:not(:has(.alius-dock-card)) {
+  display: none;
+}
+
+#alius-shell .alius-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#alius-shell .alius-dock-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#alius-shell .alius-dock-card {
+  position: relative;
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#alius-shell .alius-dock-card[hidden] {
+  display: none;
+}
+
+#alius-shell .alius-dock-card[data-collapsed="true"] {
+  cursor: pointer;
+}
+
+#alius-shell .alius-dock-card[data-collapsed="true"] > :not(:first-child) {
+  display: none;
+}
+
+#alius-shell .alius-dock-aside {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 70%, transparent);
+  color: var(--alius-dim);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+
+#alius-shell .alius-dock-aside:hover {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-dock-waiting {
+  align-self: flex-start;
+  padding: 1px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 70%, transparent);
+  color: var(--alius-accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-dock-waiting[hidden] {
+  display: none;
+}

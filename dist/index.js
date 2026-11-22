@@ -62570,6 +62570,105 @@ function createChipRow(host, names2) {
   };
 }
 
+// src/ui/scene/stage/dock.ts
+var DOCK_SLOTS = ["moment", "posture-call", "physics", "punishment", "task", "demonstration", "milestone", "claim", "return"];
+var setAside = /* @__PURE__ */ new Set();
+function resetDock() {
+  setAside.clear();
+}
+var SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice)/;
+function idOf2(card2, index2) {
+  const own = card2.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
+  if (own) return `${own}=${card2.getAttribute(own)}`;
+  const inner = card2.querySelector("[data-task],[data-punishment],[data-milestone],[data-claim],[data-moment],[data-demonstration]");
+  const attr = inner?.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
+  return inner && attr ? `${attr}=${inner.getAttribute(attr)}` : `#${index2}`;
+}
+function createDock(host, names2) {
+  const slots = /* @__PURE__ */ new Map();
+  for (const n of names2) slots.set(n, h("div", { class: "alius-dock-slot", "data-slot": n }));
+  const waiting3 = h("button", { type: "button", class: "alius-dock-waiting", "aria-label": "Bring back the cards set aside" });
+  waiting3.hidden = true;
+  const element = h("div", { class: "alius-dock" }, ...slots.values(), waiting3);
+  host.append(element);
+  let chosen = null;
+  let scene = "";
+  waiting3.addEventListener("click", () => {
+    for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
+    chosen = null;
+    dock.layout(scene);
+  });
+  const dock = {
+    element,
+    slot(name) {
+      const s = slots.get(name);
+      if (!s) throw new Error(`no dock slot ${name}`);
+      return s;
+    },
+    layout(sceneId) {
+      scene = sceneId;
+      const cards = [];
+      for (const [name, slot2] of slots) {
+        [...slot2.children].forEach((c, i) => {
+          const el = c;
+          cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
+        });
+      }
+      const shown2 = cards.filter((c) => !setAside.has(c.key));
+      const aside = cards.length - shown2.length;
+      const openKey = chosen !== null && shown2.some((c) => c.key === chosen) ? chosen : shown2[0]?.key ?? null;
+      if (chosen !== null && openKey !== chosen) chosen = null;
+      for (const { el, key } of cards) {
+        el.classList.add("alius-dock-card");
+        const gone3 = setAside.has(key);
+        el.hidden = gone3;
+        if (gone3) {
+          delete el.dataset.open;
+          delete el.dataset.collapsed;
+          el.querySelector(":scope > [data-set-aside]")?.remove();
+          continue;
+        }
+        const isOpen2 = key === openKey;
+        el.dataset.open = String(isOpen2);
+        if (isOpen2) delete el.dataset.collapsed;
+        else el.dataset.collapsed = "true";
+        if (!el.hasAttribute("data-dock-wired")) {
+          el.setAttribute("data-dock-wired", "");
+          el.addEventListener("click", () => {
+            if (el.dataset.collapsed !== "true") return;
+            const k = el.getAttribute("data-dock-key");
+            if (k) {
+              chosen = k;
+              dock.layout(scene);
+            }
+          });
+        }
+        el.setAttribute("data-dock-key", key);
+        const mark = el.querySelector(":scope > [data-set-aside]");
+        if (isOpen2 && !mark) {
+          el.append(h("button", {
+            type: "button",
+            class: "alius-dock-aside",
+            "data-set-aside": "",
+            "aria-label": "Set this card aside",
+            title: "Set aside",
+            onclick: (ev) => {
+              ev.stopPropagation();
+              const k = el.getAttribute("data-dock-key");
+              if (k) setAside.add(k);
+              if (chosen === k) chosen = null;
+              dock.layout(scene);
+            }
+          }, "\xD7"));
+        } else if (!isOpen2 && mark) mark.remove();
+      }
+      waiting3.hidden = aside === 0;
+      waiting3.textContent = `${aside} waiting`;
+    }
+  };
+  return dock;
+}
+
 // src/ui/scene/stage/look.ts
 var memory = /* @__PURE__ */ new Map();
 var DOUBLE_MS = 300;
@@ -62699,6 +62798,7 @@ function onStageReset(fn) {
 function resetSceneStage() {
   resetHints();
   resetLook();
+  resetDock();
   for (const fn of [...hooks2]) fn();
 }
 
@@ -63124,6 +63224,7 @@ function renderSceneScreen(host, ctx2) {
   let letsHost;
   let banner;
   let chipRow;
+  let dock;
   let blockingHost;
   let momentHost;
   let physicsHost;
@@ -63471,8 +63572,10 @@ function renderSceneScreen(host, ctx2) {
     });
   }
   function drawPhysics(s) {
+    const stop2 = chipRow.slot("stop");
     if (!ctx2.physics) {
       physicsHost.replaceChildren();
+      stop2.replaceChildren();
       return;
     }
     const staging = ctx2.physics;
@@ -63480,6 +63583,12 @@ function renderSceneScreen(host, ctx2) {
       staging.onTap();
       if (!disposed) refresh2();
     } });
+    if (physicsHost.querySelector('[data-action="stop-word"]') === null) stop2.replaceChildren();
+    else if (stop2.querySelector("[data-stop-word]") === null) {
+      stop2.replaceChildren(h("button", { type: "button", class: "alius-btn alius-option", "data-stop-word": "", ...analyzeNative("glossary:stop_word"), onclick: () => {
+        staging.stopWord();
+      } }, "STOP WORD"));
+    }
   }
   function drawBanner() {
     banner.replaceChildren();
@@ -63557,13 +63666,6 @@ function renderSceneScreen(host, ctx2) {
     ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    milestoneCards = h("div", { class: "alius-milestone-cards" });
-    claimCards = h("div", { class: "alius-claim-cards" });
-    returnCards = h("div", { class: "alius-return-cards" });
-    taskCards = h("div", { class: "alius-task-cards" });
-    punishmentCards = h("div", { class: "alius-punishment-cards" });
-    demonstrationCards = h("div", { class: "alius-demonstration-cards" });
-    postureCall = h("div", { class: "alius-posture-call-host" });
     slapHost = h("div", { class: "alius-slap-host" });
     freqChips = h("div", { class: "alius-chips alius-freq-chips" });
     genChips = h("div", { class: "alius-generation-chips" });
@@ -63572,8 +63674,6 @@ function renderSceneScreen(host, ctx2) {
     letsHost = h("div", { class: "alius-lets-host" });
     banner = h("div", { class: "alius-pacing-host" });
     blockingHost = h("div", { class: "alius-blocking-host" });
-    momentHost = h("div", { class: "alius-moment-host" });
-    physicsHost = h("div", { class: "alius-physics-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
@@ -63678,7 +63778,21 @@ function renderSceneScreen(host, ctx2) {
     }
     inputLine = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
     hosts.input.append(inputLine);
-    hosts.dock.append(momentHost, physicsHost, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, postureCall);
+    dock = createDock(hosts.dock, DOCK_SLOTS);
+    const cards = (slot2, cls) => {
+      const el = dock.slot(slot2);
+      el.classList.add(cls);
+      return el;
+    };
+    momentHost = cards("moment", "alius-moment-host");
+    postureCall = cards("posture-call", "alius-posture-call-host");
+    physicsHost = cards("physics", "alius-physics-host");
+    punishmentCards = cards("punishment", "alius-punishment-cards");
+    taskCards = cards("task", "alius-task-cards");
+    demonstrationCards = cards("demonstration", "alius-demonstration-cards");
+    milestoneCards = cards("milestone", "alius-milestone-cards");
+    claimCards = cards("claim", "alius-claim-cards");
+    returnCards = cards("return", "alius-return-cards");
     hosts.dial.append(blockingHost);
     const wheelUp = (ev) => {
       if (ev.deltaY < 0) curtain.open();
@@ -63726,6 +63840,7 @@ function renderSceneScreen(host, ctx2) {
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
+    dock.layout(s.scene.id);
     chipRow.layout();
   }
   function pulse(e) {

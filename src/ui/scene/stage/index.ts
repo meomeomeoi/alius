@@ -4,6 +4,7 @@
  * The app calls `resetSceneStage()` beside `practice.onChatChanged()`; a module with such memory registers with `onStageReset`
  * (or is called here directly), so nothing keyed by a scene id outlives its campaign.
  */
+import { resetDock } from './dock';
 import { resetLook } from './look';
 import { resetHints } from './topLine';
 
@@ -18,5 +19,6 @@ export function onStageReset(fn: () => void): () => void {
 export function resetSceneStage(): void {
   resetHints();
   resetLook();
+  resetDock();
   for (const fn of [...hooks]) fn();
 }

@@ -403,15 +403,15 @@ The approved mockups and the mannequin spike live outside the repo (the author h
     - set-aside keys are `sceneId|slot|first data-* id of the card`, kept in module memory.
 - Slot order: `moment, posture-call, physics, punishment, task, demonstration, milestone, claim, return`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `one open`: a task card and a punishment card drawn → the punishment (higher in the order) is open and the task collapsed. A click on the collapsed heading opens it and collapses the other.
   - `set aside and back`: set aside the open card → it is hidden and "1 waiting" shows; a click shows it again. Set-aside survives `refresh()`, and is forgotten on a new scene id and on `resetSceneStage()`.
   - `the posture call keeps its timer`: `tests/ui/practice/postureCall.test.ts` "the scene screen" cases pass with the call inside `.alius-dock`.
   - `the physics panel is a card and its stop word is mirrored`: with a run, the panel is in the dock and a `[data-stop-word]` button is in the chip row's `stop` slot. The mirrored button calls the same handler as the panel's stop word, and remains when the panel card is collapsed or set aside.
   - `nothing over her face`: the dock sits in the left 26 vw (a CSS assertion on the class rule via `tests/helpers/css.ts`).
   - Every existing card test (`tests/ui/dynamic/*Card.test.ts`, `tests/ui/practice/demonstrationCard.test.ts`, `tests/ui/practice/slapOverlay.test.ts`) passes with selectors updated. The slap overlay stays in its full-screen host, the `moment` layer.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the test and the card suites, tsc, build → PASS.
-- [ ] **Step 5: Commit** `feat(P10e): the dock for her cards`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the test and the card suites, tsc, build → PASS.
+- [x] **Step 5: Commit** `feat(P10e): the dock for her cards`
 
 ### Task 11: The device over the scene
 
