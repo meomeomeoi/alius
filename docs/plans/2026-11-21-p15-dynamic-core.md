@@ -2006,16 +2006,16 @@ The `knows_dynamic` levels and compromat are facts written at their sites (no ru
 **Interfaces:**
 - Produces: `applyDynamicHeadStart(draft, reg, r: SetupResult): EngineEvent[]`; `pickProbeMoment(reg, unit, seed): Entry | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `off by default`: a head start of 30 days with no `dynamicUnderway` → no `Relation.dynamic`, and the recap has no probe moment.
   - `underway for all`: an eager unit over 14 days gets round(14 × 0.30) = 4 hashed answers; hold inside *testing* at most; reading updated; first in the queue; back-off not counted.
   - `a card list limits it to those units`; `a seeded unit with startFrame keeps its frame`.
   - `no rng draw` (`state.rng` equals a build without the option).
   - `at most one probe moment per unit is added to the recap pairs`, written under `head_start_moment`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/dynamic/headStart.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in R21.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P15): the dynamic already underway`
+- [x] **Step 2: Run** `npx vitest run tests/engine/dynamic/headStart.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in R21.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P15): the dynamic already underway`
 
 ---
 

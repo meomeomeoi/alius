@@ -1126,7 +1126,12 @@ var TUNING = Object.freeze({
     backoffWindow: 5,
     backoffCount: 3,
     skipRecent: 3,
-    recentMax: 8
+    recentMax: 8,
+    /**
+     * The dynamic already underway (R21, spec §15.14): the neutral spread of the answers a head start gives (cumulative order: yielded, returned, deflected, resisted; the
+     * rest is resisted); the probes behind her are `round(days x her daily chance)`, each answer and each axis hashed (`headStartHash`, no draw).
+     */
+    underway: Object.freeze({ yielded: 0.4, returned: 0.2, deflected: 0.3, resisted: 0.1 })
   }),
   /**
    * P15: how the squad learns of a dynamic (R14, spec §15.13). `suspectsAt` / `knowsAt`: the gauge's two levels. `decayPerDay`: what suspicion
@@ -2244,10 +2249,10 @@ function runUpkeep(draft, reg) {
   events.push({ type: "upkeep", needed, paid, shortage: missing2 });
   const mode = rationsOf(draft);
   if (missing2 > 0 && mode === "commander_short") {
-    const covered2 = Math.min(missing2, TUNING.upkeep.commander);
-    missing2 -= covered2;
+    const covered3 = Math.min(missing2, TUNING.upkeep.commander);
+    missing2 -= covered3;
     draft.calendar.loseMorning = true;
-    events.push({ type: "commander_went_hungry", day: draft.day, covered: covered2 });
+    events.push({ type: "commander_went_hungry", day: draft.day, covered: covered3 });
     for (const u of livingUnits(draft)) if (u.kind === "named") applyRelationDelta(draft, u.id, "trust", TUNING.power.rations.hungerTrust, "commander_hungry");
   }
   if (missing2 === 0) {
@@ -9417,9 +9422,14 @@ var HeadStartMomentSchema = BaseEntrySchema.extend({
   eventDelta: external_exports.object({ type: str, severity: severityEnum, actor: external_exports.enum(["commander", "unit"]) }).strict(),
   importance: int.min(1).max(5),
   tags: external_exports.array(str).optional(),
+  axis: str.optional(),
   fallback: str.max(240),
   description: str
-}).strict();
+}).strict().superRefine((m, ctx2) => {
+  const probe = (m.tags ?? []).includes("probe");
+  if (probe && m.axis === void 0) ctx2.addIssue({ code: "custom", path: ["axis"], message: "a probe moment names its axis (a probeAxes id)" });
+  if (!probe && m.axis !== void 0) ctx2.addIssue({ code: "custom", path: ["axis"], message: 'only a probe moment (tagged "probe") has an axis' });
+});
 registrySchemas.headStartMoments = HeadStartMomentSchema;
 var DevelopmentAxisSchema = BaseEntrySchema.extend({
   id: external_exports.string().regex(/^(value|bond|taste|like|dislike|practice|expect):[a-z0-9_.-]+$/, "an axis id is <kind>:<name> or <kind>:.any"),
@@ -19526,12 +19536,13 @@ function answerCause(state, unitId, response) {
   }
   return `probe_${response}`;
 }
-function answerProbe(draft, ctx2, unitId, response, tone, weight, afterThreat = false) {
+function answerProbe(draft, ctx2, unitId, response, tone, weight, afterThreat = false, opts = {}) {
   const reg = ctx2.registries;
   if (!dynamicOn(draft, reg)) return [];
   const events = [];
   let dyn = dynamicOf(draft, unitId);
-  if (weight === 1 && dyn?.probes.pending === void 0) return [];
+  const retro = opts.retro === true;
+  if (weight === 1 && !retro && dyn?.probes.pending === void 0) return [];
   if (dyn === void 0) {
     if (canHold(draft, reg, unitId) !== null) return [];
     events.push(...ensureDynamic(draft, reg, unitId));
@@ -19541,12 +19552,12 @@ function answerProbe(draft, ctx2, unitId, response, tone, weight, afterThreat = 
   const sensitivity = TUNING.dynamic.sensitivity[draft.dynamic.setup.units[unitId]?.sensitivity ?? "normal"];
   const cause = answerCause(draft, unitId, response);
   const base = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  events.push(...addHold(draft, ctx2, unitId, base, cause));
+  if (!(retro && frameRank(dyn.frame) >= frameRank("play"))) events.push(...addHold(draft, ctx2, unitId, base, cause));
   const unit3 = draft.squad.find((u) => u.id === unitId);
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
   const shift = updateReading(dyn, { response, ...tone !== void 0 ? { tone } : {}, ...afterThreat ? { afterThreat } : {} }, alpha, physicsStyleOf(draft, unitId, reg), unit3.insight ?? "mid").region;
   if (shift !== void 0) events.push({ type: "position_shifted", unitId, from: shift.from, to: shift.to });
-  if (weight === 1) {
+  if (weight === 1 && !retro) {
     delete dyn.probes.pending;
     dyn.probes.answers.push(response);
     while (dyn.probes.answers.length > TUNING.probes.backoffWindow) dyn.probes.answers.shift();
@@ -24187,8 +24198,8 @@ function applyOrder(ctx2, order, targetCid) {
   cs.lastOrder = { orderId: order.id, ...targetCid ? { targetCid } : {} };
   ctx2.log({ kind: "order", orderId: order.id, ...targetCid ? { target: targetCid } : {} });
   if (PROTECTIVE_ORDERS.includes(order.id)) {
-    const covered2 = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
-    for (const cid of covered2) {
+    const covered3 = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
+    for (const cid of covered3) {
       const pct5 = woundedBefore.get(cid);
       if (pct5 !== void 0 && pct5 < 0.3) {
         const unitId = byCid(cs, cid).unitId;
@@ -27797,6 +27808,71 @@ function seedWarden(draft, ctx2, p) {
   return [{ type: "warden_assigned", unitId: unit3.id, assignedBy: p.assignedBy }];
 }
 
+// src/engine/dynamic/headStart.ts
+function covered(draft, r) {
+  const want = r.headStart?.dynamicUnderway;
+  if (want === void 0 || want === false) return [];
+  const known3 = new Set((draft.headStart?.units ?? []).map((u) => u.unitId));
+  return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
+}
+function responseOf(seed, unitId, i) {
+  const S2 = TUNING.probes.underway;
+  const u = headStartHash(seed, unitId, `probe:${i}`);
+  return u < S2.yielded ? "yielded" : u < S2.yielded + S2.returned ? "returned" : u < S2.yielded + S2.returned + S2.deflected ? "deflected" : "resisted";
+}
+function axisOf(draft, reg, seed, unitId, i, recent2) {
+  const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
+  const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
+  const fresh = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
+  const pool = fresh.length > 0 ? fresh : axes;
+  return pool[headStartRaw(seed, unitId, `axis:${i}`) % pool.length];
+}
+function pickProbeMoment(reg, unit3, seed, opts = {}) {
+  const maxTier = opts.maxTier ?? 2;
+  const rows = [...reg.headStartMoments.values()].filter((m) => {
+    if (!(m.tags ?? []).includes("probe")) return false;
+    const axis = reg.probeAxes.get(String(m.axis));
+    return axis !== void 0 && axis.tier <= maxTier && (opts.axes === void 0 || opts.axes.includes(axis.id));
+  });
+  if (rows.length === 0) return null;
+  const keyed = rows.map((m) => ({ m, h: headStartHash(seed, unit3.id, `probe_moment:${String(m.id)}`) }));
+  keyed.sort((a, b) => a.h - b.h || String(a.m.id).localeCompare(String(b.m.id)));
+  return keyed[0].m;
+}
+function applyDynamicHeadStart(draft, reg, r) {
+  const hs = draft.headStart;
+  if (hs === void 0 || draft.dynamic === void 0 || !dynamicOn(draft, reg)) return [];
+  const events = [];
+  const seed = draft.dynamic.salt;
+  for (const unitId of covered(draft, r)) {
+    const unit3 = draft.squad.find((u) => u.id === unitId);
+    const mine = hs.units.find((u) => u.unitId === unitId);
+    if (unit3 === void 0 || mine === void 0) continue;
+    if (canHold(draft, reg, unitId) !== null) continue;
+    const n = Math.round(hs.days * probeChance(draft, reg, unitId));
+    if (n <= 0) continue;
+    const probed = [];
+    for (let i = 0; i < n; i++) {
+      const before = dynamicOf(draft, unitId);
+      const axis = axisOf(draft, reg, seed, unitId, i, before?.recent ?? []);
+      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed, unitId, i), void 0, 1, false, { retro: true }));
+      const dyn2 = dynamicOf(draft, unitId);
+      if (dyn2 === void 0) break;
+      dyn2.probes.issued += 1;
+      dyn2.recent.push(axis.id);
+      while (dyn2.recent.length > TUNING.probes.recentMax) dyn2.recent.shift();
+      probed.push(axis.id);
+    }
+    const dyn = dynamicOf(draft, unitId);
+    if (dyn === void 0) continue;
+    dyn.probes.lastDay = draft.day - 1;
+    if (!draft.dynamic.queue.includes(unitId) && probeQueueRoom(draft) > 0) draft.dynamic.queue.push(unitId);
+    const moment = pickProbeMoment(reg, unit3, seed, { axes: probed });
+    if (moment !== null && !mine.moments.includes(String(moment.id))) mine.moments.push(String(moment.id));
+  }
+  return events;
+}
+
 // src/engine/dynamic/seeds.ts
 function seedProblem(reg, unit3, opts = {}) {
   const practice = unit3.bond?.practice;
@@ -28305,6 +28381,7 @@ function buildCampaign(r, reg, opts) {
   }
   if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days, impressions });
   applySeeds(state, reg, r);
+  applyDynamicHeadStart(state, reg, r);
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedLife(state, reg);
   seedWorld(state, reg);
@@ -28344,9 +28421,9 @@ function foldTargets(state, fact) {
   return hit.length > 0 ? hit : [WORLD];
 }
 var folded = (fact, target) => fact.foldedInto?.includes(target) === true;
-var covered = (state, fact) => (fact.foldedInto?.length ?? 0) > 0 && foldTargets(state, fact).every((t) => folded(fact, t));
+var covered2 = (state, fact) => (fact.foldedInto?.length ?? 0) > 0 && foldTargets(state, fact).every((t) => folded(fact, t));
 function sweepCovered(draft) {
-  if (draft.memory.facts.some((f) => f.foldedInto !== void 0)) draft.memory.facts = draft.memory.facts.filter((f) => !covered(draft, f));
+  if (draft.memory.facts.some((f) => f.foldedInto !== void 0)) draft.memory.facts = draft.memory.facts.filter((f) => !covered2(draft, f));
 }
 var countedFacts = (facts) => facts.filter((f) => !f.tags.includes(UNTOLD_TAG)).length;
 function foldDue(state) {
@@ -32157,8 +32234,8 @@ function relationHints(cs, unitIdOf6) {
   const cmd = cs.commander;
   if (cmd) {
     const cover = cs.combatants.find((c) => c.cid === cmd.coverId);
-    const covered2 = cs.log.some((l) => l.kind === "cover" && l.actor === cmd.coverId);
-    if (cover?.unitId && covered2) {
+    const covered3 = cs.log.some((l) => l.kind === "cover" && l.actor === cmd.coverId);
+    if (cover?.unitId && covered3) {
       const taken = cs.log.filter((l) => (l.kind === "hit" || l.kind === "crit") && l.target === cover.cid && l.actor !== void 0).reduce((s, l) => s + (l.amount ?? 0), 0);
       mergeHints(out, [{ type: "protected", actor: cover.unitId, targets: [], severity: severityOfShare(taken / cover.maxHp) }]);
     }
@@ -42763,12 +42840,12 @@ function registerSceneContext(builder, deps) {
       return presentUnits2(s).map((u) => {
         const rel = s.relations[u.id];
         if (!rel) return `${u.displayName}`;
-        const covered2 = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
-        const st = reg.relationshipStates.get(covered2 ? "comrade" : rel.stateId);
+        const covered3 = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
+        const st = reg.relationshipStates.get(covered3 ? "comrade" : rel.stateId);
         const axes = [
           `trust ${trustBand(rel.trust)}${num5(rel.trust)}`,
           `affinity ${affinityBand(rel.affinity)}${num5(rel.affinity)}`,
-          ...romance && !covered2 ? [`attraction ${attractionBand(rel.attraction)}${num5(rel.attraction)}`] : []
+          ...romance && !covered3 ? [`attraction ${attractionBand(rel.attraction)}${num5(rel.attraction)}`] : []
         ].join(", ");
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
@@ -58361,8 +58438,8 @@ function createShell(deps) {
     if (titleEl) titleEl.textContent = router.current() === "hub" ? "\u2554\u2550[ ALIUS // OUTPOST ]" : "\u2554\u2550[ ALIUS // PDA ]";
   }
   function syncHubInert() {
-    const covered2 = device?.dataset.up === "true" && window.innerWidth <= NARROW_PX;
-    hubHost?.toggleAttribute("inert", covered2);
+    const covered3 = device?.dataset.up === "true" && window.innerWidth <= NARROW_PX;
+    hubHost?.toggleAttribute("inert", covered3);
   }
   function updateNarrow() {
     device?.classList.toggle("alius-device-narrow", window.innerWidth <= NARROW_PX);
@@ -61864,7 +61941,11 @@ registerRefs("handNotes", (entry) => (entry.when?.states ?? []).map((id, i) => (
 registerRefs("bookingKinds", (entry) => typeof entry.locationId === "string" ? [{ registry: "locations", id: entry.locationId, path: "locationId" }] : []);
 registerRefs("headStartMoments", (entry) => {
   const delta = entry.eventDelta;
-  return typeof delta?.type === "string" ? [{ registry: "eventDeltas", id: delta.type, path: "eventDelta.type" }] : [];
+  return [
+    ...typeof delta?.type === "string" ? [{ registry: "eventDeltas", id: delta.type, path: "eventDelta.type" }] : [],
+    ...typeof entry.axis === "string" ? [{ registry: "probeAxes", id: entry.axis, path: "axis" }] : []
+    // P15: a probe moment shows one of the probe axes
+  ];
 });
 registerChecks("headStartMoments", (entry) => {
   const values = entry.requires?.values ?? {};

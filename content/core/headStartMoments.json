@@ -157,5 +157,175 @@
     ],
     "fallback": "AUTHOR TO WRITE: {name} saw the commander keep a rule set in the first days, even when it was inconvenient.",
     "description": "AUTHOR TO WRITE: A rule the commander set in the first days and kept to when it was inconvenient."
+  },
+  {
+    "id": "probe_space",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "space",
+    "fallback": "AUTHOR TO WRITE: {name} took the seat at the long table that was the commander's, and waited to see whether it would be taken back.",
+    "description": "AUTHOR TO WRITE: Takes the commander's seat, thing or way, small and deniable."
+  },
+  {
+    "id": "probe_small_order",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "small_order",
+    "fallback": "AUTHOR TO WRITE: {name} asked the commander for a small thing in the tone of an order, and watched how it was taken.",
+    "description": "AUTHOR TO WRITE: Asks for something in the tone of an order, small and deniable."
+  },
+  {
+    "id": "probe_correction",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "correction",
+    "fallback": "AUTHOR TO WRITE: {name} corrected how the commander stood at the briefing, mildly, in front of no one.",
+    "description": "AUTHOR TO WRITE: Corrects words, posture or a decision, small and deniable."
+  },
+  {
+    "id": "probe_decision",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "decision",
+    "fallback": "AUTHOR TO WRITE: {name} decided what the commander would eat and when, and the commander let it stand.",
+    "description": "AUTHOR TO WRITE: Decides a small thing for the commander: food, route, time, small and deniable."
+  },
+  {
+    "id": "probe_waiting",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "waiting",
+    "fallback": "AUTHOR TO WRITE: {name} kept the commander waiting at the armory door, and said nothing about why.",
+    "description": "AUTHOR TO WRITE: Makes the commander wait, and watches how it is taken, small and deniable."
+  },
+  {
+    "id": "probe_touch",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "touch",
+    "fallback": "AUTHOR TO WRITE: {name} led the commander's hand where she wanted it, a small thing in a corridor, and did not explain.",
+    "description": "AUTHOR TO WRITE: Leads a contact, small and deniable."
+  },
+  {
+    "id": "probe_public_tone",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "public_tone",
+    "fallback": "AUTHOR TO WRITE: {name} spoke to the commander in the mess in a tone a little too low, and the table noticed.",
+    "description": "AUTHOR TO WRITE: Speaks slightly down to the commander before others, small and deniable."
+  },
+  {
+    "id": "probe_claim",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "claim",
+    "fallback": "AUTHOR TO WRITE: {name} said \"ours\" of the commander's bunk in front of the others, as if in passing.",
+    "description": "AUTHOR TO WRITE: Marks the commander as hers before others, small and deniable."
+  },
+  {
+    "id": "probe_permission",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "permission",
+    "fallback": "AUTHOR TO WRITE: {name} left a question hanging until the commander asked her leave to go on.",
+    "description": "AUTHOR TO WRITE: Puts the commander in an ask-me position, small and deniable."
+  },
+  {
+    "id": "probe_reversal",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "reversal",
+    "fallback": "AUTHOR TO WRITE: {name} turned a plain order of the commander's back on the commander, as if the roles had been joked about.",
+    "description": "AUTHOR TO WRITE: Turns the commander's order into a game, small and deniable."
   }
 ]

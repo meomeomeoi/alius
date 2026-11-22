@@ -29,11 +29,12 @@ describe('headStartMoments registry (P11b)', () => {
   it('the core pack loads headStartMoments', () => {
     expect((REGISTRY_NAMES as readonly string[]).includes('headStartMoments')).toBe(true);
     expect(reg.headStartMoments).toBeInstanceOf(Map);
-    expect(reg.headStartMoments.size).toBe(10);
+    expect(reg.headStartMoments.size).toBe(20); // ten remembered moments and, since P15, ten probe-like ones (one per probe axis)
   });
 
   it("the draft kinds are the spec's", () => {
-    expect([...reg.headStartMoments.keys()].sort()).toEqual([
+    const plain = [...reg.headStartMoments.values()].filter((e) => !((e.tags as string[] | undefined) ?? []).includes('probe'));
+    expect(plain.map((e) => e.id).sort()).toEqual([
       'cold_shoulder', 'commander_mistake', 'covered_for_her', 'first_argument', 'learned_the_crime', 'night_talk', 'rule_reminder',
       'shared_meal', 'small_favour', 'sparring_bout',
     ]);
@@ -42,10 +43,27 @@ describe('headStartMoments registry (P11b)', () => {
     expect(req('covered_for_her')?.minDays).toBe(14);
     expect(req('learned_the_crime')?.knowsCrime).toBe(true);
     for (const e of reg.headStartMoments.values()) {
-      expect((e.tags as string[] | undefined) ?? []).not.toContain('probe');
       expect(String(e.fallback).startsWith('AUTHOR TO WRITE:')).toBe(true);
       expect(String(e.description).startsWith('AUTHOR TO WRITE:')).toBe(true);
     }
+    for (const e of plain) expect(e.axis).toBeUndefined();
+  });
+
+  it('the core carries one probe moment for each probe axis, tagged probe and naming its axis (P15, spec 15.14)', () => {
+    const probes = [...reg.headStartMoments.values()].filter((e) => ((e.tags as string[] | undefined) ?? []).includes('probe'));
+    expect(probes.map((e) => e.axis).sort()).toEqual([...reg.probeAxes.keys()].sort());
+    for (const e of probes) {
+      expect((e.tags as string[]).includes('head_start')).toBe(true);
+      expect(e.sign).toBe('any');
+      expect(String(e.fallback)).toContain('{name}');
+    }
+  });
+
+  it('a probe moment needs an axis that exists, and only a probe moment has one', async () => {
+    expect((await loadWith([moment({ tags: ['head_start', 'probe'] })])).join('\n')).toMatch(/axis/);
+    expect((await loadWith([moment({ tags: ['head_start', 'probe'], axis: 'no_such_axis' })])).join('\n')).toMatch(/no_such_axis/);
+    expect((await loadWith([moment({ axis: 'space' })])).join('\n')).toMatch(/axis/);
+    expect(await loadWith([moment({ tags: ['head_start', 'probe'], axis: 'space' })])).toEqual([]);
   });
 
   it('a well-formed entry loads', async () => {

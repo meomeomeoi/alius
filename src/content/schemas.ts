@@ -2376,7 +2376,7 @@ export const DESCRIBED_REGISTRIES = [
 /**
  * A remembered moment of the weeks before day 1 (the picker reads `sign`, `requires` and `tags`, never the id). `eventDelta` names an
  * `eventDeltas` row (checked at load); `actor` says who did it. `fallback` is the template line when the model gives none (`{name}` is
- * her name). `AUTHOR TO WRITE`: every text is a draft. No entry may be tagged `probe` (P15 §15.14 lifts that, P11b never does).
+ * her name). `AUTHOR TO WRITE`: every text is a draft. An entry tagged `probe` is a probe-like moment (P15 §15.14): it names the probe `axis` it shows (a `probeAxes` id, checked at load) and the picker never takes it; only the dynamic's own head start adds it to a recap. Only a probe entry has an `axis`.
  */
 export const HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: z.enum(['positive', 'negative', 'any']),
@@ -2388,9 +2388,14 @@ export const HeadStartMomentSchema = BaseEntrySchema.extend({
   eventDelta: z.object({ type: str, severity: severityEnum, actor: z.enum(['commander', 'unit']) }).strict(),
   importance: int.min(1).max(5),
   tags: z.array(str).optional(),
+  axis: str.optional(),
   fallback: str.max(240),
   description: str,
-}).strict();
+}).strict().superRefine((m, ctx) => {
+  const probe = (m.tags ?? []).includes('probe');
+  if (probe && m.axis === undefined) ctx.addIssue({ code: 'custom', path: ['axis'], message: 'a probe moment names its axis (a probeAxes id)' });
+  if (!probe && m.axis !== undefined) ctx.addIssue({ code: 'custom', path: ['axis'], message: 'only a probe moment (tagged "probe") has an axis' });
+});
 export type HeadStartMomentEntry = z.infer<typeof HeadStartMomentSchema>;
 registrySchemas.headStartMoments = HeadStartMomentSchema;
 

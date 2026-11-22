@@ -852,6 +852,11 @@ export const TUNING = Object.freeze({
     backoffCount: 3,
     skipRecent: 3,
     recentMax: 8,
+    /**
+     * The dynamic already underway (R21, spec §15.14): the neutral spread of the answers a head start gives (cumulative order: yielded, returned, deflected, resisted; the
+     * rest is resisted); the probes behind her are `round(days x her daily chance)`, each answer and each axis hashed (`headStartHash`, no draw).
+     */
+    underway: Object.freeze({ yielded: 0.4, returned: 0.2, deflected: 0.3, resisted: 0.1 }),
   }),
   /**
    * P15: how the squad learns of a dynamic (R14, spec §15.13). `suspectsAt` / `knowsAt`: the gauge's two levels. `decayPerDay`: what suspicion

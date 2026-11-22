@@ -80,7 +80,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('head start moments (P11b): description and fallback', () => {
     const texts = fields('headStartMoments', ['description', 'fallback']);
-    expect(texts).toHaveLength(20);
+    expect(texts).toHaveLength(40); // 20 rows (ten remembered moments, ten probe-like ones from P15) x description and fallback
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 

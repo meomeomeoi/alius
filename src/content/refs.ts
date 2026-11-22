@@ -898,7 +898,10 @@ registerRefs('bookingKinds', (entry) =>
 
 registerRefs('headStartMoments', (entry) => {
   const delta = entry.eventDelta as { type?: unknown } | undefined;
-  return typeof delta?.type === 'string' ? [{ registry: 'eventDeltas', id: delta.type, path: 'eventDelta.type' }] : [];
+  return [
+    ...(typeof delta?.type === 'string' ? [{ registry: 'eventDeltas' as const, id: delta.type, path: 'eventDelta.type' }] : []),
+    ...(typeof entry.axis === 'string' ? [{ registry: 'probeAxes' as const, id: entry.axis, path: 'axis' }] : []), // P15: a probe moment shows one of the probe axes
+  ];
 });
 
 registerChecks('headStartMoments', (entry) => {

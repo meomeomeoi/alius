@@ -62,7 +62,7 @@ function latentCause(state: CampaignState, reg: Registries, unitId: string): boo
 }
 
 /** Her daily chance of a probe, before the roll (0 when she does not probe at all). */
-function probeChance(state: CampaignState, reg: Registries, unitId: string): number {
+export function probeChance(state: CampaignState, reg: Registries, unitId: string): number {
   const inclination = effectiveInclination(state, unitId);
   if (inclination === 'none') return 0;
   if (inclination === 'latent' && !latentCause(state, reg, unitId)) return 0;
@@ -154,12 +154,16 @@ function answerCause(state: CampaignState, unitId: string, response: ResponseTyp
  */
 export function answerProbe(
   draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, response: ResponseType, tone: Tone | undefined, weight: 1 | 0.5, afterThreat = false,
+  opts: { retro?: boolean } = {},
 ): EngineEvent[] {
   const reg = ctx.registries;
   if (!dynamicOn(draft, reg)) return [];
   const events: EngineEvent[] = [];
   let dyn = dynamicOf(draft, unitId);
-  if (weight === 1 && dyn?.probes.pending === undefined) return [];
+  // `retro` (the head start's answers, R21): an answer from the weeks before day 1. It needs no pending probe, is never recorded as an answer and starts no back-off,
+  // and it moves no hold of a woman who is already past `equal` (a seed with a starting frame keeps hers); the reading takes it as it takes any answer.
+  const retro = opts.retro === true;
+  if (weight === 1 && !retro && dyn?.probes.pending === undefined) return [];
   if (dyn === undefined) {
     if (canHold(draft, reg, unitId) !== null) return [];
     events.push(...ensureDynamic(draft, reg, unitId));
@@ -169,13 +173,13 @@ export function answerProbe(
   const sensitivity = TUNING.dynamic.sensitivity[draft.dynamic!.setup.units[unitId]?.sensitivity ?? 'normal'];
   const cause = answerCause(draft, unitId, response);
   const base = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  events.push(...addHold(draft, ctx, unitId, base, cause));
+  if (!(retro && frameRank(dyn.frame) >= frameRank('play'))) events.push(...addHold(draft, ctx, unitId, base, cause));
   // her reading takes the answer after the hold: a gain is scaled by how she read the commander until now
   const unit = draft.squad.find((u) => u.id === unitId)!;
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
   const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, alpha, physicsStyleOf(draft, unitId, reg), unit.insight ?? 'mid').region;
   if (shift !== undefined) events.push({ type: 'position_shifted', unitId, from: shift.from, to: shift.to });
-  if (weight === 1) {
+  if (weight === 1 && !retro) {
     delete dyn.probes.pending;
     dyn.probes.answers.push(response);
     while (dyn.probes.answers.length > TUNING.probes.backoffWindow) dyn.probes.answers.shift();

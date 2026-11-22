@@ -22,6 +22,7 @@ import { seedSpecialTraits } from './special/traits';
 import { corporateWardenPick, seedWarden } from './warden/select';
 import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
 import { practiceEnabled } from './dynamic/profile';
+import { applyDynamicHeadStart } from './dynamic/headStart';
 import { applySeeds, seedProblem } from './dynamic/seeds';
 import { newDynamicCampaign, type UnitDynamicSetup } from './dynamic/state';
 import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES, START_FRAMES, type Frequency, type HolderCap, type Pace } from './dynamic/types';
@@ -658,6 +659,7 @@ export function buildCampaign(
   // P11b: after every unit joined (disposition and first impression done) and before the world, the warden and the prologue read the relations
   if (days > 0) applyHeadStart(state, reg, { seed: opts.seed, days: days as 7 | 14 | 30, impressions });
   applySeeds(state, reg, r); // P15: a seed's head start in hold, and a starting frame (no draw; a no-op without the block)
+  applyDynamicHeadStart(state, reg, r); // P15 (§15.14): the probing behind her, only for `headStart.dynamicUnderway` (hashed; no draw)
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedLife(state, reg); // P14c: the starting skills, from the salt written above (a no-op while life is off; nothing draws)
   seedWorld(state, reg);
