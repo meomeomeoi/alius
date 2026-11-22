@@ -951,4 +951,73 @@ export const TUNING = Object.freeze({
    * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `signs`: her last `replies` in the thread within `recentDays` average under `short` or over `long` characters. `AUTHOR TO TUNE`.
    */
   mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]) as readonly number[], revealLevel: 2, clean: Object.freeze(['released', 'checked']) as readonly string[], signs: Object.freeze({ replies: 3, short: 60, long: 220, recentDays: 2 }) }),
+
+  /**
+   * P16: the practices (R3-R16, spec §1-§11 and the revision of 2026-11-20 §R.12). Every number is `AUTHOR TO TUNE` except the slap windows, the unfairness per day step, the sealed share
+   * and the no-duration share, which are the spec's drafts (R.12) copied as given. `keep`: closed tasks, punishments and demonstrations kept (newest). `frequency`: the daily chance of a new
+   * practice is `base[frame] × the dynamic's frequency × her Want band × her appetite`. `kindWeights` / `taskCap` / `protocolMax` / `stakesCeiling` (by frame) / `deadlineDays` bound what is
+   * issued; `seeds` the candidates handed to the model; `textMax` / `summaryMax` the cuts. `fallback`: the plain line of each kind (`{gist}`); `sealedLine` the envelope, `sealedRecord` the record
+   * line of a sealed accept (`{day}`). `xp`: track xp per kept task (x tier), accepted punishment (x severity), demonstration and hold (x slots). `severity`: stakes rank + 1, plus her style (primary;
+   * the secondary adds `secondaryShare` of it, rounded toward zero), her frame and a repeat (`count` offences within `days`), clamped to `min`..`max`. `repair`: the share of an offence's cost an accepted
+   * punishment gives back. `slap.windowMs`: the time she gives in milliseconds by her primary style (`obsessive` takes the number plus a hashed `obsessiveSpread`); feints from `feintFrom`, `feintPerLevel` a level.
+   */
+  practice: Object.freeze({
+    keep: 30,
+    frequency: Object.freeze({
+      base: Object.freeze({ play: 0.15, role: 0.25, rule: 0.35 } as const),
+      want: Object.freeze({ calm: 0.8, restless: 1, aching: 1.3, desperate: 1.5 } as const),
+      appetite: Object.freeze({ craves: 1.4, enjoys: 1, tolerates: 0.6 } as const),
+    }),
+    kindWeights: Object.freeze({ task: 6, protocol: 2, denial: 2, hold: 1, demonstration: 1 } as const),
+    taskCap: Object.freeze({ play: 1, role: 2, rule: 3 } as const),
+    protocolMax: Object.freeze({ play: 1, role: 2, rule: 3 } as const),
+    stakesCeiling: Object.freeze({ play: 'minor', role: 'major', rule: 'severe' } as const),
+    deadlineDays: Object.freeze({ min: 1, max: 7 }),
+    seeds: Object.freeze({ min: 3, max: 6 }),
+    textMax: 400,
+    summaryMax: 80,
+    fallback: Object.freeze({
+      task: 'AUTHOR TO WRITE: {gist}.', punishment: 'AUTHOR TO WRITE: {gist}.', demonstration: 'AUTHOR TO WRITE: {gist}.',
+      protocol: 'AUTHOR TO WRITE: {gist}.', denial: 'AUTHOR TO WRITE: {gist}.', hold: 'AUTHOR TO WRITE: {gist}.',
+    } as const),
+    sealedLine: 'AUTHOR TO WRITE: A sealed envelope, left for the commander.',
+    sealedRecord: 'AUTHOR TO WRITE: Signed blank. Day {day}.',
+    chainChance: 0.5,
+    xp: Object.freeze({ kept: 2, discipline: 2, demonstration: 6, hold: 3 }),
+    severity: Object.freeze({
+      style: Object.freeze({ cruel: 1, affectionate: -1 } as Readonly<Record<string, number>>),
+      secondaryShare: 0.5,
+      frame: Object.freeze({ play: -1, role: 0, rule: 1 } as const),
+      repeat: Object.freeze({ count: 2, days: 14, add: 1 }),
+      min: 1, max: 5,
+    }),
+    repair: 0.5,
+    refuseRecord: 5,
+    coldWant: 5,
+    takeInstead: Object.freeze({ trust: 5, record: 2 }),
+    demonstration: Object.freeze({ hold: 3, seenByChance: 0.2, wantRelief: Object.freeze({ craves: 20, enjoys: 10, tolerates: 5 } as const) }),
+    verdict: Object.freeze({ favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 } as const) }),
+    momentGap: Object.freeze({ matched: 2, partial: 0, opposite: -3 }),
+    kindnessAt: 8,
+    refusalAt: -8,
+    denialRelief: 10,
+    hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
+    alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
+    ask: Object.freeze({ hold: 2, mockRecord: 3 }),
+    posture: Object.freeze({ callChance: 0.15, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),
+    slap: Object.freeze({
+      windowMs: Object.freeze({
+        affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300,
+      } as const),
+      obsessiveSpread: 400, unannounced: 0.3, feintFrom: 2, feintPerLevel: 0.1,
+    }),
+    ceremony: Object.freeze({ lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 } as const) }),
+    sealedShare: Object.freeze({
+      affectionate: 0.05, cold: 0.05, ritual: 0.02, clinical: 0.05, possessive: 0.05, playful: 0.15, cruel: 0.25, obsessive: 0.05, drill: 0.05, regal: 0.15, vindictive: 0.25,
+    } as const),
+    noDurationShare: Object.freeze({
+      affectionate: 0.1, cold: 0.1, ritual: 0, clinical: 0.1, possessive: 0.3, playful: 0.1, cruel: 0.3, obsessive: 0.1, drill: 0, regal: 0.1, vindictive: 0.3,
+    } as const),
+    unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 } as const),
+  }),
 });

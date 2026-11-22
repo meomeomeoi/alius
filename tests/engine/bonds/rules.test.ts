@@ -46,10 +46,11 @@ const ev = (type: string, ruleId: string, over: Record<string, unknown> = {}) =>
 const open = (s: CampaignState, participants = [ANN]) => run(s, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants, origin: 'event', startIndex: 0 } }).state;
 
 describe('the core templates', () => {
-  it('five templates with the checks of the spec, all drafts to write, none naming the commander', () => {
+  it('five templates with the checks of the spec (and P16\'s three service rules and the permission rule), all drafts to write, none naming the commander', () => {
     const t = [...reg.relationshipRuleTemplates.values()];
     expect(t.map((x) => `${x.id}:${x.check}`)).toEqual([
       'report_evening:daily_contact', 'hands_off_gear:intent', 'ask_before_runs:run_without_asking', 'no_other_tokens:token_wear', 'name_me_first:intent',
+      'stand_when_i_enter:intent', 'ask_before_you_sit:intent', 'maam_before_the_squad:intent', 'ask_permission:intent', // P16
     ]);
     for (const x of t) {
       expect(String(x.text), String(x.id)).toMatch(/^AUTHOR TO WRITE/);

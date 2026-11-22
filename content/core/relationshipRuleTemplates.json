@@ -114,5 +114,94 @@
       ]
     },
     "weight": 2
+  },
+  {
+    "id": "stand_when_i_enter",
+    "text": "AUTHOR TO WRITE: Stand when I enter.",
+    "description": "AUTHOR TO WRITE: she wants the commander standing when she walks in.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive"
+    },
+    "weight": 2,
+    "contentTags": [
+      "service"
+    ]
+  },
+  {
+    "id": "ask_before_you_sit",
+    "text": "AUTHOR TO WRITE: Ask before you sit.",
+    "description": "AUTHOR TO WRITE: she wants a question before the commander takes a seat.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive"
+    },
+    "weight": 2,
+    "contentTags": [
+      "service"
+    ]
+  },
+  {
+    "id": "maam_before_the_squad",
+    "text": "AUTHOR TO WRITE: Call me ma'am in front of the squad.",
+    "description": "AUTHOR TO WRITE: she wants a form of address when others are present.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive"
+    },
+    "weight": 2,
+    "contentTags": [
+      "service"
+    ]
+  },
+  {
+    "id": "ask_permission",
+    "text": "AUTHOR TO WRITE: Ask me first.",
+    "description": "AUTHOR TO WRITE: the commander asks her before what the rule covers.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive"
+    },
+    "weight": 2,
+    "contentTags": [
+      "denial"
+    ],
+    "asks": "permission"
   }
 ]

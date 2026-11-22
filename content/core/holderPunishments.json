@@ -1,0 +1,155 @@
+[
+  {
+    "id": "corner_time",
+    "label": "Corner time",
+    "severity": 1,
+    "effects": [
+      {
+        "type": "slot_held",
+        "slots": 1
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she keeps the commander in place for a slot."
+  },
+  {
+    "id": "extra_protocol",
+    "label": "A day of extra protocol",
+    "severity": 1,
+    "effects": [
+      {
+        "type": "protocol_extra",
+        "days": 1
+      }
+    ],
+    "description": "AUTHOR TO WRITE: one more rule of address for a day."
+  },
+  {
+    "id": "no_messages",
+    "label": "A day without messages",
+    "severity": 2,
+    "effects": [
+      {
+        "type": "privilege_revoked",
+        "what": "no_dms_others",
+        "days": 1
+      }
+    ],
+    "description": "AUTHOR TO WRITE: no messages to anyone but her for a day."
+  },
+  {
+    "id": "cold_shoulder",
+    "label": "Her cold shoulder",
+    "severity": 2,
+    "effects": [
+      {
+        "type": "cold_shoulder",
+        "days": 1
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she answers nothing for a day."
+  },
+  {
+    "id": "kept_in_quarters",
+    "label": "Kept in her quarters",
+    "severity": 3,
+    "effects": [
+      {
+        "type": "slot_held",
+        "slots": 2
+      }
+    ],
+    "contentTags": [
+      "restraint"
+    ],
+    "description": "AUTHOR TO WRITE: two slots kept in her quarters."
+  },
+  {
+    "id": "on_the_record",
+    "label": "Written on the record before her friends",
+    "severity": 3,
+    "effects": [
+      {
+        "type": "confession"
+      }
+    ],
+    "contentTags": [
+      "public_humiliation"
+    ],
+    "public": true,
+    "description": "AUTHOR TO WRITE: a confession named before others."
+  },
+  {
+    "id": "the_slap",
+    "label": "The slap",
+    "severity": 4,
+    "effects": [
+      {
+        "type": "slap"
+      }
+    ],
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "description": "AUTHOR TO WRITE: one slap, with a moment to brace."
+  },
+  {
+    "id": "kept_the_day",
+    "label": "Kept the whole day",
+    "severity": 4,
+    "effects": [
+      {
+        "type": "slot_held",
+        "slots": "day"
+      },
+      {
+        "type": "stress",
+        "amount": 5
+      }
+    ],
+    "contentTags": [
+      "restraint"
+    ],
+    "description": "AUTHOR TO WRITE: the rest of the day in her quarters."
+  },
+  {
+    "id": "her_hand",
+    "label": "Her hand",
+    "severity": 5,
+    "effects": [
+      {
+        "type": "physical"
+      },
+      {
+        "type": "injury_chance",
+        "chance": 0.05,
+        "perEndurance": 0.002,
+        "perTrained": 0.01,
+        "days": 2
+      }
+    ],
+    "contentTags": [
+      "physical_discipline_shown",
+      "pain_rough"
+    ],
+    "description": "AUTHOR TO WRITE: a count of strokes, shown or reported."
+  },
+  {
+    "id": "a_marked_week",
+    "label": "A marked week",
+    "severity": 5,
+    "effects": [
+      {
+        "type": "mark",
+        "days": 7
+      },
+      {
+        "type": "stress",
+        "amount": 10
+      }
+    ],
+    "contentTags": [
+      "body_modification"
+    ],
+    "description": "AUTHOR TO WRITE: a visible mark for a week."
+  }
+]

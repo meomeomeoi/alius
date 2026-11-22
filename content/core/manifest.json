@@ -106,6 +106,10 @@
     "positionRegions": "positionRegions.json",
     "aftermaths": "aftermaths.json",
     "regardBands": "regardBands.json",
-    "dynamicSigns": "dynamicSigns.json"
+    "dynamicSigns": "dynamicSigns.json",
+    "practiceSeeds": "practiceSeeds.json",
+    "holderPunishments": "holderPunishments.json",
+    "implements": "implements.json",
+    "ceremonySteps": "ceremonySteps.json"
   }
 }

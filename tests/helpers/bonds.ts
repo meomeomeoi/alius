@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
 import type { Registries, RegistryName } from '../../src/content/types';
 import { CONTENT_GATED_REGISTRIES, contentAllowed, rollRules } from '../../src/engine/bonds';
+import { bookingKindsFor } from '../../src/engine/personal/bookings';
 import { offeredStakes } from '../../src/engine/personal/wagers';
 import { eligibleTemplates as dilemmaTemplates } from '../../src/engine/dilemma/flow';
 import { DILEMMA_CONTEXTS } from '../../src/engine/dilemma/types';
@@ -53,6 +54,11 @@ export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> =
   // P15
   dynamicMilestones: { ids: ['gate_milestone'], category: 'restraint' },
   aftermaths: { ids: ['gate_aftermath'], category: 'humiliation' },
+  // P16
+  practiceSeeds: { ids: ['gate_seed'], category: 'pain_rough' },
+  holderPunishments: { ids: ['gate_holder_punishment'], category: 'jealousy_games' },
+  implements: { ids: ['gate_implement'], category: 'breath_play' },
+  bookingKinds: { ids: ['gate_booking'], category: 'restraint' },
 };
 
 /** The ids of a registry the content gate lets through for `state` (the P15a registries until the blocking vocabulary reads them). */
@@ -151,6 +157,11 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
   // P15: until the milestone offer and the aftermath pick read them (Tasks 21 and 30), every entry the gate lets through
   dynamicMilestones: (state, reg) => vocabularyIds(state, reg, 'dynamicMilestones'),
   aftermaths: (state, reg) => vocabularyIds(state, reg, 'aftermaths'),
+  // P16: until the seed pick and the punishment pick read them (a later task of the package), every entry the gate lets through; the bookings are the ones a named unit could be offered
+  practiceSeeds: (state, reg) => vocabularyIds(state, reg, 'practiceSeeds'),
+  holderPunishments: (state, reg) => vocabularyIds(state, reg, 'holderPunishments'),
+  implements: (state, reg) => vocabularyIds(state, reg, 'implements'),
+  bookingKinds: (state, reg) => state.squad.filter((u) => u.kind === 'named').flatMap((u) => bookingKindsFor(state, reg, u.id).map((k) => String(k.id))),
   clocks: (state, reg) => {
     const s = structuredClone(state);
     s.world.seeded = false;

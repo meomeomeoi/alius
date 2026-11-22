@@ -1,0 +1,97 @@
+[
+  {
+    "id": "palm",
+    "label": "The open hand",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "force": 1,
+    "mark": {
+      "kind": "redness",
+      "slots": 1
+    },
+    "sound": "stamp",
+    "description": "AUTHOR TO WRITE: a bare hand."
+  },
+  {
+    "id": "slipper_sole",
+    "label": "A slipper or boot sole",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "force": 2,
+    "mark": {
+      "kind": "redness",
+      "slots": 1
+    },
+    "description": "AUTHOR TO WRITE: a worn sole."
+  },
+  {
+    "id": "belt",
+    "label": "A belt",
+    "contentTags": [
+      "physical_discipline_shown",
+      "pain_rough"
+    ],
+    "force": 3,
+    "mark": {
+      "kind": "welt",
+      "slots": 2
+    },
+    "description": "AUTHOR TO WRITE: a doubled belt."
+  },
+  {
+    "id": "ruler",
+    "label": "A ruler",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "force": 2,
+    "mark": {
+      "kind": "line",
+      "slots": 1
+    },
+    "description": "AUTHOR TO WRITE: a flat wooden ruler."
+  },
+  {
+    "id": "riding_crop",
+    "label": "A riding crop",
+    "contentTags": [
+      "physical_discipline_shown",
+      "pain_rough"
+    ],
+    "force": 4,
+    "mark": {
+      "kind": "welt",
+      "slots": 2
+    },
+    "description": "AUTHOR TO WRITE: a short crop."
+  },
+  {
+    "id": "cane",
+    "label": "A cane",
+    "contentTags": [
+      "physical_discipline_shown",
+      "pain_rough"
+    ],
+    "force": 5,
+    "mark": {
+      "kind": "welt",
+      "slots": 3
+    },
+    "description": "AUTHOR TO WRITE: a thin cane."
+  },
+  {
+    "id": "glove",
+    "label": "A glove",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "force": 1,
+    "mark": {
+      "kind": "redness",
+      "slots": 1
+    },
+    "description": "AUTHOR TO WRITE: a leather glove."
+  }
+]

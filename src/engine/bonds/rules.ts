@@ -18,7 +18,7 @@ import { bondOf, bondTierOf, leadRank } from './profile';
 
 const R = TUNING.bonds.rules;
 /** The content tags of the rules a holder may set only with `relation_rules` (spec §5). */
-const RELATION_RULE_TAGS: readonly string[] = ['jealousy_games', 'service'];
+const RELATION_RULE_TAGS: readonly string[] = ['jealousy_games', 'service', 'denial'];
 
 export const rulesOf = (state: Pick<CampaignState, 'bonds'>): Rule[] => state.bonds?.rules ?? [];
 /** The rules she lives by now (suspended ones are hidden and not tracked). */

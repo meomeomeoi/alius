@@ -1,0 +1,116 @@
+[
+  {
+    "id": "fetch_implement",
+    "order": 1,
+    "check": "chip",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "Fetch the implement",
+    "promptHint": "the commander fetches what will be used",
+    "description": "AUTHOR TO WRITE: the commander fetches it."
+  },
+  {
+    "id": "ask_formally",
+    "order": 2,
+    "check": "words",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "Ask for it formally",
+    "promptHint": "the commander asks for the punishment in formal words",
+    "description": "AUTHOR TO WRITE: the commander asks in words."
+  },
+  {
+    "id": "name_the_number",
+    "order": 3,
+    "check": "number",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "Name the number",
+    "promptHint": "the commander names a count",
+    "description": "AUTHOR TO WRITE: a number, one to fifty."
+  },
+  {
+    "id": "take_the_posture",
+    "order": 4,
+    "check": "posture",
+    "posture": "kneeling_upright",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "Take the posture",
+    "promptHint": "the commander takes the posture she names",
+    "description": "AUTHOR TO WRITE: the posture is taken."
+  },
+  {
+    "id": "the_execution",
+    "order": 5,
+    "check": "chip",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "The execution",
+    "promptHint": "the punishment is carried out",
+    "description": "AUTHOR TO WRITE: narrated, shown or reported by the content switch."
+  },
+  {
+    "id": "corner_time",
+    "order": 6,
+    "check": "posture",
+    "posture": "standing_attention",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "Corner time",
+    "promptHint": "the commander stands and waits",
+    "description": "AUTHOR TO WRITE: a standing wait after."
+  },
+  {
+    "id": "the_thanks",
+    "order": 7,
+    "check": "words",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "The thanks",
+    "promptHint": "the commander thanks her in words",
+    "description": "AUTHOR TO WRITE: thanks, in words."
+  },
+  {
+    "id": "the_reconciliation",
+    "order": 8,
+    "check": "chip",
+    "styles": [
+      "ritual",
+      "drill",
+      "regal",
+      "vindictive"
+    ],
+    "label": "The reconciliation",
+    "promptHint": "the two make it up",
+    "description": "AUTHOR TO WRITE: it is over and made up."
+  }
+]

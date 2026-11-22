@@ -1,0 +1,612 @@
+[
+  {
+    "id": "task_forms_of_address",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "forms of address in public",
+    "stakes": "minor",
+    "check": "model",
+    "proof": "witness",
+    "audience": "any",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: forms of address in public."
+  },
+  {
+    "id": "task_report_at_dusk",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "report to me at dusk",
+    "stakes": "trivial",
+    "check": "dm_report",
+    "proof": "dm_report",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: report to me at dusk."
+  },
+  {
+    "id": "task_coffee_before_drill",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "bring me my coffee before drill",
+    "stakes": "trivial",
+    "check": "model",
+    "proof": "in_person",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: bring me my coffee before drill."
+  },
+  {
+    "id": "task_an_hour_of_evening",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "an hour of your evening",
+    "stakes": "minor",
+    "check": "slot_with_her",
+    "proof": "in_person",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: an hour of your evening."
+  },
+  {
+    "id": "task_keep_the_evening",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "keep the evening I book",
+    "stakes": "minor",
+    "check": "booking_kept",
+    "proof": "in_person",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: keep the evening I book."
+  },
+  {
+    "id": "task_wear_my_token",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "wear my token today",
+    "stakes": "minor",
+    "check": "token_worn",
+    "proof": "witness",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: wear my token today."
+  },
+  {
+    "id": "task_have_her_on_the_run",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "put me on the next run",
+    "stakes": "minor",
+    "check": "on_roster",
+    "proof": "none",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: put me on the next run."
+  },
+  {
+    "id": "task_leave_her_off",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "discipline",
+    "tier": 2,
+    "gist": "leave someone off the roster",
+    "stakes": "minor",
+    "check": "not_on_roster",
+    "proof": "none",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: leave someone off the roster."
+  },
+  {
+    "id": "task_copy_the_roster",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "discipline",
+    "tier": 1,
+    "gist": "copy out the duty roster",
+    "stakes": "trivial",
+    "check": "model",
+    "proof": "dm_report",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: copy out the duty roster."
+  },
+  {
+    "id": "task_ask_before_spending",
+    "kind": "task",
+    "contentTags": [
+      "service"
+    ],
+    "track": "discipline",
+    "tier": 3,
+    "gist": "ask before you spend rations",
+    "stakes": "major",
+    "check": "model",
+    "proof": "dm_report",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a task for the model: ask before you spend rations."
+  },
+  {
+    "id": "punish_corner_time",
+    "kind": "punishment",
+    "contentTags": [
+      "humiliation"
+    ],
+    "track": "humiliation",
+    "tier": 1,
+    "gist": "stand in the corner",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: stand in the corner."
+  },
+  {
+    "id": "punish_written_lines",
+    "kind": "punishment",
+    "contentTags": [
+      "service"
+    ],
+    "track": "discipline",
+    "tier": 1,
+    "gist": "write the lines out",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: write the lines out."
+  },
+  {
+    "id": "punish_no_messages",
+    "kind": "punishment",
+    "contentTags": [
+      "service"
+    ],
+    "track": "discipline",
+    "tier": 2,
+    "gist": "a day without messages",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: a day without messages."
+  },
+  {
+    "id": "punish_cold_shoulder",
+    "kind": "punishment",
+    "contentTags": [
+      "service"
+    ],
+    "track": "discipline",
+    "tier": 2,
+    "gist": "her cold shoulder",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: her cold shoulder."
+  },
+  {
+    "id": "punish_kept_in",
+    "kind": "punishment",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 3,
+    "gist": "kept in her quarters",
+    "stakes": "major",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: kept in her quarters."
+  },
+  {
+    "id": "punish_public_record",
+    "kind": "punishment",
+    "contentTags": [
+      "public_humiliation"
+    ],
+    "track": "public_humiliation",
+    "tier": 3,
+    "gist": "read out before her friends",
+    "stakes": "major",
+    "audience": "select_few",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: read out before her friends."
+  },
+  {
+    "id": "punish_the_slap",
+    "kind": "punishment",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "track": "physical_discipline_shown",
+    "tier": 4,
+    "gist": "a slap, given plainly",
+    "stakes": "major",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: a slap, given plainly."
+  },
+  {
+    "id": "punish_her_hand",
+    "kind": "punishment",
+    "contentTags": [
+      "physical_discipline_shown"
+    ],
+    "track": "physical_discipline_shown",
+    "tier": 5,
+    "gist": "her hand, counted aloud",
+    "stakes": "severe",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: an example of a punishment for the model: her hand, counted aloud."
+  },
+  {
+    "id": "demo_mess_table",
+    "kind": "demonstration",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "service at the mess table",
+    "stakes": "minor",
+    "proof": "witness",
+    "audience": "any",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: service at the mess table."
+  },
+  {
+    "id": "demo_protocol_friends",
+    "kind": "demonstration",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "protocol before her friends",
+    "stakes": "minor",
+    "proof": "witness",
+    "audience": "select_few",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: protocol before her friends."
+  },
+  {
+    "id": "demo_showing_a_task",
+    "kind": "demonstration",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "showing a kept task",
+    "stakes": "minor",
+    "proof": "witness",
+    "audience": "select_few",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: showing a kept task."
+  },
+  {
+    "id": "demo_her_verdict",
+    "kind": "demonstration",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "her verdict, aloud",
+    "stakes": "minor",
+    "proof": "witness",
+    "audience": "any",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: her verdict, aloud."
+  },
+  {
+    "id": "demo_at_roll_call",
+    "kind": "demonstration",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "stand beside her at roll call",
+    "stakes": "trivial",
+    "proof": "witness",
+    "audience": "any",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: stand beside her at roll call."
+  },
+  {
+    "id": "demo_asking_leave",
+    "kind": "demonstration",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "ask leave in front of others",
+    "stakes": "minor",
+    "proof": "witness",
+    "audience": "select_few",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: ask leave in front of others."
+  },
+  {
+    "id": "demo_fetching_for_her",
+    "kind": "demonstration",
+    "contentTags": [
+      "public_humiliation"
+    ],
+    "track": "public_humiliation",
+    "tier": 3,
+    "gist": "fetch for her before the squad",
+    "stakes": "major",
+    "proof": "witness",
+    "audience": "any",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: an example of a demonstration for the model: fetch for her before the squad."
+  },
+  {
+    "id": "protocol_stand",
+    "kind": "protocol",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "stand when I enter",
+    "stakes": "trivial",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a protocol for the model: stand when I enter."
+  },
+  {
+    "id": "protocol_ask_to_sit",
+    "kind": "protocol",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "ask before you sit",
+    "stakes": "trivial",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a protocol for the model: ask before you sit."
+  },
+  {
+    "id": "protocol_ma_am",
+    "kind": "protocol",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "ma'am in front of the squad",
+    "stakes": "minor",
+    "audience": "any",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a protocol for the model: ma'am in front of the squad."
+  },
+  {
+    "id": "protocol_greet_at_door",
+    "kind": "protocol",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "greet me at the door",
+    "stakes": "trivial",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a protocol for the model: greet me at the door."
+  },
+  {
+    "id": "protocol_hands_behind",
+    "kind": "protocol",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 2,
+    "gist": "hands behind you near me",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a protocol for the model: hands behind you near me."
+  },
+  {
+    "id": "protocol_speak_when_asked",
+    "kind": "protocol",
+    "contentTags": [
+      "service"
+    ],
+    "track": "service",
+    "tier": 3,
+    "gist": "speak only when asked",
+    "stakes": "major",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a protocol for the model: speak only when asked."
+  },
+  {
+    "id": "denial_ask_before_touch",
+    "kind": "denial",
+    "contentTags": [
+      "denial"
+    ],
+    "track": "denial",
+    "tier": 1,
+    "gist": "ask before you touch yourself",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a denial for the model: ask before you touch yourself."
+  },
+  {
+    "id": "denial_ask_before_finish",
+    "kind": "denial",
+    "contentTags": [
+      "denial"
+    ],
+    "track": "denial",
+    "tier": 2,
+    "gist": "ask before you finish",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a denial for the model: ask before you finish."
+  },
+  {
+    "id": "denial_no_unasked_relief",
+    "kind": "denial",
+    "contentTags": [
+      "denial"
+    ],
+    "track": "denial",
+    "tier": 2,
+    "gist": "no relief unless I allow",
+    "stakes": "major",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a denial for the model: no relief unless I allow."
+  },
+  {
+    "id": "denial_earn_it_first",
+    "kind": "denial",
+    "contentTags": [
+      "denial"
+    ],
+    "track": "denial",
+    "tier": 1,
+    "gist": "earn it first",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a denial for the model: earn it first."
+  },
+  {
+    "id": "denial_no_touching_tonight",
+    "kind": "denial",
+    "contentTags": [
+      "denial"
+    ],
+    "track": "denial",
+    "tier": 1,
+    "gist": "no touching tonight",
+    "stakes": "trivial",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a denial for the model: no touching tonight."
+  },
+  {
+    "id": "denial_wait_for_my_word",
+    "kind": "denial",
+    "contentTags": [
+      "denial"
+    ],
+    "track": "denial",
+    "tier": 3,
+    "gist": "wait for my word",
+    "stakes": "major",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a denial for the model: wait for my word."
+  },
+  {
+    "id": "hold_evening_in_quarters",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 1,
+    "gist": "an evening in her quarters",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: an evening in her quarters."
+  },
+  {
+    "id": "hold_kneel_her_evening",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 2,
+    "gist": "kneel through her evening",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: kneel through her evening."
+  },
+  {
+    "id": "hold_kept_still",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 1,
+    "gist": "kept still for an hour",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: kept still for an hour."
+  },
+  {
+    "id": "hold_lights_out",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 2,
+    "gist": "an hour with the lights out",
+    "stakes": "minor",
+    "weight": 3,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: an hour with the lights out."
+  },
+  {
+    "id": "hold_a_night_at_her_side",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 3,
+    "gist": "a night kept at her side",
+    "stakes": "major",
+    "romantic": true,
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: a night kept at her side."
+  },
+  {
+    "id": "hold_the_whole_day",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 4,
+    "gist": "kept in quarters all day",
+    "stakes": "severe",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: kept in quarters all day."
+  },
+  {
+    "id": "hold_until_she_says",
+    "kind": "hold",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "restraint",
+    "tier": 3,
+    "gist": "held until she says",
+    "stakes": "major",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: an example of a hold for the model: held until she says."
+  }
+]

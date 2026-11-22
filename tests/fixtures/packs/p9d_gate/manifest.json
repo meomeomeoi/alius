@@ -22,6 +22,10 @@
     "contactPhysics": "contactPhysics.json",
     "stimulusKinds": "stimulusKinds.json",
     "dynamicMilestones": "dynamicMilestones.json",
-    "aftermaths": "aftermaths.json"
+    "aftermaths": "aftermaths.json",
+    "bookingKinds": "bookingKinds.json",
+    "practiceSeeds": "practiceSeeds.json",
+    "holderPunishments": "holderPunishments.json",
+    "implements": "implements.json"
   }
 }

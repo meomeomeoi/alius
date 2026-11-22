@@ -1064,6 +1064,7 @@ function effectChecks(entry: Entry, regs: Regs): RegistryCheck[] {
       case 'status_after': return known(regs, 'commanderConditions', fx.id, `${at}.id`, 'commander condition');
       case 'escalation': return known(regs, 'escalationVerbs', fx.verb, `${at}.verb`, 'escalation verb');
       case 'visibility': return knownEach(regs, 'blockingPostures', fx.unlessPosture, `${at}.unlessPosture`, 'posture');
+      case 'rule': return known(regs, 'relationshipRuleTemplates', fx.template, `${at}.template`, 'rule template'); // P16: the rule a worn item brings (the chastity device's permission rule)
       default: return [];
     }
   });
@@ -1161,3 +1162,9 @@ registerChecks('dynamicMilestones', (entry, regs) => {
 });
 
 registerChecks('dynamicTracks', (entry, regs) => known(regs, 'contentCategories', entry.category, 'category', 'content category'));
+
+// ---------------------------------------------------------------------------------------------
+// P16: a seed names an open practice track (its `check`, `proof`, `audience` and `needs` are closed enums, checked by the schema); a ceremony step's posture is a blocking posture.
+
+registerChecks('practiceSeeds', (entry, regs) => known(regs, 'dynamicTracks', entry.track, 'track', 'practice track'));
+registerChecks('ceremonySteps', (entry, regs) => known(regs, 'blockingPostures', entry.posture, 'posture', 'posture'));

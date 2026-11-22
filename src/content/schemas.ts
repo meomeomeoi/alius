@@ -15,6 +15,7 @@ import {
   REGARD_SPEEDS, REGION_RANKS, SIGN_KINDS, SURFACE_CONDITIONS,
 } from '../engine/dynamic/types';
 import { FRAMES } from '../engine/blocking/state';
+import { CEREMONY_CHECKS, CHECK_KINDS, EFFECT_NEEDS, PRACTICE_EVENT_TYPES, PRACTICE_KINDS, PROOFS, SEED_AUDIENCE, STAKES } from '../engine/practice/state';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
 import { stripLinks } from './links';
@@ -529,6 +530,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'joke_counted', 'pastime_set', 'temperament_set', 'hobbies_set', 'opinion_set',
   // P15 (the dynamic; the list is `DYNAMIC_EVENT_TYPES`)
   ...DYNAMIC_EVENT_TYPES,
+  // P16 (practices; the list is `PRACTICE_EVENT_TYPES`)
+  ...PRACTICE_EVENT_TYPES,
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1975,6 +1978,8 @@ export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   }).strict(),
   weight: z.number().min(0.1).max(20),
   contentTags,
+  /** P16: a rule that asks for permission (read by field, never by id): the commander asks before something it covers. */
+  asks: z.literal('permission').optional(),
 }).strict();
 
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
@@ -2101,8 +2106,14 @@ export const BookingKindSchema = BaseEntrySchema.extend({
   text: str.max(200).refine((t) => t.includes('{name}'), 'the booking text must contain {name}'),
   /** How much her Want falls when the booking is played. */
   wantRelief: int.min(0).max(100),
-  weight: int.min(1).max(100),
-}).strict();
+  /** P16: a `held` kind is a hold (a practice puts it in the calendar); its weight is 0 so the day step's roll never picks it. */
+  weight: int.min(0).max(100),
+  contentTags,
+  held: z.literal(true).optional(),
+}).strict().superRefine((k, ctx) => {
+  if (k.held === true && k.weight !== 0) ctx.addIssue({ code: 'custom', path: ['weight'], message: 'a held booking kind is never rolled: its weight is 0' });
+  if (k.held !== true && k.weight < 1) ctx.addIssue({ code: 'custom', path: ['weight'], message: 'a booking kind that is rolled has a weight of at least 1' });
+});
 export type BookingKindEntry = z.infer<typeof BookingKindSchema>;
 registrySchemas.bookingKinds = BookingKindSchema;
 
@@ -2368,6 +2379,8 @@ export const DESCRIBED_REGISTRIES = [
   // P15 (`positionRegions` is her wording and is not shown to the player: `PLAYER_VISIBLE` leaves it out)
   'practiceStyles', 'holdBands', 'dynamicFrames', 'dynamicMilestones', 'dynamicDomains', 'dynamicTracks', 'probeAxes', 'positionRegions',
   'aftermaths', 'regardBands', 'dynamicSigns',
+  // P16 (`practiceSeeds` are examples for the model and are not shown to the player: `PLAYER_VISIBLE` leaves them out)
+  'practiceSeeds', 'holderPunishments', 'implements', 'ceremonySteps',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -2927,6 +2940,91 @@ Object.assign(registrySchemas, {
   dynamicDomains: DynamicDomainSchema, dynamicTracks: DynamicTrackSchema, probeAxes: ProbeAxisSchema, positionRegions: PositionRegionSchema,
   aftermaths: AftermathSchema, regardBands: RegardBandSchema, dynamicSigns: DynamicSignSchema,
 });
+
+// ---------------------------------------------------------------------------------------------
+// P16: practices. `AUTHOR TO WRITE`: every text is a draft. The engine reads seeds by `kind` / `tags` / `track` / `tier` / `needs`, punishments
+// by `severity` and `effects[].type`, ceremony steps by `check`, never by id (`engine/practice/state.ts` holds the closed enums). What points
+// into another registry is checked in `refs.ts`.
+
+const stakeEnum = z.enum(STAKES);
+
+/** An example of a practice for the model (not a list the player sees): `gist` is two to six words. */
+export const PracticeSeedSchema = BaseEntrySchema.extend({
+  kind: z.enum(PRACTICE_KINDS),
+  contentTags: z.array(str).min(1),
+  track: str,
+  tier: int.min(1).max(5),
+  gist: str.max(40).refine((g) => g.trim().split(/\s+/).length >= 2 && g.trim().split(/\s+/).length <= 6, 'a gist is two to six words'),
+  stakes: stakeEnum,
+  check: z.enum(CHECK_KINDS).optional(),
+  proof: z.enum(PROOFS).optional(),
+  audience: z.enum(SEED_AUDIENCE).optional(),
+  romantic: z.literal(true).optional(),
+  needs: capabilityEnum.optional(),
+  weight: z.number().min(0.1).max(20),
+  description: str,
+}).strict();
+export type PracticeSeedEntry = z.infer<typeof PracticeSeedSchema>;
+
+const punishmentEffect = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('slot_held'), slots: z.union([z.literal(1), z.literal(2), z.literal('day')]) }).strict(),
+  z.object({ type: z.literal('privilege_revoked'), what: z.enum(['no_dms_others', 'no_free_activities', 'room']), days: int.min(1).max(14) }).strict(),
+  z.object({ type: z.literal('protocol_extra'), days: int.min(1).max(14) }).strict(),
+  z.object({ type: z.literal('cold_shoulder'), days: int.min(1).max(14) }).strict(),
+  z.object({ type: z.literal('confession') }).strict(),
+  z.object({ type: z.literal('mark'), days: int.min(1).max(14) }).strict(),
+  z.object({ type: z.literal('stress'), amount: int.min(1).max(50) }).strict(),
+  z.object({
+    type: z.literal('injury_chance'), chance: z.number().min(0).max(1), perEndurance: z.number().min(0).max(1),
+    perTrained: z.number().refine((n) => n > 0, 'a body route is not enough: `perTrained` must be above 0 (a trained skill lowers the risk too)'), days: int.min(1).max(14),
+  }).strict(),
+  z.object({ type: z.literal('physical') }).strict(),
+  z.object({ type: z.literal('slap') }).strict(),
+]);
+
+/** What a holder does to the commander for an offence: a ladder of five severities, each effect needing the category that makes it allowed. */
+export const HolderPunishmentSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  severity: int.min(1).max(5),
+  effects: z.array(punishmentEffect).min(1),
+  contentTags,
+  public: z.literal(true).optional(),
+  description: str,
+}).strict().superRefine((p, ctx) => {
+  const tags = p.contentTags ?? [];
+  p.effects.forEach((fx, i) => {
+    const needs = EFFECT_NEEDS[fx.type];
+    if (needs.length > 0 && !needs.some((t) => tags.includes(t))) ctx.addIssue({ code: 'custom', path: ['effects', i], message: `the effect "${fx.type}" needs the content tag ${needs.map((t) => `"${t}"`).join(' or ')} on the row` });
+  });
+});
+export type HolderPunishmentEntry = z.infer<typeof HolderPunishmentSchema>;
+
+/** What a holder strikes with (R.2): data only in P16 (nothing reads it yet). */
+export const ImplementSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  contentTags: z.array(str).min(1),
+  force: int.min(1).max(5),
+  mark: z.object({ kind: str, slots: int.min(1).max(12) }).strict(),
+  sound: z.enum(SOUND_IDS).optional(),
+  description: str,
+}).strict();
+export type ImplementEntry = z.infer<typeof ImplementSchema>;
+
+/** One step of a ceremony of punishment (R.4): a chip, words, a number or a posture; the styles that keep it. */
+export const CeremonyStepSchema = BaseEntrySchema.extend({
+  order: int.min(1).max(20),
+  check: z.enum(CEREMONY_CHECKS),
+  posture: str.optional(),
+  styles: z.array(profileStyle).min(1),
+  label: blockLabel,
+  promptHint: blockHint,
+  description: str,
+}).strict().superRefine((c, ctx) => {
+  if ((c.check === 'posture') !== (c.posture !== undefined)) ctx.addIssue({ code: 'custom', path: ['posture'], message: 'a posture step names its posture, and only a posture step does' });
+});
+export type CeremonyStepEntry = z.infer<typeof CeremonyStepSchema>;
+
+Object.assign(registrySchemas, { practiceSeeds: PracticeSeedSchema, holderPunishments: HolderPunishmentSchema, implements: ImplementSchema, ceremonySteps: CeremonyStepSchema });
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

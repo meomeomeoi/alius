@@ -10,7 +10,9 @@ export const CONTENT_GATED_REGISTRIES = ['relationshipRuleTemplates', 'demandTem
   // P15a
   'worshipTargets', 'blockingContacts', 'blockingItems', 'blockingActivities', 'momentSources', 'contactPhysics', 'stimulusKinds',
   // P15
-  'dynamicMilestones', 'aftermaths'] as const satisfies readonly RegistryName[];
+  'dynamicMilestones', 'aftermaths',
+  // P16
+  'practiceSeeds', 'holderPunishments', 'implements', 'bookingKinds'] as const satisfies readonly RegistryName[];
 
 /** Anything the gate can read: a campaign, or a holder with only some of it (a wizard's world choices carry neither). */
 export type ContentHolder = { content?: { enabled: string[] }; squad?: ReadonlyArray<Pick<Unit, 'id' | 'kind' | 'bond'>> };

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "gate_seed",
+    "kind": "task",
+    "contentTags": [
+      "pain_rough"
+    ],
+    "track": "service",
+    "tier": 1,
+    "gist": "a gate example",
+    "stakes": "minor",
+    "weight": 1,
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

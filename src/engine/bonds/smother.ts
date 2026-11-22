@@ -34,7 +34,7 @@ export function startSmother(draft: CampaignState, unitId: string, reg?: Registr
   const events: EngineEvent[] = [{ type: 'smother_started', unitId, untilDay: draft.day + 1 }];
   if (reg) {
     const next = nextSlotAfter(draft.day, draft.slot);
-    const kinds = [...reg.bookingKinds.values()];
+    const kinds = [...reg.bookingKinds.values()].filter((k) => k.held !== true); // P16: a held kind is a hold, never a smother's booking
     const kind = kinds.find((k) => k.slot === next.slot) ?? kinds.find((k) => k.slot === 'evening') ?? kinds[0];
     if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: 'smother' }));
   }

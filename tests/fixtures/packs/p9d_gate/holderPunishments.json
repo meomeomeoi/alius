@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gate_holder_punishment",
+    "label": "Gate",
+    "severity": 2,
+    "effects": [
+      {
+        "type": "slot_held",
+        "slots": 1
+      }
+    ],
+    "contentTags": [
+      "jealousy_games"
+    ],
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

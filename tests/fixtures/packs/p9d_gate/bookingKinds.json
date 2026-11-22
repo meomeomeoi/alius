@@ -1,0 +1,15 @@
+[
+  {
+    "id": "gate_booking",
+    "label": "Gate booking",
+    "description": "AUTHOR TO WRITE: gate.",
+    "slot": "evening",
+    "locationId": "quarters_unit",
+    "contentTags": [
+      "restraint"
+    ],
+    "text": "AUTHOR TO WRITE: gate. — {name}",
+    "wantRelief": 10,
+    "weight": 100
+  }
+]

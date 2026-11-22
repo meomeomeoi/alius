@@ -29,5 +29,19 @@
     "text": "AUTHOR TO WRITE: The roof, this evening. Just the two of us. — {name}",
     "wantRelief": 20,
     "weight": 15
+  },
+  {
+    "id": "held_in_quarters",
+    "label": "Held in her quarters",
+    "description": "AUTHOR TO WRITE: a practice keeps the commander in her quarters; the calendar shows it.",
+    "slot": "evening",
+    "locationId": "quarters_unit",
+    "contentTags": [
+      "restraint"
+    ],
+    "held": true,
+    "text": "AUTHOR TO WRITE: Stay where you are. — {name}",
+    "wantRelief": 10,
+    "weight": 0
   }
 ]

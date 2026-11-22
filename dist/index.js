@@ -1241,7 +1241,113 @@ var TUNING = Object.freeze({
    * P15: mastery per target (R20, spec §15.10): `act` xp for each act on a target, `how` more when her `how` for it is set and the act ended clean; `levels` are the xp
    * that reach level 1 to 5; from `revealLevel` a target she has not corrected is shown without her saying so. `signs`: her last `replies` in the thread within `recentDays` average under `short` or over `long` characters. `AUTHOR TO TUNE`.
    */
-  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]), revealLevel: 2, clean: Object.freeze(["released", "checked"]), signs: Object.freeze({ replies: 3, short: 60, long: 220, recentDays: 2 }) })
+  mastery: Object.freeze({ act: 5, how: 3, levels: Object.freeze([20, 60, 120, 200, 320]), revealLevel: 2, clean: Object.freeze(["released", "checked"]), signs: Object.freeze({ replies: 3, short: 60, long: 220, recentDays: 2 }) }),
+  /**
+   * P16: the practices (R3-R16, spec §1-§11 and the revision of 2026-11-20 §R.12). Every number is `AUTHOR TO TUNE` except the slap windows, the unfairness per day step, the sealed share
+   * and the no-duration share, which are the spec's drafts (R.12) copied as given. `keep`: closed tasks, punishments and demonstrations kept (newest). `frequency`: the daily chance of a new
+   * practice is `base[frame] × the dynamic's frequency × her Want band × her appetite`. `kindWeights` / `taskCap` / `protocolMax` / `stakesCeiling` (by frame) / `deadlineDays` bound what is
+   * issued; `seeds` the candidates handed to the model; `textMax` / `summaryMax` the cuts. `fallback`: the plain line of each kind (`{gist}`); `sealedLine` the envelope, `sealedRecord` the record
+   * line of a sealed accept (`{day}`). `xp`: track xp per kept task (x tier), accepted punishment (x severity), demonstration and hold (x slots). `severity`: stakes rank + 1, plus her style (primary;
+   * the secondary adds `secondaryShare` of it, rounded toward zero), her frame and a repeat (`count` offences within `days`), clamped to `min`..`max`. `repair`: the share of an offence's cost an accepted
+   * punishment gives back. `slap.windowMs`: the time she gives in milliseconds by her primary style (`obsessive` takes the number plus a hashed `obsessiveSpread`); feints from `feintFrom`, `feintPerLevel` a level.
+   */
+  practice: Object.freeze({
+    keep: 30,
+    frequency: Object.freeze({
+      base: Object.freeze({ play: 0.15, role: 0.25, rule: 0.35 }),
+      want: Object.freeze({ calm: 0.8, restless: 1, aching: 1.3, desperate: 1.5 }),
+      appetite: Object.freeze({ craves: 1.4, enjoys: 1, tolerates: 0.6 })
+    }),
+    kindWeights: Object.freeze({ task: 6, protocol: 2, denial: 2, hold: 1, demonstration: 1 }),
+    taskCap: Object.freeze({ play: 1, role: 2, rule: 3 }),
+    protocolMax: Object.freeze({ play: 1, role: 2, rule: 3 }),
+    stakesCeiling: Object.freeze({ play: "minor", role: "major", rule: "severe" }),
+    deadlineDays: Object.freeze({ min: 1, max: 7 }),
+    seeds: Object.freeze({ min: 3, max: 6 }),
+    textMax: 400,
+    summaryMax: 80,
+    fallback: Object.freeze({
+      task: "AUTHOR TO WRITE: {gist}.",
+      punishment: "AUTHOR TO WRITE: {gist}.",
+      demonstration: "AUTHOR TO WRITE: {gist}.",
+      protocol: "AUTHOR TO WRITE: {gist}.",
+      denial: "AUTHOR TO WRITE: {gist}.",
+      hold: "AUTHOR TO WRITE: {gist}."
+    }),
+    sealedLine: "AUTHOR TO WRITE: A sealed envelope, left for the commander.",
+    sealedRecord: "AUTHOR TO WRITE: Signed blank. Day {day}.",
+    chainChance: 0.5,
+    xp: Object.freeze({ kept: 2, discipline: 2, demonstration: 6, hold: 3 }),
+    severity: Object.freeze({
+      style: Object.freeze({ cruel: 1, affectionate: -1 }),
+      secondaryShare: 0.5,
+      frame: Object.freeze({ play: -1, role: 0, rule: 1 }),
+      repeat: Object.freeze({ count: 2, days: 14, add: 1 }),
+      min: 1,
+      max: 5
+    }),
+    repair: 0.5,
+    refuseRecord: 5,
+    coldWant: 5,
+    takeInstead: Object.freeze({ trust: 5, record: 2 }),
+    demonstration: Object.freeze({ hold: 3, seenByChance: 0.2, wantRelief: Object.freeze({ craves: 20, enjoys: 10, tolerates: 5 }) }),
+    verdict: Object.freeze({ favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 }) }),
+    momentGap: Object.freeze({ matched: 2, partial: 0, opposite: -3 }),
+    kindnessAt: 8,
+    refusalAt: -8,
+    denialRelief: 10,
+    hold: Object.freeze({ gain: 2, forgot: Object.freeze({ base: 0.05, cruel: 0.3, impunityBonus: 0.2 }), impunityAt: 60, sensoryVolume: 0.3 }),
+    alarm: Object.freeze({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 }),
+    ask: Object.freeze({ hold: 2, mockRecord: 3 }),
+    posture: Object.freeze({ callChance: 0.15, windowMs: Object.freeze({ ritual: 4e3, drill: 3e3, other: 5e3 }) }),
+    slap: Object.freeze({
+      windowMs: Object.freeze({
+        affectionate: 700,
+        regal: 650,
+        ritual: 550,
+        drill: 550,
+        cold: 500,
+        clinical: 500,
+        possessive: 450,
+        playful: 450,
+        obsessive: 300,
+        vindictive: 350,
+        cruel: 300
+      }),
+      obsessiveSpread: 400,
+      unannounced: 0.3,
+      feintFrom: 2,
+      feintPerLevel: 0.1
+    }),
+    ceremony: Object.freeze({ lowNumber: Object.freeze({ 1: 2, 2: 3, 3: 5, 4: 8, 5: 12 }) }),
+    sealedShare: Object.freeze({
+      affectionate: 0.05,
+      cold: 0.05,
+      ritual: 0.02,
+      clinical: 0.05,
+      possessive: 0.05,
+      playful: 0.15,
+      cruel: 0.25,
+      obsessive: 0.05,
+      drill: 0.05,
+      regal: 0.15,
+      vindictive: 0.25
+    }),
+    noDurationShare: Object.freeze({
+      affectionate: 0.1,
+      cold: 0.1,
+      ritual: 0,
+      clinical: 0.1,
+      possessive: 0.3,
+      playful: 0.1,
+      cruel: 0.3,
+      obsessive: 0.1,
+      drill: 0,
+      regal: 0.1,
+      vindictive: 0.3
+    }),
+    unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 })
+  })
 });
 
 // src/engine/state/types.ts
@@ -6970,6 +7076,299 @@ var DYNAMIC_EVENT_TYPES = [
   // what she keeps and says (review M9): the controller refreshes the lines on them
 ];
 
+// src/engine/dynamic/profile.ts
+var PRACTICE_DEFAULTS = Object.freeze({
+  as: "none",
+  witness: "indifferent",
+  audience: "indifferent",
+  inclination: "none",
+  fairness: "fair",
+  hintStyle: "offers",
+  drive: "moderate"
+});
+var NONE = Object.freeze({ as: "none", witness: "indifferent" });
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var known;
+function knownPracticeCategories() {
+  return known;
+}
+function practiceCategories(reg) {
+  const out = [];
+  for (const t of reg.dynamicTracks.values()) {
+    const c = t.category;
+    if (typeof c === "string" && !out.includes(c)) out.push(c);
+  }
+  known = out;
+  return out;
+}
+function practiceEnabled(reg, enabled) {
+  return enabled !== void 0 && practiceCategories(reg).some((c) => enabled.includes(c));
+}
+function dynamicLive(state, reg) {
+  return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
+}
+function validatePractice(raw, reg) {
+  const issues = [];
+  const dropped = [];
+  if (raw === void 0) return { issues, dropped };
+  if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
+  const pick3 = (field2, allowed, fallback) => {
+    const v = raw[field2];
+    if (v === void 0) return fallback;
+    if (typeof v === "string" && allowed.includes(v)) return v;
+    issues.push(`practice.${field2} must be one of ${allowed.join(", ")}`);
+    return fallback;
+  };
+  const style = raw.style;
+  if (!isObj(style) || typeof style.primary !== "string" || !PROFILE_STYLES.includes(style.primary)) {
+    issues.push(`practice.style.primary must be one of ${PROFILE_STYLES.join(", ")}`);
+    return { issues, dropped };
+  }
+  const primary = style.primary;
+  let secondary;
+  if (style.secondary !== void 0) {
+    if (typeof style.secondary !== "string" || !PROFILE_STYLES.includes(style.secondary)) issues.push(`practice.style.secondary must be one of ${PROFILE_STYLES.join(", ")}`);
+    else if (style.secondary === primary) issues.push("practice.style.secondary is the primary style and was dropped");
+    else secondary = style.secondary;
+  }
+  const categories = {};
+  if (raw.categories !== void 0) {
+    if (!isObj(raw.categories)) issues.push("practice.categories must be an object");
+    else {
+      const practised = practiceCategories(reg);
+      for (const [id, c] of Object.entries(raw.categories)) {
+        if (!reg.contentCategories.has(id) || !practised.includes(id)) {
+          issues.push(reg.contentCategories.has(id) ? `practice names "${id}", which is not a practice category` : `practice names unknown content category "${id}"`);
+          dropped.push(`practice:${id}`);
+          continue;
+        }
+        const entry = isObj(c) ? c : {};
+        if (!isObj(c)) issues.push(`practice.categories.${id} must be an object`);
+        const as = entry.as === void 0 ? PRACTICE_DEFAULTS.as : PRACTICE_AS.includes(entry.as) ? entry.as : (issues.push(`practice.categories.${id}.as must be one of ${PRACTICE_AS.join(", ")}`), PRACTICE_DEFAULTS.as);
+        const witness = entry.witness === void 0 ? PRACTICE_DEFAULTS.witness : WITNESS.includes(entry.witness) ? entry.witness : (issues.push(`practice.categories.${id}.witness must be one of ${WITNESS.join(", ")}`), PRACTICE_DEFAULTS.witness);
+        categories[id] = { as, witness };
+      }
+    }
+  }
+  const practice = {
+    categories,
+    style: secondary === void 0 ? { primary } : { primary, secondary },
+    audience: pick3("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
+    inclination: pick3("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
+    fairness: pick3("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
+    hintStyle: pick3("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
+    drive: pick3("drive", DRIVE, PRACTICE_DEFAULTS.drive)
+  };
+  return { practice, issues, dropped };
+}
+var gone = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
+function practiceOf(state, reg, unitId) {
+  const unit3 = state.squad.find((u) => u.id === unitId);
+  if (unit3 === void 0 || unit3.kind !== "named" || gone(unit3)) return null;
+  const stored = unit3.bond?.practice;
+  if (stored === void 0) return null;
+  const drift = unit3.development?.practice;
+  const on = state.content?.enabled ?? [];
+  const limits = unit3.bond?.ownLimits.categories ?? [];
+  const ids = practiceCategories(reg);
+  const categories = {};
+  const allowed = [];
+  for (const id of ids) {
+    const open3 = on.includes(id) && !limits.includes(id);
+    if (open3) allowed.push(id);
+    categories[id] = open3 ? { ...stored.categories[id] ?? NONE, ...drift?.categories?.[id] } : { ...NONE };
+  }
+  return { ...stored, categories, style: styleOf(unit3), allowed };
+}
+function styleOf(unit3) {
+  const stored = unit3.bond?.practice?.style;
+  if (stored === void 0) return void 0;
+  const secondary = unit3.development?.practice?.secondary ?? stored.secondary;
+  return secondary === void 0 ? { primary: stored.primary } : { primary: stored.primary, secondary };
+}
+function keepLockedPractice(old, next, locks) {
+  const out = structuredClone(next);
+  if (old === void 0) return out;
+  for (const f of locks) {
+    if (f.startsWith("categories.")) {
+      const id = f.slice("categories.".length);
+      if (old.categories[id] !== void 0) out.categories[id] = { ...old.categories[id] };
+      else delete out.categories[id];
+    } else if (f in old) out[f] = structuredClone(old[f]);
+  }
+  return out;
+}
+function mergePractice(have, patch) {
+  const cats = isObj(patch.categories) ? patch.categories : {};
+  return {
+    ...have,
+    ...patch,
+    categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...isObj(c) ? c : {} }])) },
+    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style
+  };
+}
+
+// src/engine/dynamic/state.ts
+function dynamicOf(state, unitId) {
+  return state.relations[unitId]?.dynamic;
+}
+function fnv1a2(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+function dynamicHash(state, unitId, key) {
+  return fnv1a2(`${state.dynamic?.salt ?? 0}|${unitId}|dynamic|${key}|${state.day}`) / 2 ** 32;
+}
+var dynamicSaltOf = (rng) => fnv1a2(JSON.stringify(rng));
+function newDynamicCampaign(salt, setup) {
+  return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
+}
+function blankReading() {
+  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: "devoted", updates: 0 };
+}
+function blankDynamic(day) {
+  return {
+    hold: 0,
+    frame: "equal",
+    domains: [],
+    tracks: {},
+    milestones: [],
+    lastPracticeDay: day,
+    recent: [],
+    favour: 0,
+    readOf: blankReading(),
+    probes: { answers: [], issued: 0 },
+    refusals: [],
+    contest: [],
+    cooldowns: {}
+  };
+}
+
+// src/engine/dynamic/witness.ts
+var AS_ORDER = ["craves", "enjoys", "tolerates"];
+function leadingCategory(state, reg, holderId) {
+  const dyn = dynamicOf(state, holderId);
+  const ranked = Object.entries(dyn?.tracks ?? {}).filter(([, t]) => t.xp > 0).map(([id, t]) => ({ category: reg.dynamicTracks.get(id)?.category, xp: t.xp })).filter((t) => typeof t.category === "string").sort((a, b) => b.xp - a.xp);
+  if (ranked.length > 0) return ranked[0].category;
+  const view = practiceOf(state, reg, holderId);
+  if (view === null) return void 0;
+  for (const as of AS_ORDER) {
+    const found = practiceCategories(reg).find((c) => view.categories[c]?.as === as);
+    if (found !== void 0) return found;
+  }
+  return void 0;
+}
+function witnessOf(state, reg, observerId, holderId) {
+  const category = leadingCategory(state, reg, holderId);
+  if (category === void 0) return "indifferent";
+  return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
+}
+function reactionOf(state, reg, observerId, holderId) {
+  const frame = dynamicOf(state, observerId)?.frame;
+  if (frame !== void 0 && frame !== "equal") {
+    const manner = practiceOf(state, reg, observerId)?.style.primary;
+    if (manner === "ritual" || manner === "cold") return "respects";
+    if (manner === "possessive" || manner === "cruel") return "competes";
+  }
+  return witnessOf(state, reg, observerId, holderId);
+}
+function dynamicRoll(state, unitId, key) {
+  let x = Math.floor(dynamicHash(state, unitId, key) * 2 ** 32) >>> 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 2246822507) >>> 0;
+  x ^= x >>> 13;
+  x = Math.imul(x, 3266489909) >>> 0;
+  x ^= x >>> 16;
+  return (x >>> 0) / 2 ** 32;
+}
+var dislikeScale = null;
+function registerDislikeScale(reader) {
+  dislikeScale = reader;
+}
+var scaleOf = (state, reg, unitId) => dislikeScale?.(state, reg, unitId) ?? 1;
+var protection = null;
+function registerProtection(reader) {
+  protection = reader;
+}
+var protectionShare = (state, reg, unitId) => protection?.(state, reg, unitId) ?? 0;
+function dislikers(state, reg, holderId) {
+  const rows = state.dynamic?.knowledge;
+  if (rows === void 0) return [];
+  return state.squad.filter((u) => rows[u.id]?.[holderId]?.level === "knows_dynamic" && reactionOf(state, reg, u.id, holderId) === "dislikes").map((u) => u.id);
+}
+function dynamicTerm(state, reg, unitId) {
+  const x = state.dynamic;
+  if (x === void 0 || !dynamicLive(state, reg)) return 0;
+  const row4 = x.knowledge[unitId];
+  if (row4 === void 0) return 0;
+  const dislikes = Object.entries(row4).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
+  return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
+}
+function standingMalus(state, reg, holderId) {
+  if (!dynamicLive(state, reg)) return 0;
+  const R4 = TUNING.squadKnowledge.reaction;
+  return Math.min(R4.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R4.dislikesStanding));
+}
+
+// src/engine/practice/state.ts
+var PRACTICE_KINDS = ["task", "punishment", "demonstration", "protocol", "denial", "hold"];
+var STAKES = ["trivial", "minor", "major", "severe"];
+var CHECK_KINDS = ["slot_with_her", "booking_kept", "token_worn", "on_roster", "not_on_roster", "dm_report", "no_scene_with", "rule_kept_until", "model"];
+var PROOFS = ["none", "dm_report", "in_person", "witness"];
+var SEED_AUDIENCE = ["none", "select_few", "any"];
+var CEREMONY_CHECKS = ["chip", "words", "number", "posture"];
+var EFFECT_NEEDS = Object.freeze({
+  slot_held: [],
+  privilege_revoked: [],
+  protocol_extra: [],
+  cold_shoulder: [],
+  stress: [],
+  confession: ["public_humiliation"],
+  mark: ["body_modification"],
+  injury_chance: ["pain_rough", "physical_discipline_shown"],
+  physical: ["physical_discipline_shown"],
+  slap: ["physical_discipline_shown"]
+});
+var PRACTICE_EVENT_TYPES = [
+  "practice_requested",
+  "task_issued",
+  "task_answered",
+  "task_kept",
+  "task_broken",
+  "task_void",
+  "practice_opened",
+  "practice_signed",
+  "punishment_issued",
+  "punishment_answered",
+  "punishment_taken_for",
+  "demonstration_staged",
+  "demonstration_seen",
+  "protocol_set",
+  "routine_kept",
+  "permission_answered",
+  "hold_started",
+  "hold_extended",
+  "hold_released",
+  "hold_alarm",
+  "ask_answered",
+  "favour_kindness",
+  "practice_anticipated",
+  "posture_named",
+  "posture_called",
+  "posture_slip",
+  "slap_started",
+  "slap_dealt",
+  "ceremony_done",
+  "handover_given",
+  "handover_ended",
+  "threat_voiced",
+  "practice_undone"
+];
+
 // src/content/types.ts
 var REGISTRY_NAMES = [
   "roles",
@@ -7099,7 +7498,12 @@ var REGISTRY_NAMES = [
   "positionRegions",
   "aftermaths",
   "regardBands",
-  "dynamicSigns"
+  "dynamicSigns",
+  // P16
+  "practiceSeeds",
+  "holderPunishments",
+  "implements",
+  "ceremonySteps"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7867,7 +8271,9 @@ var RESERVED_EVENT_TYPES = [
   "hobbies_set",
   "opinion_set",
   // P15 (the dynamic; the list is `DYNAMIC_EVENT_TYPES`)
-  ...DYNAMIC_EVENT_TYPES
+  ...DYNAMIC_EVENT_TYPES,
+  // P16 (practices; the list is `PRACTICE_EVENT_TYPES`)
+  ...PRACTICE_EVENT_TYPES
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -9096,7 +9502,9 @@ var RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
     tiers: external_exports.array(external_exports.enum(["romantic", "close"])).min(1).optional()
   }).strict(),
   weight: external_exports.number().min(0.1).max(20),
-  contentTags
+  contentTags,
+  /** P16: a rule that asks for permission (read by field, never by id): the commander asks before something it covers. */
+  asks: external_exports.literal("permission").optional()
 }).strict();
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
 var ReasonLine = external_exports.object({ for: str.max(120), against: str.max(120) }).strict();
@@ -9184,8 +9592,14 @@ var BookingKindSchema = BaseEntrySchema.extend({
   text: str.max(200).refine((t) => t.includes("{name}"), "the booking text must contain {name}"),
   /** How much her Want falls when the booking is played. */
   wantRelief: int.min(0).max(100),
-  weight: int.min(1).max(100)
-}).strict();
+  /** P16: a `held` kind is a hold (a practice puts it in the calendar); its weight is 0 so the day step's roll never picks it. */
+  weight: int.min(0).max(100),
+  contentTags,
+  held: external_exports.literal(true).optional()
+}).strict().superRefine((k, ctx2) => {
+  if (k.held === true && k.weight !== 0) ctx2.addIssue({ code: "custom", path: ["weight"], message: "a held booking kind is never rolled: its weight is 0" });
+  if (k.held !== true && k.weight < 1) ctx2.addIssue({ code: "custom", path: ["weight"], message: "a booking kind that is rolled has a weight of at least 1" });
+});
 registrySchemas.bookingKinds = BookingKindSchema;
 var TokenKindSchema = BaseEntrySchema.extend({
   label: str.max(60).refine((t) => t.includes("{name}"), "the label must contain {name}"),
@@ -9445,7 +9859,12 @@ var DESCRIBED_REGISTRIES = [
   "positionRegions",
   "aftermaths",
   "regardBands",
-  "dynamicSigns"
+  "dynamicSigns",
+  // P16 (`practiceSeeds` are examples for the model and are not shown to the player: `PLAYER_VISIBLE` leaves them out)
+  "practiceSeeds",
+  "holderPunishments",
+  "implements",
+  "ceremonySteps"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -9960,6 +10379,74 @@ Object.assign(registrySchemas, {
   regardBands: RegardBandSchema,
   dynamicSigns: DynamicSignSchema
 });
+var stakeEnum = external_exports.enum(STAKES);
+var PracticeSeedSchema = BaseEntrySchema.extend({
+  kind: external_exports.enum(PRACTICE_KINDS),
+  contentTags: external_exports.array(str).min(1),
+  track: str,
+  tier: int.min(1).max(5),
+  gist: str.max(40).refine((g) => g.trim().split(/\s+/).length >= 2 && g.trim().split(/\s+/).length <= 6, "a gist is two to six words"),
+  stakes: stakeEnum,
+  check: external_exports.enum(CHECK_KINDS).optional(),
+  proof: external_exports.enum(PROOFS).optional(),
+  audience: external_exports.enum(SEED_AUDIENCE).optional(),
+  romantic: external_exports.literal(true).optional(),
+  needs: capabilityEnum.optional(),
+  weight: external_exports.number().min(0.1).max(20),
+  description: str
+}).strict();
+var punishmentEffect = external_exports.discriminatedUnion("type", [
+  external_exports.object({ type: external_exports.literal("slot_held"), slots: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal("day")]) }).strict(),
+  external_exports.object({ type: external_exports.literal("privilege_revoked"), what: external_exports.enum(["no_dms_others", "no_free_activities", "room"]), days: int.min(1).max(14) }).strict(),
+  external_exports.object({ type: external_exports.literal("protocol_extra"), days: int.min(1).max(14) }).strict(),
+  external_exports.object({ type: external_exports.literal("cold_shoulder"), days: int.min(1).max(14) }).strict(),
+  external_exports.object({ type: external_exports.literal("confession") }).strict(),
+  external_exports.object({ type: external_exports.literal("mark"), days: int.min(1).max(14) }).strict(),
+  external_exports.object({ type: external_exports.literal("stress"), amount: int.min(1).max(50) }).strict(),
+  external_exports.object({
+    type: external_exports.literal("injury_chance"),
+    chance: external_exports.number().min(0).max(1),
+    perEndurance: external_exports.number().min(0).max(1),
+    perTrained: external_exports.number().refine((n) => n > 0, "a body route is not enough: `perTrained` must be above 0 (a trained skill lowers the risk too)"),
+    days: int.min(1).max(14)
+  }).strict(),
+  external_exports.object({ type: external_exports.literal("physical") }).strict(),
+  external_exports.object({ type: external_exports.literal("slap") }).strict()
+]);
+var HolderPunishmentSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  severity: int.min(1).max(5),
+  effects: external_exports.array(punishmentEffect).min(1),
+  contentTags,
+  public: external_exports.literal(true).optional(),
+  description: str
+}).strict().superRefine((p, ctx2) => {
+  const tags = p.contentTags ?? [];
+  p.effects.forEach((fx2, i) => {
+    const needs = EFFECT_NEEDS[fx2.type];
+    if (needs.length > 0 && !needs.some((t) => tags.includes(t))) ctx2.addIssue({ code: "custom", path: ["effects", i], message: `the effect "${fx2.type}" needs the content tag ${needs.map((t) => `"${t}"`).join(" or ")} on the row` });
+  });
+});
+var ImplementSchema = BaseEntrySchema.extend({
+  label: blockLabel,
+  contentTags: external_exports.array(str).min(1),
+  force: int.min(1).max(5),
+  mark: external_exports.object({ kind: str, slots: int.min(1).max(12) }).strict(),
+  sound: external_exports.enum(SOUND_IDS).optional(),
+  description: str
+}).strict();
+var CeremonyStepSchema = BaseEntrySchema.extend({
+  order: int.min(1).max(20),
+  check: external_exports.enum(CEREMONY_CHECKS),
+  posture: str.optional(),
+  styles: external_exports.array(profileStyle).min(1),
+  label: blockLabel,
+  promptHint: blockHint,
+  description: str
+}).strict().superRefine((c, ctx2) => {
+  if (c.check === "posture" !== (c.posture !== void 0)) ctx2.addIssue({ code: "custom", path: ["posture"], message: "a posture step names its posture, and only a posture step does" });
+});
+Object.assign(registrySchemas, { practiceSeeds: PracticeSeedSchema, holderPunishments: HolderPunishmentSchema, implements: ImplementSchema, ceremonySteps: CeremonyStepSchema });
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -10204,138 +10691,6 @@ function applyCompaction(draft, c) {
 }
 function fallbackCompaction(entries2) {
   return entries2.map((e) => e.text.trim()).filter(Boolean).join(" ").slice(0, COMPACT_MAX);
-}
-
-// src/engine/dynamic/profile.ts
-var PRACTICE_DEFAULTS = Object.freeze({
-  as: "none",
-  witness: "indifferent",
-  audience: "indifferent",
-  inclination: "none",
-  fairness: "fair",
-  hintStyle: "offers",
-  drive: "moderate"
-});
-var NONE = Object.freeze({ as: "none", witness: "indifferent" });
-var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var known;
-function knownPracticeCategories() {
-  return known;
-}
-function practiceCategories(reg) {
-  const out = [];
-  for (const t of reg.dynamicTracks.values()) {
-    const c = t.category;
-    if (typeof c === "string" && !out.includes(c)) out.push(c);
-  }
-  known = out;
-  return out;
-}
-function practiceEnabled(reg, enabled) {
-  return enabled !== void 0 && practiceCategories(reg).some((c) => enabled.includes(c));
-}
-function dynamicLive(state, reg) {
-  return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
-}
-function validatePractice(raw, reg) {
-  const issues = [];
-  const dropped = [];
-  if (raw === void 0) return { issues, dropped };
-  if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
-  const pick3 = (field2, allowed, fallback) => {
-    const v = raw[field2];
-    if (v === void 0) return fallback;
-    if (typeof v === "string" && allowed.includes(v)) return v;
-    issues.push(`practice.${field2} must be one of ${allowed.join(", ")}`);
-    return fallback;
-  };
-  const style = raw.style;
-  if (!isObj(style) || typeof style.primary !== "string" || !PROFILE_STYLES.includes(style.primary)) {
-    issues.push(`practice.style.primary must be one of ${PROFILE_STYLES.join(", ")}`);
-    return { issues, dropped };
-  }
-  const primary = style.primary;
-  let secondary;
-  if (style.secondary !== void 0) {
-    if (typeof style.secondary !== "string" || !PROFILE_STYLES.includes(style.secondary)) issues.push(`practice.style.secondary must be one of ${PROFILE_STYLES.join(", ")}`);
-    else if (style.secondary === primary) issues.push("practice.style.secondary is the primary style and was dropped");
-    else secondary = style.secondary;
-  }
-  const categories = {};
-  if (raw.categories !== void 0) {
-    if (!isObj(raw.categories)) issues.push("practice.categories must be an object");
-    else {
-      const practised = practiceCategories(reg);
-      for (const [id, c] of Object.entries(raw.categories)) {
-        if (!reg.contentCategories.has(id) || !practised.includes(id)) {
-          issues.push(reg.contentCategories.has(id) ? `practice names "${id}", which is not a practice category` : `practice names unknown content category "${id}"`);
-          dropped.push(`practice:${id}`);
-          continue;
-        }
-        const entry = isObj(c) ? c : {};
-        if (!isObj(c)) issues.push(`practice.categories.${id} must be an object`);
-        const as = entry.as === void 0 ? PRACTICE_DEFAULTS.as : PRACTICE_AS.includes(entry.as) ? entry.as : (issues.push(`practice.categories.${id}.as must be one of ${PRACTICE_AS.join(", ")}`), PRACTICE_DEFAULTS.as);
-        const witness = entry.witness === void 0 ? PRACTICE_DEFAULTS.witness : WITNESS.includes(entry.witness) ? entry.witness : (issues.push(`practice.categories.${id}.witness must be one of ${WITNESS.join(", ")}`), PRACTICE_DEFAULTS.witness);
-        categories[id] = { as, witness };
-      }
-    }
-  }
-  const practice = {
-    categories,
-    style: secondary === void 0 ? { primary } : { primary, secondary },
-    audience: pick3("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
-    inclination: pick3("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
-    fairness: pick3("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
-    hintStyle: pick3("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
-    drive: pick3("drive", DRIVE, PRACTICE_DEFAULTS.drive)
-  };
-  return { practice, issues, dropped };
-}
-var gone = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
-function practiceOf(state, reg, unitId) {
-  const unit3 = state.squad.find((u) => u.id === unitId);
-  if (unit3 === void 0 || unit3.kind !== "named" || gone(unit3)) return null;
-  const stored = unit3.bond?.practice;
-  if (stored === void 0) return null;
-  const drift = unit3.development?.practice;
-  const on = state.content?.enabled ?? [];
-  const limits = unit3.bond?.ownLimits.categories ?? [];
-  const ids = practiceCategories(reg);
-  const categories = {};
-  const allowed = [];
-  for (const id of ids) {
-    const open3 = on.includes(id) && !limits.includes(id);
-    if (open3) allowed.push(id);
-    categories[id] = open3 ? { ...stored.categories[id] ?? NONE, ...drift?.categories?.[id] } : { ...NONE };
-  }
-  return { ...stored, categories, style: styleOf(unit3), allowed };
-}
-function styleOf(unit3) {
-  const stored = unit3.bond?.practice?.style;
-  if (stored === void 0) return void 0;
-  const secondary = unit3.development?.practice?.secondary ?? stored.secondary;
-  return secondary === void 0 ? { primary: stored.primary } : { primary: stored.primary, secondary };
-}
-function keepLockedPractice(old, next, locks) {
-  const out = structuredClone(next);
-  if (old === void 0) return out;
-  for (const f of locks) {
-    if (f.startsWith("categories.")) {
-      const id = f.slice("categories.".length);
-      if (old.categories[id] !== void 0) out.categories[id] = { ...old.categories[id] };
-      else delete out.categories[id];
-    } else if (f in old) out[f] = structuredClone(old[f]);
-  }
-  return out;
-}
-function mergePractice(have, patch) {
-  const cats = isObj(patch.categories) ? patch.categories : {};
-  return {
-    ...have,
-    ...patch,
-    categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...isObj(c) ? c : {} }])) },
-    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style
-  };
 }
 
 // src/engine/bonds/profile.ts
@@ -10793,7 +11148,7 @@ function deedsOf(state) {
 }
 
 // src/engine/hub.ts
-function fnv1a2(s) {
+function fnv1a3(s) {
   let h2 = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h2 ^= s.charCodeAt(i);
@@ -10834,7 +11189,7 @@ function place(state, reg, rooms, unit3) {
   const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit3));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit3.id, roomId: null, reason: "nowhere" };
-  let pick3 = fnv1a2(`${state.day}|${state.slot}|${unit3.id}`) % total2;
+  let pick3 = fnv1a3(`${state.day}|${state.slot}|${unit3.id}`) % total2;
   for (let i = 0; i < rooms.length; i++) {
     if (pick3 < weights[i]) return { unitId: unit3.id, roomId: rooms[i].id, reason: "routine" };
     pick3 -= weights[i];
@@ -11404,112 +11759,6 @@ function rollCountermand(draft, ctx2, req) {
   const { countermandChecked: _skip, ...payload } = req;
   powerOf(draft).countermand = { leaderId: leader.id, unitId, payload, day: draft.day, slot: draft.slot };
   return [{ type: "countermanded", leaderId: leader.id, unitId, activityId: req.activityId }];
-}
-
-// src/engine/dynamic/state.ts
-function dynamicOf(state, unitId) {
-  return state.relations[unitId]?.dynamic;
-}
-function fnv1a3(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-function dynamicHash(state, unitId, key) {
-  return fnv1a3(`${state.dynamic?.salt ?? 0}|${unitId}|dynamic|${key}|${state.day}`) / 2 ** 32;
-}
-var dynamicSaltOf = (rng) => fnv1a3(JSON.stringify(rng));
-function newDynamicCampaign(salt, setup) {
-  return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
-}
-function blankReading() {
-  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: "devoted", updates: 0 };
-}
-function blankDynamic(day) {
-  return {
-    hold: 0,
-    frame: "equal",
-    domains: [],
-    tracks: {},
-    milestones: [],
-    lastPracticeDay: day,
-    recent: [],
-    favour: 0,
-    readOf: blankReading(),
-    probes: { answers: [], issued: 0 },
-    refusals: [],
-    contest: [],
-    cooldowns: {}
-  };
-}
-
-// src/engine/dynamic/witness.ts
-var AS_ORDER = ["craves", "enjoys", "tolerates"];
-function leadingCategory(state, reg, holderId) {
-  const dyn = dynamicOf(state, holderId);
-  const ranked = Object.entries(dyn?.tracks ?? {}).filter(([, t]) => t.xp > 0).map(([id, t]) => ({ category: reg.dynamicTracks.get(id)?.category, xp: t.xp })).filter((t) => typeof t.category === "string").sort((a, b) => b.xp - a.xp);
-  if (ranked.length > 0) return ranked[0].category;
-  const view = practiceOf(state, reg, holderId);
-  if (view === null) return void 0;
-  for (const as of AS_ORDER) {
-    const found = practiceCategories(reg).find((c) => view.categories[c]?.as === as);
-    if (found !== void 0) return found;
-  }
-  return void 0;
-}
-function witnessOf(state, reg, observerId, holderId) {
-  const category = leadingCategory(state, reg, holderId);
-  if (category === void 0) return "indifferent";
-  return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
-}
-function reactionOf(state, reg, observerId, holderId) {
-  const frame = dynamicOf(state, observerId)?.frame;
-  if (frame !== void 0 && frame !== "equal") {
-    const manner = practiceOf(state, reg, observerId)?.style.primary;
-    if (manner === "ritual" || manner === "cold") return "respects";
-    if (manner === "possessive" || manner === "cruel") return "competes";
-  }
-  return witnessOf(state, reg, observerId, holderId);
-}
-function dynamicRoll(state, unitId, key) {
-  let x = Math.floor(dynamicHash(state, unitId, key) * 2 ** 32) >>> 0;
-  x ^= x >>> 16;
-  x = Math.imul(x, 2246822507) >>> 0;
-  x ^= x >>> 13;
-  x = Math.imul(x, 3266489909) >>> 0;
-  x ^= x >>> 16;
-  return (x >>> 0) / 2 ** 32;
-}
-var dislikeScale = null;
-function registerDislikeScale(reader) {
-  dislikeScale = reader;
-}
-var scaleOf = (state, reg, unitId) => dislikeScale?.(state, reg, unitId) ?? 1;
-var protection = null;
-function registerProtection(reader) {
-  protection = reader;
-}
-var protectionShare = (state, reg, unitId) => protection?.(state, reg, unitId) ?? 0;
-function dislikers(state, reg, holderId) {
-  const rows = state.dynamic?.knowledge;
-  if (rows === void 0) return [];
-  return state.squad.filter((u) => rows[u.id]?.[holderId]?.level === "knows_dynamic" && reactionOf(state, reg, u.id, holderId) === "dislikes").map((u) => u.id);
-}
-function dynamicTerm(state, reg, unitId) {
-  const x = state.dynamic;
-  if (x === void 0 || !dynamicLive(state, reg)) return 0;
-  const row4 = x.knowledge[unitId];
-  if (row4 === void 0) return 0;
-  const dislikes = Object.entries(row4).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
-  return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
-}
-function standingMalus(state, reg, holderId) {
-  if (!dynamicLive(state, reg)) return 0;
-  const R4 = TUNING.squadKnowledge.reaction;
-  return Math.min(R4.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R4.dislikesStanding));
 }
 
 // src/engine/discipline/impunity.ts
@@ -12321,7 +12570,7 @@ function rollInitiative(draft, reg, rng) {
 
 // src/engine/bonds/rules.ts
 var R = TUNING.bonds.rules;
-var RELATION_RULE_TAGS = ["jealousy_games", "service"];
+var RELATION_RULE_TAGS = ["jealousy_games", "service", "denial"];
 var rulesOf = (state) => state.bonds?.rules ?? [];
 var activeRules = (state, unitId) => rulesOf(state).filter((r) => r.unitId === unitId && r.status === "active");
 var RULE_EVENT_TYPES = ["rule_kept", "rule_broken", "compromise_reached"];
@@ -12546,7 +12795,12 @@ var CONTENT_GATED_REGISTRIES = [
   "stimulusKinds",
   // P15
   "dynamicMilestones",
-  "aftermaths"
+  "aftermaths",
+  // P16
+  "practiceSeeds",
+  "holderPunishments",
+  "implements",
+  "bookingKinds"
 ];
 var enabledCategories = (state) => state.content?.enabled ?? [];
 var tagsOf = (entry) => {
@@ -13154,7 +13408,7 @@ function misreadChance(state, unit3, subject) {
   return Math.min(TUNING.development.misreadCap, secret ? base * TUNING.development.secretMult : base);
 }
 function misreads(state, unit3, appraisalId, subject) {
-  return fnv1a2(`${unit3.id}|appraisal|${appraisalId}`) / 2 ** 32 < misreadChance(state, unit3, subject);
+  return fnv1a3(`${unit3.id}|appraisal|${appraisalId}`) / 2 ** 32 < misreadChance(state, unit3, subject);
 }
 function flipReading(r) {
   return {
@@ -15577,7 +15831,7 @@ function sharePractice(draft, reg, aId, bId, hobbyId, day) {
 }
 
 // src/engine/headStart/hash.ts
-var headStartRaw = (seed, unitId, key) => fnv1a2(`${seed}|${unitId}|head_start|${key}`);
+var headStartRaw = (seed, unitId, key) => fnv1a3(`${seed}|${unitId}|head_start|${key}`);
 var headStartHash = (seed, unitId, key) => headStartRaw(seed, unitId, key) / 2 ** 32;
 
 // src/engine/headStart/develop.ts
@@ -17984,7 +18238,7 @@ function book(draft, _ctx, p) {
 }
 function bookingKindsFor(state, reg, unitId) {
   const tier = bondTierOf(state, reg, unitId);
-  return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
+  return [...reg.bookingKinds.values()].filter((k) => k.held !== true && (k.tier === void 0 || k.tier === tier) && contentAllowed(state, reg, k, unitId));
 }
 function rollBookings(draft, ctx2) {
   const reg = ctx2.registries;
@@ -19780,7 +20034,7 @@ function startSmother(draft, unitId, reg) {
   const events = [{ type: "smother_started", unitId, untilDay: draft.day + 1 }];
   if (reg) {
     const next = nextSlotAfter(draft.day, draft.slot);
-    const kinds2 = [...reg.bookingKinds.values()];
+    const kinds2 = [...reg.bookingKinds.values()].filter((k) => k.held !== true);
     const kind = kinds2.find((k) => k.slot === next.slot) ?? kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
     if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: "smother" }));
   }
@@ -22583,7 +22837,7 @@ function dig(draft, ctx2, allyId) {
     if (!newest.tags.includes("kompromat")) newest.tags.push("kompromat");
     events.push({ type: "kompromat_found", factId: newest.id });
   } else {
-    const key = fnv1a2(`${draft.day}|${ls.intrigue.seq}`);
+    const key = fnv1a3(`${draft.day}|${ls.intrigue.seq}`);
     const unknown2 = w.expectations.filter((x) => !x.known);
     const left = TUNING.warden.kompromat.lines.filter((line2) => !draft.memory.facts.some((f) => f.about.includes(w.unitId) && f.text === line2));
     if (unknown2.length > 0 && (key % 2 === 0 || left.length === 0)) events.push(...learnExpectation(draft, unknown2[0].id));
@@ -22653,7 +22907,7 @@ function valueWord(reg, x) {
 function fallbackFragment(reg, x, name) {
   const entry = reg.frequencyFragments.get(x.kind);
   const lines = (x.partial ? entry?.subjectOnly : entry?.lines) ?? [];
-  const line2 = lines.length === 0 ? "\u2026{name}\u2026" : lines[fnv1a2(x.id) % lines.length];
+  const line2 = lines.length === 0 ? "\u2026{name}\u2026" : lines[fnv1a3(x.id) % lines.length];
   return line2.replaceAll("{name}", name).replaceAll("{value}", valueWord(reg, x));
 }
 var IMPUNITY_GIST = {
@@ -23775,7 +24029,7 @@ var paranoiaOf = (draft) => specialOf(draft).paranoia ??= newParanoia();
 function openPremonition(state, unitId) {
   return (state.special?.paranoia?.premonitions ?? []).find((p) => p.unitId === unitId && p.acted === void 0 && p.expiresDay >= state.day);
 }
-var leadDays = (unitId, day) => fnv1a2(`${unitId}|${day}`) % T().leadDays + 1;
+var leadDays = (unitId, day) => fnv1a3(`${unitId}|${day}`) % T().leadDays + 1;
 function ledgerSum(state, key) {
   const since = state.day - (T().lookbackDays - 1);
   return (state.ledger ?? []).filter((e) => e.key === key && e.day >= since).reduce((n, e) => n + e.delta, 0);
@@ -23841,7 +24095,7 @@ function warnedInput(state, unitIds) {
 }
 function premonitionLine(reg, p, name) {
   const lines = [...reg.premonitionLines.values()].find((e) => e.about === p.about)?.lines ?? ["{name} is a worry."];
-  return lines[fnv1a2(p.id) % lines.length].replaceAll("{name}", name);
+  return lines[fnv1a3(p.id) % lines.length].replaceAll("{name}", name);
 }
 
 // src/engine/special/paranoia/accusations.ts
@@ -28953,7 +29207,7 @@ function intelOf(state, reg) {
   if (plan) add("plan", plan.id, `The squad plans "${plan.title}".`);
   const named4 = state.squad.filter((u) => u.kind === "named" && isLiving(u) && !seen2.has(`squad:${u.id}`));
   if (named4.length > 0) {
-    const u = named4[fnv1a2(`intel|${state.day}`) % named4.length];
+    const u = named4[fnv1a3(`intel|${state.day}`) % named4.length];
     const role = String(reg.roles.get(u.roleId)?.name ?? u.roleId);
     const defect = u.defects[0] ? String(reg.defects.get(u.defects[0].id)?.name ?? u.defects[0].id) : null;
     add("squad", u.id, `${u.displayName} is a ${role.toLowerCase()}${defect ? ` with ${defect}` : ""}.`);
@@ -29060,7 +29314,7 @@ function pickHandler(state, reg) {
     return serves.length === 0 || serves.includes(corporationId);
   });
   if (pool.length === 0) return null;
-  return { corporationId, handlerId: pool[fnv1a2(JSON.stringify(state.rng)) % pool.length].id };
+  return { corporationId, handlerId: pool[fnv1a3(JSON.stringify(state.rng)) % pool.length].id };
 }
 function rollVisit(draft, ctx2) {
   if (!hasTraitEffect(draft, ctx2.registries, "debts")) return [];
@@ -31325,7 +31579,7 @@ function pickVisitor(state, reg) {
   const scene = state.scene;
   const candidates3 = visitorCandidates(state, reg);
   if (!scene || candidates3.length === 0) return void 0;
-  return candidates3[fnv1a2(`${scene.id}|${scene.exchanges}|visitor`) % candidates3.length];
+  return candidates3[fnv1a3(`${scene.id}|${scene.exchanges}|visitor`) % candidates3.length];
 }
 function fireMoment(draft, ctx2, sourceId, unitId) {
   const reg = ctx2.registries;
@@ -32178,7 +32432,7 @@ registerAction("memory/compact", (draft, payload) => {
 
 // src/engine/memory/rumors.ts
 function hashDay(factId, unitId, span) {
-  return fnv1a2(`${factId}\0${unitId}`) % Math.max(1, span);
+  return fnv1a3(`${factId}\0${unitId}`) % Math.max(1, span);
 }
 var spanOf = (spread2, importance) => {
   const w = TUNING.memory.rumor[spread2];
@@ -32313,7 +32567,7 @@ var behaviours = (reg) => [...reg.dmBehaviours.values()].map((e) => ({
   chance: Number(e.chance),
   ...e.when !== void 0 ? { when: e.when } : {}
 }));
-var passes = (key, chance) => fnv1a2(key) % 1e3 < Math.round(chance * 1e3);
+var passes = (key, chance) => fnv1a3(key) % 1e3 < Math.round(chance * 1e3);
 var namedLiving7 = (state, unitId) => {
   const u = state.squad.find((x) => x.id === unitId);
   return u !== void 0 && u.kind === "named" && isLiving(u) ? u : null;
@@ -33582,7 +33836,7 @@ function pinnedNotes(state, reg) {
   for (const u of state.squad) {
     if (u.kind !== "named" || !accessCan(state, reg, u.id, "notes")) continue;
     const lines = activeRules(state, u.id).map((r) => r.text);
-    if (authored.length > 0) lines.push(authored[fnv1a2(`${state.day}|${u.id}`) % authored.length].replaceAll("{name}", u.displayName));
+    if (authored.length > 0) lines.push(authored[fnv1a3(`${state.day}|${u.id}`) % authored.length].replaceAll("{name}", u.displayName));
     if (lines.length > 0) out.push({ unitId: u.id, lines });
   }
   return out;
@@ -33609,7 +33863,7 @@ function decorDayStep(draft, ctx2) {
       (personalOf(draft).decor ??= {})[u.id] = {
         since: draft.day,
         parts: [...DECOR_PARTS],
-        contactName: names[fnv1a2(u.id) % names.length].replaceAll("{name}", u.displayName)
+        contactName: names[fnv1a3(u.id) % names.length].replaceAll("{name}", u.displayName)
       };
       events.push({ type: "decor_placed", unitId: u.id });
     } else if (access >= 1) {
@@ -34096,7 +34350,7 @@ registerAction("onboarding/guide_dm_sent", (draft) => {
 var NIGHTMARE_KNOCK_KIND = "nightmare_heard";
 function nightmareLine(day) {
   const lines = TUNING.special.paranoia.nightmare.lines;
-  return lines[fnv1a2(`nightmare|${day}`) % lines.length].replace(/^AUTHOR TO WRITE:\s*/, "");
+  return lines[fnv1a3(`nightmare|${day}`) % lines.length].replace(/^AUTHOR TO WRITE:\s*/, "");
 }
 function fondestUnit(draft) {
   const min = TUNING.special.paranoia.nightmare.affinityMin;
@@ -35017,7 +35271,7 @@ function actsFor(state, reg) {
 }
 function countedTarget(state) {
   const scene = state.scene;
-  return 10 + 10 * (fnv1a2(`${scene.id}|${scene.exchanges}|counted`) % 10);
+  return 10 + 10 * (fnv1a3(`${scene.id}|${scene.exchanges}|counted`) % 10);
 }
 function physicsFor(state, reg, kind, holderId) {
   const want = RUNS[kind];
@@ -35109,7 +35363,7 @@ var stillnessOf = (_state) => 0;
 var P2 = TUNING.physics;
 var clamp39 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function rhythmOffset(state, unitId) {
-  return fnv1a2(`${state.life?.salt ?? 0}|${unitId}|rhythm`) % 3;
+  return fnv1a3(`${state.life?.salt ?? 0}|${unitId}|rhythm`) % 3;
 }
 function beatsPerSegment(state, segmentSeconds) {
   return sceneSettingsOf(state).physicsRealtime ? Math.max(1, Math.ceil(segmentSeconds * 1e3 / P2.beatMs)) : P2.turnBeats;
@@ -37587,7 +37841,7 @@ function createPersonal(deps) {
       if (out.kind === "applied") return out.value;
     }
     const lines = [...reg().deviceAccessRules.values()].find((r) => Number(r.level) === 4)?.editLines ?? [];
-    const line2 = lines.length > 0 ? lines[fnv1a2(open3.id) % lines.length] : "{text} \u2014 {name} added this.";
+    const line2 = lines.length > 0 ? lines[fnv1a3(open3.id) % lines.length] : "{text} \u2014 {name} added this.";
     return line2.replaceAll("{text}", original).replaceAll("{name}", unit3?.displayName ?? "She");
   }
   function canIntercept(channel, toUnitId) {
@@ -39953,7 +40207,7 @@ function cssUrl(path) {
 
 // src/ui/voice/voiceCard.ts
 var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
-var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a2(unitId) % UNIT_ACCENTS.length];
+var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a3(unitId) % UNIT_ACCENTS.length];
 function redacted(text2, ranges) {
   const parts = [];
   let cursor = 0;
@@ -42989,7 +43243,7 @@ function handOf(state, reg, unitId) {
   const chosen = unit3.hand === void 0 ? void 0 : reg.handFonts.get(unit3.hand);
   if (chosen) return chosen;
   const all = [...reg.handFonts.values()];
-  return all.length === 0 ? null : all[fnv1a2(unitId) % all.length];
+  return all.length === 0 ? null : all[fnv1a3(unitId) % all.length];
 }
 var handFamily = (hand) => String(hand.family);
 
@@ -44205,7 +44459,7 @@ function quartersOf(state, reg, unitId) {
   const all = [...reg.quartersStyles.values()];
   return all.length === 0 ? null : all[roomHash(unitId) % all.length];
 }
-var roomHash = (unitId) => fnv1a2(`${unitId}|quarters`) >>> 8;
+var roomHash = (unitId) => fnv1a3(`${unitId}|quarters`) >>> 8;
 function slotLight(slot2) {
   return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
 }
@@ -45129,7 +45383,7 @@ function completeCues(pool, reg, physicsId) {
 }
 function pickCue(pool, kind, key) {
   const lines = pool[kind];
-  return lines.length === 0 ? null : lines[fnv1a2(key) % lines.length];
+  return lines.length === 0 ? null : lines[fnv1a3(key) % lines.length];
 }
 var one2 = (s) => s.replace(/[\r\n]+/g, " ");
 registerCallType({
@@ -50392,11 +50646,11 @@ function renderHubDayLine(host, state, reg, unitId) {
 // src/ui/vitals/trace.ts
 var SVG_NS3 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
-var unit2 = (seed, i) => fnv1a2(`${seed}${i}`) % 1e3 / 1e3;
+var unit2 = (seed, i) => fnv1a3(`${seed}${i}`) % 1e3 / 1e3;
 var clamp41 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
-  const blip = fnv1a2(seed) % n;
+  const blip = fnv1a3(seed) % n;
   for (let i = 0; i < n; i++) {
     const noise2 = unit2(seed, i) - 0.5;
     let v;
@@ -51888,7 +52142,7 @@ function stickerFor(state, reg, unitId) {
   if (!unit3 || unit3.kind !== "named" || all.length === 0) return null;
   const likes = new Set(likesOf(unit3).map((l) => l.toLowerCase()));
   const tagged = all.find((e) => (e.likeTags ?? []).some((t) => likes.has(t.toLowerCase())));
-  return tagged ?? all[fnv1a2(unitId) % all.length];
+  return tagged ?? all[fnv1a3(unitId) % all.length];
 }
 function art(entry) {
   if (typeof entry.svg === "string") {
@@ -54992,7 +55246,7 @@ function waveform(id) {
   svg3.setAttribute("class", "alius-wave");
   svg3.setAttribute("aria-hidden", "true");
   for (let i = 0; i < 16; i++) {
-    const height = 3 + fnv1a2(`${id}|${i}`) % 11;
+    const height = 3 + fnv1a3(`${id}|${i}`) % 11;
     const bar2 = document.createElementNS(SVG_NS6, "rect");
     bar2.setAttribute("x", String(i * 4));
     bar2.setAttribute("y", String((16 - height) / 2));
@@ -58534,7 +58788,7 @@ function registerCoreProviders() {
 }
 
 // src/analysis/describe.ts
-var HIDDEN_DESCRIBED = ["physicsCues", "escalationVerbs", "positionRegions"];
+var HIDDEN_DESCRIBED = ["physicsCues", "escalationVerbs", "positionRegions", "practiceSeeds"];
 var PLAYER_VISIBLE = [...DESCRIBED_REGISTRIES.filter((n) => !HIDDEN_DESCRIBED.includes(n)), "glossary"];
 var text = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
 function entryTitle(_registry, entry) {
@@ -63612,6 +63866,9 @@ function effectChecks(entry, regs) {
         return known2(regs, "escalationVerbs", fx2.verb, `${at}.verb`, "escalation verb");
       case "visibility":
         return knownEach(regs, "blockingPostures", fx2.unlessPosture, `${at}.unlessPosture`, "posture");
+      case "rule":
+        return known2(regs, "relationshipRuleTemplates", fx2.template, `${at}.template`, "rule template");
+      // P16: the rule a worn item brings (the chastity device's permission rule)
       default:
         return [];
     }
@@ -63696,6 +63953,8 @@ registerChecks("dynamicMilestones", (entry, regs) => {
   ];
 });
 registerChecks("dynamicTracks", (entry, regs) => known2(regs, "contentCategories", entry.category, "category", "content category"));
+registerChecks("practiceSeeds", (entry, regs) => known2(regs, "dynamicTracks", entry.track, "track", "practice track"));
+registerChecks("ceremonySteps", (entry, regs) => known2(regs, "blockingPostures", entry.posture, "posture", "posture"));
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);

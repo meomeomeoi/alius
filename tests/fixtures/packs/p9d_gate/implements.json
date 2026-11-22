@@ -1,0 +1,15 @@
+[
+  {
+    "id": "gate_implement",
+    "label": "Gate",
+    "contentTags": [
+      "breath_play"
+    ],
+    "force": 1,
+    "mark": {
+      "kind": "redness",
+      "slots": 1
+    },
+    "description": "AUTHOR TO WRITE: gate."
+  }
+]

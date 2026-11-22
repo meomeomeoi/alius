@@ -1,8 +1,8 @@
 import { DESCRIBED_REGISTRIES } from '../content/schemas';
 import type { Entry, Registries, RegistryName } from '../content/types';
 
-/** P15a: described, but never shown to the player (the fallback cue lines and the escalation verbs' prompt words). */
-const HIDDEN_DESCRIBED: readonly RegistryName[] = ['physicsCues', 'escalationVerbs', 'positionRegions'];
+/** P15a: described, but never shown to the player (the fallback cue lines and the escalation verbs' prompt words); P16: the practice seeds (examples for the model). */
+const HIDDEN_DESCRIBED: readonly RegistryName[] = ['physicsCues', 'escalationVerbs', 'positionRegions', 'practiceSeeds'];
 
 /** Registries whose entries the player can see: the ones that carry `description` (less the hidden two), plus the glossary. */
 export const PLAYER_VISIBLE: readonly RegistryName[] = [...DESCRIBED_REGISTRIES.filter((n) => !HIDDEN_DESCRIBED.includes(n)), 'glossary'];
