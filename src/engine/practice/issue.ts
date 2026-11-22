@@ -65,7 +65,7 @@ export function fallbackOutput(state: CampaignState, reg: Registries, request: P
   const ceiling = stakesCeilingOf(state, request.holderId);
   return {
     kind: request.kind, seedId: seed.id, tags: [...seed.contentTags], track: seed.track, tier: seed.tier as ValidOutput['tier'], stakes: stakeRank(seed.stakes) > stakeRank(ceiling) ? ceiling : seed.stakes,
-    check: seed.check ?? 'model', proof: seed.proof ?? 'none', deadline: { days: seed.days ?? TUNING.practice.defaultDeadlineDays }, text: fallbackLine(request.kind, seed.gist), summary: plainSummary(seed),
+    check: seed.check ?? 'model', proof: seed.proof ?? 'none', ...(request.kind === 'task' ? { deadline: { days: seed.days ?? TUNING.practice.defaultDeadlineDays } } : {}), text: fallbackLine(request.kind, seed.gist), summary: plainSummary(seed),
   };
 }
 

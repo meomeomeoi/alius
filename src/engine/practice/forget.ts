@@ -107,7 +107,7 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
  * void (`task_void`, reason `content`), a request whose every candidate seed was tagged with it goes, the hold ends when the booking kind of its own bookings needs it
  * (`hold_released`, bookings cancelled), a slap in progress goes when the category it needs went, and a permission rule that was only proposed goes (an active
  * one is suspended by the bonds layer itself and comes back with the category; her answer to the question does not). No delta, no draw, and a campaign without
- * `practices` is untouched.
+ * `practices` is untouched. Not exported by the package index: call `withdrawAndRepick` (offences.ts), which also re-picks a punishment request whose entry went.
  */
 export function withdrawPractices(draft: CampaignState, reg: Registries, changed: string[]): EngineEvent[] {
   const p = draft.practices;

@@ -75,6 +75,20 @@ describe('the sources', () => {
     });
   }
 
+  it('a rerolled punishment card is no new threat: it does not refresh the window (N1)', () => {
+    const s = live();
+    scene(s, 's1', 3);
+    noteThreat(s, ctxOf(s), [{ type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN, unitId: ANN, severity: 2, offence: 'task_broken' }]);
+    expect(s.practices!.lastThreat).toMatchObject({ exchange: 3 });
+    s.scene!.exchanges = 6;
+    noteThreat(s, ctxOf(s), [{ type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN, unitId: ANN, severity: 2, offence: 'task_broken', rerolled: true }]);
+    expect(s.practices!.lastThreat).toMatchObject({ exchange: 3 }); // still the first issue's exchange
+    const fresh = live();
+    scene(fresh, 's1', 6);
+    noteThreat(fresh, ctxOf(fresh), [{ type: 'punishment_issued', punishmentId: 'pp1', holderId: ANN, unitId: ANN, severity: 2, offence: 'task_broken', rerolled: true }]);
+    expect(fresh.practices?.lastThreat).toBeUndefined();
+  });
+
   it('a non-punitive hold is no threat: nothing moves', () => {
     const s = live();
     readMoments(s, { registries: reg }, [yielded, { type: 'hold_started', holderId: ANN }]);

@@ -65,6 +65,7 @@ export function pendingPunishment(draft: CampaignState, ctx: Pick<EngineCtx, 're
 function publicAudience(draft: CampaignState, reg: Registries, p: OpenPunishment): string[] {
   if (p.public !== true || !(draft.content?.enabled ?? []).includes('public_humiliation')) return [];
   if (practiceOf(draft, reg, p.holderId)?.audience === 'private_only') return [];
+  if (!(draft.scene?.participants ?? []).includes(p.holderId)) return []; // a scene she is not in saw nothing of what was done elsewhere (a DM answer)
   const units = eligibleUnits(draft, p.holderId);
   return (draft.scene?.participants ?? []).filter((id) => units.includes(id)).slice(0, TUNING.practice.punish.publicAudienceMax);
 }

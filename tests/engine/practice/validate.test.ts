@@ -118,6 +118,20 @@ describe('validatePracticeOutput: the table', () => {
     expect(validatePracticeOutput(s, reg, req, valid({ deadline: 'soon' }))!.output.deadline).toEqual({ days: TUNING.practice.defaultDeadlineDays }); // none stated: the default
   });
 
+  it('the default deadline is for a task only: a demonstration card with none has none (N3)', () => {
+    const s = roleWorld();
+    const req = { ...requestFor(s), kind: 'demonstration' as const };
+    const card = { kind: 'demonstration', seedId: 'demo_her_verdict', tags: ['service'], track: 'service', tier: 1, stakes: 'trivial', check: 'model', proof: 'none', audienceIds: [BEA], text: 'Show them.', summary: 'show them' };
+    const r = validatePracticeOutput(s, reg, req, card)!;
+    expect(r).not.toBeNull();
+    expect(r.output).not.toHaveProperty('deadline');
+    expect(r.issues.join('|')).not.toContain('deadline');
+    // a deadline the model states is still clamped, whatever the kind
+    expect(validatePracticeOutput(s, reg, req, { ...card, deadline: { days: 30 } })!.output.deadline).toEqual({ days: 7 });
+    // a task still gets one
+    expect(validatePracticeOutput(s, reg, requestFor(s), valid({ deadline: undefined }))!.output.deadline).toEqual({ days: TUNING.practice.defaultDeadlineDays });
+  });
+
   it('audienceIds with an absent id are filtered; a demonstration left with none is null', () => {
     const s = roleWorld();
     const req = requestFor(s);

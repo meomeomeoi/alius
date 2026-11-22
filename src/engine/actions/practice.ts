@@ -5,9 +5,8 @@ import { registerRestrictionReader } from '../discipline/restrictions';
 import { registerAction, registerAfterAction, registerVoteGate } from '../dispatch';
 import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
-import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
-import { offencesFromEvents, repickPunishmentRequests } from '../practice/offences';
+import { offencesFromEvents, withdrawAndRepick } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
 import { noteThreat } from '../practice/threats';
 import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
@@ -20,11 +19,7 @@ import { registerCommanderRestriction } from '../warden/punish';
 // imported by `src/app.ts` after `actions/dynamic`, so the day step it registers runs after the dynamic's own.
 
 // A content category switched off withdraws every open practice tagged with it, ends a hold that needs it and suspends a denial rule: no deltas.
-registerWithdrawal((draft, reg, changed) => {
-  const events = withdrawPractices(draft, reg, changed);
-  repickPunishmentRequests(draft, reg); // her punishment that was asked for with an entry that went gets another (or none): the offence is kept, the weight too
-  return events;
-});
+registerWithdrawal(withdrawAndRepick); // and her punishment that was asked for with an entry that went gets another (or none): the offence is kept, the weight too
 // What a day does to the practices (R7): fallback of old requests, new requests, expiry; nothing while nobody holds.
 registerDayEndStep('dm_rumors', practiceDayStep);
 // What an event decides about an open task (a scene with her, a booking, a token, a DM, a run): the engine checks of R2.

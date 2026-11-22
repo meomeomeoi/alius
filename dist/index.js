@@ -22533,6 +22533,123 @@ function eligibleUnits(state, holderId) {
   return state.squad.filter((u) => u.kind === "named" && u.id !== holderId && isLiving(u)).map((u) => u.id);
 }
 
+// src/engine/practice/forget.ts
+function holdsPractices(state, unitId) {
+  const p = state.practices;
+  if (p === void 0) return false;
+  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId)) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0;
+}
+var isOpen = (status) => status === "offered" || status === "open" || status === "negotiating" || status === "accepted";
+var tagsOf3 = (entry) => {
+  const tags = entry?.contentTags;
+  return Array.isArray(tags) ? tags.map(String) : [];
+};
+var voided = (taskId, holderId, what, reason) => ({ type: "task_void", taskId, holderId, what, reason });
+function cancelHeld(draft, held3) {
+  const bookings = draft.personal?.bookings;
+  if (bookings === void 0) return;
+  const touched = [];
+  for (const b of bookings) if (held3.bookingIds.includes(b.id) && b.status === "booked") {
+    b.status = "cancelled";
+    touched.push(b);
+  }
+  for (const t of touched) {
+    const same = bookings.filter((b) => b.status === "booked" && b.day === t.day && b.slot === t.slot);
+    for (const b of same) if (same.length > 1) b.conflict = true;
+    else delete b.conflict;
+  }
+}
+function holdKindsOf(draft, reg, held3) {
+  const kinds2 = (draft.personal?.bookings ?? []).filter((b) => held3.bookingIds.includes(b.id)).map((b) => reg.bookingKinds.get(b.kindId));
+  return kinds2.filter((k) => k !== void 0 && k.held === true);
+}
+function endHold(draft, p, reason) {
+  const held3 = p.held;
+  cancelHeld(draft, held3);
+  if (p.alarm !== void 0 && (held3.alarm === p.alarm.id || p.alarm.holderId === held3.by)) delete p.alarm;
+  delete p.held;
+  return { type: "hold_released", holderId: held3.by, reason };
+}
+function endHandover(h2, reason) {
+  return { type: "handover_ended", handoverId: h2.id, holderId: h2.holderId, reason };
+}
+function forgetPractices(draft, unitId) {
+  const p = draft.practices;
+  if (p === void 0 || !holdsPractices(draft, unitId)) return [];
+  const events = [];
+  p.requests = p.requests.filter((r) => r.holderId !== unitId && r.targetUnitId !== unitId);
+  for (const t of p.tasks) if (t.holderId === unitId && isOpen(t.status)) events.push(voided(t.id, unitId, "task", "gone"));
+  p.tasks = p.tasks.filter((t) => t.holderId !== unitId);
+  for (const x of p.punishments) if (x.holderId === unitId && isOpen(x.status)) events.push(voided(x.id, unitId, "punishment", "gone"));
+  p.punishments = p.punishments.filter((x) => x.holderId !== unitId);
+  for (const x of p.demonstrations) if (x.holderId === unitId && (x.status === "offered" || x.status === "open")) events.push(voided(x.id, unitId, "demonstration", "gone"));
+  p.demonstrations = p.demonstrations.filter((x) => x.holderId !== unitId);
+  for (const t of p.tasks) if (t.targetUnitId === unitId && isOpen(t.status)) {
+    t.status = "void";
+    events.push(voided(t.id, t.holderId, "task", "gone"));
+  }
+  for (const x of p.punishments) if (x.forUnitId === unitId && isOpen(x.status)) {
+    x.status = "void";
+    events.push(voided(x.id, x.holderId, "punishment", "gone"));
+  }
+  for (const x of p.demonstrations) x.audienceIds = x.audienceIds.filter((id) => id !== unitId);
+  if (p.held?.by === unitId) events.push(endHold(draft, p, "gone"));
+  if (p.alarm?.holderId === unitId) delete p.alarm;
+  if (p.permission?.holderId === unitId) delete p.permission;
+  p.restrictions = p.restrictions.filter((r) => r.holderId !== unitId);
+  delete p.cold[unitId];
+  delete p.postures[unitId];
+  if (p.call?.holderId === unitId) delete p.call;
+  if (p.slap?.holderId === unitId) delete p.slap;
+  delete p.offences[unitId];
+  if (p.noted !== void 0) p.noted.keys = p.noted.keys.filter((k) => !k.startsWith(`${unitId}|`));
+  p.records = p.records.filter((r) => r.holderId !== unitId);
+  for (const h2 of p.handovers) if (h2.holderId === unitId) events.push(endHandover(h2, "gone"));
+  p.handovers = p.handovers.filter((h2) => h2.holderId !== unitId);
+  if (p.asked?.holderId === unitId) delete p.asked;
+  if (p.unfair !== void 0) {
+    delete p.unfair[unitId];
+    if (Object.keys(p.unfair).length === 0) delete p.unfair;
+  }
+  if (p.lastThreat?.unitId === unitId) delete p.lastThreat;
+  if (p.verdictScene !== void 0) {
+    delete p.verdictScene[unitId];
+    if (Object.keys(p.verdictScene).length === 0) delete p.verdictScene;
+  }
+  return events;
+}
+function withdrawPractices(draft, reg, changed) {
+  const p = draft.practices;
+  if (p === void 0 || changed.length === 0) return [];
+  const events = [];
+  const hit = (tags) => tags.some((t) => changed.includes(t));
+  p.requests = p.requests.filter((r) => r.seedIds.length === 0 || !r.seedIds.every((id) => hit(tagsOf3(reg.practiceSeeds.get(id)))));
+  for (const t of p.tasks) if (isOpen(t.status) && hit(t.tags)) {
+    t.status = "void";
+    events.push(voided(t.id, t.holderId, "task", "content"));
+  }
+  for (const x of p.punishments) if (isOpen(x.status) && hit(tagsOf3(reg.holderPunishments.get(x.entryId)))) {
+    x.status = "void";
+    events.push(voided(x.id, x.holderId, "punishment", "content"));
+  }
+  for (const x of p.demonstrations) if ((x.status === "offered" || x.status === "open") && hit(x.tags)) {
+    x.status = "void";
+    events.push(voided(x.id, x.holderId, "demonstration", "content"));
+  }
+  if (p.held !== void 0 && holdKindsOf(draft, reg, p.held).some((k) => hit(tagsOf3(k)))) events.push(endHold(draft, p, "content"));
+  const enabled = draft.content?.enabled ?? [];
+  const needs = EFFECT_NEEDS.slap;
+  if (p.slap !== void 0 && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;
+  if (p.permission !== void 0) {
+    const rule = draft.bonds?.rules.find((r) => r.id === p.permission.ruleId);
+    if (rule !== void 0 && hit(tagsOf3(reg.relationshipRuleTemplates.get(rule.templateId)))) {
+      if (rule.status === "proposed" || rule.status === "negotiating") delete p.permission;
+      else delete p.permission.asked;
+    } else if (rule === void 0) delete p.permission;
+  }
+  return events;
+}
+
 // src/engine/practice/seeds.ts
 var seedRows = (reg) => [...reg.practiceSeeds.values()];
 function seedPool(state, reg, holderId, kind, opts = {}) {
@@ -22690,6 +22807,11 @@ function repickPunishmentRequests(draft, reg) {
     if (entryId === r.entryId) return [r];
     return [{ ...r, entryId, severity: severityOfEntry(reg, entryId) ?? r.severity }];
   });
+}
+function withdrawAndRepick(draft, reg, changed) {
+  const events = withdrawPractices(draft, reg, changed);
+  repickPunishmentRequests(draft, reg);
+  return events;
 }
 function severityOfEntry(reg, entryId) {
   const sev = reg.holderPunishments.get(entryId)?.severity;
@@ -22988,6 +23110,7 @@ var str3 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 function noteThreat(draft, ctx2, events) {
   for (const e of events) {
     if (!PRACTICE_THREATS.includes(e.type) || !isThreat(e)) continue;
+    if (e.rerolled === true) continue;
     const unitId = str3(e.holderId) ?? str3(e.unitId);
     if (unitId === void 0 || !practiceLive(draft, ctx2.registries, unitId)) continue;
     ensurePractices(draft).lastThreat = { unitId, ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {}, exchange: draft.scene?.exchanges ?? 0, day: draft.day };
@@ -23132,7 +23255,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
     if (days !== raw.deadline.days) issues.push("deadline was clamped");
     deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
-  } else {
+  } else if (request.kind === "task") {
     deadline = { days: seed?.days ?? TUNING.practice.defaultDeadlineDays };
     issues.push("deadline was missing and is the seed's or the default");
   }
@@ -23397,7 +23520,7 @@ function fallbackOutput(state, reg, request) {
     stakes: stakeRank(seed.stakes) > stakeRank(ceiling) ? ceiling : seed.stakes,
     check: seed.check ?? "model",
     proof: seed.proof ?? "none",
-    deadline: { days: seed.days ?? TUNING.practice.defaultDeadlineDays },
+    ...request.kind === "task" ? { deadline: { days: seed.days ?? TUNING.practice.defaultDeadlineDays } } : {},
     text: fallbackLine(request.kind, seed.gist),
     summary: plainSummary(seed)
   };
@@ -23458,6 +23581,7 @@ function pendingPunishment(draft, ctx2, punishmentId) {
 function publicAudience(draft, reg, p) {
   if (p.public !== true || !(draft.content?.enabled ?? []).includes("public_humiliation")) return [];
   if (practiceOf(draft, reg, p.holderId)?.audience === "private_only") return [];
+  if (!(draft.scene?.participants ?? []).includes(p.holderId)) return [];
   const units = eligibleUnits(draft, p.holderId);
   return (draft.scene?.participants ?? []).filter((id) => units.includes(id)).slice(0, TUNING.practice.punish.publicAudienceMax);
 }
@@ -23942,7 +24066,7 @@ function readingOf2(v) {
   const outcome = oneOf(OUTCOMES, v.outcome);
   return wanted2 && initiator && harm && outcome ? { wanted: wanted2, initiator, harm, outcome } : null;
 }
-function tagsOf3(v) {
+function tagsOf4(v) {
   const out = [];
   for (const t of arr(v)) {
     const n = normalizeTag(t);
@@ -24233,7 +24357,7 @@ function validateIntents(raw, ctx2) {
       }
       if (axes.length > 0) intent.valueAxes = axes;
     }
-    const tags = tagsOf3(e.tags);
+    const tags = tagsOf4(e.tags);
     if (tags.length > 0) intent.tags = tags;
     out.events.push(intent);
     if (out.events.length >= (ctx2.maxEvents ?? TUNING.relations.maxEventsPerExchange)) break;
@@ -24249,7 +24373,7 @@ function validateIntents(raw, ctx2) {
       if (about2.length === 0) continue;
     }
     const imp = typeof f.importance === "number" && Number.isFinite(f.importance) ? Math.round(f.importance) : 3;
-    out.facts.push({ about: about2, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf3(f.tags) });
+    out.facts.push({ about: about2, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf4(f.tags) });
   }
   for (const p of arr(raw.proposals)) {
     if (!isObj7(p)) continue;
@@ -24864,123 +24988,6 @@ function forgetDynamic(draft, unitId) {
       events.push({ type: "aftermath_ended", unitId, id: rel.aftermath.id, kind: rel.aftermath.kind, reason: "gone" });
       delete rel.aftermath;
     }
-  }
-  return events;
-}
-
-// src/engine/practice/forget.ts
-function holdsPractices(state, unitId) {
-  const p = state.practices;
-  if (p === void 0) return false;
-  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId)) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0;
-}
-var isOpen = (status) => status === "offered" || status === "open" || status === "negotiating" || status === "accepted";
-var tagsOf4 = (entry) => {
-  const tags = entry?.contentTags;
-  return Array.isArray(tags) ? tags.map(String) : [];
-};
-var voided = (taskId, holderId, what, reason) => ({ type: "task_void", taskId, holderId, what, reason });
-function cancelHeld(draft, held3) {
-  const bookings = draft.personal?.bookings;
-  if (bookings === void 0) return;
-  const touched = [];
-  for (const b of bookings) if (held3.bookingIds.includes(b.id) && b.status === "booked") {
-    b.status = "cancelled";
-    touched.push(b);
-  }
-  for (const t of touched) {
-    const same = bookings.filter((b) => b.status === "booked" && b.day === t.day && b.slot === t.slot);
-    for (const b of same) if (same.length > 1) b.conflict = true;
-    else delete b.conflict;
-  }
-}
-function holdKindsOf(draft, reg, held3) {
-  const kinds2 = (draft.personal?.bookings ?? []).filter((b) => held3.bookingIds.includes(b.id)).map((b) => reg.bookingKinds.get(b.kindId));
-  return kinds2.filter((k) => k !== void 0 && k.held === true);
-}
-function endHold(draft, p, reason) {
-  const held3 = p.held;
-  cancelHeld(draft, held3);
-  if (p.alarm !== void 0 && (held3.alarm === p.alarm.id || p.alarm.holderId === held3.by)) delete p.alarm;
-  delete p.held;
-  return { type: "hold_released", holderId: held3.by, reason };
-}
-function endHandover(h2, reason) {
-  return { type: "handover_ended", handoverId: h2.id, holderId: h2.holderId, reason };
-}
-function forgetPractices(draft, unitId) {
-  const p = draft.practices;
-  if (p === void 0 || !holdsPractices(draft, unitId)) return [];
-  const events = [];
-  p.requests = p.requests.filter((r) => r.holderId !== unitId && r.targetUnitId !== unitId);
-  for (const t of p.tasks) if (t.holderId === unitId && isOpen(t.status)) events.push(voided(t.id, unitId, "task", "gone"));
-  p.tasks = p.tasks.filter((t) => t.holderId !== unitId);
-  for (const x of p.punishments) if (x.holderId === unitId && isOpen(x.status)) events.push(voided(x.id, unitId, "punishment", "gone"));
-  p.punishments = p.punishments.filter((x) => x.holderId !== unitId);
-  for (const x of p.demonstrations) if (x.holderId === unitId && (x.status === "offered" || x.status === "open")) events.push(voided(x.id, unitId, "demonstration", "gone"));
-  p.demonstrations = p.demonstrations.filter((x) => x.holderId !== unitId);
-  for (const t of p.tasks) if (t.targetUnitId === unitId && isOpen(t.status)) {
-    t.status = "void";
-    events.push(voided(t.id, t.holderId, "task", "gone"));
-  }
-  for (const x of p.punishments) if (x.forUnitId === unitId && isOpen(x.status)) {
-    x.status = "void";
-    events.push(voided(x.id, x.holderId, "punishment", "gone"));
-  }
-  for (const x of p.demonstrations) x.audienceIds = x.audienceIds.filter((id) => id !== unitId);
-  if (p.held?.by === unitId) events.push(endHold(draft, p, "gone"));
-  if (p.alarm?.holderId === unitId) delete p.alarm;
-  if (p.permission?.holderId === unitId) delete p.permission;
-  p.restrictions = p.restrictions.filter((r) => r.holderId !== unitId);
-  delete p.cold[unitId];
-  delete p.postures[unitId];
-  if (p.call?.holderId === unitId) delete p.call;
-  if (p.slap?.holderId === unitId) delete p.slap;
-  delete p.offences[unitId];
-  if (p.noted !== void 0) p.noted.keys = p.noted.keys.filter((k) => !k.startsWith(`${unitId}|`));
-  p.records = p.records.filter((r) => r.holderId !== unitId);
-  for (const h2 of p.handovers) if (h2.holderId === unitId) events.push(endHandover(h2, "gone"));
-  p.handovers = p.handovers.filter((h2) => h2.holderId !== unitId);
-  if (p.asked?.holderId === unitId) delete p.asked;
-  if (p.unfair !== void 0) {
-    delete p.unfair[unitId];
-    if (Object.keys(p.unfair).length === 0) delete p.unfair;
-  }
-  if (p.lastThreat?.unitId === unitId) delete p.lastThreat;
-  if (p.verdictScene !== void 0) {
-    delete p.verdictScene[unitId];
-    if (Object.keys(p.verdictScene).length === 0) delete p.verdictScene;
-  }
-  return events;
-}
-function withdrawPractices(draft, reg, changed) {
-  const p = draft.practices;
-  if (p === void 0 || changed.length === 0) return [];
-  const events = [];
-  const hit = (tags) => tags.some((t) => changed.includes(t));
-  p.requests = p.requests.filter((r) => r.seedIds.length === 0 || !r.seedIds.every((id) => hit(tagsOf4(reg.practiceSeeds.get(id)))));
-  for (const t of p.tasks) if (isOpen(t.status) && hit(t.tags)) {
-    t.status = "void";
-    events.push(voided(t.id, t.holderId, "task", "content"));
-  }
-  for (const x of p.punishments) if (isOpen(x.status) && hit(tagsOf4(reg.holderPunishments.get(x.entryId)))) {
-    x.status = "void";
-    events.push(voided(x.id, x.holderId, "punishment", "content"));
-  }
-  for (const x of p.demonstrations) if ((x.status === "offered" || x.status === "open") && hit(x.tags)) {
-    x.status = "void";
-    events.push(voided(x.id, x.holderId, "demonstration", "content"));
-  }
-  if (p.held !== void 0 && holdKindsOf(draft, reg, p.held).some((k) => hit(tagsOf4(k)))) events.push(endHold(draft, p, "content"));
-  const enabled = draft.content?.enabled ?? [];
-  const needs = EFFECT_NEEDS.slap;
-  if (p.slap !== void 0 && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;
-  if (p.permission !== void 0) {
-    const rule = draft.bonds?.rules.find((r) => r.id === p.permission.ruleId);
-    if (rule !== void 0 && hit(tagsOf4(reg.relationshipRuleTemplates.get(rule.templateId)))) {
-      if (rule.status === "proposed" || rule.status === "negotiating") delete p.permission;
-      else delete p.permission.asked;
-    } else if (rule === void 0) delete p.permission;
   }
   return events;
 }
@@ -38563,11 +38570,7 @@ function unitRestrictionOf(state, reg, unitId, use) {
 }
 
 // src/engine/actions/practice.ts
-registerWithdrawal((draft, reg, changed) => {
-  const events = withdrawPractices(draft, reg, changed);
-  repickPunishmentRequests(draft, reg);
-  return events;
-});
+registerWithdrawal(withdrawAndRepick);
 registerDayEndStep("dm_rumors", practiceDayStep);
 registerAfterAction(taskChecksFromEvents);
 registerAfterAction(offencesFromEvents);

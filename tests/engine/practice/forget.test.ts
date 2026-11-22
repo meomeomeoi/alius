@@ -220,6 +220,22 @@ describe('withdrawPractices', () => {
   });
 });
 
+describe('the withdrawal is not callable without the re-pick (N4)', () => {
+  it('the package index does not export the bare withdrawPractices; the exported path re-picks the punishment request', async () => {
+    const index = await import('../../../src/engine/practice');
+    expect('withdrawPractices' in index).toBe(false);
+    expect(typeof index.withdrawAndRepick).toBe('function');
+    const s = world(reg, 'play');
+    s.content = { enabled: ['restraint', 'public_humiliation', 'denial', 'physical_discipline_shown'] };
+    ensurePractices(s).requests.push({
+      id: 'pq9', holderId: ANN, kind: 'punishment', day: 20, seedIds: [], severity: 4, entryId: 'the_slap', offence: { kind: 'task_broken', stakes: 'minor', day: 20 },
+    });
+    s.content = { enabled: ['restraint', 'public_humiliation', 'denial'] };
+    index.withdrawAndRepick(s, reg, ['physical_discipline_shown']);
+    expect(s.practices!.requests.find((r) => r.id === 'pq9')!.entryId).toBe('kept_the_day');
+  });
+});
+
 describe('a punishment request whose entry can no longer be carried out (I1)', () => {
   const ctxOf = (d: CampaignState, r: Registries = reg) => ({ registries: r, rng: new Rng(d.rng) });
   const slapRequest = (s: CampaignState) => {

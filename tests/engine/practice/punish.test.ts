@@ -264,6 +264,16 @@ describe('public execution', () => {
     alone.scene = { id: 's1', day: 20, slot: alone.slot, locationId: 'quarters_commander', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
     expect(px(answer(alone, 'accept').state).audienceIds).toBeUndefined();
   });
+
+  it('a scene that does not hold her is no audience: answered from a DM while others are in a scene, it is private (N2)', () => {
+    const s = withPun('role', 'on_the_record', 3, { public: true });
+    s.scene = { id: 's1', day: 20, slot: s.slot, locationId: 'mess_hall', participants: [BEA, CAT], mode: 'group', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
+    const r = answer(s, 'accept');
+    expect(px(r.state).audienceIds).toBeUndefined();
+    expect(ofType(r.events, 'punishment_answered')[0]).not.toHaveProperty('public');
+    expect(Object.keys(r.state.dynamic?.knowledge[BEA] ?? {})).not.toContain(ANN);
+    expect(Object.keys(r.state.dynamic?.knowledge[CAT] ?? {})).not.toContain(ANN);
+  });
 });
 
 describe('shown or reported', () => {

@@ -17,6 +17,7 @@ const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== 
 export function noteThreat(draft: CampaignState, ctx: EngineCtx, events: readonly EngineEvent[]): EngineEvent[] {
   for (const e of events) {
     if (!PRACTICE_THREATS.includes(e.type) || !isThreat(e)) continue;
+    if (e.rerolled === true) continue; // a reroll words the same punishment again: it is not a second threat, and must not refresh the threat's exchange
     const unitId = str(e.holderId) ?? str(e.unitId);
     if (unitId === undefined || !practiceLive(draft, ctx.registries, unitId)) continue;
     ensurePractices(draft).lastThreat = { unitId, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}), exchange: draft.scene?.exchanges ?? 0, day: draft.day };

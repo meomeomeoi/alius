@@ -13,6 +13,7 @@ import { dynamicOf } from '../dynamic/state';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { eligibleUnits, ensurePractices, practiceLive } from './gate';
+import { withdrawPractices } from './forget';
 import { requestPractice } from './request';
 import { EFFECT_NEEDS, stakeRank, type Offence, type OffenceKind, type PracticeRequest, type PunishmentEffectType, type Stake } from './state';
 
@@ -108,6 +109,16 @@ export function repickPunishmentRequests(draft: CampaignState, reg: Registries):
     if (entryId === r.entryId) return [r];
     return [{ ...r, entryId, severity: severityOfEntry(reg, entryId) ?? r.severity }];
   });
+}
+
+/**
+ * What a content category switched off does to the practices, whole: every open practice tagged with it is withdrawn (`withdrawPractices`, a leaf that cannot ask the content gate) and her
+ * punishment request that was asked for with an entry that went gets another or none (`repickPunishmentRequests`). The one exported path: the bare `withdrawPractices` is not (it would lose the re-pick).
+ */
+export function withdrawAndRepick(draft: CampaignState, reg: Registries, changed: string[]): EngineEvent[] {
+  const events = withdrawPractices(draft, reg, changed);
+  repickPunishmentRequests(draft, reg);
+  return events;
 }
 
 /** The weight a picked entry has (the entry's own: the pick may have come from below the asked one). */
