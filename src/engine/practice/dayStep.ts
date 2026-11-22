@@ -16,7 +16,7 @@ import { TUNING } from '../tuning';
 import { frameRank } from '../blocking/state';
 import { deadlineSweep, falseReportSweep } from './checks';
 import { practiceHolders, practiceLive } from './gate';
-import { closePunishments, coldShoulderWants } from './punish';
+import { closePunishments, coldShoulderWants, orderCandidate, orderPunishment } from './punish';
 import { issuePractice, requestPractice, WRITERS } from './issue';
 import { pickSeeds } from './seeds';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
@@ -105,6 +105,12 @@ function newPractices(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   for (const holderId of practiceHolders(draft, ctx.registries)) {
     if ((draft.practices?.requests ?? []).some((r) => r.holderId === holderId)) continue;
     if (practiceRoll(draft, holderId, 'new') >= newPracticeChance(draft, ctx.registries, holderId)) continue;
+    // with the countermand and a soldier who earned it she may order a punishment through the commander instead (TAKE IT INSTEAD, R8)
+    const soldier = practiceRoll(draft, holderId, 'order') < TUNING.practice.punish.order.share ? orderCandidate(draft, ctx.registries, holderId) : null;
+    if (soldier !== null) {
+      const ordered = orderPunishment(draft, ctx, holderId, soldier);
+      if (ordered.length > 0) { events.push(...ordered); continue; }
+    }
     const kinds = kindsToday(draft, ctx.registries, holderId);
     if (kinds.length === 0) continue;
     const weights = kinds.map((k) => TUNING.practice.kindWeights[k as keyof typeof TUNING.practice.kindWeights] ?? 0);

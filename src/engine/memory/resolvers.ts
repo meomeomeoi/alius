@@ -453,3 +453,12 @@ registerMemoryResolver('punishment_answered', (draft, event) => {
   const present = strs(event.present);
   return { ids: { her: [her.id], present: present.length > 0 ? present : [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', public: yes(event.public === true), what: str(event.summary) ?? 'something' } };
 }, { ids: ['her', 'present'], vars: ['name', 'answer', 'public', 'what'] });
+
+// the practices (P16, R8): the commander took a punishment instead of the soldier she ordered it for; the ones present and the spared soldier remember it, and it spreads slowly
+registerMemoryResolver('punishment_taken_for', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  const spared = subjectOf(draft, event.sparedId);
+  if (!her || !spared) return null;
+  const present = strs(event.present);
+  return { ids: { her: [her.id], spared: [spared.id], present: present.length > 0 ? present : [her.id, spared.id] }, vars: { name: her.name, spared: spared.name, what: str(event.summary) ?? 'something' } };
+}, { ids: ['her', 'spared', 'present'], vars: ['name', 'spared', 'what'] });

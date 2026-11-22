@@ -1234,5 +1234,22 @@
       "practice",
       "punishment_public"
     ]
+  },
+  {
+    "id": "punishment_taken_for",
+    "event": "punishment_taken_for",
+    "text": "AUTHOR TO WRITE: The commander took the punishment {name} had ordered for {spared}: {what}.",
+    "importance": 4,
+    "about": "her",
+    "audience": [
+      "present",
+      "spared"
+    ],
+    "spread": "slow",
+    "tags": [
+      "dynamic",
+      "practice",
+      "punishment_taken_for"
+    ]
   }
 ]

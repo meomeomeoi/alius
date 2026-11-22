@@ -5,9 +5,12 @@
  * Nothing here draws: the injury roll is `practiceRoll`.
  */
 import type { Entry, Registries } from '../../content/types';
+import { countDeed } from '../discipline/deeds';
+import { applyPunishment, checkPunish } from '../discipline/punish';
 import { addRecord } from '../discipline/record';
 import { injureCommander } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
 import { addSign } from '../dynamic/knowledge';
 import { refusalCost } from '../dynamic/milestones';
@@ -15,6 +18,7 @@ import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { raiseWant } from '../bonds/want';
+import { isLiving } from '../economy';
 import { hitHer } from '../personal/events';
 import { personalOf } from '../personal/state';
 import type { EventIntent } from '../relations/intents';
@@ -224,5 +228,102 @@ export function coldShoulderWants(draft: CampaignState): EngineEvent[] {
   for (const [holderId, until] of Object.entries(draft.practices?.cold ?? {})) {
     if (until >= draft.day && dynamicOf(draft, holderId) !== undefined) events.push(...raiseWant(draft, holderId, TUNING.practice.coldWant, 'cold_shoulder'));
   }
+  return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// TAKE IT INSTEAD (R8): her order to punish a soldier, and the commander taking it for her
+
+/** The measure of P9 she asks for: the lowest-severity one that can be imposed on the soldier now (registry order within a severity), or null. Reads only. */
+function orderedMeasure(state: CampaignState, reg: Registries, soldierId: string): string | null {
+  const rows = [...reg.punishments.values()].map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i);
+  const found = rows.find(({ e }) => checkPunish(state, reg, soldierId, String(e.id)) === null);
+  return found === undefined ? null : String(found.e.id);
+}
+
+/**
+ * The soldier she would have punished, or null: she holds the countermand, the soldier is a living named unit other than her, has a defiance nobody has answered
+ * (`discipline.defiance`) and has no order of hers open. The first in squad order. Reads only.
+ */
+export function orderCandidate(state: CampaignState, reg: Registries, holderId: string): string | null {
+  if (!practiceLive(state, reg, holderId) || !hasCapability(state, reg, holderId, 'countermand')) return null;
+  const open = (state.practices?.punishments ?? []).filter((p) => p.holderId === holderId && p.forUnitId !== undefined && p.status === 'offered').map((p) => p.forUnitId);
+  const pending = (state.discipline?.defiance ?? []).map((d) => d.unitId);
+  const soldier = state.squad.find((u) => u.kind === 'named' && u.id !== holderId && isLiving(u) && pending.includes(u.id) && !open.includes(u.id));
+  return soldier !== undefined && orderedMeasure(state, reg, soldier.id) !== null ? soldier.id : null;
+}
+
+/** Her order to punish a soldier (`orderPunishment`, R8): an open punishment with `forUnitId`, the lowest P9 measure that can be imposed, her words from the tuning. `punishment_issued` says it. Nothing unless `orderCandidate` names that soldier. */
+export function orderPunishment(draft: CampaignState, ctx: EngineCtx, holderId: string, soldierId: string): EngineEvent[] {
+  const reg = ctx.registries;
+  if (orderCandidate(draft, reg, holderId) !== soldierId) return [];
+  const measure = orderedMeasure(draft, reg, soldierId);
+  if (measure === null) return [];
+  const row = reg.punishments.get(measure)!;
+  const severity = Math.min(5, Math.max(1, Number(row.severity))) as OpenPunishment['severity'];
+  const soldier = draft.squad.find((u) => u.id === soldierId)!.displayName;
+  const O = TUNING.practice.punish.order;
+  const id = nextPracticeId(draft, 'pp');
+  const label = String(row.label);
+  ensurePractices(draft).punishments.push({
+    id, holderId, entryId: measure, severity, offence: { kind: 'refusal', ref: `order:${soldierId}`, stakes: 'minor', day: draft.day }, text: O.text.replaceAll('{soldier}', soldier).replaceAll('{what}', label.toLowerCase()),
+    summary: O.summary.replaceAll('{soldier}', soldier).replaceAll('{what}', label.toLowerCase()), plain: true, status: 'offered', forUnitId: soldierId, day: draft.day, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}),
+  });
+  return [{ type: 'punishment_issued', punishmentId: id, holderId, unitId: holderId, severity, offence: 'refusal', forUnitId: soldierId, order: true, plain: true }];
+}
+
+/** The order of hers that waits for the commander's answer; throws for one that is gone, answered, not an order or hers while she is not holding. */
+function pendingOrder(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, punishmentId: string): OpenPunishment {
+  const p = draft.practices?.punishments.find((x) => x.id === punishmentId);
+  if (p === undefined || p.forUnitId === undefined) throw new Error('That order is gone.');
+  if (!practiceLive(draft, ctx.registries, p.holderId)) throw new Error('She is not holding now.');
+  if (p.status !== 'offered') throw new Error('That order has been answered.');
+  const soldier = draft.squad.find((u) => u.id === p.forUnitId);
+  if (soldier === undefined || !isLiving(soldier)) throw new Error('That soldier is no longer in service.');
+  return p;
+}
+
+/**
+ * The commander answers her order about a soldier (`practice/take_instead`). DO IT imposes the P9 measure on the soldier (an application P9's UNDO can take back); TAKE IT INSTEAD spares the
+ * soldier (`spared_for`: her Trust +5), counts the deed `protected`, gives the commander a punishment of hers of the same weight (offered), raises the Record of each named unit at base and
+ * says it (`punishment_taken_for`, remembered by those present and the soldier); REFUSE is a refusal of her order (`overrode_her`, minor, on her).
+ */
+export function takeInstead(draft: CampaignState, ctx: EngineCtx, punishmentId: string, answer: 'do_it' | 'take_it' | 'refuse'): EngineEvent[] {
+  const reg = ctx.registries;
+  const p = pendingOrder(draft, ctx, punishmentId);
+  const holderId = p.holderId;
+  const soldierId = p.forUnitId!;
+  p.answeredDay = draft.day;
+  const answered = (a: string): EngineEvent => ({ type: 'punishment_answered', punishmentId: p.id, unitId: holderId, holderId, answer: a, severity: p.severity, forUnitId: soldierId });
+  if (answer === 'refuse') {
+    p.status = 'refused';
+    return [answered('refuse'), ...hitHer(draft, reg, holderId, 'overrode_her', 'minor', 'refused her order', { amplified: true })];
+  }
+  if (answer === 'do_it') {
+    // a dialogue application, so that P9's UNDO can take it back (a menu one cannot); it is the day's, in a DM
+    const done = applyPunishment(draft, ctx, { unitId: soldierId, measure: p.entryId, source: 'dialogue', channel: 'dm' });
+    p.status = 'done';
+    return [answered('do_it'), ...done];
+  }
+  if (answer !== 'take_it') throw new Error('Unknown answer.');
+  p.status = 'done';
+  const events: EngineEvent[] = [answered('take_it')];
+  events.push(...hitHer(draft, reg, soldierId, 'spared_for', 'minor', 'was spared by the commander'));
+  countDeed(draft, 'protected');
+  const here = (draft.scene?.participants ?? []).filter((id) => id !== holderId);
+  const named = draft.squad.filter((u) => u.kind === 'named' && isLiving(u) && !(draft.expedition?.party ?? []).includes(u.id));
+  for (const u of named) events.push(...addRecord(draft, u.id, TUNING.practice.takeInstead.record, 'took_it'));
+  const entryId = pickHolderPunishment(draft, reg, holderId, p.severity);
+  if (entryId !== null) {
+    const entry = reg.holderPunishments.get(entryId)!;
+    const label = String(entry.label);
+    const id = nextPracticeId(draft, 'pp');
+    ensurePractices(draft).punishments.push({
+      id, holderId, entryId, severity: severityOfEntry(reg, entryId) ?? p.severity, offence: p.offence, text: fallbackLine('punishment', label), summary: label, plain: true, status: 'offered',
+      ...(entry.public === true ? { public: true as const } : {}), day: draft.day, ...(draft.scene !== undefined ? { sceneId: draft.scene.id } : {}),
+    });
+    events.push({ type: 'punishment_issued', punishmentId: id, holderId, unitId: holderId, severity: severityOfEntry(reg, entryId) ?? p.severity, offence: p.offence.kind });
+  }
+  events.push({ type: 'punishment_taken_for', punishmentId: p.id, unitId: holderId, holderId, sparedId: soldierId, present: [...new Set([holderId, soldierId, ...here])], summary: p.summary });
   return events;
 }

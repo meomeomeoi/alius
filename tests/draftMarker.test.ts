@@ -277,6 +277,7 @@ describe('facts', () => {
     practice_signed: { type: 'practice_signed', taskId: 'pt1', unitId: ANN, summary: 'carry the roster' },
     false_report_found: { type: 'task_broken', taskId: 'pt1', unitId: ANN, falseReport: true, summary: 'keep Bea off the run' },
     punishment_given: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', summary: 'a day without messages' },
+    punishment_taken_for: { type: 'punishment_taken_for', punishmentId: 'pp1', unitId: ANN, sparedId: BEA, present: [ANN, BEA, CAT], summary: 'a day without leave for Bea' },
     punishment_public: { type: 'punishment_answered', punishmentId: 'pp1', unitId: ANN, answer: 'accept', public: true, present: [ANN, BEA], summary: 'read out before her friends' },
   });
 

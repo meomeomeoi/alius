@@ -23385,6 +23385,102 @@ function coldShoulderWants(draft) {
   }
   return events;
 }
+function orderedMeasure(state, reg, soldierId) {
+  const rows = [...reg.punishments.values()].map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i);
+  const found = rows.find(({ e }) => checkPunish(state, reg, soldierId, String(e.id)) === null);
+  return found === void 0 ? null : String(found.e.id);
+}
+function orderCandidate(state, reg, holderId) {
+  if (!practiceLive(state, reg, holderId) || !hasCapability(state, reg, holderId, "countermand")) return null;
+  const open3 = (state.practices?.punishments ?? []).filter((p) => p.holderId === holderId && p.forUnitId !== void 0 && p.status === "offered").map((p) => p.forUnitId);
+  const pending4 = (state.discipline?.defiance ?? []).map((d) => d.unitId);
+  const soldier = state.squad.find((u) => u.kind === "named" && u.id !== holderId && isLiving(u) && pending4.includes(u.id) && !open3.includes(u.id));
+  return soldier !== void 0 && orderedMeasure(state, reg, soldier.id) !== null ? soldier.id : null;
+}
+function orderPunishment(draft, ctx2, holderId, soldierId) {
+  const reg = ctx2.registries;
+  if (orderCandidate(draft, reg, holderId) !== soldierId) return [];
+  const measure = orderedMeasure(draft, reg, soldierId);
+  if (measure === null) return [];
+  const row4 = reg.punishments.get(measure);
+  const severity = Math.min(5, Math.max(1, Number(row4.severity)));
+  const soldier = draft.squad.find((u) => u.id === soldierId).displayName;
+  const O = TUNING.practice.punish.order;
+  const id = nextPracticeId(draft, "pp");
+  const label2 = String(row4.label);
+  ensurePractices(draft).punishments.push({
+    id,
+    holderId,
+    entryId: measure,
+    severity,
+    offence: { kind: "refusal", ref: `order:${soldierId}`, stakes: "minor", day: draft.day },
+    text: O.text.replaceAll("{soldier}", soldier).replaceAll("{what}", label2.toLowerCase()),
+    summary: O.summary.replaceAll("{soldier}", soldier).replaceAll("{what}", label2.toLowerCase()),
+    plain: true,
+    status: "offered",
+    forUnitId: soldierId,
+    day: draft.day,
+    ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {}
+  });
+  return [{ type: "punishment_issued", punishmentId: id, holderId, unitId: holderId, severity, offence: "refusal", forUnitId: soldierId, order: true, plain: true }];
+}
+function pendingOrder(draft, ctx2, punishmentId) {
+  const p = draft.practices?.punishments.find((x) => x.id === punishmentId);
+  if (p === void 0 || p.forUnitId === void 0) throw new Error("That order is gone.");
+  if (!practiceLive(draft, ctx2.registries, p.holderId)) throw new Error("She is not holding now.");
+  if (p.status !== "offered") throw new Error("That order has been answered.");
+  const soldier = draft.squad.find((u) => u.id === p.forUnitId);
+  if (soldier === void 0 || !isLiving(soldier)) throw new Error("That soldier is no longer in service.");
+  return p;
+}
+function takeInstead(draft, ctx2, punishmentId, answer) {
+  const reg = ctx2.registries;
+  const p = pendingOrder(draft, ctx2, punishmentId);
+  const holderId = p.holderId;
+  const soldierId = p.forUnitId;
+  p.answeredDay = draft.day;
+  const answered = (a) => ({ type: "punishment_answered", punishmentId: p.id, unitId: holderId, holderId, answer: a, severity: p.severity, forUnitId: soldierId });
+  if (answer === "refuse") {
+    p.status = "refused";
+    return [answered("refuse"), ...hitHer(draft, reg, holderId, "overrode_her", "minor", "refused her order", { amplified: true })];
+  }
+  if (answer === "do_it") {
+    const done = applyPunishment(draft, ctx2, { unitId: soldierId, measure: p.entryId, source: "dialogue", channel: "dm" });
+    p.status = "done";
+    return [answered("do_it"), ...done];
+  }
+  if (answer !== "take_it") throw new Error("Unknown answer.");
+  p.status = "done";
+  const events = [answered("take_it")];
+  events.push(...hitHer(draft, reg, soldierId, "spared_for", "minor", "was spared by the commander"));
+  countDeed(draft, "protected");
+  const here = (draft.scene?.participants ?? []).filter((id) => id !== holderId);
+  const named4 = draft.squad.filter((u) => u.kind === "named" && isLiving(u) && !(draft.expedition?.party ?? []).includes(u.id));
+  for (const u of named4) events.push(...addRecord(draft, u.id, TUNING.practice.takeInstead.record, "took_it"));
+  const entryId = pickHolderPunishment(draft, reg, holderId, p.severity);
+  if (entryId !== null) {
+    const entry = reg.holderPunishments.get(entryId);
+    const label2 = String(entry.label);
+    const id = nextPracticeId(draft, "pp");
+    ensurePractices(draft).punishments.push({
+      id,
+      holderId,
+      entryId,
+      severity: severityOfEntry(reg, entryId) ?? p.severity,
+      offence: p.offence,
+      text: fallbackLine("punishment", label2),
+      summary: label2,
+      plain: true,
+      status: "offered",
+      ...entry.public === true ? { public: true } : {},
+      day: draft.day,
+      ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {}
+    });
+    events.push({ type: "punishment_issued", punishmentId: id, holderId, unitId: holderId, severity: severityOfEntry(reg, entryId) ?? p.severity, offence: p.offence.kind });
+  }
+  events.push({ type: "punishment_taken_for", punishmentId: p.id, unitId: holderId, holderId, sparedId: soldierId, present: [.../* @__PURE__ */ new Set([holderId, soldierId, ...here])], summary: p.summary });
+  return events;
+}
 
 // src/engine/practice/intents.ts
 var PRACTICE_ROW_IS_CONDITIONAL = PRACTICE_INTENT_TYPES;
@@ -31715,6 +31811,13 @@ registerMemoryResolver("punishment_answered", (draft, event) => {
   const present2 = strs(event.present);
   return { ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id] }, vars: { name: her.name, answer: str3(event.answer) ?? "", public: yes(event.public === true), what: str3(event.summary) ?? "something" } };
 }, { ids: ["her", "present"], vars: ["name", "answer", "public", "what"] });
+registerMemoryResolver("punishment_taken_for", (draft, event) => {
+  const her = subjectOf3(draft, event.unitId);
+  const spared = subjectOf3(draft, event.sparedId);
+  if (!her || !spared) return null;
+  const present2 = strs(event.present);
+  return { ids: { her: [her.id], spared: [spared.id], present: present2.length > 0 ? present2 : [her.id, spared.id] }, vars: { name: her.name, spared: spared.name, what: str3(event.summary) ?? "something" } };
+}, { ids: ["her", "spared", "present"], vars: ["name", "spared", "what"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -38139,6 +38242,14 @@ function newPractices(draft, ctx2) {
   for (const holderId of practiceHolders(draft, ctx2.registries)) {
     if ((draft.practices?.requests ?? []).some((r) => r.holderId === holderId)) continue;
     if (practiceRoll(draft, holderId, "new") >= newPracticeChance(draft, ctx2.registries, holderId)) continue;
+    const soldier = practiceRoll(draft, holderId, "order") < TUNING.practice.punish.order.share ? orderCandidate(draft, ctx2.registries, holderId) : null;
+    if (soldier !== null) {
+      const ordered = orderPunishment(draft, ctx2, holderId, soldier);
+      if (ordered.length > 0) {
+        events.push(...ordered);
+        continue;
+      }
+    }
     const kinds2 = kindsToday(draft, ctx2.registries, holderId);
     if (kinds2.length === 0) continue;
     const weights = kinds2.map((k) => TUNING.practice.kindWeights[k] ?? 0);
@@ -38229,6 +38340,10 @@ registerAction("practice/report", (draft, payload, ctx2) => {
 registerAction("practice/answer_punishment", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.punishmentId !== "string" || payload.answer !== "accept" && payload.answer !== "negotiate" && payload.answer !== "refuse") throw new Error("practice/answer_punishment needs { punishmentId, answer }.");
   return answerPunishment(draft, ctx2, payload.punishmentId, payload.answer);
+});
+registerAction("practice/take_instead", (draft, payload, ctx2) => {
+  if (!isObj40(payload) || typeof payload.punishmentId !== "string" || payload.answer !== "do_it" && payload.answer !== "take_it" && payload.answer !== "refuse") throw new Error("practice/take_instead needs { punishmentId, answer }.");
+  return takeInstead(draft, ctx2, payload.punishmentId, payload.answer);
 });
 
 // src/llm/callTypes.ts

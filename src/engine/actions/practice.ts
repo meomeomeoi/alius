@@ -7,7 +7,7 @@ import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
 import { offencesFromEvents } from '../practice/offences';
-import { answerPunishment } from '../practice/punish';
+import { answerPunishment, takeInstead } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
@@ -63,4 +63,10 @@ registerAction('practice/report', (draft, payload, ctx) => {
 registerAction('practice/answer_punishment', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.punishmentId !== 'string' || (payload.answer !== 'accept' && payload.answer !== 'negotiate' && payload.answer !== 'refuse')) throw new Error('practice/answer_punishment needs { punishmentId, answer }.');
   return answerPunishment(draft, ctx, payload.punishmentId, payload.answer);
+});
+
+/** `practice/take_instead { punishmentId, answer }`: DO IT, TAKE IT INSTEAD or REFUSE on her order to punish a soldier (R8). */
+registerAction('practice/take_instead', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.punishmentId !== 'string' || (payload.answer !== 'do_it' && payload.answer !== 'take_it' && payload.answer !== 'refuse')) throw new Error('practice/take_instead needs { punishmentId, answer }.');
+  return takeInstead(draft, ctx, payload.punishmentId, payload.answer);
 });
