@@ -1,4 +1,5 @@
 import type { CampaignState, GenerationRecord } from '../engine/state/types';
+import { PRACTICE_KINDS } from '../engine/practice/state';
 import type { CallTypeId } from './callTypes';
 
 // P14: a site is one place that asks for a generation and applies its result. This module is data only: the declarations of every
@@ -91,6 +92,6 @@ declare('opinion.form', 'opinion_form', 'scene', 'none', 'quiet', 'Her opinion')
 // P15a: her cue lines are display text, asked for once when a hold starts (the registry stands in); nothing is worth a reroll
 declare('physics.cues', 'physics_cues', 'scene', 'none', 'quiet', 'Her cues');
 // P16: what a holder asks of the commander, one site per kind (key = the request id): a card can be reworded until the commander has answered it
-for (const kind of ['task', 'punishment', 'demonstration', 'protocol', 'denial', 'hold']) declare(`practice.${kind}`, 'practice_generate', 'comms', 'before_commit', 'full', 'Her practice');
+for (const kind of PRACTICE_KINDS) declare(`practice.${kind}`, 'practice_generate', 'comms', 'before_commit', 'full', 'Her practice');
 declare('setup.commander_import', 'commander_import', 'setup', 'before_commit', 'none', 'Commander import');
 declare('sys.ping', 'ping', 'sys', 'none', 'none', 'Connection test');

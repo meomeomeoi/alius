@@ -77,9 +77,9 @@ export type SlapResult = (typeof SLAP_RESULTS)[number];
 export const CEREMONY_CHECKS = ['chip', 'words', 'number', 'posture'] as const;
 export type CeremonyCheck = (typeof CEREMONY_CHECKS)[number];
 
-/** What a punishment effect needs switched on (the schema refuses an effect whose tag is not in the row's `contentTags`; one of `any` is enough). */
+/** What a punishment effect needs switched on (the schema refuses an effect whose tag is not in the row's `contentTags`; one of `any` is enough). A held slot is a restrained one: the hold it starts is a `restraint` booking, which goes with the category. */
 export const EFFECT_NEEDS: Readonly<Record<PunishmentEffectType, readonly string[]>> = Object.freeze({
-  slot_held: [], privilege_revoked: [], protocol_extra: [], cold_shoulder: [], stress: [],
+  slot_held: ['restraint'], privilege_revoked: [], protocol_extra: [], cold_shoulder: [], stress: [],
   confession: ['public_humiliation'], mark: ['body_modification'],
   injury_chance: ['pain_rough', 'physical_discipline_shown'], physical: ['physical_discipline_shown'], slap: ['physical_discipline_shown'],
 });
@@ -200,6 +200,8 @@ export interface OpenPunishment {
   answeredDay?: number;
   /** Who watched it be carried out, when it was done in public (R8). */
   audienceIds?: string[];
+  /** The scene in which the main model was told she carries it out (once: the scene it was answered in, or the first one with her after a DM answer). */
+  voicedScene?: string;
 }
 
 /**

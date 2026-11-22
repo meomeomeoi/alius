@@ -74,13 +74,30 @@ describe('the effects', () => {
     expect(vi.mocked(startHold).mock.calls[0].slice(2)).toEqual([ANN, 2, { punitive: true, punishmentId: 'pp1' }]);
   });
 
-  it('privilege_revoked writes a restriction until day + days; protocol_extra asks for a protocol; cold_shoulder writes cold', () => {
+  it('privilege_revoked writes a restriction until day + days; protocol_extra asks for nothing yet; cold_shoulder writes cold', () => {
     const rev = answer(withPun('role', 'no_messages', 2), 'accept').state;
     expect(rev.practices!.restrictions).toEqual([{ holderId: ANN, what: 'no_dms_others', untilDay: 21 }]);
-    const proto = answer(withPun('role', 'extra_protocol', 1), 'accept').state;
-    expect(proto.practices!.requests.filter((q) => q.kind === 'protocol')).toMatchObject([{ holderId: ANN, days: 1 }]);
+    // until a protocol can be written (Task 21) the effect asks for nothing: a request nobody can issue would only cost a failed model call and block her new practices
+    const proto = answer(withPun('role', 'extra_protocol', 1), 'accept');
+    expect(proto.state.practices!.requests.filter((q) => q.kind === 'protocol')).toEqual([]);
+    expect(ofType(proto.events, 'practice_requested')).toEqual([]);
+    expect(errors(proto.events)).toEqual([]);
     const cold = answer(withPun('role', 'cold_shoulder', 2), 'accept').state;
     expect(cold.practices!.cold[ANN]).toBe(21);
+  });
+
+  it('a revoked room is the location the row names, wherever the answer was given (P3: no fallback to the commander\'s own quarters)', () => {
+    const row = { id: 'barred_hall', label: 'The hall is closed', severity: 2, effects: [{ type: 'privilege_revoked', what: 'room', days: 2, arg: 'mess_hall' }], description: 'x' };
+    const wide = { ...reg, holderPunishments: new Map([...reg.holderPunishments, ['barred_hall', row]]) } as unknown as Registries;
+    const s = withPun('role', 'barred_hall', 2);
+    s.scene = { id: 's1', day: 20, slot: s.slot, locationId: 'quarters_commander', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: false, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
+    const r = answer(s, 'accept', 'pp1', wide);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.practices!.restrictions).toEqual([{ holderId: ANN, what: 'room', arg: 'mess_hall', untilDay: 22 }]);
+    // a row that somehow has no location bars nothing
+    const bad = { ...row, effects: [{ type: 'privilege_revoked', what: 'room', days: 2 }] };
+    const none = answer(withPun('role', 'barred_hall', 2), 'accept', 'pp1', { ...reg, holderPunishments: new Map([...reg.holderPunishments, ['barred_hall', bad]]) } as unknown as Registries);
+    expect(none.state.practices!.restrictions).toEqual([]);
   });
 
   it('confession writes a model task that names the first soldier at base; mark sets the mark only when none is set; stress moves the commander', () => {
@@ -217,7 +234,7 @@ describe('public execution', () => {
     expect(Object.keys(r.state.dynamic!.knowledge[CAT] ?? {})).toContain(ANN);
     const facts = record(structuredClone(r.state), r.events as never);
     expect(facts.filter((f) => f.tags.includes('punishment_public'))).toHaveLength(1);
-    expect(facts.filter((f) => f.tags.includes('punishment_given'))).toHaveLength(1);
+    expect(facts.filter((f) => f.tags.includes('punishment_given'))).toEqual([]); // one fact for a public one: the audience's covers the pair too (M8)
     const plain = answer(withPun('role', 'kept_in_quarters', 3, {}, ['restraint']), 'accept');
     const quiet = record(structuredClone(plain.state), plain.events as never);
     expect(quiet.filter((f) => f.tags.includes('punishment_given'))).toHaveLength(1);
@@ -262,6 +279,28 @@ describe('shown or reported', () => {
     const on = practiceDirectives(accepted(true), reg, [ANN]).find((d) => d.id === 'practice:punishment:unit_ann')!.text;
     expect(on).toContain('shown as it happens');
     expect(on).not.toMatch(/\d|AUTHOR TO WRITE/);
+  });
+});
+
+describe('the inverse does not outlive the day (M3)', () => {
+  it('closing an accepted punishment, and a refused one of an earlier day, drops the stored inverse', async () => {
+    const { practiceDayStep } = await import('../../../src/engine/practice/dayStep');
+    const { Rng } = await import('../../../src/engine/rng');
+    const s = withPun('role', 'no_messages', 2);
+    const done = answer(s, 'accept').state;
+    expect(done.practices!.punishments[0].inverse).toBeDefined();
+    const kept = structuredClone(done);
+    practiceDayStep(kept, { registries: reg, rng: new Rng(kept.rng) }); // the same day: still undoable
+    expect(kept.practices!.punishments[0].inverse).toBeDefined();
+    const next = structuredClone(done);
+    next.day += 1;
+    practiceDayStep(next, { registries: reg, rng: new Rng(next.rng) });
+    expect(next.practices!.punishments[0]).toMatchObject({ status: 'done' });
+    expect(next.practices!.punishments[0].inverse).toBeUndefined();
+    const refused = answer(withPun('role', 'no_messages', 2), 'refuse').state;
+    refused.day += 1;
+    practiceDayStep(refused, { registries: reg, rng: new Rng(refused.rng) });
+    expect(refused.practices!.punishments.find((p) => p.id === 'pp1')!.inverse).toBeUndefined();
   });
 });
 

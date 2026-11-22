@@ -22,19 +22,18 @@ interface EffectRow { type: PunishmentEffectType }
 const entriesOf = (reg: Registries): Entry[] => [...reg.holderPunishments.values()];
 const effectsOf = (entry: Entry): EffectRow[] => (Array.isArray(entry.effects) ? (entry.effects as EffectRow[]) : []);
 
-/** Her style as the severity reads it: the primary in full, the secondary by `secondaryShare` rounded toward zero. */
+/** Her style as the severity reads it, as a float: the primary's term in full, the secondary's sign times `secondaryStyle` (rounded once, with the rest, by `severityOf`). */
 function styleTerm(state: CampaignState, reg: Registries, holderId: string): number {
   const T = TUNING.practice.severity;
   const style = practiceOf(state, reg, holderId)?.style;
   if (style === undefined) return 0;
   const primary = T.style[style.primary] ?? 0;
-  const secondary = style.secondary === undefined ? 0 : Math.trunc(T.secondaryShare * (T.style[style.secondary] ?? 0));
+  const secondary = style.secondary === undefined ? 0 : Math.sign(T.style[style.secondary] ?? 0) * T.secondaryStyle;
   return primary + secondary;
 }
 
 /**
- * The weight of a punishment for an offence (1 to 5): the stakes' rank plus one (trivial 1 to severe 4), her style (`cruel` +1, `affectionate` -1; the secondary adds half, rounded toward
- * zero), her frame (`play` -1, `role` 0, `rule` +1) and a repeat (+1 when she has entered `repeat.count` offences within `repeat.days`), clamped to 1 to 5. Reads only: the offences
+ * The weight of a punishment for an offence (1 to 5): the stakes' rank plus one (trivial 1 to severe 4), her style (`cruel` +1, `affectionate` -1; a secondary adds `secondaryStyle` with its sign), her frame (`play` -1, `role` 0, `rule` +1) and a repeat (+1 when she has entered `repeat.count` offences within `repeat.days`), summed as a float, rounded once (half up) and clamped to 1 to 5. Reads only: the offences
  * counted are the ones noted before this one.
  */
 export function severityOf(state: CampaignState, reg: Registries, holderId: string, offence: Pick<Offence, 'stakes'>): Severity5 {
@@ -43,7 +42,7 @@ export function severityOf(state: CampaignState, reg: Registries, holderId: stri
   const frameTerm = frame === 'rule' || frame === 'role' || frame === 'play' ? T.frame[frame] : 0;
   const recent = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T.repeat.days).length;
   const repeat = recent >= T.repeat.count ? T.repeat.add : 0;
-  const total = stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat;
+  const total = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat + 0.5); // one rounding, half up
   return Math.min(T.max, Math.max(T.min, total)) as Severity5;
 }
 
@@ -146,7 +145,6 @@ export function noteOffence(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   return requestPractice(draft, ctx, holderId, 'punishment', { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId });
 }
 
-const stakesOf = (e: Record<string, unknown>, fallback: Stake): Stake => (typeof e.stakes === 'string' && ['trivial', 'minor', 'major', 'severe'].includes(e.stakes) ? (e.stakes as Stake) : fallback);
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== '' ? v : undefined);
 
 /** At `role` or beyond a refusal is hers to answer (at `play` she lets it go). */

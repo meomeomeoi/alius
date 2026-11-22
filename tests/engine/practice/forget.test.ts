@@ -145,6 +145,21 @@ describe('withdrawPractices', () => {
     expect(s.relations).toEqual(relations);
   });
 
+  it('only the kind of the hold\'s own bookings counts: another held kind going off leaves it (M5)', () => {
+    const extra = { ...(reg.bookingKinds.get('held_in_quarters') as object), id: 'held_other', contentTags: ['service'] } as never;
+    const wide = { ...reg, bookingKinds: new Map([...reg.bookingKinds, ['held_other', extra]]) } as unknown as Registries;
+    const s = full(); // her hold's booking is a held_in_quarters one (restraint)
+    expect(ofType(withdrawPractices(s, wide, ['service']), 'hold_released')).toEqual([]);
+    expect(s.practices!.held).toBeDefined();
+    expect(s.personal!.bookings!.find((b) => b.id === 'bk1')!.status).toBe('booked');
+    const t = full();
+    t.personal!.bookings!.find((b) => b.id === 'bk1')!.kindId = 'held_other';
+    expect(ofType(withdrawPractices(t, wide, ['service']), 'hold_released')).toHaveLength(1);
+    expect(t.practices!.held).toBeUndefined();
+    const u = full();
+    expect(ofType(withdrawPractices(u, wide, ['restraint']), 'hold_released')).toHaveLength(1);
+  });
+
   it('a task tagged with the category is void when it goes off, and one that is not stays', () => {
     const s = full();
     const p = s.practices!;

@@ -29,6 +29,7 @@ import { addCommanderStress } from '../special/commanderStress';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { startHold } from './hold';
+import { WRITERS } from './issue';
 import { atBase, pickHolderPunishment, severityOfEntry } from './offences';
 import { practiceSample } from './sample';
 import { requestPractice } from './request';
@@ -85,13 +86,14 @@ export function runPunishmentEffect(draft: CampaignState, ctx: EngineCtx, p: Ope
       return startHold(draft, ctx, holderId, fx.slots as 1 | 2 | 'day', { punitive: true, punishmentId: p.id });
     case 'privilege_revoked': {
       const what = fx.what as 'no_dms_others' | 'no_free_activities' | 'room';
-      // a room is the one the answer was given in (the open scene's), else the commander's own quarters
-      const arg = what === 'room' ? (draft.scene?.locationId ?? 'quarters_commander') : undefined;
+      const arg = what === 'room' && typeof fx.arg === 'string' ? fx.arg : undefined; // the location the row names (the schema requires it for a room)
+      if (what === 'room' && arg === undefined) return [];
       pr.restrictions.push({ holderId, what, ...(arg !== undefined ? { arg } : {}), untilDay: draft.day + num(fx.days, 1) });
       return [{ type: 'privilege_revoked', what, untilDay: draft.day + num(fx.days, 1), unitId: holderId }];
     }
     case 'protocol_extra':
-      return requestPractice(draft, ctx, holderId, 'protocol', { days: num(fx.days, 1) });
+      // a protocol is asked for only once something can write one (a request nobody can issue would cost the controller a model call that must fail, and block her new practices)
+      return WRITERS.protocol === undefined ? [] : requestPractice(draft, ctx, holderId, 'protocol', { days: num(fx.days, 1) });
     case 'cold_shoulder': {
       const until = draft.day + num(fx.days, 1);
       pr.cold[holderId] = Math.max(pr.cold[holderId] ?? 0, until);
@@ -143,6 +145,7 @@ function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): Engine
   p.answeredDay = draft.day;
   const audience = publicAudience(draft, reg, p);
   if (audience.length > 0) p.audienceIds = audience;
+  if (draft.scene?.participants.includes(holderId) === true) p.voicedScene = draft.scene.id; // answered in a scene with her: told there, once
   const events: EngineEvent[] = [{
     type: 'punishment_answered', punishmentId: p.id, unitId: holderId, holderId, answer: 'accept', severity: p.severity, summary: p.summary,
     ...(audience.length > 0 ? { public: true, present: [holderId, ...audience] } : {}),
@@ -296,6 +299,7 @@ export function restorePractice(draft: CampaignState, _ctx: EngineCtx, unitId: s
   p.status = undo.status;
   delete p.answeredDay;
   delete p.audienceIds;
+  delete p.voicedScene;
   delete p.inverse;
   return events;
 }
@@ -331,9 +335,32 @@ export function compromisePunishment(draft: CampaignState, ctx: Pick<EngineCtx, 
   return [{ type: 'punishment_answered', punishmentId: p.id, unitId: holderId, holderId, answer: 'compromise', severity: p.severity }];
 }
 
-/** Closes what a day left behind (the day step, sub-step 9): an accepted punishment of an earlier day is done. */
+/**
+ * After a scene opens (registered by `actions/practice.ts`): a punishment of hers accepted today, outside any scene with her (a DM), is told to the model in the first scene with her
+ * (`voicedScene`), and in no later one. Writes nothing unless one is waiting for it.
+ */
+export function voiceWaitingPunishments(draft: CampaignState, _ctx: Pick<EngineCtx, 'registries'>, events: readonly EngineEvent[]): EngineEvent[] {
+  const p = draft.practices;
+  if (p === undefined || p.punishments.length === 0) return [];
+  for (const e of events) {
+    if (e.type !== 'scene_started' || !Array.isArray(e.participants)) continue;
+    for (const x of p.punishments) {
+      if (x.status === 'accepted' && x.voicedScene === undefined && x.answeredDay === draft.day && (e.participants as string[]).includes(x.holderId)) x.voicedScene = String(e.sceneId);
+    }
+  }
+  return [];
+}
+
+/**
+ * Closes what a day left behind (the day step, sub-step 9): an accepted punishment of an earlier day is done. UNDO is the day's (`canUndoPractice`), so the stored inverse (a whole
+ * `Inverse`, with a clone of her tracks) of any answered punishment of an earlier day goes with the day.
+ */
 export function closePunishments(draft: CampaignState): void {
-  for (const p of draft.practices?.punishments ?? []) if (p.status === 'accepted' && (p.answeredDay ?? p.day) < draft.day) p.status = 'done';
+  for (const p of draft.practices?.punishments ?? []) {
+    if ((p.answeredDay ?? p.day) >= draft.day) continue;
+    if (p.status === 'accepted') p.status = 'done';
+    delete p.inverse;
+  }
 }
 
 /** The days the cold shoulder wakes the commander's Want daily (sub-step 9): hers rises while the shoulder lasts. */

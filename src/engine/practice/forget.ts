@@ -42,6 +42,12 @@ function cancelHeld(draft: CampaignState, held: HeldState): void {
   }
 }
 
+/** The booking kinds of the hold's own bookings (read by what the hold booked, not by every kind that is held). */
+function holdKindsOf(draft: CampaignState, reg: Registries, held: HeldState): unknown[] {
+  const kinds = (draft.personal?.bookings ?? []).filter((b) => held.bookingIds.includes(b.id)).map((b) => reg.bookingKinds.get(b.kindId));
+  return kinds.filter((k) => k !== undefined && k.held === true);
+}
+
 /** The hold ends with no delta: its bookings are cancelled and the alarm that asked about it goes. */
 function endHold(draft: CampaignState, p: PracticeState, reason: 'gone' | 'content'): EngineEvent {
   const held = p.held!;
@@ -98,7 +104,7 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
 
 /**
  * A content category was switched off (`registerWithdrawal`, called by `setCategories` after the new list is stored): every open practice tagged with it is
- * void (`task_void`, reason `content`), a request whose every candidate seed was tagged with it goes, the hold ends when the held booking kind needs it
+ * void (`task_void`, reason `content`), a request whose every candidate seed was tagged with it goes, the hold ends when the booking kind of its own bookings needs it
  * (`hold_released`, bookings cancelled), a slap in progress goes when the category it needs went, and a permission rule that was only proposed goes (an active
  * one is suspended by the bonds layer itself and comes back with the category; her answer to the question does not). No delta, no draw, and a campaign without
  * `practices` is untouched.
@@ -112,7 +118,7 @@ export function withdrawPractices(draft: CampaignState, reg: Registries, changed
   for (const t of p.tasks) if (isOpen(t.status) && hit(t.tags)) { t.status = 'void'; events.push(voided(t.id, t.holderId, 'task', 'content')); }
   for (const x of p.punishments) if (isOpen(x.status) && hit(tagsOf(reg.holderPunishments.get(x.entryId)))) { x.status = 'void'; events.push(voided(x.id, x.holderId, 'punishment', 'content')); }
   for (const x of p.demonstrations) if ((x.status === 'offered' || x.status === 'open') && hit(x.tags)) { x.status = 'void'; events.push(voided(x.id, x.holderId, 'demonstration', 'content')); }
-  if (p.held !== undefined && [...reg.bookingKinds.values()].some((k) => k.held === true && hit(tagsOf(k)))) events.push(endHold(draft, p, 'content'));
+  if (p.held !== undefined && holdKindsOf(draft, reg, p.held).some((k) => hit(tagsOf(k)))) events.push(endHold(draft, p, 'content'));
   const enabled = draft.content?.enabled ?? [];
   const needs = EFFECT_NEEDS.slap;
   if (p.slap !== undefined && needs.some((t) => changed.includes(t)) && !needs.some((t) => enabled.includes(t))) delete p.slap;

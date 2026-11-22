@@ -957,9 +957,9 @@ export const TUNING = Object.freeze({
    * and the no-duration share, which are the spec's drafts (R.12) copied as given. `keep`: closed tasks, punishments and demonstrations kept (newest). `frequency`: the daily chance of a new
    * practice is `base[frame] × the dynamic's frequency × her Want band × her appetite`. `kindWeights` / `taskCap` / `protocolMax` / `stakesCeiling` (by frame) / `deadlineDays` bound what is
    * issued; `seeds` the candidates handed to the model; `textMax` / `summaryMax` the cuts. `fallback`: the plain line of each kind (`{gist}`); `sealedLine` the envelope, `sealedRecord` the record
-   * line of a sealed accept (`{day}`). `xp`: track xp per kept task (x tier), accepted punishment (x severity), demonstration and hold (x slots). `severity`: stakes rank + 1, plus her style (primary;
-   * the secondary adds `secondaryShare` of it, rounded toward zero), her frame and a repeat (`count` offences within `days`), clamped to `min`..`max`. `repair`: the share of an offence's cost an accepted
-   * punishment gives back. `slap.windowMs`: the time she gives in milliseconds by her primary style (`obsessive` takes the number plus a hashed `obsessiveSpread`); feints from `feintFrom`, `feintPerLevel` a level.
+   * line of a sealed accept (`{day}`). `xp`: track xp per kept task (x tier), accepted punishment (x severity), demonstration and hold (x slots). `severity`: stakes rank + 1, plus her style (the primary
+   * by `style`, the secondary by `secondaryStyle` with the same sign), her frame and a repeat (`count` offences within `days`), summed as a float, rounded once (half up) and clamped to `min`..`max`.
+   * (What an accepted punishment gives back, and what taking it instead gives a soldier, are the `eventDeltas` rows `punishment_accepted` and `spared_for`.) `slap.windowMs`: the time she gives in milliseconds by her primary style (`obsessive` takes the number plus a hashed `obsessiveSpread`); feints from `feintFrom`, `feintPerLevel` a level.
    */
   practice: Object.freeze({
     keep: 30,
@@ -988,12 +988,12 @@ export const TUNING = Object.freeze({
     xp: Object.freeze({ kept: 2, discipline: 2, demonstration: 6, hold: 3 }),
     severity: Object.freeze({
       style: Object.freeze({ cruel: 1, affectionate: -1 } as Readonly<Record<string, number>>),
-      secondaryShare: 0.5,
+      /** A secondary style adds this much, with the sign of its own term (`style`); the terms are summed as a float and rounded once at the end (half up). */
+      secondaryStyle: 0.5,
       frame: Object.freeze({ play: -1, role: 0, rule: 1 } as const),
       repeat: Object.freeze({ count: 2, days: 14, add: 1 }),
       min: 1, max: 5,
     }),
-    repair: 0.5,
     /** Her discipline (R8, `AUTHOR TO TUNE`): the stakes a punishment's weight (1 to 5) stands for (a confession task), the days a confession gives, its words, and how long an offence day is kept for the repeat count. */
     punish: Object.freeze({
       stakesOf: Object.freeze(['trivial', 'minor', 'major', 'severe', 'severe'] as const),
@@ -1005,7 +1005,8 @@ export const TUNING = Object.freeze({
     }),
     refuseRecord: 5,
     coldWant: 5,
-    takeInstead: Object.freeze({ trust: 5, record: 2 }),
+    /** TAKE IT INSTEAD (R8): the Record each named unit at base gains. The soldier's Trust is the `spared_for` row. */
+    takeInstead: Object.freeze({ record: 2 }),
     demonstration: Object.freeze({ hold: 3, seenByChance: 0.2, wantRelief: Object.freeze({ craves: 20, enjoys: 10, tolerates: 5 } as const) }),
     verdict: Object.freeze({ favour: Object.freeze({ pleased: 2, adequate: 0, displeased: -2 } as const) }),
     momentGap: Object.freeze({ matched: 2, partial: 0, opposite: -3 }),
@@ -1030,9 +1031,9 @@ export const TUNING = Object.freeze({
       affectionate: 0.1, cold: 0.1, ritual: 0, clinical: 0.1, possessive: 0.3, playful: 0.1, cruel: 0.3, obsessive: 0.1, drill: 0, regal: 0.1, vindictive: 0.3,
     } as const),
     unfairness: Object.freeze({ fair: 0, strict: 0.02, capricious: 0.08, unfair: 0.15, moody: 1.5 } as const),
-    /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`. */
     /** The press-and-hold signature of a `signed` accept (R.1): how long it is held, in milliseconds. AUTHOR TO TUNE. */
     sign: Object.freeze({ holdMs: 1200 }),
-    falseReport: Object.freeze({ days: 14, witness: 0.2, insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 } as const) }),
+    /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`; `compromat` is what she keeps of it (`{what}`: the task's summary). */
+    falseReport: Object.freeze({ days: 14, witness: 0.2, compromat: 'AUTHOR TO WRITE: The commander reported a task as done that was not: {what}.', insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 } as const) }),
   }),
 });

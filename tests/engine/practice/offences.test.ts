@@ -5,6 +5,7 @@ import '../../../src/engine/actions/personal';
 import '../../../src/engine/actions/practice';
 import { noteOffence, offencesFromEvents, pickHolderPunishment, severityOf } from '../../../src/engine/practice/offences';
 import { blankPractices, type Offence, type OpenPunishment, type Task } from '../../../src/engine/practice/state';
+import { TUNING } from '../../../src/engine/tuning';
 import { Rng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { errors, loadCore, ofType, run, stubExpedition } from '../../helpers/world';
@@ -31,6 +32,25 @@ describe('severity by the rule', () => {
     const s = world(reg, 'play');
     unitOf(s, ANN).bond!.practice!.style = { primary: 'affectionate' };
     expect(severityOf(s, reg, ANN, offence({ stakes: 'trivial' }))).toBe(1);
+  });
+
+  it('a secondary style counts half of its sign, summed as a float and rounded once at the end, half up (P2)', () => {
+    const at = (primary: string, secondary: string | undefined, stakes: Offence['stakes'], frame: 'play' | 'role' | 'rule' = 'role') => {
+      const s = world(reg, frame);
+      unitOf(s, ANN).bond!.practice!.style = { primary, ...(secondary !== undefined ? { secondary } : {}) } as never;
+      return severityOf(s, reg, ANN, offence({ stakes }));
+    };
+    expect(TUNING.practice.severity.secondaryStyle).toBe(0.5);
+    expect(at('cold', undefined, 'minor')).toBe(2); // 2 + 0
+    expect(at('cold', 'cruel', 'minor')).toBe(3); // 2 + 0.5 = 2.5, half up
+    expect(at('cold', 'affectionate', 'minor')).toBe(2); // 2 - 0.5 = 1.5, half up (floor would make her gentler than a primary)
+    expect(at('cold', 'cruel', 'major')).toBe(4); // 3.5
+    expect(at('cruel', 'affectionate', 'minor')).toBe(3); // 2 + 1 - 0.5 = 2.5
+    expect(at('affectionate', 'cruel', 'minor')).toBe(2); // 2 - 1 + 0.5 = 1.5
+    expect(at('cruel', 'cruel', 'minor', 'rule')).toBe(5); // 2 + 1 + 0.5 + 1 = 4.5, then clamped to 5
+    expect(at('affectionate', 'affectionate', 'trivial', 'play')).toBe(1); // clamped
+    expect(at('cold', 'cruel', 'minor')).not.toBe(at('cold', undefined, 'minor')); // a secondary is never nothing
+    expect(at('cruel', undefined, 'minor')).toBe(3); // the primary still counts a full 1
   });
 
   it('the stakes, the frame and a repeat each count once; an old offence does not repeat', () => {

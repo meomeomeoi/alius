@@ -273,6 +273,33 @@ function fakeGeneration(reroll: { enabled: boolean; reason?: string } = { enable
   return { ui, generations };
 }
 
+describe('when it is due (M9)', () => {
+  const due = (host: HTMLElement) => host.querySelector('.alius-task-due')?.textContent ?? null;
+
+  it('says the day in words, and the slot when she named one, never a number', () => {
+    const today = 20; // the world's day
+    expect(due(draw(state({ deadline: { day: today } })).host)).toBe('Due: today.');
+    expect(due(draw(state({ deadline: { day: today + 1 } })).host)).toBe('Due: tomorrow.');
+    expect(due(draw(state({ deadline: { day: today + 1, slot: 'evening' } })).host)).toBe('Due: tomorrow evening.');
+    expect(due(draw(state({ deadline: { day: today + 2, slot: 'morning' } })).host)).toBe('Due: in two days, in the morning.');
+    expect(due(draw(state({ deadline: { day: today + 7 } })).host)).toBe('Due: in seven days.');
+    expect(due(draw(state({ deadline: { day: today - 1 } })).host)).toBe('Due: today.'); // already late: today is all that is left
+    expect(due(draw(state({ deadline: { day: today + 3, slot: 'evening' } })).host)).not.toMatch(/\d/);
+  });
+
+  it('says nothing when the duration is hidden, the card is sealed, or it has no deadline', () => {
+    expect(due(draw(state({ deadline: { day: 22 }, noDuration: true })).host)).toBeNull();
+    expect(due(draw(state({ deadline: { day: 22 }, sealed: true, acceptForm: 'sealed' })).host)).toBeNull();
+    expect(due(draw(state({})).host)).toBeNull();
+  });
+
+  it('is addressed by the glossary', () => {
+    const host = draw(state({ deadline: { day: 21 } })).host;
+    expect(markedWithout(host)).toEqual([]);
+    expect(host.querySelector('.alius-task-due')!.getAttribute('data-analyze')).toBeTruthy();
+  });
+});
+
 describe('REROLL of her words and the chips of a call that failed (I8, R24)', () => {
   const rerollOf = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('button[data-action="generation-reroll"]');
   const withRequest = (over: Partial<Task> = {}) => state({ requestId: 'pq5', ...over });

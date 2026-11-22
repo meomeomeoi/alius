@@ -250,7 +250,7 @@ export function findFalseReport(draft: CampaignState, ctx: Pick<EngineCtx, 'regi
   const events = settleTask(draft, ctx, taskId, 'broken', via, { falseReport: true });
   if (events.length === 0) { task.status = 'kept'; return []; }
   task.report = { ...(task.report ?? { day: draft.day }), falseReport: true };
-  addCompromat(draft, task.holderId, `AUTHOR TO WRITE: The commander reported a task as done that was not: ${task.summary}.`, witnessesOf(draft, task));
+  addCompromat(draft, task.holderId, TUNING.practice.falseReport.compromat.replaceAll('{what}', task.summary), witnessesOf(draft, task)); // `addCompromat` reads the draft through `plainDraft` itself
   return events;
 }
 

@@ -152,6 +152,44 @@ describe('her discipline (P16)', () => {
   });
 });
 
+describe('her discipline is told once, in one scene (M6)', () => {
+  const accepted = (over: Partial<OpenPunishment> = {}): OpenPunishment => ({
+    id: 'pp1', holderId: ANN, entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: 20 }, text: 'No messages today.', summary: 'a day without messages', status: 'accepted', answeredDay: 20, day: 20, ...over,
+  });
+  const base = (list: OpenPunishment[]): CampaignState => {
+    const s = holding();
+    s.practices = { seq: 9, requests: [], tasks: [], punishments: list, demonstrations: [], restrictions: [], cold: {}, postures: {}, offences: {}, records: [], handovers: [] };
+    return s;
+  };
+  const told = (s: CampaignState): boolean => practiceDirectives(s, reg, [ANN]).some((d) => d.id === `${PUNISHMENT_PREFIX}${ANN}`);
+  const end = (s: CampaignState) => run(s, reg, { type: 'scene/end', payload: {} }).state;
+
+  it('accepted in a DM, it is told in the first scene with her and not in the next one the same day', () => {
+    const first = inScene(base([accepted()]), [ANN]);
+    expect(told(first)).toBe(true);
+    expect(first.practices!.punishments[0].voicedScene).toBe(first.scene!.id);
+    const second = inScene(end(first), [ANN]);
+    expect(second.scene!.id).not.toBe(first.scene!.id);
+    expect(told(second)).toBe(false);
+  });
+
+  it('accepted inside a scene with her, it is told there (the card was answered in it) and never again', () => {
+    const s = inScene(base([{ ...accepted({ status: 'offered' }) }]), [ANN]);
+    delete s.practices!.punishments[0].answeredDay;
+    const r = run(s, reg, { type: 'practice/answer_punishment', payload: { punishmentId: 'pp1', answer: 'accept' } });
+    expect(errors(r.events)).toEqual([]);
+    expect(told(r.state)).toBe(true);
+    expect(r.state.practices!.punishments[0].voicedScene).toBe(r.state.scene!.id);
+    expect(told(inScene(end(r.state), [ANN]))).toBe(false);
+  });
+
+  it('a scene without her does not use it up', () => {
+    const away = inScene(base([accepted()]), [BEA]);
+    expect(away.practices!.punishments[0].voicedScene).toBeUndefined();
+    expect(told(inScene(end(away), [ANN]))).toBe(true);
+  });
+});
+
 describe('the prefix', () => {
   it('every id starts with practice: and no other package reserves it', () => {
     const OLDER = [

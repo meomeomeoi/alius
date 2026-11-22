@@ -147,7 +147,7 @@ export function answerTask(draft: CampaignState, ctx: EngineCtx, taskId: string,
   events.push(...refuseLikeDemand(draft, ctx, task.holderId, { evidence, ...(severity !== undefined ? { severity } : {}) }));
   events.push(...evaluateAutomatic(draft, reg, task.holderId));
   const frame = dynamicOf(draft, task.holderId)?.frame;
-  if (frame !== undefined && frameRank(frame) >= frameRank('role')) events.push(...noteOffence(draft, ctx, task.holderId, { kind: 'refusal', ref: task.id, stakes: task.stakes, day: draft.day }));
+  if (frame !== undefined && frameRank(frame) >= frameRank('role')) events.push(...noteOffence(draft, ctx, task.holderId, { kind: 'refusal', ref: task.id, stakes: task.sealed === true ? 'major' : task.stakes, day: draft.day })); // a sealed one at major, as the refusal itself: the weight never hints at what was inside
   return events;
 }
 

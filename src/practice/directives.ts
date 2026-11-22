@@ -18,7 +18,7 @@ export const PRACTICE_PREFIX = 'practice:';
 export const TASKS_PREFIX = 'practice:tasks:';
 /** A third party who is in the room: what a holder asked of the commander that involves her. */
 export const TARGET_PREFIX = 'practice:target:';
-/** Her discipline the commander has just accepted, while she is in the room: what she carries out, shown or only reported. */
+/** Her discipline the commander has just accepted, while she is in the room: what she carries out, shown or only reported. Told in one scene only (the one it was answered in, or the first with her after a DM answer). */
 export const PUNISHMENT_PREFIX = 'practice:punishment:';
 /** What she has just asked of the commander, for her next reply only (event-driven: a refresh leaves it alone). */
 export const ISSUED_PREFIX = 'practice:issued:';
@@ -54,7 +54,7 @@ export function practiceDirectives(state: CampaignState, reg: Registries, presen
     out.push({ id: `${TASKS_PREFIX}${unit.id}`, expiresAfter: 'scene', text: plainDraft(`${unit.displayName} expects the commander to see to: ${open.join('; ')}. She may ask after them. ${NEVER_NAME}`) });
   }
   for (const unit of holdersIn(state, reg, present)) {
-    const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit.id && x.forUnitId === undefined && x.status === 'accepted' && x.answeredDay === state.day);
+    const done = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit.id && x.forUnitId === undefined && x.status === 'accepted' && x.answeredDay === state.day && (x.voicedScene === undefined || x.voicedScene === state.scene?.id));
     if (done.length === 0) continue;
     const shown = (state.content?.enabled ?? []).includes('physical_discipline_shown');
     const lines = done.map((x) => {

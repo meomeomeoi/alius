@@ -115,6 +115,20 @@ describe('updates', () => {
     for (const rel of [t, s, f]) expect(Object.values(rel.readOf.motive).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 3);
   });
 
+  it('a sample that declares its motive pushes that one, over what its tone and response would infer (P16)', () => {
+    const her = blankDynamic(1);
+    updateReading(her, { response: 'yielded', tone: 'sincere', motive: 'her' }, 0.3, style, mid); // inferred: order
+    expect(her.readOf.motive.her).toBeGreaterThan(her.readOf.motive.order);
+    const fear = blankDynamic(1);
+    updateReading(fear, { response: 'resisted', tone: 'transactional', motive: 'fear' }, 0.3, style, mid); // inferred: gain
+    expect(fear.readOf.motive.fear).toBeGreaterThan(fear.readOf.motive.gain);
+    for (const rel of [her, fear]) expect(Object.values(rel.readOf.motive).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 3);
+    // a sample that declares none reads as it always did
+    const plain = blankDynamic(1);
+    updateReading(plain, { response: 'yielded', tone: 'sincere' }, 0.3, style, mid);
+    expect(plain.readOf.motive.order).toBeGreaterThan(plain.readOf.motive.her);
+  });
+
   it('hysteresis: a region changes only after three updates in a row; one stray answer changes nothing', () => {
     const rel = blankDynamic(1);
     rel.readOf = reading({ region: 'devoted', r: 0.1 });

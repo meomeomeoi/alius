@@ -10,7 +10,7 @@ import { issuePractice } from '../practice/issue';
 import { offencesFromEvents, repickPunishmentRequests } from '../practice/offences';
 import { punishVoteDecision } from '../power/punishGate';
 import { noteThreat } from '../practice/threats';
-import { answerPunishment, restorePractice, takeInstead, undoPractice } from '../practice/punish';
+import { answerPunishment, restorePractice, takeInstead, undoPractice, voiceWaitingPunishments } from '../practice/punish';
 import { commanderRestrictionOf, unitRestrictionOf } from '../practice/restrict';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
@@ -33,6 +33,8 @@ registerAfterAction(taskChecksFromEvents);
 registerAfterAction(offencesFromEvents);
 // What she did that reads as a threat to the commander is remembered for the next exchange (R18): a yield right after it is fear.
 registerAfterAction(noteThreat);
+// A punishment she was given in a DM is told to the model in the first scene with her, once.
+registerAfterAction(voiceWaitingPunishments);
 
 // What her discipline stands in the way of: the commander's messages, free time and rooms, and a scene with her in her cold shoulder. The warden's own restrictions come first.
 registerCommanderRestriction(commanderRestrictionOf);

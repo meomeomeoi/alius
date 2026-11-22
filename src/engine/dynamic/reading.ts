@@ -23,8 +23,11 @@ const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.m
 /** A fresh reading: nobody's idea of the commander yet. */
 export const newReading = (): HerReading => blankReading();
 
-/** What one answer tells her (R10): the response, the tone it came in, and whether a threat came in the same exchange. */
-export interface ReadingSample { response: ResponseType; tone?: Tone; afterThreat?: boolean }
+/**
+ * What one answer tells her (R10): the response, the tone it came in, and whether a threat came in the same exchange. `motive`, when the caller knows it (P16: what her own practice shows),
+ * is the motive the sample speaks for; without it the motive is read from the tone and the response as before.
+ */
+export interface ReadingSample { response: ResponseType; tone?: Tone; afterThreat?: boolean; motive?: Motive }
 
 /**
  * Events that are a threat to the commander (user ruling, I4; P16 R18): the commander punished or leashed, and what a holder did to the commander in the practices: a punishment issued or
@@ -89,8 +92,9 @@ export function regionOf(reading: HerReading, declared?: { motive: Motive; weigh
   return 'devoted';
 }
 
-/** The motive an answer speaks for, or none (R10): a yield right after a threat is fear; a transactional tone is gain; a sincere yield is order. */
+/** The motive an answer speaks for, or none (R10): a declared one (`sample.motive`); else a yield right after a threat is fear; a transactional tone is gain; a sincere yield is order. */
 function motiveOf(sample: ReadingSample): Motive | undefined {
+  if (sample.motive !== undefined) return sample.motive;
   if (sample.afterThreat === true && sample.response === 'yielded') return 'fear';
   if (sample.tone === 'transactional') return 'gain';
   if (sample.tone === 'sincere' && sample.response === 'yielded') return 'order';

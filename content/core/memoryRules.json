@@ -1205,7 +1205,8 @@
     "id": "punishment_given",
     "event": "punishment_answered",
     "when": {
-      "answer": "accept"
+      "answer": "accept",
+      "public": false
     },
     "text": "AUTHOR TO WRITE: The commander took {name}'s punishment: {what}.",
     "importance": 2,

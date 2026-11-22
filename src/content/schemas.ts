@@ -2972,7 +2972,7 @@ export type PracticeSeedEntry = z.infer<typeof PracticeSeedSchema>;
 
 const punishmentEffect = z.discriminatedUnion('type', [
   z.object({ type: z.literal('slot_held'), slots: z.union([z.literal(1), z.literal(2), z.literal('day')]) }).strict(),
-  z.object({ type: z.literal('privilege_revoked'), what: z.enum(['no_dms_others', 'no_free_activities', 'room']), days: int.min(1).max(14) }).strict(),
+  z.object({ type: z.literal('privilege_revoked'), what: z.enum(['no_dms_others', 'no_free_activities', 'room']), days: int.min(1).max(14), arg: str.optional() }).strict(),
   z.object({ type: z.literal('protocol_extra'), days: int.min(1).max(14) }).strict(),
   z.object({ type: z.literal('cold_shoulder'), days: int.min(1).max(14) }).strict(),
   z.object({ type: z.literal('confession') }).strict(),
@@ -2997,6 +2997,9 @@ export const HolderPunishmentSchema = BaseEntrySchema.extend({
 }).strict().superRefine((p, ctx) => {
   const tags = p.contentTags ?? [];
   p.effects.forEach((fx, i) => {
+    if (fx.type === 'privilege_revoked' && (fx.what === 'room') !== (fx.arg !== undefined)) {
+      ctx.addIssue({ code: 'custom', path: ['effects', i, 'arg'], message: fx.what === 'room' ? 'a revoked room names its location in `arg`' : '`arg` (a location) is only for a revoked room' });
+    }
     const needs = EFFECT_NEEDS[fx.type];
     if (needs.length > 0 && !needs.some((t) => tags.includes(t))) ctx.addIssue({ code: 'custom', path: ['effects', i], message: `the effect "${fx.type}" needs the content tag ${needs.map((t) => `"${t}"`).join(' or ')} on the row` });
   });

@@ -1166,5 +1166,10 @@ registerChecks('dynamicTracks', (entry, regs) => known(regs, 'contentCategories'
 // ---------------------------------------------------------------------------------------------
 // P16: a seed names an open practice track (its `check`, `proof`, `audience` and `needs` are closed enums, checked by the schema); a ceremony step's posture is a blocking posture.
 
+// a revoked room (`privilege_revoked { what: 'room', arg }`) names a location of the pack.
+registerRefs('holderPunishments', (entry) =>
+  ((entry.effects as Array<{ type?: string; arg?: unknown }> | undefined) ?? []).flatMap((fx, i) =>
+    (fx.type === 'privilege_revoked' && typeof fx.arg === 'string' ? [{ registry: 'locations' as const, id: fx.arg, path: `effects[${i}].arg` }] : [])));
+
 registerChecks('practiceSeeds', (entry, regs) => known(regs, 'dynamicTracks', entry.track, 'track', 'practice track'));
 registerChecks('ceremonySteps', (entry, regs) => known(regs, 'blockingPostures', entry.posture, 'posture', 'posture'));

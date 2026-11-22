@@ -147,6 +147,16 @@ describe('refusing', () => {
     expect(r.state.relations[ANN].history.filter((h) => h.kind === 'event' && h.type === 'refused_demand')).toMatchObject([{ severity: 'major' }]);
   });
 
+  it('a sealed envelope enters its offence as the refusal does, at major: the punishment\'s weight does not hint at what was sealed (M12)', () => {
+    const asked = (over: Partial<Task>) => answer(withTask('role', { acceptForm: 'button', ...over }), 'refuse').state.practices!.requests.filter((r) => r.kind === 'punishment');
+    const sealed = asked({ stakes: 'trivial', acceptForm: 'sealed', sealed: true });
+    const heavy = asked({ stakes: 'severe', acceptForm: 'sealed', sealed: true });
+    expect(sealed).toMatchObject([{ offence: { kind: 'refusal', stakes: 'major' } }]);
+    expect(heavy).toMatchObject([{ offence: { kind: 'refusal', stakes: 'major' } }]);
+    expect(sealed[0].severity).toBe(heavy[0].severity); // whatever was inside, the same weight
+    expect(asked({ stakes: 'trivial' })).toMatchObject([{ offence: { stakes: 'trivial' } }]); // an open one is entered at its own stakes
+  });
+
   it('at role an offence refusal is noted; at play none', () => {
     expect(answer(withTask('role', { stakes: 'major', acceptForm: 'words' }), 'refuse').state.practices!.offences[ANN]).toEqual([20]);
     expect(answer(withTask('play', { stakes: 'minor' }), 'refuse').state.practices!.offences[ANN] ?? []).toEqual([]);

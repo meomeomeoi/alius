@@ -40,6 +40,19 @@ const SPARE_STYLES: readonly string[] = ['cruel', 'vindictive'];
 
 const slotsWord = (n: number): string => `${n} slot${n === 1 ? '' : 's'}`;
 
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'] as const;
+const SLOT_WORDS: Readonly<Record<string, string>> = { morning: 'morning', afternoon: 'afternoon', evening: 'evening', night: 'night' };
+
+/** When a task is due, in words (never a number): "today", "tomorrow evening", "in two days, in the morning". A deadline already past is "today": all that is left of it. */
+function dueWords(task: Pick<Task, 'deadline'>, today: number): string | null {
+  if (task.deadline === undefined) return null;
+  const days = Math.max(0, task.deadline.day - today);
+  const slot = task.deadline.slot === undefined ? undefined : SLOT_WORDS[task.deadline.slot];
+  if (days <= 1) return `${days === 0 ? 'today' : 'tomorrow'}${slot !== undefined && days === 1 ? ` ${slot}` : ''}${slot !== undefined && days === 0 ? `, ${slot}` : ''}`;
+  const count = days <= 7 ? NUMBER_WORDS[days] : 'several';
+  return `in ${count} days${slot !== undefined ? `, in the ${slot}` : ''}`;
+}
+
 /** What a signed task closes or hands over: a handover says what is handed, any other says what the task is. */
 function closesOf(task: Task): string {
   if (task.handover !== undefined) return `Hands over: ${HANDOVER_WORDS[task.handover] ?? task.handover}.`;
@@ -72,6 +85,8 @@ export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
     parts.push(h('p', { class: 'alius-task-envelope' }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
     parts.push(h('p', { class: 'alius-task-text' }, plainDraft(task.text)));
+    const due = task.noDuration === true ? null : dueWords(task, state.day);
+    if (due !== null) parts.push(h('p', { class: 'alius-task-due', ...analyzeAttrs('glossary:practice_task', live) }, `Due: ${due}.`));
     if (task.acceptForm === 'button_cost') {
       const cost = taskCost(state, reg, task);
       const lines = [

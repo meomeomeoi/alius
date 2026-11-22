@@ -105,14 +105,14 @@ describe('the four practice registries (P16)', () => {
 
   it('TUNING.practice holds the spec drafts (R.12) as given and every key of the task', () => {
     const t = TUNING.practice;
-    for (const k of ['keep', 'frequency', 'kindWeights', 'taskCap', 'protocolMax', 'stakesCeiling', 'deadlineDays', 'seeds', 'textMax', 'summaryMax', 'fallback', 'sealedLine', 'sealedRecord', 'chainChance', 'xp', 'severity', 'repair',
+    for (const k of ['keep', 'frequency', 'kindWeights', 'taskCap', 'protocolMax', 'stakesCeiling', 'deadlineDays', 'seeds', 'textMax', 'summaryMax', 'fallback', 'sealedLine', 'sealedRecord', 'chainChance', 'xp', 'severity',
       'refuseRecord', 'coldWant', 'takeInstead', 'demonstration', 'verdict', 'momentGap', 'kindnessAt', 'refusalAt', 'denialRelief', 'hold', 'alarm', 'ask', 'posture', 'slap', 'ceremony', 'sealedShare', 'noDurationShare', 'unfairness']) {
       expect(t, k).toHaveProperty(k);
     }
     expect(t.seeds).toEqual({ min: 3, max: 6 });
-    expect([t.textMax, t.summaryMax, t.repair, t.refuseRecord, t.coldWant, t.kindnessAt, t.refusalAt, t.denialRelief]).toEqual([400, 80, 0.5, 5, 5, 8, -8, 10]);
+    expect([t.textMax, t.summaryMax, t.refuseRecord, t.coldWant, t.kindnessAt, t.refusalAt, t.denialRelief]).toEqual([400, 80, 5, 5, 8, -8, 10]);
     expect(t.xp).toEqual({ kept: 2, discipline: 2, demonstration: 6, hold: 3 });
-    expect(t.takeInstead).toEqual({ trust: 5, record: 2 });
+    expect(t.takeInstead).toEqual({ record: 2 });
     expect(t.momentGap).toEqual({ matched: 2, partial: 0, opposite: -3 });
     expect(t.alarm).toEqual({ release: 0.5, late: -0.5, releaseHold: 2, lateRecord: 3, keepRecord: 5 });
     expect(t.slap.windowMs).toEqual({ affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300 });
@@ -142,6 +142,33 @@ describe('what is refused', () => {
     expect(ok.registries.holderPunishments.has('good_slap')).toBe(true);
     const mark = await load({ holderPunishments: [{ ...p, id: 'bad_mark', effects: [{ type: 'mark', days: 3 }], contentTags: ['restraint'] }] });
     expect(messages(mark)).toMatch(/needs the content tag "body_modification"/);
+  });
+
+  it('slot_held needs restraint on its row, because the hold it starts is a restrained one (P1)', async () => {
+    const p = rows('holderPunishments')[0];
+    const bad = await load({ holderPunishments: [{ ...p, id: 'bare_hold', effects: [{ type: 'slot_held', slots: 1 }], contentTags: undefined }] });
+    expect(messages(bad)).toMatch(/the effect "slot_held" needs the content tag "restraint"/);
+    const ok = await load({ holderPunishments: [{ ...p, id: 'tagged_hold', effects: [{ type: 'slot_held', slots: 1 }], contentTags: ['restraint'] }] });
+    expect(ok.errors).toEqual([]);
+    // every core row that holds her says so
+    for (const row of rows('holderPunishments')) {
+      if ((row.effects as Array<{ type: string }>).some((e) => e.type === 'slot_held')) expect(row.contentTags, String(row.id)).toContain('restraint');
+    }
+  });
+
+  it('a revoked room names its location, and only a room does (P3)', async () => {
+    const p = rows('holderPunishments')[0];
+    const row = (effect: object) => ({ ...p, id: 'room_bar', effects: [effect], contentTags: undefined });
+    const noArg = await load({ holderPunishments: [row({ type: 'privilege_revoked', what: 'room', days: 1 })] });
+    expect(messages(noArg)).toMatch(/room/);
+    expect(noArg.registries.holderPunishments.has('room_bar')).toBe(false);
+    const stray = await load({ holderPunishments: [row({ type: 'privilege_revoked', what: 'no_dms_others', days: 1, arg: 'mess_hall' })] });
+    expect(messages(stray)).toMatch(/only for a revoked room/);
+    const unknown = await load({ holderPunishments: [row({ type: 'privilege_revoked', what: 'room', days: 1, arg: 'nowhere' })] });
+    expect(messages(unknown)).toMatch(/unknown locations id "nowhere"/);
+    const ok = await load({ holderPunishments: [row({ type: 'privilege_revoked', what: 'room', days: 1, arg: 'mess_hall' })] });
+    expect(ok.errors).toEqual([]);
+    expect(ok.registries.holderPunishments.has('room_bar')).toBe(true);
   });
 
   it('injury_chance needs a non-body route', async () => {
