@@ -1287,6 +1287,12 @@ var TUNING = Object.freeze({
       max: 5
     }),
     repair: 0.5,
+    /** Her discipline (R8, `AUTHOR TO TUNE`): the stakes a punishment's weight (1 to 5) stands for (a confession task), the days a confession gives, its words, and how long an offence day is kept for the repeat count. */
+    punish: Object.freeze({
+      stakesOf: Object.freeze(["trivial", "minor", "major", "severe", "severe"]),
+      confession: Object.freeze({ days: 2, text: "AUTHOR TO WRITE: Tell {name} what was done, plainly.", summary: "tell {name} what was done", track: "discipline" }),
+      keepDays: 60
+    }),
     refuseRecord: 5,
     coldWant: 5,
     takeInstead: Object.freeze({ trust: 5, record: 2 }),
@@ -7385,6 +7391,25 @@ var PRACTICE_EVENT_TYPES = [
   "threat_voiced",
   "practice_undone"
 ];
+var OFFENCE_WORDS = Object.freeze({
+  task_broken: "a task she gave was not kept",
+  rule_broken: "a rule of hers was broken",
+  protocol_slip: "a rule of address slipped",
+  denial_broken: "something that needed her permission was done without it",
+  refusal: "the commander refused her",
+  milestone_refused: "the commander refused what she offered",
+  countermand_overruled: "the commander overruled her call",
+  physics_slip: "the commander slipped in what she held",
+  physics_caught: "the commander was caught cheating at what she held",
+  posture_slip: "the commander slipped out of a posture",
+  false_report: "a report the commander made turned out false",
+  asked: "the commander asked for it",
+  unfair: "nothing the commander did",
+  hold_defied: "the commander defied her hold"
+});
+function severityWord(severity) {
+  return severity <= 2 ? "light" : severity === 3 ? "heavy" : "harsh";
+}
 function blankPractices() {
   return { seq: 0, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, postures: {}, offences: {}, records: [], handovers: [] };
 }
@@ -18811,11 +18836,11 @@ function fadeDeclarations(draft, ids) {
   return events;
 }
 function readMoments(draft, ctx2, events) {
-  const answers = events.filter((e) => e.type === "moment_answered");
-  if (answers.length === 0 || !dynamicOn(draft, ctx2.registries)) return [];
+  const answers2 = events.filter((e) => e.type === "moment_answered");
+  if (answers2.length === 0 || !dynamicOn(draft, ctx2.registries)) return [];
   const out = [];
   const afterThreat = threatIn(events);
-  for (const e of answers) {
+  for (const e of answers2) {
     const unitId = String(e.unitId);
     const unit3 = draft.squad.find((u) => u.id === unitId);
     const rel = dynamicOf(draft, unitId);
@@ -22442,11 +22467,340 @@ function nextPracticeId(draft, prefix) {
   return `${prefix}${ensurePractices(draft).seq++}`;
 }
 
-// src/engine/practice/offences.ts
-function noteOffence(draft, _ctx, holderId, offence) {
-  (ensurePractices(draft).offences[holderId] ??= []).push(offence.day);
-  return [];
+// src/engine/practice/seeds.ts
+var seedRows = (reg) => [...reg.practiceSeeds.values()];
+function seedPool(state, reg, holderId, kind, opts = {}) {
+  const view = practiceOf(state, reg, holderId);
+  const tier = bondTierOf(state, reg, holderId);
+  return seedRows(reg).filter((seed) => {
+    if (seed.kind !== kind || !contentAllowed(state, reg, seed, holderId)) return false;
+    if (seed.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
+    if (!trackOpen(state, reg, holderId, seed.track) || seed.tier > trackLevel(state, holderId, seed.track) + 1) return false;
+    if (opts.minTier !== void 0 && seed.tier < opts.minTier) return false;
+    if (seed.needs !== void 0 && !hasCapability(state, reg, holderId, seed.needs)) return false;
+    return seed.romantic !== true || tier === "romantic";
+  });
 }
+function pickSeeds(state, reg, holderId, kind, opts = {}) {
+  const pool = seedPool(state, reg, holderId, kind, opts);
+  const T5 = TUNING.practice.seeds;
+  const want = T5.min + Math.floor(practiceRoll(state, holderId, `seeds:${kind}:n`) * (T5.max - T5.min + 1));
+  const rest = [...pool];
+  const picked = [];
+  for (let i = 0; i < want && rest.length > 0; i++) {
+    const total2 = rest.reduce((sum, seed) => sum + seed.weight, 0);
+    let at = practiceRoll(state, holderId, `seeds:${kind}:${i}`) * total2;
+    let index2 = rest.findIndex((seed) => (at -= seed.weight) < 0);
+    if (index2 < 0) index2 = rest.length - 1;
+    picked.push(rest[index2].id);
+    rest.splice(index2, 1);
+  }
+  return picked;
+}
+function fallbackLine(kind, gist) {
+  return TUNING.practice.fallback[kind].replaceAll("{gist}", gist);
+}
+function plainSummary(seed) {
+  return seed.gist;
+}
+function stakesCeilingOf(state, holderId) {
+  const frame = dynamicOf(state, holderId)?.frame;
+  return frame === "rule" || frame === "role" || frame === "play" ? TUNING.practice.stakesCeiling[frame] : "minor";
+}
+
+// src/engine/practice/request.ts
+function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
+  if (!practiceLive(draft, ctx2.registries, holderId)) return [];
+  const reg = ctx2.registries;
+  const last = extra.chainOf === void 0 ? void 0 : draft.practices?.tasks.filter((t) => t.chainId === extra.chainOf).at(-1);
+  const seedIds = pickSeeds(draft, reg, holderId, kind, last === void 0 ? {} : { minTier: last.tier });
+  if (seedIds.length === 0 && extra.offence === void 0) return [];
+  const id = nextPracticeId(draft, "pq");
+  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds });
+  return [{ type: "practice_requested", requestId: id, holderId, kind }];
+}
+
+// src/engine/practice/validate.ts
+var CARD_MAX = 600;
+var LEVEL_WORDS = ["none yet", "a beginner", "practised", "experienced", "deep", "complete"];
+var TIER_WORDS = ["none", "one", "two", "three", "four", "five"];
+var CAPABILITY_WORDS = Object.freeze({
+  booking_uncapped: "books the commander freely",
+  book_ahead: "books the commander ahead",
+  body_conditions: "sets conditions on the commander's body",
+  device_floor: "holds the commander's device",
+  leash_block: "answers for the commander's Leash requests",
+  household_protocol: "keeps a household protocol",
+  second_place: "holds second place",
+  relation_rules: "sets rules between the commander and others",
+  booking_consent: "must be asked for the commander's evenings",
+  countermand: "countermands the commander's orders",
+  co_leader: "leads beside the commander"
+});
+var clean3 = (s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+function eligibleUnits(state, holderId) {
+  return state.squad.filter((u) => u.kind === "named" && u.id !== holderId && isLiving(u)).map((u) => u.id);
+}
+function activeRules2(state, holderId) {
+  return (state.bonds?.rules ?? []).filter((r) => r.unitId === holderId && r.status === "active").map((r) => ({ id: r.id, text: clean3(r.text) }));
+}
+function buildPracticeInput(state, reg, request, card2 = "") {
+  const holderId = request.holderId;
+  const unit3 = state.squad.find((u) => u.id === holderId);
+  const view = practiceOf(state, reg, holderId);
+  const dyn = dynamicOf(state, holderId);
+  const frame = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
+  const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
+  const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
+  const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const limits = unit3.bond?.ownLimits.categories ?? [];
+  return {
+    requestId: request.id,
+    kind: request.kind,
+    holder: { id: holderId, name: unit3.displayName },
+    card: clean3(card2).slice(0, CARD_MAX),
+    frame,
+    style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
+    claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
+    tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
+    categories: Object.entries(view?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
+    hasLimits: limits.length > 0,
+    recent: (dyn?.recent ?? []).map(clean3),
+    context: {
+      day: state.day,
+      slot: state.slot,
+      openTasks: (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && (t.status === "offered" || t.status === "open")).map((t) => t.sealed === true && t.status === "offered" ? "a sealed task" : clean3(t.summary)),
+      want: wantBandOf(state, reg, holderId),
+      impunity: impunityBand(impunityOf(state, reg, holderId)?.value ?? 0),
+      present: (state.scene?.participants ?? []).filter((id) => id !== holderId).map((id) => ({ id, name: unitName3(id) }))
+    },
+    units: eligibleUnits(state, holderId).map((id) => ({ id, name: unitName3(id) })),
+    frequency: state.dynamic?.setup.frequency ?? "normal",
+    rules: activeRules2(state, holderId),
+    seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? "model" })),
+    ...request.kind === "punishment" && request.entryId !== void 0 && reg.holderPunishments.has(request.entryId) ? { punishment: { label: String(reg.holderPunishments.get(request.entryId).label), weight: severityWord(request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? "refusal"] } } : {},
+    limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } }
+  };
+}
+function tierCapOf(state, reg, holderId) {
+  const levels = [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => trackLevel(state, holderId, t.id) + 1);
+  return Math.min(5, Math.max(1, ...levels));
+}
+var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var LABEL = /^(?:her words|text|summary|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
+function plainText2(v, max) {
+  if (typeof v !== "string") return "";
+  return v.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL, "").slice(0, max).trim();
+}
+var SLOTS2 = ["morning", "afternoon", "evening", "night"];
+var ROSTER_CHECKS = ["on_roster", "not_on_roster"];
+function validatePracticeOutput(state, reg, request, raw) {
+  if (!isObj6(raw) || raw.kind !== request.kind) return null;
+  const holderId = request.holderId;
+  const issues = [];
+  if (request.kind === "punishment") return validatePunishmentCard(reg, request, raw);
+  const pool = seedPool(state, reg, holderId, request.kind);
+  const seed = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
+  if (raw.seedId !== void 0 && seed === void 0) issues.push("seedId is not an offered seed and was dropped");
+  const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
+  const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
+  if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
+  if (kept.length === 0) return null;
+  const asked = typeof raw.track === "string" ? raw.track : void 0;
+  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed !== void 0 && trackOpen(state, reg, holderId, seed.track) ? seed.track : void 0;
+  if (track === void 0) return null;
+  if (track !== asked) issues.push("track was not open and was replaced");
+  const cap8 = trackLevel(state, holderId, track) + 1;
+  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed?.tier ?? 1;
+  const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
+  const tier = Math.min(Math.min(5, cap8), Math.max(1, floor, tierRaw));
+  if (tier !== raw.tier) issues.push("tier was clamped");
+  const ceiling = stakesCeilingOf(state, holderId);
+  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed?.stakes ?? "minor";
+  const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
+  if (stakes !== raw.stakes) issues.push("stakes were clamped");
+  const units = eligibleUnits(state, holderId);
+  const targetAsked = typeof raw.targetId === "string" ? raw.targetId : raw.targetUnitId;
+  const targetRaw = typeof targetAsked === "string" && units.includes(targetAsked) ? targetAsked : void 0;
+  let check = CHECK_KINDS.includes(raw.check) ? raw.check : "model";
+  let checkArg = typeof raw.checkArg === "string" ? raw.checkArg : void 0;
+  if (check === "no_scene_with" && (checkArg === void 0 || !units.includes(checkArg))) {
+    check = "model";
+    checkArg = void 0;
+  } else if (check === "rule_kept_until" && (checkArg === void 0 || !activeRules2(state, holderId).some((r) => r.id === checkArg))) {
+    check = "model";
+    checkArg = void 0;
+  } else if (ROSTER_CHECKS.includes(check)) checkArg = checkArg !== void 0 && units.includes(checkArg) ? checkArg : void 0;
+  else if (check !== "no_scene_with" && check !== "rule_kept_until") checkArg = void 0;
+  const argAsked = typeof raw.checkArg === "string" && units.includes(raw.checkArg) ? raw.checkArg : void 0;
+  const fieldUnit = argAsked ?? targetRaw;
+  if (raw.field === true && !ROSTER_CHECKS.includes(check) && check === raw.check && fieldUnit !== void 0) {
+    check = "on_roster";
+    checkArg = fieldUnit;
+    issues.push("a field task takes a roster check");
+  } else if (check !== raw.check) issues.push("check was changed to model");
+  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed?.proof ?? "none";
+  let deadline;
+  if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
+    const D3 = TUNING.practice.deadlineDays;
+    const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
+    if (days !== raw.deadline.days) issues.push("deadline was clamped");
+    deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
+  }
+  const eligible4 = units;
+  const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id) => typeof id === "string").filter((id, i, all) => all.indexOf(id) === i);
+  const audienceIds = asked2.filter((id) => eligible4.includes(id));
+  if (audienceIds.length < asked2.length) issues.push("audience was filtered");
+  if (request.kind === "demonstration" && audienceIds.length === 0) return null;
+  const text2 = plainText2(raw.text, TUNING.practice.textMax);
+  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
+  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
+  if (summary === "") {
+    if (seed === void 0) return null;
+    summary = seed.gist;
+    issues.push("summary was empty and is the seed's gist");
+  }
+  return {
+    output: {
+      kind: request.kind,
+      ...seed !== void 0 ? { seedId: seed.id } : {},
+      tags: kept,
+      track,
+      tier,
+      stakes,
+      check,
+      ...checkArg !== void 0 ? { checkArg } : {},
+      ...deadline !== void 0 ? { deadline } : {},
+      proof,
+      ...audienceIds.length > 0 ? { audienceIds } : {},
+      ...targetRaw !== void 0 ? { targetUnitId: targetRaw } : {},
+      text: text2,
+      summary
+    },
+    issues
+  };
+}
+function validatePunishmentCard(reg, request, raw) {
+  const text2 = plainText2(raw.text, TUNING.practice.textMax);
+  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
+  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
+  const issues = [];
+  if (summary === "") {
+    const entry = request.entryId === void 0 ? void 0 : reg.holderPunishments.get(request.entryId);
+    if (entry === void 0) return null;
+    summary = String(entry.label);
+    issues.push("summary was empty and is the entry's label");
+  }
+  return { output: { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: text2, summary }, issues };
+}
+
+// src/engine/practice/offences.ts
+var entriesOf = (reg) => [...reg.holderPunishments.values()];
+var effectsOf4 = (entry) => Array.isArray(entry.effects) ? entry.effects : [];
+function styleTerm(state, reg, holderId) {
+  const T5 = TUNING.practice.severity;
+  const style = practiceOf(state, reg, holderId)?.style;
+  if (style === void 0) return 0;
+  const primary = T5.style[style.primary] ?? 0;
+  const secondary = style.secondary === void 0 ? 0 : Math.trunc(T5.secondaryShare * (T5.style[style.secondary] ?? 0));
+  return primary + secondary;
+}
+function severityOf(state, reg, holderId, offence) {
+  const T5 = TUNING.practice.severity;
+  const frame = dynamicOf(state, holderId)?.frame;
+  const frameTerm = frame === "rule" || frame === "role" || frame === "play" ? T5.frame[frame] : 0;
+  const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
+  const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
+  const total2 = stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat;
+  return Math.min(T5.max, Math.max(T5.min, total2));
+}
+var sceneIsHers = (state, holderId) => state.scene === void 0 || state.scene.participants.length === 1 && state.scene.participants[0] === holderId;
+var atBase = (state, holderId) => eligibleUnits(state, holderId).filter((id) => !(state.expedition?.party ?? []).includes(id));
+var publicAllowed = (state, reg, holderId) => practiceOf(state, reg, holderId)?.audience !== "private_only";
+function possibleNow(state, reg, holderId, entry) {
+  if (!contentAllowed(state, reg, entry, holderId)) return false;
+  if (entry.public === true && !publicAllowed(state, reg, holderId)) return false;
+  const on = state.content?.enabled ?? [];
+  for (const fx2 of effectsOf4(entry)) {
+    const needs = EFFECT_NEEDS[fx2.type];
+    if (needs.length > 0 && !needs.some((t) => on.includes(t))) return false;
+    if (fx2.type === "slot_held" && (state.expedition !== void 0 || state.combat !== void 0 || !sceneIsHers(state, holderId))) return false;
+    if (fx2.type === "confession" && atBase(state, holderId).length === 0) return false;
+  }
+  return true;
+}
+function pickHolderPunishment(state, reg, holderId, severity) {
+  const given = (state.practices?.punishments ?? []).filter((p) => p.holderId === holderId).length;
+  for (let sev = Math.min(5, Math.floor(severity)); sev >= 1; sev--) {
+    const eligible4 = entriesOf(reg).filter((e) => e.severity === sev && possibleNow(state, reg, holderId, e));
+    if (eligible4.length > 0) return String(eligible4[given % eligible4.length].id);
+  }
+  return null;
+}
+function severityOfEntry(reg, entryId) {
+  const sev = reg.holderPunishments.get(entryId)?.severity;
+  return typeof sev === "number" && sev >= 1 && sev <= 5 ? sev : void 0;
+}
+function punishmentOpen(state, holderId) {
+  const p = state.practices;
+  return p?.requests.some((r) => r.holderId === holderId && r.kind === "punishment") === true || p?.punishments.some((x) => x.holderId === holderId && x.forUnitId === void 0 && (x.status === "offered" || x.status === "negotiating")) === true;
+}
+function noteOffence(draft, ctx2, holderId, offence) {
+  const reg = ctx2.registries;
+  if (!practiceLive(draft, reg, holderId)) return [];
+  const p = ensurePractices(draft);
+  if (p.noted === void 0 || p.noted.day !== draft.day) p.noted = { day: draft.day, keys: [] };
+  const key = `${holderId}|${offence.kind}|${offence.ref ?? ""}`;
+  if (p.noted.keys.includes(key)) return [];
+  p.noted.keys.push(key);
+  const severity = severityOf(draft, reg, holderId, offence);
+  const days = p.offences[holderId] ??= [];
+  days.push(offence.day);
+  p.offences[holderId] = days.filter((d) => draft.day - d <= TUNING.practice.punish.keepDays);
+  if (punishmentOpen(draft, holderId)) return [];
+  const entryId = pickHolderPunishment(draft, reg, holderId, severity);
+  if (entryId === null) return [];
+  return requestPractice(draft, ctx2, holderId, "punishment", { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId });
+}
+var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var answers = (state, holderId) => {
+  const frame = dynamicOf(state, holderId)?.frame;
+  return frame !== void 0 && frameRank(frame) >= frameRank("role");
+};
+function offencesFromEvents(draft, ctx2, events) {
+  if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
+  const out = [];
+  const refusedTask = (unitId) => events.some((x) => x.type === "task_answered" && x.answer === "refuse" && x.holderId === unitId);
+  const note = (holderId, kind, ref, stakes) => {
+    if (holderId === void 0) return;
+    out.push(...noteOffence(draft, ctx2, holderId, { kind, ...ref !== void 0 ? { ref } : {}, stakes, day: draft.day }));
+  };
+  for (const e of events) {
+    const unitId = str2(e.unitId) ?? str2(e.holderId);
+    switch (e.type) {
+      case "refusal_noted":
+        if ((e.what === "claim" || e.what === "demand") && unitId !== void 0 && answers(draft, unitId) && !refusedTask(unitId)) note(unitId, "refusal", `refusal:${String(e.what)}`, "minor");
+        break;
+      case "milestone_refused":
+        if (unitId !== void 0 && answers(draft, unitId)) note(unitId, "milestone_refused", str2(e.milestoneId), "minor");
+        break;
+      case "override_answered":
+        if (e.source === "holder" && e.answer === "defy") note(unitId, "countermand_overruled", str2(e.overrideId), "minor");
+        break;
+      case "physics_slip":
+      case "physics_caught":
+        note(str2(e.holderId), e.type, str2(e.runId), "minor");
+        break;
+      case "rule_broken":
+        note(unitId, "rule_broken", str2(e.ruleId), "minor");
+        break;
+      default:
+        break;
+    }
+  }
+  return out;
+}
+var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered", "physics_slip", "physics_caught", "rule_broken"];
 
 // src/engine/practice/sample.ts
 function practiceSample(draft, reg, unitId, response, opts = {}) {
@@ -22458,7 +22812,7 @@ function practiceSample(draft, reg, unitId, response, opts = {}) {
 }
 
 // src/engine/practice/checks.ts
-var ROSTER_CHECKS = ["on_roster", "not_on_roster"];
+var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
 var SEVERITY = ["minor", "minor", "moderate", "major", "extreme"];
 var RECENT_MAX = TUNING.probes.recentMax;
 var isOpenTask = (t) => t.kind === "task" && t.status === "open" && t.routine !== true;
@@ -22574,7 +22928,7 @@ function taskChecksFromEvents(draft, ctx2, events) {
         const party = last !== void 0 && last.id === e.reportId ? last.party : void 0;
         if (party === void 0) break;
         for (const t of live3()) {
-          if (t.field !== true || !ROSTER_CHECKS.includes(t.check)) continue;
+          if (t.field !== true || !ROSTER_CHECKS2.includes(t.check)) continue;
           const unit3 = subjectOf(t);
           if (unit3 === void 0) settle6(t, "void");
           else settle6(t, party.includes(unit3) === (t.check === "on_roster") ? "kept" : "broken");
@@ -22672,206 +23026,6 @@ function falseReportSweep(draft, ctx2) {
     if (practiceRoll(draft, task.holderId, `false:${task.id}`) < falseReportChance(draft, ctx2.registries, task)) out.push(...findFalseReport(draft, ctx2, task.id, "report"));
   }
   return out;
-}
-
-// src/engine/practice/seeds.ts
-var seedRows = (reg) => [...reg.practiceSeeds.values()];
-function seedPool(state, reg, holderId, kind, opts = {}) {
-  const view = practiceOf(state, reg, holderId);
-  const tier = bondTierOf(state, reg, holderId);
-  return seedRows(reg).filter((seed) => {
-    if (seed.kind !== kind || !contentAllowed(state, reg, seed, holderId)) return false;
-    if (seed.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
-    if (!trackOpen(state, reg, holderId, seed.track) || seed.tier > trackLevel(state, holderId, seed.track) + 1) return false;
-    if (opts.minTier !== void 0 && seed.tier < opts.minTier) return false;
-    if (seed.needs !== void 0 && !hasCapability(state, reg, holderId, seed.needs)) return false;
-    return seed.romantic !== true || tier === "romantic";
-  });
-}
-function pickSeeds(state, reg, holderId, kind, opts = {}) {
-  const pool = seedPool(state, reg, holderId, kind, opts);
-  const T5 = TUNING.practice.seeds;
-  const want = T5.min + Math.floor(practiceRoll(state, holderId, `seeds:${kind}:n`) * (T5.max - T5.min + 1));
-  const rest = [...pool];
-  const picked = [];
-  for (let i = 0; i < want && rest.length > 0; i++) {
-    const total2 = rest.reduce((sum, seed) => sum + seed.weight, 0);
-    let at = practiceRoll(state, holderId, `seeds:${kind}:${i}`) * total2;
-    let index2 = rest.findIndex((seed) => (at -= seed.weight) < 0);
-    if (index2 < 0) index2 = rest.length - 1;
-    picked.push(rest[index2].id);
-    rest.splice(index2, 1);
-  }
-  return picked;
-}
-function fallbackLine(kind, gist) {
-  return TUNING.practice.fallback[kind].replaceAll("{gist}", gist);
-}
-function plainSummary(seed) {
-  return seed.gist;
-}
-function stakesCeilingOf(state, holderId) {
-  const frame = dynamicOf(state, holderId)?.frame;
-  return frame === "rule" || frame === "role" || frame === "play" ? TUNING.practice.stakesCeiling[frame] : "minor";
-}
-
-// src/engine/practice/validate.ts
-var CARD_MAX = 600;
-var LEVEL_WORDS = ["none yet", "a beginner", "practised", "experienced", "deep", "complete"];
-var TIER_WORDS = ["none", "one", "two", "three", "four", "five"];
-var CAPABILITY_WORDS = Object.freeze({
-  booking_uncapped: "books the commander freely",
-  book_ahead: "books the commander ahead",
-  body_conditions: "sets conditions on the commander's body",
-  device_floor: "holds the commander's device",
-  leash_block: "answers for the commander's Leash requests",
-  household_protocol: "keeps a household protocol",
-  second_place: "holds second place",
-  relation_rules: "sets rules between the commander and others",
-  booking_consent: "must be asked for the commander's evenings",
-  countermand: "countermands the commander's orders",
-  co_leader: "leads beside the commander"
-});
-var clean3 = (s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-function eligibleUnits(state, holderId) {
-  return state.squad.filter((u) => u.kind === "named" && u.id !== holderId && isLiving(u)).map((u) => u.id);
-}
-function activeRules2(state, holderId) {
-  return (state.bonds?.rules ?? []).filter((r) => r.unitId === holderId && r.status === "active").map((r) => ({ id: r.id, text: clean3(r.text) }));
-}
-function buildPracticeInput(state, reg, request, card2 = "") {
-  const holderId = request.holderId;
-  const unit3 = state.squad.find((u) => u.id === holderId);
-  const view = practiceOf(state, reg, holderId);
-  const dyn = dynamicOf(state, holderId);
-  const frame = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
-  const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
-  const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
-  const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const limits = unit3.bond?.ownLimits.categories ?? [];
-  return {
-    requestId: request.id,
-    kind: request.kind,
-    holder: { id: holderId, name: unit3.displayName },
-    card: clean3(card2).slice(0, CARD_MAX),
-    frame,
-    style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
-    claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
-    tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
-    categories: Object.entries(view?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
-    hasLimits: limits.length > 0,
-    recent: (dyn?.recent ?? []).map(clean3),
-    context: {
-      day: state.day,
-      slot: state.slot,
-      openTasks: (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && (t.status === "offered" || t.status === "open")).map((t) => t.sealed === true && t.status === "offered" ? "a sealed task" : clean3(t.summary)),
-      want: wantBandOf(state, reg, holderId),
-      impunity: impunityBand(impunityOf(state, reg, holderId)?.value ?? 0),
-      present: (state.scene?.participants ?? []).filter((id) => id !== holderId).map((id) => ({ id, name: unitName3(id) }))
-    },
-    units: eligibleUnits(state, holderId).map((id) => ({ id, name: unitName3(id) })),
-    frequency: state.dynamic?.setup.frequency ?? "normal",
-    rules: activeRules2(state, holderId),
-    seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? "model" })),
-    limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } }
-  };
-}
-function tierCapOf(state, reg, holderId) {
-  const levels = [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => trackLevel(state, holderId, t.id) + 1);
-  return Math.min(5, Math.max(1, ...levels));
-}
-var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var LABEL = /^(?:her words|text|summary|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
-function plainText2(v, max) {
-  if (typeof v !== "string") return "";
-  return v.replace(/<[^>]*>/g, "").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim().replace(LABEL, "").slice(0, max).trim();
-}
-var SLOTS2 = ["morning", "afternoon", "evening", "night"];
-var ROSTER_CHECKS2 = ["on_roster", "not_on_roster"];
-function validatePracticeOutput(state, reg, request, raw) {
-  if (!isObj6(raw) || raw.kind !== request.kind) return null;
-  const holderId = request.holderId;
-  const issues = [];
-  const pool = seedPool(state, reg, holderId, request.kind);
-  const seed = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
-  if (raw.seedId !== void 0 && seed === void 0) issues.push("seedId is not an offered seed and was dropped");
-  const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
-  const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
-  if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
-  if (kept.length === 0) return null;
-  const asked = typeof raw.track === "string" ? raw.track : void 0;
-  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed !== void 0 && trackOpen(state, reg, holderId, seed.track) ? seed.track : void 0;
-  if (track === void 0) return null;
-  if (track !== asked) issues.push("track was not open and was replaced");
-  const cap8 = trackLevel(state, holderId, track) + 1;
-  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed?.tier ?? 1;
-  const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
-  const tier = Math.min(Math.min(5, cap8), Math.max(1, floor, tierRaw));
-  if (tier !== raw.tier) issues.push("tier was clamped");
-  const ceiling = stakesCeilingOf(state, holderId);
-  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed?.stakes ?? "minor";
-  const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
-  if (stakes !== raw.stakes) issues.push("stakes were clamped");
-  const units = eligibleUnits(state, holderId);
-  const targetAsked = typeof raw.targetId === "string" ? raw.targetId : raw.targetUnitId;
-  const targetRaw = typeof targetAsked === "string" && units.includes(targetAsked) ? targetAsked : void 0;
-  let check = CHECK_KINDS.includes(raw.check) ? raw.check : "model";
-  let checkArg = typeof raw.checkArg === "string" ? raw.checkArg : void 0;
-  if (check === "no_scene_with" && (checkArg === void 0 || !units.includes(checkArg))) {
-    check = "model";
-    checkArg = void 0;
-  } else if (check === "rule_kept_until" && (checkArg === void 0 || !activeRules2(state, holderId).some((r) => r.id === checkArg))) {
-    check = "model";
-    checkArg = void 0;
-  } else if (ROSTER_CHECKS2.includes(check)) checkArg = checkArg !== void 0 && units.includes(checkArg) ? checkArg : void 0;
-  else if (check !== "no_scene_with" && check !== "rule_kept_until") checkArg = void 0;
-  const argAsked = typeof raw.checkArg === "string" && units.includes(raw.checkArg) ? raw.checkArg : void 0;
-  const fieldUnit = argAsked ?? targetRaw;
-  if (raw.field === true && !ROSTER_CHECKS2.includes(check) && check === raw.check && fieldUnit !== void 0) {
-    check = "on_roster";
-    checkArg = fieldUnit;
-    issues.push("a field task takes a roster check");
-  } else if (check !== raw.check) issues.push("check was changed to model");
-  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed?.proof ?? "none";
-  let deadline;
-  if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
-    const D3 = TUNING.practice.deadlineDays;
-    const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
-    if (days !== raw.deadline.days) issues.push("deadline was clamped");
-    deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS2.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
-  }
-  const eligible4 = units;
-  const asked2 = (Array.isArray(raw.audienceIds) ? raw.audienceIds : []).filter((id) => typeof id === "string").filter((id, i, all) => all.indexOf(id) === i);
-  const audienceIds = asked2.filter((id) => eligible4.includes(id));
-  if (audienceIds.length < asked2.length) issues.push("audience was filtered");
-  if (request.kind === "demonstration" && audienceIds.length === 0) return null;
-  const text2 = plainText2(raw.text, TUNING.practice.textMax);
-  let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
-  if (text2 === "" || hasCommanderPronoun(text2) || hasCommanderPronoun(summary)) return null;
-  if (summary === "") {
-    if (seed === void 0) return null;
-    summary = seed.gist;
-    issues.push("summary was empty and is the seed's gist");
-  }
-  return {
-    output: {
-      kind: request.kind,
-      ...seed !== void 0 ? { seedId: seed.id } : {},
-      tags: kept,
-      track,
-      tier,
-      stakes,
-      check,
-      ...checkArg !== void 0 ? { checkArg } : {},
-      ...deadline !== void 0 ? { deadline } : {},
-      proof,
-      ...audienceIds.length > 0 ? { audienceIds } : {},
-      ...targetRaw !== void 0 ? { targetUnitId: targetRaw } : {},
-      text: text2,
-      summary
-    },
-    issues
-  };
 }
 
 // src/engine/practice/tasks.ts
@@ -23081,6 +23235,8 @@ var PRACTICE_HANDLERS = {
   task_broken: (draft, ctx2, unitId, ev) => fromIntent(draft, ctx2, unitId, ev),
   practice_accepted: (draft, ctx2, unitId, ev) => ev.handoverId !== void 0 ? [] : acceptByWords(draft, ctx2, unitId, ev),
   // a handover's words are built with the handover
+  // her habit slipped out (P15's intent, applied by the dynamic): it is also an offence of hers (R8), a minor one before others, a trivial one alone
+  protocol_slip: (draft, ctx2, unitId) => noteOffence(draft, ctx2, unitId, { kind: "protocol_slip", ref: "slip", stakes: (draft.scene?.participants ?? []).some((id) => id !== unitId) ? "minor" : "trivial", day: draft.day }),
   compromise_reached: (draft, ctx2, unitId, ev) => ev.taskId !== void 0 ? compromiseTask(draft, ctx2, unitId, ev) : []
   // a punishment's and an alarm's own compromise are built with them
 };
@@ -23134,7 +23290,7 @@ var COMMANDER_SIDE = ["hobby_praised", "opinion_challenged", "opinion_agreed"];
 function lifeFields(type, e, intent, life) {
   if (!life) return null;
   const candidates3 = intent.actor === "commander" ? intent.targets : [intent.actor];
-  const str7 = (v) => typeof v === "string" && v !== "" ? v : null;
+  const str8 = (v) => typeof v === "string" && v !== "" ? v : null;
   let who;
   let key = null;
   const pick3 = (list5, id) => {
@@ -23144,14 +23300,14 @@ function lifeFields(type, e, intent, life) {
   };
   switch (type) {
     case "news_told": {
-      const row4 = pick3(life.news, str7(e.newsId));
+      const row4 = pick3(life.news, str8(e.newsId));
       if (!row4) return null;
       intent.newsId = row4.id;
       key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row4 = pick3(life.hobbies, str7(e.hobbyId));
+      const row4 = pick3(life.hobbies, str8(e.hobbyId));
       if (!row4) return null;
       intent.hobbyId = row4.id;
       key = row4.id;
@@ -23160,10 +23316,10 @@ function lifeFields(type, e, intent, life) {
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row4 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str7(e.topicId));
+      const row4 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str8(e.topicId));
       if (!row4) return null;
       intent.topicId = row4.id;
-      const position = str7(e.positionId);
+      const position = str8(e.positionId);
       if (type === "opinion_challenged" && position !== null && row4.positions.includes(position)) intent.positionId = position;
       key = row4.id;
       break;
@@ -23178,7 +23334,7 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row4 = pick3(life.jokes, str7(e.factId));
+      const row4 = pick3(life.jokes, str8(e.factId));
       if (!row4) return null;
       intent.factId = row4.id;
       key = row4.id;
@@ -24110,6 +24266,7 @@ function forgetPractices(draft, unitId) {
   if (p.call?.holderId === unitId) delete p.call;
   if (p.slap?.holderId === unitId) delete p.slap;
   delete p.offences[unitId];
+  if (p.noted !== void 0) p.noted.keys = p.noted.keys.filter((k) => !k.startsWith(`${unitId}|`));
   p.records = p.records.filter((r) => r.holderId !== unitId);
   for (const h2 of p.handovers) if (h2.holderId === unitId) events.push(endHandover(h2, "gone"));
   p.handovers = p.handovers.filter((h2) => h2.holderId !== unitId);
@@ -25206,6 +25363,7 @@ function applyIntents(draft, ctx2, p) {
       if (e.type === "conspired") events.push(...tryAlly(draft, ctx2, id));
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
       if (PRACTICE_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyPracticeIntent(draft, ctx2, id, e, events));
+      if (e.type === "protocol_slip") events.push(...applyPracticeIntent(draft, ctx2, id, e, events));
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx2, id, e, events));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
       else if (e.type === "compromise_reached" && (e.claimId !== void 0 || e.exitId !== void 0)) {
@@ -26591,11 +26749,11 @@ function readRoutePick(v) {
 // src/engine/special/debts/consequences.ts
 var T2 = () => TUNING.special.debts;
 var clamp27 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function scheduleConsequences(draft, ctx2, visit, answers) {
+function scheduleConsequences(draft, ctx2, visit, answers2) {
   const d = draft.special?.debts;
   if (!d) return;
   for (const item of visit.items) {
-    const a = answers[item.id];
+    const a = answers2[item.id];
     if (a === void 0 || a === "withhold") continue;
     const x = {
       id: `${visit.id}:${item.id}`,
@@ -30118,8 +30276,8 @@ function intelOf(state, reg) {
   }
   return out.slice(0, 5);
 }
-function paymentFor(answers, pressure) {
-  const values = Object.values(answers);
+function paymentFor(answers2, pressure) {
+  const values = Object.values(answers2);
   const truths = values.filter((a) => a === "truth").length;
   const partials = values.filter((a) => a === "partial").length;
   const falses = values.filter((a) => a === "false").length;
@@ -30154,12 +30312,12 @@ function closeVisit(draft, ctx2, spendNight) {
   }
   return [];
 }
-function settle3(draft, ctx2, d, answers, spendNight) {
+function settle3(draft, ctx2, d, answers2, spendNight) {
   const visit = d.visit;
   const counts = { truth: 0, partial: 0, false: 0, withhold: 0 };
-  for (const a of Object.values(answers)) counts[a] += 1;
+  for (const a of Object.values(answers2)) counts[a] += 1;
   const events = [];
-  const pay2 = paymentFor(answers, Math.max(d.handlerPressure, d.handlerSuspicion));
+  const pay2 = paymentFor(answers2, Math.max(d.handlerPressure, d.handlerSuspicion));
   for (const k of ["credits", "supplies", "plyx"]) {
     if (pay2[k] > 0) {
       draft.resources[k] += pay2[k];
@@ -30167,7 +30325,7 @@ function settle3(draft, ctx2, d, answers, spendNight) {
     }
   }
   d.handlerPressure = clamp35(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
-  scheduleConsequences(draft, ctx2, visit, answers);
+  scheduleConsequences(draft, ctx2, visit, answers2);
   d.answered.push(...visit.items.map((i) => i.id));
   delete d.visit;
   events.push({ type: "intel_answered", visitId: visit.id, counts });
@@ -30194,8 +30352,8 @@ function answerVisit(draft, ctx2, visitId, raw) {
 function lapseVisit(draft, ctx2) {
   const d = draft.special?.debts;
   if (!d?.visit || d.visit.day >= draft.day) return [];
-  const answers = Object.fromEntries(d.visit.items.map((i) => [i.id, "withhold"]));
-  return settle3(draft, ctx2, d, answers, false);
+  const answers2 = Object.fromEntries(d.visit.items.map((i) => [i.id, "withhold"]));
+  return settle3(draft, ctx2, d, answers2, false);
 }
 
 // src/engine/special/debts/handler.ts
@@ -30437,7 +30595,7 @@ function normalizeTag(s) {
 }
 var headStartDays = (r) => r.headStart?.days ?? 0;
 var isNewArrival = (r, cardRef) => r.headStart?.newArrivals.includes(cardRef) === true;
-var effectsOf4 = (part) => {
+var effectsOf5 = (part) => {
   const list5 = part?.effects;
   return Array.isArray(list5) ? list5.filter((e) => typeof e === "object" && e !== null) : [];
 };
@@ -30735,7 +30893,7 @@ var slug2 = (name) => {
   return s === "" ? "unit" : s;
 };
 var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var crimeEffectsOf = (crime) => [...effectsOf4(crime.perk), ...effectsOf4(crime.flaw)];
+var crimeEffectsOf = (crime) => [...effectsOf5(crime.perk), ...effectsOf5(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
   let sum = 0;
@@ -30840,7 +30998,7 @@ function buildCampaign(r, reg, opts) {
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
   const crimeEffects = crimeEffectsOf(crime);
-  for (const fx2 of [...effectsOf4(corp.startingBonus), ...crimeEffects]) {
+  for (const fx2 of [...effectsOf5(corp.startingBonus), ...crimeEffects]) {
     if (fx2.type === "social_rank") {
       const stat3 = fx2.stat;
       state.commander.socialStats[stat3] = Math.max(state.commander.socialStats[stat3], fx2.rank);
@@ -31042,7 +31200,7 @@ function memoryResolverFor(type) {
 }
 var nameOf11 = (draft, id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
 var yes = (b) => b ? "yes" : "";
-var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var str3 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var strs = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 function joinNames(names) {
   if (names.length <= 1) return names.join("");
@@ -31054,7 +31212,7 @@ var regionNameOf = (reg, regionId) => {
   return r ? String(r.name) : regionId;
 };
 var subjectOf3 = (draft, id) => {
-  const unitId = str2(id);
+  const unitId = str3(id);
   return unitId === void 0 ? null : { id: unitId, name: nameOf11(draft, unitId) };
 };
 registerMemoryResolver("expedition_ended", (draft, event, reg) => {
@@ -31103,8 +31261,8 @@ registerMemoryResolver("vote_overruled", (draft, event) => {
 }, { ids: ["against"], vars: ["names"] });
 registerMemoryResolver("vote_carried", (draft, event, reg) => {
   if (event.overruled === true) return null;
-  const kind = str2(event.kind);
-  const subject = str2(event.subject);
+  const kind = str3(event.kind);
+  const subject = str3(event.subject);
   if (kind === void 0 || subject === void 0) return null;
   return { ids: {}, vars: { subject: String(reg.voteKinds.get(kind)?.label ?? kind), what: voteSubjectLabel(draft, reg, kind, subject) } };
 }, { ids: [], vars: ["subject", "what"] });
@@ -31115,18 +31273,18 @@ registerMemoryResolver("countermanded", (draft, event) => {
   return { ids: { subject: [subject.id], leader: [leader.id] }, vars: { name: subject.name, leader: leader.name } };
 }, { ids: ["subject", "leader"], vars: ["name", "leader"] });
 registerMemoryResolver("rations_set", (_draft, event) => {
-  const mode = str2(event.mode);
+  const mode = str3(event.mode);
   return mode === void 0 ? null : { ids: {}, vars: { mode } };
 }, { ids: [], vars: ["mode"] });
 registerMemoryResolver("dilemma_resolved", (draft, event) => {
   if (event.nothing === true) return null;
-  const answer = scapegoatOptionId({ id: str2(event.optionId) });
+  const answer = scapegoatOptionId({ id: str3(event.optionId) });
   const subject = subjectOf3(draft, event.subjectId);
   return {
     ids: { affected: strs(event.affected), units: strs(event.units), subject: subject ? [subject.id] : [] },
     vars: {
-      title: str2(event.title) ?? "",
-      option: str2(event.label) ?? "",
+      title: str3(event.title) ?? "",
+      option: str3(event.label) ?? "",
       scapegoat: answer === "take_blame" ? "take" : answer === "shift_blame" ? "shift" : "",
       name: subject?.name ?? ""
     }
@@ -31135,13 +31293,13 @@ registerMemoryResolver("dilemma_resolved", (draft, event) => {
 registerMemoryResolver("demand_resolved", (draft, event) => {
   const subject = subjectOf3(draft, event.unitId);
   if (!subject) return null;
-  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str2(event.answer) ?? "", expired: yes(event.expired === true), postponed: yes(event.postponed === true) } };
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str3(event.answer) ?? "", expired: yes(event.expired === true), postponed: yes(event.postponed === true) } };
 }, { ids: ["subject"], vars: ["name", "answer", "expired", "postponed"] });
 registerMemoryResolver("leash_used", (draft, event) => {
   const subject = subjectOf3(draft, event.unitId);
   if (!subject || event.outcome !== "done") return null;
   if (event.by === "oversight") return null;
-  return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str2(event.kind) ?? "" } };
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str3(event.kind) ?? "" } };
 }, { ids: ["subject"], vars: ["name", "kind"] });
 registerMemoryResolver("decor_removed_by_commander", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
 registerMemoryResolver("token_taken_off", (draft, event) => {
@@ -31174,15 +31332,15 @@ registerMemoryResolver("intercept_resolved", (draft, event) => {
   return subject ? { ids: { subject: [subject.id] }, vars: { name: subject.name, keep: yes(event.keep === true) } } : null;
 }, { ids: ["subject"], vars: ["name", "keep"] });
 registerMemoryResolver("activity_done", (draft, event, reg) => {
-  const companion = str2(event.companionId);
-  const activityId = str2(event.activityId);
+  const companion = str3(event.companionId);
+  const activityId = str3(event.activityId);
   if (activityId === void 0) return null;
   return {
     ids: { subject: companion !== void 0 ? [companion] : [] },
     vars: {
       name: companion !== void 0 ? nameOf11(draft, companion) : "",
       activity: String(reg.activities.get(activityId)?.name ?? activityId),
-      slot: str2(event.slot) ?? draft.slot,
+      slot: str3(event.slot) ?? draft.slot,
       // an activity that opens a scene (a talk) is remembered by that scene's summary, not by this rule
       scene: yes(reg.activities.get(activityId)?.startsScene === true)
     }
@@ -31196,7 +31354,7 @@ registerMemoryResolver("override_answered", (draft, event) => {
   if (event.source === "holder") return null;
   const her = holderOf2(draft);
   if (!her) return null;
-  return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str2(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
+  return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str3(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
 }, { ids: ["subject"], vars: ["name", "answer", "witnessed"] });
 registerMemoryResolver("commander_punished", (draft, event, reg) => {
   const her = holderOf2(draft);
@@ -31206,7 +31364,7 @@ registerMemoryResolver("commander_punished", (draft, event, reg) => {
 }, { ids: ["subject"], vars: ["name", "label", "heavy"] });
 registerMemoryResolver("commander_leashed", (draft, event) => {
   const her = holderOf2(draft);
-  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str2(event.kind) ?? "" } } : null;
+  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str3(event.kind) ?? "" } } : null;
 }, { ids: ["subject"], vars: ["name", "kind"] });
 registerMemoryResolver("warden_warning", (draft, event) => {
   const her = holderOf2(draft);
@@ -31214,24 +31372,24 @@ registerMemoryResolver("warden_warning", (draft, event) => {
 }, { ids: ["subject"], vars: ["name", "level"] });
 registerMemoryResolver("warden_removed", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  const route = str2(event.route);
+  const route = str3(event.route);
   if (!her || route === void 0) return null;
   const allies2 = draft.squad.filter((u) => u.kind === "named" && isLiving(u) && draft.relations[u.id]?.flags.includes("warden_ally")).map((u) => u.id);
   return { ids: { subject: [her.id], commander: ["commander"], allies: allies2 }, vars: { name: her.name, route } };
 }, { ids: ["subject", "commander", "allies"], vars: ["name", "route"] });
 registerMemoryResolver("verdict", (_draft, event) => {
-  const outcome = str2(event.outcome);
+  const outcome = str3(event.outcome);
   return outcome === void 0 ? null : { ids: {}, vars: { outcome } };
 }, { ids: [], vars: ["outcome"] });
 registerMemoryResolver("ally_won", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
 registerMemoryResolver("head_start_moment", (draft, event) => {
   const subject = subjectOf3(draft, event.unitId);
-  const text2 = str2(event.text);
+  const text2 = str3(event.text);
   if (!subject || text2 === void 0 || !draft.squad.some((u) => u.id === subject.id)) return null;
   return {
     ids: { unit: [subject.id] },
-    vars: { text: text2, kind: str2(event.kind) ?? "", importance: String(event.importance ?? "") },
-    ...str2(event.kind) !== void 0 ? { tags: [momentTag(str2(event.kind))] } : {}
+    vars: { text: text2, kind: str3(event.kind) ?? "", importance: String(event.importance ?? "") },
+    ...str3(event.kind) !== void 0 ? { tags: [momentTag(str3(event.kind))] } : {}
   };
 }, { ids: ["unit"], vars: ["text", "kind", "importance"] });
 registerMemoryResolver("opinion_changed", (draft, event, reg) => {
@@ -31243,14 +31401,14 @@ registerMemoryResolver("moment_answered", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   if (!her) return null;
   const present2 = strs(event.present);
-  const visitorId = str2(event.visitorId);
-  const type = str2(event.responseType) ?? "";
-  const key = str2(event.key) ?? "";
+  const visitorId = str3(event.visitorId);
+  const type = str3(event.responseType) ?? "";
+  const key = str3(event.key) ?? "";
   return {
     ids: { her: [her.id], present: present2.length > 0 ? present2 : [her.id], visitor: visitorId !== void 0 ? [visitorId] : [] },
     vars: {
       name: her.name,
-      source: str2(event.sourceId) ?? "",
+      source: str3(event.sourceId) ?? "",
       key,
       type,
       visitor: visitorId !== void 0 ? nameOf11(draft, visitorId) : "someone",
@@ -31261,14 +31419,14 @@ registerMemoryResolver("moment_answered", (draft, event) => {
 }, { ids: ["her", "present", "visitor"], vars: ["name", "source", "key", "type", "visitor", "exposed"] });
 var holder = (draft, event) => {
   const her = subjectOf3(draft, event.holderId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, result: str2(event.result) ?? "", physics: str2(event.physicsId) ?? "" } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, result: str3(event.result) ?? "", physics: str3(event.physicsId) ?? "" } } : null;
 };
 registerMemoryResolver("physics_outcome", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
 registerMemoryResolver("physics_caught", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
 registerMemoryResolver("stimulus_stage_changed", (draft, event, reg) => {
   const her = subjectOf3(draft, event.holderId);
   const kind = reg.stimulusKinds.get(String(event.kind));
-  return her && kind ? { ids: { her: [her.id] }, vars: { name: her.name, to: str2(event.to) ?? "", herPresent: yes(event.herPresent === true), what: String(kind.label).toLowerCase() } } : null;
+  return her && kind ? { ids: { her: [her.id] }, vars: { name: her.name, to: str3(event.to) ?? "", herPresent: yes(event.herPresent === true), what: String(kind.label).toLowerCase() } } : null;
 }, { ids: ["her"], vars: ["name", "to", "herPresent", "what"] });
 registerMemoryResolver("hobby_taught", (draft, event, reg) => {
   const her = subjectOf3(draft, event.unitId);
@@ -31277,7 +31435,7 @@ registerMemoryResolver("hobby_taught", (draft, event, reg) => {
 }, { ids: ["her"], vars: ["name", "hobby"] });
 registerMemoryResolver("first_moment_kept", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  const kind = str2(event.kind);
+  const kind = str3(event.kind);
   return her && kind !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, kind } } : null;
 }, { ids: ["her"], vars: ["name", "kind"] });
 registerMemoryResolver("position_shifted", (draft, event, reg) => {
@@ -31321,23 +31479,27 @@ registerMemoryResolver("disappointed", (draft, event) => {
 }, { ids: ["her"], vars: ["name"] });
 registerMemoryResolver("offer_made", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str2(event.answer) ?? "", what: str2(event.what) ?? "something" } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, answer: str3(event.answer) ?? "", what: str3(event.what) ?? "something" } } : null;
 }, { ids: ["her"], vars: ["name", "answer", "what"] });
 var ATTITUDE_WORDS = { craves: "she craves it", enjoys: "she enjoys it", indifferent: "it leaves her cold", dislikes: "she dislikes it" };
 registerMemoryResolver("zone_revealed", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  const target = str2(event.targetId);
+  const target = str3(event.targetId);
   if (!her || target === void 0) return null;
-  return { ids: { her: [her.id] }, vars: { name: her.name, what: str2(event.what) ?? target, attitude: ATTITUDE_WORDS[str2(event.attitude) ?? ""] ?? "" }, tags: [zoneTag(target)] };
+  return { ids: { her: [her.id] }, vars: { name: her.name, what: str3(event.what) ?? target, attitude: ATTITUDE_WORDS[str3(event.attitude) ?? ""] ?? "" }, tags: [zoneTag(target)] };
 }, { ids: ["her"], vars: ["name", "what", "attitude"] });
 registerMemoryResolver("practice_signed", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str2(event.summary) ?? "something" } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str3(event.summary) ?? "something" } } : null;
 }, { ids: ["her"], vars: ["name", "what"] });
 registerMemoryResolver("task_broken", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
-  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str2(event.summary) ?? "something", falseReport: yes(event.falseReport === true) } } : null;
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str3(event.summary) ?? "something", falseReport: yes(event.falseReport === true) } } : null;
 }, { ids: ["her"], vars: ["name", "what", "falseReport"] });
+registerMemoryResolver("punishment_issued", (draft, event) => {
+  const her = subjectOf3(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, unfair: yes(event.unfair === true) } } : null;
+}, { ids: ["her"], vars: ["name", "unfair"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -34379,23 +34541,23 @@ registerAction("campaign/set_difficulty", (draft, payload) => {
 
 // src/engine/actions/progression.ts
 var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str3 = (v, what) => {
+var str4 = (v, what) => {
   if (typeof v !== "string") throw new Error(`${what} must be a string`);
   return v;
 };
 registerAction("squad/unlock_node", (draft, payload, ctx2) => {
   const p = isObj19(payload) ? payload : {};
-  return unlockNode(draft, ctx2.registries, str3(p.unitId, "unitId"), str3(p.nodeId, "nodeId"));
+  return unlockNode(draft, ctx2.registries, str4(p.unitId, "unitId"), str4(p.nodeId, "nodeId"));
 });
 registerAction("squad/respec", (draft, payload, ctx2) => {
   const p = isObj19(payload) ? payload : {};
-  return respec(draft, ctx2.registries, str3(p.unitId, "unitId"));
+  return respec(draft, ctx2.registries, str4(p.unitId, "unitId"));
 });
 registerAction("squad/set_loadout", (draft, payload, ctx2) => {
   const p = isObj19(payload) ? payload : {};
   const ids = p.skillIds;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("squad/set_loadout needs { unitId, skillIds: string[] }");
-  setLoadout(draft, ctx2.registries, str3(p.unitId, "unitId"), ids);
+  setLoadout(draft, ctx2.registries, str4(p.unitId, "unitId"), ids);
   return [{ type: "loadout_changed", unitId: p.unitId }];
 });
 registerAction("squad/release_breakdowns", (draft, payload, ctx2) => {
@@ -35938,27 +36100,27 @@ registerAction("development/remove_fact", (draft, payload) => {
 // src/engine/actions/blocking.ts
 registerWithdrawal(stripTagged);
 var isObj36 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str4 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var str5 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 registerAction("blocking/set", (draft, payload, ctx2) => {
   if (!isObj36(payload)) throw new Error("blocking/set needs a payload");
   if (!draft.scene) throw new Error("blocking/set: no scene is open");
   if (!blockingLive(draft, ctx2.registries)) throw new Error("blocking/set: the blocking is not live in this scene");
   const at = payload.at;
   if (typeof at !== "number" || !Number.isInteger(at) || at < 0) throw new Error("blocking/set: at must be a non-negative integer (the chat index)");
-  const person = str4(payload.person);
-  const field2 = str4(payload.field);
+  const person = str5(payload.person);
+  const field2 = str5(payload.field);
   if (person === void 0 || field2 === void 0) throw new Error("blocking/set needs { person, field }");
   const direction = payload.direction;
   if (direction !== void 0 && direction !== "from" && direction !== "to") throw new Error('blocking/set: direction is "from" or "to"');
   const change = {
     person,
     field: field2,
-    ...str4(payload.value) !== void 0 ? { value: str4(payload.value) } : {},
-    ...str4(payload.relTo) !== void 0 ? { relTo: str4(payload.relTo) } : {},
-    ...str4(payload.with) !== void 0 ? { with: str4(payload.with) } : {},
+    ...str5(payload.value) !== void 0 ? { value: str5(payload.value) } : {},
+    ...str5(payload.relTo) !== void 0 ? { relTo: str5(payload.relTo) } : {},
+    ...str5(payload.with) !== void 0 ? { with: str5(payload.with) } : {},
     ...direction !== void 0 ? { direction } : {},
-    ...str4(payload.slot) !== void 0 ? { slot: str4(payload.slot) } : {},
-    ...str4(payload.target) !== void 0 ? { target: str4(payload.target) } : {}
+    ...str5(payload.slot) !== void 0 ? { slot: str5(payload.slot) } : {},
+    ...str5(payload.target) !== void 0 ? { target: str5(payload.target) } : {}
   };
   return setBlocking(draft, ctx2, change, { at, source: "chip" });
 });
@@ -36667,7 +36829,7 @@ var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId
 
 // src/engine/actions/physics.ts
 var isObj38 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var str5 = (v) => typeof v === "string" && v !== "" ? v : void 0;
+var str6 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 function live2(draft, reg, what) {
   if (!draft.scene) throw new Error(`${what}: no scene is open`);
   if (!blockingLive(draft, reg)) throw new Error(`${what}: the blocking is not live in this scene`);
@@ -36676,8 +36838,8 @@ registerAction("physics/start", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/start");
   if (!isObj38(payload)) throw new Error("physics/start needs a payload");
   const { physicsId, sourceId, holderId, sourceKind, duration, second } = payload;
-  if (second !== void 0 && str5(second) === void 0) throw new Error("physics/start: second is a physics id");
-  if (str5(physicsId) === void 0 || str5(sourceId) === void 0 || str5(holderId) === void 0 || sourceKind !== "contact" && sourceKind !== "item") {
+  if (second !== void 0 && str6(second) === void 0) throw new Error("physics/start: second is a physics id");
+  if (str6(physicsId) === void 0 || str6(sourceId) === void 0 || str6(holderId) === void 0 || sourceKind !== "contact" && sourceKind !== "item") {
     throw new Error("physics/start needs { physicsId, sourceKind: contact | item, sourceId, holderId }");
   }
   const hours = isObj38(duration) && typeof duration.hours === "number" && Number.isFinite(duration.hours) && duration.hours > 0 ? { hours: duration.hours } : void 0;
@@ -36701,12 +36863,12 @@ registerAction("physics/stop_word", (draft, _payload, ctx2) => {
 });
 registerAction("physics/next_segment", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/next_segment");
-  if (!isObj38(payload) || str5(payload.runId) === void 0) throw new Error("physics/next_segment needs { runId }");
+  if (!isObj38(payload) || str6(payload.runId) === void 0) throw new Error("physics/next_segment needs { runId }");
   return nextSegment(draft, ctx2, payload.runId);
 });
 registerAction("physics/segment_end", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/segment_end");
-  if (!isObj38(payload) || str5(payload.runId) === void 0 || typeof payload.segment !== "number") throw new Error("physics/segment_end needs { runId, segment, inputs }");
+  if (!isObj38(payload) || str6(payload.runId) === void 0 || typeof payload.segment !== "number") throw new Error("physics/segment_end needs { runId, segment, inputs }");
   return physicsInput(draft, ctx2, payload.runId, payload.segment, payload.inputs ?? []);
 });
 registerAction("physics/typed", (draft, payload, ctx2) => {
@@ -37579,8 +37741,55 @@ registerAfterAction((draft, _ctx, events) => {
 });
 
 // src/engine/practice/issue.ts
-var WRITERS = { task: writeTask };
+function writePunishment(draft, ctx2, request, out, plain8) {
+  const reg = ctx2.registries;
+  const p = ensurePractices(draft);
+  const asked = request.severity ?? 1;
+  const entryId = request.entryId !== void 0 && reg.holderPunishments.has(request.entryId) ? request.entryId : pickHolderPunishment(draft, reg, request.holderId, asked);
+  if (entryId === null) return [];
+  const entry = reg.holderPunishments.get(entryId);
+  const severity = severityOfEntry(reg, entryId) ?? 1;
+  const offence = request.offence ?? { kind: "refusal", stakes: "minor", day: draft.day };
+  const id = nextPracticeId(draft, "pp");
+  const punishment = {
+    id,
+    holderId: request.holderId,
+    entryId,
+    severity,
+    offence,
+    text: out.text,
+    summary: out.summary,
+    ...plain8 ? { plain: true } : {},
+    status: "offered",
+    ...entry.public === true ? { public: true } : {},
+    ...request.sealed === true ? { sealed: true } : {},
+    ...request.escalated === true ? { escalated: true } : {},
+    ...request.forUnitId !== void 0 ? { forUnitId: request.forUnitId } : {},
+    day: draft.day,
+    ...draft.scene !== void 0 ? { sceneId: draft.scene.id } : {},
+    requestId: request.id
+  };
+  p.punishments.push(punishment);
+  return [{
+    type: "punishment_issued",
+    punishmentId: id,
+    holderId: request.holderId,
+    unitId: request.holderId,
+    severity,
+    offence: offence.kind,
+    ...offence.unfair === true ? { unfair: true } : {},
+    ...request.escalated === true ? { escalated: true } : {},
+    ...plain8 ? { plain: true } : {}
+  }];
+}
+var WRITERS = { task: writeTask, punishment: writePunishment };
 function fallbackOutput2(state, reg, request) {
+  if (request.kind === "punishment") {
+    const entry = request.entryId === void 0 ? void 0 : reg.holderPunishments.get(request.entryId);
+    if (entry === void 0) return null;
+    const label2 = String(entry.label);
+    return { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: fallbackLine("punishment", label2), summary: label2 };
+  }
   const pool = seedPool(state, reg, request.holderId, request.kind);
   const seed = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
   if (seed === void 0) return null;
@@ -37597,16 +37806,6 @@ function fallbackOutput2(state, reg, request) {
     text: fallbackLine(request.kind, seed.gist),
     summary: plainSummary(seed)
   };
-}
-function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
-  if (!practiceLive(draft, ctx2.registries, holderId)) return [];
-  const reg = ctx2.registries;
-  const last = extra.chainOf === void 0 ? void 0 : draft.practices?.tasks.filter((t) => t.chainId === extra.chainOf).at(-1);
-  const seedIds = pickSeeds(draft, reg, holderId, kind, last === void 0 ? {} : { minTier: last.tier });
-  if (seedIds.length === 0 && extra.offence === void 0) return [];
-  const id = nextPracticeId(draft, "pq");
-  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds });
-  return [{ type: "practice_requested", requestId: id, holderId, kind }];
 }
 function requestOf(state, reg, requestId) {
   const p = state.practices;
@@ -37645,8 +37844,9 @@ function issuePractice(draft, ctx2, requestId, output) {
   if (!plain8 && card2 === null) throw new Error("That card does not fit.");
   p.requests = p.requests.filter((r) => r.id !== requestId);
   if (card2 === null) return [];
+  const before = p.tasks.length;
   const events = write3(draft, ctx2, request, card2, plain8);
-  const written = p.tasks.at(-1);
+  const written = p.tasks.length > before ? p.tasks.at(-1) : void 0;
   if (written !== void 0) {
     written.requestId = requestId;
     if (replaced !== void 0) {
@@ -37682,7 +37882,7 @@ function newPracticeChance(state, reg, holderId) {
 }
 function kindsToday(state, reg, holderId) {
   return PRACTICE_KINDS.filter((kind) => {
-    if (WRITERS[kind] === void 0) return false;
+    if (WRITERS[kind] === void 0 || kind === "punishment") return false;
     if (kind === "task" && !taskRoom(state, reg, holderId)) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
   });
@@ -37765,6 +37965,7 @@ function practiceDayStep(draft, ctx2) {
 registerWithdrawal(withdrawPractices);
 registerDayEndStep("dm_rumors", practiceDayStep);
 registerAfterAction(taskChecksFromEvents);
+registerAfterAction(offencesFromEvents);
 var isObj40 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("practice/issue", (draft, payload, ctx2) => {
   if (!isObj40(payload) || typeof payload.requestId !== "string") throw new Error("practice/issue needs { requestId }.");
@@ -39153,10 +39354,10 @@ function createSpecial(deps) {
     squad: "The rival is using what it learned about a soldier."
   };
   return {
-    async answerVisit(visitId, answers) {
+    async answerVisit(visitId, answers2) {
       const expect = chatId();
       if (state() === null || chatId() !== expect) return false;
-      const events = deps.app.dispatch({ type: "debts/answer_visit", payload: { visitId, answers } }, { expectChatId: expect });
+      const events = deps.app.dispatch({ type: "debts/answer_visit", payload: { visitId, answers: answers2 } }, { expectChatId: expect });
       const bad = events.find((e) => e.type === "error");
       if (bad) {
         if (bad.code !== "chat_changed") deps.toast("error", String(bad.message ?? bad.code));
@@ -45850,7 +46051,7 @@ var roomHash = (unitId) => fnv1a3(`${unitId}|quarters`) >>> 8;
 function slotLight(slot2) {
   return slot2 === "evening" ? "evening" : slot2 === "night" ? "night" : "day";
 }
-var str6 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
+var str7 = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
 function sceneBackdrop(state, reg, locationId, ownerId) {
   const loc = reg.locations.get(locationId);
   if (!loc) return [];
@@ -45858,10 +46059,10 @@ function sceneBackdrop(state, reg, locationId, ownerId) {
   const add = (file, slotted) => {
     if (file && !out.some((c) => c.file === file)) out.push({ file, slotted });
   };
-  if (loc.perUnit === true && ownerId !== null) add(str6(quartersOf(state, reg, ownerId)?.background), false);
-  if (state.slot === "evening") add(str6(loc.backgroundEvening), true);
-  if (state.slot === "night") add(str6(loc.backgroundNight), true);
-  add(str6(loc.background), false);
+  if (loc.perUnit === true && ownerId !== null) add(str7(quartersOf(state, reg, ownerId)?.background), false);
+  if (state.slot === "evening") add(str7(loc.backgroundEvening), true);
+  if (state.slot === "night") add(str7(loc.backgroundNight), true);
+  add(str7(loc.background), false);
   return out;
 }
 
@@ -47311,6 +47512,7 @@ registerCallType({
       `Present now: ${list5(i.context.present.map((u) => `${u.id} (${one3(u.name)})`))}.`,
       `Soldiers who may be named (id, name): ${list5(i.units.map((u) => `${u.id} (${one3(u.name)})`))}.`,
       `Her active rules (id, text): ${list5(i.rules.map((r) => `${r.id} (${one3(r.text)})`))}.`,
+      ...i.punishment !== void 0 ? [`She is answering: ${one3(i.punishment.offence)}. The punishment is fixed: "${one3(i.punishment.label)}", ${i.punishment.weight}. Word that one; do not change it.`] : [],
       "SEEDS (id | gist | stakes | check):",
       ...i.seeds.map((s) => `- ${s.id} | ${one3(s.gist)} | ${s.stakes} | ${s.check}`),
       `Limits: stakes at most ${i.limits.stakes}; tier at most ${i.limits.tierCap}. Deadline: ${i.limits.deadlineDays.min} to ${i.limits.deadlineDays.max} days.`,
@@ -48706,16 +48908,16 @@ function stanceOptionIds(registries, world) {
   return worldChoices({ world: { options: world } }, registries).filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2 }) => option2.id);
 }
 function worldImportInfo(registries, world) {
-  const str7 = (v) => typeof v === "string" ? v : "";
+  const str8 = (v) => typeof v === "string" ? v : "";
   const level = worldDispositionLevel({ world: { options: world } }, registries);
   const picked = worldChoices({ world: { options: world } }, registries);
   return {
-    disposition: { name: str7(level.name), description: str7(level.description) },
-    options: picked.filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2, choice }) => ({ id: option2.id, label: str7(option2.label), choice: str7(choice.label), description: str7(choice.description) }))
+    disposition: { name: str8(level.name), description: str8(level.description) },
+    options: picked.filter(({ option: option2, choice }) => option2.squadStance === true && !isNeutralChoice(choice)).map(({ option: option2, choice }) => ({ id: option2.id, label: str8(option2.label), choice: str8(choice.label), description: str8(choice.description) }))
   };
 }
 function buildImportInput(card2, registries, settings, sections, world, bond, content) {
-  const str7 = (v) => typeof v === "string" ? v : "";
+  const str8 = (v) => typeof v === "string" ? v : "";
   const info = world ? worldImportInfo(registries, world) : void 0;
   const enabledPractice = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
   const holder2 = { content: { enabled: [...content ?? []] } };
@@ -48724,13 +48926,13 @@ function buildImportInput(card2, registries, settings, sections, world, bond, co
     card: card2,
     sections: asked,
     ...info ? { world: info } : {},
-    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str7(r.summary) })),
-    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str7(s.fits) })),
-    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str7(d.lore) })),
-    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str7(t.description) })),
-    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str7(c.label) })) } : {},
+    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str8(r.summary) })),
+    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str8(s.fits) })),
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str8(d.lore) })),
+    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str8(t.description) })),
+    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str8(c.label) })) } : {},
     ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries, content) } } : {},
-    ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str7(h2.description) })) } : {},
+    ...sections.includes("hobbies") ? { hobbies: [...registries.hobbies.values()].map((h2) => ({ id: h2.id, description: str8(h2.description) })) } : {},
     ...sections.includes("opinions") ? { topics: [...registries.opinionTopics.values()].map((t) => ({ id: t.id, positions: t.positions.map((p) => p.id) })) } : {},
     ...asked.includes("practice") ? { practice: { categories: enabledPractice } } : {},
     ...asked.includes("expectations") ? {
@@ -51731,7 +51933,7 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   if (asksFirst) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-asks-first": unitId, ...analyzeAttrs("glossary:ask_first", live3) }, "ASKS FIRST"));
   host.append(line2);
   if (handlers2.onAskFirst) {
-    const atBase = state.expedition === void 0;
+    const atBase2 = state.expedition === void 0;
     const onAskFirst = handlers2.onAskFirst;
     host.append(h("p", { class: "alius-hierarchy-actions" }, h("button", {
       type: "button",
@@ -51739,9 +51941,9 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
       "data-ask-first": unitId,
       "aria-pressed": String(asksFirst),
       ...analyzeNative("glossary:ask_first", live3),
-      ...atBase ? {} : { "aria-disabled": "true", title: "Only at the base: a run is under way." },
+      ...atBase2 ? {} : { "aria-disabled": "true", title: "Only at the base: a run is under way." },
       onclick: () => {
-        if (atBase) onAskFirst(unitId, !asksFirst);
+        if (atBase2) onAskFirst(unitId, !asksFirst);
       }
     }, asksFirst ? "[ LET HER DECIDE ]" : "[ ASK ME FIRST ]")));
   }
@@ -52601,13 +52803,13 @@ function renderTaskCard(host, ctx2) {
     if (task.acceptForm === "signed") parts.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
     if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
   }
-  const answers = [];
-  if (task.acceptForm === "signed" && task.said === true) answers.push(renderSignature({ onSign: ctx2.onSign, analyze: "glossary:accept_signed", ctx: live3 }));
-  else if (task.acceptForm === "words" || task.acceptForm === "signed") answers.push(button2("accept", "[ ACCEPT ]", () => ctx2.focusInput(), ladder));
-  else answers.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
-  answers.push(button2("refuse", "[ REFUSE ]", () => ctx2.onAnswer("refuse"), "glossary:practice_task"));
-  if (!sealed) answers.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
-  parts.push(h("div", { class: "alius-task-answers" }, ...answers));
+  const answers2 = [];
+  if (task.acceptForm === "signed" && task.said === true) answers2.push(renderSignature({ onSign: ctx2.onSign, analyze: "glossary:accept_signed", ctx: live3 }));
+  else if (task.acceptForm === "words" || task.acceptForm === "signed") answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.focusInput(), ladder));
+  else answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
+  answers2.push(button2("refuse", "[ REFUSE ]", () => ctx2.onAnswer("refuse"), "glossary:practice_task"));
+  if (!sealed) answers2.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
+  parts.push(h("div", { class: "alius-task-answers" }, ...answers2));
   const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit3.displayName, body: h("div", { class: "alius-task-body" }, ...parts), accent: unitAccent(unit3.id) });
   card2.classList.add("alius-task");
   card2.setAttribute("data-task", task.id);
@@ -56715,7 +56917,7 @@ function renderOfferComposer(host, ctx2) {
     ...extra,
     onclick
   }, text2);
-  const answers = h(
+  const answers2 = h(
     "div",
     { class: "alius-offer-answers" },
     button2("ask-return", "[ ASK IN RETURN ]", () => {
@@ -56739,7 +56941,7 @@ function renderOfferComposer(host, ctx2) {
       ctx2.onClose();
     })
   );
-  const body = h("div", { class: "alius-offer-body" }, tabs, entries2, summary, note, answers);
+  const body = h("div", { class: "alius-offer-body" }, tabs, entries2, summary, note, answers2);
   const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit3.displayName, body, accent: unitAccent(unit3.id) });
   card2.classList.add("alius-offer");
   card2.setAttribute("role", "group");
@@ -57050,8 +57252,8 @@ function renderCommsTab(host, ctx2) {
     const offerChips = h("div", { class: "alius-offer-surface" });
     if (ctx2.onOffer) drawOfferChips(offerChips, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
-    for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers, { motion: ctx2.motion?.() ?? true }));
+    const answers2 = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
+    for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers2, { motion: ctx2.motion?.() ?? true }));
     const personalChips = h("div", { class: "alius-chips alius-discipline-chips" });
     if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current, ctx2.personal);
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
@@ -57271,8 +57473,8 @@ function renderHomeTab(host, ctx2) {
     onclick: () => ctx2.onPeel(owner, "wallpaper")
   }, "[ CHANGE WALLPAPER ]") : null;
   const notes = [];
-  const answers = ctx2.rule;
-  for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers, { motion: !motionReduced(settings) }));
+  const answers2 = ctx2.rule;
+  for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers2, { motion: !motionReduced(settings) }));
   for (const p of pinnedNotes(state, reg)) {
     for (const line2 of p.lines) notes.push(renderNote({ text: line2, unitName: nameOf17(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
   }
@@ -62949,7 +63151,7 @@ function createApp(st, deps) {
       renderHandlerPanel(host, {
         state: s,
         reg: registries,
-        onAnswer: (answers) => void special.answerVisit(visitId, answers).then((ok) => {
+        onAnswer: (answers2) => void special.answerVisit(visitId, answers2).then((ok) => {
           if (!ok) return;
           close?.();
           if (onSceneScreen) leaveScene();

@@ -85,6 +85,7 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
   if (p.call?.holderId === unitId) delete p.call;
   if (p.slap?.holderId === unitId) delete p.slap;
   delete p.offences[unitId];
+  if (p.noted !== undefined) p.noted.keys = p.noted.keys.filter((k) => !k.startsWith(`${unitId}|`));
   p.records = p.records.filter((r) => r.holderId !== unitId);
   for (const h of p.handovers) if (h.holderId === unitId) events.push(endHandover(h, 'gone'));
   p.handovers = p.handovers.filter((h) => h.holderId !== unitId);

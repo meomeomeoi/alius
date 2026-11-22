@@ -17,7 +17,7 @@ import { isLiving } from '../economy';
 import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { seedPool, seedRows, stakesCeilingOf } from './seeds';
-import { CHECK_KINDS, PROOFS, STAKES, stakeRank, type CheckKind, type PracticeKind, type PracticeRequest, type Proof, type Stake, type ValidOutput } from './state';
+import { CHECK_KINDS, OFFENCE_WORDS, PROOFS, severityWord, STAKES, stakeRank, type CheckKind, type PracticeKind, type PracticeRequest, type Proof, type Stake, type ValidOutput } from './state';
 
 /** What the model is told (R5). Every number is a word; the only digits are the day and the deadline range. Rebuilt from the state every time, never stored. */
 export interface PracticeGenerateInput {
@@ -45,6 +45,8 @@ export interface PracticeGenerateInput {
   /** Her active relation rules, for a `rule_kept_until` check. */
   rules: Array<{ id: string; text: string }>;
   seeds: Array<{ id: string; gist: string; stakes: Stake; check: CheckKind }>;
+  /** A punishment's entry and what it answers, as words (R5): the engine picked both; the model words it. */
+  punishment?: { label: string; weight: 'light' | 'heavy' | 'harsh'; offence: string };
   limits: { stakes: Stake; tierCap: string; deadlineDays: { min: number; max: number } };
 }
 
@@ -112,6 +114,8 @@ export function buildPracticeInput(state: CampaignState, reg: Registries, reques
     frequency: state.dynamic?.setup.frequency ?? 'normal',
     rules: activeRules(state, holderId),
     seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? 'model' })),
+    ...(request.kind === 'punishment' && request.entryId !== undefined && reg.holderPunishments.has(request.entryId)
+      ? { punishment: { label: String(reg.holderPunishments.get(request.entryId)!.label), weight: severityWord(request.severity ?? 1), offence: OFFENCE_WORDS[request.offence?.kind ?? 'refusal'] } } : {}),
     limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } },
   };
 }
@@ -147,6 +151,7 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
   if (!isObj(raw) || raw.kind !== request.kind) return null;
   const holderId = request.holderId;
   const issues: string[] = [];
+  if (request.kind === 'punishment') return validatePunishmentCard(reg, request, raw);
   const pool = seedPool(state, reg, holderId, request.kind);
   const seed = typeof raw.seedId === 'string' ? pool.find((s) => s.id === raw.seedId) : undefined;
   if (raw.seedId !== undefined && seed === undefined) issues.push('seedId is not an offered seed and was dropped');
@@ -215,4 +220,22 @@ export function validatePracticeOutput(state: CampaignState, reg: Registries, re
     },
     issues,
   };
+}
+
+/**
+ * The model's card for a punishment: only its words count. The entry and its weight were picked by the engine, so the tags, the track, the tier, the stakes and the check of the card
+ * are not read (a card with none is fine); the text and the summary are plain, cut, and a pronoun for the commander in either rejects the card; an empty summary is the entry's label.
+ */
+function validatePunishmentCard(reg: Registries, request: PracticeRequest, raw: Record<string, unknown>): { output: ValidOutput; issues: string[] } | null {
+  const text = plainText(raw.text, TUNING.practice.textMax);
+  let summary = plainText(raw.summary, TUNING.practice.summaryMax);
+  if (text === '' || hasCommanderPronoun(text) || hasCommanderPronoun(summary)) return null;
+  const issues: string[] = [];
+  if (summary === '') {
+    const entry = request.entryId === undefined ? undefined : reg.holderPunishments.get(request.entryId);
+    if (entry === undefined) return null;
+    summary = String(entry.label);
+    issues.push('summary was empty and is the entry\'s label');
+  }
+  return { output: { kind: 'punishment', tags: [], track: 'discipline', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text, summary }, issues };
 }

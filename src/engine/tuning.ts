@@ -992,6 +992,12 @@ export const TUNING = Object.freeze({
       min: 1, max: 5,
     }),
     repair: 0.5,
+    /** Her discipline (R8, `AUTHOR TO TUNE`): the stakes a punishment's weight (1 to 5) stands for (a confession task), the days a confession gives, its words, and how long an offence day is kept for the repeat count. */
+    punish: Object.freeze({
+      stakesOf: Object.freeze(['trivial', 'minor', 'major', 'severe', 'severe'] as const),
+      confession: Object.freeze({ days: 2, text: 'AUTHOR TO WRITE: Tell {name} what was done, plainly.', summary: 'tell {name} what was done', track: 'discipline' }),
+      keepDays: 60,
+    }),
     refuseRecord: 5,
     coldWant: 5,
     takeInstead: Object.freeze({ trust: 5, record: 2 }),

@@ -439,3 +439,9 @@ registerMemoryResolver('task_broken', (draft, event) => {
   const her = subjectOf(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, what: str(event.summary) ?? 'something', falseReport: yes(event.falseReport === true) } } : null;
 }, { ids: ['her'], vars: ['name', 'what', 'falseReport'] });
+
+// the practices (P16, R8): her discipline was issued. Only the shape here (Task 12); the rule that remembers an unfair one (hidden from the commander) is written with the unfairness (Task 32).
+registerMemoryResolver('punishment_issued', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name, unfair: yes(event.unfair === true) } } : null;
+}, { ids: ['her'], vars: ['name', 'unfair'] });

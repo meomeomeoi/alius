@@ -1,15 +1,172 @@
 /**
- * Her offences (P16, plan R8). THIS IS A STUB until the discipline is built (Task 12 replaces the body): `noteOffence` is the one place a broken task, a refusal at
- * `role`, a slip or a false report is entered against the commander. For now it only counts the day, so the repeat rule has its input; it opens no punishment and
- * returns no event. Draws nothing.
+ * Her offences and the punishment she picks (P16, plan R8). `noteOffence` is the one place a broken task, a refusal at `role`, a slip, a caught cheat or a false report is entered
+ * against the commander: it keeps the day for the repeat count and asks for a punishment (a request of kind `punishment`) whose weight (`severityOf`) and entry
+ * (`pickHolderPunishment`) are the engine's alone; the model only words it. `offencesFromEvents` is the after-action that reads the events of the lower layers (P15's refusals, a
+ * refused milestone, an overruled countermand, P15a's slips, a broken rule of hers). Nothing here draws: the entries take turns by her punishment count.
  */
+import type { Entry, Registries } from '../../content/types';
+import { contentAllowed } from '../bonds/content';
+import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { practiceOf } from '../dynamic/profile';
+import { dynamicOf } from '../dynamic/state';
 import type { CampaignState } from '../state/types';
-import { ensurePractices } from './gate';
-import type { Offence } from './state';
+import { TUNING } from '../tuning';
+import { ensurePractices, practiceLive } from './gate';
+import { requestPractice } from './request';
+import { eligibleUnits } from './validate';
+import { EFFECT_NEEDS, stakeRank, type Offence, type OffenceKind, type PunishmentEffectType, type Stake } from './state';
 
-/** Enters an offence against the commander for this holder. Returns the engine events it caused (none until the discipline is built). */
-export function noteOffence(draft: CampaignState, _ctx: Pick<EngineCtx, 'registries'>, holderId: string, offence: Offence): EngineEvent[] {
-  (ensurePractices(draft).offences[holderId] ??= []).push(offence.day);
-  return [];
+type Severity5 = 1 | 2 | 3 | 4 | 5;
+
+interface EffectRow { type: PunishmentEffectType }
+const entriesOf = (reg: Registries): Entry[] => [...reg.holderPunishments.values()];
+const effectsOf = (entry: Entry): EffectRow[] => (Array.isArray(entry.effects) ? (entry.effects as EffectRow[]) : []);
+
+/** Her style as the severity reads it: the primary in full, the secondary by `secondaryShare` rounded toward zero. */
+function styleTerm(state: CampaignState, reg: Registries, holderId: string): number {
+  const T = TUNING.practice.severity;
+  const style = practiceOf(state, reg, holderId)?.style;
+  if (style === undefined) return 0;
+  const primary = T.style[style.primary] ?? 0;
+  const secondary = style.secondary === undefined ? 0 : Math.trunc(T.secondaryShare * (T.style[style.secondary] ?? 0));
+  return primary + secondary;
 }
+
+/**
+ * The weight of a punishment for an offence (1 to 5): the stakes' rank plus one (trivial 1 to severe 4), her style (`cruel` +1, `affectionate` -1; the secondary adds half, rounded toward
+ * zero), her frame (`play` -1, `role` 0, `rule` +1) and a repeat (+1 when she has entered `repeat.count` offences within `repeat.days`), clamped to 1 to 5. Reads only: the offences
+ * counted are the ones noted before this one.
+ */
+export function severityOf(state: CampaignState, reg: Registries, holderId: string, offence: Pick<Offence, 'stakes'>): Severity5 {
+  const T = TUNING.practice.severity;
+  const frame = dynamicOf(state, holderId)?.frame;
+  const frameTerm = frame === 'rule' || frame === 'role' || frame === 'play' ? T.frame[frame] : 0;
+  const recent = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T.repeat.days).length;
+  const repeat = recent >= T.repeat.count ? T.repeat.add : 0;
+  const total = stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat;
+  return Math.min(T.max, Math.max(T.min, total)) as Severity5;
+}
+
+/** Is she holding the commander alone in a scene, or is there no scene at all (a scene with another cannot be interrupted by a hold)? */
+const sceneIsHers = (state: CampaignState, holderId: string): boolean =>
+  state.scene === undefined || (state.scene.participants.length === 1 && state.scene.participants[0] === holderId);
+
+/** Units a confession may name: living named soldiers who are at base (not on a run). */
+const atBase = (state: CampaignState, holderId: string): string[] => eligibleUnits(state, holderId).filter((id) => !(state.expedition?.party ?? []).includes(id));
+
+/** Her public gate (R8): `public_humiliation` is on (the entry's own tags check that) and her audience is not `private_only`. */
+const publicAllowed = (state: CampaignState, reg: Registries, holderId: string): boolean => practiceOf(state, reg, holderId)?.audience !== 'private_only';
+
+/** Can this entry be carried out now (read by its effects, never its id)? */
+function possibleNow(state: CampaignState, reg: Registries, holderId: string, entry: Entry): boolean {
+  if (!contentAllowed(state, reg, entry, holderId)) return false;
+  if (entry.public === true && !publicAllowed(state, reg, holderId)) return false;
+  const on = state.content?.enabled ?? [];
+  for (const fx of effectsOf(entry)) {
+    const needs = EFFECT_NEEDS[fx.type];
+    if (needs.length > 0 && !needs.some((t) => on.includes(t))) return false; // `physical`, `slap`, `mark` and the rest need what the player switched on
+    if (fx.type === 'slot_held' && (state.expedition !== undefined || state.combat !== undefined || !sceneIsHers(state, holderId))) return false;
+    if (fx.type === 'confession' && atBase(state, holderId).length === 0) return false;
+  }
+  return true;
+}
+
+/**
+ * The entry of `holderPunishments` for a weight: of that severity the ones that pass her limits and what is switched on and can be done now (a held slot not inside a run, a fight or a
+ * scene with another; a confession with another soldier at base; a public entry only when her audience allows it), taking turns by how many punishments she has given (no draw). None
+ * at that weight: the next lower one; none at all: `null` (the offence still costs its hold through its own event).
+ */
+export function pickHolderPunishment(state: CampaignState, reg: Registries, holderId: string, severity: number): string | null {
+  const given = (state.practices?.punishments ?? []).filter((p) => p.holderId === holderId).length;
+  for (let sev = Math.min(5, Math.floor(severity)); sev >= 1; sev--) {
+    const eligible = entriesOf(reg).filter((e) => e.severity === sev && possibleNow(state, reg, holderId, e));
+    if (eligible.length > 0) return String(eligible[given % eligible.length].id);
+  }
+  return null;
+}
+
+/** The weight a picked entry has (the entry's own: the pick may have come from below the asked one). */
+export function severityOfEntry(reg: Registries, entryId: string): Severity5 | undefined {
+  const sev = reg.holderPunishments.get(entryId)?.severity;
+  return typeof sev === 'number' && sev >= 1 && sev <= 5 ? (sev as Severity5) : undefined;
+}
+
+/** Is a punishment of hers already waiting for the commander's answer (or being worded)? One at a time: a burst of offences makes one punishment. */
+function punishmentOpen(state: CampaignState, holderId: string): boolean {
+  const p = state.practices;
+  return p?.requests.some((r) => r.holderId === holderId && r.kind === 'punishment') === true
+    || p?.punishments.some((x) => x.holderId === holderId && x.forUnitId === undefined && (x.status === 'offered' || x.status === 'negotiating')) === true;
+}
+
+/**
+ * Enters an offence against the commander for this holder: once per holder, kind, ref and day, and only while she is live. The day joins her repeat list; a punishment is asked for
+ * (a request of kind `punishment` carrying the offence, its weight and its entry) unless one of hers is already open or nothing can be picked. Draws nothing. Returns the events it caused.
+ */
+export function noteOffence(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId: string, offence: Offence): EngineEvent[] {
+  const reg = ctx.registries;
+  if (!practiceLive(draft, reg, holderId)) return [];
+  const p = ensurePractices(draft);
+  if (p.noted === undefined || p.noted.day !== draft.day) p.noted = { day: draft.day, keys: [] };
+  const key = `${holderId}|${offence.kind}|${offence.ref ?? ''}`;
+  if (p.noted.keys.includes(key)) return [];
+  p.noted.keys.push(key);
+  const severity = severityOf(draft, reg, holderId, offence);
+  const days = (p.offences[holderId] ??= []);
+  days.push(offence.day);
+  p.offences[holderId] = days.filter((d) => draft.day - d <= TUNING.practice.punish.keepDays);
+  if (punishmentOpen(draft, holderId)) return [];
+  const entryId = pickHolderPunishment(draft, reg, holderId, severity);
+  if (entryId === null) return [];
+  return requestPractice(draft, ctx, holderId, 'punishment', { offence, severity: severityOfEntry(reg, entryId) ?? severity, entryId });
+}
+
+const stakesOf = (e: Record<string, unknown>, fallback: Stake): Stake => (typeof e.stakes === 'string' && ['trivial', 'minor', 'major', 'severe'].includes(e.stakes) ? (e.stakes as Stake) : fallback);
+const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== '' ? v : undefined);
+
+/** At `role` or beyond a refusal is hers to answer (at `play` she lets it go). */
+const answers = (state: CampaignState, holderId: string): boolean => {
+  const frame = dynamicOf(state, holderId)?.frame;
+  return frame !== undefined && frameRank(frame) >= frameRank('role');
+};
+
+/**
+ * After every action: what the lower layers said that she answers. P15's `refusal_noted` (a claim or a demand; a refused task enters its own offence, a refused milestone and a
+ * defied override have their own events), `milestone_refused`, an override of hers answered DEFY (`countermand_overruled`), P15a's `physics_slip` and `physics_caught` in a run with
+ * her (minor, once per run), and a rule of hers broken (`rule_broken`). The slip of a habit (`protocol_slip`) is entered by its intent handler. Nothing while she is not live.
+ */
+export function offencesFromEvents(draft: CampaignState, ctx: EngineCtx, events: readonly EngineEvent[]): EngineEvent[] {
+  if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
+  const out: EngineEvent[] = [];
+  const refusedTask = (unitId: string): boolean => events.some((x) => x.type === 'task_answered' && x.answer === 'refuse' && x.holderId === unitId);
+  const note = (holderId: string | undefined, kind: OffenceKind, ref: string | undefined, stakes: Stake): void => {
+    if (holderId === undefined) return;
+    out.push(...noteOffence(draft, ctx, holderId, { kind, ...(ref !== undefined ? { ref } : {}), stakes, day: draft.day }));
+  };
+  for (const e of events) {
+    const unitId = str(e.unitId) ?? str(e.holderId);
+    switch (e.type) {
+      case 'refusal_noted':
+        if ((e.what === 'claim' || e.what === 'demand') && unitId !== undefined && answers(draft, unitId) && !refusedTask(unitId)) note(unitId, 'refusal', `refusal:${String(e.what)}`, 'minor');
+        break;
+      case 'milestone_refused':
+        if (unitId !== undefined && answers(draft, unitId)) note(unitId, 'milestone_refused', str(e.milestoneId), 'minor');
+        break;
+      case 'override_answered':
+        if (e.source === 'holder' && e.answer === 'defy') note(unitId, 'countermand_overruled', str(e.overrideId), 'minor');
+        break;
+      case 'physics_slip':
+      case 'physics_caught':
+        note(str(e.holderId), e.type, str(e.runId), 'minor');
+        break;
+      case 'rule_broken':
+        note(unitId, 'rule_broken', str(e.ruleId), 'minor');
+        break;
+      default:
+        break;
+    }
+  }
+  return out;
+}
+
+const OFFENCE_SOURCES: readonly string[] = ['refusal_noted', 'milestone_refused', 'override_answered', 'physics_slip', 'physics_caught', 'rule_broken'];

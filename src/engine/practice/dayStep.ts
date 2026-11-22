@@ -55,7 +55,7 @@ export function newPracticeChance(state: CampaignState, reg: Registries, holderI
  */
 export function kindsToday(state: CampaignState, reg: Registries, holderId: string): PracticeKind[] {
   return PRACTICE_KINDS.filter((kind) => {
-    if (WRITERS[kind] === undefined) return false;
+    if (WRITERS[kind] === undefined || kind === 'punishment') return false; // her discipline comes from an offence, never from the day's roll
     if (kind === 'task' && !taskRoom(state, reg, holderId)) return false;
     return pickSeeds(state, reg, holderId, kind).length > 0;
   });

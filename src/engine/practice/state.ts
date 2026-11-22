@@ -115,6 +115,15 @@ export interface PracticeRequest {
   noDuration?: true;
   unfair?: UnfairKind;
   asked?: true;
+  /** A punishment's weight (1 to 5) and the entry the engine picked for it when it was requested (R8): the model words it, the engine owns both. */
+  severity?: 1 | 2 | 3 | 4 | 5;
+  entryId?: string;
+  /** A punishment that follows a refused one at one step more (she escalates once). */
+  escalated?: true;
+  /** TAKE IT INSTEAD: the soldier the order is for, and the P9 measure it names (`entryId`). */
+  forUnitId?: string;
+  /** A protocol's length in days (a punishment's `protocol_extra`). */
+  days?: number;
 }
 
 export interface Task {
@@ -184,6 +193,8 @@ export interface OpenPunishment {
   day: number;
   sceneId?: string;
   inverse?: Inverse;
+  /** The request this card was written for (the key of its generation). */
+  requestId?: string;
 }
 
 /** A demonstration she has staged and not yet seen through (R9). `observed` lists who saw it at the scene's end. */
@@ -234,6 +245,8 @@ export interface PracticeState {
   slap?: { id: string; holderId: string; sceneId: string; windowMs: number; feints: number; public?: true };
   /** holderId → the days of her offences (the repeat count). */
   offences: Record<string, number[]>;
+  /** The offences already entered today (`holderId|kind|ref`): an offence is noted once per ref and day. Reset when the day changes. */
+  noted?: { day: number; keys: string[] };
   records: Array<{ day: number; holderId: string; line: string }>;
   handovers: Array<{ id: string; kind: HandoverKind; holderId: string; untilDay: number }>;
   asked?: { context: 'dilemma' | 'expedition' | 'vote'; ref: string; index: number | 'for' | 'against' | null; holderId: string; preselected?: true };
@@ -263,6 +276,19 @@ export interface ValidOutput {
   targetUnitId?: string;
   text: string;
   summary: string;
+}
+
+/** An offence in a few words, for the model's input (R5: no number, no id). */
+export const OFFENCE_WORDS: Readonly<Record<OffenceKind, string>> = Object.freeze({
+  task_broken: 'a task she gave was not kept', rule_broken: 'a rule of hers was broken', protocol_slip: 'a rule of address slipped', denial_broken: 'something that needed her permission was done without it',
+  refusal: 'the commander refused her', milestone_refused: 'the commander refused what she offered', countermand_overruled: 'the commander overruled her call', physics_slip: 'the commander slipped in what she held',
+  physics_caught: 'the commander was caught cheating at what she held', posture_slip: 'the commander slipped out of a posture', false_report: 'a report the commander made turned out false', asked: 'the commander asked for it',
+  unfair: 'nothing the commander did', hold_defied: 'the commander defied her hold',
+});
+
+/** How hard a punishment weighs, as a word (the card and the model never see the number): 1 to 2 light, 3 heavy, 4 to 5 harsh. */
+export function severityWord(severity: number): 'light' | 'heavy' | 'harsh' {
+  return severity <= 2 ? 'light' : severity === 3 ? 'heavy' : 'harsh';
 }
 
 /** What a campaign that never had a holder at `play` has: nothing (`practices` is absent). The first write creates this. */

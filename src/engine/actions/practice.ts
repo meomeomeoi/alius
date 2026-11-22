@@ -5,6 +5,7 @@ import { reportTask, taskChecksFromEvents } from '../practice/checks';
 import { practiceDayStep } from '../practice/dayStep';
 import { withdrawPractices } from '../practice/forget';
 import { issuePractice } from '../practice/issue';
+import { offencesFromEvents } from '../practice/offences';
 import type { ValidOutput } from '../practice/state';
 import { answerTask, signTask } from '../practice/tasks';
 
@@ -17,6 +18,8 @@ registerWithdrawal(withdrawPractices);
 registerDayEndStep('dm_rumors', practiceDayStep);
 // What an event decides about an open task (a scene with her, a booking, a token, a DM, a run): the engine checks of R2.
 registerAfterAction(taskChecksFromEvents);
+// What she answers in what the lower layers said (a refusal at `role`, a refused milestone, an overruled countermand, a slip or a caught cheat in a run, a broken rule): her offences (R8).
+registerAfterAction(offencesFromEvents);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
