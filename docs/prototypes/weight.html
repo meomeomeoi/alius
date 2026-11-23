@@ -214,8 +214,8 @@ const ATTENTION = { on_commander: [0.7, 0.3, 0], divided: [0.35, 0.4, 0.25], els
 
 /* the contacts: which way the commander faces, how heavy, where her shadow falls */
 const CONTACTS = {
-  human_chair:   { face: 'down', weight: 1.0, shift: 1.0, note: 'on all fours, she sits on the back. You see the floor: her shadow, the light of her screen.' },
-  footrest:      { face: 'down', weight: 0.6, shift: 0.7, note: 'on all fours, her feet rest on the back while she sits. Lighter; her feet shift often.' },
+  human_chair:   { face: 'down', weight: 1.0, shift: 1.0, note: 'on all fours, she sits on the back. You see the floor; her lower legs hang at the edges of the view (one presses in, the other lifts before she shifts; a foot bounces while she reads); the light of her screen.' },
+  footrest:      { face: 'down', weight: 0.6, shift: 0.7, note: 'on all fours, her feet rest on the back while she sits in her chair. She is out of view: hear which side her chair creaks and her clothes rustle; her screen\u2019s light slides that way.' },
   straddled:     { face: 'up',   weight: 0.9, shift: 1.0, note: 'on the back, she sits astride. You see her above you.' },
   standing_on:   { face: 'up',   weight: 1.3, shift: 1.3, note: 'on the back, she stands on you. Heavy; every shift is a step.' },
   boot_on_chest: { face: 'up',   weight: 0.7, shift: 0.8, note: 'on the back, her boot on the chest. She leans in when she wants it heavier.' },
@@ -267,14 +267,16 @@ function audioInit() {
   lfo.connect(lfoG); lfoG.connect(A.rumG.gain); lfo.start();
   rum.connect(A.rumLP); A.rumLP.connect(A.rumG); A.rumG.connect(A.body); rum.start();
 }
-function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world }) {
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world, pan = 0 }) {
   if (!A.ctx) return;
   const ctx = A.ctx, t = ctx.currentTime + at;
   const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
   const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
   if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
   const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+  src.connect(fl); fl.connect(g);
+  if (pan) { const pn = ctx.createStereoPanner(); pn.pan.value = clamp(pan, -1, 1); g.connect(pn); pn.connect(dest); } else g.connect(dest);
+  src.start(t, Math.random()); src.stop(t + dur + 0.05);
 }
 function thump(at, gain, f0 = 55, dest = A.body) {
   if (!A.ctx) return;
@@ -286,8 +288,8 @@ function thump(at, gain, f0 = 55, dest = A.body) {
 const SFX = {
   pen: () => { const n = randInt(3, 5); for (let i = 0; i < n; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.05 }); },
   // a creak: stick-slip, a fast train of clicks through a wooden resonance
-  creak: (len = 0.35, gain = 0.16) => { const n = Math.floor(len * rand(40, 70)); for (let i = 0; i < n; i++) noise({ at: (i / n) * len + Math.random() * 0.004, dur: 0.012, f: rand(420, 780), q: 9, gain: gain * (0.5 + Math.random() * 0.5), attack: 0.001 }); },
-  rustle: (g = 0.08) => noise({ dur: 0.42, f: 1100, f2: 1600, q: 0.7, gain: g, attack: 0.1 }),
+  creak: (len = 0.35, gain = 0.16, pan = 0) => { const n = Math.floor(len * rand(40, 70)); for (let i = 0; i < n; i++) noise({ at: (i / n) * len + Math.random() * 0.004, dur: 0.012, f: rand(420, 780), q: 9, gain: gain * (0.5 + Math.random() * 0.5), attack: 0.001, pan }); },
+  rustle: (g = 0.08, pan = 0) => noise({ dur: 0.42, f: 1100, f2: 1600, q: 0.7, gain: g, attack: 0.1, pan }),
   press: (g = 0.5) => { thump(0, g, 62); noise({ dur: 0.16, type: 'lowpass', f: 300, gain: 0.25, attack: 0.005, dest: A.body }); },
   tap: () => noise({ dur: 0.012, type: 'highpass', f: 3200, gain: 0.05, attack: 0.001 }), // her fingers on her screen
   hiss: (g) => noise({ dur: 0.5, f: 3600, f2: 2800, q: 2, gain: g, attack: 0.08, dest: A.body }), // breath through the teeth
@@ -384,7 +386,11 @@ function planShift() {
   const tele = rand(st.tele[0], st.tele[1]);
   G.shift = { landAt: G.clock + Math.max(tele, 0) + 30, teleAt: G.clock, tele, target, feint: isFeint, dir: Math.sign(target - G.cop) || dir, landed: false };
   if (st.announce) say(pick(L().announce.slice(0, 1).concat(target < G.cop ? ['left.'] : ['right.'])));
-  if (tele > 0) { G.leanTarget = isFeint ? dir * 0.8 : Math.sign(target - G.cop) * 0.9; SFX.rustle(0.06); }
+  if (tele > 0) {
+    G.leanTarget = isFeint ? dir * 0.8 : Math.sign(target - G.cop) * 0.9;
+    const side = Math.sign(G.leanTarget) * 0.85, foot = S.contact === 'footrest';
+    SFX.rustle(foot ? 0.1 : 0.06, side); if (foot) SFX.creak(0.28, 0.12, side);
+  }
 }
 function landShift() {
   const sh = G.shift; sh.landed = true;
@@ -395,7 +401,7 @@ function landShift() {
   const c = C();
   // the engine's rule: a shift costs when the hold was uneven on this beat or the one before
   const uneven = !HOLD.on || G.slipThisBeat || Math.abs(G.cop - G.ctl) > S.tol || G.held.slice(-1).some((h) => !h);
-  SFX.press(0.35 + c.weight * 0.3);
+  SFX.press(0.35 + c.weight * 0.3); SFX.rustle(0.05, Math.sign(sh.target - G.cop) * 0.6);
   if (uneven) {
     const cost = rand(SHIFT_COST[0], SHIFT_COST[1]) * c.weight * G.pressure;
     G.str -= cost; G.hardShifts += 1; G.jolt = 1; crack(1); SFX.creak(0.4, 0.2); SFX.grunt();
@@ -525,46 +531,67 @@ size(); addEventListener('resize', size);
 const cache = new Map();
 const setStyle = (sel, prop, v) => { const key = sel + prop; if (cache.get(key) === v) return; cache.set(key, v); $(sel).style[prop] = v; };
 
-/* her shadow on the floor (soft darkness, never a drawn body) and the cool light of her screen */
-function drawShadow(now) {
-  const W = shC.width, H = shC.height, c = S.contact;
-  const x0 = W / 2 + (G.cop * 0.16 + G.lean * 0.1) * W;
+/* face down. human_chair: her lower legs hang at the edges of the view, near and out of focus: darkness lit at its edges like the breath's
+   shapes (her body is the dark, never a drawn body). footrest: she is not in view at all. In both, the cool pool of her screen's light on the
+   floor tells her attention (steady: busy, dipping: glancing, gone: she lowered it and watches), and slides toward the side she is about to lean. */
+const legC = document.createElement('canvas'), lctx = legC.getContext('2d');
+const compC = document.createElement('canvas'), cctx = compC.getContext('2d');
+const rimC = document.createElement('canvas'), rctx = rimC.getContext('2d');
+const outC = document.createElement('canvas'), octx = outC.getContext('2d');
+function chaikin(pts) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; out.push([p[0] * 0.75 + q[0] * 0.25, p[1] * 0.75 + q[1] * 0.25], [p[0] * 0.25 + q[0] * 0.75, p[1] * 0.25 + q[1] * 0.75]); }
+  return out;
+}
+/* the left lower leg, calf from the top edge down to the foot near the floor; x from the left edge, unit W; y unit H */
+const LEG = [[-0.05, -0.08], [0.105, -0.08], [0.122, 0.12], [0.118, 0.3], [0.097, 0.5], [0.08, 0.66], [0.086, 0.74], [0.112, 0.82], [0.118, 0.9], [0.09, 0.95], [0.03, 0.93], [-0.05, 0.9]];
+function legPoints(W, H, side, press, lift, swing) {
+  return LEG.map(([x, y]) => {
+    const down = clamp(y, 0, 1);
+    // pressed: the leg comes inward (her weight goes to this side); lifted: it rises and swings out; swing: the foot bounces while she reads
+    const X = x + press * 0.035 * (0.4 + down) - lift * 0.03 * down + swing * 0.012 * down * down;
+    const Y = y - lift * 0.07 * down + swing * 0.01 * down;
+    return [side < 0 ? X * W : W - X * W, Y * H];
+  });
+}
+function drawFloor(now) {
+  const W = shC.width, H = shC.height;
+  for (const c of [legC, compC, rimC, outC]) if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
   sctx.clearRect(0, 0, W, H);
-  sctx.filter = `blur(${Math.round(H * 0.035)}px)`;
-  sctx.fillStyle = 'rgba(0,0,0,0.62)';
-  if (c === 'human_chair') {
-    // her torso and head thrown forward onto the floor, her legs hanging at the sides
-    sctx.beginPath(); sctx.ellipse(x0, H * (0.06 - G.lean * 0.02), W * 0.13 * (1 + Math.abs(G.lean) * 0.15), H * 0.3, G.lean * 0.18, 0, Math.PI * 2); sctx.fill();
-    sctx.beginPath(); sctx.ellipse(x0 + G.lean * W * 0.03, H * -0.18, W * 0.06, H * 0.1, 0, 0, Math.PI * 2); sctx.fill();
-    // her legs hang at the sides: tapered, fading toward the bottom (the lamp is behind her, the shadow thins away from her)
-    for (const s of [-1, 1]) {
-      const lx = W / 2 + s * W * 0.37 + G.cop * W * 0.04 + G.lean * W * 0.02;
-      const gr = sctx.createLinearGradient(0, H * 0.1, 0, H * 1.05);
-      gr.addColorStop(0, 'rgba(0,0,0,0.6)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.38)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      sctx.fillStyle = gr;
-      sctx.beginPath();
-      sctx.moveTo(lx - s * W * 0.07, H * 0.12); sctx.quadraticCurveTo(lx - s * W * 0.06, H * 0.5, lx - s * W * 0.02, H * 1.05);
-      sctx.lineTo(lx + s * W * 0.025, H * 1.05); sctx.quadraticCurveTo(lx + s * W * 0.05, H * 0.45, lx + s * W * 0.03, H * 0.12); sctx.closePath(); sctx.fill();
-    }
-    sctx.fillStyle = 'rgba(0,0,0,0.62)';
-  } else {
-    // her lower legs from her chair ahead, crossing over the commander's back: two long soft shapes from the top
-    for (const s of [-1, 1]) {
-      const ax = x0 + s * W * 0.07;
-      sctx.beginPath(); sctx.ellipse(ax + s * W * 0.04, H * 0.08, W * 0.05, H * 0.34, s * -0.25 + G.lean * 0.2, 0, Math.PI * 2); sctx.fill();
-    }
-    sctx.fillStyle = 'rgba(0,0,0,0.4)';
-    sctx.beginPath(); sctx.ellipse(W / 2, -H * 0.1, W * 0.3, H * 0.22, 0, 0, Math.PI * 2); sctx.fill(); // her chair
-  }
-  // her screen's light: busy = steady, glancing = it dips, watching = she lowered it
-  const a = G.phase === 'loop' || G.phase === 'entry' ? ({ busy: 1, glancing: 0.45 + 0.25 * Math.sin(now / 90), watching: 0.06 }[G.att]) : 0;
+  const live = G.phase === 'loop' || G.phase === 'entry';
+  // her screen's light on the floor
+  const att = live ? ({ busy: 1, glancing: 0.45 + 0.25 * Math.sin(now / 90), watching: 0.05 }[G.att]) : 0;
   const flick = 0.85 + 0.15 * Math.sin(now / 130) * Math.sin(now / 47);
-  sctx.filter = `blur(${Math.round(H * 0.06)}px)`;
+  const px = W * (0.5 + G.cop * 0.1 + G.lean * 0.16), py = H * (S.contact === 'footrest' ? 0.24 : 0.3);
+  sctx.filter = `blur(${Math.round(H * 0.07)}px)`;
   sctx.globalCompositeOperation = 'lighter';
-  sctx.fillStyle = `rgba(120,170,255,${(0.3 * a * flick * G.cam).toFixed(3)})`;
-  sctx.beginPath(); sctx.ellipse(x0 + W * 0.02, H * 0.3, W * 0.12, H * 0.09, 0, 0, Math.PI * 2); sctx.fill();
+  sctx.fillStyle = `rgba(120,170,255,${(0.34 * att * flick * G.cam).toFixed(3)})`;
+  sctx.beginPath(); sctx.ellipse(px, py, W * 0.15, H * 0.1, 0, 0, Math.PI * 2); sctx.fill();
   sctx.globalCompositeOperation = 'source-over'; sctx.filter = 'none';
-  shC.dataset.screen = a.toFixed(2);
+  shC.dataset.screen = att.toFixed(2);
+  if (S.contact !== 'human_chair') return;
+  // her legs: the body, its complement blurred into a rim, the rim kept on the body only
+  const t = now / 1000;
+  const reading = live && G.att === 'busy';
+  lctx.clearRect(0, 0, W, H); lctx.fillStyle = '#fff';
+  for (const side of [-1, 1]) {
+    const toward = side * (G.lean * 0.9 + G.cop * 0.5);
+    const press = Math.max(0, toward), lift = Math.max(0, -toward);
+    const swing = S.reduced ? 0 : (reading ? Math.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math.sin(t * 0.8 + side) * 0.25);
+    const jolt = G.jolt * 0.4 * (side > 0 ? 1 : -1);
+    const pts = chaikin(chaikin(chaikin(legPoints(W, H, side, press + jolt * 0.2, lift, swing))));
+    lctx.beginPath(); pts.forEach((q, i) => (i ? lctx.lineTo(q[0], q[1]) : lctx.moveTo(q[0], q[1]))); lctx.closePath(); lctx.fill();
+  }
+  cctx.globalCompositeOperation = 'source-over'; cctx.clearRect(0, 0, W, H); cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, W, H);
+  cctx.globalCompositeOperation = 'destination-out'; cctx.drawImage(legC, 0, 0); cctx.globalCompositeOperation = 'source-over';
+  rctx.clearRect(0, 0, W, H); rctx.filter = `blur(${Math.round(H * 0.022)}px)`; rctx.drawImage(compC, 0, 0); rctx.filter = 'none';
+  rctx.globalCompositeOperation = 'source-in'; rctx.fillStyle = 'rgb(226,78,52)'; rctx.fillRect(0, 0, W, H); rctx.globalCompositeOperation = 'source-over';
+  octx.globalCompositeOperation = 'source-over'; octx.clearRect(0, 0, W, H);
+  octx.filter = `blur(${Math.round(H * 0.012)}px)`; octx.drawImage(legC, 0, 0); octx.filter = 'none'; // near and out of focus
+  octx.globalCompositeOperation = 'source-in'; octx.fillStyle = 'rgb(8,5,9)'; octx.fillRect(0, 0, W, H);
+  octx.globalCompositeOperation = 'source-atop'; octx.globalAlpha = 0.55; octx.drawImage(rimC, 0, 0); octx.globalAlpha = 1;
+  octx.globalCompositeOperation = 'source-over';
+  sctx.globalAlpha = smooth(0.2, 0.9, G.cam); sctx.drawImage(outC, 0, 0); sctx.globalAlpha = 1;
 }
 
 function placeSprite(img, k, face, opts) {
@@ -593,7 +620,7 @@ function render(now, dt, err) {
   const near = 1 + strF * 0.22 * k + G.sag * 0.04;
   setStyle('#floor', 'transform', `scale(${near.toFixed(3)})`);
   setStyle('#floor', 'filter', `blur(${(0.4 + strF * 1.8).toFixed(1)}px) brightness(${(0.6 - strF * 0.16).toFixed(2)}) saturate(.85)`);
-  if (down) drawShadow(now);
+  if (down) drawFloor(now);
   // face up: her from below; the art slot "over" if there is one, else the ordinary sprite rising from the bottom edge
   const over = $('#over');
   const useOver = over.style.display !== 'none' && over.naturalWidth;
