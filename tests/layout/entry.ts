@@ -1,19 +1,21 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|three|four|curtain|long|physics|chips|chipsmany`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
+import { registerFrameReader } from '../../src/engine/blocking';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import type { ChatMessage } from '../../src/st/adapter';
 import { renderSceneScreen } from '../../src/ui/scene/sceneScreen';
 
+registerFrameReader(() => 'play');
 const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[fixture === 'three' ? 'three' : fixture === 'four' ? 'four' : fixture === 'physics' ? 'physics' : 'one'];
+const state = states[['two', 'three', 'four', 'physics'].includes(fixture) ? fixture : 'one'];
 
 const words = (n: number): string => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
 const msg = (index: number, over: Partial<ChatMessage>): ChatMessage => ({ index, isUser: false, name: 'Ann', avatar: 'ann.png', text: '', swipeId: 0, swipeCount: 2, ...over });
@@ -37,7 +39,7 @@ const noop = (): [] => [];
 const screen = renderSceneScreen(view, {
   controller: controller as never, getState: () => state, registries: loaded.registries, st: st as never,
   settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded() {}, onClose() {}, assetUrl: (p: string) => '/' + p, onOrder: () => false,
-  physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, keystroke() {}, typed: () => null, onTap() {} } as never,
+  physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => 'Her breath comes short.', beat: () => 0, keystroke() {}, typed: () => null, onTap() {} } as never,
 });
 // review I3: ordinary chips (they fit) or too many (some really overflow); added to a slot of the row, which a redraw leaves alone
 if (fixture === 'chips' || fixture === 'chipsmany') {

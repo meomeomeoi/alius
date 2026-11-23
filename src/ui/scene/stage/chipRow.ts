@@ -1,14 +1,14 @@
 /**
  * P10e §5: every chip of the scene (offers, initiatives, rules, demands, discipline, generation, frequency, the pastime menu)
  * is in one row above the input: small rounded pills. A slot per source keeps each draw function's host where it was; the
- * row scrolls sideways when it does not fit and ends with "+N" (a click wraps it open). The stop word of a running physics
- * is pinned at its right end (the `stop` slot) so it is never collapsed away.
+ * row scrolls sideways when it does not fit and ends with "+N" (a click wraps it open). (The stop word of a hold is the pill at the
+ * posture dial, not a chip: P10e A1.)
  */
 import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 
 /** The row's slots, in order (the table of spec §12a.5 names them). */
-export const CHIP_SLOTS = ['generation', 'proposals', 'lead', 'offer', 'rules', 'demands', 'discipline', 'discipline-menus', 'freq', 'lets', 'stop'] as const;
+export const CHIP_SLOTS = ['generation', 'proposals', 'lead', 'offer', 'rules', 'demands', 'discipline', 'discipline-menus', 'freq', 'lets'] as const;
 
 export interface ChipRow {
   element: HTMLElement;

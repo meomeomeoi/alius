@@ -36,6 +36,11 @@ export interface PhysicsPanelCtx {
   onTap: () => void;
   /** The clock for the deep inhale's bar (default `Date.now`). */
   now?: () => number;
+  /**
+   * Whether the panel draws its own `[ STOP WORD ]` (default true). The scene draws it as a pill at the posture dial instead (P10e A1, same handler)
+   * and asks this panel only whether the stop word is offered (the return value).
+   */
+  stopWord?: boolean;
 }
 
 interface Control { kind: InputKind | 'wait'; text: string; part?: string; relief?: true; main?: true }
@@ -83,7 +88,7 @@ const holding = new WeakMap<HTMLElement, ReturnType<typeof setInterval>>();
  * motion setting or the readable mode turns into a static tint. No number is shown unless raw values are on. Inputs go to the staging
  * controller, never through `stage` (a hold is not rolled back by a swipe).
  */
-export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): void {
+export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): boolean {
   const { state, registries: reg, staging } = ctx;
   const run = state?.scene && blockingLive(state, reg) ? state.scene.physics : undefined;
   const exposures = state && !run ? exposedKinds(state, reg) : [];
@@ -95,14 +100,14 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
     letGoOf(host);
     unwireKeys(host);
     drawWays(host, ctx, exposures);
-    return;
+    return true;
   }
   if (!state || !run) {
     letGoOf(host);
     unwireKeys(host);
     host.replaceChildren();
     pointers.delete(host);
-    return;
+    return false;
   }
   const phys = reg.contactPhysics.get(run.physicsId);
   const interaction = String(phys?.interaction ?? '');
@@ -169,7 +174,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
     h('div', { class: 'alius-physics-controls' },
       ...controls.map(button),
       h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-tap', 'data-action': 'tap', ...analyzeNative('glossary:tap_signal'), onclick: () => ctx.onTap() }, '[ TAP ]'),
-      h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, '[ STOP WORD ]')),
+      ...(ctx.stopWord !== false ? [h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, '[ STOP WORD ]')] : [])),
   ) as HTMLElement;
   root.style.setProperty('--alius-air', String(Math.round(remaining * 100) / 100));
   root.style.setProperty('--alius-strain', String(Math.round(strain * 100) / 100));
@@ -177,6 +182,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): voi
 
   host.dataset.realtime = realtime ? '1' : '0';
   wireKeys(host);
+  return true;
 }
 
 /**
@@ -258,11 +264,20 @@ function wayGroups(ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKin
 
 /** The panel with no hold running: only what reaches the body, and the stop word (which ends the contact all the same). */
 function drawWays(host: HTMLElement, ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKinds>): void {
+  const ways = wayGroups(ctx, exposures);
+  const acts = actRow(host, ctx);
+  const own = ctx.stopWord !== false;
+  // the scene draws the stop word at the dial: a body held with nothing else to offer leaves no card at all
+  if (!own && ways.length === 0 && acts.length === 0) {
+    host.replaceChildren();
+    return;
+  }
   host.replaceChildren(h('div', { class: 'alius-physics', role: 'group', 'aria-label': 'What reaches the body' },
-    ...wayGroups(ctx, exposures),
-    ...actRow(host, ctx),
-    h('div', { class: 'alius-physics-controls' },
-      h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]'))));
+    h('div', { class: 'alius-physics-title' }, 'WHAT REACHES THE BODY'),
+    ...ways,
+    ...acts,
+    own ? h('div', { class: 'alius-physics-controls' },
+      h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]')) : null));
 }
 
 const ACT_TEXT: Record<string, string> = {

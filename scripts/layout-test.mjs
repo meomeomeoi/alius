@@ -1,5 +1,7 @@
 // P10e: the scene stage's layout test, in a real browser (not part of `npm test`: it needs Chromium).
 //   npm run test:layout
+// Playwright is not a dependency of the package: it comes from the environment (NODE_PATH or a global install, e.g. /opt/node-tools) and so does
+// its Chromium; nothing is declared in package.json for it.
 // esbuild bundles tests/layout/entry.ts, the campaign states are built in Node, the repo root is served on 127.0.0.1 (a file URL cannot
 // fetch), and Chromium measures the scene at 1920x1080, 1280x800 and 2560x1440. Exits non-zero with the list of failures.
 import { build } from 'esbuild';
@@ -33,13 +35,36 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'three', 'curtain', 'long', 'physics', 'chips', 'chipsmany'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany'];
 const failures = [];
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
 const SHOTS = process.env.LAYOUT_SHOTS ? resolve(process.env.LAYOUT_SHOTS) : null;
 
+/** Every box of the UI a head must stay clear of (the dock is measured as the box that clips its cards, not as each card). */
+const UI = '.alius-topline-left, .alius-scene-tools, .alius-reply, .alius-chip-row, .alius-input-line, .alius-stage-dock, .alius-dock-waiting, .alius-dial, .alius-stop-pill, .alius-stage-status > *, .alius-flash';
+
+/**
+ * Runs in the page: the pan that puts each sprite in the middle of the view (found by measuring the sprite at pan 0 and at pan 1, not from the code's
+ * own formula), then her box and the UI at that pan (A2). The easing is off while it measures.
+ */
+function perWoman(ui) {
+  const root = document.querySelector('.alius-scene');
+  root.classList.add('alius-look-still');
+  const imgs = () => [...document.querySelectorAll('.alius-sprite-img')];
+  const box = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom }; };
+  const at = (pan) => { root.style.setProperty('--alius-pan', String(pan)); void root.offsetWidth; return imgs().map((e) => { const b = e.getBoundingClientRect(); return (b.left + b.right) / 2; }); };
+  const c0 = at(0);
+  const c1 = at(1);
+  const W = innerWidth;
+  return c0.map((x0, k) => {
+    const pan = Math.abs(x0 - c1[k]) < 0.5 ? 0.5 : Math.min(1, Math.max(0, (x0 - W / 2) / (x0 - c1[k])));
+    at(pan);
+    return { k, pan, sprite: box(imgs()[k]), ui: [...document.querySelectorAll(ui)].map((el) => ({ sel: el.className || el.tagName, ...box(el) })).filter((b) => b.w > 0 && b.h > 0) };
+  });
+}
+
 /** Runs in the page: every measurement the assertions need. */
-function measure() {
+function measure(UI) {
   /** The chip row's "+N" against the chips that really lie past its right edge (review I3). */
   const chipRowMeasure = () => {
     const row = document.querySelector('.alius-chip-row');
@@ -54,7 +79,6 @@ function measure() {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom }; };
   const q = (s) => document.querySelector(s);
   const imgs = [...document.querySelectorAll('.alius-sprite-img')].map(r);
-  const UI = '.alius-topline-left, .alius-scene-tools, .alius-reply, .alius-chip-row, .alius-input-line, .alius-dock-card, .alius-dock-waiting, .alius-dial, .alius-stage-status > *, .alius-flash';
   return {
     vw: innerWidth, vh: innerHeight, scrollW: document.documentElement.scrollWidth, scrollH: document.documentElement.scrollHeight,
     backdrop: r(q('.alius-layer-backdrop')), backdropShown: getComputedStyle(q('.alius-layer-backdrop')).display !== 'none', image: q('.alius-scene')?.dataset.backdrop,
@@ -77,8 +101,16 @@ for (const size of SIZES) {
     await p.waitForSelector('body[data-ready="true"]', { timeout: 20000 });
     try { await p.waitForSelector('.alius-scene[data-backdrop="image"]', { timeout: 8000 }); } catch { /* reported below */ }
     await p.waitForTimeout(700);
-    const m = await p.evaluate(measure);
+    const m = await p.evaluate(measure, UI);
     if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: join(SHOTS, `${fixture}-${size[0]}x${size[1]}.png`) }); }
+    // A2: each woman at the pan that centres her (several women only); a screenshot of each when asked
+    const per = ['two', 'three', 'four'].includes(fixture) ? await p.evaluate(perWoman, UI) : [];
+    if (SHOTS && per.length > 0) {
+      for (const w of per) {
+        await p.evaluate((pan) => { document.querySelector('.alius-scene').style.setProperty('--alius-pan', String(pan)); }, w.pan);
+        await p.screenshot({ path: join(SHOTS, `${fixture}-${size[0]}x${size[1]}-woman${w.k + 1}.png`) });
+      }
+    }
     await p.close();
     const [W, H] = size;
     const inside = (b) => b && b.x >= -1 && b.y >= -1 && b.r <= W + 1 && b.b <= H + 1;
@@ -108,6 +140,21 @@ for (const size of SIZES) {
     }
     // nothing of the UI overlaps her head
     for (const b of m.ui) for (const hd of heads) if (hit(b, hd) && !(fixture === 'curtain' && b.sel.includes('curtain'))) fail(size, fixture, `${b.sel} overlaps a head box (${JSON.stringify(b)})`);
+    // A2: at the pan that centres her, each woman's head box is inside the viewport and nothing of the UI overlaps it
+    for (const w of per) {
+      const head = { x: w.sprite.x, y: Math.max(0, w.sprite.y), r: w.sprite.r, b: w.sprite.y + w.sprite.h * 0.22 };
+      if (head.x < -1 || head.r > W + 1 || head.y < -1) fail(size, fixture, `woman ${w.k + 1}: her head box is outside the viewport at pan ${w.pan.toFixed(2)} (${JSON.stringify(head)})`);
+      for (const b of w.ui) if (hit(b, head)) fail(size, fixture, `woman ${w.k + 1} at pan ${w.pan.toFixed(2)}: ${b.sel} overlaps her head box (${JSON.stringify(b)})`);
+    }
+    if (fixture === 'two') {
+      if (m.sprites.length !== 2) fail(size, fixture, `${m.sprites.length} sprites, not 2`);
+      for (const hd of heads) if (hd.x < -1 || hd.r > W + 1) fail(size, fixture, `at the default view a head is not on screen (${JSON.stringify(hd)})`);
+    }
+    if (fixture === 'four') {
+      if (m.sprites.length !== 4) fail(size, fixture, `${m.sprites.length} sprites, not 4`);
+      if (!m.dock) fail(size, fixture, 'no card in the dock');
+      if (m.sprites.every((sp) => sp.x >= -1 && sp.r <= W + 1)) fail(size, fixture, 'every one of four women is on screen at the default view: some should be past its edges');
+    }
     if (fixture === 'three') {
       if (m.sprites.length !== 3) fail(size, fixture, `${m.sprites.length} sprites, not 3`);
       if (!m.dock) fail(size, fixture, 'no card in the dock');
@@ -134,7 +181,13 @@ for (const size of SIZES) {
       if (!c || c.past === 0) fail(size, fixture, 'forty chips did not overflow the row');
       else if (!c.overflow || c.more !== `+${c.past}`) fail(size, fixture, `the row shows "${c.more}" for ${c.past} chips past its edge`);
     }
-    if (fixture === 'physics' || fixture === 'three') {
+    if (['physics', 'three', 'four'].includes(fixture) && m.stop) {
+      // A1: a small pill in the bottom-right corner, over the dial, clear of the dial, the reply, the chips and the input
+      if (m.stop.r < W * 0.8 || m.stop.y < H * 0.5) fail(size, fixture, `the stop word is not in the bottom-right corner: ${JSON.stringify(m.stop)}`);
+      if (m.stop.h > 44 || m.stop.w > 220) fail(size, fixture, `the stop word is not a small pill: ${Math.round(m.stop.w)}x${Math.round(m.stop.h)}`);
+      for (const [name, b] of [['the dial', m.dial], ['the reply', m.reply], ['the input', m.input]]) if (b && hit(m.stop, b)) fail(size, fixture, `the stop word overlaps ${name}`);
+    }
+    if (fixture === 'physics' || fixture === 'three' || fixture === 'four') {
       if (!m.stop || !m.stopVisible) fail(size, fixture, 'the stop word is not visible');
       else if (!inside(m.stop)) fail(size, fixture, `the stop word is outside the viewport: ${JSON.stringify(m.stop)}`);
     }

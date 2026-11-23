@@ -12,6 +12,7 @@ import { resetSceneStage } from '../../../src/ui/scene/stage';
 import { DOCK_SLOTS, createDock } from '../../../src/ui/scene/stage/dock';
 import { COMMANDER, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { enable } from '../../helpers/bonds';
+import '../../../src/engine/actions/physics';
 import { campaign, errors, loadCore, run, setRelation } from '../../helpers/loyalty';
 import '../../../src/engine/actions/blocking';
 
@@ -167,10 +168,10 @@ describe('the dock', () => {
 });
 
 describe('the dock on the scene screen', () => {
-  function setup() {
+  function setup(...tags: string[]) {
     let state: CampaignState = campaign(reg, 4);
     setRelation(state, 'unit_ann', { stateId: 'confidant' });
-    enable(state, 'pet_play', 'restraint');
+    enable(state, 'pet_play', 'restraint', ...tags);
     const r = run(state, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: ['unit_ann'], origin: 'event', consumesSlot: false, startIndex: 0 } });
     expect(errors(r.events)).toEqual([]);
     state = r.state;
@@ -204,30 +205,46 @@ describe('the dock on the scene screen', () => {
     expect(t.host.querySelector('.alius-dock .alius-slap-host')).toBeNull();
   });
 
-  it('something holds the commander: the panel is a card of the dock and its stop word is mirrored in the chip row, calling the same handler', () => {
+  it('anything that holds the commander (a worn item, no run) shows the stop word as a pill at the dial, calling the same handler; the card has none (A1)', () => {
     const t = setup();
-    expect(t.host.querySelector('[data-stop-word]')).toBeNull(); // nothing holds her: no panel, no mirror
+    expect(t.host.querySelector('[data-stop-word]')).toBeNull(); // nothing holds her: no pill
     const held = structuredClone(t.state());
     setBlocking(held, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'paw_mitts' }, { at: 1, source: 'engine' });
     t.set(held);
-    const panelStop = t.host.querySelector<HTMLElement>('.alius-dock [data-slot="physics"] [data-action="stop-word"]')!;
-    expect(panelStop).not.toBeNull();
-    const mirror = t.host.querySelector<HTMLElement>('.alius-chip-slot[data-slot="stop"] [data-stop-word]')!;
-    expect(mirror).not.toBeNull();
-    expect(mirror.getAttribute('data-analyze')).toBe('glossary:stop_word');
-    mirror.click();
+    const pill = t.host.querySelector<HTMLElement>('.alius-stage-dial [data-stop-word]')!;
+    expect(pill).not.toBeNull();
+    expect(pill.getAttribute('data-analyze')).toBe('glossary:stop_word');
+    expect(pill.textContent).toBe('STOP WORD');
+    expect(t.host.querySelector('.alius-dock [data-action="stop-word"]')).toBeNull(); // the card draws no stop word of its own
+    expect(t.host.querySelector('.alius-dock [data-slot="physics"] .alius-physics')).toBeNull(); // and with nothing else to offer, no card
+    pill.click();
     expect(t.stopWord).toHaveBeenCalledTimes(1);
-    panelStop.click();
-    expect(t.stopWord).toHaveBeenCalledTimes(2);
-    // it stays when the panel card is collapsed or set aside
-    const panelCard = t.host.querySelector<HTMLElement>('.alius-dock [data-slot="physics"] > *')!;
-    panelCard.querySelector<HTMLButtonElement>('[data-set-aside]')?.click();
-    t.set(held);
-    expect(t.host.querySelector('.alius-chip-slot[data-slot="stop"] [data-stop-word]')).not.toBeNull();
-    // and goes when nothing holds her
+    t.set(held); // a redraw keeps the one pill
+    expect(t.host.querySelectorAll('[data-stop-word]')).toHaveLength(1);
+    // and it goes when nothing holds her
     const free = structuredClone(held);
     setBlocking(free, { registries: reg }, { person: COMMANDER, field: 'removed', value: 'paw_mitts' }, { at: 2, source: 'engine' });
     t.set(free);
     expect(t.host.querySelector('[data-stop-word]')).toBeNull();
+  });
+
+  it('a running hold: the card is a heading, its controls and its cue, with no stop word in it; the pill is at the dial (A1, V1)', () => {
+    const t = setup('humiliation');
+    const s = structuredClone(t.state());
+    setBlocking(s, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 1, source: 'engine' });
+    expect(s.scene!.physics).toBeDefined();
+    t.set(s);
+    const card = t.host.querySelector<HTMLElement>('.alius-dock [data-slot="physics"] .alius-physics[data-run]')!;
+    expect(card).not.toBeNull();
+    expect((card.firstElementChild as HTMLElement).className).toBe('alius-physics-title');
+    expect(card.querySelector('[data-action="tap"]')).not.toBeNull();
+    expect(card.querySelector('[data-action="stop-word"]')).toBeNull();
+    const pill = t.host.querySelector<HTMLElement>('.alius-stage-dial [data-stop-word]')!;
+    expect(pill).not.toBeNull();
+    pill.click();
+    expect(t.stopWord).toHaveBeenCalledTimes(1);
+    // set aside or collapsed, the pill stays
+    card.querySelector<HTMLButtonElement>('[data-set-aside]')?.click();
+    expect(t.host.querySelector('[data-stop-word]')).not.toBeNull();
   });
 });

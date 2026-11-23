@@ -41,7 +41,8 @@ import { CHIP_SLOTS, createChipRow, type ChipRow } from './stage/chipRow';
 import { createCurtain, type Curtain } from './stage/curtain';
 import { DOCK_SLOTS, createDock, type Dock } from './stage/dock';
 import { flashLine } from './stage/flash';
-import { attachLook } from './stage/look';
+import { attachLook, type LookHandle } from './stage/look';
+import { panToCentre, spriteSlots } from './stage/sprites';
 import { markHintUsed, renderTopLine } from './stage/topLine';
 import { fillProse, proseLength, sentenceRunIndex } from './stage/prose';
 import { REPLY_MAX_LINES, measureReply, renderReply, replyView } from './stage/reply';
@@ -205,7 +206,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let layers: StageLayers;
   let chipResizer: ResizeObserver | null = null;
   /** P10e: looking around is wired per built scene (its position is remembered by scene id, see stage/look.ts). */
-  let detachLook: (() => void) | null = null;
+  let detachLook: LookHandle | null = null;
+  /** The newest reply the view was already turned for (null until the first draw of a scene: what is there at the start turns nothing). */
+  let spokenIndex: number | null = null;
   let bg: HTMLElement;
   /** P10c: the full-bleed image layer behind the whole scene (the ASCII art stays in `bg`, inside the stage). */
   let backdrop: HTMLElement;
@@ -246,6 +249,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let dock: Dock;
   /** P15a: the BLOCKING strip (drawn only while the blocking is live). */
   let blockingHost: HTMLElement;
+  /** P10e A1: the stop word's pill, in the dial's corner (it shows with or without the dial). */
+  let stopHost: HTMLElement;
   let momentHost: HTMLElement;
   let physicsHost: HTMLElement;
   let busyHost: HTMLElement;
@@ -334,15 +339,39 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }).catch(() => {});
   }
 
+  /**
+   * P10e A2: the sprites stand in room space: each is placed on the panorama (`stage/sprites.ts`), and the panorama moves with the view
+   * (`--alius-pan`), as the backdrop does. One stands at the centre, two within the central view, three or more across the whole width.
+   */
   function drawSprites(s: CampaignState, speakerAvatar: string | undefined): void {
     const units = present(s);
     spriteHost.dataset.count = String(units.length);
-    const positions = units.length === 1 ? ['pos-center'] : units.length === 2 ? ['pos-left', 'pos-right'] : ['pos-left', 'pos-center', 'pos-right'];
-    spriteHost.replaceChildren(...units.map((u, i) => {
+    if (units.length >= 4) spriteHost.dataset.crowd = 'true';
+    else delete spriteHost.dataset.crowd;
+    const slots = spriteSlots(units.length);
+    const pano = h('div', { class: 'alius-sprite-pano' }, ...units.map((u, i) => {
       const img = h('img', { alt: u.displayName, class: 'alius-sprite-img' });
-      return h('div', { class: `alius-sprite ${positions[i]}${u.cardRef && u.cardRef === speakerAvatar ? ' is-speaking' : ''}`, 'data-unit': u.id }, img);
+      const el = h('div', { class: `alius-sprite ${slots[i].cls}${u.cardRef && u.cardRef === speakerAvatar ? ' is-speaking' : ''}`, 'data-unit': u.id }, img);
+      el.style.setProperty('--alius-sprite-x', `${slots[i].x}cqh`);
+      return el;
     }));
+    spriteHost.replaceChildren(pano);
     for (const u of units) setSprite(u, labels.get(u.id) ?? 'neutral');
+  }
+
+  /** P10e A2: the view turns to the woman whose reply just landed (unless the commander turned it by hand a moment ago; reduced motion jumps). */
+  function turnToSpeaker(s: CampaignState, reply: ChatMessage | undefined): void {
+    if (!detachLook) return;
+    const newest = reply?.index ?? -1;
+    if (spokenIndex === null) { spokenIndex = newest; return; } // what is there when the scene opens turns nothing
+    if (!reply || newest <= spokenIndex) return;
+    spokenIndex = newest;
+    const units = present(s);
+    const at = units.findIndex((u) => (u.cardRef !== undefined && u.cardRef === reply.avatar) || u.displayName === reply.name);
+    if (at < 0) return;
+    const frame = layers.frame.getBoundingClientRect();
+    const pan = panToCentre(spriteSlots(units.length)[at].x, frame.width, frame.height);
+    if (pan !== null) detachLook.turnTo(pan);
   }
 
   function drawHud(s: CampaignState): void {
@@ -605,16 +634,17 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     });
   }
 
-  /** P15a: the hold panel (nothing without a run or without the staging controller). */
+  /**
+   * P15a: the hold panel (nothing without a run or without the staging controller). P10e A1: the stop word is not in the card; a small pill at the
+   * posture dial calls the same handler, whenever the panel would offer the stop word (a run, or anything that holds the commander).
+   */
   function drawPhysics(s: CampaignState): void {
-    const stop = chipRow.slot('stop');
-    if (!ctx.physics) { physicsHost.replaceChildren(); stop.replaceChildren(); return; }
+    if (!ctx.physics) { physicsHost.replaceChildren(); stopHost.replaceChildren(); return; }
     const staging = ctx.physics;
-    renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
-    // P10e R6: the stop word is also pinned at the right end of the chip row, so a collapsed or set-aside card never hides it
-    if (physicsHost.querySelector('[data-action="stop-word"]') === null) stop.replaceChildren();
-    else if (stop.querySelector('[data-stop-word]') === null) {
-      stop.replaceChildren(h('button', { type: 'button', class: 'alius-btn alius-option', 'data-stop-word': '', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, 'STOP WORD'));
+    const offered = renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
+    if (!offered) stopHost.replaceChildren();
+    else if (stopHost.querySelector('[data-stop-word]') === null) {
+      stopHost.replaceChildren(h('button', { type: 'button', class: 'alius-stop-pill', 'data-stop-word': '', 'aria-label': 'Stop word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, 'STOP WORD'));
     }
   }
 
@@ -668,6 +698,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     curtain?.destroy();
     delete root.dataset.curtain; // a new scene starts with the history down (the old curtain's close hook is gone)
     wordsChecked = null;
+    spokenIndex = null;
     curtain = createCurtain(layers.curtain, {
       onOpen: () => {
         markHintUsed('history');
@@ -822,7 +853,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     milestoneCards = cards('milestone', 'alius-milestone-cards');
     claimCards = cards('claim', 'alius-claim-cards');
     returnCards = cards('return', 'alius-return-cards');
-    blockingHost = hosts.dial; // the posture dial's corner
+    // the posture dial's corner: the stop word's pill (above the dial, alone in the corner when there is no dial) and the dial
+    stopHost = h('div', { class: 'alius-stop-host' });
+    blockingHost = h('div', { class: 'alius-dial-host' });
+    hosts.dial.append(stopHost, blockingHost);
     // the wheel up over the frame or the reply lets the history down
     const wheelUp = (ev: Event): void => { if ((ev as WheelEvent).deltaY < 0) curtain.open(); };
     layers.frame.addEventListener('wheel', wheelUp);
@@ -859,6 +893,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
     drawSprites(s, lastReply?.avatar);
+    turnToSpeaker(s, lastReply);
     drawHud(s);
     drawLog(s);
     drawChips(s);

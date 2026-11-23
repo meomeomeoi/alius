@@ -62789,14 +62789,14 @@ function renderPhysicsPanel(host, ctx2) {
     letGoOf(host);
     unwireKeys(host);
     drawWays(host, ctx2, exposures);
-    return;
+    return true;
   }
   if (!state || !run) {
     letGoOf(host);
     unwireKeys(host);
     host.replaceChildren();
     pointers.delete(host);
-    return;
+    return false;
   }
   const phys = reg.contactPhysics.get(run.physicsId);
   const interaction = String(phys?.interaction ?? "");
@@ -62874,9 +62874,9 @@ function renderPhysicsPanel(host, ctx2) {
       { class: "alius-physics-controls" },
       ...controls.map(button2),
       h("button", { type: "button", class: "alius-btn alius-option alius-physics-tap", "data-action": "tap", ...analyzeNative("glossary:tap_signal"), onclick: () => ctx2.onTap() }, "[ TAP ]"),
-      h("button", { type: "button", class: "alius-btn alius-option alius-physics-stop", "data-action": "stop-word", ...analyzeNative("glossary:stop_word"), onclick: () => {
+      ...ctx2.stopWord !== false ? [h("button", { type: "button", class: "alius-btn alius-option alius-physics-stop", "data-action": "stop-word", ...analyzeNative("glossary:stop_word"), onclick: () => {
         staging.stopWord();
-      } }, "[ STOP WORD ]")
+      } }, "[ STOP WORD ]")] : []
     )
   );
   root.style.setProperty("--alius-air", String(Math.round(remaining * 100) / 100));
@@ -62884,6 +62884,7 @@ function renderPhysicsPanel(host, ctx2) {
   host.replaceChildren(root);
   host.dataset.realtime = realtime ? "1" : "0";
   wireKeys(host);
+  return true;
 }
 function wireKeys(host) {
   if (keyHandlers.has(host)) return;
@@ -62966,18 +62967,26 @@ function wayGroups(ctx2, exposures) {
   });
 }
 function drawWays(host, ctx2, exposures) {
+  const ways = wayGroups(ctx2, exposures);
+  const acts = actRow(host, ctx2);
+  const own = ctx2.stopWord !== false;
+  if (!own && ways.length === 0 && acts.length === 0) {
+    host.replaceChildren();
+    return;
+  }
   host.replaceChildren(h(
     "div",
     { class: "alius-physics", role: "group", "aria-label": "What reaches the body" },
-    ...wayGroups(ctx2, exposures),
-    ...actRow(host, ctx2),
-    h(
+    h("div", { class: "alius-physics-title" }, "WHAT REACHES THE BODY"),
+    ...ways,
+    ...acts,
+    own ? h(
       "div",
       { class: "alius-physics-controls" },
       h("button", { type: "button", class: "alius-btn alius-option alius-physics-stop", "data-action": "stop-word", ...analyzeNative("glossary:stop_word"), onclick: () => {
         ctx2.staging.stopWord();
       } }, "[ STOP WORD ]")
-    )
+    ) : null
   ));
 }
 var ACT_TEXT = {
@@ -63070,7 +63079,7 @@ function buildLayers(root) {
 }
 
 // src/ui/scene/stage/chipRow.ts
-var CHIP_SLOTS = ["generation", "proposals", "lead", "offer", "rules", "demands", "discipline", "discipline-menus", "freq", "lets", "stop"];
+var CHIP_SLOTS = ["generation", "proposals", "lead", "offer", "rules", "demands", "discipline", "discipline-menus", "freq", "lets"];
 var ITEMS = ".alius-chip, button, summary, [data-chip-item]";
 function createChipRow(host, names2) {
   const slots = /* @__PURE__ */ new Map();
@@ -63238,11 +63247,13 @@ var clamp013 = (n) => Math.min(1, Math.max(0, n));
 function resetLook() {
   memory.clear();
 }
+var DRAG_HOLD_MS = 8e3;
 function attachLook(frame, root, opts) {
   const id = opts.sceneId();
   let pan = memory.get(id) ?? 0.5;
   let drag = null;
   let lastClick = -Infinity;
+  let lastHand = -Infinity;
   const apply2 = () => {
     root.style.setProperty("--alius-pan", String(Math.round(pan * 1e4) / 1e4));
     memory.set(id, pan);
@@ -63260,6 +63271,7 @@ function attachLook(frame, root, opts) {
       lastClick = -Infinity;
       drag = null;
       pan = 0.5;
+      lastHand = Date.now();
       apply2();
       return;
     }
@@ -63286,6 +63298,7 @@ function attachLook(frame, root, opts) {
     if (dx === 0 && !drag.moved) return;
     if (!drag.moved) opts.onUse?.();
     drag.moved = true;
+    lastHand = Date.now();
     pan = clamp013(drag.pan + dx / width);
     apply2();
   };
@@ -63301,7 +63314,7 @@ function attachLook(frame, root, opts) {
   frame.addEventListener("pointercancel", stop2);
   frame.addEventListener("lostpointercapture", stop2);
   frame.addEventListener("contextmenu", menu);
-  return () => {
+  const detach = () => {
     frame.removeEventListener("pointerdown", down2);
     frame.removeEventListener("pointermove", move);
     frame.removeEventListener("pointerup", up);
@@ -63310,6 +63323,15 @@ function attachLook(frame, root, opts) {
     frame.removeEventListener("contextmenu", menu);
     root.classList.remove("alius-looking");
   };
+  return Object.assign(detach, {
+    turnTo(to) {
+      if (drag !== null || Date.now() - lastHand < DRAG_HOLD_MS) return false;
+      still();
+      pan = Math.min(1, Math.max(0, to));
+      apply2();
+      return true;
+    }
+  });
 }
 
 // src/ui/scene/stage/topLine.ts
@@ -63664,6 +63686,29 @@ function flashLine(layer, text3, analyze, ms = FLASH_MS) {
   timers2.set(el, setTimeout(() => el.remove(), ms));
 }
 
+// src/ui/scene/stage/sprites.ts
+var PANORAMA_RATIO = 3072 / 1280;
+var SPAN_THREE = 86;
+var SPAN_MANY = 92;
+function spriteSlots(count2) {
+  if (count2 <= 0) return [];
+  if (count2 === 1) return [{ cls: "pos-center", x: 0 }];
+  if (count2 === 2) return [{ cls: "pos-left", x: -38 }, { cls: "pos-right", x: 38 }];
+  if (count2 === 3) return [{ cls: "pos-left", x: -SPAN_THREE }, { cls: "pos-center", x: 0 }, { cls: "pos-right", x: SPAN_THREE }];
+  const step = 2 * SPAN_MANY / (count2 - 1);
+  return Array.from({ length: count2 }, (_, i) => ({
+    cls: count2 === 4 ? ["pos-far-left", "pos-left", "pos-right", "pos-far-right"][i] : i === 0 ? "pos-far-left" : i === count2 - 1 ? "pos-far-right" : "pos-mid",
+    x: Math.round((-SPAN_MANY + i * step) * 10) / 10
+  }));
+}
+var panoramaWidth = (w, h2) => Math.max(w, PANORAMA_RATIO * h2);
+function panToCentre(x, w, h2) {
+  const pano = panoramaWidth(w, h2);
+  if (pano - w < 1) return null;
+  const pan = (pano / 2 + x * h2 / 100 - w / 2) / (pano - w);
+  return Math.min(1, Math.max(0, pan));
+}
+
 // src/ui/scene/stage/reply.ts
 var REPLY_MAX_LINES = 8;
 function replyView(messages) {
@@ -63799,6 +63844,7 @@ function renderSceneScreen(host, ctx2) {
   let layers;
   let chipResizer = null;
   let detachLook = null;
+  let spokenIndex = null;
   let bg;
   let backdrop;
   let backdropKey = "";
@@ -63834,6 +63880,7 @@ function renderSceneScreen(host, ctx2) {
   let chipRow;
   let dock;
   let blockingHost;
+  let stopHost;
   let momentHost;
   let physicsHost;
   let busyHost;
@@ -63913,12 +63960,33 @@ function renderSceneScreen(host, ctx2) {
   function drawSprites(s, speakerAvatar) {
     const units = present2(s);
     spriteHost.dataset.count = String(units.length);
-    const positions = units.length === 1 ? ["pos-center"] : units.length === 2 ? ["pos-left", "pos-right"] : ["pos-left", "pos-center", "pos-right"];
-    spriteHost.replaceChildren(...units.map((u, i) => {
+    if (units.length >= 4) spriteHost.dataset.crowd = "true";
+    else delete spriteHost.dataset.crowd;
+    const slots = spriteSlots(units.length);
+    const pano = h("div", { class: "alius-sprite-pano" }, ...units.map((u, i) => {
       const img = h("img", { alt: u.displayName, class: "alius-sprite-img" });
-      return h("div", { class: `alius-sprite ${positions[i]}${u.cardRef && u.cardRef === speakerAvatar ? " is-speaking" : ""}`, "data-unit": u.id }, img);
+      const el = h("div", { class: `alius-sprite ${slots[i].cls}${u.cardRef && u.cardRef === speakerAvatar ? " is-speaking" : ""}`, "data-unit": u.id }, img);
+      el.style.setProperty("--alius-sprite-x", `${slots[i].x}cqh`);
+      return el;
     }));
+    spriteHost.replaceChildren(pano);
     for (const u of units) setSprite(u, labels.get(u.id) ?? "neutral");
+  }
+  function turnToSpeaker(s, reply) {
+    if (!detachLook) return;
+    const newest = reply?.index ?? -1;
+    if (spokenIndex === null) {
+      spokenIndex = newest;
+      return;
+    }
+    if (!reply || newest <= spokenIndex) return;
+    spokenIndex = newest;
+    const units = present2(s);
+    const at = units.findIndex((u) => u.cardRef !== void 0 && u.cardRef === reply.avatar || u.displayName === reply.name);
+    if (at < 0) return;
+    const frame = layers.frame.getBoundingClientRect();
+    const pan = panToCentre(spriteSlots(units.length)[at].x, frame.width, frame.height);
+    if (pan !== null) detachLook.turnTo(pan);
   }
   function drawHud(s) {
     const pulses = /* @__PURE__ */ new Map();
@@ -64185,20 +64253,19 @@ function renderSceneScreen(host, ctx2) {
     });
   }
   function drawPhysics(s) {
-    const stop2 = chipRow.slot("stop");
     if (!ctx2.physics) {
       physicsHost.replaceChildren();
-      stop2.replaceChildren();
+      stopHost.replaceChildren();
       return;
     }
     const staging = ctx2.physics;
-    renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx2.settings(), staging, onTap: () => {
+    const offered2 = renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx2.settings(), staging, stopWord: false, onTap: () => {
       staging.onTap();
       if (!disposed) refresh2();
     } });
-    if (physicsHost.querySelector('[data-action="stop-word"]') === null) stop2.replaceChildren();
-    else if (stop2.querySelector("[data-stop-word]") === null) {
-      stop2.replaceChildren(h("button", { type: "button", class: "alius-btn alius-option", "data-stop-word": "", ...analyzeNative("glossary:stop_word"), onclick: () => {
+    if (!offered2) stopHost.replaceChildren();
+    else if (stopHost.querySelector("[data-stop-word]") === null) {
+      stopHost.replaceChildren(h("button", { type: "button", class: "alius-stop-pill", "data-stop-word": "", "aria-label": "Stop word", ...analyzeNative("glossary:stop_word"), onclick: () => {
         staging.stopWord();
       } }, "STOP WORD"));
     }
@@ -64248,6 +64315,7 @@ function renderSceneScreen(host, ctx2) {
     curtain?.destroy();
     delete root.dataset.curtain;
     wordsChecked = null;
+    spokenIndex = null;
     curtain = createCurtain(layers.curtain, {
       onOpen: () => {
         markHintUsed("history");
@@ -64408,7 +64476,9 @@ function renderSceneScreen(host, ctx2) {
     milestoneCards = cards("milestone", "alius-milestone-cards");
     claimCards = cards("claim", "alius-claim-cards");
     returnCards = cards("return", "alius-return-cards");
-    blockingHost = hosts.dial;
+    stopHost = h("div", { class: "alius-stop-host" });
+    blockingHost = h("div", { class: "alius-dial-host" });
+    hosts.dial.append(stopHost, blockingHost);
     const wheelUp = (ev) => {
       if (ev.deltaY < 0) curtain.open();
     };
@@ -64444,6 +64514,7 @@ function renderSceneScreen(host, ctx2) {
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
     drawSprites(s, lastReply?.avatar);
+    turnToSpeaker(s, lastReply);
     drawHud(s);
     drawLog(s);
     drawChips(s);

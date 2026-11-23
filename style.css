@@ -3119,7 +3119,10 @@
 
 #alius-shell .alius-scene.alius-look-still > .alius-layer-backdrop,
 #alius-shell .alius-scene.alius-looking > .alius-layer-backdrop,
-#alius-shell.alius-reduced-motion .alius-layer-backdrop {
+#alius-shell.alius-reduced-motion .alius-layer-backdrop,
+#alius-shell .alius-scene.alius-look-still .alius-sprite-pano,
+#alius-shell .alius-scene.alius-looking .alius-sprite-pano,
+#alius-shell.alius-reduced-motion .alius-sprite-pano {
   transition: none;
 }
 
@@ -3128,6 +3131,20 @@
 #alius-shell .alius-layer-sprites {
   pointer-events: none;
   overflow: hidden;
+  container-type: size; /* `cqw` / `cqh` below are this layer's width and height, the backdrop's box */
+}
+
+/* A2: the sprites stand in room space. The panorama is the backdrop's drawn width (a 3072 x 1280 file at the layer's height is 2.4 times as wide
+   as it is high; wider than that, `cover` scales to the width and nothing turns) and moves with `--alius-pan` exactly as the backdrop's
+   `background-position` does; each sprite's x is `--alius-sprite-x` (cqh from the panorama's centre, set by the screen from `stage/sprites.ts`). */
+#alius-shell .alius-sprite-pano {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: max(100cqw, 240cqh);
+  transform: translateX(calc(var(--alius-pan, 0.5) * (100cqw - max(100cqw, 240cqh))));
+  transition: transform 0.5s ease-out;
 }
 
 #alius-shell .alius-sprite {
@@ -3143,13 +3160,15 @@
   transition: filter 0.2s;
 }
 
-#alius-shell .alius-sprite.pos-center { left: 50%; transform: translateX(-50%); }
-#alius-shell .alius-sprite.pos-left { left: 28%; transform: translateX(-50%); }
-#alius-shell .alius-sprite.pos-right { left: 72%; transform: translateX(-50%); }
+#alius-shell .alius-sprite {
+  left: calc(50% + var(--alius-sprite-x, 0cqh));
+  transform: translateX(-50%);
+}
+
 #alius-shell .alius-sprite:not(:only-child) { height: 92vh; top: 8vh; --alius-sprite-back: 0.62; }
+/* four or more are drawn at 0.85 of the size of two or three, so neighbours never overlap past a shoulder */
+#alius-shell .alius-layer-sprites[data-crowd="true"] .alius-sprite { height: 78vh; }
 #alius-shell .alius-sprite:not(:only-child).is-speaking { --alius-sprite-back: 1; z-index: 1; }
-#alius-shell .alius-layer-sprites[data-count="3"] .alius-sprite.pos-left { left: 20%; }
-#alius-shell .alius-layer-sprites[data-count="3"] .alius-sprite.pos-right { left: 80%; }
 
 #alius-shell .alius-sprite-img {
   height: 100%;
@@ -3216,7 +3235,9 @@
 #alius-shell .alius-stage-status:empty,
 #alius-shell .alius-stage-chips:empty,
 #alius-shell .alius-stage-dock:empty,
-#alius-shell .alius-stage-dial:empty {
+#alius-shell .alius-stage-dial:not(:has(> :not(:empty))),
+#alius-shell .alius-stop-host:empty,
+#alius-shell .alius-dial-host:empty {
   display: none;
 }
 
@@ -3224,18 +3245,50 @@
 #alius-shell .alius-stage-dock {
   position: absolute;
   left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
+  /* below her head box (a head ends at about 28 vh at the highest) and above the reply: a tall stack scrolls inside the dock, it never climbs over her face */
+  top: 30vh;
   width: min(420px, 26vw);
-  max-height: 64vh;
+  max-height: 46vh;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
-/* the posture dial's corner (the dial proper is Task 12) */
+/* the posture dial's corner: the stop word's pill above the dial (alone in the corner when there is no dial), then the dial */
 #alius-shell .alius-stage-dial {
   position: absolute;
   right: 24px;
   bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* the stop word (A1): a small pill, never a card's own big button; it carries the safety signal and is always where the eye expects it */
+#alius-shell .alius-stop-pill {
+  padding: 3px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-warn) 75%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 84%, transparent);
+  color: var(--alius-warn);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+#alius-shell .alius-stop-pill:hover,
+#alius-shell .alius-stop-pill:focus-visible {
+  background: var(--alius-warn);
+  color: var(--alius-bg);
+}
+
+#alius-shell.alius-readable .alius-stop-pill {
+  background: var(--alius-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 #alius-shell .alius-stage-reply .alius-transcript {
@@ -3793,12 +3846,6 @@
   margin: 0;
 }
 
-#alius-shell .alius-chip-slot[data-slot="stop"] {
-  margin-left: auto;
-  position: sticky;
-  right: 0;
-}
-
 #alius-shell .alius-chip-row .alius-btn,
 #alius-shell .alius-chip-more,
 #alius-shell .alius-chip-row summary {
@@ -3912,6 +3959,64 @@
   margin: 0;
   border-radius: 12px;
   overflow: hidden;
+  /* glass: a card is read over a busy picture (the voices keep their own look on top of it) */
+  background: color-mix(in srgb, var(--alius-bg) 84%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+#alius-shell.alius-readable .alius-dock-card {
+  background: var(--alius-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* the heading leaves room for the set-aside cross */
+#alius-shell .alius-dock-card > :first-child {
+  padding-right: 30px;
+}
+
+/* the hold's card (V1): a heading line, what the body is doing, its controls as pills, and her cue */
+#alius-shell .alius-dock-card.alius-physics {
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border: 1px solid color-mix(in srgb, var(--alius-accent) 45%, transparent);
+}
+
+#alius-shell .alius-physics-title {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-dock-card .alius-physics-cue {
+  margin: 0;
+  font-size: 14px;
+  color: var(--alius-fg);
+}
+
+#alius-shell .alius-dock-card .alius-physics-held,
+#alius-shell .alius-dock-card .alius-physics-clock,
+#alius-shell .alius-dock-card .alius-physics-summary {
+  margin: 0;
+}
+
+#alius-shell .alius-dock-card .alius-physics-controls {
+  gap: 6px;
+}
+
+#alius-shell .alius-dock-card.alius-physics .alius-btn {
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--alius-dim) 60%, transparent);
+  background: color-mix(in srgb, var(--alius-bg) 55%, transparent);
+  color: var(--alius-fg);
+  font-size: 12px;
+}
+
+#alius-shell .alius-dock-card.alius-physics .alius-btn:hover {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
 }
 
 #alius-shell .alius-dock-card[hidden] {

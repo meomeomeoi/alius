@@ -21,12 +21,23 @@ export interface LookOpts {
   onUse?(): void;
 }
 
-/** Wires the right button on `frame`; returns the detach function. */
-export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts): () => void {
+/** How long a view the commander turned by hand is left alone: the view does not turn to a speaker within this many ms of a drag or a recentre. */
+export const DRAG_HOLD_MS = 8000;
+
+/** The detach function of `attachLook`, with `turnTo` (the view eases to centre a speaker). */
+export interface LookHandle {
+  (): void;
+  /** Sets the view to `pan` (0 to 1): eased by the CSS (reduced motion: at once), kept in the scene's memory. Nothing within `DRAG_HOLD_MS` of a drag; answers whether it turned. */
+  turnTo(pan: number): boolean;
+}
+
+/** Wires the right button on `frame`; returns the detach function (also the handle that turns the view). */
+export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts): LookHandle {
   const id = opts.sceneId();
   let pan = memory.get(id) ?? 0.5;
   let drag: { x: number; pan: number; moved: boolean } | null = null;
   let lastClick = -Infinity;
+  let lastHand = -Infinity;
   const apply = (): void => {
     root.style.setProperty('--alius-pan', String(Math.round(pan * 10000) / 10000));
     memory.set(id, pan);
@@ -45,6 +56,7 @@ export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts
       lastClick = -Infinity;
       drag = null;
       pan = 0.5;
+      lastHand = Date.now();
       apply();
       return;
     }
@@ -72,6 +84,7 @@ export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts
     if (dx === 0 && !drag.moved) return;
     if (!drag.moved) opts.onUse?.();
     drag.moved = true;
+    lastHand = Date.now();
     pan = clamp01(drag.pan + dx / width);
     apply();
   };
@@ -89,7 +102,7 @@ export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts
   frame.addEventListener('pointercancel', stop);
   frame.addEventListener('lostpointercapture', stop);
   frame.addEventListener('contextmenu', menu);
-  return () => {
+  const detach = (): void => {
     frame.removeEventListener('pointerdown', down);
     frame.removeEventListener('pointermove', move);
     frame.removeEventListener('pointerup', up);
@@ -98,4 +111,13 @@ export function attachLook(frame: HTMLElement, root: HTMLElement, opts: LookOpts
     frame.removeEventListener('contextmenu', menu);
     root.classList.remove('alius-looking');
   };
+  return Object.assign(detach, {
+    turnTo(to: number): boolean {
+      if (drag !== null || Date.now() - lastHand < DRAG_HOLD_MS) return false;
+      still(); // reduced motion jumps: the class turns the easing off
+      pan = Math.min(1, Math.max(0, to));
+      apply();
+      return true;
+    },
+  });
 }
