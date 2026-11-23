@@ -627,6 +627,7 @@ function attentionDraw() {
 /* ---------- what reaches the commander: sensory lines on the side of the source, sounds panned there ---------- */
 function sense(text, where = 'her', cls = '') {
   if (!text) return;
+  if ([...$('#senses').children].some((x) => !x.dataset.gone && x.textContent === text)) return; // the same line is still showing
   const v = V(), p = where === 'door' ? v.door : where === 'body' ? v.body : Array.isArray(where) ? where : v.her;
   const el = document.createElement('div'); el.className = 'sense ' + cls; el.textContent = text;
   const live = [...$('#senses').children].filter((x) => !x.dataset.gone);
@@ -715,6 +716,7 @@ const BODY_SFX = {
   jerk: () => { play('soft', { g: 0.6, dest: A.body }); play('cloth', { g: 0.5, dest: A.body }); SYN.joint({ g: 1 }); },
   slump: () => { play('soft2', { g: 0.8, dest: A.body }); play('creak', { g: 0.4, dest: A.body }); },
   speak: () => {},
+  fidget: () => { play('cloth', { g: 0.22, dest: A.body }); SYN.joint({ g: 0.3 }); },
 };
 function bodyNoise(kind, loud, visible, gross = false) {
   BODY_SFX[kind]?.();
@@ -775,6 +777,19 @@ function moveAttention(dt) {
   for (const u of G.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === 'itch' ? 5200 : 2600));
   if (G.cramp) pull(G.cramp.side < 0 ? 0.1 * innerWidth : 0.9 * innerWidth, 0.7 * innerHeight, 4200);
   ATT.vx += (fx - 13 * ATT.vx) * s; ATT.vy += (fy - 13 * ATT.vy) * s;
+  // restlessness: the mouse's speed, smoothed. Moving the eyes and the head fast is the body moving: it ripples the frame, and kept up
+  // for more than a moment the body fidgets (a rustle she may hear or see, like any relief). Slow, calm moves are free.
+  const mx = MOUSE.x - (G.lastMX ?? MOUSE.x), my = MOUSE.y - (G.lastMY ?? MOUSE.y); G.lastMX = MOUSE.x; G.lastMY = MOUSE.y;
+  const spd = Math.hypot(mx, my) / Math.max(0.008, dt / 1000);
+  G.speed = lerp(G.speed ?? 0, spd, Math.min(1, dt / 120));
+  G.headX = lerp(G.headX ?? 0, clamp(mx / Math.max(1, dt) * 6, -14, 14), Math.min(1, dt / 200)); G.headY = lerp(G.headY ?? 0, clamp(my / Math.max(1, dt) * 6, -10, 10), Math.min(1, dt / 200));
+  if (G.speed > 700 && (G.rippleCd = (G.rippleCd ?? 0) - dt) <= 0) { RIPPLES.push({ x: ATT.x, y: ATT.y, born: performance.now(), k: clamp(G.speed / 2500, 0.3, 1) }); G.rippleCd = lerp(260, 90, clamp((G.speed - 700) / 2500, 0, 1)); }
+  G.fidget = Math.max(0, (G.fidget ?? 0) + (G.speed > 900 ? clamp((G.speed - 900) / 2000, 0, 1.2) : -0.35) * dt / 1000);
+  if (G.fidget >= 1 && G.t >= (G.fidgetCd ?? 0) && (G.phase === 'loop' || G.phase === 'empty')) {
+    G.fidget = 0; G.fidgetCd = G.t + 1500; G.stats.fidgets = (G.stats.fidgets ?? 0) + 1;
+    if (!G.toldFidget) { G.toldFidget = true; sense('You shift where you kneel; your eyes will not keep still.', 'body', 'body'); }
+    bodyNoise('fidget', 0.28, true);
+  }
   ATT.x += ATT.vx * s; ATT.y += ATT.vy * s;
   // listening needs the attention to rest on her a moment
   G.lisT = onAnchor() ? (G.lisT ?? 0) + dt : 0;
@@ -1274,6 +1289,14 @@ function drawUrges(now) {
       uctx.fillStyle = g; uctx.fillRect(W / 2 - h * 1.6, H - h * 1.4, h * 3.2, h * 1.4);
     }
   }
+  // ripples of restlessness: rings spreading from the attention when the eyes dart
+  const nowP = performance.now();
+  for (let i = RIPPLES.length - 1; i >= 0; i--) {
+    const r = RIPPLES[i], age = (nowP - r.born) / 900;
+    if (age >= 1 || S.reduced) { RIPPLES.splice(i, 1); continue; }
+    uctx.strokeStyle = `rgba(216,228,255,${(0.28 * r.k * (1 - age)).toFixed(3)})`; uctx.lineWidth = 1.5 * (1 - age) + 0.4;
+    uctx.beginPath(); uctx.arc(r.x, r.y, 18 + age * 160 * r.k, 0, Math.PI * 2); uctx.stroke();
+  }
   // numbness from below
   if (G.numb > 0.05) {
     const top = H * (1 - G.numb * 0.42);
@@ -1322,7 +1345,8 @@ function render(now, dt) {
   const low = live ? 1 - G.ease / 100 : 0;
   G.shake = Math.max(0, (G.shake ?? 0) - dt / 600);
   const amp = S.reduced ? 0 : low * low * 2.5 + G.shake * 9;
-  $('#world').style.transform = `translate(${((Math.random() * 2 - 1) * amp).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp + G.shake * 10).toFixed(1)}px)`;
+  const hx = S.reduced ? 0 : (G.headX ?? 0), hy = S.reduced ? 0 : (G.headY ?? 0);
+  $('#world').style.transform = `translate(${((Math.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp + G.shake * 10 - hy).toFixed(1)}px)`;
   setStyle('#vignette', 'background', low < 0.05 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72 - low * 28).toFixed(0)}%, rgba(26,6,4,${(0.2 + low * 0.5).toFixed(2)}) 100%)`);
   const dusk = smooth(18 * 60 + 30, 20 * 60, G.clockMin), dark = G.lightsOff ? 0.35 : 1;
   setStyle('#world', 'filter', `saturate(${(1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
@@ -1384,6 +1408,7 @@ function showDigest() {
   else if (s.gotUp) herSide.push('She left without a word.');
   else herSide.push(`It ended ${ended}.`);
   const onlyYou = [];
+  if (s.fidgets) onlyYou.push(`fidgeted ${s.fidgets === 1 ? 'once' : `${s.fidgets} times`}`);
   if (s.unnoticed) onlyYou.push(`${s.unnoticed} movement${s.unnoticed > 1 ? 's' : ''} she did not notice`);
   if (s.endured) onlyYou.push(`${s.endured} urge${s.endured > 1 ? 's' : ''} outlasted without moving`);
   if (s.cheatsUnseen) onlyYou.push(`${s.cheatsUnseen} stretch${s.cheatsUnseen > 1 ? 'es' : ''} eased off unseen`);
@@ -1398,6 +1423,7 @@ function showDigest() {
 /* ---------- input ---------- */
 const typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
 addEventListener('mousemove', (e) => { MOUSE.x = e.clientX; MOUSE.y = e.clientY; });
+const RIPPLES = [];
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (G.phase === 'loop' || G.phase === 'empty') finish('stop'); return; }
   if (typing(e.target)) { G.lastTyped = G.t; return; }
