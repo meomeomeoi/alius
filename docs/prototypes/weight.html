@@ -152,6 +152,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <h4>contact</h4>
   <div class="row" id="contacts"></div>
   <div class="note" id="contactNote"></div>
+  <h4>her legs (human_chair)</h4>
+  <div class="row" id="legs"></div>
+  <div class="row" id="legShade"></div>
+  <div class="note">hang (A): calves at the edges, astride. side (B): sitting sideways, legs crossed on the left, one foot on the floor by the left hand, one dangling. forward (C): astride, legs stretched forward, feet on the floor ahead either side of the hands. shadow: dim, in shadow, a warm edge; black: the first version.</div>
   <h4>her style</h4>
   <div class="row" id="styles"></div>
   <div class="note" id="styleNote"></div>
@@ -241,7 +245,7 @@ const LINES = {
 const TASKS = { reading: 'divided', game: 'elsewhere', watching_you: 'on_commander' };
 
 /* ---------- settings ---------- */
-const S = { toFall: false, contact: 'human_chair', style: 'neutral', task: 'reading', tol: 0.18, drain: 1, len: 45, unevenCost: true, sound: true, vol: 0.7, face: { x: 0.5, y: 0.21 }, debug: false,
+const S = { legs: 'side', legShade: 'shadow', toFall: false, contact: 'human_chair', style: 'neutral', task: 'reading', tol: 0.18, drain: 1, len: 45, unevenCost: true, sound: true, vol: 0.7, face: { x: 0.5, y: 0.21 }, debug: false,
   reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const C = () => CONTACTS[S.contact], ST = () => STYLES[S.style], L = () => LINES[S.style];
 
@@ -554,6 +558,84 @@ function legPoints(W, H, side, press, lift, swing) {
     return [side < 0 ? X * W : W - X * W, Y * H];
   });
 }
+/* a limb: a tapered capsule from a to b (fractions of the screen), widths in screen heights, a calf bulge near a */
+function limb(W, H, a, b, wa, wb, bulge = 0) {
+  const A = [a[0] * W, a[1] * H], B = [b[0] * W, b[1] * H];
+  const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+  const L = [], R = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12, w = lerp(wa, wb, t) * (1 + bulge * Math.sin(Math.PI * clamp(t / 0.7, 0, 1))) * H / 2;
+    const x = A[0] + dx * t, y = A[1] + dy * t;
+    L.push([x + nx * w, y + ny * w]); R.push([x - nx * w, y - ny * w]);
+  }
+  // round ends
+  const capA = [A[0] - dx / len * wa * H * 0.35, A[1] - dy / len * wa * H * 0.35], capB = [B[0] + dx / len * wb * H * 0.45, B[1] + dy / len * wb * H * 0.45];
+  return chaikin(chaikin([capA, ...L, capB, ...R.reverse()]));
+}
+function fillPts(ctx, pts) { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fill(); }
+const mirror = (side, x) => (side < 0 ? x : 1 - x);
+/* a lower leg with some anatomy: the shin from the knee to the ankle (the calf bulges on one side, the shin bone stays straight, the knee is
+   a little wider, the ankle slim), then a foot: `profile` (seen from the side: heel, sole, ball, toes, instep) or `top` (seen from behind and
+   above: a round heel widening to the ball and the toes). Points are fractions of the screen; widths and lengths in screen heights. */
+function lowerLeg(W, H, K, A, o) {
+  const k = [K[0] * W, K[1] * H], a = [A[0] * W, A[1] * H];
+  const dx = a[0] - k[0], dy = a[1] - k[1], len = Math.hypot(dx, dy) || 1, tx = dx / len, ty = dy / len;
+  const nx = -ty * o.calfSide, ny = tx * o.calfSide; // toward the calf
+  const back = [], front = [];
+  for (let i = 0; i <= 18; i++) {
+    const t = i / 18, hw = lerp(o.wK, o.wA, Math.pow(t, 0.85)) * H / 2;
+    const calf = o.calf * H * Math.exp(-(((t - 0.3) / 0.17) ** 2));
+    const knee = 0.01 * H * Math.exp(-(((t - 0.04) / 0.07) ** 2));
+    const x = k[0] + dx * t, y = k[1] + dy * t;
+    back.push([x + nx * (hw + calf + knee), y + ny * (hw + calf + knee)]);
+    front.push([x - nx * (hw + knee * 0.6), y - ny * (hw + knee * 0.6)]);
+  }
+  const [ux0, uy0] = o.dir, ul = Math.hypot(ux0, uy0), ux = ux0 / ul, uy = uy0 / ul, L = o.len * H;
+  let foot;
+  if (o.foot === 'top') {
+    const px = -uy, py = ux, F = (u, v) => [a[0] + ux * u * L + px * v * L, a[1] + uy * u * L + py * v * L];
+    const side = [[-0.12, 0], [-0.08, 0.13], [0.15, 0.17], [0.5, 0.2], [0.74, 0.25], [0.92, 0.19], [1.02, 0.06]];
+    foot = [...side.map(([u, v]) => F(u, -v)), ...side.slice().reverse().map(([u, v]) => F(u, v))];
+    return { shin: chaikin(chaikin([...back, ...front.slice().reverse()])), foot: chaikin(chaikin(foot)) };
+  }
+  // profile: the sole is on the side of the foot away from the knee
+  let sx = -uy, sy = ux; if (sx * tx + sy * ty < 0) { sx = -sx; sy = -sy; }
+  const heelOnBack = (-ux) * nx + (-uy) * ny > 0;
+  const F = (u, v) => [a[0] + ux * u * L + sx * v * L, a[1] + uy * u * L + sy * v * L];
+  const prof = [[-0.12, 0.02], [-0.24, 0.2], [-0.15, 0.4], [0.3, 0.42], [0.7, 0.38], [0.97, 0.28], [1.0, 0.16], [0.9, 0.07], [0.55, 0.0], [0.15, -0.07]];
+  foot = prof.map(([u, v]) => F(u, v));
+  const ring = heelOnBack ? [...back, ...foot, ...front.slice().reverse()] : [...back, ...foot.slice().reverse(), ...front.slice().reverse()];
+  return { shin: chaikin(chaikin(chaikin(ring))) };
+}
+function drawLeg(ctx, leg) { fillPts(ctx, leg.shin); if (leg.foot) fillPts(ctx, leg.foot); }
+const M = (side, p) => [side < 0 ? p[0] : 1 - p[0], p[1]];
+const MD = (side, d) => [side < 0 ? d[0] : -d[0], d[1]];
+/* A: astride, her calves hang at the edges of the view, the feet relaxed, toes down and in */
+function legsHangB(ctx, W, H, toward, swing, jolt, reading, t) {
+  for (const side of [-1, 1]) {
+    const own = side * toward, press = Math.max(0, own), lift = Math.max(0, -own);
+    const sw = S.reduced ? 0 : reading ? Math.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.3) : Math.sin(t * 0.8 + side) * 0.2;
+    const Ak = [0.1 + press * 0.03 - lift * 0.02 + sw * 0.008, 0.68 - lift * 0.07 + jolt * 0.01];
+    drawLeg(ctx, lowerLeg(W, H, M(side, [0.07 - lift * 0.01, -0.08]), M(side, Ak), { wK: 0.21, wA: 0.075, calf: 0.05, calfSide: side < 0 ? 1 : -1, foot: 'profile', dir: MD(side, [0.45 + sw * 0.15, 0.7]), len: 0.22 }));
+  }
+}
+/* B: she sits sideways on the back, legs crossed, both on the commander's left: one foot flat on the floor by the left hand, the other dangling over it */
+function legsSide(ctx, W, H, toward, swing, jolt) {
+  const press = Math.max(0, -toward), roll = Math.max(0, toward); // toward her legs (left) the planted foot presses; away, it rolls onto its toes
+  const ank = [0.15 - press * 0.012, 0.66 + jolt * 0.01];
+  drawLeg(ctx, lowerLeg(W, H, [-0.03, -0.04], ank, { wK: 0.22, wA: 0.075, calf: 0.05, calfSide: -1, foot: 'profile', dir: [-0.85, 0.35 - roll * 0.5], len: 0.26 }));
+  const ank2 = [0.25 + swing * 0.012 + roll * 0.02, 0.4 + swing * 0.03 - press * 0.05];
+  drawLeg(ctx, lowerLeg(W, H, [0.03, -0.12], ank2, { wK: 0.21, wA: 0.072, calf: 0.048, calfSide: 1, foot: 'profile', dir: [0.15 + swing * 0.1, 1], len: 0.24 }));
+}
+/* C: astride, legs stretched forward: the shins come from behind the commander's head (the bottom corners, near and soft), the feet stand on the floor ahead, seen from behind */
+function legsForward(ctx, W, H, toward, swing, jolt, reading) {
+  for (const side of [-1, 1]) {
+    const own = side * toward, press = Math.max(0, own), lift = Math.max(0, -own);
+    const tap = side > 0 && reading ? Math.max(0, swing) : 0;
+    const Ak = [0.29 - press * 0.012, 0.5 - lift * 0.03 + jolt * 0.01];
+    drawLeg(ctx, lowerLeg(W, H, M(side, [-0.1, 1.25]), M(side, Ak), { wK: 0.5, wA: 0.075, calf: 0.07, calfSide: side < 0 ? 1 : -1, foot: 'top', dir: MD(side, [0.12, -1]), len: 0.2 - lift * 0.05 - tap * 0.035 }));
+  }
+}
 function drawFloor(now) {
   const W = shC.width, H = shC.height;
   for (const c of [legC, compC, rimC, outC]) if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
@@ -574,21 +656,19 @@ function drawFloor(now) {
   const t = now / 1000;
   const reading = live && G.att === 'busy';
   lctx.clearRect(0, 0, W, H); lctx.fillStyle = '#fff';
-  for (const side of [-1, 1]) {
-    const toward = side * (G.lean * 0.9 + G.cop * 0.5);
-    const press = Math.max(0, toward), lift = Math.max(0, -toward);
-    const swing = S.reduced ? 0 : (reading ? Math.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math.sin(t * 0.8 + side) * 0.25);
-    const jolt = G.jolt * 0.4 * (side > 0 ? 1 : -1);
-    const pts = chaikin(chaikin(chaikin(legPoints(W, H, side, press + jolt * 0.2, lift, swing))));
-    lctx.beginPath(); pts.forEach((q, i) => (i ? lctx.lineTo(q[0], q[1]) : lctx.moveTo(q[0], q[1]))); lctx.closePath(); lctx.fill();
-  }
+  const toward = G.lean * 0.9 + G.cop * 0.5; // where her weight is going: negative to the commander's left
+  const swing = S.reduced ? 0 : reading ? Math.sin(t * 3.1) : Math.sin(t * 0.8) * 0.25;
+  const jolt = G.jolt * 0.4;
+  if (S.legs === 'side') legsSide(lctx, W, H, toward, swing, jolt);
+  else if (S.legs === 'forward') legsForward(lctx, W, H, toward, swing, jolt, reading);
+  else legsHangB(lctx, W, H, toward, swing, jolt, reading, t);
   cctx.globalCompositeOperation = 'source-over'; cctx.clearRect(0, 0, W, H); cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, W, H);
   cctx.globalCompositeOperation = 'destination-out'; cctx.drawImage(legC, 0, 0); cctx.globalCompositeOperation = 'source-over';
   rctx.clearRect(0, 0, W, H); rctx.filter = `blur(${Math.round(H * 0.022)}px)`; rctx.drawImage(compC, 0, 0); rctx.filter = 'none';
   rctx.globalCompositeOperation = 'source-in'; rctx.fillStyle = 'rgb(226,78,52)'; rctx.fillRect(0, 0, W, H); rctx.globalCompositeOperation = 'source-over';
   octx.globalCompositeOperation = 'source-over'; octx.clearRect(0, 0, W, H);
-  octx.filter = `blur(${Math.round(H * 0.012)}px)`; octx.drawImage(legC, 0, 0); octx.filter = 'none'; // near and out of focus
-  octx.globalCompositeOperation = 'source-in'; octx.fillStyle = 'rgb(8,5,9)'; octx.fillRect(0, 0, W, H);
+  octx.filter = `blur(${Math.round(H * (S.legs === 'forward' ? 0.016 : 0.012))}px)`; octx.drawImage(legC, 0, 0); octx.filter = 'none'; // near and out of focus
+  octx.globalCompositeOperation = 'source-in'; octx.fillStyle = S.legShade === 'black' ? 'rgb(8,5,9)' : 'rgb(34,22,22)'; octx.fillRect(0, 0, W, H);
   octx.globalCompositeOperation = 'source-atop'; octx.globalAlpha = 0.55; octx.drawImage(rimC, 0, 0); octx.globalAlpha = 1;
   octx.globalCompositeOperation = 'source-over';
   sctx.globalAlpha = smooth(0.2, 0.9, G.cam); sctx.drawImage(outC, 0, 0); sctx.globalAlpha = 1;
@@ -712,6 +792,8 @@ function optRow(host, items, get, set) {
 }
 optRow($('#contacts'), Object.keys(CONTACTS), () => S.contact, (k) => { S.contact = k; $('#contactNote').textContent = CONTACTS[k].note; });
 $('#contactNote').textContent = C().note;
+optRow($('#legs'), ['hang', 'side', 'forward'], () => S.legs, (k) => { S.legs = k; });
+optRow($('#legShade'), ['shadow', 'black'], () => S.legShade, (k) => { S.legShade = k; });
 optRow($('#styles'), Object.keys(STYLES), () => S.style, (k) => { S.style = k; $('#styleNote').textContent = STYLES[k].note; });
 $('#styleNote').textContent = ST().note;
 optRow($('#tasks'), Object.keys(TASKS), () => S.task, (k) => { S.task = k; });
