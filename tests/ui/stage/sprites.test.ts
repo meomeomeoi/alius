@@ -170,6 +170,8 @@ describe('the stylesheet puts the sprites in room space (A2)', () => {
     expect(css).toMatch(/\.alius-sprite-pano \{[^}]*width: max\(100cqw, 240cqh\);[^}]*translateX\(calc\(var\(--alius-pan, 0\.5\) \* \(100cqw - max\(100cqw, 240cqh\)\)\)\);[^}]*transition: transform 0\.5s ease-out;/s);
     expect(css).toMatch(/\.alius-layer-backdrop \{[^}]*background-position: calc\(var\(--alius-pan, 0\.5\) \* 100%\) center;[^}]*transition: background-position 0\.5s ease-out/s);
     expect(css).toMatch(/\.alius-look-still \.alius-sprite-pano[^{]*\{\s*transition: none;/);
-    expect(css).toMatch(/data-crowd="true"\] \.alius-sprite \{ height: 78vh; \}/); // 0.85 of 92vh
+    expect(css).toMatch(/data-crowd="true"\] \.alius-sprite \{ height: 82vh; \}/); // about 0.85 of 97vh
+    // several women are anchored to the bottom, past the edge: a smaller knee-length sprite never hangs in the air (author, 2026-11-23)
+    expect(css).toMatch(/\.alius-sprite:not\(:only-child\) \{ top: auto; bottom: -5vh; height: 97vh;/);
   });
 });

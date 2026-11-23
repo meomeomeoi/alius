@@ -124,6 +124,8 @@ for (const size of SIZES) {
     if (!inside(m.input)) fail(size, fixture, `the input is not inside the viewport: ${JSON.stringify(m.input)}`);
     if (!inside(m.dial)) fail(size, fixture, `the dial is not inside the viewport: ${JSON.stringify(m.dial)}`);
     for (const b of m.ui) if (!inside(b)) fail(size, fixture, `${b.sel} overflows the viewport: ${JSON.stringify(b)}`);
+    // knee-length sprites never hang in the air: every drawn sprite reaches past the bottom edge (the cut at the knees is off screen)
+    for (const [k, sp] of m.sprites.entries()) if (sp.y + sp.h < H - 1) fail(size, fixture, `sprite ${k + 1} ends at ${Math.round(sp.y + sp.h)} px, above the bottom edge (${H}): it hangs in the air`);
     // the sprites: the head box is the top 22 % of each drawn box
     const heads = m.sprites.map((s) => ({ x: s.x, y: Math.max(0, s.y), r: s.r, b: s.y + s.h * 0.22 }));
     const hit = (a, b) => a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b;

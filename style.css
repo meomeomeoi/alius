@@ -3165,9 +3165,10 @@
   transform: translateX(-50%);
 }
 
-#alius-shell .alius-sprite:not(:only-child) { height: 92vh; top: 8vh; --alius-sprite-back: 0.62; }
-/* four or more are drawn at 0.85 of the size of two or three, so neighbours never overlap past a shoulder */
-#alius-shell .alius-layer-sprites[data-crowd="true"] .alius-sprite { height: 78vh; }
+/* several women: anchored to the bottom so the knee cut is always below the frame's edge (a smaller sprite never hangs in the air) */
+#alius-shell .alius-sprite:not(:only-child) { top: auto; bottom: -5vh; height: 97vh; --alius-sprite-back: 0.62; }
+/* four or more are drawn at 0.85 of the size of two or three, so neighbours never overlap past a shoulder; still anchored below the edge */
+#alius-shell .alius-layer-sprites[data-crowd="true"] .alius-sprite { height: 82vh; }
 #alius-shell .alius-sprite:not(:only-child).is-speaking { --alius-sprite-back: 1; z-index: 1; }
 
 #alius-shell .alius-sprite-img {
@@ -3251,6 +3252,12 @@
   max-height: 46vh;
   overflow-y: auto;
   scrollbar-width: thin;
+}
+
+/* the full squad stands smaller and lower (the knees stay below the edge), so its heads end lower: the dock starts below them */
+#alius-shell .alius-scene:has(.alius-layer-sprites[data-crowd="true"]) .alius-stage-dock {
+  top: 44vh;
+  max-height: 34vh;
 }
 
 /* the posture dial's corner: the stop word's pill above the dial (alone in the corner when there is no dial), then the dial */
