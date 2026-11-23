@@ -39,6 +39,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 .pw.chosen { border-color: #fff; color: #fff; background: rgba(var(--scent), .25); }
 .pw .key { display: inline-block; margin-right: 10px; font: 12px "IBM Plex Mono", monospace; font-style: normal; letter-spacing: 0; opacity: .6; }
 #stage.asking #arc { opacity: 0 !important; }
+#mark { position: absolute; left: 0; top: 0; width: 100px; height: 100px; margin: -50px 0 0 -50px; pointer-events: none; overflow: visible; opacity: 0; transition: opacity .4s; color: var(--her); }
+#mark circle { stroke: currentColor; }
+#mFill { fill: currentColor; }
 #arc { position: absolute; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; pointer-events: none; overflow: visible; }
 #hand { position: absolute; inset: 0; pointer-events: none; }
 .her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
@@ -96,6 +99,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
     <div id="edge"></div>
   </div>
   <div id="words"></div>
+  <svg id="mark" viewBox="-50 -50 100 100"><defs><filter id="mg" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.5"/></filter></defs>
+    <circle id="mGlow" r="26" fill="none" stroke-width="6" filter="url(#mg)"/><circle id="mPulse" r="26" fill="none" stroke-width="1.2"/><circle id="mRing" r="20" fill="none" stroke-width="2"/><circle id="mFill" r="20" opacity="0"/></svg>
   <svg id="arc" viewBox="-60 -60 120 120">
     <defs><filter id="ag" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>
     <circle id="aNeed" r="40" fill="none" stroke-width="2" opacity="0"/>
@@ -466,6 +471,9 @@ function intensityAt(p) {
 const stim = () => BAND[S.band] / 1.5;                       // her band, 0.33 … 1.33
 const tolT = () => 0.3 + (S.tol / 100) * 0.8;                 // the reflex threshold in stimulus units (TUNING.stimuli.reflexMult reading)
 const tolDepth = () => tolT() / Math.max(0.05, G.I * stim()); // where on the arc the threshold falls, here
+/* her place: the face is there when it is within reach of the place she named */
+const targetP = () => (G.order && G.order.k === 'here' && G.zones[G.order.ti] ? G.zones[G.order.ti].p : null);
+function atTarget() { const tp = targetP(); if (!tp) return false; const ar = innerWidth / innerHeight; return Math.hypot((tp[0] - G.nose[0]) * ar, tp[1] - G.nose[1]) < 0.085; }
 function newOrder() {
   const L = S.layers;
   const kinds = [];
@@ -475,7 +483,13 @@ function newOrder() {
   const k = pick(kinds);
   if (k === 'deeper') { G.order = { k, band: [0.7, 0.95], until: G.clock + 4500 }; say(pick(LINES.deeper)); }
   else if (k === 'gently') { G.order = { k, band: [0.25, 0.45], until: G.clock + 4500 }; say(pick(LINES.gently)); }
-  else if (k === 'here') { const [line, id] = pick(LINES.here[S.contact]); G.order = { k, zone: id, band: [0.5, 0.9], until: G.clock + 6000 }; G.hereZone = id; say(line); SFX.chime(); }
+  else if (k === 'here') {
+    const [line, id] = pick(LINES.here[S.contact]);
+    const ar = innerWidth / innerHeight, dist = (q) => Math.hypot((q[0] - G.nose[0]) * ar, q[1] - G.nose[1]);
+    let ti = -1; G.zones.forEach((z, i) => { if (z.id !== id) return; const b = G.zones[ti]; if (ti < 0 || z.w > b.w + 0.01 || (Math.abs(z.w - b.w) <= 0.01 && dist(z.p) < dist(b.p))) ti = i; });
+    G.order = { k, zone: id, ti, band: [0.5, 0.9], until: G.clock + 7000 }; G.hereZone = id;
+    const tp = G.zones[ti].p; say(line, false, [clamp(tp[0] + 0.05, 0.04, 0.8), clamp(tp[1] - 0.1, 0.06, 0.8)]); SFX.chime();
+  }
   else if (k === 'still') { G.order = { k, until: G.clock + 3500, from: [...G.nose] }; say(pick(LINES.still)); }
   else if (k === 'ask') { askWords(); }
 }
@@ -561,7 +575,7 @@ function inhaleEnd(forced = false) {
   const o = G.order;
   if (o && (o.k === 'deeper' || o.k === 'gently' || o.k === 'here') && !forced) {
     const inBand = d >= o.band[0] && d <= o.band[1];
-    const there = o.k !== 'here' || (G.zoneNow && G.zoneNow.id === o.zone && G.I > 0.55);
+    const there = o.k !== 'here' || atTarget();
     orderDone(inBand && there);
   } else if (!o && d > 0.75 && G.I > 0.7 && G.att === 'watching') {
     // seeking with nobody asking, while she watches: she sees it
@@ -728,7 +742,8 @@ function spawnStreams(n, strength) {
 function spawnMotes(dt) {
   const h = dt / 1000;
   for (const z of G.zones) {
-    const rate = z.w * stim() * 26 * G.darkA * (1 + G.sat / 120);
+    const named = G.order && G.order.k === 'here' && G.zones[G.order.ti] === z;
+    const rate = z.w * stim() * 26 * G.darkA * (1 + G.sat / 120) * (named ? 3 : 1);
     let n = rate * h; while (n > 0) { if (Math.random() < Math.min(1, n)) parts.push({ mote: true, x: (z.p[0] + rand(-0.035, 0.035)) * innerWidth, y: (z.p[1] + rand(-0.03, 0.03)) * innerHeight, vx: rand(-18, 18), vy: rand(-34, -8), life: 1, decay: rand(0.25, 0.45), size: rand(0.8, 2.4), tw: rand(0, 6.28), a: clamp(z.w * stim(), 0.3, 1.2) }); n -= 1; }
   }
   // the air itself holds some, more as the head fills
@@ -861,6 +876,16 @@ function render(now, dt) {
   setStyle($('#bloom'), 'opacity', (smooth(0.3, 1, f) * 0.45).toFixed(2));
   setStyle($('#edge'), 'background', f < 0.02 ? 'none' : `radial-gradient(ellipse 80% 75% at ${(G.nose[0] * 100).toFixed(0)}% ${(G.nose[1] * 100).toFixed(0)}%, rgba(0,0,0,0) ${(62 - f * 25).toFixed(0)}%, rgba(${col},${(f * 0.32).toFixed(2)}) 100%)`);
   document.documentElement.style.setProperty('--scent', col);
+  // her mark on the place she named
+  const tp = targetP(), mark = $('#mark');
+  setStyle(mark, 'opacity', tp && live ? '1' : '0');
+  if (tp) {
+    const there = atTarget(), ph = (now / 900) % 1;
+    mark.style.transform = `translate(${(tp[0] * innerWidth).toFixed(1)}px, ${(tp[1] * innerHeight).toFixed(1)}px)`;
+    $('#mPulse').setAttribute('r', (20 + ph * 22).toFixed(1)); $('#mPulse').setAttribute('opacity', (1 - ph).toFixed(2));
+    $('#mGlow').setAttribute('opacity', there ? '0.9' : '0.35'); $('#mFill').setAttribute('opacity', there ? '0.28' : '0');
+    $('#mRing').setAttribute('r', there ? '24' : '20');
+  }
   // the arc at the face
   const arc = $('#arc');
   setStyle(arc, 'opacity', live ? '1' : '0');
