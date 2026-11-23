@@ -127,7 +127,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 <div id="stage">
   <div id="world">
     <div class="view" id="herView"><div class="bg" id="herBg"></div><div id="cam"><img id="her" alt="" draggable="false"></div><div id="herGlow"></div></div>
-    <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="deskFrame" alt="" draggable="false"><div id="deskShade"></div></div>
+    <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="legsArt" alt="" draggable="false" style="position:absolute;display:none;transform-origin:50% 100%;filter:blur(1.2px) brightness(.62) saturate(.85)"><img id="deskFrame" alt="" draggable="false"><div id="deskShade"></div></div>
     <div class="view" id="floorView"><div class="bg" id="floorBg"></div><canvas class="lightC" id="floorLight"></canvas><div id="bunkEdge" style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 12%, rgba(0,0,0,0) 30%)"></div></div>
     <div class="view" id="wallView"><div class="bg" id="wallBg"></div><canvas class="lightC" id="wallLight"></canvas></div>
     <div class="view" id="blindView"></div>
@@ -166,6 +166,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <div class="note" id="actNote"></div>
   <h4>her legs (under the desk)</h4>
   <div class="row" id="legVar"></div>
+  <label>legs art <input type="file" id="legsFile" accept="image/*" style="width:170px"></label>
+  <label>art width <input type="range" id="legsW" min="0.3" max="1.1" step="0.01" value="0.62"><span id="legsWV">0.62</span></label>
+  <label>art bottom <input type="range" id="legsB" min="0.6" max="1.2" step="0.01" value="0.9"><span id="legsBV">0.9</span></label>
+  <div class="note">An art slot (legs_seated): a picture with a transparent background, placed between the room and the desk; it replaces the silhouettes. Never committed.</div>
   <h4>who she is (her presence comes from these)</h4>
   <label>style <select id="styleSel"></select></label>
   <label>talkativeness <select id="talkSel"><option>silent</option><option selected>terse</option><option>talkative</option></select></label>
@@ -442,7 +446,7 @@ const BASE_EVENTS = [
 'use strict';
 /* ---------- settings (the panel) ---------- */
 const S = { view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
-  knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
+  legsW: 0.62, legsB: 0.9, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
 /* the phase plays a third of its fiction hour; the rest passes between phases, in the dark */
@@ -749,7 +753,8 @@ function spawnUrge(kind) {
     do { x = rand(0.08, 0.92) * W; y = rand(0.12, 0.7) * H; tries++; } while (tries < 20 && anchors().some((a) => Math.hypot(x - a.x, y - a.y) < a.r + 60));
     G.urges.push({ kind, x, y, v: 0.12, born: G.t, seed: Math.random() * 10 });
   } else if (kind === 'swallow') {
-    const b = V().body; G.urges.push({ kind, x: b[0] * W, y: b[1] * H - 40, v: 0.1, born: G.t, seed: 0 });
+    G.urges.push({ kind, x: W / 2, y: H - 150, v: 0.1, born: G.t, seed: 0 });
+    if (!G.saidSwallow) { G.saidSwallow = true; sense('Your mouth fills. Sooner or later you will have to swallow.', [0.42, 0.74], 'body'); }
   } else if (kind === 'cramp') {
     const side = Math.random() < 0.5 ? -1 : 1;
     G.cramp = { side, v: 0.75, born: G.t, held: 0 }; play('soft', { g: 0.15, dest: A.body });
@@ -1137,6 +1142,16 @@ function drawLegs(now) {
   const W = legsC.width, H = legsC.height;
   for (const c of [legC, compC, rimC, outC]) if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
   gctx.clearRect(0, 0, W, H);
+  const art = $('#legsArt');
+  if (art.style.display !== 'none' && art.naturalWidth) {
+    // the art slot: the whole picture sways a little, comes closer on a press, and is gone while she is out
+    const t2 = now / 1000, Wv = innerWidth * 1.12, Hv = innerHeight * 1.12, w = Wv * S.legsW, h = w * art.naturalHeight / art.naturalWidth;
+    const sw = S.reduced ? 0 : (G.att === 'busy' ? Math.sin(t2 * 0.7) * 0.4 : 0) + G.shiftAnim * Math.sin(t2 * 9) * 0.6;
+    art.style.width = `${w}px`; art.style.left = `${(Wv - w) / 2}px`; art.style.top = `${Hv * S.legsB - h}px`;
+    art.style.opacity = G.away ? '0' : '1';
+    art.style.transform = `rotate(${sw.toFixed(2)}deg) scale(${(1 + G.press * 0.04).toFixed(3)})`;
+    return;
+  }
   if (G.away || G.lightsOff && G.phase === 'empty') return;
   const t = now / 1000, red = S.reduced;
   const mode = G.legsRest ? 'rest' : G.att === 'busy' ? (S.mood === 'irritated' ? 'tap' : ACT().legs) : 'still';
@@ -1207,9 +1222,11 @@ function drawUrges(now) {
       uctx.strokeStyle = `rgba(255,210,170,${(0.35 * u.v * pulse).toFixed(3)})`; uctx.lineWidth = 1;
       for (let k = 0; k < 7; k++) { const a2 = u.seed + k * 0.9 + t * 0.6, r1 = r * (0.55 + 0.3 * Math.sin(t * 7 + k)), r2 = r1 + 4 + u.v * 7; uctx.beginPath(); uctx.moveTo(u.x + Math.cos(a2) * r1, u.y + Math.sin(a2) * r1); uctx.lineTo(u.x + Math.cos(a2) * r2, u.y + Math.sin(a2) * r2); uctx.stroke(); }
     } else if (u.kind === 'swallow') {
-      const r = 26 + u.v * 34;
-      uctx.strokeStyle = `rgba(255,190,200,${(0.12 + 0.5 * u.v * pulse).toFixed(3)})`; uctx.lineWidth = 2 + u.v * 3;
-      uctx.beginPath(); uctx.ellipse(u.x, u.y, r * 1.3, r * 0.55, 0, 0, Math.PI * 2); uctx.stroke();
+      // it wells up from the commander's own body: a warm swell at the bottom edge, rising and pulsing as it grows
+      const h = H * (0.08 + 0.2 * u.v), a = (0.1 + 0.42 * u.v) * pulse * (u.focus ? 1.25 : 1);
+      const g = uctx.createRadialGradient(W / 2, H + h * 0.25, 0, W / 2, H + h * 0.25, h * 1.5);
+      g.addColorStop(0, `rgba(255,170,170,${a.toFixed(3)})`); g.addColorStop(0.55, `rgba(200,90,110,${(a * 0.45).toFixed(3)})`); g.addColorStop(1, 'rgba(120,40,60,0)');
+      uctx.fillStyle = g; uctx.fillRect(W / 2 - h * 1.6, H - h * 1.4, h * 3.2, h * 1.4);
     }
   }
   // numbness from below
@@ -1392,7 +1409,7 @@ for (const k of Object.keys(STYLES)) { const o = document.createElement('option'
 const bindSel = (id, key) => { $(`#${id}`).value = S[key]; $(`#${id}`).onchange = () => { S[key] = $(`#${id}`).value; updatePresenceNote(); }; };
 bindSel('styleSel', 'style'); bindSel('talkSel', 'talk'); bindSel('regardSel', 'regard'); bindSel('holdSel', 'hold'); bindSel('moodSel', 'mood'); bindSel('forceSel', 'force');
 const bindRange = (id, key) => { const el = $(`#${id}`); const sync = () => { S[key] = Number(el.value); const v = $(`#${id}V`); if (v) v.textContent = String(S[key]); updatePresenceNote(); }; el.oninput = sync; sync(); };
-bindRange('seed', 'seed'); bindRange('phases', 'phases'); bindRange('phaseLen', 'phaseLen'); bindRange('level', 'level'); bindRange('vol', 'vol');
+bindRange('seed', 'seed'); bindRange('legsW', 'legsW'); bindRange('legsB', 'legsB'); bindRange('phases', 'phases'); bindRange('phaseLen', 'phaseLen'); bindRange('level', 'level'); bindRange('vol', 'vol');
 $('#startSel').onchange = () => { S.start = Number($('#startSel').value); };
 for (const [id, key] of [['blind', 'blind'], ['knows', 'knows'], ['public', 'public'], ['reckless', 'reckless'], ['rain', 'rain'], ['stay', 'stay'], ['snd', 'sound'], ['murmur', 'murmur']]) {
   $(`#${id}`).checked = S[key]; $(`#${id}`).onchange = () => { S[key] = $(`#${id}`).checked; };
@@ -1400,6 +1417,7 @@ for (const [id, key] of [['blind', 'blind'], ['knows', 'knows'], ['public', 'pub
 $('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
 $('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
 $('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#legsFile').onchange = () => { const f = $('#legsFile').files[0]; if (f) { $('#legsArt').src = URL.createObjectURL(f); $('#legsArt').style.display = 'block'; } };
 $('#file').onchange = () => { const f = $('#file').files[0]; if (f) $('#her').src = URL.createObjectURL(f); };
 $('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
 $('#skipNow').onclick = () => { if (G.phase === 'loop') G.phaseT = S.phaseLen * 1000; };
