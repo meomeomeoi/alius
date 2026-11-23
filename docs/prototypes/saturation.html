@@ -316,7 +316,9 @@ const SFX = {
    120 ms every 60 ms from random points of the middle, triangular windows that sum flat: no pitch change, no audible loop), and its tail
    once the lungs are full. A breath let go early fades out in 80 ms. The exhale is shortened and softened after a shallow breath. The mouth
    alternates both, lower and duller. Every breath varies its rate by ±5 % so one file does not repeat itself. */
-const SAMPLE = { buf: null, inS: 0.12, susS: 0.42, susE: 0.95, inE: 1.44, exS: 2.17, exE: 3.23 };
+const SAMPLE = { buf: null, rms: null, inS: 0.12, susS: 0.5, susE: 0.92, inE: 1.44, exS: 2.17, exE: 3.23 };
+/* the level of the recording every 10 ms: grains are evened out against it, so the stretched middle never pulses */
+const rmsAt = (sec) => { const r = SAMPLE.rms; return r[clamp(Math.round(sec * 100), 0, r.length - 1)] || 1e-4; };
 async function loadSample() {
   if (SAMPLE.buf || !A.ctx) return;
   const bin = atob(ASSETS.breath.split(',')[1]), u8 = new Uint8Array(bin.length);
@@ -324,37 +326,49 @@ async function loadSample() {
   const buf = await A.ctx.decodeAudioData(u8.buffer);
   const d = buf.getChannelData(0); let pk = 0; for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i]));
   const g = 0.9 / (pk || 1); for (let i = 0; i < d.length; i++) d[i] *= g; // the recording is quiet: bring it to full scale
-  SAMPLE.buf = buf;
+  const fr = Math.round(buf.sampleRate / 100), rms = new Float32Array(Math.ceil(d.length / fr));
+  for (let i = 0; i < rms.length; i++) { let acc = 0, n = 0; for (let j = Math.max(0, (i - 3) * fr); j < Math.min(d.length, (i + 4) * fr); j++) { acc += d[j] * d[j]; n++; } rms[i] = Math.sqrt(acc / Math.max(1, n)); }
+  SAMPLE.rms = rms; SAMPLE.buf = buf;
 }
 const useRec = () => S.breathRec && SAMPLE.buf && A.ctx;
 const REC = { out: null, srcs: [], timer: null, next: 0, rate: 1, tail: false, kind: null };
 /* one piece of the file through a gain envelope (fade in, hold, fade out), at a time on the context's clock */
-function piece(dest, from, to, at, rate, fadeIn = 0.015, fadeOut = 0.03, gain = 1) {
+/* a grain of noise needs an equal-power window: two overlapping noise grains under triangular windows lose half their power where they
+   cross, a dip at every grain that is heard as a sniff. A sine window at four times overlap keeps the power flat. */
+const SINE = new Float32Array(64).map((_, i) => Math.sin((Math.PI * i) / 63));
+function piece(dest, from, to, at, rate, fadeIn = 0.015, fadeOut = 0.03, gain = 1, grain = false) {
   const ctx = A.ctx, src = ctx.createBufferSource(); src.buffer = SAMPLE.buf; src.playbackRate.value = rate;
   const g = ctx.createGain(), dur = (to - from) / rate;
-  g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(gain, at + fadeIn); g.gain.setValueAtTime(gain, Math.max(at + fadeIn, at + dur - fadeOut)); g.gain.linearRampToValueAtTime(0, at + dur);
+  if (grain) g.gain.setValueCurveAtTime(SINE.map((v) => v * gain), at, dur);
+  else { g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(gain, at + fadeIn); g.gain.setValueAtTime(gain, Math.max(at + fadeIn, at + dur - fadeOut)); g.gain.linearRampToValueAtTime(0, at + dur); }
   src.connect(g); g.connect(dest); src.start(at, from); src.stop(at + dur + 0.01);
   REC.srcs.push(src); src.onended = () => { const i = REC.srcs.indexOf(src); if (i >= 0) REC.srcs.splice(i, 1); };
   return at + dur;
 }
 function recOut(kind) {
   const ctx = A.ctx, out = ctx.createGain(); out.gain.value = kind === 'mouth' ? 0.5 : 0.42;
-  const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = kind === 'mouth' ? 1900 : 9000;
+  const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = kind === 'mouth' ? 1900 : 4200; tone.Q.value = 0.5; // the recording is crisp: soften its top
   out.connect(tone); tone.connect(A.body); return out;
 }
 function recInhale(kind = 'nose') {
   recStop(0.03);
   const ctx = A.ctx, t = ctx.currentTime + 0.01;
-  REC.out = recOut(kind); REC.kind = kind; REC.tail = false; REC.rate = (kind === 'mouth' ? 0.86 : 1) * rand(0.95, 1.05);
-  const end = piece(REC.out, SAMPLE.inS, SAMPLE.susS + 0.06, t, REC.rate, 0.02, 0.06);
-  REC.next = end - 0.06;
-  // the middle, grain after grain, scheduled a little ahead
+  REC.out = recOut(kind); REC.kind = kind; REC.tail = false; REC.rate = (kind === 'mouth' ? 0.86 : 1) * rand(0.96, 1.04);
+  REC.level = rmsAt(SAMPLE.susS); // the level the middle holds, falling gently as the lungs fill
+  const end = piece(REC.out, SAMPLE.inS, SAMPLE.susS + 0.1, t, REC.rate, 0.02, 0.1);
+  REC.next = end - 0.1; REC.pos = SAMPLE.susS; REC.dir = 1;
+  // the middle: grains of 200 ms, four overlapping under sine windows, read in order by a pointer that crawls through it and back (a quarter of real speed), each evened out
   REC.timer = setInterval(() => {
     if (REC.tail || !REC.out) return;
-    while (REC.next < A.ctx.currentTime + 0.15) {
-      const len = 0.12, at = rand(SAMPLE.susS, SAMPLE.susE - len);
-      piece(REC.out, at, at + len * REC.rate, REC.next, REC.rate, len / 2, len / 2);
-      REC.next += len / 2;
+    const len = 0.2, hop = len / 4 / REC.rate; // four grains overlap
+    while (REC.next < A.ctx.currentTime + 0.2) {
+      const from = clamp(REC.pos + rand(-0.012, 0.012), SAMPLE.susS, SAMPLE.susE - len);
+      const target = REC.level * (1 - 0.35 * clamp(G.depth, 0, 1));
+      const g = clamp(target / rmsAt(from + len / 2), 0.6, 1.6);
+      piece(REC.out, from, from + len, REC.next, REC.rate, 0, 0, g * Math.SQRT1_2, true); // √(2/4): equal power at four overlapping
+      REC.next += hop;
+      REC.pos += REC.dir * 0.25 * hop;
+      if (REC.pos > SAMPLE.susE - len) { REC.pos = SAMPLE.susE - len; REC.dir = -1; } else if (REC.pos < SAMPLE.susS) { REC.pos = SAMPLE.susS; REC.dir = 1; }
     }
   }, 25);
 }
@@ -362,7 +376,8 @@ function recInhale(kind = 'nose') {
 function recTail() {
   if (!REC.out || REC.tail) return;
   REC.tail = true; clearInterval(REC.timer); REC.timer = null;
-  piece(REC.out, SAMPLE.susE - 0.06, SAMPLE.inE, Math.max(REC.next, A.ctx.currentTime + 0.01), REC.rate, 0.06, 0.12);
+  const g = clamp(REC.level * 0.65 / rmsAt(SAMPLE.susE), 0.6, 1.6); // the tail starts where the evened middle left off
+  piece(REC.out, SAMPLE.susE - 0.1, SAMPLE.inE, Math.max(REC.next, A.ctx.currentTime + 0.01), REC.rate, 0.1, 0.15, g);
 }
 function recStop(fade = 0.08) {
   clearInterval(REC.timer); REC.timer = null;
