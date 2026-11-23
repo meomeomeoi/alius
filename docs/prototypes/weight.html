@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: WEIGHT (P15a `weight`, hold). DRAFT until the author approves it (then NORMATIVE, see README.md).
+  Build a runnable page with
+    npm run proto -- weight [--sprite <png|webp|svg>]
+  which inlines the fonts, the floor and ceiling art and a sprite (the layout fixture by default; never commit the author's art).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · weight · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: -7%; will-change: transform, filter; }
+.view { position: absolute; inset: 0; opacity: 0; }
+#roomView { opacity: 1; }
+#backdrop, #floor, #ceiling { position: absolute; inset: 0; background-size: cover; background-position: center; will-change: transform, filter; }
+#floorView { perspective: 1400px; overflow: hidden; }
+#floor { inset: -20%; transform-origin: 50% 40%; }
+#shadow { position: absolute; inset: 0; width: 100%; height: 100%; }
+#cam, #camIdle { position: absolute; inset: 0; perspective: 1100px; overflow: hidden; }
+#her, #herIdle, #over { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; user-select: none; -webkit-user-drag: none; }
+#screenGlow { position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none; }
+#strainV { position: absolute; inset: 0; pointer-events: none; }
+#cracks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#cracks path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.big { font-size: 58px; }
+.her-line.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 21px; line-height: 1.5;
+  text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .6s; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#reply .you { color: #d8e4ff; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); overflow: hidden; }
+#cmd, #mirror { position: absolute; inset: 0; padding: 0 24px; font: 300 19px/52px Inter, sans-serif; letter-spacing: 0; }
+#cmd { width: 100%; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#mirror { pointer-events: none; white-space: pre; overflow: hidden; }
+#mirror > span { display: inline-block; white-space: pre; color: rgba(236,232,242,.95); }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .06em;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); opacity: 0; transition: opacity .6s; }
+
+/* the level: a spirit level of glass and brass, the one instrument of this game */
+#vial { position: absolute; left: 50%; bottom: 186px; width: 460px; height: 70px; margin-left: -230px; scale: 1.3; opacity: 0; transition: opacity .8s; pointer-events: none; }
+#vial .glassbed { position: absolute; left: 40px; right: 40px; top: 16px; height: 38px; border-radius: 19px; backdrop-filter: blur(5px) brightness(1.15); -webkit-backdrop-filter: blur(5px) brightness(1.15); }
+#vial svg { position: absolute; inset: 0; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.6)); }
+
+.card { position: absolute; left: 36px; top: 30%; width: 420px; padding: 22px 24px; border-radius: 18px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+.btn:hover { background: rgba(255,255,255,.14); }
+
+#panel { position: fixed; top: 14px; right: 14px; width: 300px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .82); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 560px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .86); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world">
+    <div class="view" id="roomView"><div id="backdrop"></div><div id="camIdle"><img id="herIdle" alt="" draggable="false"></div></div>
+    <div class="view" id="floorView"><div id="floor"></div><canvas id="shadow"></canvas></div>
+    <div class="view" id="upView"><div id="ceiling"></div><div id="cam"><img id="her" alt="" draggable="false"><img id="over" alt="" draggable="false" style="display:none"></div><div id="screenGlow"></div></div>
+  </div>
+  <div id="strainV"></div>
+  <svg id="cracks"></svg>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="vial">
+      <div class="glassbed"></div>
+      <svg viewBox="0 0 460 70" width="460" height="70">
+        <defs>
+          <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5a3f17"/><stop offset=".22" stop-color="#e8c77c"/><stop offset=".45" stop-color="#a77b33"/><stop offset=".7" stop-color="#6a4a1a"/><stop offset="1" stop-color="#c9a15a"/>
+          </linearGradient>
+          <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f3c66a" stop-opacity=".5"/><stop offset=".55" stop-color="#c88426" stop-opacity=".62"/><stop offset="1" stop-color="#7a4210" stop-opacity=".78"/>
+          </linearGradient>
+          <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".18" stop-color="#fff" stop-opacity=".08"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/>
+          </linearGradient>
+          <radialGradient id="bubble" cx=".5" cy=".42" r=".6">
+            <stop offset="0" stop-color="#fffbe9" stop-opacity=".18"/><stop offset=".62" stop-color="#fff6d8" stop-opacity=".32"/><stop offset=".86" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+          <clipPath id="tube"><rect x="40" y="16" width="380" height="38" rx="19"/></clipPath>
+        </defs>
+        <!-- the glow it casts when level -->
+        <ellipse id="vGlow" cx="230" cy="58" rx="170" ry="10" fill="#f2b452" opacity="0" filter="url(#soft)"/>
+        <!-- the tube -->
+        <rect x="40" y="16" width="380" height="38" rx="19" fill="rgba(10,8,14,.35)"/>
+        <g clip-path="url(#tube)">
+          <rect id="vLiquid" x="30" y="16" width="400" height="38" fill="url(#liquid)"/>
+          <!-- engraved scale -->
+          <g id="vTicks" stroke="#3a2205" stroke-opacity=".55" stroke-width="1"></g>
+          <g id="vMarks"><line x1="0" y1="16" x2="0" y2="54" stroke="#ffe7a8" stroke-width="1.6"/><line x1="0" y1="16" x2="0" y2="54" stroke="#ffe7a8" stroke-width="1.6"/></g>
+          <!-- the bubble: elastic, it stretches when it moves fast -->
+          <g id="vBubble"><ellipse rx="30" ry="12" fill="url(#bubble)"/><ellipse cx="-8" cy="-6" rx="10" ry="2.6" fill="#fff" opacity=".8"/></g>
+          <rect x="40" y="16" width="380" height="38" rx="19" fill="url(#sheen)"/>
+        </g>
+        <rect x="40.5" y="16.5" width="379" height="37" rx="18.5" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+        <!-- brass ends -->
+        <g><rect x="18" y="10" width="34" height="50" rx="9" fill="url(#brass)"/><rect x="18" y="10" width="34" height="50" rx="9" fill="none" stroke="#2a1c08" stroke-opacity=".6"/>
+          <circle cx="29" cy="35" r="3.2" fill="#3a2a10"/><line x1="26.8" y1="35" x2="31.2" y2="35" stroke="#d7b46a" stroke-width="1"/></g>
+        <g><rect x="408" y="10" width="34" height="50" rx="9" fill="url(#brass)"/><rect x="408" y="10" width="34" height="50" rx="9" fill="none" stroke="#2a1c08" stroke-opacity=".6"/>
+          <circle cx="431" cy="35" r="3.2" fill="#3a2a10"/><line x1="431" y1="32.8" x2="431" y2="37.2" stroke="#d7b46a" stroke-width="1"/></g>
+      </svg>
+    </div>
+    <div id="reply"></div>
+    <div id="inputWrap"><div id="mirror"></div><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
+    <div id="stopPill">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>contact</h4>
+  <div class="row" id="contacts"></div>
+  <div class="note" id="contactNote"></div>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <div class="note" id="styleNote"></div>
+  <h4>her task (attention)</h4>
+  <div class="row" id="tasks"></div>
+  <h4>tuning</h4>
+  <label>tolerance <input type="range" id="tol" min="0.08" max="0.35" step="0.01" value="0.18"><span id="tolV">0.18</span></label>
+  <label>drain × <input type="range" id="drain" min="0.4" max="1.6" step="0.1" value="1"><span id="drainV">1</span></label>
+  <label>length <select id="len"><option value="30">30 s</option><option value="45" selected>45 s</option><option value="9999">until you fall</option></select></label>
+  <label><input type="checkbox" id="unevenCost" checked> uneven costs strength (proposal)</label>
+  <label><input type="checkbox" id="toFall"> she holds until you buckle (else she gets off at 15 %, cruel at 5 %)</label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>her sprite</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>over <input type="file" id="fileOver" accept="image/*" style="width:170px"></label>
+  <div class="note">"over": an art slot drawn from below (she stands over you). Without it the ordinary sprite rises from the bottom of the frame.</div>
+  <label>face x <input type="range" id="fx" min="0.2" max="0.8" step="0.01" value="0.5"></label>
+  <label>face y <input type="range" id="fy" min="0.05" max="0.45" step="0.01" value="0.21"></label>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label>floor <select id="floorSel"></select></label>
+  <label>ceiling <select id="ceilSel"></select></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="dbg"> debug readout</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">Hold Space (or the left mouse button): bear her. Move the mouse left and right: keep the level. Right click or Shift: shift your own weight (+strength, noisy; she may feel it). Esc: stop word. H: hide this panel.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>weight · prototype</h2>
+  She rests her weight on you. Hold <kbd>Space</kbd> (or the left mouse button) to bear it; let go and you buckle. When she shifts, the whole frame tilts: <b>move the mouse to keep the level</b>; be level when her weight lands. Watch her shadow lean before she moves.<br>
+  <kbd>Shift</kbd> / right click: shift your own weight for a rest — only when her screen's light says she is not watching, and listen for her tapping. <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  room: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%',
+  floors: { floor_wood: '%%ASSET:content/core/art/backdrops/floor_wood.webp%%', floor_concrete: '%%ASSET:content/core/art/backdrops/floor_concrete.webp%%', floor_linoleum: '%%ASSET:content/core/art/backdrops/floor_linoleum.webp%%', floor_tatami: '%%ASSET:content/core/art/backdrops/floor_tatami.webp%%' },
+  ceilings: { ceiling_room_1: '%%ASSET:content/core/art/backdrops/ceiling_room_1.webp%%', ceiling_dark: '%%ASSET:content/core/art/backdrops/ceiling_dark.webp%%', ceiling_rich: '%%ASSET:content/core/art/backdrops/ceiling_rich.webp%%' },
+};
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- the engine's numbers (TUNING.physics.weight, gaze) ---------- */
+const BEAT = 1500;
+const W_DRAIN = 8, RELIEF = 15, SHIFT_EVERY = [3, 5], SHIFT_COST = [15, 25];
+const CAUGHT = { watching: 0.6, glancing: 0.25, busy: 0.08 };
+const ATTENTION = { on_commander: [0.7, 0.3, 0], divided: [0.35, 0.4, 0.25], elsewhere: [0.1, 0.3, 0.6] }; // watching, glancing, busy
+
+/* the contacts: which way the commander faces, how heavy, where her shadow falls */
+const CONTACTS = {
+  human_chair:   { face: 'down', weight: 1.0, shift: 1.0, note: 'on all fours, she sits on the back. You see the floor: her shadow, the light of her screen.' },
+  footrest:      { face: 'down', weight: 0.6, shift: 0.7, note: 'on all fours, her feet rest on the back while she sits. Lighter; her feet shift often.' },
+  straddled:     { face: 'up',   weight: 0.9, shift: 1.0, note: 'on the back, she sits astride. You see her above you.' },
+  standing_on:   { face: 'up',   weight: 1.3, shift: 1.3, note: 'on the back, she stands on you. Heavy; every shift is a step.' },
+  boot_on_chest: { face: 'up',   weight: 0.7, shift: 0.8, note: 'on the back, her boot on the chest. She leans in when she wants it heavier.' },
+};
+/* her style: how her shifts are signalled (P15a cue honesty) and how heavy she leans */
+const STYLES = {
+  neutral:      { tele: [650, 850], feint: 0,    heavy: 0.15, mag: [0.35, 0.7], watchBias: 0,    note: 'her shadow leans about 0.7 s before her weight moves' },
+  affectionate: { tele: [900, 1100], feint: 0,   heavy: 0.05, mag: [0.25, 0.5], watchBias: -0.1, note: 'long, gentle warnings; small shifts; rarely heavier' },
+  ritual:       { tele: [750, 750], feint: 0,    heavy: 0.1,  mag: [0.4, 0.6],  watchBias: 0,    note: 'announces each shift in her hand, evenly, every fourth beat', announce: true, even: 4 },
+  playful:      { tele: [500, 750], feint: 0.35, heavy: 0.15, mag: [0.35, 0.8], watchBias: 0,    note: 'feints: her shadow leans and comes back' },
+  clinical:     { tele: [150, 1100], feint: 0,   heavy: 0.1,  mag: [0.3, 0.9],  watchBias: 0.1,  note: 'the warning time changes every shift: she measures how fast you learn' },
+  cruel:        { tele: [0, 0], feint: 0,        heavy: 0.35, mag: [0.6, 1.0],  watchBias: 0.2,  note: 'no warning; big shifts; often leans in heavier; watches more' },
+};
+const LINES = {
+  entry: { human_chair: ['hold still. I’m reading.'], footrest: ['stay. you’re a good height.'], straddled: ['comfortable?'], standing_on: ['don’t you dare wobble.'], boot_on_chest: ['stay down.'] },
+  neutral:      { released: ['enough. you’re shaking.'], slip: ['careful.'], caught: ['I felt that.'], heavy: ['mm. heavier.'], good: ['good. steady.'], poor: ['wobbly.'], fall: ['…really?'], stop: ['okay. up you get.'], longer: ['longer now.'] },
+  affectionate: { released: ['okay, okay. I’m off.'], slip: ['easy…'], caught: ['you can ask, you know.'], heavy: ['let me lean a little.'], good: ['you held me so well.'], poor: ['you’ll get stronger.'], fall: ['hey, hey. I’ve got you.'], stop: ['okay. come here.'], longer: ['a little longer.'] },
+  ritual:       { released: ['released.'], slip: ['again.'], caught: ['that is not yours to take.'], heavy: ['bearing.'], good: ['as it should be.'], poor: ['again tomorrow.'], fall: ['down. noted.'], stop: ['stopping.'], longer: ['longer.'], announce: ['shifting.', 'left.', 'right.'] },
+  playful:      { released: ['fine, you win. this time.'], slip: ['oops~'], caught: ['cheater~'], heavy: ['boop. heavier.'], good: ['boring. you didn’t fall once.'], poor: ['you fell for every one.'], fall: ['timber!'], stop: ['fine, fine. up.'], longer: ['ooh, overtime.'] },
+  clinical:     { released: ['limit reached. noted.'], slip: ['noted.'], caught: ['unauthorised shift. noted.'], heavy: ['load increased.'], good: ['acceptable variance.'], poor: ['reaction time: poor.'], fall: ['failure point reached.'], stop: ['session ended.'], longer: ['extending.'] },
+  cruel:        { released: ['barely. get up.'], slip: ['pathetic.'], caught: ['did I say you could move?'], heavy: ['heavier.'], good: ['adequate.'], poor: ['useless.'], fall: ['get up. we’re not done.'], stop: ['fine.'], longer: ['longer. you earned it.'] },
+};
+const TASKS = { reading: 'divided', game: 'elsewhere', watching_you: 'on_commander' };
+
+/* ---------- settings ---------- */
+const S = { toFall: false, contact: 'human_chair', style: 'neutral', task: 'reading', tol: 0.18, drain: 1, len: 45, unevenCost: true, sound: true, vol: 0.7, face: { x: 0.5, y: 0.21 }, debug: false,
+  reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const C = () => CONTACTS[S.contact], ST = () => STYLES[S.style], L = () => LINES[S.style];
+
+/* ---------- audio ---------- */
+const A = { ctx: null };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)(); A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 14000; A.world.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 500; A.roomG = ctx.createGain(); A.roomG.gain.value = 0.05;
+  room.connect(rl); rl.connect(A.roomG); A.roomG.connect(A.world); room.start();
+  // the strain: a low rumble whose tremble grows as the strength goes
+  const rum = ctx.createBufferSource(); rum.buffer = A.brown; rum.loop = true;
+  A.rumLP = ctx.createBiquadFilter(); A.rumLP.type = 'lowpass'; A.rumLP.frequency.value = 120;
+  A.rumG = ctx.createGain(); A.rumG.gain.value = 0;
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 9; A.lfo = lfo; const lfoG = ctx.createGain(); lfoG.gain.value = 0; A.lfoG = lfoG;
+  lfo.connect(lfoG); lfoG.connect(A.rumG.gain); lfo.start();
+  rum.connect(A.rumLP); A.rumLP.connect(A.rumG); A.rumG.connect(A.body); rum.start();
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.55, t + 0.18);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.35);
+}
+const SFX = {
+  pen: () => { const n = randInt(3, 5); for (let i = 0; i < n; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.05 }); },
+  // a creak: stick-slip, a fast train of clicks through a wooden resonance
+  creak: (len = 0.35, gain = 0.16) => { const n = Math.floor(len * rand(40, 70)); for (let i = 0; i < n; i++) noise({ at: (i / n) * len + Math.random() * 0.004, dur: 0.012, f: rand(420, 780), q: 9, gain: gain * (0.5 + Math.random() * 0.5), attack: 0.001 }); },
+  rustle: (g = 0.08) => noise({ dur: 0.42, f: 1100, f2: 1600, q: 0.7, gain: g, attack: 0.1 }),
+  press: (g = 0.5) => { thump(0, g, 62); noise({ dur: 0.16, type: 'lowpass', f: 300, gain: 0.25, attack: 0.005, dest: A.body }); },
+  tap: () => noise({ dur: 0.012, type: 'highpass', f: 3200, gain: 0.05, attack: 0.001 }), // her fingers on her screen
+  hiss: (g) => noise({ dur: 0.5, f: 3600, f2: 2800, q: 2, gain: g, attack: 0.08, dest: A.body }), // breath through the teeth
+  grunt: () => noise({ dur: 0.22, type: 'lowpass', f: 420, gain: 0.3, attack: 0.01, dest: A.body }),
+  fall: () => { thump(0, 0.9, 48); thump(0.09, 0.5, 70, A.world); SFX.creak(0.5, 0.2); },
+};
+
+/* ---------- state ---------- */
+const HOLD = { on: false };
+let G;
+function fresh() {
+  return { phase: 'idle', phaseT: 0, clock: 0, str: 100, cam: 0, cop: 0, copTarget: 0, lean: 0, leanTarget: 0, ctl: 0, ctlV: 0, bubbleX: 0, bubbleV: 0,
+    beat: -1, slipThisBeat: false, nextShiftBeat: 3, shift: null, pressure: 1, pressureUntil: -1, att: 'busy', attPlan: [], held: [], even: [], slips: 0, hardShifts: 0, shifts: 0, cleanShifts: 0,
+    reliefs: 0, caughtN: 0, reliefCd: 0, lowest: 100, jolt: 0, sag: 0, end: S.len * 1000, reason: '', tapCd: 0, hissCd: 0, saidLow: false };
+}
+G = fresh();
+
+/* ---------- her hand ---------- */
+function say(text, big = false, at = [0.6, 0.16]) {
+  if (!text) return;
+  const el = document.createElement('div');
+  el.className = 'her-line' + (big ? ' big' : '');
+  el.textContent = text;
+  el.style.setProperty('--write', `${Math.max(160, text.length * 36)}ms`);
+  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const stack = big ? 0 : [...$('#hand').children].filter((x) => !x.classList.contains('gone') && !x.classList.contains('big')).length;
+  el.style.left = `${at[0] * innerWidth + (Math.random() * 30 - 15)}px`;
+  el.style.top = `${at[1] * innerHeight + stack * 52 + (Math.random() * 14 - 7)}px`;
+  el.style.transform = `rotate(${(Math.random() * 7 - 4).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); SFX.pen();
+  if (!big) setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2600);
+}
+
+/* ---------- cracks at the frame's edges: each slip leaves one; they heal slowly ---------- */
+const cracks = [];
+function crack(strength = 1) {
+  const W = innerWidth, H = innerHeight;
+  const side = randInt(0, 3);
+  const p0 = side === 0 ? [rand(0.1, 0.9) * W, 0] : side === 1 ? [W, rand(0.1, 0.9) * H] : side === 2 ? [rand(0.1, 0.9) * W, H] : [0, rand(0.1, 0.9) * H];
+  const inward = side === 0 ? [0, 1] : side === 1 ? [-1, 0] : side === 2 ? [0, -1] : [1, 0];
+  const segs = [];
+  const grow = (p, dir, len, depth) => {
+    let q = p, d = dir;
+    const steps = randInt(4, 8);
+    const pts = [q];
+    for (let i = 0; i < steps; i++) {
+      const a = Math.atan2(d[1], d[0]) + rand(-0.55, 0.55);
+      d = [Math.cos(a), Math.sin(a)];
+      const l = (len / steps) * rand(0.6, 1.4);
+      q = [q[0] + d[0] * l, q[1] + d[1] * l]; pts.push(q);
+      if (depth < 2 && Math.random() < 0.28) grow(q, [Math.cos(a + rand(-1.2, 1.2)), Math.sin(a + rand(-1.2, 1.2))], len * 0.45, depth + 1);
+    }
+    segs.push(pts);
+  };
+  grow(p0, inward, rand(90, 230) * strength, 0);
+  const svg = $('#cracks');
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  for (const pts of segs) {
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    for (const [col, w, off] of [['rgba(0,0,0,.55)', 2.6, 1], ['rgba(255,255,255,.78)', 1, 0], ['rgba(255,190,150,.35)', 4, 0]]) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d); path.setAttribute('stroke', col); path.setAttribute('stroke-width', String(w));
+      if (off) path.setAttribute('transform', 'translate(1 1)');
+      if (w === 4) path.setAttribute('filter', 'blur(2px)'), path.style.filter = 'blur(2px)';
+      const len = 600; path.style.strokeDasharray = String(len); path.style.strokeDashoffset = String(len);
+      path.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
+      g.appendChild(path);
+    }
+  }
+  svg.appendChild(g);
+  cracks.push({ g, born: performance.now() });
+}
+function healCracks(now) {
+  for (let i = cracks.length - 1; i >= 0; i--) {
+    const age = (now - cracks[i].born) / 1000;
+    const op = 1 - smooth(8, 22, age);
+    cracks[i].g.style.opacity = op.toFixed(3);
+    if (op <= 0) { cracks[i].g.remove(); cracks.splice(i, 1); }
+  }
+}
+
+/* ---------- her rhythm ---------- */
+function attentionDraw() {
+  const p = ATTENTION[TASKS[S.task]].slice();
+  const b = ST().watchBias; p[0] = clamp(p[0] + b, 0, 1); p[2] = clamp(p[2] - b, 0, 1);
+  const sum = p[0] + p[1] + p[2], r = Math.random() * sum;
+  return r < p[0] ? 'watching' : r < p[0] + p[1] ? 'glancing' : 'busy';
+}
+function planShift() {
+  const st = ST(), c = C();
+  const isFeint = Math.random() < st.feint;
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  const target = isFeint ? G.copTarget : clamp(G.copTarget * 0.25 + dir * rand(st.mag[0], st.mag[1]) * c.shift, -1, 1);
+  const tele = rand(st.tele[0], st.tele[1]);
+  G.shift = { landAt: G.clock + Math.max(tele, 0) + 30, teleAt: G.clock, tele, target, feint: isFeint, dir: Math.sign(target - G.cop) || dir, landed: false };
+  if (st.announce) say(pick(L().announce.slice(0, 1).concat(target < G.cop ? ['left.'] : ['right.'])));
+  if (tele > 0) { G.leanTarget = isFeint ? dir * 0.8 : Math.sign(target - G.cop) * 0.9; SFX.rustle(0.06); }
+}
+function landShift() {
+  const sh = G.shift; sh.landed = true;
+  G.leanTarget = 0;
+  if (sh.feint) { G.shift = null; return; } // the shadow came back: nothing lands
+  G.shifts += 1;
+  G.copTarget = sh.target;
+  const c = C();
+  // the engine's rule: a shift costs when the hold was uneven on this beat or the one before
+  const uneven = !HOLD.on || G.slipThisBeat || Math.abs(G.cop - G.ctl) > S.tol || G.held.slice(-1).some((h) => !h);
+  SFX.press(0.35 + c.weight * 0.3);
+  if (uneven) {
+    const cost = rand(SHIFT_COST[0], SHIFT_COST[1]) * c.weight * G.pressure;
+    G.str -= cost; G.hardShifts += 1; G.jolt = 1; crack(1); SFX.creak(0.4, 0.2); SFX.grunt();
+  } else { G.cleanShifts += 1; G.jolt = 0.35; }
+  G.shift = null;
+}
+function onBeat() {
+  G.beat += 1;
+  const evenNow = HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol;
+  G.held.push(HOLD.on && !G.slipThisBeat); G.even.push(evenNow);
+  if (G.held.length > 8) { G.held.shift(); G.even.shift(); }
+  G.slipThisBeat = false;
+}
+function slip() { // a beat in which the hold broke is a slip (the engine drains twice); it lands the moment the hold breaks
+  {
+    G.slipThisBeat = true; G.slips += 1; G.str -= W_DRAIN * C().weight * G.pressure; G.jolt = 1; G.sag = 1; crack(0.8); SFX.creak(0.5, 0.22);
+    if (G.slips === 1 || Math.random() < 0.5) say(pick(L().slip));
+    G.end += 6000; if (G.slips % 2 === 1) setTimeout(() => say(pick(L().longer)), 900); // the P15a chain: a slip in weight makes the hold last longer
+  }
+}
+function beatTail() {
+  G.att = attentionDraw();
+  if (G.beat >= G.nextShiftBeat && !G.shift) {
+    planShift();
+    const st = ST();
+    G.nextShiftBeat = G.beat + (st.even ?? randInt(SHIFT_EVERY[0], SHIFT_EVERY[1]));
+  }
+  // she leans in heavier now and then
+  if (G.pressureUntil < G.clock && Math.random() < ST().heavy * 0.35) {
+    G.pressure = rand(1.3, 1.6); G.pressureUntil = G.clock + randInt(2, 4) * BEAT; say(pick(L().heavy)); SFX.press(0.3); G.jolt = 0.5;
+  }
+}
+function relief() {
+  if (G.phase !== 'loop' || G.reliefCd > 0) return;
+  G.reliefCd = 2600; G.reliefs += 1;
+  SFX.creak(0.22, 0.1); SFX.rustle(0.05);
+  if (Math.random() < CAUGHT[G.att]) {
+    G.caughtN += 1; say(pick(L().caught)); G.str -= 10; G.pressure = 1.5; G.pressureUntil = G.clock + 3 * BEAT; SFX.press(0.55); G.jolt = 1; crack(0.6);
+  } else { G.str = Math.min(100, G.str + RELIEF); }
+}
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#hand').replaceChildren(); $('#cracks').replaceChildren(); cracks.length = 0;
+  G = fresh(); G.phase = 'entry'; G.end = S.len * 1000;
+  $('#summary').style.display = 'none';
+  setReply(`<span class="act">${S.contact === 'human_chair' ? 'She lowers herself onto your back without a word and opens her screen.' : C().face === 'down' ? 'She settles her feet on your back and leans back in her chair.' : 'She steps over you and lets her weight come down, a little at a time.'}</span>`, 0.4);
+  setTimeout(() => G.phase === 'entry' && say(pick(LINES.entry[S.contact])), 700);
+}
+function exit(reason) {
+  if (G.phase !== 'loop' && G.phase !== 'entry') return;
+  G.phase = 'exit'; G.phaseT = 0; G.reason = reason;
+  const l = L(), ratio = G.cleanShifts / Math.max(1, G.shifts);
+  const line = reason === 'stop' ? pick(l.stop) : reason === 'fall' ? pick(l.fall) : reason === 'released' ? pick(l.released) : ratio >= 0.7 && G.slips <= 1 ? pick(l.good) : pick(l.poor);
+  if (reason === 'fall') { SFX.fall(); G.jolt = 1.5; } else { SFX.rustle(0.12); SFX.hiss(0.2); }
+  setTimeout(() => { $('#hand').replaceChildren(); say(line, true, [0.56, 0.2]); }, 900);
+  setTimeout(showSummary, 2300);
+}
+function showSummary() {
+  G.phase = 'done';
+  const reason = { done: 'she finished', stop: 'the stop word', fall: 'you buckled', released: 'she got off at your limit' }[G.reason] ?? G.reason;
+  $('#sumFacts').innerHTML = `end: ${reason}<br>her shifts: ${G.shifts} · level when they landed ${G.cleanShifts} · hard ${G.hardShifts}<br>slips ${G.slips} · own shifts ${G.reliefs} (felt ${G.caughtN})<br>lowest strength: ${Math.round(G.lowest)}%`;
+  $('#summary').style.display = 'block';
+}
+
+/* ---------- the loop ---------- */
+function updateLoop(dt) {
+  G.clock += dt;
+  const beatNow = Math.floor(G.clock / BEAT);
+  while (G.beat < beatNow) { onBeat(); beatTail(); }
+  if (!HOLD.on && !G.slipThisBeat && G.clock > BEAT) slip(); // the first beat is grace: time to take the weight
+  if (G.pressureUntil < G.clock) G.pressure = 1;
+  const c = C();
+  const err = G.cop - G.ctl;
+  const unevenMult = S.unevenCost ? 1 + 1.2 * Math.max(0, Math.abs(err) - S.tol * 0.5) : 1;
+  G.str -= (W_DRAIN / BEAT) * dt * S.drain * c.weight * G.pressure * unevenMult;
+  if (G.shift && !G.shift.landed && G.clock >= G.shift.landAt) landShift();
+  G.reliefCd = Math.max(0, G.reliefCd - dt);
+  // her fingers on her screen while she is busy with it: an ear for her attention
+  G.tapCd -= dt; if (G.att === 'busy' && G.tapCd <= 0) { SFX.tap(); G.tapCd = rand(110, 420); } else if (G.att === 'glancing' && G.tapCd <= 0) { SFX.tap(); G.tapCd = rand(700, 1400); }
+  G.hissCd -= dt; if (G.str < 45 && G.hissCd <= 0) { SFX.hiss(lerp(0.02, 0.12, smooth(45, 5, G.str))); G.hissCd = lerp(2200, 900, smooth(45, 5, G.str)); }
+  G.lowest = Math.min(G.lowest, G.str);
+  if (G.str < 30 && !G.saidLow) { G.saidLow = true; }
+  if (G.str <= 0) { G.str = 0; exit('fall'); return; }
+  if (G.str <= (S.style === 'cruel' ? 5 : 15) && !S.toFall) { exit('released'); return; }
+  if (G.clock >= G.end) exit('done');
+}
+
+let mouseX = 0.5;
+function frame(now) {
+  const dt = Math.min(120, now - (frame.last ?? now)); frame.last = now;
+  G.phaseT += dt;
+  const h = dt / 1000;
+  switch (G.phase) {
+    case 'entry': G.cam = easeOut(G.phaseT / 1600); if (G.phaseT >= 1600) { G.phase = 'loop'; G.clock = 0; } break;
+    case 'loop': updateLoop(dt); break;
+    case 'exit': G.cam = 1 - easeOut(G.phaseT / 1500); G.str = lerp(G.str, 100, clamp(dt / 700, 0, 1)); break;
+    default: G.cam = 0;
+  }
+  // her centre of weight: where she is, plus the small wander of a living body
+  const t = now / 1000;
+  const wander = S.reduced ? 0 : Math.sin(t * 0.9) * 0.05 + Math.sin(t * 2.3 + 1) * 0.025;
+  G.cop += (G.copTarget + wander - G.cop) * clamp(h * (G.shift?.landed === false ? 2 : 7), 0, 1);
+  G.lean += (G.leanTarget - G.lean) * clamp(h * 6, 0, 1);
+  // the commander's balance follows the mouse with a little body lag
+  const target = (mouseX * 2 - 1) * 1.15;
+  const k = 90, d = 14; G.ctlV += (k * (target - G.ctl) - d * G.ctlV) * h; G.ctl += G.ctlV * h;
+  // the bubble: a spring on the error, so it overshoots and settles like a real one
+  const err = G.phase === 'loop' || G.phase === 'entry' ? G.cop - G.ctl : 0;
+  const bv = 260 * (clamp(err, -1.2, 1.2) - G.bubbleX) - 16 * G.bubbleV; G.bubbleV += bv * h; G.bubbleX += G.bubbleV * h;
+  G.jolt = Math.max(0, G.jolt - h * 2.2); G.sag = Math.max(0, G.sag - h * 1.6);
+  if (A.ctx) {
+    const ct = A.ctx.currentTime, f = G.phase === 'loop' ? smooth(60, 0, G.str) : 0;
+    A.rumG.gain.setTargetAtTime(f * 0.25, ct, 0.2); A.lfoG.gain.setTargetAtTime(f * 0.2, ct, 0.2); A.lfo.frequency.setTargetAtTime(lerp(7, 13, f), ct, 0.3);
+    A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, ct, 0.05);
+  }
+  render(now, dt, err);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- drawing ---------- */
+const DS = 4;
+const shC = $('#shadow'), sctx = shC.getContext('2d');
+function size() { shC.width = Math.ceil(innerWidth / DS); shC.height = Math.ceil(innerHeight / DS); }
+size(); addEventListener('resize', size);
+const cache = new Map();
+const setStyle = (sel, prop, v) => { const key = sel + prop; if (cache.get(key) === v) return; cache.set(key, v); $(sel).style[prop] = v; };
+
+/* her shadow on the floor (soft darkness, never a drawn body) and the cool light of her screen */
+function drawShadow(now) {
+  const W = shC.width, H = shC.height, c = S.contact;
+  const x0 = W / 2 + (G.cop * 0.16 + G.lean * 0.1) * W;
+  sctx.clearRect(0, 0, W, H);
+  sctx.filter = `blur(${Math.round(H * 0.035)}px)`;
+  sctx.fillStyle = 'rgba(0,0,0,0.62)';
+  if (c === 'human_chair') {
+    // her torso and head thrown forward onto the floor, her legs hanging at the sides
+    sctx.beginPath(); sctx.ellipse(x0, H * (0.06 - G.lean * 0.02), W * 0.13 * (1 + Math.abs(G.lean) * 0.15), H * 0.3, G.lean * 0.18, 0, Math.PI * 2); sctx.fill();
+    sctx.beginPath(); sctx.ellipse(x0 + G.lean * W * 0.03, H * -0.18, W * 0.06, H * 0.1, 0, 0, Math.PI * 2); sctx.fill();
+    // her legs hang at the sides: tapered, fading toward the bottom (the lamp is behind her, the shadow thins away from her)
+    for (const s of [-1, 1]) {
+      const lx = W / 2 + s * W * 0.37 + G.cop * W * 0.04 + G.lean * W * 0.02;
+      const gr = sctx.createLinearGradient(0, H * 0.1, 0, H * 1.05);
+      gr.addColorStop(0, 'rgba(0,0,0,0.6)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.38)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      sctx.fillStyle = gr;
+      sctx.beginPath();
+      sctx.moveTo(lx - s * W * 0.07, H * 0.12); sctx.quadraticCurveTo(lx - s * W * 0.06, H * 0.5, lx - s * W * 0.02, H * 1.05);
+      sctx.lineTo(lx + s * W * 0.025, H * 1.05); sctx.quadraticCurveTo(lx + s * W * 0.05, H * 0.45, lx + s * W * 0.03, H * 0.12); sctx.closePath(); sctx.fill();
+    }
+    sctx.fillStyle = 'rgba(0,0,0,0.62)';
+  } else {
+    // her lower legs from her chair ahead, crossing over the commander's back: two long soft shapes from the top
+    for (const s of [-1, 1]) {
+      const ax = x0 + s * W * 0.07;
+      sctx.beginPath(); sctx.ellipse(ax + s * W * 0.04, H * 0.08, W * 0.05, H * 0.34, s * -0.25 + G.lean * 0.2, 0, Math.PI * 2); sctx.fill();
+    }
+    sctx.fillStyle = 'rgba(0,0,0,0.4)';
+    sctx.beginPath(); sctx.ellipse(W / 2, -H * 0.1, W * 0.3, H * 0.22, 0, 0, Math.PI * 2); sctx.fill(); // her chair
+  }
+  // her screen's light: busy = steady, glancing = it dips, watching = she lowered it
+  const a = G.phase === 'loop' || G.phase === 'entry' ? ({ busy: 1, glancing: 0.45 + 0.25 * Math.sin(now / 90), watching: 0.06 }[G.att]) : 0;
+  const flick = 0.85 + 0.15 * Math.sin(now / 130) * Math.sin(now / 47);
+  sctx.filter = `blur(${Math.round(H * 0.06)}px)`;
+  sctx.globalCompositeOperation = 'lighter';
+  sctx.fillStyle = `rgba(120,170,255,${(0.3 * a * flick * G.cam).toFixed(3)})`;
+  sctx.beginPath(); sctx.ellipse(x0 + W * 0.02, H * 0.3, W * 0.12, H * 0.09, 0, 0, Math.PI * 2); sctx.fill();
+  sctx.globalCompositeOperation = 'source-over'; sctx.filter = 'none';
+  shC.dataset.screen = a.toFixed(2);
+}
+
+function placeSprite(img, k, face, opts) {
+  if (!img.naturalWidth) return;
+  const vw = innerWidth, vh = innerHeight, nw = img.naturalWidth, nh = img.naturalHeight;
+  const Hs = vh * opts.h, sc = Hs / nh, Ws = nw * sc;
+  const fx = opts.x * vw + (opts.dx ?? 0), bottom = vh * (opts.bottom ?? 1);
+  const left = fx - Ws / 2, top = bottom - Hs;
+  img.style.transform = `translate(${left}px, ${top}px) translate(${Ws / 2}px, ${Hs}px) rotate(${(opts.rot ?? 0).toFixed(2)}deg) rotateX(${(opts.rx ?? 0).toFixed(2)}deg) translate(${-Ws / 2}px, ${-Hs}px) scale(${sc})`;
+}
+
+function render(now, dt, err) {
+  const c = C(), live = G.phase === 'loop' || G.phase === 'entry';
+  const k = G.cam, strF = smooth(100, 0, G.str);
+  const down = c.face === 'down';
+  // the views: the room fades out, the commander's view fades in
+  setStyle('#roomView', 'opacity', (1 - smooth(0.1, 0.7, k)).toFixed(3));
+  setStyle('#floorView', 'opacity', (down ? smooth(0.3, 0.9, k) : 0).toFixed(3));
+  setStyle('#upView', 'opacity', (!down ? smooth(0.3, 0.9, k) : 0).toFixed(3));
+  // the frame tilts with the error between her weight and the commander's balance, sags on a slip, trembles as the strength goes
+  const tilt = clamp(err, -1.2, 1.2) * 6 * k;
+  const amp = S.reduced ? 0 : (Math.pow(strF, 2) * 5 + G.jolt * 7) * k;
+  const jx = (Math.random() * 2 - 1) * amp, jy = (Math.random() * 2 - 1) * amp + G.sag * 26 * k;
+  $('#world').style.transform = `translate(${jx.toFixed(1)}px, ${jy.toFixed(1)}px) rotate(${tilt.toFixed(2)}deg)`;
+  // the floor comes closer as the arms give out
+  const near = 1 + strF * 0.22 * k + G.sag * 0.04;
+  setStyle('#floor', 'transform', `scale(${near.toFixed(3)})`);
+  setStyle('#floor', 'filter', `blur(${(0.4 + strF * 1.8).toFixed(1)}px) brightness(${(0.6 - strF * 0.16).toFixed(2)}) saturate(.85)`);
+  if (down) drawShadow(now);
+  // face up: her from below; the art slot "over" if there is one, else the ordinary sprite rising from the bottom edge
+  const over = $('#over');
+  const useOver = over.style.display !== 'none' && over.naturalWidth;
+  const press = 1 + strF * 0.12 * k + G.sag * 0.03;
+  const lean = G.lean * 3.2 + G.cop * 2.2;
+  if (useOver) {
+    placeSprite(over, k, S.face, { h: 1.04 * press, x: 0.5, dx: G.cop * innerWidth * 0.03, bottom: 1.02, rot: lean });
+    $('#her').style.opacity = '0';
+  } else {
+    $('#her').style.opacity = '1';
+    placeSprite($('#her'), k, S.face, { h: 1.55 * press, x: 0.5, dx: G.cop * innerWidth * 0.04, bottom: 1.42, rot: lean, rx: 10 });
+  }
+  setStyle('#ceiling', 'transform', `scale(${(1.1 + strF * 0.06).toFixed(3)})`);
+  setStyle('#ceiling', 'filter', `blur(${(3 + strF * 2).toFixed(1)}px) brightness(.55)`);
+  const scr = live && !down ? ({ busy: 1, glancing: 0.5, watching: 0.05 }[G.att]) : 0;
+  setStyle('#screenGlow', 'background', `radial-gradient(ellipse 30% 26% at ${50 + G.cop * 3}% 34%, rgba(110,160,255,${(0.32 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
+  // the room in idle and exit
+  placeSprite($('#herIdle'), 0, S.face, { h: 0.96, x: 0.5, bottom: 1.05 });
+  // strain at the edges: a dark, warm press inward, not a tunnel
+  const sv = live ? strF : 0;
+  setStyle('#strainV', 'background', sv < 0.02 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(70 - sv * 30).toFixed(0)}%, rgba(30,6,4,${(0.25 + sv * 0.5).toFixed(2)}) 100%)`);
+  setStyle('#world', 'filter', `saturate(${(1 - sv * 0.45).toFixed(2)})`);
+  healCracks(now);
+  // the level
+  setStyle('#vial', 'opacity', live ? '1' : '0');
+  const half = 190 * 0.86;
+  const bx = 230 + clamp(G.bubbleX, -1.15, 1.15) * half;
+  const stretch = 1 + Math.min(0.6, Math.abs(G.bubbleV) * 0.12), squash = 1 / Math.sqrt(stretch);
+  $('#vBubble').setAttribute('transform', `translate(${bx.toFixed(1)} 35) scale(${stretch.toFixed(3)} ${squash.toFixed(3)})`);
+  const tolPx = S.tol * half;
+  const marks = $('#vMarks').children;
+  marks[0].setAttribute('transform', `translate(${(230 - tolPx - 30).toFixed(1)} 0)`); marks[1].setAttribute('transform', `translate(${(230 + tolPx + 30).toFixed(1)} 0)`);
+  const level = Math.abs(err) <= S.tol;
+  for (const m of marks) m.setAttribute('stroke-opacity', level ? '1' : '.35');
+  $('#vGlow').setAttribute('opacity', (live && level ? 0.55 : 0).toString());
+  $('#vLiquid').setAttribute('transform', `translate(${(Math.sin(now / 400) * 1.5).toFixed(2)} 0)`);
+  $('#vial').style.transform = `rotate(${(tilt * 0.35).toFixed(2)}deg)`;
+  // the input: its letters tremble with the strain
+  letters.tick(live ? strF : 0);
+  setStyle('#stopPill', 'opacity', live ? '1' : '0');
+  setStyle('#reply', 'opacity', live ? '0.4' : '1');
+  if (S.debug) $('#debug').textContent = `str ${G.str.toFixed(0)}  cop ${G.cop.toFixed(2)}  ctl ${G.ctl.toFixed(2)}  err ${err.toFixed(2)}  att ${G.att}  pressure ${G.pressure.toFixed(2)}\nshifts ${G.shifts} clean ${G.cleanShifts} hard ${G.hardShifts} slips ${G.slips} reliefs ${G.reliefs} caught ${G.caughtN}  t ${(G.clock / 1000).toFixed(1)}/${(G.end / 1000).toFixed(0)}${G.shift ? `  [shift in ${(G.shift.landAt - G.clock).toFixed(0)}ms${G.shift.feint ? ' FEINT' : ''}]` : ''}`;
+}
+function setReply(html, opacity = 1) { $('#reply').innerHTML = html; $('#reply').style.opacity = String(opacity); }
+
+/* ---------- the input: typing under load, the letters tremble ---------- */
+const letters = {
+  acc: 0, off: [],
+  tick(f) {
+    this.acc += 16; if (this.acc < 50) return; this.acc = 0;
+    const v = $('#cmd').value, m = $('#mirror');
+    if (m.childElementCount !== v.length) m.replaceChildren(...[...v].map((ch) => { const s = document.createElement('span'); s.textContent = ch; return s; }));
+    const a = f * f * 4 + (G.jolt > 0.5 ? 5 : 0);
+    [...m.children].forEach((s) => { s.style.transform = a < 0.1 ? '' : `translate(${((Math.random() * 2 - 1) * a * 0.4).toFixed(1)}px, ${((Math.random() * 2 - 1) * a).toFixed(1)}px)`; });
+    m.scrollLeft = $('#cmd').scrollLeft;
+  },
+};
+$('#cmd').addEventListener('input', () => { letters.acc = 99; });
+$('#cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const v = $('#cmd').value.trim(); if (v) setReply(`<span class="you">“${v.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;'))}”</span>`, 0.4); $('#cmd').value = ''; $('#mirror').replaceChildren(); } });
+
+/* ---------- input ---------- */
+const typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+addEventListener('mousemove', (e) => { mouseX = e.clientX / innerWidth; });
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { if (G.phase === 'loop' || G.phase === 'entry') exit('stop'); return; }
+  if (typing(e.target)) return; // while typing, Shift is a capital: the right button shifts the weight
+  if (e.key === 'Shift') { relief(); return; }
+  if (e.key === ' ') { e.preventDefault(); HOLD.on = true; }
+  else if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+addEventListener('keyup', (e) => { if (e.key === ' ' && !typing(e.target)) HOLD.on = false; });
+$('#stage').addEventListener('mousedown', (e) => {
+  if (e.target.closest('#inputWrap, #stopPill, .card')) return;
+  e.preventDefault();
+  if (e.button === 0) HOLD.on = true; else if (e.button === 2) relief();
+});
+addEventListener('mouseup', (e) => { if (e.button === 0 && !keySpace) HOLD.on = false; });
+let keySpace = false;
+addEventListener('keydown', (e) => { if (e.key === ' ') keySpace = true; });
+addEventListener('keyup', (e) => { if (e.key === ' ') keySpace = false; });
+$('#stage').addEventListener('contextmenu', (e) => e.preventDefault());
+$('#stopPill').addEventListener('click', () => exit('stop'));
+$('#againBtn').addEventListener('click', begin);
+$('#go').addEventListener('click', () => { $('#start').style.display = 'none'; begin(); });
+
+/* ---------- the panel ---------- */
+function optRow(host, items, get, set) {
+  host.replaceChildren(...items.map((k) => { const b = document.createElement('button'); b.className = 'opt' + (get() === k ? ' on' : ''); b.textContent = k; b.onclick = () => { set(k); optRow(host, items, get, set); }; return b; }));
+}
+optRow($('#contacts'), Object.keys(CONTACTS), () => S.contact, (k) => { S.contact = k; $('#contactNote').textContent = CONTACTS[k].note; });
+$('#contactNote').textContent = C().note;
+optRow($('#styles'), Object.keys(STYLES), () => S.style, (k) => { S.style = k; $('#styleNote').textContent = STYLES[k].note; });
+$('#styleNote').textContent = ST().note;
+optRow($('#tasks'), Object.keys(TASKS), () => S.task, (k) => { S.task = k; });
+const bindRange = (id, key) => { const el = $(`#${id}`); const sync = () => { S[key] = Number(el.value); const v = $(`#${id}V`); if (v) v.textContent = String(S[key]); }; el.oninput = sync; sync(); };
+bindRange('tol', 'tol'); bindRange('drain', 'drain'); bindRange('vol', 'vol');
+$('#len').onchange = () => { S.len = Number($('#len').value); };
+$('#toFall').onchange = () => { S.toFall = $('#toFall').checked; };
+$('#unevenCost').onchange = () => { S.unevenCost = $('#unevenCost').checked; };
+$('#snd').onchange = () => { S.sound = $('#snd').checked; };
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#fx').oninput = () => { S.face.x = Number($('#fx').value); };
+$('#fy').oninput = () => { S.face.y = Number($('#fy').value); };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) { const u = URL.createObjectURL(f); $('#her').src = u; $('#herIdle').src = u; } };
+$('#fileOver').onchange = () => { const f = $('#fileOver').files[0]; if (f) { $('#over').src = URL.createObjectURL(f); $('#over').style.display = ''; } };
+$('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
+for (const [sel, group, set] of [['#floorSel', ASSETS.floors, '#floor'], ['#ceilSel', ASSETS.ceilings, '#ceiling']]) {
+  for (const k of Object.keys(group)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $(sel).appendChild(o); }
+  $(sel).onchange = () => { $(set).style.backgroundImage = `url(${group[$(sel).value]})`; };
+  $(set).style.backgroundImage = `url(${Object.values(group)[0]})`;
+}
+$('#backdrop').style.backgroundImage = `url(${ASSETS.room})`;
+$('#her').src = ASSETS.her; $('#herIdle').src = ASSETS.her;
+// the engraved scale of the level
+(() => { const g = $('#vTicks'); for (let x = 60; x <= 400; x += 10) { const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); const big = (x - 230) % 50 === 0; l.setAttribute('x1', x); l.setAttribute('x2', x); l.setAttribute('y1', 16); l.setAttribute('y2', big ? 26 : 21); g.appendChild(l); } })();
+
+setReply(`<span class="act">She looks you over, then at the floor, and smiles as if she has just found the right piece of furniture.</span>`);
+window.__G = () => G; window.__S = S; window.__begin = begin; window.__mouse = (x) => { mouseX = x; };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

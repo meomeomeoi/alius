@@ -10,6 +10,10 @@ npm run proto -- breath
 
 It writes `.superpowers/prototypes/breath.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
 
+## `weight.html` — weight (P15a `weight`, hold): DRAFT
+
+In review with the author; not normative until this line says so.
+
 ## `breath.html` — breathing (P15a `breath`, timing)
 
 ### Normative (port exactly)
