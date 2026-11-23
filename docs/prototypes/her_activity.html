@@ -720,7 +720,7 @@ function bodyNoise(kind, loud, visible, gross = false) {
   BODY_SFX[kind]?.();
   G.faultsRecent = G.faultsRecent.filter((x) => G.t - x < 40000);
   const cover = coverNow(), ears = herEars();
-  const heard = Math.random() < clamp(loud * ears * (1 - cover) * 1.1, 0, 1);
+  const heard = Math.random() < clamp(loud * ears * (1 - cover) * 1.35, 0, 1);
   const seen = !G.away && visible && Math.random() < CAUGHT[G.att] * (G.call || G.visitor ? 0.6 : 1);
   // on a call, while she listens and not speaks, the line hears what the room hears
   if (G.call && G.t >= G.herSpeakingUntil && loud * (1 - cover) > 0.28 && !G.call.heard) { G.call.heard = true; G.stats.heardOnLine += 1; callHeard(); }
@@ -728,6 +728,9 @@ function bodyNoise(kind, loud, visible, gross = false) {
   if (!(heard || seen)) { G.stats.unnoticed += 1; return false; }
   G.stats.noticed.push({ kind, step: G.step, how: seen ? 'seen' : 'heard', fiction: clockText(G.clockMin) });
   G.faultsRecent.push(G.t);
+  // the tell, at every presence: her sounds stop and her legs go still while she listens (the silence says she heard), then go on
+  const pause = rand(2200, 3800); G.pauseUntil = G.t + pause; G.att = 'glancing'; G.attHold = pause; G.nextMark = Math.max(G.nextMark, G.t + pause + 400);
+  if (!G.toldPause) { G.toldPause = true; after(700, () => sense(V().sight && !S.blind ? 'She stops. She is listening.' : 'Above you, her sounds stop. She is listening.', 'her')); }
   react(gross);
   return true;
 }
@@ -752,13 +755,32 @@ function react(gross) {
 const MOUSE = { x: innerWidth / 2, y: innerHeight / 2, down: false };
 function anchors() {
   const v = V(), W = innerWidth, H = innerHeight, list = [];
-  if (!G.away) list.push({ x: v.her[0] * W, y: (v.her[1] + (S.view === 'legs' ? 0.38 : S.view === 'her' ? 0.22 : 0.06)) * H, r: S.view === 'legs' ? 0.24 * H : 0.2 * H });
-  list.push({ x: v.door[0] * W, y: v.door[1] * H, r: 0.13 * H });
-  for (const el of $('#senses').children) if (!el.dataset.gone && G.t - Number(el.dataset.born) < 4500) list.push({ x: Number(el.dataset.x) + 120, y: Number(el.dataset.y) + 10, r: 150 });
-  for (const el of $('#hand').children) if (!el.classList.contains('gone')) { const r = el.getBoundingClientRect(); list.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, r: Math.max(110, r.width / 2 + 30) }); }
+  if (!G.away) {
+    const at = { legs: [0.5, 0.45], her: [0.5, 0.33], floor: [$('#floorArt').naturalWidth && $('#floorArt').style.display !== 'none' ? 0.5 : v.her[0], $('#floorArt').naturalWidth && $('#floorArt').style.display !== 'none' ? 0.62 : v.her[1] + 0.06], wall: [v.her[0], v.her[1]] }[S.view];
+    list.push({ x: at[0] * W, y: at[1] * H, r: 0.14 * H, her: true });
+  }
+  list.push({ x: v.door[0] * W, y: v.door[1] * H, r: 0.09 * H });
+  for (const el of $('#senses').children) if (!el.dataset.gone && G.t - Number(el.dataset.born) < 4500) list.push({ x: Number(el.dataset.x) + 110, y: Number(el.dataset.y) + 10, r: 110 });
+  for (const el of $('#hand').children) if (!el.classList.contains('gone')) { const r = el.getBoundingClientRect(); list.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, r: Math.max(90, r.width / 2 + 20) }); }
   return list;
 }
-const listening = () => anchors().some((a) => Math.hypot(MOUSE.x - a.x, MOUSE.y - a.y) < a.r);
+/* the commander's attention: a point that follows the mouse with a little lag, and that a strong urge pulls toward itself (the body
+   wants to attend to it). Patience is holding it away, on her. */
+const ATT = { x: innerWidth / 2, y: innerHeight * 0.4, vx: 0, vy: 0 };
+const onAnchor = () => anchors().some((a) => Math.hypot(ATT.x - a.x, ATT.y - a.y) < a.r);
+function moveAttention(dt) {
+  const s = Math.min(0.05, dt / 1000), low = 1 - G.ease / 100;
+  let fx = 60 * (MOUSE.x - ATT.x), fy = 60 * (MOUSE.y - ATT.y);
+  const pull = (x, y, k) => { const dx = x - ATT.x, dy = y - ATT.y, d = Math.hypot(dx, dy) || 1; const f = k * (1 + low) * Math.min(1, 380 / d); fx += (dx / d) * f; fy += (dy / d) * f; };
+  for (const u of G.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === 'itch' ? 5200 : 2600));
+  if (G.cramp) pull(G.cramp.side < 0 ? 0.1 * innerWidth : 0.9 * innerWidth, 0.7 * innerHeight, 4200);
+  ATT.vx += (fx - 13 * ATT.vx) * s; ATT.vy += (fy - 13 * ATT.vy) * s;
+  ATT.x += ATT.vx * s; ATT.y += ATT.vy * s;
+  // listening needs the attention to rest on her a moment
+  G.lisT = onAnchor() ? (G.lisT ?? 0) + dt : 0;
+  return G.lisT >= 500;
+}
+const listening = () => (G.lisT ?? 0) >= 500;
 function spawnUrge(kind) {
   const W = innerWidth, H = innerHeight;
   if (kind === 'itch') {
@@ -775,13 +797,13 @@ function spawnUrge(kind) {
   }
 }
 function updateUrges(dt) {
-  const s = dt / 1000, low = 1 - G.ease / 100, lis = listening();
-  G.listening = lis;
+  const s = dt / 1000, low = 1 - G.ease / 100, lis = moveAttention(dt);
+  G.listening = lis; G.feeding = false;
   for (const u of G.urges) {
-    const focus = Math.hypot(MOUSE.x - u.x, MOUSE.y - u.y) < 40 + u.v * 70;
-    u.focus = focus;
+    const focus = Math.hypot(ATT.x - u.x, ATT.y - u.y) < 40 + u.v * 70;
+    u.focus = focus; if (focus) G.feeding = true;
     if (u.kind === 'itch') {
-      u.v += s * (0.016 * (1 + low) + (focus ? 0.17 : 0) - (lis && !focus ? 0.075 : 0));
+      u.v += s * (0.026 * (1 + low) + (focus ? 0.2 : 0) - (lis && !focus && u.v < 0.85 ? 0.1 : 0));
       if (u.v <= 0) { u.dead = true; G.stats.endured += 1; }
       if (u.v >= 1) { u.dead = true; G.stats.involuntary += 1; G.ease -= 8; sense('The itch wins: your hand moves before you decide.', 'body', 'body'); bodyNoise('scratch', 0.55, true); }
     } else if (u.kind === 'swallow') {
@@ -993,7 +1015,7 @@ function updateLoop(dt) {
   if (G.beatAcc >= 1500) { G.beatAcc = 0; if (G.attHold > 0) G.attHold -= 1500; else { G.att = attentionDraw(); if (G.att === 'watching') G.attHold = rand(1500, 4500); } }
   // her activity's marks: only while she is busy with it (when she looks up, the sounds stop: the tell)
   if (!G.away && G.t >= G.nextMark) {
-    if (G.att === 'busy' && !(G.call && G.t < G.herSpeakingUntil)) mark(wpick(ACT().marks));
+    if (G.att === 'busy' && G.t >= (G.pauseUntil ?? 0) && !(G.call && G.t < G.herSpeakingUntil)) mark(wpick(ACT().marks));
     const [a, b] = ACT().per; G.nextMark = G.t + rand(a, b) * 1000 * (G.att === 'busy' ? 1 : 0.5);
   }
   if (ACT().sleep) { G.asleepDepth = 0.5 + 0.5 * Math.sin(G.t / 9000); if (!G.nextBreath || G.t >= G.nextBreath) { sleepBreath(); G.nextBreath = G.t + rand(4800, 6200); } }
@@ -1177,7 +1199,7 @@ function drawLegs(now) {
   }
   if (G.away || G.lightsOff && G.phase === 'empty') return;
   const t = now / 1000, red = S.reduced;
-  const mode = G.legsRest ? 'rest' : G.att === 'busy' ? (S.mood === 'irritated' ? 'tap' : ACT().legs) : 'still';
+  const mode = G.legsRest ? 'rest' : G.att === 'busy' && G.t >= (G.pauseUntil ?? 0) ? (S.mood === 'irritated' ? 'tap' : ACT().legs) : 'still';
   const press = G.press, shift = G.shiftAnim;
   lctx.clearRect(0, 0, W, H); lctx.fillStyle = '#fff';
   const sway = red ? 0 : Math.sin(t * 0.7) * 0.004 + shift * Math.sin(t * 9) * 0.006;
@@ -1269,7 +1291,14 @@ function drawUrges(now) {
     for (let k = 0; k < 9; k++) { x += dir * rand(14, 30); y += rand(-22, 30); uctx.lineTo(x, y); }
     uctx.stroke(); uctx.shadowBlur = 0;
   }
-  if (G.listening) { uctx.strokeStyle = 'rgba(216,228,255,.22)'; uctx.lineWidth = 1.2; uctx.beginPath(); uctx.arc(MOUSE.x, MOUSE.y, 22 + Math.sin(t * 2) * 2, 0, Math.PI * 2); uctx.stroke(); }
+  {
+    const lis = G.listening, feed = G.feeding, r = 20 + (lis ? 6 + Math.sin(t * 1.6) * 3 : 0) + (feed ? 4 : 0);
+    const col = feed ? 'rgba(255,170,120,' : 'rgba(216,228,255,', a = feed ? 0.55 : lis ? 0.55 : 0.2;
+    const g = uctx.createRadialGradient(ATT.x, ATT.y, r * 0.4, ATT.x, ATT.y, r * 1.8);
+    g.addColorStop(0, `${col}0)`); g.addColorStop(0.55, `${col}${(a * 0.35).toFixed(2)})`); g.addColorStop(1, `${col}0)`);
+    uctx.fillStyle = g; uctx.beginPath(); uctx.arc(ATT.x, ATT.y, r * 1.8, 0, Math.PI * 2); uctx.fill();
+    uctx.strokeStyle = `${col}${a.toFixed(2)})`; uctx.lineWidth = 1.3; uctx.beginPath(); uctx.arc(ATT.x, ATT.y, r, 0, Math.PI * 2); uctx.stroke();
+  }
 }
 let grainAcc = 0;
 function drawGrain(dt) {
@@ -1426,7 +1455,15 @@ function frame(now) {
     case 'empty': updateUrges(dt * 0.6); G.clockMin += (G.clockRate * dt) / 1000; if (G.t >= G.foundAt) found(); break;
   }
   musicTick();
-  if (A.ctx) A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, A.ctx.currentTime, 0.05);
+  if (A.ctx) {
+    A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, A.ctx.currentTime, 0.05);
+    // listening to her makes her sounds clearer; the rest of the time the world is a little dull
+    const live = G.phase === 'loop';
+    A.world.frequency.setTargetAtTime(!live || G.listening ? 15000 : 5200, A.ctx.currentTime, 0.4);
+    // feeding an urge prickles
+    G.prickleCd = (G.prickleCd ?? 0) - dt;
+    if (live && G.feeding && G.prickleCd <= 0) { noise({ dur: 0.02, type: 'highpass', f: 6000, gain: 0.025, attack: 0.002, dest: A.body }); G.prickleCd = rand(140, 320); }
+  }
   render(now, dt);
   requestAnimationFrame(frame);
 }
