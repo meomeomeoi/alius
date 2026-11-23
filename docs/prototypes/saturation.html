@@ -151,6 +151,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label><input type="checkbox" id="Ltint" checked> the input takes her in</label>
   <label><input type="checkbox" id="Lneed" checked> the need to breathe</label>
   <h4>sound</h4>
+  <div class="row" id="breathSnd"></div>
   <label><input type="checkbox" id="snd" checked> on</label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
   <h4>view</h4>
@@ -169,7 +170,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 
 <script>
 'use strict';
-const ASSETS = { ceiling: '%%ASSET:content/core/art/backdrops/ceiling_room_1.webp%%' };
+const ASSETS = { ceiling: '%%ASSET:content/core/art/backdrops/ceiling_room_1.webp%%', breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%' };
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -255,7 +256,7 @@ const LINES = {
 };
 
 /* ---------- settings ---------- */
-const S = { look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
+const S = { breathRec: true, look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
   layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 90,
   reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
@@ -263,7 +264,7 @@ const ST = () => STYLES[S.style];
 /* ---------- audio ---------- */
 const A = { ctx: null };
 function audioInit() {
-  if (A.ctx) return;
+  if (A.ctx) { loadSample(); return; }
   const ctx = new (window.AudioContext || window.webkitAudioContext)(); A.ctx = ctx;
   A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
   A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 14000; A.world.connect(A.master);
@@ -280,6 +281,7 @@ function audioInit() {
   for (const f of [98, 99.6, 147.2]) { const o = ctx.createOscillator(); o.frequency.value = f; const g = ctx.createGain(); g.gain.value = f > 140 ? 0.25 : 0.5; o.connect(g); g.connect(A.droneG); o.start(); }
   const hiss = ctx.createBufferSource(); hiss.buffer = A.brown; hiss.loop = true; const hl = ctx.createBiquadFilter(); hl.type = 'bandpass'; hl.frequency.value = 700; hl.Q.value = 0.6;
   const hg = ctx.createGain(); hg.gain.value = 0.6; hiss.connect(hl); hl.connect(hg); hg.connect(A.droneG); hiss.start();
+  loadSample();
 }
 function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world }) {
   if (!A.ctx) return null;
@@ -309,8 +311,87 @@ const SFX = {
 /* the breath, synthesised: pink noise through two resonances of the nose or the mouth and a little hiss, an envelope that follows the
    breath (a nose inhale swells, peaks and fades as the lungs fill; a mouth breathes in cycles, in and out), and a flutter of the airflow.
    Never a steady noise: that reads as a machine. */
+/* ---------- the recorded breath (docs/prototypes/assets/breath-in-out.mp3, CC0): one inhale and one exhale, stretched ----------
+   The inhale is played in three parts: its onset as it is, its middle (0.42–0.95 s) granulated for as long as the breath goes on (grains of
+   120 ms every 60 ms from random points of the middle, triangular windows that sum flat: no pitch change, no audible loop), and its tail
+   once the lungs are full. A breath let go early fades out in 80 ms. The exhale is shortened and softened after a shallow breath. The mouth
+   alternates both, lower and duller. Every breath varies its rate by ±5 % so one file does not repeat itself. */
+const SAMPLE = { buf: null, inS: 0.12, susS: 0.42, susE: 0.95, inE: 1.44, exS: 2.17, exE: 3.23 };
+async function loadSample() {
+  if (SAMPLE.buf || !A.ctx) return;
+  const bin = atob(ASSETS.breath.split(',')[1]), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const buf = await A.ctx.decodeAudioData(u8.buffer);
+  const d = buf.getChannelData(0); let pk = 0; for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i]));
+  const g = 0.9 / (pk || 1); for (let i = 0; i < d.length; i++) d[i] *= g; // the recording is quiet: bring it to full scale
+  SAMPLE.buf = buf;
+}
+const useRec = () => S.breathRec && SAMPLE.buf && A.ctx;
+const REC = { out: null, srcs: [], timer: null, next: 0, rate: 1, tail: false, kind: null };
+/* one piece of the file through a gain envelope (fade in, hold, fade out), at a time on the context's clock */
+function piece(dest, from, to, at, rate, fadeIn = 0.015, fadeOut = 0.03, gain = 1) {
+  const ctx = A.ctx, src = ctx.createBufferSource(); src.buffer = SAMPLE.buf; src.playbackRate.value = rate;
+  const g = ctx.createGain(), dur = (to - from) / rate;
+  g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(gain, at + fadeIn); g.gain.setValueAtTime(gain, Math.max(at + fadeIn, at + dur - fadeOut)); g.gain.linearRampToValueAtTime(0, at + dur);
+  src.connect(g); g.connect(dest); src.start(at, from); src.stop(at + dur + 0.01);
+  REC.srcs.push(src); src.onended = () => { const i = REC.srcs.indexOf(src); if (i >= 0) REC.srcs.splice(i, 1); };
+  return at + dur;
+}
+function recOut(kind) {
+  const ctx = A.ctx, out = ctx.createGain(); out.gain.value = kind === 'mouth' ? 0.5 : 0.42;
+  const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = kind === 'mouth' ? 1900 : 9000;
+  out.connect(tone); tone.connect(A.body); return out;
+}
+function recInhale(kind = 'nose') {
+  recStop(0.03);
+  const ctx = A.ctx, t = ctx.currentTime + 0.01;
+  REC.out = recOut(kind); REC.kind = kind; REC.tail = false; REC.rate = (kind === 'mouth' ? 0.86 : 1) * rand(0.95, 1.05);
+  const end = piece(REC.out, SAMPLE.inS, SAMPLE.susS + 0.06, t, REC.rate, 0.02, 0.06);
+  REC.next = end - 0.06;
+  // the middle, grain after grain, scheduled a little ahead
+  REC.timer = setInterval(() => {
+    if (REC.tail || !REC.out) return;
+    while (REC.next < A.ctx.currentTime + 0.15) {
+      const len = 0.12, at = rand(SAMPLE.susS, SAMPLE.susE - len);
+      piece(REC.out, at, at + len * REC.rate, REC.next, REC.rate, len / 2, len / 2);
+      REC.next += len / 2;
+    }
+  }, 25);
+}
+/* the lungs are full: the tail of the inhale, from where the grains leave off */
+function recTail() {
+  if (!REC.out || REC.tail) return;
+  REC.tail = true; clearInterval(REC.timer); REC.timer = null;
+  piece(REC.out, SAMPLE.susE - 0.06, SAMPLE.inE, Math.max(REC.next, A.ctx.currentTime + 0.01), REC.rate, 0.06, 0.12);
+}
+function recStop(fade = 0.08) {
+  clearInterval(REC.timer); REC.timer = null;
+  if (REC.out) { const t = A.ctx.currentTime; REC.out.gain.cancelScheduledValues(t); REC.out.gain.setValueAtTime(REC.out.gain.value, t); REC.out.gain.linearRampToValueAtTime(0, t + fade); const o = REC.out; setTimeout(() => o.disconnect(), (fade + 0.1) * 1000); }
+  for (const s0 of REC.srcs.splice(0)) { try { s0.stop(A.ctx.currentTime + fade + 0.02); } catch { /* already stopped */ } }
+  REC.out = null; REC.kind = null;
+}
+/* the exhale: shorter and softer after a shallow breath */
+function recExhale(d, kind = 'nose') {
+  const ctx = A.ctx, out = recOut(kind), rate = (kind === 'mouth' ? 0.88 : 1) * rand(0.95, 1.05);
+  const len = (SAMPLE.exE - SAMPLE.exS) * (0.35 + 0.65 * clamp(d, 0, 1));
+  piece(out, SAMPLE.exS, SAMPLE.exS + len, ctx.currentTime + 0.02, rate, 0.02, Math.min(0.25, len * 0.4), (0.35 + 0.65 * clamp(d, 0, 1)) * 0.75); // the exhale is louder than the inhale in the recording
+  setTimeout(() => out.disconnect(), (len / rate + 0.5) * 1000);
+}
+/* the mouth: short inhales and exhales in turn, about 0.7 a second */
+const MOUTHREC = { next: 0, inward: true };
+function recMouthTick() {
+  const t = A.ctx.currentTime;
+  if (t < MOUTHREC.next) return;
+  const out = recOut('mouth'), rate = 0.86 * rand(0.95, 1.05), len = 0.55;
+  if (MOUTHREC.inward) piece(out, SAMPLE.inS + 0.05, SAMPLE.inS + 0.05 + len, t + 0.01, rate, 0.04, 0.2, 0.9);
+  else piece(out, SAMPLE.exS, SAMPLE.exS + len, t + 0.01, rate, 0.03, 0.22, 0.8);
+  setTimeout(() => out.disconnect(), 1200);
+  MOUTHREC.inward = !MOUTHREC.inward; MOUTHREC.next = t + 0.72;
+}
+
 const BR = { kind: null, src: null, f1: null, f2: null, env: null, flut: null, lfo: null, t0: 0 };
 function breathSound(kind) {
+  if (useRec()) { if (BR.kind === kind) return; breathStop(); BR.kind = kind; if (kind === 'nose') recInhale('nose'); else MOUTHREC.next = 0; return; }
   if (!A.ctx || BR.kind === kind) return;
   breathStop();
   const ctx = A.ctx, t = ctx.currentTime, nose = kind === 'nose';
@@ -328,6 +409,7 @@ function breathSound(kind) {
 }
 /* every frame: the nose follows the depth (silent once the lungs are full), the mouth breathes in and out about 0.7 times a second */
 function breathTick() {
+  if (useRec() && BR.kind) { if (BR.kind === 'nose' && G.depth >= 0.95) recTail(); if (BR.kind === 'mouth') recMouthTick(); return; }
   if (!BR.src) return;
   const t = A.ctx.currentTime;
   if (BR.kind === 'nose') {
@@ -341,12 +423,14 @@ function breathTick() {
   }
 }
 function breathStop() {
+  if (useRec()) { if (BR.kind === 'nose') recStop(0.08); BR.kind = null; return; }
   if (!BR.src) return;
   const t = A.ctx.currentTime; BR.env.gain.cancelScheduledValues(t); BR.env.gain.setValueAtTime(Math.max(0.0001, BR.env.gain.value), t); BR.env.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
   BR.src.stop(t + 0.15); BR.lfo.stop(t + 0.15); BR.src = null; BR.kind = null;
 }
 /* the exhale through the nose: softer and lower, longer after a deep breath */
 function exhaleSound(d) {
+  if (useRec()) { if (d >= 0.05) recExhale(d); return; }
   if (!A.ctx || d < 0.05) return;
   const ctx = A.ctx, t = ctx.currentTime, dur = 0.5 + d * 0.7;
   const src = ctx.createBufferSource(); src.buffer = A.pink; src.loop = true;
@@ -1121,6 +1205,7 @@ function optRow(host, items, get, set) {
 }
 optRow($('#contacts'), ['feet_on_face', 'face_to_bottom', 'smothered_armpit'], () => S.contact, (k) => { S.contact = k; });
 optRow($('#looks'), ['motes', 'ribbons', 'haze'], () => S.look, (k) => { S.look = k; });
+optRow($('#breathSnd'), ['recorded', 'synth'], () => (S.breathRec ? 'recorded' : 'synth'), (k) => { breathStop(); S.breathRec = k === 'recorded'; });
 optRow($('#bands'), Object.keys(BAND), () => S.band, (k) => { S.band = k; });
 optRow($('#colors'), Object.keys(COLORS), () => S.color, (k) => { S.color = k; });
 optRow($('#stages'), STAGES, () => S.stage, (k) => { S.stage = k; });
@@ -1139,7 +1224,7 @@ $('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').c
 $('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
 $('#ceiling').style.backgroundImage = `url(${ASSETS.ceiling})`;
 setReply(`<span class="act">She looks down at you and takes her time deciding where.</span>`);
-window.__G = () => G; window.__S = S; window.__mouse = (x, y) => { mouse = [x, y]; }; window.__inhale = (on) => (on ? inhaleStart() : inhaleEnd());
+window.__A = A; window.__REC = REC; window.__SAMPLE = SAMPLE; window.__G = () => G; window.__S = S; window.__mouse = (x, y) => { mouse = [x, y]; }; window.__inhale = (on) => (on ? inhaleStart() : inhaleEnd());
 requestAnimationFrame(frame);
 </script>
 </body>

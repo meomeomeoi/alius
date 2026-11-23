@@ -20,7 +20,7 @@ Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-con
 
 ## `saturation.html` — scent (P15a `saturation` with the stimulus body layer): DRAFT
 
-In review with the author; not normative until this line says so. The current design: the saturation is the words in the commander's head (each breath leaves words: the place, her scent, the honest stage, the band; the band fills the head by itself); the head's capacity is the tolerance; an overflow is being lost in her (the face goes to her strongest place and breathes deep); the mouth is air without her scent and breathes words out (short is quiet, long is heard); her rare question asks to name what is in the head, and her style decides what she wants to hear.
+In review with the author; not normative until this line says so. The current design: the saturation is the words in the commander's head (each breath leaves words: the place, her scent, the honest stage, the band; the band fills the head by itself); the head's capacity is the tolerance; an overflow is being lost in her (the face goes to her strongest place and breathes deep); the mouth is air without her scent and breathes words out (short is quiet, long is heard); her rare question asks to name what is in the head, and her style decides what she wants to hear. The breath is a recorded CC0 inhale and exhale (`assets/breath-in-out.mp3`, see `assets/LICENSES.md`) stretched by granular playback of the inhale's middle (`SAMPLE`, `piece`, `recInhale`, `recTail`, `recExhale`, `recMouthTick`); the synthesised breath stays as the fallback.
 
 ## `breath.html` — breathing (P15a `breath`, timing)
 

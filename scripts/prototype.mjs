@@ -17,7 +17,7 @@ const src = resolve(root, 'docs/prototypes', `${name}.html`);
 if (!existsSync(src)) { console.error(`no prototype ${src}`); process.exit(1); }
 if (!existsSync(sprite)) { console.error(`no sprite ${sprite}`); process.exit(1); }
 
-const MIME = { '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml' };
+const MIME = { '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg' };
 const dataUrl = (file) => `data:${MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'};base64,${readFileSync(file).toString('base64')}`;
 
 let html = readFileSync(src, 'utf8');
