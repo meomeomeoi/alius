@@ -32,6 +32,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #bloom { position: absolute; inset: 0; pointer-events: none; backdrop-filter: blur(14px) brightness(1.35) saturate(1.4); -webkit-backdrop-filter: blur(14px) brightness(1.35) saturate(1.4); mix-blend-mode: screen; opacity: 0; }
 #edge { position: absolute; inset: 0; pointer-events: none; }
 #words { position: absolute; inset: 0; pointer-events: none; }
+.hw { position: absolute; font: italic 300 16px Inter, sans-serif; letter-spacing: .1em; color: rgba(var(--scent), .95); white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none;
+  text-shadow: 0 0 10px rgba(var(--scent), .6), 0 0 2px rgba(0,0,0,.7); }
 .pw { position: absolute; font: italic 300 22px Inter, sans-serif; letter-spacing: .14em; color: rgba(var(--scent), .9); white-space: nowrap; transform: translate(-50%, -50%);
   text-shadow: 0 0 10px rgba(var(--scent), .55), 0 0 2px rgba(0,0,0,.6); pointer-events: none; }
 .pw.pick { pointer-events: auto; cursor: pointer; padding: 6px 12px; border-radius: 16px; border: 1px solid rgba(var(--scent), .45); background: rgba(20, 10, 6, .35); backdrop-filter: blur(4px); font-size: 24px; }
@@ -133,11 +135,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <div class="row" id="colors"></div>
   <div class="note">band: P15a's scent level (body part × her hygiene × after a run). colour: her own scent (P17d; sweat is the default).</div>
   <h4>the commander's body</h4>
+  <div class="row" id="presets"></div>
   <div class="row" id="stages"></div>
   <label>tolerance <input type="range" id="tol" min="0" max="100" value="20"><span id="tolV">20</span></label>
-  <div class="note">stage: aversion pushes the face away on a breath; craving and adoring pull it toward her, always.</div>
+  <div class="note">stage: aversion pushes the face away on a breath; craving and adoring pull it toward her, always (harder as the head fills). tolerance: where the body revolts, and how much the head holds before you are lost in her.</div>
   <h4>her</h4>
   <div class="row" id="styles"></div>
+  <div class="note" id="styleNote"></div>
   <div class="row" id="tasks"></div>
   <label>her name <input id="hername" value="Vela" style="width:120px"></label>
   <h4>layers</h4>
@@ -183,35 +187,76 @@ const INHALE_FILL_MS = 1500; // stimuli.inhale.fillMs
 const STAGES = ['aversion', 'enduring', 'accustomed', 'craving', 'adoring'];
 const STAGE_PULL = { aversion: -0.7, enduring: -0.25, accustomed: 0, craving: 0.55, adoring: 0.95 }; // the body: away (breathing) or toward her (always)
 /* the language of perception (content/core/stimulusKinds.json, per stage): the words in the haze come from these */
-const PERCEPTION = {
-  aversion: ['sharp', 'sour', 'it hits the nose'], enduring: ['heavy', 'close', 'it lingers'], accustomed: ['familiar', 'hers'],
-  craving: ['deep', 'warm', 'in the chest'], adoring: ['warm', 'thick', 'hers'],
+/* the words of her scent: by her scent, by the place, by the commander's stage, by the band. A phrase in the head is one of these; the
+   variety is the point (the author: three or four times more than the first draft). The stage lists extend the language of perception
+   in content/core/stimulusKinds.json; the scent lists stand in for each woman's own scent (P17d). */
+const SCENT = {
+  sweat: ['salt', 'sweat', 'skin', 'damp heat', 'musk', 'a sharp tang', 'dried salt', 'her run', 'brine', 'body heat', 'warm damp', 'her effort'],
+  leather: ['leather', 'boot polish', 'worn hide', 'oiled leather', 'tannin', 'laces', 'road dust', 'rubber', 'polish and skin', 'smoke-cured', 'saddle soap', 'old boots'],
+  soap: ['soap', 'clean', 'lather', 'cotton', 'steam', 'lavender', 'linen', 'rain', 'warm water', 'white soap', 'a towel', 'fresh'],
+  gunpowder: ['cordite', 'gun oil', 'metal', 'smoke', 'brass', 'sulphur', 'burnt', 'range dust', 'steel', 'solvent', 'spent casings', 'ozone'],
+  perfume: ['perfume', 'violet', 'musk', 'powder', 'vanilla', 'sweet', 'amber', 'iris', 'rose', 'warm wood', 'a floral note', 'her neck'],
 };
-const KIND_WORD = { feet_on_face: ['her feet', 'salt', 'skin', 'leather'], face_to_bottom: ['her skin', 'warm', 'cotton'], smothered_armpit: ['her underarm', 'salt', 'heat'] };
-const LIKED = new Set(['warm', 'hers', 'deep', 'thick', 'familiar', 'in the chest', 'her feet', 'her skin', 'her underarm']);
+const STAGE_W = {
+  aversion: ['sharp', 'sour', 'too much', 'it stings', 'rank', 'choking', 'harsh', 'it hits the nose'],
+  enduring: ['heavy', 'close', 'thick', 'it lingers', 'dense', 'stale', 'cloying', 'insistent'],
+  accustomed: ['familiar', 'hers', 'known', 'steady', 'plain', 'her own', 'ordinary', 'recognisable'],
+  craving: ['warm', 'deep', 'wanted', 'more', 'in the chest', 'sweet', 'good', 'comforting'],
+  adoring: ['all hers', 'everything', 'precious', 'perfect', 'home', 'beloved', 'worth it', 'all of her'],
+};
+const BAND_W = {
+  faint: ['a trace', 'barely there', 'faint', 'a hint', 'soft'],
+  noticeable: ['clear', 'present', 'noticeable', 'plain to tell'],
+  strong: ['strong', 'thick', 'full', 'heavy-laden'],
+  overwhelming: ['overwhelming', 'drowning', 'everywhere', 'suffocating', 'all of it'],
+};
+const PLACE_W = {
+  toes: ['her toes', 'between her toes'], ball: ['the ball of her foot', 'under her toes'], arch: ['her arch', 'the curve of her sole'], heel: ['her heel'],
+  center: ['the middle of her', 'right against her', 'closest to her'], side: ['her hip', 'the curve of her'],
+  hollow: ['her underarm', 'the hollow'], edge: ['her side', 'the edge of her arm'],
+};
+const STAGE_RANK = { aversion: 0, enduring: 1, accustomed: 2, craving: 3, adoring: 4 };
 const COLORS = { sweat: '255,198,164', leather: '236,176,128', soap: '214,232,255', gunpowder: '196,206,226', perfume: '228,178,255' };
 /* how strong her scent is at the face anywhere under her (the face is already in it), before the strong places */
 const BASE_I = { feet_on_face: 0.2, face_to_bottom: 0.35, smothered_armpit: 0.45 };
 const ATTENTION = { reading: [0.25, 0.4, 0.35], watching_you: [0.75, 0.25, 0] }; // watching, glancing, busy
+/* the band fills the head by itself: a scent word every so many ms, the air alone (faint: never) */
+const AMBIENT_MS = { faint: 0, noticeable: 9000, strong: 6000, overwhelming: 3500 };
+/* her style: what she orders and how often, what she hears in a mouth breath, what answer she wants (the question's words hint at it) */
 const STYLES = {
-  neutral:  { orderEvery: [3, 5], words: 0.3, pressOnHonest: false },
-  playful:  { orderEvery: [2, 4], words: 0.4, pressOnHonest: false },
-  cruel:    { orderEvery: [2, 3], words: 0.3, pressOnHonest: true },
-  ritual:   { orderEvery: [4, 4], words: 0.25, pressOnHonest: false },
+  neutral:      { every: [3, 5], orders: { deeper: 3, gently: 1, here: 2, still: 1 }, ask: ['what do you smell?', 'tell me what it’s like.'], askEvery: [24, 32],
+                  rule: 'warm', mouth: 'mild', note: 'wants to hear it is not bad any more (familiar or better), or the place she named' },
+  affectionate: { every: [5, 7], orders: { gently: 3, here: 1, deeper: 1 }, ask: ['how is it, love?', 'tell me. anything.'], askEvery: [26, 34],
+                  rule: 'any', mouth: 'allowed', note: 'any answer is fine; she never punishes honesty; the mouth is allowed' },
+  playful:      { every: [2, 4], orders: { here: 3, deeper: 2, still: 1 }, ask: ['be honest. is it strong?', 'how bad is it? tell me~'], askEvery: [20, 28], moves: 0.4,
+                  rule: 'admit', mouth: 'tease', note: 'wants you to admit how strong it is; her mark sometimes moves once you get there' },
+  cruel:        { every: [2, 3], orders: { deeper: 4, still: 2, here: 2 }, ask: ['tell me how bad it is. and what you want.', 'how does it smell? and what do you want?'], askEvery: [20, 26],
+                  rule: 'bad_and_want', mouth: 'punish', note: 'wants it said both ways: that it is bad, and that you want more' },
+  ritual:       { every: [4, 4], cycle: ['here', 'deeper', 'still'], ask: ['where, and how strong?'], askEvery: [24, 24],
+                  rule: 'place_and_band', mouth: 'permission', note: 'a fixed cycle (a place, deeper, still); wants the place she asked and the right strength' },
+  clinical:     { every: [3, 3], tour: true, ask: ['report. intensity, and what you feel.'], askEvery: [22, 22],
+                  rule: 'band_and_honest', mouth: 'noted', note: 'a tour of her places in order; wants the exact strength and your honest feeling' },
 };
 const LINES = {
   entry: { feet_on_face: ['breathe me in.'], face_to_bottom: ['stay right there. breathe.'], smothered_armpit: ['nose in. all the way.'] },
   deeper: ['deeper.', 'more than that.', 'all of it.'], gently: ['slowly.', 'gently.'], still: ['don’t move.', 'stay still.'],
-  here: { feet_on_face: [['between my toes.', 'toes'], ['the arch.', 'arch'], ['the heel.', 'heel']], face_to_bottom: [['closer.', 'center']], smothered_armpit: [['deeper in.', 'hollow']] },
-  ask: ['what do you smell?', 'tell me what it’s like.'], good: ['good.', 'mm. like that.'], bad: ['I said deeper.', 'that’s not what I asked.'],
-  mouth: ['through your nose.', 'I heard that.'], away: ['don’t you dare turn away.'], cough: ['too much for you?', 'breathe it, don’t fight it.'],
-  liked: ['good answer.', 'that’s right.'], honest: { neutral: ['you’ll get used to it.'], playful: ['aww. honest.'], cruel: ['then get used to it.'], ritual: ['noted. again.'] },
-  liar: ['liar.'], caught: ['you like that, don’t you.'], need: ['breathe.'], end: ['enough. for now.'], stop: ['okay. come up.'],
+  here: { feet_on_face: [['between my toes.', 'toes'], ['the arch.', 'arch'], ['the heel.', 'heel'], ['under my toes.', 'ball']], face_to_bottom: [['closer.', 'center'], ['my hip.', 'side']], smothered_armpit: [['deeper in.', 'hollow'], ['my side.', 'edge']] },
+  moved: ['no, here.', 'over here now~'],
+  good: ['good.', 'mm. like that.'], bad: ['I said deeper.', 'that’s not what I asked.'],
+  mouth: { mild: ['through your nose.'], allowed: [], tease: ['caught you~'], punish: ['did I say you could?'], permission: ['not without permission.'], noted: ['mouth breathing. noted.'] },
+  away: ['don’t you dare turn away.'], cough: ['too much for you?', 'breathe it, don’t fight it.'],
+  answer: {
+    ok: { neutral: ['good answer.'], affectionate: ['thank you for telling me.'], playful: ['ha. honest.'], cruel: ['good. remember that.'], ritual: ['correct.'], clinical: ['accurate.'] },
+    bad: { neutral: ['that’s not what I asked.'], affectionate: ['it’s okay. breathe.'], playful: ['liar~ prove it.'], cruel: ['wrong. smell it properly.'], ritual: ['incorrect. again.'], clinical: ['imprecise.'] },
+    empty: ['nothing? then smell it properly.'],
+  },
+  liar: ['liar.'], caught: ['you like that, don’t you.'], lost: { low: ['too much?'], high: ['good. stay there.'] },
+  need: ['breathe.'], end: ['enough. for now.'], stop: ['okay. come up.'],
 };
 
 /* ---------- settings ---------- */
 const S = { look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
-  layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 60,
+  layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 90,
   reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
 
@@ -314,11 +359,12 @@ function exhaleSound(d) {
 /* ---------- state ---------- */
 let G;
 function fresh() {
-  return { phase: 'idle', phaseT: 0, clock: 0, sat: 0, darkA: 0, cam: 0, nose: [0.5, 0.55], drift: [0, 0], mouse: [0.5, 0.55], lastNose: [0.5, 0.55],
-    inhaling: false, depth: 0, peak: 0, mouth: false, sinceBreath: 0, gasped: false, reflexCd: 0, overload: 0,
-    order: null, nextOrderAt: 3 * BEAT, att: 'busy', attAt: 0, mouthCheck: 0, awayMs: 0, stillMs: 0, lie: 0, beat: -1,
-    counts: { breaths: 0, deep: 0, coughs: 0, mouth: 0, noticed: 0, ordersOk: 0, ordersBad: 0, liked: 0, honest: 0, lies: 0, caught: 0, away: 0 },
-    o: 0.35, sp: [{ L: 0.35, v: 0, k: 58 }, { L: 0.35, v: 0, k: 74 }], zones: [], I: 0, hereZone: null, focus: [0.5, 0.5], text: [0.62, 0.18], lowest: 100, shake: 0, endAt: S.len * 1000 };
+  return { phase: 'idle', phaseT: 0, clock: 0, sat: 0, darkA: 0, cam: 0, nose: [0.5, 0.55], drift: [0, 0], mouse: [0.5, 0.55],
+    inhaling: false, depth: 0, peak: 0, mouth: false, mouthMs: 0, mouthTick: 0, sinceBreath: 0, reflexCd: 0, lost: 0, forcedDeep: false,
+    head: [], ambAt: 0, wordsTaken: 0, askPlace: null,
+    order: null, nextOrderAt: 3 * BEAT, nextAskAt: rand(14000, 18000), att: 'busy', awayMs: 0, lie: 0, beat: -1,
+    counts: { breaths: 0, deep: 0, coughs: 0, lost: 0, mouthWords: 0, noticed: 0, ordersOk: 0, ordersBad: 0, answered: 0, wrong: 0, empty: 0, lies: 0, caught: 0, away: 0 },
+    o: 0.35, sp: [{ L: 0.35, v: 0, k: 58 }, { L: 0.35, v: 0, k: 74 }], zones: [], I: 0, hereZone: null, shake: 0, endAt: S.len * 1000 };
 }
 G = fresh();
 
@@ -471,125 +517,195 @@ function intensityAt(p) {
 const stim = () => BAND[S.band] / 1.5;                       // her band, 0.33 … 1.33
 const tolT = () => 0.3 + (S.tol / 100) * 0.8;                 // the reflex threshold in stimulus units (TUNING.stimuli.reflexMult reading)
 const tolDepth = () => tolT() / Math.max(0.05, G.I * stim()); // where on the arc the threshold falls, here
+const capacity = () => 6 + Math.round(S.tol / 12);            // what the head holds: tolerance is the saturation capacity (P15a §16.8)
 /* her place: the face is there when it is within reach of the place she named */
 const targetP = () => (G.order && G.order.k === 'here' && G.zones[G.order.ti] ? G.zones[G.order.ti].p : null);
 function atTarget() { const tp = targetP(); if (!tp) return false; const ar = innerWidth / innerHeight; return Math.hypot((tp[0] - G.nose[0]) * ar, tp[1] - G.nose[1]) < 0.085; }
+const ZONE_IDS = { feet_on_face: ['toes', 'ball', 'arch', 'heel'], face_to_bottom: ['center', 'side'], smothered_armpit: ['hollow', 'edge'] };
+function weighted(obj) { const e = Object.entries(obj); let r = Math.random() * e.reduce((a, [, w]) => a + w, 0); for (const [k, w] of e) { r -= w; if (r <= 0) return k; } return e[0][0]; }
+/* the next order: by her style (weights, a ritual cycle, a clinical tour of her places) */
 function newOrder() {
-  const L = S.layers;
-  const kinds = [];
-  if (L.orders) kinds.push('deeper', 'deeper', 'gently', 'here', 'still');
-  if (L.words) kinds.push(...Array(Math.round(ST().words * 10)).fill('ask'));
-  if (!kinds.length) return;
-  const k = pick(kinds);
+  if (!S.layers.orders) { G.nextOrderAt = G.clock + 4 * BEAT; return; }
+  const st = ST();
+  let k;
+  if (st.cycle) k = st.cycle[(G.cycleI = ((G.cycleI ?? -1) + 1) % st.cycle.length)];
+  else if (st.tour) k = (G.tourStep = (G.tourStep ?? -1) + 1) % 2 === 0 ? 'here' : pick(['deeper', 'gently']);
+  else k = weighted(st.orders);
   if (k === 'deeper') { G.order = { k, band: [0.7, 0.95], until: G.clock + 4500 }; say(pick(LINES.deeper)); }
   else if (k === 'gently') { G.order = { k, band: [0.25, 0.45], until: G.clock + 4500 }; say(pick(LINES.gently)); }
   else if (k === 'here') {
-    const [line, id] = pick(LINES.here[S.contact]);
-    const ar = innerWidth / innerHeight, dist = (q) => Math.hypot((q[0] - G.nose[0]) * ar, q[1] - G.nose[1]);
-    let ti = -1; G.zones.forEach((z, i) => { if (z.id !== id) return; const b = G.zones[ti]; if (ti < 0 || z.w > b.w + 0.01 || (Math.abs(z.w - b.w) <= 0.01 && dist(z.p) < dist(b.p))) ti = i; });
-    G.order = { k, zone: id, ti, band: [0.5, 0.9], until: G.clock + 7000 }; G.hereZone = id;
-    const tp = G.zones[ti].p; say(line, false, [clamp(tp[0] + 0.05, 0.04, 0.8), clamp(tp[1] - 0.1, 0.06, 0.8)]); SFX.chime();
+    let pair;
+    if (st.tour || st.cycle) { const ids = ZONE_IDS[S.contact]; const id = ids[(G.tourI = ((G.tourI ?? -1) + 1)) % ids.length]; pair = LINES.here[S.contact].find((x) => x[1] === id) ?? pick(LINES.here[S.contact]); }
+    else pair = pick(LINES.here[S.contact]);
+    nameplace(pair[0], pair[1]);
   }
   else if (k === 'still') { G.order = { k, until: G.clock + 3500, from: [...G.nose] }; say(pick(LINES.still)); }
-  else if (k === 'ask') { askWords(); }
+}
+function nameplace(line, id, moved = false) {
+  const ar = innerWidth / innerHeight, dist = (q) => Math.hypot((q[0] - G.nose[0]) * ar, q[1] - G.nose[1]);
+  let ti = -1;
+  G.zones.forEach((z, i) => { if (z.id !== id) return; const b = G.zones[ti]; if (ti < 0 || z.w > b.w + 0.01 || (Math.abs(z.w - b.w) <= 0.01 && dist(z.p) < dist(b.p))) ti = i; });
+  if (ti < 0) ti = 0;
+  G.order = { k: 'here', zone: id, ti, band: [0.5, 0.9], until: G.clock + 7000, moved };
+  G.hereZone = id; G.askPlace = id;
+  const tp = G.zones[ti].p; say(line, false, [clamp(tp[0] + 0.05, 0.04, 0.8), clamp(tp[1] - 0.1, 0.06, 0.8)]); SFX.chime();
 }
 function orderDone(ok) {
   if (!G.order) return;
   if (ok) { G.counts.ordersOk += 1; if (Math.random() < 0.6) say(pick(LINES.good)); }
   else { G.counts.ordersBad += 1; say(pick(LINES.bad)); if (S.style === 'cruel') press(); }
   G.order = null; G.hereZone = null;
-  G.nextOrderAt = G.clock + randInt(...ST().orderEvery) * BEAT;
+  G.nextOrderAt = G.clock + randInt(...ST().every) * BEAT;
 }
 function press() { G.o = Math.max(0.12, G.o - 0.15); G.shake = 1; for (const x of G.sp) x.v -= 1.6; thump(0, 0.4, 60); }
+function lift() { G.o = Math.min(0.75, G.o + 0.25); for (const x of G.sp) x.v += 1.2; }
 
-/* her question: words drift up from the haze; two are chosen */
+/* ---------- the head: what the commander has breathed in, as words circling the face ---------- */
+const wordEls = []; // her question's pills
+function addWord(w, cat, from) {
+  const el = document.createElement('div'); el.className = 'hw'; el.textContent = w;
+  const p = from ?? G.nose;
+  el._p = [p[0], p[1]]; el._a = rand(0, Math.PI * 2); el._born = performance.now(); el._spd = rand(0.12, 0.26) * (Math.random() < 0.5 ? -1 : 1);
+  $('#words').appendChild(el);
+  G.head.push({ w, cat, el });
+  G.wordsTaken += 1;
+}
+/* a breath leaves words: where (if at one of her places), what (her scent), how it felt (the honest stage), how strong (the band) */
+function breathWords(d, forced = false) {
+  if (d < 0.3) return;
+  let n = d < 0.65 ? 1 : 2; if (G.I > 0.75) n += 1; if (forced) n += 1;
+  const z = G.zoneNow, from = z ? z.p : G.nose, list = [];
+  if (z && G.I > 0.5) list.push([pick(PLACE_W[z.id]), 'place:' + z.id]);
+  list.push([pick(SCENT[S.color]), 'scent']);
+  if (d >= 0.65) list.push([pick(STAGE_W[S.stage]), 'stage:' + S.stage]);
+  if (d >= 0.9) list.push([pick(BAND_W[S.band]), 'band:' + S.band]);
+  list.push([pick(SCENT[S.color]), 'scent']);
+  list.slice(0, n).forEach(([w, cat], i) => setTimeout(() => G.phase === 'loop' && addWord(w, cat, from), i * 160));
+}
+/* the mouth breathes words out: the oldest go first, flying off */
+function blowWord() {
+  const h = G.head.shift(); if (!h) return;
+  h.el._gone = performance.now(); h.el._out = [h.el._p[0] - G.nose[0], h.el._p[1] - G.nose[1]];
+}
+function scatter(n) { for (let i = 0; i < n && G.head.length; i++) { const k = randInt(0, G.head.length - 1); const [h] = G.head.splice(k, 1); h.el._gone = performance.now(); h.el._out = [rand(-1, 1), rand(-1, 0.2)]; } }
+function tickWords(dt) {
+  const now = performance.now(), n = G.head.length, cap = capacity();
+  const crowd = clamp(n / cap, 0, 1.3), asking = G.order && G.order.k === 'ask';
+  G.head.forEach((h, i) => {
+    const el = h.el;
+    el._a += (dt / 1000) * h.el._spd * (1 + crowd);
+    const ring = i % 2 ? 1 : 0.78, r = lerp(0.16, 0.085, smooth(0.2, 1.1, crowd)) * ring; // the more there is, the closer it crowds the face
+    const tx = G.nose[0] + (Math.cos(el._a) * r * innerHeight) / innerWidth, ty = G.nose[1] + Math.sin(el._a) * r * 0.8;
+    const age = (now - el._born) / 650;
+    const k = age < 1 ? easeOut(age) * 0.2 + 0.02 : 0.12; // a new word flies in from where it was breathed
+    el._p = [lerp(el._p[0], tx, k), lerp(el._p[1], ty, k)];
+    el.style.left = `${(el._p[0] * innerWidth).toFixed(1)}px`; el.style.top = `${(el._p[1] * innerHeight).toFixed(1)}px`;
+    el.style.opacity = asking ? '0' : String(clamp(0.45 + crowd * 0.45, 0, 1).toFixed(2));
+    el.style.fontSize = `${(15 + crowd * 7).toFixed(1)}px`;
+  });
+  for (const el of [...$('#words').children]) {
+    if (!el._gone) continue;
+    const t = (now - el._gone) / 700;
+    el._p[0] += el._out[0] * 0.02; el._p[1] += el._out[1] * 0.02 - 0.004;
+    el.style.left = `${el._p[0] * innerWidth}px`; el.style.top = `${el._p[1] * innerHeight}px`;
+    el.style.opacity = String(Math.max(0, 0.8 - t)); el.style.filter = `blur(${(t * 4).toFixed(1)}px)`;
+    if (t > 1.2) el.remove();
+  }
+  for (const el of wordEls) { el.style.left = `${el._p[0] * innerWidth}px`; el.style.top = `${el._p[1] * innerHeight}px`; if (asking) el.style.opacity = String(clamp((G.order.until - G.clock) / 4000, 0.25, 1).toFixed(2)); }
+  G.sat = (n / cap) * 100;
+}
+
+/* ---------- her question: name what is in the head; she wants it her way ---------- */
 function askWords() {
-  say(pick(LINES.ask));
-  const stage = S.stage, honest = PERCEPTION[stage];
-  const pool = new Set([...honest, ...KIND_WORD[S.contact].slice(0, 2)]);
-  for (const st of STAGES) if (st !== stage && Math.random() < 0.6) pool.add(pick(PERCEPTION[st]));
-  const words = [...pool].sort(() => Math.random() - 0.5).slice(0, 6);
-  const chosen = [];
-  G.order = { k: 'ask', until: G.clock + 12000, chosen, honest: new Set([...honest, ...KIND_WORD[S.contact]]) };
+  if (!S.layers.words) return;
+  const st = ST();
+  say(pick(st.ask));
+  const place = G.askPlace ?? (G.zones.slice().sort((a, b) => b.w - a.w)[0] || {}).id;
+  G.order = { k: 'ask', until: G.clock + 12000, chosen: [], place };
+  const seen = new Set(), pool = G.head.slice().reverse().filter((h) => !seen.has(h.w) && seen.add(h.w)).slice(0, 8).reverse(); // the same word twice is one answer
   const cx = clamp(G.nose[0], 0.25, 0.75), cy = clamp(G.nose[1], 0.42, 0.72);
-  words.forEach((w, i) => {
-    const el = document.createElement('div'); el.className = 'pw pick'; el.innerHTML = `<span class="key">${i + 1}</span>${w}`; el._word = w;
-    const a = -Math.PI * 0.92 + (i / (words.length - 1)) * Math.PI * 0.84; // a still arc above the face: nothing to chase
+  const items = pool.length ? pool : [{ w: '… nothing', cat: 'none' }];
+  items.forEach((h, i) => {
+    const el = document.createElement('div'); el.className = 'pw pick'; el.innerHTML = `<span class="key">${i + 1}</span>${h.w}`;
+    const a = items.length === 1 ? -Math.PI / 2 : -Math.PI * 0.92 + (i / (items.length - 1)) * Math.PI * 0.84;
     el._p = [clamp(cx + Math.cos(a) * 0.2, 0.08, 0.92), clamp(cy + Math.sin(a) * 0.3 - 0.04, 0.1, 0.7)];
-    el._v = [0, 0];
-    el._choose = () => { if (el.classList.contains('chosen') || !G.order || G.order.k !== 'ask') return; el.classList.add('chosen'); chosen.push(w); if (chosen.length >= 2) answerWords(); };
+    el._choose = () => {
+      const o = G.order; if (!o || o.k !== 'ask' || el.classList.contains('chosen')) return;
+      el.classList.add('chosen'); o.chosen.push(h);
+      if (o.chosen.length >= Math.min(2, items.length)) answerWords();
+    };
     el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); el._choose(); });
     $('#words').appendChild(el); wordEls.push(el);
   });
 }
+const isCat = (h, p) => h.cat.startsWith(p);
+function judge(chosen, place) {
+  const st = ST(), rank = (h) => STAGE_RANK[h.cat.split(':')[1]];
+  const want = (h) => (isCat(h, 'stage:') && rank(h) >= 3) || h.w === 'more';
+  const bad = (h) => (isCat(h, 'stage:') && rank(h) === 0) || h.cat === 'band:strong' || h.cat === 'band:overwhelming';
+  const placeOk = chosen.some((h) => h.cat === 'place:' + place);
+  const bandOk = chosen.some((h) => h.cat === 'band:' + S.band);
+  const honest = chosen.some((h) => h.cat === 'stage:' + S.stage);
+  switch (st.rule) {
+    case 'any': return chosen.some((h) => h.cat !== 'none');
+    case 'warm': return placeOk || chosen.some((h) => isCat(h, 'stage:') && rank(h) >= 2);
+    case 'admit': return chosen.some(bad);
+    case 'bad_and_want': return chosen.some(bad) && chosen.some(want);
+    case 'place_and_band': return placeOk && bandOk;
+    case 'band_and_honest': return bandOk && honest;
+  }
+  return false;
+}
 function answerWords() {
   const o = G.order; if (!o) return;
-  const liked = o.chosen.filter((w) => LIKED.has(w)).length, true_ = o.chosen.filter((w) => o.honest.has(w)).length;
-  for (const el of wordEls.filter((x) => x.classList.contains('pick'))) { el.classList.remove('pick'); el._fade = 1; }
-  if (liked >= 1 && true_ >= 1) { G.counts.liked += 1; say(pick(LINES.liked)); orderDone(true); }
-  else if (liked >= 1) { G.counts.liked += 1; G.counts.lies += 1; G.lie = 2; say(pick(LINES.liked)); G.order = null; G.nextOrderAt = G.clock + randInt(...ST().orderEvery) * BEAT; } // she believes it, for now
-  else { G.counts.honest += 1; say(pick(LINES.honest[S.style])); if (ST().pressOnHonest) press(); G.order = null; G.nextOrderAt = G.clock + randInt(...ST().orderEvery) * BEAT; }
-}
-
-/* the haze's own words: perception drifting from her toward the face, more as the head fills */
-const wordEls = [];
-function driftWord() {
-  if (!G.zones.length) return;
-  const z = pick(G.zones), stage = S.stage;
-  const w = Math.random() < 0.5 ? pick(PERCEPTION[stage]) : Math.random() < 0.5 ? pick(KIND_WORD[S.contact]) : pick(PERCEPTION[pick(STAGES)]);
-  const el = document.createElement('div'); el.className = 'pw'; el.textContent = w;
-  el._p = [z.p[0] + rand(-0.03, 0.03), z.p[1] + rand(-0.03, 0.03)];
-  el._v = [(G.nose[0] - el._p[0]) * 0.06, (G.nose[1] - el._p[1]) * 0.06 - 0.01];
-  el._life = 1; el._fade = 0; el.style.fontSize = `${lerp(16, 26, Math.random())}px`;
-  $('#words').appendChild(el); wordEls.push(el);
-}
-function tickWords(dt) {
-  const h = dt / 1000;
-  for (let i = wordEls.length - 1; i >= 0; i--) {
-    const el = wordEls[i];
-    if (el.classList.contains('pick')) {
-      el._p[0] += el._v[0] * h; el._p[1] += el._v[1] * h;
-      el.style.opacity = G.order && G.order.k === 'ask' ? String(clamp((G.order.until - G.clock) / 4000, 0.25, 1).toFixed(2)) : '1';
-    } else {
-      if (el._life !== undefined) { el._life -= h * 0.35; el._p[0] += el._v[0] * h; el._p[1] += el._v[1] * h; }
-      if (el._fade) el._fade += h * 2;
-      const op = el._fade ? Math.max(0, 1 - (el._fade - 1)) : clamp(Math.min(el._life * 2, (1 - el._life) * 4), 0, 1) * (0.35 + G.sat / 160);
-      el.style.opacity = op.toFixed(3);
-      if ((el._life !== undefined && el._life <= 0) || (el._fade && el._fade > 2)) { el.remove(); wordEls.splice(i, 1); continue; }
-    }
-    el.style.left = `${el._p[0] * innerWidth}px`; el.style.top = `${el._p[1] * innerHeight}px`;
+  for (const el of wordEls) { el.remove(); } wordEls.length = 0;
+  const empty = o.chosen.every((h) => h.cat === 'none');
+  // what is said is spent: those words leave the head
+  for (const h of o.chosen) { const i = G.head.indexOf(h); if (i >= 0) { G.head.splice(i, 1); h.el._gone = performance.now(); h.el._out = [0, -1]; } }
+  // a stage word that is not the body's own is a lie: the body may give it away
+  if (o.chosen.some((h) => isCat(h, 'stage:') && h.cat !== 'stage:' + S.stage)) { G.lie = 2; G.counts.lies += 1; }
+  G.order = null; G.nextOrderAt = G.clock + randInt(...ST().every) * BEAT; G.nextAskAt = G.clock + randInt(...ST().askEvery) * 1000;
+  if (empty) { G.counts.empty += 1; say(pick(LINES.answer.empty)); press(); const p = LINES.here[S.contact].find((x) => x[1] === o.place); if (p) setTimeout(() => G.phase === 'loop' && !G.order && nameplace(p[0], p[1]), 900); return; }
+  if (judge(o.chosen, o.place)) { G.counts.answered += 1; say(pick(LINES.answer.ok[S.style])); lift(); scatter(2); }
+  else {
+    G.counts.wrong += 1; say(pick(LINES.answer.bad[S.style]));
+    if (S.style !== 'affectionate') press();
+    if (['cruel', 'ritual', 'playful'].includes(S.style)) { const p = LINES.here[S.contact].find((x) => x[1] === o.place); if (p) setTimeout(() => G.phase === 'loop' && !G.order && nameplace(p[0], p[1]), 900); }
   }
 }
 
 /* ---------- breathing ---------- */
-function inhaleStart() { if (G.phase !== 'loop' || G.inhaling || G.reflexCd > 0) return; G.inhaling = true; G.depth = 0; G.peak = 0; breathSound('nose'); }
+function inhaleStart() { if (G.phase !== 'loop' || G.inhaling || G.reflexCd > 0 || G.lost > 0) return; G.inhaling = true; G.depth = 0; G.peak = 0; breathSound('nose'); }
 function inhaleEnd(forced = false) {
   if (!G.inhaling) return;
   G.inhaling = false; breathStop();
-  const d = G.depth, dose = d * G.I * stim();
-  G.sat = Math.min(110, G.sat + dose * 30);
+  const d = G.depth;
   G.sinceBreath = 0; G.counts.breaths += 1; if (d > 0.7) G.counts.deep += 1;
   SFX.exhale(d);
+  breathWords(d, forced);
   for (const x of G.sp) x.v += 0.3; // she feels the breath
   if (G.lie > 0) G.lie -= 1;
   const o = G.order;
   if (o && (o.k === 'deeper' || o.k === 'gently' || o.k === 'here') && !forced) {
     const inBand = d >= o.band[0] && d <= o.band[1];
-    const there = o.k !== 'here' || atTarget();
-    orderDone(inBand && there);
-  } else if (!o && d > 0.75 && G.I > 0.7 && G.att === 'watching') {
-    // seeking with nobody asking, while she watches: she sees it
-    G.counts.caught += 1; say(pick(LINES.caught));
-  }
+    if (o.k === 'here' && atTarget() && inBand && ST().moves && !o.moved && Math.random() < ST().moves) { // playful: she moves her mark once you get there
+      const others = LINES.here[S.contact].filter((x) => x[1] !== o.zone); if (others.length) { say(pick(LINES.moved)); const p = pick(others); nameplace(p[0], p[1], true); return; }
+    }
+    orderDone(inBand && (o.k !== 'here' || atTarget()));
+  } else if (!o && d > 0.75 && G.I > 0.7 && G.att === 'watching') { G.counts.caught += 1; say(pick(LINES.caught)); }
 }
 function reflex() {
   G.inhaling = false; breathStop(); G.counts.coughs += 1; G.reflexCd = 1400; G.shake = 1.4; G.sinceBreath = 0;
-  G.sat = Math.min(110, G.sat + 15);
-  SFX.cough(); burst();
-  if (G.lie > 0) { G.counts.caught += 0; say(pick(LINES.liar)); G.lie = 0; } else say(pick(LINES.cough));
+  SFX.cough(); burst(); scatter(2); // a cough throws words out of the head
+  if (G.lie > 0) { say(pick(LINES.liar)); G.lie = 0; } else say(pick(LINES.cough));
   if (G.order && G.order.k !== 'ask' && G.order.k !== 'still') orderDone(false);
-  // the line being typed breaks up
   const v = $('#cmd').value; if (v) { $('#cmd').value = v.slice(0, Math.max(0, v.length - randInt(3, 8))); tint.sync(true); }
+}
+/* the head overflows: the commander is lost in her for a moment; the face goes to her strongest place and breathes deep by itself */
+function overflow() {
+  G.lost = 3200; G.counts.lost += 1; G.shake = 0.8;
+  say(pick(STAGE_RANK[S.stage] >= 3 ? LINES.lost.high : LINES.lost.low));
+  setTimeout(() => { if (G.phase !== 'loop') return; G.inhaling = true; G.depth = 0; breathSound('nose'); G.forcedDeep = true; }, 900);
 }
 
 /* ---------- phases ---------- */
@@ -604,14 +720,15 @@ function begin() {
 function exit(reason) {
   if (G.phase !== 'loop' && G.phase !== 'entry') return;
   G.phase = 'exit'; G.phaseT = 0; G.reason = reason; G.inhaling = false; breathStop();
-  for (const el of wordEls) el._fade = el._fade || 1;
+  for (const el of wordEls) el.remove(); wordEls.length = 0;
+  scatter(G.head.length);
   setTimeout(() => { $('#hand').replaceChildren(); say(pick(reason === 'stop' ? LINES.stop : LINES.end), true, [0.56, 0.2]); }, 900);
   setTimeout(showSummary, 2300);
 }
 function showSummary() {
   G.phase = 'done';
   const c = G.counts;
-  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · through the mouth ${c.mouth} (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers she liked ${c.liked} (lies ${c.lies}) · honest ${c.honest} · caught seeking ${c.caught}<br>peak saturation ${Math.round(G.peakSat ?? 0)}`;
+  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · lost in her ${c.lost}<br>through the mouth ${c.mouthWords} words out (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers right ${c.answered} · wrong ${c.wrong} · nothing to say ${c.empty} · lies ${c.lies} · caught seeking ${c.caught}<br>words breathed in ${G.wordsTaken} · peak ${Math.round(G.peakSat ?? 0)} % of the head`;
   $('#summary').style.display = 'block';
 }
 
@@ -622,59 +739,72 @@ function updateLoop(dt) {
   breathTick();
   const h = dt / 1000;
   const beatNow = Math.floor(G.clock / BEAT);
-  while (G.beat < beatNow) {
-    G.beat += 1; G.att = attentionDraw();
-    if (G.att === 'busy' && S.task === 'reading' && Math.random() < 0.35) SFX.page();
-    G.sat = Math.min(110, G.sat + SAT_PER * 0.18 * stim()); // her scent fills the air whatever the commander does
-  }
-  // the nose: the mouse, plus the body's own pull, slowed while overloaded
+  while (G.beat < beatNow) { G.beat += 1; G.att = attentionDraw(); if (G.att === 'busy' && S.task === 'reading' && Math.random() < 0.35) SFX.page(); }
+  // the air itself fills the head, by her band
+  const amb = AMBIENT_MS[S.band];
+  if (amb && (G.ambAt += dt) > amb) { G.ambAt = 0; addWord(pick(SCENT[S.color]), 'scent', G.zones.length ? pick(G.zones).p : G.nose); }
+  // the nose: the mouse, plus the body's own pull (and all of it toward her while lost)
   const z = intensityAt(G.nose); G.I = z.I; G.zoneNow = z.zone;
-  if (S.layers.drift && z.zone) {
-    const pull = STAGE_PULL[S.stage] * (STAGE_PULL[S.stage] > 0 ? (G.inhaling ? 1.5 : 1) : (G.inhaling ? 1 : 0));
+  const strongest = G.zones.slice().sort((a, b) => b.w - a.w)[0];
+  if (G.lost > 0 && strongest) {
+    G.drift[0] += (strongest.p[0] - G.nose[0]) * h * 2.2; G.drift[1] += (strongest.p[1] - G.nose[1]) * h * 2.2;
+  } else if (S.layers.drift && z.zone) {
+    const fill = 1 + clamp(G.sat / 100, 0, 1.2); // a full head pulls harder
+    const pull = STAGE_PULL[S.stage] * (STAGE_PULL[S.stage] > 0 ? (G.inhaling ? 1.5 : 1) * fill : (G.inhaling ? 1 : 0));
     const dx = z.zone.p[0] - G.nose[0], dy = z.zone.p[1] - G.nose[1], d = Math.hypot(dx, dy) || 1;
     G.drift[0] += (dx / d) * pull * 0.09 * h; G.drift[1] += (dy / d) * pull * 0.09 * h;
   }
-  G.drift = G.drift.map((v) => clamp(v * (1 - h * 0.35), -0.22, 0.22));
+  G.drift = G.drift.map((v) => clamp(v * (1 - h * 0.35), -0.3, 0.3));
   const target = [clamp(G.mouse[0] + G.drift[0], 0.02, 0.98), clamp(G.mouse[1] + G.drift[1], 0.04, 0.96)];
-  const k = G.overload > 0 ? 1.2 : 14;
+  const k = G.lost > 0 ? 1.2 : 14 - clamp(G.sat / 100, 0, 1) * 8; // a full head is slow to steer
   G.nose = [lerp(G.nose[0], target[0], clamp(h * k, 0, 1)), lerp(G.nose[1], target[1], clamp(h * k, 0, 1))];
   // breathing in: deeper the longer it is held; past the tolerance the body revolts
   if (G.inhaling) {
     G.depth = Math.min(1.25, G.depth + dt / INHALE_FILL_MS); G.peak = Math.max(G.peak, G.depth);
     if (G.depth * G.I * stim() > tolT()) reflex();
+    else if (G.forcedDeep && G.depth >= 1) { G.forcedDeep = false; inhaleEnd(true); }
   }
   G.reflexCd = Math.max(0, G.reflexCd - dt);
-  // the mouth: clears the head, and she may hear it
-  if (G.mouth && !G.inhaling) {
-    G.sat = Math.max(0, G.sat - (MOUTH / BEAT) * dt * 0.65); G.sinceBreath = 0;
-    breathSound('mouth');
-    G.mouthCheck -= dt;
-    if (G.mouthCheck <= 0) { G.mouthCheck = 1000; if (Math.random() < NOTICED[G.att] * 0.7) { G.counts.noticed += 1; say(pick(LINES.mouth)); G.mouthHeard = 1; if (S.style === 'cruel') press(); } }
-  } else if (!G.inhaling && BR.kind === 'mouth') breathStop();
-  // the need to breathe
+  // the mouth: air without her scent, words out of the head; short breaths are quiet, a long one is heard
+  if (G.mouth && !G.inhaling && G.lost <= 0) {
+    G.sinceBreath = 0; breathSound('mouth');
+    G.mouthMs += dt; G.mouthTick -= dt;
+    if (G.mouthTick <= 0 && G.head.length) {
+      G.mouthTick = 420; blowWord(); G.counts.mouthWords += 1;
+      const loud = G.mouthMs < 900 ? 0.25 : 0.6;
+      if (Math.random() < NOTICED[G.att] * loud) heardMouth();
+    }
+  } else { if (!G.inhaling && BR.kind === 'mouth') breathStop(); G.mouthMs = 0; }
+  // the need to breathe: some air, one way or the other
   G.sinceBreath += dt;
-  if (S.layers.need && G.sinceBreath > 8000 && !G.inhaling && !G.mouth) { G.inhaling = true; G.depth = 0.95; breathSound('nose'); setTimeout(() => inhaleEnd(true), 250); say(pick(LINES.need)); }
-  // her orders
+  if (S.layers.need && G.sinceBreath > 7000 && !G.inhaling && !G.mouth && G.lost <= 0) { G.sinceBreath = 0; G.inhaling = true; G.depth = 0; breathSound('nose'); G.forcedDeep = true; say(pick(LINES.need)); }
+  // her orders, and her rare question
   if (G.order) {
     const o = G.order;
     if (o.k === 'still') {
       const moved = Math.hypot((G.nose[0] - o.from[0]) * innerWidth, (G.nose[1] - o.from[1]) * innerHeight);
       if (moved > 60) orderDone(false); else if (G.clock > o.until) orderDone(true);
     } else if (G.clock > o.until) {
-      if (o.k === 'ask') { for (const el of wordEls.filter((x) => x.classList.contains('pick'))) { el.classList.remove('pick'); el._fade = 1; } }
+      if (o.k === 'ask') { for (const el of wordEls) el.remove(); wordEls.length = 0; G.nextAskAt = G.clock + randInt(...ST().askEvery) * 1000; }
       orderDone(false);
     }
-  } else if (G.clock > G.nextOrderAt) newOrder();
+  } else if (G.clock > G.nextAskAt && S.layers.words) askWords();
+  else if (G.clock > G.nextOrderAt) newOrder();
   // turning away while she wants closeness
   if (G.I < 0.2 && G.att !== 'busy') { G.awayMs += dt; if (G.awayMs > 2500) { G.awayMs = -4000; G.counts.away += 1; say(pick(LINES.away)); press(); } } else G.awayMs = Math.min(G.awayMs, 0) + (G.awayMs < 0 ? dt : 0);
-  // overload: the head is full of her
-  if (G.sat >= 100 && G.overload <= 0) { G.overload = 4000; SFX.cough(); G.shake = 0.8; for (let i = 0; i < 10; i++) setTimeout(driftWord, i * 120); }
-  if (G.overload > 0) { G.overload -= dt; if (G.overload <= 0) G.sat = 70; }
-  if (Math.random() < h * (0.4 + G.sat / 40)) driftWord();
+  // the head overflows
+  if (G.head.length > capacity() && G.lost <= 0) overflow();
+  if (G.lost > 0) { G.lost -= dt; if (G.lost <= 0) { scatter(Math.ceil(G.head.length / 2)); G.drift = [0, 0]; } }
   G.peakSat = Math.max(G.peakSat ?? 0, G.sat);
-  // her shape relaxes back to rest after a press
   G.o = lerp(G.o, 0.35, clamp(h * 0.5, 0, 1));
   if (G.clock > G.endAt) exit('done');
+}
+function heardMouth() {
+  const m = ST().mouth; G.counts.noticed += 1;
+  const line = LINES.mouth[m]; if (line.length) say(pick(line));
+  if (m === 'punish' || m === 'permission') press();
+  if (m === 'punish' && !G.order) { G.order = { k: 'still', until: G.clock + 3500, from: [...G.nose] }; }
+  if (m === 'tease' && !G.order) { G.order = { k: 'deeper', band: [0.7, 0.95], until: G.clock + 4500 }; say(pick(LINES.deeper)); }
 }
 
 let mouse = [0.5, 0.55];
@@ -906,7 +1036,7 @@ function render(now, dt) {
   const prox = smooth(0.15, 1.05, G.I);
   $('#aProx').setAttribute('r', (2 + prox * 4.5).toFixed(1)); $('#aProx').setAttribute('fill', `rgba(${col},${(0.6 + prox * 0.4).toFixed(2)})`);
   $('#aProxGlow').setAttribute('r', (8 + prox * 16).toFixed(1)); $('#aProxGlow').setAttribute('fill', `rgb(${col})`); $('#aProxGlow').setAttribute('opacity', (prox * 0.55).toFixed(2));
-  const need = S.layers.need && live ? smooth(5000, 8000, G.sinceBreath) : 0;
+  const need = S.layers.need && live ? smooth(4500, 7000, G.sinceBreath) : 0;
   $('#aNeed').setAttribute('opacity', (need * (0.5 + 0.5 * Math.sin(now / 120))).toFixed(2)); $('#aNeed').setAttribute('stroke', 'rgba(255,255,255,.7)');
   $('#aNeed').setAttribute('r', (R + 8 - need * 4).toFixed(1));
   // sound
@@ -936,7 +1066,7 @@ const tint = {
     if (S.layers.tint && G.phase === 'loop' && v.endsWith(' ') && !p.endsWith(' ') && Math.random() < smooth(45, 100, G.sat) * 0.33) {
       const m = v.slice(0, -1).match(/(\S+)$/);
       if (m) {
-        const repl = Math.random() < 0.35 ? S.name : pick([...PERCEPTION[S.stage], ...KIND_WORD[S.contact]]);
+        const repl = Math.random() < 0.35 || !G.head.length ? S.name : pick(G.head).w; // a word from the head
         const start = v.length - 1 - m[1].length;
         const nv = v.slice(0, start) + repl + ' ';
         $('#cmd').value = nv; this.chars.splice(start, m[1].length, ...[...repl].map((ch) => ({ ch, tint: true }))); this.prev = nv;
@@ -965,19 +1095,19 @@ addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { exit('stop'); return; }
   if (typing(e.target)) return;
   if (e.key === ' ') { e.preventDefault(); if (!e.repeat) inhaleStart(); }
-  else if (e.key === 'Shift') { G.mouth = true; if (!G.mouthLatched) { G.mouthLatched = true; G.counts.mouth += 1; } }
+  else if (e.key === 'Shift') { G.mouth = true; }
   else if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
   else if (/^[1-6]$/.test(e.key) && G.order && G.order.k === 'ask') { const el = wordEls.filter((x) => x.classList.contains('pick') || x.classList.contains('chosen'))[Number(e.key) - 1]; if (el && el._choose) el._choose(); }
 });
 addEventListener('keyup', (e) => {
   if (e.key === ' ') inhaleEnd();
-  if (e.key === 'Shift') { G.mouth = false; G.mouthLatched = false; }
+  if (e.key === 'Shift') { G.mouth = false; }
 });
 // while typing, the mouse breathes: left button the nose, right button the mouth
 $('#stage').addEventListener('mousedown', (e) => {
   if (e.target.closest('#inputWrap, #stopPill, .card, .pick')) return;
   e.preventDefault();
-  if (e.button === 0) inhaleStart(); else if (e.button === 2) { G.mouth = true; G.counts.mouth += 1; }
+  if (e.button === 0) inhaleStart(); else if (e.button === 2) { G.mouth = true; }
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) inhaleEnd(); if (e.button === 2) G.mouth = false; });
 $('#stage').addEventListener('contextmenu', (e) => e.preventDefault());
@@ -994,7 +1124,10 @@ optRow($('#looks'), ['motes', 'ribbons', 'haze'], () => S.look, (k) => { S.look 
 optRow($('#bands'), Object.keys(BAND), () => S.band, (k) => { S.band = k; });
 optRow($('#colors'), Object.keys(COLORS), () => S.color, (k) => { S.color = k; });
 optRow($('#stages'), STAGES, () => S.stage, (k) => { S.stage = k; });
-optRow($('#styles'), Object.keys(STYLES), () => S.style, (k) => { S.style = k; });
+optRow($('#styles'), Object.keys(STYLES), () => S.style, (k) => { S.style = k; $('#styleNote').textContent = STYLES[k].note; });
+$('#styleNote').textContent = ST().note;
+const PRESETS = { 'first time': ['aversion', 10], 'used to her': ['accustomed', 45], devoted: ['adoring', 80] };
+optRow($('#presets'), Object.keys(PRESETS), () => '', (k) => { const [st, tol] = PRESETS[k]; S.stage = st; S.tol = tol; $('#tol').value = tol; $('#tolV').textContent = String(tol); optRow($('#stages'), STAGES, () => S.stage, (x) => { S.stage = x; }); });
 optRow($('#tasks'), Object.keys(ATTENTION), () => S.task, (k) => { S.task = k; });
 $('#tol').oninput = () => { S.tol = Number($('#tol').value); $('#tolV').textContent = String(S.tol); };
 $('#hername').oninput = () => { S.name = $('#hername').value || 'her'; };
