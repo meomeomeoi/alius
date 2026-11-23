@@ -35,7 +35,8 @@ Within B, **the whole last reply is shown at once** (option "b" of the session),
 ## 2. Sprites
 
 - One present woman: centred; her sprite is about **1.1 × the viewport height**, its top about 3 % below the top edge, so the head and shoulders sit high and the knees disappear under the bottom gradient. At 1920×1080 the visible part is **at least 600 px** (the acceptance floor is 540, half the height).
-- Two or three: left / centre / right as today, scaled down so they do not overlap more than a shoulder; the speaker is brought forward (brightness, a slight scale), the others dimmed.
+- **Room space (author's note, 2026-11-22):** the sprites stand in the room, not on the glass. The sprite layer moves with the backdrop when the commander looks around (the panorama is the backdrop's drawn width at the viewport's height, about 2.4 × the height). One woman: at the centre of the panorama. Two: both within the central view (at the default view both heads are on screen). Three or four: spread across the whole panorama, so some sit beyond the view's edges and the commander turns to see them. Four are drawn at about 0.85 of the size of two or three, so neighbours do not overlap past a shoulder. The speaker is brought forward (brightness, a slight scale), the others dimmed.
+- **The view turns to the speaker:** when a reply from a woman lands, the view eases to centre her, unless the commander turned it by hand in the last 8 seconds; reduced motion jumps. The scene's memory for looking around keeps the pan as it is after the ease.
 - **Scene light:** the sprite is tinted by the scene's light (`data-light`: day, evening, night) so a daylight sprite does not glow in a dark room (P17c §4 adds alarm, sensory and hold tints).
 - The expression is the current SillyTavern expression (`getSpriteUrl`), as today. No sprite → her name plate, as P17c's art rule demands; a missing file is never an error.
 - **POV views** (P17c's camera): the sprite layer is hidden or replaced by a pose shot; nothing else in this spec changes for them (§8).
@@ -78,7 +79,7 @@ Today the PDA cannot be raised during a scene (Tab and OPEN PDA act only on the 
 
 ## 6. Cards: her hand
 
-- Every card the scene draws (moment card P15a, milestone, claim and return cards P15, task, punishment and demonstration cards P16, the posture call P16, the held strip and the alarm card P16, the wake card P15a, a blocking proposal) is placed in **one dock at the left side of the frame**, vertically centred, about 420 px wide, never over her face.
+- Every card the scene draws (moment card P15a, milestone, claim and return cards P15, task, punishment and demonstration cards P16, the posture call P16, the held strip and the alarm card P16, the wake card P15a, a blocking proposal) is placed in **one dock at the left side of the frame**, from 30 % of the height down (a taller stack scrolls inside it), about 420 px wide, never over her face.
 - One card is open at a time; the others are collapsed to their title line above it (newest on top). A card can be set aside to a small counter in the dock's corner ("2 waiting") and brought back.
 - Cards keep their content, voices and `data-analyze`; only where they are drawn changes. Their look moves to the scene's language (glass, the speaker's accent, no `[ BRACKETS ]`), voices stay readable (P10 voices).
 - **While the curtain is open** the dock moves to the right of the curtain.
@@ -195,10 +196,17 @@ Built as the plan describes, in `src/ui/scene/stage/` (the frame, the reply, the
 - **R3 (swipes show n / m).** `ChatMessage.swipeCount` comes from `chat[i].swipes.length` (real) or is kept after the first swipe (fake); without it the curtain shows only ‹ ›.
 - **R4 (the dial draws the 13 base postures from data).** The 47 presets of `docs/content/blocking.md` §7.3 are a test fixture (`tests/fixtures/dial/presets.ts`), not registry content. The drift ghost (`target`, `hot`) is a drawing API; nothing drives it yet.
 - **R5 (the fan reuses the strip's model).** `blockingChoices(state, reg)` in `blockingStrip.ts` is the one model: rows, the commander's moves and the `[ + ]` entries with the reason a gate refuses each. The strip and the dial's fan both read it.
-- **R6 (the physics panel is a dock card).** Its stop word is mirrored by a `[data-stop-word]` button in the chip row's `stop` slot while the panel draws one.
-- **R7 (looking around).** `stage/look.ts`; the frame layer is the only layer that takes the pointer.
+- **R6 (the physics panel is a dock card; the stop word is a pill, author's note A1).** The card (a heading, its controls as pills and her cue) draws no stop word; a small `STOP WORD` pill in the bottom-right corner over the dial (`.alius-stop-host`, `[data-stop-word]`, `data-analyze="glossary:stop_word"`) calls the same handler whenever the panel would offer the stop word (a run, anything that holds the commander, ways or acts to offer), with or without the dial. `renderPhysicsPanel` returns whether it is offered and takes `stopWord: false` from the scene (standalone it still draws its own). The chip row has no `stop` slot any more.
+- **R7 (looking around; the sprites in room space, author's note A2).** `stage/look.ts`; the frame layer is the only layer that takes the pointer. The sprite layer holds a panorama that moves with `--alius-pan` as the backdrop does (`max(100cqw, 240cqh)` wide, `container-type: size` on the layer); a sprite's x is `--alius-sprite-x` in `cqh` from its centre, from `spriteSlots(count)` in `stage/sprites.ts` (one at the centre, two within the central view, three and more across the whole width, four at 0.85 of the size). When a reply from a woman lands the view turns to centre her (`attachLook(...).turnTo`, `panToCentre`), not within `DRAG_HOLD_MS` (8 s) of a drag or a recentre, not for what was there when the scene opened; reduced motion jumps; the memory keeps the pan after the ease.
 
 **Where each host went** is the table of §12a.5; `tests/ui/stage/hosts.test.ts` holds it as data and finds each of today's hosts in its new place.
+
+**After the review (the fix wave)**
+- The dial's fan lists what is set on each person (NOW: her posture, place, activity, what is worn, the contact) with the strip's chips and the guarded × (`blockingChipEls`); this is how an item or a contact is taken off in the scene.
+- While the device is up over the scene the scene is `inert` and `aria-hidden` (`syncSceneInert` in the shell), so focus, keys and clicks do not reach it; the scene's own `focusInput` does nothing under an inert root and the shell gives the focus back to the line when the device is lowered. A scene always opens with the device down (also when shown again), and `shell.showTab(id)` while a scene is shown raises the device over it on that tab.
+- A running hold's card (`[data-run]`) is never collapsed by the dock, whatever card comes first; a button inside a collapsed card's heading does only its own action. The dock stands from 30 vh down (a stack taller than 46 vh scrolls inside it), so it never reaches a head box.
+- The chip row measures overflow with `getBoundingClientRect` against the row itself (never `offsetLeft`). The history's wheel-down closes it only on an accumulated 240 at the end, in one direction, within a 500 ms pause. Looking around ends on a cancelled pointer, a lost capture or a move with no button held. `**bold**` reads as emphasis. The reply block is a polite live region. The dock's set-aside cross and counter, the chip row's +N and "more above" carry `data-analyze` (glossary `dock_cards`, `chip_overflow`, `reply_more`).
+- `npm run test:layout` now also measures the chip row (`chips`, `chipsmany`), the stop-word pill, a tall dock (real cards) and each woman at the pan that centres her (`two`, `three`, `four`); Playwright is not a declared dependency (it comes from the environment).
 
 **Non-obvious things to know**
 - **Layers are explicit.** Nine layers in a fixed z-order (`css/62-stage.css`); every z-index in the stylesheet stays below the analysis panel's 10 (a test pins it). Only the frame layer has `pointer-events: auto`; the UI layer and its children take it back host by host.
@@ -219,6 +227,7 @@ Built as the plan describes, in `src/ui/scene/stage/` (the frame, the reply, the
 - Each mini-game's instrument comes with the mini-games session (the input frame's gauge API and the dial's dimming while one runs are ready).
 - Using the device in front of her as an act she may notice is a later package.
 - P17c's camera fills the frame, surface and pose-shot layers (empty today) and hides the sprites layer for a POV view.
+- Collapsed voice cards of the dock show only their first child (the speaker's name): a heading line for them is a later polish.
 - The art in the layout test is a placeholder: legibility of the reply over the author's sprites is judged by eye (the bottom gradient is the lever).
 - A card's heading is its first child; a card whose first child is not a heading collapses oddly.
 - No touch or keyboard fallback for looking around; the curtain and the history button work by click.
