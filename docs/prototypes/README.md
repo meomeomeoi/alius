@@ -41,7 +41,9 @@ What it shows:
 - **The end** (`finish`): by presence: her end line (`with`, `glancing`), two taps of her foot (`own`), or the forgotten end (`use`: the lamp off, her steps, the door; GET UP or wait until someone finds the commander). The stop word always ends it.
 - **The digest** (`showDigest`): what the scene that follows is told (only what she perceived) and what only the commander knows.
 
-Not yet in it (next round): the approved weight (`footrest`) running inside the frame; foot service under the desk (the next game).
+- **The game inside** (panel: stillness / weight): **weight** runs the approved `weight.html` (contact `footrest`) inside the frame, its code ported as it is (`wPlanShift`, `wLandShift`, `wSlip`, `wRelief`, the level, the cracks, the strain rumble, the floor with her screen's light); only the wiring changes: her attention per moment is the frame's (her presence and activity), her lines go through her presence (only `with` and `glancing` speak), the commander's own shift is heard and seen through `bodyNoise` (cover, her ears, the tell), at her limit she lets the commander rest a moment by presence (in `use` she does not notice and the commander buckles: a gross fault), the strategies between phases act on the strength, and the digest counts her shifts, slips, buckles and rests. In the frame the input's trembling letters are not wired (prototype).
+
+Not yet in it: foot service under the desk (the next game).
 
 ## `saturation.html` — scent (P15a `saturation` with the stimulus body layer)
 

@@ -40,6 +40,15 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #blindView { background: radial-gradient(ellipse at 50% 55%, #0b090d 0%, #030203 70%); }
 #grain { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .08; mix-blend-mode: overlay; pointer-events: none; }
 #vignette { position: absolute; inset: 0; pointer-events: none; }
+#strainV { position: absolute; inset: 0; pointer-events: none; }
+#cracks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#cracks path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+#vial { position: absolute; left: 50%; bottom: 186px; width: 460px; height: 70px; margin-left: -230px; scale: 1.3; opacity: 0; transition: opacity .8s; pointer-events: none; }
+#vial .glassbed { position: absolute; left: 40px; right: 40px; top: 16px; height: 38px; border-radius: 19px; backdrop-filter: blur(5px) brightness(1.15); -webkit-backdrop-filter: blur(5px) brightness(1.15); }
+#vial svg { position: absolute; inset: 0; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.6)); }
+#footrestView { perspective: 1400px; }
+#wFloor { inset: -20%; transform-origin: 50% 40%; }
+#wShadow { position: absolute; inset: 0; width: 100%; height: 100%; }
 #urges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
 /* her hand (her words, aloud or written) */
@@ -131,15 +140,58 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
     <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="legsArt" class="legsArt" alt="" draggable="false" style="display:none"><img id="raisedArt" class="legsArt" alt="" draggable="false" style="display:none"><img id="deskFrame" alt="" draggable="false"><div id="floorShadow" style="position:absolute;inset:0;pointer-events:none"></div><div id="deskShade"></div></div>
     <div class="view" id="floorView"><div class="bg" id="floorBg"></div><div id="feetShadow" style="position:absolute;pointer-events:none;opacity:0"></div><img id="floorArt" class="legsArt" alt="" draggable="false" style="display:none;-webkit-mask-image:linear-gradient(to bottom, transparent 0%, #000 30%);mask-image:linear-gradient(to bottom, transparent 0%, #000 30%)"><canvas class="lightC" id="floorLight"></canvas><div id="bunkEdge" style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 12%, rgba(0,0,0,0) 30%)"></div></div>
     <div class="view" id="wallView"><div class="bg" id="wallBg"></div><canvas class="lightC" id="wallLight"></canvas></div>
+    <div class="view" id="footrestView"><div class="bg" id="wFloor"></div><canvas id="wShadow"></canvas></div>
     <div class="view" id="blindView"></div>
   </div>
   <canvas id="grain"></canvas>
   <div id="vignette"></div>
+  <div id="strainV"></div>
+  <svg id="cracks"></svg>
   <canvas id="urges"></canvas>
   <div id="senses"></div>
   <div id="others"></div>
   <div id="hand"></div>
   <div id="ui">
+    <div id="vial">
+      <div class="glassbed"></div>
+      <svg viewBox="0 0 460 70" width="460" height="70">
+        <defs>
+          <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5a3f17"/><stop offset=".22" stop-color="#e8c77c"/><stop offset=".45" stop-color="#a77b33"/><stop offset=".7" stop-color="#6a4a1a"/><stop offset="1" stop-color="#c9a15a"/>
+          </linearGradient>
+          <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f3c66a" stop-opacity=".5"/><stop offset=".55" stop-color="#c88426" stop-opacity=".62"/><stop offset="1" stop-color="#7a4210" stop-opacity=".78"/>
+          </linearGradient>
+          <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".18" stop-color="#fff" stop-opacity=".08"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/>
+          </linearGradient>
+          <radialGradient id="bubble" cx=".5" cy=".42" r=".6">
+            <stop offset="0" stop-color="#fffbe9" stop-opacity=".18"/><stop offset=".62" stop-color="#fff6d8" stop-opacity=".32"/><stop offset=".86" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+          <clipPath id="tube"><rect x="40" y="16" width="380" height="38" rx="19"/></clipPath>
+        </defs>
+        <!-- the glow it casts when level -->
+        <ellipse id="vGlow" cx="230" cy="58" rx="170" ry="10" fill="#f2b452" opacity="0" filter="url(#soft)"/>
+        <!-- the tube -->
+        <rect x="40" y="16" width="380" height="38" rx="19" fill="rgba(10,8,14,.35)"/>
+        <g clip-path="url(#tube)">
+          <rect id="vLiquid" x="30" y="16" width="400" height="38" fill="url(#liquid)"/>
+          <!-- engraved scale -->
+          <g id="vTicks" stroke="#3a2205" stroke-opacity=".55" stroke-width="1"></g>
+          <g id="vMarks"><line x1="0" y1="16" x2="0" y2="54" stroke="#ffe7a8" stroke-width="1.6"/><line x1="0" y1="16" x2="0" y2="54" stroke="#ffe7a8" stroke-width="1.6"/></g>
+          <!-- the bubble: elastic, it stretches when it moves fast -->
+          <g id="vBubble"><ellipse rx="30" ry="12" fill="url(#bubble)"/><ellipse cx="-8" cy="-6" rx="10" ry="2.6" fill="#fff" opacity=".8"/></g>
+          <rect x="40" y="16" width="380" height="38" rx="19" fill="url(#sheen)"/>
+        </g>
+        <rect x="40.5" y="16.5" width="379" height="37" rx="18.5" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+        <!-- brass ends -->
+        <g><rect x="18" y="10" width="34" height="50" rx="9" fill="url(#brass)"/><rect x="18" y="10" width="34" height="50" rx="9" fill="none" stroke="#2a1c08" stroke-opacity=".6"/>
+          <circle cx="29" cy="35" r="3.2" fill="#3a2a10"/><line x1="26.8" y1="35" x2="31.2" y2="35" stroke="#d7b46a" stroke-width="1"/></g>
+        <g><rect x="408" y="10" width="34" height="50" rx="9" fill="url(#brass)"/><rect x="408" y="10" width="34" height="50" rx="9" fill="none" stroke="#2a1c08" stroke-opacity=".6"/>
+          <circle cx="431" cy="35" r="3.2" fill="#3a2a10"/><line x1="431" y1="32.8" x2="431" y2="37.2" stroke="#d7b46a" stroke-width="1"/></g>
+      </svg>
+    </div>
     <div id="reply"></div>
     <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something aloud… (Enter)"></div>
     <div id="stopPill">● stop word · amber</div>
@@ -158,6 +210,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 <div id="debug"></div>
 
 <div id="panel">
+  <h4>the game inside the frame</h4>
+  <div class="row" id="inners"></div>
+  <div class="note">stillness: the urges and restlessness. weight: the approved weight (footrest) inside the frame: hold Space or the left button, balance with the mouse, Shift or the right button to shift your own weight; her attention, lines, calls and the end come from the frame.</div>
   <h4>what the commander perceives (view)</h4>
   <div class="row" id="views"></div>
   <label><input type="checkbox" id="blind"> blindfold (any view: hearing only)</label>
@@ -297,6 +352,8 @@ const VIEWS = {
            her: [0.5, 0.1], herPan: 0, door: [0.86, 0.5], doorPan: 0.8, body: [0.5, 0.66] },
   floor: { sight: false, label: 'floor', note: 'Kneeling by her bunk, eyes down: the floor. She is above you, to the left.',
            her: [0.24, 0.14], herPan: -0.45, door: [0.9, 0.36], doorPan: 0.8, body: [0.5, 0.66] },
+  footrest: { sight: false, label: 'footrest', note: 'On all fours, her feet resting on your back while she sits in her chair: the floor; she is above and out of view.',
+           her: [0.5, 0.1], herPan: 0, door: [0.88, 0.4], doorPan: 0.8, body: [0.5, 0.66] },
   wall:  { sight: false, label: 'wall',  note: 'Facing the wall: hearing only. She is behind you; the door behind, to the left.',
            her: [0.5, 0.7], herPan: 0, door: [0.1, 0.5], doorPan: -0.8, body: [0.5, 0.56] },
 };
@@ -458,10 +515,10 @@ const BASE_EVENTS = [
 <script>
 'use strict';
 /* ---------- settings (the panel) ---------- */
-const S = { view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
+const S = { inner: 'stillness', view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
-const V = () => VIEWS[S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
+const V = () => VIEWS[S.inner === 'weight' ? 'footrest' : S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
 /* the phase plays a third of its fiction hour; the rest passes between phases, in the dark */
 const PLAYED_SHARE = 1 / 3;
 
@@ -481,6 +538,11 @@ function audioInit() {
   const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 420; A.roomG = ctx.createGain(); A.roomG.gain.value = 0.045;
   room.connect(rl); rl.connect(A.roomG); A.roomG.connect(A.world); room.start();
   A.hum = ctx.createOscillator(); A.hum.frequency.value = 50; A.hum2 = ctx.createOscillator(); A.hum2.frequency.value = 100;
+  // the strain (weight): a low rumble whose tremble grows as the strength goes
+  const rum = ctx.createBufferSource(); rum.buffer = A.brown; rum.loop = true;
+  A.rumLP = ctx.createBiquadFilter(); A.rumLP.type = 'lowpass'; A.rumLP.frequency.value = 120; A.rumG = ctx.createGain(); A.rumG.gain.value = 0;
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 9; A.lfo = lfo; const lfoG = ctx.createGain(); lfoG.gain.value = 0; A.lfoG = lfoG;
+  lfo.connect(lfoG); lfoG.connect(A.rumG.gain); lfo.start(); rum.connect(A.rumLP); A.rumLP.connect(A.rumG); A.rumG.connect(A.body); rum.start();
   A.humG = ctx.createGain(); A.humG.gain.value = 0.012; A.hum.connect(A.humG); A.hum2.connect(A.humG); A.humG.connect(A.world); A.hum.start(); A.hum2.start();
   loadSamples();
 }
@@ -1013,6 +1075,252 @@ function baseEvent(e, quick) {
   if (quick && e.sense) G.skipHeard.push(e.sense);
 }
 
+/* ---------- the game inside: WEIGHT, contact footrest. Ported from the approved docs/prototypes/weight.html as it is (the numbers, the
+   telegraph by style, the level, the cracks, the sounds); only the wiring changes: her attention, her lines, the cover, the phases and the
+   end come from the frame. Her feet rest on the commander's back while she sits in her chair; she is out of view. ---------- */
+const WT = { BEAT: 1500, W_DRAIN: 8, RELIEF: 15, SHIFT_EVERY: [3, 5], SHIFT_COST: [15, 25], weight: 0.6, shift: 0.7, tol: 0.18 };
+const W_STYLES = {
+  neutral:      { tele: [650, 850], feint: 0,    heavy: 0.15, mag: [0.35, 0.7] },
+  affectionate: { tele: [900, 1100], feint: 0,   heavy: 0.05, mag: [0.25, 0.5] },
+  ritual:       { tele: [750, 750], feint: 0,    heavy: 0.1,  mag: [0.4, 0.6], announce: true, even: 4 },
+  playful:      { tele: [500, 750], feint: 0.35, heavy: 0.15, mag: [0.35, 0.8] },
+  clinical:     { tele: [150, 1100], feint: 0,   heavy: 0.1,  mag: [0.3, 0.9] },
+  cruel:        { tele: [0, 0], feint: 0,        heavy: 0.35, mag: [0.6, 1.0] },
+};
+const W_LINES = {
+  neutral:      { slip: ['careful.'], heavy: ['mm. heavier.'], rest: ['rest. a moment.'] },
+  affectionate: { slip: ['easy…'], heavy: ['let me lean a little.'], rest: ['here. rest a moment.'] },
+  ritual:       { slip: ['again.'], heavy: ['bearing.'], rest: ['rest.'], announce: ['shifting.'] },
+  playful:      { slip: ['oops~'], heavy: ['boop. heavier.'], rest: ['fine, a break~'] },
+  clinical:     { slip: ['noted.'], heavy: ['load increased.'], rest: ['recovery interval.'] },
+  cruel:        { slip: ['pathetic.'], heavy: ['heavier.'], rest: ['…fine. a moment.'] },
+};
+const W_ST = () => W_STYLES[S.style] ?? W_STYLES.neutral, W_L = () => W_LINES[S.style] ?? W_LINES.neutral;
+const weightOn = () => S.inner === 'weight';
+const HOLD = { on: false };
+let W = null;
+function wFresh() {
+  return { str: 100, cop: 0, copTarget: 0, lean: 0, leanTarget: 0, ctl: 0, ctlV: 0, bubbleX: 0, bubbleV: 0, beat: -1, clock: 0, slipThisBeat: false,
+    nextShiftBeat: 3, shift: null, pressure: 1, pressureUntil: -1, held: [], even: [], slips: 0, hardShifts: 0, shifts: 0, cleanShifts: 0,
+    reliefs: 0, caughtN: 0, reliefCd: 0, lowest: 100, jolt: 0, sag: 0, hissCd: 0, buckles: 0, rests: 0, resting: false };
+}
+/* her lines in weight go through her presence: only `with` and `glancing` speak to the commander */
+const wSay = (lines) => { if ((G.step === 'with' || G.step === 'glancing') && lines) say(pick(lines), 'commander'); };
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.55, t + 0.18);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.35);
+}
+const W_SFX = {
+  creak: (len = 0.35, gain = 0.16, pan = 0) => { const n = Math.floor(len * rand(40, 70)); for (let i = 0; i < n; i++) noise({ at: (i / n) * len + Math.random() * 0.004, dur: 0.012, f: rand(420, 780), q: 9, gain: gain * (0.5 + Math.random() * 0.5), attack: 0.001, pan }); },
+  rustle: (g = 0.08, pan = 0) => noise({ dur: 0.42, f: 1100, f2: 1600, q: 0.7, gain: g, attack: 0.1, pan }),
+  press: (g = 0.5) => { thump(0, g, 62); noise({ dur: 0.16, type: 'lowpass', f: 300, gain: 0.25, attack: 0.005, dest: A.body }); },
+  hiss: (g) => noise({ dur: 0.5, f: 3600, f2: 2800, q: 2, gain: g, attack: 0.08, dest: A.body }),
+  grunt: () => noise({ dur: 0.22, type: 'lowpass', f: 420, gain: 0.3, attack: 0.01, dest: A.body }),
+  fall: () => { thump(0, 0.9, 48); thump(0.09, 0.5, 70, A.world); W_SFX.creak(0.5, 0.2); },
+};
+/* cracks at the frame's edges (weight.html, as it is) */
+const cracks = [];
+function crack(strength = 1) {
+  const Wd = innerWidth, H = innerHeight;
+  const side = randInt(0, 3);
+  const p0 = side === 0 ? [rand(0.1, 0.9) * Wd, 0] : side === 1 ? [Wd, rand(0.1, 0.9) * H] : side === 2 ? [rand(0.1, 0.9) * Wd, H] : [0, rand(0.1, 0.9) * H];
+  const inward = side === 0 ? [0, 1] : side === 1 ? [-1, 0] : side === 2 ? [0, -1] : [1, 0];
+  const segs = [];
+  const grow = (p, dir, len, depth) => {
+    let q = p, d = dir;
+    const steps = randInt(4, 8);
+    const pts = [q];
+    for (let i = 0; i < steps; i++) {
+      const a = Math.atan2(d[1], d[0]) + rand(-0.55, 0.55);
+      d = [Math.cos(a), Math.sin(a)];
+      const l = (len / steps) * rand(0.6, 1.4);
+      q = [q[0] + d[0] * l, q[1] + d[1] * l]; pts.push(q);
+      if (depth < 2 && Math.random() < 0.28) grow(q, [Math.cos(a + rand(-1.2, 1.2)), Math.sin(a + rand(-1.2, 1.2))], len * 0.45, depth + 1);
+    }
+    segs.push(pts);
+  };
+  grow(p0, inward, rand(90, 230) * strength, 0);
+  const svg = $('#cracks');
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  for (const pts of segs) {
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    for (const [col, w, off] of [['rgba(0,0,0,.55)', 2.6, 1], ['rgba(255,255,255,.78)', 1, 0], ['rgba(255,190,150,.35)', 4, 0]]) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d); path.setAttribute('stroke', col); path.setAttribute('stroke-width', String(w));
+      if (off) path.setAttribute('transform', 'translate(1 1)');
+      if (w === 4) path.style.filter = 'blur(2px)';
+      const len = 600; path.style.strokeDasharray = String(len); path.style.strokeDashoffset = String(len);
+      path.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
+      g.appendChild(path);
+    }
+  }
+  svg.appendChild(g);
+  cracks.push({ g, born: performance.now() });
+}
+function healCracks(now) {
+  for (let i = cracks.length - 1; i >= 0; i--) {
+    const age = (now - cracks[i].born) / 1000;
+    const op = 1 - smooth(8, 22, age);
+    cracks[i].g.style.opacity = op.toFixed(3);
+    if (op <= 0) { cracks[i].g.remove(); cracks.splice(i, 1); }
+  }
+}
+/* her shifts: telegraphed by style (footrest: the rustle and the chair's creak from her side, her screen's light slides that way) */
+function wPlanShift() {
+  const st = W_ST();
+  const isFeint = Math.random() < st.feint;
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  const target = isFeint ? W.copTarget : clamp(W.copTarget * 0.25 + dir * rand(st.mag[0], st.mag[1]) * WT.shift, -1, 1);
+  const tele = rand(st.tele[0], st.tele[1]);
+  W.shift = { landAt: W.clock + Math.max(tele, 0) + 30, teleAt: W.clock, tele, target, feint: isFeint, dir: Math.sign(target - W.cop) || dir, landed: false };
+  if (st.announce && (G.step === 'with' || G.step === 'glancing')) say(target < W.cop ? 'left.' : 'right.', 'commander');
+  if (tele > 0) {
+    W.leanTarget = isFeint ? dir * 0.8 : Math.sign(target - W.cop) * 0.9;
+    const side = Math.sign(W.leanTarget) * 0.85;
+    W_SFX.rustle(0.1, side); W_SFX.creak(0.28, 0.12, side);
+  }
+}
+function wLandShift() {
+  const sh = W.shift; sh.landed = true;
+  W.leanTarget = 0;
+  if (sh.feint) { W.shift = null; return; }
+  W.shifts += 1;
+  W.copTarget = sh.target;
+  const uneven = !HOLD.on || W.slipThisBeat || Math.abs(W.cop - W.ctl) > WT.tol || W.held.slice(-1).some((h) => !h);
+  W_SFX.press(0.35 + WT.weight * 0.3); W_SFX.rustle(0.05, Math.sign(sh.target - W.cop) * 0.6);
+  if (uneven) {
+    const cost = rand(WT.SHIFT_COST[0], WT.SHIFT_COST[1]) * WT.weight * W.pressure;
+    W.str -= cost; W.hardShifts += 1; W.jolt = 1; crack(1); W_SFX.creak(0.4, 0.2); W_SFX.grunt();
+  } else { W.cleanShifts += 1; W.jolt = 0.35; }
+  W.shift = null;
+}
+function wOnBeat() {
+  W.beat += 1;
+  const evenNow = HOLD.on && !W.slipThisBeat && Math.abs(W.cop - W.ctl) <= WT.tol;
+  W.held.push(HOLD.on && !W.slipThisBeat); W.even.push(evenNow);
+  if (W.held.length > 8) { W.held.shift(); W.even.shift(); }
+  W.slipThisBeat = false;
+}
+/* a slip: she feels it through her feet whatever her presence (she perceives it); only `with` / `glancing` say something */
+function wSlip() {
+  W.slipThisBeat = true; W.slips += 1; W.str -= WT.W_DRAIN * WT.weight * W.pressure; W.jolt = 1; W.sag = 1; crack(0.8); W_SFX.creak(0.5, 0.22);
+  if (W.slips === 1 || Math.random() < 0.5) wSay(W_L().slip);
+}
+function wBeatTail() {
+  if (W.beat >= W.nextShiftBeat && !W.shift) {
+    wPlanShift();
+    W.nextShiftBeat = W.beat + (W_ST().even ?? randInt(WT.SHIFT_EVERY[0], WT.SHIFT_EVERY[1]));
+  }
+  if (W.pressureUntil < W.clock && Math.random() < W_ST().heavy * 0.35) {
+    W.pressure = rand(1.3, 1.6); W.pressureUntil = W.clock + randInt(2, 4) * WT.BEAT; wSay(W_L().heavy); W_SFX.press(0.3); W.jolt = 0.5;
+  }
+}
+/* the commander's own shift of weight (Shift or the right button): a creak; she notices it through the frame (hearing, sight, cover) */
+function wRelief() {
+  if (G.phase !== 'loop' || W.reliefCd > 0) return;
+  W.reliefCd = 2600; W.reliefs += 1;
+  W_SFX.creak(0.22, 0.1); W_SFX.rustle(0.05);
+  const caught = bodyNoise('speak', 0.45, true);
+  if (caught) { W.caughtN += 1; W.str -= 10; W.pressure = 1.5; W.pressureUntil = W.clock + 3 * WT.BEAT; W_SFX.press(0.55); W.jolt = 1; crack(0.6); }
+  else W.str = Math.min(100, W.str + WT.RELIEF);
+}
+/* the limit: by her presence she lets the commander rest a moment (lifting her feet), or, in use, does not notice until the commander buckles */
+function wLimit() {
+  if (W.resting) return;
+  if (G.step === 'use') return;
+  W.resting = true; W.rests += 1; W_SFX.rustle(0.12, 0); wSay(W_L().rest);
+  if (G.step === 'own') sense('She lifts her feet off your back for a moment. Not a word.', 'body');
+  after(rand(3500, 5000), () => { W.resting = false; W.str = Math.min(100, W.str + 30); W_SFX.press(0.35); sense('Her feet come back down.', 'body'); });
+}
+function wBuckle() {
+  W.buckles += 1; W_SFX.fall(); W.jolt = 1.5; W.sag = 1; crack(1.2);
+  sense('Your arms give. You go down under her feet.', 'body', 'body');
+  bodyNoise('slump', 1, true, true);
+  W.str = 35;
+}
+function wUpdate(dt) {
+  W.clock += dt;
+  const beatNow = Math.floor(W.clock / WT.BEAT);
+  while (W.beat < beatNow) { wOnBeat(); wBeatTail(); }
+  if (W.resting) { W.str = Math.min(100, W.str + dt * 0.004); return; }
+  if (!HOLD.on && !W.slipThisBeat && W.clock > WT.BEAT) wSlip();
+  if (W.pressureUntil < W.clock) W.pressure = 1;
+  const err = W.cop - W.ctl;
+  const unevenMult = 1 + 1.2 * Math.max(0, Math.abs(err) - WT.tol * 0.5);
+  W.str -= (WT.W_DRAIN / WT.BEAT) * dt * WT.weight * W.pressure * unevenMult;
+  if (W.shift && !W.shift.landed && W.clock >= W.shift.landAt) wLandShift();
+  W.reliefCd = Math.max(0, W.reliefCd - dt);
+  W.hissCd -= dt; if (W.str < 45 && W.hissCd <= 0) { W_SFX.hiss(lerp(0.02, 0.12, smooth(45, 5, W.str))); W.hissCd = lerp(2200, 900, smooth(45, 5, W.str)); }
+  W.lowest = Math.min(W.lowest, W.str);
+  if (W.str <= (S.style === 'cruel' ? 5 : 15)) wLimit();
+  if (W.str <= 0) wBuckle();
+}
+/* her weight, the commander's balance, the bubble (weight.html's frame(), as it is) */
+function wPhysics(now, dt) {
+  const h = dt / 1000, t = now / 1000;
+  const wander = S.reduced ? 0 : Math.sin(t * 0.9) * 0.05 + Math.sin(t * 2.3 + 1) * 0.025;
+  W.cop += (W.copTarget + wander - W.cop) * clamp(h * (W.shift?.landed === false ? 2 : 7), 0, 1);
+  W.lean += (W.leanTarget - W.lean) * clamp(h * 6, 0, 1);
+  const target = ((MOUSE.x / innerWidth) * 2 - 1) * 1.15;
+  const k = 90, d = 14; W.ctlV += (k * (target - W.ctl) - d * W.ctlV) * h; W.ctl += W.ctlV * h;
+  const live = G.phase === 'loop';
+  const err = live ? W.cop - W.ctl : 0;
+  const bv = 260 * (clamp(err, -1.2, 1.2) - W.bubbleX) - 16 * W.bubbleV; W.bubbleV += bv * h; W.bubbleX += W.bubbleV * h;
+  W.jolt = Math.max(0, W.jolt - h * 2.2); W.sag = Math.max(0, W.sag - h * 1.6);
+  if (A.ctx && A.rumG) {
+    const ct = A.ctx.currentTime, f = live ? smooth(60, 0, W.str) : 0;
+    A.rumG.gain.setTargetAtTime(f * 0.25, ct, 0.2); A.lfoG.gain.setTargetAtTime(f * 0.2, ct, 0.2); A.lfo.frequency.setTargetAtTime(lerp(7, 13, f), ct, 0.3);
+  }
+  return err;
+}
+/* footrest's floor: her screen's light on the floor, sliding with her lean and weight (weight.html drawFloor, the footrest branch) */
+const wShC = $('#wShadow'), wsctx = wShC.getContext('2d');
+function wDrawFloor(now) {
+  const Wd = Math.ceil(innerWidth / 4), H = Math.ceil(innerHeight / 4);
+  if (wShC.width !== Wd || wShC.height !== H) { wShC.width = Wd; wShC.height = H; }
+  wsctx.clearRect(0, 0, Wd, H);
+  const live = G.phase === 'loop';
+  const att = live && !G.away ? ({ busy: 1, glancing: 0.45 + 0.25 * Math.sin(now / 90), watching: 0.05 }[G.att]) : 0;
+  const flick = 0.85 + 0.15 * Math.sin(now / 130) * Math.sin(now / 47);
+  const px = Wd * (0.5 + W.cop * 0.1 + W.lean * 0.16), py = H * 0.24;
+  wsctx.filter = `blur(${Math.round(H * 0.07)}px)`;
+  wsctx.globalCompositeOperation = 'lighter';
+  wsctx.fillStyle = `rgba(120,170,255,${(0.34 * att * flick).toFixed(3)})`;
+  wsctx.beginPath(); wsctx.ellipse(px, py, Wd * 0.15, H * 0.1, 0, 0, Math.PI * 2); wsctx.fill();
+  wsctx.globalCompositeOperation = 'source-over'; wsctx.filter = 'none';
+}
+function wRender(now, err) {
+  const live = G.phase === 'loop';
+  const strF = smooth(100, 0, W.str);
+  const tilt = clamp(err, -1.2, 1.2) * 6;
+  const near = 1 + strF * 0.22 + W.sag * 0.04;
+  setStyle('#wFloor', 'transform', `scale(${near.toFixed(3)})`);
+  setStyle('#wFloor', 'filter', `blur(${(0.4 + strF * 1.8).toFixed(1)}px) brightness(${(0.6 - strF * 0.16).toFixed(2)}) saturate(.85)`);
+  wDrawFloor(now);
+  const sv = live ? strF : 0;
+  setStyle('#strainV', 'background', sv < 0.02 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(70 - sv * 30).toFixed(0)}%, rgba(30,6,4,${(0.25 + sv * 0.5).toFixed(2)}) 100%)`);
+  healCracks(now);
+  setStyle('#vial', 'opacity', live ? '1' : '0');
+  const half = 190 * 0.86;
+  const bx = 230 + clamp(W.bubbleX, -1.15, 1.15) * half;
+  const stretch = 1 + Math.min(0.6, Math.abs(W.bubbleV) * 0.12), squash = 1 / Math.sqrt(stretch);
+  $('#vBubble').setAttribute('transform', `translate(${bx.toFixed(1)} 35) scale(${stretch.toFixed(3)} ${squash.toFixed(3)})`);
+  const tolPx = WT.tol * half;
+  const marks = $('#vMarks').children;
+  marks[0].setAttribute('transform', `translate(${(230 - tolPx - 30).toFixed(1)} 0)`); marks[1].setAttribute('transform', `translate(${(230 + tolPx + 30).toFixed(1)} 0)`);
+  const level = Math.abs(err) <= WT.tol;
+  for (const m of marks) m.setAttribute('stroke-opacity', level ? '1' : '.35');
+  $('#vGlow').setAttribute('opacity', (live && level ? 0.55 : 0).toString());
+  $('#vLiquid').setAttribute('transform', `translate(${(Math.sin(now / 400) * 1.5).toFixed(2)} 0)`);
+  $('#vial').style.transform = `rotate(${(tilt * 0.35).toFixed(2)}deg)`;
+  // the frame: tilt with the error, sag on a slip, tremble as the strength goes (combined with the frame's own transform by render)
+  const amp = S.reduced ? 0 : Math.pow(strF, 2) * 5 + W.jolt * 7;
+  return { tilt, jx: (Math.random() * 2 - 1) * amp, jy: (Math.random() * 2 - 1) * amp + W.sag * 26, sat: 1 - sv * 0.45 };
+}
+
 /* ---------- the loop ---------- */
 const clockText = (m) => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
 function beginPhase(i) {
@@ -1034,7 +1342,7 @@ function updateLoop(dt) {
     const [a, b] = ACT().per; G.nextMark = G.t + rand(a, b) * 1000 * (G.att === 'busy' ? 1 : 0.5);
   }
   if (ACT().sleep) { G.asleepDepth = 0.5 + 0.5 * Math.sin(G.t / 9000); if (!G.nextBreath || G.t >= G.nextBreath) { sleepBreath(); G.nextBreath = G.t + rand(4800, 6200); } }
-  updateUrges(dt);
+  if (weightOn()) wUpdate(dt); else updateUrges(dt);
   // an unanswered question
   if (G.ask && G.t > G.ask.until) { G.ask = null; G.stats.missed += 1; if (G.step === 'with') say(pick(ST().silent), 'commander'); else { G.press = 0.8; G.footUpUntil = G.t + 2000; sense('Silence above you. A long one.', 'her'); } }
   // she came back and the commander was moving: seen at once
@@ -1097,7 +1405,7 @@ function resolveSkip(strategy) {
     text = refused ? (G.step === 'use' ? 'You ask. She does not seem to hear.' : 'She refuses the rest, and the stretch is long.') : 'She allows a moment; you take it.';
   }
   if (strategy !== 'spare') G.spare = 0;
-  G.ease = clamp(G.ease + delta, 5, 100);
+  if (weightOn()) W.str = clamp(W.str + delta, 10, 100); else G.ease = clamp(G.ease + delta, 5, 100);
   G.stats.skips.push({ strategy, held, text, at: clockText(G.clockMin) });
   $('#gestures').classList.remove('on'); $('#skipNote').textContent = text;
   // her presence drifts with the hours: absorbed in a book, warmer with a bottle, a little bored
@@ -1269,7 +1577,7 @@ function drawUrges(now) {
   const W = urC.width, H = urC.height, t = now / 1000;
   uctx.clearRect(0, 0, W, H);
   const live = G.phase === 'loop' || G.phase === 'empty';
-  if (!live) return;
+  if (!live || weightOn()) return;
   for (const u of G.urges) {
     const pulse = 0.75 + 0.25 * Math.sin(t * (4 + u.v * 5) + u.seed);
     if (u.kind === 'itch') {
@@ -1339,17 +1647,21 @@ function placeSprite(img, opts) {
 }
 function render(now, dt) {
   const t = now / 1000, live = G.phase === 'loop' || G.phase === 'empty' || G.phase === 'ending';
-  const view = S.blind ? 'blind' : S.view;
-  for (const v of ['her', 'legs', 'floor', 'wall', 'blind']) setStyle(`#${v}View`, 'opacity', v === view ? '1' : '0');
+  const view = S.blind ? 'blind' : weightOn() ? 'footrest' : S.view;
+  for (const v of ['her', 'legs', 'floor', 'wall', 'footrest', 'blind']) setStyle(`#${v}View`, 'opacity', v === view ? '1' : '0');
   // the body in the frame: tremor and a warm press at the edges as the ease goes; a shake on a gross fault
-  const low = live ? 1 - G.ease / 100 : 0;
+  const low = live && !weightOn() ? 1 - G.ease / 100 : 0;
   G.shake = Math.max(0, (G.shake ?? 0) - dt / 600);
   const amp = S.reduced ? 0 : low * low * 2.5 + G.shake * 9;
   const hx = S.reduced ? 0 : (G.headX ?? 0), hy = S.reduced ? 0 : (G.headY ?? 0);
-  $('#world').style.transform = `translate(${((Math.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp + G.shake * 10 - hy).toFixed(1)}px)`;
+  let wr = null;
+  if (weightOn() && W) { const err = wPhysics(now, dt); wr = wRender(now, err); } else { setStyle('#vial', 'opacity', '0'); setStyle('#strainV', 'background', 'none'); }
+  $('#world').style.transform = wr
+    ? `translate(${(wr.jx + (Math.random() * 2 - 1) * G.shake * 9).toFixed(1)}px, ${(wr.jy + G.shake * 10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)`
+    : `translate(${((Math.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp + G.shake * 10 - hy).toFixed(1)}px)`;
   setStyle('#vignette', 'background', low < 0.05 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72 - low * 28).toFixed(0)}%, rgba(26,6,4,${(0.2 + low * 0.5).toFixed(2)}) 100%)`);
   const dusk = smooth(18 * 60 + 30, 20 * 60, G.clockMin), dark = G.lightsOff ? 0.35 : 1;
-  setStyle('#world', 'filter', `saturate(${(1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
+  setStyle('#world', 'filter', `saturate(${(wr ? wr.sat : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
   // her view: her sprite, the lamp or the screen on her; she leans a little toward the commander when she looks
   if (view === 'her') {
     const look = G.att === 'watching' ? 1 : G.att === 'glancing' ? 0.4 : 0;
@@ -1391,7 +1703,7 @@ function showDigest() {
   G.phase = 'done'; MUSIC.on = false; for (const k of Object.keys(LOOPS)) loopOff(k);
   const s = G.stats, act = ACT(), held = Math.max(0, G.clockMin - G.startMin), hh = Math.floor(held / 60), mm = Math.round(held % 60);
   const dur = `${hh ? `${hh} h ` : ''}${mm} min`;
-  const where = { her: 'kneeling beside her chair', legs: 'kneeling under her desk', floor: 'kneeling by her bunk', wall: 'facing the wall' }[S.view];
+  const where = weightOn() ? 'on all fours as her footrest' : { her: 'kneeling beside her chair', legs: 'kneeling under her desk', floor: 'kneeling by her bunk', wall: 'facing the wall' }[S.view];
   const name = 'She';
   const ended = { done: 'when she was done', stop: 'with the stop word', woke: 'when she woke', '': '' }[s.ended] ?? s.ended;
   const noticedTxt = s.noticed.length ? s.noticed.map((n) => `${n.kind} (${n.how}, ${n.fiction})`).join('; ') : 'nothing';
@@ -1407,6 +1719,7 @@ function showDigest() {
   else if (s.found) herSide.push('She left without a word. Someone else found the commander still there.');
   else if (s.gotUp) herSide.push('She left without a word.');
   else herSide.push(`It ended ${ended}.`);
+  if (weightOn()) herSide.splice(1, 0, `Her feet were on the commander's back: ${W.shifts} shifts of her weight (${W.hardShifts} landed hard), ${W.slips} slips under her${W.buckles ? `, the commander buckled ${W.buckles === 1 ? 'once' : `${W.buckles} times`}` : ''}${W.rests ? `; she let the commander rest ${W.rests === 1 ? 'once' : `${W.rests} times`}` : ''}.`);
   const onlyYou = [];
   if (s.fidgets) onlyYou.push(`fidgeted ${s.fidgets === 1 ? 'once' : `${s.fidgets} times`}`);
   if (s.unnoticed) onlyYou.push(`${s.unnoticed} movement${s.unnoticed > 1 ? 's' : ''} she did not notice`);
@@ -1416,7 +1729,7 @@ function showDigest() {
   if (s.left && !s.gotUp) onlyYou.push(`alone for ${Math.round(s.aloneFor)} s while she was out`);
   $('#sumBody').innerHTML = `<h4>for the scene (what she perceived)</h4><div class="prose">${herSide.join(' ')}</div>
     <h4>only the commander knows</h4><div class="prose">${onlyYou.length ? onlyYou.join('; ') + '.' : '—'}</div>
-    <h4>prototype facts</h4><div class="facts">presence: ${G.step} · style ${S.style} · view ${S.view}${S.blind ? ' (blindfold)' : ''}<br>noticed: ${noticedTxt}<br>involuntary ${s.involuntary} · reliefs ${s.reliefs} · lowest ease ${Math.round(G.ease)}<br>between the hours: ${s.skips.map((k) => `${k.strategy}${k.held ? '' : ' ✗'}`).join(', ') || '—'}<br>mentions of the commander: ${s.mentions.join(', ') || '—'}</div>`;
+    <h4>prototype facts</h4><div class="facts">presence: ${G.step} · style ${S.style} · ${weightOn() ? 'weight (footrest)' : `view ${S.view}`}${S.blind ? ' (blindfold)' : ''}<br>noticed: ${noticedTxt}<br>involuntary ${s.involuntary} · reliefs ${s.reliefs} · lowest ease ${Math.round(G.ease)}<br>between the hours: ${s.skips.map((k) => `${k.strategy}${k.held ? '' : ' ✗'}`).join(', ') || '—'}<br>mentions of the commander: ${s.mentions.join(', ') || '—'}</div>`;
   $('#summary').style.display = 'block';
 }
 
@@ -1427,12 +1740,15 @@ const RIPPLES = [];
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (G.phase === 'loop' || G.phase === 'empty') finish('stop'); return; }
   if (typing(e.target)) { G.lastTyped = G.t; return; }
-  if (e.key === ' ') { e.preventDefault(); G.spaceHeld = true; }
+  if (e.key === ' ') { e.preventDefault(); G.spaceHeld = true; HOLD.on = true; }
+  else if (e.key === 'Shift' && weightOn() && W) wRelief();
   else if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
 });
-addEventListener('keyup', (e) => { if (e.key === ' ') G.spaceHeld = false; });
+addEventListener('keyup', (e) => { if (e.key === ' ') { G.spaceHeld = false; if (!G.mouseHold) HOLD.on = false; } });
+addEventListener('mouseup', (e) => { if (e.button === 0) { G.mouseHold = false; if (!G.spaceHeld) HOLD.on = false; } });
 $('#stage').addEventListener('mousedown', (e) => {
   if (e.target.closest('#inputWrap, #stopPill, .card, #skip, #getUp')) return;
+  if (weightOn()) { if (e.button === 0) { G.mouseHold = true; HOLD.on = true; } else if (e.button === 2 && W) wRelief(); return; }
   if (e.button === 0) relieveAt(e.clientX, e.clientY);
 });
 $('#stage').addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1460,10 +1776,10 @@ function begin() {
   for (const k of Object.keys(LOOPS)) loopOff(k);
   if (A.ctx) A.humG.gain.setTargetAtTime(0.012, A.ctx.currentTime, 0.5);
   for (const id of ['#hand', '#senses', '#others']) $(id).replaceChildren();
-  G = fresh(); setScore(baseScore());
+  G = fresh(); setScore(baseScore()); W = wFresh(); $('#cracks').replaceChildren(); cracks.length = 0; HOLD.on = false;
   $('#summary').style.display = 'none'; $('#getUp').style.display = 'none'; $('#skip').style.display = 'none'; $('#skip').classList.remove('on');
   G.phase = 'entry'; G.entryT = 0;
-  const entry = { her: 'She points at the floor beside her chair without looking up.', legs: 'She pushes her chair back, points under the desk, and pulls the chair in again once you are there.', floor: 'She points at the floor by her bunk. "Down. Eyes down."', wall: 'She turns you to face the wall by the shoulder, and goes back to her chair.' }[S.view];
+  const entry = weightOn() ? 'She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.' : { her: 'She points at the floor beside her chair without looking up.', legs: 'She pushes her chair back, points under the desk, and pulls the chair in again once you are there.', floor: 'She points at the floor by her bunk. "Down. Eyes down."', wall: 'She turns you to face the wall by the shoulder, and goes back to her chair.' }[S.view];
   setReply(`<span class="act">${entry}</span>${S.stay ? ' <span class="speech">“Stay.”</span>' : ''}`, 0.5);
   updatePresenceNote();
 }
@@ -1498,7 +1814,8 @@ function frame(now) {
 function optRow(host, items, get, set) {
   host.replaceChildren(...items.map((k) => { const b = document.createElement('button'); b.className = 'opt' + (get() === k ? ' on' : ''); b.textContent = k; b.onclick = () => { set(k); optRow(host, items, get, set); }; return b; }));
 }
-optRow($('#views'), Object.keys(VIEWS), () => S.view, (k) => { S.view = k; $('#viewNote').textContent = VIEWS[k].note; });
+optRow($('#inners'), ['stillness', 'weight'], () => S.inner, (k) => { S.inner = k; });
+optRow($('#views'), Object.keys(VIEWS).filter((k) => k !== 'footrest'), () => S.view, (k) => { S.view = k; $('#viewNote').textContent = VIEWS[k].note; });
 $('#viewNote').textContent = V().note;
 optRow($('#legVar'), ['planted', 'crossed'], () => S.legVar, (k) => { S.legVar = k; });
 for (const [k, a] of Object.entries(ACTS)) { const o = document.createElement('option'); o.value = k; o.textContent = a.label; $('#actSel').appendChild(o); }
@@ -1524,13 +1841,14 @@ $('#legsFile').onchange = () => { const f = $('#legsFile').files[0]; if (f) { $(
 $('#file').onchange = () => { const f = $('#file').files[0]; if (f) $('#her').src = URL.createObjectURL(f); };
 $('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
 $('#skipNow').onclick = () => { if (G.phase === 'loop') G.phaseT = S.phaseLen * 1000; };
-for (const [sel, group, set] of [['#roomSel', ASSETS.rooms, ['#herBg', '#deskUnder']], ['#floorSel', ASSETS.floors, ['#floorBg']]]) {
+for (const [sel, group, set] of [['#roomSel', ASSETS.rooms, ['#herBg', '#deskUnder']], ['#floorSel', ASSETS.floors, ['#floorBg', '#wFloor']]]) {
   for (const k of Object.keys(group)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $(sel).appendChild(o); }
   const apply = () => { for (const s of set) $(s).style.backgroundImage = `url(${group[$(sel).value]})`; };
   $(sel).onchange = apply; apply();
 }
-$('#deskFrame').src = ASSETS.desk; $('#wallBg').style.backgroundImage = `url(${ASSETS.corner})`;
+$('#deskFrame').src = ASSETS.desk; $('#wFloor').style.backgroundImage = `url(${ASSETS.floors.floor_wood})`; $('#wallBg').style.backgroundImage = `url(${ASSETS.corner})`;
 $('#her').src = ASSETS.her;
+(() => { const g = $('#vTicks'); for (let x = 60; x <= 400; x += 10) { const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); const big = (x - 230) % 50 === 0; l.setAttribute('x1', x); l.setAttribute('x2', x); l.setAttribute('y1', 16); l.setAttribute('y2', big ? 26 : 21); g.appendChild(l); } })();
 setReply('<span class="act">Her quarters, the evening. She has work, and you have nowhere else to be.</span>');
 updatePresenceNote();
 window.__G = () => G; window.__S = S; window.__begin = begin; window.__mouse = (x, y) => { MOUSE.x = x; MOUSE.y = y; };
