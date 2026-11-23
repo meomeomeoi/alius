@@ -152,6 +152,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label><input type="checkbox" id="Lneed" checked> the need to breathe</label>
   <h4>sound</h4>
   <div class="row" id="breathSnd"></div>
+  <div class="row" id="stretchSel"></div>
+  <div class="note">natural: the recorded inhale whole, no stretch. paulstretch: the middle stretched through the spectrum (for breaths longer than the recording). grains: the first way (sniffs).</div>
   <label><input type="checkbox" id="snd" checked> on</label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
   <h4>view</h4>
@@ -256,7 +258,7 @@ const LINES = {
 };
 
 /* ---------- settings ---------- */
-const S = { breathRec: true, look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
+const S = { stretch: 'natural', breathRec: true, look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
   layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 90,
   reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
@@ -319,6 +321,43 @@ const SFX = {
 const SAMPLE = { buf: null, rms: null, inS: 0.12, susS: 0.5, susE: 0.92, inE: 1.44, exS: 2.17, exE: 3.23 };
 /* the level of the recording every 10 ms: grains are evened out against it, so the stretched middle never pulses */
 const rmsAt = (sec) => { const r = SAMPLE.rms; return r[clamp(Math.round(sec * 100), 0, r.length - 1)] || 1e-4; };
+/* paulstretch: the spectral way to stretch a noise. Each frame of the source (a 4096-sample window sliding slowly through the middle of
+   the inhale) is taken to the spectrum, its magnitudes kept and its phases made random, brought back and overlapped. Nothing is copied
+   twice, so there is no comb and no flutter: a smooth breath of the same colour that changes slowly. Done once, when the sound loads. */
+function fft(re, im, inv) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = (2 * Math.PI / len) * (inv ? 1 : -1), wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ar = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, ai = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k + len / 2] = re[i + k] - ar; im[i + k + len / 2] = im[i + k] - ai; re[i + k] += ar; im[i + k] += ai;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+  if (inv) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+}
+function paulstretch(data, sr, from, to, outSec, win = 4096) {
+  const inp = data.subarray(Math.floor(from * sr), Math.floor(to * sr));
+  const hop = win / 2, frames = Math.ceil((outSec * sr) / hop), out = new Float32Array(frames * hop + win);
+  const w = new Float32Array(win).map((_, i) => { const x = (2 * i) / (win - 1) - 1; return Math.pow(1 - x * x, 1.25); });
+  const re = new Float32Array(win), im = new Float32Array(win);
+  for (let f = 0; f < frames; f++) {
+    const pos = Math.floor((f / Math.max(1, frames - 1)) * (inp.length - win));
+    for (let i = 0; i < win; i++) { re[i] = (inp[pos + i] || 0) * w[i]; im[i] = 0; }
+    fft(re, im, false);
+    for (let i = 0; i < win; i++) { const m = Math.hypot(re[i], im[i]), ph = Math.random() * 2 * Math.PI; re[i] = m * Math.cos(ph); im[i] = m * Math.sin(ph); }
+    fft(re, im, true);
+    for (let i = 0; i < win; i++) out[f * hop + i] += re[i] * w[i];
+  }
+  // match the loudness of the source's middle
+  let a = 0, b = 0; for (const v of inp) a += v * v; for (const v of out) b += v * v;
+  const g = Math.sqrt(a / inp.length) / Math.sqrt(b / out.length || 1); for (let i = 0; i < out.length; i++) out[i] *= g;
+  return out;
+}
 async function loadSample() {
   if (SAMPLE.buf || !A.ctx) return;
   const bin = atob(ASSETS.breath.split(',')[1]), u8 = new Uint8Array(bin.length);
@@ -329,6 +368,8 @@ async function loadSample() {
   const fr = Math.round(buf.sampleRate / 100), rms = new Float32Array(Math.ceil(d.length / fr));
   for (let i = 0; i < rms.length; i++) { let acc = 0, n = 0; for (let j = Math.max(0, (i - 3) * fr); j < Math.min(d.length, (i + 4) * fr); j++) { acc += d[j] * d[j]; n++; } rms[i] = Math.sqrt(acc / Math.max(1, n)); }
   SAMPLE.rms = rms; SAMPLE.buf = buf;
+  const st = paulstretch(d, buf.sampleRate, SAMPLE.susS, SAMPLE.susE, 5);
+  SAMPLE.paul = A.ctx.createBuffer(1, st.length, buf.sampleRate); SAMPLE.paul.copyToChannel(st, 0);
 }
 const useRec = () => S.breathRec && SAMPLE.buf && A.ctx;
 const REC = { out: null, srcs: [], timer: null, next: 0, rate: 1, tail: false, kind: null };
@@ -353,8 +394,24 @@ function recOut(kind) {
 function recInhale(kind = 'nose') {
   recStop(0.03);
   const ctx = A.ctx, t = ctx.currentTime + 0.01;
-  REC.out = recOut(kind); REC.kind = kind; REC.tail = false; REC.rate = (kind === 'mouth' ? 0.86 : 1) * rand(0.96, 1.04);
-  REC.level = rmsAt(SAMPLE.susS); // the level the middle holds, falling gently as the lungs fill
+  REC.out = recOut(kind); REC.kind = kind; REC.tail = false; REC.mode = S.stretch;
+  if (S.stretch === 'natural') {
+    // no stretch at all: the whole inhale, slowed to the time the lungs take to fill here (1.32 s of recording over 1.5 s)
+    REC.rate = ((SAMPLE.inE - SAMPLE.inS) / (INHALE_FILL_MS / 1000)) * (kind === 'mouth' ? 0.95 : 1) * rand(0.97, 1.03);
+    piece(REC.out, SAMPLE.inS, SAMPLE.inE, t, REC.rate, 0.02, 0.2);
+    REC.tail = true; return;
+  }
+  REC.rate = (kind === 'mouth' ? 0.86 : 1) * rand(0.96, 1.04);
+  REC.level = rmsAt(SAMPLE.susS);
+  if (S.stretch === 'paul') {
+    // the onset as recorded, then the paulstretched middle under it, then (when full) the recorded tail
+    const end = piece(REC.out, SAMPLE.inS, SAMPLE.susS + 0.12, t, REC.rate, 0.02, 0.14);
+    const src = ctx.createBufferSource(); src.buffer = SAMPLE.paul; src.playbackRate.value = REC.rate;
+    const g = ctx.createGain(); const at = end - 0.14;
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(1, at + 0.14);
+    src.connect(g); g.connect(REC.out); src.start(at, rand(0, 0.5)); REC.srcs.push(src); REC.sus = g;
+    return;
+  }
   const end = piece(REC.out, SAMPLE.inS, SAMPLE.susS + 0.1, t, REC.rate, 0.02, 0.1);
   REC.next = end - 0.1; REC.pos = SAMPLE.susS; REC.dir = 1;
   // the middle: grains of 200 ms, four overlapping under sine windows, read in order by a pointer that crawls through it and back (a quarter of real speed), each evened out
@@ -376,6 +433,10 @@ function recInhale(kind = 'nose') {
 function recTail() {
   if (!REC.out || REC.tail) return;
   REC.tail = true; clearInterval(REC.timer); REC.timer = null;
+  if (REC.mode === 'paul' && REC.sus) {
+    const t = A.ctx.currentTime; REC.sus.gain.cancelScheduledValues(t); REC.sus.gain.setValueAtTime(REC.sus.gain.value, t); REC.sus.gain.linearRampToValueAtTime(0, t + 0.15);
+    piece(REC.out, SAMPLE.susE - 0.08, SAMPLE.inE, t, REC.rate, 0.12, 0.15, 0.85); REC.sus = null; return;
+  }
   const g = clamp(REC.level * 0.65 / rmsAt(SAMPLE.susE), 0.6, 1.6); // the tail starts where the evened middle left off
   piece(REC.out, SAMPLE.susE - 0.1, SAMPLE.inE, Math.max(REC.next, A.ctx.currentTime + 0.01), REC.rate, 0.1, 0.15, g);
 }
@@ -383,7 +444,7 @@ function recStop(fade = 0.08) {
   clearInterval(REC.timer); REC.timer = null;
   if (REC.out) { const t = A.ctx.currentTime; REC.out.gain.cancelScheduledValues(t); REC.out.gain.setValueAtTime(REC.out.gain.value, t); REC.out.gain.linearRampToValueAtTime(0, t + fade); const o = REC.out; setTimeout(() => o.disconnect(), (fade + 0.1) * 1000); }
   for (const s0 of REC.srcs.splice(0)) { try { s0.stop(A.ctx.currentTime + fade + 0.02); } catch { /* already stopped */ } }
-  REC.out = null; REC.kind = null;
+  REC.out = null; REC.kind = null; REC.sus = null;
 }
 /* the exhale: shorter and softer after a shallow breath */
 function recExhale(d, kind = 'nose') {
@@ -424,7 +485,7 @@ function breathSound(kind) {
 }
 /* every frame: the nose follows the depth (silent once the lungs are full), the mouth breathes in and out about 0.7 times a second */
 function breathTick() {
-  if (useRec() && BR.kind) { if (BR.kind === 'nose' && G.depth >= 0.95) recTail(); if (BR.kind === 'mouth') recMouthTick(); return; }
+  if (useRec() && BR.kind) { if (REC.sus) REC.sus.gain.setTargetAtTime(1 - 0.35 * clamp(G.depth, 0, 1), A.ctx.currentTime, 0.1); if (BR.kind === 'nose' && G.depth >= 0.95) recTail(); if (BR.kind === 'mouth') recMouthTick(); return; }
   if (!BR.src) return;
   const t = A.ctx.currentTime;
   if (BR.kind === 'nose') {
@@ -1220,6 +1281,7 @@ function optRow(host, items, get, set) {
 }
 optRow($('#contacts'), ['feet_on_face', 'face_to_bottom', 'smothered_armpit'], () => S.contact, (k) => { S.contact = k; });
 optRow($('#looks'), ['motes', 'ribbons', 'haze'], () => S.look, (k) => { S.look = k; });
+optRow($('#stretchSel'), ['natural', 'paulstretch', 'grains'], () => (S.stretch === 'paul' ? 'paulstretch' : S.stretch), (k) => { breathStop(); S.stretch = k === 'paulstretch' ? 'paul' : k; });
 optRow($('#breathSnd'), ['recorded', 'synth'], () => (S.breathRec ? 'recorded' : 'synth'), (k) => { breathStop(); S.breathRec = k === 'recorded'; });
 optRow($('#bands'), Object.keys(BAND), () => S.band, (k) => { S.band = k; });
 optRow($('#colors'), Object.keys(COLORS), () => S.color, (k) => { S.color = k; });
