@@ -49,6 +49,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #footrestView { perspective: 1400px; }
 #wFloor { inset: -20%; transform-origin: 50% 40%; }
 #wShadow { position: absolute; inset: 0; width: 100%; height: 100%; }
+#close { position: absolute; inset: 0; pointer-events: none; }
+#closeShade { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 70% at 50% 48%, rgba(20,14,16,.55) 0%, rgba(4,3,5,.92) 70%); }
+#soleArt, #dirtC { position: absolute; transform-origin: 50% 70%; }
+#soleArt { filter: brightness(.8) saturate(.92); }
+#dirtC { mix-blend-mode: multiply; filter: blur(1.5px); }
+#markC { position: absolute; inset: 0; width: 100%; height: 100%; }
+#markPrompt { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 45; display: none; padding: 8px 16px; border-radius: 16px; background: rgba(10,10,14,.85); border: 1px solid var(--line); font: 13px "IBM Plex Mono", monospace; color: var(--cool); }
 #urges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
 /* her hand (her words, aloud or written) */
@@ -143,6 +150,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
     <div class="view" id="footrestView"><div class="bg" id="wFloor"></div><canvas id="wShadow"></canvas></div>
     <div class="view" id="blindView"></div>
   </div>
+  <div id="close" style="display:none"><div id="closeShade"></div><img id="soleArt" alt="" draggable="false"><canvas id="dirtC"></canvas><canvas id="markC"></canvas></div>
   <canvas id="grain"></canvas>
   <div id="vignette"></div>
   <div id="strainV"></div>
@@ -208,11 +216,18 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   </div>
 </div>
 <div id="debug"></div>
+<div id="markPrompt"></div>
 
 <div id="panel">
   <h4>the game inside the frame</h4>
   <div class="row" id="inners"></div>
   <div class="note">stillness: the urges and restlessness. weight: the approved weight (footrest) inside the frame: hold Space or the left button, balance with the mouse, Shift or the right button to shift your own weight; her attention, lines, calls and the end come from the frame.</div>
+  <h4>foot service (the game inside: service)</h4>
+  <label>sole art <input type="file" id="soleFile" accept="image/*" style="width:170px"></label>
+  <label>close-up height <input type="range" id="closeH" min="0.35" max="1" step="0.01" value="0.62"><span id="closeHV">0.62</span></label>
+  <label>close-up y <input type="range" id="closeY" min="0.3" max="0.7" step="0.01" value="0.47"><span id="closeYV">0.47</span></label>
+  <div class="row"><button class="opt" id="markZones">mark zones</button></div>
+  <div class="note" id="soleNote">sole_close: her sole to the camera, toes up (one clean picture; the dirt is an effect). Until it exists the close-up uses the raised foot art, or her sprite. "mark zones": click toes, ball, arch, heel, edge on it; the JSON (fit and zones) travels with the picture. Debug shows her signals and the zone she wants.</div>
   <h4>what the commander perceives (view)</h4>
   <div class="row" id="views"></div>
   <label><input type="checkbox" id="blind"> blindfold (any view: hearing only)</label>
@@ -515,7 +530,7 @@ const BASE_EVENTS = [
 <script>
 'use strict';
 /* ---------- settings (the panel) ---------- */
-const S = { inner: 'stillness', view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
+const S = { inner: 'stillness', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.inner === 'weight' ? 'footrest' : S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
@@ -852,8 +867,10 @@ function moveAttention(dt) {
   const spd = Math.hypot(mx, my) / Math.max(0.008, dt / 1000);
   G.speed = lerp(G.speed ?? 0, spd, Math.min(1, dt / 120));
   G.headX = lerp(G.headX ?? 0, clamp(mx / Math.max(1, dt) * 6, -14, 14), Math.min(1, dt / 200)); G.headY = lerp(G.headY ?? 0, clamp(my / Math.max(1, dt) * 6, -10, 10), Math.min(1, dt / 200));
-  if (G.speed > 350 && (G.rippleCd = (G.rippleCd ?? 0) - dt) <= 0) { RIPPLES.push({ x: ATT.x, y: ATT.y, born: performance.now(), k: clamp(G.speed / 1250, 0.3, 1) }); G.rippleCd = lerp(260, 90, clamp((G.speed - 350) / 1250, 0, 1)); }
-  G.fidget = Math.max(0, (G.fidget ?? 0) + (G.speed > 450 ? clamp((G.speed - 450) / 1000, 0, 1.6) : -0.35) * dt / 1000);
+  const craft = svcOn() && SV && SV.closeK > 0.3;
+  if (craft) G.fidget = 0;
+  if (!craft && G.speed > 350 && (G.rippleCd = (G.rippleCd ?? 0) - dt) <= 0) { RIPPLES.push({ x: ATT.x, y: ATT.y, born: performance.now(), k: clamp(G.speed / 1250, 0.3, 1) }); G.rippleCd = lerp(260, 90, clamp((G.speed - 350) / 1250, 0, 1)); }
+  if (!craft) G.fidget = Math.max(0, (G.fidget ?? 0) + (G.speed > 450 ? clamp((G.speed - 450) / 1000, 0, 1.6) : -0.35) * dt / 1000);
   if (G.fidget >= 1 && G.t >= (G.fidgetCd ?? 0) && (G.phase === 'loop' || G.phase === 'empty')) {
     G.fidget = 0; G.fidgetCd = G.t + 1500; G.stats.fidgets = (G.stats.fidgets ?? 0) + 1;
     if (!G.toldFidget) { G.toldFidget = true; sense('You shift where you kneel; your eyes will not keep still.', 'body', 'body'); }
@@ -911,6 +928,8 @@ function updateUrges(dt) {
   }
   // spawns: more and stronger as the ease goes
   const k = lerp(1, 0.5, low);
+  const closeUp = svcOn() && SV && SV.closeK > 0.3;
+  if (closeUp) { G.nextItch = Math.max(G.nextItch, G.t + 3000); G.nextCramp = Math.max(G.nextCramp, G.t + 5000); }
   if (G.t >= G.nextItch) { spawnUrge('itch'); G.nextItch = G.t + rand(7000, 14000) * k; }
   if (G.t >= G.nextSwallow) { if (!G.urges.some((u) => u.kind === 'swallow')) spawnUrge('swallow'); G.nextSwallow = G.t + rand(15000, 26000); }
   if (G.t >= G.nextCramp && !G.cramp && (G.phaseIdx >= 1 || hours > 0.6)) { spawnUrge('cramp'); G.nextCramp = G.t + rand(35000, 65000) * k; }
@@ -929,7 +948,7 @@ function relieveAt(x, y) {
   if (u) {
     u.dead = true; G.stats.reliefs += 1;
     if (u.kind === 'itch') { G.ease += 3; bodyNoise('scratch', 0.35, true); }
-    else { bodyNoise('swallow', 0.15, false); }
+    else { if (SV) SV.dry = Math.max(0, SV.dry - 0.6); bodyNoise('swallow', 0.15, false); }
     return;
   }
   if (y > innerHeight * 0.84 && G.numb > 0.15) { G.numb = Math.max(0, G.numb - 0.6); G.ease += 9; G.stats.reliefs += 1; bodyNoise('shift', 0.6, true); }
@@ -1348,6 +1367,368 @@ function wRender(now, err) {
   return { tilt, jx: (Math.random() * 2 - 1) * amp, jy: (Math.random() * 2 - 1) * amp + W.sag * 26, sat: 1 - sv * 0.45 };
 }
 
+/* ---------- the game inside: FOOT SERVICE under the desk (P10e §15 "Foot service under the desk"). Her signal chooses the act, the act is
+   a craft played by gestures on her foot. Bouts between waiting (the frame's stillness goes on between them). Under the desk the signal is
+   read on legs_seated (rest / foot_raised); a foot act closes the camera in on sole_close (the zones come from its sidecar of points). ---------- */
+const svcOn = () => S.inner === 'service';
+/* the motions of her foot: what is seen or felt, the picture used under the desk, its sound */
+const MOTIONS = {
+  tap2:  { words: 'two taps', felt: 'Two taps of her foot on your shoulder.', up: true },
+  sole:  { words: 'my sole to your face', felt: 'She lifts her sole to your face.', up: true },
+  push:  { words: 'a push', felt: 'Her foot pushes at you, once.', up: true },
+  hook:  { words: 'my foot hooked', felt: 'Her foot hooks behind your neck and tugs.', up: true },
+  point: { words: 'my toe pointing', felt: 'Her toe points, and waits.', up: true },
+  stamp: { words: 'a stamp', felt: 'She stamps once, beside your knee.', up: false },
+  nudge: { words: 'a nudge', felt: 'A nudge of her foot against your knee.', up: false },
+};
+/* what a signal means; the first three raise her foot to the commander's face (the close-up) */
+const MEANINGS = { kiss: { foot: true, words: 'kiss' }, clean: { foot: true, words: 'clean' }, rub: { foot: true, words: 'rub' }, closer: { words: 'closer' }, still: { words: 'still' }, enough: { words: 'enough' } };
+const ZONE_WORDS = { toes: 'toes.', ball: 'the ball.', arch: 'the arch.', heel: 'heel.', edge: 'the edge.' };
+const ZONES_OF = { kiss: ['toes', 'ball', 'arch', 'heel'], clean: ['toes', 'ball', 'arch', 'heel', 'edge'], rub: ['ball', 'arch', 'heel'] };
+const DEFAULT_ZONES = { toes: [0.5, 0.14], ball: [0.5, 0.33], arch: [0.47, 0.56], heel: [0.5, 0.84], edge: [0.28, 0.55] };
+/* her patience for an answer, her kiss, her tempo, her grain, by style (drafts for the engine: her expectation profile, P15 `how`) */
+const SVC_STYLE = {
+  neutral:      { patience: 4.5, kiss: [0.7, 1.5], tempo: 1.0, every: 1 },
+  affectionate: { patience: 6,   kiss: [1.0, 2.2], tempo: 0.8, every: 1.2 },
+  playful:      { patience: 3.5, kiss: [0.4, 1.1], tempo: 1.2, every: 0.9 },
+  possessive:   { patience: 4,   kiss: [1.0, 1.9], tempo: 0.9, every: 0.65 },
+  cold:         { patience: 4,   kiss: [0.6, 1.2], tempo: 1.0, every: 1.1 },
+  cruel:        { patience: 2.5, kiss: [0.55, 1.0], tempo: 1.4, every: 0.6 },
+  clinical:     { patience: 4,   kiss: [0.85, 1.15], tempo: 1.0, every: 1 },
+  ritual:       { patience: 4.5, kiss: [0.8, 1.2], tempo: 1.0, every: 1 },
+};
+const SS = () => SVC_STYLE[S.style] ?? SVC_STYLE.neutral;
+/* her verdicts by quality, by style (said only by `with` and `glancing`) */
+const SVC_LINES = {
+  neutral: { good: ['good.', 'mm. better.'], poor: ['sloppy.', 'again, properly.'], wrong: ['no.'] },
+  affectionate: { good: ['that’s lovely.', 'perfect.'], poor: ['gentler, sweetheart.'], wrong: ['not that, silly.'] },
+  playful: { good: ['ooh, good pet~'], poor: ['you call that service?'], wrong: ['wrong~'] },
+  possessive: { good: ['good. mine.'], poor: ['you’ll do it right for me.'], wrong: ['no. listen.'] },
+  cold: { good: ['fine.'], poor: ['no.'], wrong: ['wrong.'] },
+  cruel: { good: ['adequate.'], poor: ['pathetic. again.'], wrong: ['can’t you read?'] },
+  clinical: { good: ['acceptable.'], poor: ['below standard. noted.'], wrong: ['incorrect response. noted.'] },
+  ritual: { good: ['as it should be.'], poor: ['again.'], wrong: ['that is not what was asked.'] },
+};
+const SL = () => SVC_LINES[S.style] ?? SVC_LINES.neutral;
+/* a deterministic shuffle (the engine hashes, it does not draw) */
+function shuffleBy(list, seed) { const a = list.slice(); let x = seed >>> 0 || 1; for (let i = a.length - 1; i > 0; i--) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; const j = x % (i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+/* her five pairs of motion → meaning (the three foot acts always among them), and her preferred order of the zones (her `how`) */
+function herSignals() {
+  const h = fnv(`${S.seed}|${S.style}|foot_signals`);
+  const mo = shuffleBy(Object.keys(MOTIONS), h), rest = shuffleBy(['closer', 'still', 'enough'], h >>> 5);
+  return ['kiss', 'clean', 'rub', rest[0], rest[1]].map((m, i) => ({ motion: mo[i], meaning: m }));
+}
+const herOrder = (act) => shuffleBy(ZONES_OF[act], fnv(`${S.seed}|${S.style}|order|${act}`));
+const herGrain = () => (fnv(`${S.seed}|${S.style}|grain`) % 2 ? 1 : -1); // 1: toes to heel, -1: heel to toes
+
+let SV = null;
+function svFresh() {
+  return { phase: 'wait', next: 14000, sig: null, named: new Set(), sigAt: 0, deadline: 0, closeK: 0, closeTarget: 0, boutEnd: 0, act: null,
+    want: null, wantAt: 0, orderI: 0, dry: 0, quality: 0, acts: 0, dirt: null, checked: false, gest: null, relax: 0, pull: 0, off: [0, 0], offTarget: [0, 0],
+    fx: { dx: 0, dy: 0, s: 1, r: 0 }, anim: null, marks: [], lickG: 0,
+    stats: { bouts: 0, right: 0, wrong: 0, missed: 0, kiss: { good: 0, peck: 0, long: 0, zone: 0 }, clean: { strokes: 0, right: 0, checked: 0, missedSpot: 0, dry: 0 }, rub: { good: 0, bad: 0 }, learnt: [] } };
+}
+const svSay = (lines) => { if ((G.step === 'with' || G.step === 'glancing') && lines) say(pick(lines), 'commander'); };
+/* the sounds of the service (synthesised): a kiss, a lick (wetter or drier), a rub, her foot tapping */
+const SV_SFX = {
+  kiss: () => { noise({ dur: 0.07, type: 'lowpass', f: 900, gain: 0.08, attack: 0.004, dest: A.body }); noise({ at: 0.05, dur: 0.03, type: 'highpass', f: 2500, gain: 0.04, attack: 0.002, dest: A.body }); },
+  tapFoot: (n = 2) => { for (let i = 0; i < n; i++) play('soft', { g: 0.3, at: i * 0.22 }); },
+  stamp: () => { thump(0, 0.5, 70, A.world); play('wood', { g: 0.25 }); },
+};
+/* the lick: a continuous noise whose colour follows the mouth's wetness and whose level follows the stroke's speed */
+function lickTick(speed) {
+  if (!A.ctx) return;
+  if (!SV.lick) {
+    const src = A.ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+    const f = A.ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2; const g = A.ctx.createGain(); g.gain.value = 0;
+    src.connect(f); f.connect(g); g.connect(A.body); src.start(); SV.lick = { src, f, g };
+  }
+  const ct = A.ctx.currentTime;
+  SV.lick.f.frequency.setTargetAtTime(lerp(1100, 3400, SV.dry), ct, 0.05);
+  SV.lick.g.gain.setTargetAtTime(clamp(speed / 1800, 0, 1) * 0.07, ct, 0.04);
+}
+const lickStop = () => { if (SV?.lick && A.ctx) SV.lick.g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.06); };
+/* a sound that only a third party matters for (she expects the sounds of her service): the call and an unaware visitor */
+function thirdPartyNoise(loud) {
+  const cover = coverNow();
+  if (G.call && G.t >= G.herSpeakingUntil && loud * (1 - cover) > 0.06 && !G.call.heard && Math.random() < 0.35) { G.call.heard = true; G.stats.heardOnLine += 1; callHeard(); }
+  if (G.visitor && !S.knows && loud * (1 - cover) > 0.06 && !G.visitor.heard && Math.random() < 0.35) { G.visitor.heard = true; G.stats.heardByVisitor += 1; visitorHeard(); }
+}
+
+/* ---------- the close-up: sole_close (or foot_raised zoomed, or her sprite, until the author has one) ---------- */
+function soleRect() {
+  const img = $('#soleArt'); if (!img.naturalWidth) return null;
+  const H = innerHeight * S.closeH, Wd = H * img.naturalWidth / img.naturalHeight;
+  const cx = innerWidth / 2 + SV.off[0] + SV.fx.dx, cy = innerHeight * S.closeY + SV.off[1] + SV.fx.dy + SV.relax * 8;
+  const k = (0.55 + 0.45 * easeOut(SV.closeK)) * SV.fx.s;
+  return { x: cx - (Wd * k) / 2, y: cy - (H * k) / 2, w: Wd * k, h: H * k };
+}
+const zones = () => S.zones ?? DEFAULT_ZONES;
+function zoneAt(x, y) {
+  const r = soleRect(); if (!r) return null;
+  let best = null, bd = 1e9;
+  for (const [k, p] of Object.entries(zones())) { const d = Math.hypot(x - (r.x + p[0] * r.w), y - (r.y + p[1] * r.h)); if (d < bd) { bd = d; best = k; } }
+  return bd < r.h * 0.17 ? best : null;
+}
+const onSole = (x, y) => { const r = soleRect(); return r && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h; };
+/* the dirt: a mask at low resolution over the picture's own alpha, heavier where she stands (heel, ball, toes); wiped by strokes */
+function makeDirt() {
+  const img = $('#soleArt'); if (!img.naturalWidth) return;
+  const w = 140, h = Math.round(140 * img.naturalHeight / img.naturalWidth);
+  const base = document.createElement('canvas'); base.width = w; base.height = h; const b = base.getContext('2d'); b.drawImage(img, 0, 0, w, h);
+  const alpha = b.getImageData(0, 0, w, h).data;
+  const m = new Float32Array(w * h);
+  const blobs = [];
+  for (const [k, p] of Object.entries(zones())) for (let i = 0; i < (k === 'heel' || k === 'ball' ? 5 : 3); i++) blobs.push([p[0] + rand(-0.08, 0.08), p[1] + rand(-0.05, 0.05), rand(0.06, 0.13)]);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const a = alpha[(y * w + x) * 4 + 3] / 255; if (a < 0.3) continue;
+    let v = 0.25 + Math.random() * 0.15;
+    for (const [bx, by, br] of blobs) v += 0.5 * Math.exp(-(((x / w - bx) ** 2) + ((y / h - by) ** 2) * 0.6) / (br * br));
+    m[y * w + x] = clamp(v, 0, 1) * a;
+  }
+  SV.dirt = { w, h, m, c: document.createElement('canvas') }; SV.dirt.c.width = w; SV.dirt.c.height = h;
+  SV.dirt.total0 = m.reduce((s, v) => s + v, 0);
+}
+function dirtLeft() { if (!SV.dirt) return 0; return SV.dirt.m.reduce((s, v) => s + v, 0) / Math.max(1, SV.dirt.total0); }
+function dirtIn(zone) {
+  if (!SV.dirt) return 0; const p = zones()[zone]; const { w, h, m } = SV.dirt; let s = 0, n = 0;
+  for (let y = Math.max(0, Math.round((p[1] - 0.1) * h)); y < Math.min(h, Math.round((p[1] + 0.1) * h)); y++) for (let x = Math.max(0, Math.round((p[0] - 0.12) * w)); x < Math.min(w, Math.round((p[0] + 0.12) * w)); x++) { s += m[y * w + x]; n++; }
+  return n ? s / n : 0;
+}
+function wipe(x0, y0, x1, y1) {
+  const r = soleRect(); if (!r || !SV.dirt) return 0;
+  const { w, h, m } = SV.dirt;
+  const dy = (y1 - y0) / r.h, withGrain = Math.sign(dy) === herGrain() || Math.abs(dy) < 0.004;
+  const wet = 1 - SV.dry * 0.85, k = (withGrain ? 1 : 0.45) * wet * 0.5;
+  const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4)), rad = 0.07 * w;
+  let removed = 0;
+  for (let i = 0; i <= steps; i++) {
+    const px = ((x0 + (x1 - x0) * (i / steps)) - r.x) / r.w * w, py = ((y0 + (y1 - y0) * (i / steps)) - r.y) / r.h * h;
+    for (let y = Math.max(0, Math.floor(py - rad)); y < Math.min(h, Math.ceil(py + rad)); y++) for (let x = Math.max(0, Math.floor(px - rad)); x < Math.min(w, Math.ceil(px + rad)); x++) {
+      const d = Math.hypot(x - px, y - py) / rad; if (d > 1) continue;
+      const take = m[y * w + x] * k * (1 - d) * 0.35; m[y * w + x] -= take; removed += take;
+    }
+  }
+  return removed;
+}
+
+/* ---------- a bout ---------- */
+function svSignal() {
+  const pairs = herSignals();
+  // during a call her foot rests on the shoulder; a cruel or playful holder may ask to be cleaned right then
+  let pick2;
+  if (G.call) { if (!['cruel', 'playful'].includes(S.style) || SV.callAsked) return; SV.callAsked = true; pick2 = pairs.find((p) => p.meaning === 'clean'); }
+  else pick2 = pairs[fnv(`${S.seed}|bout|${SV.stats.bouts}`) % pairs.length];
+  SV.sig = pick2; SV.phase = 'signal'; SV.sigAt = G.t; SV.stats.bouts += 1; SV.gest = null;
+  const mo = MOTIONS[pick2.motion], me = MEANINGS[pick2.meaning];
+  SV.anim = { kind: pick2.motion, t0: G.t };
+  if (mo.up) G.footUpUntil = G.t + 2600;
+  if (pick2.motion === 'stamp') SV_SFX.stamp(); else SV_SFX.tapFoot(pick2.motion === 'tap2' ? 2 : 1);
+  sense(mo.felt, 'body');
+  // the first time she names it, at any presence: it is teaching
+  if (!SV.named.has(pick2.motion)) { SV.named.add(pick2.motion); SV.stats.learnt.push(`${mo.words}: ${me.words}`); after(500, () => say(`${mo.words} — ${me.words}.`, 'commander')); }
+  const patience = SS().patience * 1000;
+  if (me.foot) {
+    // she lifts the foot to the commander's face: the camera closes in; the answer is the first gesture on her foot
+    after(650, () => { if (SV.phase === 'signal') { SV.closeTarget = 1; SV.act = pick2.meaning; SV.deadline = G.t + patience; if (pick2.meaning === 'clean' && !SV.dirt) makeDirt(); } });
+  } else { SV.act = pick2.meaning; SV.deadline = G.t + patience; SV.deskStart = G.t; SV.stillOk = true; SV.holdOnLegs = 0; SV.awayHold = 0; }
+}
+/* the answer: a gesture classified (hold = kiss, a straight drag = clean, a circling drag = rub; under the desk: a press on her legs =
+   closer, nothing = still, the attention held past the edge of her foot = enough) */
+function svAnswer(kind) {
+  if (SV.phase !== 'signal') return;
+  if (kind === SV.sig.meaning) {
+    SV.stats.right += 1; SV.phase = MEANINGS[kind].foot ? 'craft' : 'wait';
+    if (MEANINGS[kind].foot) { SV.boutEnd = G.t + rand(15000, 45000); SV.orderI = 0; svNextWant(); }
+    else svDeskDone(kind);
+  } else {
+    SV.stats.wrong += 1; G.stats.noticed.push({ kind: `a misread signal (${kind} for ${SV.sig.meaning})`, step: G.step, how: 'felt', fiction: clockText(G.clockMin) });
+    svSay(SL().wrong); if (G.step === 'own' || G.step === 'use') { SV.pull = 1; sense('Her foot jerks away.', 'body'); }
+    if (G.step === 'glancing') after(900, () => { SV.anim = { kind: SV.sig.motion, t0: G.t }; SV_SFX.tapFoot(1); });
+    svEndBout(false);
+  }
+}
+function svDeskDone(kind) {
+  if (kind === 'closer') { play('cloth', { g: 0.3, dest: A.body }); sense('You shuffle closer between her feet.', 'body'); thirdPartyNoise(0.2); }
+  if (kind === 'enough') sense('You draw back. Her foot settles.', 'body');
+  if (kind === 'still') sense('You keep still. Her foot rests.', 'body');
+  G.press = 0.5; svEndBout(true, true);
+}
+function svNextWant() {
+  const order = herOrder(SV.act); SV.want = order[SV.orderI % order.length]; SV.orderI += 1; SV.wantAt = G.t;
+  if (G.step === 'with') say(ZONE_WORDS[SV.want], 'commander');
+  // glancing: she brings that part closer to the face (the picture shifts to centre the zone)
+  const p = zones()[SV.want], r = soleRect();
+  SV.offTarget = G.step === 'glancing' && r ? [(0.5 - p[0]) * r.w * 0.6, (0.5 - p[1]) * r.h * 0.6] : [0, 0];
+}
+function svEndBout(good, desk = false) {
+  lickStop();
+  const q = SV.acts ? SV.quality / SV.acts : (good ? 1 : 0);
+  if (!desk) {
+    if (SV.phase === 'craft' || SV.phase === 'lowering') {
+      if (q >= 0.6) { svSay(SL().good); if (G.step === 'own') { G.press = 1; sense('A press of her foot: approval, without a word.', 'body'); } }
+      else { svSay(SL().poor); if (G.step === 'own') { SV.pull = 1; sense('She pulls her foot away before you are done.', 'body'); } }
+    }
+    SV.closeTarget = 0;
+  }
+  SV.phase = 'wait'; SV.act = null; SV.want = null; SV.quality = 0; SV.acts = 0; SV.offTarget = [0, 0]; SV.dry = Math.max(0, SV.dry - 0.3);
+  SV.next = G.t + rand(25000, 70000) * SS().every * (ACT().absorb < -0.25 ? 1.3 : 1);
+}
+function svUpdate(dt) {
+  if (!SV) return;
+  SV.closeK += (SV.closeTarget - SV.closeK) * Math.min(1, dt / 260);
+  SV.off[0] += (SV.offTarget[0] - SV.off[0]) * Math.min(1, dt / 400); SV.off[1] += (SV.offTarget[1] - SV.off[1]) * Math.min(1, dt / 400);
+  SV.relax = Math.max(0, SV.relax - dt / 2500); SV.pull = Math.max(0, SV.pull - dt / 700);
+  // the motion of her foot (the signal's animation)
+  const a = SV.anim, fx = { dx: 0, dy: 0, s: 1, r: 0 };
+  if (a) {
+    const u = (G.t - a.t0) / 1000;
+    if (a.kind === 'tap2') fx.dy = -Math.max(0, Math.sin(u * Math.PI * 4)) * 14 * (u < 0.5 ? 1 : 0);
+    if (a.kind === 'sole') { fx.s = 1 + 0.16 * smooth(0, 0.5, u); fx.dy = -22 * smooth(0, 0.5, u); }
+    if (a.kind === 'push') fx.s = 1 + 0.22 * Math.max(0, Math.sin(Math.min(u, 0.35) / 0.35 * Math.PI));
+    if (a.kind === 'hook') fx.dy = Math.max(0, Math.sin(u * Math.PI * 3)) * 18 * (u < 0.67 ? 1 : 0);
+    if (a.kind === 'point') fx.r = 6 * smooth(0, 0.3, u) * (u < 1.6 ? 1 : 1 - smooth(1.6, 2, u));
+    if (a.kind === 'stamp') fx.dy = 10 * Math.max(0, 1 - u * 4);
+    if (a.kind === 'nudge') fx.dx = 16 * Math.max(0, Math.sin(Math.min(u, 0.5) / 0.5 * Math.PI));
+    if (u > 2.4) SV.anim = null;
+  }
+  fx.s *= 1 - SV.pull * 0.12; fx.dx += SV.pull * 30; fx.dy += SV.pull * 20;
+  SV.fx = fx; G.footFx = fx;
+  if (G.phase !== 'loop') return;
+  if (SV.phase === 'wait') { if (G.t >= SV.next && !G.away && !G.visitor && (!G.call || ['cruel', 'playful'].includes(S.style))) svSignal(); return; }
+  if (SV.phase === 'signal') {
+    if (SV.deadline && G.t > SV.deadline) {
+      if (SV.act === 'still' && SV.stillOk) { svAnswer('still'); return; }
+      SV.stats.missed += 1; G.stats.noticed.push({ kind: 'a signal left unanswered', step: G.step, how: 'felt', fiction: clockText(G.clockMin) });
+      svSay(SL().wrong); svEndBout(false); return;
+    }
+    if (SV.deskStart && !MEANINGS[SV.act ?? 'kiss']?.foot) {
+      // under the desk: closer = a press held on her legs; still = nothing at all; enough = the attention held past the edge of her foot
+      if ((G.speed ?? 0) > 90 || G.mouseHold) SV.stillOk = false;
+      const legs = { x: innerWidth * 0.5, y: innerHeight * 0.45 };
+      const far = Math.hypot(ATT.x - legs.x, ATT.y - legs.y) > innerHeight * 0.33;
+      SV.awayHold = far ? SV.awayHold + dt : 0;
+      if (SV.awayHold > 800) { SV.deskStart = 0; svAnswer('enough'); return; }
+      if (G.mouseHold && Math.hypot(MOUSE.x - legs.x, MOUSE.y - legs.y) < innerHeight * 0.2) { SV.holdOnLegs += dt; if (SV.holdOnLegs > 600) { SV.deskStart = 0; svAnswer('closer'); return; } }
+    }
+    return;
+  }
+  if (SV.phase === 'craft') {
+    if (SV.act !== 'clean' && G.t - SV.wantAt > rand(6000, 8000)) svNextWant();
+    if (SV.act === 'clean' && SV.want && dirtIn(SV.want) < 0.12) svNextWant();
+    if (SV.act === 'clean' && !SV.checked && dirtLeft() <= 0.1) svCheck();
+    if (G.t >= SV.boutEnd) { if (SV.act === 'clean' && !SV.checked) svCheck(); svEndBout(true); }
+  }
+}
+/* her check of the cleaning (the engine's at dirt ≤ 10): a spot left is named by presence */
+function svCheck() {
+  SV.checked = true; SV.stats.clean.checked += 1;
+  const missed = Object.keys(zones()).find((z) => dirtIn(z) > 0.25);
+  if (missed) { SV.stats.clean.missedSpot += 1; SV.quality += 0; SV.acts += 1; if (G.step === 'with' || G.step === 'glancing') say(`${ZONE_WORDS[missed].replace('.', '')}. you missed it.`, 'commander'); else { SV.pull = 0.6; sense('She turns her foot to the light, and you see what you missed.', 'body'); } }
+  else { SV.quality += 1; SV.acts += 1; }
+}
+/* the gestures in the close-up */
+function svDown(x, y) {
+  if (SV.phase !== 'signal' && SV.phase !== 'craft') return false;
+  if (SV.closeK < 0.6 || !onSole(x, y)) return false;
+  SV.gest = { x0: x, y0: y, x, y, t0: G.t, len: 0, turn: 0, lastA: null, pts: [[x, y]], zone: zoneAt(x, y), kind: null, lastT: G.t };
+  return true;
+}
+function svMove(x, y) {
+  const g = SV?.gest; if (!g) return;
+  const dx = x - g.x, dy = y - g.y, d = Math.hypot(dx, dy); if (d < 0.5) return;
+  const dtm = Math.max(1, G.t - g.lastT); g.lastT = G.t;
+  g.len += d; g.pts.push([x, y]); if (g.pts.length > 40) g.pts.shift();
+  const a = Math.atan2(dy, dx); if (g.lastA !== null) { let da = a - g.lastA; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; g.turn += da; } g.lastA = a;
+  const speed = d / dtm * 1000;
+  // a circling drag is a rub (the turning adds up), a straight one a stroke of cleaning (it goes away from where it started); unsure, wait
+  if (!g.kind) {
+    if (Math.abs(g.turn) > Math.PI * 1.2) g.kind = 'rub';
+    else if (g.len > 120 && Math.abs(g.turn) < 0.6) g.kind = 'clean';
+    else if (g.len > 300) g.kind = Math.abs(g.turn) / g.len > 0.004 ? 'rub' : 'clean';
+  }
+  if (g.kind && SV.phase === 'signal') { svAnswer(g.kind); if (SV.phase !== 'craft') { SV.gest = null; return; } }
+  if (SV.phase === 'craft' && g.kind === 'clean' && SV.act === 'clean') {
+    const removed = wipe(g.x, g.y, x, y);
+    SV.dry = clamp(SV.dry + d * 0.0011, 0, 1); lickTick(speed);
+    thirdPartyNoise(0.05 + speed / 6000);
+    const z = zoneAt(x, y); if (z) { if (!SV.want || z === SV.want) SV.goodLen = (SV.goodLen ?? 0) + d; else SV.badLen = (SV.badLen ?? 0) + d; }
+    if (SV.dry > 0.85 && !SV.toldDry) { SV.toldDry = true; sense('Your mouth is dry; the tongue drags. Swallow.', [0.42, 0.74], 'body'); SV.stats.clean.dry += 1; }
+  }
+  if (SV.phase === 'craft' && g.kind === 'rub' && SV.act === 'rub') {
+    // her tempo: circles a second, steady; she relaxes (the foot sinks a little) or pulls away
+    const cps = Math.abs(d / dtm * 1000) / (2 * Math.PI * Math.max(25, g.len / Math.max(1, Math.abs(g.turn)) ));
+    g.cps = lerp(g.cps ?? cps, cps, 0.15);
+    const off = Math.abs((g.cps ?? 0) - SS().tempo) / SS().tempo;
+    if (off < 0.35) { SV.relax = Math.min(1, SV.relax + 0.02); g.goodT = (g.goodT ?? 0) + dtm; } else if (off > 0.8) { g.badT = (g.badT ?? 0) + dtm; if (g.badT > 1200 && !g.pulled) { g.pulled = true; SV.pull = 0.8; } }
+    noise({ dur: 0.06, type: 'lowpass', f: 520, gain: clamp(speed / 9000, 0, 0.05), attack: 0.01, dest: A.body });
+    thirdPartyNoise(0.03);
+  }
+  g.x = x; g.y = y;
+}
+function svUp() {
+  const g = SV?.gest; if (!g) return; SV.gest = null; lickStop();
+  if (!g.kind && g.len < 12) {
+    // a kiss: a press held on one spot
+    const d = (G.t - g.t0) / 1000;
+    if (SV.phase === 'signal') { if (d >= 0.3) svAnswer('kiss'); return; }
+    if (SV.phase === 'craft' && SV.act === 'kiss') {
+      SV_SFX.kiss(); thirdPartyNoise(0.12); SV.marks.push({ x: g.x0, y: g.y0, born: performance.now() });
+      const [lo, hi] = SS().kiss, rightZone = !SV.want || g.zone === SV.want || G.step === 'own' || G.step === 'use' && false;
+      SV.acts += 1;
+      if (!rightZone) { SV.stats.kiss.zone += 1; }
+      if (d < lo) SV.stats.kiss.peck += 1; else if (d > hi) SV.stats.kiss.long += 1; else if (rightZone) { SV.stats.kiss.good += 1; SV.quality += 1; SV.relax = Math.min(1, SV.relax + 0.3); }
+      if (rightZone && d >= lo && d <= hi && SV.want && G.t - SV.wantAt > 2000) svNextWant();
+    }
+    return;
+  }
+  if (SV.phase === 'craft' && g.kind === 'clean' && SV.act === 'clean') {
+    SV.stats.clean.strokes += 1; const good = (SV.goodLen ?? 0) >= (SV.badLen ?? 0); if (good) SV.stats.clean.right += 1;
+    SV.acts += 1; SV.quality += good ? 1 : 0.3; SV.goodLen = 0; SV.badLen = 0;
+  }
+  if (SV.phase === 'craft' && g.kind === 'rub' && SV.act === 'rub') {
+    const good = (g.goodT ?? 0) > (g.badT ?? 0); if (good) SV.stats.rub.good += 1; else SV.stats.rub.bad += 1; SV.acts += 1; SV.quality += good ? 1 : 0.2;
+  }
+}
+/* drawing the close-up: the shade under the desk, her sole, the dirt over it, the warm marks of kisses */
+function svRender(now) {
+  const k = SV ? SV.closeK : 0;
+  setStyle('#close', 'opacity', (smooth(0.02, 0.6, k)).toFixed(3));
+  setStyle('#close', 'display', k > 0.01 ? 'block' : 'none');
+  if (k <= 0.01 || !SV) return;
+  const r = soleRect(); const img = $('#soleArt');
+  if (!r) return;
+  img.style.left = `${r.x}px`; img.style.top = `${r.y}px`; img.style.width = `${r.w}px`; img.style.height = `${r.h}px`;
+  img.style.transform = `rotate(${(SV.fx.r + Math.sin(now / 1700) * 0.4).toFixed(2)}deg)`;
+  const dc = $('#dirtC');
+  dc.style.left = `${r.x}px`; dc.style.top = `${r.y}px`; dc.style.width = `${r.w}px`; dc.style.height = `${r.h}px`; dc.style.transform = img.style.transform;
+  if (SV.dirt && SV.act === 'clean') {
+    const { w, h, m, c } = SV.dirt; const cx = c.getContext('2d'), id = cx.createImageData(w, h);
+    for (let i = 0; i < w * h; i++) { id.data[i * 4] = 58; id.data[i * 4 + 1] = 46; id.data[i * 4 + 2] = 38; id.data[i * 4 + 3] = Math.round(Math.min(1, m[i] * 1.25) * 235); }
+    cx.putImageData(id, 0, 0); if (dc.width !== w) { dc.width = w; dc.height = h; } dc.getContext('2d').clearRect(0, 0, w, h); dc.getContext('2d').drawImage(c, 0, 0);
+    dc.style.opacity = '1';
+  } else dc.style.opacity = '0';
+  // the marks of kisses: a warm glow that fades where the lips were
+  const mc = $('#markC'); if (mc.width !== innerWidth) { mc.width = innerWidth; mc.height = innerHeight; }
+  const mx = mc.getContext('2d'); mx.clearRect(0, 0, mc.width, mc.height);
+  SV.marks = SV.marks.filter((q) => performance.now() - q.born < 2200);
+  for (const q of SV.marks) { const a = 1 - (performance.now() - q.born) / 2200; const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30); g.addColorStop(0, `rgba(255,150,140,${(0.35 * a).toFixed(3)})`); g.addColorStop(1, 'rgba(255,150,140,0)'); mx.fillStyle = g; mx.beginPath(); mx.arc(q.x, q.y, 30, 0, Math.PI * 2); mx.fill(); }
+  // marking zones (the prototype's zone marker)
+  if (MARK.on) for (const [kz, p] of Object.entries(MARK.pts)) { mx.strokeStyle = 'rgba(216,228,255,.8)'; mx.beginPath(); mx.arc(r.x + p[0] * r.w, r.y + p[1] * r.h, 10, 0, Math.PI * 2); mx.stroke(); mx.fillStyle = 'rgba(216,228,255,.8)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(kz, r.x + p[0] * r.w + 14, r.y + p[1] * r.h + 4); }
+  if (S.debug && SV.want) { const p = zones()[SV.want]; mx.strokeStyle = 'rgba(140,255,170,.6)'; mx.beginPath(); mx.arc(r.x + p[0] * r.w, r.y + p[1] * r.h, r.h * 0.17, 0, Math.PI * 2); mx.stroke(); }
+}
+/* the zone marker (prototype tool): click the named points on the picture; the JSON travels with the picture as its sidecar */
+const MARK = { on: false, i: 0, names: ['toes', 'ball', 'arch', 'heel', 'edge'], pts: {} };
+function markStart() { MARK.on = true; MARK.i = 0; MARK.pts = {}; if (!SV) SV = svFresh(); SV.closeTarget = 1; SV.closeK = 1; $('#markPrompt').style.display = 'block'; $('#markPrompt').textContent = `click: ${MARK.names[0]}`; }
+function markClick(x, y) {
+  const r = soleRect(); if (!r) return;
+  MARK.pts[MARK.names[MARK.i]] = [+((x - r.x) / r.w).toFixed(3), +((y - r.y) / r.h).toFixed(3)]; MARK.i += 1;
+  if (MARK.i >= MARK.names.length) {
+    S.zones = { ...MARK.pts }; MARK.on = false; SV.closeTarget = 0; $('#markPrompt').style.display = 'none';
+    const j = JSON.stringify({ slot: 'sole_close', fit: { height: S.closeH, y: S.closeY }, zones: S.zones }); navigator.clipboard?.writeText(j).catch(() => {}); $('#soleNote').textContent = j;
+  } else $('#markPrompt').textContent = `click: ${MARK.names[MARK.i]}`;
+}
+
 /* ---------- the loop ---------- */
 const clockText = (m) => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
 function beginPhase(i) {
@@ -1371,6 +1752,7 @@ function updateLoop(dt) {
   }
   if (ACT().sleep) { G.asleepDepth = 0.5 + 0.5 * Math.sin(G.t / 9000); if (!G.nextBreath || G.t >= G.nextBreath) { sleepBreath(); G.nextBreath = G.t + rand(4800, 6200); } }
   if (weightOn()) wUpdate(dt); else updateUrges(dt);
+  if (svcOn()) svUpdate(dt);
   // an unanswered question
   if (G.ask && G.t > G.ask.until) { G.ask = null; G.stats.missed += 1; if (G.step === 'with') say(pick(ST().silent), 'commander'); else { G.press = 0.8; G.footUpUntil = G.t + 2000; sense('Silence above you. A long one.', 'her'); } }
   // she came back and the commander was moving: seen at once
@@ -1543,7 +1925,8 @@ function drawLegs(now) {
       const w = Wv * wf, h = w * img.naturalHeight / img.naturalWidth;
       img.style.width = `${w}px`; img.style.left = `${(Wv - w) / 2}px`; img.style.top = `${Hv * bf - h}px`;
       img.style.opacity = on && !G.away ? '1' : '0';
-      img.style.transform = `rotate(${sw.toFixed(2)}deg) scale(${(1 + G.press * 0.04).toFixed(3)})`;
+      const fx = svcOn() && G.footFx ? G.footFx : { dx: 0, dy: 0, s: 1, r: 0 };
+      img.style.transform = `translate(${fx.dx.toFixed(1)}px, ${fx.dy.toFixed(1)}px) rotate(${(sw + fx.r).toFixed(2)}deg) scale(${((1 + G.press * 0.04) * fx.s).toFixed(3)})`;
     };
     place(art, S.legsW, S.legsB, !up);
     place(raised, S.raisedW, S.raisedB, up);
@@ -1690,7 +2073,8 @@ function render(now, dt) {
     : `translate(${((Math.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp + G.shake * 10 - hy).toFixed(1)}px)`;
   setStyle('#vignette', 'background', low < 0.05 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72 - low * 28).toFixed(0)}%, rgba(26,6,4,${(0.2 + low * 0.5).toFixed(2)}) 100%)`);
   const dusk = smooth(18 * 60 + 30, 20 * 60, G.clockMin), dark = G.lightsOff ? 0.35 : 1;
-  setStyle('#world', 'filter', `saturate(${(wr ? wr.sat : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
+  const ck = SV ? SV.closeK : 0;
+  setStyle('#world', 'filter', `saturate(${(wr ? wr.sat : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark * (1 - ck * 0.4)).toFixed(2)}) blur(${(ck * 6).toFixed(1)}px)`);
   // her view: her sprite, the lamp or the screen on her; she leans a little toward the commander when she looks
   if (view === 'her') {
     const look = G.att === 'watching' ? 1 : G.att === 'glancing' ? 0.4 : 0;
@@ -1723,7 +2107,8 @@ function render(now, dt) {
   setStyle('#stopPill', 'opacity', live ? '1' : '0');
   setStyle('#reply', 'opacity', live ? '0.35' : '1');
   $('#inputWrap').classList.toggle('ask', !!G.ask);
-  if (S.debug) $('#debug').textContent = `${G.phase} phase ${G.phaseIdx + 1}/${S.phases}  ${clockText(G.clockMin)}  presence ${G.step} (${G.score.toFixed(2)})  att ${G.att}${G.away ? '  AWAY' : ''}${G.call ? '  CALL' : ''}${G.visitor ? '  VISITOR' : ''}\nease ${G.ease.toFixed(0)}  numb ${G.numb.toFixed(2)}  cover ${coverNow().toFixed(2)}  ears ${herEars().toFixed(2)}  progress ${G.progress}/${ACT().total} ${ACT().unit}\nnoticed ${G.stats.noticed.length}  unnoticed ${G.stats.unnoticed}  endured ${G.stats.endured}  involuntary ${G.stats.involuntary}  asked ${G.stats.asked} answered ${G.stats.answered} missed ${G.stats.missed} breaches ${G.stats.breaches}`;
+  if (S.debug && svcOn() && SV) { $('#debug').textContent = `service ${SV.phase} act ${SV.act ?? '-'} want ${SV.want ?? '-'} dry ${SV.dry.toFixed(2)} dirt ${dirtLeft().toFixed(2)} close ${SV.closeK.toFixed(2)} next ${Math.round((SV.next - G.t) / 1000)}s\nher signals: ${herSignals().map((q) => `${q.motion}→${q.meaning}`).join('  ')}   grain ${herGrain() > 0 ? 'toes→heel' : 'heel→toes'}   kiss ${SS().kiss.join('–')} s   tempo ${SS().tempo}/s`; }
+  else if (S.debug) $('#debug').textContent = `${G.phase} phase ${G.phaseIdx + 1}/${S.phases}  ${clockText(G.clockMin)}  presence ${G.step} (${G.score.toFixed(2)})  att ${G.att}${G.away ? '  AWAY' : ''}${G.call ? '  CALL' : ''}${G.visitor ? '  VISITOR' : ''}\nease ${G.ease.toFixed(0)}  numb ${G.numb.toFixed(2)}  cover ${coverNow().toFixed(2)}  ears ${herEars().toFixed(2)}  progress ${G.progress}/${ACT().total} ${ACT().unit}\nnoticed ${G.stats.noticed.length}  unnoticed ${G.stats.unnoticed}  endured ${G.stats.endured}  involuntary ${G.stats.involuntary}  asked ${G.stats.asked} answered ${G.stats.answered} missed ${G.stats.missed} breaches ${G.stats.breaches}`;
 }
 function setReply(html, opacity = 1) { $('#reply').innerHTML = html; $('#reply').style.opacity = String(opacity); }
 
@@ -1749,7 +2134,9 @@ function showDigest() {
   else if (s.gotUp) herSide.push('She left without a word.');
   else herSide.push(`It ended ${ended}.`);
   if (weightOn()) herSide.splice(1, 0, `Her feet were on the commander's back: ${W.shifts} shifts of her weight (${W.hardShifts} landed hard), ${W.slips} slips under her${W.buckles ? `, the commander buckled ${W.buckles === 1 ? 'once' : `${W.buckles} times`}` : ''}${W.rests ? `; she let the commander rest ${W.rests === 1 ? 'once' : `${W.rests} times`}` : ''}.`);
+  if (svcOn() && SV) { const v = SV.stats; herSide.splice(1, 0, `She signalled ${v.bouts} times with her foot: ${v.right} read right, ${v.wrong} wrong, ${v.missed} left unanswered.${v.kiss.good + v.kiss.peck + v.kiss.long ? ` Kisses: ${v.kiss.good} as she likes them, ${v.kiss.peck} too quick, ${v.kiss.long} too long, ${v.kiss.zone} in the wrong place.` : ''}${v.clean.strokes ? ` Cleaning: ${v.clean.right} of ${v.clean.strokes} strokes where she wanted; her check ${v.clean.checked ? (v.clean.missedSpot ? 'found a spot missed' : 'found it clean') : 'did not come'}.` : ''}${v.rub.good + v.rub.bad ? ` Rubbing: ${v.rub.good} at her tempo, ${v.rub.bad} not.` : ''}`); }
   const onlyYou = [];
+  if (svcOn() && SV && SV.stats.learnt.length) onlyYou.push(`her signals learnt: ${SV.stats.learnt.join('; ')}`);
   if (s.fidgets) onlyYou.push(`fidgeted ${s.fidgets === 1 ? 'once' : `${s.fidgets} times`}`);
   if (s.unnoticed) onlyYou.push(`${s.unnoticed} movement${s.unnoticed > 1 ? 's' : ''} she did not notice`);
   if (s.endured) onlyYou.push(`${s.endured} urge${s.endured > 1 ? 's' : ''} outlasted without moving`);
@@ -1764,7 +2151,8 @@ function showDigest() {
 
 /* ---------- input ---------- */
 const typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-addEventListener('mousemove', (e) => { MOUSE.x = e.clientX; MOUSE.y = e.clientY; });
+addEventListener('mousemove', (e) => { MOUSE.x = e.clientX; MOUSE.y = e.clientY; if (SV && SV.gest) svMove(e.clientX, e.clientY); });
+addEventListener('mouseup', (e) => { if (e.button === 0 && SV) svUp(); });
 const RIPPLES = [];
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (G.phase === 'loop' || G.phase === 'empty') finish('stop'); return; }
@@ -1778,6 +2166,9 @@ addEventListener('mouseup', (e) => { if (e.button === 0) { G.mouseHold = false; 
 $('#stage').addEventListener('mousedown', (e) => {
   if (e.target.closest('#inputWrap, #stopPill, .card, #skip, #getUp')) return;
   if (weightOn()) { if (e.button === 0) { G.mouseHold = true; HOLD.on = true; } else if (e.button === 2 && W) wRelief(); return; }
+  if (MARK.on && e.button === 0) { markClick(e.clientX, e.clientY); return; }
+  if (e.button === 0) G.mouseHold = true;
+  if (svcOn() && SV && e.button === 0 && svDown(e.clientX, e.clientY)) return;
   if (e.button === 0) relieveAt(e.clientX, e.clientY);
 });
 $('#stage').addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1805,7 +2196,7 @@ function begin() {
   for (const k of Object.keys(LOOPS)) loopOff(k);
   if (A.ctx) A.humG.gain.setTargetAtTime(0.012, A.ctx.currentTime, 0.5);
   for (const id of ['#hand', '#senses', '#others']) $(id).replaceChildren();
-  G = fresh(); setScore(baseScore()); W = wFresh(); $('#cracks').replaceChildren(); cracks.length = 0; HOLD.on = false;
+  G = fresh(); setScore(baseScore()); W = wFresh(); SV = svcOn() ? svFresh() : null; if (SV && $('#soleArt').dataset.own !== '1') $('#soleArt').src = $('#raisedArt').src || ASSETS.her; if (svcOn()) S.view = 'legs'; $('#cracks').replaceChildren(); cracks.length = 0; HOLD.on = false;
   $('#summary').style.display = 'none'; $('#getUp').style.display = 'none'; $('#skip').style.display = 'none'; $('#skip').classList.remove('on');
   G.phase = 'entry'; G.entryT = 0;
   const entry = weightOn() ? 'She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.' : { her: 'She points at the floor beside her chair without looking up.', legs: 'She pushes her chair back, points under the desk, and pulls the chair in again once you are there.', floor: 'She points at the floor by her bunk. "Down. Eyes down."', wall: 'She turns you to face the wall by the shoulder, and goes back to her chair.' }[S.view];
@@ -1826,6 +2217,7 @@ function frame(now) {
     case 'empty': updateUrges(dt * 0.6); G.clockMin += (G.clockRate * dt) / 1000; if (G.t >= G.foundAt) found(); break;
   }
   musicTick();
+  svRender(performance.now());
   if (A.ctx) {
     A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, A.ctx.currentTime, 0.05);
     // listening to her makes her sounds clearer; the rest of the time the world is a little dull
@@ -1843,7 +2235,7 @@ function frame(now) {
 function optRow(host, items, get, set) {
   host.replaceChildren(...items.map((k) => { const b = document.createElement('button'); b.className = 'opt' + (get() === k ? ' on' : ''); b.textContent = k; b.onclick = () => { set(k); optRow(host, items, get, set); }; return b; }));
 }
-optRow($('#inners'), ['stillness', 'weight'], () => S.inner, (k) => { S.inner = k; });
+optRow($('#inners'), ['stillness', 'weight', 'service'], () => S.inner, (k) => { S.inner = k; if (k === 'service') { S.view = 'legs'; optRow($('#views'), Object.keys(VIEWS).filter((q) => q !== 'footrest'), () => S.view, (q) => { S.view = q; $('#viewNote').textContent = VIEWS[q].note; }); } });
 optRow($('#views'), Object.keys(VIEWS).filter((k) => k !== 'footrest'), () => S.view, (k) => { S.view = k; $('#viewNote').textContent = VIEWS[k].note; });
 $('#viewNote').textContent = V().note;
 optRow($('#legVar'), ['planted', 'crossed'], () => S.legVar, (k) => { S.legVar = k; });
@@ -1854,7 +2246,7 @@ for (const k of Object.keys(STYLES)) { const o = document.createElement('option'
 const bindSel = (id, key) => { $(`#${id}`).value = S[key]; $(`#${id}`).onchange = () => { S[key] = $(`#${id}`).value; updatePresenceNote(); }; };
 bindSel('styleSel', 'style'); bindSel('talkSel', 'talk'); bindSel('regardSel', 'regard'); bindSel('holdSel', 'hold'); bindSel('moodSel', 'mood'); bindSel('forceSel', 'force');
 const bindRange = (id, key) => { const el = $(`#${id}`); const sync = () => { S[key] = Number(el.value); const v = $(`#${id}V`); if (v) v.textContent = String(S[key]); updatePresenceNote(); }; el.oninput = sync; sync(); };
-bindRange('seed', 'seed'); bindRange('legsW', 'legsW'); bindRange('legsB', 'legsB'); bindRange('floorShade', 'floorShade'); bindRange('raisedW', 'raisedW'); bindRange('feetW', 'feetW'); bindRange('feetB', 'feetB'); bindRange('feetTilt', 'feetTilt'); bindRange('raisedB', 'raisedB'); bindRange('phases', 'phases'); bindRange('phaseLen', 'phaseLen'); bindRange('level', 'level'); bindRange('vol', 'vol');
+bindRange('seed', 'seed'); bindRange('closeH', 'closeH'); bindRange('closeY', 'closeY'); bindRange('legsW', 'legsW'); bindRange('legsB', 'legsB'); bindRange('floorShade', 'floorShade'); bindRange('raisedW', 'raisedW'); bindRange('feetW', 'feetW'); bindRange('feetB', 'feetB'); bindRange('feetTilt', 'feetTilt'); bindRange('raisedB', 'raisedB'); bindRange('phases', 'phases'); bindRange('phaseLen', 'phaseLen'); bindRange('level', 'level'); bindRange('vol', 'vol');
 $('#startSel').onchange = () => { S.start = Number($('#startSel').value); };
 for (const [id, key] of [['blind', 'blind'], ['knows', 'knows'], ['public', 'public'], ['reckless', 'reckless'], ['rain', 'rain'], ['stay', 'stay'], ['snd', 'sound'], ['murmur', 'murmur']]) {
   $(`#${id}`).checked = S[key]; $(`#${id}`).onchange = () => { S[key] = $(`#${id}`).checked; };
@@ -1864,6 +2256,8 @@ $('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').c
 $('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
 $('#copyFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_seated', states: { rest: { width: S.legsW, bottom: S.legsB }, foot_raised: { width: S.raisedW, bottom: S.raisedB } }, floorShade: S.floorShade, feet_floor: { width: S.feetW, bottom: S.feetB, tilt: S.feetTilt } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#fitNote').textContent = j; };
 $('#feetFile').onchange = () => { const f = $('#feetFile').files[0]; if (f) { $('#floorArt').src = URL.createObjectURL(f); $('#floorArt').style.display = 'block'; } };
+$('#soleFile').onchange = () => { const f = $('#soleFile').files[0]; if (f) { $('#soleArt').src = URL.createObjectURL(f); $('#soleArt').dataset.own = '1'; } };
+$('#markZones').onclick = () => { if (!$('#soleArt').naturalWidth) $('#soleArt').src = $('#raisedArt').src || ASSETS.her; setTimeout(markStart, 100); };
 $('#raisedFile').onchange = () => { const f = $('#raisedFile').files[0]; if (f) { $('#raisedArt').src = URL.createObjectURL(f); $('#raisedArt').style.display = 'block'; } };
 $('#showRaised').onmousedown = () => { G.previewRaised = true; }; addEventListener('mouseup', () => { G.previewRaised = false; });
 $('#legsFile').onchange = () => { const f = $('#legsFile').files[0]; if (f) { $('#legsArt').src = URL.createObjectURL(f); $('#legsArt').style.display = 'block'; } };
@@ -1880,7 +2274,7 @@ $('#her').src = ASSETS.her;
 (() => { const g = $('#vTicks'); for (let x = 60; x <= 400; x += 10) { const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); const big = (x - 230) % 50 === 0; l.setAttribute('x1', x); l.setAttribute('x2', x); l.setAttribute('y1', 16); l.setAttribute('y2', big ? 26 : 21); g.appendChild(l); } })();
 setReply('<span class="act">Her quarters, the evening. She has work, and you have nowhere else to be.</span>');
 updatePresenceNote();
-window.__G = () => G; window.__W = () => W; window.__S = S; window.__begin = begin; window.__mouse = (x, y) => { MOUSE.x = x; MOUSE.y = y; };
+window.__G = () => G; window.__W = () => W; window.__SV = () => SV; window.__S = S; window.__begin = begin; window.__mouse = (x, y) => { MOUSE.x = x; MOUSE.y = y; };
 requestAnimationFrame(frame);
 </script>
 </body>
