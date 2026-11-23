@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: BREATH (P15a `breath`, timing). NORMATIVE: port its look, motion, numbers and sound exactly
+  (see docs/prototypes/README.md for what is normative and what is prototype-only). Build a runnable page with
+    npm run proto -- breath [--sprite <png|webp|svg>]
+  which inlines the fonts, backdrops and a sprite (the layout fixture by default; never commit the author's art).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · breath · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+.mono { font-family: "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: 0.06em; }
+
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: 0; will-change: filter, transform; }
+#backdrop { position: absolute; inset: -6%; background-size: cover; background-position: center; will-change: transform, filter; }
+#ceiling { position: absolute; inset: -8%; background-size: cover; background-position: center; opacity: 0; will-change: transform, filter, opacity; }
+#cam { position: absolute; inset: 0; perspective: 1100px; overflow: hidden; }
+#her { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform, filter; user-select: none; -webkit-user-drag: none; }
+#warm { position: absolute; inset: 0; mix-blend-mode: soft-light; pointer-events: none; }
+#dark { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#grain { position: absolute; inset: -40px; mix-blend-mode: screen; opacity: 0; pointer-events: none; }
+#tunnel { position: absolute; inset: 0; pointer-events: none; }
+#black { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+
+/* her hand */
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s, transform .5s; }
+.her-line.right { transform-origin: right center; }
+.her-line.gone { opacity: 0; }
+.her-line.count { font-size: 46px; }
+.her-line.now { font-size: 68px; }
+.her-line.line { font-size: 40px; }
+.her-line.big { font-size: 60px; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+
+/* the scene UI as P10e draws it */
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 21px; line-height: 1.5;
+  text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .6s; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#reply .you { color: #d8e4ff; }
+#reply .lost { opacity: .25; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: border-color .4s; overflow: hidden; }
+#cmd, #mirror { position: absolute; inset: 0; padding: 0 24px; font: 300 19px/52px Inter, sans-serif; letter-spacing: 0; }
+#cmd { width: 100%; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#mirror { pointer-events: none; white-space: pre; overflow: hidden; }
+#mirror > span { display: inline-block; white-space: pre; }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; font-size: 14px; backdrop-filter: blur(10px); opacity: 0; transition: opacity .6s; }
+#stopPill:hover { background: rgba(110, 16, 22, .7); }
+#tap { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  border: 1.5px solid rgba(255, 214, 170, .75); box-shadow: 0 0 12px rgba(255, 170, 110, .45), inset 0 0 6px rgba(255, 170, 110, .4); opacity: 0; transition: opacity .6s; }
+#tap::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255, 220, 190, .9); }
+#tap::before { content: "tap"; position: absolute; left: 36px; top: 6px; font: 12px "IBM Plex Mono", monospace; font-variant: small-caps; color: rgba(255,214,170,.7); }
+#tap.knock { animation: knock .35s; }
+@keyframes knock { 30% { transform: scale(.7); } }
+
+/* the wake card and the summary: the dock's glass */
+.card { position: absolute; left: 36px; top: 30%; width: 420px; padding: 22px 24px; border-radius: 18px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .hand { font: 34px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06);
+  color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+.btn:hover { background: rgba(255,255,255,.14); }
+
+/* prototype only */
+#panel { position: fixed; top: 14px; right: 14px; width: 300px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .82); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 520px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .86); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world">
+    <div id="backdrop"></div>
+    <div id="ceiling"></div>
+    <div id="cam"><img id="her" alt="" draggable="false"></div>
+    <div id="warm"></div>
+  </div>
+  <canvas id="dark"></canvas>
+  <div id="grain"></div>
+  <div id="tunnel"></div>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap"><div id="mirror"></div><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
+    <div id="stopPill" class="mono" title="the stop word (Esc)">● stop word · amber</div>
+    <div id="tap" title="tap (T)"></div>
+    <div class="card" id="wake"><h3>you come to</h3><div class="hand" id="wakeLine"></div><div class="facts">The wake card of P15a: the scene goes on from here.</div><span class="btn" id="wakeBtn">breathe</span></div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+  <div id="black"></div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>shape of the dark (occlusion.kind)</h4>
+  <div class="row" id="kinds"></div>
+  <div class="note" id="kindNote"></div>
+  <h4>side / angle</h4>
+  <div class="row" id="sides"></div>
+  <label>angle <input type="range" id="angle" min="-40" max="40" value="-14"><span id="angleV">-14</span></label>
+  <h4>her style (physics style)</h4>
+  <div class="row" id="styles"></div>
+  <h4>her cues</h4>
+  <div class="row" id="cues"></div>
+  <div class="note">style: ritual counts; neutral, affectionate, possessive say only "now."; playful lies and sometimes teases with a count; cruel gives nothing (react to the light).</div>
+  <h4>tuning</h4>
+  <label><input type="checkbox" id="over" checked> holding too long costs (air ×2, she presses, the next window comes later)</label>
+  <label>window × <input type="range" id="wmul" min="1" max="4" step="0.25" value="2"><span id="wmulV">2</span></label>
+  <label>drain × <input type="range" id="drain" min="0.4" max="1.6" step="0.1" value="1"><span id="drainV">1</span></label>
+  <label>windows <select id="len"><option value="6">6</option><option value="10" selected>10</option><option value="999">endless</option></select></label>
+  <label><input type="checkbox" id="bplay"> breath_play (she holds to blackout)</label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>edge light</h4>
+  <div class="row" id="edges"></div>
+  <h4>behind the dark (occlusion.view)</h4>
+  <div class="row" id="views"></div>
+  <label>ceiling <select id="ceil"></select></label>
+  <div class="note">auto: by kind (slide sees the room, the rest the ceiling). ceiling / room: she is the dark; her sprite comes only when the dark leaves. her: her sprite through the opening (only where her face is there, e.g. hand_over_mouth).</div>
+  <h4>her sprite and the camera</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>face x <input type="range" id="fx" min="0.2" max="0.8" step="0.01" value="0.5"><span id="fxV">0.50</span></label>
+  <label>face y <input type="range" id="fy" min="0.05" max="0.45" step="0.01" value="0.21"><span id="fyV">0.21</span></label>
+  <label>zoom <input type="range" id="zoom" min="1.4" max="4" step="0.1" value="2.6"><span id="zoomV">2.6</span></label>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="dbg"> debug readout</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">Space or hold the mouse on the frame: breathe. While typing, the mouse breathes (the field keeps its spaces). T: tap. Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>breath · prototype</h2>
+  Her rhythm opens the dark; her count comes in her hand beside the opening. On <i>now</i>, hold <kbd>Space</kbd> (or the mouse on the frame) to breathe. Air is not a bar: it is your vision, your hearing and the line you type.<br>
+  <kbd>T</kbd> tap · <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = { her: '%%SPRITE%%', ceilings: { ceiling_room_1: '%%ASSET:content/core/art/backdrops/ceiling_room_1.webp%%', ceiling_dark: '%%ASSET:content/core/art/backdrops/ceiling_dark.webp%%', ceiling_japanese: '%%ASSET:content/core/art/backdrops/ceiling_japanese.webp%%' }, bgs: { quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_cute: '%%ASSET:content/core/art/backdrops/quarters_cute.webp%%', loc_medbay: '%%ASSET:content/core/art/backdrops/loc_medbay.webp%%' } };
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const easeIn = (t) => Math.pow(clamp(t, 0, 1), 2);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+/* ---------- the engine's numbers (src/engine/tuning.ts, TUNING.physics) ---------- */
+const BEAT = 1500;
+const DRAIN = 14, CAUGHT = 30, MISSED = 8, CRUEL_MISSED = 4;
+const SEAL_RELIEF = { leaky: 4, firm: 1, tight: 0 };
+const REST_OPEN = { leaky: 0.08, firm: 0.03, tight: 0 }; // how much light a seal lets through between windows (a prototype reading)
+const STYLES = {
+  neutral:      { windowMs: 600, falseShare: 0,    seal: 'firm',  count: 520, jitter: 70, cue: 'honest', overDelay: 1 },
+  affectionate: { windowMs: 700, falseShare: 0,    seal: 'leaky', count: 650, jitter: 60, cue: 'honest', overDelay: 0 },
+  ritual:       { windowMs: 500, falseShare: 0,    seal: 'firm',  count: 600, jitter: 0, cue: 'count', overDelay: 1 },
+  playful:      { windowMs: 450, falseShare: 0.35, seal: 'firm',  count: 460, jitter: 120, again: 0.5, tease: 0.4, cue: 'false', overDelay: 1 },
+  cruel:        { windowMs: 250, falseShare: 0,    seal: 'tight', count: 230, jitter: 25, snappy: true, cue: 'none', overDelay: 2 },
+  possessive:   { windowMs: 450, falseShare: 0,    seal: 'tight', count: 480, jitter: 60, cue: 'honest', overDelay: 1 },
+};
+const LINES = {
+  neutral:      { greedy: ['let go.'], entry: ['breathe when I say.'], now: ['now.'], hold: ['hold it.'], early: ['not yet.', 'wait.'], tap: ['I know.'], low: ['hold it.'],
+                  good: ['good. you listened.'], poor: ['sloppy. we’ll do this again.'], released: ['breathe.'], stop: ['okay. I’ve got you.'], wake: ['there you are.'] },
+  affectionate: { greedy: ['easy. let go.'], entry: ['easy. breathe when I tell you.'], now: ['now, love.', 'now.'], hold: ['hold for me.'], early: ['shh. not yet.'], tap: ['I’ve got you.'], low: ['almost.'],
+                  good: ['so good for me.'], poor: ['you’re learning.'], released: ['breathe. I’ve got you.'], stop: ['okay. okay. I’m here.'], wake: ['hey. there you are.'] },
+  ritual:       { greedy: ['release.'], entry: ['on my count.'], now: ['now.'], hold: ['hold.'], early: ['on the count.'], tap: ['noted.'], low: ['hold.'],
+                  good: ['as it should be.'], poor: ['again. until it’s right.'], released: ['breathe.'], stop: ['stopping.'], wake: ['back. good.'] },
+  playful:      { greedy: ['so greedy~', 'greedy, greedy.'], entry: ['let’s see how greedy you are.'], now: ['now!', 'now~'], hold: ['hold it~'], early: ['ah-ah.'], fake: ['gotcha.', 'too eager.', 'so greedy.'],
+                  again: ['again.'], tap: ['say please.'], low: ['cute.'], good: ['you didn’t fall for it. boring.'], poor: ['you fell for it every time.'],
+                  released: ['fine, fine. breathe.'], stop: ['okay. game over. I’m here.'], wake: ['boo. you’re back.'] },
+  cruel:        { greedy: ['greedy. now wait.'], entry: ['you breathe when I allow it.'], now: ['now.'], hold: ['hold it.'], early: ['no.'], tap: ['no.'], low: ['not yet.'],
+                  good: ['adequate.'], poor: ['pathetic.'], released: ['breathe. I’m not done.'], stop: ['fine.'], wake: ['awake? good.'] },
+  possessive:   { greedy: ['you take when I give.'], entry: ['every breath is mine.'], now: ['now.'], hold: ['hold it for me.'], early: ['mine. wait.'], tap: ['not yet.'], low: ['stay with me.'],
+                  good: ['good. mine.'], poor: ['you’ll learn my rhythm.'], released: ['breathe. you’re still mine.'], stop: ['okay. I’m here.'], wake: ['you came back to me.'] },
+};
+const KINDS = {
+  slit:    { note: 'no occlusion on the contact: the default horizontal slit' },
+  gap:     { note: 'feet_on_face: a tilted gap between the soles, wider at the toes; the window is her spreading them', sides: [] },
+  lift:    { note: 'sole_to_mouth, hand_over_mouth: the whole cover rises; light from the edge she lifts', sides: ['bottom', 'top', 'left', 'right'] },
+  slide:   { note: 'smothered_breasts, face_in_her_neck: the dark slips aside; a crescent on one side, a different side each time', sides: ['auto', 'left', 'right'] },
+  seat: { note: 'under_her_seat, face_to_bottom (APPROVED, seat E): one smooth silhouette from below: waist, hips, thighs to the bottom corners, the gap between her thighs narrowing up into a seam; recedes as C, soft as B', sides: [] },
+  squeeze: { note: 'between_thighs: the dark closes from both sides to a band; when she squeezes it snaps shut', sides: [] },
+  wedge:   { note: 'smothered_armpit: dark from above at a slant; a wedge of air below when she lifts her arm', sides: ['right', 'left'] },
+  seat_x_rigid: { note: 'REJECTED seat A (first version): two rigid masses slide up when she rises', sides: [] },
+  seat_x_soft:  { note: 'REJECTED seat B: the same, but soft: the masses flatten where they press, settle with a lag and a little jiggle, each side on its own; she shifts her weight', sides: [] },
+  seat_x_depth: { note: 'REJECTED seat C: she rises along the line of sight: the masses recede (get smaller) instead of sliding, light comes in all around; soft as B', sides: [] },
+  seat_x_edges: { note: 'REJECTED seat D: the cleft stays pressed shut; light only at the edges: between her thighs below and past her back above; recedes as C', sides: [] },
+};
+
+/* ---------- settings ---------- */
+const VIEW_OF = { slide: 'room' }; // occlusion.view by kind when the contact names none (default ceiling)
+const S = { cue: 'style', over: true, edge: 'flesh', view: 'auto', kind: 'gap', side: { lift: 'bottom', slide: 'auto', wedge: 'right' }, angle: -14, style: 'neutral', wmul: 2, drain: 1, len: 10, bplay: false,
+  sound: true, vol: 0.7, face: { x: 0.5, y: 0.21 }, zoom: 2.6, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const st = () => STYLES[S.style];
+const L = () => LINES[S.style];
+
+/* ---------- audio: everything synthesised ---------- */
+const A = { ctx: null };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 16000; A.world.Q.value = 0.4; A.world.connect(A.master); // the world: goes dull with the air
+  A.body = ctx.createGain(); A.body.gain.value = 1; A.body.connect(A.master); // the body (heart, breath): never dull
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  // the room: brown noise and a faint hum, muffled while she covers
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  A.roomLP = ctx.createBiquadFilter(); A.roomLP.type = 'lowpass'; A.roomLP.frequency.value = 600;
+  A.roomG = ctx.createGain(); A.roomG.gain.value = 0.05;
+  room.connect(A.roomLP); A.roomLP.connect(A.roomG); A.roomG.connect(A.world); room.start();
+  const hum = ctx.createOscillator(); hum.frequency.value = 50; const humG = ctx.createGain(); humG.gain.value = 0.012; hum.connect(humG); humG.connect(A.roomLP); hum.start();
+  A.nextBeat = ctx.currentTime + 0.3;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world, buf = A.white }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = at;
+  const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.14);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.25);
+}
+const SFX = {
+  pen: () => { const n = randInt(3, 5); for (let i = 0; i < n; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.05 }); },
+  rustle: (g = 0.09) => noise({ dur: 0.38, f: 900, f2: 1400, q: 0.7, gain: g, attack: 0.08 }),
+  snap: () => { if (!A.ctx) return; thump(A.ctx.currentTime, 0.55, 80, A.world); noise({ dur: 0.12, f: 700, q: 0.8, gain: 0.12, attack: 0.005 }); },
+  muffled: () => { noise({ dur: 0.18, type: 'lowpass', f: 380, gain: 0.32, attack: 0.01, dest: A.body }); },
+  sip: () => noise({ dur: 0.2, f: 1300, f2: 1900, q: 1.2, gain: 0.12, attack: 0.03, dest: A.body }),
+  gasp: () => noise({ dur: 1.1, f: 480, f2: 2300, q: 0.9, gain: 0.32, attack: 0.06, dest: A.body }),
+  tap: () => { noise({ dur: 0.03, type: 'highpass', f: 1800, gain: 0.22, attack: 0.002, dest: A.body }); noise({ at: 0.13, dur: 0.03, type: 'highpass', f: 1800, gain: 0.2, attack: 0.002, dest: A.body }); },
+};
+const inhale = { on: false, src: null, g: null, fl: null };
+function inhaleStart() {
+  if (!A.ctx || inhale.on) return;
+  const ctx = A.ctx, t = ctx.currentTime;
+  inhale.src = ctx.createBufferSource(); inhale.src.buffer = A.white; inhale.src.loop = true;
+  inhale.fl = ctx.createBiquadFilter(); inhale.fl.type = 'bandpass'; inhale.fl.Q.value = 0.9; inhale.fl.frequency.setValueAtTime(650, t); inhale.fl.frequency.exponentialRampToValueAtTime(1900, t + 0.9);
+  inhale.g = ctx.createGain(); inhale.g.gain.setValueAtTime(0.0001, t); inhale.g.gain.exponentialRampToValueAtTime(0.26, t + 0.12);
+  inhale.src.connect(inhale.fl); inhale.fl.connect(inhale.g); inhale.g.connect(A.body); inhale.src.start(t, Math.random());
+  inhale.on = true;
+}
+function inhaleStop() {
+  if (!inhale.on) return;
+  const t = A.ctx.currentTime;
+  inhale.g.gain.cancelScheduledValues(t); inhale.g.gain.setValueAtTime(inhale.g.gain.value, t); inhale.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  inhale.src.stop(t + 0.2); inhale.on = false;
+}
+/* the heart: lub-dub on the body bus, its rate from the air; the visual pulse reads the same beats */
+const heart = { bpm: 64, lastBeatMs: -1e9, stopped: false };
+function heartTick(nowMs) {
+  if (!A.ctx || heart.stopped) return;
+  const ctx = A.ctx;
+  while (A.nextBeat < ctx.currentTime + 0.12) {
+    const period = 60 / heart.bpm;
+    const loud = lerp(0.35, 0.95, smooth(80, 10, G.air));
+    thump(A.nextBeat, loud, 52); thump(A.nextBeat + Math.max(0.2, period * 0.3), loud * 0.6, 46);
+    const delay = (A.nextBeat - ctx.currentTime) * 1000;
+    setTimeout(() => { heart.lastBeatMs = performance.now(); }, Math.max(0, delay));
+    A.nextBeat += period;
+  }
+}
+
+/* ---------- state ---------- */
+let G;
+function fresh() {
+  return { phase: 'idle', phaseT: 0, clock: 0, air: 100, cam: 0, darkA: 0, exitO: 0, win: null, queue: [], windowsOpened: 0, caught: 0, missed: 0, falseTaken: 0,
+    streak: 0, lowest: 100, breathing: false, pressedThisPress: false, pressT: 0, squeeze: 0, squeezeT: -1, saidLow: false, slideDir: -1, slideY: 0,
+    overMs: 0, strainCd: 0, overholds: 0, punishedThisPress: false, sp: [{ L: 0, v: 0, k: 58 }, { L: 0, v: 0, k: 74 }],
+    focus: [0.5, 0.45], lip: [0.5, 0.5], text: [0.6, 0.4], align: 'left', blackT: 0, reason: '', ended: false, lastAgain: false, forceHonest: false, shake: 0 };
+}
+G = fresh();
+
+/* ---------- her hand ---------- */
+let countEl = null;
+function say(text, kind = 'line', opt = {}) {
+  if (!text) return;
+  const hand = $('#hand');
+  if (kind === 'count' || kind === 'now') { if (countEl) fade(countEl); }
+  const el = document.createElement('div');
+  el.className = `her-line ${kind}`;
+  el.textContent = text;
+  const speed = S.style === 'cruel' ? 22 : S.style === 'ritual' ? 45 : 36;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`);
+  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const at = opt.at ?? G.text, align = opt.align ?? G.align;
+  const x = clamp(at[0], 0.03, 0.97) * innerWidth, y = clamp(at[1], 0.07, 0.8) * innerHeight;
+  const jitter = kind === 'count' ? (Math.random() * 2 - 1) * 14 : 0;
+  if (align === 'right') { el.classList.add('right'); el.style.right = `${innerWidth - x}px`; } else el.style.left = `${x + jitter}px`;
+  el.style.top = `${y + (kind === 'line' ? 52 : 0) + jitter * 0.5}px`;
+  el.style.transform = `rotate(${(Math.random() * 7 - 4).toFixed(1)}deg)`;
+  hand.appendChild(el);
+  SFX.pen();
+  if (kind === 'count' || kind === 'now') countEl = el;
+  const life = opt.life ?? (kind === 'count' ? 900 : kind === 'now' ? 1200 : kind === 'big' ? 1e9 : 2600);
+  if (life < 1e8) setTimeout(() => fade(el), life);
+  return el;
+}
+function fade(el) { el.classList.add('gone'); setTimeout(() => el.remove(), 600); if (el === countEl) countEl = null; }
+function clearHand() { $('#hand').replaceChildren(); countEl = null; }
+
+/* ---------- the rhythm: windows on beats, her count before each ---------- */
+function push(at, fn, tag = 'win') { G.queue.push({ at, fn, tag }); G.queue.sort((a, b) => a.at - b.at); }
+function cancelWindows() { G.queue = G.queue.filter((e) => e.tag !== 'win'); }
+const cueMode = () => (S.cue === 'style' ? st().cue : S.cue);
+function scheduleWindow(at, opts = {}) {
+  const s = st(), c = s.count, j = () => (Math.random() * 2 - 1) * s.jitter;
+  const isFalse = !opts.honest && !G.forceHonest && Math.random() < s.falseShare;
+  const mode = cueMode();
+  // only a counting holder counts; a playful one sometimes teases with a count; the rest give only "now." (or nothing): react fast
+  const counts = mode === 'count' || (mode === 'false' && Math.random() < (s.tease ?? 0));
+  if (!opts.silent && counts) {
+    push(at - 3 * c + j(), () => say('three…', 'count'));
+    push(at - 2 * c + j(), () => say('two…', 'count'));
+    if (s.again && !G.lastAgain && !opts.honest && Math.random() < s.again) {
+      G.lastAgain = true;
+      push(at - c + j(), () => say(pick(L().again), 'count'));
+      push(at + 200, () => scheduleWindow(G.clock + randInt(1, 2) * BEAT));
+      return;
+    }
+    push(at - c + j(), () => say('one…', 'count'));
+  }
+  G.lastAgain = false;
+  push(at, () => openWindow(isFalse, mode === 'none' || opts.silent === 'quiet'));
+}
+function openWindow(isFalse, quiet = false) {
+  const s = st();
+  G.forceHonest = false;
+  G.windowsOpened += 1;
+  if (S.side.slide === 'auto') G.slideDir *= -1; else G.slideDir = S.side.slide === 'left' ? -1 : 1;
+  G.slideY = Math.random() * 2 - 1;
+  G.win = { t0: G.clock, rise: s.snappy ? 110 : 260, W: s.windowMs * S.wmul, fall: s.snappy ? 140 : 320, false: isFalse, credit: 0, snapAt: -1 };
+  if (!quiet) say(pick(L().now), 'now');
+  SFX.rustle();
+}
+function windowOpenness() {
+  const w = G.win; if (!w) return 0;
+  const tt = G.clock - w.t0;
+  if (w.snapAt >= 0) return Math.max(0, w.snapO * (1 - (G.clock - w.snapAt) / 90));
+  if (tt < w.rise) return easeOut(tt / w.rise);
+  if (tt < w.rise + w.W) return 1;
+  return 1 - easeIn((tt - w.rise - w.W) / w.fall);
+}
+function windowDone() {
+  const w = G.win; if (!w) return false;
+  if (w.snapAt >= 0) return G.clock - w.snapAt > 90;
+  return G.clock - w.t0 > w.rise + w.W + w.fall;
+}
+function closeWindow() {
+  const w = G.win; G.win = null;
+  if (!w.false) {
+    if (w.credit >= 10) { G.caught += 1; G.streak += 1; }
+    else if (w.credit > 0) { G.caught += 1; G.streak = 0; }
+    else { G.missed += 1; G.streak = 0; G.air = Math.min(100, G.air + (S.style === 'cruel' ? CRUEL_MISSED : MISSED)); SFX.sip(); }
+    if (Math.random() < 0.3) setTimeout(() => G.phase === 'loop' && say(pick(L().hold), 'line'), 350);
+  }
+  if (G.windowsOpened >= S.len) { push(G.clock + BEAT, () => exit('done'), 'end'); return; }
+  scheduleWindow(w.t0 + randInt(2, 4) * BEAT);
+}
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit();
+  if (A.ctx.state === 'suspended') A.ctx.resume();
+  clearHand();
+  G = fresh();
+  G.phase = 'entry';
+  heart.stopped = false; heart.bpm = 64;
+  $('#summary').style.display = 'none'; $('#wake').style.display = 'none';
+  $('#black').style.opacity = 0;
+  setReply(`<span class="act">She settles in and the light goes. Her voice comes from above, close and amused.</span> <span class="speech">“Breathe when I say.”</span>`, 0.35);
+  setTimeout(() => G.phase === 'entry' && say(pick(L().entry), 'line', { life: 2600 }), 700);
+  if (A.ctx) { A.world.frequency.cancelScheduledValues(A.ctx.currentTime); A.world.frequency.setTargetAtTime(16000, A.ctx.currentTime, 0.2); A.roomG.gain.setTargetAtTime(0.05, A.ctx.currentTime, 0.3); }
+}
+function exit(reason) {
+  if (G.phase !== 'loop' && G.phase !== 'entry') return;
+  G.phase = 'exit'; G.phaseT = 0; G.reason = reason; G.win = null; G.queue = [];
+  inhaleStop(); G.breathing = false;
+  if (countEl) fade(countEl);
+  SFX.gasp(); SFX.rustle(0.14);
+  const l = L();
+  const ratio = G.caught / Math.max(1, G.caught + G.missed + G.falseTaken);
+  const line = reason === 'stop' ? pick(l.stop) : reason === 'released' ? pick(l.released) : ratio >= 0.7 ? pick(l.good) : pick(l.poor);
+  setTimeout(() => { clearHand(); say(line, 'big', { at: [0.56, 0.2], align: 'left' }); }, 700);
+  setTimeout(showSummary, 2300);
+}
+function blackout() {
+  G.phase = 'blackout'; G.phaseT = 0; G.win = null; G.queue = [];
+  inhaleStop(); G.breathing = false; clearHand();
+  if (A.ctx) { A.world.frequency.cancelScheduledValues(A.ctx.currentTime); A.world.frequency.setTargetAtTime(90, A.ctx.currentTime, 0.8); A.roomG.gain.setTargetAtTime(0, A.ctx.currentTime, 1); }
+}
+function wake() {
+  $('#wake').style.display = 'none';
+  heart.stopped = false; heart.bpm = 110; if (A.ctx) A.nextBeat = A.ctx.currentTime + 0.2;
+  SFX.gasp();
+  if (A.ctx) { A.world.frequency.setTargetAtTime(16000, A.ctx.currentTime, 0.6); A.roomG.gain.setTargetAtTime(0.06, A.ctx.currentTime, 0.6); }
+  G.phase = 'done'; G.phaseT = 0; G.air = 100; G.reason = 'blackout';
+  say(pick(L().wake), 'big', { at: [0.56, 0.2], align: 'left' });
+  setTimeout(showSummary, 1200);
+}
+function showSummary() {
+  if (G.phase === 'exit') { G.phase = 'done'; }
+  const reason = { done: 'she finished', stop: 'the stop word', released: 'she released at the limit', blackout: 'blackout' }[G.reason] ?? G.reason;
+  $('#sumFacts').innerHTML = `end: ${reason}<br>windows: ${G.windowsOpened} · caught ${G.caught} · missed ${G.missed} · false taken ${G.falseTaken} · held too long ${G.overholds}<br>lowest air: ${Math.round(G.lowest)}%`;
+  $('#summary').style.display = 'block';
+}
+function stopWord() { if (G.phase === 'loop' || G.phase === 'entry') exit('stop'); }
+function tap() {
+  if (G.phase !== 'loop') return;
+  SFX.tap();
+  const t = $('#tap'); t.classList.remove('knock'); void t.offsetWidth; t.classList.add('knock');
+  const l = L();
+  switch (S.style) {
+    case 'affectionate': say(pick(l.tap), 'line'); if (!G.win) { cancelWindows(); scheduleWindow(G.clock + 450, { honest: true, silent: true }); } break;
+    case 'neutral': case 'ritual': say(pick(l.tap), 'line'); if (!G.win) { cancelWindows(); scheduleWindow(G.clock + BEAT * 1.2, { honest: true }); } break;
+    case 'playful': say(pick(l.tap), 'line'); G.forceHonest = true; break;
+    case 'cruel': say(pick(l.tap), 'line'); press(1500); break;
+    default: say(pick(l.tap), 'line');
+  }
+}
+function press(ms = 500) { G.pressT = Math.max(G.pressT, ms); G.shake = 1; for (const x of G.sp) x.v -= 1.6; if (S.kind === 'squeeze') { G.squeezeT = 0; SFX.snap(); } }
+
+/* ---------- the loop ---------- */
+function updateLoop(dt) {
+  G.clock += dt;
+  while (G.queue.length && G.queue[0].at <= G.clock) G.queue.shift().fn();
+  const s = st();
+  G.air -= ((DRAIN - SEAL_RELIEF[s.seal]) / BEAT) * dt * S.drain;
+  const ow = windowOpenness();
+  if (G.breathing) {
+    if (G.win && ow > 0.45 && G.win.snapAt < 0) {
+      if (G.win.false) {
+        G.win.snapAt = G.clock; G.win.snapO = ow; G.falseTaken += 1; G.streak = 0; G.shake = 1;
+        SFX.snap(); say(pick(L().fake ?? L().early), 'line'); inhaleStop();
+      } else {
+        G.overMs = 0;
+        const gain = Math.min(CAUGHT - G.win.credit, (CAUGHT / G.win.W) * dt);
+        G.win.credit += gain; G.air = Math.min(100, G.air + gain);
+        if (gain > 0) { inhaleStart(); letters.restore(dt); } else inhaleStop();
+      }
+    } else {
+      inhaleStop();
+      G.overMs += dt;
+      if (!G.pressedThisPress) { G.pressedThisPress = true; SFX.muffled(); press(350); }
+      if (S.over && G.overMs > 150) {
+        // straining against her: the air goes twice as fast, the dark presses, a muffled strain now and then
+        G.air -= ((DRAIN - SEAL_RELIEF[s.seal]) / BEAT) * dt * S.drain;
+        G.pressT = Math.max(G.pressT, 200);
+        G.strainCd -= dt; if (G.strainCd <= 0) { G.strainCd = 520; SFX.muffled(); G.shake = Math.max(G.shake, 0.6); }
+        if (!G.punishedThisPress && G.overMs > 450) {
+          // she notices: a line, a tighter press, and the next window comes later
+          G.punishedThisPress = true; G.overholds += 1; G.streak = 0;
+          say(pick(L().greedy), 'line'); press(1200);
+          const delay = (s.overDelay ?? 1) * BEAT;
+          if (delay) G.queue.forEach((e) => { if (e.tag === 'win') e.at += delay; });
+          for (const x of G.sp) x.v -= 2.5;
+        }
+      } else if (!S.over && G.overMs > 450 && !G.punishedThisPress) { G.punishedThisPress = true; if (Math.random() < 0.45) say(pick(L().early), 'line'); }
+    }
+  } else inhaleStop();
+  if (G.win && windowDone()) closeWindow();
+  G.pressT = Math.max(0, G.pressT - dt);
+  G.lowest = Math.min(G.lowest, G.air);
+  if (G.air < 30 && !G.saidLow) { G.saidLow = true; say(pick(L().low), 'line'); }
+  if (S.bplay ? G.air <= 0 : G.air <= 5) { G.air = Math.max(0, G.air); S.bplay ? blackout() : exit('released'); }
+}
+
+function frame(now) {
+  const dt = Math.min(120, now - (frame.last ?? now)); frame.last = now; // the rhythm keeps real time even on a slow frame
+  G.phaseT += dt;
+  switch (G.phase) {
+    case 'entry': {
+      const p = G.phaseT / 1800;
+      G.cam = easeOut(p); G.darkA = easeOut(p * 1.2);
+      if (p >= 1) { G.phase = 'loop'; G.clock = 0; scheduleWindow(randInt(2, 3) * BEAT + 600); }
+      break;
+    }
+    case 'loop': updateLoop(dt); break;
+    case 'exit': {
+      const p = G.phaseT / 1700;
+      G.exitO = easeIn(p) * 2.4; G.darkA = 1 - smooth(0.35, 1, p); G.cam = 1 - easeOut(clamp(p * 1.1, 0, 1));
+      G.air = lerp(G.air, 100, clamp(dt / 600, 0, 1));
+      if (p >= 1) { G.exitO = 0; G.darkA = 0; G.cam = 0; }
+      break;
+    }
+    case 'blackout': {
+      const p = G.phaseT;
+      G.darkA = 1; G.air = Math.max(0, G.air - dt * 0.01);
+      $('#black').style.opacity = String(smooth(300, 1800, p));
+      heart.bpm = lerp(heart.bpm, 38, clamp(dt / 1500, 0, 1));
+      if (p > 4600) heart.stopped = true;
+      if (p > 5200 && $('#wake').style.display !== 'block') { $('#wake').style.display = 'block'; $('#wakeLine').textContent = '…'; }
+      break;
+    }
+    case 'done': {
+      G.cam = 0; G.darkA = 0;
+      $('#black').style.opacity = String(Math.max(0, 1 - G.phaseT / 900) * Number($('#black').style.opacity || 0));
+      break;
+    }
+  }
+  // the squeeze: snaps shut in 70 ms, holds, eases off
+  if (G.squeezeT >= 0) { G.squeezeT += dt; const t = G.squeezeT; G.squeeze = t < 70 ? t / 70 : t < 650 ? 1 : Math.max(0, 1 - (t - 650) / 500); if (t > 1150) G.squeezeT = -1; }
+  else G.squeeze = 0;
+  G.shake = Math.max(0, G.shake - dt / 300);
+  if (G.phase !== 'blackout' && G.phase !== 'idle') {
+    const f = smooth(85, 5, G.air);
+    heart.bpm = lerp(heart.bpm, lerp(64, 150, f), clamp(dt / 900, 0, 1));
+  }
+  heartTick(now);
+  render(now, dt);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- the dark: one low-res canvas, upscaled (soft edges for free) ---------- */
+const DS = 4;
+const darkC = $('#dark'), dctx = darkC.getContext('2d');
+const airC = document.createElement('canvas'), actx = airC.getContext('2d');
+const glowC = document.createElement('canvas'), gctx = glowC.getContext('2d');
+function sizeCanvases() {
+  const w = Math.ceil(innerWidth / DS), h = Math.ceil(innerHeight / DS);
+  for (const c of [darkC, airC, glowC]) { c.width = w; c.height = h; }
+}
+sizeCanvases();
+addEventListener('resize', sizeCanvases);
+
+/* each shape paints its opening (the air) in white and returns where her face, the tap mark and her hand go (fractions of the screen) */
+function sideFrame(g, W, H, side) {
+  const rot = { bottom: 0, top: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 }[side] ?? 0;
+  const swap = side === 'left' || side === 'right';
+  const Wc = swap ? H : W, Hc = swap ? W : H;
+  g.save(); g.translate(W / 2, H / 2); g.rotate(rot); g.translate(-Wc / 2, -Hc / 2);
+  const map = ([x, y]) => { const dx = x - Wc / 2, dy = y - Hc / 2; return [(W / 2 + dx * Math.cos(rot) - dy * Math.sin(rot)) / W, (H / 2 + dx * Math.sin(rot) + dy * Math.cos(rot)) / H]; };
+  return { Wc, Hc, map, done: () => g.restore() };
+}
+/* a soft mass: a superellipse that flattens at the bottom as it presses (sq), with a slow wobble of its outline */
+const squashOf = (x) => clamp((1 - clamp(x.L, 0, 1)) * 0.85 + clamp(-x.v * 0.12, 0, 0.35), 0, 1.2);
+function blob(g, cx, cy, rx, ry, sq, phase, t, inner) {
+  const a = rx * (1 + 0.08 * sq), b = ry * (1 - 0.1 * sq);
+  g.beginPath();
+  for (let i = 0; i <= 72; i++) {
+    const th = (i / 72) * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
+    const n = sn > 0 ? 2 + 2.6 * sq : 2; // the lower half goes boxy where it presses
+    let x = Math.sign(c) * Math.pow(Math.abs(c), 2 / n), y = Math.sign(sn) * Math.pow(Math.abs(sn), 2 / n);
+    // the inner side (toward the other mass) bulges a little when pressed together
+    if (inner && Math.sign(c) === -inner) x *= 1 + 0.05 * sq * Math.max(0, sn);
+    const w = 1 + 0.012 * Math.sin(3 * th + t * 0.8 + phase) + 0.007 * Math.sin(5 * th - t * 1.3 + phase * 2);
+    const px = cx + a * x * w, py = cy + b * y * w;
+    i ? g.lineTo(px, py) : g.moveTo(px, py);
+  }
+  g.closePath(); g.fill();
+}
+/* her lower body seen from below, the right half from the top (her back) down the hip and the outer thigh, back up the inner thigh to the gap; unit H, origin at her seat */
+const SEAT_BODY = [
+  [0.57, -1.6], [0.55, -1.0], [0.53, -0.66], [0.58, -0.42], [0.66, -0.2], [0.72, 0.04], [0.76, 0.3], [0.8, 0.66], [0.87, 1.1], [0.96, 1.7],
+  [0.5, 1.7], [0.33, 1.15], [0.18, 0.8], [0.05, 0.56],
+];
+/* corner cutting: three passes make any polygon a smooth outline without overshoot */
+function chaikin(pts) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    out.push([p[0] * 0.75 + q[0] * 0.25, p[1] * 0.75 + q[1] * 0.25], [p[0] * 0.25 + q[0] * 0.75, p[1] * 0.25 + q[1] * 0.75]);
+  }
+  return out;
+}
+const SHAPES = {
+  slit(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const cx = W * 0.5, cy = H * (0.42 + s.sway * 0.004);
+    const hh = (0.003 + oc * 0.055 + ex * ex * 1.2) * H, hw = (0.16 + oc * 0.09 + ex * 1.4) * H;
+    g.beginPath(); g.moveTo(cx - hw, cy); g.quadraticCurveTo(cx, cy - 2 * hh, cx + hw, cy); g.quadraticCurveTo(cx, cy + 2 * hh, cx - hw, cy); g.fill();
+    return { focus: [0.5, 0.42], lip: [(cx + hw * 0.62) / W, (cy - hh * 0.7) / H], text: [(cx + hw + 0.03 * H) / W, (cy - 0.08 * H) / H] };
+  },
+  gap(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const th = (S.angle * Math.PI) / 180;
+    const ax = [Math.sin(th), -Math.cos(th)], nx = [Math.cos(th), Math.sin(th)];
+    const C = [W * 0.5 + s.sway * H * 0.004, H * 0.52];
+    const Lh = 0.78 * H;
+    const toe = (0.006 + oc * 0.085 + s.sway * 0.003 + ex * ex * 1.4) * H, heel = (oc * 0.016 + ex * ex * 1.4) * H;
+    const left = [], right = [];
+    for (let i = 0; i <= 30; i++) {
+      const k = i / 30; // 0 the heels, 1 the toes
+      const sp = (k * 2 - 1) * Lh;
+      let hw = lerp(heel, toe, k * k);
+      hw *= 1 - 0.32 * Math.exp(-((k - 0.55) ** 2) / 0.02); // the balls of her feet press closer
+      if (k > 0.84) hw *= 1 + (k - 0.84) * 3.2; // the toes part
+      const px = C[0] + ax[0] * sp, py = C[1] + ax[1] * sp;
+      left.push([px - nx[0] * hw, py - nx[1] * hw]); right.push([px + nx[0] * hw, py + nx[1] * hw]);
+    }
+    g.beginPath(); left.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+    for (let i = right.length - 1; i >= 0; i--) g.lineTo(right[i][0], right[i][1]);
+    g.closePath(); g.fill();
+    const at = (k) => [C[0] + ax[0] * (k * 2 - 1) * Lh, C[1] + ax[1] * (k * 2 - 1) * Lh];
+    const tip = at(0.78), mid = at(0.64);
+    return { focus: [mid[0] / W, mid[1] / H], lip: [(tip[0] + nx[0] * (toe * 0.9 + 0.012 * H)) / W, (tip[1] + nx[1] * toe) / H], text: [(tip[0] + 0.1 * H) / W, (tip[1] + 0.03 * H) / H] };
+  },
+  lift(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const fr = sideFrame(g, W, H, S.side.lift);
+    const { Wc, Hc } = fr;
+    const tilt = clamp(S.angle / 30, -1.3, 1.3);
+    const edge = (u) => Hc * (1.03 - oc * 0.4 - ex * 1.6 + s.sway * 0.004) - tilt * (u - 0.5) * Hc * 0.28 * Math.max(oc, 0.15) + Hc * 0.07 * (1 - (2 * u - 1) ** 2) * (0.4 + 0.6 * oc);
+    g.beginPath(); g.moveTo(-4, Hc + 4);
+    for (let i = 0; i <= 30; i++) { const u = i / 30; g.lineTo(u * Wc, edge(u)); }
+    g.lineTo(Wc + 4, Hc + 4); g.closePath(); g.fill();
+    const uLip = tilt >= 0 ? 0.28 : 0.72;
+    const out = { focus: fr.map([Wc * 0.5, (edge(0.5) + Hc) / 2]), lip: fr.map([Wc * uLip, edge(uLip) - 0.01 * Hc]), text: fr.map([Wc * 0.6, edge(0.6) - 0.16 * Hc]) };
+    fr.done();
+    return out;
+  },
+  slide(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const d = s.slideDir; // -1: the crescent on the left
+    const R = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
+    const cx = W / 2 - d * shift + s.sway * H * 0.006, cy = H * (0.5 + s.slideY * 0.14);
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill(); g.globalCompositeOperation = 'source-over';
+    const edgeX = d < 0 ? cx - R : cx + R; // the circle's near edge at its equator
+    const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W);
+    return d < 0
+      ? { focus: [Math.max(0.06, (edgeX / W) * 0.5), cy / H], lip: [lipX / W + 0.006, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W, (cy - 0.1 * H) / H], align: 'left' }
+      : { focus: [Math.min(0.94, 1 - (1 - edgeX / W) * 0.5), cy / H], lip: [lipX / W - 0.006, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W, (cy - 0.1 * H) / H], align: 'right' };
+  },
+  seat_x_rigid(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const rx = 0.78 * H, ry = 0.62 * H;
+    const gap = (-0.03 + oc * 0.04 + ex * 1.4) * H;
+    const cy = H * (0.47 - oc * 0.2 - ex * 1.1) + s.sway * H * 0.008;
+    const gx = s.sway2 * H * 0.018; // she rocks a little
+    const lcx = W / 2 + gx - gap - rx, rcx = W / 2 + gx + gap + rx;
+    const top = lerp(H * 1.03, cy, Math.pow(oc, 0.7)) - ex * H; // the cleft lights only as far up as she rises
+    g.fillRect(0, top, W, H - top + 4);
+    g.globalCompositeOperation = 'destination-out';
+    g.beginPath(); g.ellipse(lcx, cy + s.sway2 * H * 0.006, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(rcx, cy - s.sway2 * H * 0.006, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    g.globalCompositeOperation = 'source-over';
+    const bottom = cy + ry;
+    return { focus: [0.5 + gx / W, Math.min(0.9, (bottom - 0.03 * H) / H)], lip: [(W / 2 + gx + 0.035 * H) / W, Math.min(0.94, (bottom - 0.02 * H) / H)], text: [(W / 2 + gx + 0.1 * H) / W, (cy + 0.22 * H) / H] };
+  },
+  seat_x_soft(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1);
+    const [a, b] = s.sp;
+    const La = clamp(a.L, -0.2, 1.1), Lb = clamp(b.L, -0.2, 1.1), Lm = (La + Lb) / 2;
+    const rx = 0.8 * H, ry = 0.64 * H;
+    const gap = (-0.04 + clamp(Lm, 0, 1) * 0.045 + ex * 1.4) * H;
+    const gx = s.sway2 * H * 0.016;
+    const cyOf = (L) => H * (0.47 - clamp(L, -0.2, 1) * 0.2 - ex * 1.1) + s.sway * H * 0.005;
+    const top = lerp(H * 1.03, (cyOf(La) + cyOf(Lb)) / 2, Math.pow(clamp(Lm, 0, 1), 0.7)) - ex * H;
+    g.fillRect(0, top, W, H - top + 4);
+    g.globalCompositeOperation = 'destination-out';
+    blob(g, W / 2 + gx - gap - rx, cyOf(La), rx, ry, squashOf(a), 0.3, s.t, -1);
+    blob(g, W / 2 + gx + gap + rx, cyOf(Lb), rx, ry, squashOf(b), 2.1, s.t, 1);
+    g.globalCompositeOperation = 'source-over';
+    const bottom = (cyOf(La) + cyOf(Lb)) / 2 + ry;
+    return { focus: [0.5, Math.min(0.9, (bottom - 0.03 * H) / H)], lip: [(W / 2 + gx + 0.035 * H) / W, Math.min(0.94, (bottom - 0.02 * H) / H)], text: [(W / 2 + gx + 0.1 * H) / W, ((cyOf(La) + cyOf(Lb)) / 2 + 0.22 * H) / H] };
+  },
+  seat_x_depth(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1);
+    const [a, b] = s.sp;
+    const V = [W / 2 + s.sway2 * H * 0.014, H * 0.4];
+    const P = (L) => 1.12 / (1 + 0.68 * clamp(L, -0.15, 1.2) + ex * 4); // the further she rises, the smaller she gets
+    const Pa = P(a.L), Pb = P(b.L), Pm = (Pa + Pb) / 2;
+    const rx = 0.84 * H, ry = 0.7 * H;
+    const gap = (-0.05 + clamp((a.L + b.L) / 2, 0, 1) * 0.035) * H;
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out';
+    // her body above the seat: it recedes with her
+    g.beginPath(); g.ellipse(V[0], V[1] - 0.62 * H * Pm, 0.95 * H * Pm, 0.75 * H * Pm, 0, 0, Math.PI * 2); g.fill();
+    blob(g, V[0] - (gap + rx) * Pa, V[1] + 0.12 * H * Pa, rx * Pa, ry * Pa, squashOf(a), 0.3, s.t, -1);
+    blob(g, V[0] + (gap + rx) * Pb, V[1] + 0.12 * H * Pb, rx * Pb, ry * Pb, squashOf(b), 2.1, s.t, 1);
+    g.globalCompositeOperation = 'source-over';
+    const bottom = V[1] + (0.12 * H + ry) * Pm;
+    return { focus: [V[0] / W, Math.min(0.9, (bottom - 0.02 * H) / H)], lip: [(V[0] + 0.03 * H) / W, Math.min(0.94, bottom / H)], text: [(V[0] + 0.22 * H * Pm) / W, (V[1] + 0.1 * H) / H] };
+  },
+  seat(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1);
+    const [a, b] = s.sp;
+    const Lm = clamp((a.L + b.L) / 2, -0.2, 1.2);
+    const V = [W / 2 + s.sway2 * H * 0.012, H * 0.3];
+    const rock = s.sway2 * 0.022; // her hips rock a little
+    const cr = Math.cos(rock), sr = Math.sin(rock);
+    const side = (x, flip) => {
+      const L = clamp(x.L, -0.2, 1.2), sq = squashOf(x);
+      const P = 1.38 / (1 + 0.28 * L + ex * 4);
+      return SEAT_BODY.map(([px, py], i) => {
+        let X = px, Y = py;
+        if (Y > 0) { X *= 1 + 0.05 * sq; Y *= 1 - 0.04 * sq; } // where she presses she spreads a little
+        if (i >= 10) { X = X * (1 - 0.55 * sq) + 0.035 * clamp(L, 0, 1); Y += 0.12 * sq; } // the inner thighs close when she presses, part as she rises
+        X *= flip;
+        return [V[0] + (X * cr - Y * sr) * H * P, V[1] + (X * sr + Y * cr) * H * P];
+      });
+    };
+    const right = side(b, 1), left = side(a, -1);
+    // the seam: the gap between her thighs runs up into a narrow line of light only as she rises
+    const open = clamp(Lm, 0, 1), Pm = 1.38 / (1 + 0.28 * Lm + ex * 4);
+    const apexY = V[1] + (0.5 - open * 0.2) * H * Pm, seamW = (0.002 + open * 0.008) * H * Pm;
+    const pts = [...right, [V[0] + seamW, apexY], [V[0] - seamW, apexY], ...left.reverse()];
+    const sm = chaikin(chaikin(chaikin(pts)));
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out';
+    g.beginPath(); sm.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]))); g.closePath(); g.fill();
+    g.globalCompositeOperation = 'source-over';
+    return { focus: [V[0] / W, clamp((V[1] + 0.85 * H * Pm) / H, 0.5, 0.92)], lip: [(V[0] + 0.02 * H) / W, clamp((apexY + 0.12 * H) / H, 0.3, 0.94)], text: [(V[0] + 0.32 * H * Pm) / W, (V[1] - 0.12 * H * Pm) / H] };
+  },
+  seat_x_edges(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1);
+    const [a, b] = s.sp;
+    const Lm = (a.L + b.L) / 2;
+    const V = [W / 2 + s.sway2 * H * 0.014, H * 0.42];
+    const P = 1.24 / (1 + 0.52 * clamp(Lm, -0.15, 1.2) + ex * 4);
+    const sq = squashOf({ L: Lm, v: (a.v + b.v) / 2 });
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out';
+    // her seat: one mass, the cleft pressed shut; flatter and wider when she presses
+    blob(g, V[0], V[1], 1.02 * H * P * (1 + sq * 0.06), 0.6 * H * P * (1 - sq * 0.08), sq, 1.2, s.t, 0);
+    // her back above, leaning a little forward as she rises
+    g.beginPath(); g.ellipse(V[0], V[1] - 0.66 * H * P, 0.82 * H * P, 0.62 * H * P, 0, 0, Math.PI * 2); g.fill();
+    // her thighs, from her hips down to the corners, each on its own spring
+    for (const [side, x] of [[-1, a], [1, b]]) {
+      const Pt = 1.24 / (1 + 0.52 * clamp(x.L, -0.15, 1.2) + ex * 4);
+      const tilt = side * (0.62 + clamp(x.L, 0, 1) * 0.12);
+      g.beginPath(); g.ellipse(V[0] + side * 0.6 * H * Pt, V[1] + 0.5 * H * Pt, 0.3 * H * Pt * (1 + sq * 0.1), 0.78 * H * Pt, tilt, 0, Math.PI * 2); g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
+    const low = V[1] + 0.55 * H * P;
+    return { focus: [V[0] / W, Math.min(0.92, (low + 0.25 * H) / H)], lip: [V[0] / W + 0.01, Math.min(0.94, (low + 0.18 * H) / H)], text: [(V[0] + 0.18 * H) / W, (V[1] - 0.05 * H) / H] };
+  },
+  squeeze(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const rx = 0.62 * H, ry = 1.8 * H;
+    const gap = (-0.035 + oc * 0.09 - s.squeeze * 0.07 + ex * 1.6 + s.sway * 0.003) * H;
+    const lcx = W / 2 - gap - rx, rcx = W / 2 + gap + rx;
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out';
+    g.beginPath(); g.ellipse(lcx, H * 0.5, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(rcx, H * 0.5, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    g.globalCompositeOperation = 'source-over';
+    return { focus: [0.5, 0.45], lip: [(W / 2 + Math.max(gap, 0) + 0.012 * H) / W, 0.6], text: [(W / 2 + Math.max(gap, 0) + 0.08 * H) / W, 0.3] };
+  },
+  wedge(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const mirror = S.side.wedge === 'left';
+    g.save(); if (mirror) { g.translate(W, 0); g.scale(-1, 1); }
+    const piv = [W * (0.9 + ex * 0.6), H * 1.02];
+    const yL = H * (1.07 - oc * 0.56 - ex * 2.6 + s.sway * 0.006);
+    const edge = (u) => lerp(yL, piv[1], u) + 0.06 * H * Math.sin(Math.PI * u) * (0.4 + 0.6 * oc);
+    g.beginPath(); g.moveTo(-4, edge(0));
+    for (let i = 0; i <= 30; i++) { const u = i / 30; g.lineTo(u * piv[0], edge(u)); }
+    g.lineTo(piv[0], H + 4); g.lineTo(-4, H + 4); g.closePath(); g.fill();
+    g.restore();
+    const mx = (x) => (mirror ? 1 - x : x);
+    const u1 = 0.25, u2 = 0.12;
+    return { focus: [mx(0.22), clamp((edge(0.22) + H) / 2 / H, 0.5, 0.95)], lip: [mx((u1 * piv[0]) / W), (edge(u1) - 0.012 * H) / H], text: [mx((u2 * piv[0]) / W), (edge(u2) - 0.17 * H) / H], align: mirror ? 'right' : 'left' };
+  },
+};
+
+const styleCache = new Map();
+function setStyle(sel, prop, v) { const k = sel + prop; if (styleCache.get(k) === v) return; styleCache.set(k, v); $(sel).style[prop] = v; }
+function render(now, dt) {
+  const W = airC.width, H = airC.height, t = now / 1000;
+  const s = st();
+  const reduced = S.reduced;
+  const sway = reduced ? 0 : Math.sin((t * Math.PI * 2) / 3.1); // her own breathing, about 3 s
+  const sway2 = reduced ? 0 : Math.sin((t * Math.PI * 2) / 4.7 + 1.3);
+  const rest = G.pressT > 0 ? 0 : REST_OPEN[s.seal];
+  const ow = G.phase === 'loop' ? windowOpenness() : 0;
+  let o = Math.max(rest, ow) + G.exitO;
+  if (G.phase === 'blackout') o = 0;
+  if (window.__forceO != null) o = window.__forceO;
+  const target = window.__forceO != null ? Math.min(1, window.__forceO) : clamp(Math.max(rest, ow), 0, 1) - (G.pressT > 0 ? 0.08 : 0);
+  const h = Math.min(dt, 40) / 1000;
+  G.sp.forEach((x, i) => {
+    const tgt = target + (reduced ? 0 : (i ? -1 : 1) * sway2 * 0.05); // she shifts her weight from side to side
+    const a = x.k * (tgt - x.L) - 7.5 * x.v; x.v += a * h; x.L += x.v * h;
+  });
+  if (G.phase === 'exit' || G.phase === 'idle' || G.phase === 'done') G.sp.forEach((x) => { x.L = Math.min(1, o); x.v = 0; });
+  const shapeState = { sway, sway2, squeeze: G.squeeze, slideDir: G.slideDir, slideY: G.slideY, sp: G.sp, t };
+
+  // 1. the air
+  actx.setTransform(1, 0, 0, 1, 0, 0); actx.clearRect(0, 0, W, H); actx.fillStyle = '#fff';
+  const out = SHAPES[S.kind](actx, W, H, o, shapeState);
+  // 2. the glow at the lips: warm, pink for a false window
+  const pinkish = G.win?.false ? 1 : 0;
+  const flesh = S.edge === 'flesh';
+  gctx.clearRect(0, 0, W, H); gctx.filter = `blur(${Math.round((flesh ? 5 : 3) + Math.min(o, 1.5) * (flesh ? 8 : 5))}px)`; gctx.drawImage(airC, 0, 0); gctx.filter = 'none';
+  gctx.globalCompositeOperation = 'source-in';
+  gctx.fillStyle = pinkish ? 'rgb(255,110,170)' : flesh ? 'rgb(226,78,52)' : 'rgb(255,168,104)'; gctx.fillRect(0, 0, W, H);
+  gctx.globalCompositeOperation = 'source-over';
+  // 3. the dark, lit at its lips, the air cut out
+  dctx.globalCompositeOperation = 'source-over'; dctx.clearRect(0, 0, W, H);
+  dctx.globalAlpha = G.darkA; dctx.fillStyle = 'rgb(6,4,8)'; dctx.fillRect(0, 0, W, H);
+  // a faint volume to the masses: lighter near the lips, black far from them
+  dctx.globalCompositeOperation = 'source-atop';
+  dctx.globalAlpha = G.darkA * clamp(0.18 + Math.min(o, 1) * 0.75, 0, 0.95);
+  dctx.drawImage(glowC, 0, 0);
+  dctx.globalAlpha = G.darkA * clamp(0.1 + Math.min(o, 1) * 0.35, 0, 0.5);
+  dctx.filter = 'blur(10px)'; dctx.drawImage(glowC, 0, 0); dctx.filter = 'none';
+  dctx.globalCompositeOperation = 'destination-out'; dctx.globalAlpha = 1;
+  dctx.filter = 'blur(1px)'; dctx.drawImage(airC, 0, 0); dctx.filter = 'none';
+  dctx.globalCompositeOperation = 'source-over'; dctx.globalAlpha = 1;
+  // the press shakes the dark a little
+  const sh = reduced ? 0 : G.shake * 6;
+  darkC.style.transform = sh ? `translate(${(Math.random() * 2 - 1) * sh}px, ${(Math.random() * 2 - 1) * sh}px)` : '';
+
+  if (G.phase === 'loop' || G.phase === 'entry') {
+    G.focus = [lerp(G.focus[0], out.focus[0], clamp(dt / 500, 0, 1)), lerp(G.focus[1], out.focus[1], clamp(dt / 500, 0, 1))];
+    G.lip = out.lip; G.text = out.text; G.align = out.align ?? 'left';
+  }
+
+  // the camera on her: close and from below; she lifts when the window opens
+  const img = $('#her');
+  if (img.naturalWidth) {
+    const vw = innerWidth, vh = innerHeight, nw = img.naturalWidth, nh = img.naturalHeight;
+    const Hn = vh * 0.96, Sn = Hn / nh, Wn = nw * Sn;
+    const faceN = [vw * 0.5 - Wn / 2 + S.face.x * Wn, vh - Hn + vh * 0.05 + S.face.y * Hn];
+    const Sc = (vh * S.zoom) / nh;
+    const liftPx = (Math.min(o, 1) * 0.05 + (reduced ? 0 : sway * 0.004)) * vh;
+    const faceC = [G.focus[0] * vw, G.focus[1] * vh - liftPx];
+    const k = G.cam;
+    const sc = lerp(Sn, Sc * (1 - Math.min(o, 1) * 0.04), k) * (1 + (reduced ? 0 : sway * 0.006 * k));
+    const fx = lerp(faceN[0], faceC[0], k), fy = lerp(faceN[1], faceC[1], k);
+    img.style.transform = `translate(${fx}px, ${fy}px) rotateX(${(9 * k).toFixed(2)}deg) scale(${sc}) translate(${-S.face.x * nw}px, ${-S.face.y * nh}px)`;
+    $('#cam').style.perspectiveOrigin = `${fx}px ${fy}px`;
+  }
+  {
+    const view = S.view === 'auto' ? VIEW_OF[S.kind] ?? 'ceiling' : S.view;
+    const ceil = view === 'ceiling';
+    setStyle('#her', 'opacity', view !== 'her' ? (1 - smooth(0.15, 0.7, G.cam)).toFixed(3) : '1');
+    setStyle('#ceiling', 'opacity', ceil ? smooth(0.2, 0.85, G.cam).toFixed(3) : '0');
+    // lying on the back: the ceiling close above, out of focus, drifting with her rhythm and rising a little as she lifts
+    const lift = Math.min(o, 1);
+    setStyle('#ceiling', 'transform', `translate(${((G.focus[0] - 0.5) * -4 + (S.reduced ? 0 : sway * 0.3)).toFixed(2)}%, ${((G.focus[1] - 0.5) * -4).toFixed(2)}%) scale(${(1.12 - lift * 0.05).toFixed(3)})`);
+    setStyle('#ceiling', 'filter', `blur(${(4 - lift * 2).toFixed(1)}px) brightness(${(0.5 + lift * 0.32).toFixed(2)}) sepia(${(0.25 * lift).toFixed(2)})`);
+  }
+  // the air as vision
+  const f = G.phase === 'idle' || G.phase === 'done' ? 0 : smooth(70, 6, G.air);
+  const pulse = reduced ? 0.5 : Math.exp(-(now - heart.lastBeatMs) / 170);
+  const blur = f * 3.2 + G.cam * 0.4;
+  setStyle('#world', 'filter', `blur(${(Math.round(blur * 4) / 4).toFixed(2)}px) saturate(${(1 - f * 0.7).toFixed(1)}) brightness(${(0.82 + Math.min(o, 1) * 0.25 - f * 0.2).toFixed(2)})`);
+  setStyle('#world', 'transform', reduced || f < 0.2 ? '' : `scale(${(1 + pulse * f * 0.006).toFixed(4)})`);
+  setStyle('#backdrop', 'filter', `blur(${Math.round(G.cam * 6)}px) brightness(${(1 - G.cam * 0.35).toFixed(2)})`);
+  setStyle('#backdrop', 'transform', `scale(${(1 + G.cam * 0.35).toFixed(3)})`);
+  const fxp = G.focus[0] * 100, fyp = G.focus[1] * 100;
+  $('#warm').style.background = `radial-gradient(circle at ${fxp}% ${fyp}%, rgba(${pinkish ? '255,120,180' : '255,170,110'},${(Math.min(o, 1) * 0.55 * G.cam).toFixed(2)}) 0%, rgba(0,0,0,0) 45%)`;
+  const diag = Math.hypot(innerWidth, innerHeight);
+  const r0 = lerp(diag * 0.95, diag * 0.05, f), r1 = r0 + lerp(diag * 0.5, diag * 0.16, f);
+  const red = f * (0.25 + 0.55 * pulse);
+  $('#tunnel').style.background = f <= 0.001 ? 'none'
+    : `radial-gradient(circle at ${fxp}% ${fyp}%, rgba(0,0,0,0) ${r0}px, rgba(0,0,0,${(0.55 + f * 0.4).toFixed(2)}) ${r1}px), radial-gradient(circle at ${fxp}% ${fyp}%, rgba(0,0,0,0) ${(r0 + (r1 - r0) * 0.55).toFixed(0)}px, rgba(150,8,20,${red.toFixed(2)}) ${r1.toFixed(0)}px, rgba(150,8,20,${(red * 0.5).toFixed(2)}) ${(r1 * 1.35).toFixed(0)}px, rgba(0,0,0,0) ${(r1 * 1.9).toFixed(0)}px)`;
+  $('#grain').style.opacity = String((0.04 + 0.08 * G.darkA).toFixed(3));
+  if (!reduced && Math.random() < 0.6) $('#grain').style.backgroundPosition = `${randInt(0, 255)}px ${randInt(0, 255)}px`;
+  // the sound
+  if (A.ctx) {
+    const ct = A.ctx.currentTime;
+    if (G.phase !== 'blackout') A.world.frequency.setTargetAtTime(16000 * Math.pow(380 / 16000, f), ct, 0.15);
+    A.roomLP.frequency.setTargetAtTime(240 + 2600 * Math.min(o, 1) + (1 - G.darkA) * 4000, ct, 0.08);
+    if (G.phase !== 'blackout') A.roomG.gain.setTargetAtTime(0.04 + 0.1 * Math.min(o, 1), ct, 0.1);
+    A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, ct, 0.05);
+  }
+  // the tap mark sits at the lip; the stop word in the corner
+  const live = G.phase === 'loop' || G.phase === 'entry';
+  const tapEl = $('#tap');
+  tapEl.style.opacity = live ? '0.85' : '0';
+  tapEl.style.pointerEvents = live ? 'auto' : 'none';
+  tapEl.style.left = `${clamp(G.lip[0], 0.03, 0.97) * innerWidth}px`; tapEl.style.top = `${clamp(G.lip[1], 0.05, 0.92) * innerHeight}px`;
+  $('#stopPill').style.opacity = live ? '1' : '0';
+  $('#reply').style.opacity = live ? '0.38' : '1';
+  letters.tick(dt, live ? G.air : 100);
+  const iw = lerp(Math.min(720, innerWidth * 0.6), Math.max(260, innerWidth * 0.2), smooth(78, 8, live ? G.air : 100));
+  $('#inputWrap').style.width = `${iw}px`;
+  $('#inputWrap').style.borderColor = live && G.air < 30 ? `rgba(220,60,70,${(0.3 + 0.5 * pulse).toFixed(2)})` : '';
+  if (S.debug) $('#debug').textContent = `air ${G.air.toFixed(0)}  bpm ${heart.bpm.toFixed(0)}  o ${o.toFixed(2)}  phase ${G.phase}\nwindows ${G.windowsOpened}/${S.len === 999 ? '∞' : S.len}  caught ${G.caught}  missed ${G.missed}  false ${G.falseTaken}  over ${G.overholds}  streak ${G.streak}${G.win ? `  [${G.win.false ? 'FALSE ' : ''}window ${G.win.W}ms credit ${G.win.credit.toFixed(0)}]` : ''}`;
+}
+
+/* ---------- the input: it narrows with the air; letters typed short of air fade and blur ---------- */
+const letters = {
+  chars: [], prev: '', acc: 0,
+  sync() {
+    const v = $('#cmd').value, p = this.prev;
+    let a = 0; while (a < v.length && a < p.length && v[a] === p[a]) a++;
+    let b = 0; while (b < v.length - a && b < p.length - a && v[v.length - 1 - b] === p[p.length - 1 - b]) b++;
+    const start = 1 - smooth(70, 10, G.air) * 0.35;
+    const added = [...v.slice(a, v.length - b)].map((ch) => ({ ch, c: G.phase === 'loop' ? start : 1 }));
+    this.chars.splice(a, p.length - a - b, ...added);
+    this.prev = v; this.draw();
+  },
+  restore(dt) { for (const x of this.chars) x.c = Math.min(1, x.c + dt / 900); },
+  tick(dt, air) {
+    const k = Math.pow(Math.max(0, (60 - air) / 60), 1.4) * 0.42;
+    if (k > 0) for (const x of this.chars) x.c = Math.max(0, x.c - (k * dt) / 1000);
+    this.acc += dt; if (this.acc > 80) { this.acc = 0; this.draw(); }
+  },
+  draw() {
+    const m = $('#mirror');
+    m.replaceChildren(...this.chars.map((x) => {
+      const sp = document.createElement('span'); sp.textContent = x.ch;
+      const blur = (1 - x.c) * 5;
+      sp.style.color = blur < 0.3 ? `rgba(236,232,242,${x.c})` : 'transparent';
+      sp.style.textShadow = blur < 0.3 ? 'none' : `0 0 ${blur.toFixed(1)}px rgba(236,232,242,${(x.c * 0.95).toFixed(2)})`;
+      return sp;
+    }));
+    m.scrollLeft = $('#cmd').scrollLeft;
+  },
+  send() {
+    if (!this.chars.length) return;
+    const html = this.chars.map((x) => (x.c < 0.22 ? `<span class="lost">${x.ch === ' ' ? ' ' : '·'}</span>` : x.ch.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;')))).join('');
+    setReply(`<span class="you">“${html}”</span>`, G.phase === 'loop' ? 0.38 : 1);
+    $('#cmd').value = ''; this.prev = ''; this.chars = []; this.draw();
+  },
+};
+function setReply(html, opacity = 1) { $('#reply').innerHTML = html; $('#reply').style.opacity = String(opacity); }
+$('#cmd').addEventListener('input', () => letters.sync());
+$('#cmd').addEventListener('scroll', () => letters.draw());
+$('#cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); letters.send(); } setTimeout(() => letters.draw(), 0); });
+
+/* ---------- input ---------- */
+const typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+function breatheDown() { G.breathing = true; G.pressedThisPress = false; G.punishedThisPress = false; G.overMs = 0; }
+function breatheUp() { G.breathing = false; G.pressedThisPress = false; G.overMs = 0; inhaleStop(); }
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { stopWord(); return; }
+  if (typing(e.target)) return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) breatheDown(); }
+  else if (e.key === 't' || e.key === 'T') tap();
+  else if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+addEventListener('keyup', (e) => { if (e.key === ' ' && !typing(e.target)) breatheUp(); });
+$('#stage').addEventListener('mousedown', (e) => {
+  if (e.button !== 0 || e.target.closest('#inputWrap, #stopPill, #tap, .card')) return;
+  e.preventDefault(); // the field keeps the focus: the mouse breathes while typing
+  breatheDown();
+});
+addEventListener('mouseup', (e) => { if (e.button === 0 && G.breathing) breatheUp(); });
+$('#stopPill').addEventListener('click', stopWord);
+$('#tap').addEventListener('mousedown', (e) => { e.preventDefault(); tap(); });
+$('#wakeBtn').addEventListener('click', wake);
+$('#againBtn').addEventListener('click', begin);
+$('#go').addEventListener('click', () => { $('#start').style.display = 'none'; begin(); });
+
+/* ---------- the panel ---------- */
+function optRow(host, items, get, set) {
+  host.replaceChildren(...items.map((k) => { const b = document.createElement('button'); b.className = 'opt' + (get() === k ? ' on' : ''); b.textContent = k; b.onclick = () => { set(k); optRow(host, items, get, set); }; return b; }));
+}
+function sidesRow() {
+  const sides = KINDS[S.kind].sides ?? [];
+  if (!sides.length) { $('#sides').innerHTML = '<span class="note">—</span>'; return; }
+  optRow($('#sides'), sides, () => S.side[S.kind], (k) => { S.side[S.kind] = k; });
+}
+optRow($('#kinds'), Object.keys(KINDS), () => S.kind, (k) => { S.kind = k; $('#kindNote').textContent = KINDS[k].note; sidesRow(); });
+$('#kindNote').textContent = KINDS[S.kind].note; sidesRow();
+optRow($('#cues'), ['style', 'count', 'honest', 'false', 'none'], () => S.cue, (k) => { S.cue = k; });
+optRow($('#edges'), ['rim', 'flesh'], () => S.edge, (k) => { S.edge = k; });
+$('#over').onchange = () => { S.over = $('#over').checked; };
+optRow($('#views'), ['auto', 'ceiling', 'room', 'her'], () => S.view, (k) => { S.view = k; });
+optRow($('#styles'), Object.keys(STYLES), () => S.style, (k) => { S.style = k; });
+const bindRange = (id, key, fmt = (v) => v) => { const el = $(`#${id}`); const sync = () => { S[key] = Number(el.value); const v = $(`#${id}V`); if (v) v.textContent = fmt(S[key]); }; el.oninput = sync; sync(); };
+bindRange('angle', 'angle'); bindRange('wmul', 'wmul'); bindRange('drain', 'drain'); bindRange('zoom', 'zoom'); bindRange('vol', 'vol');
+$('#fx').oninput = () => { S.face.x = Number($('#fx').value); $('#fxV').textContent = S.face.x.toFixed(2); };
+$('#fy').oninput = () => { S.face.y = Number($('#fy').value); $('#fyV').textContent = S.face.y.toFixed(2); };
+$('#len').onchange = () => { S.len = Number($('#len').value); };
+$('#bplay').onchange = () => { S.bplay = $('#bplay').checked; };
+$('#snd').onchange = () => { S.sound = $('#snd').checked; };
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) $('#her').src = URL.createObjectURL(f); };
+$('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
+for (const k of Object.keys(ASSETS.ceilings)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#ceil').appendChild(o); }
+$('#ceil').onchange = () => { $('#ceiling').style.backgroundImage = `url(${ASSETS.ceilings[$('#ceil').value]})`; };
+$('#ceiling').style.backgroundImage = `url(${ASSETS.ceilings.ceiling_room_1})`;
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_dark})`;
+$('#her').src = ASSETS.her;
+
+/* the grain: one noise tile, generated here */
+(() => {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); const d = x.createImageData(256, 256);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() < 0.5 ? 0 : Math.floor(Math.random() * 255); d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  x.putImageData(d, 0, 0); $('#grain').style.backgroundImage = `url(${c.toDataURL()})`;
+})();
+
+setReply(`<span class="act">She settles over you without hurrying and looks down, in no rush at all.</span> <span class="speech">“Comfortable?”</span>`);
+window.__G = () => G; window.__S = S; window.__begin = begin; window.__openWindow = openWindow;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

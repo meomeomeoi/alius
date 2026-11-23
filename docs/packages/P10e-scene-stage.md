@@ -210,7 +210,9 @@ A separate design session goes through every mini-game (P15a's seven physics, P1
   - **three phases:** an entry (the screen dims, her line, the instrument arrives with its own animation), the loop, and an exit (her reaction to how it went).
 - **Her lines are typed in her handwriting** (P10b hands; Caveat has no Cyrillic, which is fine because the game is English). The author liked the effects, the text and the hand.
 
-**Breathing (P15a `breath`, timing): approved, then tested by the author in a live prototype (2026-11-23).** The prototype is one HTML page kept outside the repository (it embeds the author's sprite); its numbers are the engine's (`TUNING.physics`: beat 1500 ms, drain 14 less the seal, a caught window +30, a missed one +8 (cruel +4), windows every 2–4 beats, widths by style).
+**The prototypes are normative** (author's ruling, 2026-11-23): each approved mini-game has a reference prototype in `docs/prototypes/` (`npm run proto -- <name>`; the README says what is normative and what is prototype-only). Chunk (e) **ports a prototype exactly**: its shapes, silhouettes, effects, numbers, timings and sound are the design, and this section only summarises them. A shape is never redrawn from the prose here.
+
+**Breathing (P15a `breath`, timing): approved, then tested by the author in a live prototype (2026-11-23): `docs/prototypes/breath.html`.** The prototype's numbers are the engine's (`TUNING.physics`: beat 1500 ms, drain 14 less the seal, a caught window +30, a missed one +8 (cruel +4), windows every 2–4 beats, widths by style).
 - **Entry:** the screen darkens around a shape of air (below) while the camera closes in; living grain over the dark.
 - **Behind the dark is what the commander sees lying there, not her** (author's ruling: her whole sprite behind the opening made two bodies, one of them a flat picture behind a curtain). Data: `occlusion.view` on the contact:
   - `ceiling` (the default): the room's ceiling art (P10c), close, out of focus, drifting in her rhythm, lit as she lifts;
@@ -262,7 +264,7 @@ A separate design session goes through every mini-game (P15a's seven physics, P1
    - **slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette;
    - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards.
 3. **Restyle the dock's cards to the scene's language** (the cards of P15/P16/P15a still use `[ BRACKETS ]`, a deviation from §6). Fix the collapsed voice cards that show only the speaker's name.
-4. Write the design into this spec (this section becomes final), then the **plan of chunk (e)**, then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`.
+4. Write the design into this spec (this section becomes final), then the **plan of chunk (e)**, then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`. The plan's tasks port the prototypes in `docs/prototypes/` exactly (code, not prose), and its review compares the game against them side by side (screenshots at the same `o`).
 
 ## Implemented as
 
