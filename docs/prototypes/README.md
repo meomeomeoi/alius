@@ -16,7 +16,30 @@ npm run proto -- weight
 npm run proto -- saturation
 ```
 
+```bash
+npm run proto -- her_activity
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `her_activity.html` — her activity, the frame of her time, with stillness inside (P10e §15 "Her activity")
+
+**In progress: not yet approved.** Built on 2026-11-23 from the design in P10e §15. Nothing here is normative until the author approves it; this section then lists what to port. Run it with `npm run proto -- her_activity`; it needs the CC0 sounds in `assets/ha/` (`assets/LICENSES.md`).
+
+What it shows:
+- **The four views** (`VIEWS`): `her` (the room, her sprite lit by her lamp or screen; she leans a little toward the commander when she looks), `legs` (under her desk: `frame_under_desk` over the room, her shins in weight's material; variants `planted`, the default, and `crossed`), `floor` (eyes down by her bunk), `wall` (`pov_corner`); a blindfold makes any view hearing-only. Each view says where her sounds and the door are (screen position and stereo pan).
+- **Her activities** (`ACTS`, twelve): each with its attention word, how it moves her presence per phase (`absorb`), how well she hears, its light (lamp, screen, dark), its clock unit, its marks (a `seen` and a `heard` wording, a sound, a progress step), her self-talk and her end. Nothing is drawn: the marks are sounds and sensory lines on the side of the source.
+- **Her presence** (`baseScore`, `stepOf`): four steps (`with`, `glancing`, `own`, `use`) from her activity's attention, talkativeness, style, Regard, hold band, mood and a hash of the session; it drifts between phases (`absorb`). It sets her attention (`ATT_BY_STEP` mixed with the engine's `gaze.attention`), how many lines reach the commander and how she answers a fault (`react`: a word, a look, her body, or nothing unless gross).
+- **Stillness: the cursor is the commander's attention** (`updateUrges`): an itch (a hot spot) grows while the cursor rests on it and fades while the cursor rests on her (her legs, her sprite, her sensory lines, her written lines) or on the door; the urge to swallow only grows (swallow under her voice); numbness creeps up from the bottom with the fiction hours (click the bottom band: shift the knees); a cramp is breathed through (hold Space 2.6 s) or stretched out (click it), else the leg jerks. Every relief is a sound with a loudness; she notices by hearing (`herEars` × loudness × (1 − cover)) or by sight (`CAUGHT` by her attention).
+- **Cover** (`coverNow`): her spoken lines (0.75), a visitor's voice (0.5), the mess and the rain. On a call the line hears what the room hears while she listens (`callHeard`); an unaware visitor too (`visitorHeard`).
+- **The script** (`planScript`, `exchangeScript`, `runScript`): the normative SHAPE of what the pregenerating call returns (`{ at, who, to, text, covers, ask?, mention? }`); the content is placeholder. Lines to the commander carry her name for the commander and, under the desk, a press of her foot; a question opens a window to answer by typing (Enter); answering her self-talk is a breach. A mention of the commander to someone else goes through `mentionText` (plain if the listener knows or the relation is public enough, plain anyway with a reckless tactic, veiled or unsaid otherwise).
+- **Peaks** (`planPeaks`): steps that stop at the door and pass (`falseAlarm`), an incoming call (`incomingCall`: her foot comes to rest on the commander's shoulder), a visitor (`visitorPeak`), and in `use` she leaves the room and comes back unannounced (`leaveRoom`).
+- **The base by the hour** (`BASE_EVENTS`): the mess bell and the squad at supper through the walls, dusk (she turns on her lamp), the patrols, lights out (a far horn, the generator drops), rain.
+- **Between phases** (`startSkip`, `resolveSkip`): the dark, the clock running over the skipped part of the hour, her marks compressed into seconds and the base events of those hours as one line; four gestures in the cool accent (keep still / ease off slowly / move while she reads / ask), resolved with the engine's `resolveSkip` numbers.
+- **The end** (`finish`): by presence: her end line (`with`, `glancing`), two taps of her foot (`own`), or the forgotten end (`use`: the lamp off, her steps, the door; GET UP or wait until someone finds the commander). The stop word always ends it.
+- **The digest** (`showDigest`): what the scene that follows is told (only what she perceived) and what only the commander knows.
+
+Not yet in it (next round): the approved weight (`footrest`) running inside the frame; foot service under the desk (the next game).
 
 ## `saturation.html` — scent (P15a `saturation` with the stimulus body layer)
 
