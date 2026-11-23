@@ -8,11 +8,11 @@ Run one:
 npm run proto -- breath
 ```
 
-It writes `.superpowers/prototypes/breath.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+```bash
+npm run proto -- weight
+```
 
-## `weight.html` — weight (P15a `weight`, hold): DRAFT
-
-In review with the author; not normative until this line says so.
+Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
 
 ## `breath.html` — breathing (P15a `breath`, timing)
 
@@ -51,3 +51,47 @@ In review with the author; not normative until this line says so.
 - The held credit and the over-hold input are not in `resolveSegment` (today a breath counts on the beat and `widthMs` is unused by the UI).
 - In real time the engine gives a cruel holder a cue on every opening; the instrument needs her silence.
 - With the engine's numbers even perfect play loses air (her release at the limit after about ten windows).
+
+## `weight.html` — weight (P15a `weight`, hold)
+
+Approved by the author on 2026-11-23 (the face-up view as first built; the face-down view after two rounds: her legs `hang`, foot `relaxed`, shade `shadow`).
+
+### Normative (port exactly)
+
+- **Two views by the contact** (`CONTACTS[].face`):
+  - **face up** (`straddled`, `standing_on`, `boot_on_chest`): the ceiling art behind (`#ceiling`, blurred, dimmed), her from below (`placeSprite`). The art slot `over` (a sprite drawn from below) when it exists: height 1.04 vh, bottom at 1.02. Without it the ordinary knee-length sprite rises from the bottom edge: height 1.55 vh, bottom at 1.42 vh, `rotateX(10deg)` in a 1100 px perspective. She leans with her shifts (`rot = lean·3.2 + cop·2.2` degrees) and comes closer as the strength goes (`press`). A cool screen glow on her while she reads (`#screenGlow`).
+  - **face down** (`human_chair`, `footrest`): the floor art (`#floor`; it is already drawn in perspective, so no extra rotation), closer and softer as the strength goes (`near`, the floor's blur and brightness).
+- **Her legs in `human_chair`** (`drawFloor`, `legsHang`, `legPoints`, `LEG_FEET.relaxed`): her calves hang at the edges of the view, the outer side off the frame. Geometry: the `relaxed` outline, its y scaled by 0.86, mirrored for the right leg, smoothed by `chaikin` three times. Motion: before a shift the leg on her side presses in (`press`) and the other lifts and swings out (`lift`); while she reads her feet bounce, the right one more (`Math.sin(t·3.1)`, amplitude 1 and 0.35), otherwise a slow sway; a jolt on impact. Drawing: four quarter-resolution canvases: the legs (`legC`), their complement (`compC`), the complement blurred by 0.022 H and tinted flesh red `rgb(226,78,52)` (`rimC`), the legs blurred by 0.012 H and filled `rgb(34,22,22)` with the rim `source-atop` at 0.55 (`outC`).
+- **`footrest`**: she is not in view. The tell is heard: the rustle and the chair's creak panned to the side she is about to lean (`StereoPannerNode`, `pan` ±0.85).
+- **Her screen's light on the floor** (both face-down contacts): a cool pool `rgba(120,170,255, 0.34·attention·flicker)`, blurred 0.07 H, sliding with her lean (`0.16 W`) and weight (`0.1 W`). Attention: busy 1, glancing `0.45 + 0.25·sin`, watching 0.05.
+- **The level** (`#vial`): the whole SVG (brass caps with screws, the amber liquid and its gradient, the engraved scale, the sheen, the elastic bubble, the tolerance marks that light when level, the warm glow under it), scaled 1.3, 186 px above the bottom, tilting with the frame at 0.35 of its angle. The bubble is a spring on the error (stiffness 260, damping 16) and stretches with its speed.
+- **The frame**: it tilts by `err·6°`, sags 26 px on a slip, trembles by `strF²·5 + jolt·7` px; the strain vignette (`#strainV`); saturation falls with the strength.
+- **Cracks** (`crack`, `healCracks`): a slip or a hard landing cracks the frame from a random edge: branching polylines in three strokes (dark shadow offset, light line, warm blur), drawn on in 260 ms, healing from 8 s to 22 s.
+- **Typing under load** (`letters`): the letters of the line tremble with the strain (`strF²·4`, more on a jolt).
+- **The mechanics**:
+  - Space or the left button bears her; a hold that breaks is a slip at once (strength −8·weight·pressure, a jolt, a crack, a creak), once a beat, after one beat of grace; a slip extends the hold by 6 s (P15a's chain) and she says so.
+  - The mouse is the commander's balance (a spring, stiffness 90, damping 14, `(x·2 − 1)·1.15`); the error is her centre of weight minus the balance; level is `|err| ≤ 0.18`.
+  - Her shifts every 3–5 beats (ritual every 4): a telegraph by style (`STYLES[].tele`: neutral 650–850 ms, affectionate 900–1100, ritual 750 and her written "left." / "right.", playful 500–750 with 35 % feints, clinical 150–1100 at random, cruel none), then the landing: if the hold was uneven on this beat or the last one, −(15…25)·weight·pressure, a jolt, a crack.
+  - Her own wander (`sin(t·0.9)·0.05 + sin(t·2.3 + 1)·0.025`), so the balance is never still.
+  - Uneven holding drains faster: `1 + 1.2·max(0, |err| − tol/2)` (on by default; see the open questions).
+  - The commander's own shift (Shift or the right button; while typing only the right button): +15, a 2.6 s cooldown, a creak; caught by her attention (watching 0.6, glancing 0.25, busy 0.08): −10, she leans heavier for 3 beats, her line.
+  - She leans in heavier now and then (`pressure` 1.3–1.6 for 2–4 beats, more often for cruel).
+  - She gets off at 15 % (cruel at 5 %), `holdsUntil`; with "she holds until you buckle" the end is the fall at 0.
+  - While she is busy her fingers tap her screen (a sound): the tapping stops when she looks.
+- **The sound** (`SFX`): the creak (stick-slip: a fast train of 12 ms clicks through a 420–780 Hz resonance), her rustle and press, the screen taps, the breath through the teeth (as the strength goes), the grunt on a hard landing, the low strain rumble with its tremble (an LFO 7–13 Hz), the fall.
+
+### Prototype only (do not port as is)
+
+- The panel, the start overlay, the summary card, the debug readout and the `__` hooks.
+- **Her shift and attention schedule** (`onBeat`, `planShift`, `attentionDraw`): in the game the engine's segment plan gives the shift beats and her attention per beat (`planSegment`, `attentionPlan` by her activity's attention); the instrument plays the plan and only times the telegraph before each shift.
+- **The numbers duplicated from the engine** (`BEAT`, `W_DRAIN`, `RELIEF`, `SHIFT_EVERY`, `SHIFT_COST`, `CAUGHT`, `ATTENTION`) and the contacts' `weight` / `shift` multipliers (the game reads its contact and `run.pressure`).
+- **`LINES`**: placeholders for the cue pool (`physics.cues`).
+- `TASKS`: a stand-in for her blocking activity's `attention`.
+- **Rejected:** the legs `x_side` and `x_forward` and their `lowerLeg`, `legsSide`, `legsForward` (they read as sticks), the feet `first` and `pointed`, the shade `black`. Kept only so the history is visible; do not port them.
+
+### Open engine questions (decide in the plan of chunk (e))
+
+- Uneven holding costs strength continuously here; in the engine it costs only when a shift lands. Either the engine gets the cost, or the instrument drops it.
+- The level is a UI judgement: the instrument sends the engine's `hold` input only on a beat that was held and level. Decide whether "level" is reported as its own input.
+- The telegraph's lead time per style is new (the engine plans the shift beat, not its warning).
+- With the engine's numbers the strength lasts about 20 s without the commander's own shifts: resting under her attention is the game's decision, by design or a tuning question.
