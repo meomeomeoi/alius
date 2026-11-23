@@ -783,8 +783,8 @@ function moveAttention(dt) {
   const spd = Math.hypot(mx, my) / Math.max(0.008, dt / 1000);
   G.speed = lerp(G.speed ?? 0, spd, Math.min(1, dt / 120));
   G.headX = lerp(G.headX ?? 0, clamp(mx / Math.max(1, dt) * 6, -14, 14), Math.min(1, dt / 200)); G.headY = lerp(G.headY ?? 0, clamp(my / Math.max(1, dt) * 6, -10, 10), Math.min(1, dt / 200));
-  if (G.speed > 700 && (G.rippleCd = (G.rippleCd ?? 0) - dt) <= 0) { RIPPLES.push({ x: ATT.x, y: ATT.y, born: performance.now(), k: clamp(G.speed / 2500, 0.3, 1) }); G.rippleCd = lerp(260, 90, clamp((G.speed - 700) / 2500, 0, 1)); }
-  G.fidget = Math.max(0, (G.fidget ?? 0) + (G.speed > 900 ? clamp((G.speed - 900) / 2000, 0, 1.2) : -0.35) * dt / 1000);
+  if (G.speed > 350 && (G.rippleCd = (G.rippleCd ?? 0) - dt) <= 0) { RIPPLES.push({ x: ATT.x, y: ATT.y, born: performance.now(), k: clamp(G.speed / 1250, 0.3, 1) }); G.rippleCd = lerp(260, 90, clamp((G.speed - 350) / 1250, 0, 1)); }
+  G.fidget = Math.max(0, (G.fidget ?? 0) + (G.speed > 450 ? clamp((G.speed - 450) / 1000, 0, 1.6) : -0.35) * dt / 1000);
   if (G.fidget >= 1 && G.t >= (G.fidgetCd ?? 0) && (G.phase === 'loop' || G.phase === 'empty')) {
     G.fidget = 0; G.fidgetCd = G.t + 1500; G.stats.fidgets = (G.stats.fidgets ?? 0) + 1;
     if (!G.toldFidget) { G.toldFidget = true; sense('You shift where you kneel; your eyes will not keep still.', 'body', 'body'); }
