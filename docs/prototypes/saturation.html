@@ -39,6 +39,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 .pw.pick { pointer-events: auto; cursor: pointer; padding: 6px 12px; border-radius: 16px; border: 1px solid rgba(var(--scent), .45); background: rgba(20, 10, 6, .35); backdrop-filter: blur(4px); font-size: 24px; }
 .pw.pick:hover { border-color: rgba(var(--scent), .95); box-shadow: 0 0 14px rgba(var(--scent), .5); }
 .pw.chosen { border-color: #fff; color: #fff; background: rgba(var(--scent), .25); }
+.pw .tag { display: block; font: 10px "IBM Plex Mono", monospace; font-style: normal; letter-spacing: .12em; font-variant: small-caps; opacity: .55; margin: -2px 0 2px; text-align: center; }
+.pw.lie { border-style: dashed; color: rgba(var(--scent), .6); background: rgba(10, 6, 12, .35); }
 .pw .key { display: inline-block; margin-right: 10px; font: 12px "IBM Plex Mono", monospace; font-style: normal; letter-spacing: 0; opacity: .6; }
 #stage.asking #arc { opacity: 0 !important; }
 #mark { position: absolute; left: 0; top: 0; width: 100px; height: 100px; margin: -50px 0 0 -50px; pointer-events: none; overflow: visible; opacity: 0; transition: opacity .4s; color: var(--her); }
@@ -218,6 +220,9 @@ const PLACE_W = {
   center: ['the middle of her', 'right against her', 'closest to her'], side: ['her hip', 'the curve of her'],
   hollow: ['her underarm', 'the hollow'], edge: ['her side', 'the edge of her arm'],
 };
+/* the place in her own words, for her question */
+const HER_PLACE = { toes: 'my toes', ball: 'the balls of my feet', arch: 'my arches', heel: 'my heels', center: 'my seat', side: 'my hips', hollow: 'my underarms', edge: 'my sides' };
+const TAG = { place: 'where', scent: 'scent', stage: 'feel', band: 'how strong', say: 'say it' };
 const STAGE_RANK = { aversion: 0, enduring: 1, accustomed: 2, craving: 3, adoring: 4 };
 const COLORS = { sweat: '255,198,164', leather: '236,176,128', soap: '214,232,255', gunpowder: '196,206,226', perfume: '228,178,255' };
 /* how strong her scent is at the face anywhere under her (the face is already in it), before the strong places */
@@ -227,17 +232,17 @@ const ATTENTION = { reading: [0.25, 0.4, 0.35], watching_you: [0.75, 0.25, 0] };
 const AMBIENT_MS = { faint: 0, noticeable: 9000, strong: 6000, overwhelming: 3500 };
 /* her style: what she orders and how often, what she hears in a mouth breath, what answer she wants (the question's words hint at it) */
 const STYLES = {
-  neutral:      { every: [3, 5], orders: { deeper: 3, gently: 1, here: 2, still: 1 }, ask: ['what do you smell?', 'tell me what it’s like.'], askEvery: [24, 32],
+  neutral:      { every: [3, 5], orders: { deeper: 3, gently: 1, here: 2, still: 1 }, ask: ['{p}. what do you smell?', 'tell me about {p}.'], askEvery: [24, 32],
                   rule: 'warm', mouth: 'mild', note: 'wants to hear it is not bad any more (familiar or better), or the place she named' },
-  affectionate: { every: [5, 7], orders: { gently: 3, here: 1, deeper: 1 }, ask: ['how is it, love?', 'tell me. anything.'], askEvery: [26, 34],
+  affectionate: { every: [5, 7], orders: { gently: 3, here: 1, deeper: 1 }, ask: ['{p}, love. how is it?', 'tell me about {p}. anything.'], askEvery: [26, 34],
                   rule: 'any', mouth: 'allowed', note: 'any answer is fine; she never punishes honesty; the mouth is allowed' },
-  playful:      { every: [2, 4], orders: { here: 3, deeper: 2, still: 1 }, ask: ['be honest. is it strong?', 'how bad is it? tell me~'], askEvery: [20, 28], moves: 0.4,
+  playful:      { every: [2, 4], orders: { here: 3, deeper: 2, still: 1 }, ask: ['be honest~ {p}: strong?', '{p}. how bad? tell me~'], askEvery: [20, 28], moves: 0.4,
                   rule: 'admit', mouth: 'tease', note: 'wants you to admit how strong it is; her mark sometimes moves once you get there' },
-  cruel:        { every: [2, 3], orders: { deeper: 4, still: 2, here: 2 }, ask: ['tell me how bad it is. and what you want.', 'how does it smell? and what do you want?'], askEvery: [20, 26],
+  cruel:        { every: [2, 3], orders: { deeper: 4, still: 2, here: 2 }, ask: ['{p}. tell me how bad it is. and what you want.', '{p}. how does it smell? and what do you want?'], askEvery: [20, 26],
                   rule: 'bad_and_want', mouth: 'punish', note: 'wants it said both ways: that it is bad, and that you want more' },
-  ritual:       { every: [4, 4], cycle: ['here', 'deeper', 'still'], ask: ['where, and how strong?'], askEvery: [24, 24],
+  ritual:       { every: [4, 4], cycle: ['here', 'deeper', 'still'], ask: ['{p}. where, and how strong?'], askEvery: [24, 24],
                   rule: 'place_and_band', mouth: 'permission', note: 'a fixed cycle (a place, deeper, still); wants the place she asked and the right strength' },
-  clinical:     { every: [3, 3], tour: true, ask: ['report. intensity, and what you feel.'], askEvery: [22, 22],
+  clinical:     { every: [3, 3], tour: true, ask: ['report on {p}: intensity, and what you feel.'], askEvery: [22, 22],
                   rule: 'band_and_honest', mouth: 'noted', note: 'a tour of her places in order; wants the exact strength and your honest feeling' },
 };
 const LINES = {
@@ -523,7 +528,7 @@ function fresh() {
     inhaling: false, depth: 0, peak: 0, mouth: false, mouthMs: 0, mouthTick: 0, sinceBreath: 0, reflexCd: 0, lost: 0, forcedDeep: false,
     head: [], ambAt: 0, wordsTaken: 0, askPlace: null,
     order: null, nextOrderAt: 3 * BEAT, nextAskAt: rand(14000, 18000), att: 'busy', awayMs: 0, lie: 0, beat: -1,
-    counts: { breaths: 0, deep: 0, coughs: 0, lost: 0, mouthWords: 0, noticed: 0, ordersOk: 0, ordersBad: 0, answered: 0, wrong: 0, empty: 0, lies: 0, caught: 0, away: 0 },
+    counts: { liesFound: 0, breaths: 0, deep: 0, coughs: 0, lost: 0, mouthWords: 0, noticed: 0, ordersOk: 0, ordersBad: 0, answered: 0, wrong: 0, empty: 0, lies: 0, caught: 0, away: 0 },
     o: 0.35, sp: [{ L: 0.35, v: 0, k: 58 }, { L: 0.35, v: 0, k: 74 }], zones: [], I: 0, hereZone: null, shake: 0, endAt: S.len * 1000 };
 }
 G = fresh();
@@ -679,7 +684,7 @@ const tolT = () => 0.3 + (S.tol / 100) * 0.8;                 // the reflex thre
 const tolDepth = () => tolT() / Math.max(0.05, G.I * stim()); // where on the arc the threshold falls, here
 const capacity = () => 6 + Math.round(S.tol / 12);            // what the head holds: tolerance is the saturation capacity (P15a §16.8)
 /* her place: the face is there when it is within reach of the place she named */
-const targetP = () => (G.order && G.order.k === 'here' && G.zones[G.order.ti] ? G.zones[G.order.ti].p : null);
+const targetP = () => (G.order && (G.order.k === 'here' || G.order.k === 'ask') && G.order.ti >= 0 && G.zones[G.order.ti] ? G.zones[G.order.ti].p : null);
 function atTarget() { const tp = targetP(); if (!tp) return false; const ar = innerWidth / innerHeight; return Math.hypot((tp[0] - G.nose[0]) * ar, tp[1] - G.nose[1]) < 0.085; }
 const ZONE_IDS = { feet_on_face: ['toes', 'ball', 'arch', 'heel'], face_to_bottom: ['center', 'side'], smothered_armpit: ['hollow', 'edge'] };
 function weighted(obj) { const e = Object.entries(obj); let r = Math.random() * e.reduce((a, [, w]) => a + w, 0); for (const [k, w] of e) { r -= w; if (r <= 0) return k; } return e[0][0]; }
@@ -729,6 +734,7 @@ function addWord(w, cat, from) {
   $('#words').appendChild(el);
   G.head.push({ w, cat, el });
   G.wordsTaken += 1;
+  if (G.order && G.order.k === 'ask') buildPills();
 }
 /* a breath leaves words: where (if at one of her places), what (her scent), how it felt (the honest stage), how strong (the band) */
 function breathWords(d, forced = false) {
@@ -779,42 +785,70 @@ function tickWords(dt) {
 function askWords() {
   if (!S.layers.words) return;
   const st = ST();
-  say(pick(st.ask));
-  const place = G.askPlace ?? (G.zones.slice().sort((a, b) => b.w - a.w)[0] || {}).id;
-  G.order = { k: 'ask', until: G.clock + 12000, chosen: [], place };
-  const seen = new Set(), pool = G.head.slice().reverse().filter((h) => !seen.has(h.w) && seen.add(h.w)).slice(0, 8).reverse(); // the same word twice is one answer
+  const strongest = G.zones.slice().sort((a, b) => b.w - a.w)[0];
+  const place = G.askPlace ?? (strongest || {}).id;
+  // she names the place and marks it: the answer can be gathered there, if it is not in the head already
+  let ti = -1; G.zones.forEach((z, i) => { if (z.id === place && (ti < 0 || z.w > G.zones[ti].w)) ti = i; });
+  const line = pick(st.ask).replace('{p}', HER_PLACE[place] ?? 'it');
+  const tp = ti >= 0 ? G.zones[ti].p : [0.55, 0.2];
+  say(line, false, [clamp(tp[0] + 0.05, 0.04, 0.7), clamp(tp[1] - 0.1, 0.06, 0.8)]);
+  G.order = { k: 'ask', until: G.clock + 12000, chosen: [], place, ti };
+  buildPills();
+}
+/* what she would like to hear, offered beside the head's words: saying it is a lie the body may give away */
+function sayables(place) {
+  const out = [], st = ST(), want = () => pick(STAGE_W[pick(['craving', 'adoring'])]);
+  const has = (p) => G.head.some((h) => h.cat.startsWith(p));
+  switch (st.rule) {
+    case 'warm': out.push([pick(STAGE_W.accustomed), 'stage:accustomed']); break;
+    case 'admit': out.push([pick(BAND_W.overwhelming), 'band:overwhelming']); break;
+    case 'bad_and_want': out.push([want(), 'stage:craving']); if (!has('stage:aversion')) out.push([pick(STAGE_W.aversion), 'stage:aversion']); break;
+    case 'place_and_band': { const b = pick(Object.keys(BAND_W)); out.push([pick(BAND_W[b]), 'band:' + b]); if (!has('place:' + place)) out.push([pick(PLACE_W[place] ?? ['her']), 'place:' + place]); break; }
+    case 'band_and_honest': { const b = pick(Object.keys(BAND_W)); out.push([pick(BAND_W[b]), 'band:' + b]); break; }
+  }
+  return out.map(([w, cat]) => ({ w, cat, lie: true }));
+}
+function buildPills() {
+  const o = G.order; if (!o) return;
+  for (const el of wordEls) el.remove(); wordEls.length = 0;
+  const seen = new Set(), head = G.head.slice().reverse().filter((h) => !seen.has(h.w) && seen.add(h.w)).slice(0, 7).reverse(); // the same word twice is one answer
+  if (!o.lies) o.lies = sayables(o.place);
+  const items = [...head, ...o.lies.filter((l) => !seen.has(l.w))];
+  if (!items.length) items.push({ w: '… nothing', cat: 'none' });
   const cx = clamp(G.nose[0], 0.25, 0.75), cy = clamp(G.nose[1], 0.42, 0.72);
-  const items = pool.length ? pool : [{ w: '… nothing', cat: 'none' }];
   items.forEach((h, i) => {
-    const el = document.createElement('div'); el.className = 'pw pick'; el.innerHTML = `<span class="key">${i + 1}</span>${h.w}`;
+    const el = document.createElement('div'); el.className = 'pw pick' + (h.lie ? ' lie' : '') + (o.chosen.includes(h) ? ' chosen' : '');
+    const kind = h.lie ? 'say' : h.cat.split(':')[0];
+    el.innerHTML = `<span class="key">${i + 1}</span><span class="tag">${TAG[kind] ?? ''}</span>${h.w}`;
     const a = items.length === 1 ? -Math.PI / 2 : -Math.PI * 0.92 + (i / (items.length - 1)) * Math.PI * 0.84;
-    el._p = [clamp(cx + Math.cos(a) * 0.2, 0.08, 0.92), clamp(cy + Math.sin(a) * 0.3 - 0.04, 0.1, 0.7)];
+    el._p = [clamp(cx + Math.cos(a) * 0.22, 0.08, 0.92), clamp(cy + Math.sin(a) * 0.32 - 0.04, 0.1, 0.7)];
     el._choose = () => {
-      const o = G.order; if (!o || o.k !== 'ask' || el.classList.contains('chosen')) return;
-      el.classList.add('chosen'); o.chosen.push(h);
-      if (o.chosen.length >= Math.min(2, items.length)) answerWords();
+      const oo = G.order; if (!oo || oo.k !== 'ask' || oo.chosen.includes(h)) return;
+      el.classList.add('chosen'); oo.chosen.push(h);
+      if (oo.chosen.length >= Math.min(2, items.length)) answerWords();
     };
     el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); el._choose(); });
     $('#words').appendChild(el); wordEls.push(el);
   });
 }
 const isCat = (h, p) => h.cat.startsWith(p);
+/* her rule by style; what is missing comes back as her words, so the rule is learnt from her */
 function judge(chosen, place) {
   const st = ST(), rank = (h) => STAGE_RANK[h.cat.split(':')[1]];
   const want = (h) => (isCat(h, 'stage:') && rank(h) >= 3) || h.w === 'more';
   const bad = (h) => (isCat(h, 'stage:') && rank(h) === 0) || h.cat === 'band:strong' || h.cat === 'band:overwhelming';
   const placeOk = chosen.some((h) => h.cat === 'place:' + place);
-  const bandOk = chosen.some((h) => h.cat === 'band:' + S.band);
+  const anyBand = chosen.some((h) => isCat(h, 'band:')), bandOk = chosen.some((h) => h.cat === 'band:' + S.band);
   const honest = chosen.some((h) => h.cat === 'stage:' + S.stage);
   switch (st.rule) {
-    case 'any': return chosen.some((h) => h.cat !== 'none');
-    case 'warm': return placeOk || chosen.some((h) => isCat(h, 'stage:') && rank(h) >= 2);
-    case 'admit': return chosen.some(bad);
-    case 'bad_and_want': return chosen.some(bad) && chosen.some(want);
-    case 'place_and_band': return placeOk && bandOk;
-    case 'band_and_honest': return bandOk && honest;
+    case 'any': return { ok: chosen.some((h) => h.cat !== 'none') };
+    case 'warm': return placeOk || chosen.some((h) => isCat(h, 'stage:') && rank(h) >= 2) ? { ok: true } : { ok: false, miss: 'you didn’t say where. or how it is now.' };
+    case 'admit': return chosen.some(bad) ? { ok: true } : { ok: false, miss: 'liar~ it’s strong. say it.' };
+    case 'bad_and_want': return !chosen.some(bad) ? { ok: false, miss: 'say how bad it is.' } : !chosen.some(want) ? { ok: false, miss: 'and you want it. say it.' } : { ok: true };
+    case 'place_and_band': return !placeOk ? { ok: false, miss: 'where? the place.' } : !anyBand ? { ok: false, miss: 'how strong? say it.' } : !bandOk ? { ok: false, miss: 'that’s not how strong it is.' } : { ok: true };
+    case 'band_and_honest': return !bandOk ? { ok: false, miss: anyBand ? 'intensity: wrong.' : 'intensity: missing.' } : !honest ? { ok: false, miss: 'and what you feel. honestly.' } : { ok: true };
   }
-  return false;
+  return { ok: false };
 }
 function answerWords() {
   const o = G.order; if (!o) return;
@@ -822,15 +856,17 @@ function answerWords() {
   const empty = o.chosen.every((h) => h.cat === 'none');
   // what is said is spent: those words leave the head
   for (const h of o.chosen) { const i = G.head.indexOf(h); if (i >= 0) { G.head.splice(i, 1); h.el._gone = performance.now(); h.el._out = [0, -1]; } }
-  // a stage word that is not the body's own is a lie: the body may give it away
-  if (o.chosen.some((h) => isCat(h, 'stage:') && h.cat !== 'stage:' + S.stage)) { G.lie = 2; G.counts.lies += 1; }
+  // a word not from the head, or a feeling that is not the body's own, is a lie: the body may give it away in the next breaths
+  if (o.chosen.some((h) => h.lie || (isCat(h, 'stage:') && h.cat !== 'stage:' + S.stage))) { G.lie = 2; G.counts.lies += 1; }
   G.order = null; G.nextOrderAt = G.clock + randInt(...ST().every) * BEAT; G.nextAskAt = G.clock + randInt(...ST().askEvery) * 1000;
-  if (empty) { G.counts.empty += 1; say(pick(LINES.answer.empty)); press(); const p = LINES.here[S.contact].find((x) => x[1] === o.place); if (p) setTimeout(() => G.phase === 'loop' && !G.order && nameplace(p[0], p[1]), 900); return; }
-  if (judge(o.chosen, o.place)) { G.counts.answered += 1; say(pick(LINES.answer.ok[S.style])); lift(); scatter(2); }
+  const sendThere = () => { const p = LINES.here[S.contact].find((x) => x[1] === o.place); if (p) setTimeout(() => G.phase === 'loop' && !G.order && nameplace(p[0], p[1]), 1100); };
+  if (empty) { G.counts.empty += 1; say(pick(LINES.answer.empty)); press(); sendThere(); return; }
+  const v = judge(o.chosen, o.place);
+  if (v.ok) { G.counts.answered += 1; say(pick(LINES.answer.ok[S.style])); lift(); scatter(2); }
   else {
-    G.counts.wrong += 1; say(pick(LINES.answer.bad[S.style]));
+    G.counts.wrong += 1; say(v.miss ?? pick(LINES.answer.bad[S.style]));
     if (S.style !== 'affectionate') press();
-    if (['cruel', 'ritual', 'playful'].includes(S.style)) { const p = LINES.here[S.contact].find((x) => x[1] === o.place); if (p) setTimeout(() => G.phase === 'loop' && !G.order && nameplace(p[0], p[1]), 900); }
+    if (['cruel', 'ritual', 'playful'].includes(S.style)) sendThere();
   }
 }
 
@@ -857,7 +893,7 @@ function inhaleEnd(forced = false) {
 function reflex() {
   G.inhaling = false; breathStop(); G.counts.coughs += 1; G.reflexCd = 1400; G.shake = 1.4; G.sinceBreath = 0;
   SFX.cough(); burst(); scatter(2); // a cough throws words out of the head
-  if (G.lie > 0) { say(pick(LINES.liar)); G.lie = 0; } else say(pick(LINES.cough));
+  if (G.lie > 0) { say(pick(LINES.liar)); G.lie = 0; G.counts.liesFound += 1; press(); setTimeout(press, 400); } else say(pick(LINES.cough));
   if (G.order && G.order.k !== 'ask' && G.order.k !== 'still') orderDone(false);
   const v = $('#cmd').value; if (v) { $('#cmd').value = v.slice(0, Math.max(0, v.length - randInt(3, 8))); tint.sync(true); }
 }
@@ -888,7 +924,7 @@ function exit(reason) {
 function showSummary() {
   G.phase = 'done';
   const c = G.counts;
-  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · lost in her ${c.lost}<br>through the mouth ${c.mouthWords} words out (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers right ${c.answered} · wrong ${c.wrong} · nothing to say ${c.empty} · lies ${c.lies} · caught seeking ${c.caught}<br>words breathed in ${G.wordsTaken} · peak ${Math.round(G.peakSat ?? 0)} % of the head`;
+  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · lost in her ${c.lost}<br>through the mouth ${c.mouthWords} words out (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers right ${c.answered} · wrong ${c.wrong} · nothing to say ${c.empty} · lies ${c.lies} (found out ${c.liesFound}) · caught seeking ${c.caught}<br>words breathed in ${G.wordsTaken} · peak ${Math.round(G.peakSat ?? 0)} % of the head`;
   $('#summary').style.display = 'block';
 }
 
