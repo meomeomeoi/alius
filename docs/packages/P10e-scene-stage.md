@@ -186,6 +186,69 @@ A reviewer read this spec as a builder would; these answer its questions. They a
 
 A separate design session goes through every mini-game (P15a's seven physics, P16's slap and posture call, P16b's eight) in this new space. Its principle, from this session: **the signal comes from the world** (light, sound, her line, the camera), **the control from the body** (the dial, the mouse), **the gauge on the screen or the input frame**; trackers appear only while their mini-game runs. Examples to start from: weight tilts and sags the whole frame and the commander levels it; the gaze rule makes the cursor the commander's gaze, with everything above her line blurred; stillness turns every key or mouse move into a ripple across the frame; balancing a tray is a liquid level at the bottom of the frame.
 
+## 15. Mini-game instruments: design session (in progress, 2026-11-22/23)
+
+**Status:** being designed in conversation with the author; not yet in the plan. When the design is done it becomes **chunk (e) of P10e** (author's ruling): the instruments are built for the mini-games that exist (P15a's physics, P16's slap and posture call) before P16b, so that P16b and later packages follow this pattern instead of being redesigned. The P10e physics card in the dock stays only as the fallback for a physics with no instrument and for switched-off interactions.
+
+**The author's principles (verbatim intent):**
+- Every mini-game is varied and **unique**. It can appear in different places. One mini-game can be **several windows, animations, trackers and buttons** at once. There is no single physics panel.
+- **No CRT minimalism.**
+- The mini-games are semi-explicit, more provocative than explicit. Craft, immersion and animation are not economised; the current card is dry and does not pull the player in.
+- Every window **reads on any background**.
+
+**Decided so far:**
+- **Materials (author's ruling, 2026-11-23): nothing is drawn as an object or a body part in SVG.** A test showed an SVG foot looks like clip-art. Each layer has its own material:
+  - her body is her **sprite through the camera** (crop, from below, close, a slow "breathing", leaning in, blur, colour) plus the author's **art slots** of P17c (`feet_floor`, `feet_overhead`, `legs_seated` and others), falling back to her sprite;
+  - SVG and CSS draw only **instruments, effects, typography and the mannequin**;
+  - feeling comes from **screen effects and synthesised sound** (the game has no voice; the author has some barks but they are not coming soon).
+- **The posture dial stays posture-only.** No fast mini-game uses the mannequin (too small to click quickly).
+- **Anatomy of a mini-game** (the controller's proposal, accepted as a base):
+  - **her signal** comes from her (her sprite moving, a glow by her, her line in her hand);
+  - **the gauge** lives on the body or the screen (vision, the frame's edges, the input frame);
+  - **the control** is where the hands are (Space or the mouse; the input stays usable, because holding two things in focus is the difficulty);
+  - **the feedback** is pulses, flashes and her reaction;
+  - **three phases:** an entry (the screen dims, her line, the instrument arrives with its own animation), the loop, and an exit (her reaction to how it went).
+- **Her lines are typed in her handwriting** (P10b hands; Caveat has no Cyrillic, which is fine because the game is English). The author liked the effects, the text and the hand.
+
+**Breathing (P15a `breath`, timing): the design the author approved.**
+- **Entry:** the screen darkens around a shape of air (below); her sprite behind it, close and from below (her smile through the gap). Living grain over the dark.
+- **Her count in her hand** beside the opening: "three… two…" announces the next window. In turn-based mode this is the cue for the next beat; in real time it runs by itself.
+  - a playful holder may write "again" instead of "one";
+  - a cruel one counts faster;
+  - a ritual one counts evenly.
+- **The window:** she lifts, the opening widens, warm light at its lips, "now." Hold Space (or the mouse) to breathe, with a short inhale sound and the heartbeat slowing. A missed window gives only a sip. The playful holder's fake window has a pinkish hue and closes when reached for.
+- **Air is vision, not a bar:**
+  - the view narrows to a tunnel, with a red pulse at the edges in time with a quickening heart;
+  - every sound goes dull;
+  - her "hold it.";
+  - the input narrows with the air, and the letters of the line being typed fade and blur, so a long line cannot be finished without breathing.
+- **TAP** is a small mark at the lip of the opening (the in-fiction signal; her profile decides what she does with it). The **stop word** stays the pill in the corner.
+- **Exit:** the opening widens to the whole screen and her reaction is written in her hand. With `breath_play` a blackout closes the opening, the screen goes black, the heart slows, and the wake card follows.
+- **The shape of the dark depends on what covers the face** (data: a field `occlusion: { kind, side?, angle? }` on the contact; a contact without it gets the horizontal slit). None of these draws a body; each is darkness with soft edges and warm-lit lips:
+
+  | kind | contacts | how air comes |
+  |---|---|---|
+  | `gap` | `feet_on_face` | a tilted gap between the two soles, wider at the toes; the window is her spreading them |
+  | `lift` | `sole_to_mouth`, `hand_over_mouth` | the whole cover rises; light from the edge she lifts |
+  | `slide` | `smothered_breasts`, `face_in_her_neck` | the dark slips aside; a crescent of light on one side, a different side each time |
+  | `seat` | `under_her_seat`, `face_to_bottom` | **two rounded masses from above that meet in the middle** (author's correction): light in the narrow cleft between them and a low crescent at the bottom edge when she rises a little |
+  | `squeeze` | `between_thighs` | the dark closes from both sides to a band in the middle; when she squeezes it snaps shut |
+  | `wedge` | `smothered_armpit` | dark from above at a slant; a wedge of air below when she lifts her arm |
+
+**Next steps of the session (in order):**
+1. A **live prototype** of breathing: one HTML page with a shape switcher, where the dark moves in her rhythm, Space breathes, vision narrows and sound plays. Built in the scratchpad from the scene's assets; the author's sprite is never committed.
+2. The other mini-games, one by one, from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+   - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
+   - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
+   - **tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end;
+   - **her activity:** her report's pages turning; her screen;
+   - **jaw:** smeared, doubled letters and a spring of tension around the input;
+   - **gulp:** to design;
+   - **slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette;
+   - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards.
+3. **Restyle the dock's cards to the scene's language** (the cards of P15/P16/P15a still use `[ BRACKETS ]`, a deviation from §6). Fix the collapsed voice cards that show only the speaker's name.
+4. Write the design into this spec (this section becomes final), then the **plan of chunk (e)**, then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`.
+
 ## Implemented as
 
 Built as the plan describes, in `src/ui/scene/stage/` (the frame, the reply, the curtain, the top line, the chip row, the dock, looking around, the gauge, the flash), `src/ui/scene/dial/` (the mannequin and the dial) and `css/62-stage.css` (the mannequin's own classes are in `css/61-blocking.css`). Rendering only: no engine file, action, event, rng draw, state field or registry changed. The one engine-adjacent change is `ChatMessage.swipeCount?`.
