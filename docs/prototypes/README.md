@@ -12,7 +12,15 @@ npm run proto -- breath
 npm run proto -- weight
 ```
 
+```bash
+npm run proto -- saturation
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `saturation.html` — scent (P15a `saturation` with the stimulus body layer): DRAFT
+
+In review with the author; not normative until this line says so.
 
 ## `breath.html` — breathing (P15a `breath`, timing)
 

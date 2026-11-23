@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: SATURATION (P15a `saturation`, decision; with the stimulus body layer: the deep inhale, tolerance,
+  reflex, stages). DRAFT until the author approves it (then NORMATIVE, see README.md). The dark shapes (gap, seat, wedge) are copied from
+  breath.html. Build a runnable page with
+    npm run proto -- saturation
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · saturation · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --scent: 255,176,96; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#stage.live { cursor: none; }
+#stage.live #ui .pick, #stage.live #inputWrap, #stage.live #stopPill { cursor: auto; }
+#inner { position: absolute; inset: 0; will-change: filter, transform; }
+#world { position: absolute; inset: -4%; }
+#ceiling { position: absolute; inset: -8%; background-size: cover; background-position: center; filter: blur(4px) brightness(.55); }
+#dark, #haze, #streams { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#haze { mix-blend-mode: screen; filter: blur(2px); opacity: .8; }
+#streams { mix-blend-mode: screen; }
+#bloom { position: absolute; inset: 0; pointer-events: none; backdrop-filter: blur(14px) brightness(1.35) saturate(1.4); -webkit-backdrop-filter: blur(14px) brightness(1.35) saturate(1.4); mix-blend-mode: screen; opacity: 0; }
+#edge { position: absolute; inset: 0; pointer-events: none; }
+#words { position: absolute; inset: 0; pointer-events: none; }
+.pw { position: absolute; font: italic 300 22px Inter, sans-serif; letter-spacing: .14em; color: rgba(var(--scent), .9); white-space: nowrap; transform: translate(-50%, -50%);
+  text-shadow: 0 0 10px rgba(var(--scent), .55), 0 0 2px rgba(0,0,0,.6); pointer-events: none; }
+.pw.pick { pointer-events: auto; cursor: pointer; padding: 6px 12px; border-radius: 16px; border: 1px solid rgba(var(--scent), .45); background: rgba(20, 10, 6, .35); backdrop-filter: blur(4px); font-size: 24px; }
+.pw.pick:hover { border-color: rgba(var(--scent), .95); box-shadow: 0 0 14px rgba(var(--scent), .5); }
+.pw.chosen { border-color: #fff; color: #fff; }
+#arc { position: absolute; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; pointer-events: none; overflow: visible; }
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.big { font-size: 58px; }
+.her-line.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 21px; line-height: 1.5;
+  text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .6s; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .you { color: #d8e4ff; }
+#reply .tint { color: rgb(var(--scent)); font-style: italic; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); overflow: hidden; }
+#cmd, #mirror { position: absolute; inset: 0; padding: 0 24px; font: 300 19px/52px Inter, sans-serif; letter-spacing: 0; }
+#cmd { width: 100%; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#mirror { pointer-events: none; white-space: pre; overflow: hidden; color: rgba(236,232,242,.95); }
+#mirror .tint { color: rgb(var(--scent)); font-style: italic; text-shadow: 0 0 8px rgba(var(--scent), .6); }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .06em;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; opacity: 0; transition: opacity .6s; }
+.card { position: absolute; left: 36px; top: 30%; width: 440px; padding: 22px 24px; border-radius: 18px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 300px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50; cursor: auto;
+  background: rgba(10, 10, 14, .85); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 600px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="inner">
+    <div id="world"><div id="ceiling"></div></div>
+    <canvas id="dark"></canvas>
+    <canvas id="haze"></canvas>
+    <canvas id="streams"></canvas>
+    <div id="bloom"></div>
+    <div id="edge"></div>
+  </div>
+  <div id="words"></div>
+  <svg id="arc" viewBox="-60 -60 120 120">
+    <defs><filter id="ag" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>
+    <circle id="aNeed" r="40" fill="none" stroke-width="2" opacity="0"/>
+    <path id="aTrack" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-linecap="round"/>
+    <path id="aBand" fill="none" stroke-width="6" stroke-linecap="round" opacity="0"/>
+    <path id="aDanger" fill="none" stroke="rgba(255,70,60,.55)" stroke-width="3" stroke-linecap="round"/>
+    <path id="aFillGlow" fill="none" stroke-width="7" stroke-linecap="round" filter="url(#ag)" opacity=".7"/>
+    <path id="aFill" fill="none" stroke-width="3" stroke-linecap="round"/>
+    <line id="aTol" stroke="#fff" stroke-width="1.6"/>
+    <circle r="2.2" fill="rgba(255,255,255,.85)"/>
+  </svg>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap"><div id="mirror"></div><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
+    <div id="stopPill">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>contact</h4>
+  <div class="row" id="contacts"></div>
+  <h4>her scent</h4>
+  <div class="row" id="bands"></div>
+  <div class="row" id="colors"></div>
+  <div class="note">band: P15a's scent level (body part × her hygiene × after a run). colour: her own scent (P17d; sweat is the default).</div>
+  <h4>the commander's body</h4>
+  <div class="row" id="stages"></div>
+  <label>tolerance <input type="range" id="tol" min="0" max="100" value="20"><span id="tolV">20</span></label>
+  <div class="note">stage: aversion pushes the face away on a breath; craving and adoring pull it toward her, always.</div>
+  <h4>her</h4>
+  <div class="row" id="styles"></div>
+  <div class="row" id="tasks"></div>
+  <label>her name <input id="hername" value="Vela" style="width:120px"></label>
+  <h4>layers</h4>
+  <label><input type="checkbox" id="Lorders" checked> her orders (deeper, gently, here, still)</label>
+  <label><input type="checkbox" id="Lwords" checked> her questions (words)</label>
+  <label><input type="checkbox" id="Ldrift" checked> the body pulls (stage)</label>
+  <label><input type="checkbox" id="Ltint" checked> the input takes her in</label>
+  <label><input type="checkbox" id="Lneed" checked> the need to breathe</label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="dbg"> debug readout</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">The mouse is your face under her. Hold Space: breathe in through the nose (deeper the longer you hold; release to breathe out). Hold Shift: breathe through the mouth (clears the haze; she may notice). Click words when she asks. Esc: stop word. H: hide this panel.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>saturation · prototype</h2>
+  Her scent thickens the air. <b>The mouse is your face</b>: closer to her, the scent is stronger. <kbd>Space</kbd> held: breathe in through the nose — the arc around your face fills; her band is the bright part, your tolerance the white line: past it your body revolts. Release to breathe out. <kbd>Shift</kbd> held: breathe through the mouth (it clears the haze; she may notice). When she asks what you smell, click the words.<br>
+  You have to breathe somehow. <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = { ceiling: '%%ASSET:content/core/art/backdrops/ceiling_room_1.webp%%' };
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- the engine's numbers (TUNING.physics.saturation, TUNING.stimuli) ---------- */
+const BEAT = 1500;
+const BAND = { faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }; // saturation.bandFactor
+const SAT_PER = 10, MOUTH = 20, NOTICED = { watching: 0.6, glancing: 0.25, busy: 0.08 };
+const INHALE_FILL_MS = 1500; // stimuli.inhale.fillMs
+const STAGES = ['aversion', 'enduring', 'accustomed', 'craving', 'adoring'];
+const STAGE_PULL = { aversion: -0.7, enduring: -0.25, accustomed: 0, craving: 0.55, adoring: 0.95 }; // the body: away (breathing) or toward her (always)
+/* the language of perception (content/core/stimulusKinds.json, per stage): the words in the haze come from these */
+const PERCEPTION = {
+  aversion: ['sharp', 'sour', 'it hits the nose'], enduring: ['heavy', 'close', 'it lingers'], accustomed: ['familiar', 'hers'],
+  craving: ['deep', 'warm', 'in the chest'], adoring: ['warm', 'thick', 'hers'],
+};
+const KIND_WORD = { feet_on_face: ['her feet', 'salt', 'skin', 'leather'], face_to_bottom: ['her skin', 'warm', 'cotton'], smothered_armpit: ['her underarm', 'salt', 'heat'] };
+const LIKED = new Set(['warm', 'hers', 'deep', 'thick', 'familiar', 'in the chest', 'her feet', 'her skin', 'her underarm']);
+const COLORS = { sweat: '255,176,96', leather: '196,128,78', soap: '214,232,255', gunpowder: '176,186,206', perfume: '214,156,255' };
+const ATTENTION = { reading: [0.25, 0.4, 0.35], watching_you: [0.75, 0.25, 0] }; // watching, glancing, busy
+const STYLES = {
+  neutral:  { orderEvery: [3, 5], words: 0.3, pressOnHonest: false },
+  playful:  { orderEvery: [2, 4], words: 0.4, pressOnHonest: false },
+  cruel:    { orderEvery: [2, 3], words: 0.3, pressOnHonest: true },
+  ritual:   { orderEvery: [4, 4], words: 0.25, pressOnHonest: false },
+};
+const LINES = {
+  entry: { feet_on_face: ['breathe me in.'], face_to_bottom: ['stay right there. breathe.'], smothered_armpit: ['nose in. all the way.'] },
+  deeper: ['deeper.', 'more than that.', 'all of it.'], gently: ['slowly.', 'gently.'], still: ['don’t move.', 'stay still.'],
+  here: { feet_on_face: [['between my toes.', 'toes'], ['the arch.', 'arch'], ['the heel.', 'heel']], face_to_bottom: [['closer.', 'center']], smothered_armpit: [['deeper in.', 'hollow']] },
+  ask: ['what do you smell?', 'tell me what it’s like.'], good: ['good.', 'mm. like that.'], bad: ['I said deeper.', 'that’s not what I asked.'],
+  mouth: ['through your nose.', 'I heard that.'], away: ['don’t you dare turn away.'], cough: ['too much for you?', 'breathe it, don’t fight it.'],
+  liked: ['good answer.', 'that’s right.'], honest: { neutral: ['you’ll get used to it.'], playful: ['aww. honest.'], cruel: ['then get used to it.'], ritual: ['noted. again.'] },
+  liar: ['liar.'], caught: ['you like that, don’t you.'], need: ['breathe.'], end: ['enough. for now.'], stop: ['okay. come up.'],
+};
+
+/* ---------- settings ---------- */
+const S = { contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
+  layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 60,
+  reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const ST = () => STYLES[S.style];
+
+/* ---------- audio ---------- */
+const A = { ctx: null };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)(); A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 14000; A.world.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 500; A.roomG = ctx.createGain(); A.roomG.gain.value = 0.05;
+  room.connect(rl); rl.connect(A.roomG); A.roomG.connect(A.world); room.start();
+  // the drone of a full head: two close tones and a warm hiss, rising with the saturation
+  A.droneG = ctx.createGain(); A.droneG.gain.value = 0; A.droneG.connect(A.body);
+  for (const f of [98, 99.6, 147.2]) { const o = ctx.createOscillator(); o.frequency.value = f; const g = ctx.createGain(); g.gain.value = f > 140 ? 0.25 : 0.5; o.connect(g); g.connect(A.droneG); o.start(); }
+  const hiss = ctx.createBufferSource(); hiss.buffer = A.brown; hiss.loop = true; const hl = ctx.createBiquadFilter(); hl.type = 'bandpass'; hl.frequency.value = 700; hl.Q.value = 0.6;
+  const hg = ctx.createGain(); hg.gain.value = 0.6; hiss.connect(hl); hl.connect(hg); hg.connect(A.droneG); hiss.start();
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world }) {
+  if (!A.ctx) return null;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+  return src;
+}
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.15);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.3);
+}
+const SFX = {
+  pen: () => { const n = randInt(3, 5); for (let i = 0; i < n; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.05 }); },
+  exhale: (d) => noise({ dur: 0.5 + d * 0.4, type: 'lowpass', f: 900, f2: 300, gain: 0.05 + d * 0.06, attack: 0.04, dest: A.body }),
+  cough: () => { for (let i = 0; i < 3; i++) { noise({ at: i * 0.22, dur: 0.16, f: 500, f2: 260, q: 0.8, gain: 0.4, attack: 0.005, dest: A.body }); thump(i * 0.22, 0.35, 90); } },
+  page: () => noise({ dur: 0.32, f: 2400, f2: 1200, q: 0.8, gain: 0.05, attack: 0.05 }), // she turns a page: she is busy with it
+  chime: () => { if (!A.ctx) return; const o = A.ctx.createOscillator(); o.frequency.value = 880; const g = A.ctx.createGain(); const t = A.ctx.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6); o.connect(g); g.connect(A.world); o.start(t); o.stop(t + 0.7); },
+};
+/* the breath sounds: a nose inhale that brightens as it deepens, a mouth breath that is louder and lower */
+const BR = { src: null, fl: null, g: null, kind: null };
+function breathSound(kind) {
+  if (!A.ctx || BR.kind === kind) return;
+  breathStop();
+  const ctx = A.ctx, t = ctx.currentTime;
+  BR.src = ctx.createBufferSource(); BR.src.buffer = A.white; BR.src.loop = true;
+  BR.fl = ctx.createBiquadFilter(); BR.fl.type = kind === 'mouth' ? 'lowpass' : 'bandpass'; BR.fl.Q.value = kind === 'mouth' ? 0.5 : 1.1;
+  BR.fl.frequency.setValueAtTime(kind === 'mouth' ? 700 : 900, t);
+  BR.g = ctx.createGain(); BR.g.gain.setValueAtTime(0.0001, t); BR.g.gain.exponentialRampToValueAtTime(kind === 'mouth' ? 0.22 : 0.14, t + 0.08);
+  BR.src.connect(BR.fl); BR.fl.connect(BR.g); BR.g.connect(A.body); BR.src.start(t, Math.random()); BR.kind = kind;
+}
+function breathStop() {
+  if (!BR.src) return;
+  const t = A.ctx.currentTime; BR.g.gain.cancelScheduledValues(t); BR.g.gain.setValueAtTime(BR.g.gain.value, t); BR.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+  BR.src.stop(t + 0.15); BR.src = null; BR.kind = null;
+}
+
+/* ---------- state ---------- */
+let G;
+function fresh() {
+  return { phase: 'idle', phaseT: 0, clock: 0, sat: 0, darkA: 0, cam: 0, nose: [0.5, 0.55], drift: [0, 0], mouse: [0.5, 0.55], lastNose: [0.5, 0.55],
+    inhaling: false, depth: 0, peak: 0, mouth: false, sinceBreath: 0, gasped: false, reflexCd: 0, overload: 0,
+    order: null, nextOrderAt: 3 * BEAT, att: 'busy', attAt: 0, mouthCheck: 0, awayMs: 0, stillMs: 0, lie: 0, beat: -1,
+    counts: { breaths: 0, deep: 0, coughs: 0, mouth: 0, noticed: 0, ordersOk: 0, ordersBad: 0, liked: 0, honest: 0, lies: 0, caught: 0, away: 0 },
+    o: 0.35, sp: [{ L: 0.35, v: 0, k: 58 }, { L: 0.35, v: 0, k: 74 }], zones: [], I: 0, hereZone: null, focus: [0.5, 0.5], text: [0.62, 0.18], lowest: 100, shake: 0, endAt: S.len * 1000 };
+}
+G = fresh();
+
+/* ---------- her hand ---------- */
+function say(text, big = false, at) {
+  if (!text) return;
+  const el = document.createElement('div');
+  el.className = 'her-line' + (big ? ' big' : '');
+  el.textContent = text;
+  el.style.setProperty('--write', `${Math.max(160, text.length * 36)}ms`);
+  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const stack = big ? 0 : [...$('#hand').children].filter((x) => !x.classList.contains('gone') && !x.classList.contains('big')).length;
+  const p = at ?? [0.6, 0.14];
+  el.style.left = `${p[0] * innerWidth + rand(-14, 14)}px`; el.style.top = `${p[1] * innerHeight + stack * 52 + rand(-6, 6)}px`;
+  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); SFX.pen();
+  if (!big) setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2600);
+}
+
+/* ---------- the dark shapes (copied from breath.html: gap, seat, wedge) ---------- */
+const squashOf = (x) => clamp((1 - clamp(x.L, 0, 1)) * 0.85 + clamp(-x.v * 0.12, 0, 0.35), 0, 1.2);
+/* her lower body seen from below, the right half from the top (her back) down the hip and the outer thigh, back up the inner thigh to the gap; unit H, origin at her seat */
+const SEAT_BODY = [
+  [0.57, -1.6], [0.55, -1.0], [0.53, -0.66], [0.58, -0.42], [0.66, -0.2], [0.72, 0.04], [0.76, 0.3], [0.8, 0.66], [0.87, 1.1], [0.96, 1.7],
+  [0.5, 1.7], [0.33, 1.15], [0.18, 0.8], [0.05, 0.56],
+];
+/* corner cutting: three passes make any polygon a smooth outline without overshoot */
+function chaikin(pts) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    out.push([p[0] * 0.75 + q[0] * 0.25, p[1] * 0.75 + q[1] * 0.25], [p[0] * 0.25 + q[0] * 0.75, p[1] * 0.25 + q[1] * 0.75]);
+  }
+  return out;
+}
+const SHAPES = {
+  gap(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const th = (S.angle * Math.PI) / 180;
+    const ax = [Math.sin(th), -Math.cos(th)], nx = [Math.cos(th), Math.sin(th)];
+    const C = [W * 0.5 + s.sway * H * 0.004, H * 0.52];
+    const Lh = 0.78 * H;
+    const toe = (0.006 + oc * 0.085 + s.sway * 0.003 + ex * ex * 1.4) * H, heel = (oc * 0.016 + ex * ex * 1.4) * H;
+    const left = [], right = [];
+    for (let i = 0; i <= 30; i++) {
+      const k = i / 30; // 0 the heels, 1 the toes
+      const sp = (k * 2 - 1) * Lh;
+      let hw = lerp(heel, toe, k * k);
+      hw *= 1 - 0.32 * Math.exp(-((k - 0.55) ** 2) / 0.02); // the balls of her feet press closer
+      if (k > 0.84) hw *= 1 + (k - 0.84) * 3.2; // the toes part
+      const px = C[0] + ax[0] * sp, py = C[1] + ax[1] * sp;
+      left.push([px - nx[0] * hw, py - nx[1] * hw]); right.push([px + nx[0] * hw, py + nx[1] * hw]);
+    }
+    g.beginPath(); left.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+    for (let i = right.length - 1; i >= 0; i--) g.lineTo(right[i][0], right[i][1]);
+    g.closePath(); g.fill();
+    const at = (k) => [C[0] + ax[0] * (k * 2 - 1) * Lh, C[1] + ax[1] * (k * 2 - 1) * Lh];
+    const tip = at(0.78), mid = at(0.64);
+    return { focus: [mid[0] / W, mid[1] / H], lip: [(tip[0] + nx[0] * (toe * 0.9 + 0.012 * H)) / W, (tip[1] + nx[1] * toe) / H], text: [(tip[0] + 0.1 * H) / W, (tip[1] + 0.03 * H) / H] };
+  },
+  seat(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1);
+    const [a, b] = s.sp;
+    const Lm = clamp((a.L + b.L) / 2, -0.2, 1.2);
+    const V = [W / 2 + s.sway2 * H * 0.012, H * 0.3];
+    const rock = s.sway2 * 0.022; // her hips rock a little
+    const cr = Math.cos(rock), sr = Math.sin(rock);
+    const side = (x, flip) => {
+      const L = clamp(x.L, -0.2, 1.2), sq = squashOf(x);
+      const P = 1.38 / (1 + 0.28 * L + ex * 4);
+      return SEAT_BODY.map(([px, py], i) => {
+        let X = px, Y = py;
+        if (Y > 0) { X *= 1 + 0.05 * sq; Y *= 1 - 0.04 * sq; } // where she presses she spreads a little
+        if (i >= 10) { X = X * (1 - 0.55 * sq) + 0.035 * clamp(L, 0, 1); Y += 0.12 * sq; } // the inner thighs close when she presses, part as she rises
+        X *= flip;
+        return [V[0] + (X * cr - Y * sr) * H * P, V[1] + (X * sr + Y * cr) * H * P];
+      });
+    };
+    const right = side(b, 1), left = side(a, -1);
+    // the seam: the gap between her thighs runs up into a narrow line of light only as she rises
+    const open = clamp(Lm, 0, 1), Pm = 1.38 / (1 + 0.28 * Lm + ex * 4);
+    const apexY = V[1] + (0.5 - open * 0.2) * H * Pm, seamW = (0.002 + open * 0.008) * H * Pm;
+    const pts = [...right, [V[0] + seamW, apexY], [V[0] - seamW, apexY], ...left.reverse()];
+    const sm = chaikin(chaikin(chaikin(pts)));
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'destination-out';
+    g.beginPath(); sm.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]))); g.closePath(); g.fill();
+    g.globalCompositeOperation = 'source-over';
+    return { focus: [V[0] / W, clamp((V[1] + 0.85 * H * Pm) / H, 0.5, 0.92)], lip: [(V[0] + 0.02 * H) / W, clamp((apexY + 0.12 * H) / H, 0.3, 0.94)], text: [(V[0] + 0.32 * H * Pm) / W, (V[1] - 0.12 * H * Pm) / H] };
+  },
+  wedge(g, W, H, o, s) {
+    const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
+    const mirror = S.side.wedge === 'left';
+    g.save(); if (mirror) { g.translate(W, 0); g.scale(-1, 1); }
+    const piv = [W * (0.9 + ex * 0.6), H * 1.02];
+    const yL = H * (1.07 - oc * 0.56 - ex * 2.6 + s.sway * 0.006);
+    const edge = (u) => lerp(yL, piv[1], u) + 0.06 * H * Math.sin(Math.PI * u) * (0.4 + 0.6 * oc);
+    g.beginPath(); g.moveTo(-4, edge(0));
+    for (let i = 0; i <= 30; i++) { const u = i / 30; g.lineTo(u * piv[0], edge(u)); }
+    g.lineTo(piv[0], H + 4); g.lineTo(-4, H + 4); g.closePath(); g.fill();
+    g.restore();
+    const mx = (x) => (mirror ? 1 - x : x);
+    const u1 = 0.25, u2 = 0.12;
+    return { focus: [mx(0.22), clamp((edge(0.22) + H) / 2 / H, 0.5, 0.95)], lip: [mx((u1 * piv[0]) / W), (edge(u1) - 0.012 * H) / H], text: [mx((u2 * piv[0]) / W), (edge(u2) - 0.17 * H) / H], align: mirror ? 'right' : 'left' };
+  },
+};
+
+
+/* where her scent comes from: points on her, by contact (fractions of the screen), weighted; and what she calls them */
+function zonesOf(W, H, s) {
+  const out = [];
+  if (S.contact === 'feet_on_face') {
+    const th = (S.angle * Math.PI) / 180, ax = [Math.sin(th), -Math.cos(th)], nx = [Math.cos(th), Math.sin(th)];
+    const C = [0.5 + (s.sway * 0.004 * H) / W, 0.52], Lh = 0.78;
+    const at = (k, side, off) => [C[0] + (ax[0] * (k * 2 - 1) * Lh * H + nx[0] * side * off * H) / W, C[1] + ax[1] * (k * 2 - 1) * Lh + nx[1] * side * off];
+    out.push({ id: 'toes', p: at(0.76, 0, 0), w: 1.0 });
+    for (const side of [-1, 1]) {
+      out.push({ id: 'toes', p: at(0.72, side, 0.06), w: 0.9 }, { id: 'ball', p: at(0.6, side, 0.05), w: 0.8 }, { id: 'arch', p: at(0.45, side, 0.045), w: 0.55 }, { id: 'heel', p: at(0.27, side, 0.04), w: 0.65 });
+    }
+  } else if (S.contact === 'face_to_bottom') {
+    const Lm = (G.sp[0].L + G.sp[1].L) / 2, Pm = 1.38 / (1 + 0.28 * Lm), V = [0.5 + (s.sway2 * 0.012 * H) / W, 0.3];
+    out.push({ id: 'center', p: [V[0], V[1] + (0.5 - clamp(Lm, 0, 1) * 0.2) * Pm - 0.04], w: 1.0 });
+    out.push({ id: 'center', p: [V[0], V[1] + 0.3 * Pm], w: 0.85 });
+    for (const side of [-1, 1]) out.push({ id: 'side', p: [V[0] + side * 0.24, 0.72], w: 0.45 });
+  } else {
+    const mirror = S.side.wedge === 'left', mx = (x) => (mirror ? 1 - x : x);
+    const oc = Math.min(G.o, 1), yL = 1.07 - oc * 0.56, edge = (u) => lerp(yL, 1.02, u) + 0.06 * Math.sin(Math.PI * u) * (0.4 + 0.6 * oc);
+    out.push({ id: 'hollow', p: [mx(0.82), 0.9], w: 1.0 }, { id: 'hollow', p: [mx(0.72), edge(0.8) + 0.02], w: 0.85 });
+    out.push({ id: 'edge', p: [mx(0.35), edge(0.39) + 0.03], w: 0.45 }, { id: 'edge', p: [mx(0.15), edge(0.17) + 0.03], w: 0.4 });
+  }
+  return out;
+}
+/* the scent at the commander's nose: the nearest strong place, plus what hangs in the air */
+function intensityAt(p) {
+  const ar = innerWidth / innerHeight;
+  let best = 0, zone = null;
+  for (const z of G.zones) {
+    const dx = (p[0] - z.p[0]) * ar, dy = p[1] - z.p[1], d2 = dx * dx + dy * dy;
+    const v = z.w * Math.exp(-d2 / (2 * 0.1 * 0.1));
+    if (v > best) { best = v; zone = z; }
+  }
+  return { I: clamp(0.08 + best, 0, 1.1), zone };
+}
+
+/* ---------- the rhythm of the game ---------- */
+const stim = () => BAND[S.band] / 1.5;                       // her band, 0.33 … 1.33
+const tolT = () => 0.3 + (S.tol / 100) * 0.8;                 // the reflex threshold in stimulus units (TUNING.stimuli.reflexMult reading)
+const tolDepth = () => tolT() / Math.max(0.05, G.I * stim()); // where on the arc the threshold falls, here
+function newOrder() {
+  const L = S.layers;
+  const kinds = [];
+  if (L.orders) kinds.push('deeper', 'deeper', 'gently', 'here', 'still');
+  if (L.words) kinds.push(...Array(Math.round(ST().words * 10)).fill('ask'));
+  if (!kinds.length) return;
+  const k = pick(kinds);
+  if (k === 'deeper') { G.order = { k, band: [0.7, 0.95], until: G.clock + 4500 }; say(pick(LINES.deeper)); }
+  else if (k === 'gently') { G.order = { k, band: [0.25, 0.45], until: G.clock + 4500 }; say(pick(LINES.gently)); }
+  else if (k === 'here') { const [line, id] = pick(LINES.here[S.contact]); G.order = { k, zone: id, band: [0.5, 0.9], until: G.clock + 6000 }; G.hereZone = id; say(line); SFX.chime(); }
+  else if (k === 'still') { G.order = { k, until: G.clock + 3500, from: [...G.nose] }; say(pick(LINES.still)); }
+  else if (k === 'ask') { askWords(); }
+}
+function orderDone(ok) {
+  if (!G.order) return;
+  if (ok) { G.counts.ordersOk += 1; if (Math.random() < 0.6) say(pick(LINES.good)); }
+  else { G.counts.ordersBad += 1; say(pick(LINES.bad)); if (S.style === 'cruel') press(); }
+  G.order = null; G.hereZone = null;
+  G.nextOrderAt = G.clock + randInt(...ST().orderEvery) * BEAT;
+}
+function press() { G.o = Math.max(0.12, G.o - 0.15); G.shake = 1; for (const x of G.sp) x.v -= 1.6; thump(0, 0.4, 60); }
+
+/* her question: words drift up from the haze; two are chosen */
+function askWords() {
+  say(pick(LINES.ask));
+  const stage = S.stage, honest = PERCEPTION[stage];
+  const pool = new Set([...honest, ...KIND_WORD[S.contact].slice(0, 2)]);
+  for (const st of STAGES) if (st !== stage && Math.random() < 0.6) pool.add(pick(PERCEPTION[st]));
+  const words = [...pool].sort(() => Math.random() - 0.5).slice(0, 6);
+  const chosen = [];
+  G.order = { k: 'ask', until: G.clock + 8000, chosen, honest: new Set([...honest, ...KIND_WORD[S.contact]]) };
+  words.forEach((w, i) => {
+    const el = document.createElement('div'); el.className = 'pw pick'; el.textContent = w;
+    const a = -Math.PI * 0.85 + (i / (words.length - 1)) * Math.PI * 0.7;
+    el._p = [clamp(G.nose[0] + Math.cos(a) * 0.17, 0.08, 0.92), clamp(G.nose[1] + Math.sin(a) * 0.25 - 0.05, 0.1, 0.75)];
+    el._v = [rand(-0.004, 0.004), rand(-0.006, -0.002)];
+    el.onclick = (e) => { e.stopPropagation(); if (el.classList.contains('chosen') || !G.order || G.order.k !== 'ask') return; el.classList.add('chosen'); chosen.push(w); if (chosen.length >= 2) answerWords(); };
+    $('#words').appendChild(el); wordEls.push(el);
+  });
+}
+function answerWords() {
+  const o = G.order; if (!o) return;
+  const liked = o.chosen.filter((w) => LIKED.has(w)).length, true_ = o.chosen.filter((w) => o.honest.has(w)).length;
+  for (const el of wordEls.filter((x) => x.classList.contains('pick'))) { el.classList.remove('pick'); el._fade = 1; }
+  if (liked >= 1 && true_ >= 1) { G.counts.liked += 1; say(pick(LINES.liked)); orderDone(true); }
+  else if (liked >= 1) { G.counts.liked += 1; G.counts.lies += 1; G.lie = 2; say(pick(LINES.liked)); G.order = null; G.nextOrderAt = G.clock + randInt(...ST().orderEvery) * BEAT; } // she believes it, for now
+  else { G.counts.honest += 1; say(pick(LINES.honest[S.style])); if (ST().pressOnHonest) press(); G.order = null; G.nextOrderAt = G.clock + randInt(...ST().orderEvery) * BEAT; }
+}
+
+/* the haze's own words: perception drifting from her toward the face, more as the head fills */
+const wordEls = [];
+function driftWord() {
+  if (!G.zones.length) return;
+  const z = pick(G.zones), stage = S.stage;
+  const w = Math.random() < 0.5 ? pick(PERCEPTION[stage]) : Math.random() < 0.5 ? pick(KIND_WORD[S.contact]) : pick(PERCEPTION[pick(STAGES)]);
+  const el = document.createElement('div'); el.className = 'pw'; el.textContent = w;
+  el._p = [z.p[0] + rand(-0.03, 0.03), z.p[1] + rand(-0.03, 0.03)];
+  el._v = [(G.nose[0] - el._p[0]) * 0.06, (G.nose[1] - el._p[1]) * 0.06 - 0.01];
+  el._life = 1; el._fade = 0; el.style.fontSize = `${lerp(16, 26, Math.random())}px`;
+  $('#words').appendChild(el); wordEls.push(el);
+}
+function tickWords(dt) {
+  const h = dt / 1000;
+  for (let i = wordEls.length - 1; i >= 0; i--) {
+    const el = wordEls[i];
+    if (el.classList.contains('pick')) {
+      el._p[0] += el._v[0] * h; el._p[1] += el._v[1] * h;
+      el.style.opacity = '1';
+    } else {
+      if (el._life !== undefined) { el._life -= h * 0.35; el._p[0] += el._v[0] * h; el._p[1] += el._v[1] * h; }
+      if (el._fade) el._fade += h * 2;
+      const op = el._fade ? Math.max(0, 1 - (el._fade - 1)) : clamp(Math.min(el._life * 2, (1 - el._life) * 4), 0, 1) * (0.35 + G.sat / 160);
+      el.style.opacity = op.toFixed(3);
+      if ((el._life !== undefined && el._life <= 0) || (el._fade && el._fade > 2)) { el.remove(); wordEls.splice(i, 1); continue; }
+    }
+    el.style.left = `${el._p[0] * innerWidth}px`; el.style.top = `${el._p[1] * innerHeight}px`;
+  }
+}
+
+/* ---------- breathing ---------- */
+function inhaleStart() { if (G.phase !== 'loop' || G.inhaling || G.reflexCd > 0) return; G.inhaling = true; G.depth = 0; G.peak = 0; breathSound('nose'); }
+function inhaleEnd(forced = false) {
+  if (!G.inhaling) return;
+  G.inhaling = false; breathStop();
+  const d = G.depth, dose = d * G.I * stim();
+  G.sat = Math.min(110, G.sat + dose * 30);
+  G.sinceBreath = 0; G.counts.breaths += 1; if (d > 0.7) G.counts.deep += 1;
+  SFX.exhale(d);
+  for (const x of G.sp) x.v += 0.3; // she feels the breath
+  if (G.lie > 0) G.lie -= 1;
+  const o = G.order;
+  if (o && (o.k === 'deeper' || o.k === 'gently' || o.k === 'here') && !forced) {
+    const inBand = d >= o.band[0] && d <= o.band[1];
+    const there = o.k !== 'here' || (G.zoneNow && G.zoneNow.id === o.zone && G.I > 0.55);
+    orderDone(inBand && there);
+  } else if (!o && d > 0.75 && G.I > 0.7 && G.att === 'watching') {
+    // seeking with nobody asking, while she watches: she sees it
+    G.counts.caught += 1; say(pick(LINES.caught));
+  }
+}
+function reflex() {
+  G.inhaling = false; breathStop(); G.counts.coughs += 1; G.reflexCd = 1400; G.shake = 1.4; G.sinceBreath = 0;
+  G.sat = Math.min(110, G.sat + 15);
+  SFX.cough(); burst();
+  if (G.lie > 0) { G.counts.caught += 0; say(pick(LINES.liar)); G.lie = 0; } else say(pick(LINES.cough));
+  if (G.order && G.order.k !== 'ask' && G.order.k !== 'still') orderDone(false);
+  // the line being typed breaks up
+  const v = $('#cmd').value; if (v) { $('#cmd').value = v.slice(0, Math.max(0, v.length - randInt(3, 8))); tint.sync(true); }
+}
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#hand').replaceChildren(); $('#words').replaceChildren(); wordEls.length = 0;
+  G = fresh(); G.phase = 'entry'; G.endAt = S.len * 1000;
+  $('#summary').style.display = 'none';
+  setReply(`<span class="act">She settles where she wants you, and the air changes.</span>`, 0.4);
+  setTimeout(() => G.phase === 'entry' && say(pick(LINES.entry[S.contact])), 700);
+}
+function exit(reason) {
+  if (G.phase !== 'loop' && G.phase !== 'entry') return;
+  G.phase = 'exit'; G.phaseT = 0; G.reason = reason; G.inhaling = false; breathStop();
+  for (const el of wordEls) el._fade = el._fade || 1;
+  setTimeout(() => { $('#hand').replaceChildren(); say(pick(reason === 'stop' ? LINES.stop : LINES.end), true, [0.56, 0.2]); }, 900);
+  setTimeout(showSummary, 2300);
+}
+function showSummary() {
+  G.phase = 'done';
+  const c = G.counts;
+  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · through the mouth ${c.mouth} (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers she liked ${c.liked} (lies ${c.lies}) · honest ${c.honest} · caught seeking ${c.caught}<br>peak saturation ${Math.round(G.peakSat ?? 0)}`;
+  $('#summary').style.display = 'block';
+}
+
+/* ---------- the loop ---------- */
+function attentionDraw() { const p = ATTENTION[S.task], r = Math.random(); return r < p[0] ? 'watching' : r < p[0] + p[1] ? 'glancing' : 'busy'; }
+function updateLoop(dt) {
+  G.clock += dt;
+  const h = dt / 1000;
+  const beatNow = Math.floor(G.clock / BEAT);
+  while (G.beat < beatNow) {
+    G.beat += 1; G.att = attentionDraw();
+    if (G.att === 'busy' && S.task === 'reading' && Math.random() < 0.35) SFX.page();
+    G.sat = Math.min(110, G.sat + SAT_PER * 0.18 * stim()); // her scent fills the air whatever the commander does
+  }
+  // the nose: the mouse, plus the body's own pull, slowed while overloaded
+  const z = intensityAt(G.nose); G.I = z.I; G.zoneNow = z.zone;
+  if (S.layers.drift && z.zone) {
+    const pull = STAGE_PULL[S.stage] * (STAGE_PULL[S.stage] > 0 ? (G.inhaling ? 1.5 : 1) : (G.inhaling ? 1 : 0));
+    const dx = z.zone.p[0] - G.nose[0], dy = z.zone.p[1] - G.nose[1], d = Math.hypot(dx, dy) || 1;
+    G.drift[0] += (dx / d) * pull * 0.09 * h; G.drift[1] += (dy / d) * pull * 0.09 * h;
+  }
+  G.drift = G.drift.map((v) => clamp(v * (1 - h * 0.35), -0.22, 0.22));
+  const target = [clamp(G.mouse[0] + G.drift[0], 0.02, 0.98), clamp(G.mouse[1] + G.drift[1], 0.04, 0.96)];
+  const k = G.overload > 0 ? 1.2 : 14;
+  G.nose = [lerp(G.nose[0], target[0], clamp(h * k, 0, 1)), lerp(G.nose[1], target[1], clamp(h * k, 0, 1))];
+  // breathing in: deeper the longer it is held; past the tolerance the body revolts
+  if (G.inhaling) {
+    G.depth = Math.min(1.25, G.depth + dt / INHALE_FILL_MS); G.peak = Math.max(G.peak, G.depth);
+    if (BR.fl) BR.fl.frequency.setTargetAtTime(900 + G.depth * 1600, A.ctx.currentTime, 0.05);
+    if (G.depth * G.I * stim() > tolT()) reflex();
+  }
+  G.reflexCd = Math.max(0, G.reflexCd - dt);
+  // the mouth: clears the head, and she may hear it
+  if (G.mouth && !G.inhaling) {
+    G.sat = Math.max(0, G.sat - (MOUTH / BEAT) * dt * 0.65); G.sinceBreath = 0;
+    breathSound('mouth');
+    G.mouthCheck -= dt;
+    if (G.mouthCheck <= 0) { G.mouthCheck = 1000; if (Math.random() < NOTICED[G.att] * 0.7) { G.counts.noticed += 1; say(pick(LINES.mouth)); G.mouthHeard = 1; if (S.style === 'cruel') press(); } }
+  } else if (!G.inhaling && BR.kind === 'mouth') breathStop();
+  // the need to breathe
+  G.sinceBreath += dt;
+  if (S.layers.need && G.sinceBreath > 8000 && !G.inhaling && !G.mouth) { G.inhaling = true; G.depth = 0.95; breathSound('nose'); setTimeout(() => inhaleEnd(true), 250); say(pick(LINES.need)); }
+  // her orders
+  if (G.order) {
+    const o = G.order;
+    if (o.k === 'still') {
+      const moved = Math.hypot((G.nose[0] - o.from[0]) * innerWidth, (G.nose[1] - o.from[1]) * innerHeight);
+      if (moved > 60) orderDone(false); else if (G.clock > o.until) orderDone(true);
+    } else if (G.clock > o.until) {
+      if (o.k === 'ask') { for (const el of wordEls.filter((x) => x.classList.contains('pick'))) { el.classList.remove('pick'); el._fade = 1; } }
+      orderDone(false);
+    }
+  } else if (G.clock > G.nextOrderAt) newOrder();
+  // turning away while she wants closeness
+  if (G.I < 0.2 && G.att !== 'busy') { G.awayMs += dt; if (G.awayMs > 2500) { G.awayMs = -4000; G.counts.away += 1; say(pick(LINES.away)); press(); } } else G.awayMs = Math.min(G.awayMs, 0) + (G.awayMs < 0 ? dt : 0);
+  // overload: the head is full of her
+  if (G.sat >= 100 && G.overload <= 0) { G.overload = 4000; SFX.cough(); G.shake = 0.8; for (let i = 0; i < 10; i++) setTimeout(driftWord, i * 120); }
+  if (G.overload > 0) { G.overload -= dt; if (G.overload <= 0) G.sat = 70; }
+  if (Math.random() < h * (0.4 + G.sat / 40)) driftWord();
+  G.peakSat = Math.max(G.peakSat ?? 0, G.sat);
+  // her shape relaxes back to rest after a press
+  G.o = lerp(G.o, 0.35, clamp(h * 0.5, 0, 1));
+  if (G.clock > G.endAt) exit('done');
+}
+
+let mouse = [0.5, 0.55];
+function frame(now) {
+  const dt = Math.min(120, now - (frame.last ?? now)); frame.last = now;
+  G.phaseT += dt;
+  switch (G.phase) {
+    case 'entry': G.cam = easeOut(G.phaseT / 1600); G.darkA = G.cam; if (G.phaseT > 1600) { G.phase = 'loop'; G.clock = 0; } break;
+    case 'loop': G.mouse = mouse; updateLoop(dt); break;
+    case 'exit': { const p = G.phaseT / 1500; G.darkA = 1 - smooth(0.2, 1, p); G.sat = lerp(G.sat, 0, clamp(dt / 600, 0, 1)); break; }
+    default: G.darkA = 0;
+  }
+  G.shake = Math.max(0, G.shake - dt / 300);
+  tickWords(dt);
+  render(now, dt);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- drawing ---------- */
+const DS = 4;
+const darkC = $('#dark'), dctx = darkC.getContext('2d');
+const airC = document.createElement('canvas'), actx = airC.getContext('2d');
+const glowC = document.createElement('canvas'), gctx = glowC.getContext('2d');
+const hazeC = $('#haze'), hctx = hazeC.getContext('2d');
+const maskC = document.createElement('canvas'), mctx = maskC.getContext('2d');
+const strC = $('#streams'), sctx = strC.getContext('2d');
+function size() {
+  const w = Math.ceil(innerWidth / DS), h = Math.ceil(innerHeight / DS);
+  for (const c of [darkC, airC, glowC]) { c.width = w; c.height = h; }
+  hazeC.width = maskC.width = Math.ceil(innerWidth / 3); hazeC.height = maskC.height = Math.ceil(innerHeight / 3);
+  strC.width = innerWidth; strC.height = innerHeight;
+}
+size(); addEventListener('resize', size);
+/* two tileable noise textures (value noise, four octaves): the body of the haze */
+function noiseTile(n, seed) {
+  const c = document.createElement('canvas'); c.width = c.height = n; const x = c.getContext('2d'); const img = x.createImageData(n, n);
+  let s = seed; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const grid = (g) => { const a = []; for (let i = 0; i < g * g; i++) a.push(rnd()); return a; };
+  const octs = [4, 8, 16, 32].map((g) => ({ g, v: grid(g) }));
+  for (let y = 0; y < n; y++) for (let xx = 0; xx < n; xx++) {
+    let v = 0, amp = 0.55, tot = 0;
+    for (const { g, v: a } of octs) {
+      const fx = (xx / n) * g, fy = (y / n) * g, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+      const at = (i, j) => a[((j % g) + g) % g * g + ((i % g) + g) % g];
+      const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+      v += amp * lerp(lerp(at(x0, y0), at(x0 + 1, y0), sx), lerp(at(x0, y0 + 1), at(x0 + 1, y0 + 1), sx), sy); tot += amp; amp *= 0.5;
+    }
+    const a = Math.pow(v / tot, 2.4) * 255 * 1.6, i = (y * n + xx) * 4;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = Math.min(255, a);
+  }
+  x.putImageData(img, 0, 0); return c;
+}
+const TILES = [noiseTile(160, 7), noiseTile(160, 1931)];
+/* the streams: on a breath the haze is drawn in, threads from her to the face */
+const parts = [];
+function spawnStreams(n, strength) {
+  for (let i = 0; i < n; i++) {
+    let z = null, r = Math.random() * G.zones.reduce((a, b) => a + b.w, 0);
+    for (const q of G.zones) { r -= q.w; if (r <= 0) { z = q; break; } }
+    if (!z) z = G.zones[0];
+    parts.push({ x: (z.p[0] + rand(-0.04, 0.04)) * innerWidth, y: (z.p[1] + rand(-0.04, 0.04)) * innerHeight, vx: rand(-40, 40), vy: rand(-40, 40), life: 1, a: strength });
+  }
+}
+function burst() { for (const p of parts) { const dx = p.x - G.nose[0] * innerWidth, dy = p.y - G.nose[1] * innerHeight, d = Math.hypot(dx, dy) || 1; p.vx = (dx / d) * 900; p.vy = (dy / d) * 900; p.life = Math.min(p.life, 0.5); } }
+function drawStreams(dt) {
+  const h = dt / 1000, nx = G.nose[0] * innerWidth, ny = G.nose[1] * innerHeight;
+  sctx.globalCompositeOperation = 'destination-out'; sctx.fillStyle = `rgba(0,0,0,${S.reduced ? 1 : 0.22})`; sctx.fillRect(0, 0, strC.width, strC.height);
+  sctx.globalCompositeOperation = 'lighter'; sctx.lineCap = 'round';
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    const dx = nx - p.x, dy = ny - p.y, d = Math.hypot(dx, dy) || 1;
+    const pullK = G.inhaling ? 1400 + G.depth * 2600 : 200;
+    p.vx += ((dx / d) * pullK + (-dy / d) * 260) * h; p.vy += ((dy / d) * pullK + (dx / d) * 260) * h; // a curl around the face, then in
+    p.vx *= 1 - h * 1.6; p.vy *= 1 - h * 1.6;
+    const ox = p.x, oy = p.y; p.x += p.vx * h; p.y += p.vy * h; p.life -= h * (G.inhaling ? 0.7 : 1.4);
+    if (d < 18 || p.life <= 0) { parts.splice(i, 1); continue; }
+    sctx.strokeStyle = `rgba(${COLORS[S.color]},${(0.5 * p.a * p.life).toFixed(3)})`; sctx.lineWidth = 1.2 + p.a * 1.2;
+    sctx.beginPath(); sctx.moveTo(ox, oy); sctx.lineTo(p.x, p.y); sctx.stroke();
+  }
+  sctx.globalCompositeOperation = 'source-over';
+}
+
+const cache = new Map();
+const setStyle = (el, prop, v) => { const key = el.id + prop; if (cache.get(key) === v) return; cache.set(key, v); el.style[prop] = v; };
+function arcPath(r, a0, a1) {
+  const A0 = -Math.PI * 1.25, span = Math.PI * 1.5;
+  const s = A0 + span * clamp(a0, 0, 1), e = A0 + span * clamp(a1, 0, 1);
+  if (e - s < 0.001) return '';
+  return `M${(Math.cos(s) * r).toFixed(2)} ${(Math.sin(s) * r).toFixed(2)} A${r} ${r} 0 ${e - s > Math.PI ? 1 : 0} 1 ${(Math.cos(e) * r).toFixed(2)} ${(Math.sin(e) * r).toFixed(2)}`;
+}
+
+function render(now, dt) {
+  const W = airC.width, H = airC.height, t = now / 1000;
+  const reduced = S.reduced;
+  const sway = reduced ? 0 : Math.sin((t * Math.PI * 2) / 3.1), sway2 = reduced ? 0 : Math.sin((t * Math.PI * 2) / 4.7 + 1.3);
+  const live = G.phase === 'loop' || G.phase === 'entry';
+  $('#stage').classList.toggle('live', live);
+  // her shape, moved a little against the face (the face moves under her)
+  const par = [-(G.nose[0] - 0.5) * 0.06, -(G.nose[1] - 0.55) * 0.05];
+  const h = Math.min(dt, 40) / 1000;
+  G.sp.forEach((x, i) => { const tgt = G.o + (reduced ? 0 : (i ? -1 : 1) * sway2 * 0.05); const a = x.k * (tgt - x.L) - 7.5 * x.v; x.v += a * h; x.L += x.v * h; });
+  const shapeState = { sway, sway2, squeeze: 0, slideDir: -1, slideY: 0, sp: G.sp, t };
+  actx.setTransform(1, 0, 0, 1, 0, 0); actx.clearRect(0, 0, W, H); actx.fillStyle = '#fff';
+  actx.save(); actx.translate(par[0] * W, par[1] * H);
+  const kind = { feet_on_face: 'gap', face_to_bottom: 'seat', smothered_armpit: 'wedge' }[S.contact];
+  SHAPES[kind](actx, W, H, G.o + sway * 0.01, shapeState);
+  actx.restore();
+  G.zones = zonesOf(W, H, shapeState).map((z) => ({ ...z, p: [z.p[0] + par[0], z.p[1] + par[1]] }));
+  // the dark with the flesh light at its edges (as breath.html)
+  gctx.clearRect(0, 0, W, H); gctx.filter = 'blur(8px)'; gctx.drawImage(airC, 0, 0); gctx.filter = 'none';
+  gctx.globalCompositeOperation = 'source-in'; gctx.fillStyle = 'rgb(226,78,52)'; gctx.fillRect(0, 0, W, H); gctx.globalCompositeOperation = 'source-over';
+  dctx.globalCompositeOperation = 'source-over'; dctx.clearRect(0, 0, W, H);
+  dctx.globalAlpha = G.darkA; dctx.fillStyle = 'rgb(6,4,8)'; dctx.fillRect(0, 0, W, H);
+  dctx.globalCompositeOperation = 'source-atop'; dctx.globalAlpha = G.darkA * 0.6; dctx.drawImage(glowC, 0, 0);
+  dctx.globalAlpha = G.darkA * 0.28; dctx.filter = 'blur(10px)'; dctx.drawImage(glowC, 0, 0); dctx.filter = 'none';
+  dctx.globalCompositeOperation = 'destination-out'; dctx.globalAlpha = 1; dctx.filter = 'blur(1px)'; dctx.drawImage(airC, 0, 0); dctx.filter = 'none';
+  dctx.globalCompositeOperation = 'source-over'; dctx.globalAlpha = 1;
+  const sh = reduced ? 0 : G.shake * 7;
+  darkC.style.transform = sh ? `translate(${rand(-sh, sh)}px, ${rand(-sh, sh)}px)` : '';
+  // the haze: noise, dense where she is and where the face draws it, tinted her colour
+  const HW = hazeC.width, HH = hazeC.height, col = COLORS[S.color];
+  mctx.globalCompositeOperation = 'source-over'; mctx.clearRect(0, 0, HW, HH);
+  mctx.fillStyle = `rgba(255,255,255,${((0.012 + G.sat * 0.0032) * G.darkA).toFixed(3)})`; mctx.fillRect(0, 0, HW, HH);
+  for (const z of G.zones) {
+    const flare = G.hereZone === z.id ? 1.6 : 1;
+    const gr = mctx.createRadialGradient(z.p[0] * HW, z.p[1] * HH, 0, z.p[0] * HW, z.p[1] * HH, HH * 0.2 * flare);
+    gr.addColorStop(0, `rgba(255,255,255,${(0.3 * z.w * stim() * flare * G.darkA).toFixed(3)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    mctx.fillStyle = gr; mctx.fillRect(0, 0, HW, HH);
+  }
+  if (G.inhaling) {
+    const gr = mctx.createRadialGradient(G.nose[0] * HW, G.nose[1] * HH, 0, G.nose[0] * HW, G.nose[1] * HH, HH * 0.22);
+    gr.addColorStop(0, `rgba(255,255,255,${(0.5 * G.depth).toFixed(3)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    mctx.fillStyle = gr; mctx.fillRect(0, 0, HW, HH);
+  }
+  hctx.globalCompositeOperation = 'source-over'; hctx.clearRect(0, 0, HW, HH);
+  const flow = G.inhaling ? 1 + G.depth * 3 : 1;
+  for (let i = 0; i < 2; i++) {
+    const tile = TILES[i], sc = HH * (i ? 1.1 : 0.7) / tile.height;
+    const ox = (t * (i ? -9 : 13) * flow + G.nose[0] * 30) % (tile.width * sc), oy = (t * (i ? 6 : -11) * flow) % (tile.height * sc);
+    hctx.globalAlpha = i ? 0.6 : 0.9;
+    for (let x = -tile.width * sc + ox; x < HW; x += tile.width * sc) for (let y = -tile.height * sc + oy; y < HH; y += tile.height * sc) hctx.drawImage(tile, x, y, tile.width * sc, tile.height * sc);
+  }
+  hctx.globalAlpha = 1;
+  hctx.globalCompositeOperation = 'destination-in'; hctx.drawImage(maskC, 0, 0);
+  hctx.globalCompositeOperation = 'source-in'; hctx.fillStyle = `rgb(${col})`; hctx.fillRect(0, 0, HW, HH);
+  hctx.globalCompositeOperation = 'source-over';
+  // threads on a breath
+  if (live && G.inhaling && Math.random() < 0.9) spawnStreams(Math.ceil(2 + G.depth * 5 * G.I), clamp(G.I * stim(), 0.2, 1.2));
+  drawStreams(dt);
+  // the saturation: the picture itself saturates, blooms, glows warm at the edges, breathes
+  const f = clamp(G.sat / 100, 0, 1.1), over = G.overload > 0 ? 1 : 0;
+  setStyle($('#inner'), 'filter', `saturate(${(1 + f * 0.85 + over * 0.4).toFixed(2)}) contrast(${(1 + f * 0.1).toFixed(2)}) blur(${(over * 1.5 + f * 0.3).toFixed(1)}px)`);
+  setStyle($('#inner'), 'transform', reduced || f < 0.4 ? '' : `scale(${(1 + Math.sin(t * 1.4) * 0.006 * f).toFixed(4)})`);
+  setStyle($('#bloom'), 'opacity', (smooth(0.3, 1, f) * 0.45).toFixed(2));
+  setStyle($('#edge'), 'background', f < 0.02 ? 'none' : `radial-gradient(ellipse 80% 75% at ${(G.nose[0] * 100).toFixed(0)}% ${(G.nose[1] * 100).toFixed(0)}%, rgba(0,0,0,0) ${(62 - f * 25).toFixed(0)}%, rgba(${col},${(f * 0.32).toFixed(2)}) 100%)`);
+  document.documentElement.style.setProperty('--scent', col);
+  // the arc at the face
+  const arc = $('#arc');
+  setStyle(arc, 'opacity', live ? '1' : '0');
+  arc.style.transform = `translate(${(G.nose[0] * innerWidth).toFixed(1)}px, ${(G.nose[1] * innerHeight).toFixed(1)}px)`;
+  const R = 40, td = tolDepth() / 1.25;
+  $('#aTrack').setAttribute('d', arcPath(R, 0, 1));
+  $('#aDanger').setAttribute('d', td < 1 ? arcPath(R, td, 1) : '');
+  const o = G.order, band = o && o.band ? o.band : null;
+  $('#aBand').setAttribute('d', band ? arcPath(R, band[0] / 1.25, band[1] / 1.25) : ''); $('#aBand').setAttribute('stroke', `rgba(${col},.55)`); $('#aBand').setAttribute('opacity', band ? '1' : '0');
+  const fd = (G.inhaling ? G.depth : 0) / 1.25;
+  const fillCol = G.inhaling && G.depth * G.I * stim() > tolT() * 0.85 ? '255,90,70' : col;
+  $('#aFill').setAttribute('d', arcPath(R, 0, fd)); $('#aFill').setAttribute('stroke', `rgb(${fillCol})`);
+  $('#aFillGlow').setAttribute('d', arcPath(R, 0, fd)); $('#aFillGlow').setAttribute('stroke', `rgb(${fillCol})`);
+  const ta = -Math.PI * 1.25 + Math.PI * 1.5 * clamp(td, 0, 1);
+  $('#aTol').setAttribute('x1', (Math.cos(ta) * (R - 7)).toFixed(1)); $('#aTol').setAttribute('y1', (Math.sin(ta) * (R - 7)).toFixed(1));
+  $('#aTol').setAttribute('x2', (Math.cos(ta) * (R + 7)).toFixed(1)); $('#aTol').setAttribute('y2', (Math.sin(ta) * (R + 7)).toFixed(1));
+  $('#aTol').setAttribute('opacity', td < 1 ? '1' : '0');
+  const need = S.layers.need && live ? smooth(5000, 8000, G.sinceBreath) : 0;
+  $('#aNeed').setAttribute('opacity', (need * (0.5 + 0.5 * Math.sin(now / 120))).toFixed(2)); $('#aNeed').setAttribute('stroke', 'rgba(255,255,255,.7)');
+  $('#aNeed').setAttribute('r', (R + 8 - need * 4).toFixed(1));
+  // sound
+  if (A.ctx) {
+    const ct = A.ctx.currentTime;
+    A.droneG.gain.setTargetAtTime(live ? f * f * 0.05 : 0, ct, 0.3);
+    A.world.frequency.setTargetAtTime(14000 * Math.pow(500 / 14000, smooth(0.3, 1.05, f)), ct, 0.2);
+    A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, ct, 0.05);
+  }
+  setStyle($('#stopPill'), 'opacity', live ? '1' : '0');
+  setStyle($('#reply'), 'opacity', live ? '0.4' : '1');
+  if (S.debug) $('#debug').textContent = `sat ${G.sat.toFixed(0)}  I ${G.I.toFixed(2)}  zone ${G.zoneNow?.id ?? '-'}  depth ${G.depth.toFixed(2)}  tolDepth ${tolDepth().toFixed(2)}  att ${G.att}  drift ${G.drift.map((v) => v.toFixed(2))}\norder ${G.order ? G.order.k + (G.order.zone ? ':' + G.order.zone : '') : '-'}  since breath ${(G.sinceBreath / 1000).toFixed(1)}s  lie ${G.lie}  overload ${Math.max(0, G.overload).toFixed(0)}  t ${(G.clock / 1000).toFixed(0)}/${S.len}`;
+}
+function setReply(html, opacity = 1) { $('#reply').innerHTML = html; $('#reply').style.opacity = String(opacity); }
+
+/* ---------- the input takes her in: at a high saturation a word typed turns into one of hers ---------- */
+const tint = {
+  chars: [], prev: '',
+  sync(reset) {
+    const v = $('#cmd').value;
+    if (reset) { this.chars = [...v].map((ch) => ({ ch, tint: false })); this.prev = v; this.draw(); return; }
+    const p = this.prev; let a = 0; while (a < v.length && a < p.length && v[a] === p[a]) a++;
+    let b = 0; while (b < v.length - a && b < p.length - a && v[v.length - 1 - b] === p[p.length - 1 - b]) b++;
+    this.chars.splice(a, p.length - a - b, ...[...v.slice(a, v.length - b)].map((ch) => ({ ch, tint: false })));
+    this.prev = v;
+    // a word just finished: maybe it becomes hers
+    if (S.layers.tint && G.phase === 'loop' && v.endsWith(' ') && !p.endsWith(' ') && Math.random() < smooth(45, 100, G.sat) * 0.33) {
+      const m = v.slice(0, -1).match(/(\S+)$/);
+      if (m) {
+        const repl = Math.random() < 0.35 ? S.name : pick([...PERCEPTION[S.stage], ...KIND_WORD[S.contact]]);
+        const start = v.length - 1 - m[1].length;
+        const nv = v.slice(0, start) + repl + ' ';
+        $('#cmd').value = nv; this.chars.splice(start, m[1].length, ...[...repl].map((ch) => ({ ch, tint: true }))); this.prev = nv;
+      }
+    }
+    this.draw();
+  },
+  draw() {
+    const m = $('#mirror'); m.replaceChildren(...this.chars.map((c) => { const s = document.createElement('span'); s.textContent = c.ch; if (c.tint) s.className = 'tint'; return s; }));
+    m.scrollLeft = $('#cmd').scrollLeft;
+  },
+  send() {
+    if (!this.chars.length) return;
+    const html = this.chars.map((c) => { const e = c.ch.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;')); return c.tint ? `<span class="tint">${e}</span>` : e; }).join('');
+    setReply(`<span class="you">“${html}”</span>`, 0.4);
+    $('#cmd').value = ''; this.chars = []; this.prev = ''; this.draw();
+  },
+};
+$('#cmd').addEventListener('input', () => tint.sync());
+$('#cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); tint.send(); } });
+
+/* ---------- input ---------- */
+const typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+addEventListener('mousemove', (e) => { mouse = [e.clientX / innerWidth, e.clientY / innerHeight]; });
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { exit('stop'); return; }
+  if (typing(e.target)) return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) inhaleStart(); }
+  else if (e.key === 'Shift') { G.mouth = true; if (!G.mouthLatched) { G.mouthLatched = true; G.counts.mouth += 1; } }
+  else if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+addEventListener('keyup', (e) => {
+  if (e.key === ' ') inhaleEnd();
+  if (e.key === 'Shift') { G.mouth = false; G.mouthLatched = false; }
+});
+// while typing, the mouse breathes: left button the nose, right button the mouth
+$('#stage').addEventListener('mousedown', (e) => {
+  if (e.target.closest('#inputWrap, #stopPill, .card, .pick')) return;
+  e.preventDefault();
+  if (e.button === 0) inhaleStart(); else if (e.button === 2) { G.mouth = true; G.counts.mouth += 1; }
+});
+addEventListener('mouseup', (e) => { if (e.button === 0) inhaleEnd(); if (e.button === 2) G.mouth = false; });
+$('#stage').addEventListener('contextmenu', (e) => e.preventDefault());
+$('#stopPill').addEventListener('click', () => exit('stop'));
+$('#againBtn').addEventListener('click', begin);
+$('#go').addEventListener('click', () => { $('#start').style.display = 'none'; begin(); });
+
+/* ---------- the panel ---------- */
+function optRow(host, items, get, set) {
+  host.replaceChildren(...items.map((k) => { const b = document.createElement('button'); b.className = 'opt' + (get() === k ? ' on' : ''); b.textContent = k; b.onclick = () => { set(k); optRow(host, items, get, set); }; return b; }));
+}
+optRow($('#contacts'), ['feet_on_face', 'face_to_bottom', 'smothered_armpit'], () => S.contact, (k) => { S.contact = k; });
+optRow($('#bands'), Object.keys(BAND), () => S.band, (k) => { S.band = k; });
+optRow($('#colors'), Object.keys(COLORS), () => S.color, (k) => { S.color = k; });
+optRow($('#stages'), STAGES, () => S.stage, (k) => { S.stage = k; });
+optRow($('#styles'), Object.keys(STYLES), () => S.style, (k) => { S.style = k; });
+optRow($('#tasks'), Object.keys(ATTENTION), () => S.task, (k) => { S.task = k; });
+$('#tol').oninput = () => { S.tol = Number($('#tol').value); $('#tolV').textContent = String(S.tol); };
+$('#hername').oninput = () => { S.name = $('#hername').value || 'her'; };
+for (const k of ['orders', 'words', 'drift', 'tint', 'need']) $(`#L${k}`).onchange = () => { S.layers[k] = $(`#L${k}`).checked; };
+$('#snd').onchange = () => { S.sound = $('#snd').checked; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); };
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
+$('#ceiling').style.backgroundImage = `url(${ASSETS.ceiling})`;
+setReply(`<span class="act">She looks down at you and takes her time deciding where.</span>`);
+window.__G = () => G; window.__S = S; window.__mouse = (x, y) => { mouse = [x, y]; }; window.__inhale = (on) => (on ? inhaleStart() : inhaleEnd());
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
