@@ -127,7 +127,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 <div id="stage">
   <div id="world">
     <div class="view" id="herView"><div class="bg" id="herBg"></div><div id="cam"><img id="her" alt="" draggable="false"></div><div id="herGlow"></div></div>
-    <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><img id="deskFrame" alt="" draggable="false"><canvas id="legs"></canvas><div id="deskShade"></div></div>
+    <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="deskFrame" alt="" draggable="false"><div id="deskShade"></div></div>
     <div class="view" id="floorView"><div class="bg" id="floorBg"></div><canvas class="lightC" id="floorLight"></canvas><div id="bunkEdge" style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 12%, rgba(0,0,0,0) 30%)"></div></div>
     <div class="view" id="wallView"><div class="bg" id="wallBg"></div><canvas class="lightC" id="wallLight"></canvas></div>
     <div class="view" id="blindView"></div>
@@ -1098,8 +1098,8 @@ function size() {
 size(); addEventListener('resize', size);
 
 /* her legs under the desk: the material of weight's legs (a dark shape at quarter resolution, its complement blurred into a flesh edge light
-   kept on the body, nothing drawn inside the outline). She sits at the desk facing the commander: her shins come down from under the desk top
-   into the room's light. Two variants for the author: `crossed` (one leg planted, the other crossed over, its foot dangling and swinging) and
+   kept on the body, nothing drawn inside the outline). She sits at the desk facing the commander: her knees are just behind the desk's front
+   edge (the frame is drawn over the legs), so her shins come out from under the edge, against the room's light, down to her feet. Two variants for the author: `crossed` (one leg planted, the other crossed over, its foot dangling and swinging) and
    `planted` (both feet flat, one heel bobbing). */
 const legC = document.createElement('canvas'), lctx = legC.getContext('2d');
 const compC = document.createElement('canvas'), cctx = compC.getContext('2d');
@@ -1146,18 +1146,18 @@ function drawLegs(now) {
   if (S.legVar === 'crossed') {
     // the planted leg (to the commander's left of centre), knee under the desk top
     const tap = mode === 'tap' && !red ? Math.max(0, Math.sin(t * 7)) : 0;
-    fillPts(lctx, shinFront(W, H, [0.42 + sway, -0.1], [0.41 + sway, 0.74], { wK: 0.27, wA: 0.095, calf: 0.05, outer: -1, foot: 0.19, footW: 0.095, toe: tap * 0.6 }));
+    fillPts(lctx, shinFront(W, H, [0.43 + sway, 0.18], [0.425 + sway, 0.6], { wK: 0.25, wA: 0.095, calf: 0.05, outer: -1, foot: 0.19, footW: 0.095, toe: tap * 0.6 }));
     // the crossed leg: from her knee over the other, down and to the right; its foot dangles toward the commander
     const sw = red ? 0 : mode === 'swing' ? Math.sin(t * 3.4) * 0.11 : mode === 'beat' ? Math.sin(t * Math.PI * 2 * (MUSIC.bpm / 60) / 2) * 0.07 : mode === 'tap' ? Math.sin(t * 7) * 0.05 : mode === 'asleep' ? 0 : Math.sin(t * 0.9) * 0.012;
     const restIn = mode === 'rest' ? 1 : 0;
     const ang = 0.42 + sw - press * 0.14 - restIn * 0.28;
-    const K2 = [0.5 + sway, -0.12], l2 = 0.56 + press * 0.06 + restIn * 0.08;
+    const K2 = [0.5 + sway, 0.16], l2 = 0.4 + press * 0.06 + restIn * 0.08;
     const A2 = [K2[0] + Math.sin(ang) * l2 * (H / W), K2[1] + Math.cos(ang) * l2];
     fillPts(lctx, shinFront(W, H, K2, A2, { wK: 0.28, wA: 0.092, calf: 0.055, outer: 1, foot: 0.22 + press * 0.04 + restIn * 0.05, footW: 0.092 + press * 0.012, drop: -0.35 - sw * 0.5 + restIn * 0.2 }));
   } else {
     const bob = mode === 'swing' || mode === 'beat' ? (red ? 0 : Math.max(0, Math.sin(t * (mode === 'beat' ? Math.PI * MUSIC.bpm / 60 : 2.6)))) : mode === 'tap' ? (red ? 0 : Math.max(0, Math.sin(t * 7))) : 0;
-    fillPts(lctx, shinFront(W, H, [0.38 + sway, -0.1], [0.395 + sway, 0.6], { wK: 0.27, wA: 0.095, calf: 0.05, outer: -1, foot: 0.21 + press * 0.03, footW: 0.095, toe: 0 }));
-    fillPts(lctx, shinFront(W, H, [0.62 + sway, -0.1], [0.605 + sway, 0.6 - bob * 0.03], { wK: 0.27, wA: 0.095, calf: 0.05, outer: 1, foot: 0.21 + press * 0.05, footW: 0.095, toe: bob * 0.9 }));
+    fillPts(lctx, shinFront(W, H, [0.4 + sway, 0.18], [0.405 + sway, 0.6], { wK: 0.25, wA: 0.095, calf: 0.05, outer: -1, foot: 0.21 + press * 0.03, footW: 0.095, toe: 0 }));
+    fillPts(lctx, shinFront(W, H, [0.6 + sway, 0.18], [0.595 + sway, 0.6 - bob * 0.03], { wK: 0.25, wA: 0.095, calf: 0.05, outer: 1, foot: 0.21 + press * 0.05, footW: 0.095, toe: bob * 0.9 }));
   }
   // the material: the complement blurred into a flesh edge light, kept on the legs; the legs near and a little out of focus
   cctx.globalCompositeOperation = 'source-over'; cctx.clearRect(0, 0, W, H); cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, W, H);
