@@ -102,6 +102,21 @@ for (const size of SIZES) {
     try { await p.waitForSelector('.alius-scene[data-backdrop="image"]', { timeout: 8000 }); } catch { /* reported below */ }
     await p.waitForTimeout(700);
     const m = await p.evaluate(measure, UI);
+    // the stop word stays on top and clickable with the dial's menu open (the safety control is never covered)
+    if (fixture === 'physics') {
+      const pill = await p.evaluate(() => {
+        const f = document.querySelector('details.alius-dial-fan');
+        if (f) f.open = true;
+        const el = document.querySelector('[data-stop-word]');
+        if (!el) return 'missing';
+        const b = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+        const ok = hit === el || el.contains(hit);
+        if (f) f.open = false;
+        return ok ? 'ok' : 'covered';
+      });
+      if (pill !== 'ok') fail(size, fixture, `the stop word with the dial's menu open: ${pill}`);
+    }
     if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: join(SHOTS, `${fixture}-${size[0]}x${size[1]}.png`) }); }
     // A2: each woman at the pan that centres her (several women only); a screenshot of each when asked
     const per = ['two', 'three', 'four'].includes(fixture) ? await p.evaluate(perWoman, UI) : [];

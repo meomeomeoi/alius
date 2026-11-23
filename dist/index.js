@@ -63627,7 +63627,8 @@ function createCurtain(host, opts) {
   let pulled = 0;
   let lastWheel = -Infinity;
   scroller.addEventListener("wheel", (ev) => {
-    const dy = ev.deltaY;
+    const w = ev;
+    const dy = w.deltaY * (w.deltaMode === 1 ? 40 : w.deltaMode === 2 ? scroller.clientHeight || 600 : 1);
     const now = Date.now();
     if (now - lastWheel > WHEEL_PAUSE_MS) pulled = 0;
     lastWheel = now;

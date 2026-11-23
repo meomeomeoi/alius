@@ -233,6 +233,9 @@
   cursor: pointer;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  /* the safety signal stays on top: the open dial menu (z-index 3) never covers it */
+  position: relative;
+  z-index: 5;
 }
 
 #alius-shell .alius-stop-pill:hover,

@@ -171,6 +171,9 @@ describe('the stylesheet puts the sprites in room space (A2)', () => {
     expect(css).toMatch(/\.alius-layer-backdrop \{[^}]*background-position: calc\(var\(--alius-pan, 0\.5\) \* 100%\) center;[^}]*transition: background-position 0\.5s ease-out/s);
     expect(css).toMatch(/\.alius-look-still \.alius-sprite-pano[^{]*\{\s*transition: none;/);
     expect(css).toMatch(/data-crowd="true"\] \.alius-sprite \{ height: 82vh; \}/); // about 0.85 of 97vh
+    // the stop word is never covered by the open dial menu (re-review: the safety control stays on top)
+    expect(css).toMatch(/\.alius-stop-pill \{[^}]*z-index: 5;/);
+    expect(css).toMatch(/\.alius-dial-menu \{[^}]*z-index: 3;/);
     // several women are anchored to the bottom, past the edge: a smaller knee-length sprite never hangs in the air (author, 2026-11-23)
     expect(css).toMatch(/\.alius-sprite:not\(:only-child\) \{ top: auto; bottom: -5vh; height: 97vh;/);
   });

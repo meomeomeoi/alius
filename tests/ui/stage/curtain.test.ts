@@ -114,6 +114,21 @@ describe('the curtain: opening and closing (P10e)', () => {
     vi.restoreAllMocks();
   });
 
+  it('a wheel that scrolls by lines (Firefox: deltaMode 1, about 3 a notch) closes it after the same two notches as a pixel wheel (re-review N1)', () => {
+    const t = setup([msg(0)]);
+    t.q('[data-action="history"]')!.click();
+    const scroll = t.q('.alius-curtain-scroll')!;
+    vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockReturnValue(2000);
+    vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(500);
+    scroll.scrollTop = 1500;
+    const lines = () => scroll.dispatchEvent(new WheelEvent('wheel', { deltaY: 3, deltaMode: 1, bubbles: true, cancelable: true }));
+    lines();
+    expect(t.isOpen()).toBe(true);
+    lines();
+    expect(t.isOpen()).toBe(false);
+    vi.restoreAllMocks();
+  });
+
   it('the wheel down closes it only on an accumulated 240 at the end: momentum, a wheel up and a pause all start over', () => {
     const t = setup([msg(0)]);
     t.q('[data-action="history"]')!.click();

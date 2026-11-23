@@ -123,7 +123,9 @@ export function createCurtain(host: HTMLElement, opts: { onOpen(): void; onClose
   let pulled = 0;
   let lastWheel = -Infinity;
   scroller.addEventListener('wheel', (ev) => {
-    const dy = (ev as WheelEvent).deltaY;
+    // in pixels whatever the wheel reports: a line is about 40 px (Firefox scrolls by lines, about 3 a notch), a page is the visible height
+    const w = ev as WheelEvent;
+    const dy = w.deltaY * (w.deltaMode === 1 ? 40 : w.deltaMode === 2 ? scroller.clientHeight || 600 : 1);
     const now = Date.now();
     if (now - lastWheel > WHEEL_PAUSE_MS) pulled = 0;
     lastWheel = now;
