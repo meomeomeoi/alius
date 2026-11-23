@@ -210,34 +210,49 @@ A separate design session goes through every mini-game (P15a's seven physics, P1
   - **three phases:** an entry (the screen dims, her line, the instrument arrives with its own animation), the loop, and an exit (her reaction to how it went).
 - **Her lines are typed in her handwriting** (P10b hands; Caveat has no Cyrillic, which is fine because the game is English). The author liked the effects, the text and the hand.
 
-**Breathing (P15a `breath`, timing): the design the author approved.**
-- **Entry:** the screen darkens around a shape of air (below); her sprite behind it, close and from below (her smile through the gap). Living grain over the dark.
-- **Her count in her hand** beside the opening: "three… two…" announces the next window. In turn-based mode this is the cue for the next beat; in real time it runs by itself.
-  - a playful holder may write "again" instead of "one";
-  - a cruel one counts faster;
-  - a ritual one counts evenly.
-- **The window:** she lifts, the opening widens, warm light at its lips, "now." Hold Space (or the mouse) to breathe, with a short inhale sound and the heartbeat slowing. A missed window gives only a sip. The playful holder's fake window has a pinkish hue and closes when reached for.
+**Breathing (P15a `breath`, timing): approved, then tested by the author in a live prototype (2026-11-23).** The prototype is one HTML page kept outside the repository (it embeds the author's sprite); its numbers are the engine's (`TUNING.physics`: beat 1500 ms, drain 14 less the seal, a caught window +30, a missed one +8 (cruel +4), windows every 2–4 beats, widths by style).
+- **Entry:** the screen darkens around a shape of air (below) while the camera closes in; living grain over the dark.
+- **Behind the dark is what the commander sees lying there, not her** (author's ruling: her whole sprite behind the opening made two bodies, one of them a flat picture behind a curtain). Data: `occlusion.view` on the contact:
+  - `ceiling` (the default): the room's ceiling art (P10c), close, out of focus, drifting in her rhythm, lit as she lifts;
+  - `room`: the room beside, out of focus (for `slide`: a face pressed into her chest or neck sees past her);
+  - `her_face`: her sprite through the opening, close and from below, only where her face really is there (`hand_over_mouth`); later the P17c art slots fill the opening.
+  - Her sprite fades as the camera closes in and **appears at the exit**: the dark leaves, the ceiling gives way to the room, and she stands over the commander.
+- **Her cues follow her style** (P15a's cue honesty), not one count for everyone:
+  - `count` (ritual, drill): "three… two… one…" in her hand beside the opening, evenly;
+  - `honest` (neutral, cold, affectionate, possessive, obsessive): only "now." as it opens, so the commander reacts fast;
+  - `false` (playful): false windows with a pinkish light at the lips that snap shut when reached for ("gotcha."); sometimes a teasing count that ends in "again." and no window;
+  - `none` (cruel): nothing but the light;
+  - regal announces, vindictive is sparse, clinical changes the language (not prototyped).
+  - **Engine gap for chunk (e):** in real time the engine gives a cruel holder a cue on every opening (`noCueShare` is applied only turn-based, and `cues: 'none'` is not read by `planSegment`); the instrument needs her real-time silence.
+- **The window:** she lifts, the opening widens, light at its lips. Hold Space (or the left mouse button on the frame; while typing only the mouse breathes: the field keeps its spaces and the click does not take its focus): an inhale sound, the heart slows. A missed window gives only a sip.
+- **Holding too long costs** (author: the first version forgave too much). Holding the key more than 150 ms after the window closed, or pressing before it, is straining against her: the air drains twice as fast and she presses tighter (the dark shakes, a muffled strain); after 450 ms she notices: her line ("let go.", "so greedy~", cruel "greedy. now wait."), the streak resets and her next window comes a beat later (cruel two beats, affectionate none). In the test a bot that let go a second late was pressed to the limit in two windows; a clean one kept 45 % after four.
 - **Air is vision, not a bar:**
-  - the view narrows to a tunnel, with a red pulse at the edges in time with a quickening heart;
-  - every sound goes dull;
-  - her "hold it.";
-  - the input narrows with the air, and the letters of the line being typed fade and blur, so a long line cannot be finished without breathing.
-- **TAP** is a small mark at the lip of the opening (the in-fiction signal; her profile decides what she does with it). The **stop word** stays the pill in the corner.
-- **Exit:** the opening widens to the whole screen and her reaction is written in her hand. With `breath_play` a blackout closes the opening, the screen goes black, the heart slows, and the wake card follows.
-- **The shape of the dark depends on what covers the face** (data: a field `occlusion: { kind, side?, angle? }` on the contact; a contact without it gets the horizontal slit). None of these draws a body; each is darkness with soft edges and warm-lit lips:
+  - the view narrows to a tunnel whose rim pulses red with a quickening heart (red at the tunnel's edge, not filling it);
+  - colour and focus drain; every sound of the world goes dull (the heart and the breath do not);
+  - her "hold it." once the air runs low;
+  - the input narrows with the air, and the letters of the line being typed fade and blur; a breath brings them back, and a line sent with lost letters shows them as dots.
+- **The edge light is flesh lit from behind** (author's pick): a wide red glow at the lips, not a thin orange rim. A false window keeps its pink.
+- **TAP** is a small ring at the lip of the opening (her answer follows her style). The **stop word** stays the pill in the corner.
+- **Exit:** the opening widens to the whole screen, the camera pulls back and she appears; her reaction in her hand. With `breath_play` a blackout closes the opening, the screen goes black, the heart slows and stops, and the wake card follows.
+- **The shape of the dark depends on what covers the face** (data: a field `occlusion: { kind, side?, angle?, view? }` on the contact; a contact without it gets the horizontal slit and `view: ceiling`). None of these draws a body; each is darkness with soft edges and warm-lit lips:
 
   | kind | contacts | how air comes |
   |---|---|---|
   | `gap` | `feet_on_face` | a tilted gap between the two soles, wider at the toes; the window is her spreading them |
   | `lift` | `sole_to_mouth`, `hand_over_mouth` | the whole cover rises; light from the edge she lifts |
   | `slide` | `smothered_breasts`, `face_in_her_neck` | the dark slips aside; a crescent of light on one side, a different side each time |
-  | `seat` | `under_her_seat`, `face_to_bottom` | **two rounded masses from above that meet in the middle** (author's correction): light in the narrow cleft between them and a low crescent at the bottom edge when she rises a little |
+  | `seat` | `under_her_seat`, `face_to_bottom` | **her silhouette from below** (author's ruling after five variants): one smooth outline of back, waist, hips and thighs kneeling astride to the bottom corners, the gap between her thighs narrowing up into a seam. A window is her **rising a little along the line of sight** (she recedes slightly; light comes in at the sides and in the gap), never standing up. Each side on its own spring: she shifts her weight, settles with a lag and a little give, rocks her hips. Natural proportions (waist to hips about 0.7), no separate rounded masses |
   | `squeeze` | `between_thighs` | the dark closes from both sides to a band in the middle; when she squeezes it snaps shut |
   | `wedge` | `smothered_armpit` | dark from above at a slant; a wedge of air below when she lifts her arm |
 
+- **Rules from the seat review:** a shape of the dark may follow the outline of her body when the position cannot be read otherwise, but nothing is ever drawn inside the outline. Rigid masses that slide read as fake: a body rising off the face recedes along the line of sight (it gets a little smaller) and is soft (springs, flattening where it presses).
+- **Open for the plan of chunk (e)** (engine questions, not decided):
+  - the UI ignores an opening's `widthMs` today (a breath counts on the beat). The prototype shows the window for `widthMs × 2` and fills the air while the key is held (a whole window +30). Either the instrument only draws over the binary beat, or the engine gets a held credit and the over-hold input (a new input kind in `resolveSegment`; a change that moves a seeded test stops and reports);
+  - with the engine's numbers even perfect play loses air (−13 a beat against +30 a window every 2–4 beats), so ten windows end in her release at the limit: rising tension by design, or a tuning question for the author.
+
 **Next steps of the session (in order):**
-1. A **live prototype** of breathing: one HTML page with a shape switcher, where the dark moves in her rhythm, Space breathes, vision narrows and sound plays. Built in the scratchpad from the scene's assets; the author's sprite is never committed.
-2. The other mini-games, one by one, from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
+2. The other mini-games, one by one (next: **weight**), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
    - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
    - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
    - **tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end;
