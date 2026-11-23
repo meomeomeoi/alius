@@ -520,10 +520,15 @@ function frame(now) {
   G.lean += (G.leanTarget - G.lean) * clamp(h * 6, 0, 1);
   // the commander's balance follows the mouse with a little body lag
   const target = (mouseX * 2 - 1) * 1.15;
-  const k = 90, d = 14; G.ctlV += (k * (target - G.ctl) - d * G.ctlV) * h; G.ctl += G.ctlV * h;
+  // the springs are stepped in pieces of at most 8 ms: one Euler step of a long frame diverges (the same motion at 60 fps)
   // the bubble: a spring on the error, so it overshoots and settles like a real one
-  const err = G.phase === 'loop' || G.phase === 'entry' ? G.cop - G.ctl : 0;
-  const bv = 260 * (clamp(err, -1.2, 1.2) - G.bubbleX) - 16 * G.bubbleV; G.bubbleV += bv * h; G.bubbleX += G.bubbleV * h;
+  const n = Math.max(1, Math.ceil(h / 0.008)), hs = h / n, liveErr = G.phase === 'loop' || G.phase === 'entry';
+  for (let i = 0; i < n; i++) {
+    const k = 90, d = 14; G.ctlV += (k * (target - G.ctl) - d * G.ctlV) * hs; G.ctl += G.ctlV * hs;
+    const e = liveErr ? G.cop - G.ctl : 0;
+    const bv = 260 * (clamp(e, -1.2, 1.2) - G.bubbleX) - 16 * G.bubbleV; G.bubbleV += bv * hs; G.bubbleX += G.bubbleV * hs;
+  }
+  const err = liveErr ? G.cop - G.ctl : 0;
   G.jolt = Math.max(0, G.jolt - h * 2.2); G.sag = Math.max(0, G.sag - h * 1.6);
   if (A.ctx) {
     const ct = A.ctx.currentTime, f = G.phase === 'loop' ? smooth(60, 0, G.str) : 0;

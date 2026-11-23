@@ -798,6 +798,13 @@ function bodyNoise(kind, loud, visible, gross = false) {
   react(gross);
   return true;
 }
+/* a fault she perceives for certain (her feet on the commander's back): the tell and her answer, as a noticed noise */
+function herFeels(kind, gross) {
+  G.stats.noticed.push({ kind, step: G.step, how: 'felt', fiction: clockText(G.clockMin) });
+  G.faultsRecent = G.faultsRecent.filter((x) => G.t - x < 40000); G.faultsRecent.push(G.t);
+  const pause = rand(2200, 3800); G.pauseUntil = G.t + pause; G.att = 'glancing'; G.attHold = pause; G.nextMark = Math.max(G.nextMark, G.t + pause + 400);
+  react(gross);
+}
 /* her answer to a fault, by her presence: a word, a look, her body, or nothing (a gross fault, or a third in a short while, is noticed even in use) */
 function react(gross) {
   const act = ACT();
@@ -1095,6 +1102,8 @@ const W_LINES = {
   clinical:     { slip: ['noted.'], heavy: ['load increased.'], rest: ['recovery interval.'] },
   cruel:        { slip: ['pathetic.'], heavy: ['heavier.'], rest: ['…fine. a moment.'] },
 };
+const W_FALL = { neutral: '…really? enough.', affectionate: 'hey, hey. that’s enough for tonight.', ritual: 'down. noted. we stop.', playful: 'timber! okay, you’re done.', clinical: 'failure point reached. session over.', cruel: 'useless. get out of my sight.', possessive: 'enough. you’ll do better for me.', cold: 'get up. go.' };
+const W_RESTS = { affectionate: 2, cruel: 0 };
 const W_ST = () => W_STYLES[S.style] ?? W_STYLES.neutral, W_L = () => W_LINES[S.style] ?? W_LINES.neutral;
 const weightOn = () => S.inner === 'weight';
 const HOLD = { on: false };
@@ -1207,6 +1216,11 @@ function wOnBeat() {
 /* a slip: she feels it through her feet whatever her presence (she perceives it); only `with` / `glancing` say something */
 function wSlip() {
   W.slipThisBeat = true; W.slips += 1; W.str -= WT.W_DRAIN * WT.weight * W.pressure; W.jolt = 1; W.sag = 1; crack(0.8); W_SFX.creak(0.5, 0.22);
+  W.slipAt = (W.slipAt ?? []).filter((x) => G.t - x < 6000); W.slipAt.push(G.t);
+  W.lastSlipBeat = W.beat;
+  // she feels it through her feet, whatever her presence: the tell, then her answer (not more than every 4 s; three in 6 s are gross)
+  const gross = W.slipAt.length >= 3;
+  if (gross || G.t - (W.feltAt ?? -1e9) > 4000) { W.feltAt = G.t; herFeels('a slip under her feet', gross); if (gross) { W.slipAt = []; W.pressure = 1.6; W.pressureUntil = W.clock + 3 * WT.BEAT; } }
   if (W.slips === 1 || Math.random() < 0.5) wSay(W_L().slip);
 }
 function wBeatTail() {
@@ -1223,7 +1237,10 @@ function wRelief() {
   if (G.phase !== 'loop' || W.reliefCd > 0) return;
   W.reliefCd = 2600; W.reliefs += 1;
   W_SFX.creak(0.22, 0.1); W_SFX.rustle(0.05);
-  const caught = bodyNoise('speak', 0.45, true);
+  // weight.html's rule, as approved: she catches it by her attention of the moment (watching 0.6, glancing 0.25, busy 0.08); she is out
+  // of the room, she catches nothing. Caught: the frame's tell and her answer by presence.
+  const caught = !G.away && Math.random() < CAUGHT[G.att];
+  if (caught) herFeels('the commander shifting under her feet', false);
   if (caught) { W.caughtN += 1; W.str -= 10; W.pressure = 1.5; W.pressureUntil = W.clock + 3 * WT.BEAT; W_SFX.press(0.55); W.jolt = 1; crack(0.6); }
   else W.str = Math.min(100, W.str + WT.RELIEF);
 }
@@ -1231,6 +1248,9 @@ function wRelief() {
 function wLimit() {
   if (W.resting) return;
   if (G.step === 'use') return;
+  if (W.beat - (W.lastSlipBeat ?? -99) <= 3) return; // she rests only a commander who was bearing her
+  if ((W.restsPhase ?? 0) >= (W_RESTS[S.style] ?? 1)) return;
+  W.restsPhase = (W.restsPhase ?? 0) + 1;
   W.resting = true; W.rests += 1; W_SFX.rustle(0.12, 0); wSay(W_L().rest);
   if (G.step === 'own') sense('She lifts her feet off your back for a moment. Not a word.', 'body');
   after(rand(3500, 5000), () => { W.resting = false; W.str = Math.min(100, W.str + 30); W_SFX.press(0.35); sense('Her feet come back down.', 'body'); });
@@ -1240,8 +1260,10 @@ function wBuckle() {
   sense('Your arms give. You go down under her feet.', 'body', 'body');
   bodyNoise('slump', 1, true, true);
   W.str = 35;
+  if (W.buckles >= 3) { W.over = true; after(1200, () => finish('failed')); }
 }
 function wUpdate(dt) {
+  if (W.over) return;
   W.clock += dt;
   const beatNow = Math.floor(W.clock / WT.BEAT);
   while (W.beat < beatNow) { wOnBeat(); wBeatTail(); }
@@ -1265,10 +1287,15 @@ function wPhysics(now, dt) {
   W.cop += (W.copTarget + wander - W.cop) * clamp(h * (W.shift?.landed === false ? 2 : 7), 0, 1);
   W.lean += (W.leanTarget - W.lean) * clamp(h * 6, 0, 1);
   const target = ((MOUSE.x / innerWidth) * 2 - 1) * 1.15;
-  const k = 90, d = 14; W.ctlV += (k * (target - W.ctl) - d * W.ctlV) * h; W.ctl += W.ctlV * h;
+  // the springs are stepped in pieces of at most 8 ms: one Euler step of a long frame diverges (the same motion at 60 fps)
   const live = G.phase === 'loop';
+  const n = Math.max(1, Math.ceil(h / 0.008)), hs = h / n;
+  for (let i = 0; i < n; i++) {
+    const k = 90, d = 14; W.ctlV += (k * (target - W.ctl) - d * W.ctlV) * hs; W.ctl += W.ctlV * hs;
+    const e = live ? W.cop - W.ctl : 0;
+    const bv = 260 * (clamp(e, -1.2, 1.2) - W.bubbleX) - 16 * W.bubbleV; W.bubbleV += bv * hs; W.bubbleX += W.bubbleV * hs;
+  }
   const err = live ? W.cop - W.ctl : 0;
-  const bv = 260 * (clamp(err, -1.2, 1.2) - W.bubbleX) - 16 * W.bubbleV; W.bubbleV += bv * h; W.bubbleX += W.bubbleV * h;
   W.jolt = Math.max(0, W.jolt - h * 2.2); W.sag = Math.max(0, W.sag - h * 1.6);
   if (A.ctx && A.rumG) {
     const ct = A.ctx.currentTime, f = live ? smooth(60, 0, W.str) : 0;
@@ -1324,6 +1351,7 @@ function wRender(now, err) {
 /* ---------- the loop ---------- */
 const clockText = (m) => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
 function beginPhase(i) {
+  if (W) W.restsPhase = 0;
   G.phase = 'loop'; G.phaseIdx = i; G.phaseT = 0;
   G.clockRate = (60 * PLAYED_SHARE) / S.phaseLen; // fiction minutes per real second while a phase plays
   runScript(planScript(i));
@@ -1420,6 +1448,7 @@ function finish(how) {
   G.phase = 'ending'; G.stats.ended = how; MUSIC.on = false; G.ask = null; G.urges = []; G.cramp = null; G.timers = [];
   if (how === 'stop') { say(pick(['okay. up you get.', 'alright. stopping.', 'enough. up.']), 'commander', { big: true }); setTimeout(showDigest, 2400); return; }
   if (how === 'woke') { setTimeout(showDigest, 1600); return; }
+  if (how === 'failed') { W_SFX.rustle(0.14, 0); sense('She takes her feet off your back.', 'body'); setTimeout(() => say(W_FALL[S.style] ?? W_FALL.neutral, 'commander', { big: true }), 900); setTimeout(showDigest, 3800); return; }
   // she is out already (she left in use): she simply does not come back
   if (G.away) { G.stats.aloneFor += (G.t - G.awayFrom) / 1000; setTimeout(() => { sense(`She has not come back. ${S.stay ? 'She did not say you could get up.' : ''}`, 'door', 'base'); G.phase = 'empty'; G.emptyAt = G.t; $('#getUp').style.display = 'block'; G.foundAt = G.t + rand(25000, 40000); }, 1500); return; }
   play(act.end.sfx, { g: 0.5, pan: V().herPan }); sense(V().sight && !S.blind ? act.end.seen : act.end.heard, 'her');
@@ -1705,7 +1734,7 @@ function showDigest() {
   const dur = `${hh ? `${hh} h ` : ''}${mm} min`;
   const where = weightOn() ? 'on all fours as her footrest' : { her: 'kneeling beside her chair', legs: 'kneeling under her desk', floor: 'kneeling by her bunk', wall: 'facing the wall' }[S.view];
   const name = 'She';
-  const ended = { done: 'when she was done', stop: 'with the stop word', woke: 'when she woke', '': '' }[s.ended] ?? s.ended;
+  const ended = { done: 'when she was done', stop: 'with the stop word', woke: 'when she woke', failed: 'early: the commander could not bear her, and she ended it', '': '' }[s.ended] ?? s.ended;
   const noticedTxt = s.noticed.length ? s.noticed.map((n) => `${n.kind} (${n.how}, ${n.fiction})`).join('; ') : 'nothing';
   const herSide = [];
   herSide.push(`The commander stayed ${where} for ${dur} of fiction time while she was ${act.label}${G.stats.left ? ' (she went out once' + (G.stats.cameBack ? ' and came back)' : ')') : ''}.`);
@@ -1851,7 +1880,7 @@ $('#her').src = ASSETS.her;
 (() => { const g = $('#vTicks'); for (let x = 60; x <= 400; x += 10) { const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); const big = (x - 230) % 50 === 0; l.setAttribute('x1', x); l.setAttribute('x2', x); l.setAttribute('y1', 16); l.setAttribute('y2', big ? 26 : 21); g.appendChild(l); } })();
 setReply('<span class="act">Her quarters, the evening. She has work, and you have nowhere else to be.</span>');
 updatePresenceNote();
-window.__G = () => G; window.__S = S; window.__begin = begin; window.__mouse = (x, y) => { MOUSE.x = x; MOUSE.y = y; };
+window.__G = () => G; window.__W = () => W; window.__S = S; window.__begin = begin; window.__mouse = (x, y) => { MOUSE.x = x; MOUSE.y = y; };
 requestAnimationFrame(frame);
 </script>
 </body>
