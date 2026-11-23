@@ -127,7 +127,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 <div id="stage">
   <div id="world">
     <div class="view" id="herView"><div class="bg" id="herBg"></div><div id="cam"><img id="her" alt="" draggable="false"></div><div id="herGlow"></div></div>
-    <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="legsArt" alt="" draggable="false" style="position:absolute;display:none;transform-origin:50% 100%;filter:blur(1.2px) brightness(.62) saturate(.85)"><img id="deskFrame" alt="" draggable="false"><div id="deskShade"></div></div>
+    <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="legsArt" alt="" draggable="false" style="position:absolute;display:none;transform-origin:50% 100%;filter:blur(1.2px) brightness(.62) saturate(.85)"><img id="deskFrame" alt="" draggable="false"><div id="floorShadow" style="position:absolute;inset:0;pointer-events:none"></div><div id="deskShade"></div></div>
     <div class="view" id="floorView"><div class="bg" id="floorBg"></div><canvas class="lightC" id="floorLight"></canvas><div id="bunkEdge" style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 12%, rgba(0,0,0,0) 30%)"></div></div>
     <div class="view" id="wallView"><div class="bg" id="wallBg"></div><canvas class="lightC" id="wallLight"></canvas></div>
     <div class="view" id="blindView"></div>
@@ -169,6 +169,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>legs art <input type="file" id="legsFile" accept="image/*" style="width:170px"></label>
   <label>art width <input type="range" id="legsW" min="0.3" max="1.1" step="0.01" value="0.62"><span id="legsWV">0.62</span></label>
   <label>art bottom <input type="range" id="legsB" min="0.6" max="1.2" step="0.01" value="0.9"><span id="legsBV">0.9</span></label>
+  <label>floor shadow <input type="range" id="floorShade" min="0" max="1" step="0.05" value="0.55"><span id="floorShadeV">0.55</span></label>
   <div class="row"><button class="opt" id="copyFit">copy the fit</button></div>
   <div class="note" id="fitNote">An art slot (legs_seated): a picture with a transparent background, placed between the room and the desk; it replaces the silhouettes. Never committed. Its fit (width, bottom) is set once per picture and travels with it as a sidecar: "copy the fit" gives the JSON.</div>
   <h4>who she is (her presence comes from these)</h4>
@@ -447,7 +448,7 @@ const BASE_EVENTS = [
 'use strict';
 /* ---------- settings (the panel) ---------- */
 const S = { view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
-  legsW: 0.62, legsB: 0.9, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
+  legsW: 0.62, legsB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
 /* the phase plays a third of its fiction hour; the rest passes between phases, in the dark */
@@ -1286,7 +1287,7 @@ function render(now, dt) {
     const scr = act.light === 'screen' && !G.lightsOff ? (1 - G.lookS * 0.7) * flick : 0, lamp = (act.light === 'lamp' || G.lampOn) && !G.lightsOff ? 0.6 + 0.4 * dusk : 0;
     setStyle('#herGlow', 'background', `radial-gradient(ellipse 34% 30% at 52% 30%, rgba(110,160,255,${(0.3 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%), radial-gradient(ellipse 50% 45% at 30% 24%, rgba(255,170,100,${(0.16 * lamp).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
   }
-  if (view === 'legs') { drawLegs(now); drawLight(lights.deskLight, now, 'deskLight'); }
+  if (view === 'legs') { const f = S.floorShade; setStyle('#floorShadow', 'background', `linear-gradient(to bottom, rgba(0,0,0,0) 58%, rgba(4,3,5,${(0.55 * f).toFixed(2)}) 76%, rgba(4,3,5,${(0.92 * f).toFixed(2)}) 100%)`); drawLegs(now); drawLight(lights.deskLight, now, 'deskLight'); }
   if (view === 'floor') { drawLight(lights.floorLight, now, 'floorLight'); setStyle('#floorBg', 'transform', `scale(${(1 + low * 0.08).toFixed(3)})`); }
   if (view === 'wall') { drawLight(lights.wallLight, now, 'wallLight'); }
   G.press = Math.max(0, G.press - dt / 900); G.shiftAnim = Math.max(0, G.shiftAnim - dt / 800);
@@ -1411,7 +1412,7 @@ for (const k of Object.keys(STYLES)) { const o = document.createElement('option'
 const bindSel = (id, key) => { $(`#${id}`).value = S[key]; $(`#${id}`).onchange = () => { S[key] = $(`#${id}`).value; updatePresenceNote(); }; };
 bindSel('styleSel', 'style'); bindSel('talkSel', 'talk'); bindSel('regardSel', 'regard'); bindSel('holdSel', 'hold'); bindSel('moodSel', 'mood'); bindSel('forceSel', 'force');
 const bindRange = (id, key) => { const el = $(`#${id}`); const sync = () => { S[key] = Number(el.value); const v = $(`#${id}V`); if (v) v.textContent = String(S[key]); updatePresenceNote(); }; el.oninput = sync; sync(); };
-bindRange('seed', 'seed'); bindRange('legsW', 'legsW'); bindRange('legsB', 'legsB'); bindRange('phases', 'phases'); bindRange('phaseLen', 'phaseLen'); bindRange('level', 'level'); bindRange('vol', 'vol');
+bindRange('seed', 'seed'); bindRange('legsW', 'legsW'); bindRange('legsB', 'legsB'); bindRange('floorShade', 'floorShade'); bindRange('phases', 'phases'); bindRange('phaseLen', 'phaseLen'); bindRange('level', 'level'); bindRange('vol', 'vol');
 $('#startSel').onchange = () => { S.start = Number($('#startSel').value); };
 for (const [id, key] of [['blind', 'blind'], ['knows', 'knows'], ['public', 'public'], ['reckless', 'reckless'], ['rain', 'rain'], ['stay', 'stay'], ['snd', 'sound'], ['murmur', 'murmur']]) {
   $(`#${id}`).checked = S[key]; $(`#${id}`).onchange = () => { S[key] = $(`#${id}`).checked; };
@@ -1419,7 +1420,7 @@ for (const [id, key] of [['blind', 'blind'], ['knows', 'knows'], ['public', 'pub
 $('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
 $('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
 $('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
-$('#copyFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_seated', fit: { width: S.legsW, bottom: S.legsB } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#fitNote').textContent = j; };
+$('#copyFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_seated', fit: { width: S.legsW, bottom: S.legsB, floorShade: S.floorShade } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#fitNote').textContent = j; };
 $('#legsFile').onchange = () => { const f = $('#legsFile').files[0]; if (f) { $('#legsArt').src = URL.createObjectURL(f); $('#legsArt').style.display = 'block'; } };
 $('#file').onchange = () => { const f = $('#file').files[0]; if (f) $('#her').src = URL.createObjectURL(f); };
 $('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
