@@ -387,8 +387,8 @@ function piece(dest, from, to, at, rate, fadeIn = 0.015, fadeOut = 0.03, gain = 
   return at + dur;
 }
 function recOut(kind) {
-  const ctx = A.ctx, out = ctx.createGain(); out.gain.value = kind === 'mouth' ? 0.5 : 0.42;
-  const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = kind === 'mouth' ? 1900 : 4200; tone.Q.value = 0.5; // the recording is crisp: soften its top
+  const ctx = A.ctx, out = ctx.createGain(); out.gain.value = kind === 'mouth' ? 0.25 : 0.21; // half of the first level (author)
+  const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = kind === 'mouth' ? 1600 : 3200; tone.Q.value = 0.5; // the recording is crisp: soften its top (author: a little more muffled)
   out.connect(tone); tone.connect(A.body); return out;
 }
 function recInhale(kind = 'nose') {
