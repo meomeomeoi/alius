@@ -20,7 +20,9 @@
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
 #stage { position: fixed; inset: 0; overflow: hidden; }
 #stage.live { cursor: none; }
-#stage.live #ui .pick, #stage.live #inputWrap, #stage.live #stopPill { cursor: auto; }
+#stage.live.asking { cursor: auto; }
+#stage.live .pick { cursor: pointer; }
+#stage.live #inputWrap, #stage.live #stopPill { cursor: auto; }
 #inner { position: absolute; inset: 0; will-change: filter, transform; }
 #world { position: absolute; inset: -4%; }
 #ceiling { position: absolute; inset: -8%; background-size: cover; background-position: center; filter: blur(4px) brightness(.55); }
@@ -101,7 +103,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
     <path id="aFillGlow" fill="none" stroke-width="7" stroke-linecap="round" filter="url(#ag)" opacity=".7"/>
     <path id="aFill" fill="none" stroke-width="3" stroke-linecap="round"/>
     <line id="aTol" stroke="#fff" stroke-width="1.6"/>
-    <circle r="2.2" fill="rgba(255,255,255,.85)"/>
+    <circle id="aProxGlow" r="12" filter="url(#ag)" opacity="0"/>
+    <circle id="aProx" r="2.2" fill="rgba(255,255,255,.85)"/>
   </svg>
   <div id="hand"></div>
   <div id="ui">
@@ -116,6 +119,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 <div id="panel">
   <h4>contact</h4>
   <div class="row" id="contacts"></div>
+  <h4>the look of her scent</h4>
+  <div class="row" id="looks"></div>
   <h4>her scent</h4>
   <div class="row" id="bands"></div>
   <div class="row" id="colors"></div>
@@ -177,7 +182,9 @@ const PERCEPTION = {
 };
 const KIND_WORD = { feet_on_face: ['her feet', 'salt', 'skin', 'leather'], face_to_bottom: ['her skin', 'warm', 'cotton'], smothered_armpit: ['her underarm', 'salt', 'heat'] };
 const LIKED = new Set(['warm', 'hers', 'deep', 'thick', 'familiar', 'in the chest', 'her feet', 'her skin', 'her underarm']);
-const COLORS = { sweat: '255,176,96', leather: '196,128,78', soap: '214,232,255', gunpowder: '176,186,206', perfume: '214,156,255' };
+const COLORS = { sweat: '255,198,164', leather: '236,176,128', soap: '214,232,255', gunpowder: '196,206,226', perfume: '228,178,255' };
+/* how strong her scent is at the face anywhere under her (the face is already in it), before the strong places */
+const BASE_I = { feet_on_face: 0.2, face_to_bottom: 0.35, smothered_armpit: 0.45 };
 const ATTENTION = { reading: [0.25, 0.4, 0.35], watching_you: [0.75, 0.25, 0] }; // watching, glancing, busy
 const STYLES = {
   neutral:  { orderEvery: [3, 5], words: 0.3, pressOnHonest: false },
@@ -196,7 +203,7 @@ const LINES = {
 };
 
 /* ---------- settings ---------- */
-const S = { contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
+const S = { look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
   layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 60,
   reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
@@ -398,8 +405,8 @@ function zonesOf(W, H, s) {
   } else {
     const mirror = S.side.wedge === 'left', mx = (x) => (mirror ? 1 - x : x);
     const oc = Math.min(G.o, 1), yL = 1.07 - oc * 0.56, edge = (u) => lerp(yL, 1.02, u) + 0.06 * Math.sin(Math.PI * u) * (0.4 + 0.6 * oc);
-    out.push({ id: 'hollow', p: [mx(0.82), 0.9], w: 1.0 }, { id: 'hollow', p: [mx(0.72), edge(0.8) + 0.02], w: 0.85 });
-    out.push({ id: 'edge', p: [mx(0.35), edge(0.39) + 0.03], w: 0.45 }, { id: 'edge', p: [mx(0.15), edge(0.17) + 0.03], w: 0.4 });
+    out.push({ id: 'hollow', p: [mx(0.6), 0.42], w: 1.0 }, { id: 'hollow', p: [mx(0.72), 0.58], w: 0.9 });
+    out.push({ id: 'edge', p: [mx(0.32), edge(0.37) - 0.05], w: 0.5 }, { id: 'edge', p: [mx(0.14), edge(0.15) - 0.05], w: 0.45 });
   }
   return out;
 }
@@ -409,10 +416,11 @@ function intensityAt(p) {
   let best = 0, zone = null;
   for (const z of G.zones) {
     const dx = (p[0] - z.p[0]) * ar, dy = p[1] - z.p[1], d2 = dx * dx + dy * dy;
-    const v = z.w * Math.exp(-d2 / (2 * 0.1 * 0.1));
+    const v = z.w * Math.exp(-d2 / (2 * 0.13 * 0.13));
     if (v > best) { best = v; zone = z; }
   }
-  return { I: clamp(0.08 + best, 0, 1.1), zone };
+  const base = BASE_I[S.contact];
+  return { I: clamp(base + best * (1.1 - base), 0, 1.1), zone };
 }
 
 /* ---------- the rhythm of the game ---------- */
@@ -454,7 +462,7 @@ function askWords() {
     const el = document.createElement('div'); el.className = 'pw pick'; el.textContent = w;
     const a = -Math.PI * 0.85 + (i / (words.length - 1)) * Math.PI * 0.7;
     el._p = [clamp(G.nose[0] + Math.cos(a) * 0.17, 0.08, 0.92), clamp(G.nose[1] + Math.sin(a) * 0.25 - 0.05, 0.1, 0.75)];
-    el._v = [rand(-0.004, 0.004), rand(-0.006, -0.002)];
+    el._v = [rand(-0.0015, 0.0015), rand(-0.002, -0.0008)];
     el.onclick = (e) => { e.stopPropagation(); if (el.classList.contains('chosen') || !G.order || G.order.k !== 'ask') return; el.classList.add('chosen'); chosen.push(w); if (chosen.length >= 2) answerWords(); };
     $('#words').appendChild(el); wordEls.push(el);
   });
@@ -675,21 +683,61 @@ function spawnStreams(n, strength) {
     parts.push({ x: (z.p[0] + rand(-0.04, 0.04)) * innerWidth, y: (z.p[1] + rand(-0.04, 0.04)) * innerHeight, vx: rand(-40, 40), vy: rand(-40, 40), life: 1, a: strength });
   }
 }
+/* motes: specks of light that rise from where she is, drift, twinkle and are drawn in with a breath */
+function spawnMotes(dt) {
+  const h = dt / 1000;
+  for (const z of G.zones) {
+    const rate = z.w * stim() * 26 * G.darkA * (1 + G.sat / 120);
+    let n = rate * h; while (n > 0) { if (Math.random() < Math.min(1, n)) parts.push({ mote: true, x: (z.p[0] + rand(-0.035, 0.035)) * innerWidth, y: (z.p[1] + rand(-0.03, 0.03)) * innerHeight, vx: rand(-18, 18), vy: rand(-34, -8), life: 1, decay: rand(0.25, 0.45), size: rand(0.8, 2.4), tw: rand(0, 6.28), a: clamp(z.w * stim(), 0.3, 1.2) }); n -= 1; }
+  }
+  // the air itself holds some, more as the head fills
+  if (Math.random() < h * (2 + G.sat / 12)) parts.push({ mote: true, x: rand(0, innerWidth), y: rand(0, innerHeight), vx: rand(-8, 8), vy: rand(-10, 4), life: 1, decay: rand(0.2, 0.35), size: rand(0.6, 1.6), tw: rand(0, 6.28), a: 0.5 });
+}
+/* ribbons: a few silk trails from her strongest places, swaying; a breath bends them to the face */
+function drawRibbons(t, HW, HH, col) {
+  hctx.globalCompositeOperation = 'lighter'; hctx.lineCap = 'round'; hctx.filter = 'blur(3px)';
+  const strong = G.zones.slice().sort((a, b) => b.w - a.w).slice(0, 4);
+  strong.forEach((z, k) => {
+    const pts = [];
+    for (let i = 0; i <= 22; i++) {
+      const u = i / 22, ph = t * 0.6 + k * 1.7;
+      let x = z.p[0] + Math.sin(ph + u * 3.2) * 0.05 * u + Math.sin(t * 0.23 + k) * 0.06 * u;
+      let y = z.p[1] - u * 0.42 + Math.cos(ph * 0.8 + u * 2.1) * 0.02 * u;
+      if (G.inhaling) { const w = Math.pow(u, 0.7) * Math.min(1, G.depth * 1.2); x = lerp(x, G.nose[0], w); y = lerp(y, G.nose[1], w); }
+      pts.push([x * HW, y * HH]);
+    }
+    for (let i = 1; i < pts.length; i++) {
+      const u = i / pts.length;
+      hctx.strokeStyle = `rgba(${col},${(0.22 * z.w * stim() * (1 - u * 0.8) * G.darkA).toFixed(3)})`;
+      hctx.lineWidth = HH * (0.05 - u * 0.035);
+      hctx.beginPath(); hctx.moveTo(pts[i - 1][0], pts[i - 1][1]); hctx.lineTo(pts[i][0], pts[i][1]); hctx.stroke();
+    }
+  });
+  hctx.filter = 'none'; hctx.globalCompositeOperation = 'source-over';
+}
 function burst() { for (const p of parts) { const dx = p.x - G.nose[0] * innerWidth, dy = p.y - G.nose[1] * innerHeight, d = Math.hypot(dx, dy) || 1; p.vx = (dx / d) * 900; p.vy = (dy / d) * 900; p.life = Math.min(p.life, 0.5); } }
 function drawStreams(dt) {
   const h = dt / 1000, nx = G.nose[0] * innerWidth, ny = G.nose[1] * innerHeight;
-  sctx.globalCompositeOperation = 'destination-out'; sctx.fillStyle = `rgba(0,0,0,${S.reduced ? 1 : 0.22})`; sctx.fillRect(0, 0, strC.width, strC.height);
+  sctx.globalCompositeOperation = 'destination-out'; sctx.fillStyle = `rgba(0,0,0,${S.reduced ? 1 : S.look === 'motes' && !G.inhaling ? 0.5 : 0.22})`; sctx.fillRect(0, 0, strC.width, strC.height);
   sctx.globalCompositeOperation = 'lighter'; sctx.lineCap = 'round';
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i];
     const dx = nx - p.x, dy = ny - p.y, d = Math.hypot(dx, dy) || 1;
-    const pullK = G.inhaling ? 1400 + G.depth * 2600 : 200;
+    const pullK = G.inhaling ? 1400 + G.depth * 2600 : p.mote ? 0 : 200;
     p.vx += ((dx / d) * pullK + (-dy / d) * 260) * h; p.vy += ((dy / d) * pullK + (dx / d) * 260) * h; // a curl around the face, then in
-    p.vx *= 1 - h * 1.6; p.vy *= 1 - h * 1.6;
-    const ox = p.x, oy = p.y; p.x += p.vx * h; p.y += p.vy * h; p.life -= h * (G.inhaling ? 0.7 : 1.4);
-    if (d < 18 || p.life <= 0) { parts.splice(i, 1); continue; }
-    sctx.strokeStyle = `rgba(${COLORS[S.color]},${(0.5 * p.a * p.life).toFixed(3)})`; sctx.lineWidth = 1.2 + p.a * 1.2;
-    sctx.beginPath(); sctx.moveTo(ox, oy); sctx.lineTo(p.x, p.y); sctx.stroke();
+    if (p.mote && !G.inhaling) { p.vx += rand(-30, 30) * h; p.vy += rand(-30, 26) * h; }
+    p.vx *= 1 - h * (p.mote && !G.inhaling ? 0.4 : 1.6); p.vy *= 1 - h * (p.mote && !G.inhaling ? 0.4 : 1.6);
+    const ox = p.x, oy = p.y; p.x += p.vx * h; p.y += p.vy * h; p.life -= h * (p.mote ? p.decay * (G.inhaling ? 1.4 : 1) : G.inhaling ? 0.7 : 1.4);
+    if ((d < 18 && G.inhaling) || (!p.mote && d < 18) || p.life <= 0 || parts.length > 900) { parts.splice(i, 1); continue; }
+    if (p.mote) {
+      const tw = 0.55 + 0.45 * Math.sin(p.tw += h * 5), al = Math.min(1, p.life * 2) * Math.min(1, (1 - p.life) * 6 + 0.2) * tw * p.a * G.darkA;
+      sctx.fillStyle = `rgba(${COLORS[S.color]},${(0.22 * al).toFixed(3)})`; sctx.beginPath(); sctx.arc(p.x, p.y, p.size * 3.2, 0, 6.283); sctx.fill();
+      sctx.fillStyle = `rgba(${COLORS[S.color]},${(0.85 * al).toFixed(3)})`; sctx.beginPath(); sctx.arc(p.x, p.y, p.size, 0, 6.283); sctx.fill();
+      if (G.inhaling) { sctx.strokeStyle = `rgba(${COLORS[S.color]},${(0.35 * al).toFixed(3)})`; sctx.lineWidth = p.size; sctx.beginPath(); sctx.moveTo(ox, oy); sctx.lineTo(p.x, p.y); sctx.stroke(); }
+    } else {
+      sctx.strokeStyle = `rgba(${COLORS[S.color]},${(0.5 * p.a * p.life).toFixed(3)})`; sctx.lineWidth = 1.2 + p.a * 1.2;
+      sctx.beginPath(); sctx.moveTo(ox, oy); sctx.lineTo(p.x, p.y); sctx.stroke();
+    }
   }
   sctx.globalCompositeOperation = 'source-over';
 }
@@ -709,6 +757,7 @@ function render(now, dt) {
   const sway = reduced ? 0 : Math.sin((t * Math.PI * 2) / 3.1), sway2 = reduced ? 0 : Math.sin((t * Math.PI * 2) / 4.7 + 1.3);
   const live = G.phase === 'loop' || G.phase === 'entry';
   $('#stage').classList.toggle('live', live);
+  $('#stage').classList.toggle('asking', !!(G.order && G.order.k === 'ask'));
   // her shape, moved a little against the face (the face moves under her)
   const par = [-(G.nose[0] - 0.5) * 0.06, -(G.nose[1] - 0.55) * 0.05];
   const h = Math.min(dt, 40) / 1000;
@@ -731,8 +780,10 @@ function render(now, dt) {
   dctx.globalCompositeOperation = 'source-over'; dctx.globalAlpha = 1;
   const sh = reduced ? 0 : G.shake * 7;
   darkC.style.transform = sh ? `translate(${rand(-sh, sh)}px, ${rand(-sh, sh)}px)` : '';
-  // the haze: noise, dense where she is and where the face draws it, tinted her colour
+  // the look of her scent: motes (light in the air, rising from where she is), ribbons (silk trails), or the first haze
   const HW = hazeC.width, HH = hazeC.height, col = COLORS[S.color];
+  if (S.look !== 'haze') { hctx.clearRect(0, 0, HW, HH); if (S.look === 'ribbons') drawRibbons(t, HW, HH, col); else if (live) spawnMotes(dt); }
+  else {
   mctx.globalCompositeOperation = 'source-over'; mctx.clearRect(0, 0, HW, HH);
   mctx.fillStyle = `rgba(255,255,255,${((0.012 + G.sat * 0.0032) * G.darkA).toFixed(3)})`; mctx.fillRect(0, 0, HW, HH);
   for (const z of G.zones) {
@@ -758,6 +809,7 @@ function render(now, dt) {
   hctx.globalCompositeOperation = 'destination-in'; hctx.drawImage(maskC, 0, 0);
   hctx.globalCompositeOperation = 'source-in'; hctx.fillStyle = `rgb(${col})`; hctx.fillRect(0, 0, HW, HH);
   hctx.globalCompositeOperation = 'source-over';
+  }
   // threads on a breath
   if (live && G.inhaling && Math.random() < 0.9) spawnStreams(Math.ceil(2 + G.depth * 5 * G.I), clamp(G.I * stim(), 0.2, 1.2));
   drawStreams(dt);
@@ -785,6 +837,9 @@ function render(now, dt) {
   $('#aTol').setAttribute('x1', (Math.cos(ta) * (R - 7)).toFixed(1)); $('#aTol').setAttribute('y1', (Math.sin(ta) * (R - 7)).toFixed(1));
   $('#aTol').setAttribute('x2', (Math.cos(ta) * (R + 7)).toFixed(1)); $('#aTol').setAttribute('y2', (Math.sin(ta) * (R + 7)).toFixed(1));
   $('#aTol').setAttribute('opacity', td < 1 ? '1' : '0');
+  const prox = smooth(0.15, 1.05, G.I);
+  $('#aProx').setAttribute('r', (2 + prox * 4.5).toFixed(1)); $('#aProx').setAttribute('fill', `rgba(${col},${(0.6 + prox * 0.4).toFixed(2)})`);
+  $('#aProxGlow').setAttribute('r', (8 + prox * 16).toFixed(1)); $('#aProxGlow').setAttribute('fill', `rgb(${col})`); $('#aProxGlow').setAttribute('opacity', (prox * 0.55).toFixed(2));
   const need = S.layers.need && live ? smooth(5000, 8000, G.sinceBreath) : 0;
   $('#aNeed').setAttribute('opacity', (need * (0.5 + 0.5 * Math.sin(now / 120))).toFixed(2)); $('#aNeed').setAttribute('stroke', 'rgba(255,255,255,.7)');
   $('#aNeed').setAttribute('r', (R + 8 - need * 4).toFixed(1));
@@ -868,6 +923,7 @@ function optRow(host, items, get, set) {
   host.replaceChildren(...items.map((k) => { const b = document.createElement('button'); b.className = 'opt' + (get() === k ? ' on' : ''); b.textContent = k; b.onclick = () => { set(k); optRow(host, items, get, set); }; return b; }));
 }
 optRow($('#contacts'), ['feet_on_face', 'face_to_bottom', 'smothered_armpit'], () => S.contact, (k) => { S.contact = k; });
+optRow($('#looks'), ['motes', 'ribbons', 'haze'], () => S.look, (k) => { S.look = k; });
 optRow($('#bands'), Object.keys(BAND), () => S.band, (k) => { S.band = k; });
 optRow($('#colors'), Object.keys(COLORS), () => S.color, (k) => { S.color = k; });
 optRow($('#stages'), STAGES, () => S.stage, (k) => { S.stage = k; });
