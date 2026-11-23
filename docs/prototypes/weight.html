@@ -175,6 +175,11 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <h4>her sprite</h4>
   <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
   <label>over <input type="file" id="fileOver" accept="image/*" style="width:170px"></label>
+  <label>over height <input type="range" id="overH" min="0.6" max="1.8" step="0.01" value="1.04"><span id="overHV">1.04</span></label>
+  <label>over x <input type="range" id="overX" min="0.3" max="0.7" step="0.01" value="0.5"><span id="overXV">0.5</span></label>
+  <label>over sink <input type="range" id="overSink" min="0" max="0.3" step="0.01" value="0"><span id="overSinkV">0</span></label>
+  <div class="row"><button class="opt" id="copyOver">copy the fit</button></div>
+  <div class="note" id="overNote">The over slot is anchored to the bottom: its bottom edge sits below the frame by what its widest lean needs (half its drawn width × sin 6°, at least 2 %), so turning never shows a gap. "over sink" lowers it further (to hide a cut-off picture edge). The fit travels with the picture as a sidecar.</div>
   <div class="note">"over": an art slot drawn from below (she stands over you). Without it the ordinary sprite rises from the bottom of the frame.</div>
   <label>face x <input type="range" id="fx" min="0.2" max="0.8" step="0.01" value="0.5"></label>
   <label>face y <input type="range" id="fy" min="0.05" max="0.45" step="0.01" value="0.21"></label>
@@ -247,7 +252,7 @@ const LINES = {
 const TASKS = { reading: 'divided', game: 'elsewhere', watching_you: 'on_commander' };
 
 /* ---------- settings ---------- */
-const S = { legs: 'hang', foot: 'relaxed', legShade: 'shadow', toFall: false, contact: 'human_chair', style: 'neutral', task: 'reading', tol: 0.18, drain: 1, len: 45, unevenCost: true, sound: true, vol: 0.7, face: { x: 0.5, y: 0.21 }, debug: false,
+const S = { legs: 'hang', foot: 'relaxed', legShade: 'shadow', toFall: false, contact: 'human_chair', style: 'neutral', task: 'reading', tol: 0.18, drain: 1, len: 45, unevenCost: true, sound: true, vol: 0.7, face: { x: 0.5, y: 0.21 }, overH: 1.04, overX: 0.5, overSink: 0, debug: false,
   reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const C = () => CONTACTS[S.contact], ST = () => STYLES[S.style], L = () => LINES[S.style];
 
@@ -727,7 +732,10 @@ function render(now, dt, err) {
   const press = 1 + strF * 0.12 * k + G.sag * 0.03;
   const lean = G.lean * 3.2 + G.cop * 2.2;
   if (useOver) {
-    placeSprite(over, k, S.face, { h: 1.04 * press, x: 0.5, dx: G.cop * innerWidth * 0.03, bottom: 1.02, rot: lean });
+    // anchored to the bottom with room for the lean: the bottom edge sits below the frame by half its drawn width × sin 6° (at least 2 %)
+    const oh = S.overH * press, ow = (innerHeight * oh) * over.naturalWidth / over.naturalHeight;
+    const overscan = Math.max(0.02, (ow / 2) * Math.sin(6 * Math.PI / 180) / innerHeight + 0.01);
+    placeSprite(over, k, S.face, { h: oh, x: S.overX, dx: G.cop * innerWidth * 0.03, bottom: 1 + overscan + S.overSink, rot: lean });
     $('#her').style.opacity = '0';
   } else {
     $('#her').style.opacity = '1';
@@ -830,6 +838,8 @@ $('#fx').oninput = () => { S.face.x = Number($('#fx').value); };
 $('#fy').oninput = () => { S.face.y = Number($('#fy').value); };
 $('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
 $('#file').onchange = () => { const f = $('#file').files[0]; if (f) { const u = URL.createObjectURL(f); $('#her').src = u; $('#herIdle').src = u; } };
+for (const [id, key] of [['overH', 'overH'], ['overX', 'overX'], ['overSink', 'overSink']]) { const el = $(`#${id}`); el.oninput = () => { S[key] = Number(el.value); $(`#${id}V`).textContent = el.value; }; }
+$('#copyOver').onclick = () => { const j = JSON.stringify({ slot: 'over', fit: { height: S.overH, x: S.overX, sink: S.overSink } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#overNote').textContent = j; };
 $('#fileOver').onchange = () => { const f = $('#fileOver').files[0]; if (f) { $('#over').src = URL.createObjectURL(f); $('#over').style.display = ''; } };
 $('#restart').onclick = () => { $('#start').style.display = 'none'; begin(); };
 for (const [sel, group, set] of [['#floorSel', ASSETS.floors, '#floor'], ['#ceilSel', ASSETS.ceilings, '#ceiling']]) {
